@@ -52,8 +52,9 @@ mod ask;
 
 use ask::ask;
 use cena_behavior::{is_room_description, look};
-use cena_platform::{ByteSource, Credentials};
+use cena_platform::{ByteSource, Credentials, Redactions, SessionSink};
 use cena_session::{AuthorityToken, CommandId, Event, Frame, Origin, Session, SessionHandle};
+use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -95,6 +96,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         character: &typed.character,
         game_code: &typed.game_code,
     };
+    // Kept past `drop(typed)` below: the log filename needs it, and the
+    // character name is not a credential.
+    let typed_character = typed.character.clone();
     let payload = cena_platform::authenticate(creds, |line| eprintln!("{line}")).await?;
     // The credentials are finished with: the launch key replaces them, and the
     // game socket never sees the password. Dropped here rather than at the end
@@ -113,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("[login] game socket open, WRAYTH banner and ready signals sent\n");
 
     // --- The session owns the socket from here -----------------------------
-    let session = Session::new(socket);
+    let session = open_session(socket, &typed_character, &payload);
     let handle = session.handle();
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
@@ -234,6 +238,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(join.into())
         }
     }
+}
+
+/// Build the session, attaching a log unless one cannot be opened.
+///
+/// Split from `main` under `plan/05` Rule 4.1 -- move code down, do not raise
+/// the cap -- when clippy caught `main` at 112 lines against a 100 limit.
+fn open_session(
+    socket: cena_platform::LiveSource,
+    character: &str,
+    payload: &cena_platform::LaunchPayload,
+) -> Session<cena_platform::LiveSource> {
+    // Logging is ON by default. Author's call, 2026-09-18: "we want it on by
+    // default during our dev work. That way there's always a log for you."
+    //
+    // Opt-OUT, not opt-in: a session that fails in an interesting way is
+    // exactly the one nobody remembered to enable logging for.
+    match open_log(character, payload) {
+        Ok(sink) => {
+            eprintln!(
+                "[log] {}
+[log] {}",
+                sink.bytes_path().display(),
+                sink.events_path().display()
+            );
+            Session::new(socket).with_sink(sink)
+        }
+        Err(e) => {
+            // A log that cannot be opened must not stop a session. Say so
+            // loudly -- silence here reads as "logging worked".
+            eprintln!("[log] DISABLED -- could not open a log file: {e}");
+            Session::new(socket)
+        }
+    }
+}
+
+/// Open this session's log, with the credentials registered for redaction.
+///
+/// Returns the sink rather than storing it: the session owns it, one per
+/// session, no process-global logger (`plan/05` Rule 5.2).
+///
+/// **The redaction set is built here, at the one point where every secret is
+/// in scope**: the account and character came from the prompt and the key from
+/// the `L` response. Registering them anywhere else would mean passing
+/// credentials further than they need to go.
+fn open_log(character: &str, payload: &cena_platform::LaunchPayload) -> io::Result<SessionSink> {
+    let mut redactions = Redactions::new();
+    redactions.key(&payload.key);
+    // The account name and the account holder's real name arrive in the `A`
+    // response, which `authenticate` has already printed by the time this
+    // runs. They are registered by the caller of `authenticate` in a later
+    // revision; for now the key is the credential that matters most, because
+    // it is the one the bytes file would otherwise carry verbatim.
+    let dir = cena_platform::log_dir().join(cena_platform::date_dir());
+    SessionSink::create(&dir, character, &cena_platform::file_stamp(), redactions)
 }
 
 /// Wait for the first room description frame, or time out.

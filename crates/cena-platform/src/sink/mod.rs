@@ -73,6 +73,6 @@ mod writer;
 
 pub use config::{
     BYTES_TIMESTAMP_ENV, DEFAULT_LOG_DIR, LOG_DIR_ENV, ROTATE_AFTER_LINES, ROTATE_ENV, TIME_FORMAT,
-    bytes_timestamps_enabled, log_dir, rotate_after_lines,
+    bytes_timestamps_enabled, date_dir, file_stamp, line_time, log_dir, rotate_after_lines,
 };
 pub use writer::{Redactions, SessionSink};

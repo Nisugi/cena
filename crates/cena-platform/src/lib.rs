@@ -51,4 +51,4 @@ pub use eaccess::{Credentials, EaccessError, LaunchPayload, authenticate, connec
 pub use live::LiveSource;
 pub use record::{RecordedEvent, Recorder};
 pub use replay::ReplaySource;
-pub use sink::{DEFAULT_LOG_DIR, Redactions, SessionSink};
+pub use sink::{DEFAULT_LOG_DIR, Redactions, SessionSink, date_dir, file_stamp, log_dir};

@@ -10,7 +10,7 @@
 //! one, and why a session log is a private development artifact rather than
 //! something shareable.
 
-use super::config::{CLIENT_CLOSE, CLIENT_OPEN};
+use super::config::{CLIENT_CLOSE, CLIENT_OPEN, bytes_timestamps_enabled, line_time};
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -122,6 +122,10 @@ pub struct SessionSink {
     bytes_path: PathBuf,
     events_path: PathBuf,
     lines_written: u64,
+    /// Whether the bytes file carries per-line times. Read once at creation
+    /// rather than per line: an env var that changed mid-session would produce
+    /// a file that is half one format.
+    stamp_bytes: bool,
 }
 
 impl SessionSink {
@@ -184,6 +188,7 @@ impl SessionSink {
             bytes_path,
             events_path,
             lines_written: 0,
+            stamp_bytes: bytes_timestamps_enabled(),
         })
     }
 
@@ -205,6 +210,9 @@ impl SessionSink {
     /// Any write failure.
     pub fn wire(&mut self, inbound: bool, bytes: &[u8]) -> io::Result<()> {
         let redacted = self.redactions.apply_bytes(bytes);
+        if self.stamp_bytes {
+            write!(self.bytes, "{}: ", line_time())?;
+        }
         if inbound {
             self.bytes.write_all(&redacted)?;
         } else {
@@ -242,7 +250,15 @@ impl SessionSink {
     ///
     /// Any write failure.
     pub fn event(&mut self, line: &str) -> io::Result<()> {
-        writeln!(self.events, "{}", self.redactions.apply(line))
+        // Always stamped: nothing replays this file, so a wall clock costs it
+        // nothing, and "when did that happen" is the first question anyone
+        // asks of it.
+        writeln!(
+            self.events,
+            "{} {}",
+            line_time(),
+            self.redactions.apply(line)
+        )
     }
 
     /// Flush both files.

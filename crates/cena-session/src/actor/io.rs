@@ -90,6 +90,7 @@ impl<S: ByteSource> SessionActor<S> {
                 return false;
             }
             self.recorder.outbound(&message);
+            self.log_wire(false, &message);
             // Published before the window opens: a behavior observes a manual
             // command as an event (`plan/12` §4.1) and is not cancelled by it.
             let _ = self.events.send(Event::Sent {
@@ -114,6 +115,7 @@ impl<S: ByteSource> SessionActor<S> {
     /// (`crates/cena-protocol/src/parser/read.rs:16-22`).
     pub(super) fn ingest(&mut self, chunk: &[u8]) {
         self.recorder.inbound(chunk);
+        self.log_wire(true, chunk);
         for frame in self.parser.push_bytes(chunk) {
             // Offered to the waiter AND published. `plan/12` §4.4:
             // "observation never competes with attribution."

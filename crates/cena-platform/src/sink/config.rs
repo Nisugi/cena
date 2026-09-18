@@ -130,3 +130,54 @@ pub(super) const CLIENT_OPEN: &[u8] = b"<!-- CLIENT -->";
 
 /// Closes a run of client input. See [`CLIENT_OPEN`].
 pub(super) const CLIENT_CLOSE: &[u8] = b"<!-- ENDCLIENT -->";
+
+/// The stamp that names a session's files: `YYYY-MM-DD_HH-MM-SS`.
+///
+/// Author's call, 2026-09-18: *"file names are usually saved with date and
+/// time start."* Same shape as `logxml.lic`'s
+/// (`2026-09-18_15-49-13.xml`), so a directory of Cena captures sorts and
+/// reads like the corpus beside it.
+///
+/// `-` rather than `:` in the time: `:` is not a legal filename character on
+/// Windows, which is the development platform.
+///
+/// This is also why [`TIME_FORMAT`] carries no date -- it is already here, and
+/// repeating it on 30,000 lines is waste.
+#[must_use]
+pub fn file_stamp() -> String {
+    let now = jiff::Zoned::now();
+    format!(
+        "{:04}-{:02}-{:02}_{:02}-{:02}-{:02}",
+        now.year(),
+        now.month(),
+        now.day(),
+        now.hour(),
+        now.minute(),
+        now.second()
+    )
+}
+
+/// The date directory a session's files live under: `YYYY-MM-DD`.
+///
+/// `logxml.lic` nests `year/month`; this is one level, because a Cena session
+/// produces two files rather than a continuous stream and a day's worth stays
+/// readable in one listing. Revisit when a day's directory stops being
+/// scannable.
+#[must_use]
+pub fn date_dir() -> String {
+    let now = jiff::Zoned::now();
+    format!("{:04}-{:02}-{:02}", now.year(), now.month(), now.day())
+}
+
+/// Wall-clock time for one log line: `HH:MM:SS.mmm`, per [`TIME_FORMAT`].
+#[must_use]
+pub fn line_time() -> String {
+    let now = jiff::Zoned::now();
+    format!(
+        "{:02}:{:02}:{:02}.{:03}",
+        now.hour(),
+        now.minute(),
+        now.second(),
+        now.millisecond()
+    )
+}

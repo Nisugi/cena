@@ -37,17 +37,20 @@
 //! The next split, if this grows again: [`Session`] and [`Snapshot`] to
 //! `actor/handle.rs`, leaving [`SessionActor`] and its loop alone.
 
-use crate::command::{Envelope, SessionHandle};
+use crate::command::Envelope;
 use crate::lifecycle::{Generation, State};
 use crate::queue::CommandQueue;
 use cena_model::GameState;
-use cena_platform::{ByteSource, Recorder};
+use cena_platform::{ByteSource, Recorder, SessionSink};
 use cena_protocol::{Frame, Parser};
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
 
+mod handle;
 mod io;
+
+pub use handle::{Session, Snapshot};
 
 /// Inbound command channel bound.
 ///
@@ -99,102 +102,6 @@ pub enum Event {
     StateChanged(State),
 }
 
-/// A consistent view of the session, taken at a point in the event stream.
-///
-/// `plan/12` §6.2: the join is a single operation, so no event between the
-/// snapshot and the subscription is lost. Here the atomicity is structural
-/// rather than lock-based -- both halves are produced by the actor's own task,
-/// which is the only writer, so there is no window to be atomic *across*.
-#[derive(Clone, Debug)]
-pub struct Snapshot {
-    /// What the session knew.
-    pub state: GameState,
-    /// Where it was in its life.
-    pub lifecycle: State,
-    /// Which connection this belongs to (`plan/12` §5.2).
-    pub generation: Generation,
-}
-
-/// Everything a caller needs to drive and observe one session.
-#[derive(Debug)]
-pub struct Session<S: ByteSource> {
-    actor: SessionActor<S>,
-    handle: SessionHandle,
-    events: broadcast::Sender<Event>,
-    cancel: CancellationToken,
-}
-
-impl<S: ByteSource> Session<S> {
-    /// Build a session over this byte source.
-    ///
-    /// Nothing runs until [`Session::into_actor`]'s actor is driven, so
-    /// constructing a session touches no network even with a
-    /// [`LiveSource`](cena_platform::LiveSource).
-    #[must_use]
-    pub fn new(source: S) -> Self {
-        let (tx, rx) = mpsc::channel(COMMAND_CHANNEL_BOUND);
-        let (events, _) = broadcast::channel(EVENT_CHANNEL_BOUND);
-        let cancel = CancellationToken::new();
-        let generation = Generation::FIRST;
-        Self {
-            actor: SessionActor {
-                source,
-                parser: Parser::new(),
-                state: GameState::default(),
-                lifecycle: State::Connecting,
-                queue: CommandQueue::new(),
-                commands: rx,
-                events: events.clone(),
-                recorder: Recorder::new(),
-                cancel: cancel.clone(),
-                generation,
-            },
-            handle: SessionHandle::new(tx, generation),
-            events,
-            cancel,
-        }
-    }
-
-    /// A handle for sending commands. Cloneable: the manual surface and a
-    /// behavior hold the same one, which is what makes criterion 3's "the
-    /// **same** queue" structural.
-    #[must_use]
-    pub fn handle(&self) -> SessionHandle {
-        self.handle.clone()
-    }
-
-    /// The token that stops the session. `plan/12` §4.3: only an explicit
-    /// `stop` or `pause` preempts -- never a typed command (§4.1).
-    #[must_use]
-    pub fn cancel_token(&self) -> CancellationToken {
-        self.cancel.clone()
-    }
-
-    /// Subscribe to events.
-    ///
-    /// `plan/12` §6.2 wants `(snapshot, events)` as one operation. Before the
-    /// actor runs the snapshot is trivially the initial state; after it is
-    /// running, a subscriber calls this and then reads, and the actor is the
-    /// only writer, so nothing is interleaved.
-    #[must_use]
-    pub fn subscribe(&self) -> (Snapshot, broadcast::Receiver<Event>) {
-        let receiver = self.events.subscribe();
-        (
-            Snapshot {
-                state: self.actor.state.clone(),
-                lifecycle: self.actor.lifecycle,
-                generation: self.actor.generation,
-            },
-            receiver,
-        )
-    }
-
-    /// Consume the session, yielding the actor to drive.
-    pub fn into_actor(self) -> SessionActor<S> {
-        self.actor
-    }
-}
-
 /// What a finished session leaves behind.
 ///
 /// One struct rather than a tuple because three of its four fields are things
@@ -227,6 +134,13 @@ pub struct SessionActor<S: ByteSource> {
     commands: mpsc::Receiver<crate::command::Inbox>,
     events: broadcast::Sender<Event>,
     recorder: Recorder,
+    /// Where this session's wire traffic is written, if anywhere.
+    ///
+    /// **`Option`, and that is the point.** A session with no sink behaves
+    /// exactly as it did before logging existed, which is what leaves every
+    /// existing test -- and criterion 7's replay in particular -- untouched by
+    /// this field. The binary attaches one; tests do not.
+    sink: Option<SessionSink>,
     cancel: CancellationToken,
     generation: Generation,
 }
@@ -342,11 +256,39 @@ impl<S: ByteSource> SessionActor<S> {
         let _ = self.source.shutdown().await;
         self.queue.drop_all_waiters();
         self.transition(State::Closed);
+        // Flush LAST, after the Closed transition has been logged, so the file
+        // records its own end. Buffered writers otherwise lose the final lines
+        // -- which are the ones that say why a session stopped.
+        if let Some(sink) = self.sink.as_mut() {
+            let _ = sink.flush();
+        }
     }
 
     fn transition(&mut self, next: State) {
         self.lifecycle = next;
+        self.log(&format!("lifecycle {next:?}"));
         let _ = self.events.send(Event::StateChanged(next));
+    }
+
+    /// Write one line to the session log, if there is one.
+    ///
+    /// **Swallows the error deliberately.** A full disk, a revoked permission
+    /// or a deleted directory must not end a session: `plan/12` §5.5's
+    /// containment table is about a session surviving its own faults, and a
+    /// log is an observer of the session rather than part of it. The write is
+    /// attempted every time rather than disabled after one failure, because a
+    /// transient failure should not silently stop all later logging.
+    pub(super) fn log(&mut self, line: &str) {
+        if let Some(sink) = self.sink.as_mut() {
+            let _ = sink.event(line);
+        }
+    }
+
+    /// Write raw wire bytes to the session log, if there is one.
+    pub(super) fn log_wire(&mut self, inbound: bool, bytes: &[u8]) {
+        if let Some(sink) = self.sink.as_mut() {
+            let _ = sink.wire(inbound, bytes);
+        }
     }
 
     /// The state as the actor currently sees it. For tests that drive the
