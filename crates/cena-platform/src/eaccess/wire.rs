@@ -232,14 +232,34 @@ pub fn hash_password(password: &[u8], key: &[u8]) -> Result<Vec<u8>, EaccessErro
 /// innocuous-looking `tier="?"`.
 #[must_use]
 pub fn redact(s: &str) -> String {
-    s.split('\t')
-        .map(|field| {
-            if field.len() == 32 && field.chars().all(|c| c.is_ascii_hexdigit()) {
+    // The `A` success response has a FIXED shape:
+    //
+    //     A <tab> <ACCOUNT> <tab> KEY <tab> <session key> <tab> <Real Name>
+    //
+    // so the account name and the account holder's real name are POSITIONAL,
+    // and removing them is exact rather than a guess.
+    //
+    // ADDED 2026-09-18, after the first live run printed both in full. Only
+    // the key was redacted; the account and the author's real name went to the
+    // terminal, the scrollback, and into a transcript pasted for review. They
+    // are personal data and nothing downstream needs them.
+    let fields: Vec<&str> = s.split('\t').collect();
+    let is_a_response = fields.first() == Some(&"A") && fields.get(2) == Some(&"KEY");
+
+    fields
+        .iter()
+        .enumerate()
+        .map(|(i, field)| {
+            if is_a_response && i == 1 {
+                "<ACCOUNT>".to_owned()
+            } else if is_a_response && i == 4 {
+                "<NAME>".to_owned()
+            } else if field.len() == 32 && field.chars().all(|c| c.is_ascii_hexdigit()) {
                 "<KEY-REDACTED>".to_owned()
             } else if field.starts_with("KEY=") {
                 "KEY=<REDACTED>".to_owned()
             } else {
-                field.to_owned()
+                (*field).to_owned()
             }
         })
         .collect::<Vec<_>>()

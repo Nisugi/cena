@@ -10,7 +10,9 @@
 //! one, and why a session log is a private development artifact rather than
 //! something shareable.
 
-use super::config::{CLIENT_CLOSE, CLIENT_OPEN, bytes_timestamps_enabled, line_time};
+use super::config::{
+    CLIENT_CLOSE, CLIENT_OPEN, bytes_timestamps_enabled, line_time, rotate_after_lines,
+};
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -122,6 +124,14 @@ pub struct SessionSink {
     bytes_path: PathBuf,
     events_path: PathBuf,
     lines_written: u64,
+    /// `<dir>/<char>-<stamp>`, shared by every part of this session.
+    stem: PathBuf,
+    /// Which part is open. 0 is the unnumbered first file.
+    part: u32,
+    /// Lines before rolling. Read once at creation, for the same reason
+    /// `stamp_bytes` is: a threshold that changed mid-session would produce
+    /// parts of inconsistent size.
+    rotate_after: u64,
     /// Whether the bytes file carries per-line times. Read once at creation
     /// rather than per line: an env var that changed mid-session would produce
     /// a file that is half one format.
@@ -145,6 +155,31 @@ impl SessionSink {
         stamp: &str,
         redactions: Redactions,
     ) -> io::Result<Self> {
+        Self::create_with_rotation(dir, character, stamp, redactions, rotate_after_lines())
+    }
+
+    /// [`Self::create`], with the rotation threshold given rather than read
+    /// from the environment.
+    ///
+    /// Exists because a test must be able to roll a file without setting a
+    /// process-wide environment variable: `unsafe_code = "deny"` makes
+    /// `set_var` unavailable (it is `unsafe` since Rust 2024), and a test that
+    /// mutated global state would race every other test in the binary anyway.
+    ///
+    /// Taking the value is also simply better design -- the threshold is a
+    /// property of this sink, and reading it from the environment at the point
+    /// of use was a hidden input.
+    ///
+    /// # Errors
+    ///
+    /// Any failure to create the directory or either file.
+    pub fn create_with_rotation(
+        dir: &Path,
+        character: &str,
+        stamp: &str,
+        redactions: Redactions,
+        rotate_after: u64,
+    ) -> io::Result<Self> {
         fs::create_dir_all(dir)?;
         // The character name is a filename component, so it must not be able
         // to escape the directory or name a device. Characters are
@@ -160,8 +195,22 @@ impl SessionSink {
             safe
         };
 
-        let bytes_path = dir.join(format!("{safe}-{stamp}.bytes"));
-        let events_path = dir.join(format!("{safe}-{stamp}.log"));
+        // `<char>-<stamp>` is the stem every part of this session shares, and
+        // **every part is numbered, including the first**.
+        //
+        // The first version left part 0 unnumbered -- `Tester-stamp.bytes`,
+        // then `Tester-stamp-001.bytes` -- on the reasoning that a short
+        // session should have no suffix to explain. That sorts WRONG:
+        // lexicographically `-` (0x2D) precedes `.` (0x2E), so the unnumbered
+        // first part sorts AFTER every numbered one, and reading a directory
+        // in name order replays the session out of order.
+        //
+        // Caught by the reassembly assertion in `sink_redaction.rs`, not by
+        // the part-count one -- every part existed and held the right bytes,
+        // and only their order was wrong.
+        let safe_stem = format!("{safe}-{stamp}");
+        let bytes_path = dir.join(format!("{safe_stem}-000.bytes"));
+        let events_path = dir.join(format!("{safe_stem}.log"));
         let bytes = BufWriter::new(File::create(&bytes_path)?);
         let mut events = BufWriter::new(File::create(&events_path)?);
 
@@ -189,6 +238,9 @@ impl SessionSink {
             events_path,
             lines_written: 0,
             stamp_bytes: bytes_timestamps_enabled(),
+            stem: dir.join(safe_stem),
+            part: 0,
+            rotate_after,
         })
     }
 
@@ -231,6 +283,43 @@ impl SessionSink {
             self.bytes.write_all(b"\n")?;
         }
         self.lines_written += 1;
+        if self.lines_written >= self.rotate_after {
+            self.roll()?;
+        }
+        Ok(())
+    }
+
+    /// Close the current `.bytes` part and open the next.
+    ///
+    /// Only the bytes file rolls. The debug log takes a handful of lines per
+    /// session (`lifecycle Ready`, `lifecycle Closed`, errors), so rolling it
+    /// would produce empty parts and a second thing to reassemble for no gain.
+    ///
+    /// # Each part is INDEPENDENTLY VALID, and that is the point
+    ///
+    /// A part boundary falls between two whole chunks, never inside one, so
+    /// every part starts on a chunk boundary the wire really had. That is what
+    /// keeps a rolled session usable as replay input: concatenating the parts
+    /// in order reproduces the original stream exactly, and a single part
+    /// parses on its own (`Parser::push_bytes` buffers to a newline, so a part
+    /// that begins mid-tag is the one thing this must not produce).
+    ///
+    /// # Errors
+    ///
+    /// Any failure to flush the old part or create the new one. The caller
+    /// swallows it -- a session must survive a failed log (`plan/12` §5.5) --
+    /// but it is returned rather than hidden so the caller *can* report it.
+    fn roll(&mut self) -> io::Result<()> {
+        self.bytes.flush()?;
+        self.part += 1;
+        let next = self.stem.with_file_name(format!(
+            "{}-{:03}.bytes",
+            self.stem.file_name().unwrap_or_default().to_string_lossy(),
+            self.part
+        ));
+        self.bytes = BufWriter::new(File::create(&next)?);
+        self.bytes_path = next;
+        self.lines_written = 0;
         Ok(())
     }
 

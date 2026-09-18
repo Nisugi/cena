@@ -141,3 +141,72 @@ fn a_secret_is_trimmed_before_it_is_registered() {
         "untrimmed secret did not match: {out}"
     );
 }
+
+/// The bytes file rolls at the threshold, and the parts REASSEMBLE.
+///
+/// Rotation is easy to write and easy to get subtly wrong: a part boundary
+/// that fell inside a chunk would produce a part beginning mid-tag, and
+/// `Parser::push_bytes` buffers to a newline, so that part would parse
+/// differently on its own than it did in the stream. The reassembly assertion
+/// is what makes this a test of replayability rather than of file creation.
+///
+/// **It earned that immediately.** The first implementation left part 0
+/// unnumbered (`Tester-stamp.bytes`, then `Tester-stamp-001.bytes`), which
+/// sorts wrong: `-` (0x2D) precedes `.` (0x2E), so the first part sorted last
+/// and the rejoined stream was chunks 4-9 followed by 0-3. Every part existed
+/// and held the right bytes; only the order was wrong. A test that counted
+/// files would have passed, and the corruption would have surfaced as an
+/// unreplayable session weeks later.
+#[test]
+fn the_bytes_file_rolls_and_the_parts_reassemble() {
+    let dir = std::env::temp_dir().join("cena-sink-rotation");
+    let _ = std::fs::remove_dir_all(&dir);
+    // The threshold is PASSED, not set in the environment: `unsafe_code =
+    // "deny"` makes `set_var` unavailable, and a test that mutated global
+    // state would race every other test in this binary.
+    let mut sink = cena_platform::SessionSink::create_with_rotation(
+        &dir,
+        "Tester",
+        "stamp",
+        Redactions::new(),
+        4,
+    )
+    .expect("the sink must open");
+
+    // Ten chunks against a threshold of four: part 0, then -001, then -002.
+    let mut expected = Vec::new();
+    for i in 0..10u8 {
+        let chunk = format!("chunk {i} with some payload\n");
+        expected.extend_from_slice(chunk.as_bytes());
+        sink.wire(true, chunk.as_bytes()).expect("write must work");
+    }
+    sink.flush().expect("flush must work");
+    drop(sink);
+
+    let mut parts: Vec<std::path::PathBuf> = std::fs::read_dir(&dir)
+        .expect("the directory must exist")
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "bytes"))
+        .collect();
+    parts.sort();
+
+    assert!(
+        parts.len() >= 3,
+        "ten chunks at a threshold of four must produce at least three parts, \
+         got {}: {parts:?}",
+        parts.len()
+    );
+
+    // THE PROPERTY THAT MATTERS: the parts in order are the original stream.
+    let mut rejoined = Vec::new();
+    for part in &parts {
+        rejoined.extend_from_slice(&std::fs::read(part).expect("part must read"));
+    }
+    assert_eq!(
+        rejoined, expected,
+        "concatenating the parts in order must reproduce the stream exactly, \
+         or a rolled session stops being usable as replay input"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

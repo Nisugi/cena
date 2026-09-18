@@ -350,3 +350,43 @@ fn the_client_banner_requests_the_wrayth_extended_feed() {
          <pulse>, no <exposeContainer>, no <inventoryManager>"
     );
 }
+
+/// The `A` response must not print the account name or the account holder's
+/// real name.
+///
+/// The live run of 2026-09-18 printed
+/// `A\tACCOUNT\tKEY\t<KEY-REDACTED>\tREAL NAME` -- the key was redacted, and
+/// the other two went to the terminal, the scrollback, and a transcript pasted
+/// for review. Both are positional in a fixed-shape response, so removing them
+/// is exact.
+#[test]
+fn the_a_response_hides_the_account_and_the_real_name() {
+    let a = "A\tSOMEACCT\tKEY\t9ac77c189205275c1b604953d7e2b6aa\tAda Lovelace";
+    let out = redact(a);
+
+    assert!(!out.contains("SOMEACCT"), "account leaked: {out}");
+    assert!(!out.contains("Ada Lovelace"), "real name leaked: {out}");
+    assert!(
+        !out.contains("9ac77c189205275c1b604953d7e2b6aa"),
+        "key leaked: {out}"
+    );
+    // The SHAPE survives, so a reader can still see the response was well
+    // formed and which fields were removed.
+    assert!(out.starts_with("A\t<ACCOUNT>\tKEY\t"), "{out}");
+    assert!(out.ends_with("<NAME>"), "{out}");
+}
+
+/// A line that merely looks like an `A` response must not have its second
+/// field eaten.
+///
+/// The positional rule is guarded by `A` in field 0 and `KEY` in field 2.
+/// Without that guard, any tab-delimited line would lose its second field --
+/// and `M`, `C` and `L` are all tab-delimited.
+#[test]
+fn positional_redaction_applies_only_to_the_a_response() {
+    let m = "M\tGS3\tGame One\tGST\tGame One Test";
+    assert_eq!(redact(m), m, "an M response must pass through unchanged");
+
+    let c = "C\t1\t100\t0\t0\tW_ACCOUNT_000\tNisugi";
+    assert_eq!(redact(c), c, "a C response must pass through unchanged");
+}
