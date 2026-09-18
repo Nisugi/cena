@@ -148,7 +148,28 @@ impl GameState {
             Frame::RightHand { item, .. } => self.right_hand = Some(item.clone()),
             Frame::RoundTime { value } => self.roundtime_ends = Some(*value),
             Frame::ProgressBar(bar) => {
-                self.vitals.insert(bar.id.clone(), bar.percent);
+                // ONLY the player's own bars. `plan/12` §7.1 scopes this to
+                // the character's vitals, and `<progressBar>` is also how the
+                // game ships OTHER creatures' health: an appraisal opens
+                // `<dialogData id="injuries-{existID}">` carrying its own
+                // `health2` bar (wiki `:243`). Keying on `bar.id` alone let a
+                // target's health overwrite the player's -- the model would
+                // report the character at 12% because something they appraised
+                // was.
+                //
+                // The parser already distinguishes them (`bar.dialog` carries
+                // the enclosing `dialogData` id); this is the model choosing
+                // to keep that. `minivitals` and `injuries` are the player;
+                // anything suffixed `injuries-<id>` is a third party and is
+                // published to observers without entering the character's
+                // state.
+                let is_own = bar
+                    .dialog
+                    .as_deref()
+                    .is_none_or(|d| !d.starts_with("injuries-"));
+                if is_own {
+                    self.vitals.insert(bar.id.clone(), bar.percent);
+                }
             }
             Frame::UnknownTag { name, raw } => self.unknown_tags.push(UnknownTag {
                 name: name.clone(),

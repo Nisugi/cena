@@ -81,10 +81,10 @@ impl Parser {
                     }
                 }
             }
-            "a" | "d" => {
+            name @ ("a" | "d") => {
                 if let Some(link) = text::link_from_tag(tag) {
                     self.links.push(link);
-                } else {
+                } else if name == "d" {
                     // A bare `<d>` has no cmd: the link TEXT is the command,
                     // and `LinkKind::DirectText` says so in the type. It was
                     // `Direct { cmd: String::new() }` here, which shipped an
@@ -92,6 +92,29 @@ impl Parser {
                     // every room exit among them. See `LinkKind::DirectText`.
                     self.links.push(crate::frame::Link {
                         kind: crate::frame::LinkKind::DirectText,
+                        text: String::new(),
+                        coord: None,
+                    });
+                } else {
+                    // An `<a>` carrying NONE of href/exist/cmd is not a
+                    // command link, and must not be turned into one.
+                    //
+                    // `DirectText` means "send the link text as a command", so
+                    // `<a char='Someone' game='GSIV'>Someone</a>` (wiki
+                    // `:317-318`) became a link that would send the player's
+                    // NAME to the game. That is invention, not omission --
+                    // the failure mode the drop-nothing rule is least able to
+                    // tolerate, because a consumer cannot tell a fabricated
+                    // command from a real one.
+                    //
+                    // No link is the honest answer: the text still reaches the
+                    // consumer, and the attributes still ride the surrounding
+                    // `Frame::Structural`'s raw bytes. The same applies to any
+                    // `<a>` attribute Simutronics adds later -- it arrives as
+                    // plain text rather than as a command nobody authored.
+                    //
+                    self.links.push(crate::frame::Link {
+                        kind: crate::frame::LinkKind::NotActionable,
                         text: String::new(),
                         coord: None,
                     });

@@ -252,9 +252,51 @@ third-party tools inject through the same grammar (`:531-532`: `UberBar`, `UberB
 Also `:523-524`: **negative `exist` ids are normal** for rooms and NPCs (e.g. `-11225598`). A
 parser that treats `exist` as unsigned is wrong.
 
-**Components are a ROUTING signal, not a content type** (author, 2026-09-18, confirming against
-live traffic). Generally: *anything arriving as `<component>` or `<compDef>` is meant for a
-**supplemental window**, as opposed to the story window.* Every id in the committed fixtures
+**Most of the protocol is not story text at all** (author, 2026-09-18). MEASURED: of the
+**52 `Frame` variants**, exactly **three** carry displayable text -- `Text`, `Prompt` and
+`Component` (`grep -cE '^    [A-Z][A-Za-z]*' crates/cena-protocol/src/frame.rs` -> 52). The
+other 49 are state, dialog controls, window declarations, indicators and timers. The story
+window is the *minority* destination, not the default with exceptions.
+
+That is worth stating plainly because it reframes what the parser is for. Read as "text with
+markup mixed in" -- the natural framing for a client that renders a scrolling stream -- the
+state tags look like decoration. Read correctly, the wire is **a state feed that happens to
+include some narration**, which is the framing Cena needs: its consumers are behaviors and
+(eventually) an LLM controller, neither of which reads prose.
+
+> **CORRECTED immediately (author, 2026-09-18).** An earlier draft of this paragraph said the
+> story window is "the *minority* destination, not the default". **That is wrong about routing.**
+> Story/main IS the default, because *routed text falls back to it when its window is not open*,
+> and the protocol says so explicitly through `ifClosed`. The 52-vs-3 measurement is about how
+> many variants carry text at all; it says nothing about where text goes.
+
+**`ifClosed` is how a stream declares that fallback**, and the wiki documents four behaviors
+(`:73-80`):
+
+| Declaration | When the window is closed |
+|---|---|
+| `ifClosed` absent, `styleIfClosed` set | falls through to main **wrapped in that style** -- the inline-thoughts look |
+| `ifClosed='<window>'` | routed to another window, **chaining** if that one is closed too (voln -> thoughts -> main) |
+| `ifClosed=''` (empty) | the stream is a **duplicate**: the server also sends the line to main, so the closed copy drops harmlessly |
+| neither attribute | falls through to main, unstyled |
+
+The third row is the room duplication described below: the live capture carries
+`<streamWindow id='room' ... ifClosed='' resident='true'/>`, and `ifClosed=''` is precisely the
+server saying *"this content also goes to main."* The two room shapes are therefore not an
+oddity of the room -- they are this general rule, instantiated.
+
+**Cena parses `streamWindow` but drops `ifClosed` entirely** (`frame.rs:214` counts 602,513
+occurrences in the corpus and nothing reads them). Not an M1 gap -- there is no window manager
+to route to yet -- but it is the mechanism a frontend needs, and the reason a consumer must not
+assume a line it sees on main was *only* on main.
+
+`dialogData` is the clearest bulk example: a single movement in the live capture carried
+`combat`, `minivitals`, `injuries` and `Buffs`, none of it story text, and §2.6's incremental
+merge rule applies to all of them.
+
+**Components are a ROUTING signal, not a content type**, confirming against live traffic.
+Generally: *anything arriving as `<component>` or `<compDef>` is meant for a **supplemental
+window**, as opposed to the story window.* Every id in the committed fixtures
 fits -- `room desc`, `room objs`, `room players`, `room exits`, `sprite`; none is story prose.
 
 That matters because **the same content is often sent twice, in both shapes, and the two

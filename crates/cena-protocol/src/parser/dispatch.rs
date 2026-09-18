@@ -157,6 +157,24 @@ impl Parser {
                 self.streams.push(id.clone());
                 frames.push(Frame::StreamPush { id });
             }
+            // `<stream id=X>...</stream>` is the PAIRED form of the same
+            // redirect (wiki `:9`, `:50`: "Inline (paired) redirect"), so it
+            // must establish the same routing context.
+            //
+            // It previously fell through to `thin.rs`'s
+            // `"streamId" | "stream" | ...` arm and became a
+            // `Frame::StreamWindow` -- a WINDOW DECLARATION -- while its body
+            // went to `main` untagged. Measured on a named corpus file: 31
+            // `<stream id="Spells">` rows, each a spell-list entry, delivered
+            // as story prose. A behavior filtering on `stream == "Spells"`
+            // saw none of them, and a consumer keeping a window registry was
+            // told a window had just been declared.
+            "stream" if !tag.trim_end().ends_with("/>") => {
+                self.flush(buffer, frames);
+                let id = text::attribute(tag, "id").unwrap_or_default();
+                self.streams.push(id.clone());
+                frames.push(Frame::StreamPush { id });
+            }
             "popStream" => {
                 self.flush(buffer, frames);
                 self.pop_stream(tag, frames);
@@ -318,6 +336,14 @@ impl Parser {
         // dialog that encloses the `<progressBar>`s inside it.
         if name == "dialogData" {
             self.dialog = None;
+        }
+        // `</stream>` ends the paired redirect its opener established. Popping
+        // by name rather than blindly: an unmatched close must not unroute
+        // text belonging to an enclosing `pushStream`.
+        if name == "stream"
+            && let Some(at) = self.streams.iter().rposition(|s| !s.is_empty())
+        {
+            self.streams.remove(at);
         }
         if tags::is_known(name) {
             frames.push(Frame::structural(name, &format!("</{name}>")));

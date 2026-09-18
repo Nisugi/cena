@@ -72,6 +72,21 @@ pub enum LinkKind {
         /// The target, exactly as the wire spelled it.
         href: String,
     },
+    /// An `<a>` carrying none of `href`, `exist` or `cmd`: **not actionable.**
+    ///
+    /// The wiki documents `<a char= game=>` for player references (`:317-318`),
+    /// and any attribute Simutronics adds later lands here too. Such a tag
+    /// marks its text as *significant* without saying what a click would do.
+    ///
+    /// It is a variant rather than `Option::None` because the anchor still
+    /// exists on the wire and the drop-nothing rule says the consumer should
+    /// know it was there. Before this, such tags fell into [`DirectText`] --
+    /// "send the link text as a command" -- so
+    /// `<a char='Someone'>Someone</a>` became a link that would send a
+    /// player's NAME to the game. That is invention rather than omission,
+    /// which is the failure a consumer is least able to detect, and
+    /// [`Link::command`] now returns `None` for it.
+    NotActionable,
 }
 
 /// A clickable region of text.
@@ -102,7 +117,7 @@ impl Link {
         match &self.kind {
             LinkKind::Direct { cmd } => Some(cmd),
             LinkKind::DirectText => Some(&self.text),
-            LinkKind::Exist { .. } | LinkKind::Url { .. } => None,
+            LinkKind::Exist { .. } | LinkKind::Url { .. } | LinkKind::NotActionable => None,
         }
     }
 }
