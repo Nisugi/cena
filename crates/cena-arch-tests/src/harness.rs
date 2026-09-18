@@ -246,7 +246,16 @@ fn crate_sources(krate: &str) -> Vec<(PathBuf, String)> {
 /// it asserts that every path named by an `include!` is one of the files this
 /// walk actually collected, so an `include!("body.weird")` fails loudly
 /// instead of silently leaving a hole.
-const SOURCE_EXTENSIONS: &[&str] = &["rs", "in", "inc"];
+///
+/// `.tsv` was added when the crit tables landed (`plan/13` §4a, whose port
+/// table says at `plan/13:125` that they "ship as data files"). That is the
+/// amendment `no_source_file_is_included_from_outside_the_scan` asks for in
+/// its own failure message: extend this list so the data file is scanned,
+/// rather than routing around the scan. `crates/cena-model/data/crit_tables.tsv`
+/// is therefore covered by every rule in this suite -- the `static mut` ban,
+/// the game-name ban and the line cap all read it -- which is what makes
+/// `include_str!` of it unable to smuggle anything past them.
+const SOURCE_EXTENSIONS: &[&str] = &["rs", "in", "inc", "tsv"];
 
 fn collect_sources(dir: &Path, out: &mut Vec<(PathBuf, String)>) {
     let entries = fs::read_dir(dir).unwrap_or_else(|e| panic!("read_dir {}: {e}", dir.display()));

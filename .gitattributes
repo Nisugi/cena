@@ -1,0 +1,14 @@
+# Default: git stores LF, checks out native. `core.autocrlf=true` already does
+# this locally; committing it makes the behaviour survive a fresh clone.
+* text=auto
+
+# Wire captures are BYTES, not text. The game stream uses bare LF, and
+# `no_fixture_has_carriage_returns_or_is_empty` asserts these files carry no
+# CR. Letting autocrlf convert them on checkout turns that test red on a clean
+# clone -- which is exactly how it failed mid-session on 2026-09-18 when a
+# `git stash -u` round-trip rewrote them as CRLF.
+crates/cena-protocol/tests/fixtures/*.xml -text
+
+# The crit tables are data the loader parses line by line, and a golden digest
+# is taken over the parsed result. Keep them byte-stable across platforms.
+crates/cena-model/data/*.tsv -text

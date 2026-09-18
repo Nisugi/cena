@@ -192,9 +192,15 @@ fn crate_dependency_edges_match_the_plan() {
 ///
 /// `plan/05:408`: "Immutable config and interned tables are fine." The
 /// justification field is where that judgement is recorded and reviewed —
-/// `KNOWN_WIRE_TAGS` (`plan/13` §4a, ~130 entries) is the expected first
-/// entry, and it is fine. A `Mutex` of game state is not, and the reviewer of
+/// `KNOWN_WIRE_TAGS` (`plan/13` §4a) was the expected first entry and is now
+/// the actual one. A `Mutex` of game state is not fine, and the reviewer of
 /// the diff that adds it is the enforcement.
+///
+/// An earlier draft of this comment sized that table at "~130 entries",
+/// inherited from CLAUDE.md. It is **116** in the reference, measured twice;
+/// the entry below carries the command. Corrected here because a number
+/// nobody measured is exactly what `plan/05` §-2 forbids, and a stale one in
+/// the enforcer's own documentation is worse than in prose.
 struct AllowedStatic {
     /// Path relative to the workspace root, forward slashes.
     path: &'static str,
@@ -204,8 +210,20 @@ struct AllowedStatic {
     justification: &'static str,
 }
 
-/// Empty, deliberately. The workspace has no statics.
-const ALLOWED_STATICS: &[AllowedStatic] = &[];
+/// The reviewed statics. One so far, and it is the expected one.
+const ALLOWED_STATICS: &[AllowedStatic] = &[AllowedStatic {
+    path: "crates/cena-protocol/src/tags.rs",
+    name: "KNOWN_WIRE_TAGS",
+    justification: "An interned table of wire element names, which plan/05:408 names as fine: \
+                    `&[&str]` of string literals, immutable, with no interior mutability and no \
+                    handle to anything a session owns. It is read through is_known(), a \
+                    binary_search over the slice. Ported from \
+                    reference/VellumFE/src/parser/text.rs:174-192 per plan/13 section 4a. \
+                    Measured at 116 entries there (sed -n '175,193p' | grep -oE '\"[^\"]+\"' | \
+                    wc -l), NOT the ~130 an earlier draft of this comment claimed; the table in \
+                    Cena holds 121, the reference's 116 plus five the gated corpus replay found \
+                    in real traffic (c, map, mapInfo, streamBox, FEStart).",
+}];
 
 #[test]
 fn every_static_is_allowlisted() {

@@ -1,0 +1,291 @@
+//! The ratchet on the ratchet: Rule 9.3, and the enforcer's own integrity.
+//!
+//! Split from `tests/file_rules.rs` under Rule 4.1 (`plan/05:352-353`) --
+//! move code down, do not raise the cap. That file's cap exception named this
+//! split in advance: "The next split, if this grows, is Rule 9.3 and the
+//! enforcer-integrity tests into tests/ratchet.rs." It grew, when Rule 2.1's
+//! deferral was spent and its test written, and this is that split.
+//!
+//! Read `tests/architecture.rs`'s module header first: its "what these tests
+//! do NOT claim" paragraph governs all three files.
+
+use cena_arch_tests::harness::{lint_keys, workspace_root};
+use cena_arch_tests::lexical::{code_lines, collapse_whitespace};
+use cena_arch_tests::plan_rules::{
+    architecture_test_paragraph_count, architecture_test_tagged_rules,
+};
+use std::collections::BTreeSet;
+use std::fs;
+
+// ---------------------------------------------------------------------------
+// Rule 9.3 — every rule tagged "Enforced by: architecture test" has that test
+// written when the rule is adopted, not later. (plan/05:515-517)
+//
+// The ratchet on the ratchet, and it has been defeated in both directions.
+//
+// **Adoption side.** Anchoring on `line.strip_prefix("**Rule ")` made a rule
+// written `### Rule N.M` invisible -- and an invisible heading does not start a
+// block, so its `*Enforced by:*` paragraph is absorbed into the *preceding*
+// rule's block and vanishes if that neighbour is already covered. VERIFIED
+// green across five formattings. `plan/05` itself writes 13 of its rules as
+// `### Rule ` and 35 as `**Rule `, so both forms are live in the document this
+// parses. `plan_rules::heading_number` normalizes the markers; the count
+// cross-check below catches absorption directly, which is the failure that
+// also produced a corrupt *reported* set (`["9.4"]` for a rule appended at
+// end-of-file).
+//
+// **Withdrawal side.** `COVERED_RULES` was a hand-maintained list of rule
+// numbers with nothing connecting it to a test. VERIFIED: deleting
+// `fn game_names_stay_inside_game_modules` entirely -- Rule 3.4's only
+// enforcement -- left `"3.4"` in the list, its tag in plan/05, and the suite
+// green at 10 tests. So each entry now names its test, and
+// `every_covered_rule_names_a_test_that_exists` parses this file for that
+// function.
+//
+// NOTE, against the reviews: the true tagged set is EIGHT rules, not seven.
+// Two adversarial reviews concluded "real set is 7: {1.3, 2.3, 3.4, 4.1, 4.3,
+// 4.4, 5.2}", dropping Rule 2.1. Their diagnosis of the *mechanism* was right
+// and is implemented; their conclusion about the set was not. Rule 2.1's tag
+// genuinely exists at plan/05:273-274 -- it just wraps. A third review
+// independently VERIFIED this and agreed.
+// ---------------------------------------------------------------------------
+
+/// Rules tagged in plan/05 that have a test in this file, each naming it.
+///
+/// The test name is not documentation; `every_covered_rule_names_a_test_that_exists`
+/// asserts the function is present in this file. Without that link, deleting a
+/// test leaves its rule "covered" and the suite green — VERIFIED.
+const COVERED_RULES: &[(&str, &str)] = &[
+    ("1.3", "cena_ui_depends_on_no_ui_toolkit"),
+    (
+        "2.1",
+        "wire_text_reaches_the_public_api_only_through_rule_2_2",
+    ),
+    ("3.4", "game_names_outside_game_modules_are_flagged"),
+    ("4.1", "no_source_file_exceeds_its_line_cap"),
+    ("4.4", "facade_files_stay_facades"),
+    ("5.2", "every_static_is_allowlisted"),
+];
+
+/// Rules tagged in plan/05 whose test cannot be written yet, with the reason
+/// and the unblocking condition. Machine-readable, so a deferral is a
+/// declaration the test reads rather than prose nobody checks.
+///
+/// `plan/05` Rule 0.5's corollary (:168-170): "an architecture test that
+/// enforces a rule protecting against a problem we do not have is also
+/// over-engineering." Each of these needs a needle naming a type that does not
+/// exist.
+const DEFERRED_RULES: &[(&str, &str)] = &[
+    (
+        "2.3",
+        "The read path cannot write (:285-298). Needs the read seam to exist. plan/05:287-288 \
+         notes most of it is already structural (& cannot send); the residue is an owned sender \
+         smuggled into a state type, so the test is 'the read module may not import the command \
+         sink' and both must exist to be named.",
+    ),
+    (
+        "4.3",
+        "One owning field per shared value (:376-383). The highest-value test in the reference \
+         suite -- it caught a duplicate field nothing assigned for ten months, inflating 49.8% \
+         of 6,373 measured countdowns. Its mechanism is a needle for a literal field name \
+         (reference/VellumFE/tests/architecture.rs:337-358) and none of Cena's four values -- \
+         clock offset, roundtime, current-room id, active-session handle -- has a field name \
+         yet. Write each in the same commit as its field, asserting both hits.len() == 1 AND \
+         the owning path; the path assertion is what stops a silent relocation.",
+    ),
+];
+
+#[test]
+fn architecture_test_tags_in_plan_05_are_accounted_for() {
+    let path = workspace_root().join("plan/05-engineering-rules.md");
+    let plan = fs::read_to_string(&path).unwrap_or_else(|e| {
+        panic!(
+            "plan/05 is a build input for this test and must be present at {}: {e}. \
+             If the plan documents moved or this is a sparse checkout, this test cannot run.",
+            path.display()
+        )
+    });
+
+    let tagged = architecture_test_tagged_rules(&plan);
+
+    // Cross-check against a block-independent count. Heading absorption is
+    // silent: a tag belonging to an unparsed heading is credited to the
+    // preceding rule, which leaves the set plausible. If a tagged paragraph
+    // exists that no rule block claimed, these two disagree.
+    let paragraphs = architecture_test_paragraph_count(&plan);
+    assert_eq!(
+        tagged.len(),
+        paragraphs,
+        "plan/05 contains {paragraphs} enforcement paragraph(s) naming an \
+         architecture test, but only {} were attributed to a rule heading: \
+         {tagged:?}. A paragraph that no heading claimed means a rule heading \
+         this parser does not recognize -- its tag has been absorbed into the \
+         preceding rule and the set above is wrong. Fix the heading form or \
+         plan_rules::heading_number, not this count.",
+        tagged.len()
+    );
+
+    let accounted: BTreeSet<String> = COVERED_RULES
+        .iter()
+        .map(|(r, _)| r)
+        .chain(DEFERRED_RULES.iter().map(|(r, _)| r))
+        .map(|r| (*r).to_owned())
+        .collect();
+
+    let unenforced: Vec<&String> = tagged.difference(&accounted).collect();
+    assert!(
+        unenforced.is_empty(),
+        "plan/05 tags rule(s) {unenforced:?} with \"Enforced by: architecture \
+         test\" and this file neither covers nor defers them. Rule 9.3 \
+         (:515-517) requires the test written when the rule is adopted, not \
+         later -- add it to this file and to COVERED_RULES, or to \
+         DEFERRED_RULES with the type it must name and the condition that \
+         unblocks it.\nTagged in plan/05: {tagged:?}\nAccounted for here: {accounted:?}"
+    );
+
+    let stale: Vec<&String> = accounted.difference(&tagged).collect();
+    assert!(
+        stale.is_empty(),
+        "this file claims to cover or defer rule(s) {stale:?}, which plan/05 \
+         no longer tags with \"Enforced by: architecture test\". A test \
+         enforcing a withdrawn rule is dead enforcement; remove it, or restore \
+         the tag in plan/05.\nTagged in plan/05: {tagged:?}\nAccounted for here: {accounted:?}"
+    );
+}
+
+#[test]
+fn every_covered_rule_names_a_test_that_exists() {
+    // The other half of Rule 9.3. VERIFIED that without this, deleting a test
+    // outright leaves its rule "covered", its tag in plan/05, and the suite
+    // green -- 11 tests became 10 and nothing said so.
+    // Both test files, because a test can be moved between them. Naming one
+    // would make a move look like a deletion, and a reader who "fixed" that by
+    // narrowing the scan would reopen the hole this test exists to close.
+    let mut declared: BTreeSet<String> = BTreeSet::new();
+    for name in ["architecture.rs", "file_rules.rs"] {
+        let path = workspace_root()
+            .join("crates/cena-arch-tests/tests")
+            .join(name);
+        let text = fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("{} must be readable: {e}", path.display()));
+        declared.extend(code_lines(&text).iter().filter_map(|line| {
+            let collapsed = collapse_whitespace(line);
+            let rest = collapsed.strip_prefix("fn ")?;
+            rest.split('(').next().map(str::to_owned)
+        }));
+    }
+
+    let missing: Vec<&(&str, &str)> = COVERED_RULES
+        .iter()
+        .filter(|(_, test)| !declared.contains(*test))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "COVERED_RULES names test function(s) that do not exist in this file: \
+         {missing:?}. Either the test was deleted -- in which case the rule is \
+         no longer enforced and Rule 9.3 (:515-517) is violated silently -- or \
+         it was renamed without updating the table.\nFound in this file: {declared:?}"
+    );
+}
+
+#[test]
+fn every_deferral_states_its_unblocking_condition() {
+    // plan/05 §-2: a deferral without a written reason is a deferral nobody
+    // can audit. This is what makes DEFERRED_RULES a declaration rather than a
+    // place to park a rule.
+    let covered: BTreeSet<&str> = COVERED_RULES.iter().map(|(r, _)| *r).collect();
+    for (rule, reason) in DEFERRED_RULES {
+        assert!(
+            reason.len() > 120,
+            "deferral of Rule {rule} needs the type it must name and the \
+             condition that unblocks it, not {reason:?}"
+        );
+        assert!(
+            !covered.contains(rule),
+            "Rule {rule} is listed as both covered and deferred"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The enforcer's own lints do not silently drift from the workspace's.
+//
+// `cena-arch-tests` cannot use `[lints] workspace = true`: Cargo forbids
+// mixing the workspace set with overrides, and this crate must flip
+// `unwrap_used` / `expect_used` / `panic` to `allow`. Cargo classifies it as a
+// *library* target, so `clippy.toml`'s `allow-*-in-tests` does not reach it,
+// and a harness whose every function reads the filesystem would otherwise
+// carry a `Result` nobody reads -- which is `plan/05` §0's wish with ceremony.
+//
+// So it restates the set by hand. VERIFIED that nothing kept the two in sync:
+// adding `print_stdout = "deny"` to the root `[workspace.lints.clippy]` and a
+// `println!` to `harness.rs` -- the only violation in the workspace -- left
+// `cargo clippy --workspace --all-targets -- -D warnings` at exit 0, while the
+// same `println!` in `cena-model` failed the build. The exemption the
+// manifest comment scopes to "three denies flipped" was in fact total and
+// permanent for every lint added later.
+//
+// The enforcer crate silently ceasing to be enforced is the same
+// ratchet-on-the-ratchet argument that justifies Rule 9.3's test, so it gets
+// the same treatment: the two tables must agree except on a named set.
+// ---------------------------------------------------------------------------
+
+/// Lints `cena-arch-tests` deliberately does not inherit, and why.
+const LINT_EXEMPTIONS: &[(&str, &str)] = &[
+    (
+        "unwrap_used",
+        "a panic in a test harness IS the failure report; nothing here runs in a session",
+    ),
+    (
+        "expect_used",
+        "same as unwrap_used: the message is the assertion",
+    ),
+    (
+        "panic",
+        "plan/12 §5.5 bans a panic killing the process; this crate has no process to kill",
+    ),
+];
+
+#[test]
+fn the_enforcer_inherits_every_workspace_lint_it_does_not_name() {
+    let root = fs::read_to_string(workspace_root().join("Cargo.toml"))
+        .expect("root Cargo.toml must be readable");
+    let mine = fs::read_to_string(workspace_root().join("crates/cena-arch-tests/Cargo.toml"))
+        .expect("cena-arch-tests Cargo.toml must be readable");
+
+    let root_lints = lint_keys(&root, "[workspace.lints.");
+    let my_lints = lint_keys(&mine, "[lints.");
+    assert!(
+        !root_lints.is_empty(),
+        "parsed zero lints from the root manifest; the parser has drifted and \
+         this test is silently vacuous"
+    );
+
+    let exempt: BTreeSet<&str> = LINT_EXEMPTIONS.iter().map(|(l, _)| *l).collect();
+    let missing: Vec<&String> = root_lints
+        .difference(&my_lints)
+        .filter(|l| !exempt.contains(l.as_str()))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "crates/cena-arch-tests/Cargo.toml restates the workspace lint set by \
+         hand (Cargo forbids mixing `workspace = true` with overrides) and has \
+         drifted: {missing:?} are denied for the workspace but absent here, so \
+         the crate that enforces the architecture is itself unenforced.\n\n\
+         Add each to that manifest's [lints.*], or -- if it is deliberately \
+         not inherited -- to LINT_EXEMPTIONS with the reason.\n\
+         Workspace: {root_lints:?}\ncena-arch-tests: {my_lints:?}"
+    );
+
+    for (lint, reason) in LINT_EXEMPTIONS {
+        assert!(
+            reason.len() > 30,
+            "the exemption for `{lint}` needs a reason, not {reason:?}"
+        );
+        assert!(
+            root_lints.contains(*lint),
+            "LINT_EXEMPTIONS names `{lint}`, which the workspace no longer \
+             denies; a stale exemption hides a lint that was never inherited"
+        );
+    }
+}

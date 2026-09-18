@@ -7,5 +7,12 @@ publish.workspace = true
 [dependencies]
 cena-platform.workspace = true
 
+# plan/06 section 1.5 names proptest for "the parser never panics on
+# arbitrary bytes", which it calls non-negotiable. Dev-only: it is not in the
+# shipped dependency graph, and the architecture test that asserts the edge
+# set filters to intra-workspace crates, so this adds no layering edge.
+[dev-dependencies]
+proptest = "1"
+
 [lints]
 workspace = true

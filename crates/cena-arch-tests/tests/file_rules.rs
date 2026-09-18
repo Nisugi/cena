@@ -3,21 +3,16 @@
 //! The companion to `tests/architecture.rs`, which holds layering and state.
 //! Split by rule section under `plan/05:352-353` -- move code down, do not
 //! raise the cap. This file carries Rule 4.1 (caps), Rule 4.4 (facades), the
-//! `include!` ban that keeps files inside the scan at all, and Rule 9.3, which
-//! asserts that every rule `plan/05` tags for an architecture test has one.
+//! `include!` ban that keeps files inside the scan at all, and Rule 2.1 (no
+//! raw wire text in `cena-protocol`'s public API). Rule 9.3 and the
+//! enforcer-integrity tests moved to `tests/ratchet.rs` when this file went
+//! red a fourth time.
 //!
 //! Read `tests/architecture.rs`'s module header first: its "what these tests
-//! do NOT claim" paragraph governs both files.
+//! do NOT claim" paragraph governs all three files.
 
-use cena_arch_tests::harness::{
-    lint_keys, relative, scannable_sources, workspace_root, workspace_sources,
-};
-use cena_arch_tests::lexical::{
-    code_lines, collapse_whitespace, declares_behavior, items, scan_lines,
-};
-use cena_arch_tests::plan_rules::{
-    architecture_test_paragraph_count, architecture_test_tagged_rules,
-};
+use cena_arch_tests::harness::{relative, scannable_sources, workspace_root, workspace_sources};
+use cena_arch_tests::lexical::{collapse_whitespace, declares_behavior, items, scan_lines};
 use std::collections::BTreeSet;
 use std::fs;
 
@@ -57,11 +52,38 @@ struct CapException {
     justification: &'static str,
 }
 
-const CAP_EXCEPTIONS: &[CapException] = &[CapException {
-    path: "crates/cena-arch-tests/tests/file_rules.rs",
-    cap: 650,
-    justification: "The enforcer is not exempt from its own ratchet, and it went red three                     times. At one file it was 953 lines against the 400 default; the response                     was plan/05:352-353 -- move code down -- giving src/harness.rs,                     src/lexical.rs and src/plan_rules.rs. It went red again at 910 and split by                     rule section into tests/architecture.rs (layering and state, which now fits                     the default cap with no exception) and this file. It went red a third time                     when the lint-drift test was added, and that test moved here rather than                     the cap moving up. What remains is the rule citation and, for each test,                     the VERIFIED evasion that determined its shape -- which plan/05 section -2                     requires be written next to the code it governs, and which is the reason                     these tests are not the decoration plan/05 section 0 warns about. The next                     split, if this grows, is Rule 9.3 and the enforcer-integrity tests into                     tests/ratchet.rs. Compare reference/VellumFE/tests/architecture.rs for the                     closed-table design this deliberately does not copy.",
-}];
+const CAP_EXCEPTIONS: &[CapException] = &[
+    CapException {
+        path: "crates/cena-arch-tests/tests/file_rules.rs",
+        cap: 650,
+        justification: "The enforcer is not exempt from its own ratchet, and it went red three                     times. At one file it was 953 lines against the 400 default; the response                     was plan/05:352-353 -- move code down -- giving src/harness.rs,                     src/lexical.rs and src/plan_rules.rs. It went red again at 910 and split by                     rule section into tests/architecture.rs (layering and state, which now fits                     the default cap with no exception) and this file. It went red a third time                     when the lint-drift test was added, and that test moved here rather than                     the cap moving up. It went red a FOURTH time when Rule 2.1's deferral was                     spent and its test written, and the split its own justification had                     named in advance -- Rule 9.3 and the enforcer-integrity tests into                     tests/ratchet.rs -- was taken. What remains is the rule citation and, for each test,                     the VERIFIED evasion that determined its shape -- which plan/05 section -2                     requires be written next to the code it governs, and which is the reason                     these tests are not the decoration plan/05 section 0 warns about. The next                     split, if this grows, is Rule 4.4 and the include! ban into                     tests/shape.rs. Compare reference/VellumFE/tests/architecture.rs for the                     closed-table design this deliberately does not copy.",
+    },
+    CapException {
+        path: "crates/cena-model/data/crit_tables.tsv",
+        cap: 2400,
+        justification: "This is DATA, not code, and it is the only file in the workspace for \
+                        which 'move code down' has no meaning: there is nothing to move, because \
+                        there are no functions in it. It is the 2,394 critical-hit table entries \
+                        ported from Lich per plan/13 section 4a, one entry per line plus a \
+                        header, and plan/13:125 specifies this exact shape for this exact row -- \
+                        'static data; ships as data files'. Splitting it would produce N files \
+                        with no seam to choose, since the rows are a flat sorted sequence keyed \
+                        by (type, location, rank). It is scanned at all only because \
+                        SOURCE_EXTENSIONS was deliberately extended to cover .tsv, which is the \
+                        amendment no_source_file_is_included_from_outside_the_scan asked for in \
+                        its own failure message; being scanned is the point, since that is what \
+                        makes include_str! of it unable to smuggle anything past the static mut \
+                        ban or the game-name ban. The cap is 2400 rather than unbounded so that \
+                        a regeneration which doubled the file still goes red. Generated Rust was \
+                        measured and rejected: cargo fmt expands 200 entries written one per \
+                        line from 203 lines to 4,223, so the const-array form would be ~50,500 \
+                        lines across ~127 files. The next move, if Lich grows past 2,400 \
+                        entries, is to raise this number in the same commit that regenerates the \
+                        file and updates GOLDEN_DIGEST in crates/cena-model/tests/crit_parity.rs \
+                        -- all three change together or the parity test goes red, which is the \
+                        ratchet working.",
+    },
+];
 
 #[test]
 fn no_source_file_exceeds_its_line_cap() {
@@ -222,14 +244,38 @@ fn facade_files_stay_facades() {
 // exactly where a build script would generate a table), the honest move is to
 // lift this ban with a written reason and extend `SOURCE_EXTENSIONS`, not to
 // route around it.
+//
+// # AMENDED when the crit tables landed: `include_str!` of a SCANNED file
+//
+// That day came. `plan/13` section 4a names the crit tables as a port target
+// and `plan/13:125` says they "ship as data files". A const array is not an
+// option: `cargo fmt` was VERIFIED to expand 200 entries written one per line
+// from 203 lines to 4,223 (21x), which extrapolates to ~50,500 lines and ~127
+// files at the 400-line default cap. Moving code down does not mean 127 files
+// of generated Rust nobody reads.
+//
+// So the amendment this comment asked for in advance was taken, exactly as
+// written: `harness::SOURCE_EXTENSIONS` gained `tsv`, and the ban narrowed
+// from three macros to two.
+//
+// **The narrowing is sound because the ban was never about `include_str!`.**
+// The stated harm is a file spliced into a crate from OUTSIDE EVERY SCAN.
+// `include_str!` of a scanned `.tsv` has neither half of that: the file is
+// walked by `crate_sources`, so the line cap, the `static mut` ban and the
+// game-name ban all read it -- and its contents become a `&str`, never items,
+// so there is nothing for those bans to miss. The 906-line `pub static mut`
+// that defeated four rules is not expressible through a string literal.
+//
+// `include!` and `include_bytes!` stay banned. `include!` splices code, which
+// is the original harm. `include_bytes!` is banned because bytes are NOT
+// scanned as text: `collect_sources` reads with `read_to_string`, so a
+// non-UTF-8 payload is a file the walk cannot read -- the out-of-scan hole
+// again, by another route.
 // ---------------------------------------------------------------------------
 
 #[test]
 fn no_source_file_is_included_from_outside_the_scan() {
-    let hits = scan_lines(
-        &scannable_sources(),
-        &["include!(", "include_str!(", "include_bytes!("],
-    );
+    let hits = scan_lines(&scannable_sources(), &["include!(", "include_bytes!("]);
     assert!(
         hits.is_empty(),
         "`include!` splices a file into a crate without that file being a \
@@ -238,9 +284,146 @@ fn no_source_file_is_included_from_outside_the_scan() {
          \"GemStone\"` branch compiled in with four bans green.\n\n\
          If generated code is genuinely needed (plan/13 §4a), lift this ban \
          deliberately and extend harness::SOURCE_EXTENSIONS so the generated \
-         file is scanned, rather than routing around the scan.\n{}",
+         file is scanned, rather than routing around the scan.\n\n\
+         `include_str!` of a file the walk already collects is NOT banned -- \
+         see this test's comment for the crit tables, the case that amendment \
+         was written for. `include_bytes!` remains banned: collect_sources \
+         reads with read_to_string, so a non-UTF-8 payload is a file no scan \
+         can see.\n{}",
         hits.join("\n")
     );
+}
+
+// ---------------------------------------------------------------------------
+// Rule 2.1 — Nothing above `cena-protocol` ever sees a raw byte or an
+// unparsed string. (plan/05:270-274)
+//
+// "Enforced by: `cena-protocol` exposes no `String`-of-wire-text type in its
+// public API; architecture test." (plan/05:273-274)
+//
+// This rule was DEFERRED until `cena-protocol` had a public API to name. It
+// now does, so the deferral is spent and the test is written -- Rule 9.3
+// (:515-517) asks for the test when the rule is adopted, and "the types exist
+// now" was the stated unblocking condition.
+//
+// # Rule 2.2 mandates the one escape 2.1 forbids
+//
+// The deferral entry said to write the two as a cross-referenced pair, and
+// that is what RAW_TEXT_ESCAPES is. Rule 2.2 (:276-283) REQUIRES an unmodelled
+// tag to reach the user as text, which is by definition raw wire text in the
+// public API. So the test cannot ban the shape outright; it bans every
+// instance except the ones 2.2 compels, each named with its reason.
+//
+// # What this enforces, and what it does not
+//
+// It scans `cena-protocol`'s public items for fields whose NAME says they
+// carry unparsed wire text (`raw`, `xml`, `markup`, `inner_xml`). It is a
+// lexical scan over field names, so it cannot see that a field called
+// `value` holds markup -- which is exactly Vellum's violation
+// (`src/parser.rs:128-131`, `Component { id, value }` where `value` is the raw
+// inner XML). That specific case is covered by a golden instead
+// (`room_components_arrive_parsed_rather_than_as_markup`), which asserts a
+// component body contains no `<`.
+//
+// So: this test catches a field that ANNOUNCES itself as raw, and the golden
+// catches the one that does not. Neither is a proof; both name what they do.
+// ---------------------------------------------------------------------------
+
+/// A public field in `cena-protocol` that may carry raw wire text, and the
+/// rule that compels it.
+///
+/// Two of the three are Rule 2.2's. The third, `Structural`, is the author's
+/// drop-nothing rule, which is the same shape of obligation from a different
+/// direction: 2.2 says an unmodelled tag must reach the user, drop-nothing
+/// says an unremarkable one must too.
+const RAW_TEXT_ESCAPES: &[(&str, &str)] = &[
+    (
+        "UnknownTag",
+        "Rule 2.2 (:276-283) mandates it: an unmodelled tag reaches the user as text and a log. \
+         The raw bytes ARE the diagnostic -- a reader has to see what the game actually sent.",
+    ),
+    (
+        "MalformedTag",
+        "A tag with no closing `>`. Same rule: it renders and is logged rather than being \
+         smuggled into prose, which is the silent desync the reference has at \
+         reference/VellumFE/src/parser.rs:733-736.",
+    ),
+    (
+        "Structural",
+        "Compelled by the author's drop-nothing rule of 2026-09-18 rather than by 2.2:          \"Cena shouldn't drop anything that comes in.\" Three arms in cena-protocol          returned without emitting -- close_tag's `_ if tags::is_known(name)` and          markup_tag's two `_ => {}` -- so 133 tag/form combinations produced NO frame and          were invisible to every consumer (measured by          crates/cena-protocol/tests/every_tag_is_observable.rs before the fix: 123 close          forms plus 10 self-closing). `raw` is the same diagnostic as UnknownTag's and for          the same reason -- without it a consumer knows a tag arrived but not which bytes,          and the rule is that nothing is unrecoverable. It is NOT a licence to stop          modelling: a tag that gains a real handler moves out of Structural, and the          enforcement test counts these so the move is visible in a diff.",
+    ),
+];
+
+#[test]
+fn wire_text_reaches_the_public_api_only_through_rule_2_2() {
+    // Field DECLARATIONS, not construction sites: `raw: String` declares the
+    // hole, while `raw: tag.to_owned()` merely fills one that already exists
+    // and is already allowlisted. A first draft matched both and reported four
+    // violations that were all just the two escapes being built.
+    let needles = [
+        "raw: String",
+        "xml: String",
+        "markup: String",
+        "inner_xml: String",
+        "raw_text: String",
+        "raw: Vec<u8>",
+        "bytes: Vec<u8>",
+    ];
+    let mut violations = Vec::new();
+
+    for (path, text) in workspace_sources() {
+        let rel = relative(&path);
+        if !rel.starts_with("crates/cena-protocol/src/") {
+            continue;
+        }
+        for item in items(&text) {
+            if item.in_test_module {
+                continue;
+            }
+            let code = collapse_whitespace(&item.code);
+            if !needles.iter().any(|n| code.contains(n)) {
+                continue;
+            }
+            // Allowed only inside a variant that Rule 2.2 compels.
+            let excused = RAW_TEXT_ESCAPES
+                .iter()
+                .any(|(variant, _)| code.contains(variant));
+            if !excused {
+                violations.push(format!("{rel}:{}: {code}", item.line));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Nothing above cena-protocol ever sees a raw byte or an unparsed \
+         string (plan/05 Rule 2.1, :270-274). A public field named `raw`, \
+         `xml` or `markup` hands wire text to the layer above and makes it \
+         re-parse.\n\n\
+         The ONLY exceptions are the ones Rule 2.2 (:276-283) mandates -- \
+         Frame::UnknownTag and Frame::MalformedTag -- because 2.2 requires an \
+         unmodelled tag to reach the user as text. Those are listed in \
+         RAW_TEXT_ESCAPES with their reasons. If a new escape is genuinely \
+         compelled, add it there and say which rule compels it.\n\n\
+         NOTE this scan reads field NAMES. A field called `value` that holds \
+         markup is invisible to it -- that is Vellum's own violation at \
+         src/parser.rs:128-131, and it is covered by the golden \
+         `room_components_arrive_parsed_rather_than_as_markup` instead.\n{}",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn every_raw_text_escape_names_the_rule_that_compels_it() {
+    // A bare allowlist would let a future escape be added with no argument.
+    // Rule 2.1 is only meaningful if each hole in it is justified in writing.
+    for (variant, reason) in RAW_TEXT_ESCAPES {
+        assert!(
+            reason.len() > 80 && reason.contains(':'),
+            "the RAW_TEXT_ESCAPES entry for {variant} must cite the rule that \
+             compels it (plan/05 §-2), not {reason:?}"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -364,280 +547,4 @@ fn no_profile_aborts_on_panic() {
          `inherits = \"release\"` was VERIFIED to build and ship abort.\n{}",
         offenders.join("\n")
     );
-}
-
-// ---------------------------------------------------------------------------
-// Rule 9.3 — every rule tagged "Enforced by: architecture test" has that test
-// written when the rule is adopted, not later. (plan/05:515-517)
-//
-// The ratchet on the ratchet, and it has been defeated in both directions.
-//
-// **Adoption side.** Anchoring on `line.strip_prefix("**Rule ")` made a rule
-// written `### Rule N.M` invisible -- and an invisible heading does not start a
-// block, so its `*Enforced by:*` paragraph is absorbed into the *preceding*
-// rule's block and vanishes if that neighbour is already covered. VERIFIED
-// green across five formattings. `plan/05` itself writes 13 of its rules as
-// `### Rule ` and 35 as `**Rule `, so both forms are live in the document this
-// parses. `plan_rules::heading_number` normalizes the markers; the count
-// cross-check below catches absorption directly, which is the failure that
-// also produced a corrupt *reported* set (`["9.4"]` for a rule appended at
-// end-of-file).
-//
-// **Withdrawal side.** `COVERED_RULES` was a hand-maintained list of rule
-// numbers with nothing connecting it to a test. VERIFIED: deleting
-// `fn game_names_stay_inside_game_modules` entirely -- Rule 3.4's only
-// enforcement -- left `"3.4"` in the list, its tag in plan/05, and the suite
-// green at 10 tests. So each entry now names its test, and
-// `every_covered_rule_names_a_test_that_exists` parses this file for that
-// function.
-//
-// NOTE, against the reviews: the true tagged set is EIGHT rules, not seven.
-// Two adversarial reviews concluded "real set is 7: {1.3, 2.3, 3.4, 4.1, 4.3,
-// 4.4, 5.2}", dropping Rule 2.1. Their diagnosis of the *mechanism* was right
-// and is implemented; their conclusion about the set was not. Rule 2.1's tag
-// genuinely exists at plan/05:273-274 -- it just wraps. A third review
-// independently VERIFIED this and agreed.
-// ---------------------------------------------------------------------------
-
-/// Rules tagged in plan/05 that have a test in this file, each naming it.
-///
-/// The test name is not documentation; `every_covered_rule_names_a_test_that_exists`
-/// asserts the function is present in this file. Without that link, deleting a
-/// test leaves its rule "covered" and the suite green — VERIFIED.
-const COVERED_RULES: &[(&str, &str)] = &[
-    ("1.3", "cena_ui_depends_on_no_ui_toolkit"),
-    ("3.4", "game_names_outside_game_modules_are_flagged"),
-    ("4.1", "no_source_file_exceeds_its_line_cap"),
-    ("4.4", "facade_files_stay_facades"),
-    ("5.2", "every_static_is_allowlisted"),
-];
-
-/// Rules tagged in plan/05 whose test cannot be written yet, with the reason
-/// and the unblocking condition. Machine-readable, so a deferral is a
-/// declaration the test reads rather than prose nobody checks.
-///
-/// `plan/05` Rule 0.5's corollary (:168-170): "an architecture test that
-/// enforces a rule protecting against a problem we do not have is also
-/// over-engineering." Each of these needs a needle naming a type that does not
-/// exist.
-const DEFERRED_RULES: &[(&str, &str)] = &[
-    (
-        "2.1",
-        "No raw wire text above cena-protocol (:270-274). Must name real types in \
-         cena-protocol's public API, which does not exist yet. When writing it: Rule 2.2 \
-         (:276-283) MANDATES the one escape 2.1 forbids -- Frame::Unknown carrying raw text to \
-         the UI. The allowlist entry is not optional; write the two as a cross-referenced pair.",
-    ),
-    (
-        "2.3",
-        "The read path cannot write (:285-298). Needs the read seam to exist. plan/05:287-288 \
-         notes most of it is already structural (& cannot send); the residue is an owned sender \
-         smuggled into a state type, so the test is 'the read module may not import the command \
-         sink' and both must exist to be named.",
-    ),
-    (
-        "4.3",
-        "One owning field per shared value (:376-383). The highest-value test in the reference \
-         suite -- it caught a duplicate field nothing assigned for ten months, inflating 49.8% \
-         of 6,373 measured countdowns. Its mechanism is a needle for a literal field name \
-         (reference/VellumFE/tests/architecture.rs:337-358) and none of Cena's four values -- \
-         clock offset, roundtime, current-room id, active-session handle -- has a field name \
-         yet. Write each in the same commit as its field, asserting both hits.len() == 1 AND \
-         the owning path; the path assertion is what stops a silent relocation.",
-    ),
-];
-
-#[test]
-fn architecture_test_tags_in_plan_05_are_accounted_for() {
-    let path = workspace_root().join("plan/05-engineering-rules.md");
-    let plan = fs::read_to_string(&path).unwrap_or_else(|e| {
-        panic!(
-            "plan/05 is a build input for this test and must be present at {}: {e}. \
-             If the plan documents moved or this is a sparse checkout, this test cannot run.",
-            path.display()
-        )
-    });
-
-    let tagged = architecture_test_tagged_rules(&plan);
-
-    // Cross-check against a block-independent count. Heading absorption is
-    // silent: a tag belonging to an unparsed heading is credited to the
-    // preceding rule, which leaves the set plausible. If a tagged paragraph
-    // exists that no rule block claimed, these two disagree.
-    let paragraphs = architecture_test_paragraph_count(&plan);
-    assert_eq!(
-        tagged.len(),
-        paragraphs,
-        "plan/05 contains {paragraphs} enforcement paragraph(s) naming an \
-         architecture test, but only {} were attributed to a rule heading: \
-         {tagged:?}. A paragraph that no heading claimed means a rule heading \
-         this parser does not recognize -- its tag has been absorbed into the \
-         preceding rule and the set above is wrong. Fix the heading form or \
-         plan_rules::heading_number, not this count.",
-        tagged.len()
-    );
-
-    let accounted: BTreeSet<String> = COVERED_RULES
-        .iter()
-        .map(|(r, _)| r)
-        .chain(DEFERRED_RULES.iter().map(|(r, _)| r))
-        .map(|r| (*r).to_owned())
-        .collect();
-
-    let unenforced: Vec<&String> = tagged.difference(&accounted).collect();
-    assert!(
-        unenforced.is_empty(),
-        "plan/05 tags rule(s) {unenforced:?} with \"Enforced by: architecture \
-         test\" and this file neither covers nor defers them. Rule 9.3 \
-         (:515-517) requires the test written when the rule is adopted, not \
-         later -- add it to this file and to COVERED_RULES, or to \
-         DEFERRED_RULES with the type it must name and the condition that \
-         unblocks it.\nTagged in plan/05: {tagged:?}\nAccounted for here: {accounted:?}"
-    );
-
-    let stale: Vec<&String> = accounted.difference(&tagged).collect();
-    assert!(
-        stale.is_empty(),
-        "this file claims to cover or defer rule(s) {stale:?}, which plan/05 \
-         no longer tags with \"Enforced by: architecture test\". A test \
-         enforcing a withdrawn rule is dead enforcement; remove it, or restore \
-         the tag in plan/05.\nTagged in plan/05: {tagged:?}\nAccounted for here: {accounted:?}"
-    );
-}
-
-#[test]
-fn every_covered_rule_names_a_test_that_exists() {
-    // The other half of Rule 9.3. VERIFIED that without this, deleting a test
-    // outright leaves its rule "covered", its tag in plan/05, and the suite
-    // green -- 11 tests became 10 and nothing said so.
-    // Both test files, because a test can be moved between them. Naming one
-    // would make a move look like a deletion, and a reader who "fixed" that by
-    // narrowing the scan would reopen the hole this test exists to close.
-    let mut declared: BTreeSet<String> = BTreeSet::new();
-    for name in ["architecture.rs", "file_rules.rs"] {
-        let path = workspace_root()
-            .join("crates/cena-arch-tests/tests")
-            .join(name);
-        let text = fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("{} must be readable: {e}", path.display()));
-        declared.extend(code_lines(&text).iter().filter_map(|line| {
-            let collapsed = collapse_whitespace(line);
-            let rest = collapsed.strip_prefix("fn ")?;
-            rest.split('(').next().map(str::to_owned)
-        }));
-    }
-
-    let missing: Vec<&(&str, &str)> = COVERED_RULES
-        .iter()
-        .filter(|(_, test)| !declared.contains(*test))
-        .collect();
-    assert!(
-        missing.is_empty(),
-        "COVERED_RULES names test function(s) that do not exist in this file: \
-         {missing:?}. Either the test was deleted -- in which case the rule is \
-         no longer enforced and Rule 9.3 (:515-517) is violated silently -- or \
-         it was renamed without updating the table.\nFound in this file: {declared:?}"
-    );
-}
-
-#[test]
-fn every_deferral_states_its_unblocking_condition() {
-    // plan/05 §-2: a deferral without a written reason is a deferral nobody
-    // can audit. This is what makes DEFERRED_RULES a declaration rather than a
-    // place to park a rule.
-    let covered: BTreeSet<&str> = COVERED_RULES.iter().map(|(r, _)| *r).collect();
-    for (rule, reason) in DEFERRED_RULES {
-        assert!(
-            reason.len() > 120,
-            "deferral of Rule {rule} needs the type it must name and the \
-             condition that unblocks it, not {reason:?}"
-        );
-        assert!(
-            !covered.contains(rule),
-            "Rule {rule} is listed as both covered and deferred"
-        );
-    }
-}
-
-// ---------------------------------------------------------------------------
-// The enforcer's own lints do not silently drift from the workspace's.
-//
-// `cena-arch-tests` cannot use `[lints] workspace = true`: Cargo forbids
-// mixing the workspace set with overrides, and this crate must flip
-// `unwrap_used` / `expect_used` / `panic` to `allow`. Cargo classifies it as a
-// *library* target, so `clippy.toml`'s `allow-*-in-tests` does not reach it,
-// and a harness whose every function reads the filesystem would otherwise
-// carry a `Result` nobody reads -- which is `plan/05` §0's wish with ceremony.
-//
-// So it restates the set by hand. VERIFIED that nothing kept the two in sync:
-// adding `print_stdout = "deny"` to the root `[workspace.lints.clippy]` and a
-// `println!` to `harness.rs` -- the only violation in the workspace -- left
-// `cargo clippy --workspace --all-targets -- -D warnings` at exit 0, while the
-// same `println!` in `cena-model` failed the build. The exemption the
-// manifest comment scopes to "three denies flipped" was in fact total and
-// permanent for every lint added later.
-//
-// The enforcer crate silently ceasing to be enforced is the same
-// ratchet-on-the-ratchet argument that justifies Rule 9.3's test, so it gets
-// the same treatment: the two tables must agree except on a named set.
-// ---------------------------------------------------------------------------
-
-/// Lints `cena-arch-tests` deliberately does not inherit, and why.
-const LINT_EXEMPTIONS: &[(&str, &str)] = &[
-    (
-        "unwrap_used",
-        "a panic in a test harness IS the failure report; nothing here runs in a session",
-    ),
-    (
-        "expect_used",
-        "same as unwrap_used: the message is the assertion",
-    ),
-    (
-        "panic",
-        "plan/12 §5.5 bans a panic killing the process; this crate has no process to kill",
-    ),
-];
-
-#[test]
-fn the_enforcer_inherits_every_workspace_lint_it_does_not_name() {
-    let root = fs::read_to_string(workspace_root().join("Cargo.toml"))
-        .expect("root Cargo.toml must be readable");
-    let mine = fs::read_to_string(workspace_root().join("crates/cena-arch-tests/Cargo.toml"))
-        .expect("cena-arch-tests Cargo.toml must be readable");
-
-    let root_lints = lint_keys(&root, "[workspace.lints.");
-    let my_lints = lint_keys(&mine, "[lints.");
-    assert!(
-        !root_lints.is_empty(),
-        "parsed zero lints from the root manifest; the parser has drifted and \
-         this test is silently vacuous"
-    );
-
-    let exempt: BTreeSet<&str> = LINT_EXEMPTIONS.iter().map(|(l, _)| *l).collect();
-    let missing: Vec<&String> = root_lints
-        .difference(&my_lints)
-        .filter(|l| !exempt.contains(l.as_str()))
-        .collect();
-    assert!(
-        missing.is_empty(),
-        "crates/cena-arch-tests/Cargo.toml restates the workspace lint set by \
-         hand (Cargo forbids mixing `workspace = true` with overrides) and has \
-         drifted: {missing:?} are denied for the workspace but absent here, so \
-         the crate that enforces the architecture is itself unenforced.\n\n\
-         Add each to that manifest's [lints.*], or -- if it is deliberately \
-         not inherited -- to LINT_EXEMPTIONS with the reason.\n\
-         Workspace: {root_lints:?}\ncena-arch-tests: {my_lints:?}"
-    );
-
-    for (lint, reason) in LINT_EXEMPTIONS {
-        assert!(
-            reason.len() > 30,
-            "the exemption for `{lint}` needs a reason, not {reason:?}"
-        );
-        assert!(
-            root_lints.contains(*lint),
-            "LINT_EXEMPTIONS names `{lint}`, which the workspace no longer \
-             denies; a stale exemption hides a lint that was never inherited"
-        );
-    }
 }

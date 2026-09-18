@@ -459,19 +459,30 @@ fn connect_game(p: &LaunchPayload) -> R<()> {
     let mut sock = TcpStream::connect(&addr).map_err(|e| err("game_connect", e))?;
     sock.set_read_timeout(Some(STAGE_TIMEOUT)).map_err(|e| err("game_connect", e))?;
 
-    // Lich's handshake (main.rb): key\n, then the client descriptor, then two
-    // <c> lines with a 0.3s sleep BEFORE each — sleep-send-sleep-send, not
-    // send-sleep-send (plan/10, flow dig correction).
+    // key\n, then the client descriptor (`plan/10` §7.4).
+    //
+    // THE BANNER IS NOT COSMETIC. `/FE:WRAYTH /VERSION:1.0.1.28` is what makes
+    // the server serve the EXTENDED FEED — `<pulse>`, `<exposeContainer>`, and
+    // `<inventoryManager>` in reply to `_inventory manager`. There is no other
+    // negotiation: the server keys on this string alone.
+    //
+    // CONFIRMED by the author 2026-09-18; live-verified 2026-08-12 against the
+    // real server, and independently corroborated by the login capture in
+    // `crates/cena-protocol/tests/fixtures/login_setup.xml`, where the server
+    // echoes `<settingsInfo client='1.0.1.28' .../>`.
+    //
+    // This spike previously sent `/FE:STORMFRONT /VERSION:1.0.1.26`, which is a
+    // Lich-era banner and gets the REDUCED feed. `plan/10` §7.4 already
+    // specified WRAYTH 1.0.1.28 in four places; only this file was stale.
     sock.write_all(format!("{}\n", p.key).as_bytes()).map_err(|e| err("game_handshake", e))?;
-    sock.write_all(b"/FE:STORMFRONT /VERSION:1.0.1.26 /P:WIN_UNKNOWN /XML\n")
+    sock.write_all(b"/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML\n")
         .map_err(|e| err("game_handshake", e))?;
     sock.flush().map_err(|e| err("game_handshake", e))?;
 
-    for _ in 0..2 {
-        std::thread::sleep(Duration::from_millis(300));
-        sock.write_all(b"<c>\n").map_err(|e| err("game_handshake", e))?;
-        sock.flush().map_err(|e| err("game_handshake", e))?;
-    }
+    // NO `<c>` ready signals. GemStone does not send or expect them at
+    // handshake; DragonRealms does. Sending them here was copied from Lich's
+    // DR-capable path and is wrong for GS. (Saga research, from the official
+    // client's own handshake; DR is deferred anyway — `plan/12` §9d.)
 
     eprintln!("[stage: game_read] reading up to 2 KB\n");
     println!("{}", "=".repeat(70));

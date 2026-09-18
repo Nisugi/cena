@@ -1,0 +1,13 @@
+<nav rm='7503251'/><streamWindow id='main' title='Story' subtitle=" - Rawknuckle's, Watering Hole" location='center' target='drop'/><streamWindow id='room' title='Room' subtitle=" - Rawknuckle's, Watering Hole" location='center' target='drop' ifClosed='' resident='true'/><clearStream id='room'/><pushStream id='room'/><compDef id='room desc'>Low eaves, stained black with smoke, do little to keep out the icy chill of the outdoors, though they have been sealed in many places with acrid pine pitch.  The floor is an artless mosaic of uneven planks, most badly warped, and the nails securing them are more rust than iron.  Behind a carved <a exist="-482279" noun="counter">counter</a> of time-silvered wood is a collection of racks holding dusty bottles in a variety of colors, the containers framing a <a exist="-523789" noun="door">fur-covered ironwood door</a>.</compDef><compDef id='room objs'>  You also see<b> <pushBold/>a <a exist="247096" noun="tavernkeeper">raw-boned halfling tavernkeeper</a><popBold/></b> and<b> <pushBold/>a <a exist="180588" noun="artificer">gaunt masked artificer</a><popBold/></b>.</compDef>
+<compDef id='room players'></compDef>
+<compDef id='room exits'>Obvious exits: <d>east</d>, <d>out</d></compDef>
+<compDef id='sprite'></compDef><popStream id='room'/>
+<popBold/><resource picture="0"/><style id="roomName" />[Rawknuckle's, Watering Hole]
+<style id=""/><style id="roomDesc"/>Low eaves, stained black with smoke, do little to keep out the icy chill of the outdoors, though they have been sealed in many places with acrid pine pitch.  The floor is an artless mosaic of uneven planks, most badly warped, and the nails securing them are more rust than iron.  Behind a carved <a exist="-482279" noun="counter">counter</a> of time-silvered wood is a collection of racks holding dusty bottles in a variety of colors, the containers framing a <a exist="-523789" noun="door">fur-covered ironwood door</a>.  <style id=""/>You also see <pushBold/><pushBold/>a <a exist="247096" noun="tavernkeeper">raw-boned halfling tavernkeeper</a><popBold/><popBold/> and <pushBold/><pushBold/>a <a exist="180588" noun="artificer">gaunt masked artificer</a><popBold/><popBold/>.
+Obvious exits: <a exist="-10966483" coord="2524,1864" noun="east">east</a>, <a exist="-10966483" coord="2524,1864" noun="out">out</a>
+<compass><dir value="e"/><dir value="out"/></compass><prompt time="1764475407">&gt;</prompt>
+<component id='room players'>Also here: <a exist="-11047747" noun="Alderin">Alderin</a></component>
+<a exist="-11047747" noun="Alderin">Alderin</a> just arrived.
+<prompt time="1764475409">&gt;</prompt>
+<component id='room players'></component>
+<a exist="-11047747" noun="Alderin">Alderin</a> just went <d cmd='go out'>out</d>.
