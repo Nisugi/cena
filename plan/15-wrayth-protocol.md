@@ -144,9 +144,24 @@ Three consequences, each load-bearing:
 3. **`plan/10` §7.4 already specified this** in four places. Only `spike/eaccess-spike` was stale,
    sending the Lich-era `/FE:STORMFRONT /VERSION:1.0.1.26`. **Corrected 2026-09-18.**
 
-**GemStone sends no `<c>` ready signals at handshake.** DragonRealms does. The spike sent two,
-copied from Lich's DR-capable path; removed. DragonRealms is deferred (`plan/12` §9d), so the
-DR handshake is not Cena's problem yet.
+~~**GemStone sends no `<c>` ready signals at handshake.**~~ **WRONG -- corrected 2026-09-18 by
+live A/B.** This claim came from Saga research plus inference, the spike was edited to match,
+and the edit was never run against the server. The author ran it both ways with a
+`CENA_SKIP_C=1` toggle:
+
+| `<c>` sent | Result |
+|---|---|
+| yes | PASS -- **2,347 bytes**: the whole login burst, room, exits, inventory, `exposeContainer` |
+| no | PASS -- **163 bytes**: stops at `<settingsInfo>` |
+
+**Both log in, so the signals are not required -- but without them the client never receives
+the room**, and Milestone 1's criterion 2 is "renders a room". VellumFE sends them
+unconditionally with no DragonRealms branch (`reference/VellumFE/src/network.rs:689-694`).
+**Send them.** Full account in `plan/10` §4.7.
+
+> Recorded because this was the THIRD copy of the false claim -- `plan/10` and the spike were
+> corrected the same day and this one was missed. A fact asserted in three places is corrected
+> in three places or not at all.
 
 ### 1.2a The corpus was recorded on the extended feed — VERIFIED
 
@@ -172,10 +187,29 @@ request explains absence of a reply — this is the same reasoning that explains
 
 ### 2.1 Newline suppression — NOT IMPLEMENTED, and it is a rendering bug
 
-`:514-518`:
+`:514-518`, **quoted exactly as the captured file has it**:
 
-> **Tags followed by newlines suppress newline output except for:** `<a>` (hyperlinks) and
-> `<pushBold>` (bold start).
+```
+Tags followed by newlines suppress newline output except for:
+* <code><a></code> (hyperlinks)
+* <code>
+</code> (bold start)
+```
+
+> **The second exception is UNVERIFIED, and an earlier draft of this section hid that.**
+> It read *"`<a>` (hyperlinks) and `<pushBold>` (bold start)"* as a blockquote -- which looks
+> like a quotation and is not one. Line 518's `<code>` element is **empty**: its contents were
+> stripped when the wiki was captured, exactly as `<a>` on 517 would have been had it not been
+> escaped. `<pushBold>` is a plausible guess at the eaten tag, not something the source says.
+>
+> This is `CLAUDE.md`'s citation hazard running the other way. That rule was written after a
+> citation to a *nonexistent path* manufactured a false negative; here a citation resolving to
+> an *empty element* was read as though it resolved to text. **A source can fail by saying
+> nothing as easily as by not existing.**
+>
+> Settle it against <https://gswiki.play.net/Wrayth_protocol> before implementing suppression:
+> the live page will have the tag the capture ate. Do not implement the second exception from
+> this file.
 
 `grep -rn 'newline\|suppress' crates/cena-protocol/src/` finds only buffer-management comments.
 **Cena does not implement this rule.**
@@ -223,7 +257,23 @@ found Cena was emitting `Direct { cmd: "" }`, an empty command. It now emits
 attribute the wire never sent. VERIFIED by running the parser on
 `<compDef id='room exits'>Obvious exits: <d>east</d>, <d>out</d></compDef>`.
 
-**Not yet implemented from this same paragraph: `<d>` nested inside `<a>`, outer wins.**
+~~**Not yet implemented from this same paragraph: `<d>` nested inside `<a>`, outer wins.**~~
+
+> **IMPLEMENTED -- this note was stale, corrected 2026-09-18.** VERIFIED by execution against
+> `Parser::parse_line`:
+>
+> ```
+> <a exist='123' noun='sword'>a <d>sharp</d> sword</a>
+>    Text link=Exist { id: "123", noun: "sword" }  "a "
+>    Text link=Exist { id: "123", noun: "sword" }  "sharp"     <- inner <d> does NOT override
+>    Text link=Exist { id: "123", noun: "sword" }  " sword"
+> ```
+>
+> The link stack in `parser/markup.rs` keeps the outermost link for every run, so the rule
+> holds without special-casing. A bare `<d>` on its own still yields `DirectText`.
+>
+> **A stale "unimplemented" is worse than no note**: it invites someone to "fix" working code,
+> and it is why this correction is recorded rather than deleted.
 
 ### 2.5 Unknown ids fall back, they do not fail
 
@@ -285,10 +335,33 @@ The third row is the room duplication described below: the live capture carries
 server saying *"this content also goes to main."* The two room shapes are therefore not an
 oddity of the room -- they are this general rule, instantiated.
 
-**Cena parses `streamWindow` but drops `ifClosed` entirely** (`frame.rs:214` counts 602,513
-occurrences in the corpus and nothing reads them). Not an M1 gap -- there is no window manager
-to route to yet -- but it is the mechanism a frontend needs, and the reason a consumer must not
-assume a line it sees on main was *only* on main.
+**Cena PRESERVES `ifClosed` and no consumer reads it.** (An earlier draft of this paragraph
+said Cena "drops it entirely"; that was wrong -- the drop-nothing rule held.) VERIFIED:
+
+```
+StreamWindow { id: "room", ..., attrs: [..., ("ifClosed", ""), ("resident", "true")] }
+
+grep -rn "ifClosed" crates/ --include=*.rs   ->  3 hits, ALL doc comments or test strings
+```
+
+So the value is one field access away; what does not exist is anything that acts on it. Not an
+M1 gap -- there is no window manager to route to yet -- but it is the reason **a consumer must
+not assume a line it sees on main was *only* on main.**
+
+**The duplication is live and per-move.** From a named corpus file, one room change: the room
+description and the object list each arrive **twice** -- once inside `pushStream id='room'`,
+once as styled main-window prose. `pushStream id='room'` occurs **516, 486 and 539 times** in
+three named files. A consumer counting "objects in the room" from `Frame::Text` double-counts
+on every single move, and `ifClosed=''` is the only wire marker saying the second copy is a
+copy. `GameState` is already immune because it folds only the window form (below, and `crates/cena-model/src/state.rs`); the exposure
+is for any future consumer reading text, **and for an LLM controller fed the text stream.**
+
+**The wire uses the quoted form exclusively.** Measured across twelve named files: **7,246
+`ifClosed=''` against 0 bare `ifClosed=`.** That matters because the wiki writes the Copy
+declaration bare (`:78`, `:83`) and `text.rs`'s attribute reader rejects unquoted values -- a
+KNOWN LIMIT documented there. On this evidence **that limit does not need closing for this
+attribute**, and the 46-call-site change its own comment estimates is not justified. Recorded
+so nobody re-derives the alarm from the wiki's spelling, as this project already did once.
 
 `dialogData` is the clearest bulk example: a single movement in the live capture carried
 `combat`, `minivitals`, `injuries` and `Buffs`, none of it story text, and §2.6's incremental
@@ -325,6 +398,78 @@ are cleanly separable. Enforced today by
 
 ---
 
+### 2.7 What the corpus says about update semantics — three rules, all already satisfied
+
+From the wiki audit of 2026-09-18. Recorded because **each of these looks like a bug from the
+code alone**, and a future reader who "fixes" one would break working behaviour.
+
+**`dialogData` merges by control id; it does not replace.** The wiki (`:166`, `:173-174`) says
+a re-sent `dialogData` carries only the controls that changed. The corpus shows two distinct
+patterns, and both are handled:
+
+| dialog | pattern | count |
+|---|---|---|
+| `Buffs`, `Cooldowns`, `Active Spells`, `Debuffs` | `clear='t'` then a **full** refill, on one line | 409/409, 193/193, 150/150, 145/145 |
+| `minivitals` | **one bar per tag**, never cleared | -- |
+
+So a wholesale-replacing consumer would drop health/stamina/spirit on every mana tick.
+`cena-model`'s `GameState` uses a merge-by-id map (`state.rs`, `self.vitals.insert`), which is
+correct **by construction**. Do not "simplify" it into a replace. The feared phantom-empty
+buff list cannot happen: `clear='t'` pairs 1:1 with its refill.
+
+**`component` is not a delta.** The wiki calls `compDef` "full replacement" and `component`
+"incremental replacement" (`:97-98`), which reads like a diff. Measured: **every `component`
+body on the wire carries the complete line** (`You also see ...` in full), and the five empty
+`<component id='room players'></component>` occurrences each precede a room header or teleport
+-- they genuinely mean "the roster is now empty". So "incremental" means **this one named part,
+leaving the other parts alone**, as against `compDef` which redefines all five together. Both
+are full replacements *of their own part*, and `GameState`'s overwrite is right for both.
+
+> Distribution, one named file: `compDef` room desc/exits/objs/players/sprite **516 each**
+> (a complete set per room change); `component` room objs **1,543**, room players **782**
+> (in-room deltas). UNVERIFIED whether a `component` ever appends rather than replaces --
+> one character's traffic. That is the single assumption here most worth re-testing.
+
+**The room-change sequence is not fixed.** `:120` describes a fixed order -- `nav`, then
+components, then `compass`, then `streamWindow`, then `resource`. The wire disagrees:
+`tests/fixtures/room.xml` runs `nav` -> `streamWindow` -> `compDef`x5 -> `resource` ->
+`compass`. **Never write code that depends on that order.** Cena is order-independent, which
+is correct and should stay that way.
+
+---
+
+### 2.8 Parsed but not modelled — the standing list
+
+All VERIFIED present in the vocabulary and reaching a consumer; none is modelled, and none
+needs to be for Milestone 1. Recorded so the next reader finds them here rather than
+rediscovering them from the wiki:
+
+| Wiki | What it is | Why it will matter |
+|---|---|---|
+| `:28` | `cli` command dictionary; `@` = the object's noun, `#` = its exist id | the **substitution rule is protocol**, not UI; `MenuResponse` has no dictionary to resolve against |
+| `:293` | `%id%` substitution in `cmd` | an **outbound** obligation -- Cena must substitute before sending |
+| `:445-463` | `flag` and ten named settings | **three control whether the room title/description are sent at all** |
+| `:496-498` | `monopolize` | a state machine, not a flag |
+| `:507-508` | `pushInputState` / `popInputState` | input-mode stack |
+| `:429` | `nomenu` | a **negative answer** to a menu request, not an absence |
+| `:243` | `injuries-{existID}` | an appraised target's dialog -- now handled in `state.rs`, see §2.7 |
+| `:137` | `stow` | a **symbolic** container id, not a literal one |
+| `:363-373` | indicator vocabulary | ten ids listed; see below |
+| `:400-402` | `output class="mono"` | fixed-width regions |
+
+**Two notes for the wiki itself, which is the incomplete side here:**
+
+1. `:363-373` lists ten indicator ids. **`IconPOISONED`, `IconDISEASED` and `IconBLEEDING` are
+   on the wire and absent from that list.** Cena passes ids through verbatim (VERIFIED:
+   `<indicator id='IconPOISONED' visible='y'/>` -> `StatusIndicator { id: "IconPOISONED",
+   active: true }`), so nothing breaks -- but the primary source is missing three.
+2. `<a char= game=>` (`:317-318`) is documented and appears **0 times** in sampled traffic. It
+   is the reason `<a>`'s old `DirectText` fallback was dangerous in general rather than in one
+   case: a documented-but-unseen attribute is exactly what a fabricating fallback turns into a
+   command nobody authored. See `LinkKind::NotActionable`.
+
+---
+
 ## 3. What this confirms about the M1 slice
 
 `plan/12` §7.1 scopes M1 to room + prompt + vitals. This document names exactly what those need:
@@ -356,6 +501,27 @@ are cleanly separable. Enforced today by
 
 ## 5. Open, and settleable against the corpus
 
+> **Added 2026-09-18 from the wiki audit.** Three questions its skeptic could not settle, each
+> scoped to a 12-file sample of one character on one instance over two days -- **not** to the
+> corpus. Ask the author before searching: the archive is 49.55 GB and a recursive grep does
+> not finish.
+>
+> 0a. **Is `component` ever a true delta?** Every body sampled carried the complete line, which
+>     is why §2.7 says `GameState`'s overwrite is correct. A `component` that *appends* would
+>     flip that from a documentation note into a live bug. **The single assumption here most
+>     worth re-testing**, ideally against a 2026 file rather than the 2024-11 sample.
+>
+> 0b. **Does `ifClosed='<window>'` (the Routed behaviour) ever occur?** Twelve files, zero
+>     instances -- the one of the wiki's four behaviours with no live evidence at all. The
+>     chaining rule it describes (voln -> thoughts -> main) is therefore unverified.
+>     `tools/stream_table.py` is built to answer this from a session with every window open.
+>
+> 0c. **How often do `<a char=>`, `nomenu`, `monopolize`, `flag`, `menu`/`mi`,
+>     `objectives`/`group` and `pushInputState` really appear?** All zero in the sample, all
+>     labelled "latent" on that basis. `<objective>` in particular is suspect:
+>     `crates/cena-protocol/src/tags.rs` already records 374 occurrences from 2026-06 onward,
+>     a period the sampled files cannot see.
+
 1. **The 34 undocumented tags.** For each, is it real wire traffic, a Vellum invention, or a
    third-party injection? The corpus (`E:\Gemstone\data\log archive`, 10,849 `.xml`, 49.55 GB)
    answers this directly — and note the trap already found there: `<vellumImg>` is injected by
@@ -363,7 +529,8 @@ are cleanly separable. Enforced today by
    (`reference/VellumFE/src/core/inline_image.rs:5`). At least one Vellum invention is already
    known to exist, so the others are not safe to assume.
 2. **Newline suppression** (§2.1) — unimplemented. Needs a golden that would go red without it.
-3. **`<d>` inside `<a>`, outer wins** (§2.4) — unimplemented. Measure its frequency first.
+3. ~~**`<d>` inside `<a>`, outer wins** (§2.4) — unimplemented.~~ **DONE -- it always was.**
+   VERIFIED by execution 2026-09-18; see §2.4. The item was never true.
 4. **Does the wiki match the live wire in 2026?** It documents `roommeta`, which the corpus
    shows rolling out from GST during 2026 — so the wiki is current to at least that change.
    Treat it as authoritative-but-dated: **the corpus is the tiebreaker**, being two years of
