@@ -43,6 +43,7 @@ pub mod eaccess;
 pub mod live;
 pub mod record;
 pub mod replay;
+pub mod sink;
 
 pub use answering::{AnsweringSource, TranscriptHandle};
 pub use bytes::ByteSource;
@@ -50,3 +51,4 @@ pub use eaccess::{Credentials, EaccessError, LaunchPayload, authenticate, connec
 pub use live::LiveSource;
 pub use record::{RecordedEvent, Recorder};
 pub use replay::ReplaySource;
+pub use sink::{DEFAULT_LOG_DIR, Redactions, SessionSink};
