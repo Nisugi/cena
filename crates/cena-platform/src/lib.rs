@@ -8,6 +8,7 @@
 //! Read [`bytes`] for why the transport is a trait and why it yields bytes
 //! rather than lines or frames, [`live`] for the three spike findings that
 //! port verbatim (and for why nothing here may be run against the live game),
+//! [`eaccess`] for the login handshake and why it lives at this layer,
 //! [`replay`] for criterion 7's no-network source, and [`record`] for what a
 //! recording contains and why it is bytes rather than frames.
 //!
@@ -38,12 +39,14 @@
 
 pub mod answering;
 pub mod bytes;
+pub mod eaccess;
 pub mod live;
 pub mod record;
 pub mod replay;
 
 pub use answering::{AnsweringSource, TranscriptHandle};
 pub use bytes::ByteSource;
+pub use eaccess::{Credentials, EaccessError, LaunchPayload, authenticate, connect_game};
 pub use live::LiveSource;
 pub use record::{RecordedEvent, Recorder};
 pub use replay::ReplaySource;

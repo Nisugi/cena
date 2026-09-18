@@ -110,7 +110,33 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // graph: `cargo tree -p cena-behavior -e normal` does not contain it.
     ("cena-behavior", &["cena-platform", "cena-session"]),
     ("cena-ui", &["cena-model"]),
-    ("cena", &["cena-behavior", "cena-session", "cena-ui"]),
+    // AMENDED for Milestone 1 Step 2, the live run (author's call,
+    // 2026-09-18). The row was `&["cena-behavior", "cena-session",
+    // "cena-ui"]`.
+    //
+    // **This is the edge this table's own doc comment warns about** -- a
+    // direct edge from the binary to a layer three below it -- and it is taken
+    // knowingly rather than by drift. The doc above says "If the author wants
+    // the looser reading, this row is where to change it." This is that
+    // change, for one named reason:
+    //
+    // `cena_platform::eaccess::authenticate` produces a `LiveSource`, and
+    // `Session::new` consumes a `ByteSource`. Something must hold both ends,
+    // and the binary is the only layer that can: the session cannot, because
+    // then it would own a login protocol it does not otherwise speak.
+    //
+    // The alternative considered and declined was `Session::connect(creds)`,
+    // which keeps this row at three crates. It was declined because it moves
+    // EAccess *up* into `cena-session` to avoid an edge pointing *down* --
+    // trading a real layering violation for a cosmetic one.
+    //
+    // NOTE the scope of what this permits: `cena` may now name
+    // `cena-platform`. It still may not name `cena-protocol` or `cena-model`,
+    // and the set equality below is what keeps that true.
+    (
+        "cena",
+        &["cena-behavior", "cena-platform", "cena-session", "cena-ui"],
+    ),
     ("cena-arch-tests", &[]),
 ];
 

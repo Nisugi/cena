@@ -62,7 +62,7 @@ impl LiveSource {
     /// host needs to know why, and wrapping it in a crate error type would be
     /// an abstraction with one caller.
     pub async fn connect(host: &str, port: u16) -> io::Result<Self> {
-        let stream = TcpStream::connect((host, port)).await?;
+        let stream = connect_bounded(host, port).await?;
         // Nagle batches small writes, which is exactly wrong for a stream of
         // one-line commands: it would add up to 200ms to every round trip and
         // make criterion 4's PREEMPT_GRACE measurement a measurement of Nagle.
@@ -72,22 +72,104 @@ impl LiveSource {
 
     /// Open a TLS connection for the eaccess handshake.
     ///
+    /// # Three deliberate weakenings, and why each is required
+    ///
+    /// This connector is **not** `TlsConnector::new()`. That was what stood
+    /// here until 2026-09-18, written from the spike's *shape* rather than
+    /// from its *configuration* -- and it could not have worked. The method
+    /// had **no caller**, so nothing exercised it until [`crate::eaccess`]
+    /// did. Found by building the caller, not by reading the code.
+    ///
+    /// 1. **`use_sni(false)`** -- S1 (`plan/10` §12.1). Lich's `ClientHello`
+    ///    carries no `server_name` extension (VERIFIED by packet capture:
+    ///    extension type 0 absent), and eaccess.play.net sits behind an AWS
+    ///    load balancer that may route on it. We match Lich rather than find
+    ///    out the hard way.
+    /// 2. **`danger_accept_invalid_certs(true)`** -- the server's certificate
+    ///    is **self-signed with no chain of trust** (`plan/10` §2.3), so
+    ///    ordinary verification cannot succeed against it. Lich does not
+    ///    verify either; it pins (`eaccess.rb:90-130`).
+    /// 3. **`danger_accept_invalid_hostnames(true)`** -- follows from 1 and 2.
+    ///    With no SNI and no chain, there is no name to check against.
+    ///
+    /// # What this does NOT do, and what it costs
+    ///
+    /// **It does not pin, so this handshake is MITM-able, and the account
+    /// password crosses it.**
+    ///
+    /// `plan/10` §2.3 finds Lich's own model is trust-on-first-use with
+    /// *silent auto-re-pin* -- "an attacker who MITMs one connection installs
+    /// a persistent pin" -- and §9.2 says Cena should compare a **SHA-256 of
+    /// the DER**, not PEM text (PEM equality is line-ending sensitive,
+    /// `plan/10` §12.3). None of that is built here.
+    ///
+    /// That is a deliberate M1 scope call rather than an oversight:
+    /// `plan/12` §7.1 puts saved credentials and the login ladder Out, and a
+    /// pin with nowhere to be stored is half a mechanism. It is recorded on
+    /// this line, not in a backlog, because the weakening is *here* and a
+    /// reader of it must see the cost. **It is the one thing in this module
+    /// that should not survive to a release build.**
+    ///
     /// # Errors
     ///
     /// Connect, TLS-builder and handshake errors, each mapped to
     /// [`io::Error`] so one `?` chain covers the sequence.
     pub async fn connect_tls(host: &str, port: u16) -> io::Result<Self> {
-        let stream = TcpStream::connect((host, port)).await?;
+        let stream = connect_bounded(host, port).await?;
         stream.set_nodelay(true)?;
-        let connector = native_tls::TlsConnector::new()
+        let connector = native_tls::TlsConnector::builder()
+            .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_hostnames(true)
+            .use_sni(false)
+            .build()
             .map_err(|e| io::Error::other(format!("tls connector: {e}")))?;
         let connector = tokio_native_tls::TlsConnector::from(connector);
-        let tls = connector
-            .connect(host, stream)
+        // The TLS handshake is bounded too. `plan/10` §2.1: Lich's
+        // CONNECT_TIMEOUT "covers only the TCP handshake; the TLS handshake
+        // and every protocol read are unbounded blocking calls."
+        let tls = tokio::time::timeout(TLS_HANDSHAKE_TIMEOUT, connector.connect(host, stream))
             .await
+            .map_err(|_elapsed| {
+                io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    format!("tls handshake with {host} did not complete within {TLS_HANDSHAKE_TIMEOUT:?}"),
+                )
+            })?
             .map_err(|e| io::Error::other(format!("tls handshake with {host}: {e}")))?;
         Ok(Self::Tls(Box::new(tls)))
     }
+}
+
+/// Bound on the TCP handshake.
+///
+/// 5 seconds, matching Lich's `CONNECT_TIMEOUT` (`eaccess.rb:36`, recorded at
+/// `plan/10` §2.1). Its comment there encodes a production failure worth
+/// keeping: a **silently-dropped SYN** -- firewalled or blocked, with no RST
+/// -- otherwise hangs on the OS connect timeout, "commonly ~75s on Linux."
+/// `plan/10:1382` logs exactly that against this host on 2026-09-08.
+const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Bound on the TLS handshake, which `CONNECT_TIMEOUT` does not cover.
+const TLS_HANDSHAKE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// `TcpStream::connect`, bounded by [`CONNECT_TIMEOUT`].
+///
+/// Shared by both constructors: an unreachable game host hangs exactly as an
+/// unreachable login host does, and there is no reason for one to be bounded
+/// and the other not.
+async fn connect_bounded(host: &str, port: u16) -> io::Result<TcpStream> {
+    tokio::time::timeout(CONNECT_TIMEOUT, TcpStream::connect((host, port)))
+        .await
+        .map_err(|_elapsed| {
+            io::Error::new(
+                io::ErrorKind::TimedOut,
+                format!(
+                    "no TCP connection to {host}:{port} within {CONNECT_TIMEOUT:?}. A \
+                     dropped SYN with no RST otherwise hangs on the OS timeout \
+                     (~75s on Linux, ~21s on Windows) -- plan/10 §2.1."
+                ),
+            )
+        })?
 }
 
 impl ByteSource for LiveSource {

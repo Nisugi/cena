@@ -1,0 +1,342 @@
+//! The `EAccess` wire vocabulary: the types that cross it, and the pure
+//! functions that read and write its fields.
+//!
+//! Split from [`super`] under `plan/05` Rule 4.1 -- **move code down, do not
+//! raise the cap.** The single file reached 892 lines against a 400 cap, and
+//! the architecture test caught it rather than a reviewer. The seam was
+//! already there: **everything here is pure**, and everything in [`super`]
+//! touches a socket.
+//!
+//! That split is what makes the sequence testable at all. A live login is a
+//! terrible place to discover an off-by-one in the `C` walk or a `split('=')`
+//! that truncates a key at its own `=` byte, and `CLAUDE.md` forbids running
+//! one to find out. Every function here is checked by a test below; the
+//! socket half is checked by the author, once, with their eyes.
+
+use std::fmt;
+
+/// The login service. `plan/10` §1.
+pub(super) const EACCESS_HOST: &str = "eaccess.play.net";
+/// The login service port. `plan/10` §1.
+pub(super) const EACCESS_PORT: u16 = 7910;
+
+/// The client banner sent to the **game** socket, not to eaccess.
+///
+/// **THIS STRING IS NOT COSMETIC.** `/FE:WRAYTH /VERSION:1.0.1.28` is what
+/// makes the server serve the **extended feed** -- `<pulse>`,
+/// `<exposeContainer>`, and `<inventoryManager>` in reply to
+/// `_inventory manager`. There is no other negotiation: the server keys on
+/// this string alone.
+///
+/// CONFIRMED by the author 2026-09-18, live-verified 2026-08-12, and
+/// independently corroborated by
+/// `crates/cena-protocol/tests/fixtures/login_setup.xml`, where the server
+/// echoes `<settingsInfo client='1.0.1.28' .../>`.
+///
+/// The Lich-era `/FE:STORMFRONT /VERSION:1.0.1.26` gets the **reduced** feed.
+pub const CLIENT_BANNER: &str = "/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML";
+
+/// Read buffer for one handshake response.
+pub(super) const READ_BUF: usize = 8192;
+
+/// What the caller must supply. Borrowed, not owned: nothing here needs to
+/// outlive the call, and an owned struct invites being stored.
+#[derive(Clone, Copy)]
+pub struct Credentials<'a> {
+    /// The account name, not the character name.
+    pub account: &'a str,
+    /// The account password, in the clear. Hashed against the server's key
+    /// before it reaches the socket, and never logged.
+    pub password: &'a str,
+    /// The character to launch, matched case-insensitively against the `C`
+    /// list.
+    pub character: &'a str,
+    /// The instance code. **CASE-SENSITIVE on the wire** -- see
+    /// [`authenticate`]'s `M` check.
+    pub game_code: &'a str,
+}
+
+/// Deliberately not `Debug`-derived: a derived impl prints the password, and
+/// the one place a credential struct reliably leaks is a debug log written in
+/// a hurry.
+impl fmt::Debug for Credentials<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Credentials")
+            .field("account", &self.account)
+            .field("password", &"<REDACTED>")
+            .field("character", &self.character)
+            .field("game_code", &self.game_code)
+            .finish()
+    }
+}
+
+/// Where the game is, and the one-shot key that opens it.
+#[derive(Clone)]
+pub struct LaunchPayload {
+    /// The game host. A plain TCP destination -- **not** the eaccess host and
+    /// **not** TLS.
+    pub gamehost: String,
+    /// The game port.
+    pub gameport: u16,
+    /// The session key. One shot, short-lived, and a credential: see this
+    /// type's `Debug`.
+    pub key: String,
+}
+
+/// Redacts the key. The payload is the natural thing to log on a successful
+/// login -- "connected to X:Y" -- and the key sits beside the host.
+impl fmt::Debug for LaunchPayload {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LaunchPayload")
+            .field("gamehost", &self.gamehost)
+            .field("gameport", &self.gameport)
+            .field("key", &"<REDACTED>")
+            .finish()
+    }
+}
+
+/// A login failure, naming the stage it happened at.
+///
+/// The stage is the whole point. `plan/10` §11.2 requires a wrong password to
+/// "fail cleanly in under 2s, **naming the stage**" -- because every failure
+/// in this sequence that does *not* name its stage points at the credential,
+/// and on 2026-09-18 three of them were something else entirely.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EaccessError {
+    /// Which step failed: `tls_handshake`, `a_response`, `l_response`, ...
+    pub stage: &'static str,
+    /// What went wrong. Never contains a password or a key.
+    pub detail: String,
+}
+
+impl fmt::Display for EaccessError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{}] {}", self.stage, self.detail)
+    }
+}
+
+impl std::error::Error for EaccessError {}
+
+pub(super) fn err<E: fmt::Display>(stage: &'static str, e: E) -> EaccessError {
+    EaccessError {
+        stage,
+        detail: e.to_string(),
+    }
+}
+
+/// The password hash: `((pw[i] - 32) ^ key[i]) + 32`, in `i32`.
+///
+/// # Why this refuses instead of wrapping
+///
+/// `plan/10` §10.3: Rust `u8` wraps in release and panics in debug, and
+/// **neither matches Ruby**, which raises on both overflow and underflow --
+/// 14,336 of the 65,536 byte pairs. Lich has therefore **never successfully
+/// sent a byte outside `0..=255`**, so the server's behaviour there is
+/// completely unobserved. Masking with `& 0xFF` would emit bytes no server has
+/// been seen to accept: an untested protocol change disguised as a port.
+///
+/// It also closes the short-key case Ruby leaves open. Ruby indexes `key[i]`
+/// over the *password's* length and raises on `nil`; Rust's `zip` would
+/// silently stop at the shorter of the two, producing a **wrong password**
+/// rather than an error.
+///
+/// # Errors
+///
+/// [`EaccessError`] with stage `hash` if the key is shorter than the password,
+/// or if any byte falls outside `0..=255`.
+pub fn hash_password(password: &[u8], key: &[u8]) -> Result<Vec<u8>, EaccessError> {
+    if key.len() < password.len() {
+        return Err(err(
+            "hash",
+            format!(
+                "key ({} bytes) shorter than password ({} bytes) -- Ruby raises \
+                 here; refusing to truncate, which would send a wrong password \
+                 rather than fail",
+                key.len(),
+                password.len()
+            ),
+        ));
+    }
+
+    let mut out = Vec::with_capacity(password.len());
+    for (i, (&p, &k)) in password.iter().zip(key.iter()).enumerate() {
+        let result = ((i32::from(p) - 32) ^ i32::from(k)) + 32;
+        if !(0..=255).contains(&result) {
+            // The password byte `p` is deliberately NOT in this message.
+            //
+            // It was, ported verbatim from the spike (`:88`), which printed
+            // `0x{p:02x}` -- one plaintext password byte, in hex, with its
+            // index. That error propagates out of `authenticate` to `main`,
+            // which returns `Box<dyn Error>`, so the runtime prints it: the
+            // byte lands on stderr, in scrollback, and in any `2>` redirect.
+            // Fine in a throwaway spike; not in a shipped library whose own
+            // test asserts the password does not leak.
+            //
+            // Found by adversarial review. The index, the key byte and the
+            // result are enough to diagnose -- only `p` is secret, and the
+            // arithmetic is recoverable from the other three anyway for a
+            // reader who has the key.
+            let _ = p;
+            return Err(err(
+                "hash",
+                format!(
+                    "password byte {i} hashes out of range: (b - 32) ^ 0x{k:02x} \
+                     + 32 = {result}, outside 0..=255. Ruby raises here and Lich \
+                     has never sent such a byte, so the server's behavior is \
+                     UNOBSERVED (plan/10 §12.1 S3). Refusing to guess. (The \
+                     password byte itself is withheld: this message reaches \
+                     stderr.)"
+                ),
+            ));
+        }
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "the range check immediately above proves 0..=255"
+        )]
+        out.push(result as u8);
+    }
+    Ok(out)
+}
+
+/// Redact anything that looks like a credential before printing.
+///
+/// Two shapes: a bare 32-hex-digit field (a session key on its own), and any
+/// `KEY=` field. Everything else passes through, because the *point* of
+/// printing these lines is diagnosis -- `plan/10` §4.7 records that parsing a
+/// response before seeing it fail turned the server's bare `?` into an
+/// innocuous-looking `tier="?"`.
+#[must_use]
+pub fn redact(s: &str) -> String {
+    s.split('\t')
+        .map(|field| {
+            if field.len() == 32 && field.chars().all(|c| c.is_ascii_hexdigit()) {
+                "<KEY-REDACTED>".to_owned()
+            } else if field.starts_with("KEY=") {
+                "KEY=<REDACTED>".to_owned()
+            } else {
+                field.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\t")
+}
+
+/// Find a character's launch code in a `C` response.
+///
+/// Format: `C \t n \t n \t n \t n \t <code> \t <Name> [\t <code> \t <Name>]...`
+/// -- four counts, then code/name pairs from field 5.
+///
+/// Split out of [`authenticate`] so it can be tested without a socket: this is
+/// the one piece of parsing in the sequence with an off-by-one to get wrong,
+/// and a live login is a poor place to discover it.
+#[must_use]
+pub fn resolve_char_code<'a>(c_response: &'a str, character: &str) -> Option<&'a str> {
+    let fields: Vec<&str> = c_response.trim().split('\t').collect();
+    let mut i = 5;
+    while i + 1 < fields.len() {
+        if fields[i + 1].eq_ignore_ascii_case(character) {
+            return Some(fields[i]);
+        }
+        i += 2;
+    }
+    None
+}
+
+/// The instance codes an `M` response offers.
+///
+/// Format: `M \t <code> \t <name> [\t <code> \t <name>]...`
+#[must_use]
+pub fn offered_game_codes(m_response: &str) -> Vec<&str> {
+    m_response.trim().split('\t').skip(1).step_by(2).collect()
+}
+
+/// Parse the `GAMEHOST` / `GAMEPORT` / `KEY` triple out of an `L\tOK` line.
+///
+/// `plan/10` §12.3: `splitn(2, '=')`, because a `KEY` value could itself
+/// contain `=`.
+///
+/// # Errors
+///
+/// [`EaccessError`] with stage `l_response` if any of the three is absent.
+pub fn parse_launch(l_response: &str) -> Result<LaunchPayload, EaccessError> {
+    let mut gamehost = None;
+    let mut gameport = None;
+    let mut key = None;
+    for field in l_response.trim().split('\t') {
+        let mut kv = field.splitn(2, '=');
+        match (kv.next(), kv.next()) {
+            (Some("GAMEHOST"), Some(v)) => gamehost = Some(v.to_owned()),
+            (Some("GAMEPORT"), Some(v)) => gameport = v.parse::<u16>().ok(),
+            (Some("KEY"), Some(v)) => key = Some(v.to_owned()),
+            _ => {}
+        }
+    }
+    Ok(LaunchPayload {
+        gamehost: gamehost.ok_or_else(|| err("l_response", "no GAMEHOST in launch payload"))?,
+        gameport: gameport.ok_or_else(|| err("l_response", "no GAMEPORT in launch payload"))?,
+        key: key.ok_or_else(|| err("l_response", "no KEY in launch payload"))?,
+    })
+}
+
+/// Check a response answers the command that was sent.
+///
+/// Every response in this sequence is `<letter>\t...`, echoing its command, so
+/// a mismatch means the read stream has **slipped out of step with the write
+/// stream** -- and every field read after that point is meaningless.
+///
+/// This is the check whose absence made a lowercase game code look first like
+/// an entitlement problem, then a pricing problem, then a session-state
+/// problem (`plan/10` §4.7).
+///
+/// # Errors
+///
+/// [`EaccessError`] at `stage` if the response does not begin `<letter>\t`.
+pub fn expect_echo(response: &str, letter: char, stage: &'static str) -> Result<(), EaccessError> {
+    let want = format!("{letter}\t");
+    if response.starts_with(&want) {
+        return Ok(());
+    }
+    Err(err(
+        stage,
+        format!(
+            "expected a {letter} response, got {:?} -- the read and write \
+             streams are out of step, and nothing parsed after this point is \
+             meaningful",
+            response.trim()
+        ),
+    ))
+}
+
+/// Trim ASCII whitespace from both ends of a byte slice.
+///
+/// `[u8]::trim_ascii` is stable and does exactly this; it is spelled out here
+/// only because the empty-slice case must return an empty slice rather than
+/// panic on the index arithmetic the spike used.
+#[must_use]
+pub fn trim_ascii_whitespace(bytes: &[u8]) -> &[u8] {
+    bytes.trim_ascii()
+}
+
+/// Explain an `L` refusal, including the code Lich does not document.
+///
+/// Split out so the PROBLEM 3 finding is testable without a live login --
+/// it is INFERRED from a single observation, and an inference that cannot be
+/// re-read is one that quietly becomes folklore.
+#[must_use]
+pub fn describe_launch_refusal(l: &str) -> String {
+    if l.contains("PROBLEM") {
+        format!(
+            "launch refused ({}). PROBLEM 1 (no creation entitlement) is the \
+             only code Lich documents. PROBLEM 3 is INFERRED (one observation, \
+             2026-09-18) to mean the character code is not valid on the \
+             SELECTED instance -- check the max-slot count printed at \
+             c_response: 100 means GST, 16 means a premium instance. If it \
+             disagrees with the game code requested, the session drifted \
+             before C.",
+            l.trim()
+        )
+    } else {
+        format!("launch refused: {}", l.trim())
+    }
+}

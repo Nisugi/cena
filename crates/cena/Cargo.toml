@@ -6,8 +6,16 @@ publish.workspace = true
 
 [dependencies]
 cena-behavior.workspace = true
+# AMENDED for Milestone 1 Step 2 (author's call, 2026-09-18). The login
+# produces a ByteSource and the session consumes one; the binary is the only
+# thing that holds both. See crates/cena-arch-tests/tests/layering.rs, where
+# this edge is recorded against the rule it bends.
+cena-platform.workspace = true
 cena-session.workspace = true
 cena-ui.workspace = true
+
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
+tokio-util = "0.7"
 
 [lints]
 workspace = true

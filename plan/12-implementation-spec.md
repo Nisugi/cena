@@ -72,7 +72,7 @@ foreclose the option later. It is a **compile check, not a product commitment.**
 ## 2. Crate layout (revised)
 
 ```
-cena-platform    storage, paths, logging, config primitives   (deps: none)
+cena-platform    transport, EAccess login, recording, config  (deps: none)
 cena-protocol    bytes <-> Frame; permissive parser           (cena-platform)
 cena-model       typed game state, events, game data          (cena-protocol)
 cena-session     session actor: state, queue, lifecycle       (cena-model, cena-protocol, cena-platform)
@@ -110,6 +110,22 @@ reading "behavior" for "script".
 > variants is a pass-through facade with one caller, which `plan/05` §−1 forbids. A
 > connection-manager crate was rejected for the same reason — reconnect is Milestone 2
 > (§9c), so today it would be a trait with one implementor.
+>
+> **Third amendment, same day:** `cena` gained `cena-platform`, and **EAccess was assigned
+> to `cena-platform`** — this table had given it no crate at all, while §7.1 puts "EAccess
+> login (`10`, incl. the spike)" *In* for Milestone 1. It lives there because nothing in it
+> knows what a `Frame` is: it speaks tab-delimited fields over TLS and stops the moment the
+> game socket opens. `LiveSource::connect_tls` was already in that crate for its transport.
+>
+> The binary's new edge is the one `layering.rs` warns about — a direct edge from `cena` to
+> a layer three below it — and it is taken knowingly. `authenticate` produces a
+> `LiveSource`; `Session::new` consumes a `ByteSource`; something must hold both ends, and
+> the binary is the only layer that can. `Session::connect(credentials)` was the
+> alternative and keeps the row at three crates; it was declined because it moves EAccess
+> **up** into `cena-session` to avoid an edge pointing **down**, trading a real layering
+> violation for a cosmetic one. What this permits is narrow: `cena` may name
+> `cena-platform`, and still may not name `cena-protocol` or `cena-model` — the arch test's
+> set equality is what keeps that true.
 >
 > Enforced in `crates/cena-arch-tests/tests/layering.rs`, which carries the same reasoning.
 > **This table and that table must change in the same commit.**
