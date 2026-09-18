@@ -243,8 +243,19 @@ impl SessionSink {
         self.lines_written
     }
 
-    /// Append one structured line: a command sent, a lifecycle change, an
-    /// error.
+    /// Append one debug line: a lifecycle change, an error -- something that
+    /// is **not** on the wire.
+    ///
+    /// # Do not log wire content here
+    ///
+    /// A command, a frame or a line of game text is already in the `.bytes`
+    /// file, byte-for-byte as the server saw it. Writing it again here makes
+    /// two records of one fact that can disagree, and doubles the disk to do
+    /// it. Author's call: *"we don't need duplicate lines timestamped, the
+    /// .bytes is the whole point."*
+    ///
+    /// The readable timestamped view of a session is the **user log**, a
+    /// different artifact above the parser. This is not a down-payment on it.
     ///
     /// # Errors
     ///

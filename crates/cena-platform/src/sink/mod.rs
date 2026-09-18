@@ -36,19 +36,35 @@
 //!
 //! # What lands on disk
 //!
-//! Two files per session, beside each other:
+//! **`.bytes` is the point.** It is the raw wire with chunk boundaries
+//! preserved: replay input for criterion 7, and the source future fixtures
+//! should be cut from. Until now the only recordings were synthetic, and
+//! today's fixtures were hand-written or lifted from a Lich archive whose
+//! format is a different thing entirely (`CLAUDE.md`: "Only `.xml` is wire
+//! data"). Everything a session did is in here already, in the form the
+//! server sent it.
+//!
+//! `.log` is a **debug log**, and it is small on purpose:
 //!
 //! | File | Holds | For |
 //! |---|---|---|
-//! | `<char>-<stamp>.bytes` | the raw wire, with chunk boundaries | replay, and cutting fixtures |
-//! | `<char>-<stamp>.log` | structured lines: commands, lifecycle, errors | reading back what happened |
+//! | `<char>-<stamp>.bytes` | the raw wire, both directions | replay, cutting fixtures |
+//! | `<char>-<stamp>.log` | lifecycle and errors -- things that are **not** on the wire | why a session did something |
 //!
-//! The bytes file is the one that matters most. `plan/12` criterion 7 replays
-//! a recording, and until now the only recordings were synthetic. A session
-//! captured here is the wire **as Cena's own parser saw it**, which is where
-//! future fixtures should come from -- today's were hand-written or lifted
-//! from a Lich archive whose format is a different thing entirely
-//! (`CLAUDE.md`: "Only `.xml` is wire data").
+//! # What `.log` must NOT become
+//!
+//! **A timestamped text mirror of the wire.** Author's call, 2026-09-18: *"we
+//! don't need duplicate lines timestamped, the .bytes is the whole point."*
+//!
+//! An earlier version of this table said `.log` holds "commands, lifecycle,
+//! errors" -- and *commands* is the drift, because a command is wire content
+//! and is already in `.bytes`, sent exactly as the server received it. Writing
+//! it again in another format makes two sources of truth for one fact and
+//! doubles the disk for nothing.
+//!
+//! The formatted, timestamped, human-readable view of a session **is the user
+//! log**, which is a different artifact at a different layer (see above) and
+//! is not this. Conflating them is what produced that stray row.
 //!
 //! # This is a PRIVATE development log
 //!
