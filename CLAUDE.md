@@ -77,6 +77,19 @@ From `plan/05-engineering-rules.md`:
   same language, by the same author. During the login spike this rule was broken three times and
   each time the answer was already in `network.rs`. Lich is the protocol's reference, but Vellum is
   the reference *port*, and the porting hazards (§10.3a of `plan/10`) live only in the port.
+- **The protocol facts are already in Lich. Dig them out before asking.**
+  > *"all of the protocol facts exist in lich, just have to dig them out."* — the author,
+  > 2026-09-18
+
+  Where Vellum is the reference *port*, Lich is the reference for what the wire **means**.
+  On 2026-09-18, four status-channel facts were established by the author correcting a design
+  in progress, and every one was already written down: the prompt-code/indicator split in
+  `lib/constants.rb:72` (`ICONMAP`), the indicator-vs-text-derived split in
+  `lib/gemstone/infomon/status.rb`, and indicator accumulation in `lib/common/xmlparser.rb:788`.
+  Reading those three files first would have replaced four rounds of questions with one.
+
+  Ask the author about what is **genuinely ambiguous** — game behaviour that no source records,
+  or a judgement call about Cena. Do not ask them to recite what `reference/lich-5` already says.
 - **Port aggressively where knowledge lives in code**, rewrite where structure matters.
   Specifically port: `ParsedElement` (**63** variants), `KNOWN_WIRE_TAGS` (**116**), the parser
   and its tests, `parser_edge_cases.xml`, crit tables and creature templates

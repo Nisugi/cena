@@ -470,6 +470,148 @@ rediscovering them from the wiki:
 
 ---
 
+## 2a. Character status: three channels, and only one of them has an offset
+
+**AUTHOR, 2026-09-18.** Established during Milestone 1's close, from the
+author's knowledge plus one pasted live burst.
+
+> **AUTHOR:** *"all of the protocol facts exist in lich, just have to dig them
+> out."*
+>
+> Which is the right frame for this whole section. **Nothing below is new
+> knowledge** -- every one of these facts is in `reference/lich-5`, and each
+> subsection cites the file. What this section is, is a **map**: where the
+> answer lives, and what it settles for Cena. It is not a substitute for
+> reading the source, and it should not be quoted in place of one.
+>
+> It is also a note to self. Three of tonight's four findings came from the
+> author correcting a design in progress, and all three were sitting in
+> `lib/constants.rb`, `lib/gemstone/infomon/status.rb` and `lib/common/
+> xmlparser.rb`. `CLAUDE.md` already says to read VellumFE first for anything
+> it implements; the same holds for Lich on protocol semantics. **Dig first,
+> then ask about what is genuinely ambiguous.**
+
+### 2a.1 The prompt is a DISPLAY, and it gives onset only
+
+`<prompt time='...'>` carries status letters before the `>`:
+
+```
+W Webbed   I Immobilized   i Invisible   P Prone    S Stunned
+s Sitting  J Joined        K Kneeling    U Unconscious
+H Hidden   C Calmed        R In round-time delay
+! Losing HP to bleed/disease/poison      DEAD Dead
+```
+
+> **AUTHOR:** *"the prompt is a display. It can be used to determine onset but
+> not to determine offset because a prompt isn't sent just because it ended."*
+
+**This is the load-bearing fact.** A prompt arrives when something *happens* --
+a command is sent, output is emitted. Nothing announces a condition *ending*,
+so the last prompt seen keeps saying `R>` until the next one arrives, which
+only comes when you act, which is the thing you were waiting to do.
+
+Reading a prompt flag as a live gate is therefore a **deadlock built out of a
+status flag**, and it is exactly the design this correction stopped. Cena's
+prompt fixtures all read `>` (6/6, all cut from idle moments), so nothing in
+the test suite would have caught it.
+
+### 2a.2 `<indicator>` is the real mechanism, and it has both edges
+
+> **AUTHOR:** *"The actual mechanism is indicator for most of those."*
+
+`<indicator id= visible=>` -> `Frame::StatusIndicator { id, active }`, already
+parsed (`parser/thin.rs:109`). `visible='y'` and `visible='n'` mean an
+indicator announces **onset and offset**, which is precisely what the prompt
+cannot do.
+
+Lich's `ICONMAP` (`reference/lich-5/lib/constants.rb:72`) names eleven:
+
+```
+IconKNEELING  IconPRONE   IconSITTING  IconSTANDING  IconSTUNNED  IconHIDDEN
+IconINVISIBLE IconDEAD    IconWEBBED   IconJOINED    IconBLEEDING
+```
+
+Note that map's letters are **GSL prompt codes, a different alphabet** from
+the Wrayth prompt above -- `IconSTUNNED` maps to `I` there and `S` here. Do not
+read one as the other.
+
+### 2a.3 The ones with no indicator
+
+Comparing the thirteen prompt codes against the eleven indicator ids:
+
+| Prompt code | Indicator? |
+|---|---|
+| `W` `P` `s` `S` `K` `H` `i` `J` `DEAD` `!` | yes |
+| `I` Immobilized, `U` Unconscious, `C` Calmed, `R` roundtime | **no** |
+
+> **AUTHOR:** *"There are some that are not an indicator."*
+
+`reference/lich-5/lib/gemstone/infomon/status.rb` is where Lich lays out the
+split, and it is worth reading in full. Two shapes:
+
+```ruby
+def self.stunned?          # indicator-backed: one line
+  XMLData.indicator['IconSTUNNED'] == 'y'
+end
+
+def self.calmed?           # text-derived: parse AND confirm
+  Infomon.get_bool("status.calmed") && (Effects::Debuffs.active?('Calm') || ...)
+end
+```
+
+**That `&&` is the whole lesson.** A text-derived condition has the same offset
+problem as a prompt flag -- text says it started and never says it stopped --
+so Lich refuses to trust its own parse alone and requires the debuff still be
+listed. `bound?`, `calmed?`, `cutthroat?`, `silenced?`, `sleeping?` and
+`thorned?` are all this shape.
+
+It is the same pattern as "send from text, confirm from state" (`plan/16` §2),
+arriving from the other direction.
+
+### 2a.4 Roundtime, which has neither
+
+`R` has no indicator, so roundtime is the one condition with **no stateful
+channel at all**. It must be computed. From a live burst pasted by the author:
+
+```
+<c>search
+<roundTime value='1789775126'/>You don't find anything of interest here.
+Roundtime: 3 sec.
+<prompt time="1789775123">R&gt;</prompt>
+```
+
+`1789775126 - 1789775123 = 3`, matching "Roundtime: 3 sec." exactly. So:
+
+- **`roundTime value` is an absolute END time** in server epoch seconds
+- the prompt in the same burst carries the server's time **now**
+- their difference is the duration, **computed entirely in server time**
+
+That subtraction is the useful part: it cancels clock skew and needs only one
+truncation's worth of error, rather than comparing two absolute clocks. Cena
+can start a local stopwatch of known length instead of asking "is it 1789775126
+yet?" -- which it cannot answer reliably, since both values are whole seconds
+and the true boundary falls somewhere inside one.
+
+**UNVERIFIED:** whether `value` means the end of the *start* of that second or
+somewhere within it. The residual error is under one second either way.
+
+### 2a.5 What this means for `GameState`
+
+Every frame above is **already parsed and already discarded**:
+
+| Frame | Parsed at | Stored in `GameState`? |
+|---|---|---|
+| `StatusIndicator` | `parser/thin.rs:109` | **no** |
+| `Prompt { time }` | `parser/dispatch.rs:293` | text only; **time dropped** |
+| `Buffs`/`Cooldowns`/`ActiveSpells` rows | `frame.rs:229` | **no** |
+
+`plan/12` §7.1 scoped M1's `GameState` to room, prompt, hands, roundtime and
+vitals, which was right for M1. It is now the bottleneck: the protocol layer
+runs well ahead of the model, and everything in `plan/16` waits on the model
+catching up.
+
+---
+
 ## 3. What this confirms about the M1 slice
 
 `plan/12` §7.1 scopes M1 to room + prompt + vitals. This document names exactly what those need:
