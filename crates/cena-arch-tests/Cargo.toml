@@ -1,0 +1,39 @@
+[package]
+name = "cena-arch-tests"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+# This crate does NOT use `[lints] workspace = true`, and the exception is
+# deliberate. Cargo forbids mixing the workspace set with overrides, so the
+# set is restated here in full, with the three denies flipped.
+#
+# Why: this crate is test infrastructure that Cargo classifies as a *library*
+# target, so clippy.toml's allow-{unwrap,expect,panic}-in-tests does not reach
+# it. The workspace bans unwrap/expect/panic because a panic must kill one
+# session, not the process (plan/12 section 5.5). Nothing in this crate runs in
+# a session; a panic here IS the failure report, and an architecture test that
+# returned a Result nobody read would be plan/05 section 0's wish.
+#
+# The scope is one crate, stated in its manifest rather than as a file
+# attribute, so it cannot be forgotten at the top of a new harness file and
+# cannot leak into a crate that does run in a session. `unsafe_code = "deny"`
+# and the rest of the workspace set are preserved verbatim.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+todo = "deny"
+dbg_macro = "deny"
+# Flipped relative to the workspace, for the reason above.
+unwrap_used = "allow"
+expect_used = "allow"
+panic = "allow"
+# A test harness whose every function reads the filesystem would otherwise
+# carry a `# Panics` section and a `#[must_use]` on each one, documenting the
+# obvious for nobody.
+missing_panics_doc = "allow"
+must_use_candidate = "allow"

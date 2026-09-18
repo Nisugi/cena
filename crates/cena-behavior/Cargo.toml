@@ -1,0 +1,11 @@
+[package]
+name = "cena-behavior"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cena-session.workspace = true
+
+[lints]
+workspace = true

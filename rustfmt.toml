@@ -1,0 +1,3 @@
+# Intentionally empty. Its presence pins rustfmt to the edition defaults
+# resolved from rust-toolchain.toml's pinned channel, against future default
+# changes. Adding options is a decision with no current cause.

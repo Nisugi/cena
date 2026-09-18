@@ -1,0 +1,59 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/cena-platform",
+    "crates/cena-protocol",
+    "crates/cena-model",
+    "crates/cena-session",
+    "crates/cena-behavior",
+    "crates/cena-ui",
+    "crates/cena",
+    "crates/cena-arch-tests",
+]
+# The spike has its own lockfile and its own native-tls (spike/eaccess-spike/
+# Cargo.toml:8-11); it is not a member. `rtest/` is untracked scratch left by a
+# review probe. Neither is excluded because omission is fatal to
+# `cargo test --workspace` -- it is not -- but because running cargo *inside*
+# either directory otherwise errors with "current package believes it's in a
+# workspace when it's not".
+exclude = ["spike/eaccess-spike", "rtest"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+publish = false
+
+[workspace.dependencies]
+cena-platform = { path = "crates/cena-platform" }
+cena-protocol = { path = "crates/cena-protocol" }
+cena-model = { path = "crates/cena-model" }
+cena-session = { path = "crates/cena-session" }
+cena-behavior = { path = "crates/cena-behavior" }
+cena-ui = { path = "crates/cena-ui" }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+# Group at negative priority so specific lints can override it; without this
+# Cargo errors on the ambiguity.
+pedantic = { level = "warn", priority = -1 }
+# plan/06 section 1.5: the parser never panicking is "Non-negotiable".
+# plan/12 section 5.5: a panic kills one session, not the process.
+#
+# These are scoped away from test targets by clippy.toml's
+# allow-{unwrap,expect,panic}-in-tests. Without that, `cargo clippy
+# --all-targets -- -D warnings` (plan/06 section 4 item 2) goes red on the
+# first ordinary unit test, and plan/12 section 7.2 requires unit, replay and
+# interleave tests at M1. Per-file #![allow] attributes were rejected: a
+# forgotten attribute breaks the build rather than degrading quietly.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+dbg_macro = "deny"
+
+# plan/12 section 5.5: panic = "abort" defeats per-session isolation.
+# Asserted by no_profile_aborts_on_panic, because a manifest line is a wish.
+[profile.release]
+panic = "unwind"

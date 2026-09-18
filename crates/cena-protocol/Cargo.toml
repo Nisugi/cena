@@ -1,0 +1,11 @@
+[package]
+name = "cena-protocol"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cena-platform.workspace = true
+
+[lints]
+workspace = true

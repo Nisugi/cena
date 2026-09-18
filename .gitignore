@@ -2,3 +2,4 @@ reference/
 *.output
 capture/
 target/
+.workflows/

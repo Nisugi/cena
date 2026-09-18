@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    # Both, deliberately. Development is on Windows (CLAUDE.md) and the corpus
+    # is a Windows path; CI was Linux-only, so neither platform saw the other's
+    # breakage. Three concrete things this covers that a Linux-only job cannot:
+    # harness::relative() exists ONLY to normalise `\` to `/` and was never
+    # exercised in CI; CRLF (core.autocrlf is true on the dev machine and there
+    # is no .gitattributes yet); and case-insensitive path behaviour in the
+    # source walk. The architecture tests are where all three live, which is
+    # why the test step runs on both.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # No version here on purpose. rust-toolchain.toml pins the channel and
+      # rustup's file override wins over an action-installed default, so
+      # pinning in both places creates two sources of truth that can drift.
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # plan/06 section 4 lists these as 1. test, 2. clippy, 3. fmt. Reordered
+      # cheapest-first so a formatting slip does not wait on a full build; the
+      # set of required checks is unchanged.
+      # fmt and clippy are platform-independent: one run is enough, and
+      # doubling them buys nothing. The tests are not -- see the matrix
+      # comment above.
+      - run: cargo fmt --check
+        if: matrix.os == 'ubuntu-latest'
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+        if: matrix.os == 'ubuntu-latest'
+      # Architecture tests are part of this. plan/06 section 4 item 5 calls
+      # them out separately only because they gate merges.
+      - run: cargo test --workspace
+
+      # plan/06 section 4 item 4 and plan/05 Rule 9.4 (:519-520) require an
+      # Android and iOS build check from the first commit, and plan/12:63 --
+      # the authoritative document -- lists it as Binding. It is NOT here, and
+      # that is a deviation the author must rule on, not a thing to discover
+      # later.
+      #
+      # Measured reason: native-tls, the one dependency Cena has already
+      # committed to (spike/eaccess-spike/Cargo.toml:8-11 -- eaccess negotiates
+      # TLS 1.2 static-RSA, which rustls refuses), fails
+      # `cargo check --target aarch64-linux-android` with "Could not find
+      # directory of OpenSSL installation", and still fails with the vendored
+      # workaround absent aarch64-linux-android-clang and perl. Meanwhile the
+      # realistic cena-platform dependency set cross-checks clean in ~10s over
+      # crates that contain nothing. So the job today is vacuous, and red for
+      # an accepted reason the moment transport lands. Neither state enforces
+      # anything (plan/05 Rule 0.5, :161-165).
+      #
+      # Proposed for the commit that creates cena-protocol's transport -- the
+      # first moment it can tell passing from failing:
+      #
+      #   - run: rustup target add aarch64-linux-android
+      #   - run: cargo check -p cena-platform -p cena-model --target aarch64-linux-android
+      #
+      # Note it excludes cena-protocol while TLS lives there, and omits iOS,
+      # which plan/12:63 also binds. If either exclusion is unacceptable then
+      # plan/12:63 is not implementable without NDK/perl/clang machinery, and
+      # the document should change rather than the check being faked.

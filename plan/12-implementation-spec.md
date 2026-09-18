@@ -454,7 +454,15 @@ This is the next thing built. Not the character model, not Hunt, not multiple fr
 3. A manually typed command goes through the same queue as the behavior's, returning a typed
    `Outcome`.
 4. The behavior runs, and **`stop` stops it within `PREEMPT_GRACE`**, verified.
-5. Manual input **preempts** the behavior mid-sequence (§4.1).
+5. Manual input is **interleaved, not preemptive** (§4.1): a command typed mid-behavior jumps
+   the queue, runs its round-trip, and the behavior **continues**. The behavior observes it as
+   an event. Verified by a test that types a command mid-sequence and asserts the behavior is
+   still running afterward.
+
+   > **CORRECTED 2026-09-18.** This criterion previously read *"Manual input **preempts** the
+   > behavior mid-sequence."* That was left over from the superseded §4.1 draft, and building
+   > to it would reintroduce exactly the bug that draft was corrected for — typing `say hi`
+   > mid-hunt aborting Hunt. Only explicit `stop`/`pause` preempts (criterion 4).
 6. Disconnect is clean: task ends, no leaked sockets, no panic.
 7. The whole session is **recorded and replays deterministically** in a test, with no network.
 8. Unknown tags survive to display (`Frame::UnknownTag`) rather than panicking.

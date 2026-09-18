@@ -1,0 +1,11 @@
+[package]
+name = "cena-session"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cena-model.workspace = true
+
+[lints]
+workspace = true
