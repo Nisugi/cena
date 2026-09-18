@@ -506,6 +506,84 @@ rediscovering them from the wiki:
 > corpus. Ask the author before searching: the archive is 49.55 GB and a recursive grep does
 > not finish.
 >
+> **PARTLY ANSWERED 2026-09-18** by an author-supplied capture with every stream window
+> turned on: `C:/Gemstone/lich-5/logs/GSIV-Nisugi/2026/09/2026-09-18_15-49-13.xml`,
+> 3.3 MB, replayed through `Parser` -> **89,847 frames, 0 unknown tags.**
+>
+> * **0a is SETTLED, on 2026 traffic.** Every one of 722 `<component id='room objs'>` bodies
+>   begins `"  You also see"` -- the complete line, never a fragment. 183 empty
+>   `<component id='room players'></component>` mean an empty roster. `component` is **not**
+>   a delta, confirming §2.7 against the recent data the audit lacked.
+> * **0b is still open, and now better scoped.** Zero `ifClosed='<window>'` and zero
+>   `styleIfClosed` in the whole capture. But only **four** streams ever carried text --
+>   `inv` (315 pushes), `room` (47), `reserve` (2) and `Spells` (132 paired) -- so `thoughts`,
+>   `speech`, `logons` and `death` never opened. **The windows being on is not enough; the
+>   events have to happen.** Routed remains the one documented behaviour with no live evidence.
+> * **0c is partly answered:** `<objective>` appears once; `group`, `nomenu`, `monopolize`,
+>   `flag` and `pushInputState` are all zero. Consistent with the audit's sample.
+>
+> Two streams the wiki's list (`:55-71`) does not name, both declared with real attributes:
+> `reserve` ("Reserved Items", `ifClosed=''`) and the `*_SFHELP` family
+> (`spell_SFHELP`, `character sheet_SFHELP`, `save='true'`, no `ifClosed`) -- so **contextual
+> help opens a stream per topic**. A rosetta table must therefore treat its entries as a
+> seeded default, never as a closed set.
+>
+> The capture also confirmed the paired-`<stream>` fix on the author's own traffic:
+> **132 `<stream id="Spells">` rows**, all of which landed in `main` untagged before it.
+
+> **THE TABLE, MEASURED.** A second capture the same day
+> (`2026-09-18_15-32-06.xml`) declares **15 streams and all four behaviours**:
+>
+> | behaviour | streams |
+> |---|---|
+> | Copy (`ifClosed=''`) | `room`, `inv`, `Spells`, `announcements`, `bounty`, `loot`, `reserve`, `society`, `speech` |
+> | Exclusive (`styleIfClosed`) | `thoughts` -> `'thought'`, `familiar` -> `'watching'`, `ambients` -> `''` |
+> | Unspecified (neither) | `main`, `logons`, `death` |
+> | **Routed** (`ifClosed='<window>'`) | **still none** |
+>
+> `thoughts`/`'thought'` and `familiar`/`'watching'` match the wiki's own examples at `:76`
+> exactly. **Routed remains the one documented behaviour never observed on the wire**, across
+> both captures and twelve corpus files.
+>
+> **A near-miss worth recording, because the wrong answer was already written down.** The
+> author saw 20+ `* <name> joins the adventure` lines in VellumFE's Arrivals tab, and none of
+> them were in the XML log. The counts looked damning:
+>
+> ```
+> logons    declared=1   pushed=0        room  declared=92  pushed=92
+> death     declared=1   pushed=0        inv   declared=2   pushed=393
+> thoughts  declared=1   pushed=0
+> speech    declared=2   pushed=0
+> ```
+>
+> This document briefly recorded that as evidence the archive is "systematically blind to four
+> streams", probably because Lich consumes them before logging. **That was wrong.** The `.log`
+> and the `.xml` had simply diverged: the XML sink rolled to a new file at **15:49:13** while
+> the `.log` kept appending to the original until **16:59:37**. A death at 16:57:42 was in the
+> `.log` and in no XML file because **the XML for that stretch is a different file**, not
+> because anything filtered it.
+>
+> Two lessons, both already this project's recurring failure:
+>
+> 1. **Check the file boundaries before theorising about content.** `ls -la` and the last
+>    `prompt time=` would have settled it in one command; instead a mechanism was invented for
+>    an artifact.
+> 2. `declared=N pushed=0` on its own means only *"this capture window saw no traffic for that
+>    stream"*. It is not evidence about the protocol. The four streams above are the ones that
+>    fire rarely, so they are exactly the ones a short or mistimed capture will miss.
+>
+> **BUT the underlying observation survives the correction.** Re-checked against the file that
+> genuinely covers the death (`2026-09-18_16-56-01.xml`, 16:56-17:00, death at 16:57:42): the
+> lines are **absent**, and `death`/`logons`/`thoughts`/`speech` are not even declared in it.
+> The author saw them in VellumFE at that moment. So content IS reaching the frontend and not
+> these logs.
+>
+> **This is a property of Lich's logging, not of the protocol**, and it is out of scope for
+> Cena, which is not proxying through Lich. It is recorded for one reason only: the corpus in
+> `E:\Gemstone\data\log archive` was produced the same way, so **a zero there is weak
+> evidence for anything on these four streams.** This document has already treated "0
+> occurrences in the corpus" as proof of absence more than once.
+
 > 0a. **Is `component` ever a true delta?** Every body sampled carried the complete line, which
 >     is why §2.7 says `GameState`'s overwrite is correct. A `component` that *appends* would
 >     flip that from a documentation note into a live bug. **The single assumption here most
