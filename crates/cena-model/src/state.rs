@@ -111,6 +111,29 @@ impl GameState {
                     ..Room::default()
                 };
             }
+            // `compDef`/`component` ONLY. The room arrives in two shapes and
+            // they mean different things (author, 2026-09-18, from live
+            // traffic):
+            //
+            //   * `<compDef id='room desc'>` feeds the ROOM WINDOW and is
+            //     truth for WHERE THE CHARACTER IS. It is also truth for the
+            //     creatures, objects and players in the room, each in its own
+            //     `compDef`, which is why the window feed stays structured.
+            //   * inline text styled `<style id="roomDesc"/>` feeds the STORY
+            //     WINDOW and is only WHAT THE CHARACTER SAW. It is flattened:
+            //     the live capture shows `room objs` appended into the prose
+            //     rather than kept separate.
+            //
+            // **Abilities that look into another room emit the story form
+            // WITHOUT the window form.** That asymmetry is not noise -- it is
+            // exactly how a client knows the character did NOT move. Folding
+            // the styled text here would turn every scry into a phantom
+            // relocation, and the bug would only appear for players who use
+            // those abilities.
+            //
+            // So `look` does not update `room.description`, by design. A
+            // consumer that wants the looked-at prose reads the published
+            // `Frame::Text`; `GameState` tracks location, not narration.
             Frame::Component { id, body } if id == "room desc" => {
                 self.room.description = Some(body.clone());
             }

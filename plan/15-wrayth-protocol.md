@@ -252,6 +252,35 @@ third-party tools inject through the same grammar (`:531-532`: `UberBar`, `UberB
 Also `:523-524`: **negative `exist` ids are normal** for rooms and NPCs (e.g. `-11225598`). A
 parser that treats `exist` as unsigned is wrong.
 
+**Components are a ROUTING signal, not a content type** (author, 2026-09-18, confirming against
+live traffic). Generally: *anything arriving as `<component>` or `<compDef>` is meant for a
+**supplemental window**, as opposed to the story window.* Every id in the committed fixtures
+fits -- `room desc`, `room objs`, `room players`, `room exits`, `sprite`; none is story prose.
+
+That matters because **the same content is often sent twice, in both shapes, and the two
+are not interchangeable**:
+
+| Shape | Window | Means |
+|---|---|---|
+| `<compDef id='room desc'>` | room window | **where the character is** |
+| inline text styled `<style id="roomDesc"/>` | story window | **what the character saw** |
+
+Verified from a live session: a `look` emits **only** the story form -- zero `component`
+frames -- while movement emits both. The window form stays *structured* (`room desc`,
+`room objs`, `room players` each separate); the story form is *flattened*, with objects
+appended into the prose.
+
+**The asymmetry is load-bearing.** Abilities that look into another room write the story
+form **without** the window form, which is exactly how a client knows the character did not
+move. A model that folds story text into current-location state turns every scry into a
+phantom relocation -- a bug that only appears for players who use those abilities.
+
+`compDef` is therefore truth not just for location but for **creatures, objects and players
+in the room, and objects named in the room description**. When `cena-model` grows past M1's
+room/hands/roundtime/vitals scope (`plan/12` §7.1), the window feed is the only place those
+are cleanly separable. Enforced today by
+`crates/cena-model/tests/room_is_where_you_are.rs`.
+
 ---
 
 ## 3. What this confirms about the M1 slice

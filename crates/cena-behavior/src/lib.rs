@@ -11,4 +11,4 @@
 //! exactly the abstraction that rule forbids.
 pub mod look;
 
-pub use look::{BehaviorError, LOOK_INTERVAL, ROUND_TRIP_DEADLINE, look};
+pub use look::{BehaviorError, LOOK_INTERVAL, ROUND_TRIP_DEADLINE, is_room_description, look};

@@ -479,10 +479,44 @@ fn connect_game(p: &LaunchPayload) -> R<()> {
         .map_err(|e| err("game_handshake", e))?;
     sock.flush().map_err(|e| err("game_handshake", e))?;
 
-    // NO `<c>` ready signals. GemStone does not send or expect them at
-    // handshake; DragonRealms does. Sending them here was copied from Lich's
-    // DR-capable path and is wrong for GS. (Saga research, from the official
-    // client's own handshake; DR is deferred anyway — `plan/12` §9d.)
+    // Two `<c>` ready signals, ~300 ms apart.
+    //
+    // > **RESTORED 2026-09-18.** These were removed earlier the same day on
+    // > Saga-research reasoning -- "GemStone sends no `<c>`; that is a
+    // > DragonRealms thing" -- and that was WRONG. VellumFE, a working
+    // > GemStone client against these same servers, sends them
+    // > **unconditionally with no DR branch**
+    // > (`reference/VellumFE/src/network.rs:689-694`: "Send ready signals -
+    // > game server expects two `<c>` signals with delay").
+    // >
+    // > The removal was never run against the live server: the spike's VERIFIED
+    // > marks predate it. `CLAUDE.md` says to read VellumFE FIRST, before Lich,
+    // > before the spec, before theorising -- and records that this rule was
+    // > already broken three times during this very spike, each time with the
+    // > answer sitting in `network.rs`. This was the fourth.
+    // > **AND NOW TESTED, not taken on anyone's word.** Vellum is evidence, not
+    // > proof -- believing it uncritically is the same error as believing the
+    // > Saga inference, pointed the other way. `CENA_SKIP_C=1` omits them, so
+    // > one run each settles it against the live server:
+    // >
+    // >   * both runs reach game text  -> the signals are HARMLESS but not
+    // >     required; Vellum sends them defensively and so should we.
+    // >   * skip-run hangs or returns no markup -> they are REQUIRED. Vellum
+    // >     is right and the removal would have broken login.
+    // >   * skip-run works and the send-run does NOT -> they are HARMFUL, and
+    // >     the Saga reading was right after all.
+    let skip_c = std::env::var("CENA_SKIP_C").is_ok_and(|v| v == "1");
+    if skip_c {
+        eprintln!("[stage: game_handshake] CENA_SKIP_C=1 -- sending NO <c> signals");
+    } else {
+        eprintln!("[stage: game_handshake] sending two <c> ready signals, 300ms apart");
+        for _ in 0..2 {
+            sock.write_all(b"<c>
+").map_err(|e| err("game_handshake", e))?;
+            sock.flush().map_err(|e| err("game_handshake", e))?;
+            std::thread::sleep(Duration::from_millis(300));
+        }
+    }
 
     eprintln!("[stage: game_read] reading up to 2 KB\n");
     println!("{}", "=".repeat(70));

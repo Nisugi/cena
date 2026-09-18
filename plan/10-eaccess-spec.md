@@ -619,8 +619,80 @@ minified identifiers or inferred control flow:**
    harmless. It is one line to send and costs nothing, and a first-party client sends it
    unconditionally on this branch — so **send it**, and record that its necessity was never
    tested. The DragonRealms branch differs in every particular (bare LF rather than CRLF, its
-   own banner, and two `<c>` ready signals ~300 ms apart); DragonRealms is deferred
-   (`plan/12` §9d), so that path is not Cena's problem. **GemStone sends no `<c>`.**
+   own banner, and bare LF rather than CRLF); DragonRealms is deferred
+   (`plan/12` §9d), so that path is not Cena's problem.
+
+   > **CORRECTED 2026-09-18.** This read **"GemStone sends no `<c>`"** and the spike was
+   > edited to match. **Both were wrong.** VellumFE -- a working GemStone client, by this
+   > author, against these same servers -- sends **two `<c>` ready signals ~300 ms apart,
+   > unconditionally, with no DragonRealms branch**
+   > (`reference/VellumFE/src/network.rs:689-694`, whose own comment reads "Send ready
+   > signals - game server expects two `<c>` signals with delay").
+   >
+   > The claim came from Saga research plus inference, and the spike edit that followed it
+   > **was never run against the live server** -- §12's VERIFIED marks all predate it. So a
+   > working handshake was changed on theory and recorded as fact.
+   >
+   > `CLAUDE.md`'s rule is to read VellumFE **first** -- before Lich, before this spec,
+   > before theorising -- and it already records that the rule was broken three times during
+   > this spike, each time with the answer sitting in `network.rs`. This was the fourth, and
+   > it is the reason the rule is written in capitals.
+   >
+   > Restored in `spike/eaccess-spike/src/main.rs`. Vellum also builds `/P:` from
+   > `std::env::consts::OS` rather than hardcoding `WIN_UNKNOWN`; the spike still hardcodes
+   > it, which is fine for a Windows spike and wrong for the port.
+
+   > **VERIFIED 2026-09-18 by live A/B against the real server**, run twice by the author
+   > with a `CENA_SKIP_C=1` toggle:
+   >
+   > | `<c>` sent | Result |
+   > |---|---|
+   > | yes | PASS -- **2,347 bytes**, `<mode id="GAME"/>`, XML mode enabled |
+   > | no  | PASS -- **163 bytes**, `<mode id="GAME"/>`, `<playerID>`, `<settingsInfo>` |
+   >
+   > **The `<c>` signals are NOT required to log in. Both runs reach game text.** So the
+   > earlier claim ("GemStone sends no `<c>`") was not wrong about login working -- it was
+   > unsupported, and removing them from a working handshake on inference was still the
+   > error.
+   >
+   > **What differs is VOLUME: 2,347 bytes versus 163**, and the dumps say exactly what the
+   > extra 2,184 bytes are. The `<c>`-less run stops at `<settingsInfo>`. The `<c>` run
+   > continues into the **entire login burst**:
+   >
+   > ```
+   > <mode id="GAME"/> + "Welcome to GemStone IV (R) v5.10"
+   > <streamWindow id="main"  title='Story' subtitle=" - Wehnimer's, Erebor Square" .../>
+   > <streamWindow id='room'  ... ifClosed='' resident='true'/>
+   > <clearStream id='room'/><pushStream id='room'/>
+   >   <compDef id='room desc'>  ... with <a exist= noun=> links inline
+   >   <compDef id='room objs'>  <compDef id='room players'>
+   >   <compDef id='room exits'>Obvious paths: <d>north</d>, <d>south</d>, <d>west</d>
+   > <popStream id='room'/>
+   > <streamWindow id='inv' .../> ... worn items ... <popStream/>
+   > <exposeContainer id='stow'/>
+   > ```
+   >
+   > **So `<c>` is what makes a session USABLE rather than merely connected.** Login
+   > succeeds either way, but without it the client never receives the room, the exits or
+   > inventory -- and Milestone 1's criterion 2 is "renders a room". **Send them.**
+   >
+   > Three things this dump settles beyond the `<c>` question:
+   >
+   > 1. **`<exposeContainer>` arrives**, which is the extended feed (`plan/15` §1.2). The
+   >    `/FE:WRAYTH /VERSION:1.0.1.28` banner is doing its job, live, today.
+   > 2. **The room arrives as `<compDef id='room desc'>`**, not `<component>`. Cena's
+   >    `GameState` folds `Frame::Component { id: "room desc" }` and `look`'s matcher keys
+   >    on that same id -- CHECK that `compDef` and `component` reach the same frame, since
+   >    the fixtures were cut from corpus files and this is the live login shape.
+   > 3. **`<d>north</d>` in `room exits`** -- bare `<d>` with no `cmd=`, the case
+   >    `plan/15` §2.4 records, arriving in the very first room of a real session.
+   >
+   > A note on method, because it nearly went wrong twice. Vellum being right was
+   > *evidence*, not proof -- replacing "Saga says no" with "Vellum says yes" would have
+   > been the same error pointed the other way. And when the second run appeared to hang,
+   > this spec was edited to say **REQUIRED** before the output was seen; it was idling
+   > after a successful read, not failing. A live A/B settles a wire question, but only
+   > once you have read what it printed.
 
 4. **Two guards on the game socket after launch**, which this spec does not currently specify
    and which turn a silent hang into a diagnosable failure:

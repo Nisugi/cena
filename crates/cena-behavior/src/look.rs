@@ -71,15 +71,52 @@ pub enum BehaviorError {
     AuthorityHeld,
 }
 
-/// The frame that answers a `look`: the room description.
+/// The frame that answers a `look`: the styled room description.
 ///
 /// `plan/12` §4.4 makes attribution temporal and leaves WHICH frame answered
 /// to "the waiter's matcher". `look` asks for a room, so a room is what
-/// `Outcome::Confirmed` should carry. Without this the window kept the last
-/// frame before the prompt, and a real `look` resolved with
-/// `Confirmed(Compass)` -- the exits, not the room.
-fn is_room_description(frame: &Frame) -> bool {
-    matches!(frame, Frame::Component { id, .. } if id == "room desc")
+/// `Outcome::Confirmed` should carry -- without a matcher the window kept
+/// whatever arrived last, and a real `look` resolved with `Confirmed(Compass)`.
+///
+/// > **CORRECTED 2026-09-18 against live traffic (author-supplied).** This
+/// > matched `Frame::Component { id: "room desc" }`, **which a `look` never
+/// > produces.** The game emits the room TWICE, in two different shapes, for
+/// > two different consumers:
+/// >
+/// >   * **`look`** writes to the main/story stream as inline text bracketed by
+/// >     `<style id="roomName"/>` and `<style id="roomDesc"/>`. No `compDef`,
+/// >     no `component` -- VERIFIED by parsing a live `look`: zero `Component`
+/// >     frames, and the description arrives as `Text` carrying
+/// >     `style.preset == Some("roomDesc")`.
+/// >   * **movement** additionally emits `<compDef id='room desc'>` inside
+/// >     `<pushStream id='room'>`, which is what feeds the ROOM WINDOW.
+/// >
+/// > So the old matcher was keyed to the movement shape while the behavior
+/// > sends `look`, and would have returned `Timeout` forever against the live
+/// > game. The fixtures did not catch it because they were cut from corpus
+/// > files that happened to contain the window feed.
+///
+/// Both shapes are accepted **here**, because either one means "a room
+/// description arrived, so the `look` was answered" -- which is all this
+/// matcher claims.
+///
+/// **They are NOT interchangeable to `GameState`, and this matcher must not be
+/// read as saying they are** (author, 2026-09-18). `compDef` is the ROOM
+/// WINDOW and means *where the character is*; the inline `roomDesc` text is the
+/// STORY WINDOW and means *what the character saw*. Abilities that look into
+/// another room write the story form **without** the window form -- which is
+/// precisely how a client knows the character did not move. Folding the inline
+/// shape into `GameState.room` would make a scried room look like a relocation.
+/// See `cena_model::state`.
+#[must_use]
+pub fn is_room_description(frame: &Frame) -> bool {
+    match frame {
+        // The room-window feed, from movement.
+        Frame::Component { id, .. } => id == "room desc",
+        // The main-stream feed, from `look`.
+        Frame::Text(text) => text.style.preset.as_deref() == Some("roomDesc"),
+        _ => false,
+    }
 }
 
 /// Look, repeatedly, until cancelled.
