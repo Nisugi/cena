@@ -49,11 +49,13 @@
 //! inside the session.
 
 mod ask;
+mod run;
 
 use ask::ask;
-use cena_behavior::{is_room_description, look};
+use cena_behavior::look;
 use cena_platform::{ByteSource, Credentials, Redactions, SessionSink};
-use cena_session::{AuthorityToken, CommandId, Event, Frame, Origin, Session, SessionHandle};
+use cena_session::{AuthorityToken, CommandId, Event, Origin, Session};
+use run::{run_capture, send_manual, wait_for_room};
 use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -67,12 +69,27 @@ const BEHAVIOR_WARMUP: Duration = Duration::from_secs(3);
 /// How long the whole demonstration runs before `stop`.
 const RUN_FOR: Duration = Duration::from_secs(10);
 
+/// How many `search` commands the capture sends.
+///
+/// `search` produces a real roundtime with no combat and nothing at stake --
+/// the author's suggestion, and the cheapest way to make a roundtime happen on
+/// purpose. Six gives several independent roundtimes to fit against, which is
+/// what separates a measurement from an anecdote.
+pub(crate) const CAPTURE_SEARCHES: usize = 6;
+
+/// The gap between capture commands.
+///
+/// Longer than a search's roundtime, so each one is measured from a standing
+/// start rather than overlapping the last. The idle time is not wasted: every
+/// `<prompt>` that arrives in it is a clock sample.
+pub(crate) const CAPTURE_GAP: Duration = Duration::from_secs(6);
+
 /// How long to wait for the first room description after login.
 ///
 /// The login burst carries the room unprompted (MEASURED 2026-09-18: 2,347
 /// bytes including room, exits and inventory), so this is generous rather than
 /// tight -- a slow link should not look like a protocol failure.
-const ROOM_DEADLINE: Duration = Duration::from_secs(20);
+pub(crate) const ROOM_DEADLINE: Duration = Duration::from_secs(20);
 
 /// A monotonic `CommandId` source, seeded at 0 -- never from a clock or a
 /// random, so a recording replays to the same ids (criterion 7).
@@ -187,6 +204,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         !behavior.is_finished()
     );
 
+    run_capture(&handle).await;
+
     tokio::time::sleep(RUN_FOR).await;
 
     // --- Criterion 4: stop, within PREEMPT_GRACE ---------------------------
@@ -292,86 +311,4 @@ fn open_log(character: &str, payload: &cena_platform::LaunchPayload) -> io::Resu
     // it is the one the bytes file would otherwise carry verbatim.
     let dir = cena_platform::log_dir().join(cena_platform::date_dir());
     SessionSink::create(&dir, character, &cena_platform::file_stamp(), redactions)
-}
-
-/// Wait for the first room description frame, or time out.
-///
-/// Criterion 2 is "renders a room description from **typed frames**, never raw
-/// text" -- so this matches on a `Frame`, not on the byte stream. That is what
-/// "parse first" means (`CLAUDE.md`, settled decisions).
-///
-/// Returns `false` on timeout or a closed stream; the caller prints the
-/// failure, because only it knows what to blame.
-async fn wait_for_room(events: &mut broadcast::Receiver<Event>) -> bool {
-    tokio::time::timeout(ROOM_DEADLINE, async {
-        loop {
-            match events.recv().await {
-                Ok(Event::Frame(frame)) if is_room_description(&frame) => {
-                    print_room(&frame);
-                    return true;
-                }
-                Ok(_) => {}
-                // `Lagged` is NOT the end of the stream. tokio's own docs:
-                // "Returning `RecvError::Lagged` does **not** close or
-                // disconnect the channel" -- the next `recv()` succeeds.
-                //
-                // Treating it as terminal is the bug `plan/12` §6.3 exists to
-                // prevent: the session goes to the trouble of handing up "an
-                // explicit `Lagged { missed }`, **never a silent gap**"
-                // (`cena-session/src/actor.rs:62-66`), and a consumer that
-                // collapses it into `Closed` turns it right back into a silent
-                // gap -- then blames the WRAYTH banner for a room that was
-                // merely dropped from the ring. Found by adversarial review.
-                Err(broadcast::error::RecvError::Lagged(missed)) => {
-                    eprintln!("  !! {missed} events dropped from the ring (still connected)");
-                }
-                Err(broadcast::error::RecvError::Closed) => return false,
-            }
-        }
-    })
-    .await
-    .unwrap_or(false)
-}
-
-/// Send one manual command and await its round trip.
-///
-/// Wrapped in a function so the `Origin::Manual` is stated once: the whole
-/// point of §4 is that a typed command and a behavior's command differ in
-/// their *origin*, not in their path.
-async fn send_manual(handle: &SessionHandle, line: &str) -> cena_session::Outcome {
-    handle
-        .send_and_await(
-            CommandId(9000),
-            line,
-            Origin::Manual,
-            Duration::from_secs(30),
-            cena_session::queue::any_frame,
-        )
-        .await
-}
-
-/// Print a room description frame as text.
-///
-/// Takes the `Frame`, not a string: criterion 2 is "renders a room description
-/// **from typed frames, never raw text**", and a function that took a `&str`
-/// could not tell the difference.
-fn print_room(frame: &Frame) {
-    println!("\n{}", "=".repeat(70));
-    match frame {
-        Frame::Component { id, body } => {
-            println!("[room: component {id}]");
-            println!("{}", body.plain());
-        }
-        Frame::Text(text) => {
-            // The story-window shape. `plan/15` §2.6: an inline styled
-            // `roomDesc` is WHAT YOU SAW, which is not the same claim as
-            // `component room desc`'s WHERE YOU ARE -- scrying abilities emit
-            // the first without the second. Printed the same way here, and
-            // deliberately labelled differently.
-            println!("[room: styled roomDesc in the story stream]");
-            println!("{}", text.content);
-        }
-        other => println!("[not a room frame: {other:?}]"),
-    }
-    println!("{}", "=".repeat(70));
 }
