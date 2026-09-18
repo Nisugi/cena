@@ -40,7 +40,7 @@
 use crate::command::{Envelope, SessionHandle};
 use crate::lifecycle::{Generation, State};
 use crate::queue::CommandQueue;
-use crate::state::GameState;
+use cena_model::GameState;
 use cena_platform::{ByteSource, Recorder};
 use cena_protocol::{Frame, Parser};
 use std::time::Duration;

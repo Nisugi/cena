@@ -18,13 +18,12 @@ pub mod actor;
 pub mod command;
 pub mod lifecycle;
 pub mod queue;
-pub mod state;
 
 pub use actor::{Event, Session, SessionActor, Snapshot};
+pub use cena_model::{GameState, Room, UnknownTag};
 pub use command::{CommandId, Envelope, Origin, Outcome, Refusal, SessionHandle};
 pub use lifecycle::{Generation, State};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
-pub use state::{GameState, Room, UnknownTag};
 
 /// The wire vocabulary, re-exported for behaviors.
 ///

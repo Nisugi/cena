@@ -89,6 +89,16 @@ reading "behavior" for "script".
 > **AMENDED 2026-09-18 (author's call), Milestone 1 Step 2.** `cena-session` gained
 > `cena-protocol` and `cena-platform`. The row previously read `(cena-model)`.
 >
+> **Second amendment, same day:** `GameState` moved from `cena-session` down into
+> `cena-model`, where this table already said typed game state belongs. Until then
+> `cena-model` used **nothing at all** from `cena-protocol` -- the `protocol -> model ->
+> session` chain had a link carrying no traffic, which is why `cena-session` naming
+> `cena-protocol` looked like a layer skip and was not one: there was nothing in
+> `cena-model` to skip. Both crates now genuinely use what they declare (`cena-model`:
+> `Frame`, `runs`; `cena-session`: `Frame`, `Parser`). The question surfaced twice in one
+> slice -- once for the session, once for a behavior -- which is the signal that the rule
+> was wrong rather than that the cases were exceptional.
+>
 > **The reason is ownership, not layering.** The session does not parse and does not reach
 > up; it *owns* a `Parser` and calls it. `Parser` is stateful and explicitly one per session
 > (`crates/cena-protocol/src/parser.rs:113-120`), so the value lives in the session struct,
