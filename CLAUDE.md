@@ -107,11 +107,20 @@ From `plan/05-engineering-rules.md`:
    S3 recorded unobservable-by-design (`plan/10` §12.1).
 2. ~~**Step 1 — the login spike**~~ **DONE 2026-09-18.** `spike/eaccess-spike` reaches game text
    with XML mode enabled (`plan/10` §11).
-3. **Step 2 — the slice:** one character logs in, shows a room, takes a manual command through
-   the shared queue, runs one small behavior, stops reliably, disconnects cleanly, replays
-   deterministically. **← current**
+3. ~~**Step 2 — the slice:**~~ **DONE 2026-09-18.** One character logs in, shows a room, takes a
+   manual command through the shared queue, runs one small behavior, stops reliably, disconnects
+   cleanly, replays deterministically.
+
+   **Criteria 1–8 all met** (`12` §7.2). Criterion 1 was exercised **live, with the author
+   present** — the one criterion no test in this workspace may run (`CLAUDE.md`, Credentials).
+   Measured on that run: `stop` in **84µs** against a 250ms budget; room rendered from a
+   `Frame::Component`, not scanned text; manual command interleaved and the behavior continued.
+   Criteria 2–8 are test-backed; `plan/10` §11 records what the live run taught.
 
 Reconnect and desync move to Milestone 2.
+
+**Milestone 1 is complete. The next step is Milestone 2** (`12` §9c: reconnect, desync,
+criterion 9) — or whatever the author picks up instead.
 
 ## Credentials
 

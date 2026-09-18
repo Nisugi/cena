@@ -11,11 +11,12 @@
 //! Read [`super`] for why `EAccess` lives in `cena-platform` and for the BUILT,
 //! NOT RUN rule that governs every function below.
 
+use super::refusal::describe_launch_refusal;
 use super::wire::hash_password;
 use super::wire::{
-    Credentials, EACCESS_HOST, EACCESS_PORT, EaccessError, LaunchPayload, READ_BUF,
-    describe_launch_refusal, err, expect_echo, offered_game_codes, parse_launch, redact,
-    resolve_char_code, trim_ascii_whitespace,
+    Credentials, EACCESS_HOST, EACCESS_PORT, EaccessError, LaunchPayload, READ_BUF, err,
+    expect_echo, offered_game_codes, parse_launch, redact, resolve_char_code,
+    trim_ascii_whitespace,
 };
 use crate::bytes::ByteSource;
 use crate::live::LiveSource;
@@ -310,15 +311,28 @@ async fn resolve_character(
     send(conn, "C", "c_request").await?;
     let c = read_response(conn, "c_response").await?;
     expect_echo(&c, 'C', "c_response")?;
-    // The second field is the account's MAX CHARACTER SLOTS on the SELECTED
-    // instance, and it identifies that instance: GST (free) = 100, premium =
-    // 16. This is the diagnostic that cracked PROBLEM 3 -- a spike run showed
-    // 16 where a working Lich login showed 100, for the same account and
-    // character, proving the session had drifted off GST before C.
+    // The second field is the account's MAX CHARACTER SLOTS.
+    //
+    // **It reflects the account's ENTITLEMENT, not which instance was
+    // selected.** An earlier version of this line claimed the number
+    // "identifies the SELECTED instance" and glossed 100 as GST and 16 as
+    // premium -- which is wrong on any account holding more than one
+    // entitlement, and the author's holds Shattered and Premium. `M` offers it
+    // ten codes; 16 is simply what its tier grants, on several of them.
+    //
+    // What the spike actually observed was a *contrast*: 16 where a working
+    // Lich login showed 100, for the same account and character. The signal
+    // was the disagreement, never the value. A bare count identifies nothing.
+    //
+    // The instance is confirmed by F, G and P echoing the code that was sent,
+    // which `expect_echo` already enforces -- so this line is context for a
+    // human reading a failure, not a check.
     if let Some(slots) = c.trim().split('\t').nth(2) {
         progress(&format!(
-            "[stage: c_response] max slots={slots} (GST free=100, premium=16 -- \
-             identifies the SELECTED instance, not the requested one)"
+            "[stage: c_response] max slots={slots} for {} (entitlement, not \
+             instance -- a count that DISAGREES with a previous login on the \
+             same code is the signal, not any particular number)",
+            creds.game_code
         ));
     }
 

@@ -126,6 +126,7 @@ fn launch_payload_debug_hides_the_key() {
     let p = LaunchPayload {
         gamehost: "gamehost.example.net".to_owned(),
         gameport: 10024,
+        gamecode: Some("GS".to_owned()),
         key: "9ac77c189205275c1b604953d7e2b6aa".to_owned(),
     };
     let shown = format!("{p:?}");
@@ -175,6 +176,44 @@ fn parses_a_launch_payload_with_an_equals_in_the_key() {
     assert_eq!(p.key, "abc=def==", "the key must survive its own '=' bytes");
 }
 
+/// The real `L\tOK` shape, byte for byte from the live run of 2026-09-18.
+///
+/// Every earlier fixture here was hand-written. This one is what the server
+/// actually sent, which is the only kind that can contradict an assumption --
+/// and it did: `GAMECODE=GS`, not `GS3`. **`L` answers with a family code, not
+/// the code `G` selected.** Anything that compares `gamecode` against the
+/// requested instance must expect that.
+#[test]
+fn parses_the_launch_payload_the_live_server_actually_sent() {
+    let l = "L\tOK\tUPPORT=5535\tGAME=STORM\tGAMECODE=GS\tFULLGAMENAME=Wrayth\t\
+             GAMEFILE=WRAYTH.EXE\tGAMEHOST=gamehost.example.net\tGAMEPORT=10024\t\
+             KEY=9ac77c189205275c1b604953d7e2b6aa";
+    let p = parse_launch(l).expect("the live server's own response must parse");
+    assert_eq!(p.gamehost, "gamehost.example.net");
+    assert_eq!(p.gameport, 10024);
+    assert_eq!(
+        p.gamecode.as_deref(),
+        Some("GS"),
+        "the login requested GS3 and L answered GAMECODE=GS -- a family code, \
+         not the selected instance"
+    );
+    // The four launcher-only fields are dropped, per plan/10 §4.9.
+    let shown = format!("{p:?}");
+    assert!(
+        !shown.contains("WRAYTH.EXE") && !shown.contains("UPPORT"),
+        "fields that only tell a Simutronics launcher which .EXE to run must \
+         not be carried: {shown}"
+    );
+}
+
+/// A generator-path response carries no `GAMECODE`, and that is not an error.
+#[test]
+fn a_missing_gamecode_is_absent_rather_than_a_failure() {
+    let l = "L\tOK\tGAMEHOST=h\tGAMEPORT=1\tKEY=k";
+    let p = parse_launch(l).expect("GAMECODE is not required");
+    assert_eq!(p.gamecode, None);
+}
+
 /// A launch line missing a field is an error naming the field, not a
 /// payload with an empty host.
 #[test]
@@ -194,11 +233,61 @@ fn a_problem_response_is_not_an_ok_response() {
         "a loose `^L\\t` guard accepts this and parses a garbage payload"
     );
     let explained = describe_launch_refusal(refusal);
-    assert!(explained.contains("PROBLEM 3"), "got: {explained}");
+    assert!(explained.contains("PROBLEM\t3"), "got: {explained}");
     assert!(
-        explained.contains("INFERRED"),
-        "the PROBLEM 3 reading rests on one observation and must say so: \
-         {explained}"
+        explained.contains("no configuration for the selected game"),
+        "PROBLEM 3 is VERIFIED server-side (plan/10 §4.7 item 2a, from Saga \
+         0.9.9's own English strings). This test previously asserted the \
+         message said INFERRED, pinning a reading the spec had already \
+         superseded -- a test can hold a stale claim in place as firmly as it \
+         holds a correct one: {explained}"
+    );
+    assert!(
+        explained.contains("DO NOT RETRY"),
+        "the retry verdict is the operational point: §9.1's blanket 3-retry is \
+         wrong for 2 and 3, which will not change between attempts: {explained}"
+    );
+}
+
+/// Each `PROBLEM` sub-code gets its own verified meaning and its own retry
+/// verdict -- and **4 is the only one worth retrying**.
+///
+/// Added after the live run on 2026-09-18. The message documented 1 and
+/// guessed at 3, while `plan/10` §4.7 item 2a had all four VERIFIED.
+#[test]
+fn every_problem_sub_code_is_explained_with_its_retry_verdict() {
+    for (code, needle) in [
+        (1, "access level"),
+        (2, "no STORM launch entry"),
+        (3, "no configuration for the selected game"),
+        (4, "assigning the character"),
+    ] {
+        let explained = describe_launch_refusal(&format!("L\tPROBLEM\t{code}"));
+        assert!(
+            explained.contains(needle),
+            "PROBLEM {code} must carry its own verified meaning: {explained}"
+        );
+    }
+
+    // 4 is transient; 1, 2 and 3 are not. Retrying a server-side
+    // configuration fact burns three logins to reach the same refusal.
+    assert!(
+        describe_launch_refusal("L\tPROBLEM\t4").contains("RETRY: transient"),
+        "4 is the one code that genuinely wants a retry"
+    );
+    for code in [1, 2, 3] {
+        assert!(
+            describe_launch_refusal(&format!("L\tPROBLEM\t{code}")).contains("DO NOT RETRY"),
+            "PROBLEM {code} must not invite a retry"
+        );
+    }
+
+    // A code the server grows later must not be silently mapped onto an
+    // existing meaning.
+    let unknown = describe_launch_refusal("L\tPROBLEM\t9");
+    assert!(
+        unknown.contains("unrecognised"),
+        "an unknown sub-code must say so rather than borrow a known one: {unknown}"
     );
 }
 

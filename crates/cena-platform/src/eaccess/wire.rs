@@ -75,9 +75,32 @@ impl fmt::Debug for Credentials<'_> {
 pub struct LaunchPayload {
     /// The game host. A plain TCP destination -- **not** the eaccess host and
     /// **not** TLS.
+    ///
+    /// `String`, not `Option<String>`, **deliberately**. `plan/10` §4.9 says
+    /// "Cena's type must make `gamehost`/`gameport` `Option<>` if it supports
+    /// the generator" -- the character-generator path (`L\t0\tSTORM`) can omit
+    /// both, and `eaccess_spec.rb:316` has `"L\tOK\tKEY=abc\n"` as a valid
+    /// success. Cena does not support that path: character creation is not in
+    /// `plan/12` §7.1's In column and no code here sends `L\t0`. Making these
+    /// `Option` today would add a `None` arm that every caller must handle and
+    /// that nothing can produce. **If the generator is ever added, these two
+    /// fields become `Option` in the same commit** -- that is what §4.9 asks
+    /// for, and the condition on it is not met yet.
     pub gamehost: String,
     /// The game port.
     pub gameport: u16,
+    /// The instance the server actually launched, e.g. `GS` or `DR`.
+    ///
+    /// **This is the server's answer, not the code that was requested.** `G`
+    /// selects with a code from `M` (`GS3`, `GST`, `GSX`, ...) and `L` answers
+    /// with a shorter family code, so a `GS3` login returns `GAMECODE=GS`.
+    /// `plan/10` §4.9 lists this among the four fields "Cena needs" -- the
+    /// other four (`UPPORT`, `GAME`, `FULLGAMENAME`, `GAMEFILE`) "exist solely
+    /// to tell a Simutronics launcher which `.EXE` to run" and are dropped.
+    ///
+    /// Absent on the generator path, so `Option` -- unlike the two above, this
+    /// one costs nothing, because nothing dereferences it.
+    pub gamecode: Option<String>,
     /// The session key. One shot, short-lived, and a credential: see this
     /// type's `Debug`.
     pub key: String,
@@ -90,6 +113,7 @@ impl fmt::Debug for LaunchPayload {
         f.debug_struct("LaunchPayload")
             .field("gamehost", &self.gamehost)
             .field("gameport", &self.gameport)
+            .field("gamecode", &self.gamecode)
             .field("key", &"<REDACTED>")
             .finish()
     }
@@ -262,12 +286,17 @@ pub fn offered_game_codes(m_response: &str) -> Vec<&str> {
 pub fn parse_launch(l_response: &str) -> Result<LaunchPayload, EaccessError> {
     let mut gamehost = None;
     let mut gameport = None;
+    let mut gamecode = None;
     let mut key = None;
     for field in l_response.trim().split('\t') {
         let mut kv = field.splitn(2, '=');
         match (kv.next(), kv.next()) {
             (Some("GAMEHOST"), Some(v)) => gamehost = Some(v.to_owned()),
             (Some("GAMEPORT"), Some(v)) => gameport = v.parse::<u16>().ok(),
+            // `plan/10` §4.9's fourth needed field. The other four in the
+            // response -- UPPORT, GAME, FULLGAMENAME, GAMEFILE -- tell a
+            // Simutronics launcher which .EXE to run, and are dropped.
+            (Some("GAMECODE"), Some(v)) => gamecode = Some(v.to_owned()),
             (Some("KEY"), Some(v)) => key = Some(v.to_owned()),
             _ => {}
         }
@@ -275,6 +304,7 @@ pub fn parse_launch(l_response: &str) -> Result<LaunchPayload, EaccessError> {
     Ok(LaunchPayload {
         gamehost: gamehost.ok_or_else(|| err("l_response", "no GAMEHOST in launch payload"))?,
         gameport: gameport.ok_or_else(|| err("l_response", "no GAMEPORT in launch payload"))?,
+        gamecode,
         key: key.ok_or_else(|| err("l_response", "no KEY in launch payload"))?,
     })
 }
@@ -316,27 +346,4 @@ pub fn expect_echo(response: &str, letter: char, stage: &'static str) -> Result<
 #[must_use]
 pub fn trim_ascii_whitespace(bytes: &[u8]) -> &[u8] {
     bytes.trim_ascii()
-}
-
-/// Explain an `L` refusal, including the code Lich does not document.
-///
-/// Split out so the PROBLEM 3 finding is testable without a live login --
-/// it is INFERRED from a single observation, and an inference that cannot be
-/// re-read is one that quietly becomes folklore.
-#[must_use]
-pub fn describe_launch_refusal(l: &str) -> String {
-    if l.contains("PROBLEM") {
-        format!(
-            "launch refused ({}). PROBLEM 1 (no creation entitlement) is the \
-             only code Lich documents. PROBLEM 3 is INFERRED (one observation, \
-             2026-09-18) to mean the character code is not valid on the \
-             SELECTED instance -- check the max-slot count printed at \
-             c_response: 100 means GST, 16 means a premium instance. If it \
-             disagrees with the game code requested, the session drifted \
-             before C.",
-            l.trim()
-        )
-    } else {
-        format!("launch refused: {}", l.trim())
-    }
 }

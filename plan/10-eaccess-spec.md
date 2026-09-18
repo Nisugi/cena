@@ -369,7 +369,7 @@ requested. The session then proceeds silently pointed at the wrong game:
 |---|---|---|---|
 | `F` | `F\tgs3` | `F\tPREMIUM` | fine — but GST is documented **FREE** tier |
 | `G` | `G\tgs3` | `X\tPROBLEM` | a `G` failure; it is **not a `G` response at all** |
-| `C` | `C` | `C\t1\t16\t1\t1\t…` | fine — but **16 slots ≠ GST's 100** (§4.6a) |
+| `C` | `C` | `C\t1\t16\t1\t1\t…` | fine — the count differed from the working login's (§4.6a; the count reflects **entitlement**, not instance) |
 | `L` | `L\t{code}\tSTORM` | `L\tPROBLEM\t3` | an entitlement or launch failure |
 
 Only the last line is loud, and it names the wrong cause. **Two rules follow, and they are the
@@ -476,7 +476,24 @@ bytes can be **byte-identical** across instances while meaning different things.
 > The slot count was the first signal that the session was on the wrong instance — but note that it
 > is a *symptom*, not the cause. The cause was a lowercase game code four commands earlier (§4.4a),
 > and the check that would have caught it immediately is the response-echo check, not this one.
-> Keep both: this one is cheap and names the instance, which is useful in logs regardless.
+>
+> **AMENDED 2026-09-18, after the first live run of the Cena binary.** This paragraph previously
+> ended "this one is cheap and **names the instance**, which is useful in logs regardless," and the
+> ported code said the same in stronger terms: *"100 means GST, 16 means a premium instance."*
+>
+> **The count names the account's ENTITLEMENT, not the selected instance.** It only appeared to name
+> the instance because the worked example above holds the account constant and varies the instance —
+> so entitlement and instance moved together, and one observation cannot separate two variables that
+> never varied independently.
+>
+> Disproved by the author's own account, which holds **Shattered and Premium**: `M` offers it ten
+> codes, `F` answers `PREMIUM`, and a correct `GS3` login reports **16** — the same 16 this spec
+> once read as evidence of drift. Nothing had drifted. A bare count on a multi-entitlement account
+> distinguishes nothing.
+>
+> What survives is the *contrast*: a count that disagrees with a previous login **on the same code
+> and the same account** is a real signal. Any particular number is not. The instance is confirmed
+> by `F`, `G` and `P` each echoing the code that was sent, which is the check to rely on.
 
 ### 4.7 `L` — launch
 
@@ -1574,6 +1591,28 @@ Ruby's semantics hide it; each produces a failure that points somewhere other th
 ---
 
 ## 11. THE SPIKE — Phase 2's first deliverable
+
+> **CLOSED 2026-09-18.** The spike passed, and its successor — the ported `cena-platform::eaccess`
+> driven by the `cena` binary — **completed a full live login**, with the author at the keyboard:
+> `K A M F G P C L` clean, game socket open, a room description rendered from typed frames, a
+> behavior interleaved with a manual command, `stop` in **84µs**, clean disconnect. That is
+> `plan/12` §7.2 criteria 1–6 against the live server.
+>
+> Two things the run taught that reading could not:
+>
+> - **`L` answers with a family code.** A `GS3` login returns `GAMECODE=GS`, not `GS3`. Anything
+>   comparing the launch payload's code against the requested instance must expect the shorter form.
+> - **The `C` slot count reflects entitlement, not instance** — see the amendment in §4.6a. This
+>   spec had it wrong, and only an account holding *two* entitlements could show that.
+>
+> One thing it did **not** teach, which is worth recording as a negative result: the two `<c>` ready
+> signals and the WRAYTH banner behaved exactly as the A/B run of the same day predicted. No
+> surprises in the game-socket handshake.
+>
+> The four unknowns below are settled (§12.1). The section is kept because the *method* — settle at
+> the byte level before writing production code — is what produced a first live run with no protocol
+> defects, and because §11.2's pass criterion ("recognizable game text, not a TCP accept") is the
+> distinction the whole exercise turned on.
 
 **This section is the point of the document.** Four things in this specification are uncertain at
 the byte level, and **none of them can be settled by reading more Ruby.** The spike exists to settle

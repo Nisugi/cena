@@ -54,12 +54,13 @@
 
 mod game;
 mod handshake;
+mod refusal;
 mod wire;
 
 pub use game::connect_game;
 pub use handshake::authenticate;
+pub use refusal::describe_launch_refusal;
 pub use wire::{
-    CLIENT_BANNER, Credentials, EaccessError, LaunchPayload, describe_launch_refusal, expect_echo,
-    hash_password, offered_game_codes, parse_launch, redact, resolve_char_code,
-    trim_ascii_whitespace,
+    CLIENT_BANNER, Credentials, EaccessError, LaunchPayload, expect_echo, hash_password,
+    offered_game_codes, parse_launch, redact, resolve_char_code, trim_ascii_whitespace,
 };
