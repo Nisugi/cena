@@ -1,2 +1,4 @@
 reference/
 *.output
+capture/
+target/

@@ -59,6 +59,11 @@ From `plan/05-engineering-rules.md`:
   frontends beside them. Dependencies point **one way, downward**.
 - **Architecture tests exist before the code they govern.** That ratchet is the whole point —
   VellumFE had to retrofit it at ~250K lines.
+- **When VellumFE implements something, read VellumFE's version FIRST** — before Lich, before the
+  spec, before theorising. It is a *working* implementation against the same live servers, in the
+  same language, by the same author. During the login spike this rule was broken three times and
+  each time the answer was already in `network.rs`. Lich is the protocol's reference, but Vellum is
+  the reference *port*, and the porting hazards (§10.3a of `plan/10`) live only in the port.
 - **Port aggressively where knowledge lives in code**, rewrite where structure matters.
   Specifically port: `ParsedElement` (61 variants), `KNOWN_WIRE_TAGS` (~130), the parser and
   its tests, `parser_edge_cases.xml`, crit tables and creature templates
@@ -72,12 +77,13 @@ From `plan/05-engineering-rules.md`:
 
 **Milestone 1**, narrowed (`12` §9c):
 
-1. **Step 0 — capture a Lich login with tcpdump.** Zero Rust. Settles three of four wire
-   unknowns in `plan/10` §12.
-2. **Step 1 — the login spike** (`plan/10` §11).
+1. ~~**Step 0 — capture a Lich login with tcpdump.**~~ **DONE 2026-09-18.** S1/S2/S4 VERIFIED,
+   S3 recorded unobservable-by-design (`plan/10` §12.1).
+2. ~~**Step 1 — the login spike**~~ **DONE 2026-09-18.** `spike/eaccess-spike` reaches game text
+   with XML mode enabled (`plan/10` §11).
 3. **Step 2 — the slice:** one character logs in, shows a room, takes a manual command through
    the shared queue, runs one small behavior, stops reliably, disconnects cleanly, replays
-   deterministically.
+   deterministically. **← current**
 
 Reconnect and desync move to Milestone 2.
 

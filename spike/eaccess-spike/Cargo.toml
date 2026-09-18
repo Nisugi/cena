@@ -1,0 +1,16 @@
+[package]
+name = "eaccess-spike"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Throwaway. Settles the wire questions in plan/10 section 11; not production code.
+# native-tls, NOT rustls: eaccess.play.net negotiates TLS 1.2 with static-RSA
+# key exchange (0x009c, AES128-GCM-SHA256), which rustls refuses to implement.
+# Verified by packet capture 2026-09-18 and corroborated by VellumFE Cargo.toml:57-59.
+[dependencies]
+native-tls = "0.2"
+
+[[bin]]
+name = "eaccess-spike"
+path = "src/main.rs"

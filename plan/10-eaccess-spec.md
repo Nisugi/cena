@@ -352,6 +352,41 @@ response = EAccess.read(conn)
   generator exists for. eaccess.rb:249; `docs/eaccess-protocol-analysis.md:93`.
 - **Legacy path differs:** a non-matching `F` **silently skips that game** rather than raising.
 
+### 4.4a Game codes are CASE-SENSITIVE, and a wrong one fails four commands later
+
+**VERIFIED 2026-09-18** by spike run against the live server.
+
+`M` lists the codes uppercase (`DR`, `DRT`, `GS3`, `GST`, `GSX`, …). **A lowercase code is not
+recognised — and the server does not say so at the point of use.** `F\tgs3` still returns a
+well-formed `F\tPREMIUM`: the server answers about the **account's default instance**, not the one
+requested. The session then proceeds silently pointed at the wrong game:
+
+| Command | Sent | Got | Looked like |
+|---|---|---|---|
+| `F` | `F\tgs3` | `F\tPREMIUM` | fine — but GST is documented **FREE** tier |
+| `G` | `G\tgs3` | `X\tPROBLEM` | a `G` failure; it is **not a `G` response at all** |
+| `C` | `C` | `C\t1\t16\t1\t1\t…` | fine — but **16 slots ≠ GST's 100** (§4.6a) |
+| `L` | `L\t{code}\tSTORM` | `L\tPROBLEM\t3` | an entitlement or launch failure |
+
+Only the last line is loud, and it names the wrong cause. **Two rules follow, and they are the
+substance of this section:**
+
+1. **Validate the game code against `M` before using it.** `M` is the authoritative list of codes
+   the server accepts. Refuse an unlisted code immediately rather than discovering it at `L`.
+   Do **not** silently uppercase inside the protocol layer — normalise at the input boundary
+   (config load, CLI parse) where the user can be told, so the wire layer stays a faithful
+   transcript of what was asked for.
+2. **Every response must be checked for answering the command that was sent, before any field of it
+   is read.** Each response echoes its command letter (`F\t…`, `G\t…`, `C\t…`, `L\t…`), so the
+   check is one `starts_with`. Without it a desynchronised stream is indistinguishable from a
+   server refusal, and a positional read (`split('\t').nth(2)`) turns a rejected command into a
+   plausible-looking field value.
+
+> **This cost most of a debugging session.** Four successive theories — entitlement, `P` side
+> effects, session-state drift, instance mismatch — were each built on responses that were never
+> checked for being answers to the commands actually sent. The `L` request bytes were correct
+> throughout, which is why byte-diffing them against a working Lich login found nothing.
+
 ### 4.5 `G` and `P` — sent, responses discarded
 
 ```ruby
@@ -361,8 +396,28 @@ conn.puts "P\t#{game_code}\n"   # eaccess.rb:259
 EAccess.read(conn)              # discarded
 ```
 
-Lich reads and throws both away. **They must still be sent** — the server's state machine expects
-them. Do not "optimize" these out.
+Lich reads and throws both away.
+
+**They must still be sent.** `G` in particular is the **select-game** command
+(`docs/eaccess-protocol-analysis.md:106`) — it is what points the session at an instance, and
+everything after it (`C`'s character list, and therefore `L`) depends on it having succeeded.
+
+> **A retracted claim, kept as a worked example of a bad diagnosis.**
+>
+> On 2026-09-18 this section briefly read: *"`P` is not inert — it moves the selected instance as a
+> side effect; Cena does not send `P`."* The reasoning was that in a captured Lich login, `P` asked
+> about **GST** answered `P\tGSX\t1000\tGSX.EC\t-1\tGS3.P\t2500` — GST's documented pricing
+> (`analysis:146`) under a **GSX** code.
+>
+> **Tested and DISPROVEN the same day.** A run with `P` removed entirely produced the identical
+> failure. `P` was innocent. The GSX echo remains unexplained and is now filed in §12.2, where it
+> belongs.
+>
+> **The actual cause was a lowercase game code** (§4.4a). Every symptom the `P` theory was invented
+> to explain — wrong entitlement tier, wrong slot count, `L\tPROBLEM\t3` — followed from that.
+>
+> The lesson is not about `P`. It is that **four consecutive theories were built on responses that
+> were never checked for being answers to the commands actually sent.** See §4.4a.
 
 ### 4.6 `C` — character list
 
@@ -393,6 +448,32 @@ Parsing (`resolve_char_code`, and the two regexes are **exact, both spec-pinned 
   regression guard, eaccess_spec.rb:222-231.
 - Failure: `AuthenticationError, "CHARACTER_NOT_FOUND"`.
 
+### 4.6a The `C` header names the selected instance — use it as a diagnostic
+
+`C\t{N1}\t{N2}\t{N3}\t{N4}\t...` — **`N2` is the account's max character slots on the currently
+selected instance**, and it is a direct readout of *which instance that is*:
+
+| `N2` | Instance |
+|---|---|
+| **100** | GST (free tier) |
+| **16** | premium |
+
+Source: `docs/eaccess-protocol-analysis.md:166`, corroborated `:293`, `:301`.
+
+**This is worth logging on every login.** It is what distinguishes "the server refused" from "we
+asked the wrong instance" — the two look identical at `L`, because the character code and the `L`
+bytes can be **byte-identical** across instances while meaning different things.
+
+> **Worked example, 2026-09-18.** A spike run and a working Lich login used the same account, the
+> same character, and the same code `W_ACCOUNT_000`. The `L` requests were byte-for-byte identical.
+> Lich's `C` header reported **100** slots; the spike's reported **16**. Lich launched; the spike got
+> `L\tPROBLEM\t3`.
+>
+> The slot count was the first signal that the session was on the wrong instance — but note that it
+> is a *symptom*, not the cause. The cause was a lowercase game code four commands earlier (§4.4a),
+> and the check that would have caught it immediately is the response-echo check, not this one.
+> Keep both: this one is cheap and names the instance, which is useful in logs regardless.
+
 ### 4.7 `L` — launch
 
 ```ruby
@@ -422,6 +503,24 @@ Five things here are load-bearing:
    (An earlier writeup claimed `{"l"=>nil,"problem"=>nil,"1"=>nil}`; `sub(/^L\t/,'')` strips the L.)
    The argument is unchanged and the strict guard is spec-confirmed at eaccess_spec.rb:346-356
    (generator context) and :358-371 (normal context) — **two separate contexts, not one range**.
+2a. **`PROBLEM` codes: only 1 is documented.** Lich documents `PROBLEM\t1` = no entitlement to
+   create on this instance (`analysis:196`). **`PROBLEM\t3` is not documented anywhere, and this
+   spec does not claim to know what it means.**
+
+   > **What is VERIFIED (2026-09-18):** `PROBLEM\t3` is returned when `L` is sent on a session
+   > whose instance was never validly selected — specifically after a **lowercase game code**
+   > (§4.4a) left `G` rejected and the session on the account's default instance. The character
+   > code was valid *for that default instance*, and the `L` bytes were byte-identical to a
+   > working Lich login's.
+   >
+   > **What is NOT established:** whether `PROBLEM 3` specifically means "code not valid on the
+   > selected instance", or something broader such as "session not in a launchable state". One
+   > observation, one cause. Do not write the narrower reading into code or docs.
+   >
+   > **Diagnosis order when `L` refuses:** check §4.4a's two rules *first* — was the game code
+   > listed in `M`, and did every response echo its own command letter? Byte-diffing the `L`
+   > request is a dead end; its bytes are correct in exactly this failure.
+
 3. **`L\tPROBLEM` produces two different failure behaviours** from the same server response
    (eaccess.rb:279-286). Generator path → `AuthenticationError, "GENERATOR_NOT_AVAILABLE"`, which is
    in `FATAL_ERROR_CODES` → no retry, no web fallback. Normal path → bare `StandardError,
@@ -1169,6 +1268,37 @@ Three hard divergences to measure before committing:
 - **Assemble the `A` line as `Vec<u8>`, never `String`** (§3.3, hazard #1).
 - **Bound password length against the 32-byte key length explicitly** (§3.3 item 3).
 
+### 10.3a Rust-vs-Ruby hazards the spike actually hit
+
+Four hazards that **cost real debugging time** on 2026-09-18. Each is invisible in Ruby because
+Ruby's semantics hide it; each produces a failure that points somewhere other than its cause.
+
+1. **One command = one `write_all` = one TLS record.** Ruby's `IO#puts` is inherently a single
+   write, so Lich never had to think about this. Building the command and its `\n` with two
+   `write_all` calls can emit **two TLS records**, and this server does not reassemble a command
+   split across records. Symptom: authentication fails with a generic server rejection, pointing at
+   the credential rather than the framing.
+   Port note: VellumFE does this deliberately and says so — `network.rs:920-931`,
+   *"Match Ruby's puts … in a SINGLE write … to ensure it goes out as a single TLS record."*
+
+2. **The hashed password must never transit a Rust `String`.** It is arbitrary bytes, not UTF-8.
+   `String::from_utf8_lossy` replaces **every byte above 0x7F with U+FFFD**, silently corrupting the
+   credential. Ruby Strings are byte arrays, so Lich has no equivalent failure. Build the `A`
+   request as `Vec<u8>`.
+
+3. **`set_nodelay(true)`.** Without it Nagle can coalesce or delay the small command writes this
+   protocol is built from. VellumFE sets it (`network.rs:847`).
+
+4. **The success guard is `L\tOK\t`, not `^L\t`.** See §4.7 item 2. This one *is* in Lich, with a
+   comment explaining it — the hazard is that a careless port drops the `OK`.
+
+5. **Read the response before parsing it, and check it answers the command you sent.** Not a
+   language hazard — a *discipline* hazard, and the costliest of the session by a wide margin.
+   Ruby's `EAccess.read` returns a String that a human reads in a debugger; a Rust port that pipes
+   it straight into `split('\t').nth(2)` renders a rejected command as an ordinary-looking field
+   value. See §4.4a. **One `starts_with` per response** would have turned a multi-hour
+   misdiagnosis into a one-line error.
+
 ### 10.4 HTTP behavior differences (web path)
 
 - **`reqwest` follows redirects by default (up to 10). `Net::HTTP.start` does not, and Lich depends
@@ -1266,6 +1396,17 @@ them before any production login code is written.
 Everything else in Phase 2 — the `GameAdapter` seam, session management, the XML parser — waits on
 this returning game text.
 
+> **RESULT — PASSED 2026-09-18.** `spike/eaccess-spike`. Authenticates against the live service and
+> prints game text with XML mode enabled. Wrong-password and wrong-game-code paths both fail in
+> under 0.5s naming the stage. Four unit tests cover the hash (round-trip, out-of-range refusal,
+> short-key refusal) and credential redaction.
+>
+> **What it cost, and what that bought:** the session's one real bug was a **lowercase game code**
+> (§4.4a), which took four wrong theories to find because responses were parsed without first
+> checking they answered the command sent. The guards that came out of it — validate the code
+> against `M`, echo-check every response — are the spike's most portable output, more so than the
+> login flow itself. §10.3a item 5.
+
 ### 11.2 Pass criterion
 
 **The spike passes when it prints recognizable GemStone/DragonRealms game text — the login banner or
@@ -1342,13 +1483,131 @@ Marked by confidence. Nothing here should be treated as protocol.
 
 | # | Item | Status |
 |---|---|---|
-| S1 | SNI presence changing the backend | **UNVERIFIED — highest value** |
-| S2 | Negotiated TLS version (blocks the `rustls` decision) | **UNVERIFIED** |
-| S3 | Server behavior for out-of-range password bytes | **UNOBSERVED — Lich has never sent one** |
-| S4 | Per-response terminators; K's trailing newline | **UNVERIFIED** |
+| S1 | SNI presence changing the backend | **VERIFIED 2026-09-18 — Lich sends NO SNI** |
+| S2 | Negotiated TLS version (blocks the `rustls` decision) | **VERIFIED 2026-09-18 — TLS 1.2, static-RSA** |
+| S3 | Server behavior for out-of-range password bytes | **UNOBSERVABLE BY DESIGN** — Ruby raises before sending, so Lich has never emitted one. Cena replicates the failure rather than wrapping. |
+| S4 | Per-response terminators; K's trailing newline | **VERIFIED 2026-09-18 — there are NO terminators** |
+
+#### S4 — no response carries a terminator. VERIFIED.
+
+Captured 2026-09-18 by instrumenting `EAccess.read` (the single funnel for every response) to
+log `data.inspect` during one real login. Probe removed afterward; live install verified
+identical to the reference clone.
+
+Observed, full sequence, with all 8 responses (account and key redacted):
+
+| Cmd | len | Response shape |
+|---|---:|---|
+| `K` | 32 | 32 random bytes, **not printable ASCII** (contained ``) |
+| `A` | 83 | `A	<ACCOUNT>	KEY	<32-hex>	<REAL NAME>` |
+| `M` | 251 | `M	<code>	<name>` repeated — 11 games |
+| `F` | 9 | `F	PREMIUM` |
+| `G` | 731 | `G	<name>	<tier>	0		` then `KEY=VALUE` pairs, tab-separated |
+| `P` | 32 | `P	GS3	1495	GS3.EC	250	GS3.P	2500` |
+| `C` | 48 | `C	<n>	<n>	<n>	<n>	<charcode>	<CharName>` |
+| `L` | 164 | `L	OK	UPPORT=…	GAME=…	GAMEHOST=…	GAMEPORT=…	KEY=…` |
+
+**Not one response ends in `
+`, `
+`, or any terminator.** Each is a bare tab-delimited
+record. This settles the question the spec flagged as *"the single most dangerous open
+question."*
+
+**Three consequences:**
+
+1. **`K` has no trailing newline**, so the hash loop consumes exactly the bytes sent. A Rust
+   port that strips or preserves a terminator behaves identically — the hazard is void.
+2. **Framing is by read, not by delimiter.** A framed reader cannot scan for a terminator
+   because there is none. Read what the socket yields and dispatch on the **leading command
+   letter**, which is present and unambiguous in every response (`A`, `M`, `F`, `G`, `P`, `C`,
+   `L`). Length is not a reliable frame boundary either — sizes vary from 9 to 731 bytes and
+   are content-dependent.
+3. **S3 is LIVE, not theoretical.** §12.2 INFERRED that passwords are printable ASCII and that
+   a printable K key keeps the hash in range. **The captured K key is not printable ASCII** —
+   it contained `` (DEL). So the inference's premise is false on the key side, and
+   `((pw[i] - 32) ^ key[i]) + 32` can plausibly leave `0..255`. **Cena must replicate Ruby's
+   raise rather than wrapping** (§12.1 S3), because wrapping would emit a byte Lich has never
+   sent and the server has never been observed to accept.
+
+**Security note:** the probe wrote a real session key and account name to disk. That file is
+under `capture/` (gitignored) and must be deleted once read — the key at `L	KEY=` is the
+live game credential.
+
+#### S1 / S2 — the capture, and what it decides
+
+Captured 2026-09-18, `tshark -i 8 -f "host eaccess.play.net"`, 59 packets, 2 ClientHellos,
+during a real Lich login.
+
+**S1 — Lich sends no SNI. VERIFIED.**
+
+```
+tshark -r eaccess.pcapng -Y "tls.handshake.type == 1" -T fields -e tls.handshake.extension.type
+  -> 65281,11,10,35,22,23,49,13,43,45,51,27      (both ClientHellos)
+```
+
+**Extension type 0 (`server_name`) is absent.** A direct query for
+`tls.handshake.extensions_server_name` returns nothing. This confirms the reading of
+`eaccess.rb`, which never assigns `ssl_socket.hostname`.
+
+> **Beware the false positive:** testing the field for emptiness reports "present" because the
+> query yields an empty string either way. Query the **extension type list**, which is
+> unambiguous.
+
+**S2 — TLS 1.2, `TLS_RSA_WITH_AES_128_GCM_SHA256`. VERIFIED.**
+
+```
+tshark -r eaccess.pcapng -Y "tls.handshake.type == 2" -T fields -e tls.handshake.version -e tls.handshake.ciphersuite
+  -> 0x0303  0x009c
+```
+
+`0x0303` = TLS 1.2. `0x009c` = `TLS_RSA_WITH_AES_128_GCM_SHA256` — **static RSA key exchange,
+no forward secrecy.**
+
+**Consequence — this decides the TLS crate, and it decides against `rustls`:**
+
+| | |
+|---|---|
+| **`rustls` is ruled out** | it does not implement static-RSA key exchange (only ECDHE/DHE), so it cannot negotiate `0x009c`. It also has no supported way to omit SNI. Two independent blockers. |
+| **Use `native-tls` or `openssl`** | both can negotiate static-RSA and both allow suppressing SNI, matching Lich's ClientHello |
+| **Match Lich's ClientHello deliberately** | `eaccess.play.net` resolved to two AWS addresses (`3.22.54.28`, `18.118.231.211`) on 2026-09-18. A load balancer that routes on SNI would send Cena to a different backend than Lich. Sending no SNI is the known-good path. |
+| **Certificate pinning still applies** (§2.3) | the cert is self-signed with no chain of trust; pin by **DER fingerprint**, not PEM string equality |
+
+**Independently confirmed by VellumFE**, which already connects to this server. Its
+`Cargo.toml:57-59` carries the same conclusion, reached before this capture existed:
+
+> ```toml
+> # NOTE: rustls cannot replace this — eaccess.play.net only speaks TLS 1.2 with
+> # static-RSA key exchange (AES128-GCM-SHA256), which rustls refuses to implement.
+> native-tls = "0.2"
+> ```
+
+Two further decisions to inherit from that file rather than re-derive:
+
+- **One TLS stack, not two.** `ureq` is configured with `default-features = false,
+  features = ["native-tls", ...]` (`Cargo.toml:82-83`), with the stated reason: *"native-tls
+  stack as eAccess login; no rustls, no second TLS stack."* The HTTPS web-login fallback
+  (§5) therefore shares the SGE path's TLS implementation.
+- **`vendored` where the platform needs it** (`Cargo.toml:156`). A system-OpenSSL dependency
+  is a classic cross-compilation failure, and `12` §1a requires the mobile targets to keep
+  compiling in CI.
+
+**VERIFIED means measured, not assumed** (`05` §−2 rule E.3). The commands above reproduce
+the capture result; the Vellum comment corroborates it from an independent direction.
 
 ### 12.2 Uncertain, lower stakes
 
+- **What `L\tPROBLEM\t3` actually means is still open.** §4.7 item 2a records the one situation that
+  produces it (a session whose instance was never validly selected, §4.4a) but **not** its
+  semantics. To pin it down, reproduce it deliberately on a *correctly* selected session: select
+  instance A with `G`, resolve a character code from A's `C` list, re-select instance B with `G`,
+  then send A's code to `L`. `PROBLEM 3` there would support the narrow "wrong instance for this
+  code" reading; anything else means it is a broader session-state refusal.
+  Cost: one login, no code.
+- **The `P\tGSX` echo in the 2026-09-18 Lich capture is unexplained.** `P` asked about **GST**
+  returned GST's documented pricing (`1000 / -1 / 2500`, `analysis:146`) under the code **`GSX`**.
+  A theory that `P` moves session state was built on this and **disproven** — removing `P` changed
+  nothing (§4.5). The echo itself is still unaccounted for. Low stakes: nothing reads `P`'s
+  response. Recorded so it is not re-discovered and re-theorised.
 - **Character-name normalization is genuinely ambiguous.** Two disagreeing normalizers in-tree
   (§6.1): `entry_store.rb:1021` single-token vs `cli_password.rb:544` per-word. They differ on every
   multi-word name, and character name is part of the favorites identity 5-tuple. **Not resolved.**
