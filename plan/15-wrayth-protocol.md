@@ -1,12 +1,19 @@
 # The Wrayth protocol — the game stream
 
-**Source of record:** [`research/Wrayth protocol.txt`](../research/Wrayth%20protocol.txt) — a local copy of
-<https://gswiki.play.net/Wrayth_protocol>, 32,466 bytes / 556 lines, retrieved 2026-08-17.
+**Source of record:** [`reference/wiki_clean/Wrayth protocol.txt`](../reference/wiki_clean/Wrayth%20protocol.txt) —
+a local copy of <https://gswiki.play.net/Wrayth_protocol>, 32,466 bytes / 556 lines, retrieved 2026-08-17.
 
-> **This file is an exception to the `research/` rule.** `CLAUDE.md` says `research/` is
-> "rationale and evidence only. Never instructions." That stands for every other file there.
+> **Path corrected 2026-09-18.** This header previously read `research/Wrayth protocol.txt`,
+> which **does not exist** (`test -f` → NO; `find . -iname '*wrayth*'` locates the file under
+> `reference/wiki_clean/`). The wrong path was load-bearing: at least one later reader searched
+> it, got nothing, and concluded the wiki *did not document* `styleIfClosed` and `group`. It
+> documents both (§6.7). A citation that silently resolves to nothing manufactures false
+> negatives, which is the `plan/05` §−2 failure mode in its purest form.
+
+> **This file is an exception to the `reference/` rule.** `CLAUDE.md` treats `reference/` as
+> read-only clones to port *from*, and `research/` as rationale that is never instructions.
 > This one is a **protocol reference we implement from**, which puts it in the same class as
-> `plan/10-eaccess-spec.md`. It lives in `research/` because that is where the author put it;
+> `plan/10-eaccess-spec.md`. It lives in `reference/` because that is where the author put it;
 > it is cited from `plan/` because that is what it is. Line cites below are into that file.
 
 `plan/10` covers **login** (EAccess/SGE, `eaccess.play.net:7910`). This covers what arrives on
@@ -25,11 +32,18 @@ source that exposes them.
 
 | | Count | |
 |---|---:|---|
-| Tags in Cena's `KNOWN_WIRE_TAGS` | **123** | Vellum's 116 **+7**, dropping none |
+| Tags in Cena's `KNOWN_WIRE_TAGS` | **126** | Vellum's 116 **+10**, dropping none |
+| Tags in Saga 0.9.9's recognizer | **118** | Simutronics' own client (§6) |
+| Tags in Saga 0.9.1's recognizer | **116** | `+action +reward +task`, `−group` |
 | Tags in VellumFE's `KNOWN_WIRE_TAGS` | **116** | not the "~130" `CLAUDE.md` claimed |
 | `ParsedElement` variants in VellumFE | **63** | not the "61" `CLAUDE.md` claimed |
 | Tags the wiki writes in literal `<tag>` form | **48** | |
 | Wiki tags absent from Cena's table | **4** | and none is a real gap — see below |
+| Saga tags absent from Cena's table | **0** | were 3; added 2026-09-18 (§6.2) |
+
+> **The 126 figure is the reconciled set, measured 2026-09-18.** It was 123 before the Saga
+> dig; `closeContainers`, `room` and `task` were added and nothing was removed. §6.2 carries
+> the set difference and the reasoning.
 
 > **Both `CLAUDE.md` figures were wrong** and have been corrected there. They were restated
 > from memory rather than measured, which is the failure `plan/05` §−2 exists to prevent.
@@ -75,6 +89,17 @@ zero corpus hits is *not* proof of absence: Lich logs begin after the setup phas
 exactly where `FEStart` lives and why it also shows zero. Keeping an unattested tag in the
 table is harmless (it makes the parser *more* tolerant, never less); **removing** one would be
 the risky act. Leave them, and record here that their provenance is unknown.
+
+> **Updated 2026-09-18 after the Saga dig (§6).** A third source now bears on this table and
+> it moves **none** of these seven. Saga 0.9.9 names none of them — the full Cena-only set is
+> `FEStart LichWebUI c clearDialogData group map mapInfo streamBox`, measured by
+> `comm -13` (§6.2) — so `clearDialogData`, `map` and `mapInfo` stay attested by Cena's own
+> dispatch arms alone, and their provenance is still unknown. That Simutronics' own client
+> does not name a tag is **not** evidence the wire lacks it: `c` is the player's own command
+> echo (Saga renders its input itself, as Vellum does, so it never needs to recognize the
+> echo) and `LichWebUI` is a third-party injection the wiki explicitly anticipates at
+> `:531-532`. **Keep all seven.** The traffic runs the other way for the Saga-only names,
+> which are now in the table; see §6.2.
 
 **The wider point stands:** a number of Cena's tags appear nowhere in this document. Each is
 real-but-undocumented traffic, a Vellum invention, or a third-party injection — the wiki notes
@@ -272,3 +297,245 @@ parser that treats `exist` as unsigned is wrong.
    shows rolling out from GST during 2026 — so the wiki is current to at least that change.
    Treat it as authoritative-but-dated: **the corpus is the tiebreaker**, being two years of
    what the server actually sent.
+
+---
+
+## 6. Saga — Simutronics' own client as a third source
+
+**Added 2026-09-18.** A dig into Saga, Simutronics' official Electron client for GemStone IV
+and DragonRealms, at `C:\Gemstone\saga-research` (outside every git repo, gitignored twice).
+Versions **0.9.1** (2026-08-07) and **0.9.9** (2026-09-06).
+
+### 6.0 The licensing constraint — read this before using this section
+
+Saga is **proprietary**: its `package.json` declares `"license": "UNLICENSED"`. The research
+folder's own README states the rule, and it binds Cena exactly as it binds VellumFE:
+
+> Read them to learn how the protocol behaves. **NEVER copy code or data** from here into
+> VellumFE (GPL-3.0). **Facts about the wire protocol are fine; their implementation is not.**
+
+**What that permits and forbids, concretely.** Permitted: tag names, attribute names, value
+enumerations, message shapes, numeric meanings, sequencing rules — the observable behaviour of
+a server Cena also talks to. Forbidden: source code minified or otherwise, data files, and
+line-by-line transcription of an algorithm. Every fact below is stated as a protocol
+observation in this document's own words. **No Saga fragment appears in any Cena source file
+or anywhere in `plan/`,** and nothing under `C:\Gemstone\saga-research` was modified. The
+`credentials.enc` and `passwords.enc` files, and everything under `AppData\Roaming\saga`, were
+not read.
+
+### 6.1 Why Saga outranks the wiki, and why the corpus still outranks Saga
+
+The wiki is documentation *about* the protocol. Saga is a client that **consumes the same feed
+Cena consumes**, written by the people who emit it — the emitter's own account of what it
+sends. Where the two disagree, Saga is the better authority on server behaviour.
+
+**But Saga is still a client, and a client's recognizer is a statement about the client.** The
+corpus (`E:\Gemstone\data\log archive`, 10,824 `.xml`, 49.55 GB, Oct 2024 → Sep 2026) is two
+years of what the server *actually sent*, and it remains the tiebreaker. §6.5 is a case where
+it overrules Saga outright, and §6.2 is a case where it overrules a Saga *removal*.
+
+Ordering, in full: **corpus > Saga > wiki.**
+
+### 6.2 The reconciled tag set — Cena 123 → **126**
+
+Measured by set difference on 2026-09-18. Saga's 0.9.9 recognizer holds **118** names; Cena's
+`KNOWN_WIRE_TAGS` held **123**:
+
+```
+comm -23 saga_sorted.txt cena_sorted.txt   -> closeContainers room task
+comm -13 saga_sorted.txt cena_sorted.txt   -> FEStart LichWebUI c clearDialogData
+                                              group map mapInfo streamBox
+```
+
+**Three added** (`crates/cena-protocol/src/tags.rs`, each with a provenance comment):
+
+| Tag | Attested by | Corpus (1,547-file sample) | Verdict |
+|---|---|---:|---|
+| `closeContainers` | Saga 0.9.1 **and** 0.9.9 | 0 | **ADDED.** Simutronics names it. |
+| `room` | Saga 0.9.1 **and** 0.9.9 | 0 | **ADDED.** Distinct from `roomDesc`. |
+| `task` | Saga 0.9.9 only (**new** since 0.9.1) | 0 | **ADDED.** See §6.4. |
+
+VERIFIED that a zero here is weak evidence: §1.1 already records why, and `FEStart` sits in
+this table on exactly that footing. Simutronics' own client naming a tag is stronger
+attestation than Lich-era capture coverage, which begins after setup and never issues the
+requests that provoke several response tags.
+
+**Nothing was removed, and one removal was specifically declined.** Saga **dropped `group`**
+from its recognizer between 0.9.1 and 0.9.9. Cena keeps it, because the corpus shows `group`
+is live and current — **434 occurrences** in the 1,547-file sample, in **two distinct shapes
+that never co-occur**:
+
+```
+322  <group id='X' type='X' state='X' cmd='X' name="X">    protocol, inside <objectives>
+ 43  <group id='X' type='X'/>                              protocol
+  9  <group id='X' type='X' state='X' expires='X' cmd='X' name="X">
+ 52  <group id="X" open="X">                               client settings
+  8  <group id='X' open='X'>                               client settings
+```
+
+By file date, the two populations are **disjoint and consecutive**: the settings form runs
+2024-10 → 2026-01, the `<objectives>` form starts **2026-06** and is current (2026-06 ×1,
+2026-07 ×4, 2026-08 ×43, 2026-09 ×5). The settings form is the one the wiki documents at
+`:476`/`:482` as a `stgupd` container (`<group id='Left' open='t'>`), which Cena already
+consumes whole as part of the settings region (§4).
+
+> **A correction to how this was first argued.** An earlier writeup offered `group` as proof
+> that "two live schemas coexist concurrently." They do **not** coexist — no file contains
+> both. The conclusion (keep `group`) is right; that reasoning for it was not. The real
+> argument is simpler: **the objectives form is the current one, and it postdates the Saga
+> version that dropped the tag.** A client removing a name from its recognizer is a statement
+> about the client, never about the wire.
+
+**Removal is the risky act.** A superset parser is more tolerant, never less. Nothing was
+removed and no entry's provenance was downgraded.
+
+### 6.3 `<reward>` was silently destroying its payload — FIXED
+
+**The one genuine bug this dig found in Cena.** `parser/thin.rs` mapped `reward` and
+`celebration` to the same `ActiveEffect { category, id, text, time }` shape.
+
+The wire sends none of those fields. VERIFIED over a 1,547-file corpus sample (stride-7 of
+10,824 — a stride no earlier miner used, sanity-checked at 3,627,979 `<prompt>` to rule out
+the silent-zero failure mode described in §6.8):
+
+```
+624 <reward>, ALL 624 of the form  <reward type='X' amount='X'/>
+  0 carrying id=          0 carrying time=        type: fame 312, experience 312
+```
+
+Every reward therefore parsed to `ActiveEffect { category: "reward", id: "", text: "",
+time: None }` — **an empty husk, with `type` and `amount` dropped entirely.** VERIFIED by
+running the parser on `<reward type='fame' amount='20000'/>` and reading that exact output.
+
+This is a **drop-nothing violation** (`plan/05` Rule 2.2), and a worse one than a missing
+handler: an unmodelled tag reaches `Frame::UnknownTag` carrying its raw bytes, so nothing is
+lost. A handler that *looks* like it is handling the tag destroys it silently.
+
+**Fixed** by removing `reward` from that arm so it falls through to `WindowHints`, which
+carries `attrs` whole. Saga's parser reads a third form, `<reward type='custom' label='…'/>`,
+which the corpus sample does not contain; an attribute bag needs no change to carry it if it
+arrives. Regression test:
+`crates/cena-protocol/tests/fixed_defects.rs::a_reward_keeps_its_type_and_amount_instead_of_becoming_an_empty_husk`,
+**VERIFIED RED** on reverting the fix.
+
+`celebration` keeps the `ActiveEffect` arm. It has **0 corpus hits** and no handler in Vellum,
+so its shape is unattested by any source; it was not measured and so was not changed.
+
+### 6.4 `<objectives>` — the full child vocabulary
+
+Saga's parser reads a richer `<objectives>` tree than Cena models. Stated as protocol shape:
+
+- `<objectives action=…>` wraps `<objective>` elements; `action` distinguishes a full refresh
+  from an incremental one.
+- `<objective>` carries an id, a type, a state, a name, a description and a location, and
+  optionally a cadence, an expiry and a cooldown-until. **Type** is one of quest, bounty or
+  society. **State** is one of active, offered, available, complete or cooldown. **Cadence** is
+  daily, weekly or monthly. `expires` and `cooldownuntil` are **epoch seconds** — consistent
+  with §2.3's rule that this protocol states absolute end times, not durations. A `location`
+  value of `variable` means "no fixed location", not a place called variable.
+- `<task>` carries progress text, an optional count and max, optional units, and a `done` flag.
+- `<reward>` carries a type and amount, or a type of custom with a label (§6.3).
+- `<action>` carries a type (accept, abandon or complete), a command to send, and a tooltip.
+- A `<prompt>` arriving mid-capture **aborts the capture**. Cena's parser already forces stream
+  closure at `<prompt>` for the same reason.
+
+**`<task>` on the wire is far rarer than its prominence suggests:** 4 files of 10,849 in a
+full-corpus scan by the author, and **0** in the independent 1,547-file sample. It currently
+reaches the user as `Frame::UnknownTag` with its raw bytes, so **nothing is lost today** — this
+is a modelling gap, not a drop-nothing gap. Deferred; see §6.9.
+
+> **A correction.** An earlier writeup claimed `<objectives>` "loses every child". It does not.
+> `objectives` is *deliberately* excluded from `is_paired` with the reason stated at
+> `crates/cena-protocol/src/parser.rs:342-346`, so children dispatch individually:
+> `<objective>` and `<action>` keep their full attributes via `WindowHints`, and `<task>`
+> surfaces as `UnknownTag` with raw bytes.
+
+### 6.5 `crtrStatus health` — the corpus overrules Saga
+
+Saga's changelog lists a `health` attribute on `<crtrStatus>`. **The wire does not send one.**
+VERIFIED, 1,547-file sample:
+
+```
+235,476 <crtrStatus>, 0 carrying health=
+attrs by frequency: exist 235476, hostile 201106, inferior 147378, ascended 43268,
+  prone 36660, stunned 20553, dead 19000, rooted 8326, flying 7696, disoriented 4917,
+  sitting 4068, challenging 3354, sleeping 3042, MiniBoss 2172, hovering 1947,
+  immobile 1852, rider 872, sympathetic 583, disengaged 233, kneeling 34, mount 7,
+  webbed 2, calmed 2
+```
+
+The Saga research README flags this itself — "future-proofing, not evidence the live feed sends
+it". **This is the ordering in §6.1 doing its job:** a client may recognize more than the
+server emits, and only the corpus can tell you which. Cena needs no change; `crtrStatus` keeps
+its attributes as a raw bag, which is exactly what makes a future `health` arrive for free.
+
+### 6.6 `<streamWindow>` was dropping 12 of its 15 attributes — FIXED
+
+Cena lifted `id`, `title` and `subtitle` and discarded the rest. Census, 1,547-file sample:
+
+```
+1,176,686 <streamWindow>   title 1176686, id 1176686, location 1169402, target 1163813,
+  subtitle 1142932, resident 605219, ifClosed 602513, scroll 24207, save 14513,
+  appearance 14507, timestamp 2706, styleIfClosed 1353, nameFilterOption 902,
+  width 1, height 1
+```
+
+`location` and `target` ride **~99%** of these tags. **Fixed** by adding an `attrs` field to
+`Frame::StreamWindow` carrying the tag whole, the same bag pattern `crtrStatus` and `roommeta`
+already use. Regression test:
+`fixed_defects.rs::a_stream_window_keeps_the_attributes_beyond_id_title_and_subtitle`.
+
+**This is a gap against the wiki, not a Saga discovery** — and it is honest to say so. The wiki
+lists all 13 documented attributes at `:46` and devotes a named section to
+`ifClosed`/`styleIfClosed` at `:73-76`. Cena had the source and did not act on it; Saga is what
+prompted the re-read.
+
+### 6.7 `styleIfClosed` — the wiki was right, a reader was wrong
+
+A writeup in this dig claimed the wiki "does not document `styleIfClosed`". **It does**, five
+times, including the section at `:73-76` defining the semantics. The reader searched
+`research/Wrayth protocol.txt` — **a path that does not exist** — got no hits, and read the
+absence as evidence. The file is at `reference/wiki_clean/Wrayth protocol.txt`, which this
+document's own header cited wrongly until 2026-09-18.
+
+The semantics, from the wiki at `:74-76`: each stream declares what happens to its text when
+its window is closed. `ifClosed` names a destination; `styleIfClosed` names a style applied to
+text that falls through. With `ifClosed` absent and `styleIfClosed` set, text falls through to
+the main window wrapped in the named style — the wiki's examples are `thought` for thoughts and
+`watching` for familiar, which match the values found live in the corpus.
+
+**The lesson is procedural, and it is why this section exists:** a citation that resolves to
+nothing does not fail loudly, it manufactures a false negative. `plan/05` §−2 requires citing
+`file:line`; this is the reminder that the cite must also *resolve*.
+
+### 6.8 A methodology warning that cost real findings
+
+Several claims in this dig were produced by piping a relative-path file list into a command run
+from a different working directory. `grep` reported "No such file" for every entry and the
+pipeline returned **0**, which was then written up as "0 occurrences" — evidence of absence,
+manufactured from a path bug.
+
+**Any zero in a corpus census is untrustworthy unless the same run also produced a non-zero
+count for a known-common tag.** Every census in this section was sanity-checked that way: the
+stride-7 run reported **3,627,979 `<prompt>`** before any other number was believed.
+
+### 6.9 Deliberately deferred
+
+Facts recorded here and **not** implemented, each with the reason:
+
+- **`<task>` modelling** (§6.4). 4 files of 10,849; reaches the user intact as `UnknownTag`
+  today, so nothing is lost. The name is now in `KNOWN_WIRE_TAGS`. Model it when the Bounty
+  behavior needs it, with a real fixture from one of those 4 files.
+- **The rest of the `<objectives>` vocabulary** (§6.4) — enumerated states, cadences, epoch
+  fields. `plan/12` §7.1 scopes M1 to room, prompt and vitals; objectives are a Bounty-behavior
+  concern. `WindowHints` carries the attributes until then, so nothing is dropped.
+- **`<reward type='custom' label=…>`** (§6.3). Attested by Saga, **0 hits** in the corpus
+  sample. The `attrs` bag carries it if it appears; modelling a shape with no local evidence is
+  the speculation `plan/05` §−1 forbids.
+- **`crtrStatus health`** (§6.5). The corpus says it does not exist. Adding a field for it
+  would be implementing a changelog entry against two years of contrary evidence.
+- **Type-ahead pacing, multibox and performance behaviour.** Saga's send-queue policy is
+  **client policy, not protocol** — it belongs in `plan/12` if anywhere, never here. Recorded
+  in the research folder; out of scope for this document by definition.
+- **Newline suppression** (§2.1) and **`<d>` inside `<a>`** (§2.4) remain open. Saga bears on
+  neither.

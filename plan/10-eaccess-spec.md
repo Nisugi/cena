@@ -507,23 +507,54 @@ Five things here are load-bearing:
    (An earlier writeup claimed `{"l"=>nil,"problem"=>nil,"1"=>nil}`; `sub(/^L\t/,'')` strips the L.)
    The argument is unchanged and the strict guard is spec-confirmed at eaccess_spec.rb:346-356
    (generator context) and :358-371 (normal context) — **two separate contexts, not one range**.
-2a. **`PROBLEM` codes: only 1 is documented.** Lich documents `PROBLEM\t1` = no entitlement to
-   create on this instance (`analysis:196`). **`PROBLEM\t3` is not documented anywhere, and this
-   spec does not claim to know what it means.**
+2a. **`PROBLEM` codes: all four are now documented.** **CORRECTED 2026-09-18** — this item
+   previously read "only 1 is documented" and instructed the reader not to guess at `PROBLEM 3`.
+   That instruction was right at the time and is now superseded by a better source. The
+   superseded reasoning is preserved below, because knowing *why* a conclusion was wrong is what
+   stops it being re-derived.
 
-   > **What is VERIFIED (2026-09-18):** `PROBLEM\t3` is returned when `L` is sent on a session
-   > whose instance was never validly selected — specifically after a **lowercase game code**
-   > (§4.4a) left `G` rejected and the session on the account's default instance. The character
-   > code was valid *for that default instance*, and the `L` bytes were byte-identical to a
-   > working Lich login's.
+   **Source: Saga 0.9.9, Simutronics' own client** (`C:\Gemstone\saga-research`, §4.7a). Saga
+   added sub-code handling in 0.9.7. The four meanings below are Saga's own **user-facing
+   English strings**, read directly — not minified identifiers, not inference from control
+   flow, so there is no transcription risk and nothing was copied. They are **VERIFIED**:
+
+   | `n` | Meaning | Retry? |
+   |---:|---|---|
+   | **1** | The account's access level does not permit playing this instance — a lapsed or missing subscription — **or** the account service timed out. During character creation, a subscription or trial is required. | **No.** Account state. |
+   | **2** | The server has no STORM launch entry for this game's configuration. **Server-side**, not an account problem. | **No.** |
+   | **3** | The server has no configuration for the selected game. **Server-side.** | **No.** |
+   | **4** | The account service failed while assigning the character. | **Yes** — transient. |
+
+   **This changes retry policy, and that is the operational point.** §9.1's blanket 3-retry is
+   wrong for **2** and **3**: both are server-side configuration facts that will not change
+   between attempts, so retrying burns three logins to reach the same refusal and delays the
+   real message to the user. **4** is the one code that genuinely wants a retry. **1** is an
+   account-state refusal that a retry cannot fix, and its message should send the user to their
+   subscription rather than to a login loop.
+
+   > **What was previously believed, and why it was wrong.** This spec recorded one observation:
+   > `PROBLEM 3` returned when `L` was sent on a session whose instance was never validly
+   > selected — after a **lowercase game code** (§4.4a) left `G` rejected and the session on the
+   > account's default instance, with `L` bytes byte-identical to a working login's. From that
+   > single data point two candidate readings were offered — "code not valid on the selected
+   > instance" versus "session not in a launchable state" — and the spec correctly **declined to
+   > choose**.
    >
-   > **What is NOT established:** whether `PROBLEM 3` specifically means "code not valid on the
-   > selected instance", or something broader such as "session not in a launchable state". One
-   > observation, one cause. Do not write the narrower reading into code or docs.
+   > **Neither candidate was right.** `PROBLEM 3` means *the server has no configuration for the
+   > selected game*. The observation was still sound: a rejected `G` left the session pointed at
+   > an instance the server had no launch configuration for, which produces exactly this code.
+   > The error was not in the measurement but in the space of hypotheses — both candidates
+   > framed it as a **session-state** problem, when it is a **server-configuration** problem.
+   > A single observation constrained the cause far less than it appeared to.
    >
-   > **Diagnosis order when `L` refuses:** check §4.4a's two rules *first* — was the game code
-   > listed in `M`, and did every response echo its own command letter? Byte-diffing the `L`
-   > request is a dead end; its bytes are correct in exactly this failure.
+   > **This is the case for `plan/05` §−2 stated positively.** The spec labelled its own
+   > uncertainty honestly and refused to write a guess into code. Because it did, this
+   > correction replaces an admitted gap instead of silently overturning a confident error.
+
+   **Diagnosis order when `L` refuses** — unchanged, and still the first thing to check, because
+   §4.4a's failure is what produced the `PROBLEM 3` above: was the game code listed in `M`, and
+   did every response echo its own command letter? Byte-diffing the `L` request remains a dead
+   end; its bytes are correct in exactly this failure.
 
 3. **`L\tPROBLEM` produces two different failure behaviours** from the same server response
    (eaccess.rb:279-286). Generator path → `AuthenticationError, "GENERATOR_NOT_AVAILABLE"`, which is
@@ -545,6 +576,77 @@ launcher path. **Cena must trim it unconditionally, or it sends `KEY\n` to the g
 **The socket is closed on every exit path**, including exceptions:
 `ensure conn&.close unless conn&.closed?` (eaccess.rb:330-331). **The SGE connection is strictly
 single-use per auth** — you cannot hold it open and re-issue `F/G/P/C` for a second game code.
+
+### 4.7a Saga as a source for the login layer — and its licensing constraint
+
+**Added 2026-09-18.** Saga is Simutronics' own Electron client for GemStone IV and DragonRealms,
+studied read-only at `C:\Gemstone\saga-research` (versions 0.9.1 and 0.9.9). It performs the
+same eAccess exchange this document specifies, against the same server.
+
+**Licensing — binding, not advisory.** Saga is proprietary (`"license": "UNLICENSED"`). The
+rule, from the research folder's own README: read it to learn **how the protocol behaves**;
+never copy code or data. **Facts about the wire protocol are fine; their implementation is
+not.** Everything below is a protocol observation in this document's own words. No Saga
+fragment appears anywhere in `plan/` or in any Cena source file. `credentials.enc`,
+`passwords.enc` and everything under `AppData\Roaming\saga` were not read, and nothing in the
+research folder was modified.
+
+**Why it is worth citing here at all.** `plan/10` was reimplemented from Lich, a *third-party*
+client. Saga is a *first-party* one. Where Lich shows what one community implementation happens
+to do, Saga shows what Simutronics expects — and on `L\tPROBLEM` it simply knows more, because
+Lich never enumerated the sub-codes at all (§4.7 item 2a).
+
+**What Saga contributes, all VERIFIED from plain-English user-facing strings rather than from
+minified identifiers or inferred control flow:**
+
+1. **The four `PROBLEM` sub-code meanings and their retry split.** §4.7 item 2a. This is the
+   headline, and it corrects a documented gap.
+
+2. **`L\tOK` response validation.** Saga requires **`KEY`, `GAMEHOST` and `GAMEPORT` to all be
+   present**, and validates `GAMEPORT` as an **integer in 1–65535**, refusing the launch
+   otherwise. This independently corroborates §4.7 item 4's warning: Saga splits each field on
+   the **first** `=` only, which is exactly the `splitn(2, '=')` behaviour Rust must use and
+   which Lich's unlimited `split("=")` gets wrong.
+
+3. **A third handshake write that this spec does not mention.** On the **non-DragonRealms**
+   branch — selected by testing whether the game code begins with `DR` — Saga writes **three
+   things** to the game socket: the key with a CRLF, then the
+   `/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML` banner with a CRLF, then **a bare CRLF on
+   its own**. That third empty line is new information here. §7.4 and `plan/15` §1.2 specify the
+   first two; neither mentions the third.
+
+   **UNVERIFIED against the live wire:** whether the bare CRLF is *required*, or merely
+   harmless. It is one line to send and costs nothing, and a first-party client sends it
+   unconditionally on this branch — so **send it**, and record that its necessity was never
+   tested. The DragonRealms branch differs in every particular (bare LF rather than CRLF, its
+   own banner, and two `<c>` ready signals ~300 ms apart); DragonRealms is deferred
+   (`plan/12` §9d), so that path is not Cena's problem. **GemStone sends no `<c>`.**
+
+4. **Two guards on the game socket after launch**, which this spec does not currently specify
+   and which turn a silent hang into a diagnosable failure:
+
+   - **The session is not "live" until `<playerID>` arrives.** A **90-second watchdog** closes
+     the socket if it never does. Without this, a refused or wedged connection looks
+     indistinguishable from a quiet game.
+   - **Two server messages mean the key is dead: an invalid-login-key message and a
+     please-relogin-to-the-website message.** Either one arriving before `<playerID>` means the
+     socket is closed immediately rather than waited on. These arrive as **plain text on the
+     game socket**, not as a protocol frame — so the check is a text match, and it is the only
+     place in Cena where that is the right tool.
+
+   Both are **cheap and clearly right**, and both are **deferred to the Milestone 1 Step 2
+   slice** rather than implemented now: `plan/12` §9c puts the game-socket connect in that step,
+   and there is no connect path in-tree yet to attach a watchdog to. Recorded here so it is
+   specified before it is written, not retrofitted after a hang.
+
+**What was deliberately NOT taken from Saga into this document.** Its type-ahead pacing, its
+send-queue policy and its multibox behaviour are **client policy, not wire protocol**. They
+belong in `plan/12` if anywhere. One correction is worth recording, since the figure
+circulated: the research README summarises the pacing rule as "cap = N" where N is the number
+in the server's refusal text. **VERIFIED that this is not what the code does** — it derives the
+cap from N and then clamps the result into a small fixed range, so the README's N is not the
+cap. Noted here only so that number is not quoted as though it were protocol. It is not
+protocol at all, and neither is the rest of the pacing rule.
 
 ### 4.8 The legacy path — different commands, different return shape
 
@@ -1062,6 +1164,22 @@ CLIENT_STRING = "/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML"
 
 Getting the order or the version string wrong means **the game server never enables XML mode** —
 and everything downstream in Cena depends on the XML stream.
+
+> **Saga disagrees with Lich on this sequence in two ways (2026-09-18, §4.7a).** Simutronics'
+> own client branches on whether the game code begins with `DR`, and on the **GemStone** branch:
+>
+> - it sends **no `<c>` at all.** The two `<c>` above are Lich's DragonRealms-capable path
+>   leaking into the GemStone one. `plan/15` §1.2 records the same finding, and
+>   `spike/eaccess-spike` was corrected to stop sending them.
+> - it sends a **third write: a bare line terminator on its own**, after the banner. This spec
+>   does not otherwise mention it. **UNVERIFIED** whether it is required or merely harmless;
+>   send it, since a first-party client does so unconditionally.
+>
+> Saga also uses **CRLF** on this branch where Lich uses LF, which does **not** overturn
+> correction 1 above: Lich's LF demonstrably works, so both terminators are evidently accepted,
+> and correction 1's real point — that the `
+` at main.rb:715 is a **client-echo buffer,
+> not the wire** — is untouched.
 
 `Frontend.send_handshake` additionally sends three GSL commands (frontend.rb:592-594), each prefixed
 with the runtime `$cmd_prefix` global, **not bare**: `#{$cmd_prefix}_injury 2`,
@@ -1600,13 +1718,18 @@ the capture result; the Vellum comment corroborates it from an independent direc
 
 ### 12.2 Uncertain, lower stakes
 
-- **What `L\tPROBLEM\t3` actually means is still open.** §4.7 item 2a records the one situation that
-  produces it (a session whose instance was never validly selected, §4.4a) but **not** its
-  semantics. To pin it down, reproduce it deliberately on a *correctly* selected session: select
-  instance A with `G`, resolve a character code from A's `C` list, re-select instance B with `G`,
-  then send A's code to `L`. `PROBLEM 3` there would support the narrow "wrong instance for this
-  code" reading; anything else means it is a broader session-state refusal.
-  Cost: one login, no code.
+- **SETTLED 2026-09-18 — was: "what `L\tPROBLEM\t3` actually means is still open."** All four
+  `PROBLEM` sub-codes are now documented from Saga 0.9.9, Simutronics' own client, whose
+  user-facing English strings state them outright. **`PROBLEM 3` = the server has no
+  configuration for the selected game** (server-side, not retryable). See §4.7 item 2a, which
+  carries the full table, the retry split, and the record of what this spec previously believed
+  and why both of its candidate readings were wrong.
+  **The proposed experiment is no longer needed** — it was: select instance A with `G`, resolve
+  a character code from A's `C` list, re-select instance B, then send A's code to `L`. Do not
+  spend the login. Note that it would not have answered cleanly anyway: it was designed to
+  separate "wrong instance for this code" from "broader session-state refusal", and the true
+  meaning is **neither** — it is a server-configuration refusal. An experiment can only
+  distinguish the hypotheses it was built from.
 - **The `P\tGSX` echo in the 2026-09-18 Lich capture is unexplained.** `P` asked about **GST**
   returned GST's documented pricing (`1000 / -1 / 2500`, `analysis:146`) under the code **`GSX`**.
   A theory that `P` moves session state was built on this and **disproven** — removing `P` changed

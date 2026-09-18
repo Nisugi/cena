@@ -25,10 +25,17 @@ If anything else contradicts it, it wins.
 `research/` holds designs that were **reversed** — most importantly an embedded Lua runtime.
 Do not implement from it. It exists so decisions can be audited, not repeated.
 
-**One exception:** `research/Wrayth protocol.txt` is a copy of the official protocol wiki
+**One exception:** `reference/wiki_clean/Wrayth protocol.txt` is a copy of the official protocol wiki
 (<https://gswiki.play.net/Wrayth_protocol>). It is a **primary source we implement from**, not a
 superseded design. It is read through [`plan/15-wrayth-protocol.md`](plan/15-wrayth-protocol.md),
 which cites it by line and records what it settles, what it contradicts, and what it leaves open.
+
+> **PATH CORRECTED 2026-09-18.** This read `research/Wrayth protocol.txt`, which does not
+> exist -- the file is under `reference/wiki_clean/`. The cost was not cosmetic: an agent
+> searched the dead path, got zero hits, and concluded the wiki does not document
+> `styleIfClosed`. It documents it five times. **A citation that resolves to nothing does not
+> fail loudly; it manufactures a false negative.** Check that a cited path exists before
+> reasoning from its silence.
 
 ---
 
