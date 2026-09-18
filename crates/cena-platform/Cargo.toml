@@ -4,8 +4,30 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
+# plan/12 section 5.5 commits to CancellationToken, "every wait has a
+# deadline", bounded channels and one supervised task per session. That is
+# tokio, not threads: a blocking `read` cannot be cancelled, and criterion 4's
+# 250ms stop is unachievable if the task is parked in one. The spike
+# (spike/eaccess-spike/src/main.rs:23-24) is blocking-sync std::net and its own
+# header calls itself throwaway; it is rewritten here, not ported -- except for
+# the three findings named in live.rs, which ARE ported verbatim.
+#
+# `time` carries tokio::time::pause(), which is what makes criterion 4's
+# deadline a property of the code rather than of the test machine's scheduler.
 [dependencies]
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
 
+
+# native-tls, NOT rustls. eaccess.play.net negotiates TLS 1.2 with static-RSA
+# key exchange (0x009c, AES128-GCM-SHA256), which rustls refuses to implement.
+# VERIFIED by packet capture 2026-09-18; spike/eaccess-spike/Cargo.toml:8-11
+# records the same finding. This is knowledge that lives in code (CLAUDE.md),
+# so it is carried across rather than rediscovered.
+native-tls = "0.2"
+tokio-native-tls = "0.3"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
 
 [lints]
 workspace = true

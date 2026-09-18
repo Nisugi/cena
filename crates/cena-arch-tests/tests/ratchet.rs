@@ -158,11 +158,38 @@ fn every_covered_rule_names_a_test_that_exists() {
     // The other half of Rule 9.3. VERIFIED that without this, deleting a test
     // outright leaves its rule "covered", its tag in plan/05, and the suite
     // green -- 11 tests became 10 and nothing said so.
-    // Both test files, because a test can be moved between them. Naming one
-    // would make a move look like a deletion, and a reader who "fixed" that by
-    // narrowing the scan would reopen the hole this test exists to close.
+    // EVERY test file, because a test can be moved between them. Naming a
+    // subset would make a move look like a deletion, and a reader who "fixed"
+    // that by narrowing the scan would reopen the hole this test exists to
+    // close.
+    //
+    // AMENDED when tests/layering.rs was added: this list said
+    // ["architecture.rs", "file_rules.rs"] and went red the moment Rule 1.3's
+    // test moved into the third file, reporting the MOVE AS A DELETION -- the
+    // exact false positive the paragraph above warns about, from the exact
+    // cause it names. It is now discovered rather than enumerated, so the next
+    // split cannot reproduce this.
+    let dir = workspace_root().join("crates/cena-arch-tests/tests");
+    let mut names: Vec<String> = fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("{} must be readable: {e}", dir.display()))
+        .filter_map(|entry| {
+            let path = entry.ok()?.path();
+            // `extension()` rather than `ends_with(".rs")`: clippy's
+            // case_sensitive_file_extension_comparisons fires on the string
+            // form, and it is right to -- `FILE_RULES.RS` exists on a
+            // case-insensitive filesystem, which is what this one is.
+            (path.extension()? == "rs").then(|| path.file_name()?.to_str().map(str::to_owned))?
+        })
+        .collect();
+    // Sorted so the reported set is stable run to run -- the same
+    // determinism rule the replay tests rest on.
+    names.sort();
+    assert!(
+        names.len() >= 3,
+        "the tests directory should hold at least the three rule files; found          {names:?}. A scan that finds nothing reports every rule as deleted."
+    );
     let mut declared: BTreeSet<String> = BTreeSet::new();
-    for name in ["architecture.rs", "file_rules.rs"] {
+    for name in &names {
         let path = workspace_root()
             .join("crates/cena-arch-tests/tests")
             .join(name);
@@ -181,7 +208,7 @@ fn every_covered_rule_names_a_test_that_exists() {
         .collect();
     assert!(
         missing.is_empty(),
-        "COVERED_RULES names test function(s) that do not exist in this file: \
+        "COVERED_RULES names test function(s) that do not exist in any rule file: \
          {missing:?}. Either the test was deleted -- in which case the rule is \
          no longer enforced and Rule 9.3 (:515-517) is violated silently -- or \
          it was renamed without updating the table.\nFound in this file: {declared:?}"

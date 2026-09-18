@@ -6,6 +6,15 @@ publish.workspace = true
 
 [dependencies]
 cena-session.workspace = true
+tokio = { version = "1", features = ["macros", "rt", "time"] }
+# CancellationToken: plan/12 section 4.3's PREEMPT_GRACE is measured against
+# it, and section 5.5 names it as the mechanism for "every behavior is
+# cancellable".
+tokio-util = "0.7"
+
+[dev-dependencies]
+cena-platform.workspace = true
+tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
 
 [lints]
 workspace = true

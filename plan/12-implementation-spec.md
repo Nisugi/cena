@@ -75,7 +75,7 @@ foreclose the option later. It is a **compile check, not a product commitment.**
 cena-platform    storage, paths, logging, config primitives   (deps: none)
 cena-protocol    bytes <-> Frame; permissive parser           (cena-platform)
 cena-model       typed game state, events, game data          (cena-protocol)
-cena-session     session actor: state, queue, lifecycle       (cena-model)
+cena-session     session actor: state, queue, lifecycle       (cena-model, cena-protocol, cena-platform)
 cena-behavior    curated behaviors as async tasks             (cena-session)
 cena-agent       external agent protocol over a socket        (cena-session)
 cena-ui          frontend-agnostic snapshot + input types     (cena-model)
@@ -85,6 +85,24 @@ cena             binary                                       (everything)
 
 Unchanged from `05` §1 except `cena-script` → `cena-behavior`. All rules in `05` §1–§2 apply,
 reading "behavior" for "script".
+
+> **AMENDED 2026-09-18 (author's call), Milestone 1 Step 2.** `cena-session` gained
+> `cena-protocol` and `cena-platform`. The row previously read `(cena-model)`.
+>
+> **The reason is ownership, not layering.** The session does not parse and does not reach
+> up; it *owns* a `Parser` and calls it. `Parser` is stateful and explicitly one per session
+> (`crates/cena-protocol/src/parser.rs:113-120`), so the value lives in the session struct,
+> which means naming its type. Likewise the session owns the socket, which is why it names
+> `cena-platform`'s `ByteSource`. Bytes in, frames returned to the caller — the parser never
+> pushes anything onward, so nothing above `cena-protocol` sees raw text and Rule 2.1 holds.
+>
+> Routing either through `cena-model` was rejected: re-exporting `Parser` and the `Frame`
+> variants is a pass-through facade with one caller, which `plan/05` §−1 forbids. A
+> connection-manager crate was rejected for the same reason — reconnect is Milestone 2
+> (§9c), so today it would be a trait with one implementor.
+>
+> Enforced in `crates/cena-arch-tests/tests/layering.rs`, which carries the same reasoning.
+> **This table and that table must change in the same commit.**
 
 ---
 
@@ -153,6 +171,27 @@ behaviors are policies it consults.
 A behavior that wants the authority while another holds it gets `Err(AuthorityHeld)`. It does
 not queue behind it — silent queueing is how you get an attack that fires four seconds after
 the fight ended.
+
+> **IMPLEMENTED in Milestone 1 Step 2 (2026-09-18).** `Origin::Behavior` carries the
+> claimant's `AuthorityToken`, `SessionHandle` exposes `claim`/`release`, and
+> `SessionActor::admit` refuses a command whose token does not hold the authority --
+> `Refusal::Permanent`, because retrying changes nothing while another behavior holds it.
+>
+> Claims travel the **same channel** as commands (`command::Inbox`), not a second one: §4.2
+> is an ordering rule, and two channels in a `select!` give no ordering guarantee between
+> them, so a claim could overtake a command already queued behind it.
+>
+> **This was a wish before it was a rule.** `CommandQueue` had `claim`/`release`/`authority`
+> and unit tests for them from the start, and nothing in the session ever called them, so two
+> behaviors would both have had their commands sent in FIFO order. The test that looked like
+> coverage drove `CommandQueue` directly -- it proved the struct had a field, not that the
+> session consulted it (`plan/05` §0). `a_behavior_without_the_authority_is_refused_not_queued`
+> drives a real `Session` and asserts the WIRE, because the point is not that the command was
+> refused but that it was never sent.
+>
+> Still open, and deliberately: the supervisor composition this section describes -- one
+> behavior holding the authority and composing others as sub-behaviors. Step 2 has one
+> behavior, so there is nothing to compose and the rule of three has not been met.
 
 ### 4.3 Preemption is explicit and cooperative-with-a-deadline
 

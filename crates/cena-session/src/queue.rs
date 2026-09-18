@@ -1,0 +1,276 @@
+//! The command queue and the authority token: `plan/12` §4, and the one
+//! correction in it that everything else depends on.
+//!
+//! # The correction
+//!
+//! `plan/12` §4.1 was **CORRECTED 2026-09-18**. An earlier draft made manual
+//! input priority 1 and said it *preempts* the authority holder, which
+//! combined with §4.3 meant typing `say hi` mid-hunt would abort Hunt. Neither
+//! reference does that: eohunter has no upstream hook at all, and Lich
+//! interleaves manual commands with a running engine rather than killing it.
+//!
+//! **The rule is: manual input is never *queued behind* automation -- not that
+//! it *revokes* automation.** That is one method, [`CommandQueue::next`],
+//! draining `manual` before `held`. It is not a priority system, and building
+//! one would be the superseded design.
+//!
+//! # How a round trip ends
+//!
+//! §4.4: "A round-trip owns the frame stream from the moment its bytes are
+//! written until its **terminator**, which is the next `Frame::Prompt`."
+//!
+//! VERIFIED against the wire rather than taken on trust, because everything
+//! rests on it. Driving `crates/cena-protocol/tests/fixtures/room.xml` through
+//! the real `cena_protocol::Parser`:
+//!
+//! ```text
+//! total frames = 71
+//! prompt-delimited windows = 2, sizes = [56, 6], trailing unterminated = 9
+//! ```
+//!
+//! The 56-frame first window is exactly the room render, so criterion 2's
+//! whole payload arrives inside one prompt window. And prompts are **not** a
+//! heartbeat: `prompt.xml`'s four `<prompt time=>` attributes are
+//! `[1764475407, 1764475408, 1764475408, 1764475757]`, a **349-second gap**,
+//! which rules out a periodic prompt. The game prompts in *response*.
+//!
+//! **But the timeout arm is load-bearing, not a safety net.** That same probe
+//! measured **9 trailing frames with no terminating prompt** in a real
+//! fixture. A design where only a prompt can resolve a waiter hangs there.
+//! `Outcome::Timeout` means "no match within the window", never "the command
+//! did not happen" (§4.4).
+
+use crate::command::{CommandId, Envelope, Origin, Outcome};
+use crate::lifecycle::Generation;
+use std::collections::VecDeque;
+use tokio::sync::oneshot;
+
+/// The single token that says who may run a *sequence*.
+///
+/// `plan/12` §4.1: "The session holds a command authority, a single token.
+/// Only its holder may run a sequence. Everything else observes." One token,
+/// not a priority queue of claimants -- §4.2 puts Hunt-vs-Heal arbitration
+/// inside a supervisor behavior, not at the transport layer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthorityToken(pub u64);
+
+/// An open round-trip window: one command's bytes are on the wire and its
+/// terminator has not arrived.
+#[derive(Debug)]
+pub struct InFlight {
+    /// For the log. Not for wire matching -- the game carries no ids.
+    pub id: CommandId,
+    /// The connection this belongs to (`plan/12` §5.2).
+    pub generation: Generation,
+    /// Where the answer goes.
+    pub reply: oneshot::Sender<Outcome>,
+    /// What this caller is waiting for. `plan/12` §4.4: "frames are offered to
+    /// the waiter's matcher". The matcher belongs to the CALLER -- the queue
+    /// has no opinion about which frame answers a `look`.
+    pub matcher: Matcher,
+    /// The FIRST frame the matcher accepted, which is what
+    /// [`Outcome::Confirmed`] carries. First, not last: a window holds every
+    /// frame until the prompt, so last-wins returned whatever happened to
+    /// arrive nearest the terminator.
+    pub matched: Option<Box<cena_protocol::Frame>>,
+}
+
+/// A predicate deciding whether a frame answers a command.
+///
+/// `plan/12` §4.4 makes attribution *temporal* -- the game carries no command
+/// ids -- so the window bounds WHEN an answer may arrive and the matcher
+/// decides WHICH frame it was. Without one, `Outcome::Confirmed` carries an
+/// arbitrary frame: every frame overwrote the previous, so a `look` resolved
+/// with whatever landed last before the prompt (measured: `Confirmed(Compass)`
+/// rather than the room).
+pub type Matcher = fn(&cena_protocol::Frame) -> bool;
+
+/// Accepts any frame at all.
+///
+/// The honest default for a command whose answer has no distinguishing shape.
+/// It is NOT "no matcher" -- it says the caller genuinely does not care, which
+/// is a different claim from the old behaviour of silently keeping the last.
+#[must_use]
+pub const fn any_frame(_frame: &cena_protocol::Frame) -> bool {
+    true
+}
+
+/// The session's command queue.
+///
+/// **At most one open window.** A queue exists to prevent overlapping round
+/// trips (`plan/12` §4's opening line), and two open windows would mean two
+/// waiters competing for the same prompt -- the attribution bug §4.4 spends a
+/// page on.
+#[derive(Debug, Default)]
+pub struct CommandQueue {
+    /// Who holds the authority, if anyone.
+    authority: Option<AuthorityToken>,
+    /// Manual commands. Jump the head. **Never touch `authority`.**
+    manual: VecDeque<Envelope>,
+    /// The authority holder's own commands.
+    held: VecDeque<Envelope>,
+    /// The one open window.
+    in_flight: Option<InFlight>,
+}
+
+impl CommandQueue {
+    /// An empty queue with no authority granted.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Grant the authority.
+    ///
+    /// # Errors
+    ///
+    /// [`AuthorityHeld`] if someone already has it. `plan/12` §4.2: a behavior
+    /// that wants the authority while another holds it gets an error and does
+    /// not queue behind it -- "silent queueing is how you get an attack that
+    /// fires four seconds after the fight ended."
+    pub fn claim(&mut self, token: AuthorityToken) -> Result<(), AuthorityHeld> {
+        if let Some(held) = self.authority {
+            return Err(AuthorityHeld(held));
+        }
+        self.authority = Some(token);
+        Ok(())
+    }
+
+    /// Give the authority back.
+    pub fn release(&mut self, token: AuthorityToken) {
+        if self.authority == Some(token) {
+            self.authority = None;
+        }
+    }
+
+    /// Who holds the authority.
+    #[must_use]
+    pub fn authority(&self) -> Option<AuthorityToken> {
+        self.authority
+    }
+
+    /// Accept a command into the queue.
+    ///
+    /// **Manual input is not a claimant** and this method never reads or
+    /// writes `authority` -- that is §4.1's correction, enforced by the code
+    /// not having the branch rather than by a comment asking for it.
+    pub fn admit(&mut self, envelope: Envelope) {
+        match envelope.origin {
+            Origin::Manual => self.manual.push_back(envelope),
+            Origin::Behavior(_) => self.held.push_back(envelope),
+        }
+    }
+
+    /// The next command to send, or `None` if a window is open or nothing is
+    /// waiting.
+    ///
+    /// **Manual before held.** Four lines, and the whole of criterion 5's
+    /// "jumps the queue".
+    ///
+    /// Named `take_next` rather than `next` because a bare `next(&mut self)
+    /// -> Option<T>` on a non-iterator is `clippy::should_implement_trait`:
+    /// a reader reasonably expects `for envelope in queue`, and this type is
+    /// not an iterator -- it returns `None` while a window is open and yields
+    /// again once it closes.
+    pub fn take_next(&mut self) -> Option<Envelope> {
+        if self.in_flight.is_some() {
+            return None;
+        }
+        self.manual.pop_front().or_else(|| self.held.pop_front())
+    }
+
+    /// Open a window for a command whose bytes have just gone out.
+    pub fn open_window(
+        &mut self,
+        id: CommandId,
+        generation: Generation,
+        reply: oneshot::Sender<Outcome>,
+        matcher: Matcher,
+    ) {
+        self.in_flight = Some(InFlight {
+            id,
+            generation,
+            reply,
+            matcher,
+            matched: None,
+        });
+    }
+
+    /// Whether a window is open.
+    #[must_use]
+    pub fn window_is_open(&self) -> bool {
+        self.in_flight.is_some()
+    }
+
+    /// Offer a frame to the open window, if there is one.
+    ///
+    /// The frame is offered **and also published** by the caller -- §4.4:
+    /// "observation never competes with attribution". This method does not
+    /// consume the frame.
+    pub fn offer(&mut self, frame: &cena_protocol::Frame) {
+        if let Some(flight) = self.in_flight.as_mut() {
+            // FIRST match wins, and a non-match changes nothing. The previous
+            // version assigned unconditionally, so `matched` held the last
+            // frame before the prompt rather than the answer.
+            if flight.matched.is_none() && (flight.matcher)(frame) {
+                flight.matched = Some(Box::new(frame.clone()));
+            }
+        }
+    }
+
+    /// Close the open window with the terminator, resolving its waiter.
+    ///
+    /// A window with a matched frame resolves [`Outcome::Confirmed`]; one with
+    /// none resolves [`Outcome::Timeout`], which §4.4 defines as "no match
+    /// within the window" and explicitly **not** "the command did not happen".
+    pub fn close_window(&mut self) {
+        let Some(flight) = self.in_flight.take() else {
+            return;
+        };
+        let outcome = match flight.matched {
+            Some(frame) => Outcome::Confirmed(frame),
+            None => Outcome::Timeout,
+        };
+        // A dropped receiver means the caller stopped waiting -- e.g. its own
+        // `send_and_await` deadline fired first. That is not an error here:
+        // §4.4's late-response rule says a window that nobody is waiting on
+        // still closes, it just has nowhere to deliver.
+        let _ = flight.reply.send(outcome);
+    }
+
+    /// Drop every waiter, in flight and queued.
+    ///
+    /// # Why this does not SEND an outcome
+    ///
+    /// An earlier version sent `Outcome::Dead` to each waiter, and its test
+    /// **passed with the call removed** -- which the house rule says makes it
+    /// worthless, so the code it covered was examined rather than the test
+    /// patched. It was redundant: dropping a `oneshot::Sender` already wakes
+    /// its receiver, and `SessionHandle::send_and_await` maps that to
+    /// `Outcome::Dead` (`command.rs:168`). So the explicit send produced the
+    /// same observable value by a longer route, and took an `&Outcome`
+    /// parameter that only ever received one value -- Rule -1's "no config
+    /// option with one value" in argument form.
+    ///
+    /// This method remains because dropping the waiters at a NAMED POINT is
+    /// the thing criterion 6 is about: it happens in `shutdown`, before the
+    /// actor returns, rather than whenever the actor's memory happens to be
+    /// released. What it does not do is duplicate the channel's own semantics.
+    pub fn drop_all_waiters(&mut self) {
+        self.in_flight = None;
+        self.manual.clear();
+        self.held.clear();
+    }
+}
+
+/// Someone else holds the authority. `plan/12` §4.2.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuthorityHeld(pub AuthorityToken);
+
+impl std::fmt::Display for AuthorityHeld {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "the command authority is held by {:?}", self.0)
+    }
+}
+
+impl std::error::Error for AuthorityHeld {}

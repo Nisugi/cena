@@ -6,6 +6,28 @@ publish.workspace = true
 
 [dependencies]
 cena-model.workspace = true
+# The session drives the parser directly. `Parser` is stateful and explicitly
+# one per session (crates/cena-protocol/src/parser.rs:113-120: "One per
+# session: it holds the stream stack and markup state for THAT character's
+# connection"), and the actor matches on `Frame` to build state. Re-exporting
+# Parser and all 51 Frame variants through cena-model would be a pass-through
+# facade with one caller, which plan/05 Rule -1 forbids. This is a downward
+# edge: cena-model -> cena-protocol already exists, so session -> protocol is
+# the same direction, one layer further. Recorded in ALLOWED_EDGES.
+cena-protocol.workspace = true
+# The transport the session owns. plan/12 §7.1 puts "Session actor: lifecycle
+# §5, queue §4" in M1's In column, and the session owns the socket -- there is
+# no connection manager above it, because reconnect is Milestone 2 (§9c) and a
+# manager today would be a trait with one implementor.
+cena-platform.workspace = true
+
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
+# CancellationToken. plan/12 §5.5 names it by name as the mechanism for "every
+# behavior is cancellable", and §4.3's PREEMPT_GRACE is measured against it.
+tokio-util = "0.7"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
 
 [lints]
 workspace = true
