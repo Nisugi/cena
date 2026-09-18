@@ -5,6 +5,10 @@
 successful auth to a live game socket — specified precisely enough to implement in Rust without
 reading the Lich Ruby.
 
+**What happens next** — everything that arrives on the game socket after the handoff — is
+[`plan/15-wrayth-protocol.md`](15-wrayth-protocol.md). This document ends where that one begins:
+at `<mode id="GAME"/>`.
+
 **Risk assessment.** The cryptography and framing are now fully pinned and verified by execution
 (§2, §3) and are safe to implement from; what remains genuinely uncertain is a small, enumerable
 set of wire questions — SNI, TLS version floor, response terminators, and out-of-range password

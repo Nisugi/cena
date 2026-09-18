@@ -17,12 +17,18 @@ If anything else contradicts it, it wins.
 | `plan/05-engineering-rules.md` | how to write it. Conduct rules. |
 | `plan/06-testing-strategy.md` | what to test and how |
 | `plan/10-eaccess-spec.md` | the login protocol, reimplementable |
+| `plan/15-wrayth-protocol.md` | **the game stream** — the XML protocol after login |
 | `plan/13-greenfield-vs-evolution.md` | why this is a new codebase, not a Vellum fork |
 | `research/` | **rationale and evidence only. Never instructions.** Contains superseded designs. |
 | `inventory/` | what the reference codebases contain, measured |
 
 `research/` holds designs that were **reversed** — most importantly an embedded Lua runtime.
 Do not implement from it. It exists so decisions can be audited, not repeated.
+
+**One exception:** `research/Wrayth protocol.txt` is a copy of the official protocol wiki
+(<https://gswiki.play.net/Wrayth_protocol>). It is a **primary source we implement from**, not a
+superseded design. It is read through [`plan/15-wrayth-protocol.md`](plan/15-wrayth-protocol.md),
+which cites it by line and records what it settles, what it contradicts, and what it leaves open.
 
 ---
 
@@ -65,11 +71,24 @@ From `plan/05-engineering-rules.md`:
   each time the answer was already in `network.rs`. Lich is the protocol's reference, but Vellum is
   the reference *port*, and the porting hazards (§10.3a of `plan/10`) live only in the port.
 - **Port aggressively where knowledge lives in code**, rewrite where structure matters.
-  Specifically port: `ParsedElement` (61 variants), `KNOWN_WIRE_TAGS` (~130), the parser and
-  its tests, `parser_edge_cases.xml`, crit tables and creature templates
+  Specifically port: `ParsedElement` (**63** variants), `KNOWN_WIRE_TAGS` (**116**), the parser
+  and its tests, `parser_edge_cases.xml`, crit tables and creature templates
   (`plan/13` §4a). Do **not** reinvent the frame vocabulary.
-- **The test corpus is `E:\Gemstone\data\log archive`** — 10,849 XML logs, ~50 GB, Oct 2024 →
-  Sep 2026, 50+ characters. Two years of real wire traffic. Use it for golden and replay tests.
+
+  > **CORRECTED 2026-09-18.** This said "61 variants" and "~130 tags". Both were wrong, and
+  > were restated from memory rather than measured — the error `plan/05` §−2 exists to prevent.
+  > Measured against `reference/VellumFE`:
+  > ```
+  > awk 'NR>37 && NR<405' src/parser.rs | grep -cE '^\s{4}[A-Z][A-Za-z]*'        -> 63
+  > awk 'NR>=175 && NR<=192' src/parser/text.rs | grep -oE '"[^"]*"' | wc -l     -> 116
+  > ```
+  > Cena's own table is **123** — Vellum's 116 plus 7, dropping none. See `plan/15` §1.
+- **The test corpus is `E:\Gemstone\data\log archive`** — **10,849 `.xml`, 49.55 GB**,
+  2024-10-11 → 2026-09-11, ~64 directories (**~35 distinct characters**, not 50+ — some dirs
+  are the same character on two instances, and ~22 are organised by class, not character).
+  Two years of real wire traffic; the tiebreaker when sources disagree.
+  **Only `.xml` is wire data.** The 11,862 `.log` files beside them are a different,
+  tag-stripped format — never use them as protocol evidence.
 - Reference clones are in `reference/` (gitignored): `lich-5`, `VellumFE`, `scripts`,
   `dr-scripts`, plus the Saga Discord thread. eohunter is at `C:\Gemstone\eohunter`.
 
