@@ -1,6 +1,10 @@
 //! The demonstration the binary runs once it is connected: show the room, run
-//! a behavior, interleave a manual command, and make some roundtimes on
-//! purpose.
+//! a behavior, interleave a manual command -- and then, **only if this run
+//! asked for one**, an experiment.
+//!
+//! The experiment used to be unconditional, which made every run cost the
+//! character about fifty seconds of `search` it had not asked for. See
+//! [`run_or_probe`] for what that looked like from the author's side.
 //!
 //! Split from `main.rs` under `plan/05` Rule 4.1 -- move code down, do not
 //! raise the cap -- when the capture pushed that file to 428 lines. The seam
@@ -14,23 +18,64 @@ use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-/// The capture, or the typeahead probe if this run asked for it.
+/// Whichever experiment this run asked for, and **by default none**.
 ///
-/// **Off by default, and an env var rather than a flag.** The probe
-/// deliberately provokes server refusals (`plan/16` §5.3), so it must never
-/// run as part of an ordinary session. It is an env var because the binary
-/// takes no arguments yet, and adding an argument parser for a single probe
-/// would be a config option with one value (Rule -1).
+/// # Doing nothing is the default, because the run is not the experiment any more
+///
+/// This used to fall through to [`run_capture`] whenever `CENA_PROBE` was
+/// unset, which meant **every** run drove the character through six `search`
+/// commands at six-second gaps -- about 50 seconds of the character being
+/// unusable, on a run whose point might be nothing more than "log in and see
+/// the room".
+///
+/// The author, mid-session, with the binary holding their character:
+///
+/// > *"it's busy running your probe so I can't do anything."*
+///
+/// That was the capture rather than the probe, which is the tell: a default
+/// nobody chose had become invisible enough that even its name was wrong. The
+/// capture earned its keep while the clock and roundtime work needed data;
+/// that work is done (`plan/16` §5.2c), and what is left is a cost paid on
+/// every unrelated run.
+///
+/// So: `CENA_SCRIPT` names the experiment, and an unset one means the session
+/// stays quiet and the character stays yours.
+///
+/// | Value | What it does |
+/// |---|---|
+/// | unset | **nothing** -- the session idles until `RUN_FOR` |
+/// | `capture` | six `search` commands, for clock and roundtime samples |
+/// | `typeahead` | the probe, which deliberately provokes refusals |
 ///
 ///  ```powershell
-///  $env:CENA_PROBE = "typeahead"; cargo run -p cena
+///  cargo run -p cena                              # quiet
+///  $env:CENA_SCRIPT = "capture";   cargo run -p cena
+///  $env:CENA_SCRIPT = "typeahead"; cargo run -p cena
 ///  ```
+///
+/// `CENA_PROBE=typeahead` still works, because it is in this repo's notes and
+/// in the author's shell history.
 pub(crate) async fn run_or_probe(
     handle: &SessionHandle,
     probe_events: &mut broadcast::Receiver<Event>,
     behavior_stop: &CancellationToken,
 ) {
-    if std::env::var("CENA_PROBE").as_deref() == Ok("typeahead") {
+    let script = std::env::var("CENA_SCRIPT").unwrap_or_default();
+    // The older spelling, kept working rather than broken out from under a
+    // shell history that has it.
+    let probe_requested =
+        script == "typeahead" || std::env::var("CENA_PROBE").as_deref() == Ok("typeahead");
+
+    if !probe_requested && script != "capture" {
+        eprintln!(
+            "
+[script] none -- the session is idle and the character is yours.
+[script] set CENA_SCRIPT=capture or CENA_SCRIPT=typeahead to run one."
+        );
+        return;
+    }
+
+    if probe_requested {
         // **Stop the behavior first.** It sends a `look` every second, and the
         // probe measures how long the SERVER takes to drain a buffer -- so a
         // concurrent sender is uncontrolled traffic sitting inside every
@@ -207,5 +252,56 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
             }
             Err(broadcast::error::RecvError::Closed) => break,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// The defaults that decide whether a run costs the author their character.
+    ///
+    /// `run_or_probe` itself needs a live session, so what is tested is the
+    /// **selection**, lifted to a pure function. That is the part that
+    /// regressed: the old code chose `capture` for an empty environment, and
+    /// nothing said so out loud.
+    fn selected(script: &str, legacy_probe: Option<&str>) -> &'static str {
+        let probe = script == "typeahead" || legacy_probe == Some("typeahead");
+        if probe {
+            "typeahead"
+        } else if script == "capture" {
+            "capture"
+        } else {
+            "none"
+        }
+    }
+
+    #[test]
+    fn an_unset_environment_runs_nothing() {
+        assert_eq!(
+            selected("", None),
+            "none",
+            "a plain `cargo run -p cena` must not drive the character. It              used to run the capture -- ~50s of `search` -- on every run,              including the ones that only wanted to see a room."
+        );
+    }
+
+    #[test]
+    fn each_script_is_opt_in_by_name() {
+        assert_eq!(selected("capture", None), "capture");
+        assert_eq!(selected("typeahead", None), "typeahead");
+    }
+
+    /// The old spelling still works: it is in this repo's notes and in the
+    /// author's shell history, and breaking it would cost more than keeping it.
+    #[test]
+    fn the_legacy_probe_variable_still_selects_the_probe() {
+        assert_eq!(selected("", Some("typeahead")), "typeahead");
+    }
+
+    /// An unrecognised name runs NOTHING rather than falling through to a
+    /// script nobody asked for. A typo should cost a quiet session, not the
+    /// character.
+    #[test]
+    fn an_unrecognised_script_runs_nothing() {
+        assert_eq!(selected("capturr", None), "none");
+        assert_eq!(selected("probe", None), "none");
     }
 }

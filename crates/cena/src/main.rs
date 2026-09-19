@@ -78,8 +78,23 @@ use tokio_util::sync::CancellationToken;
 /// How long to let the behavior run before the manual command interleaves.
 const BEHAVIOR_WARMUP: Duration = Duration::from_secs(3);
 
-/// How long the whole demonstration runs before `stop`.
-const RUN_FOR: Duration = Duration::from_secs(10);
+/// How long to hold the session open after the script finishes, before `stop`.
+///
+/// Ten seconds is a demonstration's worth: long enough to watch a quiet
+/// session do the right thing. **Overridable**, because with no script
+/// selected this is the *only* thing standing between login and logout, and
+/// "keep it up while I look at something" is a reasonable thing to want from a
+/// client that now reconnects.
+///
+///  ```powershell
+///  $env:CENA_RUN_FOR = "600"; cargo run -p cena   # ten minutes
+///  ```
+fn run_for() -> Duration {
+    std::env::var("CENA_RUN_FOR")
+        .ok()
+        .and_then(|raw| raw.parse().ok())
+        .map_or(Duration::from_secs(10), Duration::from_secs)
+}
 
 /// How long to wait for the server to close after `quit` (`plan/16` §5b.3).
 ///
@@ -119,8 +134,15 @@ fn ids() -> impl FnMut() -> CommandId {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    eprintln!("cena -- Milestone 1 Step 2, the end-to-end slice.");
-    eprintln!("Nothing is written to disk; the password is not stored or logged.\n");
+    eprintln!("cena -- one supervised session against the live game.");
+    // Precise rather than reassuring. "Not stored" became FALSE at step 8: the
+    // password is held in memory for the whole session, because reconnecting
+    // is a full re-login. Saying otherwise on screen is the kind of claim
+    // someone acts on.
+    eprintln!(
+        "Nothing is written to disk and the password is never logged -- but it \
+         IS kept\nin memory for the session, because reconnecting re-logs in.\n"
+    );
 
     let typed = ask()?;
     eprintln!();
@@ -203,7 +225,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     run_or_probe(&handle, &mut probe_events, &stop).await;
 
-    tokio::time::sleep(RUN_FOR).await;
+    let holding = run_for();
+    eprintln!("[session] holding for {holding:?} (set CENA_RUN_FOR to change)");
+    tokio::time::sleep(holding).await;
 
     // --- Criterion 4: stop, within PREEMPT_GRACE ---------------------------
     // The latency is MEASURED in `cena-behavior`'s tests under virtual time,
