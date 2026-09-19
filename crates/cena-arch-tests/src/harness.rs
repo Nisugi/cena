@@ -256,11 +256,25 @@ fn crate_sources(krate: &str) -> Vec<(PathBuf, String)> {
 ///
 /// `.rs` is the obvious one. The rest are the extensions an `include!` target
 /// plausibly carries — `include!` accepts any path, and the compiled result is
-/// crate source whatever it is called. `no_included_files_escape_the_scan`
-/// (in the test file) is what makes this list sufficient rather than a guess:
-/// it asserts that every path named by an `include!` is one of the files this
-/// walk actually collected, so an `include!("body.weird")` fails loudly
-/// instead of silently leaving a hole.
+/// crate source whatever it is called.
+///
+/// # What makes this list sufficient, stated accurately
+///
+/// This used to say `no_included_files_escape_the_scan` "asserts that every
+/// path named by an `include!` is one of the files this walk actually
+/// collected". **No test of that name exists**, and the real one
+/// (`no_source_file_is_included_from_outside_the_scan`) does something
+/// different and stronger: it bans `include!` and `include_bytes!` outright,
+/// so there is no included path to check (review AR-5).
+///
+/// That inversion is why this list does not have to be exhaustive. A list of
+/// extensions is a guess about what someone might include; a ban is not a
+/// guess. The list matters only for `include_str!` of a file the walk already
+/// collects — the crit tables — which is why `.tsv` is here.
+///
+/// A doc describing a test that does not exist is the citation rot `plan/05`
+/// §−2 warns about, in its most expensive form: it describes a guarantee the
+/// suite does not make, and a reader trusts it.
 ///
 /// `.tsv` was added when the crit tables landed (`plan/13` §4a, whose port
 /// table says at `plan/13:125` that they "ship as data files"). That is the

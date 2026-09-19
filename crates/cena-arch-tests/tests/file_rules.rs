@@ -338,7 +338,51 @@ fn facade_files_stay_facades() {
 
 #[test]
 fn no_source_file_is_included_from_outside_the_scan() {
-    let hits = scan_lines(&scannable_sources(), &["include!(", "include_bytes!("]);
+    // **The macro name, not the name plus one delimiter.**
+    //
+    // These needles were `include!(` and `include_bytes!(`, so every other
+    // legal delimiter walked straight past: `include!["body.in"]` and
+    // `include!{"body.in"}` are the same macro, and the square-bracket form
+    // was VERIFIED to compile a `pub static mut` into a crate with this test
+    // green (review AR-5).
+    //
+    // `#[path = "..."]` is banned for the same reason by a different
+    // mechanism: it does not splice a file in, it points `mod` at one
+    // OUTSIDE the directory the walk follows, which reaches the same place --
+    // crate source that no scan in this suite can see.
+    let hits = scan_lines(&scannable_sources(), &["include!", "include_bytes!"]);
+
+    // `#[path]` is a SEPARATE question, and banning it outright was wrong.
+    //
+    // It does not splice a file in; it points a `mod` at one. That is a hazard
+    // only when the target is somewhere the walk does not follow, and the two
+    // uses in this workspace -- `fallback_tests.rs`, `weblogin/scrape_tests.rs`
+    // -- are ordinary `.rs` files inside `src/` that every scan already
+    // collects. A first cut of this fix flagged both, which is the false
+    // positive that would get this test weakened or deleted.
+    //
+    // What is actually banned is a target that ESCAPES: a `..` component, or
+    // an absolute path. `#[path = "../../gen/x.rs"] mod x;` reaches the same
+    // place `include!` does, by another route (review AR-5).
+    let escaping: Vec<String> = scan_lines(&scannable_sources(), &["#[path"])
+        .into_iter()
+        .filter(|hit| {
+            let Some(value) = hit.split_once('"').and_then(|(_, r)| r.split_once('"')) else {
+                // A `#[path]` whose value this scan cannot read is reported
+                // rather than assumed harmless.
+                return true;
+            };
+            let target = value.0;
+            target.contains("..") || target.starts_with('/') || target.contains(':')
+        })
+        .collect();
+    assert!(
+        escaping.is_empty(),
+        "`#[path]` pointing OUTSIDE the source walk puts crate source where no          scan in this suite can see it -- the same hole `include!` opens, by          another route. A `#[path]` naming a sibling inside `src/` is fine and          is not flagged.
+{}",
+        escaping.join("
+")
+    );
     assert!(
         hits.is_empty(),
         "`include!` splices a file into a crate without that file being a \
@@ -352,7 +396,10 @@ fn no_source_file_is_included_from_outside_the_scan() {
          see this test's comment for the crit tables, the case that amendment \
          was written for. `include_bytes!` remains banned: collect_sources \
          reads with read_to_string, so a non-UTF-8 payload is a file no scan \
-         can see.\n{}",
+         can see.\n\n\
+         `#[path = \"...\"]` is banned by the same test: it points a `mod` at \
+         a file outside the directory the walk follows, which reaches the \
+         same place by another route.\n{}",
         hits.join("\n")
     );
 }
