@@ -217,9 +217,9 @@ impl<C: Connector> SupervisedSession<C> {
         // all did not lose a transport.
         let mut reason = EndReason::Cancelled;
         let stopped_because;
-        // Which rung of the ladder. Reset by a connection that actually
-        // carried traffic -- see `earned_a_reset` for why "connected" is not
-        // the same thing.
+        // Which rung of the ladder. Reset only by a connection that RECEIVED
+        // something -- see `worked` below for why "we wrote to it" is not the
+        // same as "it functioned".
         let mut attempt = 0u32;
         // Consecutive losses with no command sent. `MAX_UNATTENDED_LOSSES` of
         // these stops the session.
@@ -290,7 +290,8 @@ impl<C: Connector> SupervisedSession<C> {
             // be told from what earlier ones did. The recorder is durable
             // across generations, which is what makes this a subtraction
             // rather than a flag the actor has to carry.
-            let sent_before = outbound_count(&self.core.recorder);
+            let sent_before = self.core.recorder.outbound_count();
+            let received_before = self.core.recorder.inbound_count();
 
             let actor = SessionActor::supervised(
                 source,
@@ -334,22 +335,11 @@ impl<C: Connector> SupervisedSession<C> {
             // Did anyone use this connection? A command sent is a player (or a
             // behavior) present; none across MAX_UNATTENDED_LOSSES connections
             // is an abandoned client being idle-kicked in a loop.
-            let attended = outbound_count(&self.core.recorder) > sent_before;
-            if attended {
-                unattended = 0;
-                // An attended connection resets the LADDER too, so a session
-                // that ran for an hour and then dropped retries at one second
-                // rather than at whatever rung it climbed to last week.
-                attempt = 0;
-            } else {
-                unattended += 1;
-                if unattended >= MAX_UNATTENDED_LOSSES {
-                    self.log(&format!(
-                        "no command sent across {unattended} connections; not reconnecting"
-                    ));
-                    stopped_because = StoppedBecause::Unattended;
-                    break;
-                }
+            if let Some(stop) =
+                self.after_connection(sent_before, received_before, &mut attempt, &mut unattended)
+            {
+                stopped_because = stop;
+                break;
             }
 
             self.reconnect();
@@ -384,6 +374,54 @@ impl<C: Connector> SupervisedSession<C> {
             reason,
             generations: self.core.generation.get(),
         }
+    }
+
+    /// Update the ladder and the unattended cap from what this connection did.
+    ///
+    /// Returns `Some` if the session should stop. Split from [`Self::run`] under
+    /// Rule 4.1 -- move code down -- when the attended/worked split pushed that
+    /// function past clippy's 100-line limit. The seam is real: `run` owns the
+    /// loop, this owns one connection's accounting.
+    fn after_connection(
+        &mut self,
+        sent_before: u64,
+        received_before: u64,
+        attempt: &mut u32,
+        unattended: &mut u32,
+    ) -> Option<StoppedBecause> {
+        // **Two different questions, and they were conflated.**
+        //
+        // ATTENDED asks "is anyone using this session" and bounds the
+        // unattended cap. A command sent is a person or a behavior present.
+        //
+        // WORKED asks "did this connection function" and is the only thing
+        // that may reset the ladder. It used to be the same test, which made
+        // the ladder reset on ANY outbound byte -- so with a behavior
+        // sending, it was always true and **neither bound bound anything**.
+        // Two clients fighting over one character would re-login at the
+        // one-second rung forever. Found by review, which also noticed the
+        // comment cited an `earned_a_reset` that does not exist.
+        //
+        // A connection that received nothing did not work, however much we
+        // wrote at it: an accepted socket that dies before the login burst
+        // is exactly the flapping case the ladder is for.
+        let attended = self.core.recorder.outbound_count() > sent_before;
+        let worked = self.core.recorder.inbound_count() > received_before;
+        if worked {
+            *attempt = 0;
+        }
+        if attended {
+            *unattended = 0;
+        } else {
+            *unattended += 1;
+            if *unattended >= MAX_UNATTENDED_LOSSES {
+                self.log(&format!(
+                    "no command sent across {unattended} connections; not reconnecting"
+                ));
+                return Some(StoppedBecause::Unattended);
+            }
+        }
+        None
     }
 
     /// Sleep one rung of the ladder, advancing `attempt`.
@@ -445,21 +483,15 @@ impl<C: Connector> SupervisedSession<C> {
     }
 }
 
-/// How many commands this session has sent, across every generation.
-///
-/// **Attendance is measured, not flagged.** The alternative was a
-/// `saw_input_since_connect` boolean on the actor, as `VellumFE` carries
-/// (`runtime.rs:490`) -- but Cena already records every outbound write, and the
-/// recorder is durable across generations precisely so facts like this survive
-/// a reconnect. A second source of truth for "did anyone type anything" could
-/// disagree with the recording; a subtraction cannot.
-fn outbound_count(recorder: &Recorder) -> usize {
-    recorder
-        .events()
-        .iter()
-        .filter(|event| matches!(event, cena_platform::RecordedEvent::Outbound { .. }))
-        .count()
-}
+// `outbound_count` moved onto `Recorder` itself. It used to live here as a
+// `filter().count()` over the whole log -- O(session length), run twice per
+// connection -- and a bounded recorder made it outright WRONG, because the log
+// now forgets early writes and the count would go DOWN. A lifetime counter on
+// the recorder is both correct and O(1).
+//
+// Attendance is still MEASURED rather than flagged, which was the point: the
+// recorder is the single source of truth for "did anyone send anything", and a
+// separate boolean could disagree with the recording.
 
 /// A jitter fraction in `0.0..=1.0`.
 ///

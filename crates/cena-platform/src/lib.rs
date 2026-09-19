@@ -49,6 +49,6 @@ pub use answering::{AnsweringSource, TranscriptHandle};
 pub use bytes::ByteSource;
 pub use eaccess::{Credentials, EaccessError, LaunchPayload, authenticate, connect_game};
 pub use live::LiveSource;
-pub use record::{RecordedEvent, Recorder};
+pub use record::{MAX_RECORDED_BYTES, RecordedEvent, Recorder};
 pub use replay::ReplaySource;
 pub use sink::{DEFAULT_LOG_DIR, Redactions, SessionSink, date_dir, file_stamp, log_dir};

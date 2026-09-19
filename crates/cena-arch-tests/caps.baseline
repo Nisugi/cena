@@ -1,0 +1,47 @@
+# The cap ratchet's baseline. Rule 4.1, `plan/05:352-354`:
+#
+#   "the architecture test FAILS ON A CAP INCREASE IN THE DIFF, not just on a
+#    violation. Vellum's caps only ever went down."
+#
+# That test did not exist. The default cap went 400 -> 800 with a green suite,
+# because nothing was checking -- the rule was a wish (`plan/05` §0) for the
+# whole of Milestone 1 and its tail. This file is the mechanism.
+#
+# HOW IT WORKS. `the_cap_ratchet_only_turns_down` in tests/ratchet.rs reads this
+# file and compares it with the live constants in tests/file_rules.rs. A cap
+# that is LOWER than its line here passes and is a ratchet turn. A cap that is
+# HIGHER fails, and the only way to make it pass is to edit this file in the same
+# commit -- which puts the increase in the diff, in a file that exists for no
+# other purpose, where a reviewer cannot miss it.
+#
+# That is the honest version of "fails on a cap increase in the diff": a test
+# cannot read a diff, but it can make an increase impossible to make quietly.
+#
+# WHEN YOU DO RAISE ONE. Say why here, in the commit, with a measurement. The
+# 400 -> 800 change is the model: it was the author's call, it cited VellumFE's
+# own caps (3600/2100/1700/1100/800/700) as evidence that 400 was invented, and
+# it counted the cost -- five splits in one milestone.
+#
+# FORMAT: `<name> <value>`, one per line. `#` comments and blank lines ignored.
+
+# The cap every file gets unless CAP_EXCEPTIONS names it.
+#
+# Was 400, raised to 800 by the author on 2026-09-18 after 400 forced five
+# splits in one milestone. 400 was invented with no Cena code to calibrate
+# against; 800 is below all but one of VellumFE's shipped caps.
+DEFAULT_MAX_LINES 800
+
+# How many named exceptions may exist at all.
+#
+# ONE: crates/cena-model/data/crit_tables.tsv, at 2400. It is the only file in
+# the workspace for which "move code down" has no meaning -- it is DATA, 2,394
+# table entries with no functions to move anywhere.
+#
+# A table that GROWS is a cap that is failing: every entry is a file that was
+# allowed to keep growing instead of being split. This file's own 650-line
+# exception was removed when the default rose to 800, which is the direction the
+# count should travel.
+#
+# Recorded because I guessed 0 here and the test caught it -- which is the guard
+# working on its author before anyone else.
+MAX_CAP_EXCEPTIONS 1

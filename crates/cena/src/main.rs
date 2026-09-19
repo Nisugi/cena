@@ -302,7 +302,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // never connected at all, because the counter starts at zero
                 // and only advances on a reconnect.
                 connections_made(&end),
-                end.recorder.events().len()
+                end.recorder.len()
             );
 
             // **A failed login must not exit 0 saying "Done".** Headless mode

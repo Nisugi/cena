@@ -45,14 +45,63 @@ pub enum RecordedEvent {
     Outbound { seq: u64, bytes: Vec<u8> },
 }
 
-/// Append-only log of one session's wire traffic.
+impl RecordedEvent {
+    /// The bytes, whichever direction this event went.
+    ///
+    /// For the size accounting the byte bound needs; a caller that cares about
+    /// direction should match instead.
+    #[must_use]
+    pub fn bytes(&self) -> &[u8] {
+        match self {
+            Self::Inbound { bytes, .. } | Self::Outbound { bytes, .. } => bytes,
+        }
+    }
+}
+
+/// How many bytes of wire traffic a recorder keeps before dropping the oldest.
+///
+/// # Why this is bounded at all
+///
+/// It was not, and that is a leak on the production path: an append-only `Vec`
+/// that **copies every chunk**, carried across every generation, in a client
+/// designed for 3-25 simultaneous characters. A long session held every byte it
+/// had ever read, in memory, for the life of the process.
+///
+/// The `.bytes` sink has already written all of it to disk, so the in-memory
+/// copy buys nothing a file cannot answer -- which is what makes bounding it
+/// safe rather than a trade.
+///
+/// # Why 8 MiB, and what it costs
+///
+/// MEASURED: the author's live sessions log 64-80 KB of inbound traffic per few
+/// minutes, so 8 MiB is hours of play per session and 200 MiB across a full
+/// 25-character load. That is a ceiling rather than a target: sessions that stay
+/// under it behave exactly as before, and criterion 7's replays are fixtures
+/// measured in kilobytes.
+///
+/// What it costs is that a session **longer than the bound cannot be replayed
+/// from its start** -- [`Recorder::events`] no longer begins at `seq` 0. That is
+/// detectable rather than silent: `seq` is independent of the `Vec`, so a
+/// consumer can see the first surviving sequence number and know what it is
+/// missing, and [`Recorder::dropped`] says how many.
+pub const MAX_RECORDED_BYTES: usize = 8 * 1024 * 1024;
+
+/// Bounded log of one session's wire traffic, oldest dropped first.
 ///
 /// Held by value inside the session actor -- Rule 5.2 (`plan/05:400-408`), no
 /// process globals -- so 25 sessions record 25 independent transcripts.
 #[derive(Debug, Default)]
 pub struct Recorder {
-    events: Vec<RecordedEvent>,
+    events: std::collections::VecDeque<RecordedEvent>,
     next_seq: u64,
+    /// Bytes currently held, so trimming costs no rescan.
+    held_bytes: usize,
+    /// How many events were dropped to stay under [`MAX_RECORDED_BYTES`].
+    dropped: u64,
+    /// Lifetime count of outbound writes, unaffected by trimming.
+    outbound_count: u64,
+    /// Lifetime count of inbound reads, unaffected by trimming.
+    inbound_count: u64,
 }
 
 impl Recorder {
@@ -65,25 +114,109 @@ impl Recorder {
     /// Record bytes that arrived from the wire.
     pub fn inbound(&mut self, bytes: &[u8]) {
         let seq = self.take_seq();
-        self.events.push(RecordedEvent::Inbound {
+        self.held_bytes += bytes.len();
+        self.inbound_count += 1;
+        self.events.push_back(RecordedEvent::Inbound {
             seq,
             bytes: bytes.to_vec(),
         });
+        self.trim();
     }
 
     /// Record bytes that were sent to the wire.
     pub fn outbound(&mut self, bytes: &[u8]) {
         let seq = self.take_seq();
-        self.events.push(RecordedEvent::Outbound {
+        self.held_bytes += bytes.len();
+        self.outbound_count += 1;
+        self.events.push_back(RecordedEvent::Outbound {
             seq,
             bytes: bytes.to_vec(),
         });
+        self.trim();
     }
 
-    /// Everything recorded, in the order it happened.
+    /// Drop the oldest events until the log fits [`MAX_RECORDED_BYTES`].
+    ///
+    /// **Never drops the last event**, however large: a recorder holding one
+    /// 10 MiB chunk keeps it, because "the most recent thing that happened" is
+    /// the one a caller is most likely to be about to read.
+    fn trim(&mut self) {
+        while self.held_bytes > MAX_RECORDED_BYTES && self.events.len() > 1 {
+            let Some(oldest) = self.events.pop_front() else {
+                break;
+            };
+            self.held_bytes = self.held_bytes.saturating_sub(oldest.bytes().len());
+            self.dropped += 1;
+        }
+    }
+
+    /// Everything still recorded, in the order it happened.
+    ///
+    /// **May not start at `seq` 0** on a session longer than
+    /// [`MAX_RECORDED_BYTES`] -- see [`Self::dropped`]. The `.bytes` sink is the
+    /// complete record; this is the recent window.
+    /// Returns a **slice**, which is why this takes `&mut self`:
+    /// `VecDeque::make_contiguous` is what lets a bounded ring keep the flat
+    /// `&[RecordedEvent]` its callers already use. Returning an iterator instead
+    /// churned every call site for no gain -- `to_vec`, `iter`, `is_empty` all
+    /// stopped compiling -- and a recorder is read a handful of times per
+    /// session, so one rotation costs nothing.
+    pub fn events(&mut self) -> &[RecordedEvent] {
+        self.events.make_contiguous()
+    }
+
+    /// How many events are still held. Does **not** need `&mut`, unlike
+    /// [`Self::events`], so a caller that only wants the count (a log line, a
+    /// report) is not forced to take a mutable borrow.
     #[must_use]
-    pub fn events(&self) -> &[RecordedEvent] {
-        &self.events
+    pub fn len(&self) -> usize {
+        self.events.len()
+    }
+
+    /// Whether anything is held.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+
+    /// How many inbound reads this recorder has seen, **including any it has
+    /// since dropped**.
+    ///
+    /// Counterpart to [`Self::outbound_count`], and for the same reason: the
+    /// supervisor needs "did this connection RECEIVE anything" to tell a login
+    /// that worked from one that opened a socket and died, and a bounded log
+    /// cannot answer that by scanning.
+    #[must_use]
+    pub const fn inbound_count(&self) -> u64 {
+        self.inbound_count
+    }
+
+    /// How many outbound writes this recorder has seen, **including any it has
+    /// since dropped**.
+    ///
+    /// A counter rather than a scan. The supervisor uses this to decide whether a
+    /// connection was "attended", and it used to `filter().count()` the whole log
+    /// twice per connection -- O(session length) on a hot path, and now simply
+    /// wrong, because a bounded log forgets the early writes it was counting.
+    #[must_use]
+    pub const fn outbound_count(&self) -> u64 {
+        self.outbound_count
+    }
+
+    /// How many events were dropped to stay under [`MAX_RECORDED_BYTES`].
+    ///
+    /// Nonzero means [`Self::events`] is a window rather than the whole session,
+    /// which a replay built from it needs to know. Zero for every session short
+    /// enough to fit, which is every test fixture.
+    #[must_use]
+    pub const fn dropped(&self) -> u64 {
+        self.dropped
+    }
+
+    /// Bytes currently held. For a diagnostic, and for the bound's own test.
+    #[must_use]
+    pub const fn held_bytes(&self) -> usize {
+        self.held_bytes
     }
 
     /// The inbound chunks alone, in order, ready to build a

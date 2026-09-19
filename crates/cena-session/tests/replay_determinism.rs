@@ -32,7 +32,7 @@ use cena_session::{GameState, Session};
 
 /// Run one session over these chunks and return what it recorded and knew.
 async fn once(chunks: Vec<Vec<u8>>) -> (Vec<RecordedEvent>, GameState) {
-    let end = Session::new(ReplaySource::new(chunks))
+    let mut end = Session::new(ReplaySource::new(chunks))
         .into_actor()
         .run()
         .await;

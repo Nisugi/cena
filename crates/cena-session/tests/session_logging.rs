@@ -177,7 +177,7 @@ async fn a_session_without_a_sink_still_runs_and_writes_nothing() {
     // The recorder still records: the sink is an ADDITION to it, not a
     // replacement, which is what keeps the replay path unchanged.
     assert!(
-        !end.recorder.events().is_empty(),
+        !end.recorder.is_empty(),
         "the in-memory recorder is unaffected by whether a sink exists"
     );
 }

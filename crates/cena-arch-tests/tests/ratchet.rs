@@ -316,3 +316,161 @@ fn the_enforcer_inherits_every_workspace_lint_it_does_not_name() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Rule 4.1's other half — the cap RATCHET. (plan/05:352-354)
+//
+// "the architecture test fails on a cap *increase* in the diff, not just on a
+//  violation. Vellum's caps only ever went down."
+//
+// THIS DID NOT EXIST. The default cap went 400 -> 800 with the whole suite
+// green, because nothing was checking. `plan/05` §0 is the rule this broke:
+// "a rule that is not enforced is a wish", and Rule 4.1's second half was a wish
+// for the whole of Milestone 1 and its tail. The ratchet file listed 4.1 as
+// covered, which made it worse -- a claim nobody checked.
+// ---------------------------------------------------------------------------
+
+/// Where the committed baseline lives. Beside the crate, not under `tests/`,
+/// because it is data the suite reads rather than a test.
+const CAPS_BASELINE: &str = "caps.baseline";
+
+/// Read `<name> <value>` pairs from the baseline, ignoring comments and blanks.
+fn baseline_caps() -> std::collections::BTreeMap<String, usize> {
+    let path = workspace_root()
+        .join("crates")
+        .join("cena-arch-tests")
+        .join(CAPS_BASELINE);
+    let text = fs::read_to_string(&path).unwrap_or_else(|e| {
+        panic!(
+            "{} must exist and be readable: {e}. It is the cap ratchet's \
+             baseline -- deleting it would silently disable Rule 4.1's \
+             increase check, which is the exact failure the check exists to \
+             prevent.",
+            path.display()
+        )
+    });
+    let mut caps = std::collections::BTreeMap::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let (name, value) = line.split_once(' ').unwrap_or_else(|| {
+            panic!("malformed baseline line {line:?}: expected `<name> <value>`")
+        });
+        let value = value.trim().parse().unwrap_or_else(|e| {
+            panic!("malformed baseline value in {line:?}: {e}");
+        });
+        caps.insert(name.to_owned(), value);
+    }
+    caps
+}
+
+/// **A cap may go down silently. Raising one must appear in the diff.**
+///
+/// # Why a committed file and not a git diff
+///
+/// A test cannot read a diff -- it has no reliable base to diff against, and one
+/// that shelled out to `git` would pass on a shallow clone, a worktree, or an
+/// exported tarball, which is the kind of guard that is green exactly when it is
+/// not working.
+///
+/// What it can do is make an increase **impossible to make quietly**: the live
+/// constant must not exceed the committed baseline, so raising a cap means
+/// editing `caps.baseline` in the same commit. That file exists for no other
+/// purpose, so the increase lands in the diff where a reviewer cannot miss it,
+/// with a place to write down why.
+///
+/// That is the honest reading of `plan/05:353`, and it is strictly stronger than
+/// what the prose describes in one respect: it also catches an increase made by
+/// someone who never looks at a diff at all.
+#[test]
+fn the_cap_ratchet_only_turns_down() {
+    let baseline = baseline_caps();
+
+    // The live values, read from the enforcer itself rather than restated here:
+    // a copy would be a second source of truth and could drift from the file it
+    // is supposed to be guarding.
+    let file_rules = fs::read_to_string(
+        workspace_root()
+            .join("crates")
+            .join("cena-arch-tests")
+            .join("tests")
+            .join("file_rules.rs"),
+    )
+    .expect("file_rules.rs must be readable");
+
+    let live_default = scan_usize(&file_rules, "const DEFAULT_MAX_LINES: usize = ")
+        .expect("DEFAULT_MAX_LINES must still be a plain `const ... = N;`");
+    let live_exceptions = file_rules
+        .lines()
+        .filter(|line| line.trim_start().starts_with("CapException {"))
+        .count();
+
+    let baseline_default = baseline["DEFAULT_MAX_LINES"];
+    assert!(
+        live_default <= baseline_default,
+        "RULE 4.1: a cap may only go DOWN. DEFAULT_MAX_LINES is {live_default}, \
+         and caps.baseline records {baseline_default}.\n\n\
+         `plan/05:352-354`: \"move code down, don't raise the cap ... Vellum's \
+         caps only ever went down.\"\n\n\
+         If the increase is deliberate, edit caps.baseline in this same commit \
+         and say why there -- with a measurement, as the 400 -> 800 change did. \
+         That is the whole mechanism: an increase has to be visible."
+    );
+    if live_default < baseline_default {
+        // A turn DOWN is allowed and silent, but the baseline should follow so
+        // the next increase is measured against the new floor.
+        eprintln!(
+            "note: DEFAULT_MAX_LINES ({live_default}) is below caps.baseline \
+             ({baseline_default}). Lower the baseline to match, so the ratchet \
+             holds at the new value."
+        );
+    }
+
+    let baseline_exceptions = baseline["MAX_CAP_EXCEPTIONS"];
+    assert!(
+        live_exceptions <= baseline_exceptions,
+        "RULE 4.1: the exception table may only SHRINK. There are now \
+         {live_exceptions} entries in CAP_EXCEPTIONS and caps.baseline allows \
+         {baseline_exceptions}.\n\n\
+         A growing exception table is a cap that is failing -- each entry is a \
+         file that was allowed to keep growing instead of being split. If the \
+         new exception is justified, raise MAX_CAP_EXCEPTIONS in caps.baseline \
+         and say why."
+    );
+}
+
+/// The baseline itself must carry its reasoning, for the same reason a cap
+/// exception must: a bare number is a claim nobody can check.
+#[test]
+fn the_caps_baseline_explains_itself() {
+    let path = workspace_root()
+        .join("crates")
+        .join("cena-arch-tests")
+        .join(CAPS_BASELINE);
+    let text = fs::read_to_string(&path).expect("caps.baseline must be readable");
+
+    assert!(
+        text.contains("plan/05"),
+        "caps.baseline must cite the rule it enforces, or a reader has no way \
+         to tell it from an arbitrary config file"
+    );
+    let comment_lines = text
+        .lines()
+        .filter(|l| l.trim_start().starts_with('#'))
+        .count();
+    assert!(
+        comment_lines >= 10,
+        "caps.baseline has {comment_lines} comment lines. It is a file of bare \
+         numbers whose entire value is the reasoning beside them -- a future \
+         reader raising a cap needs to find out here why they should not."
+    );
+}
+
+/// Pull `const NAME: usize = N;` out of source text.
+fn scan_usize(text: &str, prefix: &str) -> Option<usize> {
+    text.lines()
+        .find_map(|line| line.trim().strip_prefix(prefix))
+        .and_then(|rest| rest.trim_end_matches(';').trim().parse().ok())
+}

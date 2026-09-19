@@ -235,7 +235,7 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
 async fn the_recording_spans_the_reconnect() {
     let connector = ScriptedConnector::new(vec![everything_then_death(), a_real_login_burst()]);
     let (session, _handle) = SupervisedSession::new(connector);
-    let end = session.run().await;
+    let mut end = session.run().await;
 
     let recorded: Vec<u8> = end
         .recorder

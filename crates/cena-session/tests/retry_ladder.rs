@@ -328,3 +328,64 @@ async fn quitting_during_a_reconnect_does_not_hang() {
     cancel.cancel();
     let _ = task.await;
 }
+
+/// **Writing to a connection is not the same as it working.**
+///
+/// The defect, found by review: the ladder reset on any outbound byte, so with a
+/// behavior sending, "attended" was always true and **neither bound bound
+/// anything**. Two clients fighting over one character would re-login at the
+/// one-second rung forever.
+///
+/// Here every connection is served a source that yields NOTHING and ends. A
+/// command goes out on each, so the session stays attended and never hits the
+/// unattended cap -- but nothing is ever received, so the ladder must keep
+/// climbing rather than resetting to one second each time.
+///
+/// Asserted as elapsed time, because the ladder's observable IS the delay: four
+/// attempts at the bottom rung cost about 3 seconds, while four that climb cost
+/// 1+2+5+10 minus the first.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_connection_that_receives_nothing_does_not_reset_the_ladder() {
+    // MANY sources that yield nothing and end immediately: connected, then
+    // gone. The count has to exceed what a one-second ladder would consume in
+    // the window, or the connector runs out first and both behaviours look
+    // identical -- which is exactly what the first version of this test did
+    // (6 sources, 5 attempts either way).
+    let sources: Vec<Vec<Vec<u8>>> = (0..60).map(|_| Vec::new()).collect();
+    let (connector, attempts) =
+        LadderConnector::new(sources, ConnectError::transient("tcp", "unreachable"));
+    let (session, handle) = SupervisedSession::new(connector);
+    let cancel = session.cancel_token();
+    let task = tokio::spawn(session.run());
+
+    // Keep it ATTENDED so the unattended cap never fires: something is sent on
+    // every connection, which is exactly the case that used to reset the ladder.
+    let sender = tokio::spawn(async move {
+        for _ in 0..40 {
+            let _ = handle
+                .send_now("look", Origin::Manual, cena_session::Gate::None)
+                .await;
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    });
+
+    let start = tokio::time::Instant::now();
+    tokio::time::sleep(Duration::from_secs(20)).await;
+    let climbed = attempts.load(Ordering::Relaxed);
+    let elapsed = start.elapsed();
+
+    cancel.cancel();
+    sender.abort();
+    let _ = task.await;
+
+    // MEASURED: 5 attempts with the fix, 15 without -- a 3x separation, so 10
+    // sits clear of both. Verified by falsification, which the first version of
+    // this test could not do: it served only 6 sources, so the connector ran out
+    // before the ladder difference could show and both behaviours read as 5.
+    assert!(
+        climbed < 10,
+        "in {elapsed:?} the supervisor made {climbed} attempts. A ladder that \
+         reset on every connection would retry at the one-second rung forever; \
+         one that climbs makes only a handful in 20 seconds."
+    );
+}
