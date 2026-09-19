@@ -50,10 +50,14 @@
 //! `crates/cena-arch-tests/tests/ratchet.rs:4-8` set -- **the fourth time it
 //! has paid.**
 //!
-//! **The next split, named in advance and not yet needed:**
-//! [`SessionActor::shutdown`] and [`SessionActor::transition`] join
-//! [`EndReason`] in [`ending`] -- they are the other half of "how a connection
-//! stops" -- leaving the loop and the session's shape here.
+//! **That split has been taken too**, one step later: `shutdown`, `transition`
+//! and the logging helpers joined [`EndReason`] in [`ending`] when the
+//! supervisor took this file to 437. Named in advance, taken as written --
+//! the fifth time.
+//!
+//! **The next split, named in advance and not yet needed:** [`SessionEnd`] and
+//! [`SessionActor::supervised`] to `actor/parts.rs` -- what a connection is
+//! handed and what it hands back -- leaving `run` and the select loop alone.
 
 use crate::command::Envelope;
 use crate::lifecycle::{Generation, State};
@@ -146,6 +150,21 @@ pub struct SessionEnd<S: ByteSource> {
     /// Milestone 2's supervisor reads this and nothing else to decide whether
     /// to reconnect ([`EndReason::warrants_reconnect`]).
     pub reason: EndReason,
+    /// The command receiver, handed back for the next generation.
+    ///
+    /// **It has to come back.** It is the other end of every
+    /// [`SessionHandle`](crate::SessionHandle) a caller holds, so dropping it
+    /// with the actor would close the channel under them and a supervised
+    /// session would lose its callers at the first reconnect.
+    ///
+    /// `run` consumes the actor, which is what makes "one actor, one
+    /// connection" structural -- so anything that must outlive the connection
+    /// travels out through here rather than being reachable on the actor
+    /// afterwards.
+    pub commands: mpsc::Receiver<crate::command::Inbox>,
+    /// This session's log sink, handed back so the next generation writes to
+    /// the same file rather than starting a new one.
+    pub sink: Option<SessionSink>,
 }
 
 /// The task. One per session.
@@ -190,6 +209,49 @@ pub struct SessionActor<S: ByteSource> {
 }
 
 impl<S: ByteSource> SessionActor<S> {
+    /// Build one generation's actor over `source`, from a supervisor's durable
+    /// parts.
+    ///
+    /// The counterpart of [`Session::new`], which builds a session that will
+    /// only ever have one connection. Everything per-connection is created
+    /// fresh here -- notably [`Parser`], whose `pending` buffer must not carry
+    /// a half-read tag across a reconnect
+    /// (`reference/lich-5/lib/games.rb:432`; see
+    /// [`SessionCore`](crate::supervisor::SessionCore)).
+    ///
+    /// `on_disconnect` is [`Outcome::Disconnected`](crate::Outcome::Disconnected)
+    /// because a supervised session **is** getting another connection -- the
+    /// one thing a plain `Session` cannot promise.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "every part is durable state         the supervisor owns; bundling them into a struct would be the same         list behind one more name"
+    )]
+    pub(crate) fn supervised(
+        source: S,
+        state: GameState,
+        commands: mpsc::Receiver<crate::command::Inbox>,
+        events: broadcast::Sender<Event>,
+        recorder: Recorder,
+        sink: Option<SessionSink>,
+        cancel: CancellationToken,
+        generation: Generation,
+    ) -> Self {
+        Self {
+            source,
+            parser: Parser::new(),
+            state,
+            lifecycle: State::Connecting,
+            queue: CommandQueue::new(),
+            commands,
+            events,
+            recorder,
+            sink,
+            cancel,
+            generation,
+            on_disconnect: crate::command::Outcome::Disconnected,
+        }
+    }
+
     /// Run until cancelled, until the stream ends, or until a read fails.
     ///
     /// All three are **clean** ends (criterion 6): the source is shut down,
@@ -278,6 +340,8 @@ impl<S: ByteSource> SessionActor<S> {
             lifecycle: self.lifecycle,
             source: self.source,
             reason,
+            commands: self.commands,
+            sink: self.sink,
         }
     }
 
@@ -309,59 +373,6 @@ impl<S: ByteSource> SessionActor<S> {
     /// player is never locked out of their character. Refusing a typed command
     /// during `Syncing` would be exactly that lockout, and it is not what
     /// either section asks for.
-    /// Close the source and answer everyone still waiting.
-    ///
-    /// Everyone is answered [`Self::on_disconnect`] -- `Dead` for a plain
-    /// session, `Disconnected` for a supervised one -- **except after a
-    /// cancellation**, which is always `Dead`: a deliberate stop is not
-    /// followed by a reconnect whoever owns the actor
-    /// ([`EndReason::warrants_reconnect`]).
-    async fn shutdown(&mut self, reason: EndReason) {
-        // Idempotent by the trait's contract, which is why this is safe on
-        // every one of the three exit paths.
-        let _ = self.source.shutdown().await;
-        let outcome = if reason.warrants_reconnect() {
-            self.on_disconnect.clone()
-        } else {
-            crate::command::Outcome::Dead
-        };
-        self.queue.answer_all_waiters(&outcome);
-        self.transition(State::Closed);
-        // Flush LAST, after the Closed transition has been logged, so the file
-        // records its own end. Buffered writers otherwise lose the final lines
-        // -- which are the ones that say why a session stopped.
-        if let Some(sink) = self.sink.as_mut() {
-            let _ = sink.flush();
-        }
-    }
-
-    fn transition(&mut self, next: State) {
-        self.lifecycle = next;
-        self.log(&format!("lifecycle {next:?}"));
-        let _ = self.events.send(Event::StateChanged(next));
-    }
-
-    /// Write one line to the session log, if there is one.
-    ///
-    /// **Swallows the error deliberately.** A full disk, a revoked permission
-    /// or a deleted directory must not end a session: `plan/12` §5.5's
-    /// containment table is about a session surviving its own faults, and a
-    /// log is an observer of the session rather than part of it. The write is
-    /// attempted every time rather than disabled after one failure, because a
-    /// transient failure should not silently stop all later logging.
-    pub(super) fn log(&mut self, line: &str) {
-        if let Some(sink) = self.sink.as_mut() {
-            let _ = sink.event(line);
-        }
-    }
-
-    /// Write raw wire bytes to the session log, if there is one.
-    pub(super) fn log_wire(&mut self, inbound: bool, bytes: &[u8]) {
-        if let Some(sink) = self.sink.as_mut() {
-            let _ = sink.wire(inbound, bytes);
-        }
-    }
-
     /// The state as the actor currently sees it. For tests that drive the
     /// actor by hand rather than spawning it.
     #[must_use]
