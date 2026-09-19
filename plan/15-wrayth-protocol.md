@@ -1041,7 +1041,9 @@ Facts recorded here and **not** implemented, each with the reason:
 ## 2b. MEASURED: what the login burst does and does not re-send
 
 **Measured 2026-09-18 across all seven of Cena's own logins** (`E:\Gemstone\data\cena_logs`),
-counting tags before the first client command. **Unanimous, 7/7.**
+counting tags before the first client command. **Unanimous, 7/7.** Each was a **cold login** after
+an unclean disconnect -- see the caveat below, which is what makes these recordings the right ones
+for Milestone 2 and the wrong ones for a linkdead resume.
 
 | Fact | In the login burst? | Where it actually arrives |
 |---|---|---|
@@ -1055,6 +1057,34 @@ counting tags before the first client command. **Unanimous, 7/7.**
 | **Roundtime (`<roundTime>`)** | **NO** | only when one is incurred |
 | **Status indicators (`<indicator>`)** | **NO** | after the first command |
 | **Effect dialogs** (Active Spells, Buffs, Debuffs, Cooldowns) | **NO** | after the first command |
+
+### CAVEAT: how those seven sessions ENDED, and what it does not prove
+
+> **AUTHOR, 2026-09-18:** *"but how did the program end for you those times? was it a quit or like
+> an altf4 disconnect?"*
+
+Checked, and the answer changes what the table above can be claimed to show.
+
+**All seven ended with `lifecycle Closed`** -- the binary's own `session_cancel.cancel()` at the
+end of `main`. And VERIFIED that **Cena never sends `quit`**: `grep` finds no `quit` anywhere in
+`crates/cena/src/main.rs` or the session actor, and the last client line in every log is a `look`
+or a `search`. The socket simply closed.
+
+So from the **game's** side every one of these was an abrupt drop -- much closer to an alt-F4 than
+to a clean logout. Which cuts two ways:
+
+- **It strengthens the reconnect relevance.** These *are* recordings of what the game sends after
+  an unclean disconnect, which is exactly Milestone 2's case. It is not the quiet-logout path.
+- **It weakens any claim about a LINKDEAD resume.** Every gap between runs was 102-4153 seconds
+  (measured), far past any grace window, so each login was a **fresh character session**. Nothing
+  here shows what the game sends when reconnecting *inside* a linkdead window, where the character
+  is still in the world and the server may restore more.
+
+**UNVERIFIED and worth knowing before the reconnect ladder is tuned:** whether a reconnect within
+the linkdead grace period re-sends more than a cold login does. If it does, the invalidation set
+is smaller on a fast reconnect than the table above implies -- and the honest default is to treat
+every reconnect as cold until measured, because assuming a resume is the direction that produces
+stale beliefs.
 
 ### Why this settles `plan/12` §5.2's invalidation contract
 
