@@ -266,7 +266,18 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
                 eprintln!("  -> [{tag}] {line}");
             }
             Ok(Event::StateChanged(state)) => eprintln!("  .. lifecycle: {state:?}"),
-            Ok(Event::Frame(_)) => {}
+            // **The game's own output.** This arm used to be `{}` -- every
+            // frame discarded -- because the binary was a criteria
+            // demonstration and printed only its own commands:
+            //
+            //   AUTHOR: "I've not been able to see anything but what you allow
+            //            me to see so far, which has been you sending look
+            //            non-stop"
+            //
+            // Exactly so, and it is backwards now that the session is the
+            // point rather than the demo. A client that connects and shows the
+            // player nothing the game said is not a client.
+            Ok(Event::Frame(frame)) => print_frame(&frame),
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and
             // `-> [behavior]` lines for the rest of the run -- and those
@@ -277,6 +288,47 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
             }
             Err(broadcast::error::RecvError::Closed) => break,
         }
+    }
+}
+
+/// Show a frame the way a player would want to read it.
+///
+/// **Text and prompts only.** The wire carries far more -- progress bars,
+/// indicators, stream routing, dialog data -- and printing all of it would
+/// bury the game's prose in markup. Those frames are still parsed, still fold
+/// into `GameState`, and are still in the `.bytes` log; this is a reading
+/// view, not a dump.
+///
+/// A real frontend renders from the same frames with styling and windows
+/// (`cena-ui`). This is the terminal stand-in until one exists.
+fn print_frame(frame: &Frame) {
+    match frame {
+        Frame::Text(text) => {
+            // The main window is `""`. A named stream -- thoughts, deaths,
+            // familiar -- is tagged so it is not mistaken for room text.
+            let body = text.content.trim_end_matches('\n');
+            if body.trim().is_empty() {
+                return;
+            }
+            if text.stream.is_empty() {
+                eprintln!("{body}");
+            } else {
+                eprintln!("[{}] {body}", text.stream);
+            }
+        }
+        // The prompt is the game's "your turn", and seeing it is how a player
+        // knows a command finished.
+        Frame::Prompt { text, .. } => eprintln!("{text}"),
+        // Room description, exits, and the other named components: the login
+        // burst is mostly these, so a session that dropped them would show
+        // nothing at all on connect.
+        Frame::Component { id, body } => {
+            let plain = body.plain();
+            if !plain.trim().is_empty() {
+                eprintln!("[{id}] {plain}");
+            }
+        }
+        _ => {}
     }
 }
 

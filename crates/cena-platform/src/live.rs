@@ -35,8 +35,19 @@
 
 use crate::bytes::ByteSource;
 use std::io;
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
+
+/// Idle time before the kernel sends its first keepalive probe.
+///
+/// Lich's value, taken verbatim (`reference/lich-5/lib/games.rb:458-463`:
+/// `idle: 30, interval: 30`), with its own comment for why it is this low:
+/// *"defensive against L3/L4 idle reapers"*.
+const KEEPALIVE_IDLE: Duration = Duration::from_secs(30);
+
+/// Time between probes once they start.
+const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
 
 /// A live connection: plain TCP to the game, or TLS to eaccess.
 ///
@@ -53,6 +64,46 @@ pub enum LiveSource {
     Tls(Box<tokio_native_tls::TlsStream<TcpStream>>),
 }
 
+/// Turn on TCP keepalive, so a half-open socket eventually fails a read.
+///
+/// # The failure this exists for
+///
+/// **A connection that is severed rather than closed never returns `Ok(0)`.**
+/// MEASURED by the author, 2026-09-18: putting the machine into airplane mode
+/// mid-session produced *no* disconnect and *no* reconnect -- the session sat
+/// in its 500ms read deadline indefinitely, treating "nothing arrived" as a
+/// quiet game, which for a text MUD it usually is.
+///
+/// Keepalive is what makes that case distinguishable. The kernel sends empty
+/// ACK probes on an idle connection; when enough go unanswered it fails the
+/// socket, `read` returns an error, and [`EndReason::ReadFailed`] flows into
+/// the reconnect ladder that already exists. **No new policy, no new timer,
+/// and nothing sent to the game.**
+///
+/// # Why not an application-level ping
+///
+/// Because a command is the wrong layer. It would spend one of the account's
+/// type-ahead slots (MEASURED at 2), appear in the log indistinguishably from
+/// a real command, and risk roundtime -- while detecting nothing a kernel
+/// probe does not. Lich reaches the same conclusion: it configures keepalive
+/// and sends no ping.
+///
+/// # Best-effort, deliberately
+///
+/// A failure to set it is **ignored**, exactly as Lich ignores its own
+/// (`games.rb:456`, "Configure socket with error handling ... won't prevent
+/// socket usage"). A session that works without keepalive is better than no
+/// session; the cost of the option not applying is that this one case goes
+/// back to being undetectable, which is where it was.
+fn set_keepalive(stream: &TcpStream) {
+    let params = socket2::TcpKeepalive::new()
+        .with_time(KEEPALIVE_IDLE)
+        .with_interval(KEEPALIVE_INTERVAL);
+    // A borrowed view of the same socket -- it does not take ownership and
+    // does not close the fd when dropped.
+    let _ = socket2::SockRef::from(stream).set_tcp_keepalive(&params);
+}
+
 impl LiveSource {
     /// Open a plain TCP connection.
     ///
@@ -67,6 +118,7 @@ impl LiveSource {
         // one-line commands: it would add up to 200ms to every round trip and
         // make criterion 4's PREEMPT_GRACE measurement a measurement of Nagle.
         stream.set_nodelay(true)?;
+        set_keepalive(&stream);
         Ok(Self::Plain(stream))
     }
 
@@ -117,6 +169,12 @@ impl LiveSource {
     pub async fn connect_tls(host: &str, port: u16) -> io::Result<Self> {
         let stream = connect_bounded(host, port).await?;
         stream.set_nodelay(true)?;
+        // NO keepalive here, unlike the game socket. This connection is a
+        // handshake -- a few request/response pairs that finish in seconds,
+        // each already bounded by `eaccess`'s per-stage deadline. Keepalive
+        // guards a connection that sits IDLE for minutes, which this one never
+        // does. Stated because its absence beside `connect`'s presence would
+        // otherwise read as an oversight.
         let connector = native_tls::TlsConnector::builder()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true)

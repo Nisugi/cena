@@ -25,10 +25,17 @@ tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "
 # so it is carried across rather than rediscovered.
 native-tls = "0.2"
 tokio-native-tls = "0.3"
+# TCP keepalive, which tokio's TcpStream cannot set. Already in the lock file
+# as tokio's own dependency, so this adds a dependency EDGE and no new code to
+# the build. It is what makes a half-open socket detectable at all: see
+# `live.rs`'s KEEPALIVE_* constants.
+socket2 = "0.6"
 jiff = "0.2.37"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
+# The keepalive test opens a loopback socket to prove the option is accepted.
+socket2 = "0.6"
 
 [lints]
 workspace = true
