@@ -818,18 +818,27 @@ unreliable fallback. #1570 (the HTTPS path) was merged at 2026-09-08T21:35:01Z; 
 **Design lesson worth keeping regardless of the port: "connected" is not "working."** Any Cena
 health check on an auth endpoint must verify a protocol response, not a TCP accept.
 
-### 5.3 Path C — HTTPS web-login on `www.play.net`. **BUILT 2026-09-19.**
+### 5.3 Path C — HTTPS web-login on `www.play.net`. **BUILT AND LIVE-VERIFIED 2026-09-19.**
 
-> **STATUS: built, not yet run live.** `cena-platform/src/gemstone/weblogin/`, wired into
+> **STATUS: LIVE-VERIFIED 2026-09-19**, author present, `GS3` Prime end to end --
+> login, character resolved by scrape, 3 redirect hops, launch URL matching the pinned
+> `storm.gs4.game.play.net:10024`, game socket open, 32,822 bytes of wire, clean shutdown.
+> Every live-only assumption held first time: the `User-Agent` past the WAF, the sign-in GET's
+> session cookie, the `okay_page` redirect shape, and the `GS3`→`GS4` code divergence.
+>
+> Run it with `cargo run -p cena -- --web-login`, which forces this path; otherwise it is
+> unreachable while eaccess is healthy.
+>
+> **Originally built as:** `cena-platform/src/gemstone/weblogin/`, wired into
 > `eaccess::authenticate_with_fallback`. The author asked for it ahead of Phase 2b with the
 > reason that settles its priority: *"they've been having issues with the normal login, and the
 > web one seems to stay up during these times allowing access to the game."* It is the outage
 > path, not redundancy.
 >
 > **The pure half is tested against fixtures** (31 tests): the instance table, the redirect
-> classification, the character scrape and the launch-URL verification. **The request sequence is
-> not** — `CLAUDE.md` forbids reaching a live service from this workspace, so `weblogin/http.rs`
-> needs one run with the author present, exactly as criterion 1 did.
+> classification, the character scrape and the launch-URL verification. The request sequence has
+> no test and cannot have one — `CLAUDE.md` forbids reaching a live service from this workspace —
+> so it is checked by the author's eyes on a `--web-login` run, as criterion 1 was.
 >
 > Ported deliberately from Lich, each at the place it bites: all six live-discovered behaviours
 > (§5.4), the `FatalAuthError` re-raise rule, and the pinned host/port check. **Not** ported: the
