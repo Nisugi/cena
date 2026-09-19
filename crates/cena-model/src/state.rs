@@ -32,8 +32,10 @@
 //! (`plan/05:276-283`) requires the tag to reach the user *as text and a log*,
 //! and "it did not panic" is neither.
 
+use crate::status::StatusInfo;
 use cena_protocol::Frame;
 use cena_protocol::runs::Runs;
+use std::time::Instant;
 
 /// A vitals gauge, as a percentage.
 ///
@@ -55,7 +57,24 @@ pub struct Room {
 }
 
 /// What the session knows. `plan/12` §7.1's In column, exactly.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+///
+/// # `PartialEq` is hand-written, and deliberately ignores one field
+///
+/// [`Self::game_time_received`] is a **local `Instant`**, so two replays of
+/// one recording produce two different values -- microseconds apart, but
+/// different. Deriving `PartialEq` made `crates/cena-session/tests/
+/// replay_determinism.rs` go red on exactly that (`Instant { t: 311689.3884761s }`
+/// against `311689.388152s`), which is criterion 7's ratchet doing its job:
+/// `Recorder`'s own documentation says "a wall clock is the single easiest way
+/// to make a replay non-deterministic", and this is that mistake in a
+/// different file.
+///
+/// It is excluded rather than removed because it is **an observation about
+/// when state arrived, not part of the state**. The server's clock
+/// ([`Self::game_time`]) IS state and is compared; the local instant it
+/// reached us is scaffolding for extrapolating it, and two sessions that saw
+/// the same frames are in the same state regardless of when.
+#[derive(Clone, Debug, Default, Eq)]
 pub struct GameState {
     /// The current room.
     pub room: Room,
@@ -74,12 +93,60 @@ pub struct GameState {
     pub roundtime_ends: Option<u32>,
     /// Gauge id to percentage, e.g. `health` -> 97.
     pub vitals: Vitals,
+    /// What the game says is true of the character right now.
+    ///
+    /// `plan/17` §2, ported from Vellum. Read it through the typed accessors
+    /// ([`StatusInfo::stunned`] and friends) or by id; an id the game has
+    /// never reported reads `false`, and [`StatusInfo::is_known`] is what
+    /// separates that from a reported `false`.
+    pub status: StatusInfo,
+    /// The server's clock, from the last `<prompt time=>`.
+    ///
+    /// Private, because a raw reading is a trap: it is only correct at the
+    /// instant the prompt arrived. [`GameState::game_time_now`] extrapolates
+    /// it and is what callers want.
+    game_time: Option<u32>,
+    /// When [`Self::game_time`] arrived, on the **monotonic** clock.
+    ///
+    /// `Instant`, not `SystemTime`: it must not move when NTP steps the wall
+    /// clock or when DST changes, because the only thing it is used for is
+    /// measuring an interval.
+    game_time_received: Option<Instant>,
     /// Tags the parser did not model, in arrival order.
     ///
     /// Criterion 8: these **survive to display**. Rule 2.2 requires an
     /// unmodelled tag to reach the user, so it is kept here rather than
     /// counted and dropped.
     pub unknown_tags: Vec<UnknownTag>,
+}
+
+impl PartialEq for GameState {
+    fn eq(&self, other: &Self) -> bool {
+        // Every field EXCEPT `game_time_received`. Listed explicitly rather
+        // than derived-minus-one so that adding a field is a compile error
+        // here, and whoever adds it has to decide which side it belongs on.
+        let Self {
+            room,
+            prompt,
+            left_hand,
+            right_hand,
+            roundtime_ends,
+            vitals,
+            status,
+            game_time,
+            game_time_received: _,
+            unknown_tags,
+        } = self;
+        room == &other.room
+            && prompt == &other.prompt
+            && left_hand == &other.left_hand
+            && right_hand == &other.right_hand
+            && roundtime_ends == &other.roundtime_ends
+            && vitals == &other.vitals
+            && status == &other.status
+            && game_time == &other.game_time
+            && unknown_tags == &other.unknown_tags
+    }
 }
 
 /// A tag `cena-protocol` has no variant for, kept for display and for the log.
@@ -99,6 +166,69 @@ impl GameState {
     /// [`Frame::Prompt`] terminator (`plan/12` §4.4). The caller uses that to
     /// resolve a waiter; folding and window-closing are the same walk over the
     /// frame, so splitting them would mean matching twice.
+    /// The server's clock **now**, extrapolated.
+    ///
+    /// The last prompt's timestamp plus how long ago it arrived on the local
+    /// monotonic clock. Ported from Vellum
+    /// (`core/state.rs`, `game_time_now`), and the single most important
+    /// borrowed idea in this file.
+    ///
+    /// # Why extrapolate rather than read a clock
+    ///
+    /// **Timers must keep flowing between prompts.** A prompt is sent when
+    /// something happens; nothing is sent when a roundtime merely ends
+    /// (`plan/15` §2a.1, the author). MEASURED (§2a.4a): a session with a
+    /// behavior firing once a second produced 58 prompts, and an idle one
+    /// would produce none -- so anything that waits for a prompt to learn a
+    /// roundtime ended waits forever in a quiet room.
+    ///
+    /// **Both sides stay in server time**, so clock skew cancels instead of
+    /// needing correction. This is what made an elaborate skew-calibration
+    /// design unnecessary: there is no comparison between two clocks anywhere
+    /// in it, only an interval measured on one.
+    ///
+    /// Returns `None` until the first prompt arrives -- `plan/12` §5.2's
+    /// `Unknown`, not a fabricated zero.
+    #[must_use]
+    pub fn game_time_now(&self) -> Option<u32> {
+        let base = self.game_time?;
+        let elapsed = self.game_time_received.map_or(0, |at| {
+            u32::try_from(at.elapsed().as_secs()).unwrap_or(u32::MAX)
+        });
+        Some(base.saturating_add(elapsed))
+    }
+
+    /// Whether the character is in roundtime.
+    ///
+    /// Compares the extrapolated server clock against
+    /// [`Self::roundtime_ends`], both in server epoch seconds.
+    ///
+    /// # This test is EXACT, not approximate
+    ///
+    /// MEASURED 2026-09-18 (`plan/15` §2a.4a): across three roundtimes the
+    /// first plain `>` prompt landed **precisely** on `<roundTime value=>`, so
+    /// `value` is the end instant rather than "somewhere inside that second".
+    ///
+    /// # `None` means unknown, and unknown is not `false`
+    ///
+    /// Returns `None` when either side is unobserved -- no roundtime seen, or
+    /// no prompt yet to calibrate against. A caller that treats `None` as "not
+    /// in roundtime" is making exactly the assumption `plan/12` §5.2 forbids,
+    /// and the type makes them write that decision down.
+    #[must_use]
+    pub fn in_roundtime(&self) -> Option<bool> {
+        Some(self.game_time_now()? < self.roundtime_ends?)
+    }
+
+    /// How many seconds of roundtime remain, or `None` if unknown.
+    ///
+    /// Saturates at zero rather than going negative: a roundtime that has
+    /// passed has no remainder.
+    #[must_use]
+    pub fn roundtime_remaining(&self) -> Option<u32> {
+        Some(self.roundtime_ends?.saturating_sub(self.game_time_now()?))
+    }
+
     pub fn apply(&mut self, frame: &Frame) -> bool {
         match frame {
             Frame::RoomId { id } => {
@@ -140,9 +270,21 @@ impl GameState {
             Frame::Compass { directions } => {
                 self.room.exits.clone_from(directions);
             }
-            Frame::Prompt { text, .. } => {
+            Frame::Prompt { time, text } => {
                 self.prompt = Some(text.clone());
+                // The server's clock, and when it reached us. Together these
+                // are what make `game_time_now()` keep counting between
+                // prompts -- which matters because a prompt is only sent when
+                // something happens, so an idle client gets none at all
+                // (`plan/15` §2a.1, MEASURED §2a.4a).
+                if let Ok(t) = time.parse::<u32>() {
+                    self.game_time = Some(t);
+                    self.game_time_received = Some(Instant::now());
+                }
                 return true;
+            }
+            Frame::StatusIndicator { id, active } => {
+                self.status.set(id, *active);
             }
             Frame::LeftHand { item, .. } => self.left_hand = Some(item.clone()),
             Frame::RightHand { item, .. } => self.right_hand = Some(item.clone()),

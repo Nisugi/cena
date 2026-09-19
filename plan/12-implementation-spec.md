@@ -506,11 +506,30 @@ This is the next thing built. Not the character model, not Hunt, not multiple fr
 |---|---|
 | EAccess login (`10`, incl. the spike) | saved credentials, GUI login, web-login fallback |
 | Permissive parser: enough frames for a room + prompt + vitals | full frame vocabulary |
-| `GameState`: room, hands, roundtime, vitals | stats, skills, PSMs, spells, inventory |
+| `GameState`: room, hands, roundtime, vitals, **status indicators, server clock** | stats, skills, PSMs, spell *data*, inventory |
 | Session actor: lifecycle §5, queue §4 | multi-session (one session, but no global state) |
 | One behavior (e.g. "walk to room N" or "wait for roundtime then send") | Hunt/Heal/Travel |
 | One frontend: headless + minimal web or plain stdout | TUI, GUI, full web |
 | Recorder + replay test of the whole flow | golden corpus breadth |
+
+> **AMENDED 2026-09-18 (author's call), after Milestone 1 closed.** `GameState` gained **status
+> indicators** and the **server clock**. The row previously read "room, hands, roundtime,
+> vitals".
+>
+> **The reason is that the model had fallen behind the protocol.** `StatusIndicator` and the
+> prompt's `time` were both already parsed and both discarded, and everything in `plan/16` —
+> instant actions, roundtime gating, confirm-by-effect — waited on them. With one behavior
+> written, the cost of widening was near zero; each behavior written first would have been
+> written against a model that cannot answer "am I in roundtime".
+>
+> **It is a port, not a design** (`plan/17`): `StatusInfo` and `game_time_now()` come from
+> `reference/VellumFE/src/core/state.rs`, and Lich's `status.rb` supplies the rule about
+> text-derived conditions. The semantics were then MEASURED against Cena's own capture
+> (`plan/15` §2a.4a) rather than assumed.
+>
+> **Still Out:** stats, skills, PSMs, inventory, and spell *data*. Effects (the active-buff
+> list) are proposed in `plan/17` §4 and are **not** built — this amendment covers indicators
+> and the clock only.
 
 ### 7.2 Pass criteria
 

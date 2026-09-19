@@ -18,5 +18,7 @@
 
 pub mod crit;
 pub mod state;
+pub mod status;
 
 pub use state::{GameState, Room, UnknownTag};
+pub use status::StatusInfo;
