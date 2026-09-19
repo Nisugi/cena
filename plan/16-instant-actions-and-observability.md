@@ -1177,6 +1177,95 @@ built on it would be silently useless.
 
 ---
 
+## 5b. Orderly shutdown: why `quit` is sent, and what it is really for
+
+**Raised 2026-09-18** after the reconnect measurement showed Cena had never sent it.
+
+### 5b.1 The reason is not politeness to the game
+
+> **AUTHOR:** *"i would say yes it should send quit on a clean shutdown. But the main reason it was
+> done with lich is it sends the signal to lich to shutdown so it has time to save everything
+> without corruption."*
+
+**The `quit` is a shutdown signal to the client layer, not only a logout to the server.** In Lich
+the frontend's `quit` travels *through* Lich, which recognises it and runs its own teardown before
+letting the connection close. The command is the trigger for saving, not merely a goodbye.
+
+VERIFIED: `ShutdownIntent::USER_EXIT_COMMAND` matches `exit` or `quit`, optionally wrapped in `<c>`
+(`reference/lich-5/lib/common/shutdown_intent.rb:7`), and recognising it starts a whole subsystem
+-- `orderly_shutdown.rb`, `shutdown_watchdog.rb`, `best_effort_shutdown_cleanup.rb`, `shutdown_log`.
+
+### 5b.2 The ordering is the contract
+
+`reference/lich-5/lib/common/orderly_shutdown.rb:83`, in its own words:
+
+> *"The sequence intentionally runs script hooks and local state save **before** closing the game
+> connection."*
+
+```
+update_active_sessions  ->  drain_scripts  ->  save_vars  ->  request_server_exit  ->  close_game
+```
+
+Each step records its own success, and `completed` is only true if **all** of drained, saved and
+closed succeeded (`:202`). A failure anywhere is captured in `failures` and logged rather than
+aborting the rest -- teardown is best-effort per step, not all-or-nothing.
+
+### 5b.3 It waits for the server's EOF
+
+The step that sends `quit` does not fire-and-forget it (`:181-191`):
+
+```ruby
+raise IOError, "failed to send game server exit" unless game._puts(command)
+raise ServerExitTimeout unless reader_thread.join(timeout)      # 10s
+raise IOError, "game reader stopped without remote EOF" unless game.remote_eof?
+```
+
+So the contract is **send `quit`, wait for the server to close the socket, and treat "the reader
+stopped but the server never EOF'd" as a failure.** `SERVER_EXIT_TIMEOUT_SECONDS = 10`.
+
+That third check is the interesting one: a reader that stops *without* remote EOF means the
+connection dropped rather than the server acknowledging the exit -- which is exactly the state
+Cena has been leaving the game in on every run tonight.
+
+### 5b.4 What Cena has been doing instead, and what it costs
+
+**MEASURED**: Cena sends no `quit`. `grep` finds none in `crates/cena/src/main.rs` or the session
+actor, the last client line in all seven logs is a `look` or `search`, and the socket simply
+closes. From the game's side every clean exit has been indistinguishable from a crash
+(`plan/15` §2b caveat).
+
+Today that costs little -- there is nothing to save. **It gets expensive at exactly the point
+`plan/12` §5.2 and §7.1 are heading**: once a session has profile state, behavior state, or a
+recorded position worth persisting, an exit that skips the save is a corruption path.
+
+### 5b.5 What Cena should build, and when
+
+The shape ports directly, and Cena's version is *simpler* because it has no separate proxy to
+signal -- the save and the send happen in the same process:
+
+| Lich step | Cena equivalent | Exists? |
+|---|---|---|
+| `drain_scripts` | cancel behaviors, await within `PREEMPT_GRACE` | **yes** -- criterion 4, measured at 84µs |
+| `save_vars` | persist whatever the session owns | **nothing to save yet** |
+| `request_server_exit` | send `quit`, await EOF, bounded | **no** |
+| `close_game` | `source.shutdown()` | **yes** -- criterion 6 |
+
+So two of the four steps already exist in the right order, one has no content, and **only the
+`quit`-and-await-EOF step is missing.**
+
+**It belongs with Milestone 2's reconnect work**, because the two share a mechanism: distinguishing
+*the server closed because we asked* from *the connection dropped* is the same
+`remote_eof?`-versus-`reader stopped` distinction Lich draws at `:189`, and it is what tells a
+reconnect whether to reconnect at all. A clean `quit` must **not** trigger a reconnect; a drop
+must.
+
+**Ordering note for the implementation:** the `quit` goes out *before* `shutdown()`, and
+`shutdown()` still runs even if the `quit` fails or times out -- Lich's `close_game` is a separate
+step that runs regardless. Criterion 6's "no leaked sockets" must not become conditional on the
+server's cooperation.
+
+---
+
 ## 6. Logging
 
 ### 6.1 The gap
