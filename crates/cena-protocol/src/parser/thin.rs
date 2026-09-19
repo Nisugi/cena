@@ -91,6 +91,11 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
         "deleteContainer" => Frame::DeleteContainer { id: id() },
         "app" => Frame::AppInfo {
             character: text::attribute(tag, "char").unwrap_or_default(),
+            // `game` is the instance, and two characters of the same name in
+            // Prime and Platinum are two different characters -- so a
+            // multi-session client cannot identify a session without it.
+            game: text::attribute(tag, "game").unwrap_or_default(),
+            title: text::attribute(tag, "title").unwrap_or_default(),
         },
         "image" => Frame::InjuryImage {
             id: id(),
@@ -142,7 +147,6 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
             Frame::DialogWidgets(DialogWidgets {
                 id: id(),
                 kind: name.to_owned(),
-                clear: false,
                 widgets: vec![attrs],
             })
         }

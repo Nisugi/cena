@@ -250,8 +250,18 @@ pub struct DialogWidgets {
     /// The wire tag that produced them: `cmdButton`, `dropDownBox`,
     /// `editBox`, `label`, `link`, `image`, `upDownEditBox`, `skin`, ...
     pub kind: String,
-    /// True when this set replaces the dialog's contents.
-    pub clear: bool,
+    // NO `clear` FIELD, and the absence is deliberate.
+    //
+    // There was one, and `thin.rs` wrote `false` into it at the only site
+    // that built this struct -- a field with one possible value, which
+    // `plan/05` §-1 names directly ("no config option with one value").
+    //
+    // It was also redundant: "this set replaces the dialog's contents" is
+    // already on the wire as `clear='t'` or a self-closing `<dialogData/>`,
+    // and `dispatch.rs` turns both into a separate `Frame::ClearDialogData`
+    // ahead of the widgets. A consumer reads the clear from that frame, in
+    // order, which is where the ordering information lives. Found by review
+    // (PR-11).
     /// One bag per widget.
     pub widgets: Vec<super::Attrs>,
 }

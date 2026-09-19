@@ -46,17 +46,30 @@
 //!
 //! # The arithmetic, stated so it can be checked
 //!
-//! This enum has **50** variants:
+//! This enum has **51** variants:
 //!
 //! ```text
 //! $ awk '/^pub enum Frame \{/,/^\}/' src/frame.rs | grep -oE '^    [A-Z][A-Za-z0-9]*' | sort -u | wc -l
-//! 50
+//! 51
 //! ```
 //!
-//! (`grep -c` alone reports 51: `ActiveEffect` is both a variant name and the
-//! struct it wraps, so the line matches twice. `sort -u` is the honest count.)
+//! (`sort -u` is load-bearing: `ActiveEffect` is both a variant name and the
+//! struct it wraps, so without it the line matches twice and the count is 52.)
 //!
-//! `63 - 5 - 5 - 7 + 4 = 50`, where:
+//! This said **50**, beside the command that prints 51 -- a measurement
+//! refuted by the evidence quoted under it, which is the failure `plan/05`
+//! §-2 exists to prevent in its second form: a number restated rather than
+//! re-run. `layering.rs` said 51 and was right (review PR-13).
+//!
+//! The missing one is `Structural`, a Cena addition that the arithmetic below
+//! never counted:
+//!
+//! ```text
+//! $ grep -c Structural reference/VellumFE/src/parser.rs
+//! 0
+//! ```
+//!
+//! `63 - 5 - 5 - 7 + 5 = 51`, where:
 //!
 //! - **-5 not-wire variants**, each named above: `VellumImage`,
 //!   `VellumCommand`, `VellumTimer`, `Event`, `LichWebUI`.
@@ -89,10 +102,14 @@
 //!   puts it above this crate; `ClearActiveEffects` is what
 //!   [`Frame::ClearDialogData`] already emits now that `clear='t'` is read on
 //!   the open tag.
-//! - **+4 Cena adds**: [`Frame::UnknownTag`] and [`Frame::MalformedTag`], both
-//!   mandated by Rule 2.2, plus [`Frame::ClientCommand`] and
+//! - **+5 Cena adds**: [`Frame::UnknownTag`] and [`Frame::MalformedTag`], both
+//!   mandated by Rule 2.2; [`Frame::ClientCommand`] and
 //!   [`Frame::ClientSettings`], which the gated corpus replay found in real
-//!   traffic that Vellum's vocabulary does not name.
+//!   traffic that Vellum's vocabulary does not name; and
+//!   [`Frame::Structural`], which types the tags that carry no payload of
+//!   their own so Rule 2.2's "nothing is silently dropped" holds for them too.
+//!   This read `+4` and omitted `Structural`, which is where the 50 came
+//!   from.
 //!
 //! One variant is renamed rather than changed (`LaunchURL` ->
 //! [`Frame::LaunchUrl`]), which nets to zero. Every dropped variant is
@@ -214,8 +231,29 @@ pub enum Frame {
     DeleteContainer { id: String },
     /// Placement attrs riding a `<streamWindow>`/`<openDialog>`/`<container>`.
     WindowHints { id: String, attrs: Attrs },
-    /// `<app char= game=>`.
-    AppInfo { character: String },
+    /// `<app char= game= title=>` -- who this connection is, and where.
+    ///
+    /// **`game` is the INSTANCE**, and a multi-session client needs it. The
+    /// wire sends `<app char="Alderin" game="Prime" title="GemStone IV:
+    /// Alderin [Prime]"/>` (VERIFIED in `tests/fixtures/login_setup.xml` and
+    /// `reference/wiki_clean/Wrayth protocol.txt:41`), and Prime, Platinum,
+    /// Shattered and Test are separate worlds: the same character name in two
+    /// of them is two different characters.
+    ///
+    /// This carried `character` alone, dropping `game` and `title` while its
+    /// own doc comment named them (review PR-11). Widened before it had a
+    /// consumer, which is when it is free to do.
+    ///
+    /// `title` is kept rather than derived: it is what the game says to put in
+    /// a window title bar, and reassembling it from the other two would be
+    /// guessing at a format the server already sent.
+    AppInfo {
+        character: String,
+        /// The instance: `Prime`, `Platinum`, `Shattered`, `Test`.
+        game: String,
+        /// The window title the game suggests, verbatim.
+        title: String,
+    },
     /// `<nav rm=>` -- the room changed.
     RoomId { id: String },
     /// `<streamWindow id= title= subtitle= ...>`.
