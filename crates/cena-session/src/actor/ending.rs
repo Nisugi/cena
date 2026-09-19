@@ -12,9 +12,16 @@
 //! [`SessionActor::transition`] came here in the second half of the split this
 //! file's own header named.
 //!
-//! The logging helpers came with them: `shutdown` already flushes the sink, so
-//! the sink's writers belong beside the code that closes it rather than beside
-//! the loop.
+//! # What was moved back, and why
+//!
+//! The logging helpers (`log`, `log_wire`) came here too when `actor.rs` was
+//! 5 lines over -- and that was **arithmetic, not a seam**. They are used by
+//! `ingest` and `pump` on every turn, not only at the end, so they belonged
+//! with the loop all along. When the author raised the default cap from 400 to
+//! 800 they went back.
+//!
+//! Recorded because it is the cost the cap change was meant to stop paying: a
+//! seam chosen to shed five lines is a seam nobody can explain later.
 
 use super::{Event, SessionActor, State};
 use cena_platform::ByteSource;
@@ -111,26 +118,5 @@ impl<S: ByteSource> SessionActor<S> {
         self.lifecycle = next;
         self.log(&format!("lifecycle {next:?}"));
         let _ = self.events.send(Event::StateChanged(next));
-    }
-
-    /// Write one line to the session log, if there is one.
-    ///
-    /// **Swallows the error deliberately.** A full disk, a revoked permission
-    /// or a deleted directory must not end a session: `plan/12` §5.5's
-    /// containment table is about a session surviving its own faults, and a
-    /// log is an observer of the session rather than part of it. The write is
-    /// attempted every time rather than disabled after one failure, because a
-    /// transient failure should not silently stop all later logging.
-    pub(super) fn log(&mut self, line: &str) {
-        if let Some(sink) = self.sink.as_mut() {
-            let _ = sink.event(line);
-        }
-    }
-
-    /// Write raw wire bytes to the session log, if there is one.
-    pub(super) fn log_wire(&mut self, inbound: bool, bytes: &[u8]) {
-        if let Some(sink) = self.sink.as_mut() {
-            let _ = sink.wire(inbound, bytes);
-        }
     }
 }

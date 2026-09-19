@@ -35,12 +35,47 @@ use std::fs;
 // `justification` field makes structural rather than conventional.
 //
 // Vellum's numbers (2100/3600/800) are deliberately NOT copied: plan/05:356-359
-// bans that by name. 400 is not measured from Cena — there is no Cena code yet
-// to measure. It is a starting cap chosen to be tightened, and the ratchet only
-// ever moves down (plan/05:352-353).
+// bans that by name.
+//
+// THE NUMBER, AND THE ONE TIME IT WAS RAISED (2026-09-18).
+//
+// It started at 400, and that figure was INVENTED -- this comment used to say
+// so: "400 is not measured from Cena, there is no Cena code yet to measure. It
+// is a starting cap chosen to be tightened." It was a guess made before there
+// was anything to calibrate against, and plan/05 Rule 4.1 mandates *a* cap
+// without ever naming one.
+//
+// By Milestone 2 there was something to calibrate against, and the author
+// raised it to 800:
+//
+//   AUTHOR: "where did the 400 line limit come from? Is that best practices or
+//            invented? I feel like 1000 lines is better? Or I guess 400 is
+//            easier for an llm to ingest"
+//
+// Invented, and the author's instinct is backed by their own shipped code:
+// VellumFE's caps are 3600 / 2100 / 1700 / 1100 / 800 / 700
+// (reference/VellumFE/tests/architecture.rs:261-268). 800 is below all but one
+// of them.
+//
+// What 400 actually cost: FIVE splits in one milestone, several of which were
+// forced by the line count rather than by the code wanting to split --
+// actor/ending.rs exists because `shutdown` and `transition` had nowhere else
+// to go, not because they are a coherent module. A cap should make seams be
+// chosen DELIBERATELY; one set too low makes them be chosen by arithmetic.
+//
+// What 400 bought, and why 800 rather than 1100+: a file that fits in one
+// reading is a file whose stale header claims get noticed. Three of those
+// survived several edits in actor.rs this milestone precisely because the file
+// was read in excerpts.
+//
+// **The ratchet is unchanged and still only moves down** (plan/05:352-353).
+// This was a one-time recalibration of a guessed starting value, made at a
+// milestone boundary and by the author -- not a cap raised reactively because
+// a file tripped, which is the thing Rule 4.1 forbids and which was declined
+// five times tonight in favour of splitting.
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MAX_LINES: usize = 400;
+const DEFAULT_MAX_LINES: usize = 800;
 
 /// A cap exception. `justification` is required by the type, which is how
 /// `plan/05:364-365` ("allowlist requiring a justifying comment") stops being
@@ -53,11 +88,16 @@ struct CapException {
 }
 
 const CAP_EXCEPTIONS: &[CapException] = &[
-    CapException {
-        path: "crates/cena-arch-tests/tests/file_rules.rs",
-        cap: 650,
-        justification: "The enforcer is not exempt from its own ratchet, and it went red three                     times. At one file it was 953 lines against the 400 default; the response                     was plan/05:352-353 -- move code down -- giving src/harness.rs,                     src/lexical.rs and src/plan_rules.rs. It went red again at 910 and split by                     rule section into tests/architecture.rs (layering and state, which now fits                     the default cap with no exception) and this file. It went red a third time                     when the lint-drift test was added, and that test moved here rather than                     the cap moving up. It went red a FOURTH time when Rule 2.1's deferral was                     spent and its test written, and the split its own justification had                     named in advance -- Rule 9.3 and the enforcer-integrity tests into                     tests/ratchet.rs -- was taken. What remains is the rule citation and, for each test,                     the VERIFIED evasion that determined its shape -- which plan/05 section -2                     requires be written next to the code it governs, and which is the reason                     these tests are not the decoration plan/05 section 0 warns about. The next                     split, if this grows, is Rule 4.4 and the include! ban into                     tests/shape.rs. Compare reference/VellumFE/tests/architecture.rs for the                     closed-table design this deliberately does not copy.",
-    },
+    // NOTE: this file's own exception was REMOVED when the default rose to 800.
+    // It had been 650, and at 800 it is no longer an exception at all -- which
+    // `cap_exceptions_are_justified` reported as an error rather than letting it
+    // sit as dead weight. That is the ratchet working on its own enforcer: an
+    // exception that no longer excepts anything is a claim nobody checks.
+    //
+    // Its history is worth keeping, because it is the strongest evidence for the
+    // rule: this file went red FOUR times and split four times rather than
+    // raising its cap once -- into src/harness.rs, src/lexical.rs,
+    // src/plan_rules.rs, tests/architecture.rs and tests/ratchet.rs.
     CapException {
         path: "crates/cena-model/data/crit_tables.tsv",
         cap: 2400,

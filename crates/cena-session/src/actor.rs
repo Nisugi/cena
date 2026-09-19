@@ -50,10 +50,14 @@
 //! `crates/cena-arch-tests/tests/ratchet.rs:4-8` set -- **the fourth time it
 //! has paid.**
 //!
-//! **That split has been taken too**, one step later: `shutdown`, `transition`
-//! and the logging helpers joined [`EndReason`] in [`ending`] when the
-//! supervisor took this file to 437. Named in advance, taken as written --
-//! the fifth time.
+//! **That split has been taken too**, one step later: `shutdown` and
+//! `transition` joined [`EndReason`] in [`ending`] when the supervisor took
+//! this file to 437. Named in advance, taken as written -- the fifth time.
+//!
+//! The logging helpers went with them and **came back**. They were moved to
+//! shed the last five lines over the cap, which is arithmetic rather than a
+//! seam: `ingest` and `pump` use them on every turn, so they belong with the
+//! loop. When the author raised the default cap from 400 to 800 they returned.
 //!
 //! **The next split, named in advance and not yet needed:** [`SessionEnd`] and
 //! [`SessionActor::supervised`] to `actor/parts.rs` -- what a connection is
@@ -373,6 +377,27 @@ impl<S: ByteSource> SessionActor<S> {
     /// player is never locked out of their character. Refusing a typed command
     /// during `Syncing` would be exactly that lockout, and it is not what
     /// either section asks for.
+    /// Write one line to the session log, if there is one.
+    ///
+    /// **Swallows the error deliberately.** A full disk, a revoked permission
+    /// or a deleted directory must not end a session: `plan/12` §5.5's
+    /// containment table is about a session surviving its own faults, and a
+    /// log is an observer of the session rather than part of it. The write is
+    /// attempted every time rather than disabled after one failure, because a
+    /// transient failure should not silently stop all later logging.
+    pub(super) fn log(&mut self, line: &str) {
+        if let Some(sink) = self.sink.as_mut() {
+            let _ = sink.event(line);
+        }
+    }
+
+    /// Write raw wire bytes to the session log, if there is one.
+    pub(super) fn log_wire(&mut self, inbound: bool, bytes: &[u8]) {
+        if let Some(sink) = self.sink.as_mut() {
+            let _ = sink.wire(inbound, bytes);
+        }
+    }
+
     /// The state as the actor currently sees it. For tests that drive the
     /// actor by hand rather than spawning it.
     #[must_use]
