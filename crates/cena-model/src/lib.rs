@@ -17,8 +17,10 @@
 //! > around a layer that did no work.
 
 pub mod crit;
+pub mod effects;
 pub mod state;
 pub mod status;
 
+pub use effects::{Effect, Effects};
 pub use state::{GameState, Room, UnknownTag};
 pub use status::StatusInfo;

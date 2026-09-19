@@ -32,6 +32,7 @@
 //! (`plan/05:276-283`) requires the tag to reach the user *as text and a log*,
 //! and "it did not panic" is neither.
 
+use crate::effects::Effects;
 use crate::status::StatusInfo;
 use cena_protocol::Frame;
 use cena_protocol::runs::Runs;
@@ -100,6 +101,11 @@ pub struct GameState {
     /// never reported reads `false`, and [`StatusInfo::is_known`] is what
     /// separates that from a reported `false`.
     pub status: StatusInfo,
+    /// Active spells, buffs, debuffs and cooldowns.
+    ///
+    /// Liveness is an expiry compared against [`Self::game_time_now`], never
+    /// mere presence -- see [`crate::effects`].
+    pub effects: Effects,
     /// The server's clock, from the last `<prompt time=>`.
     ///
     /// Private, because a raw reading is a trap: it is only correct at the
@@ -133,6 +139,7 @@ impl PartialEq for GameState {
             roundtime_ends,
             vitals,
             status,
+            effects,
             game_time,
             game_time_received: _,
             unknown_tags,
@@ -144,6 +151,7 @@ impl PartialEq for GameState {
             && roundtime_ends == &other.roundtime_ends
             && vitals == &other.vitals
             && status == &other.status
+            && effects == &other.effects
             && game_time == &other.game_time
             && unknown_tags == &other.unknown_tags
     }
@@ -286,6 +294,15 @@ impl GameState {
             Frame::StatusIndicator { id, active } => {
                 self.status.set(id, *active);
             }
+            Frame::ClearDialogData { id } => {
+                // MEASURED: `<dialogData id='Buffs' clear='t'></dialogData>`
+                // arrives EMPTY, immediately followed by the populated
+                // element. Clear then refill, per category -- a `Buffs` clear
+                // says nothing about `Cooldowns`.
+                if crate::effects::is_effect_dialog(id) {
+                    self.effects.clear_category(id);
+                }
+            }
             Frame::LeftHand { item, .. } => self.left_hand = Some(item.clone()),
             Frame::RightHand { item, .. } => self.right_hand = Some(item.clone()),
             Frame::RoundTime { value } => self.roundtime_ends = Some(*value),
@@ -305,6 +322,33 @@ impl GameState {
                 // anything suffixed `injuries-<id>` is a third party and is
                 // published to observers without entering the character's
                 // state.
+                // EFFECTS FIRST. The same `<progressBar>` shape carries
+                // vitals, stance and effects; the enclosing dialog id is the
+                // only thing that tells them apart (MEASURED 2026-09-18: one
+                // burst carried `minivitals`, `combat`, `stance`, `Buffs`,
+                // `Cooldowns` and `Active Spells` bars, all as progressBars).
+                if let Some(dialog) = bar.dialog.as_deref()
+                    && crate::effects::is_effect_dialog(dialog)
+                {
+                    // `time_remaining_secs` is a DURATION -- the wire sends
+                    // `time='00:01:59'`. Adding it to the server clock once,
+                    // here, is what makes it comparable later; the duration
+                    // itself goes stale immediately because the game only
+                    // re-sends an effect when it changes.
+                    let ends_at = bar
+                        .time_remaining_secs
+                        .and_then(|secs| Some(self.game_time_now()?.saturating_add(secs)));
+                    self.effects.insert(
+                        bar.id.clone(),
+                        crate::effects::Effect {
+                            category: dialog.to_owned(),
+                            text: bar.text.clone(),
+                            ends_at,
+                            percent: bar.percent,
+                        },
+                    );
+                    return false;
+                }
                 let is_own = bar
                     .dialog
                     .as_deref()
