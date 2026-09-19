@@ -45,6 +45,27 @@ pub struct TextFrame {
     pub ends_line: bool,
 }
 
+impl TextFrame {
+    /// This run as a [`Run`](crate::runs::Run), for assembling into a line.
+    ///
+    /// A `TextFrame` is a `Run` plus the two facts a frame carries and a run does
+    /// not: which stream it went to, and whether it ended a line. Both are
+    /// consumed by whoever is doing the assembling, so what is left is exactly a
+    /// `Run` -- and this lives here, beside both types, rather than being an
+    /// open-coded struct literal in every consumer that buffers text.
+    ///
+    /// Clones rather than consuming: `apply` takes `&Frame`, because a frame is
+    /// broadcast to every subscriber as well as folded into state.
+    #[must_use]
+    pub fn as_run(&self) -> crate::runs::Run {
+        crate::runs::Run {
+            text: self.content.clone(),
+            style: self.style.clone(),
+            link: self.link.clone(),
+        }
+    }
+}
+
 /// Markup that was open when a run of text was emitted.
 ///
 /// Structure, not appearance: `cena-ui` maps these to colours. `preset` is the

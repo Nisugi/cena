@@ -41,6 +41,7 @@ use std::time::Instant;
 mod clock;
 mod idle;
 mod reconnect;
+mod streams;
 
 /// A vitals gauge, as a percentage.
 ///
@@ -135,6 +136,24 @@ pub struct GameState {
     /// idle_warning.rs` for the wire evidence and why this is a supervisor
     /// signal rather than display text.
     idle_warning: IdleWarning,
+    /// Buffered display lines per stream id; `""` is the main window.
+    ///
+    /// Private, and read through [`GameState::stream`] / [`GameState::streams`],
+    /// so "a stream nobody has pushed to" answers empty rather than making every
+    /// call site unwrap an `Option`.
+    streams: streams::StreamBuffers,
+    /// The line being assembled for each stream, not yet terminated.
+    ///
+    /// **A frame boundary is not a line boundary.** The parser emits one run per
+    /// markup boundary, so `  a` + `<a>pebbled grey leather doublet</a>` is two
+    /// frames of one line -- the split that printed the author's worn inventory
+    /// down the screen. [`TextFrame::ends_line`] is what says where a line really
+    /// ends, and this holds the runs until it does.
+    ///
+    /// Keyed by stream because two streams can be mid-line at once: a
+    /// `pushStream` can interrupt an unterminated run and the enclosing stream
+    /// resumes afterwards.
+    pending: std::collections::BTreeMap<String, Runs>,
 }
 
 /// Whether the server has warned about idling, and when.
@@ -175,8 +194,12 @@ impl PartialEq for GameState {
             game_time_received: _,
             unknown_tags,
             idle_warning,
+            streams,
+            pending,
         } = self;
         idle_warning == &other.idle_warning
+            && streams == &other.streams
+            && pending == &other.pending
             && room == &other.room
             && prompt == &other.prompt
             && left_hand == &other.left_hand
@@ -265,14 +288,22 @@ impl GameState {
             // `contains` would let one make the supervisor stop reconnecting by
             // typing it. The bells the wire wraps it in are already gone --
             // `text::strip_control_chars` runs in the parser.
-            Frame::Text(text) if text.content.trim() == IDLE_WARNING => {
-                // The clock as it stands, which may be `None` during a login
-                // burst. Stamped rather than derived later because
-                // `game_time_now` extrapolates and this is a point in time.
-                self.idle_warning = match self.game_time {
-                    Some(at) => IdleWarning::At(at),
-                    None => IdleWarning::Unstamped,
-                };
+            Frame::Text(text) => {
+                if text.content.trim() == IDLE_WARNING {
+                    // The clock as it stands, which may be `None` during a login
+                    // burst. Stamped rather than derived later because
+                    // `game_time_now` extrapolates and this is a point in time.
+                    self.idle_warning = match self.game_time {
+                        Some(at) => IdleWarning::At(at),
+                        None => IdleWarning::Unstamped,
+                    };
+                }
+                // **And it is still routed.** Observing a line must not consume
+                // it (Rule 2.2): the player has to see the warning. This used to
+                // be a guarded arm that swallowed the frame, which was invisible
+                // while nothing else read text and would have silently dropped
+                // the one line from the buffer the moment routing arrived.
+                self.route_text(text);
             }
             // NOTHING INBOUND CLEARS IT, and that is a measurement rather than
             // an omission. The obvious guess -- "the next prompt means the
@@ -364,6 +395,13 @@ impl GameState {
                 if is_own {
                     self.vitals.insert(bar.id.clone(), bar.percent);
                 }
+            }
+            // `<clearStream id=>`: the wire's own snapshot boundary, and the
+            // ONLY thing that empties a buffer. See `state/streams.rs` for the
+            // measurement that chose this over clearing on push.
+            Frame::ClearStream { id } => {
+                self.clear_stream(id);
+                self.pending.remove(id);
             }
             Frame::UnknownTag { name, raw } => self.unknown_tags.push(UnknownTag {
                 name: name.clone(),

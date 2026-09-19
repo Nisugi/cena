@@ -86,6 +86,8 @@ impl GameState {
             game_time_received,
             unknown_tags,
             idle_warning,
+            streams,
+            pending,
         } = self;
 
         // --- Cleared: the burst does not carry these -----------------------
@@ -142,6 +144,13 @@ impl GameState {
         // generation look like a second idle kick and stop a session that a real
         // network blip had merely interrupted.
         *idle_warning = super::IdleWarning::None;
+
+        // Every stream buffer, and any half-assembled line. The login burst
+        // re-sends the room and the inventory; a `thoughts` buffer from the
+        // previous connection is a DIFFERENT SESSION'S chatter, and a pending
+        // line is half of a sentence nobody will finish.
+        streams.clear();
+        pending.clear();
 
         // --- Kept: see the method docs -------------------------------------
         let _ = vitals;
