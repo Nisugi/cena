@@ -40,6 +40,16 @@ impl<S: ByteSource> SessionActor<S> {
     /// `WRITE_DEADLINE` records -- a partially written command has already
     /// broken the single-write rule, so the stream cannot be trusted.
     async fn write_bounded(&mut self, message: &[u8]) -> bool {
+        // The character acted, which answers the server's idle warning. Here
+        // rather than at the three call sites because **this is the one
+        // chokepoint they all pass through** -- and a fix applied at one of three
+        // send paths is a mistake already made once in this file (see
+        // `handle_inbox`'s note on `WRITE_DEADLINE` being a half-measure).
+        //
+        // Before the write, not after: a write that fails still means someone
+        // tried, and the session is attended either way. The supervisor's
+        // question is "is anyone here", not "did the packet land".
+        self.state.answer_idle_warning();
         matches!(
             tokio::time::timeout(WRITE_DEADLINE, self.source.write_all(message)).await,
             Ok(Ok(()))

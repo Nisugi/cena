@@ -412,14 +412,40 @@ impl<C: Connector> SupervisedSession<C> {
         }
         if attended {
             *unattended = 0;
+            return None;
+        }
+        *unattended += 1;
+
+        // **The server told us, so one is enough.**
+        //
+        // `MAX_UNATTENDED_LOSSES` is 2 rather than 1 for a stated reason: *"one
+        // would stop the first time a session was quiet across a single drop,
+        // which is an ordinary network blip on an idle character rather than
+        // evidence of an abandoned client."* The idle warning is that evidence,
+        // from the only party that has it -- so the ambiguity the cap pads
+        // against is gone and the padding is not needed.
+        //
+        // Why it matters that this is fast: an idle kick is the disconnect where
+        // the connection WORKED, so `worked` above has already reset the ladder.
+        // Without this the supervisor reconnects at the one-second rung, idles
+        // ~30 minutes, and is kicked again -- roughly an hour of auth churn
+        // before the cap fires.
+        //
+        // `attended` is checked FIRST, and that order is the safety property: a
+        // player who was warned, answered, and then lost their network sent an
+        // outbound byte, so they never reach here. The warning says the server
+        // thought nobody was there; a command is proof someone was.
+        let allowed = if self.core.state.idle_warned() {
+            self.log("the server warned this session was idle before it dropped");
+            1
         } else {
-            *unattended += 1;
-            if *unattended >= MAX_UNATTENDED_LOSSES {
-                self.log(&format!(
-                    "no command sent across {unattended} connections; not reconnecting"
-                ));
-                return Some(StoppedBecause::Unattended);
-            }
+            MAX_UNATTENDED_LOSSES
+        };
+        if *unattended >= allowed {
+            self.log(&format!(
+                "no command sent across {unattended} connection(s); not reconnecting"
+            ));
+            return Some(StoppedBecause::Unattended);
         }
         None
     }

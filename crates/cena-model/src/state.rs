@@ -39,6 +39,7 @@ use cena_protocol::runs::Runs;
 use std::time::Instant;
 
 mod clock;
+mod idle;
 mod reconnect;
 
 /// A vitals gauge, as a percentage.
@@ -127,6 +128,33 @@ pub struct GameState {
     /// unmodelled tag to reach the user, so it is kept here rather than
     /// counted and dropped.
     pub unknown_tags: Vec<UnknownTag>,
+    /// Whether the server has warned that this character is idle.
+    ///
+    /// Private, and read through [`GameState::idle_warned`] /
+    /// [`GameState::idle_warned_at`]. See `crates/cena-model/tests/
+    /// idle_warning.rs` for the wire evidence and why this is a supervisor
+    /// signal rather than display text.
+    idle_warning: IdleWarning,
+}
+
+/// Whether the server has warned about idling, and when.
+///
+/// **Three states, so a named enum rather than `Option<Option<u32>>`.** That was
+/// the first shape here and clippy's `option_option` objected, correctly: the
+/// review pattern `plan/19` (A) records is an `Option` read as two states where
+/// three exist, and a nested one makes a reader decode the nesting to find the
+/// third. Naming them costs nine lines and removes the decoding.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum IdleWarning {
+    /// Never warned, or warned and since answered by an outbound command.
+    #[default]
+    None,
+    /// Warned before any `<prompt>` arrived, so there was no server clock to
+    /// stamp. Real, and not the same as never warned -- the login burst carries
+    /// no prompt until its end.
+    Unstamped,
+    /// Warned at this server epoch second.
+    At(u32),
 }
 
 impl PartialEq for GameState {
@@ -146,8 +174,10 @@ impl PartialEq for GameState {
             game_time,
             game_time_received: _,
             unknown_tags,
+            idle_warning,
         } = self;
-        room == &other.room
+        idle_warning == &other.idle_warning
+            && room == &other.room
             && prompt == &other.prompt
             && left_hand == &other.left_hand
             && right_hand == &other.right_hand
@@ -159,6 +189,14 @@ impl PartialEq for GameState {
             && unknown_tags == &other.unknown_tags
     }
 }
+
+/// The server's idle warning, exactly as it arrives once the parser has stripped
+/// the bell characters that wrap it on the wire.
+///
+/// MEASURED 2026-09-19: 6 occurrences across 6 characters in the log archive,
+/// byte-identical every time. Matched whole, never as a substring -- see
+/// [`GameState::apply`].
+const IDLE_WARNING: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";
 
 /// A tag `cena-protocol` has no variant for, kept for display and for the log.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -218,6 +256,36 @@ impl GameState {
             Frame::Compass { directions } => {
                 self.room.exits.clone_from(directions);
             }
+            // The server's idle warning. Text-derived, and the ONE line that is,
+            // for the reasons in `tests/idle_warning.rs`: it is an exact string
+            // with nothing to extract, and the supervisor cannot otherwise tell
+            // an idle kick from a network drop.
+            //
+            // `trim() ==`, not `contains`: a player can say anything, and a
+            // `contains` would let one make the supervisor stop reconnecting by
+            // typing it. The bells the wire wraps it in are already gone --
+            // `text::strip_control_chars` runs in the parser.
+            Frame::Text(text) if text.content.trim() == IDLE_WARNING => {
+                // The clock as it stands, which may be `None` during a login
+                // burst. Stamped rather than derived later because
+                // `game_time_now` extrapolates and this is a point in time.
+                self.idle_warning = match self.game_time {
+                    Some(at) => IdleWarning::At(at),
+                    None => IdleWarning::Unstamped,
+                };
+            }
+            // NOTHING INBOUND CLEARS IT, and that is a measurement rather than
+            // an omission. The obvious guess -- "the next prompt means the
+            // player answered" -- is false: MEASURED on `GSIV-Dicate`
+            // (2024-10-12), the session idled on for minutes after the warning
+            // with prompts arriving every few seconds, driven by `dialogData
+            // id='Buffs'` refreshes and by a bystander emoting. A prompt is sent
+            // when ANYTHING happens, not when the player acts.
+            //
+            // Only an OUTBOUND command answers an idle warning, and this model
+            // is inbound-only by design. So the actor clears it on write --
+            // `cena-session/src/actor/io.rs`, in `write_bounded`, which is the
+            // one chokepoint all three send paths pass through.
             Frame::Prompt { time, text } => {
                 self.prompt = Some(text.clone());
                 // The server's clock, and when it reached us. Together these

@@ -85,6 +85,7 @@ impl GameState {
             game_time,
             game_time_received,
             unknown_tags,
+            idle_warning,
         } = self;
 
         // --- Cleared: the burst does not carry these -----------------------
@@ -135,6 +136,12 @@ impl GameState {
         // instant, or the reverse, would be worse than keeping both.
         *game_time = None;
         *game_time_received = None;
+
+        // A fact about the CONNECTION that just ended, not about the character.
+        // Carrying it across would make the first disconnect of the new
+        // generation look like a second idle kick and stop a session that a real
+        // network blip had merely interrupted.
+        *idle_warning = super::IdleWarning::None;
 
         // --- Kept: see the method docs -------------------------------------
         let _ = vitals;
