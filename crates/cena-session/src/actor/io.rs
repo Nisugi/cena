@@ -17,7 +17,7 @@
 //! moves here is the two halves of one turn -- bytes out ([`SessionActor::pump`])
 //! and bytes in ([`SessionActor::ingest`]).
 
-use super::{Envelope, Event, SessionActor};
+use super::{Envelope, Event, SessionActor, WRITE_DEADLINE};
 use crate::command::{Origin, Outcome, Sent};
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
@@ -32,6 +32,20 @@ use cena_protocol::Frame;
 const EXIT_COMMAND: &str = "quit";
 
 impl<S: ByteSource> SessionActor<S> {
+    /// Write one message, bounded by [`WRITE_DEADLINE`].
+    ///
+    /// Returns `false` if the write failed **or timed out**, which callers
+    /// treat identically: both mean this connection can no longer be written
+    /// to. A timeout is not recoverable here for the reason
+    /// `WRITE_DEADLINE` records -- a partially written command has already
+    /// broken the single-write rule, so the stream cannot be trusted.
+    async fn write_bounded(&mut self, message: &[u8]) -> bool {
+        matches!(
+            tokio::time::timeout(WRITE_DEADLINE, self.source.write_all(message)).await,
+            Ok(Ok(()))
+        )
+    }
+
     /// Route one inbox message.
     ///
     /// Claims and releases arrive on the SAME channel as commands (`plan/12`
@@ -100,7 +114,7 @@ impl<S: ByteSource> SessionActor<S> {
         let mut message = Vec::with_capacity(EXIT_COMMAND.len() + 1);
         message.extend_from_slice(EXIT_COMMAND.as_bytes());
         message.push(b'\n');
-        if self.source.write_all(&message).await.is_err() {
+        if !self.write_bounded(&message).await {
             // Nothing to say goodbye to. Lich raises `IOError` here
             // (`orderly_shutdown.rb:181`); Cena reports it and lets the caller
             // cancel, because a transport that cannot be written to is already
@@ -195,7 +209,7 @@ impl<S: ByteSource> SessionActor<S> {
         message.push(b'\n');
         // Same single write as `pump`: two writes can emit two TLS records and
         // the server drops the command (`cena_platform::bytes::ByteSource`).
-        if self.source.write_all(&message).await.is_err() {
+        if !self.write_bounded(&message).await {
             return Sent::Dead;
         }
         self.recorder.outbound(&message);
@@ -258,7 +272,7 @@ impl<S: ByteSource> SessionActor<S> {
             let mut message = Vec::with_capacity(envelope.line.len() + 1);
             message.extend_from_slice(envelope.line.as_bytes());
             message.push(b'\n');
-            if self.source.write_all(&message).await.is_err() {
+            if !self.write_bounded(&message).await {
                 let _ = envelope.reply.send(Outcome::Dead);
                 return Some(super::EndReason::WriteFailed);
             }

@@ -111,6 +111,9 @@ pub struct CommandQueue {
     held: VecDeque<Envelope>,
     /// The one open window.
     in_flight: Option<InFlight>,
+    /// Commands dropped because their caller stopped waiting. See
+    /// [`Self::abandoned`].
+    abandoned: u64,
 }
 
 impl CommandQueue {
@@ -180,7 +183,44 @@ impl CommandQueue {
         if self.in_flight.is_some() {
             return None;
         }
-        self.manual.pop_front().or_else(|| self.held.pop_front())
+        // **Skip commands nobody is waiting for.** A caller whose
+        // `send_and_await` timed out dropped the receiving half of its
+        // `oneshot`, and sending its command anyway is the failure this guards:
+        // in a game that is an attack firing after the player or behavior gave
+        // up on it, spending a roundtime on an intention that was withdrawn.
+        //
+        // **This does not contradict `plan/12` §4.4.** §4.4 says a timeout is
+        // not "the command did not happen", and that stays true -- it is about
+        // a command already ON THE WIRE whose answer never came. This drops
+        // only commands that were never written, where "it did not happen" is
+        // simply accurate. The two cases are distinguished by exactly this
+        // point in the code: past here the bytes go out, before it they never
+        // did.
+        //
+        // `is_closed` is the check rather than a liveness flag we maintain,
+        // because the receiver's drop IS the signal and `oneshot` already
+        // tracks it. A flag would be a second source of truth that could
+        // disagree.
+        loop {
+            let next = self.manual.pop_front().or_else(|| self.held.pop_front())?;
+            if !next.reply.is_closed() {
+                return Some(next);
+            }
+            self.abandoned += 1;
+        }
+    }
+
+    /// How many queued commands were dropped because their caller stopped
+    /// waiting.
+    ///
+    /// Counted rather than silently discarded: a session dropping commands is
+    /// either a behavior using timeouts too tightly or a game that has stopped
+    /// answering, and both are things someone debugging needs to see. Nothing
+    /// reads this yet beyond the tests -- it is the number a diagnostic would
+    /// want, recorded where it happens.
+    #[must_use]
+    pub const fn abandoned(&self) -> u64 {
+        self.abandoned
     }
 
     /// Open a window for a command whose bytes have just gone out.

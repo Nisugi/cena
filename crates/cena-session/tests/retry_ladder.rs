@@ -284,3 +284,47 @@ async fn a_session_that_never_connects_still_writes_its_log() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// **A quit issued while the supervisor is retrying must not hang.**
+///
+/// The failure this guards, from the review: `quit`'s timeout was passed to the
+/// actor and started only when an actor received the message. During a retry
+/// ladder there is **no actor** -- the supervisor is sleeping between connect
+/// attempts and is not reading the inbox -- so both the send and the wait were
+/// unbounded. `main` awaits the quit before cancelling, so an ordinary shutdown
+/// during a network outage wedged the whole client.
+///
+/// Bounded here at many times the quit timeout, so it can only fire if the
+/// operation is genuinely unbounded.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn quitting_during_a_reconnect_does_not_hang() {
+    let (connector, _attempts) =
+        LadderConnector::new(vec![], ConnectError::transient("tcp", "connection refused"));
+    let (session, handle) = SupervisedSession::new(connector);
+    let cancel = session.cancel_token();
+    let task = tokio::spawn(session.run());
+
+    // Let it get well into the ladder, where no actor exists.
+    tokio::time::sleep(Duration::from_secs(30)).await;
+
+    let farewell = tokio::time::timeout(
+        Duration::from_hours(1),
+        handle.quit(Duration::from_secs(10)),
+    )
+    .await
+    .expect(
+        "quit must return within its own timeout even with no actor to receive \
+         it. Hanging here is the client that will not shut down while the \
+         network is down.",
+    );
+
+    assert_eq!(
+        farewell,
+        cena_session::Farewell::Unsent,
+        "there was no connection to say goodbye on, and `Unsent` is the honest \
+         answer: the game was genuinely not told"
+    );
+
+    cancel.cancel();
+    let _ = task.await;
+}

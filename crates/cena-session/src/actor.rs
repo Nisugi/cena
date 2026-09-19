@@ -104,6 +104,24 @@ const EVENT_CHANNEL_BOUND: usize = 256;
 /// loop notice a queued command while nothing is arriving.
 const READ_DEADLINE: Duration = Duration::from_millis(500);
 
+/// How long one write may block before the connection is considered gone.
+///
+/// # This exists because a stalled write froze everything
+///
+/// `plan/12` §5.5: *"every wait has a deadline; no unbounded `await`"*. The
+/// three `write_all` calls did not have one, and they sit **outside** the
+/// select loop -- so a socket whose send buffer was full (a peer that stopped
+/// reading, a half-open connection) blocked the actor entirely: no reads, no
+/// cancellation, no quit. The session was alive and deaf.
+///
+/// Five seconds is generous for a one-line command on a working connection --
+/// the whole point is that it only fires when something is genuinely wrong.
+/// **A write that times out ENDS THE CONNECTION** rather than being retried:
+/// `plan/10` §10.3a's single-write rule exists because the server drops a
+/// command split across two writes, so a partially written command has already
+/// corrupted the stream and the only safe move is a new one.
+const WRITE_DEADLINE: Duration = Duration::from_secs(5);
+
 /// Read buffer size. One chunk per `read`, and the chunk boundary is recorded
 /// as-is so a replay reproduces the same split (`cena_platform::record`).
 const READ_BUF: usize = 8 * 1024;

@@ -414,7 +414,47 @@ impl SessionHandle {
     ///
     /// Returns [`Farewell::Unsent`] if the session is already gone, which is
     /// not an error: quitting a dead session has nothing to send.
+    /// # `timeout` bounds the WHOLE operation
+    ///
+    /// **It did not, and that was a hang.** It was passed to the actor and
+    /// started only once an actor received the message, which left two
+    /// unbounded waits in front of it:
+    ///
+    /// * `send(..).await` blocks while the inbox is full;
+    /// * `answer.await` had no deadline of its own.
+    ///
+    /// Neither matters while a connection is up. **During a reconnect there is
+    /// no actor at all** -- the supervisor is climbing its retry ladder and is
+    /// not reading the inbox -- so a quit issued then waited forever, and
+    /// `main` awaits the quit *before* cancelling. An ordinary shutdown during
+    /// a network outage wedged the client.
+    ///
+    /// So the deadline is applied here, around everything, as well as being
+    /// passed to the actor for its own EOF wait. A caller gets an answer within
+    /// `timeout` whatever the session is doing.
     pub async fn quit(&self, timeout: std::time::Duration) -> Farewell {
+        // **The outer bound is deliberately LOOSER than the inner one.** Equal
+        // deadlines made this outer timeout win the race against the actor's
+        // own, and every unanswered quit came back `Unsent` -- destroying the
+        // distinction §5b.3 exists for: `Unsent` means the game was never told,
+        // `TimedOut` means it was told and may have acted on it. A test caught
+        // it, and collapsing the two would have been a lie in the log.
+        //
+        // Doubling gives the actor room to report its own verdict first. This
+        // outer bound is the backstop for the case where NOTHING is listening,
+        // not a second opinion on a live connection.
+        let backstop = timeout.saturating_mul(2);
+        match tokio::time::timeout(backstop, self.quit_inner(timeout)).await {
+            Ok(farewell) => farewell,
+            // Nobody took the message, or nobody answered it. Either way the
+            // caller is free to cancel -- which is what makes this the safe
+            // answer rather than a lie: `Unsent` means "assume the game was not
+            // told", and during a reconnect it genuinely was not.
+            Err(_elapsed) => Farewell::Unsent,
+        }
+    }
+
+    async fn quit_inner(&self, timeout: std::time::Duration) -> Farewell {
         let (reply, answer) = oneshot::channel();
         if self
             .sender
