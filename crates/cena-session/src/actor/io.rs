@@ -237,6 +237,12 @@ impl<S: ByteSource> SessionActor<S> {
         if generation != self.generation {
             return Sent::Interrupted;
         }
+        // An instant action bypasses the QUEUE, not the socket. Once `quit` is
+        // on the wire this is the same write-into-a-closing-socket the queue
+        // path was fixed for (review SE-2).
+        if self.quitting.is_some() {
+            return Sent::Dead;
+        }
         if origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
             return Sent::Refused(Refusal::Transient);
         }
@@ -289,6 +295,14 @@ impl<S: ByteSource> SessionActor<S> {
     /// during `Syncing` would be exactly that lockout, and it is not what
     /// either section asks for.
     pub(super) fn admit(&mut self, envelope: Envelope) {
+        // Refused rather than queued: the session is leaving, so a command
+        // accepted here could only ever be answered `Dead` when the actor
+        // stops. `Disconnected` is the honest verdict -- this connection is
+        // ending and a later one may work (review SE-2).
+        if self.quitting.is_some() {
+            let _ = envelope.reply.send(Outcome::Disconnected);
+            return;
+        }
         if envelope.origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
             let _ = envelope
                 .reply
@@ -322,7 +336,41 @@ impl<S: ByteSource> SessionActor<S> {
     /// Returns `Some(reason)` if the session should end, `None` to carry on.
     /// It was a `bool` until Milestone 2 needed the *reason* a write failure
     /// ended a session, not merely that one had.
+    /// Answer everything still queued when the session decides to leave.
+    ///
+    /// Not silently dropped: each of these has a caller waiting on a
+    /// `oneshot`, and dropping the sender gives them a `RecvError` that says
+    /// nothing. `Disconnected` is the accurate answer -- `plan/12` §5.1 gives
+    /// it the meaning "this connection is ending, a retry may work", which is
+    /// exactly the situation -- and it is distinct from `Dead`, which would
+    /// tell a behavior the session is gone for good.
+    fn refuse_queued_after_quit(&mut self) {
+        while let Some(envelope) = self.queue.take_next() {
+            let _ = envelope.reply.send(Outcome::Disconnected);
+        }
+    }
+
     pub(super) async fn pump(&mut self) -> Option<super::EndReason> {
+        // **Nothing is written once the session has asked to leave.**
+        //
+        // `quit` rides the command channel so it is ordered behind everything
+        // already QUEUED -- which `handle.rs` says, and which is true of the
+        // inbox. It is not true of `CommandQueue`: a command admitted earlier
+        // and parked behind an open window is no longer an inbox message, and
+        // when the window closes this loop writes it. VERIFIED before the fix:
+        // the wire read `["look", "attack", "quit", "stow all"]`.
+        //
+        // A write after the server has been asked to close tends to draw an
+        // RST; the read arm maps any error to `ReadFailed`, which warrants a
+        // reconnect, and the `quit` itself counts as attendance -- so a
+        // deliberate exit could log the character back in. `plan/16` §5b is
+        // about telling "the server closed because we asked" from "the
+        // connection dropped", and a stray write blurs exactly that
+        // (review SE-2).
+        if self.quitting.is_some() {
+            self.refuse_queued_after_quit();
+            return None;
+        }
         while let Some(envelope) = self.queue.take_next() {
             // `plan/12` §5.2: anything from a prior generation is discarded.
             // It cannot fire in Step 2 -- nothing reconnects -- but the check
