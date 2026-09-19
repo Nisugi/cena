@@ -78,22 +78,22 @@ use tokio_util::sync::CancellationToken;
 /// How long to let the behavior run before the manual command interleaves.
 const BEHAVIOR_WARMUP: Duration = Duration::from_secs(3);
 
-/// How long to hold the session open after the script finishes, before `stop`.
+/// How long to hold the session open before `stop`, from `--hold <seconds>`.
 ///
-/// Ten seconds is a demonstration's worth: long enough to watch a quiet
-/// session do the right thing. **Overridable**, because with no script
-/// selected this is the *only* thing standing between login and logout, and
-/// "keep it up while I look at something" is a reasonable thing to want from a
-/// client that now reconnects.
-///
-///  ```powershell
-///  $env:CENA_RUN_FOR = "600"; cargo run -p cena   # ten minutes
-///  ```
-fn run_for() -> Duration {
-    std::env::var("CENA_RUN_FOR")
-        .ok()
-        .and_then(|raw| raw.parse().ok())
-        .map_or(Duration::from_secs(10), Duration::from_secs)
+/// With no script selected this is the only thing between login and logout, so
+/// it is worth being able to say "keep it up while I look at something". An
+/// argument rather than an env var for the same reason scripts are
+/// ([`run::Script`]): one mechanism, and nothing left set in a shell.
+fn hold_for() -> Duration {
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--hold"
+            && let Some(seconds) = args.next().and_then(|raw| raw.parse().ok())
+        {
+            return Duration::from_secs(seconds);
+        }
+    }
+    Duration::from_secs(10)
 }
 
 /// How long to wait for the server to close after `quit` (`plan/16` §5b.3).
@@ -225,8 +225,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     run_or_probe(&handle, &mut probe_events, &stop).await;
 
-    let holding = run_for();
-    eprintln!("[session] holding for {holding:?} (set CENA_RUN_FOR to change)");
+    let holding = hold_for();
+    eprintln!("[session] holding for {holding:?} (pass `-- --hold <seconds>` to change)");
     tokio::time::sleep(holding).await;
 
     // --- Criterion 4: stop, within PREEMPT_GRACE ---------------------------

@@ -41,8 +41,8 @@
 //!
 //! # It is off by default
 //!
-//! Guarded behind `CENA_PROBE=typeahead`, because it deliberately provokes
-//! server refusals and should never run as part of an ordinary session.
+//! Selected by `cargo run -p cena -- --typeahead`, because it deliberately
+//! provokes server refusals and must never run as part of an ordinary session.
 
 use crate::run::send_manual;
 use cena_session::{Event, Frame, Gate, Origin, Refusal, Sent, SessionHandle};

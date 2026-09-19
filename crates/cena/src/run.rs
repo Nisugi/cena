@@ -2,10 +2,7 @@
 //! a behavior, interleave a manual command -- and then, **only if this run
 //! asked for one**, an experiment.
 //!
-//! The experiment used to be unconditional, which made every run cost the
-//! character about fifty seconds of `search` it had not asked for. See
-//! [`run_or_probe`] for what that looked like from the author's side.
-//!
+
 //! Split from `main.rs` under `plan/05` Rule 4.1 -- move code down, do not
 //! raise the cap -- when the capture pushed that file to 428 lines. The seam
 //! is real: everything here happens *after* a session exists, and none of it
@@ -18,64 +15,45 @@ use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-/// Whichever experiment this run asked for, and **by default none**.
+/// Which experiment this run asked for, **named on the command line**.
 ///
-/// # Doing nothing is the default, because the run is not the experiment any more
-///
-/// This used to fall through to [`run_capture`] whenever `CENA_PROBE` was
-/// unset, which meant **every** run drove the character through six `search`
-/// commands at six-second gaps -- about 50 seconds of the character being
-/// unusable, on a run whose point might be nothing more than "log in and see
-/// the room".
-///
-/// The author, mid-session, with the binary holding their character:
-///
-/// > *"it's busy running your probe so I can't do anything."*
-///
-/// That was the capture rather than the probe, which is the tell: a default
-/// nobody chose had become invisible enough that even its name was wrong. The
-/// capture earned its keep while the clock and roundtime work needed data;
-/// that work is done (`plan/16` §5.2c), and what is left is a cost paid on
-/// every unrelated run.
-///
-/// So: `CENA_SCRIPT` names the experiment, and an unset one means the session
-/// stays quiet and the character stays yours.
-///
-/// | Value | What it does |
+/// | Argument | What it does |
 /// |---|---|
-/// | unset | **nothing** -- the session idles until `RUN_FOR` |
-/// | `capture` | six `search` commands, for clock and roundtime samples |
-/// | `typeahead` | the probe, which deliberately provokes refusals |
+/// | *(none)* | **nothing** -- the session idles and the character is yours |
+/// | `--capture` | six `search` commands, for clock and roundtime samples |
+/// | `--typeahead` | the probe, which deliberately provokes refusals |
 ///
 ///  ```powershell
-///  cargo run -p cena                              # quiet
-///  $env:CENA_SCRIPT = "capture";   cargo run -p cena
-///  $env:CENA_SCRIPT = "typeahead"; cargo run -p cena
+///  cargo run -p cena                  # quiet, always
+///  cargo run -p cena -- --typeahead
 ///  ```
 ///
-/// `CENA_PROBE=typeahead` still works, because it is in this repo's notes and
-/// in the author's shell history.
+/// An argument, not an env var: an env var sticks around for the whole shell,
+/// so one probe run would drive the character on every subsequent login.
 pub(crate) async fn run_or_probe(
     handle: &SessionHandle,
     probe_events: &mut broadcast::Receiver<Event>,
     behavior_stop: &CancellationToken,
 ) {
-    let script = std::env::var("CENA_SCRIPT").unwrap_or_default();
-    // The older spelling, kept working rather than broken out from under a
-    // shell history that has it.
-    let probe_requested =
-        script == "typeahead" || std::env::var("CENA_PROBE").as_deref() == Ok("typeahead");
+    let selected = Script::from_args(std::env::args().skip(1));
 
-    if !probe_requested && script != "capture" {
-        eprintln!(
-            "
+    match selected {
+        Script::None => {
+            eprintln!(
+                "
 [script] none -- the session is idle and the character is yours.
-[script] set CENA_SCRIPT=capture or CENA_SCRIPT=typeahead to run one."
-        );
-        return;
+[script] pass `-- --capture` or `-- --typeahead` to run one."
+            );
+            return;
+        }
+        Script::Capture => {
+            run_capture(handle).await;
+            return;
+        }
+        Script::Typeahead => {}
     }
 
-    if probe_requested {
+    {
         // **Stop the behavior first.** It sends a `look` every second, and the
         // probe measures how long the SERVER takes to drain a buffer -- so a
         // concurrent sender is uncontrolled traffic sitting inside every
@@ -93,8 +71,41 @@ pub(crate) async fn run_or_probe(
         // inherit the behavior's last reply.
         tokio::time::sleep(Duration::from_secs(2)).await;
         probe::run(handle, probe_events).await;
-    } else {
-        run_capture(handle).await;
+    }
+}
+
+/// What a run was asked to do to the character.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Script {
+    /// Drive nothing. The default, and the only one that costs the author
+    /// nothing.
+    None,
+    /// Six `search` commands, for clock and roundtime samples.
+    Capture,
+    /// The type-ahead probe, which deliberately provokes server refusals.
+    Typeahead,
+}
+
+impl Script {
+    /// Pick a script from the command line.
+    ///
+    /// **Unknown arguments select [`Self::None`]**, rather than being reported
+    /// as an error that a caller might be tempted to ignore. The failure this
+    /// guards is a typo running an experiment nobody asked for; refusing to do
+    /// anything is the cheap direction to be wrong in.
+    pub(crate) fn from_args<I, S>(args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        for arg in args {
+            match arg.as_ref() {
+                "--capture" => return Self::Capture,
+                "--typeahead" => return Self::Typeahead,
+                _ => {}
+            }
+        }
+        Self::None
     }
 }
 
@@ -257,51 +268,49 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
 
 #[cfg(test)]
 mod tests {
-    /// The defaults that decide whether a run costs the author their character.
-    ///
-    /// `run_or_probe` itself needs a live session, so what is tested is the
-    /// **selection**, lifted to a pure function. That is the part that
-    /// regressed: the old code chose `capture` for an empty environment, and
-    /// nothing said so out loud.
-    fn selected(script: &str, legacy_probe: Option<&str>) -> &'static str {
-        let probe = script == "typeahead" || legacy_probe == Some("typeahead");
-        if probe {
-            "typeahead"
-        } else if script == "capture" {
-            "capture"
-        } else {
-            "none"
-        }
-    }
+    use super::Script;
 
+    /// **A run with no arguments drives nothing.** The whole point.
     #[test]
-    fn an_unset_environment_runs_nothing() {
+    fn no_arguments_runs_nothing() {
         assert_eq!(
-            selected("", None),
-            "none",
-            "a plain `cargo run -p cena` must not drive the character. It              used to run the capture -- ~50s of `search` -- on every run,              including the ones that only wanted to see a room."
+            Script::from_args(Vec::<String>::new()),
+            Script::None,
+            "a plain `cargo run -p cena` must not drive the character"
         );
     }
 
     #[test]
-    fn each_script_is_opt_in_by_name() {
-        assert_eq!(selected("capture", None), "capture");
-        assert_eq!(selected("typeahead", None), "typeahead");
+    fn each_script_is_named_explicitly() {
+        assert_eq!(Script::from_args(["--capture"]), Script::Capture);
+        assert_eq!(Script::from_args(["--typeahead"]), Script::Typeahead);
     }
 
-    /// The old spelling still works: it is in this repo's notes and in the
-    /// author's shell history, and breaking it would cost more than keeping it.
+    /// The regression this exists to prevent: selection used to read
+    /// `CENA_SCRIPT`/`CENA_PROBE`, and an env var set once in a shell drove the
+    /// character on every later run. `from_args` takes what it considers as a
+    /// parameter, so there is no environment in scope for it to reach.
     #[test]
-    fn the_legacy_probe_variable_still_selects_the_probe() {
-        assert_eq!(selected("", Some("typeahead")), "typeahead");
+    fn selection_comes_only_from_its_argument() {
+        assert_eq!(Script::from_args(Vec::<String>::new()), Script::None);
     }
 
-    /// An unrecognised name runs NOTHING rather than falling through to a
-    /// script nobody asked for. A typo should cost a quiet session, not the
-    /// character.
+    /// A typo runs nothing rather than falling through to a script.
     #[test]
-    fn an_unrecognised_script_runs_nothing() {
-        assert_eq!(selected("capturr", None), "none");
-        assert_eq!(selected("probe", None), "none");
+    fn an_unrecognised_argument_runs_nothing() {
+        assert_eq!(Script::from_args(["--capturr"]), Script::None);
+        assert_eq!(Script::from_args(["capture"]), Script::None);
+        assert_eq!(Script::from_args(["--probe"]), Script::None);
+    }
+
+    /// Cargo's own arguments do not select anything by accident.
+    #[test]
+    fn unrelated_arguments_are_ignored() {
+        assert_eq!(Script::from_args(["--release", "-p", "cena"]), Script::None);
+        assert_eq!(
+            Script::from_args(["--release", "--typeahead"]),
+            Script::Typeahead,
+            "...but a real one is still found past them"
+        );
     }
 }
