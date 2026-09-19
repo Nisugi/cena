@@ -228,6 +228,12 @@ impl SessionHandle {
             generation: self.generation.get(),
             matcher,
         };
+        if !self.has_room_for_traffic() {
+            // One slot short of full: refused so a `release` can still get
+            // through. `Transient` is already "ask again", which is what a
+            // caller should do.
+            return Outcome::Refused(Refusal::Transient);
+        }
         match self.sender.try_send(Inbox::Command(Box::new(envelope))) {
             Ok(()) => {}
             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
@@ -349,6 +355,9 @@ impl SessionHandle {
             gate,
             reply,
         };
+        if !self.has_room_for_traffic() {
+            return Sent::Refused(Refusal::Transient);
+        }
         match self.sender.try_send(message) {
             Ok(()) => {}
             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
@@ -376,6 +385,9 @@ impl SessionHandle {
         token: crate::queue::AuthorityToken,
     ) -> Result<(), crate::queue::AuthorityHeld> {
         let (reply, answer) = oneshot::channel();
+        if !self.has_room_for_traffic() {
+            return Err(crate::queue::AuthorityHeld(token));
+        }
         if self.sender.try_send(Inbox::Claim { token, reply }).is_err() {
             return Err(crate::queue::AuthorityHeld(token));
         }
@@ -390,7 +402,93 @@ impl SessionHandle {
     /// behavior releasing during cleanup must not block. §4.3 is explicit that
     /// cleanup "cannot send commands" -- this is not a command.
     pub fn release(&self, token: crate::queue::AuthorityToken) {
-        let _ = self.sender.try_send(Inbox::Release(token));
+        // **Uses the RESERVED slot.** Every other producer stops one short of
+        // capacity ([`Self::has_room_for_traffic`]), so the final slot is
+        // reachable only from here.
+        //
+        // # Why a release that is dropped is not a small bug
+        //
+        // MEASURED: 60 concurrent `send_and_await` calls with no scheduler
+        // yield between them refused 28 -- the inbox genuinely fills, because
+        // the actor takes **one message per loop turn** and a turn can now
+        // spend up to `WRITE_DEADLINE` in a single write. A release lost in
+        // that window leaves the token holding authority **for the rest of the
+        // session**: every later behavior gets `AuthorityHeld`, with no
+        // recovery path and no error recorded anywhere.
+        //
+        // # Why not `send().await`
+        //
+        // `plan/12` §4.3 is explicit that cleanup "cannot send commands" and
+        // must not block, and a behavior being cancelled has a 250ms grace
+        // budget. Awaiting a full queue during cleanup would trade a stuck
+        // token for a stuck shutdown -- and it would do so exactly when the
+        // session is already struggling, which is when the queue is full.
+        //
+        // # Why one slot is enough
+        //
+        // `CommandQueue::release` ignores a token that does not hold the
+        // authority (`queue.rs:143-147`), so it is idempotent: a second release
+        // arriving before the first drains is either the same token (a no-op)
+        // or a non-holder (ignored). One slot cannot be exhausted by a caller
+        // that behaves, and cannot be abused by one that does not.
+        let _ = self.release_reached_the_channel(token);
+    }
+
+    /// [`Self::release`], reporting whether the channel accepted it.
+    ///
+    /// **Exists for the test**, and says so rather than pretending to be a
+    /// general API: `release` returns `()` because §4.3's cleanup has nothing
+    /// useful to do with a failure, but a test asserting the reserved slot
+    /// works needs to see the send succeed. Making the ordinary path return a
+    /// value nobody checks would be worse -- a `#[must_use]` nobody can act on.
+    ///
+    /// Returns `false` only if the inbox is genuinely full past its reserve, or
+    /// the session is gone.
+    #[must_use]
+    pub fn release_reached_the_channel(&self, token: crate::queue::AuthorityToken) -> bool {
+        self.sender.try_send(Inbox::Release(token)).is_ok()
+    }
+
+    /// Whether the inbox has room for **ordinary traffic**, keeping one slot
+    /// back for [`Self::release`].
+    ///
+    /// # Why the reserve is enforced here and not by tokio
+    ///
+    /// `Sender::try_reserve` takes a permit from the same capacity, at the
+    /// moment of need -- which is exactly when the channel is full, so it
+    /// cannot reserve *for* a later release. `OwnedPermit` can be held across a
+    /// behavior's lifetime but **consumes the `Sender`**, and `SessionHandle`
+    /// is `Clone` and shared by every caller.
+    ///
+    /// So the reservation is ours: producers of ordinary traffic stop one short
+    /// of capacity, and the last slot is reachable only from `release`. That
+    /// keeps `plan/12` §5.5's "bounded channels everywhere" -- the bound is
+    /// unchanged -- and costs one slot of throughput.
+    /// Send one ordinary-traffic message through the reserve gate, reporting
+    /// whether it was accepted. **For the reserve's test**, which needs the
+    /// producer-side arithmetic without an actor draining behind it.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn try_send_traffic_for_test(&self) -> bool {
+        if !self.has_room_for_traffic() {
+            return false;
+        }
+        self.sender
+            .try_send(Inbox::Release(crate::queue::AuthorityToken(u64::MAX)))
+            .is_ok()
+    }
+
+    /// Slots still free in the inbox. `#[doc(hidden)]`: an assertion aid, not a
+    /// number a caller should branch on.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn capacity_for_debug(&self) -> usize {
+        self.sender.capacity()
+    }
+
+    fn has_room_for_traffic(&self) -> bool {
+        // `capacity()` is the number of slots still free.
+        self.sender.capacity() > 1
     }
 
     /// Exit cleanly: send the game's exit command and wait for the server to
