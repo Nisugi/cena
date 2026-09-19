@@ -39,6 +39,7 @@ use cena_protocol::runs::Runs;
 use std::time::Instant;
 
 mod clock;
+mod reconnect;
 
 /// A vitals gauge, as a percentage.
 ///
