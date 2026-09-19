@@ -110,7 +110,7 @@ occurrences in one of these files.
 |---|---|---|---|
 | `login_burst.xml` | `dev/lich-5/logs/GSIV-Nisugi/2026/09/xml/2026-09-01_15-13-56.xml` | 2-13 | 2,145 |
 | `room_populated.xml` | same | 1682-1693, 240 | 2,456 |
-| `combat_exchange.xml` | same | 1979-1992 | 1,438 |
+| `combat_exchange.xml` | same | 1945, 1978-1992 | 2,064 |
 | `creature_status.xml` | same | 15416, 1886, 2758 | 2,203 |
 | `inventory_container.xml` | same | 14-20, 44-45 | 2,425 |
 | `effect_dialogs.xml` | `…/2026-09-04_09-15-47.xml` | 822-825 | 6,414 |
@@ -133,6 +133,28 @@ yields a spurious `Text("2026-09-01 15:13:58 Central Standard Time: ")` frame
 ahead of the real component — a fact the game never sent, baked into a golden.
 The two prefix shapes are disjoint by era: of a 200-file archive sample, zero
 carry either.
+
+### `combat_exchange.xml` is one blob, and was first cut across it
+
+A roundtime action's wire unit is a **blob**: a `<roundTime>`/`<castTime>` tag at
+the front, the exchange, the `Roundtime: N sec.` prose at the back, terminated by
+a prompt (the author, 2026-09-19; measured at **1,712 blobs across six files,
+zero exceptions** — `plan/15` §2a.4b).
+
+The first cut began at the exchange prose and so carried the close without the
+open. The cut now spans the blob, **1945 + 1978-1992**: the tag, then the target
+dialog and the full exchange.
+
+**The middle is elided deliberately.** Lines 1946-1977 are a worn-inventory
+refresh that Lich flushes mid-blob, already covered by
+`inventory_container.xml`; the whole blob is **11,174 bytes**, over the 10 KB
+per-fixture budget. VERIFIED the elision leaves no dangling stream: it takes the
+`pushStream id='inv'` at 1948 along with the lines it wrapped, and that push has
+no `popStream` in the blob at all — the prompt closes it, which is the
+`StreamPopForced` resync already under test.
+
+So the fixture is two contiguous regions of one blob, not two unrelated regions
+spliced together, and the elision is recorded rather than silent.
 
 ### Scrubbing — eleven players, not one
 

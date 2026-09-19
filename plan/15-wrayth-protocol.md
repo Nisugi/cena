@@ -595,6 +595,66 @@ and the true boundary falls somewhere inside one.
 **UNVERIFIED:** whether `value` means the end of the *start* of that second or
 somewhere within it. The residual error is under one second either way.
 
+### 2a.4b The blob: tag at the front, prose at the back, prompt terminates
+
+> **AUTHOR, 2026-09-19:** *"when a character performs an action that gives
+> roundtime, there is usually a `<roundTime>` or `<castTime>` tag at the
+> beginning of the exchange and the Roundtime prose at the end. Every blob ends
+> with a prompt."*
+
+This is the layout of §2a.4's own example, stated as a general rule, and it is
+the **unit a combat consumer reads**. MEASURED across six files in
+`E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi\2026\09\xml`, taking a blob to be the
+text between two prompts:
+
+| File | Blobs with `Roundtime:` prose | ...also carrying the tag | Prose-only |
+|---|---|---|---|
+| `2026-09-01_15-13-56` | 244 | 244 | 0 |
+| `2026-09-01_16-30-27` | 261 | 261 | 0 |
+| `2026-09-01_17-54-01` | 256 | 256 | 0 |
+| `2026-09-01_19-10-58` | 255 | 255 | 0 |
+| `2026-09-02_09-52-10` | 299 | 299 | 0 |
+| `2026-09-04_09-15-47` | 397 | 397 | 0 |
+
+**1,712 blobs, zero exceptions.** Also measured: **zero** prompts fall between a
+tag and its prose, which is what makes "same blob" the right description rather
+than "nearby".
+
+Command that produced it:
+
+```sh
+awk '/<prompt/ { if(p){tot++; if(t)both++} t=0;p=0; next }
+     /<roundTime|<castTime/ { t=1 }
+     /Roundtime: [0-9]+ sec/ { p=1 }
+     END { print tot, both }' <file>
+```
+
+**Why this is worth a section.** The tag and the prose can be **tens of lines
+apart** -- 36 to 50 in the sampled file -- because Lich flushes the previous
+action's aftermath (a worn-inventory refresh, a room update, a dialog rebuild)
+between them. So *line proximity is not the relationship*; blob membership is.
+A consumer that paired them by distance would mispair under load, and one that
+required adjacency would find them never adjacent.
+
+> **HOW THIS GOT RECORDED.** M2's `combat_exchange.xml` fixture was first cut
+> **across this boundary** -- it began at the exchange prose, so it carried the
+> closing `Roundtime: 3 sec.` with no opening tag, and its test comment claimed
+> the tag "arrives on its own elsewhere". That inverted the rule: a cut artifact
+> was written down as the wire's own division.
+>
+> The mechanical cause is worth keeping, because it is a §-2 failure with a
+> specific shape. Two of my own measurements disagreed, and **the one I believed
+> was the broken one**: a line-window search reported "no tag in 1946..1992"
+> while the tag sat at line **1945**, one line outside a window I had chosen
+> myself. A window search that returns nothing does not announce that its
+> bounds were wrong -- it manufactures an absence, exactly as the dead citation
+> path in `CLAUDE.md` manufactured a false negative about `styleIfClosed`.
+> **Before concluding a thing is absent, check that the search could have found
+> it.**
+>
+> The per-blob measurement above is the version that does not depend on a
+> window, which is why it is the one in the table.
+
 ### 2a.4a MEASURED, 2026-09-18: the first capture from Cena's own client
 
 `E:\Gemstone\data\cena_logs6-09-18

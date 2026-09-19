@@ -297,22 +297,65 @@ fn a_pronoun_carries_the_creatures_own_exist() {
 }
 
 #[test]
-fn the_attack_sequence_is_bounded_by_its_prompt() {
-    // An exchange is a multi-line event (`plan/12` §3a), and the prompt is what
-    // closes it -- a stateful consumer reads it to know the exchange is over.
+fn a_roundtime_action_opens_with_the_tag_and_closes_with_the_prose() {
+    // **The shape of a roundtime blob, per the author, 2026-09-19:**
     //
-    // **The prompt's TEXT is the state, and it is not just `>`.** `HR>` means
-    // health and roundtime are both active; Lich reads exactly these codes
-    // (`lib/constants.rb:72`, `ICONMAP`). An assertion of `Some(">")` here
-    // FAILED, which is the fixture teaching the test: this exchange ends in
-    // roundtime, because the character just fired a bow.
+    // > "when a character performs an action that gives roundtime, there is
+    // > usually a `<roundTime>` or `<castTime>` tag at the beginning of the
+    // > exchange and the Roundtime prose at the end. Every blob ends with a
+    // > prompt."
     //
-    // Note there is no `<roundTime>` TAG in this cut. The nearest one is 14
-    // lines later, past unrelated traffic; the exchange itself carries the
-    // roundtime as prose ("Roundtime: 3 sec.") plus the `R` in the prompt. That
-    // is the wire's own division and the cut keeps it rather than splicing two
-    // distant regions into a golden that never occurred.
+    // MEASURED in `2026-09-01_15-13-56.xml`, taking a blob to be the text
+    // between two prompts: **244 blobs** carry `Roundtime:` prose and **all 244**
+    // also carry a `<roundTime>`/`<castTime>` tag. Zero prose-only blobs, and
+    // zero prompts between a tag and its prose. The tag opens, the prose closes,
+    // the prompt terminates.
+    //
+    // This fixture was FIRST CUT WRONG, across that boundary. It began at the
+    // exchange prose and so held the closing prose with no opening tag, and a
+    // comment here asserted the tag "arrives on its own elsewhere" -- treating a
+    // cut artifact as the wire's own division. Two of my own measurements
+    // disagreed and the second was right: a line-window search reported "no tag
+    // in 1946..1992" while the tag sat at 1945, one line outside a window I had
+    // chosen myself.
+    //
+    // The cut now spans the blob. Its middle -- 32 lines of worn-inventory
+    // refresh, which `inventory_container.xml` already covers -- is elided to
+    // stay inside the 10 KB budget; the full blob is 11,174 bytes. The elision
+    // takes the `pushStream id='inv'` with the lines it wrapped, so no stream is
+    // left dangling.
+    //
+    // **The prompt's text is state, not punctuation.** `HR>` means health and
+    // roundtime are both active (Lich's `ICONMAP`, `lib/constants.rb:72`); an
+    // assertion of `Some(">")` failed here, which is the fixture correcting the
+    // test.
     let frames = parse_fixture("combat_exchange.xml");
+
+    // 1. The tag opens the blob.
+    let tag_at = frames
+        .iter()
+        .position(|f| matches!(f, Frame::RoundTime { .. }))
+        .expect("the blob opens with a <roundTime> tag");
+
+    // 2. The prose closes it.
+    let prose_at = frames
+        .iter()
+        .position(|f| matches!(f, Frame::Text(t) if t.content.contains("Roundtime: 3 sec")))
+        .expect("and closes with the Roundtime prose");
+
+    // 3. The prompt terminates it, after both.
+    let prompt_at = frames
+        .iter()
+        .position(|f| matches!(f, Frame::Prompt { .. }))
+        .expect("and every blob ends with a prompt");
+
+    assert!(
+        tag_at < prose_at && prose_at < prompt_at,
+        "order is the contract: tag ({tag_at}) then prose ({prose_at}) then \
+         prompt ({prompt_at}). A consumer reads the tag to START a roundtime and \
+         the prompt to know the blob is done."
+    );
+
     let prompt = frames.iter().find_map(|f| match f {
         Frame::Prompt { text, .. } => Some(text.as_str()),
         _ => None,
@@ -320,15 +363,7 @@ fn the_attack_sequence_is_bounded_by_its_prompt() {
     assert_eq!(
         prompt,
         Some("HR>"),
-        "the prompt closes the exchange and its codes are the character's \
-         state, decoded from `&gt;`"
-    );
-    assert!(
-        frames.iter().any(|f| matches!(
-            f,
-            Frame::Text(t) if t.content.contains("Roundtime: 3 sec")
-        )),
-        "and the roundtime prose survives as text: {frames:#?}"
+        "the prompt's codes are the character's state, decoded from `&gt;`"
     );
 }
 
