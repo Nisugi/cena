@@ -28,17 +28,30 @@
 //!    re-send becomes `Unknown`.
 //! 3. Advance the generation -- every handle now stamps the new one, and
 //!    anything already in flight is correctly stale.
-//! 4. Ask the connector for a transport.
+//! 4. Wait one rung of the backoff ladder ([`backoff`]), racing the cancel
+//!    token so a stop is never delayed by a sleep.
+//! 5. Ask the connector for a transport.
 //!
 //! **The order matters.** Invalidating *before* the new connection means no
 //! window exists in which a caller could read a stale roundtime against a
 //! session that is live again.
+//!
+//! # What stops it
+//!
+//! Reconnect is **automatic and bounded** (the author's decision 2), and the
+//! bounds are in [`retry`]: a [`Retryability::Fatal`] connect error stops it
+//! immediately, and [`MAX_UNATTENDED_LOSSES`] drops with no command sent stop
+//! it as an idle session. A transient failure on an *attended* session retries
+//! forever, on a ladder that caps at 30 seconds -- see [`Self::run`] for why
+//! that is deliberate rather than a missing third bound.
 
 mod connect;
 mod core;
+mod retry;
 
 pub use connect::{ConnectError, Connector};
 pub use core::SessionCore;
+pub use retry::{MAX_UNATTENDED_LOSSES, Retryability, backoff};
 
 use crate::actor::{EndReason, Event, SessionActor, Snapshot};
 use crate::command::SessionHandle;
@@ -55,9 +68,37 @@ const COMMAND_CHANNEL_BOUND: usize = 32;
 /// Event broadcast ring size. Matches [`crate::actor`]'s.
 const EVENT_CHANNEL_BOUND: usize = 256;
 
+/// Why a supervised session stopped reconnecting.
+///
+/// [`SupervisedEnd::reason`] says why the last *connection* ended; this says why
+/// there was not another one. They are genuinely different questions, and the
+/// answers cross: a session can end on [`EndReason::PeerClosed`] -- a reason
+/// that warrants a reconnect -- and still stop here, because the ladder was
+/// stopped by something the connection itself knows nothing about.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StoppedBecause {
+    /// The session was cancelled: the player quit, or a test ended.
+    Cancelled,
+    /// The connector reported a failure no retry can fix
+    /// ([`Retryability::Fatal`]) -- rejected credentials, most likely.
+    ///
+    /// Carries the error so a caller can show the player *why* they are not
+    /// logged in. A bare "stopped" here is the difference between "fix your
+    /// password" and a session that mysteriously never came back.
+    Fatal(ConnectError),
+    /// [`MAX_UNATTENDED_LOSSES`] consecutive drops with no command in between.
+    ///
+    /// **Not a failure.** The session is re-openable and the player is simply
+    /// not there; `VellumFE` surfaces this as *"Session looked idle - not
+    /// reconnecting."* rather than as an error.
+    Unattended,
+}
+
 /// What a supervised session left behind.
 #[derive(Debug)]
 pub struct SupervisedEnd {
+    /// Why there was no further connection.
+    pub stopped_because: StoppedBecause,
     /// Everything that crossed the wire, **across every generation**.
     ///
     /// Criterion 9 is "verified in the replay", which needs the reconnect
@@ -155,23 +196,66 @@ impl<C: Connector> SupervisedSession<C> {
         self.core.generation.clone()
     }
 
-    /// Run until a reason says not to reconnect, or until cancelled.
+    /// Run until nothing warrants another connection.
+    ///
+    /// # The three ways this returns
+    ///
+    /// 1. **Cancelled** -- the deliberate stop, and the only one that is not a
+    ///    failure of any kind.
+    /// 2. **Fatal** -- the connector said no retry can work.
+    /// 3. **Unattended** -- [`MAX_UNATTENDED_LOSSES`] drops with no command in
+    ///    between.
+    ///
+    /// There is deliberately **no fourth**: a transient failure retries
+    /// forever, on a ladder that caps at 30 seconds. That is the right
+    /// behaviour for a network that is down -- a client that gave up after N
+    /// attempts would need the player to notice and act, and the whole point of
+    /// bounding by *attendance* rather than by attempt count is that an
+    /// attended session should survive an outage of any length.
     pub async fn run(mut self) -> SupervisedEnd {
         // Cancelled is the honest default: a session that never connects at
         // all did not lose a transport.
         let mut reason = EndReason::Cancelled;
+        let stopped_because;
+        // Which rung of the ladder. Reset by a connection that actually
+        // carried traffic -- see `earned_a_reset` for why "connected" is not
+        // the same thing.
+        let mut attempt = 0u32;
+        // Consecutive losses with no command sent. `MAX_UNATTENDED_LOSSES` of
+        // these stops the session.
+        let mut unattended = 0u32;
         loop {
             let generation = self.core.generation.get();
             let source = match self.connector.connect(generation).await {
                 Ok(source) => source,
                 Err(error) => {
-                    // A connector that cannot produce a transport ends the
-                    // session. The retry ladder is a LATER step; until it
-                    // exists, stopping loudly beats looping silently.
                     self.log(&format!("connect failed: {error}"));
-                    break;
+                    if !error.retryability.may_retry() {
+                        // The connector says no retry can work. Stop NOW --
+                        // not after the ladder, not after one more try. The
+                        // failure this prevents is Vellum's: "hammering the
+                        // auth server with a wrong password ... could lock the
+                        // account."
+                        stopped_because = StoppedBecause::Fatal(error);
+                        break;
+                    }
+                    // A failed *connect* climbs the ladder too. Otherwise a
+                    // server refusing connections would be retried at one
+                    // second forever, which is the storm the ladder exists to
+                    // prevent.
+                    if !self.wait_before_retry(&mut attempt).await {
+                        stopped_because = StoppedBecause::Cancelled;
+                        break;
+                    }
+                    continue;
                 }
             };
+
+            // Everything already recorded, so what THIS connection sends can
+            // be told from what earlier ones did. The recorder is durable
+            // across generations, which is what makes this a subtraction
+            // rather than a flag the actor has to carry.
+            let sent_before = outbound_count(&self.core.recorder);
 
             let actor = SessionActor::supervised(
                 source,
@@ -198,6 +282,7 @@ impl<C: Connector> SupervisedSession<C> {
             reason = end.reason;
 
             if !reason.warrants_reconnect() {
+                stopped_because = StoppedBecause::Cancelled;
                 break;
             }
             // A cancelled SESSION does not reconnect, even when the connection
@@ -207,17 +292,66 @@ impl<C: Connector> SupervisedSession<C> {
             // reconnecting after the player quit is the failure this prevents.
             if self.core.cancel.is_cancelled() {
                 reason = EndReason::Cancelled;
+                stopped_because = StoppedBecause::Cancelled;
                 break;
             }
 
+            // Did anyone use this connection? A command sent is a player (or a
+            // behavior) present; none across MAX_UNATTENDED_LOSSES connections
+            // is an abandoned client being idle-kicked in a loop.
+            let attended = outbound_count(&self.core.recorder) > sent_before;
+            if attended {
+                unattended = 0;
+                // An attended connection resets the LADDER too, so a session
+                // that ran for an hour and then dropped retries at one second
+                // rather than at whatever rung it climbed to last week.
+                attempt = 0;
+            } else {
+                unattended += 1;
+                if unattended >= MAX_UNATTENDED_LOSSES {
+                    self.log(&format!(
+                        "no command sent across {unattended} connections; not reconnecting"
+                    ));
+                    stopped_because = StoppedBecause::Unattended;
+                    break;
+                }
+            }
+
             self.reconnect();
+            if !self.wait_before_retry(&mut attempt).await {
+                stopped_because = StoppedBecause::Cancelled;
+                reason = EndReason::Cancelled;
+                break;
+            }
         }
 
         SupervisedEnd {
+            stopped_because,
             recorder: self.core.recorder,
             state: self.core.state,
             reason,
             generations: self.core.generation.get(),
+        }
+    }
+
+    /// Sleep one rung of the ladder, advancing `attempt`.
+    ///
+    /// Returns `false` if the session was cancelled while waiting, which is the
+    /// half of this that matters: a 30-second backoff would otherwise make
+    /// `cancel()` take up to 30 seconds to be noticed, and `plan/12` §5.5 gives
+    /// stopping a 250ms budget. The wait races the cancel token rather than
+    /// checking it afterwards.
+    async fn wait_before_retry(&mut self, attempt: &mut u32) -> bool {
+        let delay = backoff(*attempt, jitter());
+        *attempt = attempt.saturating_add(1);
+        self.log(&format!(
+            "reconnecting in {}ms (attempt {})",
+            delay.as_millis(),
+            attempt
+        ));
+        tokio::select! {
+            () = self.core.cancel.cancelled() => false,
+            () = tokio::time::sleep(delay) => true,
         }
     }
 
@@ -251,4 +385,51 @@ impl<C: Connector> SupervisedSession<C> {
             let _ = sink.event(line);
         }
     }
+}
+
+/// How many commands this session has sent, across every generation.
+///
+/// **Attendance is measured, not flagged.** The alternative was a
+/// `saw_input_since_connect` boolean on the actor, as `VellumFE` carries
+/// (`runtime.rs:490`) -- but Cena already records every outbound write, and the
+/// recorder is durable across generations precisely so facts like this survive
+/// a reconnect. A second source of truth for "did anyone type anything" could
+/// disagree with the recording; a subtraction cannot.
+fn outbound_count(recorder: &Recorder) -> usize {
+    recorder
+        .events()
+        .iter()
+        .filter(|event| matches!(event, cena_platform::RecordedEvent::Outbound { .. }))
+        .count()
+}
+
+/// A jitter fraction in `0.0..=1.0`.
+///
+/// # Why this is not `rand`
+///
+/// It needs one byte of spread per reconnect, and `plan/05` Rule -1 does not
+/// support a dependency for that. `VellumFE` reaches for `getrandom` because it
+/// already depends on it (`runtime.rs:76`); `cena-session` does not, and adding
+/// a crate to a session actor to decorrelate a backoff is the wrong trade.
+///
+/// # Why this does not break replay determinism
+///
+/// Criterion 7 requires a replay to produce the same result every run, and this
+/// reads a clock. It is safe because **a replay never reaches it**: a
+/// [`ReplaySource`](cena_platform::ReplaySource) is handed over by a connector
+/// that has already decided what to serve, and the ladder only runs between
+/// connections that a test controls. The one test that *does* exercise the
+/// ladder asserts on [`backoff`] directly, which is a pure function taking the
+/// jitter as a parameter -- that split is why the randomness can live here
+/// without being untestable.
+fn jitter() -> f64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    // Nanoseconds since the epoch, low bits only. Not cryptographic and not
+    // trying to be: the requirement is that five characters dropped by one
+    // network blip do not re-login in the same millisecond, and their
+    // supervisors reach this line at genuinely different nanoseconds.
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |since| since.subsec_nanos());
+    f64::from(nanos % 1000) / 999.0
 }

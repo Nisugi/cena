@@ -43,9 +43,12 @@ impl Connector for ScriptedConnector {
         self.sources
             .pop_front()
             .map(ReplaySource::new)
-            .ok_or_else(|| ConnectError {
-                stage: "scripted",
-                detail: "no more prepared connections".to_owned(),
+            .ok_or_else(|| {
+                // **Fatal, not transient.** A scripted connector that has run out
+                // has nothing more to serve and no number of retries changes that,
+                // so this is the honest classification -- and it is also what makes
+                // these tests terminate rather than climb the ladder forever.
+                ConnectError::fatal("scripted", "no more prepared connections")
             })
     }
 }
@@ -149,17 +152,26 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
     let connector = ScriptedConnector::new(vec![everything_then_death(), a_real_login_burst()]);
     let (session, _handle) = SupervisedSession::new(connector);
 
-    // Two prepared connections; the second also ends, so the supervisor tries a
-    // third and the connector refuses. That refusal is how this test terminates
-    // rather than looping forever -- the retry ladder is a later step.
+    // Two prepared connections, neither of which is used for anything. That is
+    // what terminates this test: no command is ever sent, so the unattended cap
+    // stops the session after the second. It used to terminate by exhausting
+    // the connector instead -- the ladder now stops it one step earlier.
     let end = session.run().await;
 
     assert_eq!(
         end.generations,
-        Generation::FIRST.next().next(),
-        "two connections were served, so the counter advanced twice: once \
-         reconnecting into the second, and once more before the connector \
-         refused a third"
+        Generation::FIRST.next(),
+        "two connections were served, so the counter advanced ONCE -- \
+         reconnecting into the second. It does not advance again, because \
+         neither connection sent a command and the unattended cap stops the \
+         session BEFORE the reconnect rather than after it."
+    );
+    assert_eq!(
+        end.stopped_because,
+        cena_session::StoppedBecause::Unattended,
+        "nothing was ever sent, so the session was never attended. This test \
+         used to end by exhausting the connector; the unattended cap now stops \
+         it one step earlier, which is the more honest reason of the two."
     );
 
     // Invalidated: the burst carries none of these.
@@ -173,10 +185,26 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
         "an indicator reported on the OLD connection must be Unknown, not \
          false: a new generation has been told nothing"
     );
+    // **`Some(false)`, and that is the right answer -- it asserted `None`
+    // before the retry ladder landed.** Not a regression: the ladder changed
+    // *when* the state is read, not what invalidation does.
+    //
+    // `in_roundtime` needs a known clock (`state/clock.rs:93-96`), and the
+    // clock comes from a prompt's `time=`. The session used to end after a
+    // THIRD invalidation had wiped the clock again, so the honest answer then
+    // was "I do not know what time it is". It now ends after the second
+    // connection's burst, whose prompt carries `time="1789775900"` -- so the
+    // clock is known, `roundtime_ends` is still `None`, and "not in roundtime"
+    // is a fact rather than a guess.
+    //
+    // That makes this the stronger assertion of the two: it shows the old
+    // roundtime was forgotten AND the new clock was learned, where the old one
+    // could not tell those apart.
     assert_eq!(
         end.state.in_roundtime(),
-        None,
-        "Unknown, not false -- plan/12 §5.2"
+        Some(false),
+        "the OLD roundtime is gone and the NEW clock is known, so this is a \
+         measured false rather than plan/12 §5.2's Unknown"
     );
 
     // Retained: the burst re-sent these, so they are observed rather than stale.

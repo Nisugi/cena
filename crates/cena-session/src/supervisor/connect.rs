@@ -24,6 +24,7 @@
 //! generic over the connector rather than holding a trait object. That is a
 //! constraint inherited from the transport, not a design preference.
 
+use super::Retryability;
 use crate::lifecycle::Generation;
 use cena_platform::ByteSource;
 use std::future::Future;
@@ -60,6 +61,41 @@ pub struct ConnectError {
     /// What went wrong. **Already redacted by the connector** -- a password or
     /// a session key must never reach this field, because it is logged.
     pub detail: String,
+    /// Whether trying again could work.
+    ///
+    /// A field on the error rather than a judgement the supervisor makes,
+    /// because **only the connector can know**: telling a rejected password
+    /// from a TCP reset requires reading the login protocol, and this crate
+    /// deliberately does not (see this module's header). The supervisor decides
+    /// *how many* attempts; the connector decides whether any are worth making.
+    pub retryability: Retryability,
+}
+
+impl ConnectError {
+    /// A failure worth retrying.
+    ///
+    /// The common case, and a constructor for it so a connector writing the
+    /// ordinary path does not have to name [`Retryability`] at all -- while the
+    /// one writing the auth path still has to say [`Retryability::Fatal`] out
+    /// loud.
+    #[must_use]
+    pub fn transient(stage: &'static str, detail: impl Into<String>) -> Self {
+        Self {
+            stage,
+            detail: detail.into(),
+            retryability: Retryability::Transient,
+        }
+    }
+
+    /// A failure that no retry can fix. **Stops the session.**
+    #[must_use]
+    pub fn fatal(stage: &'static str, detail: impl Into<String>) -> Self {
+        Self {
+            stage,
+            detail: detail.into(),
+            retryability: Retryability::Fatal,
+        }
+    }
 }
 
 impl std::fmt::Display for ConnectError {

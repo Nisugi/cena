@@ -25,7 +25,10 @@ pub use cena_model::{GameState, Room, UnknownTag};
 pub use command::{CommandId, Envelope, Gate, Origin, Outcome, Refusal, Sent, SessionHandle};
 pub use lifecycle::{Generation, GenerationCell, State};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
-pub use supervisor::{ConnectError, Connector, SessionCore, SupervisedEnd, SupervisedSession};
+pub use supervisor::{
+    ConnectError, Connector, MAX_UNATTENDED_LOSSES, Retryability, SessionCore, StoppedBecause,
+    SupervisedEnd, SupervisedSession, backoff,
+};
 
 /// The wire vocabulary, re-exported for behaviors.
 ///
