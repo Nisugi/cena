@@ -15,7 +15,8 @@ use super::refusal::{describe_launch_refusal, launch_refusal_is_fatal};
 use super::wire::hash_password;
 use super::wire::{
     Credentials, EACCESS_HOST, EACCESS_PORT, EaccessError, LaunchPayload, READ_BUF, err,
-    expect_echo, offered_game_codes, parse_launch, redact, redact_char_code, resolve_char_code,
+    expect_echo, is_launch_ok, offered_game_codes, parse_launch, redact, redact_char_code,
+    resolve_char_code,
 };
 use crate::bytes::ByteSource;
 use crate::live::LiveSource;
@@ -425,7 +426,7 @@ async fn launch_character(
 ) -> Result<LaunchPayload, EaccessError> {
     send(conn, &format!("L\t{char_code}\tSTORM"), "l_request").await?;
     let l = read_response(conn, "l_response").await?;
-    if !l.starts_with("L\tOK") {
+    if !is_launch_ok(&l) {
         // Fatal for sub-codes 1-3 and NOT for 4: `launch_refusal_is_fatal`
         // reads them one at a time, because "the account service failed while
         // assigning the character" is a hiccup and the other three are not.

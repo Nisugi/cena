@@ -44,10 +44,10 @@ use tokio::net::TcpStream;
 /// Lich's value, taken verbatim (`reference/lich-5/lib/games.rb:458-463`:
 /// `idle: 30, interval: 30`), with its own comment for why it is this low:
 /// *"defensive against L3/L4 idle reapers"*.
-const KEEPALIVE_IDLE: Duration = Duration::from_secs(30);
+pub const KEEPALIVE_IDLE: Duration = Duration::from_secs(30);
 
 /// Time between probes once they start.
-const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
+pub const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
 
 /// A live connection: plain TCP to the game, or TLS to eaccess.
 ///

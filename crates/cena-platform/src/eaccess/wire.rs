@@ -376,6 +376,27 @@ pub fn offered_game_codes(m_response: &str) -> Vec<&str> {
     m_response.trim().split('\t').skip(1).step_by(2).collect()
 }
 
+/// Whether an `L` response reports success.
+///
+/// # The guard MUST be `L<TAB>OK`, not `^L<TAB>`
+///
+/// A refusal is `L<TAB>PROBLEM<TAB><n>`, which **also** starts with `L<TAB>`. Lich's
+/// analysis records that a loose guard accepts it and then parses a garbage
+/// launch payload (`plan/10` §4.7 item 2) -- so the client connects somewhere
+/// meaningless with a key that was never issued.
+///
+/// # Why this is a function rather than an inline `starts_with`
+///
+/// Because it was inline, in `handshake::launch_character`, which needs a
+/// socket -- so no test could reach it. The test that existed compared two
+/// string LITERALS to each other and asserted the test file, not the parser
+/// (review finding PL-6). Pulling the guard out is what makes it testable at
+/// all, which is the same `wire`/`handshake` seam this module already draws.
+#[must_use]
+pub fn is_launch_ok(l_response: &str) -> bool {
+    l_response.starts_with("L	OK")
+}
+
 /// Parse the `GAMEHOST` / `GAMEPORT` / `KEY` triple out of an `L\tOK` line.
 ///
 /// `plan/10` §12.3: `splitn(2, '=')`, because a `KEY` value could itself
@@ -439,12 +460,19 @@ pub fn expect_echo(response: &str, letter: char, stage: &'static str) -> Result<
     ))
 }
 
-/// Trim ASCII whitespace from both ends of a byte slice.
-///
-/// `[u8]::trim_ascii` is stable and does exactly this; it is spelled out here
-/// only because the empty-slice case must return an empty slice rather than
-/// panic on the index arithmetic the spike used.
-#[must_use]
-pub fn trim_ascii_whitespace(bytes: &[u8]) -> &[u8] {
-    bytes.trim_ascii()
-}
+// `trim_ascii_whitespace` WAS HERE, and its deletion is the point.
+//
+// It wrapped `[u8]::trim_ascii` and returned it unchanged, while its own doc
+// claimed the behaviour was "spelled out here" -- so its test asserted the
+// standard library, not Cena (review finding PL-6).
+//
+// Worse, its last caller went away with PL-3: the handshake used to trim the
+// K key, and `plan/10:1734,1749` establishes that the key is 32 bytes of random
+// BINARY with no terminator, so a leading 0x20 is data and trimming it shifts
+// every XOR index. The test that guarded this function opened with "The K key
+// is trimmed before hashing" -- documenting, and protecting, the exact bug that
+// was removed.
+//
+// A dead function whose test asserts a behaviour we deliberately eliminated is
+// worse than no function: it reads as a specification. `handshake.rs:177`
+// records why nothing is trimmed.

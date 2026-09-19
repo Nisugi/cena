@@ -24,8 +24,8 @@
 //! is what these are for.
 
 use cena_platform::eaccess::{
-    CLIENT_BANNER, describe_launch_refusal, expect_echo, hash_password, launch_refusal_is_fatal,
-    offered_game_codes, parse_launch, redact, resolve_char_code, trim_ascii_whitespace,
+    CLIENT_BANNER, describe_launch_refusal, expect_echo, hash_password, is_launch_ok,
+    launch_refusal_is_fatal, offered_game_codes, parse_launch, redact, resolve_char_code,
 };
 use cena_platform::{Credentials, EaccessError, LaunchPayload};
 
@@ -210,9 +210,22 @@ fn refuses_an_incomplete_launch_payload() {
 #[test]
 fn a_problem_response_is_not_an_ok_response() {
     let refusal = "L\tPROBLEM\t3";
+    // **`is_launch_ok`, not two string literals.** This used to assert that
+    // `"L\tPROBLEM\t3".starts_with("L\tOK")` is false -- a fact about the test
+    // file, true whatever the production guard does (review finding PL-6).
+    //
+    // The guard was inline in `handshake::launch_character`, which needs a
+    // socket, so nothing could reach it. It is now `wire::is_launch_ok`, and
+    // pulling it out is what makes this assertable at all.
     assert!(
-        !refusal.starts_with("L\tOK"),
-        "a loose `^L\\t` guard accepts this and parses a garbage payload"
+        !is_launch_ok(refusal),
+        "a loose `^L\\t` guard accepts a PROBLEM response and then parses a \
+         garbage payload as a launch"
+    );
+    assert!(
+        is_launch_ok("L\tOK\tKEY=abc"),
+        "a real success must still pass the guard -- a test that only checks \
+         the refusal is satisfied by a guard that rejects everything"
     );
     let explained = describe_launch_refusal(refusal);
     assert!(explained.contains("PROBLEM\t3"), "got: {explained}");
@@ -303,14 +316,15 @@ fn offered_codes_are_extracted_case_sensitively() {
     );
 }
 
-/// The K key is trimmed before hashing, and an all-whitespace key is empty
-/// rather than a slice that would silently hash to nothing.
-#[test]
-fn the_hash_key_is_trimmed_at_both_ends() {
-    assert_eq!(trim_ascii_whitespace(b"  abc \n"), b"abc");
-    assert_eq!(trim_ascii_whitespace(b"   "), b"");
-    assert_eq!(trim_ascii_whitespace(b""), b"");
-}
+// `the_hash_key_is_trimmed_at_both_ends` WAS HERE. It tested
+// `[u8]::trim_ascii` through a one-line wrapper (review finding PL-6) -- and
+// its first sentence asserted the behaviour PL-3 proved WRONG and removed: the
+// K key is 32 bytes of random binary, so trimming it shifts every XOR index and
+// sends a wrong password the server answers with a bad-password strike.
+//
+// The wrapper is deleted. `eaccess_mandated_vectors.rs` carries the tests that
+// matter here instead, including `plan/10` §3.3's known-answer vector and three
+// that fail if anything is ever trimmed off a key again.
 
 /// The banner is what selects the extended feed. A test rather than a
 /// comment because the Lich-era string is the plausible thing to "fix" it
@@ -403,13 +417,27 @@ fn an_unclassified_eaccess_failure_is_retryable() {
 }
 
 /// `fatal()` marks, and marks only what it is asked to.
+///
+/// **The base comes from `err`, not a struct literal.** It used to be built
+/// inline with `fatal: false` and then asserted to be `!fatal` -- reading back
+/// the literal the test itself wrote, which is true however `err` behaves
+/// (review finding PL-6).
+///
+/// Using a real error makes this assert the default that matters: `err`
+/// produces a RETRYABLE error, so a failure nobody has classified is retried
+/// rather than stranding the session (`wire.rs:160-163`).
+///
+/// `parse_launch` is the public route to one -- `err` itself is `pub(super)`,
+/// and widening it so a test can reach it would be the tail wagging the dog.
 #[test]
 fn fatal_is_opt_in_and_preserves_the_rest() {
-    let base = EaccessError {
-        stage: "a_response",
-        detail: "authentication rejected".to_owned(),
-        fatal: false,
-    };
+    let base =
+        parse_launch("L\tOK\tGAMEHOST=h\tGAMEPORT=1").expect_err("a launch with no KEY must fail");
+    assert!(
+        !base.fatal,
+        "`err` must default to retryable: an unclassified failure treated as \
+         fatal costs the session, while one retried costs a bounded ladder"
+    );
     let marked = base.clone().fatal();
     assert!(marked.fatal);
     assert_eq!(marked.stage, base.stage, "the stage is untouched");

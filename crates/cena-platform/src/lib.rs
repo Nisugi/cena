@@ -57,7 +57,7 @@ pub use eaccess::{
     Credentials, EaccessError, LaunchPayload, Prefer, Provider, authenticate, authenticate_via,
     authenticate_with_fallback, connect_game,
 };
-pub use live::LiveSource;
+pub use live::{KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, LiveSource};
 pub use record::{MAX_RECORDED_BYTES, RecordedEvent, Recorder};
 pub use replay::ReplaySource;
 pub use sink::{DEFAULT_LOG_DIR, Redactions, SessionSink, date_dir, file_stamp, log_dir};

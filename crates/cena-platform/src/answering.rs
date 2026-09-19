@@ -209,7 +209,15 @@ impl ByteSource for AnsweringSource {
             // A peer that has hung up reports it, and does so only once the
             // pending bytes above are drained -- a goodbye message arrives
             // before the close, as it does on a real socket.
-            if self.transcript.with(|t| t.hung_up) {
+            //
+            // **A shut-down source is at end of stream too**, for the same
+            // reason `ReplaySource::read` says so (`replay.rs:72-76`): without
+            // it, a session that closed its own source parks here forever
+            // instead of ending. Review finding PL-6 -- this source enforced
+            // neither half of `shutdown`, so a bug that kept reading or writing
+            // after close passed under it while failing against the other two
+            // sources.
+            if self.transcript.with(|t| t.hung_up || t.shutdown) {
                 return Ok(0);
             }
             // Otherwise waits FOREVER until something is written or released,
@@ -227,6 +235,16 @@ impl ByteSource for AnsweringSource {
     }
 
     async fn write_all(&mut self, message: &[u8]) -> io::Result<()> {
+        // Writing to a closed socket is an error on a real one and on
+        // `ReplaySource` (`replay.rs:89-94`). Silently succeeding here let a
+        // write-after-shutdown bug in the session pass every test that used
+        // this source -- PL-6.
+        if self.transcript.with(|t| t.shutdown) {
+            return Err(io::Error::new(
+                io::ErrorKind::NotConnected,
+                "write to a shut-down answering source",
+            ));
+        }
         let reply = self.reply.clone();
         let held = self.transcript.with(|t| {
             t.written.push(message.to_vec());
