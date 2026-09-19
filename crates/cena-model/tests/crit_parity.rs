@@ -166,15 +166,34 @@ fn canonical(entry: &cena_model::crit::CritEntry) -> String {
 ///
 /// No `unwrap`/`expect`/`panic!` here: clippy.toml's `allow-*-in-tests` covers
 /// `#[test]` functions, not helpers beside them, and the workspace denies all
-/// three. This follows the house pattern at
-/// `crates/cena-protocol/tests/golden_room.rs:16-26` -- a failure degrades to
-/// an empty table, and every caller asserts against a count, a digest or a
-/// key, so an unloadable table fails loudly at the assertion rather than here
-/// with a worse message.
+/// three. A failure therefore degrades to an empty table, and every caller
+/// asserts against a count, a digest or a key, so it still fails loudly.
+///
+/// # The error is PRINTED, not swallowed
+///
+/// This used to end `.unwrap_or_default()`, discarding a `LoadError` that
+/// names the offending line and its reason. The claim beside it was that a
+/// later assertion gives a better message; it does not. "0 vs 2394" says a
+/// table did not load and nothing about why, while the error says which row
+/// broke and how -- exactly what someone regenerating the TSV needs
+/// (review MO-8).
+///
+/// `eprintln!` rather than a panic because of the lint scoping above, and
+/// because a printed cause plus a failing assertion is strictly more than the
+/// assertion alone.
 fn tables() -> CritTables {
-    CritTables::load()
-        .or_else(|_| CritTables::from_entries(Vec::new()))
-        .unwrap_or_default()
+    match CritTables::load() {
+        Ok(tables) => tables,
+        Err(e) => {
+            eprintln!(
+                "crit tables did not load: {e}\n\
+                 The assertions below will fail against an EMPTY table, which \
+                 reports a count of 0 and says nothing about the cause. The \
+                 line above is the cause."
+            );
+            CritTables::from_entries(Vec::new()).unwrap_or_default()
+        }
+    }
 }
 
 #[test]

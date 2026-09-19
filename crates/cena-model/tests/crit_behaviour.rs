@@ -16,15 +16,34 @@ use cena_model::crit::{CritEntry, CritTables, STUN_UNKNOWN, load};
 ///
 /// No `unwrap`/`expect`/`panic!` here: clippy.toml's `allow-*-in-tests` covers
 /// `#[test]` functions, not helpers beside them, and the workspace denies all
-/// three. This follows the house pattern at
-/// `crates/cena-protocol/tests/golden_room.rs:16-26` -- a failure degrades to
-/// an empty table, and every caller asserts against a count, a digest or a
-/// key, so an unloadable table fails loudly at the assertion rather than here
-/// with a worse message.
+/// three. A failure therefore degrades to an empty table, and every caller
+/// asserts against a count, a digest or a key, so it still fails loudly.
+///
+/// # The error is PRINTED, not swallowed
+///
+/// This used to end `.unwrap_or_default()`, discarding a `LoadError` that
+/// names the offending line and its reason. The claim beside it was that a
+/// later assertion gives a better message; it does not. "0 vs 2394" says a
+/// table did not load and nothing about why, while the error says which row
+/// broke and how -- exactly what someone regenerating the TSV needs
+/// (review MO-8).
+///
+/// `eprintln!` rather than a panic because of the lint scoping above, and
+/// because a printed cause plus a failing assertion is strictly more than the
+/// assertion alone.
 fn tables() -> CritTables {
-    CritTables::load()
-        .or_else(|_| CritTables::from_entries(Vec::new()))
-        .unwrap_or_default()
+    match CritTables::load() {
+        Ok(tables) => tables,
+        Err(e) => {
+            eprintln!(
+                "crit tables did not load: {e}\n\
+                 The assertions below will fail against an EMPTY table, which \
+                 reports a count of 0 and says nothing about the cause. The \
+                 line above is the cause."
+            );
+            CritTables::from_entries(Vec::new()).unwrap_or_default()
+        }
+    }
 }
 
 #[test]
@@ -81,11 +100,30 @@ fn the_rewritten_lookahead_still_excludes_removes_skull_lines() {
     }
 
     // And the line it was protecting still finds its own entry.
+    //
+    // **Named exactly, not "something".** This was
+    // `contains("impact/head/9") || !is_empty()`, where the second disjunct
+    // subsumes the first: any match at all satisfied it, including the
+    // `slash/head/3` the veto exists to prevent. The assertion could not fail
+    // for the reason it was written (review MO-8).
+    //
+    // The TSV carries exactly two entries whose pattern mentions this line:
+    //
+    // ```text
+    // $ grep 'removes skull' crates/cena-model/data/crit_tables.tsv
+    // impact/head/9  ^Blow to head removes skull.
+    // slash/head/3   ^(?!.*removes skull.)Blow to head.
+    // ```
+    //
+    // so the right answer is knowable and singular.
+    let hits = matched("Blow to head removes skull.");
     assert!(
-        matched("Blow to head removes skull.").contains(&"impact/head/9".to_owned())
-            || !matched("Blow to head removes skull.").is_empty(),
-        "impact's 'removes skull' message should still match something: {:?}",
-        matched("Blow to head removes skull.")
+        hits.contains(&"impact/head/9".to_owned()),
+        "impact's own 'removes skull' entry must match its own message: {hits:?}"
+    );
+    assert!(
+        !hits.contains(&"slash/head/3".to_owned()),
+        "slash/head/3's negative lookahead exists precisely to keep it OFF          this line; a match here means the veto is not applied: {hits:?}"
     );
 }
 

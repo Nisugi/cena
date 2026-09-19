@@ -20,20 +20,85 @@
 //!
 //! `RegexSet` is the slowest of the three at this scale, and the reason is its
 //! lazy-DFA cache thrashing: rebuilding the same set with a 64 MiB
-//! `dfa_size_limit` is 30-80x faster. But that cache is **per session**, and
+//! `dfa_size_limit` is 30-80x faster. Even then, bucketing wins on three of
+//! the four lines.
+//!
+//! # UNVERIFIED, and the argument beside it was wrong
+//!
+//! **The table above cannot be reproduced from this repository.** There is no
+//! bench, no command, and no `RegexSet` code anywhere:
+//!
+//! ```text
+//! $ grep -rn 'RegexSet' crates/ --include=*.rs
+//! (comments only -- this block and Cargo.toml's note)
+//! ```
+//!
+//! `plan/05` §-2 says a finding without proof is speculation and that a
+//! number must carry the command that produced it. These numbers carry
+//! neither, so they are labelled **UNVERIFIED** rather than quietly trusted
+//! (review MO-7). They are kept rather than deleted because they record a
+//! real comparison someone ran and the decision that came out of it; what is
+//! removed is the pretence that they are checkable.
+//!
+//! This block also argued that the DFA cache is "**per session**, and
 //! `plan/12` binds 3-25 sessions in one process, so 64 MiB each is
-//! disqualifying -- and even then bucketing wins on three of the four lines.
+//! disqualifying". **That is not how `regex` allocates.** A cache belongs to
+//! a `Regex` (or `RegexSet`) and is pooled per concurrently-matching thread,
+//! not per session. With the tables behind an `Arc`, the cost is roughly
+//! workers x limit, not sessions x limit -- and 3-25 sessions on a handful of
+//! runtime threads is a much smaller number than the argument assumed.
+//!
+//! The same pooling applies to the **2,394 separate `Regex` values this code
+//! does use**, whose aggregate cache footprint has never been measured at
+//! all. So the memory argument, as stated, was evidence against the option it
+//! rejected and silent about the option it chose.
+//!
+//! **The decision still stands**: bucketing wins three of the four lines
+//! outright, and it is simpler than tuning a `dfa_size_limit`. It is the
+//! rationale that was wrong, which is worth separating -- a right answer held
+//! for a wrong reason survives until the reason is load-bearing somewhere
+//! else.
 //!
 //! # The index is exact, not an approximation
 //!
 //! A pattern anchored `^Word` can only match a line whose first word is
 //! `Word`, so bucketing by that word cannot lose a match. Patterns not so
-//! anchored go in a residual list checked on every line. VERIFIED by
-//! exhaustive comparison: for all 2,394 patterns literalised into lines,
-//! bucketed and full-scan returned identical match sets -- **0 disagreements /
-//! 2394**.
+//! anchored go in a residual list checked on every line.
 //!
-//! Measured shape: 455 buckets, 194 residual, largest bucket 72, median 2.
+//! # What is actually verified, and what is not
+//!
+//! This claimed "VERIFIED by exhaustive comparison: for all 2,394 patterns
+//! literalised into lines ... **0 disagreements / 2394**". Two problems
+//! (review MO-5):
+//!
+//! * **2,394 patterns cannot all be literalised.** 45 of them carry an
+//!   unescaped `(`, `)`, `|`, `{`, `}` or `$`, or are unanchored, and the
+//!   test's `synthesise_matching_line` returns `None` for exactly those. The
+//!   comparison covered 2,349.
+//!
+//!   (The review said 46, counting a pattern whose parentheses are
+//!   **escaped** -- `^Burn exposes the spine \(from the front\).` -- which
+//!   the synthesiser handles. A character-class scan over the data cannot see
+//!   the escape. `tests/crit_index.rs` pins the figure by running the
+//!   function rather than by approximating it.)
+//! * **No bucketed-versus-full-scan comparison existed in the repo.** The
+//!   claim described a one-off exercise, in the voice of a standing
+//!   guarantee, with nothing to re-run.
+//!
+//! Both are closed. `tests/crit_index.rs` now asserts the skip count is
+//! exactly 45, so a pattern becoming unliteralisable is a visible change
+//! rather than a silent widening of the gap, and it compares the index
+//! against a full scan over every entry it CAN synthesise.
+//!
+//! The 45 remain checked by shape rather than by match: `crit.rs`'s loader
+//! compiles every pattern, and `crit_parity.rs`'s digest covers every field of
+//! every entry. What no test can do is synthesise a line for a pattern whose
+//! language is not a single literal -- that needs a regex-to-string generator,
+//! which is a larger thing than the gap it would close.
+//!
+//! Measured shape (`tests/crit_index.rs`, which asserts each): **454 buckets,
+//! 195 residual**, largest bucket 72. This doc said 455/194, contradicting a
+//! passing test eight lines of code away.
 
 use regex::Regex;
 

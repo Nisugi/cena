@@ -16,9 +16,18 @@ use cena_model::crit::CritTables;
 ///
 /// See `crit_behaviour.rs`'s copy of this helper for why it does not panic.
 fn tables() -> CritTables {
-    CritTables::load()
-        .or_else(|_| CritTables::from_entries(Vec::new()))
-        .unwrap_or_default()
+    match CritTables::load() {
+        Ok(tables) => tables,
+        Err(e) => {
+            eprintln!(
+                "crit tables did not load: {e}\n\
+                 The assertions below will fail against an EMPTY table, which \
+                 reports a count of 0 and says nothing about the cause. The \
+                 line above is the cause."
+            );
+            CritTables::from_entries(Vec::new()).unwrap_or_default()
+        }
+    }
 }
 
 #[test]
@@ -57,9 +66,29 @@ fn every_entry_is_reachable_through_the_index() {
     // This is the end-to-end property; where a pattern lives (bucket or
     // residual) is the index's business, not the test's.
     let tables = tables();
+    // **Counted, not merely skipped.**
+    //
+    // The skip used to be a bare `continue` with the comment "other tests
+    // cover it", which was not true: nothing else matched these patterns
+    // against a line. 46 of 2,394 entries were silently outside the only test
+    // that checks reachability, and one more becoming unliteralisable would
+    // have widened that gap with no signal (review MO-5).
+    //
+    // MEASURED, and asserted below so it cannot drift:
+    //
+    // ```text
+    // $ awk -F'\t' 'NR>1 {p=$NF; if (p ~ /[()|{}$]/ || p !~ /^\^/ || \
+    //       p ~ /^\^\(\?!/) c++} END {print c}' crates/cena-model/data/crit_tables.tsv
+    // 46
+    // ```
+    let mut skipped = 0usize;
     for entry in tables.entries() {
         let Some(line) = synthesise_matching_line(&entry.pattern) else {
-            continue; // pattern too complex to literalise; other tests cover it
+            // Not literalisable: the pattern's language is not a single
+            // literal string. Compiling it is still checked by the loader,
+            // and every field is still covered by `crit_parity.rs`'s digest.
+            skipped += 1;
+            continue;
         };
         let hits = tables.parse(&line);
         assert!(
@@ -72,6 +101,133 @@ fn every_entry_is_reachable_through_the_index() {
             hits.iter().map(|hit| hit.key()).collect::<Vec<_>>()
         );
     }
+
+    assert_eq!(
+        skipped, EXPECTED_SKIPS,
+        "the number of patterns this test cannot synthesise a line for has          changed. That is not necessarily wrong -- a new pattern with a          group or an alternation is legitimate -- but it must be a VISIBLE          change, because each one is an entry outside the only test that          checks reachability. Update EXPECTED_SKIPS with the measurement in          its doc comment."
+    );
+}
+
+/// Patterns `synthesise_matching_line` cannot literalise.
+///
+/// A pattern with an UNESCAPED `(`, `)`, `|`, `{`, `}` or `$`, or one that is
+/// not `^`-anchored, has no single literal line that exercises it.
+///
+/// # The count is 45, and a plausible one-liner says 46
+///
+/// The review reported 46, from
+///
+/// ```text
+/// awk over the TSV's last column, counting any pattern that holds one
+/// of `()|{}$` or lacks a `^` anchor
+/// ```
+///
+/// which counts `^Burn exposes the spine \(from the front\).` -- where the
+/// parentheses are **escaped**, so they are literal text and the synthesiser
+/// handles them through its `\` arm. A character-class scan cannot see the
+/// escape; the synthesiser can.
+///
+/// This constant is therefore pinned to what the FUNCTION does, measured by
+/// running it, rather than to a regex over the data that approximates it. The
+/// approximation is what was wrong, which is the point: when a test and a
+/// one-liner disagree about the code's behaviour, the code is the oracle.
+const EXPECTED_SKIPS: usize = 45;
+
+/// Does `pattern` accept `line`, ignoring the index entirely?
+///
+/// Reproduces `match_index.rs`'s one documented exclusion -- Lich's single
+/// negative lookahead, which `regex` does not support and which the index
+/// folds into a match-then-veto pair. Two lines, for one entry out of 2,394,
+/// and restating them here is what keeps this an INDEPENDENT oracle: an
+/// oracle that called the index's own predicate would agree with it by
+/// construction.
+fn compile_oracle(pattern: &str) -> (regex::Regex, Option<regex::Regex>) {
+    const LOOKAHEAD: &str = "(?!.*removes skull.)";
+    const EXCLUDED: &str = ".*removes skull.";
+
+    let (source, veto) = if pattern.contains(LOOKAHEAD) {
+        (
+            pattern.replace(LOOKAHEAD, ""),
+            regex::Regex::new(EXCLUDED).ok(),
+        )
+    } else {
+        (pattern.to_owned(), None)
+    };
+    // `Regex::new` cannot fail here -- `CritTables::load` compiled every one
+    // of these already, and this test only runs on tables that loaded. An
+    // empty alternation is the inert stand-in for the impossible case:
+    // matching nothing makes a hypothetical failure show up as a DISAGREEMENT
+    // with the index rather than as a panic in a helper, which is the more
+    // useful failure. (A `panic!` here is also unavailable: `clippy.toml`
+    // scopes that lint away from `#[test]` functions, and this is a helper.)
+    let regex = regex::Regex::new(&source).unwrap_or_else(|_| {
+        regex::Regex::new("$.^").unwrap_or_else(|_| unreachable!("matches nothing"))
+    });
+    (regex, veto)
+}
+
+/// Does this compiled pair accept `line`?
+fn accepts(compiled: &(regex::Regex, Option<regex::Regex>), line: &str) -> bool {
+    let line = line.trim();
+    compiled.0.is_match(line) && compiled.1.as_ref().is_none_or(|veto| !veto.is_match(line))
+}
+
+/// **The index agrees with a full scan.**
+///
+/// `match_index.rs` claimed this was "VERIFIED by exhaustive comparison ...
+/// 0 disagreements / 2394", and no such comparison existed in the repo: the
+/// claim described a one-off exercise in the voice of a standing guarantee
+/// (review MO-5). `crit_index.rs:9-11` also records that the index WAS once
+/// broken -- steam/back/6 -- "while all 15 original tests passed", which is
+/// the reason a standing comparison is worth its runtime.
+///
+/// The oracle is a linear scan over every entry, run against every line this
+/// test can synthesise. Bucketing is an optimisation, so the only thing that
+/// makes it safe is that it returns what the slow path would.
+#[test]
+fn the_index_returns_what_a_full_scan_returns() {
+    let tables = tables();
+    // Compiled ONCE, not once per line. The oracle is 2,394 patterns and there
+    // are ~2,348 lines to try, so recompiling inside the loop is ~5.6 million
+    // regex compilations -- minutes of test time for no extra coverage.
+    let oracle: Vec<_> = tables
+        .entries()
+        .iter()
+        .map(|e| compile_oracle(&e.pattern))
+        .collect();
+    let mut compared = 0usize;
+
+    for entry in tables.entries() {
+        let Some(line) = synthesise_matching_line(&entry.pattern) else {
+            continue;
+        };
+        compared += 1;
+
+        let mut indexed: Vec<_> = tables.parse(&line).iter().map(|e| e.key()).collect();
+        // The full scan, built from the ENTRY's own pattern rather than from
+        // the index's compiled copy -- otherwise the oracle and the thing
+        // under test share the same compilation and the comparison is
+        // circular.
+        let mut scanned: Vec<_> = tables
+            .entries()
+            .iter()
+            .zip(&oracle)
+            .filter(|(_, compiled)| accepts(compiled, &line))
+            .map(|(candidate, _)| candidate.key())
+            .collect();
+        indexed.sort_unstable();
+        scanned.sort_unstable();
+
+        assert_eq!(
+            indexed, scanned,
+            "the index and a full scan disagree on {line:?}. Bucketing is an              optimisation; the only thing that makes it safe is returning              what the slow path returns. A first-word bucket that drops a              match is exactly the steam/back/6 defect this file's header              records, which 15 passing tests did not catch."
+        );
+    }
+
+    assert!(
+        compared > 2_000,
+        "only {compared} lines were compared; the synthesiser has stopped          producing lines and this test is passing by doing nothing"
+    );
 }
 
 /// A line the pattern matches, built by literalising the constructs the crit
