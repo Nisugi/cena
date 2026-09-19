@@ -1,0 +1,12 @@
+<mode id="GAME"/>
+Please wait for connection to game server.
+<playerID id='966483'/>
+<settingsInfo  client='1.0.1.28' major='19331' crc='146668287' instance='GS4'/>
+<mode id="GAME"/>
+Welcome to GemStone IV (R) v5.10
+Copyright 2026 Simutronics Corp.
+All Rights Reserved
+<streamWindow id="main" title="Story" location="center" target="drop" resident="true"/><streamWindow id='main' title='Story' subtitle=" - Duskruin Arena, Sands Approach - 8213015" location='center' target='drop'/><streamWindow id='room' title='Room' subtitle=" - Duskruin Arena, Sands Approach - 8213015" location='center' target='drop' ifClosed='' resident='true'/><clearStream id='room'/><pushStream id='room'/><compDef id='room desc'>Still visible beneath a thin layer of sand, dark stains mar the stone floor, the coloring that of dried blood creating a grisly pathway through the <a exist="-420466" noun="entrance">entrance</a> to the arena itself, just visible ahead.  Bright torchlight illuminates the arena beyond, spilling through into the otherwise dark corridor.  A ramp leads slightly downward to another arena entrance.</compDef><compDef id='room objs'>  You also see<crtrStatus exist="478834" flying="1" inferior="1"/><b> <pushBold/>a <a exist="478834" noun="spirit">tearful forest spirit</a><popBold/></b> that is flying around, the <a exist="969450" noun="disk">brass Dorlan disk</a> engraved with runes,<crtrStatus exist="2254707" inferior="1"/><b> <pushBold/>a <a exist="2254707" noun="mouse">fat forest mouse</a><popBold/></b>,<crtrStatus exist="1761116"/><b> <pushBold/>a <a exist="1761116" noun="caraval">sable-tufted slinky orange caraval</a><popBold/></b>,<crtrStatus exist="-420807" inferior="1"/><b> <pushBold/>an <a exist="-420807" noun="guard">arena guard</a><popBold/></b>, a <a exist="37855" noun="wastebasket">black and red wire wastebasket</a> and<crtrStatus exist="37854" inferior="1"/><b> <pushBold/>a <a exist="37854" noun="cat">sleek white cat</a><popBold/></b>.</compDef>
+<compDef id='room players'></compDef>
+<compDef id='room exits'>Obvious exits: <d>south</d>, <d>down</d></compDef>
+<compDef id='sprite'></compDef><popStream id='room'/>

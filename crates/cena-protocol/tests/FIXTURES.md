@@ -95,6 +95,78 @@ VERIFIED, one probe per rule. Applied here:
   scrubber ran regardless, and the test asserts their absence rather than
   trusting the cut.
 
+## M2's corpus — six shapes, cut 2026-09-19
+
+Added for `plan/12` §8's Milestone 2 ("frame vocabulary breadth + golden
+corpus"). Read by `tests/golden_m2_corpus.rs`, 17 tests.
+
+**These come from a different source than everything above**, and that is the
+point. The M1 fixtures are pre-2026-08 archive logs; these are
+`E:\Gemstone\dev\lich-5\logs`, a **newer Lich build**, which is where
+`crtrStatus` lives — absent from three sampled archive months, **2,342**
+occurrences in one of these files.
+
+| Fixture | Source | Lines | Bytes |
+|---|---|---|---|
+| `login_burst.xml` | `dev/lich-5/logs/GSIV-Nisugi/2026/09/xml/2026-09-01_15-13-56.xml` | 2-13 | 2,145 |
+| `room_populated.xml` | same | 1682-1693, 240 | 2,456 |
+| `combat_exchange.xml` | same | 1979-1992 | 1,438 |
+| `creature_status.xml` | same | 15416, 1886, 2758 | 2,203 |
+| `inventory_container.xml` | same | 14-20, 44-45 | 2,425 |
+| `effect_dialogs.xml` | `…/2026-09-04_09-15-47.xml` | 822-825 | 6,414 |
+
+Line 1 of each source is Lich's file header (`2026-09-01 3:13pm`), not wire
+traffic, and is in no cut range.
+
+### The prerequisite: a second timestamp prefix
+
+**These logs were unusable as fixtures until `scrub.rs` learned a new rule.**
+This build prefixes lines with a full date and a spelled-out zone:
+
+```text
+2026-09-01 15:13:58 Central Standard Time: <component id='room objs'>...
+```
+
+MEASURED: **4,427,147** occurrences across the month; in `2026-09-01_15-13-56`,
+**28,879 of 29,122 lines**, every one line-anchored. VERIFIED that keeping it
+yields a spurious `Text("2026-09-01 15:13:58 Central Standard Time: ")` frame
+ahead of the real component — a fact the game never sent, baked into a golden.
+The two prefix shapes are disjoint by era: of a 200-file archive sample, zero
+carry either.
+
+### Scrubbing — eleven players, not one
+
+`room_populated.xml`'s roster is a public arena: **eleven** players, several
+behind titles (`Arena Icon`, `Captain of the Falcon`, `Legendary Lady`). All
+eleven are pseudonymised in `cut_fixtures.rs` and asserted absent by
+`fixtures_are_scrubbed.rs`.
+
+They are pseudonymised rather than dropped because the line's **value is its
+shape** — eleven links, some behind titles, which is the form a room roster
+takes and which no hand-written snippet would get right. Titles are game data
+and stay. `exist=` ids are **kept**, so id-to-name correlation is still tested;
+each pseudonym appears exactly twice, at `noun=` and in the text.
+
+VERIFIED absent from every committed fixture: all eleven real names, `Inochi`,
+and the author's own character name.
+
+### What the cut found
+
+**A defect, not just coverage.** `<crtrStatus>` typed correctly standing alone
+and degraded to `Frame::Structural { raw }` **inside a `<component>` body** —
+every flag trapped in an unparsed string. MEASURED: of 2,568 lines carrying one,
+**2,537 (98.8%)** carry it inside a component; the working path served 1.2% of
+real traffic.
+
+That is `plan/12` §3a's "reopen" signal — a classifier would have to re-tokenize
+markup to recover a fact the parser already had — so the frame was widened at
+the emit site. Four tests now fail if it regresses; before them, reverting the
+fix left the whole suite green.
+
+Also measured across all six: **267 frames, zero unknown or malformed tags**.
+The ported 126-tag vocabulary has no hole in current traffic, which is M2's
+breadth claim.
+
 ## Not in M1 scope
 
 Deliberately absent, per the corpus findings: `<dialogData id='combat'>` as a

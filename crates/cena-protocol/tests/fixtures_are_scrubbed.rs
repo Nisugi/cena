@@ -37,7 +37,23 @@ use std::path::{Path, PathBuf};
 ///
 /// This file is source, not a fixture, so it is exempt from its own scan --
 /// see `fixture_files`, which reads only `tests/fixtures/`.
-const PSEUDONYMS: &[(&str, &str)] = &[("Inochi", "Alderin")];
+const PSEUDONYMS: &[(&str, &str)] = &[
+    ("Inochi", "Alderin"),
+    // The eleven players in `room_populated.xml`'s roster, from
+    // `GSIV-Nisugi/2026/09/xml/2026-09-01_15-13-56.xml:240`. Kept in step with
+    // `examples/cut_fixtures.rs`; this list is what proves they are absent.
+    ("Fulmen", "Aldric"),
+    ("Khadzim", "Bresnik"),
+    ("Vortalis", "Cerdwyn"),
+    ("Gidion", "Dorlan"),
+    ("Komoki", "Eshvarr"),
+    ("Eliaku", "Faldrin"),
+    ("Jabalia", "Gwenlyn"),
+    ("Attalynx", "Halvorn"),
+    ("Jinxt", "Ithriel"),
+    ("Richland", "Jorvath"),
+    ("Berean", "Kelmond"),
+];
 
 /// Substrings that must not appear in any committed fixture.
 fn forbidden() -> Vec<(&'static str, String)> {

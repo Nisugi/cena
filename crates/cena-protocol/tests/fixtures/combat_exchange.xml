@@ -1,0 +1,14 @@
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="wart-covered vor'taz" cmd="target %dDBTarget%" tooltip='Select Target' content_text="wart-covered vor'taz" content_value="#2406373" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+You nock a faewood <a exist="2406396" noun="arrow">arrow</a> fletched with plain white feathers in your <a exist="2376087" noun="bow">yew long bow</a>.
+The wind turns in your favor.
+You take aim and fire a faewood arrow at <pushBold/>a <a exist="2406373" noun="vor'taz">patchy wart-covered vor'taz</a><popBold/>!
+  AS: +581 vs DS: +185 with AvD: +23 + d100 roll: +13 = +432
+   ... and hit for 136 points of damage!
+   Shot knocks <pushBold/>the <a exist="2406373" noun="vor'taz">wart-covered vor'taz</a><popBold/>'s head back by pushing on the inside of the skull!
+The <pushBold/><a exist="2406373" noun="vor'taz">wart-covered vor'taz's</a><popBold/> horn dims, and <pushBold/><a exist="2406373" noun="vor'taz">she</a><popBold/> falls to the ground dead.
+Vital energy infuses you, hastening your arcane reflexes!
+A tenebrous shroud stitches itself into existence around you as you gracefully retreat into the shadows!
+The arrow sticks in <pushBold/>a <a exist="2406373" noun="vor'taz">patchy wart-covered vor'taz</a><popBold/>'s right eye!
+Roundtime: 3 sec.
+Roundtime changed to 1 second.
+<prompt time="1788293729">HR&gt;</prompt>

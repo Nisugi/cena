@@ -1,0 +1,13 @@
+<nav rm='8213304'/><streamWindow id='main' title='Story' subtitle=" - Duskruin Arena, Dueling Sands - 8213304" location='center' target='drop'/><streamWindow id='room' title='Room' subtitle=" - Duskruin Arena, Dueling Sands - 8213304" location='center' target='drop' ifClosed='' resident='true'/><clearStream id='room'/><pushStream id='room'/><compDef id='room desc'>Spikes protrude outward from the crumbling stone walls that encircle the arena.  A thin layer of sand covers the cavern floor, which has been stained with blood and littered with debris.  Long shadows twist and turn, cast from the flickering fires high overhead, adding to the considerably oppressive atmosphere in the arena.</compDef><compDef id='room objs'></compDef>
+<compDef id='room players'></compDef>
+<compDef id='room exits'>Obvious exits: none</compDef>
+<compDef id='sprite'></compDef><popStream id='room'/>
+<roommeta weather="0" bonfire="0" inside="1" water="0" sanctuary="1" realm="108" climate="10" terrain="14"/>
+<component id='room objs'></component>
+<component id='room players'></component>
+You hold out a stamped voucher and <pushBold/>an <a exist="-420807" noun="guard">arena guard</a><popBold/> takes it, escorting you into one of the available arenas.
+<resource picture="0"/><style id="roomName" />[Duskruin Arena, Dueling Sands - 24550] (u8213304) (8213304)
+<style id=""/><style id="roomDesc"/>Spikes protrude outward from the crumbling stone walls that encircle the arena.  A thin layer of sand covers the cavern floor, which has been stained with blood and littered with debris.  Long shadows twist and turn, cast from the flickering fires high overhead, adding to the considerably oppressive atmosphere in the arena.<style id=""/>
+Obvious exits: none
+<compass></compass><prompt time="1788293709">&gt;</prompt>
+<component id='room players'>Also here: Arena Icon <a exist="-10202515" noun="Aldric">Aldric</a>, <a exist="-10803796" noun="Bresnik">Bresnik</a>, Captain of the Falcon <a exist="-10647479" noun="Cerdwyn">Cerdwyn</a>, <a exist="-10056025" noun="Dorlan">Dorlan</a>, Master <a exist="-11063749" noun="Eshvarr">Eshvarr</a>, Esteemed Lord <a exist="-10621528" noun="Faldrin">Faldrin</a>, Legendary Lady <a exist="-11169317" noun="Gwenlyn">Gwenlyn</a>, <a exist="-11101229" noun="Halvorn">Halvorn</a>, <a exist="-10391483" noun="Ithriel">Ithriel</a>, <a exist="-11147142" noun="Jorvath">Jorvath</a>, <a exist="-10176658" noun="Kelmond">Kelmond</a></component>

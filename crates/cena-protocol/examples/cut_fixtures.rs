@@ -22,11 +22,41 @@ const CUTS: &[(&str, &str)] = &[
     // M2's golden: every family the MODEL learned to hold. See
     // `crates/cena-model/tests/golden_model.rs` for why the model needs its own.
     ("m2model.src", "m2_model.xml"),
+    // ---- M2's corpus, cut 2026-09-19 from `dev/lich-5/logs`. --------------
+    // The six shapes M2 renders. Provenance in `tests/FIXTURES.md`.
+    ("login.src", "login_burst.xml"),
+    ("room2.src", "room_populated.xml"),
+    ("combat.src", "combat_exchange.xml"),
+    ("creatures.src", "creature_status.xml"),
+    ("effects.src", "effect_dialogs.xml"),
+    ("inventory.src", "inventory_container.xml"),
 ];
 
 /// Kept in step with `tests/fixtures_are_scrubbed.rs::PSEUDONYMS`; that test
 /// is what proves the real names are gone.
-const PSEUDONYMS: &[(&str, &str)] = &[("Inochi", "Alderin")];
+const PSEUDONYMS: &[(&str, &str)] = &[
+    ("Inochi", "Alderin"),
+    // The eleven players standing in a public arena in `room_populated.xml`.
+    // Every one appeared in `<component id='room players'>` in
+    // `GSIV-Nisugi/2026/09/xml/2026-09-01_15-13-56.xml:240`.
+    //
+    // They are pseudonymised, not dropped, because the line's VALUE is its
+    // shape: eleven links, several behind titles ("Arena Icon", "Captain of
+    // the Falcon", "Legendary Lady"), which is the form a room roster takes
+    // and which no hand-written snippet would get right. The `exist=` ids are
+    // KEPT, so id-to-name correlation is still under test.
+    ("Fulmen", "Aldric"),
+    ("Khadzim", "Bresnik"),
+    ("Vortalis", "Cerdwyn"),
+    ("Gidion", "Dorlan"),
+    ("Komoki", "Eshvarr"),
+    ("Eliaku", "Faldrin"),
+    ("Jabalia", "Gwenlyn"),
+    ("Attalynx", "Halvorn"),
+    ("Jinxt", "Ithriel"),
+    ("Richland", "Jorvath"),
+    ("Berean", "Kelmond"),
+];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let raw_dir = std::env::args()

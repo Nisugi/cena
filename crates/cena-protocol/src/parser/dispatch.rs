@@ -400,7 +400,28 @@ impl Parser {
         for raw in unmodelled {
             let name = text::tag_name(&raw).to_owned();
             if tags::is_known(&name) {
-                frames.push(Frame::structural(&name, &raw));
+                // **Typed, not `Structural`.** `Frame::structural` was the
+                // floor here, and for a tag with no frame of its own it still
+                // is -- `thin_frame` answers `Structural` for exactly those.
+                // But a tag that HAS a modelled frame was losing it by virtue
+                // of where it appeared.
+                //
+                // `<crtrStatus>` is the case that found this, and the numbers
+                // are why it matters. MEASURED in
+                // `GSIV-Nisugi/2026/09/xml/2026-09-01_15-13-56.xml`: of 2,568
+                // lines carrying one, **2,537 (98.8%)** carry it inside a
+                // `<component>`, and only 31 stand alone. So the path that
+                // typed it correctly served 1.2% of real traffic and this one
+                // served the rest -- flags (`hostile`, `dead`, `stunned`,
+                // `prone`, `rooted`, `flying`, `inferior`, `immobile`) trapped
+                // in a raw string.
+                //
+                // That is precisely the signal `plan/12` §3a names as grounds
+                // to widen a frame: a classifier would have to re-tokenize
+                // markup to recover a fact the parser already had. Routing
+                // through `thin_frame` -- the same function the standalone
+                // path uses -- means one answer for one tag, wherever it sits.
+                frames.push(body_tag_frame(&name, &raw));
             } else {
                 frames.push(Frame::UnknownTag { name, raw });
             }
@@ -533,5 +554,46 @@ impl Parser {
     ) {
         self.flush(buffer, frames);
         frames.push(Frame::structural(name, tag));
+    }
+}
+
+/// The frame for a known tag found **inside a component body**.
+///
+/// [`Frame::Structural`] is the floor and stays the answer for almost
+/// everything: a tag whose whole content is "it happened" loses nothing by
+/// being reported that way, and Rule 2.2 is satisfied because the raw form
+/// travels with it.
+///
+/// The exception is a tag that **carries data and has a frame for it**. Those
+/// were losing the frame purely because of where they appeared, which is the
+/// `plan/12` §3a "reopen" signal: a classifier cannot re-tokenize markup to
+/// recover what the parser already parsed.
+///
+/// # Why a list and not `thin_frame`
+///
+/// Routing every known tag through `thin_frame` was the first attempt and it
+/// was WRONG -- caught by `a_known_tag_inside_a_component_body_is_structural`,
+/// which turned `<nav rm='7503251'/>` into `WindowHints { id: "nav" }`.
+/// `<nav>` is handled in `markup_tag`'s own match, not in `thin.rs`, so
+/// `thin_frame`'s fallback arm had never been asked about it and answered with
+/// a default that is meaningless for a room change. The test was right and the
+/// change was too broad.
+///
+/// So the list names the tags whose `thin.rs` arm is correct in any position,
+/// and everything else keeps the floor. Adding to it means checking that the
+/// arm reads only the tag's own attributes -- which is the whole criterion.
+fn body_tag_frame(name: &str, raw: &str) -> Frame {
+    match name {
+        // `<crtrStatus exist= hostile= dead= .../>`: an id and a flag bag,
+        // read entirely from its own attributes.
+        //
+        // MEASURED in `GSIV-Nisugi/2026/09/xml/2026-09-01_15-13-56.xml`: of
+        // 2,568 lines carrying one, **2,537 (98.8%)** carry it inside a
+        // `<component>` and only 31 stand alone. The typed path served 1.2% of
+        // real traffic; this one served the rest, with every flag
+        // (`hostile`, `dead`, `stunned`, `prone`, `rooted`, `flying`,
+        // `inferior`, `immobile`) trapped in a raw string.
+        "crtrStatus" => super::thin::thin_frame(name, raw, None),
+        _ => Frame::structural(name, raw),
     }
 }
