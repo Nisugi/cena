@@ -1035,3 +1035,84 @@ Facts recorded here and **not** implemented, each with the reason:
   in the research folder; out of scope for this document by definition.
 - **Newline suppression** (§2.1) and **`<d>` inside `<a>`** (§2.4) remain open. Saga bears on
   neither.
+
+---
+
+## 2b. MEASURED: what the login burst does and does not re-send
+
+**Measured 2026-09-18 across all seven of Cena's own logins** (`E:\Gemstone\data\cena_logs`),
+counting tags before the first client command. **Unanimous, 7/7.**
+
+| Fact | In the login burst? | Where it actually arrives |
+|---|---|---|
+| Room **description** (`compDef id='room desc'`) | **YES**, 1 | the burst |
+| Vitals (`progressBar` health/mana/stamina/spirit) | **YES**, 10 | the burst |
+| `playerID` | **YES**, 1 | the burst |
+| Inventory (`<inv>`) | **YES**, 7 | the burst |
+| Window/layout definitions (`streamWindow`, `openDialog`, `cmdButton`) | **YES**, ~50 | the burst |
+| **Room id (`<nav rm=>`)** | **NO** | after the first command |
+| **Hands (`<left>`/`<right>`)** | **NO** | after the first command |
+| **Roundtime (`<roundTime>`)** | **NO** | only when one is incurred |
+| **Status indicators (`<indicator>`)** | **NO** | after the first command |
+| **Effect dialogs** (Active Spells, Buffs, Debuffs, Cooldowns) | **NO** | after the first command |
+
+### Why this settles `plan/12` §5.2's invalidation contract
+
+§5.2 classifies facts as **Invalidated / Retained / Suspect** on reconnect and says the invalidated
+ones become `Unknown` "until re-observed". That was a design assertion; it is now a **measurement**,
+and the measurement matches it closely:
+
+- The facts §5.2 calls **Invalidated** -- roundtime, current room, hands -- are exactly the ones the
+  login burst does **not** carry. A reconnected session genuinely does not know them, and
+  `Unknown` is the only honest value.
+- The facts the burst **does** re-send arrive unprompted, so they self-heal without a re-sync.
+
+**The distinction is not tier or importance -- it is whether the fact is PUSHED at login or PULLED
+by asking.** Everything in the burst is pushed. Everything absent from it is a response to a
+command, and stays unknown until something asks.
+
+### Why Vellum keeps state on disconnect and Cena must not
+
+VERIFIED in `reference/VellumFE/src/frontend/gui/app/server_pump.rs:392`: on
+`ServerMessage::Disconnected`, Vellum sets `connected = false`, clears pending launches, and
+re-renders. **It does not invalidate room, vitals or effects.**
+
+That is correct for Vellum and wrong for Cena, and the reason is architectural rather than a
+difference of opinion:
+
+> **AUTHOR, 2026-09-18:** *"cena is the full shebang. it's the one controlling everything so it's
+> not vellum disconnecting from lich, etc. It would be a full reconnect and the game would send us
+> the connection stuff."*
+
+Vellum disconnects from **Lich**, which stays logged in and holds the game session. The character
+never left the world, so Vellum's state is stale only in the sense that it stopped receiving
+updates -- reconnecting to the same live session makes it current again.
+
+Cena **is** the login. A disconnect ends the game session, and reconnecting is a fresh
+`K/A/M/F/G/P/C/L` producing a new character session. Anything the new session does not re-send is
+not stale, it is **unobserved**.
+
+Lich, which is also the full client, does invalidate: `Inventory.reset!` exists specifically for
+"a session reset / reconnect" and drops snapshots and mirrored containers so that "no stale
+container mirror survives" (`reference/lich-5/lib/common/inventory.rb:1014-1045`).
+
+### The parser hazard Lich names explicitly
+
+`reference/lich-5/lib/games.rb:432`:
+
+```ruby
+# strip_xml's multiline carry is a process-global; clear it here so a
+# fragment left open before a reconnect/session reset does not bleed
+# into the next session.
+$strip_xml_multiline = {}
+```
+
+**Cena has exactly this buffer**: `Parser::pending` (`crates/cena-protocol/src/parser/read.rs`),
+which holds an unterminated trailing fragment until its `
+` arrives. A connection dropped
+mid-tag leaves bytes there, and the next generation's first read would be concatenated onto them
+-- producing one corrupt frame at the start of every reconnect.
+
+Nothing clears it across generations today. **A reconnect must reset the parser**, and this is the
+kind of defect that appears only on a real mid-tag disconnect, which is to say rarely and
+confusingly.
