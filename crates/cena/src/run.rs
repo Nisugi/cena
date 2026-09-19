@@ -12,6 +12,7 @@ use cena_behavior::is_room_description;
 use cena_session::{CommandId, Event, Frame, Origin, SessionHandle};
 use std::time::Duration;
 use tokio::sync::broadcast;
+use tokio_util::sync::CancellationToken;
 
 /// The capture, or the typeahead probe if this run asked for it.
 ///
@@ -27,8 +28,25 @@ use tokio::sync::broadcast;
 pub(crate) async fn run_or_probe(
     handle: &SessionHandle,
     probe_events: &mut broadcast::Receiver<Event>,
+    behavior_stop: &CancellationToken,
 ) {
     if std::env::var("CENA_PROBE").as_deref() == Ok("typeahead") {
+        // **Stop the behavior first.** It sends a `look` every second, and the
+        // probe measures how long the SERVER takes to drain a buffer -- so a
+        // concurrent sender is uncontrolled traffic sitting inside every
+        // measurement window. The first run left it going and its phase 2
+        // results are correspondingly weaker evidence (`plan/16` §5.2c).
+        //
+        // Criterion 5's interleaving has already been demonstrated by the time
+        // this runs, so nothing is lost by quiescing here.
+        eprintln!(
+            "
+[probe] stopping the `look` behavior first -- it would be noise"
+        );
+        behavior_stop.cancel();
+        // Let its in-flight round trip finish and drain, so the probe does not
+        // inherit the behavior's last reply.
+        tokio::time::sleep(Duration::from_secs(2)).await;
         probe::run(handle, probe_events).await;
     } else {
         run_capture(handle).await;

@@ -147,8 +147,22 @@ nothing.
 whether the gate is a hard block or an optimistic try-and-retry. The author will know; I have not
 asked yet.
 
-**This is now measurable**, and §5's typeahead run is where to measure it: `Gate::None` sends
-during roundtime on purpose, so one deliberate send while `R>` is showing answers it.
+**CLOSED BY MEASUREMENT 2026-09-18.** A `search` produced a 7-second roundtime
+(`<roundTime value='1789780053'/>` against `<prompt time="1789780046">R&gt;`), and a `look` sent
+immediately afterwards with `Gate::None` **executed normally** -- a full room render, no
+`...wait N`, no refusal, no drop.
+
+**So roundtime does not gate every command.** `look` is free during roundtime, and the server says
+so by running it. That is a correction to the shape of the gate rather than to its code:
+`Gate::Roundtime` is right for the actions that *are* gated, and applying it to everything would
+refuse commands the server would happily have run.
+
+It also means `Gate` earns its place as an enum rather than a bool sooner than expected -- the
+first measured case of an ungated command is `look`, which no one had listed as an instant action.
+
+**Still UNVERIFIED:** what the server does with a genuinely roundtime-gated action (an attack, a
+sigil) sent inside a roundtime. `look` answers the question for commands that were never gated; it
+cannot answer it for the ones that are.
 
 ---
 
@@ -295,7 +309,46 @@ actions useful is the thing that makes typeahead relevant.
 
 So a send-rate policy belongs with `send_now`, not as separate later work.
 
-### 5.2a MEASURED-BY-READING: the limit is 1, and it is documented
+### 5.2a CORRECTED BY MEASUREMENT: the limit is an ENTITLEMENT, not a constant
+
+> **AUTHOR, 2026-09-18, on seeing the probe's output:** *"it's 1, and +1 for premium"*
+
+**MEASURED 2026-09-18** (`nerten-2026-09-18_20-06-49-000.bytes`), five `look`s sent 1ms apart:
+
+```
+Sorry, you may only type ahead 2 commands.     x2
+```
+
+**Two, not one** -- and the arithmetic closes exactly: 5 sent, 2 refused, **3 room renders**. With
+a depth of 2 beyond the executing command, `look` #1 runs, #2 and #3 buffer, #4 and #5 are refused.
+
+§5.2a as first written is **wrong**, and the way it was wrong is worth keeping. It read Lich's
+`==` comparison as proof the number never varies:
+
+> *"an implementation that has run against these servers for two decades does not parse the number,
+> because the number does not vary."*
+
+The inference was backwards. Lich does not parse the number because **Lich was written against a
+base account**, and against a premium one its `line == 'Sorry, you may only type ahead 1 command.'`
+**silently fails to match** -- the branch never fires, and the script does not back off. Vellum
+quotes the same literal and inherits the same bug. The Kelfour newsletter describes the base
+account because in the 1990s that is what there was.
+
+**Three sources agreeing did not make them right.** They agree because two of them copied the
+third's assumption, and none of the three had a premium account to contradict it.
+
+This is the **second** entitlement mistaken for a protocol constant in one day: the login run's
+character-slot count was also an account fact read as a game fact (`plan/15` §2a.4a). The pattern
+is worth naming -- *if a number describes what this account may do, it is a property of the
+account*, and the wire reports it per-session rather than defining it.
+
+**Consequence for Cena:** the number is **parsed**, never matched. A client that hard-codes `1`
+works for base accounts and quietly breaks for premium ones, which is the worst failure shape --
+it does not error, it just stops backing off. The probe's own matcher already excluded the number
+(`crates/cena/src/probe.rs`, `TYPEAHEAD_REFUSAL`), which is the only reason this run could observe
+a `2` at all.
+
+### 5.2a-old SUPERSEDED: what reading alone said
 
 **The limit does not need discovering.** Before building a probe to find N, the rule in `CLAUDE.md`
 — *"the protocol facts are already in Lich, dig them out"* — was applied, and three independent
@@ -337,6 +390,31 @@ Three things follow, and they reframe §5.2 entirely:
 That is also why §1's batching is safe as built and the danger is smaller than §5.2 feared: sending
 a sigil and then an attack is **2 commands**, and the roundtime between them is exactly the
 processing gap the limit is measuring.
+
+### 5.2c MEASURED: what the probe run settled
+
+**Run 2026-09-18 20:06, by the author, `CENA_PROBE=typeahead`.** 16 probe sends, all present in the
+event log with their gaps; the `look` behavior was running concurrently at 1s intervals throughout,
+so every result below was obtained *with* competing traffic rather than on an idle socket.
+
+| Q | Question | Answer |
+|---|---|---|
+| 2 | Drop or refuse? | **REFUSED, individually, and the rest still run.** 5 sent → 2 refusals → 3 room renders. No disconnect, no lost session, no truncation. |
+| 3 | A command sent during roundtime? | **It ran.** See §1.5, now closed. |
+| 4 | What gap is clean? | **Every rung**, 15ms through 1009ms, with the behavior also sending. |
+
+**Q4 needs care in the reading.** The ladder sends *two* commands per rung, and the buffer is 2 --
+so on this account a pair can never exceed it, whatever the gap. The rungs came back clean because
+the test was under the limit by construction, not because 15ms is a safe interval. **What the burst
+shows is the real bound: depth, not rate.** Five at 1ms refused; two at 1ms would not have.
+
+That is Kelfour's point restated with numbers: the limit counts **unprocessed commands**, so the
+thing to bound is *how many are outstanding*, never *how fast they were sent*. A client that paces
+by delay is solving the wrong problem; a client that tracks outstanding commands solves it exactly.
+
+**Consequence for `send_now`:** §5.2's fear that batching makes the limit reachable is real but
+small. A sigil plus its trigger is 2 -- at or under the base entitlement of 1+1, and comfortably
+under a premium 2+1. The pattern to avoid is a long unbroken chain, not a pair.
 
 ### 5.3 OPEN — what a live run would still settle
 

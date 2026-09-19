@@ -49,6 +49,8 @@ use cena_session::{Event, Frame, Gate, Origin, Refusal, Sent, SessionHandle};
 use std::time::Duration;
 use tokio::sync::broadcast;
 
+mod ladder;
+
 /// The refusal, verbatim.
 ///
 /// Matched as a **substring**, not with `==`, even though Lich uses equality.
@@ -66,14 +68,6 @@ const TYPEAHEAD_REFUSAL: &str = "you may only type ahead";
 /// effect. A larger burst would provoke more refusals without answering
 /// anything the fifth does not.
 const BURST: usize = 5;
-
-/// The delays tried, in milliseconds.
-///
-/// `0` is the burst itself. `500` is the Kelfour newsletter's macro delay and
-/// `1000` is Lich's `Script.execution_sleep 1` -- so this ladder is the two
-/// values the references actually chose, with a midpoint and a wider one
-/// around them, rather than an arbitrary sweep.
-const DELAY_LADDER_MS: [u64; 5] = [0, 250, 500, 750, 1000];
 
 /// Run the probe. Returns what was observed, for the caller to print.
 ///
@@ -101,7 +95,7 @@ pub(crate) async fn run(handle: &SessionHandle, events: &mut broadcast::Receiver
     );
 
     phase_1_burst(handle, events).await;
-    phase_2_ladder(handle, events).await;
+    ladder::phase_2_ladder(handle, events).await;
     phase_3_instant_actions();
     phase_4_during_roundtime(handle, events).await;
 
@@ -130,39 +124,6 @@ async fn phase_1_burst(handle: &SessionHandle, events: &mut broadcast::Receiver<
 
     let seen = drain_for(events, Duration::from_secs(5)).await;
     report(&seen, "phase 1");
-}
-
-/// **Q4: how far apart do commands have to be?**
-///
-/// Two commands at each delay, which is the smallest number that can trip a
-/// limit of one. The ladder runs low to high so the first delay that comes
-/// back clean is the answer -- and per the newsletter that answer is a
-/// property of **server load at this moment**, not a constant, which is why
-/// the printout says so rather than presenting it as a tuned value.
-async fn phase_2_ladder(handle: &SessionHandle, events: &mut broadcast::Receiver<Event>) {
-    eprintln!(
-        "\n[phase 2] two `look`s at increasing gaps -- the first clean gap is TODAY's answer"
-    );
-    eprintln!("          (Kelfour: the limit is on UNPROCESSED commands, so this moves with load)");
-
-    for ms in DELAY_LADDER_MS {
-        let _ = handle.send_now("look", Origin::Manual, Gate::None).await;
-        tokio::time::sleep(Duration::from_millis(ms)).await;
-        let _ = handle.send_now("look", Origin::Manual, Gate::None).await;
-
-        let seen = drain_for(events, Duration::from_secs(3)).await;
-        eprintln!(
-            "  gap {ms:>4}ms: {}",
-            if seen.refusals > 0 {
-                format!("REFUSED ({} times)", seen.refusals)
-            } else {
-                "clean".to_owned()
-            }
-        );
-        // Settle, so the next rung starts from an empty buffer rather than
-        // inheriting this one's backlog.
-        tokio::time::sleep(Duration::from_secs(2)).await;
-    }
 }
 
 /// **Q1: do instant actions count against the buffer?** The one that matters.

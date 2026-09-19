@@ -188,7 +188,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         !behavior.is_finished()
     );
 
-    run_or_probe(&handle, &mut probe_events).await;
+    run_or_probe(&handle, &mut probe_events, &stop).await;
 
     tokio::time::sleep(RUN_FOR).await;
 
