@@ -41,7 +41,10 @@ use std::time::Instant;
 mod clock;
 mod idle;
 mod reconnect;
+mod room;
 mod streams;
+
+pub use room::{Room, RoomItem};
 
 /// A vitals gauge, as a percentage.
 ///
@@ -50,17 +53,6 @@ mod streams;
 /// over one would be non-deterministic by construction. The arch tests already
 /// model this preference (`crates/cena-arch-tests/tests/architecture.rs:28`).
 pub type Vitals = std::collections::BTreeMap<String, u32>;
-
-/// The room the character is in, as the wire stated it.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Room {
-    /// `<nav rm=>`. The game's own id, not a guess from the title.
-    pub id: Option<String>,
-    /// `<component id='room desc'>`, body parsed.
-    pub description: Option<Runs>,
-    /// `<compass><dir value=>`. Direction tokens, not prose.
-    pub exits: Vec<String>,
-}
 
 /// What the session knows. `plan/12` §7.1's In column, exactly.
 ///
@@ -245,10 +237,10 @@ impl GameState {
                 // describe somewhere the character no longer is. Keeping them
                 // is how a consumer renders the previous room's exits under
                 // the new room's name.
-                self.room = Room {
-                    id: Some(id.clone()),
-                    ..Room::default()
-                };
+                // EVERYTHING goes, including the per-component buffers and the
+                // typed collections. Creatures from the last room are the most
+                // dangerous thing to keep: a behavior would attack them.
+                self.room = Room::entering(id.clone());
             }
             // `compDef`/`component` ONLY. The room arrives in two shapes and
             // they mean different things (author, 2026-09-18, from live
@@ -273,9 +265,11 @@ impl GameState {
             // So `look` does not update `room.description`, by design. A
             // consumer that wants the looked-at prose reads the published
             // `Frame::Text`; `GameState` tracks location, not narration.
-            Frame::Component { id, body } if id == "room desc" => {
-                self.room.description = Some(body.clone());
-            }
+            // **Every room component, each replacing only its own entry.**
+            // `plan/18` §2c and the author's requirement: the room is several
+            // independent feeds, so a `room players` update must not disturb the
+            // objects. See `state/room.rs` for the measurement.
+            Frame::Component { id, body } => self.room.apply_component(id, body),
             Frame::Compass { directions } => {
                 self.room.exits.clone_from(directions);
             }

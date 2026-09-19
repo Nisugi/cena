@@ -22,5 +22,5 @@ pub mod state;
 pub mod status;
 
 pub use effects::{Effect, Effects};
-pub use state::{GameState, Room, UnknownTag};
+pub use state::{GameState, Room, RoomItem, UnknownTag};
 pub use status::StatusInfo;
