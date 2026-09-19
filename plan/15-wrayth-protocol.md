@@ -633,6 +633,72 @@ form silently finds nothing -- which happened while reading this very capture, a
 only because a broader search contradicted the narrow one. The parser is unaffected (it handles
 both), but anything that greps the corpus must not assume.
 
+**4a. A quote inside an attribute value: the server is well-formed, by two
+different mechanisms.** Established 2026-09-19 while checking whether Lich's
+`XMLCleaner.clean_nested_quotes` repair needs porting. It does not, and the
+reason is worth recording because the obvious guess is wrong in both directions.
+
+The hazard is real — possessive names are everywhere in this game, from
+`Imaera's Lace` to `jack-o'-lantern` to `Ta'Vaalor` — and a naive
+"value ends at the first matching quote" reader truncates them silently. But the
+server never produces that input. It does one of two things:
+
+| Mechanism | Example | Where |
+|---|---|---|
+| **Escape as `&apos;`** | `<d cmd='forage Imaera&apos;s Lace'>Imaera's Lace</d>` | single-quoted attrs |
+| **Switch to double quotes** | `<label value="Ta'Vaalor Environs"/>`, `subtitle=" - Widowmaker's Road"` | everywhere else |
+
+Note that both appear *on the same line*: the `&apos;` is in the attribute while
+the display text carries the literal apostrophe. `text::attribute` decodes
+entities, so `cmd` arrives as `forage Imaera's Lace` — sendable verbatim.
+
+MEASURED, across two corpora:
+
+- **0** malformed attribute regions in **11,576,123** tags from 42 of the
+  author's 504 deliberate foraging sessions
+  (`E:\Gemstone\data\forge data\forge_sessions\*\raw.xml.log`) — the corpus most
+  likely to contain possessive herb names, since 14 of the survey's 716 forage
+  names carry an apostrophe (`forge_survey/report/forage_changes.json`).
+- **0** malformed, **1,637** well-formed double-quoted-value-containing-`'` in
+  **995,407** tags across 8 characters in the log archive. By attribute:
+  `text` 1014, `subtitle` 412, `noun` 136, `value` 39.
+
+> **A METHOD NOTE, because it cost two wrong answers.** A first pass reported 48
+> malformed tags. All 48 were a regex artifact: `id="1" path=" in #64863953"`
+> matched as one span across two attributes. **A malformation survey must walk
+> attributes, not pattern-match across them** — the check that produced the real
+> answer parses `key="value"` pairs in sequence and reports only a region where
+> that walk cannot continue.
+>
+> A fix was also written and reverted. Ending a value at "the last quote followed
+> by whitespace, `/` or `>`" passes a test for `title='Tsetem's Items'` while
+> making `id` swallow the rest of the tag, because a *later* attribute's
+> terminator satisfies an *earlier* attribute's scan. Tests for the malformed
+> case went green while 995,407 tags' worth of working parsing broke — the
+> falsification was scoped to the defect and not to what already worked.
+
+Lich's other repairs were measured at the same time and are likewise **not
+ported**: open-ended `<component>`/`<dynaStream>`, dangling closes, the
+`<d cmd="transfer … nerves">` truncation, `<settingsInfo  space not found >`, and
+`...wait N seconds.` room-component buffering all occurred **0 times**. Cena's
+`Frame::MalformedTag` already types the cases those regexes repair, which is the
+signal Lich had to rebuild deliberately when it moved from strict REXML to
+permissive Ox (`reference/lich-5/lib/games.rb:322-355`).
+
+**One Lich strip is worth a second look, for the opposite reason.** It deletes
+the bell character (`fix_invalid_characters`, `games.rb:315-325`). Every
+occurrence in the sample — 3 characters, 6 bells — wraps the idle-kick warning:
+
+```
+\x07YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.\x07
+```
+
+`MAX_UNATTENDED_LOSSES = 2` exists *because* the game idle-kicks, and the
+supervisor currently infers that from repeated unattended losses. The server
+announces it in advance, in plain text. Neither Lich nor Vellum reads it as a
+signal — this is a fact they discard, not a port. Recorded here rather than
+built: it belongs to the supervisor, not the parser.
+
 ### 2a.5 What this means for `GameState`
 
 Every frame above is **already parsed and already discarded**:
