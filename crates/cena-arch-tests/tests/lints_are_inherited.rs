@@ -130,3 +130,56 @@ fn no_site_reopens_a_denied_lint_by_attribute() {
         hits.join("\n")
     );
 }
+
+/// The unpinned-TLS weakening announces itself in a release build.
+///
+/// `live.rs` says the `danger_accept_invalid_certs` call "is the one thing in
+/// this module that should not survive to a release build". That was a note,
+/// and `plan/05` Rule 0 calls an unenforced rule a wish (review PL-10).
+///
+/// # Why this is a needle and not a stronger mechanism
+///
+/// A `compile_error!` under `not(debug_assertions)` would be airtight and
+/// wrong: pinning is not built -- `plan/12` §7.1 puts the credential ladder
+/// Out for M1 -- so refusing to build would force the guard to be deleted
+/// instead, and a deleted guard is worse than a loud one.
+///
+/// So the mechanism is a runtime warning on release builds, and this test is
+/// what stops that warning being quietly removed. It asserts the anchor
+/// comment, the `cfg!` and the eaccess host all still sit in the same file, so
+/// deleting any of them fails here rather than restoring the silence.
+///
+/// **What it cannot check** is whether the warning's text is still accurate,
+/// or whether pinning has since been built and made it unnecessary. When
+/// pinning lands, this test should be deleted in the same commit -- and its
+/// failure message says so.
+#[test]
+fn release_builds_announce_the_unpinned_tls() {
+    let source = std::fs::read_to_string(workspace_root().join("crates/cena-platform/src/live.rs"))
+        .unwrap_or_else(|e| panic!("live.rs must be readable: {e}"));
+
+    for needle in [
+        "ARCH-TEST ANCHOR: `release_builds_announce_the_unpinned_tls`",
+        "if !cfg!(debug_assertions)",
+        "UNPINNED",
+    ] {
+        assert!(
+            source.contains(needle),
+            "`{needle}` is gone from live.rs. The eaccess TLS handshake does \
+             not verify certificates or hostnames and the account password \
+             crosses it, so a release build must say so out loud until \
+             plan/10 section 9.2's pin exists.\n\n\
+             If pinning HAS been built, delete this test in the same commit \
+             as the warning -- that is the outcome it is waiting for, not a \
+             reason to weaken it."
+        );
+    }
+
+    // The weakening itself must still be the thing being warned about. If the
+    // call is gone, the warning is stale and this test is misleading.
+    assert!(
+        source.contains("danger_accept_invalid_certs"),
+        "live.rs no longer accepts invalid certificates, so the release \
+         warning it carries is stale. Delete both, together."
+    );
+}

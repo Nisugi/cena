@@ -88,20 +88,39 @@ pub enum LiveSource {
 /// probe does not. Lich reaches the same conclusion: it configures keepalive
 /// and sends no ping.
 ///
-/// # Best-effort, deliberately
+/// # Best-effort, and it SAYS SO when it fails
 ///
-/// A failure to set it is **ignored**, exactly as Lich ignores its own
-/// (`games.rb:456`, "Configure socket with error handling ... won't prevent
-/// socket usage"). A session that works without keepalive is better than no
-/// session; the cost of the option not applying is that this one case goes
-/// back to being undetectable, which is where it was.
+/// A failure does not stop the session -- one that works without keepalive is
+/// better than no session -- but it is **reported**, because the cost of the
+/// option not applying is that airplane-mode-style disappearance goes back to
+/// being undetectable, and that is the one thing this function exists to
+/// prevent.
+///
+/// This used to swallow it with `let _`, citing Lich as precedent: "exactly as
+/// Lich ignores its own". **Lich does not ignore it.** It rescues and logs
+/// (`reference/lich-5/lib/games.rb`):
+///
+/// ```text
+/// log_error("Socket configuration error (continuing with defaults)", e)
+/// Lich.log("WARNING: Socket running with default OS settings - may be less
+///           reliable under network stress")
+/// ```
+///
+/// The citation was doing real work -- it justified the silence -- and it was
+/// backwards (review PL-9). `eprintln!` rather than the session log because
+/// this runs before a sink exists, and a silent degradation is the failure
+/// being guarded against.
 fn set_keepalive(stream: &TcpStream) {
     let params = socket2::TcpKeepalive::new()
         .with_time(KEEPALIVE_IDLE)
         .with_interval(KEEPALIVE_INTERVAL);
     // A borrowed view of the same socket -- it does not take ownership and
     // does not close the fd when dropped.
-    let _ = socket2::SockRef::from(stream).set_tcp_keepalive(&params);
+    if let Err(e) = socket2::SockRef::from(stream).set_tcp_keepalive(&params) {
+        eprintln!(
+            "[socket] WARNING: TCP keepalive could not be set ({e}). The              session continues on OS defaults, but a connection that              disappears without a FIN -- airplane mode, a dropped VPN -- may              now hang instead of failing, which is what this setting exists              to prevent."
+        );
+    }
 }
 
 impl LiveSource {
@@ -162,6 +181,19 @@ impl LiveSource {
     /// reader of it must see the cost. **It is the one thing in this module
     /// that should not survive to a release build.**
     ///
+    /// ## That sentence is now enforced, not just written
+    ///
+    /// It was a note and nothing checked it (review PL-10), which is `plan/05`
+    /// Rule 0's definition of a wish. Two things hold it now:
+    ///
+    /// * A **release build says so at runtime**, every time this runs. Not a
+    ///   `compile_error!`: pinning does not exist yet, so refusing to build
+    ///   would only force the guard to be deleted, and a deleted guard is
+    ///   worse than a loud one. `debug_assertions` is the discriminator --
+    ///   it is off in `--release` and on in the dev profile the author runs.
+    /// * `cena-arch-tests` asserts the warning is still here, so removing it
+    ///   fails the suite rather than quietly restoring the silence.
+    ///
     /// # Errors
     ///
     /// Connect, TLS-builder and handshake errors, each mapped to
@@ -175,6 +207,12 @@ impl LiveSource {
         // guards a connection that sits IDLE for minutes, which this one never
         // does. Stated because its absence beside `connect`'s presence would
         // otherwise read as an oversight.
+        // ARCH-TEST ANCHOR: `release_builds_announce_the_unpinned_tls`.
+        if !cfg!(debug_assertions) {
+            eprintln!(
+                "[tls] WARNING: this is a RELEASE build and the eaccess TLS                  handshake is UNPINNED -- certificates and hostnames are not                  verified, and the account password crosses this connection.                  plan/10 section 9.2 specifies a SHA-256-of-DER pin; it is                  not built. Do not ship this."
+            );
+        }
         let connector = native_tls::TlsConnector::builder()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true)

@@ -231,6 +231,29 @@ impl Parser {
         // consumer could terminate, which is the bug this field exists to fix.
         let mut frames = self.parse_line_inner(line);
         Self::mark_line_end(&mut frames);
+        // **Link state does not cross a line boundary.**
+        //
+        // `links` was popped by `</a>`/`</d>` and otherwise cleared only by a
+        // prompt, so an unclosed `<a href='x'>` kept accumulating: every
+        // later `Text` frame carried the whole prefix, and cloned it.
+        // MEASURED before the fix, three prompt-less lines:
+        //
+        // ```text
+        // link.text = "unclosed linksecond line here"
+        // link.text = "unclosed linksecond line herethird line here"
+        // ```
+        //
+        // That is O(N^2) bytes through the broadcast ring for N lines, on
+        // input this crate's own hostile-fragment tests already produce
+        // (review PR-8).
+        //
+        // Clearing here rather than tracking the close is right because this
+        // parser is LINE-SCOPED by design: a paired tag whose close is not on
+        // the same line becomes a `MalformedTag` rather than being buffered
+        // (see `parse_line_inner`'s close-tag scan, and MULTI-LINE CAPTURES in
+        // the module header). Link state surviving the boundary contradicted
+        // that, and the corpus measured no tag spanning a line.
+        self.links.clear();
         frames
     }
 

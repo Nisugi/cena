@@ -129,3 +129,59 @@ fn the_documented_variant_count_is_the_actual_variant_count() {
         names.len()
     );
 }
+
+/// Link state does not survive a line boundary.
+///
+/// `links` was popped by `</a>`/`</d>` and otherwise cleared only by a prompt,
+/// so an unclosed `<a href='x'>` kept accumulating across lines. Every later
+/// `Text` frame carried the whole prefix and cloned it -- O(N²) bytes through
+/// the broadcast ring for N prompt-less lines. MEASURED before the fix:
+///
+/// ```text
+/// link.text = "unclosed linksecond line here"
+/// link.text = "unclosed linksecond line herethird line here"
+/// ```
+///
+/// The input is this crate's own hostile fragment, so it is not hypothetical
+/// (review PR-8).
+#[test]
+fn an_unclosed_link_does_not_accumulate_across_lines() {
+    let mut parser = Parser::new();
+    let _ = parser.parse_line("<a href='x'>unclosed link");
+
+    for line in ["second line here", "third line here"] {
+        let frames = parser.parse_line(line);
+        for frame in &frames {
+            let Frame::Text(text) = frame else { continue };
+            let Some(link) = &text.link else { continue };
+            assert!(
+                !link.text.contains("unclosed link"),
+                "an unclosed link from a PREVIOUS line is still open and \
+                 still accumulating: {:?}. Each further line makes every \
+                 frame carry -- and clone -- the whole prefix.",
+                link.text
+            );
+        }
+    }
+}
+
+/// A link that opens and closes on one line still works.
+///
+/// The fix clears link state at the line boundary, so this is the property it
+/// must not have broken: within a line, nothing changes.
+#[test]
+fn a_link_closed_on_its_own_line_still_carries_its_text() {
+    let mut parser = Parser::new();
+    let frames = parser.parse_line("<d cmd='go north'>go north</d> from here");
+
+    let found = frames.iter().find_map(|f| match f {
+        Frame::Text(t) => t.link.as_ref().map(|l| l.text.clone()),
+        _ => None,
+    });
+    assert_eq!(
+        found.as_deref(),
+        Some("go north"),
+        "a link opened and closed on one line must still carry its text: \
+         {frames:?}"
+    );
+}
