@@ -163,9 +163,17 @@ fn crate_dependency_edges_match_the_plan() {
         // Every direct dependency Cargo resolves, on every target, including
         // dev and build. Filtered to intra-workspace edges: an external crate
         // is Rule 1.3's business (below), not the layering graph's.
+        // Filtered by MEMBERSHIP, not by name prefix.
+        //
+        // This was `starts_with("cena")`, which goes blind the moment the
+        // `cena` -> `hydra` rename `CLAUDE.md` describes is half done: a
+        // `hydra-session` edge would simply not be seen, and the table would
+        // report agreement it had not checked. The member set is the thing
+        // actually being asked about, and it is already built above
+        // (review AR-2).
         let actual: BTreeSet<String> = crate_dependency_names(krate)
             .into_iter()
-            .filter(|k| k.starts_with("cena"))
+            .filter(|k| members.contains(k))
             .collect();
         let Some(allowed) = expected.get(krate.as_str()) else {
             continue; // already reported by the set-equality assert above
@@ -248,4 +256,50 @@ fn cena_ui_depends_on_no_ui_toolkit() {
          Unexpected: {unexpected:?}\n\
          Allowed: {CENA_UI_MAY_DEPEND_ON:?}"
     );
+}
+
+/// Edges justified as **dev-only** are absent from the shipped graph.
+///
+/// `ALLOWED_EDGES` records `cena-behavior -> cena-platform` with the reason
+/// that it is "a DEV-dependency only ... absent from the shipped graph:
+/// `cargo tree -p cena-behavior -e normal` does not contain it".
+///
+/// That is a claim about the **normal** edges, and it was checked against a
+/// listing built with `--edges normal,build,dev`, which merges all three and
+/// cannot tell them apart. Moving the entry to `[dependencies]` -- and with it
+/// opening a `LiveSource` from behavior code, a real socket in a behavior --
+/// left the suite green (review AR-2).
+///
+/// The justification is worth keeping precisely because it is narrow: a test
+/// crate reaching for `AnsweringSource` is fine, and the same edge in the
+/// shipped graph would put transport concerns inside behavior logic.
+#[test]
+fn a_dev_only_edge_stays_out_of_the_shipped_graph() {
+    // (dependent, dependency) pairs whose entry in ALLOWED_EDGES is justified
+    // as dev-only. Each is asserted ABSENT from `--edges normal`.
+    const DEV_ONLY: &[(&str, &str)] = &[("cena-behavior", "cena-platform")];
+
+    for (dependent, dependency) in DEV_ONLY {
+        let shipped = cena_arch_tests::harness::shipped_dependency_names(dependent);
+        assert!(
+            !shipped.contains(*dependency),
+            "`{dependent} -> {dependency}` is recorded in ALLOWED_EDGES as a \
+             DEV-dependency only, and it is now in the SHIPPED graph.\n\n\
+             Either move it back to [dev-dependencies], or -- if the edge is \
+             genuinely wanted at runtime -- rewrite its justification in \
+             ALLOWED_EDGES, because the one it carries is now false. A \
+             behavior that can open a transport directly is the coupling the \
+             layer graph exists to prevent.\n\n\
+             Shipped dependencies of {dependent}: {shipped:?}"
+        );
+        // ...and still present in the merged graph, or the test above passes
+        // because the dependency was simply deleted.
+        let all = cena_arch_tests::harness::crate_dependency_names(dependent);
+        assert!(
+            all.contains(*dependency),
+            "`{dependent} -> {dependency}` is gone entirely. If that is \
+             intended, drop it from ALLOWED_EDGES and from DEV_ONLY here -- \
+             leaving it listed makes this test pass by checking nothing."
+        );
+    }
 }

@@ -83,14 +83,30 @@ pub fn member_crates() -> Vec<String> {
         .split_once(']')
         .expect("members array must be closed")
         .0;
-    let crates: Vec<String> = quoted_strings(members)
-        .into_iter()
+    let listed = quoted_strings(members);
+    let crates: Vec<String> = listed
+        .iter()
         .filter_map(|m| m.strip_prefix("crates/").map(str::to_owned))
         .collect();
     assert!(
         !crates.is_empty(),
         "parsed zero members from the root manifest; the parser has drifted \
          from the manifest format and every scan below is silently vacuous"
+    );
+    // **Every member must be under `crates/`.**
+    //
+    // The filter above DROPS anything that is not, silently -- so a member at
+    // `frontends/cena-tui` would be invisible to every scan in this suite: no
+    // cap, no facade rule, no `static mut` ban, and nothing failing to say so
+    // (review AR-2). All eight are under `crates/` today, which is why this is
+    // a ratchet rather than a cleanup.
+    assert_eq!(
+        crates.len(),
+        listed.len(),
+        "a workspace member is not under `crates/`, and the source walk would \
+         skip it entirely. Either move it, or teach `member_crates` and \
+         `crate_sources` the new root -- but do not leave a crate outside \
+         every architecture rule. Members: {listed:?}"
     );
     crates
 }
@@ -123,19 +139,27 @@ pub fn member_crates() -> Vec<String> {
 /// `--depth 1` keeps this to *direct* edges. The transitive closure is a
 /// different rule; `plan/12:78-86` is a statement about who may name whom.
 pub fn crate_dependency_names(krate: &str) -> BTreeSet<String> {
+    dependency_names_for_edges(krate, "normal,build,dev")
+}
+
+/// The crate's direct dependencies in the **shipped** graph only.
+///
+/// `normal` excludes dev- and build-dependencies, which is the distinction
+/// `layering.rs` reasons about and could not previously check: it justified
+/// `cena-behavior -> cena-platform` as "a DEV-dependency only ... absent from
+/// the shipped graph", against a merged listing that cannot tell the two
+/// apart. Moving the entry to `[dependencies]` and opening a `LiveSource`
+/// from behavior code stayed green (review AR-2).
+#[must_use]
+pub fn shipped_dependency_names(krate: &str) -> BTreeSet<String> {
+    dependency_names_for_edges(krate, "normal")
+}
+
+fn dependency_names_for_edges(krate: &str, edges: &str) -> BTreeSet<String> {
     let output = Command::new(env!("CARGO"))
         .current_dir(workspace_root())
         .args([
-            "tree",
-            "-p",
-            krate,
-            "--depth",
-            "1",
-            "--prefix",
-            "depth",
-            "--edges",
-            "normal,build,dev",
-            "--target",
+            "tree", "-p", krate, "--depth", "1", "--prefix", "depth", "--edges", edges, "--target",
             "all",
         ])
         .output()
