@@ -79,6 +79,7 @@ impl<S: ByteSource> Session<S> {
                 // lost transport IS the end. A supervisor overrides this;
                 // see `SessionActor::on_disconnect`.
                 on_disconnect: crate::command::Outcome::Dead,
+                quitting: None,
             },
             handle: SessionHandle::new(tx, generation),
             events,

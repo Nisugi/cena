@@ -14,5 +14,5 @@
 mod handle;
 mod verdict;
 
-pub use handle::{Envelope, Inbox, SessionHandle};
+pub use handle::{Envelope, Farewell, Inbox, SessionHandle};
 pub use verdict::{CommandId, Gate, Origin, Outcome, Refusal, Sent};

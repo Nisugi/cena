@@ -65,6 +65,20 @@ pub struct Transcript {
     hold_replies: bool,
     /// Replies withheld while held, owed to the reader.
     owed: Vec<Vec<u8>>,
+    /// While true, the next `read` that finds nothing pending returns `Ok(0)`
+    /// instead of parking: the peer has hung up.
+    ///
+    /// Added for `plan/16` §5b's orderly shutdown, which needs a source that
+    /// closes **because it was asked to**. A quit sent to a server that never
+    /// EOFs is the timeout case; a quit to one that does is the acknowledged
+    /// case, and without this switch only the first is reachable.
+    ///
+    /// **Not a fourth `ByteSource`.** Rule -1 forbids a trait implementor that
+    /// exists to vary one behaviour, and hanging up is something this double
+    /// already almost does -- it owns the read side and decides what a read
+    /// sees. Note the ordering: pending bytes drain FIRST, so a server's
+    /// goodbye text is still delivered before the close.
+    hung_up: bool,
 }
 
 /// A handle to one [`AnsweringSource`]'s transcript and its hold switch.
@@ -129,6 +143,16 @@ impl TranscriptHandle {
         self.with(|t| t.hold_replies = false);
         self.wake.notify_waiters();
     }
+
+    /// Hang up: the next read that runs out of bytes returns `Ok(0)`.
+    ///
+    /// Wakes a parked reader, because a `read` already waiting must learn the
+    /// peer is gone rather than sitting in `notified()` forever. That is the
+    /// same bug `TranscriptHandle`'s own docs record for `release_replies`.
+    pub fn hang_up(&self) {
+        self.with(|t| t.hung_up = true);
+        self.wake.notify_waiters();
+    }
 }
 
 /// A byte source that replies to each command and never hangs up on its own.
@@ -182,9 +206,15 @@ impl ByteSource for AnsweringSource {
             if !self.pending.is_empty() {
                 break;
             }
-            // Waits FOREVER until something is written or released, never
-            // `Ok(0)`. A game with nothing to say does not hang up, and a
-            // source that did would end the session in the middle of the
+            // A peer that has hung up reports it, and does so only once the
+            // pending bytes above are drained -- a goodbye message arrives
+            // before the close, as it does on a real socket.
+            if self.transcript.with(|t| t.hung_up) {
+                return Ok(0);
+            }
+            // Otherwise waits FOREVER until something is written or released,
+            // never `Ok(0)`. A game with nothing to say does not hang up, and
+            // a source that did would end the session in the middle of the
             // behavior every cancellation test is about. The caller's
             // `tokio::time::timeout` is what bounds this wait (`plan/12`
             // §5.5: every wait has a deadline).

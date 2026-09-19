@@ -18,9 +18,18 @@
 //! and bytes in ([`SessionActor::ingest`]).
 
 use super::{Envelope, Event, SessionActor};
-use crate::command::{Outcome, Sent};
+use crate::command::{Origin, Outcome, Sent};
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
+
+/// What Cena sends to log out (`plan/16` §5b).
+///
+/// Lich recognises either `exit` or `quit`, optionally wrapped in `<c>`
+/// (`reference/lich-5/lib/common/shutdown_intent.rb:7`:
+/// `/\A\s*(?:<c>)?\s*(?:exit|quit)\s*\z/i`). `quit` is chosen because it is
+/// the word the author used and the one a player types; `exit` is the same
+/// thing to both Lich and the game.
+const EXIT_COMMAND: &str = "quit";
 
 impl<S: ByteSource> SessionActor<S> {
     /// Route one inbox message.
@@ -52,7 +61,67 @@ impl<S: ByteSource> SessionActor<S> {
                 let outcome = self.send_now(&line, origin, generation, gate).await;
                 let _ = reply.send(outcome);
             }
+            crate::command::Inbox::Quit { timeout, reply } => self.begin_quit(timeout, reply).await,
         }
+    }
+
+    /// Send the exit command and start waiting for the server's EOF
+    /// (`plan/16` §5b.3).
+    ///
+    /// **Does not end the loop.** The loop keeps reading, because the read is
+    /// what observes the close -- see [`SessionActor::quitting`]. What this
+    /// does is put the command on the wire and arm the deadline.
+    ///
+    /// A second quit while one is pending is ignored rather than re-sent: the
+    /// server has already been asked, and sending `quit` twice against a
+    /// type-ahead buffer of 2 would spend a slot for nothing (`plan/16` §5.2b).
+    /// The newer caller is answered when the first one resolves, so nobody is
+    /// left waiting on a reply that never comes.
+    pub(super) async fn begin_quit(
+        &mut self,
+        timeout: std::time::Duration,
+        reply: tokio::sync::oneshot::Sender<crate::command::Farewell>,
+    ) {
+        if let Some(pending) = self.quitting.as_mut() {
+            // Already asked. Whoever resolves first answers both -- but only
+            // one sender fits, so the later caller is told the same thing
+            // immediately rather than being dropped silently.
+            let _ = reply.send(if pending.reply.is_some() {
+                crate::command::Farewell::Acknowledged
+            } else {
+                crate::command::Farewell::Unsent
+            });
+            return;
+        }
+
+        // The write goes through the same one-write path every command uses:
+        // two writes can emit two TLS records and the server drops the command
+        // (`cena_platform::bytes::ByteSource::write_all`).
+        let mut message = Vec::with_capacity(EXIT_COMMAND.len() + 1);
+        message.extend_from_slice(EXIT_COMMAND.as_bytes());
+        message.push(b'\n');
+        if self.source.write_all(&message).await.is_err() {
+            // Nothing to say goodbye to. Lich raises `IOError` here
+            // (`orderly_shutdown.rb:181`); Cena reports it and lets the caller
+            // cancel, because a transport that cannot be written to is already
+            // the state a shutdown was trying to reach.
+            self.log("quit: could not send, transport gone");
+            let _ = reply.send(crate::command::Farewell::Unsent);
+            return;
+        }
+        self.recorder.outbound(&message);
+        self.log_wire(false, &message);
+        // Published like any other send, so an observer sees the session's
+        // last act rather than it vanishing.
+        let _ = self.events.send(super::Event::Sent {
+            line: EXIT_COMMAND.to_owned(),
+            origin: Origin::Manual,
+        });
+        self.log(&format!("quit: sent, awaiting EOF within {timeout:?}"));
+        self.quitting = Some(super::Quitting {
+            deadline: tokio::time::Instant::now() + timeout,
+            reply: Some(reply),
+        });
     }
 
     /// Send a line immediately, subject only to the roundtime gate.

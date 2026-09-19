@@ -96,6 +96,15 @@ impl<S: ByteSource> SessionActor<S> {
     /// followed by a reconnect whoever owns the actor
     /// ([`EndReason::warrants_reconnect`]).
     pub(super) async fn shutdown(&mut self, reason: EndReason) {
+        // A quit still pending here was not resolved by the EOF or the
+        // deadline, which leaves the read/write-failure paths: the transport
+        // died while we were waiting for a polite goodbye. `Unsent` is the
+        // honest answer -- the command went out but nothing acknowledged it,
+        // and the socket is gone rather than merely slow.
+        //
+        // This runs on EVERY exit path, so no caller of `quit()` is left
+        // waiting on a reply that never comes.
+        self.finish_quit(crate::command::Farewell::Unsent);
         // Idempotent by the trait's contract, which is why this is safe on
         // every one of the three exit paths.
         let _ = self.source.shutdown().await;
@@ -112,6 +121,39 @@ impl<S: ByteSource> SessionActor<S> {
         if let Some(sink) = self.sink.as_mut() {
             let _ = sink.flush();
         }
+    }
+
+    /// Answer a pending quit, if there is one. Returns whether there was.
+    ///
+    /// The return value is what tells [`EndReason::PeerClosed`] from
+    /// [`EndReason::Cancelled`] at the one place they are genuinely
+    /// ambiguous -- an `Ok(0)` that is either the server hanging up or the
+    /// server doing exactly what it was asked.
+    ///
+    /// Idempotent: the reply is `take`n, so a quit answered by the EOF is not
+    /// answered again by the deadline.
+    pub(super) fn finish_quit(&mut self, farewell: crate::command::Farewell) -> bool {
+        let Some(pending) = self.quitting.as_mut() else {
+            return false;
+        };
+        if let Some(reply) = pending.reply.take() {
+            self.log(&format!("quit: {farewell:?}"));
+            let _ = reply.send(farewell);
+        }
+        true
+    }
+
+    /// When a pending quit gives up on the server.
+    ///
+    /// Returns a far-future instant when nothing is quitting, so the loop's
+    /// `sleep_until` arm is always well-formed -- it is disabled by its guard
+    /// rather than by the value. An hour is arbitrary and unreachable: the arm
+    /// is never polled without the guard being true.
+    pub(super) fn quit_deadline(&self) -> tokio::time::Instant {
+        self.quitting.as_ref().map_or_else(
+            || tokio::time::Instant::now() + std::time::Duration::from_hours(1),
+            |pending| pending.deadline,
+        )
     }
 
     pub(super) fn transition(&mut self, next: State) {

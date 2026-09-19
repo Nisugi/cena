@@ -210,6 +210,33 @@ pub struct SessionActor<S: ByteSource> {
     /// rather than a `bool` so the value reads as what it is at the point it is
     /// sent, instead of being re-derived from a flag.
     on_disconnect: crate::command::Outcome,
+    /// Set once an exit command has gone out: the loop is now **waiting for the
+    /// server to close the stream** (`plan/16` §5b.3).
+    ///
+    /// # Why this is a field and not a loop inside the quit handler
+    ///
+    /// Awaiting the EOF inline would mean reading the socket from somewhere
+    /// other than the one read arm -- two readers of one source, with the
+    /// parser and the recorder fed from both. Setting a deadline the existing
+    /// arm already observes keeps **one reader**, so the frames the server
+    /// sends on its way out are ingested, recorded and published exactly like
+    /// any others. A logout message is still a message.
+    ///
+    /// It also makes the EOF distinction free: `Ok(0)` while this is set is
+    /// [`Farewell::Acknowledged`], and the deadline expiring is
+    /// [`Farewell::TimedOut`] -- Lich's `remote_eof?`-versus-reader-stopped
+    /// check (`orderly_shutdown.rb:189`), which is the same distinction a
+    /// reconnect needs.
+    quitting: Option<Quitting>,
+}
+
+/// An exit command has been sent; this is what the loop owes the caller.
+#[derive(Debug)]
+struct Quitting {
+    /// When to stop waiting for the server's EOF.
+    deadline: tokio::time::Instant,
+    /// Where the verdict goes. Taken by whichever path resolves first.
+    reply: Option<tokio::sync::oneshot::Sender<crate::command::Farewell>>,
 }
 
 impl<S: ByteSource> SessionActor<S> {
@@ -228,7 +255,7 @@ impl<S: ByteSource> SessionActor<S> {
     /// one thing a plain `Session` cannot promise.
     #[allow(
         clippy::too_many_arguments,
-        reason = "every part is durable state         the supervisor owns; bundling them into a struct would be the same         list behind one more name"
+        reason = "every part is durable state the supervisor owns; bundling them \n                  into a struct would be the same list behind one more name"
     )]
     pub(crate) fn supervised(
         source: S,
@@ -253,6 +280,7 @@ impl<S: ByteSource> SessionActor<S> {
             cancel,
             generation,
             on_disconnect: crate::command::Outcome::Disconnected,
+            quitting: None,
         }
     }
 
@@ -293,6 +321,28 @@ impl<S: ByteSource> SessionActor<S> {
                 biased;
 
                 () = self.cancel.cancelled() => {
+                    // A cancel during a pending quit answers it rather than
+                    // dropping the caller: they asked for a clean exit and are
+                    // still waiting on the reply.
+                    self.finish_quit(crate::command::Farewell::TimedOut);
+                    reason = EndReason::Cancelled;
+                    break;
+                }
+
+                // ONLY ARMED WHILE A QUIT IS PENDING, and the guard matters for
+                // the same reason the command arm's does: an unconditional
+                // `sleep_until` on a far-future instant is fine, but there is
+                // no instant to name when nothing is quitting. `quit_deadline`
+                // returns a far-future one so the arm is always well-formed,
+                // and the guard stops it firing for a session that never quit.
+                () = tokio::time::sleep_until(self.quit_deadline()), if self.quitting.is_some() => {
+                    // The server was asked and did not close. Lich raises
+                    // `ServerExitTimeout` here (`orderly_shutdown.rb:188`).
+                    // The session ends ANYWAY -- criterion 6's "no leaked
+                    // sockets" may not become conditional on the server
+                    // cooperating (`plan/16` §5b, ordering note).
+                    self.log("quit: server did not close within the timeout");
+                    self.finish_quit(crate::command::Farewell::TimedOut);
                     reason = EndReason::Cancelled;
                     break;
                 }
@@ -321,7 +371,21 @@ impl<S: ByteSource> SessionActor<S> {
                         // variants so a LOG can tell them apart; see
                         // `EndReason`.
                         Ok(Ok(0)) => {
-                            reason = EndReason::PeerClosed;
+                            // **The EOF a quit was waiting for.** This is
+                            // Lich's `remote_eof?` (`orderly_shutdown.rb:189`):
+                            // the server closed because we asked, which is a
+                            // deliberate stop and must NOT reconnect.
+                            //
+                            // Without this the supervisor would see
+                            // `PeerClosed`, call it a lost transport, and log
+                            // the character straight back in -- the exact
+                            // failure §5b names when it says "a clean `quit`
+                            // must not trigger a reconnect; a drop must".
+                            reason = if self.finish_quit(crate::command::Farewell::Acknowledged) {
+                                EndReason::Cancelled
+                            } else {
+                                EndReason::PeerClosed
+                            };
                             break;
                         }
                         Ok(Err(_)) => {

@@ -22,7 +22,9 @@ pub mod supervisor;
 
 pub use actor::{EndReason, Event, Session, SessionActor, Snapshot};
 pub use cena_model::{GameState, Room, UnknownTag};
-pub use command::{CommandId, Envelope, Gate, Origin, Outcome, Refusal, Sent, SessionHandle};
+pub use command::{
+    CommandId, Envelope, Farewell, Gate, Origin, Outcome, Refusal, Sent, SessionHandle,
+};
 pub use lifecycle::{Generation, GenerationCell, State};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
 pub use supervisor::{

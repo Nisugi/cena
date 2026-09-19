@@ -69,6 +69,13 @@ const BEHAVIOR_WARMUP: Duration = Duration::from_secs(3);
 /// How long the whole demonstration runs before `stop`.
 const RUN_FOR: Duration = Duration::from_secs(10);
 
+/// How long to wait for the server to close after `quit` (`plan/16` §5b.3).
+///
+/// Lich's `SERVER_EXIT_TIMEOUT_SECONDS`, taken verbatim
+/// (`reference/lich-5/lib/common/orderly_shutdown.rb:16`). It is a bound on
+/// politeness, not on correctness: the socket closes either way.
+const EXIT_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// How many `search` commands the capture sends.
 ///
 /// `search` produces a real roundtime with no combat and nothing at stake --
@@ -206,7 +213,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // --- Criterion 6: clean disconnect -------------------------------------
-    eprintln!("\n[disconnect] cancelling the session");
+    //
+    // ORDERLY SHUTDOWN (`plan/16` §5b), in Lich's order:
+    //
+    //   drain behaviors -> save -> request server exit -> close
+    //
+    // The behaviors were drained above (criterion 4). There is nothing to save
+    // yet -- §5b.5 records that step as having no content in Cena today, and
+    // the ordering is built now precisely so that the save has somewhere to go
+    // when there IS something: an exit that skips it is a corruption path.
+    //
+    // Then `quit`. The author's reason for wanting it is not politeness to the
+    // game: "it sends the signal to lich to shutdown so it has time to save
+    // everything without corruption". Until tonight every Cena exit was
+    // indistinguishable from a crash from the game's side (§5b.4).
+    eprintln!("\n[disconnect] sending quit and awaiting the server's close");
+    let farewell = handle.quit(EXIT_TIMEOUT).await;
+    eprintln!("[disconnect] farewell={farewell:?}");
+
+    // The cancel runs REGARDLESS of how the quit went. §5b's ordering note is
+    // explicit: criterion 6's "no leaked sockets" must not become conditional
+    // on the server cooperating. A quit that timed out still ends the session.
     session_cancel.cancel();
     // NOT `actor.await?`. `plan/12` §5.5 says "a panic kills one session, not
     // the process", and criterion 6's evidence is the shutdown report below --
