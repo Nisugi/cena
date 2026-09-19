@@ -391,6 +391,52 @@ That is also why §1's batching is safe as built and the danger is smaller than 
 a sigil and then an attack is **2 commands**, and the roundtime between them is exactly the
 processing gap the limit is measuring.
 
+### 5.2b-bis VERIFIED: the entitlement ladder, from the official benefit list
+
+> **AUTHOR, 2026-09-18:** *"premium gets 3 per 0.1s, standard gets 2 per 0.1s, and free2play gets
+> 1 per 0.1s, and premium can also purchase an additional typeahead spot so they can max out at 4,
+> but we assume no one has bought one."*
+
+The **depth half** of that is confirmed by the wiki, which documents the purchasable line outright
+(`reference/wiki_clean/Long-term Benefits.txt:121`):
+
+> *"Tired of seeing 'You can only type ahead one line'? Choose this benefit, and you will get
+> another type-ahead line. This one is **in ADDITION to the standard bonus type-ahead line you get
+> for being a Premium member**. This will persist even if the account is no longer Premium."*
+
+900 premium points, from a fountain on the Isle of Four Winds, and *"Premium members may only
+choose this benefit ONCE"* (`Premium.txt:141`, `Premium Point costs_saved posts.txt:89`).
+
+So the ladder is **base + tier + purchase**, and the accepted count is one more than the buffer
+because a command executes while the rest queue:
+
+| Account | Type-ahead lines | Accepted at once |
+|---|---|---|
+| Free / standard | 1 | 2 |
+| Premium | 2 | **3** (MEASURED, this account) |
+| Premium + purchased | 3 | 4 |
+| Lapsed premium who bought | 2 | 3 |
+
+That last row is the awkward one: the benefit **persists after premium lapses**, so tier does not
+determine the number. **An account's entitlement cannot be inferred from its subscription** -- it
+has to be read from the wire, which is what `2 commands` in the refusal is for.
+
+This is the third time tonight an entitlement has been mistaken for a protocol constant, and the
+wiki's own example line -- *"You can only type ahead one line"* -- is the base-account wording that
+Lich hard-codes and that would silently fail to match on any of the other three rows.
+
+**Cena parses the number from the refusal and treats it as per-account state.** It is not a
+constant, not a function of tier, and not knowable before the first refusal.
+
+#### The timing half is NOT established
+
+*"per 0.1s"* is the open question, not a finding. It is what the next run tests, and the evidence
+so far brackets rather than settles it: run A was clean at **3.6 cmd/s**, run B failed at **~19
+cmd/s** (§5.2d-bis). Three commands per 100ms is ~10/s, between the two.
+
+**Depth and rate are independent**, and only depth is settled. A client that assumed "3 per 100ms"
+today would be hard-coding an entitlement *and* an unmeasured rate at once.
+
 ### 5.2c MEASURED: what the probe run settled
 
 **Run 2026-09-18 20:06, by the author, `CENA_PROBE=typeahead`.** 16 probe sends, all present in the
