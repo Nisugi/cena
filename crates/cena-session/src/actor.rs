@@ -128,6 +128,26 @@ pub enum Event {
     },
     /// The session changed lifecycle state.
     StateChanged(State),
+    /// A connection attempt failed, and another is coming after `delay`.
+    ///
+    /// **Published rather than only logged.** The supervisor writes its retry
+    /// decisions to the session log, which is the right place for them -- but a
+    /// log file is not where someone watching a client find its way back looks.
+    /// The author's live reconnect showed four `logging in` lines with nothing
+    /// between them and read as "the ladder did not wait", when the waits were
+    /// in a file on disk.
+    ///
+    /// `cena-session` does not print (a library must not own a terminal), so
+    /// the way to put this in front of a person is an event a frontend can
+    /// render.
+    ConnectFailed {
+        /// Which attempt this was, counting from 1.
+        attempt: u32,
+        /// How long until the next one.
+        delay: Duration,
+        /// Why it failed, already redacted -- this is displayed.
+        detail: String,
+    },
 }
 
 /// What a finished session leaves behind.

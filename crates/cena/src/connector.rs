@@ -50,6 +50,9 @@ pub struct LiveConnector {
     password: String,
     character: String,
     game_code: String,
+    /// How many times `connect` has been called. For the log line only: the
+    /// supervisor owns the real retry count.
+    attempts: u32,
     /// Launch keys minted by this connector, awaiting registration with the
     /// session log.
     ///
@@ -68,6 +71,7 @@ impl LiveConnector {
             password: typed.password,
             character: typed.character,
             game_code: typed.game_code,
+            attempts: 0,
             secrets: Vec::new(),
         }
     }
@@ -89,6 +93,7 @@ impl std::fmt::Debug for LiveConnector {
             .field("password", &"<redacted>")
             .field("character", &self.character)
             .field("game_code", &self.game_code)
+            .field("attempts", &self.attempts)
             .field("secrets", &format_args!("{} pending", self.secrets.len()))
             .finish()
     }
@@ -98,7 +103,15 @@ impl Connector for LiveConnector {
     type Source = LiveSource;
 
     async fn connect(&mut self, generation: Generation) -> Result<LiveSource, ConnectError> {
-        eprintln!("\n[connect] generation {}: logging in", generation.0);
+        // The generation names the CONNECTION and only advances once one
+        // succeeds, so a run that failed three times printed "generation 1"
+        // three times and read as a loop. The attempt counter distinguishes
+        // them.
+        self.attempts += 1;
+        eprintln!(
+            "\n[connect] generation {}, attempt {}: logging in",
+            generation.0, self.attempts
+        );
         let credentials = Credentials {
             account: &self.account,
             password: &self.password,

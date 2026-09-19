@@ -250,6 +250,7 @@ pub(crate) fn print_room(frame: &Frame) {
 /// is a whole task with one job, which makes it the obvious seam: `main` wires
 /// the run together, and this watches it.
 pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
+    let mut screen = Screen::default();
     loop {
         match events.recv().await {
             Ok(Event::Sent { line, origin }) => {
@@ -266,6 +267,17 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
                 eprintln!("  -> [{tag}] {line}");
             }
             Ok(Event::StateChanged(state)) => eprintln!("  .. lifecycle: {state:?}"),
+            // The ladder, made visible. These used to go only to the session
+            // log, so a run that retried three times looked like one that
+            // retried instantly.
+            Ok(Event::ConnectFailed {
+                attempt,
+                delay,
+                detail,
+            }) => eprintln!(
+                "  !! attempt {attempt} failed ({detail}) -- next in {:.1}s",
+                delay.as_secs_f32()
+            ),
             // **The game's own output.** This arm used to be `{}` -- every
             // frame discarded -- because the binary was a criteria
             // demonstration and printed only its own commands:
@@ -277,7 +289,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
             // Exactly so, and it is backwards now that the session is the
             // point rather than the demo. A client that connects and shows the
             // player nothing the game said is not a client.
-            Ok(Event::Frame(frame)) => print_frame(&frame),
+            Ok(Event::Frame(frame)) => screen.show(&frame),
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and
             // `-> [behavior]` lines for the rest of the run -- and those
@@ -301,34 +313,82 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
 ///
 /// A real frontend renders from the same frames with styling and windows
 /// (`cena-ui`). This is the terminal stand-in until one exists.
-fn print_frame(frame: &Frame) {
-    match frame {
-        Frame::Text(text) => {
-            // The main window is `""`. A named stream -- thoughts, deaths,
-            // familiar -- is tagged so it is not mistaken for room text.
-            let body = text.content.trim_end_matches('\n');
-            if body.trim().is_empty() {
-                return;
+#[derive(Default)]
+struct Screen {
+    /// Text seen since the last newline. **This is the whole point of the
+    /// type.**
+    ///
+    /// The parser emits one `Frame::Text` per markup boundary, so a single
+    /// game line arrives in pieces: `  a ` and `pebbled grey leather doublet`
+    /// are two frames because a `<a exist=...>` link sits between them. A
+    /// printer that wrote a line per frame produced
+    ///
+    /// ```text
+    /// [inv]   a
+    /// [inv] pebbled grey leather doublet
+    /// ```
+    ///
+    /// MEASURED from the author's live run, and confirmed against the raw
+    /// bytes: the wire carries that as ONE line. So the frame boundary is not
+    /// a line boundary, and only a newline in the content is.
+    pending: String,
+    /// Which stream the pending text belongs to, so a line is not assembled
+    /// from two different windows.
+    stream: String,
+}
+
+impl Screen {
+    /// Show a frame the way a player would want to read it.
+    fn show(&mut self, frame: &Frame) {
+        match frame {
+            Frame::Text(text) => self.push(&text.content, &text.stream),
+            // The prompt is the game's "your turn". It terminates whatever was
+            // being assembled, because a prompt never continues a line.
+            Frame::Prompt { text, .. } => {
+                self.flush();
+                eprintln!("{text}");
             }
-            if text.stream.is_empty() {
-                eprintln!("{body}");
-            } else {
-                eprintln!("[{}] {body}", text.stream);
+            // Room description, exits and the other named components. The
+            // login burst is mostly these, so dropping them would leave a
+            // connect showing nothing at all.
+            Frame::Component { id, body } => {
+                let plain = body.plain();
+                if !plain.trim().is_empty() {
+                    self.flush();
+                    eprintln!("[{id}] {plain}");
+                }
             }
+            _ => {}
         }
-        // The prompt is the game's "your turn", and seeing it is how a player
-        // knows a command finished.
-        Frame::Prompt { text, .. } => eprintln!("{text}"),
-        // Room description, exits, and the other named components: the login
-        // burst is mostly these, so a session that dropped them would show
-        // nothing at all on connect.
-        Frame::Component { id, body } => {
-            let plain = body.plain();
-            if !plain.trim().is_empty() {
-                eprintln!("[{id}] {plain}");
-            }
+    }
+
+    /// Accumulate, emitting one line per newline actually on the wire.
+    fn push(&mut self, content: &str, stream: &str) {
+        // A stream change ends the current line: main-window text and a
+        // thought must not be spliced into one.
+        if stream != self.stream {
+            self.flush();
+            stream.clone_into(&mut self.stream);
         }
-        _ => {}
+        for (i, piece) in content.split('\n').enumerate() {
+            if i > 0 {
+                self.flush();
+            }
+            self.pending.push_str(piece);
+        }
+    }
+
+    /// Emit whatever has accumulated, if it is not blank.
+    fn flush(&mut self) {
+        let line = std::mem::take(&mut self.pending);
+        if line.trim().is_empty() {
+            return;
+        }
+        if self.stream.is_empty() {
+            eprintln!("{line}");
+        } else {
+            eprintln!("[{}] {line}", self.stream);
+        }
     }
 }
 

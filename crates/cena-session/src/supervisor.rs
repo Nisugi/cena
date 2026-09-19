@@ -258,7 +258,10 @@ impl<C: Connector> SupervisedSession<C> {
                     // server refusing connections would be retried at one
                     // second forever, which is the storm the ladder exists to
                     // prevent.
-                    if !self.wait_before_retry(&mut attempt).await {
+                    if !self
+                        .wait_before_retry(&mut attempt, &error.to_string())
+                        .await
+                    {
                         stopped_because = StoppedBecause::Cancelled;
                         break;
                     }
@@ -333,7 +336,10 @@ impl<C: Connector> SupervisedSession<C> {
             }
 
             self.reconnect();
-            if !self.wait_before_retry(&mut attempt).await {
+            // The detail is the END REASON here, not a connect error: nothing
+            // failed to connect, a live connection was lost.
+            let lost = format!("{reason:?}");
+            if !self.wait_before_retry(&mut attempt, &lost).await {
                 stopped_because = StoppedBecause::Cancelled;
                 reason = EndReason::Cancelled;
                 break;
@@ -370,7 +376,7 @@ impl<C: Connector> SupervisedSession<C> {
     /// `cancel()` take up to 30 seconds to be noticed, and `plan/12` §5.5 gives
     /// stopping a 250ms budget. The wait races the cancel token rather than
     /// checking it afterwards.
-    async fn wait_before_retry(&mut self, attempt: &mut u32) -> bool {
+    async fn wait_before_retry(&mut self, attempt: &mut u32, detail: &str) -> bool {
         let delay = backoff(*attempt, jitter());
         *attempt = attempt.saturating_add(1);
         self.log(&format!(
@@ -378,6 +384,12 @@ impl<C: Connector> SupervisedSession<C> {
             delay.as_millis(),
             attempt
         ));
+        // ...and to anyone watching, not only to the log file.
+        let _ = self.core.events.send(Event::ConnectFailed {
+            attempt: *attempt,
+            delay,
+            detail: detail.to_owned(),
+        });
         tokio::select! {
             () = self.core.cancel.cancelled() => false,
             () = tokio::time::sleep(delay) => true,
