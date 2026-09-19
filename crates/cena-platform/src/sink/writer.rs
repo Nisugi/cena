@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 /// *looks like* a credential.
 ///
 /// The live run of 2026-09-18 printed
-/// `A\tACCOUNT\tKEY\t<KEY-REDACTED>\tREAL NAME` -- the key was already
+/// `A\t<ACCOUNT>\tKEY\t<KEY-REDACTED>\t<NAME>` -- the key was already
 /// redacted for the terminal; the account name and the author's real name were
 /// not, and would have gone to disk verbatim.
 #[derive(Default, Clone)]

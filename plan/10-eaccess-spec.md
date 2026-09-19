@@ -469,7 +469,7 @@ asked the wrong instance" — the two look identical at `L`, because the charact
 bytes can be **byte-identical** across instances while meaning different things.
 
 > **Worked example, 2026-09-18.** A spike run and a working Lich login used the same account, the
-> same character, and the same code `W_ACCOUNT_000`. The `L` requests were byte-for-byte identical.
+> same character, and the same code `W_<ACCOUNT>_000`. The `L` requests were byte-for-byte identical.
 > Lich's `C` header reported **100** slots; the spike's reported **16**. Lich launched; the spike got
 > `L\tPROBLEM\t3`.
 >

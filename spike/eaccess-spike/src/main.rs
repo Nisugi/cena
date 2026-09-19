@@ -409,7 +409,7 @@ fn authenticate(account: &str, password: &str, character: &str, game_code: &str)
             // INFERRED 2026-09-18: PROBLEM 3 means the character code is not
             // valid on the CURRENTLY SELECTED instance. Evidence: a spike run
             // and a working Lich login used the same account, character and
-            // character code (W_ACCOUNT_000) and the same L bytes; the spike's
+            // character code (W_<ACCOUNT>_000) and the same L bytes; the spike's
             // C header reported 16 slots and Lich's reported 100, so the spike
             // was on a premium instance while Lich was on GST. Byte-diffing the
             // L request finds nothing — the bytes are identical and only the

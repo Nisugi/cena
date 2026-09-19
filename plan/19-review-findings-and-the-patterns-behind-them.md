@@ -20,7 +20,7 @@ mistakes**, and the fourth is the one that matters most:
 
 | Pattern | Shape | Items |
 |---|---|---|
-| **A** | `Option` used as two states where three exist | roundtime, effects, `exits: []` |
+| **A** | `Option` used as two states where three exist | roundtime (real), effects (**not** — see §1b), `exits: []` |
 | **B** | The reconnect layer assumes an actor exists behind a handle | `quit` hang, unbounded `send_now`/`claim`, `connect` unraced |
 | **C** | Guarding tests sized to the measured case, not past it | the settings blob, the chunk reassembly, the inbox |
 | **D** | **A test that pins a defect in place** | the hash-error leak |
@@ -68,19 +68,41 @@ still enforced by the clock's own invalidation.
 **Two tests asserted the old behaviour** with no reasoning attached, and both
 were flipped with the reasoning written in.
 
-### 1b. Effects that arrive before a prompt never expire. OPEN.
+### 1b. Effects with no end time. **NOT A DEFECT — asked Vellum, as the rule says.**
 
 `effects.rs:126`: `effect.ends_at.is_none_or(|ends| now_server < ends)`.
 
-`is_none_or` on `None` is `true`, so an effect with no end time is **active
-forever**. An effect parsed before a generation's first prompt has no clock, so
-`ends_at` is `None` (`state.rs:278`), and a review found a 1m59s buff still
-reported active an hour later.
+`is_none_or` on `None` is `true`, so an effect with no end time reads **active
+forever**, and a review found a 1m59s buff still reported active an hour later.
 
-**Why it is still open:** `ends_at: None` legitimately means "indefinite" for
-effects that genuinely have no duration. Distinguishing "no end time" from "end
-time not yet computable" needs a third state, and which effects are genuinely
-indefinite is a game question the author should answer rather than a reviewer.
+**`CLAUDE.md` says read Vellum first, and doing so closed this rather than
+opening it.** Two findings:
+
+1. **`None` meaning "active while present" is correct, and deliberate there.**
+   `reference/VellumFE/src/core/hotbar.rs:207` is a test named
+   `indefinite_effect_counts_as_active_while_present`, with Prestidigitation as
+   the example — a genuinely indefinite buff. Its neighbour at `:233` asserts
+   that an effect with no expiry answers *false* to "is under 60 seconds left",
+   rather than inventing a remainder. Cena's `remaining` already does the same.
+
+2. **Expiry arrives by REPLACEMENT, not by clock.** `state.rs:1919` retains on
+   `expires_at > now_server`, but the load-bearing path is `:1901`: the game
+   re-sends the whole dialog and the collection is replaced. An effect that ended
+   is simply absent from the next one.
+
+Cena already matches on both counts: `Frame::ClearDialogData` clears per
+category and the populated element refills it (`state.rs:237-245`, MEASURED).
+
+**So the reviewed scenario needs the dialog to never refresh** — which is the
+`ends_at: None` case only in the sense that nothing has told us otherwise. That
+is the same "no news" state the rest of `GameState` models with `Option`, and
+inventing an expiry for it would be exactly the invented belief §5.2 forbids.
+
+Recorded as a non-defect because the *shape* still matches pattern A, and a
+future reader comparing the two `Option` predicates deserves to know why one was
+changed and one was not: roundtime's cleared value produced a **false negative
+that acts** (a gated send fires early), while an effect's absent end time
+produces a **stale display that no gate reads**.
 
 ### 1c. `exits: []`. OPEN, and the same shape.
 
@@ -216,8 +238,6 @@ Both are parser-adjacent, and M2's first work is the parser.
 
 ### Open, needing a decision rather than a patch
 
-- **Effects that never expire** (§1b) — needs the author's answer on which
-  effects are genuinely indefinite.
 - **The `Recorder` is unbounded on the production path.** An append-only `Vec`
   that copies every chunk (`record.rs:53`), carried across generations, and
   `outbound_count` rescans all of it twice per connection. `unknown_tags` has the

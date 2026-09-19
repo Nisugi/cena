@@ -122,26 +122,26 @@ fn launch_payload_debug_hides_the_key() {
 /// Real `C` shape: four counts, then code/name pairs from field 5.
 #[test]
 fn resolves_a_character_code() {
-    let c = "C\t1\t100\t0\t0\tW_ACCOUNT_000\tNisugi\tW_ACCOUNT_001\tOther";
-    assert_eq!(resolve_char_code(c, "Nisugi"), Some("W_ACCOUNT_000"));
-    assert_eq!(resolve_char_code(c, "Other"), Some("W_ACCOUNT_001"));
+    let c = "C\t1\t100\t0\t0\tW_<ACCOUNT>_000\tNisugi\tW_<ACCOUNT>_001\tOther";
+    assert_eq!(resolve_char_code(c, "Nisugi"), Some("W_<ACCOUNT>_000"));
+    assert_eq!(resolve_char_code(c, "Other"), Some("W_<ACCOUNT>_001"));
 }
 
 /// The `C` list is matched case-insensitively: the server capitalises
 /// names and a human at a prompt does not.
 #[test]
 fn resolves_a_character_code_ignoring_case() {
-    let c = "C\t1\t100\t0\t0\tW_ACCOUNT_000\tNisugi";
-    assert_eq!(resolve_char_code(c, "nisugi"), Some("W_ACCOUNT_000"));
+    let c = "C\t1\t100\t0\t0\tW_<ACCOUNT>_000\tNisugi";
+    assert_eq!(resolve_char_code(c, "nisugi"), Some("W_<ACCOUNT>_000"));
 }
 
 /// A character not on the account resolves to nothing rather than to the
 /// wrong code -- and an odd trailing field must not panic the walk.
 #[test]
 fn missing_character_resolves_to_none() {
-    let c = "C\t1\t100\t0\t0\tW_ACCOUNT_000\tNisugi";
+    let c = "C\t1\t100\t0\t0\tW_<ACCOUNT>_000\tNisugi";
     assert_eq!(resolve_char_code(c, "Nobody"), None);
-    let truncated = "C\t1\t100\t0\t0\tW_ACCOUNT_000";
+    let truncated = "C\t1\t100\t0\t0\tW_<ACCOUNT>_000";
     assert_eq!(resolve_char_code(truncated, "Nisugi"), None);
 }
 
@@ -337,7 +337,7 @@ fn the_client_banner_requests_the_wrayth_extended_feed() {
 /// real name.
 ///
 /// The live run of 2026-09-18 printed
-/// `A\tACCOUNT\tKEY\t<KEY-REDACTED>\tREAL NAME` -- the key was redacted, and
+/// `A\t<ACCOUNT>\tKEY\t<KEY-REDACTED>\t<NAME>` -- the key was redacted, and
 /// the other two went to the terminal, the scrollback, and a transcript pasted
 /// for review. Both are positional in a fixed-shape response, so removing them
 /// is exact.
@@ -369,7 +369,7 @@ fn positional_redaction_applies_only_to_the_a_response() {
     let m = "M\tGS3\tGame One\tGST\tGame One Test";
     assert_eq!(redact(m), m, "an M response must pass through unchanged");
 
-    let c = "C\t1\t100\t0\t0\tW_ACCOUNT_000\tNisugi";
+    let c = "C\t1\t100\t0\t0\tW_<ACCOUNT>_000\tNisugi";
     assert_eq!(redact(c), c, "a C response must pass through unchanged");
 }
 

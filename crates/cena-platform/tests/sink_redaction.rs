@@ -13,7 +13,7 @@ use cena_platform::Redactions;
 
 /// The `A` response is the reason this module exists.
 ///
-/// The live run printed `A\tACCOUNT\tKEY\t<redacted>\tREAL NAME`. The key
+/// The live run printed `A\t<ACCOUNT>\tKEY\t<redacted>\t<NAME>`. The key
 /// was already redacted for the terminal; **the account name and the account
 /// holder's real name were not**, and would have reached disk verbatim.
 #[test]

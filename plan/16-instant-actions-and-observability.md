@@ -1294,7 +1294,7 @@ ever hit.
 
 ### 6.4 Scrubbing is not optional
 
-The live run printed `A\tACCOUNT\tKEY\t<KEY-REDACTED>\tREAL NAME` — the key was redacted; **the
+The live run printed `A\t<ACCOUNT>\tKEY\t<KEY-REDACTED>\t<NAME>` — the key was redacted; **the
 account name and the author's real name were not.**
 
 Existing corpus rules (`CLAUDE.md`) apply and are stricter than anything currently implemented:
