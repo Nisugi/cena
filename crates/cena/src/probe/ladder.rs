@@ -1,37 +1,47 @@
 //! Phase 2: the author's sequence, exactly.
 //!
-//! > **AUTHOR, 2026-09-18:** *"send 4 looks at once, wait 0.5 seconds, send 4
-//! > looks, wait 0.3 seconds, send 4 looks, sleep 0.2 seconds, send 4 looks,
-//! > sleep 0.1 seconds, send 4 looks"*
-//!
-//! One pass. Five groups of four, with the pause **shrinking** between them:
+//! > **AUTHOR, 2026-09-18:** *"send 3 looks at once, sleep 0.05, send 3 looks,
+//! > sleep 0.05 and do that 10 times."*
 //!
 //! ```text
-//! 4 looks | 0.5s | 4 looks | 0.3s | 4 looks | 0.2s | 4 looks | 0.1s | 4 looks
+//! (3 looks | 50ms) x 10
 //! ```
 //!
-//! Descending is what makes it one experiment rather than five: pressure rises
-//! as it goes, so the group where refusals start is where the server stopped
-//! keeping up. Nothing is repeated and nothing resets in between -- whatever
-//! backlog builds is carried forward, which is the thing being measured.
+//! # Why 3 and 50ms, after the previous run
+//!
+//! The previous sequence (`4 | 500ms | 4 | 300ms | 4 | 200ms | 4 | 100ms | 4`)
+//! found that **every group of 4 accepted exactly 3 and refused 1, at every
+//! pause** -- 25 sent, 7 refused, 18 accepted, with the groups at 300/200/100ms
+//! all landing inside one server second. The pause made no difference at all
+//! (`plan/16` §5.2d).
+//!
+//! That fixed the buffer at **`1 executing + 2 buffered`** and suggested the
+//! accepted count is set by depth rather than by rate. This sequence tests that
+//! directly: **3 is exactly the number the last run accepted**, so if the model
+//! is right this runs clean -- 30 sent, 30 accepted, zero refusals -- even at
+//! 50ms, which is half the shortest pause tried before.
+//!
+//! **A refusal here falsifies the model**, and where it appears says how: on
+//! round 1 means 3 was never safe, and later means the buffer refills more
+//! slowly than it drains, so backlog accumulates. Ten rounds with no let-up is
+//! what makes the second visible.
 //!
 //! # Two earlier versions of this file measured nothing
 //!
 //! Kept written down because both *looked* like measurements.
 //!
 //! **Version 1 could not fail.** Two commands per rung against a buffer of
-//! two: under the limit by construction. Every rung came back clean at every
-//! gap, including 15ms, which reads as "15ms is safe" and meant "this cannot
-//! trip".
+//! two: under the limit by construction. Clean at every gap including 15ms,
+//! which reads as "15ms is safe" and meant "this cannot trip".
 //!
-//! **Version 2 could not accumulate.** Group size fixed, but each trial was
-//! followed by a 4-second drain and a 3-second settle -- seven seconds of
-//! quiet between every pair of groups. It asked "can the server take this
-//! once, from rest?" over and over, and never asked the real question.
+//! **Version 2 could not accumulate.** A 4-second drain and a 3-second settle
+//! after every trial -- seven seconds of quiet between each pair of groups. It
+//! asked "can the server take this once, from rest?" repeatedly and never
+//! asked the sustained question.
 //!
 //! > **AUTHOR:** *"why are you waiting 1+ seconds between sends?"*
 //!
-//! The pauses below are the **only** pauses. Frames are collected in the same
+//! The pause below is the **only** pause. Frames are collected in the same
 //! `select!` that drives the sending, so observing cannot throttle it.
 //!
 //! Split out of [`super`] under Rule 4.1 (`plan/05:352-353`).
@@ -41,29 +51,39 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::sync::broadcast;
 
-/// The author's sequence: how long to pause **after** each group.
-///
-/// Five groups, four pauses -- the fifth group has nothing after it.
-const PAUSES_MS: [u64; 4] = [500, 300, 200, 100];
-
 /// Commands per group. The author's number.
 ///
-/// Four against a buffer of two (MEASURED: the wire said `type ahead 2
-/// commands`) overflows by two, so refusals are expected from the first group
-/// on. The question is how they change as the pauses shrink.
-const GROUP: usize = 4;
+/// **Exactly what the previous run accepted per group** (MEASURED: 3 of every
+/// 4, in all six groups, `plan/16` §5.2d). So the model's own prediction is
+/// the input here, which is the sharpest test available: the expected result
+/// is zero refusals, and any refusal at all is information.
+const GROUP: usize = 3;
+
+/// The pause after each group.
+///
+/// 50ms: half the shortest pause of the previous run, which still made no
+/// difference. If depth is what governs, this changes nothing; if rate matters
+/// anywhere, this is where it should show.
+const PAUSE: Duration = Duration::from_millis(50);
+
+/// How many times the group-and-pause repeats.
+///
+/// Ten rounds with no reset between them. One round cannot show accumulation;
+/// ten can, and **where** the first refusal falls is the signal -- round 1
+/// means 3 was never safe, round 7 means backlog built up over time.
+const ROUNDS: usize = 10;
 
 /// How long to wait after the final group for its replies to land.
 ///
 /// After all sending, so it cannot pad the cadence.
 const TAIL: Duration = Duration::from_secs(4);
 
-/// What one group saw.
+/// What one round saw.
 #[derive(Debug, Default, Clone, Copy)]
-struct GroupResult {
-    /// Typeahead refusals attributed to this group.
+struct RoundResult {
+    /// Typeahead refusals attributed to this round.
     refusals: usize,
-    /// Room replies attributed to this group.
+    /// Room replies attributed to this round.
     rooms: usize,
 }
 
@@ -72,23 +92,21 @@ pub(super) async fn phase_2_ladder(
     handle: &SessionHandle,
     events: &mut broadcast::Receiver<Event>,
 ) {
-    eprintln!("\n[phase 2] {GROUP} looks, then a SHRINKING pause, five times over:");
     eprintln!(
-        "          {GROUP} | {}ms | {GROUP} | {}ms | {GROUP} | {}ms | {GROUP} | {}ms | {GROUP}",
-        PAUSES_MS[0], PAUSES_MS[1], PAUSES_MS[2], PAUSES_MS[3]
+        "\n[phase 2] ({GROUP} looks | {}ms) x {ROUNDS}, one pass, no reset",
+        PAUSE.as_millis()
     );
-    eprintln!("          One pass, nothing repeated, no reset between groups --");
-    eprintln!("          so backlog carries forward and pressure rises as it goes.\n");
+    eprintln!("          {GROUP} is EXACTLY what the last run accepted per group, so the");
+    eprintln!("          model predicts zero refusals. Any refusal falsifies it, and");
+    eprintln!("          WHERE it falls says how: round 1 = 3 was never safe,");
+    eprintln!("          later = the buffer refills more slowly than it drains.\n");
 
     let results = run_sequence(handle, events).await;
 
-    eprintln!("\n  group  pause-after   refusals   room replies (of {GROUP})");
+    eprintln!("\n  round   refusals   room replies (of {GROUP})");
     for (i, result) in results.iter().enumerate() {
-        let after = PAUSES_MS
-            .get(i)
-            .map_or_else(|| "-".to_owned(), |ms| format!("{ms}ms"));
         eprintln!(
-            "  {:>5}  {after:>11}   {:>8}   {:>12}",
+            "  {:>5}   {:>8}   {:>12}",
             i + 1,
             result.refusals,
             result.rooms
@@ -96,63 +114,70 @@ pub(super) async fn phase_2_ladder(
     }
 
     let total: usize = results.iter().map(|r| r.refusals).sum();
+    let rooms: usize = results.iter().map(|r| r.rooms).sum();
+    eprintln!(
+        "\n  {} sent, {total} refusals, {rooms} replies",
+        GROUP * ROUNDS
+    );
     match results.iter().position(|r| r.refusals > 0) {
-        None => eprintln!("\n  No refusals at any pause -- the whole sequence was absorbed."),
+        None => eprintln!(
+            "  CLEAN at every round -- {GROUP} per group is sustainable at {}ms.",
+            PAUSE.as_millis()
+        ),
+        Some(0) => eprintln!("  Refused from round 1: {GROUP} was never under the limit."),
         Some(at) => eprintln!(
-            "\n  First refusal in group {}, {total} refusals overall.",
+            "  First refusal in round {} -- backlog accumulated rather than the \
+             group being too big.",
             at + 1
         ),
     }
+    eprintln!("  (Counts here are approximate -- read the .bytes log, see plan/16 §5.2e.)");
 }
 
 /// Send the sequence, collecting frames as it goes.
 ///
-/// Returns one [`GroupResult`] per group, attributed by which group was in
-/// flight when the frame arrived. Attribution is **approximate at the fast
-/// end** -- a reply can land after the next group has started -- which is why
-/// the printout shows the per-group split *and* the total rather than resting
-/// on the split alone.
+/// Returns one [`RoundResult`] per round, attributed by which round was in
+/// flight when the frame arrived. **Attribution is approximate**: at 50ms a
+/// reply routinely lands after the next round has started, and the previous
+/// run's console undercounted 7 wire refusals as 5 for exactly this reason
+/// (`plan/16` §5.2e). The totals inherit the same error, so the `.bytes` log is
+/// the record and this is commentary.
 async fn run_sequence(
     handle: &SessionHandle,
     events: &mut broadcast::Receiver<Event>,
-) -> Vec<GroupResult> {
-    let groups = PAUSES_MS.len() + 1;
+) -> Vec<RoundResult> {
     let current = AtomicUsize::new(0);
-    let mut results = vec![GroupResult::default(); groups];
+    let mut results = vec![RoundResult::default(); ROUNDS];
 
     let send = async {
-        for group in 0..groups {
-            current.store(group, Ordering::Relaxed);
+        for round in 0..ROUNDS {
+            current.store(round, Ordering::Relaxed);
             for _ in 0..GROUP {
                 // `send_now`, so the CLIENT does not serialise them: the
-                // question is what the server does with four at once.
+                // question is what the server does with three at once.
                 let _ = handle.send_now("look", Origin::Manual, Gate::None).await;
             }
-            // THE ONLY PAUSE. The last group has none -- TAIL follows, outside
-            // the loop, after all sending is done.
-            if let Some(ms) = PAUSES_MS.get(group) {
-                tokio::time::sleep(Duration::from_millis(*ms)).await;
-            }
+            // THE ONLY PAUSE.
+            tokio::time::sleep(PAUSE).await;
         }
         tokio::time::sleep(TAIL).await;
     };
     tokio::pin!(send);
 
-    // Collect WHILE sending. An earlier version returned `Rung::default()`
-    // from the sender's arm of a `select!`, silently discarding every count
-    // the collector had made.
+    // Collect WHILE sending. An earlier version returned a default from the
+    // sender's arm of a `select!`, silently discarding every collected count.
     loop {
         tokio::select! {
             () = &mut send => break,
             received = events.recv() => match received {
                 Ok(Event::Frame(frame)) => {
-                    let at = current.load(Ordering::Relaxed).min(groups - 1);
+                    let at = current.load(Ordering::Relaxed).min(ROUNDS - 1);
                     inspect(&frame, &mut results[at]);
                 }
                 Ok(_) => {}
-                // Not terminal (`plan/12` 6.3). A lag means the ring overflowed
-                // while sending hard, which is expected here and must not end
-                // the collection.
+                // Not terminal (`plan/12` §6.3). A lag means the ring
+                // overflowed while sending hard, which is expected here and
+                // must not end the collection.
                 Err(broadcast::error::RecvError::Lagged(missed)) => {
                     eprintln!("    !! {missed} events dropped from the ring (still collecting)");
                 }
@@ -163,8 +188,8 @@ async fn run_sequence(
     results
 }
 
-/// Classify one frame into the group that was in flight.
-fn inspect(frame: &Frame, result: &mut GroupResult) {
+/// Classify one frame into the round that was in flight.
+fn inspect(frame: &Frame, result: &mut RoundResult) {
     let text = match frame {
         Frame::Text(text) => text.content.clone(),
         Frame::Component { body, .. } => body.plain(),
@@ -172,9 +197,9 @@ fn inspect(frame: &Frame, result: &mut GroupResult) {
     };
     if text.contains(super::TYPEAHEAD_REFUSAL) {
         result.refusals += 1;
-        // Printed verbatim as well as counted: the number in the message is an
-        // account entitlement (MEASURED: `2 commands` here), so a bare count
-        // would hide a change in it.
+        // Printed verbatim as well as counted: the number is an account
+        // entitlement (MEASURED: `2 commands` here), so a bare count would hide
+        // a change in it.
         eprintln!("    >> {}", text.trim());
     }
     if text.contains("Obvious exits:") || text.contains("Obvious paths:") {

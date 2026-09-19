@@ -416,6 +416,94 @@ by delay is solving the wrong problem; a client that tracks outstanding commands
 small. A sigil plus its trigger is 2 -- at or under the base entitlement of 1+1, and comfortably
 under a premium 2+1. The pattern to avoid is a long unbroken chain, not a pair.
 
+### 5.2d MEASURED: the buffer refills instantly. The pause does not matter.
+
+**Run 2026-09-18 20:18**, the author's sequence: `4 looks | 500ms | 4 | 300ms | 4 | 200ms | 4 |
+100ms | 4`. One pass, no reset between groups.
+
+Taken from the wire (`nerten-2026-09-18_20-18-07-000.bytes`), not from the console -- the console
+undercounted, see §5.2e:
+
+| group | pause after | sent | refused | accepted |
+|---|---|---|---|---|
+| 1 | 500ms | 5\* | 2 | 3 |
+| 2 | 300ms | 4 | 1 | 3 |
+| 3 | 200ms | 4 | 1 | 3 |
+| 4 | 100ms | 4 | 1 | 3 |
+| 5 | — | 4 | 1 | 3 |
+| 6 | — | 4 | 1 | 3 |
+
+\* group 1 absorbed a leftover `look` from phase 1.
+
+**Totals: 25 sent, 7 refused, 18 accepted.** 25 − 7 = 18 exactly; nothing was dropped silently.
+
+**Every group accepted exactly 3, at every pause.** The accepted count did not move between a
+500ms pause and a 100ms one -- and groups 3, 4 and 5 all landed inside the **same server second**
+(`<prompt time=1789780700>`, 12 prompts), so the pauses between them were invisible to the server's
+own clock and still made no difference.
+
+**A refusal is followed immediately by acceptance.** Every one of the 7 refusals is followed
+directly by executed commands in the frame stream -- no cooldown, no penalty window, nothing to
+wait out.
+
+> **AUTHOR, on reading this:** *"so this says sending it .1 second after a refusal accepts new
+> commands?"*
+
+Yes, and more strongly: the acceptance is not a function of elapsed time at all. It is a function
+of **how many commands are outstanding**.
+
+#### What the mechanism actually is
+
+The buffer is **depth 2** (`1 + premium`) and it refills **as the server processes**, not on a
+timer. A group of 4 against a server executing them is therefore:
+
+```
+look 1  -> executes immediately (nothing outstanding)
+look 2  -> buffered (1 of 2)
+look 3  -> buffered (2 of 2)
+look 4  -> REFUSED (buffer full)
+```
+
+Three accepted, one refused -- invariant, because it is set by the **buffer depth plus the one
+executing**, not by the rate. The pause afterwards is irrelevant: by the next group the server has
+drained what it took, and the same 3-of-4 happens again.
+
+This is Kelfour's *"only during slow downs"* restated exactly. The limit counts **unprocessed
+commands**, so what governs it is how fast the server is working, and a client cannot influence
+that by waiting longer between bursts.
+
+#### Consequence for Cena: bound the outstanding count, never the rate
+
+**A delay-based send policy is the wrong shape** and this run rules it out empirically -- 500ms
+and 100ms produced identical results. Any inter-command delay is a guess about server load that
+the client has no way to verify.
+
+What works is bounding **commands in flight**: at most `entitlement + 1` outstanding before
+waiting for evidence one has executed. Cena is already positioned for this -- `send_and_await`
+holds one window at a time, so the ordinary path cannot exceed it. It is `send_now` that needs the
+bound, and the bound is a **count**, not a sleep.
+
+**`send_now` needs no delay and no backoff ladder.** It needs to know how many of its sends have
+not yet been answered. That is a smaller mechanism than §5.2 anticipated.
+
+### 5.2e The console undercounted: per-group attribution is not reliable
+
+The probe printed **5 refusals**; the wire has **7**. Both numbers are from the same run.
+
+The cause is that `run_sequence` attributes each frame to whichever group was in flight when it
+arrived, and at these speeds replies straddle group boundaries -- group 1's refusals landed while
+group 2 was already sending. The file's own doc comment predicted this ("attribution is approximate
+at the fast end") and the printout deliberately showed the total beside the split for that reason,
+**but the total was computed from the same mis-attributed counts, so it inherited the error rather
+than checking it.**
+
+A total that is derived from the thing it is meant to validate is not a check. The `.bytes` log is
+the record; the console is commentary, exactly as the probe's banner says.
+
+**Practical rule, now demonstrated twice in one evening: read the counts off the wire.** Both
+corrections in this section -- the entitlement being 2 rather than 1, and 7 refusals rather than 5
+-- came from the log and neither was visible in the console output.
+
 ### 5.3 OPEN — what a live run would still settle
 
 The limit is known; these are not, and none can be read out of Lich:
