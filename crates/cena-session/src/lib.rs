@@ -19,7 +19,7 @@ pub mod command;
 pub mod lifecycle;
 pub mod queue;
 
-pub use actor::{Event, Session, SessionActor, Snapshot};
+pub use actor::{EndReason, Event, Session, SessionActor, Snapshot};
 pub use cena_model::{GameState, Room, UnknownTag};
 pub use command::{CommandId, Envelope, Gate, Origin, Outcome, Refusal, Sent, SessionHandle};
 pub use lifecycle::{Generation, State};

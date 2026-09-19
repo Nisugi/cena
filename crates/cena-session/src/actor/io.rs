@@ -168,9 +168,12 @@ impl<S: ByteSource> SessionActor<S> {
         self.queue.admit(envelope);
     }
 
-    /// Send whatever the queue is ready to send. Returns `false` if the
-    /// session should end.
-    pub(super) async fn pump(&mut self) -> bool {
+    /// Send whatever the queue is ready to send.
+    ///
+    /// Returns `Some(reason)` if the session should end, `None` to carry on.
+    /// It was a `bool` until Milestone 2 needed the *reason* a write failure
+    /// ended a session, not merely that one had.
+    pub(super) async fn pump(&mut self) -> Option<super::EndReason> {
         while let Some(envelope) = self.queue.take_next() {
             // `plan/12` §5.2: anything from a prior generation is discarded.
             // It cannot fire in Step 2 -- nothing reconnects -- but the check
@@ -188,7 +191,7 @@ impl<S: ByteSource> SessionActor<S> {
             message.push(b'\n');
             if self.source.write_all(&message).await.is_err() {
                 let _ = envelope.reply.send(Outcome::Dead);
-                return false;
+                return Some(super::EndReason::WriteFailed);
             }
             self.recorder.outbound(&message);
             self.log_wire(false, &message);
@@ -205,7 +208,7 @@ impl<S: ByteSource> SessionActor<S> {
                 envelope.matcher,
             );
         }
-        true
+        None
     }
 
     /// Feed bytes to the parser, fold the frames, publish them, and close a

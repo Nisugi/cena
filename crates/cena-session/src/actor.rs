@@ -4,13 +4,20 @@
 //! channels everywhere", "every wait has a deadline" and "a panic kills one
 //! session, not the process". This module is all four.
 //!
-//! # The session owns the socket
+//! # The session owns the socket, and one actor is one connection
 //!
-//! There is no connection-manager layer above this. `plan/12` §9c moves
-//! reconnect to Milestone 2, so a manager today would be a trait with one
-//! implementor -- Rule -1 (`plan/05` §-1). The actor holds its
-//! [`ByteSource`] by value and closes it itself, which is also how criterion 6
-//! ("no leaked sockets") is met without a drop guard nobody can test.
+//! The actor holds its [`ByteSource`] by value and closes it itself, which is
+//! how criterion 6 ("no leaked sockets") is met without a drop guard nobody can
+//! test. [`SessionActor::run`] takes `self` **by value**, so "one actor, one
+//! connection" is structural rather than a convention.
+//!
+//! **That is what Milestone 2 builds on rather than changes.** An earlier
+//! version of this header said there was no connection-manager layer because
+//! "reconnect is Milestone 2, so a manager today would be a trait with one
+//! implementor". Reconnect is now being built, and the resolution keeps `run`
+//! consuming: a supervisor runs **a new actor per connection**, and what
+//! survives between them ([`SessionEnd`]) is handed back rather than reused in
+//! place.
 //!
 //! # `biased;` is not a style choice
 //!
@@ -34,8 +41,19 @@
 //! the cap being raised (`plan/05:352-353`). `pump` and `ingest` are now in
 //! [`io`]; what is here is the loop, the session's shape, and the gate.
 //!
-//! The next split, if this grows again: [`Session`] and [`Snapshot`] to
-//! `actor/handle.rs`, leaving [`SessionActor`] and its loop alone.
+//! That split has since been taken too: [`Session`] and [`Snapshot`] are in
+//! [`handle`].
+//!
+//! And a third: [`EndReason`] is in [`ending`], moved there when Milestone 2's
+//! end-reason took this file to 402 against the cap. That seam had been named
+//! one commit earlier, which is the practice
+//! `crates/cena-arch-tests/tests/ratchet.rs:4-8` set -- **the fourth time it
+//! has paid.**
+//!
+//! **The next split, named in advance and not yet needed:**
+//! [`SessionActor::shutdown`] and [`SessionActor::transition`] join
+//! [`EndReason`] in [`ending`] -- they are the other half of "how a connection
+//! stops" -- leaving the loop and the session's shape here.
 
 use crate::command::Envelope;
 use crate::lifecycle::{Generation, State};
@@ -47,9 +65,11 @@ use std::time::Duration;
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
 
+mod ending;
 mod handle;
 mod io;
 
+pub use ending::EndReason;
 pub use handle::{Session, Snapshot};
 
 /// Inbound command channel bound.
@@ -121,6 +141,11 @@ pub struct SessionEnd<S: ByteSource> {
     pub lifecycle: State,
     /// The source, closed. Criterion 6 reads this.
     pub source: S,
+    /// Why the loop broke.
+    ///
+    /// Milestone 2's supervisor reads this and nothing else to decide whether
+    /// to reconnect ([`EndReason::warrants_reconnect`]).
+    pub reason: EndReason,
 }
 
 /// The task. One per session.
@@ -164,11 +189,16 @@ impl<S: ByteSource> SessionActor<S> {
         let mut buf = vec![0u8; READ_BUF];
         // See the command arm below for why this exists.
         let mut senders_gone = false;
+        // Set by whichever arm breaks. Not an `Option` unwrapped at the end:
+        // every `break` below assigns it first, and the compiler checks that
+        // because the loop cannot fall through.
+        let reason;
         loop {
             // Drain the queue before waiting. A command admitted on the last
             // turn must go out before the loop parks in a read, or a manual
             // command typed into a quiet session would wait READ_DEADLINE.
-            if !self.pump().await {
+            if let Some(failed) = self.pump().await {
+                reason = failed;
                 break;
             }
             tokio::select! {
@@ -177,7 +207,10 @@ impl<S: ByteSource> SessionActor<S> {
                 // comes first so PREEMPT_GRACE is not spent waiting a turn.
                 biased;
 
-                () = self.cancel.cancelled() => break,
+                () = self.cancel.cancelled() => {
+                    reason = EndReason::Cancelled;
+                    break;
+                }
 
                 // DISABLED ONCE THE CHANNEL CLOSES, and the guard is not
                 // cosmetic. A closed `mpsc::Receiver` returns `None`
@@ -196,13 +229,20 @@ impl<S: ByteSource> SessionActor<S> {
 
                 read = tokio::time::timeout(READ_DEADLINE, self.source.read(&mut buf)) => {
                     match read {
-                        // `Ok(0)` (the peer hung up, or the recording ran
-                        // out) and `Err` (the socket failed) are the SAME
-                        // exit. Criterion 6 is "disconnect is clean": both
-                        // shut the source down and answer every waiter, and
-                        // distinguishing them would only matter to reconnect,
-                        // which plan/12 §9c puts in Milestone 2.
-                        Ok(Ok(0) | Err(_)) => break,
+                        // SPLIT IN MILESTONE 2, as this arm's M1 comment said
+                        // it would be. Criterion 6 treats them identically --
+                        // both shut the source down and answer every waiter --
+                        // and so does `warrants_reconnect`. They are two
+                        // variants so a LOG can tell them apart; see
+                        // `EndReason`.
+                        Ok(Ok(0)) => {
+                            reason = EndReason::PeerClosed;
+                            break;
+                        }
+                        Ok(Err(_)) => {
+                            reason = EndReason::ReadFailed;
+                            break;
+                        }
                         Ok(Ok(n)) => self.ingest(&buf[..n]),
                         // A quiet game is normal, not a failure. The deadline
                         // exists so the loop takes a turn (`plan/12` §5.5:
@@ -218,6 +258,7 @@ impl<S: ByteSource> SessionActor<S> {
             state: self.state,
             lifecycle: self.lifecycle,
             source: self.source,
+            reason,
         }
     }
 
