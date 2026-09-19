@@ -5,7 +5,7 @@
 //! > dead? up the 0.05 to 0.1"*
 //!
 //! ```text
-//! (3 looks | 100ms) x 10
+//! (3 looks | 150ms) x 10
 //! ```
 //!
 //! # Is the model dead? No -- it lost a clause
@@ -75,16 +75,29 @@ const GROUP: usize = 3;
 
 /// The pause after each group.
 ///
-/// **100ms, doubled from the 50ms that failed** (AUTHOR: *"up the 0.05 to
-/// 0.1"*). It is the one pause that appears in **both** previous runs: run A
-/// used it between groups of 4 and was clean, run B never tried it.
+/// **150ms** (AUTHOR: *"set the test to 0.15"*), after 50ms refused 17 of 30.
 ///
-/// MEASURED why this is the place to ask: at 50ms the rounds went out every
-/// ~61ms -- the sleep plus ~11ms of send overhead -- so 30 commands crossed the
-/// wire in 1.57s, about **19 per second**. Run A managed **3.6 per second** and
-/// never backed up. 100ms here puts the cadence near **10 per second**, between
-/// the two, which is exactly where the boundary should be if one exists.
-const PAUSE: Duration = Duration::from_millis(100);
+/// # The rate ladder, measured rather than computed
+///
+/// A round is the pause **plus** the time to issue three sends, so the
+/// achieved rate is not `GROUP / PAUSE`. Taken from the event logs:
+///
+/// | Run | Pause | Sends | Wall | Achieved | Result |
+/// |---|---|---|---|---|---|
+/// | A | 100-500ms, groups of 4 | 25 | ~7s | **3.6/s** | clean |
+/// | B | 50ms, groups of 3 | 30 | 0.554s | **54/s** | 17 of 30 refused |
+/// | this | 150ms, groups of 3 | 30 | ~1.6s | **~19/s** | ? |
+///
+/// **CORRECTED:** run B was first reported here as ~19/s, from dividing 30 by
+/// 1.57s. That span included the 4-second tail wait, which is not sending time;
+/// the sends themselves span 0.554s (`20:23:35.857` to `20:23:36.411`). So the
+/// gap between the clean run and the failing one is **3.6/s against 54/s** --
+/// fifteen-fold, not fivefold, and this run at ~19/s lands much nearer the
+/// failing end than the arithmetic suggested.
+///
+/// That makes 150ms a genuinely open question rather than a formality: it is
+/// still five times run A's rate.
+const PAUSE: Duration = Duration::from_millis(150);
 
 /// How many times the group-and-pause repeats.
 ///
@@ -116,10 +129,9 @@ pub(super) async fn phase_2_ladder(
         "\n[phase 2] ({GROUP} looks | {}ms) x {ROUNDS}, one pass, no reset",
         PAUSE.as_millis()
     );
-    eprintln!("          {GROUP} is EXACTLY what the last run accepted per group, so the");
-    eprintln!("          model predicts zero refusals. Any refusal falsifies it, and");
-    eprintln!("          WHERE it falls says how: round 1 = 3 was never safe,");
-    eprintln!("          later = the buffer refills more slowly than it drains.\n");
+    eprintln!("          Rate ladder measured so far: 3.6/s clean, 21.5/s clean,");
+    eprintln!("          54/s refused 17 of 30. The boundary is between 21.5 and 54/s,");
+    eprintln!("          Depth (3 at a time) has held in every run.\n");
 
     let results = run_sequence(handle, events).await;
 

@@ -412,18 +412,40 @@ because a command executes while the rest queue:
 
 | Account | Type-ahead lines | Accepted at once |
 |---|---|---|
-| Free / standard | 1 | 2 |
+| **Free-to-play** | **0** | **1** |
+| Standard | 1 | 2 |
 | Premium | 2 | **3** (MEASURED, this account) |
 | Premium + purchased | 3 | 4 |
 | Lapsed premium who bought | 2 | 3 |
 
-That last row is the awkward one: the benefit **persists after premium lapses**, so tier does not
-determine the number. **An account's entitlement cannot be inferred from its subscription** -- it
-has to be read from the wire, which is what `2 commands` in the refusal is for.
+> **AUTHOR, 2026-09-18:** *"f2p gets 0 typeahead"*
+
+The wiki copy in `reference/wiki_clean` documents the premium and purchased lines but says nothing
+about free-to-play, so the top row is on the author's authority rather than a citation.
+
+**The F2P row is the one that constrains the design most**, and it is easy to miss what zero means:
+a free account has **no buffer at all**. Every command must finish before the next is accepted, so
+*any* second command sent before the first completes is refused. There is no batching on F2P --
+not a smaller batch, none.
+
+That rules out a whole class of implementation: **`send_now` cannot assume it may ever send two
+commands back to back.** `plan/16` §1.1's "a few in a row, then the trigger" is a premium-and-above
+capability, and on F2P the sigil-plus-attack pattern must degrade to strict one-at-a-time rather
+than merely slowing down. A client built around "batch a few" would work for the author and fail
+for the free test account -- which is the account `CLAUDE.md` says exists for testing.
+
+The bottom row is the other awkward one: the purchased benefit **persists after premium lapses**,
+so tier does not determine the number either. **An account's entitlement cannot be inferred from
+its subscription** -- it has to be read from the wire, which is what `2 commands` in the refusal is
+for.
 
 This is the third time tonight an entitlement has been mistaken for a protocol constant, and the
-wiki's own example line -- *"You can only type ahead one line"* -- is the base-account wording that
-Lich hard-codes and that would silently fail to match on any of the other three rows.
+wiki's own example line -- *"You can only type ahead one line"* -- is the **standard** account's
+wording that Lich hard-codes. It matches on exactly one of the five rows.
+
+**And on F2P it may never appear at all**, since with zero lines the server's refusal for a second
+command may be worded differently, or may be a different mechanism entirely. **UNVERIFIED** -- the
+free test account can settle it, and that is the cheapest of the open questions to answer.
 
 **Cena parses the number from the refusal and treats it as per-account state.** It is not a
 constant, not a function of tier, and not knowable before the first refusal.
@@ -431,11 +453,15 @@ constant, not a function of tier, and not knowable before the first refusal.
 #### The timing half is NOT established
 
 *"per 0.1s"* is the open question, not a finding. It is what the next run tests, and the evidence
-so far brackets rather than settles it: run A was clean at **3.6 cmd/s**, run B failed at **~19
-cmd/s** (§5.2d-bis). Three commands per 100ms is ~10/s, between the two.
+so far brackets rather than settles it: run A was clean at **3.6 cmd/s**, run B failed at **54
+cmd/s** (§5.2d-bis, corrected). The next run at 150ms sits near **19/s**, between them.
 
 **Depth and rate are independent**, and only depth is settled. A client that assumed "3 per 100ms"
 today would be hard-coding an entitlement *and* an unmeasured rate at once.
+
+And on **free-to-play the rate question does not even arise**: with zero type-ahead lines there is
+no batch to pace. The pacing work above is a premium-and-above concern, and the F2P path is
+strictly one command at a time.
 
 ### 5.2c MEASURED: what the probe run settled
 
@@ -586,13 +612,18 @@ This run separates them. At 50ms the server **does not finish draining between r
 outstanding count climbs: three clean rounds while it keeps up, then refusals once it does not.
 
 **MEASURED, and this is the mechanism.** From the event log, the 10 rounds went out at **~61ms**
-apiece (the 50ms sleep plus ~11ms of send overhead), so all 30 commands were on the wire within
-**1.57 seconds** -- about **19 commands per second** sustained. They arrived inside **two server
-seconds** (`1789781016` alone carried **18** of the 29 prompts).
+apiece (the 50ms sleep plus ~11ms of send overhead), so all 30 commands crossed the wire between
+`20:23:35.857` and `20:23:36.411` -- **0.554 seconds, about 54 commands per second**. They arrived
+inside **two server seconds** (`1789781016` alone carried **18** of the 29 prompts).
 
-The previous run spread 25 commands over 7 seconds. So the difference between the two runs is not
-the group size -- it is **how much work per second** the server was asked to do, and 19/s is past
-what it will absorb.
+> **CORRECTED.** This first said **~19/s**, from dividing 30 sends by 1.57s. That span included the
+> 4-second tail wait, which is not sending time. The sends themselves span 0.554s. The error made
+> the two runs look five-fold apart when they are **fifteen-fold** apart, and it understated how
+> far past the limit run B was.
+
+Run A spread 25 commands over ~7 seconds: **3.6/s**. So the difference between the runs is not the
+group size -- it is **how much work per second** the server was asked to do, and 54/s is far past
+what it absorbs.
 
 #### The corrected model
 
@@ -609,11 +640,10 @@ rounds, because it is what lets the server catch up. Those pauses were not doing
 were the reason that run never backed up, and I read their irrelevance within a group as
 irrelevance between groups.
 
-**The next run tests the boundary rather than re-litigating the model** (AUTHOR: *"up the 0.05 to
-0.1"*). 100ms is the one pause that appears in **both** runs: run A used it between groups of 4 and
-was clean at 3.6 cmd/s; run B never tried it and failed at ~19 cmd/s. At 3 per 100ms the cadence is
-near 10/s, between the two, which is where the boundary should be if there is one. A clean result
-reconciles both runs instead of leaving them in apparent contradiction.
+**The next run tests the boundary rather than re-litigating the model** (AUTHOR: *"set the test to
+0.15"*). At 150ms a round takes ~161ms, so the cadence is about **19/s** -- between run A's clean
+3.6/s and run B's failing 54/s, and still **five times** run A's rate. That makes it a real
+question rather than a formality.
 
 #### What this means for `send_now`
 
@@ -628,6 +658,58 @@ falling on its own.
 
 **This is still a smaller mechanism than a backoff ladder** -- but it needs the reply side, which
 `send_now` currently ignores. That is the open design question §5.3 should now carry.
+
+### 5.2f MEASURED: 150ms is clean. The boundary is between 21/s and 54/s.
+
+> **AUTHOR, 2026-09-18:** *"that run was perfect."*
+
+**Run 20:30, `(3 looks | 150ms) x 10`. VERIFIED ON THE WIRE: 30 sent, 0 refused, 30 executed.**
+The only two refusals in the whole log belong to phase 1's deliberate 5-command burst.
+
+Rounds went out at a steady **153-157ms** and the 30 sends span **1.394s -- 21.5 commands per
+second**, clean.
+
+#### The ladder now brackets the drain rate
+
+| Run | Shape | Achieved | Result |
+|---|---|---|---|
+| A (20:18) | 4 per group, 100-500ms pauses | 3.6/s | clean |
+| B (20:23) | 3 per group, 50ms | **54/s** | 17 of 30 refused |
+| C (20:30) | 3 per group, 150ms | **21.5/s** | **clean, 30 of 30** |
+
+**The boundary lies between 21.5/s and 54/s**, and 21.5/s is six times run A's rate -- so this is
+not a marginal pass near the clean end. It is a real result well above the only other clean
+datapoint.
+
+#### What this settles about the model
+
+§5.2d-bis narrowed the model to "depth 2, draining at a finite rate". Run C confirms both halves
+and puts a number on the second:
+
+- **Depth holds.** 3 accepted at a time, now in three consecutive runs.
+- **Rate is real but generous.** Well over 20 commands per second is sustainable indefinitely --
+  far above anything a client, a behavior or a human would produce in normal play.
+
+**That is the practically important finding.** Run B's failure needed **54 commands per second**,
+which no real client generates: a behavior sending a command per round-time, a player typing, even
+a sigil batch plus its trigger, are all orders of magnitude below it. The rate bound exists and is
+not one Cena will meet by accident.
+
+#### Revised consequence for `send_now`
+
+§5.2d-bis called for a count-based policy with reply tracking, on the strength of run B. **Run C
+makes that look like over-engineering.** The depth bound is the one that bites in practice -- it is
+hit by *three commands sent together*, which is exactly `plan/16` §1.1's batching -- and the rate
+bound is only reachable by a client that is malfunctioning.
+
+So the useful mechanism is the simpler one: **do not send more than the entitlement allows in one
+batch**, read the entitlement from the wire's refusal, and treat a refusal as a signal to stop
+batching rather than as something to pace around. No reply-tracking, no delay ladder.
+
+The reply-tracking design is not wrong, but it solves the rate bound, and the rate bound is not the
+problem. **UNVERIFIED whether a slow server pulls 21.5/s down** -- Kelfour's *"only during slow
+downs"* says it can -- but a client that never batches past its entitlement is not exposed to that
+either.
 
 ### 5.2e The console undercounted: per-group attribution is not reliable
 

@@ -65,6 +65,20 @@ impl<S: ByteSource> SessionActor<S> {
     ///
     /// * **Whether a window is open.** Batching several instant actions ahead
     ///   of the command they modify is the whole feature (`plan/16` §1.1).
+    ///
+    ///   **But batching is not guaranteed to succeed, and this method does not
+    ///   promise it.** How many commands the server accepts at once is an
+    ///   **account entitlement**: MEASURED 3 on the author's premium account,
+    ///   and **1 on free-to-play, which has no type-ahead buffer at all**
+    ///   (`plan/16` §5.2b-bis). On a free account every second command sent
+    ///   before the first completes is refused, so the batch is not smaller --
+    ///   it does not exist.
+    ///
+    ///   So this method's contract is "does not *wait*", never "will be
+    ///   *accepted*". A caller that needs the batch to land must check for the
+    ///   server's refusal; a caller that treats `Sent::Ok` as "the game ran
+    ///   it" is reading a guarantee that was never offered here (see the
+    ///   `Sent` docs).
     /// * **The authority token.** An instant action is not a sequence, so
     ///   `plan/12` §4.1's rule that input is not a claimant applies unchanged
     ///   -- and a behavior holding the authority does not thereby own the
