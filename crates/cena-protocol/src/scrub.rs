@@ -38,7 +38,7 @@
 //!
 //! # Limits, stated rather than implied
 //!
-//! [`scrub`] pseudonymises only names it is **told** about, via
+//! `scrub` pseudonymises only names it is **told** about, via
 //! [`Scrubber::pseudonymise`]. It does not guess which capitalised word is a
 //! person: `Inochi` and `Rawknuckle's` are the same shape, one is a player and
 //! one is a tavern. Deciding that automatically would either mangle room names
@@ -205,12 +205,12 @@ pub fn strip_lich_timestamp(line: &str) -> &str {
     line
 }
 
-/// Replace every `druby://...` URI with [`REDACTED_HOST`].
+/// Replace every `druby://...` URI with `REDACTED_HOST`.
 ///
 /// A URI ends at whitespace or at a character that cannot appear in one on
 /// this wire -- quote, angle bracket, or the sentence-final period Lich writes
 /// after the endpoint. Reached only for lines that survived
-/// [`THIRD_PARTY_MARKERS`], which already drops `druby://`; it exists so the
+/// `THIRD_PARTY_MARKERS`, which already drops `druby://`; it exists so the
 /// redaction does not depend on that ordering, and so a URI reaching this
 /// function by another route is still removed.
 #[must_use]

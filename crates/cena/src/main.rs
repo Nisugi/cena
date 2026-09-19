@@ -9,8 +9,8 @@
 //!
 //! `CLAUDE.md`: "do not log into a live game service without the author
 //! present." No test in this workspace reaches the network, and
-//! `cena-platform`'s [`LiveSource`](cena_platform::LiveSource) and
-//! [`eaccess`](cena_platform::eaccess) both carry a BUILT, NOT RUN header
+//! `cena-platform`'s [`LiveSource`] and
+//! [`eaccess`] both carry a BUILT, NOT RUN header
 //! saying so. Criterion 1 is met by **the author running this**, watching it,
 //! and nothing else.
 //!
@@ -511,8 +511,8 @@ fn open_session(
 ///
 /// The holder's REAL NAME is still not registered: it arrives in the `A`
 /// response and `authenticate` discards it, so there is nothing to register
-/// from. That remains owed, and is the only part of `plan/12` §6.4's debt
-/// still open.
+/// from. That remains owed, and is the last piece of the redaction set that is
+/// known to the protocol but not to the sink.
 fn open_log(character: &str, account: &str) -> io::Result<SessionSink> {
     // Filled further per generation by the supervisor, which registers each
     // connection's launch key before a byte of it is written.

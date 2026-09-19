@@ -1,6 +1,6 @@
 //! The recorder: what a session did, in enough detail to run it again.
 //!
-//! Criterion 7 (`plan/12:465`) is "the whole session is **recorded and replays
+//! Criterion 7 (`plan/12:551`) is "the whole session is **recorded and replays
 //! deterministically** in a test, with no network".
 //!
 //! # What is recorded: BYTES, not frames
@@ -31,7 +31,7 @@
 //! (`crates/cena-arch-tests/tests/file_rules.rs:358-364`) scans only
 //! `crates/cena-protocol/src/`, so this field is outside it. That is the
 //! correct scope and not a loophole: `cena-platform` is *below*
-//! `cena-protocol` (`plan/12:74-76`), and a transport that could not name a
+//! `cena-protocol` (`plan/12:75-77`), and a transport that could not name a
 //! byte could not be a transport. Nothing above protocol ever receives one of
 //! these -- `cena-session` sees `Frame`s, and the recorder it owns is fed by
 //! the same code that feeds the parser.
@@ -220,7 +220,7 @@ impl Recorder {
     }
 
     /// The inbound chunks alone, in order, ready to build a
-    /// [`ReplaySource`](crate::replay::ReplaySource) that reproduces this
+    /// [`ReplaySource`] that reproduces this
     /// session's reads **with the same chunk boundaries**.
     #[must_use]
     pub fn inbound_chunks(&self) -> Vec<Vec<u8>> {

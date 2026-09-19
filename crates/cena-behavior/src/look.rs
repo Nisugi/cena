@@ -3,7 +3,7 @@
 //! # Why `look`, and why on a loop
 //!
 //! `look` is idempotent, has no prerequisites, works from any room, and
-//! "renders a room" is already criterion 2 (`plan/12:457`). Nothing else in
+//! "renders a room" is already criterion 2 (`plan/12:537`). Nothing else in
 //! the game is that safe to send repeatedly.
 //!
 //! But **a single `look` would not exercise criteria 4 and 5.** A one-shot

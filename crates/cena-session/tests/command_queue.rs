@@ -1,14 +1,14 @@
 //! Criteria 3, 5 and 6: the shared queue, interleaving, and a clean
 //! disconnect.
 //!
-//! - **3** (`plan/12:459`): "A manually typed command goes through the same
+//! - **3** (`plan/12:538`): "A manually typed command goes through the same
 //!   queue as the behavior's, returning a typed `Outcome`."
-//! - **5** (`plan/12:462`): "Manual input is **interleaved, not preemptive**:
+//! - **5** (`plan/12:541`): "Manual input is **interleaved, not preemptive**:
 //!   a command typed mid-behavior jumps the queue, runs its round-trip, and
 //!   the behavior **continues**." CORRECTED 2026-09-18 -- an earlier draft
 //!   said manual input preempts, which would make `say hi` mid-hunt abort the
 //!   hunt.
-//! - **6** (`plan/12:464`): "Disconnect is clean: task ends, no leaked
+//! - **6** (`plan/12:550`): "Disconnect is clean: task ends, no leaked
 //!   sockets, no panic."
 
 use cena_platform::{AnsweringSource, ReplaySource};

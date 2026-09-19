@@ -1,7 +1,7 @@
 //! [`ReplaySource`]: the second [`ByteSource`] implementor, and the one
 //! criterion 7 is about.
 //!
-//! `plan/12:465`: "The whole session is recorded and replays deterministically
+//! `plan/12:551`: "The whole session is recorded and replays deterministically
 //! in a test, **with no network**." This type touches no socket, no DNS and no
 //! TLS, which is the literal content of "with no network" -- it cannot reach
 //! one, rather than being asked not to.

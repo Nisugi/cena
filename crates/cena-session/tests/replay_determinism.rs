@@ -1,7 +1,7 @@
 //! Criterion 7: the whole session is recorded and **replays deterministically**
 //! in a test, with no network.
 //!
-//! `plan/12:465`. "With no network" is literal here: [`ReplaySource`] has no
+//! `plan/12:551`. "With no network" is literal here: [`ReplaySource`] has no
 //! socket, no DNS and no TLS -- it *cannot* reach a network, rather than being
 //! asked not to.
 //!

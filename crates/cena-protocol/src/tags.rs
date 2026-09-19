@@ -49,7 +49,7 @@
 //!   sample reached 3,000 files, which is the argument for this tier being
 //!   gated-but-real rather than replaced by a fixed fixture set.
 //!
-//! The last two came from [`tests::every_tag_with_a_handler_arm_is_in_the_table`],
+//! The last two came from `every_tag_with_a_handler_arm_is_in_the_table`,
 //! not from the corpus, and the distinction matters:
 //!
 //! - **`style`** -- the room-name / room-desc preset switch, `<style

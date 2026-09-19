@@ -4,7 +4,7 @@
 //! resolves colour -- that is presentation and Rule 2.1 (`plan/05:270-274`)
 //! keeps it above this crate.
 //!
-//! Entity decoding and control-character stripping live in [`entities`], split
+//! Entity decoding and control-character stripping live in `entities`, split
 //! out under Rule 4.1 (`plan/05:352-353`) when this file went over its cap:
 //! move code down, do not raise the cap. They are re-exported here because
 //! every caller reaches them through `text::`.

@@ -3,17 +3,18 @@
 //! # Why this is a trait, and why it is not one implementor
 //!
 //! `plan/05` Rule -1 forbids a trait with one implementor. This one has two,
-//! both in this crate, both required by Milestone 1: [`LiveSource`](crate::live::LiveSource)
-//! for criterion 1 and [`ReplaySource`](crate::replay::ReplaySource) for
+//! both in this crate, both required by Milestone 1:
+//! [`LiveSource`](crate::live::LiveSource) for criterion 1 and
+//! [`ReplaySource`](crate::replay::ReplaySource) for
 //! criterion 7 ("the whole session is recorded and replays deterministically
-//! in a test, **with no network**", `plan/12:465`). The second implementor is
+//! in a test, **with no network**", `plan/12:551`). The second implementor is
 //! not speculative future-proofing; it is in the same milestone as the first,
 //! and criterion 7 cannot be met without it.
 //!
 //! # Why it yields BYTES, not lines and not frames
 //!
 //! **Lines would duplicate work that already exists.**
-//! [`Parser::push_bytes`](cena_protocol::Parser::push_bytes) is the read
+//! `Parser::push_bytes` (in `cena-protocol`) is the read
 //! boundary: it buffers until a newline, so a tag split across two TCP reads
 //! is rejoined before parsing. Its own doc says so, and the split-at-every-
 //! byte-offset test lives beside it. A line-yielding transport would

@@ -104,7 +104,12 @@ impl LiveConnector {
 /// Deliberately hand-written: the derived one would print the password.
 ///
 /// `Credentials` redacts itself for this reason, and a struct that holds the
-/// same field must not undo that by deriving `Debug` (`plan/12` §6.4).
+/// same field must not undo that by deriving `Debug`.
+///
+/// **CITATION CORRECTED 2026-09-19.** This cited `plan/12` §6.4, which does not
+/// exist -- §6 stops at 6.3. The rule is `CLAUDE.md`'s ("Never commit
+/// credentials") and `plan/10` §11.4's credential redaction; the same mistake
+/// `Redactions`' own `Debug` was hand-written to avoid.
 impl std::fmt::Debug for LiveConnector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LiveConnector")

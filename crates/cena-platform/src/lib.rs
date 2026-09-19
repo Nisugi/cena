@@ -1,9 +1,16 @@
 //! cena-platform
 //!
 //! The bottom layer: the pipe a session's bytes come through, and the log of
-//! what went through it. `plan/12:74` gives this crate "storage, paths,
-//! logging, config primitives (deps: none)" -- none *intra-workspace*, which
+//! what went through it. `plan/12:75` gives this crate "transport, `EAccess`
+//! login, recording, config (deps: none)" -- none *intra-workspace*, which
 //! still holds: nothing here knows what a `Frame` is.
+//!
+//! > **CITATION CORRECTED 2026-09-19.** This cited `plan/12:74` -- the code
+//! > fence, not the row -- and quoted "storage, paths, logging, config
+//! > primitives", which the table has not said since `EAccess` and recording
+//! > were assigned here. Both the line and the words had drifted, which is the
+//! > failure mode `CLAUDE.md` records: a citation that resolves to the wrong
+//! > place does not fail loudly.
 //!
 //! Read [`bytes`] for why the transport is a trait and why it yields bytes
 //! rather than lines or frames, [`live`] for the three spike findings that

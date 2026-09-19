@@ -100,7 +100,7 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
         &["cena-model", "cena-platform", "cena-protocol"],
     ),
     // AMENDED for Milestone 1 Step 2. `cena-platform` is a DEV-dependency
-    // only: criterion 7 (`plan/12:465`) says the replay runs "with no
+    // only: criterion 7 (`plan/12:551`) says the replay runs "with no
     // network", and a behavior test that proves criterion 4's stop latency
     // needs a live session to stop -- which means a `ReplaySource`. This
     // table filters to intra-workspace edges and does not distinguish dev

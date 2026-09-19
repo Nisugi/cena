@@ -166,7 +166,7 @@ pub enum Farewell {
 ///
 /// Cloneable, so a behavior and the manual-input surface hold the same handle
 /// and their commands therefore go through the **same queue** -- which is
-/// literally criterion 3 (`plan/12:459`).
+/// literally criterion 3 (`plan/12:538`).
 #[derive(Clone, Debug)]
 pub struct SessionHandle {
     sender: tokio::sync::mpsc::Sender<Inbox>,

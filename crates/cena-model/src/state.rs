@@ -6,7 +6,7 @@
 //!
 //! # Criterion 2, and what "never raw text" actually forbids
 //!
-//! Criterion 2 (`plan/12:457`) is "renders a room description and prompt from
+//! Criterion 2 (`plan/12:537`) is "renders a room description and prompt from
 //! **typed frames**, never raw text". The failure it rules out is a consumer
 //! that scans display text for `"Obvious exits:"` and splits on commas. So the
 //! room's exits come from [`Frame::Compass`]'s `directions`, and the room's id
@@ -16,7 +16,7 @@
 //! The room *description* is genuinely text: it is prose the game wrote, and
 //! there is nothing else it could be. What makes it typed rather than raw is
 //! that it arrives as a [`Frame::Component`] with `id = "room desc"` and a
-//! parsed [`Runs`](cena_protocol::runs::Runs) body -- the component tells the
+//! parsed [`Runs`] body -- the component tells the
 //! consumer what the prose *is*, and the body has already had its markup
 //! resolved. Vellum stores the inner XML string verbatim here
 //! (`reference/VellumFE/src/parser.rs:803-832`); `Runs` is the fix, and it is
@@ -25,7 +25,7 @@
 //! # Criterion 8 lives here too
 //!
 //! "Unknown tags survive to display (`Frame::UnknownTag`) rather than
-//! panicking" (`plan/12:466`). An unknown tag is **recorded into the state**,
+//! panicking" (`plan/12:552`). An unknown tag is **recorded into the state**,
 //! not merely not-crashed-on: [`GameState::unknown_tags`] is what a display
 //! reads, so a test can assert the tag reached something a user would see
 //! rather than asserting only that nothing blew up. Rule 2.2
@@ -66,7 +66,7 @@ pub type Vitals = std::collections::BTreeMap<String, u32>;
 ///
 /// # `PartialEq` is hand-written, and deliberately ignores one field
 ///
-/// [`Self::game_time_received`] is a **local `Instant`**, so two replays of
+/// `game_time_received` is a **local `Instant`**, so two replays of
 /// one recording produce two different values -- microseconds apart, but
 /// different. Deriving `PartialEq` made `crates/cena-session/tests/
 /// replay_determinism.rs` go red on exactly that (`Instant { t: 311689.3884761s }`
@@ -77,7 +77,7 @@ pub type Vitals = std::collections::BTreeMap<String, u32>;
 ///
 /// It is excluded rather than removed because it is **an observation about
 /// when state arrived, not part of the state**. The server's clock
-/// ([`Self::game_time`]) IS state and is compared; the local instant it
+/// (`game_time`) IS state and is compared; the local instant it
 /// reached us is scaffolding for extrapolating it, and two sessions that saw
 /// the same frames are in the same state regardless of when.
 #[derive(Clone, Debug, Default, Eq)]
@@ -117,7 +117,7 @@ pub struct GameState {
     /// instant the prompt arrived. [`GameState::game_time_now`] extrapolates
     /// it and is what callers want.
     game_time: Option<u32>,
-    /// When [`Self::game_time`] arrived, on the **monotonic** clock.
+    /// When `game_time` arrived, on the **monotonic** clock.
     ///
     /// `Instant`, not `SystemTime`: it must not move when NTP steps the wall
     /// clock or when DST changes, because the only thing it is used for is

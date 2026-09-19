@@ -1,9 +1,9 @@
 //! Criteria 2 and 8: a room renders from **typed frames**, and an unknown tag
 //! survives to display.
 //!
-//! `plan/12:457` (criterion 2): "Renders a room description and prompt from
+//! `plan/12:537` (criterion 2): "Renders a room description and prompt from
 //! **typed frames**, never raw text."
-//! `plan/12:466` (criterion 8): "Unknown tags survive to display
+//! `plan/12:552` (criterion 8): "Unknown tags survive to display
 //! (`Frame::UnknownTag`) rather than panicking."
 //!
 //! # What "never raw text" is asserted to mean

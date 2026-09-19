@@ -8,13 +8,19 @@
 //! # Why this is in `cena-platform`
 //!
 //! **AMENDED 2026-09-18 (author's call), Milestone 1 Step 2.** `plan/12` §2's
-//! crate table assigns `EAccess` to no crate; `plan/12` §7.1 puts "`EAccess` login
-//! (`10`, incl. the spike)" *In* for Milestone 1, so a home had to be chosen.
+//! crate table assigned `EAccess` to no crate, while `plan/12` §7.1 put
+//! "`EAccess` login (`10`, incl. the spike)" *In* for Milestone 1 -- so a home
+//! had to be chosen, and the reasoning below is why it is here.
+//!
+//! **That gap is now closed.** `plan/12:75` reads "transport, `EAccess` login,
+//! recording, config", so the table names this crate explicitly and the
+//! paragraph above is history rather than a live justification. Corrected
+//! 2026-09-19: it still claimed the assignment was missing.
 //!
 //! It is here because **nothing in this module knows what a `Frame` is**,
 //! which is exactly the line `crate`'s own header draws around this layer.
 //! `EAccess` speaks tab-delimited fields over TLS and stops the moment the game
-//! socket opens; it never sees game markup. [`LiveSource::connect_tls`] was
+//! socket opens; it never sees game markup. `LiveSource::connect_tls` was
 //! already here for its transport, and `native-tls` was already a dependency
 //! of this crate for the same reason.
 //!
@@ -31,7 +37,7 @@
 //! The spike is blocking `std::net` with `set_read_timeout`
 //! (`spike/eaccess-spike/src/main.rs:23-24`). `plan/12` §5.5 requires every
 //! wait to be cancellable and a timeout is not a cancellation, so the I/O is
-//! rewritten on [`LiveSource`]. What is ported **verbatim** is the knowledge:
+//! rewritten on `LiveSource`. What is ported **verbatim** is the knowledge:
 //! every refusal below was paid for in debugging on 2026-09-18, and each one
 //! turns a failure that points somewhere else into a failure that names its
 //! own cause.
@@ -45,11 +51,11 @@
 //!
 //! # Layout
 //!
-//! [`wire`] is the **pure** half: the types that cross the wire and the
+//! `wire` is the **pure** half: the types that cross the wire and the
 //! functions that read its fields. Every one is covered by
 //! `tests/eaccess_wire.rs`, because a live login is a terrible place to find
 //! an off-by-one and `CLAUDE.md` forbids running one to find out.
-//! [`handshake`] is the half that touches a socket, and is checked by the
+//! `handshake` is the half that touches a socket, and is checked by the
 //! author's eyes, once.
 
 mod fallback;

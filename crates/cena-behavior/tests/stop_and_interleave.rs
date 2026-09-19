@@ -1,9 +1,9 @@
 //! Criteria 4 and 5: `stop` stops the behavior within `PREEMPT_GRACE`, and a
 //! manual command mid-behavior does **not**.
 //!
-//! - **4** (`plan/12:461`): "The behavior runs, and `stop` stops it within
+//! - **4** (`plan/12:540`): "The behavior runs, and `stop` stops it within
 //!   `PREEMPT_GRACE`, verified."
-//! - **5** (`plan/12:462`): "Manual input is **interleaved, not preemptive**:
+//! - **5** (`plan/12:541`): "Manual input is **interleaved, not preemptive**:
 //!   a command typed mid-behavior jumps the queue, runs its round-trip, and
 //!   the behavior **continues**. Verified by a test that types a command
 //!   mid-sequence and asserts the behavior is still running afterward."
