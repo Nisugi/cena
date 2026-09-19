@@ -486,7 +486,21 @@ bound, and the bound is a **count**, not a sleep.
 **`send_now` needs no delay and no backoff ladder.** It needs to know how many of its sends have
 not yet been answered. That is a smaller mechanism than §5.2 anticipated.
 
-### 5.2d-bis FALSIFIED: 3 per group is NOT sustainable. Depth alone does not explain it.
+### 5.2d-bis NARROWED: the depth holds; the claim that pauses do not matter does not
+
+> **AUTHOR, on reading the first draft of this section:** *"is the model dead?"*
+
+**No -- and calling it dead was an overstatement worth correcting.** The run falsified **one
+clause** of §5.2d, not the model:
+
+| Claim | Status |
+|---|---|
+| The buffer is depth 2 (`1 + premium`), so **3 are accepted at a time** | **HOLDS.** Measured in both runs; the 50ms run's first three rounds were clean, 9 commands, before anything backed up. |
+| A refusal carries no cooldown -- the next command is accepted immediately | **HOLDS.** Unchallenged by this run. |
+| Therefore **the pause does not matter** and a delay-based policy is the wrong shape | **FALSIFIED.** |
+
+Only the third was wrong, and it was always the weakest: it was an *inference* from the first two
+rather than something measured. The depth was measured; its irrelevance to pacing was assumed.
 
 **Run 2026-09-18 20:23**, the author's sequence: `(3 looks | 50ms) x 10`.
 
@@ -543,10 +557,17 @@ The limit is a **queue of depth 2** that drains at a finite rate. Both facts mat
 - **Drain rate** bounds the sustained throughput. Send faster than the server executes and the
   queue stays full no matter how the sends are grouped.
 
-§5.2d's *"a delay-based send policy is the wrong shape"* was therefore **wrong**, or rather right
-for the wrong reason. Pausing does not help *within* the depth, which is what that run showed; but
-pausing absolutely helps *across* rounds, because it is what lets the server catch up. The previous
-run's pauses were not doing nothing -- they were the reason it never backed up.
+§5.2d's *"a delay-based send policy is the wrong shape"* was therefore **wrong**. Pausing does not
+help *within* the depth -- which is all that run could show -- but it absolutely helps *across*
+rounds, because it is what lets the server catch up. Those pauses were not doing nothing; they
+were the reason that run never backed up, and I read their irrelevance within a group as
+irrelevance between groups.
+
+**The next run tests the boundary rather than re-litigating the model** (AUTHOR: *"up the 0.05 to
+0.1"*). 100ms is the one pause that appears in **both** runs: run A used it between groups of 4 and
+was clean at 3.6 cmd/s; run B never tried it and failed at ~19 cmd/s. At 3 per 100ms the cadence is
+near 10/s, between the two, which is where the boundary should be if there is one. A clean result
+reconciles both runs instead of leaving them in apparent contradiction.
 
 #### What this means for `send_now`
 

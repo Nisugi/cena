@@ -1,13 +1,27 @@
 //! Phase 2: the author's sequence, exactly.
 //!
 //! > **AUTHOR, 2026-09-18:** *"send 3 looks at once, sleep 0.05, send 3 looks,
-//! > sleep 0.05 and do that 10 times."*
+//! > sleep 0.05 and do that 10 times."* -- then, on the result: *"is the model
+//! > dead? up the 0.05 to 0.1"*
 //!
 //! ```text
-//! (3 looks | 50ms) x 10
+//! (3 looks | 100ms) x 10
 //! ```
 //!
-//! # Why 3 and 50ms, after the previous run
+//! # Is the model dead? No -- it lost a clause
+//!
+//! The 50ms run refused 17 of 30, which falsified **one** claim: that the
+//! pause does not matter. It did not touch the other: **3 accepted at a time**
+//! has now held in both runs, and the 50ms run's first three rounds were clean
+//! before anything backed up.
+//!
+//! So the depth is not in question. What is in question is the *rate* on top of
+//! it, and 100ms is the sharpest place to ask: it is the **one pause that
+//! appears in both runs**. Run A used it between groups of 4 and was clean; run
+//! B never tried it. If 100ms is clean here it is the drain rate, and the two
+//! runs agree rather than contradicting each other.
+//!
+//! # Why 3 and 100ms, after the previous two runs
 //!
 //! The previous sequence (`4 | 500ms | 4 | 300ms | 4 | 200ms | 4 | 100ms | 4`)
 //! found that **every group of 4 accepted exactly 3 and refused 1, at every
@@ -15,16 +29,16 @@
 //! all landing inside one server second. The pause made no difference at all
 //! (`plan/16` §5.2d).
 //!
-//! That fixed the buffer at **`1 executing + 2 buffered`** and suggested the
-//! accepted count is set by depth rather than by rate. This sequence tests that
-//! directly: **3 is exactly the number the last run accepted**, so if the model
-//! is right this runs clean -- 30 sent, 30 accepted, zero refusals -- even at
-//! 50ms, which is half the shortest pause tried before.
+//! That fixed the buffer at **`1 executing + 2 buffered`**. The 50ms run then
+//! showed the depth is not the whole story: 30 sent, 17 refused, rounds 1-3
+//! clean and refusals from round 4 on, with all 30 commands inside 1.57s
+//! (~19/s) and two server seconds.
 //!
-//! **A refusal here falsifies the model**, and where it appears says how: on
-//! round 1 means 3 was never safe, and later means the buffer refills more
-//! slowly than it drains, so backlog accumulates. Ten rounds with no let-up is
-//! what makes the second visible.
+//! **This run asks whether 100ms is enough to keep up.** Clean means the drain
+//! rate sits between 10/s and 19/s and a client pacing at 100ms is safe today.
+//! Refusals that start late again mean 10/s is still too fast and the boundary
+//! is lower. Refusals from round 1 would mean something else is going on and
+//! the pause is not the variable at all.
 //!
 //! # Two earlier versions of this file measured nothing
 //!
@@ -61,10 +75,16 @@ const GROUP: usize = 3;
 
 /// The pause after each group.
 ///
-/// 50ms: half the shortest pause of the previous run, which still made no
-/// difference. If depth is what governs, this changes nothing; if rate matters
-/// anywhere, this is where it should show.
-const PAUSE: Duration = Duration::from_millis(50);
+/// **100ms, doubled from the 50ms that failed** (AUTHOR: *"up the 0.05 to
+/// 0.1"*). It is the one pause that appears in **both** previous runs: run A
+/// used it between groups of 4 and was clean, run B never tried it.
+///
+/// MEASURED why this is the place to ask: at 50ms the rounds went out every
+/// ~61ms -- the sleep plus ~11ms of send overhead -- so 30 commands crossed the
+/// wire in 1.57s, about **19 per second**. Run A managed **3.6 per second** and
+/// never backed up. 100ms here puts the cadence near **10 per second**, between
+/// the two, which is exactly where the boundary should be if one exists.
+const PAUSE: Duration = Duration::from_millis(100);
 
 /// How many times the group-and-pause repeats.
 ///
