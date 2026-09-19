@@ -88,6 +88,17 @@ impl LiveConnector {
     pub fn character(&self) -> &str {
         &self.character
     }
+
+    /// The account name, **to register for redaction**.
+    ///
+    /// It IS a credential-adjacent identifier -- `plan/10` §4.6 shows it
+    /// echoed in the `A` response and embedded in every character code as
+    /// `W_<ACCOUNT>_<SLOT>` -- so the only legitimate caller is the one
+    /// registering it with [`cena_platform::Redactions`]. Everything else
+    /// should use [`Self::character`].
+    pub fn account_for_redaction(&self) -> &str {
+        &self.account
+    }
 }
 
 /// Deliberately hand-written: the derived one would print the password.

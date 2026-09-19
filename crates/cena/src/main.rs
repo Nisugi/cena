@@ -453,13 +453,14 @@ fn open_session(
     cena_session::SessionHandle,
 ) {
     let character = connector.character().to_owned();
+    let account = connector.account_for_redaction().to_owned();
     // Logging is ON by default. Author's call, 2026-09-18: "we want it on by
     // default during our dev work. That way there's always a log for you."
     //
     // Opt-OUT, not opt-in: a session that fails in an interesting way is
     // exactly the one nobody remembered to enable logging for.
     let (session, handle) = SupervisedSession::new(connector);
-    let session = match open_log(&character) {
+    let session = match open_log(&character, &account) {
         Ok(sink) => {
             eprintln!(
                 "[log] {}
@@ -497,11 +498,26 @@ fn open_session(
 /// connection is written. Registering a key here would cover the first
 /// connection and silently miss every reconnect, which is worse than not
 /// pretending to.
-fn open_log(character: &str) -> io::Result<SessionSink> {
-    // Empty at creation, and filled per generation by the supervisor. The
-    // account name and the holder's real name arrive in the `A` response and
-    // are still not registered -- recorded in `plan/12` §6.4 as owed.
-    let redactions = Redactions::new();
+///
+/// # The ACCOUNT is registered here, and used not to be
+///
+/// `Redactions::account` existed with **no production caller** (review finding
+/// PL-5), so the account name reached the log unredacted wherever the wire
+/// carried it -- and it does carry it: every character code is
+/// `W_<ACCOUNT>_<SLOT>` (`plan/10` §4.6).
+///
+/// Unlike the key it is known before the first byte, so it belongs at creation
+/// rather than per generation. It does not change across reconnects.
+///
+/// The holder's REAL NAME is still not registered: it arrives in the `A`
+/// response and `authenticate` discards it, so there is nothing to register
+/// from. That remains owed, and is the only part of `plan/12` §6.4's debt
+/// still open.
+fn open_log(character: &str, account: &str) -> io::Result<SessionSink> {
+    // Filled further per generation by the supervisor, which registers each
+    // connection's launch key before a byte of it is written.
+    let mut redactions = Redactions::new();
+    redactions.account(account);
     let dir = cena_platform::log_dir().join(cena_platform::date_dir());
     SessionSink::create(&dir, character, &cena_platform::file_stamp(), redactions)
 }

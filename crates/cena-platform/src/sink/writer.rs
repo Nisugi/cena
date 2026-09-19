@@ -105,22 +105,67 @@ impl Redactions {
         out
     }
 
-    /// Apply every redaction to raw wire bytes.
+    /// Apply every redaction to raw wire bytes, **byte for byte**.
     ///
-    /// Works on the UTF-8 lossy view and returns bytes. A credential that is
-    /// not valid UTF-8 would not survive the round trip -- but every secret
-    /// here is one a human typed or the server sent as ASCII, so that case
-    /// does not arise. Stated rather than assumed.
+    /// # Why this does not go through `str`
+    ///
+    /// It used to: on a match the whole chunk round-tripped through
+    /// `String::from_utf8_lossy`, which replaces every invalid byte with
+    /// U+FFFD. So redacting a secret silently corrupted **unrelated bytes in
+    /// the same chunk** -- and the `.bytes` file is meant to be the wire, so a
+    /// fixture cut from such a chunk would differ from what the server sent,
+    /// with nothing to indicate it.
+    ///
+    /// The no-match path was always byte-exact, and
+    /// `bytes_without_a_secret_are_returned_unchanged` only covered that path,
+    /// so the corruption had no test. Review finding PL-5.
+    ///
+    /// Scanning bytes also removes the question of whether a secret is valid
+    /// UTF-8: the old comment reasoned that every secret is ASCII "so that case
+    /// does not arise", which was true but load-bearing. Now it is irrelevant.
     #[must_use]
     pub fn apply_bytes(&self, bytes: &[u8]) -> Vec<u8> {
         if self.secrets.is_empty() {
             return bytes.to_vec();
         }
-        let text = String::from_utf8_lossy(bytes);
-        if self.secrets.iter().any(|(s, _)| text.contains(s.as_str())) {
-            return self.apply(&text).into_bytes();
+        let mut out = Vec::with_capacity(bytes.len());
+        let mut at = 0;
+        'outer: while at < bytes.len() {
+            for (secret, replacement) in &self.secrets {
+                let needle = secret.as_bytes();
+                if bytes[at..].starts_with(needle) {
+                    out.extend_from_slice(replacement.as_bytes());
+                    at += needle.len();
+                    continue 'outer;
+                }
+            }
+            out.push(bytes[at]);
+            at += 1;
         }
-        bytes.to_vec()
+        out
+    }
+
+    /// The registered secrets, for the sink's boundary arithmetic.
+    ///
+    /// Crate-visible, not public: the values are credentials, and the only
+    /// legitimate caller is the sink deciding where a chunk may be cut.
+    pub(crate) fn secrets(&self) -> &[(String, &'static str)] {
+        &self.secrets
+    }
+
+    /// The length of the longest registered secret, in bytes.
+    ///
+    /// The sink uses this to size the tail it carries between chunks: a secret
+    /// can straddle a read boundary, and holding back `longest - 1` bytes
+    /// guarantees any secret is whole in some chunk. Zero when nothing is
+    /// registered.
+    #[must_use]
+    pub fn longest_secret(&self) -> usize {
+        self.secrets
+            .iter()
+            .map(|(secret, _)| secret.len())
+            .max()
+            .unwrap_or(0)
     }
 
     /// Whether anything is being redacted. For a startup line that says so,
@@ -153,10 +198,35 @@ pub struct SessionSink {
     /// `stamp_bytes` is: a threshold that changed mid-session would produce
     /// parts of inconsistent size.
     rotate_after: u64,
+    /// Inbound bytes held back so a secret cannot hide in a chunk boundary.
+    ///
+    /// Bounded by `longest_secret - 1`, and empty whenever nothing is
+    /// registered. See `redact_across_chunks`; `drain_pending` is what
+    /// guarantees these bytes still reach the file.
+    pending: Vec<u8>,
     /// Whether the bytes file carries per-line times. Read once at creation
     /// rather than per line: an env var that changed mid-session would produce
     /// a file that is half one format.
     stamp_bytes: bool,
+}
+
+/// Flush on drop, so a sink that is simply dropped still leaves a complete
+/// file.
+///
+/// `BufWriter` already does this for its own buffer, but the straddle tail
+/// (`redact_across_chunks`) is OURS: bytes the wire really carried, held back
+/// deliberately. Losing them would make the `.bytes` file silently short --
+/// exactly the failure mode the file exists to prevent, since it is what
+/// fixtures are cut from.
+///
+/// Errors are swallowed, as they must be in `Drop`. Callers that need to KNOW
+/// the write succeeded call [`SessionSink::flush`], which returns the error.
+impl Drop for SessionSink {
+    fn drop(&mut self) {
+        let _ = self.drain_pending();
+        let _ = self.bytes.flush();
+        let _ = self.events.flush();
+    }
 }
 
 impl SessionSink {
@@ -273,6 +343,7 @@ impl SessionSink {
             bytes_path,
             events_path,
             lines_written: 0,
+            pending: Vec::new(),
             stamp_bytes: bytes_timestamps_enabled(),
             stem: dir.join(safe_stem),
             part: 0,
@@ -297,7 +368,11 @@ impl SessionSink {
     ///
     /// Any write failure.
     pub fn wire(&mut self, inbound: bool, bytes: &[u8]) -> io::Result<()> {
-        let redacted = self.redactions.apply_bytes(bytes);
+        // `None` means every byte is still held back waiting for more: nothing
+        // to write yet, and writing a stamp for it would invent a line.
+        let Some(redacted) = self.redact_across_chunks(inbound, bytes) else {
+            return Ok(());
+        };
         if self.stamp_bytes {
             write!(self.bytes, "{}: ", line_time())?;
         }
@@ -345,6 +420,121 @@ impl SessionSink {
         Ok(())
     }
 
+    /// Redact `bytes`, carrying a tail forward so a secret cannot hide in a
+    /// chunk boundary.
+    ///
+    /// # The bug this exists for
+    ///
+    /// `apply_bytes` sees one `read` at a time, and a TCP read boundary falls
+    /// wherever the network puts it. A launch key split across two reads
+    /// matched neither half and was **written in the clear** -- the live
+    /// credential, in a file on disk. Review finding PL-5, which noted "No test
+    /// covers it."
+    ///
+    /// # How the tail works, and why it is bounded
+    ///
+    /// Holding back `longest_secret - 1` bytes guarantees that any secret is
+    /// wholly inside some chunk: a secret of length `n` cannot span more than
+    /// `n - 1` bytes of held-back tail plus the new chunk. The tail is bounded
+    /// by the longest registered secret, so it cannot grow with the session.
+    ///
+    /// # What this costs, stated plainly
+    ///
+    /// **Chunk boundaries shift** by up to `longest_secret - 1` bytes while
+    /// secrets are registered, and this function's own doc says boundaries are
+    /// preserved so a replay drives the parser's partial-line path with a real
+    /// split. That guarantee is weakened here, deliberately:
+    ///
+    /// - the boundary is still a boundary the wire *could* have produced -- no
+    ///   byte is invented, reordered or dropped, only deferred;
+    /// - [`Recorder`](crate::record::Recorder) keeps its own in-memory copy and
+    ///   is unaffected, so live replay fidelity is untouched;
+    /// - a credential in a log is a worse outcome than a shifted split in a
+    ///   fixture.
+    ///
+    /// **Outbound writes are not deferred.** They are whole commands, framed by
+    /// the caller rather than by a read boundary, so there is nothing to
+    /// straddle -- and deferring one would move it after inbound bytes that
+    /// really did arrive later, corrupting the order the file records.
+    fn redact_across_chunks(&mut self, inbound: bool, bytes: &[u8]) -> Option<Vec<u8>> {
+        let hold = self.redactions.longest_secret().saturating_sub(1);
+        if hold == 0 || !inbound {
+            // Nothing registered, or an outbound command: redact in place.
+            return Some(self.redactions.apply_bytes(bytes));
+        }
+
+        self.pending.extend_from_slice(bytes);
+        // Keep back the last `hold` bytes: a secret could still be completed by
+        // the next chunk.
+        let mut safe = self.pending.len().saturating_sub(hold);
+        if safe == 0 {
+            return None;
+        }
+
+        // **And do not cut through a secret that is ALREADY whole.** Holding
+        // back `hold` bytes stops an INCOMING boundary from splitting a secret,
+        // but the cut made here is a second boundary, and a naive one lands
+        // mid-secret just as easily.
+        //
+        // Found by the straddle test still failing after the hold was added:
+        // the key was whole in `pending` and got sliced at byte 17 of 48, so
+        // neither piece matched. Walk the cut backwards past any secret that
+        // spans it.
+        safe = self.cut_clear_of_secrets(safe);
+        if safe == 0 {
+            return None;
+        }
+        let head: Vec<u8> = self.pending.drain(..safe).collect();
+        Some(self.redactions.apply_bytes(&head))
+    }
+
+    /// Move a proposed cut back until no registered secret spans it.
+    ///
+    /// A secret occupying `[start, start + len)` spans the cut when
+    /// `start < cut < start + len`. Moving the cut to `start` puts the whole
+    /// secret in the held-back tail, where the next chunk -- or
+    /// `drain_pending` -- redacts it intact.
+    ///
+    /// Bounded: only secrets beginning within `longest_secret` bytes before the
+    /// cut can span it, so the scan is over a fixed-size window and the cut
+    /// moves back at most `longest_secret - 1` bytes.
+    fn cut_clear_of_secrets(&self, cut: usize) -> usize {
+        let window = self.redactions.longest_secret();
+        let from = cut.saturating_sub(window);
+        let mut earliest = cut;
+        for (secret, _) in self.redactions.secrets() {
+            let needle = secret.as_bytes();
+            for start in from..cut {
+                if start + needle.len() > cut
+                    && self.pending.len() >= start + needle.len()
+                    && self.pending[start..].starts_with(needle)
+                {
+                    earliest = earliest.min(start);
+                }
+            }
+        }
+        earliest
+    }
+
+    /// Write out whatever the straddle tail is still holding.
+    ///
+    /// Called before a flush, a roll and a close: a tail left in memory is
+    /// bytes the wire really carried, and losing them would make the `.bytes`
+    /// file an incomplete record -- the opposite of its purpose. It is redacted
+    /// on the way out like any other chunk.
+    ///
+    /// # Errors
+    ///
+    /// Any write failure.
+    fn drain_pending(&mut self) -> io::Result<()> {
+        if self.pending.is_empty() {
+            return Ok(());
+        }
+        let tail: Vec<u8> = std::mem::take(&mut self.pending);
+        let redacted = self.redactions.apply_bytes(&tail);
+        self.bytes.write_all(&redacted)
+    }
+
     /// Close the current `.bytes` part and open the next.
     ///
     /// Only the bytes file rolls. The debug log takes a handful of lines per
@@ -366,6 +556,10 @@ impl SessionSink {
     /// swallows it -- a session must survive a failed log (`plan/12` §5.5) --
     /// but it is returned rather than hidden so the caller *can* report it.
     fn roll(&mut self) -> io::Result<()> {
+        // BEFORE the part closes: these bytes arrived while this part was
+        // open, so they belong in it. Deferring them to the next part would
+        // reorder the record across a part boundary.
+        self.drain_pending()?;
         self.bytes.flush()?;
         self.part += 1;
         let next = self.stem.with_file_name(format!(
@@ -457,6 +651,10 @@ impl SessionSink {
     ///
     /// Any flush failure.
     pub fn flush(&mut self) -> io::Result<()> {
+        // A flush that left the straddle tail in memory would be a lie: the
+        // caller flushes to make the file complete, and `plan/12` §5.5 wants a
+        // session that panics to still leave the log explaining why.
+        self.drain_pending()?;
         self.bytes.flush()?;
         self.events.flush()
     }

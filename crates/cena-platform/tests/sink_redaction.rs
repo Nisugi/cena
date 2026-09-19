@@ -288,3 +288,200 @@ fn the_header_does_not_claim_nothing_is_redacted_when_a_key_arrives_later() {
         "the marker must name what was registered"
     );
 }
+
+/// **PL-5: a secret split across two reads was written in clear.**
+///
+/// `apply_bytes` is called once per `read`, and a TCP read boundary falls
+/// wherever the network puts it. The launch key is ~32 bytes and arrives in the
+/// game handshake, so a chunk boundary landing inside it is ordinary, not
+/// exotic -- and the result is the live credential sitting in a `.bytes` file
+/// in the clear.
+///
+/// The review called this out with "No test covers it." This is that test.
+#[test]
+fn a_secret_split_across_two_writes_is_still_redacted() {
+    const KEY: &str = "abcdefghijklmnopqrstuvwxyz012345";
+    let dir = std::env::temp_dir().join("cena-sink-straddle");
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut sink = cena_platform::SessionSink::create(&dir, "Tester", "stamp", Redactions::new())
+        .expect("the sink must open");
+    sink.redact_key(KEY);
+
+    // The boundary falls INSIDE the key, as a read boundary may.
+    let (head, tail) = KEY.split_at(14);
+    sink.wire(true, format!("<login key=\"{head}").as_bytes())
+        .expect("write must work");
+    sink.wire(true, format!("{tail}\"/>\n").as_bytes())
+        .expect("write must work");
+    sink.flush().expect("flush must work");
+    let path = sink.bytes_path().to_owned();
+    drop(sink);
+
+    let written = std::fs::read(&path).expect("the wire file must be readable");
+    let text = String::from_utf8_lossy(&written);
+    assert!(
+        !text.contains(KEY),
+        "the launch key was written in CLEAR across a chunk boundary:\n{text}"
+    );
+}
+
+/// **PL-5: a match must not corrupt unrelated bytes in the same chunk.**
+///
+/// On any match the whole chunk used to round-trip through
+/// `String::from_utf8_lossy`, so non-UTF-8 bytes *elsewhere in that chunk*
+/// became U+FFFD. `bytes_without_a_secret_are_returned_unchanged` covered only
+/// the no-match path, so nothing caught it.
+///
+/// This matters because the `.bytes` file is meant to be the WIRE. A fixture
+/// cut from a chunk that happened to contain a secret would differ from what
+/// the server actually sent, and the corruption is silent.
+#[test]
+fn redacting_a_chunk_leaves_its_other_bytes_byte_exact() {
+    let mut redactions = Redactions::new();
+    redactions.key("supersecretkey-0123456789");
+
+    // A latin-1 byte that is not valid UTF-8, beside the secret.
+    let mut chunk = b"before \xff ".to_vec();
+    chunk.extend_from_slice(b"supersecretkey-0123456789");
+    chunk.extend_from_slice(b" \xfe after");
+
+    let out = redactions.apply_bytes(&chunk);
+
+    assert!(
+        !out.windows(25).any(|w| w == b"supersecretkey-0123456789"),
+        "the secret survived"
+    );
+    assert!(
+        out.contains(&0xff) && out.contains(&0xfe),
+        "non-UTF-8 bytes elsewhere in the chunk were replaced with U+FFFD, so \
+         the `.bytes` file no longer holds what the server sent"
+    );
+}
+
+/// **Holding bytes back must never LOSE them.**
+///
+/// The straddle fix defers up to `longest_secret - 1` bytes. That is only
+/// acceptable if every deferred byte still reaches the file -- a `.bytes` file
+/// silently short is worse than one with a late boundary, because it is what
+/// fixtures are cut from and what criterion 7 replays.
+#[test]
+fn every_byte_still_reaches_the_file_despite_the_held_back_tail() {
+    let dir = std::env::temp_dir().join("cena-sink-noloss");
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut sink = cena_platform::SessionSink::create(&dir, "Tester", "stamp", Redactions::new())
+        .expect("the sink must open");
+    sink.redact_key("a-key-that-never-appears-in-the-payload");
+
+    let mut expected = Vec::new();
+    for i in 0..20u8 {
+        let chunk = format!("<line n='{i}'/>");
+        expected.extend_from_slice(chunk.as_bytes());
+        sink.wire(true, chunk.as_bytes()).expect("write must work");
+    }
+    sink.flush().expect("flush must work");
+    let path = sink.bytes_path().to_owned();
+    drop(sink);
+
+    let written = std::fs::read(&path).expect("readable");
+    assert_eq!(
+        written, expected,
+        "bytes were lost or altered by the straddle tail"
+    );
+}
+
+/// A secret split across MANY chunks, one byte at a time.
+///
+/// The pathological case for a carry-over tail: if the hold were ever computed
+/// per-chunk rather than against the longest secret, this is what would defeat
+/// it.
+#[test]
+fn a_secret_dribbled_one_byte_at_a_time_is_still_redacted() {
+    const KEY: &str = "dribbled-secret-0123456789abcdef";
+    let dir = std::env::temp_dir().join("cena-sink-dribble");
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut sink = cena_platform::SessionSink::create(&dir, "Tester", "stamp", Redactions::new())
+        .expect("the sink must open");
+    sink.redact_key(KEY);
+
+    for byte in format!("<k>{KEY}</k>\n").into_bytes() {
+        sink.wire(true, &[byte]).expect("write must work");
+    }
+    sink.flush().expect("flush must work");
+    let path = sink.bytes_path().to_owned();
+    drop(sink);
+
+    let written = String::from_utf8_lossy(&std::fs::read(&path).expect("readable")).into_owned();
+    assert!(
+        !written.contains(KEY),
+        "a secret arriving one byte per read was written in clear:\n{written}"
+    );
+    assert!(written.contains("<KEY>"), "{written}");
+}
+
+/// Dropping a sink without flushing must still write the held-back tail.
+///
+/// `BufWriter` flushes its own buffer on drop, but the straddle tail is ours.
+/// Without a `Drop` impl the last `longest_secret - 1` bytes of every session
+/// would simply vanish.
+#[test]
+fn dropping_the_sink_writes_the_tail() {
+    let dir = std::env::temp_dir().join("cena-sink-drop");
+    let _ = std::fs::remove_dir_all(&dir);
+    let path = {
+        let mut sink =
+            cena_platform::SessionSink::create(&dir, "Tester", "stamp", Redactions::new())
+                .expect("the sink must open");
+        sink.redact_key("some-registered-key-value-here-32");
+        sink.wire(true, b"tail bytes that were never flushed")
+            .expect("write must work");
+        let path = sink.bytes_path().to_owned();
+        // NO flush: the drop must do it.
+        path
+    };
+
+    let written = std::fs::read(&path).expect("readable");
+    assert_eq!(
+        written, b"tail bytes that were never flushed",
+        "the held-back tail was lost when the sink was dropped"
+    );
+}
+
+/// **PL-5: the account name reached the log because nothing registered it.**
+///
+/// `Redactions::account` existed with no production caller. The account is not
+/// a password, but it is not innocuous either: every character code on the wire
+/// is `W_<ACCOUNT>_<SLOT>` (`plan/10` §4.6), so it appears in ordinary game
+/// traffic, and the review's PL-4 already closed the same exposure for stderr.
+///
+/// The header must also NAME what it covers. Saying "yes" when only a key was
+/// registered told a reader the account was scrubbed when it was not.
+#[test]
+fn a_registered_account_is_redacted_and_the_header_names_it() {
+    let dir = std::env::temp_dir().join("cena-sink-account");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let mut redactions = Redactions::new();
+    redactions.account("someaccount");
+    let mut sink = cena_platform::SessionSink::create(&dir, "Tester", "stamp", redactions)
+        .expect("the sink must open");
+
+    // The shape the wire really carries.
+    sink.wire(true, b"<charID id=\"W_SOMEACCOUNT_001\"/>\n")
+        .expect("write must work");
+    sink.flush().expect("flush must work");
+    let bytes_path = sink.bytes_path().to_owned();
+    let events_path = sink.events_path().to_owned();
+    drop(sink);
+
+    let wire = String::from_utf8_lossy(&std::fs::read(&bytes_path).expect("readable")).into_owned();
+    assert!(
+        !wire.to_ascii_uppercase().contains("SOMEACCOUNT"),
+        "the account name reached the wire log:\n{wire}"
+    );
+
+    let header = std::fs::read_to_string(&events_path).expect("readable");
+    assert!(
+        header.contains("account and character"),
+        "the header must name WHAT is registered, not just say yes:\n{header}"
+    );
+}
