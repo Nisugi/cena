@@ -21,7 +21,23 @@ pub(super) fn include_str_of_sibling(relative: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src")
         .join(relative);
-    std::fs::read_to_string(path).unwrap_or_default()
+    // **NOT `unwrap_or_default()`.** A missing or renamed file returned `""`,
+    // from which `match_arm_names` finds zero names, and a cross-check over
+    // zero names passes. The test whose whole purpose is to notice that the
+    // table and the dispatcher have drifted apart would then be reporting
+    // "they agree" about a file it never read. That is the dead-ratchet shape
+    // `table_tests.rs` warns about, in the ratchet itself (review PR-6).
+    //
+    // A test helper may panic (`clippy.toml` scopes the lints away from
+    // tests), and a panic naming the path is the only answer that cannot be
+    // mistaken for a pass.
+    match std::fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(e) => panic!(
+            "the tag/arm cross-check could not read {}: {e}. A source file was              renamed or moved without updating `sources` in `table_tests.rs`;              reading it as empty would make this test pass by seeing nothing.",
+            path.display()
+        ),
+    }
 }
 
 /// Every `"name"` appearing in a match-arm position in `source`.

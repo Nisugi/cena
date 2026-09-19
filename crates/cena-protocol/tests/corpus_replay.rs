@@ -47,8 +47,20 @@ const DEFAULT_FILE_BUDGET: usize = 60;
 
 /// The corpus root, or `None` when the tier is not enabled.
 fn corpus_root() -> Option<PathBuf> {
-    let raw = std::env::var(CORPUS_VAR).ok()?;
-    if raw.trim().is_empty() {
+    root_of(std::env::var_os(CORPUS_VAR).as_deref())
+}
+
+/// [`corpus_root`]'s decision, over a given value rather than the environment.
+///
+/// Split out so the gate test can exercise BOTH branches. Reading the variable
+/// directly meant the only way to reach the enabled branch was to set a
+/// process-wide variable -- which `unsafe_code = "deny"` forbids (`set_var` is
+/// `unsafe` since Rust 2024) and which would race every other test in the
+/// binary. The value is the input; the environment is merely where it usually
+/// comes from.
+fn root_of(raw: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
+    let raw = raw?;
+    if raw.to_string_lossy().trim().is_empty() {
         return None;
     }
     let path = PathBuf::from(raw);
@@ -212,6 +224,7 @@ impl Findings {
 }
 
 #[test]
+#[ignore = "Tier 2: needs CENA_CORPUS; run with --ignored"]
 fn the_corpus_replays_without_panicking_or_meeting_an_unknown_tag() {
     let Some(root) = corpus_root() else {
         skipped();
@@ -283,6 +296,7 @@ fn the_corpus_replays_without_panicking_or_meeting_an_unknown_tag() {
 }
 
 #[test]
+#[ignore = "Tier 2: needs CENA_CORPUS; run with --ignored"]
 fn the_prompt_barrier_drains_the_stream_stack_on_real_traffic() {
     // NOT stream-stack balance: the corpus is genuinely unbalanced (1.301
     // push:pop) because pushStream is not a stack. What must hold is that a
@@ -392,11 +406,30 @@ fn the_gate_itself_is_wired_correctly() {
         assert!(!files.is_empty());
     } else {
         skipped();
-        // The var really is absent, not empty-but-set-and-mistaken.
+        // **NOT a re-statement of why we are here.**
+        //
+        // This used to assert `var is empty-or-absent`, which is character for
+        // character the condition under which `corpus_root()` returned `None`.
+        // It could not fail: reaching the branch proved the assertion. Found
+        // by review (PR-5).
+        //
+        // What is worth asserting is that the two states are DISTINGUISHABLE
+        // -- that `corpus_root()` answers from the variable and not by always
+        // returning `None`. A directory that certainly exists, fed through the
+        // same function, must come back `Some`.
+        let real = std::env::temp_dir();
         assert!(
-            std::env::var(CORPUS_VAR).is_ok_and(|v| v.trim().is_empty())
-                || std::env::var(CORPUS_VAR).is_err(),
-            "corpus_root() returned None while {CORPUS_VAR} holds a value"
+            root_of(Some(real.as_os_str())).is_some(),
+            "corpus_root()'s logic answers None even for {}, so it is not              reading {CORPUS_VAR} at all and the enabled branch could never              run -- which would make the Tier 2 replay permanently dead              without any test going red.",
+            real.display()
+        );
+        assert!(
+            root_of(None).is_none(),
+            "an absent {CORPUS_VAR} must yield None"
+        );
+        assert!(
+            root_of(Some(std::ffi::OsStr::new("   "))).is_none(),
+            "a whitespace-only {CORPUS_VAR} must yield None, not a path"
         );
     }
 }

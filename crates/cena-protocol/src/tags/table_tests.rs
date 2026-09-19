@@ -101,9 +101,22 @@ fn every_tag_with_a_handler_arm_is_in_the_table() {
     // a hand edit to a literal, which is exactly what a literal scan sees.
     //
     // Goes RED on deleting any of those seven entries (VERIFIED).
+    // **Every file holding a name arm, not just the two it started with.**
+    //
+    // `markup.rs` was split OUT of `dispatch.rs` and took `a`, `d`, `preset`,
+    // `style`, `pushBold`, `popBold` and `output` with it; `parser.rs` holds
+    // `is_paired`. Neither was added here, so this cross-check -- the test
+    // that found the `style` gap back when those arms lived in `dispatch.rs`
+    // -- had been blind to them ever since (review PR-6).
+    //
+    // A split moves code out from under a lexical scan without changing a
+    // line of it. Nothing fails; the scan simply stops seeing it. When a file
+    // in this list is split, its children belong here.
     let sources = [
         include_str_of_sibling("parser/dispatch.rs"),
         include_str_of_sibling("parser/thin.rs"),
+        include_str_of_sibling("parser/markup.rs"),
+        include_str_of_sibling("parser.rs"),
     ];
     let mut missing = Vec::new();
     for source in &sources {

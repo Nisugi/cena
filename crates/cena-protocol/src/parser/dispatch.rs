@@ -310,13 +310,33 @@ impl Parser {
     fn prompt(&mut self, tag: &str, frames: &mut Vec<Frame>) {
         let time = text::attribute(tag, "time").unwrap_or_default();
         let inner = inner_text(tag);
-        frames.push(Frame::Prompt {
-            time,
-            text: text::decode_entities(&inner),
-        });
+        // **The forced pops come BEFORE the prompt.**
+        //
+        // A consumer that snapshots on `Prompt` -- which is the documented
+        // round boundary, and what makes prompts "trustworthy in both modes"
+        // above -- would otherwise snapshot with streams still open, and see
+        // them close after the boundary they define. Vellum emits them first
+        // (`src/parser/handlers.rs:306-314,328`). Found by review (PR-12).
         for open in std::mem::take(&mut self.streams).into_iter().rev() {
             frames.push(Frame::StreamPopForced { id: open.id });
         }
+        frames.push(Frame::Prompt {
+            time,
+            // **STRIPPED, like every other text that reaches a terminal.**
+            //
+            // `emit.rs:48`, `emit.rs:135` and `inner.rs:63` all pair
+            // `decode_entities` with `strip_control_chars`; this one did not,
+            // and the prompt is printed straight to stderr by `run.rs`.
+            //
+            // The game socket is PLAIN TCP (`plan/10`), so the bytes are not
+            // merely untrusted-because-remote, they are modifiable in flight.
+            // `<prompt time="1">&#27;]52;c;...&#7;</prompt>` decodes to a real
+            // ESC and BEL: an OSC-52 sequence writes the terminal's clipboard.
+            // Entities are decoded HERE, so the control characters do not
+            // exist on the wire for anything upstream to have caught.
+            // Found by review (PR-9).
+            text: text::strip_control_chars(&text::decode_entities(&inner)),
+        });
         self.bold_depth = 0;
         self.presets.clear();
         self.links.clear();
