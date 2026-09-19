@@ -38,12 +38,18 @@ use cena_protocol::Frame;
 use cena_protocol::runs::Runs;
 use std::time::Instant;
 
+mod character;
 mod clock;
 mod idle;
+mod inventory;
+mod nouns;
 mod reconnect;
 mod room;
 mod streams;
 
+pub use character::{Character, Experience, Injury};
+pub use inventory::{Container, Inventory};
+pub use nouns::{Found, Where};
 pub use room::{Room, RoomItem};
 
 /// A vitals gauge, as a percentage.
@@ -121,6 +127,10 @@ pub struct GameState {
     /// unmodelled tag to reach the user, so it is kept here rather than
     /// counted and dropped.
     pub unknown_tags: Vec<UnknownTag>,
+    /// Experience, injuries, stance and encumbrance. `plan/18` §2b.
+    pub character: Character,
+    /// Containers and their contents. `plan/18` §2d.
+    pub inventory: Inventory,
     /// Whether the server has warned that this character is idle.
     ///
     /// Private, and read through [`GameState::idle_warned`] /
@@ -188,8 +198,12 @@ impl PartialEq for GameState {
             idle_warning,
             streams,
             pending,
+            character,
+            inventory,
         } = self;
-        idle_warning == &other.idle_warning
+        inventory == &other.inventory
+            && character == &other.character
+            && idle_warning == &other.idle_warning
             && streams == &other.streams
             && pending == &other.pending
             && room == &other.room
@@ -339,6 +353,31 @@ impl GameState {
             Frame::LeftHand { item, .. } => self.left_hand = Some(item.clone()),
             Frame::RightHand { item, .. } => self.right_hand = Some(item.clone()),
             Frame::RoundTime { value } => self.roundtime_ends = Some(*value),
+            // `plan/18` step 4. `<container>` declares, `<clearContainer>`
+            // empties, `<inv>` adds one line; see `state/inventory.rs`.
+            Frame::Container { id, title, target } => {
+                self.inventory
+                    .declare(id, title.as_deref(), target.as_deref());
+            }
+            Frame::ClearContainer { id } => self.inventory.clear(id),
+            Frame::DeleteContainer { id } => self.inventory.delete(id),
+            Frame::ContainerItem {
+                container_id,
+                content,
+            } => self.inventory.add_line(container_id, content),
+            // `plan/18` step 3. Both carry the enclosing dialog, which is the
+            // only thing separating `yourLvl` in `expr` from a map legend, or a
+            // body part from one of the 1,313 `nomap.jpg` tiles.
+            Frame::Label {
+                id,
+                value,
+                dialog: Some(dialog),
+            } => self.character.apply_label(dialog, id, value),
+            Frame::InjuryImage { id, name, dialog } => {
+                if dialog.as_deref() == Some("injuries") {
+                    self.character.apply_injury_image(id, name);
+                }
+            }
             Frame::ProgressBar(bar) => {
                 // ONLY the player's own bars. `plan/12` §7.1 scopes this to
                 // the character's vitals, and `<progressBar>` is also how the
@@ -380,6 +419,17 @@ impl GameState {
                             percent: bar.percent,
                         },
                     );
+                    return false;
+                }
+                // Step 3's dialogs, before vitals and for the same reason
+                // effects come before both: one `<progressBar>` shape carries
+                // gauges, stance, encumbrance and advancement, and the enclosing
+                // dialog is the only thing that tells them apart.
+                if let Some(dialog) = bar.dialog.as_deref()
+                    && self
+                        .character
+                        .apply_bar(dialog, &bar.id, &bar.text, bar.percent)
+                {
                     return false;
                 }
                 let is_own = bar

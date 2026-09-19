@@ -241,7 +241,7 @@ impl Parser {
             // --- everything else: typed, thin, never dropped ---------------
             _ => {
                 self.flush(buffer, frames);
-                frames.push(thin_frame(name, tag));
+                frames.push(thin_frame(name, tag, self.dialog.as_deref()));
             }
         }
     }

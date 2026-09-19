@@ -76,7 +76,7 @@ fn a_double_quoted_value_carries_an_apostrophe_intact() {
     let found = frames(b"<label id='TVLabel' value=\"Ta'Vaalor Environs\" justify='4'/>\n")
         .into_iter()
         .find_map(|f| match f {
-            Frame::Label { id, value } => Some((id, value)),
+            Frame::Label { id, value, .. } => Some((id, value)),
             _ => None,
         });
     assert_eq!(

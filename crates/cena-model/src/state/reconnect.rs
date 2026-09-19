@@ -88,6 +88,8 @@ impl GameState {
             idle_warning,
             streams,
             pending,
+            character,
+            inventory,
         } = self;
 
         // --- Cleared: the burst does not carry these -----------------------
@@ -151,6 +153,17 @@ impl GameState {
         // line is half of a sentence nobody will finish.
         streams.clear();
         pending.clear();
+
+        // Experience, injuries, stance and encumbrance. MEASURED (`plan/15` §2b):
+        // NONE of the four dialogs is in the login burst -- they arrive only
+        // after the first command, which is precisely §5.2's "invalidated" set.
+        *character = super::Character::default();
+
+        // Containers. The login burst DOES re-send worn items, but not the
+        // contents of every container, and a stale container mirror is exactly
+        // what Lich's `Inventory.reset!` exists to drop on "a session reset /
+        // reconnect" (`lib/common/inventory.rb:1014-1045`).
+        *inventory = super::Inventory::default();
 
         // --- Kept: see the method docs -------------------------------------
         let _ = vitals;

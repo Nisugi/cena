@@ -65,8 +65,9 @@ use tokio_util::sync::CancellationToken;
 /// reason: bounded everywhere (`plan/12` §5.5).
 const COMMAND_CHANNEL_BOUND: usize = 32;
 
-/// Event broadcast ring size. Matches [`crate::actor`]'s.
-const EVENT_CHANNEL_BOUND: usize = 256;
+/// Event broadcast ring size. Matches [`crate::actor`]'s, which carries the
+/// measurement: the login burst is 794-1,151 frames.
+const EVENT_CHANNEL_BOUND: usize = 2048;
 
 /// Why a supervised session stopped reconnecting.
 ///

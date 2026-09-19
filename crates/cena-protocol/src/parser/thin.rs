@@ -34,7 +34,7 @@ const PULSE_MAX_SECS: u32 = 75;
 /// Rule 2.2's second half lives here. A name in [`tags::is_known`] gets its
 /// variant; a name that is not gets [`Frame::UnknownTag`] with the raw bytes,
 /// so a protocol change announces itself instead of being swallowed.
-pub(super) fn thin_frame(name: &str, tag: &str) -> Frame {
+pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
     let attrs: Attrs = text::attributes(tag);
     let id = || text::attribute(tag, "id").unwrap_or_default();
     match name {
@@ -76,6 +76,7 @@ pub(super) fn thin_frame(name: &str, tag: &str) -> Frame {
         "label" => Frame::Label {
             id: id(),
             value: text::attribute(tag, "value").unwrap_or_else(|| inner_display_text(tag)),
+            dialog: dialog.map(str::to_owned),
         },
         "crtrStatus" => Frame::CreatureStatus {
             id: text::attribute(tag, "exist").unwrap_or_default(),
@@ -94,6 +95,7 @@ pub(super) fn thin_frame(name: &str, tag: &str) -> Frame {
         "image" => Frame::InjuryImage {
             id: id(),
             name: text::attribute(tag, "name").unwrap_or_default(),
+            dialog: dialog.map(str::to_owned),
         },
         // The `Icon` prefix is kept, deliberately, where Vellum strips it
         // (`src/parser/handlers.rs:427`). The wire id IS `IconSTUNNED` in all

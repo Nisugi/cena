@@ -163,7 +163,21 @@ pub enum Frame {
     /// `<progressBar>`, bare or inside `<dialogData>`.
     ProgressBar(ProgressBar),
     /// `<label id= value=>`.
-    Label { id: String, value: String },
+    /// `<label id= value=>`, and **which dialog enclosed it**.
+    ///
+    /// The dialog is load-bearing for the same reason it is on
+    /// [`ProgressBar`](crate::frame::ProgressBar) and
+    /// [`Self::InjuryImage`]: `<label id='yourLvl'>` means a character level
+    /// inside `expr` and a map legend inside `mapViewMain`, and the id alone
+    /// cannot tell them apart.
+    Label {
+        /// `id=`.
+        id: String,
+        /// `value=`.
+        value: String,
+        /// The enclosing `<dialogData id=>`, if any.
+        dialog: Option<String>,
+    },
     /// `<compass><dir value=>` -- the obvious exits, as direction tokens.
     Compass { directions: Vec<String> },
     /// `<component id=>` / `<compDef id=>` -- a named slice of the room.
@@ -222,8 +236,26 @@ pub enum Frame {
     },
 
     // --- status -----------------------------------------------------------
-    /// `<image id= name=>` inside the injuries dialog.
-    InjuryImage { id: String, name: String },
+    /// `<image id= name=>`, and **which dialog enclosed it**.
+    ///
+    /// The name says injuries because that is the one use worth modelling, but
+    /// the tag is not exclusive to them: MEASURED over 24 files, 1,313 of 2,155
+    /// `<image>` tags are `nomap.jpg` map tiles and ~50 are toolbar buttons.
+    /// `dialog` is what separates them, exactly as it does for
+    /// [`ProgressBar`](crate::frame::ProgressBar) -- the same tag shape meaning
+    /// different things depending on the dialog that encloses it.
+    ///
+    /// Lich makes the same check by walking a stack of open element ids
+    /// (`lib/common/xmlparser.rb:809`).
+    InjuryImage {
+        /// `id=`. The body part, when `dialog` is `injuries`.
+        id: String,
+        /// `name=`. The severity (`Injury1`..`Scar3`), or the part's own name
+        /// when it is unhurt.
+        name: String,
+        /// The enclosing `<dialogData id=>`, if any.
+        dialog: Option<String>,
+    },
     /// `<indicator id= visible=>`.
     StatusIndicator { id: String, active: bool },
     /// A row of `ActiveSpells` / `Buffs` / `Debuffs` / `Cooldowns`.

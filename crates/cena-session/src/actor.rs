@@ -95,7 +95,27 @@ const COMMAND_CHANNEL_BOUND: usize = 32;
 /// (`tokio::sync::broadcast` semantics). On overflow the subscriber receives
 /// an explicit `Lagged { missed }`, never a silent gap." That is what
 /// `broadcast` does, so §6.3 costs one constant rather than a mechanism.
-const EVENT_CHANNEL_BOUND: usize = 256;
+///
+/// # Why 2,048, and why raising it is not the whole answer
+///
+/// `plan/18` §6 declined to simply raise this, asking instead *"whether a
+/// subscriber that needs EVERY frame should be a broadcast subscriber at all, or
+/// whether the model is the only thing that must not miss frames."*
+///
+/// **The model already is.** `SessionActor::ingest` calls `state.apply(&frame)`
+/// and *then* `events.send(...)`, on the same thread, so `GameState` cannot lag
+/// however small this is. The ring is for OBSERVERS, and for an observer
+/// `Lagged` is the honest answer rather than a failure.
+///
+/// So what remained was sizing. MEASURED, frames before the first `<prompt>` in
+/// two of the author's captures: **1,151** (`GSIV-Nisugi/2025-04-18`) and **794**
+/// (`GSIV-Monstr/2025-09-04`). Against 256 -- so the burst ran 3-4.5x the ring,
+/// and the `!! 99 events dropped` the author saw was the tail of a much larger
+/// overflow. 2,048 covers the larger burst with ~78% headroom.
+///
+/// It is a size, not a promise: a slow enough subscriber still lags, and
+/// `crates/cena-session/tests/event_ring.rs` asserts that it is still told.
+const EVENT_CHANNEL_BOUND: usize = 2048;
 
 /// How long one read may block before the loop takes a turn anyway.
 ///
