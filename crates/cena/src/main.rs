@@ -264,7 +264,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 end.generations.0 + 1,
                 end.recorder.events().len()
             );
-            eprintln!("\nDone. Criteria 1-6 exercised against the live server.");
+            // Criteria 1-6 and `plan/16` §5b's orderly shutdown. **NOT
+            // criterion 9**, unless the connection actually dropped: a clean
+            // run never reconnects, which is the point of it being clean.
+            // `connections` above is the evidence either way -- 1 means the
+            // reconnect path was not exercised, however green everything else
+            // looks.
+            eprintln!(
+                "\nDone. Criteria 1-6 and the orderly shutdown exercised \
+                 against the live server."
+            );
             Ok(())
         }
         Err(join) => {
