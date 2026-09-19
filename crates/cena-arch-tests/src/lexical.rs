@@ -39,21 +39,65 @@ use std::path::PathBuf;
 /// demonstrated: a block comment naming `GemStone`, and a `cena-ui/Cargo.toml`
 /// comment reading "we deliberately avoid ratatui".
 ///
-/// This is deliberately not a Rust lexer. It does not model string literals
-/// containing `/*`, which would require tracking raw strings and escapes. The
-/// cost of that gap is a false *negative* on a needle hidden inside a string
-/// literal that also opens a block comment — vanishingly unlikely, and it
-/// fails safe relative to the false-positive direction above. Upgrade to `syn`
-/// if a real case appears.
+/// This is deliberately not a Rust lexer, but it **does** model ordinary and
+/// raw string literals, because not doing so did not fail safe.
+///
+/// # Why the "vanishingly unlikely" gap was closed
+///
+/// This used to skip string tracking, on the reasoning that the cost was a
+/// false *negative* on a needle hidden inside a literal that also opens a
+/// block comment. That reasoning was wrong about the blast radius. `in_block`
+/// latches across lines, so a single `/*` inside a literal blanks **every
+/// remaining line of the file** -- for the `static` allowlist, the `static
+/// mut` ban, the game-name flag, the include ban and the facade scan at once.
+/// One unremarkable line silently disarms five rules over the rest of a file.
+/// That is failing open, not safe.
+///
+/// It stops being hypothetical at M2: a golden-corpus walker calling
+/// `glob("**/*.xml")` is exactly that shape, and M2's first work is the
+/// corpus (review AR-6, demonstrated). Measured before the fix:
+///
+/// ```text
+/// $ grep -rnE '"[^"]*/\*' crates/ --include=*.rs | wc -l
+/// 0
+/// ```
+///
+/// Zero today, which is why this was latent rather than broken.
+///
+/// Literals are COPIED, not blanked: the needle scans legitimately look
+/// inside them -- a game name in a string is the case Rule 3.4 exists for.
+/// What must not happen is a `/*` in one opening a comment.
+///
+/// Escapes are handled for ordinary literals (`\"` does not close) and raw
+/// literals match by hash count (`r#"..."#`). Char literals are not tracked:
+/// a lone `"` in one cannot open a *comment*, and the `'{'` counting problem
+/// it would also solve belongs to `items`, which handles it there.
 pub fn code_lines(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut in_block = false;
+    // `Some(n)` while inside a raw literal closed by `"` plus n hashes. A raw
+    // literal may span lines, so this outlives the loop body like `in_block`.
+    let mut in_raw: Option<usize> = None;
     for line in text.lines() {
         let bytes: Vec<char> = line.chars().collect();
         let mut code = String::new();
         let mut i = 0;
         while i < bytes.len() {
-            if in_block {
+            if let Some(hashes) = in_raw {
+                // Only `"` plus the same hash count ends it, and nothing
+                // inside starts a comment.
+                if bytes[i] == '"' && count_hashes(&bytes, i + 1) >= hashes {
+                    in_raw = None;
+                    code.push('"');
+                    for _ in 0..hashes {
+                        code.push('#');
+                    }
+                    i += 1 + hashes;
+                } else {
+                    code.push(bytes[i]);
+                    i += 1;
+                }
+            } else if in_block {
                 if bytes[i] == '*' && bytes.get(i + 1) == Some(&'/') {
                     in_block = false;
                     code.push(' ');
@@ -70,6 +114,34 @@ pub fn code_lines(text: &str) -> Vec<String> {
                 i += 2;
             } else if bytes[i] == '/' && bytes.get(i + 1) == Some(&'/') {
                 break; // line comment: rest of the line is prose
+            } else if let Some(hashes) = raw_literal_start(&bytes, i) {
+                in_raw = Some(hashes);
+                code.push('r');
+                for _ in 0..hashes {
+                    code.push('#');
+                }
+                code.push('"');
+                i += 2 + hashes;
+            } else if bytes[i] == '"' {
+                // An ordinary literal, copied to its unescaped close.
+                code.push('"');
+                i += 1;
+                while i < bytes.len() {
+                    if bytes[i] == '\\' {
+                        code.push(bytes[i]);
+                        if let Some(next) = bytes.get(i + 1) {
+                            code.push(*next);
+                        }
+                        i += 2;
+                        continue;
+                    }
+                    let ch = bytes[i];
+                    code.push(ch);
+                    i += 1;
+                    if ch == '"' {
+                        break;
+                    }
+                }
             } else {
                 code.push(bytes[i]);
                 i += 1;
@@ -242,4 +314,31 @@ pub fn declares_behavior(code: &str) -> bool {
     }
     code.split_whitespace()
         .any(|token| token == "fn" || token == "impl" || token.starts_with("impl<"))
+}
+
+/// How many consecutive `#` start at `from`.
+fn count_hashes(bytes: &[char], from: usize) -> usize {
+    if from >= bytes.len() {
+        return 0;
+    }
+    bytes[from..].iter().take_while(|c| **c == '#').count()
+}
+
+/// Hash count if a raw string literal starts at `at`.
+///
+/// Returns `None` when this `r` is part of an identifier -- `for`, `char`,
+/// `parser` -- which the PREVIOUS character decides. Without that check the
+/// `r` ending an identifier before a string would open a literal that never
+/// closes, blanking the rest of the file in the other direction.
+fn raw_literal_start(bytes: &[char], at: usize) -> Option<usize> {
+    if bytes.get(at) != Some(&'r') {
+        return None;
+    }
+    if let Some(prev) = at.checked_sub(1).and_then(|p| bytes.get(p))
+        && (prev.is_alphanumeric() || *prev == '_')
+    {
+        return None;
+    }
+    let hashes = count_hashes(bytes, at + 1);
+    (bytes.get(at + 1 + hashes) == Some(&'"')).then_some(hashes)
 }

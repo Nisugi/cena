@@ -206,11 +206,7 @@ fn every_covered_rule_names_a_test_that_exists() {
             .join(name);
         let text = fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("{} must be readable: {e}", path.display()));
-        declared.extend(code_lines(&text).iter().filter_map(|line| {
-            let collapsed = collapse_whitespace(line);
-            let rest = collapsed.strip_prefix("fn ")?;
-            rest.split('(').next().map(str::to_owned)
-        }));
+        declared.extend(live_test_names(&text));
     }
 
     let missing: Vec<&(&str, &str)> = COVERED_RULES
@@ -601,4 +597,64 @@ fn a_spent_deferral_fails() {
             hits.join("\n")
         );
     }
+}
+
+/// Names of functions in `text` that are **live `#[test]`s**.
+///
+/// # Why "declared" was not enough
+///
+/// This used to collect any line beginning `fn `, which made
+/// `every_covered_rule_names_a_test_that_exists` answer a weaker question than
+/// its name: the function existed, but nothing checked it still *ran*.
+///
+/// A reviewer demonstrated the gap by adding `#[ignore]` to every `#[test]` in
+/// `layering.rs` -- including `cena_ui_depends_on_no_ui_toolkit`, which is
+/// `COVERED_RULES`' entry for Rule 1.3 -- and running the suite. Two tests
+/// reported `ignored` and **nothing failed**. Removing `#[test]` entirely, or
+/// adding `#[cfg(any())]`, was equally invisible (review AR-3).
+///
+/// That is the exact failure `plan/05` Rule 0 names: the rule was still in the
+/// table, the function was still in the file, and the enforcement was gone.
+/// A withdrawal-side ratchet that cannot see a withdrawal is decoration.
+///
+/// So a name counts only when the attributes immediately above it include
+/// `#[test]` and exclude `#[ignore]` and `#[cfg(`. Attribute lines and `///`
+/// docs may sit between the attribute and the `fn`, so the walk goes upward
+/// through those and stops at anything else.
+fn live_test_names(text: &str) -> BTreeSet<String> {
+    let lines = code_lines(text);
+    let collapsed: Vec<String> = lines.iter().map(|l| collapse_whitespace(l)).collect();
+    let mut names = BTreeSet::new();
+    for (i, line) in collapsed.iter().enumerate() {
+        let Some(rest) = line.strip_prefix("fn ") else {
+            continue;
+        };
+        let Some(name) = rest.split('(').next() else {
+            continue;
+        };
+        // Walk up through the attribute/doc block directly above the `fn`.
+        let mut has_test = false;
+        let mut suppressed = false;
+        for above in collapsed[..i].iter().rev() {
+            if above.is_empty() {
+                continue;
+            }
+            if !above.starts_with("#[") && !above.starts_with("#![") {
+                break;
+            }
+            if above.starts_with("#[test]") {
+                has_test = true;
+            }
+            // `#[ignore]`, `#[ignore = "..."]` and any `#[cfg(...)]` all mean
+            // the function may not run. A test that is conditionally compiled
+            // out is not enforcing anything on the runs where it is absent.
+            if above.starts_with("#[ignore") || above.starts_with("#[cfg(") {
+                suppressed = true;
+            }
+        }
+        if has_test && !suppressed {
+            names.insert(name.to_owned());
+        }
+    }
+    names
 }
