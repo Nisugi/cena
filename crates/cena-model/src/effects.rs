@@ -92,6 +92,51 @@ pub struct Effect {
 /// determinism.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Effects {
+    /// Keyed by **wire id alone**, not by `(category, id)`.
+    ///
+    /// # The risk, and what measurement said about it
+    ///
+    /// Lich keys per dialog (`xmlparser.rb`, `@dialogs[kind][id]`). If one
+    /// spell were listed in two dialogs, a refill of one would re-tag it and
+    /// `in_category` would omit it from the other, though that dialog was
+    /// never cleared (review MO-2).
+    ///
+    /// MEASURED over a full live session
+    /// (`2026-09-01_16-30-27.xml`, 8.9 MB, the author's own capture):
+    ///
+    /// ```text
+    /// Active Spells : 29 ids
+    /// Buffs         : 10 ids
+    /// Debuffs       :  0
+    /// Cooldowns     :  0
+    /// overlap, any pair: NONE
+    /// ```
+    ///
+    /// **AUTHOR, 2026-09-19:** *"there's no overlap on the effects, if it
+    /// shows in both it would be something buff + cooldown"*.
+    ///
+    /// That names the one real overlap, and MEASURED in
+    /// `2026-09-04_09-15-47.xml` it is **not an id collision**:
+    ///
+    /// ```text
+    /// Buffs      605       "Barkskin"
+    /// Cooldowns  19032922  "Barkskin"
+    /// ```
+    ///
+    /// Same spell, two dialogs, **two different wire ids** -- the buff's
+    /// spell number and the cooldown's own identifier. Two facts about one
+    /// spell, filed separately by the game itself.
+    ///
+    /// So keying by id alone is safe *because the server already
+    /// disambiguates*, and `(category, id)` would add a key component the
+    /// wire has made redundant -- while forcing every lookup to supply a
+    /// category its callers do not have (`active(id)`, `remaining(id)`).
+    ///
+    /// The review's scenario (MO-2) assumed a shared id across dialogs.
+    /// Checked over two full sessions, no pair of dialogs shares one: 29/10
+    /// in one capture, 20/13/1/9 in another, overlap NONE in both. If a
+    /// shared id is ever observed, this is the line to change and those are
+    /// the measurements to re-run.
     by_id: BTreeMap<String, Effect>,
 }
 

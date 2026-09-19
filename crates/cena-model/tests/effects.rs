@@ -170,3 +170,93 @@ fn an_effect_bar_does_not_become_a_vital() {
     );
     assert!(state.effects.get("515").is_some());
 }
+
+/// **A spell in two dialogs carries two ids, so keying by id does not collide.**
+///
+/// Review MO-2 reported that `Effects` keys by wire id across four independent
+/// dialogs, so a spell listed in two of them would be re-tagged by whichever
+/// refilled last and vanish from `in_category` for the other.
+///
+/// The author named the only real overlap — *"if it shows in both it would be
+/// something buff + cooldown"* — and the wire settles it. MEASURED in
+/// `2026-09-04_09-15-47.xml`:
+///
+/// ```text
+/// Buffs      605       "Barkskin"
+/// Cooldowns  19032922  "Barkskin"
+/// ```
+///
+/// Same spell, two dialogs, **two different ids**: the buff's spell number and
+/// the cooldown's own identifier. The game files them separately, so id alone
+/// is a sufficient key.
+///
+/// Pinned because the argument runs the other way from the review's, and a
+/// future reader deserves the evidence rather than the conclusion.
+#[test]
+fn a_buff_and_its_cooldown_are_separate_entries() {
+    let mut state = cena_model::GameState::default();
+
+    for frame in [
+        prompt(1_789_775_821),
+        buff_row("Buffs", "605", "Barkskin", 300),
+        buff_row("Cooldowns", "19032922", "Barkskin", 300),
+    ] {
+        state.apply(&frame);
+    }
+
+    assert_eq!(
+        state.effects.len(),
+        2,
+        "the buff and the cooldown are two facts and must both survive: {:?}",
+        state.effects
+    );
+    assert_eq!(
+        state.effects.get("605").map(|e| e.category.as_str()),
+        Some("Buffs"),
+        "the buff keeps its dialog"
+    );
+    assert_eq!(
+        state.effects.get("19032922").map(|e| e.category.as_str()),
+        Some("Cooldowns"),
+        "and the cooldown keeps its own -- neither re-tags the other, because \
+         the wire gave them different ids"
+    );
+
+    // A Cooldowns refill must not disturb the buff. This is MO-2's failure
+    // mode, reached through the one overlap the author named.
+    state.apply(&clear("Cooldowns"));
+    state.apply(&buff_row("Cooldowns", "19032922", "Barkskin", 280));
+    assert_eq!(
+        state.effects.get("605").map(|e| e.category.as_str()),
+        Some("Buffs"),
+        "a Cooldowns refill must leave the Buffs entry alone: {:?}",
+        state.effects
+    );
+}
+
+/// A prompt, which teaches the server clock so `ends_at` can be stamped.
+fn prompt(at: u32) -> cena_protocol::frame::Frame {
+    cena_protocol::frame::Frame::Prompt {
+        time: at.to_string(),
+        text: ">".to_owned(),
+    }
+}
+
+/// One `<progressBar>` inside a named effect dialog, as the wire sends it.
+fn buff_row(dialog: &str, id: &str, text: &str, secs: u32) -> cena_protocol::frame::Frame {
+    cena_protocol::frame::Frame::ProgressBar(cena_protocol::frame::ProgressBar {
+        id: id.to_owned(),
+        dialog: Some(dialog.to_owned()),
+        text: text.to_owned(),
+        percent: 100,
+        amount: None,
+        time_remaining_secs: Some(secs),
+    })
+}
+
+/// `<dialogData id=X clear='t'>`, the empty element that precedes a refill.
+fn clear(dialog: &str) -> cena_protocol::frame::Frame {
+    cena_protocol::frame::Frame::ClearDialogData {
+        id: dialog.to_owned(),
+    }
+}
