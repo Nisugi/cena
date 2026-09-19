@@ -117,7 +117,17 @@ From `plan/05-engineering-rules.md`:
   > awk 'NR>37 && NR<405' src/parser.rs | grep -cE '^\s{4}[A-Z][A-Za-z]*'        -> 63
   > awk 'NR>=175 && NR<=192' src/parser/text.rs | grep -oE '"[^"]*"' | wc -l     -> 116
   > ```
-  > Cena's own table is **123** — Vellum's 116 plus 7, dropping none. See `plan/15` §1.
+  > Cena's own table is **126** — Vellum's 116 plus 10, dropping none. See `plan/15` §1, which
+  > records the reconciliation.
+  >
+  > **CORRECTED AGAIN 2026-09-19.** This said 123, which was right when written and went stale
+  > when the Saga reconciliation added three. `plan/15` §1 already said 126. Measured:
+  > ```
+  > grep -cE '^    "[^"]+",$' crates/cena-protocol/src/tags.rs                  -> 126
+  > ```
+  > The lesson is the one §−2 already teaches, in its second form: a number copied into a
+  > second document is a number that will drift. Where a count can be measured by a command,
+  > cite the command.
 - **The test corpus is `E:\Gemstone\data\log archive`** — **10,849 `.xml`, 49.55 GB**,
   2024-10-11 → 2026-09-11, ~64 directories (**~35 distinct characters**, not 50+ — some dirs
   are the same character on two instances, and ~22 are organised by class, not character).

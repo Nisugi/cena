@@ -240,7 +240,7 @@ impl SessionSink {
         // scrubbed.
         writeln!(
             events,
-            "# cena session log -- PRIVATE DEVELOPMENT LOG, not automatically shareable.\n\
+            "# Hydra session log -- PRIVATE DEVELOPMENT LOG, not automatically shareable.\n\
              # Credentials (account, real name, session key) are redacted: {}.\n\
              # OTHER PLAYERS' NAMES ARE NOT REDACTED. Cut fixtures through\n\
              # cena_protocol::scrub with the names named, as CLAUDE.md requires.",

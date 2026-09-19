@@ -474,3 +474,74 @@ fn scan_usize(text: &str, prefix: &str) -> Option<usize> {
         .find_map(|line| line.trim().strip_prefix(prefix))
         .and_then(|rest| rest.trim_end_matches(';').trim().parse().ok())
 }
+
+/// **Rule 4.4's other half: split parents stay facades.**
+///
+/// `plan/05:385-388` cites Vellum's `split_parents_stay_facades` BY NAME, and
+/// Cena implemented only the `lib.rs`/`mod.rs` half (`file_rules.rs`'s
+/// `facade_files_stay_facades`, which skips every other filename). MEASURED at
+/// 2026-09-19: **nine** files own child modules -- `state.rs`, `actor.rs`,
+/// `supervisor.rs`, `parser.rs`, `frame.rs`, `text.rs`, `tags.rs`, `crit.rs`,
+/// `probe.rs` -- and every one was governed by the 800-line default and nothing
+/// else.
+///
+/// # It is a cap, not a no-behavior rule
+///
+/// The obvious reading of "stay facades" -- forbid `fn` and `impl`, as the
+/// `lib.rs` half does -- is **wrong here**, and Vellum's own version says so. A
+/// split parent legitimately holds type definitions and dispatchers;
+/// `GameState::apply` belongs in `state.rs`. Vellum enforces a per-file line
+/// cap and comments the intent: *"if one trips, move code down into a submodule
+/// instead of raising the cap"*
+/// (`reference/VellumFE/tests/architecture.rs:252-285`).
+///
+/// So this is the same ratchet as [`the_cap_ratchet_only_turns_down`], applied
+/// per file: the baseline is editable, but only in the same commit, in a file
+/// that exists for no other purpose.
+#[test]
+fn split_parents_stay_facades() {
+    let baseline = baseline_caps();
+    let root = workspace_root();
+    let mut violations = Vec::new();
+    let mut checked = 0usize;
+
+    for (name, cap) in &baseline {
+        // The split-parent entries are the ones whose name is a path.
+        if !name.contains('/') {
+            continue;
+        }
+        checked += 1;
+        let path = root.join(name);
+        let Ok(text) = fs::read_to_string(&path) else {
+            violations.push(format!(
+                "{name}: listed in caps.baseline but not readable. A split                  parent that was renamed or removed must be removed from the                  baseline in the same commit, or this rule silently stops                  covering it."
+            ));
+            continue;
+        };
+        let lines = text.lines().count();
+        if lines > *cap {
+            violations.push(format!("{name}: {lines} lines, cap {cap}"));
+        }
+    }
+
+    // The guard against the guard. A baseline whose path entries were all
+    // deleted would pass vacuously, which is the dead-ratchet shape this file
+    // already records for `tags.rs`.
+    assert!(
+        checked >= 9,
+        "only {checked} split parents are covered; there were 9 when this rule          was written. A parent dropped from caps.baseline is a parent nothing          is watching."
+    );
+
+    assert!(
+        violations.is_empty(),
+        "RULE 4.4: a split parent grew past its cap. **Move the new code into          its submodule** -- that is what the parent was split for.
+
+         `plan/05:385-388` cites Vellum's `split_parents_stay_facades`, whose          own comment is the instruction: \"if one trips, move code down into a          submodule instead of raising the cap.\"
+
+         If the increase is genuinely right, edit caps.baseline in this same          commit and say why.
+
+{}",
+        violations.join("
+")
+    );
+}

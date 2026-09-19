@@ -144,6 +144,14 @@ pub struct Parser {
     /// State rather than a within-line scan because the blob exceeds a line:
     /// 513,700 bytes in one measured case, which `MAX_LINE_BYTES` splits.
     in_settings: bool,
+    /// The last few bytes seen inside a `<settings>` blob, for matching its
+    /// close across a read boundary.
+    ///
+    /// At most `SETTINGS_CLOSE.len()` bytes, so a 786 KB blob costs eleven bytes
+    /// of state rather than 786 KB of buffer. That is what lets `push_bytes`
+    /// skip the line cap entirely while a blob is open -- see its `in_settings`
+    /// arm for the three defects that removes.
+    settings_tail: Vec<u8>,
     /// Discarding the tail of a line that exceeded [`MAX_LINE_BYTES`].
     ///
     /// Set when the cap fires, cleared by the next newline. It is what lets

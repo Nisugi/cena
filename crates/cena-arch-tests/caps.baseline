@@ -45,3 +45,29 @@ DEFAULT_MAX_LINES 800
 # Recorded because I guessed 0 here and the test caught it -- which is the guard
 # working on its author before anyone else.
 MAX_CAP_EXCEPTIONS 1
+
+# SPLIT PARENTS -- Rule 4.4's other half. `plan/05:385-388` cites Vellum's
+# `split_parents_stay_facades` BY NAME, and Cena implemented only the
+# `lib.rs`/`mod.rs` half: nine files with child modules -- state.rs, actor.rs,
+# supervisor.rs, parser.rs, frame.rs and four more -- were governed by the 800
+# default and by nothing else.
+#
+# Vellum's version is not a no-behavior rule. A split parent legitimately holds
+# type definitions and dispatchers; `GameState::apply` belongs in `state.rs`.
+# It is a PER-FILE CAP that only ratchets down, and its comment is the whole
+# intent: "if one trips, move code down into a submodule instead of raising the
+# cap."
+#
+# These are the measured sizes at 2026-09-19 rounded up to the next 50, which is
+# how Vellum set its own ("the current size rounded up a little"). Headroom is
+# deliberate and small: enough that an ordinary edit does not trip it, little
+# enough that growth is a decision.
+crates/cena/src/probe.rs 300
+crates/cena-model/src/crit.rs 250
+crates/cena-model/src/state.rs 500
+crates/cena-protocol/src/frame.rs 450
+crates/cena-protocol/src/parser.rs 450
+crates/cena-protocol/src/tags.rs 350
+crates/cena-protocol/src/text.rs 400
+crates/cena-session/src/actor.rs 600
+crates/cena-session/src/supervisor.rs 600

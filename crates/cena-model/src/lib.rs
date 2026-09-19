@@ -23,7 +23,7 @@ pub mod status;
 
 pub use effects::{Effect, Effects};
 pub use state::{
-    Character, Container, Experience, Found, GameState, Injury, Inventory, Room, RoomItem,
-    UnknownTag, Where,
+    Character, Container, Experience, Found, GameState, Injury, Inventory, MAX_UNKNOWN_TAGS, Room,
+    RoomItem, UnknownTag, Where,
 };
 pub use status::StatusInfo;

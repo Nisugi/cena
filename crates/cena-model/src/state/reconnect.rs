@@ -85,6 +85,7 @@ impl GameState {
             game_time,
             game_time_received,
             unknown_tags,
+            unknown_tag_counts,
             idle_warning,
             streams,
             pending,
@@ -167,6 +168,6 @@ impl GameState {
 
         // --- Kept: see the method docs -------------------------------------
         let _ = vitals;
-        let _ = unknown_tags;
+        let _ = (unknown_tags, unknown_tag_counts);
     }
 }

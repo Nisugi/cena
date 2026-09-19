@@ -19,12 +19,18 @@
 //! frames; the behavior's commands and the manual one are both visible in the
 //! order the wire saw them.
 //!
-//! # Credentials are prompted, never stored -- but now RETAINED in memory
+//! # Credentials are prompted, never stored -- but RETAINED in memory
 //!
 //! `plan/12` §7.1 puts "saved credentials, GUI login, web-login fallback"
-//! explicitly **Out** for Milestone 1. This prompts on stdin and writes nothing
-//! to disk. It is never logged, and the types that hold it redact themselves
-//! (`cena_platform::Credentials`'s `Debug`, and `LiveConnector`'s).
+//! explicitly **Out** for Milestone 1. This prompts on stdin and writes no
+//! CREDENTIAL to disk. It is never logged, and the types that hold it redact
+//! themselves (`cena_platform::Credentials`'s `Debug`, and `LiveConnector`'s).
+//!
+//! **The WIRE is written to disk**, and this paragraph used to imply otherwise
+//! by saying "writes nothing to disk". The session sink writes a `.bytes` and a
+//! `.log` per run and prints both paths; `Redactions` is what keeps the
+//! credential out of them. The on-screen banner made the same mistake and is
+//! corrected in `main`.
 //!
 //! **CHANGED in Milestone 2 step 8.** This paragraph used to say the password
 //! was kept "only as long as the handshake needs it", and that is no longer
@@ -132,17 +138,35 @@ fn ids() -> impl FnMut() -> CommandId {
     move || CommandId(next.fetch_add(1, Ordering::Relaxed))
 }
 
+/// What the operator is told before anything happens.
+///
+/// A function rather than eight lines in `main` because it has its own reason to
+/// change -- what is true about credentials and logging -- and because it has
+/// been WRONG TWICE, each time claiming less was kept than actually was:
+///
+/// 1. "Not stored" became false at M2 step 8: reconnecting is a full re-login,
+///    so the password stays for the session.
+/// 2. "Nothing is written to disk" was false from the moment the session sink
+///    landed. This banner said it while the same `main` printed two file paths
+///    eight lines later. A reassurance the next screenful contradicts is worse
+///    than no reassurance: it is the kind of claim someone acts on.
+///
+/// **Hydra**, not `cena`: `CLAUDE.md` says anything user-facing carries the real
+/// name, and the working name is the repository, the crate prefixes and the env
+/// vars.
+fn banner() {
+    eprintln!("Hydra -- one supervised session against the live game.");
+    eprintln!(
+        "The password is never logged, but it IS kept in memory for the          session,
+because reconnecting re-logs in. The wire IS written to          disk -- see the
+log paths below.
+"
+    );
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    eprintln!("cena -- one supervised session against the live game.");
-    // Precise rather than reassuring. "Not stored" became FALSE at step 8: the
-    // password is held in memory for the whole session, because reconnecting
-    // is a full re-login. Saying otherwise on screen is the kind of claim
-    // someone acts on.
-    eprintln!(
-        "Nothing is written to disk and the password is never logged -- but it \
-         IS kept\nin memory for the session, because reconnecting re-logs in.\n"
-    );
+    banner();
 
     let typed = ask()?;
     eprintln!();

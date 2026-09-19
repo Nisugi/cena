@@ -46,11 +46,13 @@ mod nouns;
 mod reconnect;
 mod room;
 mod streams;
+mod unknown;
 
 pub use character::{Character, Experience, Injury};
 pub use inventory::{Container, Inventory};
 pub use nouns::{Found, Where};
 pub use room::{Room, RoomItem};
+pub use unknown::{MAX_UNKNOWN_TAGS, UnknownTag};
 
 /// A vitals gauge, as a percentage.
 ///
@@ -121,12 +123,20 @@ pub struct GameState {
     /// clock or when DST changes, because the only thing it is used for is
     /// measuring an interval.
     game_time_received: Option<Instant>,
-    /// Tags the parser did not model, in arrival order.
+    /// Tags the parser did not model, in arrival order, **bounded**.
     ///
     /// Criterion 8: these **survive to display**. Rule 2.2 requires an
-    /// unmodelled tag to reach the user, so it is kept here rather than
-    /// counted and dropped.
+    /// unmodelled tag to reach the user, so it is kept here rather than counted
+    /// and dropped.
+    ///
+    /// At most [`MAX_UNKNOWN_TAGS`], keeping the FIRST occurrences.
+    /// [`GameState::unknown_tag_count`] keeps counting past that, so the bound
+    /// costs "every instance" and never "how often". See
+    /// `tests/unknown_tags_are_bounded.rs`.
     pub unknown_tags: Vec<UnknownTag>,
+    /// How many of each unknown tag name have been seen, **unbounded by the
+    /// ring**: a `u64` per distinct name, and the wire has a finite vocabulary.
+    unknown_tag_counts: std::collections::BTreeMap<String, u64>,
     /// Experience, injuries, stance and encumbrance. `plan/18` §2b.
     pub character: Character,
     /// Containers and their contents. `plan/18` §2d.
@@ -195,6 +205,7 @@ impl PartialEq for GameState {
             game_time,
             game_time_received: _,
             unknown_tags,
+            unknown_tag_counts,
             idle_warning,
             streams,
             pending,
@@ -216,6 +227,7 @@ impl PartialEq for GameState {
             && effects == &other.effects
             && game_time == &other.game_time
             && unknown_tags == &other.unknown_tags
+            && unknown_tag_counts == &other.unknown_tag_counts
     }
 }
 
@@ -226,16 +238,6 @@ impl PartialEq for GameState {
 /// byte-identical every time. Matched whole, never as a substring -- see
 /// [`GameState::apply`].
 const IDLE_WARNING: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";
-
-/// A tag `cena-protocol` has no variant for, kept for display and for the log.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct UnknownTag {
-    /// The element name.
-    pub name: String,
-    /// The bytes the game actually sent. The raw form IS the diagnostic: a
-    /// reader has to see what arrived, not a summary of it.
-    pub raw: String,
-}
 
 impl GameState {
     /// Fold one frame into the state.
@@ -447,10 +449,7 @@ impl GameState {
                 self.clear_stream(id);
                 self.pending.remove(id);
             }
-            Frame::UnknownTag { name, raw } => self.unknown_tags.push(UnknownTag {
-                name: name.clone(),
-                raw: raw.clone(),
-            }),
+            Frame::UnknownTag { name, raw } => self.record_unknown_tag(name, raw),
             // Every other frame is published to observers without changing
             // state. `plan/12` §7.1 scopes GameState to room/hands/
             // roundtime/vitals; a frame this slice does not model is not

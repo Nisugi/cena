@@ -192,7 +192,22 @@ pub fn crate_dependency_names(krate: &str) -> BTreeSet<String> {
 // ---------------------------------------------------------------------------
 
 /// Directory names never scanned, because nothing in them is crate source.
-const SKIPPED_DIRS: &[&str] = &["target", ".git"];
+///
+/// **`target` is skipped only at a crate root**, not at any depth. Skipping it
+/// anywhere meant `crates/<crate>/src/target/` -- a perfectly ordinary module
+/// name for a combat client -- would be invisible to every architecture test in
+/// this workspace: no line cap, no facade rule, no layering check. A rule that
+/// is not enforced is a wish (`plan/05` §0), and a rule that silently stops
+/// applying to a directory because of its NAME is worse than one that was never
+/// written.
+///
+/// MEASURED 2026-09-19: no such directory exists today, so this closes a latent
+/// hole rather than a live one. It is closed now because the name is a likely
+/// one here and the failure would be silent.
+const SKIPPED_DIRS: &[&str] = &[".git"];
+
+/// Skipped at a crate root only: Cargo's build directory.
+const SKIPPED_AT_ROOT: &[&str] = &["target"];
 
 /// Every source file a crate owns, anywhere under the crate directory, as
 /// (path, contents).
@@ -258,15 +273,21 @@ fn crate_sources(krate: &str) -> Vec<(PathBuf, String)> {
 const SOURCE_EXTENSIONS: &[&str] = &["rs", "in", "inc", "tsv"];
 
 fn collect_sources(dir: &Path, out: &mut Vec<(PathBuf, String)>) {
+    collect_sources_inner(dir, out, true);
+}
+
+fn collect_sources_inner(dir: &Path, out: &mut Vec<(PathBuf, String)>, at_root: bool) {
     let entries = fs::read_dir(dir).unwrap_or_else(|e| panic!("read_dir {}: {e}", dir.display()));
     for entry in entries {
         let path = entry.expect("dir entry must be readable").path();
         if path.is_dir() {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
-            if SKIPPED_DIRS.contains(&name.as_ref()) {
+            if SKIPPED_DIRS.contains(&name.as_ref())
+                || (at_root && SKIPPED_AT_ROOT.contains(&name.as_ref()))
+            {
                 continue;
             }
-            collect_sources(&path, out);
+            collect_sources_inner(&path, out, false);
         } else if path
             .extension()
             .is_some_and(|ext| SOURCE_EXTENSIONS.iter().any(|e| ext == *e))
