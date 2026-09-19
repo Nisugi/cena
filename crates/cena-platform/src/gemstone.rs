@@ -59,3 +59,4 @@
 //! recorded here so its placement reads as a decision, not an oversight.
 
 pub mod endpoint;
+pub mod weblogin;

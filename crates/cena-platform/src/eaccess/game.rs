@@ -53,8 +53,9 @@ use crate::live::LiveSource;
 /// # The endpoint fallback
 ///
 /// The connect is tried twice when the endpoint has a known second spelling:
-/// see [`connect_with_fallback`], and [`endpoint`](crate::gemstone::endpoint) for why the
-/// table is a fallback rather than the pre-emptive rewrite Lich does.
+/// `connect_with_fallback` below has the detail, and `gemstone::endpoint`
+/// records why the table is a fallback rather than the pre-emptive rewrite Lich
+/// does.
 ///
 /// # Errors
 ///

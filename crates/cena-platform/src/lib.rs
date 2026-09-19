@@ -53,7 +53,10 @@ pub mod sink;
 
 pub use answering::{AnsweringSource, TranscriptHandle};
 pub use bytes::ByteSource;
-pub use eaccess::{Credentials, EaccessError, LaunchPayload, authenticate, connect_game};
+pub use eaccess::{
+    Credentials, EaccessError, LaunchPayload, Provider, authenticate, authenticate_with_fallback,
+    connect_game,
+};
 pub use live::LiveSource;
 pub use record::{MAX_RECORDED_BYTES, RecordedEvent, Recorder};
 pub use replay::ReplaySource;

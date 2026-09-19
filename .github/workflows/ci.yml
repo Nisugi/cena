@@ -59,6 +59,33 @@ jobs:
       # an accepted reason the moment transport lands. Neither state enforces
       # anything (plan/05 Rule 0.5, :161-165).
       #
+      # UPDATED 2026-09-19: the OpenSSL blocker has an answer, from VellumFE,
+      # which ships on Windows/macOS/Linux/Android/iOS on ONE TLS stack.
+      # `Cargo.toml:155-156` scopes the vendored build to where it is needed:
+      #
+      #   [target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
+      #   native-tls = { version = "0.2", features = ["vendored"] }
+      #
+      # so Windows keeps SChannel and macOS keeps Security.framework, and
+      # neither pays for it. Vellum's note adds that the vendored-build pain
+      # "was Windows-only" and Perl is "universal on Linux and present on CI
+      # runners" -- which is the opposite of what the paragraph above assumed.
+      #
+      # cena-platform now carries that target block (added with the web-login
+      # fallback, which needed an HTTP client on the same stack).
+      #
+      # WHAT IS AND IS NOT VERIFIED. Verified: Vellum ships this exact
+      # arrangement on all five platforms, and the target block is present here.
+      # NOT verified: that `cargo check --target aarch64-linux-android` now
+      # passes for cena-platform. `rustup target list --installed` on the
+      # author's machine has only x86_64-pc-windows-msvc, so it could not be
+      # run when this was written -- and an unrun check is exactly what
+      # plan/05 Rule 0.5 says enforces nothing.
+      #
+      # So: the stated BLOCKER is stale, the deviation from plan/12:63 stands,
+      # and the next person to touch this should run the two lines below rather
+      # than trust this comment.
+      #
       # Proposed for the commit that creates cena-protocol's transport -- the
       # first moment it can tell passing from failing:
       #

@@ -818,7 +818,23 @@ unreliable fallback. #1570 (the HTTPS path) was merged at 2026-09-08T21:35:01Z; 
 **Design lesson worth keeping regardless of the port: "connected" is not "working."** Any Cena
 health check on an auth endpoint must verify a protocol response, not a TCP accept.
 
-### 5.3 Path C — HTTPS web-login on `www.play.net`. **Cena should build this, in Phase 2b.**
+### 5.3 Path C — HTTPS web-login on `www.play.net`. **BUILT 2026-09-19.**
+
+> **STATUS: built, not yet run live.** `cena-platform/src/gemstone/weblogin/`, wired into
+> `eaccess::authenticate_with_fallback`. The author asked for it ahead of Phase 2b with the
+> reason that settles its priority: *"they've been having issues with the normal login, and the
+> web one seems to stay up during these times allowing access to the game."* It is the outage
+> path, not redundancy.
+>
+> **The pure half is tested against fixtures** (31 tests): the instance table, the redirect
+> classification, the character scrape and the launch-URL verification. **The request sequence is
+> not** — `CLAUDE.md` forbids reaching a live service from this workspace, so `weblogin/http.rs`
+> needs one run with the author present, exactly as criterion 1 did.
+>
+> Ported deliberately from Lich, each at the place it bites: all six live-discovered behaviours
+> (§5.4), the `FatalAuthError` re-raise rule, and the pinned host/port check. **Not** ported: the
+> DragonRealms rows (deferred all-or-nothing) and the unverified-instance suffix path, which is
+> unreachable because every `GemStone` row is confirmed.
 
 `lib/common/authentication/web_login.rb` (576 lines, PR #1570, merged 2026-09-08). Entirely
 different mechanism: ASP form POSTs, a session cookie, and a redirect chain whose *target path* is

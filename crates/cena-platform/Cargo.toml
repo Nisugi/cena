@@ -32,6 +32,49 @@ tokio-native-tls = "0.3"
 socket2 = "0.6"
 jiff = "0.2.37"
 
+# The HTTPS web-login fallback (plan/10 section 5.3). Chosen for the WORKSPACE,
+# not just for this module: the author named three consumers -- this fallback, a
+# web frontend, and push notifications to remote endpoints.
+#
+# `default-features = false` is LOAD-BEARING. reqwest's default is
+# `default-tls = [rustls]`, so leaving it on links BOTH stacks. With it off and
+# `native-tls` on, `cargo tree` shows zero rustls implementation crates and the
+# same `native-tls` + `tokio-native-tls` this crate already depends on for
+# eaccess. (`rustls-pki-types` still appears: a shared certificate TYPE crate
+# with no TLS code, which every client pulls.) VERIFIED 2026-09-19.
+#
+# WHY NOT ureq, which VellumFE uses (`reference/VellumFE/Cargo.toml:82-83`,
+# "Rides the same native-tls stack as eAccess login; no rustls, no second TLS
+# stack"). Vellum's reasoning is right and is followed here -- one TLS stack --
+# but ureq itself does not transfer, because it is BLOCKING and Vellum's every
+# use of it sits on a dedicated worker thread (mapdb, jinx installer), never in
+# a cancellable path. Cena's supervisor races `connect()` against the cancel
+# token in a `select!` (`cena-session/src/supervisor.rs:240-246`), so a blocking
+# call inside that future makes the whole connect uncancellable -- exactly what
+# this file's own header says tokio was chosen to prevent. ureq 3 DOES support
+# native-tls; TLS was never the objection.
+#
+# WHY 0.12 AND NOT 0.13, the current release: `tauri-plugin-http` v2 pins
+# reqwest 0.12, and mixing majors compiles two clients and two hyper stacks.
+# `plan/11` keeps Tauri on the table, so pinning 0.12 keeps that door open at no
+# cost -- web-login needs nothing 0.13 added (form POSTs, a cookie jar, and
+# no-follow redirects are long stable). Revisit when the plugin moves, or drop
+# to a single line change if Tauri is ruled out.
+#
+# The three features, each required by the protocol rather than convenient:
+#   cookies -- the ASP session cookie from the sign-in GET, without which the
+#              login POST returns a bare 500 (plan/10 section 5.4).
+#   gzip    -- play.net serves compressed HTML, and the character list is
+#              scraped from the body.
+#   native-tls -- one stack, per above. www.play.net is TLS 1.3 with a valid
+#              chain (VERIFIED by openssl 2026-09-19), so unlike the eaccess
+#              socket NONE of live.rs's three weakenings apply here.
+reqwest = { version = "0.12", default-features = false, features = [
+    "native-tls",
+    "cookies",
+    "gzip",
+] }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
 # The keepalive test opens a loopback socket to prove the option is accepted.
@@ -39,3 +82,15 @@ socket2 = "0.6"
 
 [lints]
 workspace = true
+
+# Android has no system libssl, so statically link a vendored OpenSSL there.
+# Target-scoped, so Windows keeps SChannel and macOS keeps Security.framework
+# and neither pays for a vendored build. Ported from VellumFE
+# (`Cargo.toml:155-156`), which ships on all five platforms; its note records
+# that the vendored-build pain "was Windows-only" and that Perl is "universal on
+# Linux and present on CI runners".
+#
+# This is what `.github/workflows/ci.yml:52-56` was missing when it disabled the
+# Android check over "Could not find directory of OpenSSL installation".
+[target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
+native-tls = { version = "0.2", features = ["vendored"] }

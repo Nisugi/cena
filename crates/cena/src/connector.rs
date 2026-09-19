@@ -118,9 +118,20 @@ impl Connector for LiveConnector {
             character: &self.character,
             game_code: &self.game_code,
         };
-        let payload = cena_platform::authenticate(credentials, |line| eprintln!("{line}"))
-            .await
-            .map_err(classify)?;
+        // The fallback, not the bare eaccess call: `eaccess.play.net:7910` has
+        // gone down while the website stayed up (`plan/10`, 2026-09-08), and
+        // the author reports that is still the pattern. A credential rejection
+        // is NOT retried through it -- see `eaccess/fallback.rs`.
+        let (payload, provider) =
+            cena_platform::authenticate_with_fallback(credentials, |line| eprintln!("{line}"))
+                .await
+                .map_err(classify)?;
+        if provider == cena_platform::Provider::WebLogin {
+            // Worth saying out loud: a web-login launch synthesises fields the
+            // eaccess `L` response returns, so a reader diagnosing an odd
+            // session needs to know which path produced it.
+            eprintln!("[connect] authenticated via the web-login fallback");
+        }
         // BEFORE the payload is printed or logged. `LaunchPayload`'s own
         // `Debug` redacts the key, but the supervisor is about to write log
         // lines about this connection and the game socket is about to carry
