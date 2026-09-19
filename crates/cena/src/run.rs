@@ -7,11 +7,33 @@
 //! is real: everything here happens *after* a session exists, and none of it
 //! knows how one is built.
 
-use crate::{CAPTURE_GAP, CAPTURE_SEARCHES, ROOM_DEADLINE};
+use crate::{CAPTURE_GAP, CAPTURE_SEARCHES, ROOM_DEADLINE, probe};
 use cena_behavior::is_room_description;
 use cena_session::{CommandId, Event, Frame, Origin, SessionHandle};
 use std::time::Duration;
 use tokio::sync::broadcast;
+
+/// The capture, or the typeahead probe if this run asked for it.
+///
+/// **Off by default, and an env var rather than a flag.** The probe
+/// deliberately provokes server refusals (`plan/16` §5.3), so it must never
+/// run as part of an ordinary session. It is an env var because the binary
+/// takes no arguments yet, and adding an argument parser for a single probe
+/// would be a config option with one value (Rule -1).
+///
+///  ```powershell
+///  $env:CENA_PROBE = "typeahead"; cargo run -p cena
+///  ```
+pub(crate) async fn run_or_probe(
+    handle: &SessionHandle,
+    probe_events: &mut broadcast::Receiver<Event>,
+) {
+    if std::env::var("CENA_PROBE").as_deref() == Ok("typeahead") {
+        probe::run(handle, probe_events).await;
+    } else {
+        run_capture(handle).await;
+    }
+}
 
 /// Send a few `search` commands, to make roundtimes happen on purpose.
 /// `search` is the cheapest command that produces a real roundtime: no
@@ -36,7 +58,7 @@ use tokio::sync::broadcast;
 /// matcher is `is_room_description`, which a search does not produce, and
 /// the behavior is covered by tests that should not be disturbed for a
 /// measurement.
-pub(crate) async fn run_capture(handle: &SessionHandle) {
+async fn run_capture(handle: &SessionHandle) {
     for i in 0..CAPTURE_SEARCHES {
         let outcome = send_manual(handle, "search").await;
         eprintln!("[capture] search {i}: {outcome:?}");
@@ -127,4 +149,45 @@ pub(crate) fn print_room(frame: &Frame) {
         other => println!("[not a room frame: {other:?}]"),
     }
     println!("{}", "=".repeat(70));
+}
+
+/// Print what crosses the wire, both directions, in order.
+///
+/// **This is what makes criterion 5 visible rather than merely true.** The
+/// interleaving of a manual command with a running behavior is a fact about
+/// ordering, and ordering is only observable as a sequence -- so the evidence
+/// is this transcript, not a boolean.
+///
+/// Moved out of `main` when that function passed clippy's 100-line limit. It
+/// is a whole task with one job, which makes it the obvious seam: `main` wires
+/// the run together, and this watches it.
+pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
+    loop {
+        match events.recv().await {
+            Ok(Event::Sent { line, origin }) => {
+                let tag = match origin {
+                    Origin::Manual => "manual",
+                    Origin::Behavior(_) => "behavior",
+                    // Distinguished HERE, which is the whole reason it is
+                    // a separate variant: it queues like manual input, but
+                    // a reader of this transcript has to be able to tell
+                    // "the player typed this" from "another character's
+                    // script sent this".
+                    Origin::Script => "script",
+                };
+                eprintln!("  -> [{tag}] {line}");
+            }
+            Ok(Event::StateChanged(state)) => eprintln!("  .. lifecycle: {state:?}"),
+            Ok(Event::Frame(_)) => {}
+            // Keep watching. A `while let Ok(..)` here ended the watcher on
+            // the first lag, which would silence the `-> [manual]` and
+            // `-> [behavior]` lines for the rest of the run -- and those
+            // lines ARE criterion 5's evidence, so their absence would look
+            // exactly like the interleaving failing.
+            Err(broadcast::error::RecvError::Lagged(missed)) => {
+                eprintln!("  !! {missed} events dropped from the ring (still watching)");
+            }
+            Err(broadcast::error::RecvError::Closed) => break,
+        }
+    }
 }

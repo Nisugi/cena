@@ -295,11 +295,62 @@ actions useful is the thing that makes typeahead relevant.
 
 So a send-rate policy belongs with `send_now`, not as separate later work.
 
-### 5.3 OPEN
+### 5.2a MEASURED-BY-READING: the limit is 1, and it is documented
 
-Whether instant actions count against the server's type-ahead budget at all. The author's phrasing
-— *"shouldn't be subject to typeahead or waiting (depending on the action)"* — suggests it varies.
-**UNVERIFIED.**
+**The limit does not need discovering.** Before building a probe to find N, the rule in `CLAUDE.md`
+— *"the protocol facts are already in Lich, dig them out"* — was applied, and three independent
+sources give the same answer:
+
+| Source | Evidence |
+|---|---|
+| Lich | `line == 'Sorry, you may only type ahead 1 command.'` — an **exact string equality**, not a regex with a capture group (`lib/global_defs.rb:1905`, `:1971`) |
+| VellumFE | the same literal, quoted in `src/core/move_feedback.rs:55` and `state/travel_ticks.rs:757` |
+| Kelfour Edition vol. I no. VIII | `"Only 1 type ahead line allowed."` — a **1990s player newsletter**, describing the same limit from the player side |
+
+Lich comparing with `==` rather than matching `type ahead (\d+) command` is the strongest of the
+three: an implementation that has run against these servers for two decades does not parse the
+number, because the number does not vary.
+
+**So the limit is one command in the buffer beyond the one executing.** N is not a parameter to
+find.
+
+### 5.2b What the newsletter adds that the code does not
+
+The Kelfour piece is worth reading in full (`reference/wiki_clean/Kelfour Edition volume I number
+VIII.txt:810-845`) because it describes the **mechanism**, which neither reference implementation
+states:
+
+> *"Sometimes with this macro you get an error message, 'Only 1 type ahead line allowed.' That means
+> the third command was sent before the first two commands processed. **This happens only during
+> slow downs**"*
+
+Three things follow, and they reframe §5.2 entirely:
+
+1. **The limit is on commands the server has not yet PROCESSED, not on commands sent per unit
+   time.** It is a buffer depth, not a rate.
+2. **It is therefore load-dependent.** The same macro works for years and fails during a server
+   slowdown — which means a fixed inter-command delay tuned on a quiet evening is tuned against the
+   wrong variable.
+3. Their remedy is the same as Lich's: a delay between commands. The newsletter uses `.5` seconds;
+   Lich sleeps `1`.
+
+That is also why §1's batching is safe as built and the danger is smaller than §5.2 feared: sending
+a sigil and then an attack is **2 commands**, and the roundtime between them is exactly the
+processing gap the limit is measuring.
+
+### 5.3 OPEN — what a live run would still settle
+
+The limit is known; these are not, and none can be read out of Lich:
+
+| # | Question | Why it needs the wire |
+|---|---|---|
+| 1 | Do **instant actions** count against the buffer? | The author's *"shouldn't be subject to typeahead or waiting (depending on the action)"* suggests some do not. Lich has no instant-action concept, so it cannot answer. |
+| 2 | Does exceeding it **drop** the command or **refuse** it? | The newsletter says the third command "is not important" in one case and must be re-sent in another — so it is dropped, not queued. Worth confirming on the current server. |
+| 3 | Does a `send_now` during roundtime refuse, drop, or hold? (§1.5) | The same run answers it: `Gate::None` sends during roundtime on purpose. |
+| 4 | Does the corpus ever carry a number other than `1`? | Two years of real traffic would settle whether the literal is safe to match on. **Needs the author's permission** — recursive searches over the 49.55 GB archive are asked-first (`CLAUDE.md`). |
+
+**Question 1 is the only one that changes the design**, and it is a cheap test: send several
+instant actions back to back and see whether any produces the message.
 
 ---
 

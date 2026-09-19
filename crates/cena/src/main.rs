@@ -49,18 +49,18 @@
 //! inside the session.
 
 mod ask;
+mod probe;
 mod run;
 
 use ask::ask;
 use cena_behavior::look;
 use cena_platform::{ByteSource, Credentials, Redactions, SessionSink};
-use cena_session::{AuthorityToken, CommandId, Event, Origin, Session};
-use run::{run_capture, send_manual, wait_for_room};
+use cena_session::{AuthorityToken, CommandId, Session};
+use run::{run_or_probe, send_manual, wait_for_room, watch_events};
 use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
-use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 /// How long to let the behavior run before the manual command interleaves.
@@ -138,6 +138,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handle = session.handle();
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
+    // A SECOND receiver, for the probe. `events` is moved into the watcher
+    // task below, and a `broadcast` receiver cannot be shared -- each one gets
+    // its own copy of the stream. Taken here rather than later because
+    // `session` is consumed by `into_actor()`, and because a receiver only
+    // sees what arrives after it is created: subscribing at the probe's own
+    // call site would silently drop everything the login sent.
+    let (_probe_snapshot, mut probe_events) = session.subscribe();
     let actor = tokio::spawn(session.into_actor().run());
 
     // --- Criterion 2: the room, from TYPED FRAMES --------------------------
@@ -166,36 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Print what crosses the wire, both directions, in order. This is what
     // makes criterion 5 visible rather than merely true.
-    let watcher = tokio::spawn(async move {
-        loop {
-            match events.recv().await {
-                Ok(Event::Sent { line, origin }) => {
-                    let tag = match origin {
-                        Origin::Manual => "manual",
-                        Origin::Behavior(_) => "behavior",
-                        // Distinguished HERE, which is the whole reason it is
-                        // a separate variant: it queues like manual input, but
-                        // a reader of this transcript has to be able to tell
-                        // "the player typed this" from "another character's
-                        // script sent this".
-                        Origin::Script => "script",
-                    };
-                    eprintln!("  -> [{tag}] {line}");
-                }
-                Ok(Event::StateChanged(state)) => eprintln!("  .. lifecycle: {state:?}"),
-                Ok(Event::Frame(_)) => {}
-                // Keep watching. A `while let Ok(..)` here ended the watcher on
-                // the first lag, which would silence the `-> [manual]` and
-                // `-> [behavior]` lines for the rest of the run -- and those
-                // lines ARE criterion 5's evidence, so their absence would look
-                // exactly like the interleaving failing.
-                Err(broadcast::error::RecvError::Lagged(missed)) => {
-                    eprintln!("  !! {missed} events dropped from the ring (still watching)");
-                }
-                Err(broadcast::error::RecvError::Closed) => break,
-            }
-        }
-    });
+    let watcher = tokio::spawn(watch_events(events));
 
     tokio::time::sleep(BEHAVIOR_WARMUP).await;
 
@@ -210,7 +188,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         !behavior.is_finished()
     );
 
-    run_capture(&handle).await;
+    run_or_probe(&handle, &mut probe_events).await;
 
     tokio::time::sleep(RUN_FOR).await;
 
