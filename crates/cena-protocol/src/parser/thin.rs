@@ -146,6 +146,7 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
         | "link" | "menuLink" | "sep" | "checkBox" | "radio" | "hScrollBar" | "vScrollBar" => {
             Frame::DialogWidgets(DialogWidgets {
                 id: id(),
+                dialog: dialog.map(str::to_owned),
                 kind: name.to_owned(),
                 widgets: vec![attrs],
             })
@@ -209,7 +210,11 @@ fn thin_frame_rest(name: &str, tag: &str, attrs: Attrs) -> Frame {
         "PantheonStatus" => Frame::PantheonStatus {
             value: text::attribute_u32(tag, "value").unwrap_or_default(),
         },
-        "streamId" | "stream" | "dynaStream" | "clearDynaStream" => Frame::StreamWindow {
+        // `dynaStream` and `clearDynaStream` were here and are NOT window
+        // declarations -- they feed and clear a streamBox control
+        // (`Wrayth protocol.txt:169-170`). Handled in `dispatch.rs` beside
+        // `<stream>`, which had the identical bug (review PR-4).
+        "streamId" | "stream" => Frame::StreamWindow {
             id: id(),
             title: text::attribute(tag, "title"),
             subtitle: text::attribute(tag, "subtitle"),

@@ -149,12 +149,10 @@ impl Parser {
                     attrs: text::attributes(tag),
                 });
             }
-            "clearStream" => {
-                self.flush(buffer, frames);
-                frames.push(Frame::ClearStream {
-                    id: text::attribute(tag, "id").unwrap_or_default(),
-                });
-            }
+            // Same fact, two controls: a streamBox and a stream window.
+            // `clearDynaStream` used to reach `thin.rs` and become a
+            // `StreamWindow` -- a clear reported as a DECLARATION (PR-4).
+            "clearStream" | "clearDynaStream" => self.clear_stream(tag, buffer, frames),
             "pushStream" => {
                 self.flush(buffer, frames);
                 let id = text::attribute(tag, "id").unwrap_or_default();
@@ -172,11 +170,23 @@ impl Parser {
             // as story prose. A behavior filtering on `stream == "Spells"`
             // saw none of them, and a consumer keeping a window registry was
             // told a window had just been declared.
-            "stream" if !tag.trim_end().ends_with("/>") => {
+            //
+            // **`dynaStream` is the same shape one control over**: the wiki
+            // (`reference/wiki_clean/Wrayth protocol.txt:169`) calls it a
+            // "text-content feed for a streamBox control", so its paired form
+            // establishes the same routing context. It had the same defect --
+            // on the wiki's own example (`:304`) it declared a window nobody
+            // sent and routed the body to `main` (PR-4).
+            "stream" | "dynaStream" if !tag.trim_end().ends_with("/>") => {
                 self.flush(buffer, frames);
                 let id = text::attribute(tag, "id").unwrap_or_default();
                 self.open_stream(id, true, frames);
             }
+            // Self-closing: no body to route, and still not a window.
+            // Structural, so nothing is dropped (Rule 2.2's floor) --
+            // `thin.rs`'s fallthrough would make it a `WindowHints`, which is
+            // the same wrong answer in a different shape.
+            "dynaStream" => self.structural_only("dynaStream", tag, buffer, frames),
             "popStream" => {
                 self.flush(buffer, frames);
                 self.pop_stream(tag, frames);
@@ -232,6 +242,22 @@ impl Parser {
                     frames.push(Frame::ClearDialogData { id: id.clone() });
                 }
                 if !tag.ends_with("/>") {
+                    // **A paired open emits, whether or not it clears.**
+                    //
+                    // Only the `clears` branch above pushed anything, so
+                    // `<dialogData id='expr'>` with no `clear=` produced no
+                    // frame at all: the dialog opened, its widgets followed,
+                    // and nothing told a consumer which dialog they were in
+                    // (review PR-3).
+                    //
+                    // `DialogOpen` is the existing frame for "a dialog is
+                    // open" -- `openDialog` uses it -- so this is the same
+                    // fact reaching the same place rather than new vocabulary.
+                    frames.push(Frame::DialogOpen {
+                        id: id.clone(),
+                        title: None,
+                        attrs: text::attributes(tag),
+                    });
                     self.dialog = Some(id);
                 }
             }
@@ -476,5 +502,36 @@ impl Runs {
     #[must_use]
     pub fn is_blank(&self) -> bool {
         self.runs.iter().all(|r| r.text.trim().is_empty())
+    }
+}
+
+impl Parser {
+    /// Emit a tag as [`Frame::Structural`] and nothing else.
+    ///
+    /// For a tag that is real, carries no payload this parser models, and must
+    /// not be guessed at -- a self-closing `<dynaStream/>` is the case that
+    /// needed it. Split out to keep `dispatch` under clippy's 100-line limit,
+    /// which the `dynaStream` arms took it past.
+    /// Emit [`Frame::ClearStream`] for `clearStream` / `clearDynaStream`.
+    ///
+    /// Split out with `structural_only` for the same reason: `dispatch` is a
+    /// match and clippy counts its lines, so a new arm pays for itself by
+    /// moving a body down.
+    fn clear_stream(&mut self, tag: &str, buffer: &mut String, frames: &mut Vec<Frame>) {
+        self.flush(buffer, frames);
+        frames.push(Frame::ClearStream {
+            id: text::attribute(tag, "id").unwrap_or_default(),
+        });
+    }
+
+    fn structural_only(
+        &mut self,
+        name: &str,
+        tag: &str,
+        buffer: &mut String,
+        frames: &mut Vec<Frame>,
+    ) {
+        self.flush(buffer, frames);
+        frames.push(Frame::structural(name, tag));
     }
 }

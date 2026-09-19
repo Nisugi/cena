@@ -315,3 +315,124 @@ fn a_known_tag_inside_a_component_body_is_structural() {
          corpus stops meaning anything: {frames:?}"
     );
 }
+
+/// A paired `<dialogData>` says which dialog opened, and its widgets say which
+/// dialog they are in.
+///
+/// # Two halves, both about attribution
+///
+/// Only the `clear='t'` branch emitted anything, so
+/// `<dialogData id='expr'>` with no `clear=` produced **no frame at all**: the
+/// dialog opened, widgets followed, and nothing told a consumer which dialog
+/// they belonged to.
+///
+/// `DialogWidgets.id` was documented as "the dialog these belong to" and
+/// filled from the **widget's** `id=`, so a consumer reading it got `exprLNK`
+/// where the doc promised `expr` — and had no way to reach the real answer.
+/// `Label`, `ProgressBar` and `InjuryImage` already carried a `dialog`; widgets
+/// were the one dialog child that could not be attributed (review PR-3).
+#[test]
+fn dialog_widgets_know_which_dialog_they_are_in() {
+    // The real shape, from `tests/fixtures/vitals_secondary.xml`.
+    let line = "<dialogData id='expr'><link id='exprLNK' cmd='x'/></dialogData>";
+    let mut parser = Parser::new();
+    let frames = parser.parse_line(line);
+
+    assert!(
+        frames
+            .iter()
+            .any(|f| matches!(f, Frame::DialogOpen { id, .. } if id == "expr")),
+        "a paired dialogData must announce the dialog even with no clear=, or \
+         its widgets arrive unattributable: {frames:?}"
+    );
+
+    let widgets = frames.iter().find_map(|f| match f {
+        Frame::DialogWidgets(w) => Some(w),
+        _ => None,
+    });
+    let Some(widgets) = widgets else {
+        panic!("the widget must still be emitted: {frames:?}")
+    };
+    assert_eq!(
+        widgets.id, "exprLNK",
+        "`id` is the WIDGET's own id, which is what the wire sent"
+    );
+    assert_eq!(
+        widgets.dialog.as_deref(),
+        Some("expr"),
+        "and `dialog` is the dialog it arrived inside -- the fact the old `id` \
+         doc claimed to carry and did not"
+    );
+}
+
+/// `dynaStream` feeds a streamBox; it does not declare a window.
+///
+/// The wiki (`reference/wiki_clean/Wrayth protocol.txt:169-170`):
+///
+/// ```text
+/// dynaStream      | Text-content feed for a streamBox control inside a dialog
+/// clearDynaStream | Clear a streamBox's content
+/// ```
+///
+/// Both fell through to the window-declaration arm, producing three wrong
+/// answers on the wiki's own example: a `StreamWindow` nobody declared, a body
+/// routed to the MAIN window instead of the streamBox, and a clear reported as
+/// a second declaration (review PR-4).
+///
+/// `<stream>` had the identical bug and was fixed the same way — that arm's
+/// comment records 31 spell-list rows delivered as story prose.
+#[test]
+fn a_dyna_stream_routes_its_body_and_its_clear_clears() {
+    // The wiki's own example, verbatim (`:304-305`).
+    let line = "<dynaStream id='bugStream'>Please describe the problem in \
+                detail...</dynaStream><clearDynaStream id='bugStream'/>";
+    let mut parser = Parser::new();
+    let frames = parser.parse_line(line);
+
+    assert!(
+        !frames
+            .iter()
+            .any(|f| matches!(f, Frame::StreamWindow { .. })),
+        "no window was declared, so no StreamWindow may be emitted: {frames:?}"
+    );
+
+    let routed = frames.iter().find_map(|f| match f {
+        Frame::Text(t) if t.content.contains("Please describe") => Some(t.stream.clone()),
+        _ => None,
+    });
+    assert_eq!(
+        routed.as_deref(),
+        Some("bugStream"),
+        "the body belongs to the streamBox it was fed to, not to main -- a \
+         consumer filtering on the id would otherwise see none of it: \
+         {frames:?}"
+    );
+
+    assert!(
+        frames
+            .iter()
+            .any(|f| matches!(f, Frame::ClearStream { id } if id == "bugStream")),
+        "clearDynaStream clears a streamBox, which is what ClearStream means: \
+         {frames:?}"
+    );
+}
+
+/// A self-closing `<dynaStream/>` is reported, not dropped and not a window.
+#[test]
+fn a_self_closing_dyna_stream_is_structural() {
+    let mut parser = Parser::new();
+    let frames = parser.parse_line("<dynaStream id='bugStream'/>");
+    assert!(
+        frames
+            .iter()
+            .any(|f| matches!(f, Frame::Structural { name, .. } if name == "dynaStream")),
+        "it carries no body to route, but the tag still happened -- Rule 2.2's \
+         floor is that nothing is dropped: {frames:?}"
+    );
+    assert!(
+        !frames
+            .iter()
+            .any(|f| matches!(f, Frame::StreamWindow { .. })),
+        "and it is still not a window declaration: {frames:?}"
+    );
+}

@@ -245,8 +245,19 @@ pub struct ActiveEffect {
 /// (`plan/05` §-1): seven variants of one shape is one variant.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DialogWidgets {
-    /// The dialog these belong to.
+    /// **The WIDGET's own `id=`**, e.g. `exprLNK`.
+    ///
+    /// This was documented as "the dialog these belong to" and filled from the
+    /// widget's `id=` -- so a consumer reading it got `exprLNK` where the doc
+    /// promised `expr`, and had no way to reach the real answer (review PR-3).
+    /// The dialog is [`Self::dialog`].
     pub id: String,
+    /// The `<dialogData>` this widget arrived inside, if any.
+    ///
+    /// `Label`, `ProgressBar` and `InjuryImage` already carry this; widgets
+    /// did not, which left them the one dialog child a consumer could not
+    /// attribute.
+    pub dialog: Option<String>,
     /// The wire tag that produced them: `cmdButton`, `dropDownBox`,
     /// `editBox`, `label`, `link`, `image`, `upDownEditBox`, `skin`, ...
     pub kind: String,
