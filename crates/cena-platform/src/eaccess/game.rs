@@ -10,6 +10,7 @@
 
 use super::wire::{CLIENT_BANNER, EaccessError, LaunchPayload, err};
 use crate::bytes::ByteSource;
+use crate::gemstone::endpoint::other_spelling;
 use crate::live::LiveSource;
 
 /// Open the game socket and send the three-part handshake.
@@ -49,11 +50,17 @@ use crate::live::LiveSource;
 /// working"* -- and it is why the pass criterion is game text, not a TCP
 /// accept.
 ///
+/// # The endpoint fallback
+///
+/// The connect is tried twice when the endpoint has a known second spelling:
+/// see [`connect_with_fallback`], and [`endpoint`](crate::gemstone::endpoint) for why the
+/// table is a fallback rather than the pre-emptive rewrite Lich does.
+///
 /// # Errors
 ///
 /// [`EaccessError`] with stage `game_connect` or `game_handshake`.
 pub async fn connect_game(payload: &LaunchPayload) -> Result<LiveSource, EaccessError> {
-    let mut sock = LiveSource::connect(&payload.gamehost, payload.gameport)
+    let mut sock = connect_with_fallback(&payload.gamehost, payload.gameport)
         .await
         .map_err(|e| err("game_connect", e))?;
 
@@ -89,3 +96,40 @@ pub async fn connect_game(payload: &LaunchPayload) -> Result<LiveSource, Eaccess
 /// varied their presence, not their spacing. It is `tokio::time::sleep`, so it
 /// is virtual under `tokio::time::pause()` and costs a test nothing.
 const READY_SIGNAL_GAP: std::time::Duration = std::time::Duration::from_millis(300);
+
+/// Connect to the game, retrying once against the endpoint's other spelling.
+///
+/// Ported from Lich's retry arm (`lib/main/main.rb:583-598`), which catches a
+/// connect failure, applies the inverse host/port mapping, and tries once more
+/// before giving up.
+///
+/// # Why the retry is scoped to the connect and no further
+///
+/// A connect failure is the only failure the other spelling could fix. Once
+/// bytes have been exchanged, a failure means something about *this* session --
+/// a rejected key, a closed socket mid-handshake -- and retrying against a
+/// different host would send the one-shot key to a second server. The key is
+/// single-use (`plan/10` §4.6), so a handshake retry would burn it.
+///
+/// # Which error is reported when both fail
+///
+/// **The first one.** `L` named the first host, so its failure is the answer to
+/// "why could I not reach the server the login told me to use". The fallback's
+/// failure is a footnote: it is expected to fail whenever the table is simply
+/// not relevant to this endpoint.
+async fn connect_with_fallback(host: &str, port: u16) -> std::io::Result<LiveSource> {
+    let first = match LiveSource::connect(host, port).await {
+        Ok(sock) => return Ok(sock),
+        Err(e) => e,
+    };
+
+    // No counterpart is the common case -- an endpoint the table does not know
+    // -- and it is not an error. There is simply nothing else to try.
+    let Some((alt_host, alt_port)) = other_spelling(host, port) else {
+        return Err(first);
+    };
+
+    LiveSource::connect(alt_host, alt_port)
+        .await
+        .map_err(|_alt| first)
+}

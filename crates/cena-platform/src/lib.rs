@@ -40,6 +40,12 @@
 pub mod answering;
 pub mod bytes;
 pub mod eaccess;
+
+/// Game-specific data, under the namespace `plan/05` Rule 3.4 prescribes.
+///
+/// Crate-private: its one consumer is [`eaccess`], which re-exports what it
+/// needs. Public here would put a second path to the same item in the API.
+pub(crate) mod gemstone;
 pub mod live;
 pub mod record;
 pub mod replay;

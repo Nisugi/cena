@@ -506,6 +506,18 @@ fn every_raw_text_escape_names_the_rule_that_compels_it() {
 // trait is for", but CLAUDE.md bans `GameAdapter` and plan/05:533 itself lists
 // it as over-engineered. The rule stands; its stated rationale is stale and
 // should be amended per plan/05 §10.
+//
+// AMENDED 2026-09-19 — the rule forbade its own remedy. See
+// `is_module_plumbing`. In short: `"gemstone"` is a needle, so the
+// `mod gemstone;` and `use crate::gemstone::...` lines that reach the exempt
+// directory were themselves flagged, and Rule 3.4 could not be followed at all.
+// Found by `cena-platform/src/gemstone/endpoint.rs`, the first code to need the
+// namespace. The exemption covers `mod`/`use` statements only.
+//
+// It also decides WHERE the namespace goes: the exclusion is the literal
+// `/src/gemstone/`, so it must sit directly under a crate's `src`, exactly as
+// plan/05:333 writes it (`cena-model/src/gemstone/`). A first attempt at
+// `src/eaccess/gemstone/` -- beside its only caller -- was still flagged.
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -525,6 +537,7 @@ fn game_names_outside_game_modules_are_flagged() {
     let hits: Vec<String> = scan_lines(&sources, needles)
         .into_iter()
         .filter(|hit| !hit.contains("/src/gemstone/") && !hit.contains("/src/dragonrealms/"))
+        .filter(|hit| !is_module_plumbing(hit))
         .collect();
     assert!(
         hits.is_empty(),
@@ -536,6 +549,43 @@ fn game_names_outside_game_modules_are_flagged() {
          evasion is review's job (plan/12 §9d); this catches drift.\n{}",
         hits.join("\n")
     );
+}
+
+/// Whether a flagged line is the `mod` / `use` plumbing that REACHES a game
+/// namespace, rather than game-specific code in a shared module.
+///
+/// # Why this exists: the rule forbade its own remedy
+///
+/// FOUND 2026-09-19 by the first code to actually use Rule 3.4. The rule says
+/// game-specific things live in `<crate>/src/<game>/`; this test exempts that
+/// directory by path -- but `"gemstone"` is also a needle, so
+/// `pub(crate) mod gemstone;` in `lib.rs` was flagged, as was every
+/// `use crate::gemstone::...` that reached it. **A namespace that cannot be
+/// declared or imported is a namespace that cannot be used**, so the test as
+/// written made Rule 3.4 unfollowable: the only passing options left were to
+/// keep game-specific data in a shared module, or to hide the literal behind
+/// `concat!` -- the two things the rule exists to prevent.
+///
+/// # Why this stays narrow
+///
+/// A `mod`/`use` line names a *path*; it cannot express an `if game == ...`
+/// branch, which is what Rule 3.4 targets (`plan/05:332-336`). Exempting the
+/// plumbing therefore removes no enforcement -- the branch itself is still
+/// flagged, and so is every other mention in code.
+///
+/// It deliberately does NOT exempt a line merely *containing* `use` or `mod`.
+/// The match is anchored at the start of the trimmed line and requires the
+/// statement to end in `;`, so `dispatch(use_gemstone_rules())` is still
+/// flagged, and so is a `mod gemstone { ... }` opening an inline module.
+fn is_module_plumbing(hit: &str) -> bool {
+    const PLUMBING: &[&str] = &["mod ", "pub mod ", "pub(crate) mod ", "use ", "pub use "];
+
+    // `scan_lines` formats a hit as `path:line: <trimmed code>`, so the code is
+    // whatever follows the LAST `": "` -- the path may contain one too.
+    let Some((_, code)) = hit.rsplit_once(": ") else {
+        return false;
+    };
+    PLUMBING.iter().any(|p| code.starts_with(p)) && code.ends_with(';')
 }
 
 // ---------------------------------------------------------------------------

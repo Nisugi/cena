@@ -58,6 +58,7 @@ mod refusal;
 mod reject;
 mod wire;
 
+pub use crate::gemstone::endpoint::other_spelling;
 pub use game::connect_game;
 pub use handshake::authenticate;
 pub use refusal::{describe_launch_refusal, launch_refusal_is_fatal};

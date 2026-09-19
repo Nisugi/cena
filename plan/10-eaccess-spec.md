@@ -1157,9 +1157,10 @@ single-user, and already has better machinery.
     4c. On any other error, if fallback available -> WebLogin (§5.4), with retry.
  5. Receive LaunchResult { key, gamehost?, gameport?, gamecode, ... }.
  6. TRIM the trailing newline from key.                       <- §4.7 item 5
- 7. Rewrite gamehost/gameport via fix_game_host_port.          <- §7.2, MANDATORY
+ 7. [LICH ONLY] Rewrite gamehost/gameport via fix_game_host_port.
+    Cena does NOT do this -- see §7.2's 2026-09-19 amendment.
  8. TCP connect to (gamehost, gameport), bounded timeout.
-    8a. On connect failure, apply break_game_host_port (the exact inverse) and retry once.
+    8a. On connect failure, look up the OTHER spelling and retry once. <- §7.2, what Cena builds
  9. Configure the socket (§7.3).
 10. HANDSHAKE (§7.4), exactly:
        send  <KEY>\n
@@ -1191,6 +1192,29 @@ first, and **on connect failure reverses the mapping and retries once** (main.rb
 **Cena MUST implement both directions**, or logins to Platinum/Prime fail on one of the two host
 spellings. This table is also the clearest evidence that **Simutronics has changed endpoints under
 Lich before** — treat it as data that will need updating, not as a constant.
+
+> **AMENDED 2026-09-19 (author's decision). Cena implements the RETRY, not the pre-emptive
+> rewrite.** Both directions of the table exist — `cena-platform/src/gemstone/endpoint.rs`,
+> `other_spelling` — but they are consulted **only after a connect has already failed**
+> (`eaccess/game.rs`, `connect_with_fallback`), never to rewrite what `L` returned.
+>
+> The author's scope: *"I know lich recently added some fall back connection ways, we should have
+> those fallbacks as well but other than that I don't think we need anything else legacy."*
+>
+> Why the fallback half is the safer half: a pre-emptive rewrite **overrides the server**. If `L`
+> names a host, that is the live endpoint's own answer, and rewriting it means preferring a
+> hard-coded table — so when Simutronics retires a spelling, the table is wrong *and* authoritative.
+> As a fallback the same table can only help: it fires when the server's answer did not connect, and
+> if the legacy hosts are retired it simply never fires.
+>
+> Because Cena does not rewrite, it does not know which spelling `L` returned, so the lookup is
+> **symmetric** — each pair maps to its counterpart from either side. That makes the open question
+> below moot rather than blocking.
+>
+> **Still UNVERIFIED: whether STORM returns legacy hostnames at all.** The 2026-09-18 tcpdump
+> filtered on `host eaccess.play.net` (§12.1) and so never captured the game connect, and the `L`
+> response recorded at §12.2 has its `GAMEHOST` redacted. This is the question review finding PL-1
+> called *"a question for the author, not the corpus."*
 
 `$platinum = true` iff `gameport == '10121' || gameport == '10124'` (main.rb:382-387)
 **[verifier-corrected line: :382-387, not :361-365]**.
