@@ -128,6 +128,62 @@ is unknown, contested, or the answer changes what happens next.
   there, the queue empties, and the next cardinal run starts from a clean buffer. A route with a
   door every few rooms paces itself with no delay logic at all.
 
+##### THE SAFEGUARD: a typeahead refusal during `travel` is a POSITION signal
+
+> **AUTHOR, 2026-09-18:** *"we got some safeguard that during travel if we hit the typeahead
+> message, then we need to stop sending commands, catch up to the room and recalculate no?"*
+
+**Yes, and it is the one piece of recovery `travel` cannot do without.** The three steps are the
+author's:
+
+1. **Stop sending.** Every direction still queued locally is now suspect, because it was computed
+   from a room the character may not be in.
+2. **Catch up to the room.** Drain what the server actually sent and read the current room id from
+   the wire -- not from the client's model of the route.
+3. **Recalculate.** Re-path from where the character *is* to the destination, and resume.
+
+##### Why a refusal means more during `travel` than anywhere else
+
+For a `look`, a typeahead refusal is a throttle message and nothing else -- §5.2d measured that the
+next command is accepted immediately, with no cooldown. **For a movement it is also a statement
+about position:** one of the moves the client believed it had made did not happen.
+
+That is the difference between `travel` and every other `send_now` caller. A refused sigil leaves
+the world exactly as it was; a refused *move* leaves the client's model of the route **one room
+ahead of reality**, and every subsequent queued direction is then computed from the wrong room.
+
+The naive recovery -- re-send the refused direction and carry on -- is wrong here even though it is
+what Lich does. VERIFIED that Lich retries (`lib/common/move.rb:392-394`):
+
+```ruby
+elsif line =~ /^Sorry, you may only type ahead/
+  # clears on its own once the queue drains, but bounded all the same
+  remedy.call(:typeahead, MAX_ROLLS, :roundtime) { Script.execution_sleep 1 }
+```
+
+and its comment -- *"clears on its own once the queue drains"* -- is correct **for Lich**, because
+Lich moves **one room at a time**. With a single command outstanding there is nothing to
+recalculate: retry the direction and the position is consistent again.
+
+**`travel` batches, so that reasoning does not transfer.** With three directions outstanding, a
+refusal says one of them was dropped but not *which*, and "retry the last one" assumes the refused
+command was the final one sent. That is likely -- the server processes in order, so the overflow
+should be the tail -- but it is **inference, not measurement**, and a wrong guess walks the
+character down the wrong exit.
+
+Re-pathing from the observed room needs no such assumption. It costs one mapdb lookup and is
+correct whichever command was dropped, which is why it is the safeguard rather than the fallback.
+
+##### It should be rare, and that matters for the design
+
+Given §5.2f, a correctly-written `travel` **should never see this**: it batches at most the
+entitlement, StringProcs drain the queue regularly, and the rate ceiling is twenty times what a
+route produces. So the refusal handler is a **safety net for a client bug or a server slowdown**,
+not a routine path.
+
+That argues for making it loud rather than silent -- a `travel` that quietly recovers from
+typeahead refusals every few rooms is a `travel` that is batching wrong, and the log should say so.
+
 ##### The failure mode `travel` must handle, and `move` does not
 
 **Not verifying each hop means a wrong turn is discovered late.** If a room does not connect the
