@@ -263,6 +263,100 @@ Whether instant actions count against the server's type-ahead budget at all. The
 
 ---
 
+## 5a. Cross-character commands, and what they must respect
+
+**AUTHOR, 2026-09-18.** Raised while deciding whether scripting stays open. Recorded here
+because it constrains `Origin` and the session registry, both of which are being touched now.
+
+### 5a.1 The goal
+
+> **AUTHOR:** *"eventually commands are going to be wanted. cross character commands. so I can be
+> on nisugi the main and manually (or through script so treated as script) send commands to
+> another character for them to perform as if they just sent it."*
+
+Two things settled in that sentence:
+
+- A script-originated command is **treated as script**, not as manual. That is the `Origin`
+  variant.
+- The recipient runs it **"as if they just sent it"** -- so on the recipient's queue it behaves
+  like ordinary input, and `plan/12` §4.1's interleaving rule already covers it: jumps the
+  queue, does **not** preempt the recipient's own behavior, runs its round trip.
+
+That second point is the useful one. **The hard part is addressing, not arbitration** -- the
+queue already knows what to do with an incoming command.
+
+### 5a.2 Lich needs DRb; Cena needs a channel send
+
+> **AUTHOR:** *"but we wouldn't need drb since it's multi session same application."*
+
+Correct, and the saving is larger than it looks. Lich's borg/drone/queen trio works over
+**distributed Ruby**, because each character is a separate OS process. That forces a network
+listener per character, endpoint discovery, serialisation, and connection failure handling --
+and the discovery happens *through the game*, which is why `druby://` URIs carrying the author's
+real link-local IPv6 appear in **2,221 of 10,849 corpus files** (`cena-protocol/src/scrub.rs`).
+
+Cena's five sessions are five tasks in one process. A cross-character command is a send on a
+channel that already exists. No network, no discovery, no serialisation, and nothing leaking an
+IP address into a log.
+
+Note DRb is a **script-level convention, not a Lich feature**: `grep -rn 'DRb' reference/lich-5/`
+returns nothing in core. The trio built cross-character control *on top of* Lich rather than
+through it.
+
+### 5a.3 THE CONSTRAINT: commands must respect game codes
+
+> **AUTHOR:** *"that multi session commands have to respect game codes (instances)."*
+
+**A GS3 character and a GSX character are in different worlds.** They cannot be in the same
+room, cannot hand each other anything, cannot interact at all. A cross-character command between
+them is not merely useless -- it would **silently appear to work**: the command sends, the
+recipient runs it, and nothing the sender intended happens.
+
+**Cena makes this easier to get wrong than Lich does.** In Lich each character is a separate
+process behind a separate DRb endpoint, so crossing instances takes deliberate effort. In Cena
+every session is in one registry, addressable by name, and nothing in the type system
+distinguishes worlds.
+
+So:
+
+- A cross-character command with a **different instance** on either end is **REFUSED BY
+  DEFAULT**, with a typed refusal. Not a silent no-op: the failure is otherwise invisible, which
+  is the whole danger.
+- The registry should be **grouped by instance** rather than flat, so the constraint is
+  structural instead of a check that someone can forget to write.
+
+**The block is a default, not a wall.**
+
+> **AUTHOR, 2026-09-18:** *"I'm not saying it needs to be permanently blocked. It should be
+> blocked by default, with a way, like a modifer, to override the game check."*
+
+So the check is **opt-out per command**, not a compile-time impossibility. The reasoning holds
+either way: the default protects against a failure that is invisible when it happens, and the
+override means a legitimate case is never unreachable -- and, being explicit, appears in the log
+as a deliberate act rather than as an accident.
+
+This is the same shape as `plan/12` §5.2's `Unknown`: the type makes you say what you mean
+rather than deciding for you. A caller that overrides has written down that it meant to.
+
+**Use the REQUESTED game code, not the one `L` returns.** `Credentials::game_code` is what was
+asked for (`GS3`); `LaunchPayload::gamecode` is the server's answer and MEASURED as a **family
+code** -- a GS3 login returns `GAMECODE=GS` (`plan/15` §2a.4a). **UNVERIFIED** whether GSX also
+answers `GS`; if it does, the returned code cannot distinguish instances at all and a guard
+built on it would be silently useless.
+
+### 5a.4 Open
+
+- **Does the sender wait for a result?** Fire-and-forget matches "as if they just typed it" and
+  keeps one session from stalling on another's problems; awaiting the recipient's `Outcome`
+  needs a failure mode for a disconnected or wedged recipient. My recommendation is
+  fire-and-forget plus confirm-by-effect -- the same pattern as §2 -- but this is the author's
+  call and is **not settled**.
+- What the queen/drone scripts actually send: commands, or higher-level intents. The trio is not
+  in `reference/scripts` (238 scripts, none of the three), so this is unread rather than
+  decided.
+
+---
+
 ## 6. Logging
 
 ### 6.1 The gap

@@ -173,6 +173,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let tag = match origin {
                         Origin::Manual => "manual",
                         Origin::Behavior(_) => "behavior",
+                        // Distinguished HERE, which is the whole reason it is
+                        // a separate variant: it queues like manual input, but
+                        // a reader of this transcript has to be able to tell
+                        // "the player typed this" from "another character's
+                        // script sent this".
+                        Origin::Script => "script",
                     };
                     eprintln!("  -> [{tag}] {line}");
                 }

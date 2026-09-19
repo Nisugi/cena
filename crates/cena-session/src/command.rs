@@ -42,6 +42,42 @@ pub enum Origin {
     /// commands sent in FIFO order -- verbatim the failure §4.2 names, "an
     /// attack that fires four seconds after the fight ended".
     Behavior(crate::queue::AuthorityToken),
+    /// A script sent it -- **including a command from another character's
+    /// session** (`plan/16` §5a).
+    ///
+    /// # Why this variant exists before any script does
+    ///
+    /// Not because scripting is decided -- it is **not** (`plan/16` §5a). It
+    /// exists because `Origin` is matched on wherever the interleaving policy
+    /// is decided, and every one of those matches is a statement about how a
+    /// script command behaves relative to a behavior's. Answering that with
+    /// **one** behavior in the tree is a line each; answering it once Hunt,
+    /// Heal and Travel exist means re-deciding the policy for all of them,
+    /// each written assuming it was the only claimant.
+    ///
+    /// So the cost of adding it now is a variant. The cost of adding it later
+    /// is a policy migration.
+    ///
+    /// # It behaves like `Manual`, deliberately
+    ///
+    /// > **AUTHOR, 2026-09-18:** a character receiving a cross-character
+    /// > command should perform it *"as if they just sent it."*
+    ///
+    /// So it jumps the queue and does **not** preempt the recipient's own
+    /// behavior -- `plan/12` §4.1's rule, unchanged. It is a separate variant
+    /// from [`Self::Manual`] not because it queues differently but because a
+    /// **log has to be able to tell them apart**: "the player typed this" and
+    /// "another character's script sent this" are different facts about a
+    /// session, and collapsing them makes a transcript unreadable at exactly
+    /// the moment it matters.
+    ///
+    /// # It carries no authority token
+    ///
+    /// Like `Manual`, and for the same reason: §4.1's correction is that input
+    /// is not a claimant. A script that wants to run a *sequence* claims the
+    /// authority and sends as [`Self::Behavior`]; this variant is for
+    /// individual commands.
+    Script,
 }
 
 impl Origin {
@@ -49,7 +85,8 @@ impl Origin {
     #[must_use]
     pub const fn token(self) -> Option<crate::queue::AuthorityToken> {
         match self {
-            Self::Manual => None,
+            // Neither the player nor a script is a claimant (§4.1).
+            Self::Manual | Self::Script => None,
             Self::Behavior(token) => Some(token),
         }
     }

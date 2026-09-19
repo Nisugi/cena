@@ -156,7 +156,11 @@ impl CommandQueue {
     /// not having the branch rather than by a comment asking for it.
     pub fn admit(&mut self, envelope: Envelope) {
         match envelope.origin {
-            Origin::Manual => self.manual.push_back(envelope),
+            // A script command queues exactly where manual input does: the
+            // author's rule is that a cross-character command runs "as if they
+            // just sent it" (`plan/16` §5a.1). It is a distinct variant so a
+            // LOG can tell the two apart, not because it queues differently.
+            Origin::Manual | Origin::Script => self.manual.push_back(envelope),
             Origin::Behavior(_) => self.held.push_back(envelope),
         }
     }
