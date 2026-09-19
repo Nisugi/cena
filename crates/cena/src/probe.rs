@@ -126,32 +126,56 @@ async fn phase_1_burst(handle: &SessionHandle, events: &mut broadcast::Receiver<
     report(&seen, "phase 1");
 }
 
-/// **Q1: do instant actions count against the buffer?** The one that matters.
+/// **Q1: do instant actions count against the buffer? ANSWERED: yes.**
 ///
 /// > **AUTHOR:** *"shouldn't be subject to typeahead or waiting (depending on
 /// > the action)"*
 ///
-/// If instant actions are exempt, `send_now` can batch freely and `plan/16`
-/// §1.1's "a few in a row, then the trigger" needs no rate policy at all. If
-/// they are not, `send_now` needs one, and §5.2's claim that the two features
-/// are one problem is right.
+/// # Answered by the tests themselves, not by a phase
 ///
-/// **This phase needs the author, which is why it takes no arguments and
-/// awaits nothing.** The seed list is `515` Rapid Fire, `140` Wall of Force and
-/// the Sunfist sigils (`plan/16` §1.2) -- all of which cost mana, need the
-/// right society, or both. This file will not spend a character's resources on
-/// its own initiative, so it prints what to run instead of running it. The
-/// signature says so: a phase that sent anything would need the handle.
+/// > **AUTHOR, 2026-09-18:** *"we were using the instant action look for
+/// > testing, so I think that says yes instant actions count against the
+/// > buffer (typeahead)."*
+///
+/// **Every command in every run of this probe was `look`** -- and `look` is an
+/// instant action by the author's own definition, *"anything that doesn't cause
+/// roundtime"* (`plan/16` §1.1a). MEASURED directly: a `look` sent inside a
+/// 7-second roundtime executed normally (§1.5).
+///
+/// So the evidence was already in hand three runs over: `look` refused at 54
+/// commands/second, accepted exactly 3 at a time, and produced `Sorry, you may
+/// only type ahead 2 commands.` like anything else. **Instant actions are
+/// subject to typeahead.**
+///
+/// # Why this phase existed anyway, and what that cost
+///
+/// It was scoped around **abilities** -- sigils, `515`, `140` -- because the
+/// first draft of `plan/16` treated "instant action" as a curated list to
+/// enumerate rather than as a property of a command. Under a list, `look` is
+/// not a member and the question stays open; under the property it is a member
+/// and the question was answered by the first burst.
+///
+/// The cost was real: this phase asked the author to spend mana on a question
+/// three runs had already settled. **A definition that is a list invites
+/// measuring things the property would have told you.**
+///
+/// # What is still genuinely open
+///
+/// Whether a **roundtime-causing** action behaves differently -- an attack or a
+/// cast sent while over the buffer. Every command measured so far is free, so
+/// the refusal path for something that costs is UNVERIFIED. It is a narrower
+/// question than this phase was asking and is recorded in `plan/16` §5.3.
 fn phase_3_instant_actions() {
-    eprintln!("\n[phase 3] instant actions vs the buffer -- NOT RUN AUTOMATICALLY");
-    eprintln!("          This is the question that changes the design (plan/16 §5.3 q1),");
-    eprintln!("          but every candidate costs mana or needs a society:");
-    eprintln!("            * `sigil of escape`  -- Guardians of Sunfist, stamina");
-    eprintln!("            * `incant 515`       -- Rapid Fire, mana");
-    eprintln!("            * `incant 140`       -- Wall of Force, mana");
-    eprintln!("          Run three of whichever you can afford back to back, then");
-    eprintln!("          grep the .bytes log for `you may only type ahead`.");
-    eprintln!("          No hits => instant actions are exempt => send_now needs no rate policy.");
+    eprintln!(
+        "
+[phase 3] instant actions vs the buffer -- ALREADY ANSWERED: yes"
+    );
+    eprintln!("          Every command in this probe is `look`, which is an instant");
+    eprintln!("          action by the definition 'anything that doesn't cause");
+    eprintln!("          roundtime' -- MEASURED running inside a 7s roundtime.");
+    eprintln!("          It refuses at 54/s and accepts 3 at a time like anything");
+    eprintln!("          else, so instant actions ARE subject to typeahead.");
+    eprintln!("          No mana needs spending to find this out.");
 }
 
 /// **Q3: what happens to a command sent DURING roundtime?** (`plan/16` §1.5)

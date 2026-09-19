@@ -1032,19 +1032,54 @@ the record; the console is commentary, exactly as the probe's banner says.
 corrections in this section -- the entitlement being 2 rather than 1, and 7 refusals rather than 5
 -- came from the log and neither was visible in the console output.
 
-### 5.3 OPEN — what a live run would still settle
+### 5.3 CLOSED — all four questions answered, three of them by accident
 
-The limit is known; these are not, and none can be read out of Lich:
-
-| # | Question | Why it needs the wire |
+| # | Question | Answer |
 |---|---|---|
-| 1 | Do **instant actions** count against the buffer? | The author's *"shouldn't be subject to typeahead or waiting (depending on the action)"* suggests some do not. Lich has no instant-action concept, so it cannot answer. |
-| 2 | Does exceeding it **drop** the command or **refuse** it? | The newsletter says the third command "is not important" in one case and must be re-sent in another — so it is dropped, not queued. Worth confirming on the current server. |
-| 3 | Does a `send_now` during roundtime refuse, drop, or hold? (§1.5) | The same run answers it: `Gate::None` sends during roundtime on purpose. |
-| 4 | Does the corpus ever carry a number other than `1`? | Two years of real traffic would settle whether the literal is safe to match on. **Needs the author's permission** — recursive searches over the 49.55 GB archive are asked-first (`CLAUDE.md`). |
+| 1 | Do **instant actions** count against the buffer? | **YES.** Answered by the tests themselves — see below. |
+| 2 | Does exceeding it **drop** or **refuse**? | **REFUSES**, individually, and the rest still run. 25 sent, 7 refused, 18 executed; 25 − 7 = 18 exactly (§5.2d). |
+| 3 | Does a `send_now` during roundtime refuse, drop, or hold? | **RUNS.** A `look` inside a 7-second roundtime executed normally (§1.5). |
+| 4 | Is the number ever other than `1`? | **YES — it is `2` here**, and it is an account entitlement, not a constant (§5.2a). No corpus search was needed. |
 
-**Question 1 is the only one that changes the design**, and it is a cheap test: send several
-instant actions back to back and see whether any produces the message.
+#### Question 1, and the shape of the mistake that kept it open
+
+> **AUTHOR, 2026-09-18:** *"we were using the instant action look for testing, so I think that says
+> yes instant actions count against the buffer (typeahead)."*
+
+**Every command in every run of the probe was `look`.** And `look` is an instant action by the
+author's own definition — *"anything that doesn't cause roundtime"* (§1.1a) — MEASURED directly,
+since a `look` sent inside a 7-second roundtime executed normally.
+
+So the answer was in hand from the first burst: `look` refused at 54 commands/second, accepted
+exactly 3 at a time, and produced `Sorry, you may only type ahead 2 commands.` like anything else.
+
+**The question stayed open because the definition was wrong, not because the evidence was
+missing.** §1.2 treated "instant action" as a **curated list** — 515, Wall of Force, the Sunfist
+sigils — and under a list, `look` is not a member, so three runs of it said nothing about the
+class. Under the property, `look` is a member and the first run settled it.
+
+That cost something real: the probe asked the author to spend mana proving what the free commands
+had already proved. **A definition that is a list invites measuring what the property would have
+told you** — the same failure as `plan/15`'s dead citation path, in a different register: a
+category that resolves to the wrong set does not fail loudly, it manufactures an open question.
+
+#### The consequence for `send_now`, now settled
+
+§1.4 left open whether instant actions needed a rate policy at all. They do — they are ordinary
+traffic as far as the buffer is concerned. But §5.2f already establishes what that policy is, and
+it is small: **batch no more than the entitlement, read the entitlement from the refusal, and stop
+batching when refused.** Nothing about instant actions is exempt, and nothing about them needs
+special handling.
+
+### 5.3a What is still genuinely open
+
+| # | Question | Why it still needs the wire |
+|---|---|---|
+| 1 | Does a **roundtime-causing** action behave differently when it overflows the buffer? | Every command measured is free. An attack or a cast that is refused may interact with roundtime differently. Narrow, and not blocking. |
+| 2 | Does a refused **movement** leave the path intact? | §5.2g. A dropped-not-refused move would leave `travel` believing it moved — the desync `plan/12` §5.4 exists for. **Should be measured before `travel` is built.** |
+| 3 | Does a slow server pull the 21.5/s ceiling down? | Kelfour's *"only during slow downs"* says it can. Not blocking: a client that never batches past its entitlement is not exposed to it (§5.2f). |
+
+**None of these blocks the current design.** Question 2 blocks `travel`, which does not exist yet.
 
 ---
 
@@ -1207,10 +1242,20 @@ is an interface change, and interface changes get more expensive per behavior wr
 
 ## 8. Open questions, collected
 
-| # | Question | Who can answer |
+**Five questions, four closed on 2026-09-18.**
+
+| # | Question | Status |
 |---|---|---|
-| 1 | What does the server do with an instant action sent **during** roundtime? (§1.5) | author |
-| 2 | Do instant actions count against the type-ahead budget? (§5.3) | author, or measurement |
-| 3 | Does an instant action echo any text at all, or is it silent? | author, or measurement |
-| 4 | Where do logs live, and is the account/real name scrubbed? (§6.4) | author |
-| 5 | Does widening `plan/12` §7.1 to include buffs/cooldowns happen now, or at M2? (§2.3) | author |
+| 1 | What does the server do with an instant action sent **during** roundtime? (§1.5) | **CLOSED — it runs.** A `look` inside a 7-second roundtime executed normally. |
+| 2 | Do instant actions count against the type-ahead budget? (§5.3) | **CLOSED — yes.** Every probe command was `look`, an instant action by definition (§1.1a). |
+| 3 | Does an instant action echo any text at all, or is it silent? | **CLOSED — it echoes.** `look` returns a full room render; a refused one returns the typeahead message. |
+| 4 | Where do logs live, and is the account/real name scrubbed? (§6.4) | **CLOSED.** `CENA_LOG_DIR`, defaulting to `./logs`, set to `E:\Gemstone\data\cena_logs` in development. Credentials redacted; other players' names are not, and the log header says so. |
+| 5 | Does widening `plan/12` §7.1 to include buffs/cooldowns happen now, or at M2? (§2.3) | **CLOSED — now.** Approved by the author and built (`plan/17`, `cena-model/src/effects.rs`). |
+
+Questions 1-3 were all answered by runs aimed at something else, which is the section's own lesson:
+the probe measured `look` because it was free and harmless, and `look` turned out to be a member of
+the class three of these questions were about.
+
+**Still open**, moved to §5.3a: whether a roundtime-causing action overflows differently, whether a
+refused *movement* leaves the path intact (blocks `travel`), and whether a slow server lowers the
+21.5/s ceiling.
