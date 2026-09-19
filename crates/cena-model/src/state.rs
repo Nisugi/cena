@@ -1,8 +1,8 @@
 //! [`GameState`]: what the session knows, built **only** from typed frames.
 //!
-//! `plan/12` §7.1 scopes this to "room, hands, roundtime, vitals" and puts
-//! "stats, skills, PSMs, spells, inventory" in the Out column. That is what is
-//! here and no more.
+//! `plan/12` §7.1's Out list is **per-milestone, not permanent**: inventory
+//! landed in M2 (`plan/18` §2d) and stats/skills land in M3. Out today is the
+//! rest of the text-scraped model.
 //!
 //! # Criterion 2, and what "never raw text" actually forbids
 //!

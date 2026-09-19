@@ -55,7 +55,7 @@ That third question was worth asking, because the directory listing hides the sp
 |---|---|---|
 | Crit tables | ~72,000 | pure data (`plan/13` §4a already blesses the port; `crit.rs` started) |
 | Wire-driven model | — | structured XML attributes |
-| Text-scraped model | ~25,000 incl. **160 regexes** in `infomon/parser.rb` | running `info`/`skills`/`exp` and matching prose |
+| Text-scraped model | ~25,000 incl. **105 regexes** in `infomon/parser.rb` | running `info`/`skills`/`exp` and matching prose |
 
 **M2 takes the wire-driven half.** Text-scraping needs the ~15-command Infomon sync that
 `plan/12` §7.1 puts Out, and its first consumer is M6.
@@ -166,12 +166,24 @@ later behavior depends on it.
 | Out | Why |
 |---|---|
 | stats, skills, PSMs, society, bounty | text-scraped; needs the Infomon sync (`plan/12` §7.1, Out) |
-| the 160 `infomon/parser.rb` regexes | ditto, and first consumer is M6 |
+| the 105 `infomon/parser.rb` regexes | ditto, and first consumer is M6 |
 | crit tables (~72K lines) | pure data, zero consumers until combat exists |
 | condition *evaluation* | `plan/17` §6 already put this Out; Vellum's `conditions.rs` is 1,010 lines of frontend concern |
 | window layout | `cena-ui`'s, at M4 |
 
 ---
+
+> **COUNT CORRECTED 2026-09-19.** Both rows above said **160**. MEASURED:
+>
+> ```sh
+> grep -cE '^\s+[A-Z][A-Za-z]* *= */' reference/lich-5/lib/gemstone/infomon/parser.rb   # 105
+> ```
+>
+> 105 named regex constants in an 839-line file, and no other reading of the file produces
+> 160 -- `= /` assignments are also 105, regex-bearing lines 108, `ALL_LIST` 17. This is
+> `plan/05` §-2's second form: **a number copied into a document is a number that will
+> drift.** Where a count can be measured by a command, cite the command. (The same
+> correction was made twice in `CLAUDE.md` for the tag count, 61 -> 63 and 123 -> 126.)
 
 ## 4. Method
 

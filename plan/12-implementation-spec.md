@@ -7,6 +7,19 @@ document, this document wins. They remain valuable — they hold the evidence an
 — but they contain competing versions of the design, written before the curated-behaviors
 decision, and they must not be read as instructions.
 
+> **THE BARE NUMBERS BELOW ARE SPLIT ACROSS TWO DIRECTORIES.** Measured
+> (`ls research/*.md plan/*.md`):
+>
+> - `research/` — `01`, `02`, `03`, `04`, `07`, `08`, `09`, `11`
+> - `plan/` — `05`, `06`, `10`, and `12`–`19`
+>
+> So a number in this table is **not** reliably a sibling of this file. On 2026-09-19 a reader
+> chasing C21 tried `plan/04-inherited-decisions.md`, got nothing, and had to search the tree;
+> it is `research/04-inherited-decisions.md:1878`. **A citation that resolves to nothing does
+> not fail loudly; it manufactures a false negative** — the lesson `CLAUDE.md` already records
+> about `styleIfClosed`, where a dead path "proved" the wiki omits a tag it documents five
+> times. Check the directory before reasoning from a document's silence.
+
 | Document | Status |
 |---|---|
 | **12 (this)** | **Authoritative for implementation** |
@@ -671,7 +684,7 @@ Revised from `01` §8, each phase ending in something demonstrable:
 |---|---|
 | **1** | the slice above |
 | 2 | frame vocabulary breadth + golden corpus; full room/combat/vitals rendering |
-| 3 | character model (typed, per `01` Phase 3 / C21) |
+| 3 | character model (typed, per `research/01` Phase 3 / `research/04` C21) |
 | 4 | a real frontend (web first — it is also mobile) |
 | 5 | multi-session: N characters, isolation tests, switching |
 | 6 | first real behavior (Hunt), profile format (§6a.1), supervisor composition |
