@@ -405,3 +405,118 @@ async fn a_scripts_instant_action_is_ungated_like_a_manual_one() {
          readiness check even where the refusal happens to agree"
     );
 }
+
+/// **A sigil's prompt does not close the attack's window.**
+///
+/// `send_now` bypasses the queue, so its response is attributed to nothing —
+/// but it still draws a prompt, and any prompt closed the single round-trip
+/// window. Three sigils followed by `send_and_await("attack")` therefore
+/// resolved the attack on the FIRST sigil's response.
+///
+/// VERIFIED on the wire before the fix: the attack came back
+/// `Confirmed("You feel a surge.")` — a sigil's text — under `any_frame`.
+/// Under a strict matcher it would have timed out instead, with its real
+/// answer arriving a window late. Every time, for the batching shape the
+/// author documented as normal usage (review SE-5).
+///
+/// `tests/send_now.rs`'s existing batching test passes either way, because
+/// `AnsweringSource` consumes each reply between sends. Holding the replies
+/// is what reproduces a real round trip, where the sigils' prompts are still
+/// in flight when the attack goes out.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_instant_actions_prompt_does_not_resolve_the_next_command() {
+    let (source, transcript) = AnsweringSource::new(PROMPT_AT_100);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let cancel = session.cancel_token();
+    let driver = tokio::spawn(session.into_actor().run());
+
+    let calibrate = handle
+        .send_and_await(
+            CommandId(1),
+            "look",
+            Origin::Manual,
+            Duration::from_secs(5),
+            cena_session::queue::any_frame,
+        )
+        .await;
+    assert!(matches!(calibrate, Outcome::Confirmed(_)), "{calibrate:?}");
+
+    // Held, so the sigils' prompts are still owed when the attack is sent.
+    transcript.hold_replies();
+    for sigil in ["sigil of power", "sigil of defense", "sigil of focus"] {
+        assert!(
+            matches!(
+                handle.send_now(sigil, Origin::Manual, Gate::None).await,
+                Sent::Ok { .. }
+            ),
+            "{sigil} must go out"
+        );
+    }
+
+    let attack = tokio::spawn({
+        let handle = handle.clone();
+        async move {
+            handle
+                .send_and_await(
+                    CommandId(2),
+                    "attack",
+                    Origin::Manual,
+                    Duration::from_secs(30),
+                    cena_session::queue::any_frame,
+                )
+                .await
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert!(
+        !attack.is_finished(),
+        "the attack must still be waiting before any reply is released, or \
+         this test is not exercising the race"
+    );
+
+    // **One sigil prompt at a time, checking in between.**
+    //
+    // This is what separates a correct implementation from the defect. With
+    // every reply released at once, "the attack resolved on a sigil's prompt"
+    // and "the attack resolved on its own" look identical -- which is why the
+    // first cut of this test passed against the unfixed code.
+    for (i, sigil) in ["power", "defense", "focus"].iter().enumerate() {
+        transcript.release_one();
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        assert!(
+            !attack.is_finished(),
+            "the attack resolved on the prompt owed to `sigil of {sigil}`              (release {}/3). An instant action bypasses the queue, so its              response is attributed to nothing -- but it still draws a              prompt, and any prompt closed the in-flight command's window.              The attack's real answer would arrive a window late, or under a              strict matcher it would time out with the answer already past.",
+            i + 1
+        );
+    }
+
+    // Now the attack's own prompt.
+    transcript.release_one();
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    let resolved = tokio::time::timeout(Duration::from_secs(1), attack)
+        .await
+        .expect("the attack must resolve once ITS prompt arrives, not hang")
+        .expect("and its task must not panic");
+    let Outcome::Confirmed(frame) = resolved else {
+        panic!("the attack must resolve on a real response: {resolved:?}")
+    };
+    assert!(
+        matches!(&*frame, cena_protocol::Frame::Text(_)),
+        "and on a text frame rather than a terminator: {frame:?}"
+    );
+
+    // The wire order is the property underneath: the sigils preceded the
+    // attack, so it was the LAST prompt that belonged to it.
+    let lines = transcript.lines();
+    let at = |needle: &str| lines.iter().position(|l| l == needle);
+    assert!(
+        at("sigil of focus") < at("attack"),
+        "the sigils must precede their trigger, which is what makes their \
+         prompts arrive first: {lines:?}"
+    );
+
+    cancel.cancel();
+    let _ = driver.await;
+}

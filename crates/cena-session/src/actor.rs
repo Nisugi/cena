@@ -275,6 +275,14 @@ pub struct SessionActor<S: ByteSource> {
     state: GameState,
     lifecycle: State,
     queue: CommandQueue,
+    /// Prompts owed to `send_now` commands whose responses have not arrived.
+    ///
+    /// An instant action bypasses the queue, so its response is not attributed
+    /// to anything -- but it still draws a prompt, and a prompt is what closes
+    /// the in-flight command's round-trip window (`plan/12` §4.4). Without
+    /// this counter a sigil's prompt closed the window belonging to the
+    /// command it was sent to modify (review SE-5).
+    send_now_prompts_owed: usize,
     commands: mpsc::Receiver<crate::command::Inbox>,
     events: broadcast::Sender<Event>,
     recorder: Recorder,
@@ -376,6 +384,7 @@ impl<S: ByteSource> SessionActor<S> {
             state,
             lifecycle: State::Connecting,
             queue: CommandQueue::new(),
+            send_now_prompts_owed: 0,
             commands,
             events,
             recorder,

@@ -69,6 +69,7 @@ impl<S: ByteSource> Session<S> {
                 state: GameState::default(),
                 lifecycle: State::Connecting,
                 queue: CommandQueue::new(),
+                send_now_prompts_owed: 0,
                 commands: rx,
                 events: events.clone(),
                 recorder: Recorder::new(),

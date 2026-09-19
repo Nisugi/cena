@@ -65,6 +65,14 @@ pub struct Transcript {
     hold_replies: bool,
     /// Replies withheld while held, owed to the reader.
     owed: Vec<Vec<u8>>,
+    /// How many owed replies may be delivered despite the hold.
+    ///
+    /// `release_replies` lifts the hold entirely, which delivers everything at
+    /// once and makes "two responses arriving in order" indistinguishable from
+    /// "two arriving together". That distinction is the subject of review
+    /// SE-5, so a test needs to let exactly one through and check what
+    /// happened before the next.
+    release_budget: usize,
     /// While true, the next `read` that finds nothing pending returns `Ok(0)`
     /// instead of parking: the peer has hung up.
     ///
@@ -144,6 +152,21 @@ impl TranscriptHandle {
         self.wake.notify_waiters();
     }
 
+    /// Deliver **one** withheld reply, keeping the hold on the rest.
+    ///
+    /// `release_replies` delivers everything at once, which makes two
+    /// responses arriving in order indistinguishable from two arriving
+    /// together. That distinction is the whole subject of review SE-5: a
+    /// `send_now` prompt must not close the window belonging to a later
+    /// command, and with every reply released simultaneously a test cannot
+    /// tell a correct implementation from the defect.
+    ///
+    /// `owed` is already a queue, so one reply is the front of it.
+    pub fn release_one(&self) {
+        self.with(|t| t.release_budget = t.release_budget.saturating_add(1));
+        self.wake.notify_waiters();
+    }
+
     /// Hang up: the next read that runs out of bytes returns `Ok(0)`.
     ///
     /// Wakes a parked reader, because a `read` already waiting must learn the
@@ -194,11 +217,14 @@ impl ByteSource for AnsweringSource {
             // is not missed. `Notify::notified()` registers on creation.
             let woken = self.transcript.wake.notified();
             let released = self.transcript.with(|t| {
-                if t.hold_replies {
-                    Vec::new()
-                } else {
-                    t.owed.drain(..).collect::<Vec<_>>()
+                if !t.hold_replies {
+                    return t.owed.drain(..).collect::<Vec<_>>();
                 }
+                // Held -- but `release_one` may have granted a budget, which
+                // delivers exactly that many from the front of the queue.
+                let take = t.release_budget.min(t.owed.len());
+                t.release_budget -= take;
+                t.owed.drain(..take).collect::<Vec<_>>()
             });
             for reply in released {
                 self.pending.extend_from_slice(&reply);

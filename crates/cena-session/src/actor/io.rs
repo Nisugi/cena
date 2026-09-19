@@ -341,6 +341,22 @@ impl<S: ByteSource> SessionActor<S> {
             self.write_broke_the_stream = true;
             return Sent::Dead;
         }
+        // **This command's response is now owed, and its prompt is not the
+        // in-flight command's terminator.**
+        //
+        // Any prompt closed the single round-trip window, so three sigils
+        // followed by `send_and_await("attack")` resolved the attack on the
+        // FIRST sigil's prompt: `Confirmed("You feel a surge.")` under
+        // `any_frame`, or a timeout under a strict matcher with the real
+        // answer arriving a window late. VERIFIED on the wire before this
+        // fix, and the batching shape is the author's own documented usage
+        // (review SE-5).
+        //
+        // A counter rather than attribution: `send_now` has none to protect
+        // (`handle.rs`), and it does not need any. What it needs is for the
+        // window to survive the prompts that belong to commands sent before
+        // it -- which is a COUNT, and the prompts arrive in order.
+        self.send_now_prompts_owed = self.send_now_prompts_owed.saturating_add(1);
         self.recorder.outbound(&message);
         self.log_wire(false, &message);
         self.log(&format!("send_now {origin:?} {line}"));
@@ -494,6 +510,13 @@ impl<S: ByteSource> SessionActor<S> {
             let terminator = self.state.apply(&frame);
             let _ = self.events.send(Event::Frame(Box::new(frame)));
             if terminator {
+                // A prompt owed to an earlier `send_now` is NOT this window's
+                // terminator. Spend one and leave the window open; the
+                // in-flight command's own prompt is still coming (SE-5).
+                if self.send_now_prompts_owed > 0 {
+                    self.send_now_prompts_owed -= 1;
+                    continue;
+                }
                 // The next `Frame::Prompt` closes the window (`plan/12` §4.4).
                 self.queue.close_window();
             }
