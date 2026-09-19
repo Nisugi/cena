@@ -38,7 +38,7 @@ use cena_protocol::Frame;
 use cena_protocol::runs::Runs;
 use std::time::Instant;
 
-mod character;
+pub mod character;
 mod clock;
 mod idle;
 mod inventory;
