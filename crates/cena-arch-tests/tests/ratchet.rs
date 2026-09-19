@@ -9,8 +9,8 @@
 //! Read `tests/architecture.rs`'s module header first: its "what these tests
 //! do NOT claim" paragraph governs all three files.
 
-use cena_arch_tests::harness::{lint_keys, workspace_root};
-use cena_arch_tests::lexical::{code_lines, collapse_whitespace};
+use cena_arch_tests::harness::{lint_keys, workspace_root, workspace_sources};
+use cena_arch_tests::lexical::{code_lines, collapse_whitespace, scan_lines};
 use cena_arch_tests::plan_rules::{
     architecture_test_paragraph_count, architecture_test_tagged_rules,
 };
@@ -63,37 +63,48 @@ const COVERED_RULES: &[(&str, &str)] = &[
     ),
     ("3.4", "game_names_outside_game_modules_are_flagged"),
     ("4.1", "no_source_file_exceeds_its_line_cap"),
+    ("4.3", "roundtime_has_a_single_owning_field"),
     ("4.4", "facade_files_stay_facades"),
     ("5.2", "every_static_is_allowlisted"),
 ];
 
-/// Rules tagged in plan/05 whose test cannot be written yet, with the reason
-/// and the unblocking condition. Machine-readable, so a deferral is a
-/// declaration the test reads rather than prose nobody checks.
+/// Rules tagged in plan/05 whose test cannot be written yet, with the reason,
+/// the unblocking condition, and a tripwire. Machine-readable, so a deferral is
+/// a declaration the tests read rather than prose nobody checks.
 ///
 /// `plan/05` Rule 0.5's corollary (:168-170): "an architecture test that
 /// enforces a rule protecting against a problem we do not have is also
-/// over-engineering." Each of these needs a needle naming a type that does not
-/// exist.
-const DEFERRED_RULES: &[(&str, &str)] = &[
-    (
-        "2.3",
-        "The read path cannot write (:285-298). Needs the read seam to exist. plan/05:287-288 \
-         notes most of it is already structural (& cannot send); the residue is an owned sender \
-         smuggled into a state type, so the test is 'the read module may not import the command \
-         sink' and both must exist to be named.",
-    ),
-    (
-        "4.3",
-        "One owning field per shared value (:376-383). The highest-value test in the reference \
-         suite -- it caught a duplicate field nothing assigned for ten months, inflating 49.8% \
-         of 6,373 measured countdowns. Its mechanism is a needle for a literal field name \
-         (reference/VellumFE/tests/architecture.rs:337-358) and none of Cena's four values -- \
-         clock offset, roundtime, current-room id, active-session handle -- has a field name \
-         yet. Write each in the same commit as its field, asserting both hits.len() == 1 AND \
-         the owning path; the path assertion is what stops a silent relocation.",
-    ),
-];
+/// over-engineering."
+///
+/// Each row is `(rule, reason, tripwire)`.
+///
+/// # The tripwire, and the defect it closes
+///
+/// A deferral used to be validated by `reason.len() > 120` alone, so **a
+/// deferral whose unblocking condition had already come true looked identical
+/// to a live one**. Rule 4.3 sat deferred on *"none of Cena's four values has a
+/// field name yet"* long after `roundtime_ends` and `game_time` were written,
+/// and nothing detected it -- review finding AR-1, reported HIGH.
+///
+/// The third column is a source needle naming the thing whose **absence** is
+/// the reason for the deferral. [`a_spent_deferral_fails`] fails once it
+/// appears, so a deferral expires on its own stated terms rather than when
+/// somebody happens to re-read it.
+const DEFERRED_RULES: &[(&str, &str, &str)] = &[(
+    "2.3",
+    "The read path cannot write (:285-298). The seam now EXISTS -- `SessionHandle` \
+         (command/handle.rs:171) and `subscribe` (actor/handle.rs:141) -- so the blocker is no \
+         longer a missing type. What is missing is the residue itself: plan/05:287-288 notes \
+         most of the rule is already structural (`&` cannot send), leaving only 'an owned \
+         sender smuggled into a state type'. No state type today holds one, so the test would \
+         assert over an empty set and pass whatever the code did. It unblocks when a read-path \
+         type could plausibly own a sender.",
+    // Deliberately empty: this deferral is blocked on a SHAPE not
+    // existing, not on a name, so there is nothing to needle for. Recorded
+    // as a decision rather than an oversight -- `a_spent_deferral_fails`
+    // requires the column and this explains the value.
+    "",
+)];
 
 #[test]
 fn architecture_test_tags_in_plan_05_are_accounted_for() {
@@ -128,7 +139,7 @@ fn architecture_test_tags_in_plan_05_are_accounted_for() {
     let accounted: BTreeSet<String> = COVERED_RULES
         .iter()
         .map(|(r, _)| r)
-        .chain(DEFERRED_RULES.iter().map(|(r, _)| r))
+        .chain(DEFERRED_RULES.iter().map(|(r, _, _)| r))
         .map(|r| (*r).to_owned())
         .collect();
 
@@ -221,7 +232,7 @@ fn every_deferral_states_its_unblocking_condition() {
     // can audit. This is what makes DEFERRED_RULES a declaration rather than a
     // place to park a rule.
     let covered: BTreeSet<&str> = COVERED_RULES.iter().map(|(r, _)| *r).collect();
-    for (rule, reason) in DEFERRED_RULES {
+    for (rule, reason, _tripwire) in DEFERRED_RULES {
         assert!(
             reason.len() > 120,
             "deferral of Rule {rule} needs the type it must name and the \
@@ -544,4 +555,50 @@ fn split_parents_stay_facades() {
         violations.join("
 ")
     );
+}
+
+/// A deferral whose unblocking condition has come true must FAIL.
+///
+/// # The hole this closes
+///
+/// `every_deferral_states_its_unblocking_condition` checks that a reason is
+/// long enough to be auditable. That is necessary and not sufficient: a
+/// deferral whose condition has already been met has a long reason too, and
+/// looks identical.
+///
+/// Rule 4.3 was deferred on *"none of Cena's four values ... has a field name
+/// yet. Write each in the same commit as its field"*. The fields were written;
+/// the tests were not; the deferral stayed green for as long as nobody re-read
+/// it. Review finding AR-1, reported HIGH -- and the review was right that the
+/// missing piece is *"a machine-checkable tripwire needle ... that fails the
+/// deferral once it appears in source"*.
+///
+/// # Why an empty needle is allowed
+///
+/// Not every deferral is blocked on a NAME. Rule 2.3 is blocked on a shape --
+/// a state type that could own a command sender -- and there is nothing to
+/// grep for. An empty needle is that case, stated explicitly so it reads as a
+/// decision. The reason string still has to explain itself, which the test
+/// above enforces.
+#[test]
+fn a_spent_deferral_fails() {
+    let sources = workspace_sources();
+    for (rule, _reason, tripwire) in DEFERRED_RULES {
+        if tripwire.is_empty() {
+            continue;
+        }
+        let hits: Vec<String> = scan_lines(&sources, &[tripwire])
+            .into_iter()
+            // This file NAMES every tripwire, so without excluding it the test
+            // fires on its own table.
+            .filter(|hit| !hit.starts_with("crates/cena-arch-tests/"))
+            .collect();
+        assert!(
+            hits.is_empty(),
+            "Rule {rule} is deferred because {tripwire:?} does not exist -- and it \
+             now does. The deferral is SPENT: write the test and move the rule to \
+             COVERED_RULES. Found:\n{}",
+            hits.join("\n")
+        );
+    }
 }
