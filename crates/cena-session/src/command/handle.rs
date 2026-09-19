@@ -1,143 +1,28 @@
-//! What a command is, and what comes back: [`Outcome`], [`CommandId`],
-//! [`Envelope`].
+//! The transport: [`SessionHandle`], [`Envelope`], [`Inbox`].
+//!
+//! How a command gets from a caller to the actor, as against [`verdict`]'s
+//! vocabulary of what a command IS and what came back.
 //!
 //! `plan/12` §4.5 already specifies [`Outcome`], so it is taken verbatim
 //! rather than redesigned. The rest of this module is the plumbing that makes
 //! `send_and_await` **one call** with no public send-then-wait pair, which is
 //! how §4.5 makes the arm-before-send race unwritable rather than merely
 //! discouraged.
+//!
+//! # Why this is a third file and not `mod.rs`
+//!
+//! Because `mod.rs` may not implement. An earlier draft of this split left the
+//! transport in `mod.rs` and said so in its header -- "this file is not a
+//! facade" -- and `facade_files_stay_facades` rejected it at once, naming four
+//! `impl` blocks. **The rule is enforced, not advisory** (`plan/05` §0: a rule
+//! that is not enforced is a wish), and the arch test was right: a `mod.rs`
+//! that wires AND implements is the shape the rule exists to prevent.
+//!
+//! [`verdict`]: super::verdict
 
+use super::verdict::{CommandId, Gate, Origin, Outcome, Refusal, Sent};
 use crate::lifecycle::Generation;
-use cena_protocol::Frame;
 use tokio::sync::oneshot;
-
-/// A correlation id for logs and the audit trail.
-///
-/// **Not for wire matching.** `plan/12` §4.4 corrected an earlier draft on
-/// exactly this: "The game carries no command ids. That table was
-/// unimplementable. Attribution is *temporal*." This id exists so a reader can
-/// reconstruct which command a late line probably belonged to, and for nothing
-/// else.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CommandId(pub u64);
-
-/// Where a command came from. `plan/12` §4.1's correction lives here.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Origin {
-    /// The player typed it.
-    ///
-    /// **Manual input is not a claimant** (`plan/12` §4.1, CORRECTED
-    /// 2026-09-18). It jumps the queue and it never touches the authority
-    /// token. An earlier draft made it priority 1 and preemptive, which meant
-    /// typing `say hi` mid-hunt would abort Hunt. Neither reference
-    /// implementation does that.
-    Manual,
-    /// A behavior sent it, carrying the token it claimed.
-    ///
-    /// The token is here so the session can ENFORCE §4.2 rather than merely
-    /// describe it: a command from a behavior that does not hold the authority
-    /// is refused, not queued. Before this, `claim`/`release`/`authority`
-    /// existed on `CommandQueue` and **nothing in the session ever called
-    /// them**, so two behaviors sharing a session would both have their
-    /// commands sent in FIFO order -- verbatim the failure §4.2 names, "an
-    /// attack that fires four seconds after the fight ended".
-    Behavior(crate::queue::AuthorityToken),
-    /// A script sent it -- **including a command from another character's
-    /// session** (`plan/16` §5a).
-    ///
-    /// # Why this variant exists before any script does
-    ///
-    /// Not because scripting is decided -- it is **not** (`plan/16` §5a). It
-    /// exists because `Origin` is matched on wherever the interleaving policy
-    /// is decided, and every one of those matches is a statement about how a
-    /// script command behaves relative to a behavior's. Answering that with
-    /// **one** behavior in the tree is a line each; answering it once Hunt,
-    /// Heal and Travel exist means re-deciding the policy for all of them,
-    /// each written assuming it was the only claimant.
-    ///
-    /// So the cost of adding it now is a variant. The cost of adding it later
-    /// is a policy migration.
-    ///
-    /// # It behaves like `Manual`, deliberately
-    ///
-    /// > **AUTHOR, 2026-09-18:** a character receiving a cross-character
-    /// > command should perform it *"as if they just sent it."*
-    ///
-    /// So it jumps the queue and does **not** preempt the recipient's own
-    /// behavior -- `plan/12` §4.1's rule, unchanged. It is a separate variant
-    /// from [`Self::Manual`] not because it queues differently but because a
-    /// **log has to be able to tell them apart**: "the player typed this" and
-    /// "another character's script sent this" are different facts about a
-    /// session, and collapsing them makes a transcript unreadable at exactly
-    /// the moment it matters.
-    ///
-    /// # It carries no authority token
-    ///
-    /// Like `Manual`, and for the same reason: §4.1's correction is that input
-    /// is not a claimant. A script that wants to run a *sequence* claims the
-    /// authority and sends as [`Self::Behavior`]; this variant is for
-    /// individual commands.
-    Script,
-}
-
-impl Origin {
-    /// The claimant's token, if a behavior sent this.
-    #[must_use]
-    pub const fn token(self) -> Option<crate::queue::AuthorityToken> {
-        match self {
-            // Neither the player nor a script is a claimant (§4.1).
-            Self::Manual | Self::Script => None,
-            Self::Behavior(token) => Some(token),
-        }
-    }
-
-    /// Whether a behavior sent this, whoever holds the authority.
-    #[must_use]
-    pub const fn is_behavior(self) -> bool {
-        matches!(self, Self::Behavior(_))
-    }
-}
-
-/// Why a command was not run.
-///
-/// The three game-state refusals map onto the exact conditions Lich's `fput`
-/// keys on (`reference/lich-5/lib/global_defs.rb:1555` roundtime,
-/// `:1577` stunned/webbed). **Step 2 detects and reports; it does not
-/// resend.** Lich's resend ladder with `max_resends` is behavior policy, and
-/// building it now would be a config option with no second caller (Rule -1).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Refusal {
-    /// Try again later: the queue was full, or the session was busy.
-    Transient,
-    /// Will never succeed as issued.
-    Permanent,
-    /// "...wait N seconds."
-    Roundtime,
-    /// The character is stunned.
-    Stunned,
-    /// The character is webbed.
-    Webbed,
-}
-
-/// What a round trip produced. Verbatim from `plan/12` §4.5.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Outcome {
-    /// The window closed with a match. Carries the frame that matched.
-    Confirmed(Box<Frame>),
-    /// No match within the window.
-    ///
-    /// **Never "the command did not happen"** (`plan/12` §4.4). A slow line
-    /// can arrive after its own prompt; no client can eliminate that, so a
-    /// behavior must tolerate a matching line arriving one window late.
-    Timeout,
-    /// Preempted or cancelled. Cancellation does not un-send: the command may
-    /// already have reached the game (`plan/12` §4.4).
-    Interrupted,
-    /// The session is gone.
-    Dead,
-    /// Not run, with a reason.
-    Refused(Refusal),
-}
 
 /// A command handed to the session, with the channel its answer goes back on.
 #[derive(Debug)]
@@ -181,6 +66,28 @@ pub enum Inbox {
     },
     /// Give the authority back. A release by a non-holder is ignored.
     Release(crate::queue::AuthorityToken),
+    /// Send this line **now**, opening no window (`plan/16` §1.4).
+    ///
+    /// On the same channel as [`Self::Command`] deliberately. An instant
+    /// action's whole purpose is to precede the command it modifies -- "a few
+    /// in a row, since they activate instantly and the command triggers"
+    /// (AUTHOR) -- and a second channel would give no ordering guarantee
+    /// between the sigil and the attack it is supposed to modify. Same reason
+    /// `Claim` rides here.
+    SendNow {
+        /// The line to send, without a trailing newline.
+        line: String,
+        /// Manual, behavior or script. Recorded in the log and published on
+        /// [`Event::Sent`](crate::Event::Sent); it decides nothing here,
+        /// because an instant action has no queue position to decide.
+        origin: Origin,
+        /// The connection this belongs to (`plan/12` §5.2).
+        generation: Generation,
+        /// Whether the roundtime gate applies.
+        gate: Gate,
+        /// Where the immediate verdict goes -- **not** a round-trip outcome.
+        reply: oneshot::Sender<Sent>,
+    },
 }
 
 /// A handle a caller uses to reach the session.
@@ -258,6 +165,95 @@ impl SessionHandle {
             // The actor is alive but the window never closed.
             Err(_elapsed) => Outcome::Timeout,
         }
+    }
+
+    /// Send a line **without opening a round-trip window** (`plan/16` §1.4).
+    ///
+    /// # What this is for
+    ///
+    /// Instant actions: abilities that take effect immediately and incur no
+    /// roundtime of their own.
+    ///
+    /// > **AUTHOR, 2026-09-18:** *"those sigils using fput suck because they
+    /// > wait for a response instead of being instant."*
+    ///
+    /// Cena had the same defect structurally, and it was worst exactly where
+    /// it hurts most. [`CommandQueue::take_next`](crate::CommandQueue::take_next)
+    /// yields nothing while a window is open, and `send_and_await` was the
+    /// **only** send path -- so `sigil of escape`, the ability for leaving a
+    /// fight you are losing, queued behind whatever the running behavior last
+    /// sent, for up to that command's full roundtime.
+    ///
+    /// # How it differs from [`Self::send_and_await`]
+    ///
+    /// | | `send_and_await` | `send_now` |
+    /// |---|---|---|
+    /// | Opens an `InFlight` window | yes | **no** |
+    /// | Blocked by an open window | yes | **no** |
+    /// | Gated on | the queue | **roundtime** |
+    /// | Returns | the round trip's outcome | whether the bytes went out |
+    ///
+    /// Those are two different gates, not a strict-vs-relaxed version of one.
+    /// `send_and_await` serialises round trips so attribution works
+    /// (`plan/12` §4.4); `send_now` has no attribution to protect because it
+    /// waits for nothing.
+    ///
+    /// # The return is a SEND verdict, not a round trip
+    ///
+    /// [`Sent::Ok`] means **the bytes reached the wire**, carrying the server
+    /// second the gate was decided against -- the evidence it ran on, so a log
+    /// can show what the decision was made on. It does **not** mean the action
+    /// fired. That is confirmed by its
+    /// **effect** (`plan/16` §2):
+    ///
+    /// > **AUTHOR:** *"we can still verify the event happened from those
+    /// > instant actions because they all return with an effect in buffs or
+    /// > cooldowns or whathaveyou."*
+    ///
+    /// which is an [`Effects`](cena_model::Effects) lookup on the id, and
+    /// deliberately not this function's business.
+    ///
+    /// # Unknown is not "go ahead"
+    ///
+    /// With [`Gate::Roundtime`] and an unknown clock -- no prompt seen yet --
+    /// this refuses [`Refusal::Transient`]. `plan/12` §5.2 makes `Unknown`
+    /// first-class precisely so it cannot be silently read as `false`, and
+    /// `Transient` is the honest answer: try again once a prompt has arrived.
+    /// It is not [`Refusal::Roundtime`], which would claim knowledge of a
+    /// roundtime nobody has reported.
+    ///
+    /// # Why there is no deadline here
+    ///
+    /// `plan/12` §5.5 requires that "every wait has a deadline", and
+    /// `send_and_await` takes one. This does not, because **it is not the same
+    /// kind of wait.** `send_and_await` waits on the *game* -- an unbounded
+    /// party that may never answer -- so it needs a bound. This waits on the
+    /// *actor*, which answers in the same turn it receives the message: there
+    /// is no window to close and no frame to arrive. The one way it never
+    /// answers is the actor being gone, and that drops the sender, which
+    /// resolves immediately as [`Outcome::Dead`]. A timeout here would be a
+    /// deadline on a wait that cannot hang.
+    ///
+    /// # Errors
+    ///
+    /// Never. Like `send_and_await`, the failure modes are values.
+    pub async fn send_now(&self, line: &str, origin: Origin, gate: Gate) -> Sent {
+        let (reply, answer) = oneshot::channel();
+        let message = Inbox::SendNow {
+            line: line.to_owned(),
+            origin,
+            generation: self.generation,
+            gate,
+            reply,
+        };
+        match self.sender.try_send(message) {
+            Ok(()) => {}
+            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                return Sent::Refused(Refusal::Transient);
+            }
+            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => return Sent::Dead,
+        }
+        answer.await.unwrap_or(Sent::Dead)
     }
 
     /// Take the command authority.

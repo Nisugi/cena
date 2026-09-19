@@ -190,7 +190,7 @@ impl<S: ByteSource> SessionActor<S> {
                 // can send again; frames already in flight still matter, so
                 // the session ends when the STREAM does, not here.
                 received = self.commands.recv(), if !senders_gone => match received {
-                    Some(message) => self.handle_inbox(message),
+                    Some(message) => self.handle_inbox(message).await,
                     None => senders_gone = true,
                 },
 
@@ -232,9 +232,9 @@ impl<S: ByteSource> SessionActor<S> {
     ///
     /// Non-blocking: it drains what is there and returns. It is the same
     /// `admit` the loop calls, not a second path that could drift from it.
-    pub fn drain_commands_once(&mut self) {
+    pub async fn drain_commands_once(&mut self) {
         while let Ok(message) = self.commands.try_recv() {
-            self.handle_inbox(message);
+            self.handle_inbox(message).await;
         }
     }
 

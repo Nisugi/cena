@@ -18,7 +18,7 @@
 //! and bytes in ([`SessionActor::ingest`]).
 
 use super::{Envelope, Event, SessionActor};
-use crate::command::Outcome;
+use crate::command::{Outcome, Sent};
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
 
@@ -28,14 +28,101 @@ impl<S: ByteSource> SessionActor<S> {
     /// Claims and releases arrive on the SAME channel as commands (`plan/12`
     /// §4.2 is an ordering rule), so a claim cannot overtake a command already
     /// queued behind it.
-    pub(super) fn handle_inbox(&mut self, message: crate::command::Inbox) {
+    ///
+    /// **`async` because of `SendNow` alone.** Every other arm is a queue
+    /// operation that cannot block. `SendNow` writes to the socket in the turn
+    /// it arrives -- that is the feature -- so routing became a wait. It is a
+    /// short one: the same single `write_all` [`Self::pump`] does.
+    pub(super) async fn handle_inbox(&mut self, message: crate::command::Inbox) {
         match message {
             crate::command::Inbox::Command(envelope) => self.admit(*envelope),
             crate::command::Inbox::Claim { token, reply } => {
                 let _ = reply.send(self.queue.claim(token));
             }
             crate::command::Inbox::Release(token) => self.queue.release(token),
+            // Handled inline rather than queued: queueing it is the exact
+            // defect `send_now` exists to remove (`plan/16` §1.3).
+            crate::command::Inbox::SendNow {
+                line,
+                origin,
+                generation,
+                gate,
+                reply,
+            } => {
+                let outcome = self.send_now(&line, origin, generation, gate).await;
+                let _ = reply.send(outcome);
+            }
         }
+    }
+
+    /// Send a line immediately, subject only to the roundtime gate.
+    ///
+    /// **Writes to the socket directly.** It does not enter [`CommandQueue`]
+    /// and does not call [`Self::pump`], because every gate in that path is
+    /// one `plan/16` §1.4 says must not apply here.
+    ///
+    /// # What is deliberately NOT checked
+    ///
+    /// * **Whether a window is open.** Batching several instant actions ahead
+    ///   of the command they modify is the whole feature (`plan/16` §1.1).
+    /// * **The authority token.** An instant action is not a sequence, so
+    ///   `plan/12` §4.1's rule that input is not a claimant applies unchanged
+    ///   -- and a behavior holding the authority does not thereby own the
+    ///   character's reflexes.
+    ///
+    /// # What IS checked
+    ///
+    /// The readiness gate, and roundtime. Readiness for the same reason
+    /// [`Self::admit`] checks it: `plan/12` §5.3 gates *behaviors*, and a
+    /// behavior firing a sigil before the session is `Ready` is the case that
+    /// rule exists for. Manual and script origins are not gated, exactly as in
+    /// `admit`, because the player is never locked out of their character.
+    async fn send_now(
+        &mut self,
+        line: &str,
+        origin: crate::command::Origin,
+        generation: crate::lifecycle::Generation,
+        gate: crate::command::Gate,
+    ) -> Sent {
+        use crate::command::{Gate, Refusal};
+
+        if generation != self.generation {
+            return Sent::Interrupted;
+        }
+        if origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
+            return Sent::Refused(Refusal::Transient);
+        }
+        // The gate, and the reason it returns three different things.
+        let at = match gate {
+            Gate::None => None,
+            Gate::Roundtime => match self.state.in_roundtime() {
+                Some(true) => return Sent::Refused(Refusal::Roundtime),
+                // Unknown is NOT permission (`plan/12` §5.2). `Transient`
+                // because a prompt will arrive and then the answer is knowable
+                // -- it is "ask again", not "never".
+                None => return Sent::Refused(Refusal::Transient),
+                // `in_roundtime` returning `Some` means the clock is known, so
+                // this cannot be `None`.
+                Some(false) => self.state.game_time_now(),
+            },
+        };
+
+        let mut message = Vec::with_capacity(line.len() + 1);
+        message.extend_from_slice(line.as_bytes());
+        message.push(b'\n');
+        // Same single write as `pump`: two writes can emit two TLS records and
+        // the server drops the command (`cena_platform::bytes::ByteSource`).
+        if self.source.write_all(&message).await.is_err() {
+            return Sent::Dead;
+        }
+        self.recorder.outbound(&message);
+        self.log_wire(false, &message);
+        self.log(&format!("send_now {origin:?} {line}"));
+        let _ = self.events.send(Event::Sent {
+            line: line.to_owned(),
+            origin,
+        });
+        Sent::Ok { at }
     }
 
     pub(super) fn admit(&mut self, envelope: Envelope) {

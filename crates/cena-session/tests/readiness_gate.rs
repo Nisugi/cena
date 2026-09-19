@@ -53,7 +53,7 @@ async fn a_behavior_command_before_ready_is_refused_rather_than_queued() {
     // Drive one turn of the actor's command intake by hand. `run` would
     // transition straight to Ready first, which is the state this test is
     // about NOT being in.
-    actor.drain_commands_once();
+    actor.drain_commands_once().await;
 
     let outcome = waiter.await.expect("the waiter must not panic");
     assert_eq!(
@@ -95,7 +95,7 @@ async fn a_manual_command_before_ready_is_not_gated() {
             .await
     });
     tokio::task::yield_now().await;
-    actor.drain_commands_once();
+    actor.drain_commands_once().await;
 
     // An admitted command has no answer yet: its window has not even opened,
     // so its OWN deadline is what eventually resolves it. A refused one

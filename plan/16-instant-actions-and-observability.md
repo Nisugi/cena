@@ -86,7 +86,7 @@ That is the worst case for the ability most likely to be time-critical, and it i
 consequence of a design decision (`plan/12` §4.4, one open window at a time) that was correct for
 ordinary commands and never considered these.
 
-### 1.4 Proposed: a second send path
+### 1.4 BUILT 2026-09-18: a second send path
 
 ```
 send_and_await(...)   existing. Opens a window, waits for a terminator, returns a typed Outcome.
@@ -104,11 +104,51 @@ The roundtime gate is checkable from state we already keep:
 `GameState::roundtime_ends: Option<u32>` (`crates/cena-model/src/state.rs:74`), fed by
 `Frame::RoundTime { value }` (`frame.rs:153-154`).
 
+**Built as described**, with three things the sketch did not settle:
+
+- **`Sent`, not `Outcome`.** `Outcome::Confirmed` carries "the frame from the wire that matched";
+  `send_now` matches no frame, so reusing it meant fabricating a `Frame::Prompt` that never crossed
+  the wire. `Sent::Ok { at }` carries the server second the gate was decided on instead — the
+  evidence it ran against, which is the fact a log actually wants.
+- **`Gate` is an enum, not a bool.** The author's *"(depending on the action)"* says the gate varies
+  per action. `Gate::None` is that parenthesis, written at the call site rather than as a `false`.
+- **Unknown clock refuses `Transient`.** `plan/12` §5.2: unknown is not permission. `Transient`
+  rather than `Roundtime` because a prompt will arrive and then the question is answerable —
+  "ask again", not "no".
+
+It rides the **same channel** as `Inbox::Command`, which is what makes §1.1's batching ordered: two
+channels give no ordering guarantee between the sigil and the attack it modifies.
+
+`crates/cena-session/tests/send_now.rs`, 7 tests. The first is §1.3's complaint executable — it
+opens a window, leaves it open, and asserts the sigil still reached the wire.
+
+#### 1.4a MEASURED CORRECTION: an unreported roundtime is OVER, not unknown
+
+Building the gate surfaced a bug in `GameState::in_roundtime`, which returned `None` whenever
+`roundtime_ends` was `None` — treating "no roundtime has ever been reported" as an unknown.
+
+**That is the normal state at login**, and under the old reading every `send_now` refused until the
+character's first roundtime arrived: the feature disabled exactly when a fresh character most wants
+a sigil.
+
+VERIFIED against Lich, per `CLAUDE.md`'s rule that the protocol facts are already there:
+`@roundtime_end = 0` (`reference/lich-5/lib/common/xmlparser.rb:62`), compared as
+`roundtime_end - now > 0` (`lib/global_defs.rb:283`). An unreported roundtime is **in the past**,
+not unheard-of.
+
+The asymmetry is now written into the type: the **clock** must be observed before anything can be
+compared (`None` if no prompt has arrived), and the **roundtime** has a meaningful default. §5.2 is
+about not inventing beliefs; concluding "a roundtime nobody has mentioned is not running" invents
+nothing.
+
 ### 1.5 OPEN — what happens if one is sent during roundtime?
 
 **UNVERIFIED.** Does the server refuse with `...wait N`, silently drop it, or hold it? This decides
 whether the gate is a hard block or an optimistic try-and-retry. The author will know; I have not
 asked yet.
+
+**This is now measurable**, and §5's typeahead run is where to measure it: `Gate::None` sends
+during roundtime on purpose, so one deliberate send while `R>` is showing answers it.
 
 ---
 
