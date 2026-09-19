@@ -215,6 +215,100 @@ is not automatically the right one.
 
 ---
 
+## 4b. The long tail, worked through — 2026-09-19 evening
+
+The ~50 lower-severity findings lived only in
+`.workflows/findings/crates-review-2026-09-19.md`, which is **gitignored**, so
+this section is the tracked record of what happened to them.
+
+Every one was re-verified against the code at `0dc4ddc` before being acted on,
+by four agents each tracing the cited code **by content rather than by line
+number**, since the review's own line numbers had drifted. That pass was worth
+more than the fixes it enabled:
+
+- **9 findings were already fixed** and still recorded as open.
+- **1 was simply wrong.** It claimed a readiness gate would fire for
+  `Origin::Script`; a script is not a behavior, so it cannot.
+- **1 was wrong in its reasoning but right in substance**, and **1 was half
+  wrong** — one of its two claims turned out to be asserted after all.
+
+**That hit rate is the finding.** A review's output is evidence about where to
+look, not a list of things to change, and treating it as the latter would have
+meant "fixing" code that was already right.
+
+### What was closed, and the shape it had
+
+Each of these landed with a test that fails against the previous code; where a
+mutation is quoted below, it was run.
+
+| Area | What it actually was |
+|---|---|
+| `text::attribute(tag, "")` | **An infinite loop in a `pub fn` of a `pub mod`.** `find("")` returns `Some(0)` at every offset, so the cursor never advanced. |
+| the scrubber | Merged two players into one, corrupted substrings (`Eon` inside `Eonake`), ignored case, and let **ESP** through — against its own rule 3. |
+| `AppInfo` | Dropped `game`, the **instance**. Prime and Platinum are different worlds, so a session identified by character name alone collides — in the client whose headline feature is multi-session. |
+| `Effect::ends_at` | Baked a local `Instant` into compared state, so **a replay could not reproduce the session it recorded** — against criterion 7, which M2's golden corpus rests on. |
+| backoff jitter | Took **ten values, not a thousand**: it read digits below the Windows clock's 100 ns tick. The documented +20% end was unreachable, and on a µs clock every session would back off in lockstep — the herd the jitter exists to break. |
+| `ask()` | A pipe counted as "someone at the keyboard". Three non-empty lines reached a real authentication against the **live** service. |
+| the `.bytes` sink | Spent a part number on a file that was never created, leaving a permanent hole in the capture M2's corpus is cut from. |
+
+### The four that mattered most were in the enforcement suite
+
+This is the part worth carrying forward, because it is the pattern rather than
+the incidents:
+
+- **Rule 4.3's deferral was spent** and nothing could tell — a deferral was
+  validated only by the length of its reason string.
+- **`#[ignore]` was invisible.** Adding it to every test in `layering.rs`,
+  including Rule 1.3's, left the suite green.
+- **A `/*` inside a string literal blanked the rest of the file** for five
+  rules at once. Latent today; `glob("**/*.xml")` is exactly the shape M2's
+  corpus walker will use.
+- **The tag/arm cross-check had gone blind to five arms** when `markup.rs` was
+  split out of `dispatch.rs`.
+
+Each had been silently not-enforcing for months. Each is why a neighbouring
+defect survived to be found by a review instead of by a test. **A split moves
+code out from under a lexical scan without changing a line of it: nothing
+fails, the scan simply stops looking.**
+
+Citation rot — the largest single category, spanning every crate — is now
+enforced rather than fixed, over 187 source citations plus the plan documents.
+
+### Three stale counts, one cause
+
+`126` tag-table entries documented as 121, `63` `ParsedElement` variants
+documented as 61, and `51` `Frame` variants documented as **50 directly beneath
+the command that prints 51**. All three are §−2's second form: a number
+restated rather than re-run. Two of them sat in the enforcer, whose own comment
+calls a stale count there "worse than in prose".
+
+The remedy §−2 already prescribes is to cite the command. Where that was done,
+the command now executes as a test.
+
+### Still open, separated by what they need
+
+**A decision, not a patch.** Recorded rather than fixed, because the right
+answer is a judgement about what Cena should do:
+
+- **Effects are keyed by wire id** across four independent dialogs, and
+  `active()` answers `None` both for "the game says it is gone" and "never
+  observed". The M6-relevant pair — a rebuff behavior cannot tell them apart.
+- **Command authority is rebuilt per generation**, so a behavior that waits out
+  a reconnect gets `Refused(Permanent)` — documented "will never succeed" — for
+  a session that is alive.
+- **§6.3's `Lagged` recovery is unreachable**: `subscribe` is on
+  `SupervisedSession` and `run` consumes it.
+
+**Deferred to M2, deliberately.** The remaining frame-vocabulary gaps —
+unknown tags inside `<component>` bodies, `dialogData` without `clear`,
+`dynaStream` typed as a window — are M2's actual subject. Fixing them now means
+doing M2's work without M2's corpus to verify against.
+
+**Real, small, not yet done.** The rest, itemised in the gitignored findings
+file, which remains the place to look for detail.
+
+---
+
 ## 5. Everything else, by status
 
 ### Fixed before the next live run
@@ -247,51 +341,100 @@ Both are parser-adjacent, and M2's first work is the parser.
   Probe output: `"You swing at the kobold!You miss."` The fix belongs in the
   parser — `parse_line` is already called once per wire line, so the information
   exists and is simply not marked.
-- **The `.bytes` log is not the wire.** `writer.rs:282` appends `\n` to any chunk
-  that ends mid-line, so a chunk boundary inside `<pushStream id='ro` becomes
-  `<pushStream id='ro\nom'/>`. **This is the file M2's golden corpus is cut
-  from**, and criterion 7's replay reads it.
+- ~~**The `.bytes` log is not the wire.**~~ **FIXED.** It appended `\n` to any
+  chunk that ended mid-line, so a chunk boundary inside `<pushStream id='ro`
+  became `<pushStream id='ro\nom'/>` — a byte the wire never sent, in the file
+  M2's golden corpus is cut from and criterion 7's replay reads. `writer.rs`
+  carries the post-mortem where the append used to be.
 
 ### Open, needing a decision rather than a patch
 
-- **The `Recorder` is unbounded on the production path.** An append-only `Vec`
-  that copies every chunk (`record.rs:53`), carried across generations, and
-  `outbound_count` rescans all of it twice per connection. `unknown_tags` has the
-  same shape. Twenty-five long sessions hold every byte ever read — which the
-  sink has already written to disk.
+- ~~**The `Recorder` is unbounded on the production path.**~~ **FIXED** in
+  `fec5a82`, pinned by `tests/recorder_bound.rs`: an append-only `Vec` copying
+  every chunk, carried across generations, in a client designed for 3–25
+  characters. **`unknown_tags` still has the same shape** (`state.rs`) and is
+  deep-cloned by every `subscribe()` — that half is open, and the fix is a
+  count per name plus a bounded ring of recent raws.
 - **The ladder resets on any outbound byte** (`supervisor.rs:320`), so with a
   behavior sending, "attended" is always true and neither bound binds. Two
   clients fighting over one character would re-login at the 1-second rung
   forever. The comment cites `earned_a_reset`, which does not exist.
-- **The author's real name and account name are in tracked files.** The repo is
-  private with no remote-tracking branches, so a history rewrite is free *now*
-  and stops being free later.
+- ~~**The author's real name and account name are in tracked files.**~~
+  **DONE 2026-09-19.** All 85 commits rewritten, verified zero hits across
+  every reachable object and dangling blob. Two `refs/codex/` checkpoint trees
+  that `git-filter-repo` **skipped while reporting success** still held the
+  account name and were deleted separately — worth remembering: that tool can
+  report success over trees it did not rewrite.
 
 ### Architecture-test gaps
 
 These matter more than their severity suggests, because the suite is what the
 ratchet rests on.
 
-- **The cap-increase check was never written.** `plan/05:353` says the arch test
-  fails on a cap increase in the diff. It does not exist — the default went 400 →
-  800 with the suite green — and the ratchet still counts Rule 4.1 as covered.
-- **The source walk skips `target` at any depth** (`harness.rs:195`), so a
-  future `hunt/target/` would be invisible to every rule.
-- **The facade rule only checks `lib.rs` and `mod.rs`** (`file_rules.rs:236`), so
-  `supervisor.rs`, `actor.rs` and `probe.rs` — all split parents — implement
-  freely.
-- **Tests that cannot fail**: the "open" probe always yields `Text("X")`; the arm
-  scan uses `unwrap_or_default()` on a missing file and skips `markup.rs`; the
-  corpus skip is invisible under a default `cargo test`.
+- ~~**The cap-increase check was never written.**~~ **FIXED.**
+  `the_cap_ratchet_only_turns_down` reads `caps.baseline`, and
+  `split_parents_stay_facades` caught two files in this session's own commits.
+- ~~**Tests that cannot fail.**~~ **FIXED**, and they were worse than listed:
+  - the arm scan's `unwrap_or_default()` meant a **renamed source file yielded
+    zero names and a pass** — a dead ratchet in the ratchet itself. It now
+    panics naming the path. It also skipped `markup.rs` and `parser.rs`, which
+    between them hold five handler arms, so the test that once found the
+    `style` gap could no longer see the file `style` had moved into.
+  - the corpus skip printed through `println!`, which libtest swallows for a
+    passing test. Both replay tests are now `#[ignore]`, so an unset
+    `CENA_CORPUS` reads as "2 ignored" rather than `ok`. Its gate test also
+    asserted, in the skip branch, the condition that produced the branch.
+- ~~**`#[ignore]` on a covered test was invisible.**~~ **FIXED.** Not in the
+  original list, and the worst of them: adding `#[ignore]` to every test in
+  `layering.rs` — including Rule 1.3's — left the whole suite green, as did
+  `#[cfg(any())]` and deleting `#[test]`. The rule stayed in the table, the
+  function stayed in the file, and the enforcement was gone.
+- ~~**A `/*` inside a string literal blanked the rest of the file.**~~
+  **FIXED.** Also not in the original list. `in_block` latches across lines, so
+  one such literal disarmed the static allowlist, the `static mut` ban, the
+  game-name flag, the include ban and the facade scan for every following line.
+  Recorded as "vanishingly unlikely" and "fails safe"; the first was fair, the
+  second was backwards. `glob("**/*.xml")` is exactly the shape, and M2's first
+  work is the corpus.
+- **The source walk skips `target` at any depth** (`harness.rs`), so a future
+  `hunt/target/` would be invisible to every rule. **Still open.**
+- **The facade rule only checks `lib.rs` and `mod.rs`** (`file_rules.rs:259`),
+  so `supervisor.rs`, `actor.rs` and `probe.rs` — all split parents — implement
+  freely. **Still open**, and note `split_parents_stay_facades` covers their
+  *size*, not their *content*.
+- **The `include!` guard is weaker than its docs**, which cite a test name that
+  does not exist anywhere. `include!["body.in"]` with square brackets evades
+  the needle and **compiles** (demonstrated), as does `#[path = "..."]`.
+  **Still open.**
+- **Nothing asserts member crates inherit the workspace lints.** A new crate
+  omitting `[lints] workspace = true` gets `unsafe`, `unwrap()` and `panic!`
+  past `clippy -D warnings`. All seven have it today. **Still open.**
 
-### Citation rot
+### Citation rot — **closed, and now enforced**
 
-- `CLAUDE.md:120` says the tag table holds 123; it holds **126**.
-- The criteria cited as `plan/12:457-466` across ~10 files are now at
-  **`plan/12:537-552`**.
-- `plan/12` §6.4 is cited and **does not exist**.
-- The banners say `cena` and should say **Hydra** (`main.rs:137`,
-  `writer.rs:222`).
+Every item here is fixed: the tag-table count, the criteria citations across
+~10 files, the `plan/12` §6.4 that never existed, and the banners, which say
+**Hydra**.
+
+More to the point, the category cannot silently return.
+`crates/cena-arch-tests/tests/citations.rs` checks that every path-rooted
+`path:line` citation resolves — 187 of them in source comments, plus the plan
+documents, which is **where the original incident happened**: `CLAUDE.md` cited
+a path that did not exist, an agent searched it, found nothing, and concluded
+the wiki does not document `styleIfClosed`. It documents it five times.
+
+> A citation that resolves to nothing does not fail loudly; it manufactures a
+> false negative.
+
+**What it deliberately cannot check** is whether the cited line still *says*
+what the citing comment claims — that needs a human, and the review found
+several of those. Nor does it check bare filenames like `wire.rs:160`, which
+resolve only against the reader's context; guessing would produce false
+failures, the direction that gets tests deleted as noise.
+
+Both tests assert a floor on how many citations they found, because a scanner
+that silently stops matching passes by seeing nothing — the failure this suite
+had already hit twice.
 
 ---
 
