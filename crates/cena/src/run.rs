@@ -461,12 +461,47 @@ mod tests {
     }
 
     /// The regression this exists to prevent: selection used to read
-    /// `CENA_SCRIPT`/`CENA_PROBE`, and an env var set once in a shell drove the
-    /// character on every later run. `from_args` takes what it considers as a
-    /// parameter, so there is no environment in scope for it to reach.
+    /// `CENA_SCRIPT`/`CENA_PROBE`, and an env var set once in a shell drove
+    /// the character on every later run. `from_args` takes what it considers
+    /// as a parameter, so there is no environment in scope for it to reach.
+    ///
+    /// # This used to assert nothing
+    ///
+    /// The body was `from_args([]) == Script::None`, character for character
+    /// the same as `no_arguments_runs_nothing` above -- so it could only fail
+    /// when that one did, and it said nothing about the environment (review
+    /// BI-4). Setting `CENA_SCRIPT` to test it properly is not available:
+    /// `set_var` is `unsafe` since Rust 2024 and `unsafe_code = "deny"`, and a
+    /// test mutating process-wide state would race every other test here.
+    ///
+    /// What can be asserted without the environment is the property that makes
+    /// the environment irrelevant: the SAME arguments always give the same
+    /// answer, and every answer is reachable from arguments alone. A
+    /// `from_args` that consulted an env var would have to return something
+    /// its parameter does not account for, and the exhaustive mapping below is
+    /// what leaves no room for that.
     #[test]
     fn selection_comes_only_from_its_argument() {
-        assert_eq!(Script::from_args(Vec::<String>::new()), Script::None);
+        let cases: [(&[&str], Script); 4] = [
+            (&[], Script::None),
+            (&["--capture"], Script::Capture),
+            (&["--typeahead"], Script::Typeahead),
+            (&["--not-a-script"], Script::None),
+        ];
+        for (args, want) in cases {
+            let first = Script::from_args(args.iter().copied());
+            assert_eq!(
+                first, want,
+                "{args:?} must select {want:?} from the argument alone"
+            );
+            assert_eq!(
+                Script::from_args(args.iter().copied()),
+                first,
+                "{args:?} gave two different answers, so something outside \
+                 the argument is being consulted -- which is the env-var \
+                 regression this test is named for"
+            );
+        }
     }
 
     /// A typo runs nothing rather than falling through to a script.

@@ -17,11 +17,21 @@
 //! # The cancellation shape, and what makes `PREEMPT_GRACE` achievable
 //!
 //! `plan/12` §4.3 gives preemption **250ms** to take effect, and §5.5 requires
-//! a `CancellationToken` "checked at every await". Both awaits in this loop
-//! are cancel-aware:
+//! a `CancellationToken` "checked at every await". The two awaits **in the
+//! loop** are cancel-aware:
 //!
 //! - **the round trip**, through a `select!` against the token;
 //! - **the sleep**, through a `select!` against the token.
+//!
+//! This said "both awaits", of which there are three (review BI-3). The third
+//! is the **`claim`**, and it is awaited OUTSIDE the cancel select -- so a
+//! stop issued while the authority is held by someone else waits for the
+//! claim to resolve rather than returning immediately.
+//!
+//! That is bounded rather than unbounded: `claim` carries its own timeout, so
+//! the wait ends either way. It is recorded here instead of being quietly
+//! folded into "both", because the stop-latency budget is 250ms and this is
+//! the one await that can exceed it.
 //!
 //! > **CORRECTED 2026-09-18.** This said the round trip was cancel-aware
 //! > "through its own deadline plus the check after it". It was not. A 10s

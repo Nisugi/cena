@@ -84,6 +84,50 @@ use tokio_util::sync::CancellationToken;
 /// How long to let the behavior run before the manual command interleaves.
 const BEHAVIOR_WARMUP: Duration = Duration::from_secs(3);
 
+/// Cancel the behavior and wait for it, **whatever it does**.
+///
+/// Split out of `main` under `plan/05` Rule 4.1 -- move code down, do not
+/// raise the cap -- when handling the panic case pushed `main` to 103 lines
+/// against clippy's 100.
+///
+/// # Why this does not use `?`
+///
+/// It used to be `behavior.await?`, so a behavior PANIC returned from `main`
+/// and skipped the `quit`, the sink flush and the shutdown report -- the exact
+/// reason the supervisor's await refuses `?`, stated there and not honoured
+/// here (review BI-2).
+///
+/// Criterion 6's "no leaked sockets" must not be conditional on a behavior
+/// having behaved. A panicking behavior is reported, and the caller goes on to
+/// the orderly shutdown.
+async fn stop_the_behavior(
+    behavior: Option<tokio::task::JoinHandle<Result<(), cena_behavior::BehaviorError>>>,
+    stop: &CancellationToken,
+) {
+    // --- Criterion 4: stop, within PREEMPT_GRACE ---------------------------
+    // The latency is MEASURED in `cena-behavior`'s tests under virtual time,
+    // where it is a property of the code rather than of this machine's load.
+    // Here it is only demonstrated.
+    eprintln!("\n[stop] cancelling the behavior");
+    let at_stop = std::time::Instant::now();
+    stop.cancel();
+    let Some(behavior) = behavior else {
+        return;
+    };
+    match behavior.await {
+        Ok(result) => eprintln!(
+            "[stop] behavior ended in {:?}: {result:?}",
+            at_stop.elapsed()
+        ),
+        Err(e) => eprintln!(
+            "[stop] behavior task FAILED after {:?}: {e}. Continuing to the \
+             orderly shutdown -- a behavior that panics must not leave the \
+             character logged in.",
+            at_stop.elapsed()
+        ),
+    }
+}
+
 /// How long to hold the session open before `stop`, from `--hold <seconds>`.
 ///
 /// With no script selected this is the only thing between login and logout, so
@@ -91,15 +135,45 @@ const BEHAVIOR_WARMUP: Duration = Duration::from_secs(3);
 /// argument rather than an env var for the same reason scripts are
 /// ([`run::Script`]): one mechanism, and nothing left set in a shell.
 fn hold_for() -> Duration {
+    const DEFAULT: Duration = Duration::from_secs(10);
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
-        if arg == "--hold"
-            && let Some(seconds) = args.next().and_then(|raw| raw.parse().ok())
-        {
-            return Duration::from_secs(seconds);
+        // `--hold=60` is the other form people type, and it silently became
+        // the default because the match was for the bare flag only.
+        if let Some(inline) = arg.strip_prefix("--hold=") {
+            return parse_hold(inline).unwrap_or(DEFAULT);
+        }
+        if arg == "--hold" {
+            return args
+                .next()
+                .and_then(|raw| parse_hold(&raw))
+                .unwrap_or(DEFAULT);
         }
     }
-    Duration::from_secs(10)
+    DEFAULT
+}
+
+/// Parse a `--hold` value, **saying so when it cannot**.
+///
+/// `--hold abc` used to become ten seconds in silence: the `and_then(ok)`
+/// discarded the parse failure and the loop carried on, so a typo looked
+/// exactly like a working flag and the difference showed up only as a session
+/// that ended sooner than asked (review BI-4).
+///
+/// It warns rather than exiting because this flag is a convenience on a
+/// demonstration binary -- refusing to start over a mistyped hold would be a
+/// worse trade than starting with the default and saying so.
+fn parse_hold(raw: &str) -> Option<Duration> {
+    match raw.trim().parse::<u64>() {
+        Ok(seconds) => Some(Duration::from_secs(seconds)),
+        Err(e) => {
+            eprintln!(
+                "[args] --hold {raw:?} is not a number of seconds ({e}); \
+                 using the default. Write it as `--hold 60` or `--hold=60`."
+            );
+            None
+        }
+    }
 }
 
 /// How long to wait for the server to close after `quit` (`plan/16` §5b.3).
@@ -268,16 +342,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The latency is MEASURED in `cena-behavior`'s tests under virtual time,
     // where it is a property of the code rather than of this machine's load.
     // Here it is only demonstrated.
-    eprintln!("\n[stop] cancelling the behavior");
-    let at_stop = std::time::Instant::now();
-    stop.cancel();
-    if let Some(behavior) = behavior {
-        let result = behavior.await?;
-        eprintln!(
-            "[stop] behavior ended in {:?}: {result:?}",
-            at_stop.elapsed()
-        );
-    }
+    stop_the_behavior(behavior, &stop).await;
 
     // --- Criterion 6: clean disconnect -------------------------------------
     //
@@ -520,4 +585,31 @@ fn open_log(character: &str, account: &str) -> io::Result<SessionSink> {
     redactions.account(account);
     let dir = cena_platform::log_dir().join(cena_platform::date_dir());
     SessionSink::create(&dir, character, &cena_platform::file_stamp(), redactions)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_hold;
+    use std::time::Duration;
+
+    /// A malformed `--hold` is reported, not silently defaulted.
+    ///
+    /// `--hold abc` used to become ten seconds without a word, so a typo was
+    /// indistinguishable from a working flag until the session ended early
+    /// (review BI-4). `None` is what makes the caller fall back *and say so*.
+    #[test]
+    fn a_hold_that_is_not_a_number_is_refused() {
+        assert_eq!(parse_hold("61"), Some(Duration::from_secs(61)));
+        assert_eq!(parse_hold(" 61 "), Some(Duration::from_secs(61)));
+        assert_eq!(parse_hold("0"), Some(Duration::from_secs(0)));
+
+        for bad in ["abc", "", "60s", "-5", "6.0", "1e3"] {
+            assert_eq!(
+                parse_hold(bad),
+                None,
+                "{bad:?} is not a number of seconds and must be refused, so \
+                 the caller falls back loudly rather than silently"
+            );
+        }
+    }
 }
