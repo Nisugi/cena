@@ -101,9 +101,12 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[AllowedStatic {
                     binary_search over the slice. Ported from \
                     reference/VellumFE/src/parser/text.rs:174-192 per plan/13 section 4a. \
                     Measured at 116 entries there (sed -n '175,193p' | grep -oE '\"[^\"]+\"' | \
-                    wc -l), NOT the ~130 an earlier draft of this comment claimed; the table in \
-                    Cena holds 121, the reference's 116 plus five the gated corpus replay found \
-                    in real traffic (c, map, mapInfo, streamBox, FEStart).",
+                    wc -l), NOT the ~130 an earlier draft of this comment claimed. The table \
+                    in Cena holds 126: the reference's 116 plus ten added since, from the \
+                    gated corpus replay and the Saga reconciliation. Measured by \
+                    grep -cE '^    .[^.]+.,$' crates/cena-protocol/src/tags.rs -- this said \
+                    121, which was true when written. A count copied into a second place is \
+                    a count that drifts, so the command is here and not only the number.",
 }];
 
 #[test]

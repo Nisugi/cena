@@ -190,6 +190,29 @@ fn cap_exceptions_are_justified() {
              silently raises no cap but hides that the file moved",
             exception.path
         );
+        // **The file must still NEED the exception.**
+        //
+        // `cap > DEFAULT` says the entry raises the cap; it says nothing about
+        // whether anything still requires it. A file split back under the
+        // default kept its raised cap, so the next several hundred lines of
+        // growth were invisible to the ratchet -- an exception outliving its
+        // reason, the same shape as the spent deferral AR-1 found.
+        //
+        // The floor is the DEFAULT, not the file's current length: a file at
+        // 810 lines legitimately holds a cap well above 810, and requiring the
+        // cap to track the length would make every edit a cap edit.
+        let lines = std::fs::read_to_string(&target)
+            .map(|t| t.lines().count())
+            .unwrap_or_default();
+        assert!(
+            lines > DEFAULT_MAX_LINES,
+            "cap exception for {} is spent: the file is {lines} lines, under \
+             the default cap of {DEFAULT_MAX_LINES}. It no longer needs an \
+             exception, and keeping one hides {} lines of growth from the \
+             ratchet. Delete the entry.",
+            exception.path,
+            exception.cap - DEFAULT_MAX_LINES
+        );
     }
 }
 
@@ -280,7 +303,7 @@ fn facade_files_stay_facades() {
 //
 // Banning it is cheaper than chasing it and loses nothing: `include!` has no
 // legitimate M1 use. When generated code arrives (`plan/13` §4a names
-// `KNOWN_WIRE_TAGS` and the 61-variant `ParsedElement` as ports, which is
+// `KNOWN_WIRE_TAGS` and the 63-variant `ParsedElement` as ports, which is
 // exactly where a build script would generate a table), the honest move is to
 // lift this ban with a written reason and extend `SOURCE_EXTENSIONS`, not to
 // route around it.

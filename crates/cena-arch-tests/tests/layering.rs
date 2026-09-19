@@ -215,30 +215,37 @@ fn crate_dependency_edges_match_the_plan() {
 // list, is what matters. `cargo tree` without `--depth 1` is that upgrade.
 // ---------------------------------------------------------------------------
 
+/// Everything `cena-ui` is allowed to depend on.
+///
+/// **An allowlist, because the deny-list was not a rule.** It named ten
+/// toolkits, so `tauri`, `slint`, `gtk4`, `cursive` and `dioxus` all passed --
+/// and `tauri` is specifically the one not ruled out for this project, which
+/// makes it the likeliest to arrive. A deny-list enforces a rule only against
+/// the futures whoever wrote it happened to imagine (review AR-7).
+///
+/// Inverting is free here and nowhere else: this crate's whole dependency set
+/// is one entry, so the allowlist is shorter than the list it replaces and
+/// cannot go stale by omission. Adding a dependency now means saying so here,
+/// which is the point -- Rule 1.3 is about what `cena-ui` may name, and a list
+/// of what it may name states that rule directly.
+const CENA_UI_MAY_DEPEND_ON: &[&str] = &["cena-model"];
+
 #[test]
 fn cena_ui_depends_on_no_ui_toolkit() {
     let names = crate_dependency_names("cena-ui");
-    let toolkits = [
-        "ratatui",
-        "crossterm",
-        "termion",
-        "egui",
-        "eframe",
-        "iced",
-        "winit",
-        "web-sys",
-        "wasm-bindgen",
-        "arboard",
-    ];
-    let found: Vec<&str> = toolkits
+    let unexpected: Vec<&String> = names
         .iter()
-        .copied()
-        .filter(|t| names.contains(*t))
+        .filter(|n| !CENA_UI_MAY_DEPEND_ON.contains(&n.as_str()))
         .collect();
     assert!(
-        found.is_empty(),
+        unexpected.is_empty(),
         "cena-ui must stay toolkit-free: its types are Cena's own, never \
-         ratatui's or egui's or the browser's (plan/05 Rule 1.3, :258-264). \
-         Found: {found:?}"
+         ratatui's or egui's or the browser's (plan/05 Rule 1.3, :258-264).\n\n\
+         This is an ALLOWLIST. If one of these is genuinely right, add it to \
+         CENA_UI_MAY_DEPEND_ON and say why -- do not widen it to make a build \
+         pass. A UI toolkit here is the coupling Rule 1.3 exists to prevent, \
+         and it arrives looking like an ordinary dependency.\n\n\
+         Unexpected: {unexpected:?}\n\
+         Allowed: {CENA_UI_MAY_DEPEND_ON:?}"
     );
 }
