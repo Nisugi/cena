@@ -1,8 +1,23 @@
-# Cena
+# Cena — working name for **Hydra**
 
 A private Rust game client for **GemStone IV**, by the author of VellumFE and eohunter.
 It does what Lich-5 (Ruby scripting engine/proxy) and VellumFE (Rust client) do together, in
 **one binary**, with **multi-session** as the headline feature.
+
+> **THE REAL NAME IS HYDRA** (author, 2026-09-18). `cena` is the **working name**: it is the
+> repository directory, every crate prefix (`cena-session`, `cena-model`, …), the binary, and the
+> `CENA_*` environment variables. All of that stays as-is for now — renaming a workspace mid-
+> milestone is churn with no payoff, and the working name is load-bearing in **116 files across 8
+> crates** (measured: `grep -rl cena --include=*.rs --include=*.toml --include=*.md`, excluding
+> `reference/` and `target/`).
+>
+> What this does mean: **do not invent a third name**, and when something user-facing needs a
+> product name — a window title, a log banner, a README, a release artifact — it is **Hydra**.
+> The name fits the architecture, which is presumably the point: many heads, one body, and
+> cutting one off does not kill it.
+>
+> The rename, if and when it happens, is a mechanical sweep of `cena` → `hydra` across crate
+> names, paths and env vars. Worth doing at a milestone boundary, not inside one.
 
 ---
 
