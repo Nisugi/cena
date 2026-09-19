@@ -21,18 +21,34 @@ use cena_session::{
     CommandId, ConnectError, Connector, EndReason, Generation, Origin, Outcome, SupervisedSession,
 };
 use std::collections::VecDeque;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
 /// A [`Connector`] that hands out one prepared source per generation.
 struct ScriptedConnector {
     sources: VecDeque<Vec<Vec<u8>>>,
+    /// How many times `connect` was CALLED, including the calls that failed.
+    ///
+    /// Shared, because `SupervisedSession::run` consumes the session and with
+    /// it the connector -- so the count has to be readable from outside after
+    /// the run has ended. Counting calls rather than remaining sources also
+    /// distinguishes "never asked" from "asked and got nothing", which is the
+    /// distinction the cancellation test needs.
+    calls: Arc<AtomicU32>,
 }
 
 impl ScriptedConnector {
     fn new(sources: Vec<Vec<Vec<u8>>>) -> Self {
         Self {
             sources: sources.into(),
+            calls: Arc::new(AtomicU32::new(0)),
         }
+    }
+
+    /// A handle on the call count, taken before `run` consumes the connector.
+    fn calls(&self) -> Arc<AtomicU32> {
+        Arc::clone(&self.calls)
     }
 }
 
@@ -40,6 +56,7 @@ impl Connector for ScriptedConnector {
     type Source = ReplaySource;
 
     async fn connect(&mut self, _generation: Generation) -> Result<ReplaySource, ConnectError> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
         self.sources
             .pop_front()
             .map(ReplaySource::new)
@@ -275,6 +292,7 @@ async fn a_cancelled_session_does_not_reconnect() {
     // ends is not available -- so a source with a chunk and no more is used,
     // and the cancel is what must win the race to matter.
     let connector = ScriptedConnector::new(vec![everything_then_death(), a_real_login_burst()]);
+    let calls = connector.calls();
     let (session, _handle) = SupervisedSession::new(connector);
     let cancel = session.cancel_token();
     cancel.cancel();
@@ -291,5 +309,23 @@ async fn a_cancelled_session_does_not_reconnect() {
         Generation::FIRST,
         "it must NOT have advanced: a deliberate stop does not reconnect, and \
          the generation counter is the evidence"
+    );
+    // **The assertion this test's doc promised and did not make.**
+    //
+    // The generation count alone passes for a session that reconnected and
+    // then stopped for an unrelated reason -- which the doc says outright, and
+    // then asserted nothing about (review SE-8). The connector is the witness:
+    // a second prepared connection is sitting there, and a cancelled session
+    // must not have asked for it.
+    //
+    // At most one call, not zero: the cancel races the first connect, and
+    // whether it wins is a scheduling detail. Reaching the SECOND one is not.
+    let asked = calls.load(Ordering::SeqCst);
+    assert!(
+        asked <= 1,
+        "the supervisor asked the connector {asked} times after being \
+         cancelled. The second prepared connection must go unused: consuming \
+         it means a cancelled session opened a socket, which is criterion 6's \
+         leak and `plan/12` §5.1's 'no automation runs' both at once."
     );
 }

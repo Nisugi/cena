@@ -41,8 +41,6 @@ const PROMPT_AT_100: &[u8] = b"You see nothing unusual.\n<prompt time=\"100\">&g
 /// not have to wait for it.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn an_instant_action_goes_out_while_a_window_is_open() {
-    // Answers with a prompt so the clock calibrates, then the window for the
-    // SECOND command stays open because nothing further arrives.
     let (source, transcript) = AnsweringSource::new(PROMPT_AT_100);
     let session = Session::new(source);
     let handle = session.handle();
@@ -66,7 +64,48 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
          and the gate refuses for the wrong reason: {first:?}"
     );
 
-    // Now the instant action, with no roundtime in effect.
+    // **A SECOND command, left UNANSWERED, so its window is genuinely open.**
+    //
+    // This test's name is its whole claim, and it used to assert nothing of
+    // the kind: the calibrating `look` above was awaited to `Confirmed`, which
+    // CLOSES its window, and there was no second command. Every assertion
+    // below passed with no window open anywhere, so a `send_now` routed
+    // through `CommandQueue` -- the exact thing this exists to forbid -- would
+    // have passed it too (review SE-8).
+    //
+    // `hold_replies` is what makes the window stay open: the source stops
+    // answering, so no prompt arrives to close it. The waiter is spawned
+    // because `send_and_await` does not return until it is answered, and the
+    // point is that it is not.
+    transcript.hold_replies();
+    let blocked_handle = handle.clone();
+    let blocked = tokio::spawn(async move {
+        blocked_handle
+            .send_and_await(
+                CommandId(2),
+                "attack",
+                Origin::Manual,
+                Duration::from_secs(30),
+                cena_session::queue::any_frame,
+            )
+            .await
+    });
+
+    // Let the attack reach the wire and open its window.
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert!(
+        transcript.lines().iter().any(|l| l == "attack"),
+        "the blocking command must be on the wire with its window open, or \
+         the sigil below is not racing anything: {:?}",
+        transcript.lines()
+    );
+    assert!(
+        !blocked.is_finished(),
+        "the blocking command must still be WAITING -- if it resolved, its \
+         window is closed and this test is back to proving nothing"
+    );
+
+    // Now the instant action, with a window open and no roundtime in effect.
     let sent = handle
         .send_now("sigil of escape", Origin::Manual, Gate::Roundtime)
         .await;
@@ -83,8 +122,26 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
         "the sigil's bytes must be on the wire: {lines:?}"
     );
 
+    // **The sigil came AFTER the attack, and did not wait for it.** That is
+    // the property: `send_now` bypasses the queue rather than being ordered
+    // behind the command whose window is still open.
+    let attack_at = lines.iter().position(|l| l == "attack");
+    let sigil_at = lines.iter().position(|l| l == "sigil of escape");
+    assert!(
+        matches!((attack_at, sigil_at), (Some(a), Some(s)) if a < s),
+        "the sigil must reach the wire after the attack was sent and while \
+         its window is still open. Order seen: {lines:?}"
+    );
+    assert!(
+        !blocked.is_finished(),
+        "the attack's window must STILL be open after the sigil went out -- \
+         if the sigil closed it, `send_now` is consuming a window it has no \
+         attribution in, which is review finding SE-5"
+    );
+
     cancel.cancel();
     let _ = driver.await;
+    blocked.abort();
 }
 
 /// The roundtime gate refuses, and says so with the typed reason.

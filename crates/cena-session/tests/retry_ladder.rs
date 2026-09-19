@@ -142,11 +142,29 @@ async fn a_transient_connect_error_is_retried_until_cancelled() {
          Without this the fatal test above would pass on a supervisor that \
          simply stopped on every error."
     );
+    // **The bound is the LADDER's arithmetic, not a round number.**
+    //
+    // This used to be `climbed < 120`, which a constant ~1.1s retry passes --
+    // the exact login storm the sentence claims to forbid (review SE-8). A
+    // bound loose enough to admit the defect is not a bound.
+    //
+    // `BACKOFF_SECONDS` is `[1, 2, 5, 10, 30]`, capped at the last rung, so
+    // the unjittered attempt times over 120 virtual seconds are
+    //
+    //     t = 0, 1, 3, 8, 18, 48, 78, 108   -> 8 attempts
+    //
+    // and the ±20% jitter moves the later ones by at most a few seconds,
+    // which can add or drop one at the boundary. 6..=10 is that window with a
+    // rung's worth of slack either side; anything outside it means the
+    // schedule changed, and the ladder's shape is the thing under test.
     assert!(
-        climbed < 120,
-        "...but on a LADDER. {climbed} attempts in 120s means it is retrying \
-         at roughly once a second, which is the login storm the backoff exists \
-         to prevent."
+        (6..=10).contains(&climbed),
+        "{climbed} attempts in 120 virtual seconds. The ladder \
+         [1, 2, 5, 10, 30] capped at 30s gives 8 (t = 0, 1, 3, 8, 18, 48, 78, \
+         108), and jitter moves that by at most one. Far more means it is \
+         retrying at a near-constant interval -- the login storm the backoff \
+         exists to prevent. Far fewer means it is sleeping longer than the \
+         ladder says, and a session comes back later than it should."
     );
     assert_eq!(
         end.stopped_because,
