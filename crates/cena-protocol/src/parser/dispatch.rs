@@ -154,8 +154,7 @@ impl Parser {
             "pushStream" => {
                 self.flush(buffer, frames);
                 let id = text::attribute(tag, "id").unwrap_or_default();
-                self.streams.push(id.clone());
-                frames.push(Frame::StreamPush { id });
+                self.open_stream(id, false, frames);
             }
             // `<stream id=X>...</stream>` is the PAIRED form of the same
             // redirect (wiki `:9`, `:50`: "Inline (paired) redirect"), so it
@@ -172,8 +171,7 @@ impl Parser {
             "stream" if !tag.trim_end().ends_with("/>") => {
                 self.flush(buffer, frames);
                 let id = text::attribute(tag, "id").unwrap_or_default();
-                self.streams.push(id.clone());
-                frames.push(Frame::StreamPush { id });
+                self.open_stream(id, true, frames);
             }
             "popStream" => {
                 self.flush(buffer, frames);
@@ -264,7 +262,7 @@ impl Parser {
             // all, touch nothing: popping an unrelated stream to honour a pop
             // that does not apply is the bug above.
             Some(named) => {
-                if let Some(at) = self.streams.iter().rposition(|s| s == named) {
+                if let Some(at) = self.streams.iter().rposition(|s| &s.id == named) {
                     self.streams.remove(at);
                 }
             }
@@ -275,7 +273,29 @@ impl Parser {
             }
         }
         frames.push(Frame::StreamPop { id });
-        if let Some(resumed) = self.streams.last().cloned() {
+        self.resume_enclosing(frames);
+    }
+
+    /// Open a redirect, recording which form opened it.
+    ///
+    /// Shared by `<pushStream>` and the paired `<stream id=>`, which establish
+    /// the same routing context and differ only in how they close -- see
+    /// [`OpenStream`](super::OpenStream).
+    fn open_stream(&mut self, id: String, paired: bool, frames: &mut Vec<Frame>) {
+        self.streams.push(super::OpenStream {
+            id: id.clone(),
+            paired,
+        });
+        frames.push(Frame::StreamPush { id });
+    }
+
+    /// Announce the stream that is current again after a close, if any.
+    ///
+    /// A scalar consumer tracks one current stream, so it needs telling that an
+    /// enclosing redirect is back in force; nothing is emitted when the stack
+    /// empties, because `""` is the main window and `StreamPop` already said so.
+    fn resume_enclosing(&mut self, frames: &mut Vec<Frame>) {
+        if let Some(resumed) = self.streams.last().map(|s| s.id.clone()) {
             frames.push(Frame::StreamResume { id: resumed });
         }
     }
@@ -294,8 +314,8 @@ impl Parser {
             time,
             text: text::decode_entities(&inner),
         });
-        for id in std::mem::take(&mut self.streams).into_iter().rev() {
-            frames.push(Frame::StreamPopForced { id });
+        for open in std::mem::take(&mut self.streams).into_iter().rev() {
+            frames.push(Frame::StreamPopForced { id: open.id });
         }
         self.bold_depth = 0;
         self.presets.clear();
@@ -337,13 +357,35 @@ impl Parser {
         if name == "dialogData" {
             self.dialog = None;
         }
-        // `</stream>` ends the paired redirect its opener established. Popping
-        // by name rather than blindly: an unmatched close must not unroute
-        // text belonging to an enclosing `pushStream`.
+        // `</stream>` ends the paired redirect its opener established, and it
+        // emits `StreamPop` to say so.
+        //
+        // It used to remove the entry and emit `Frame::Structural`. That kept
+        // the parser's own stack right while telling a frame-stream consumer
+        // nothing -- and the frame stream is the only thing a router can see.
+        // MEASURED on the author's 2025-04-18 capture: 31 self-contained
+        // `<stream id="Spells">` rows, and a frame stream standing at depth 31
+        // when the next prompt arrived. The prompt barrier could not paper over
+        // it either, and that is the part worth remembering: `mem::take` had
+        // nothing left to force-pop, because the closer had already removed the
+        // entries. The barrier's guarantee held for the parser and was empty for
+        // everyone downstream.
+        //
+        // It closes the innermost entry a PAIRED `<stream>` opened, so a stray
+        // close cannot unroute an enclosing `<pushStream>`. That distinction is
+        // what [`OpenStream`](super::OpenStream) records, and the measurement
+        // there is why: the paired form is exactly balanced on real traffic
+        // while `pushStream` is not, so a close with no paired entry open is not
+        // this stream's close. Such a close falls through and emits
+        // `Structural` -- "every close emits" is the rule above, and a close
+        // that popped nothing is not a pop.
         if name == "stream"
-            && let Some(at) = self.streams.iter().rposition(|s| !s.is_empty())
+            && let Some(at) = self.streams.iter().rposition(|s| s.paired)
         {
-            self.streams.remove(at);
+            let open = self.streams.remove(at);
+            frames.push(Frame::StreamPop { id: Some(open.id) });
+            self.resume_enclosing(frames);
+            return;
         }
         if tags::is_known(name) {
             frames.push(Frame::structural(name, &format!("</{name}>")));

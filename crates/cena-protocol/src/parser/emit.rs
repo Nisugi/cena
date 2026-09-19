@@ -73,7 +73,10 @@ impl Parser {
 
     /// The stream text currently belongs to; `""` is the main window.
     fn current_stream(&self) -> String {
-        self.streams.last().cloned().unwrap_or_default()
+        self.streams
+            .last()
+            .map(|s| s.id.clone())
+            .unwrap_or_default()
     }
 
     /// Parse a component body into structured runs.

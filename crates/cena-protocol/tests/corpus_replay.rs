@@ -293,7 +293,13 @@ fn the_prompt_barrier_drains_the_stream_stack_on_real_traffic() {
         return;
     };
     let files = xml_files(&root);
-    let chosen = stratified(&files, file_budget().clamp(1, 12));
+    // Honours `CENA_CORPUS_FILES` in full. It used to `.clamp(1, 12)`, which
+    // SILENTLY IGNORED a wider run: asking for 200 files got 12, so a run meant
+    // to widen this invariant's coverage widened only the replay beside it. The
+    // clamp existed because this test parses every file twice over, but a budget
+    // knob that quietly refuses the budget is the worse trade -- it reports
+    // confidence it did not earn.
+    let chosen = stratified(&files, file_budget().max(1));
 
     // The invariant is "the prompt drains whatever was open", and it is
     // asserted by replaying the frame stream and checking the stack depth
