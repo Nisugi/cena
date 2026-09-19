@@ -277,6 +277,33 @@ pub fn hash_password(password: &[u8], key: &[u8]) -> Result<Vec<u8>, EaccessErro
     Ok(out)
 }
 
+/// Replace the account name inside a character code with `<ACCOUNT>`.
+///
+/// A character code has the shape `W_<ACCOUNT>_<SLOT>` (`plan/10:472`, VERIFIED
+/// in the capture: *"the same character, and the same code `W_<ACCOUNT>_000`"*),
+/// so printing one prints the account -- and the `resolve_char` progress line
+/// did exactly that, on every login, to stderr and into the scrollback.
+///
+/// That is the same exposure [`redact`] was written for after the first live run
+/// printed the account and the account holder's real name in full. It closed the
+/// `A` response and left this one open, because here the account is INSIDE a
+/// field rather than a field of its own.
+///
+/// Positional, not a guess: keep the leading `W` and the trailing slot, blank
+/// what is between. The slot is taken from the END rather than from index 2, so
+/// an account name containing `_` still redacts whole. A code that does not have
+/// this shape is returned **unchanged** rather than blanked: an unrecognised
+/// code is a diagnostic, and destroying it would remove the thing a reader needs.
+#[must_use]
+pub fn redact_char_code(code: &str) -> String {
+    let parts: Vec<&str> = code.split('_').collect();
+    if parts.len() < 3 || parts[0] != "W" {
+        return code.to_owned();
+    }
+    let slot = parts[parts.len() - 1];
+    format!("W_<ACCOUNT>_{slot}")
+}
+
 /// Redact anything that looks like a credential before printing.
 ///
 /// Two shapes: a bare 32-hex-digit field (a session key on its own), and any

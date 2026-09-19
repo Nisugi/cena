@@ -15,8 +15,7 @@ use super::refusal::{describe_launch_refusal, launch_refusal_is_fatal};
 use super::wire::hash_password;
 use super::wire::{
     Credentials, EACCESS_HOST, EACCESS_PORT, EaccessError, LaunchPayload, READ_BUF, err,
-    expect_echo, offered_game_codes, parse_launch, redact, resolve_char_code,
-    trim_ascii_whitespace,
+    expect_echo, offered_game_codes, parse_launch, redact, redact_char_code, resolve_char_code,
 };
 use crate::bytes::ByteSource;
 use crate::live::LiveSource;
@@ -173,15 +172,37 @@ async fn prove_identity(
         buf.truncate(n);
         buf
     };
-    // VellumFE trims the key before hashing (`network.rs:760`) and it is a
-    // working implementation against this server. A raw read can carry framing
-    // whitespace that must not enter the XOR.
-    let key = trim_ascii_whitespace(&key_raw);
+    // **The key is used WHOLE. Nothing is trimmed off it.**
+    //
+    // This used to call `trim_ascii_whitespace`, citing VellumFE
+    // (`network.rs:760`, `hash_key.trim()`) as a working implementation against
+    // this server. Vellum does do that, and it is still wrong -- `plan/10`
+    // measured why, in the capture that settled "the single most dangerous open
+    // question":
+    //
+    //   | K | 32 | 32 random bytes, **not printable ASCII** (contained DEL) |
+    //                                                        (`plan/10:1734`)
+    //
+    // and `:1749`: "`K` has no trailing newline, so the hash loop consumes
+    // exactly the bytes sent." The key is 32 bytes of RANDOM BINARY with no
+    // terminator, so a leading `0x09`, `0x0A`, `0x0D` or `0x20` is an ordinary
+    // key byte and not framing.
+    //
+    // Trimming one shifts every XOR index by one. Nothing errors: a WRONG
+    // PASSWORD goes to the auth server, which answers `PASSWORD`, which is a
+    // FATAL stop plus one bad-password strike against the account.
+    //
+    // 4 of 256 first bytes are whitespace, so this is roughly one login in 64 --
+    // a coin-flip that has not come up yet, not an exotic case. The trim bought
+    // nothing in either direction, which is what makes removing it free.
+    //
+    // `crates/cena-platform/tests/eaccess_mandated_vectors.rs` pins it.
+    let key = key_raw.as_slice();
     if key.is_empty() {
-        return Err(err("k_response", "MALFORMED_K_RESPONSE (empty after trim)"));
+        return Err(err("k_response", "MALFORMED_K_RESPONSE (empty)"));
     }
     progress(&format!(
-        "[stage: k_response] {} bytes after trim (not printed -- key material)",
+        "[stage: k_response] {} bytes, used whole (not printed -- key material)",
         key.len()
     ));
 
@@ -202,17 +223,35 @@ async fn prove_identity(
 
     let a = read_response(conn, "a_response").await?;
     if !a.contains("\tKEY\t") {
-        // Failure path only: no KEY is present, so nothing in this response is
-        // a session key and the whole thing is safe to show. `plan/10` §12.3's
-        // warning is about the SUCCESS path, where the last field IS the key.
-        // FATAL: the server read the credentials and refused them. Distinct
-        // from `read_response` failing at this same stage, which is a link
-        // problem and stays retryable -- see `EaccessError::fatal`.
-        return Err(err(
-            "a_response",
-            format!("authentication rejected. server said: {:?}", a.trim()),
-        )
-        .fatal());
+        // **Two cases, and they do NOT share a verdict.** This used to mark
+        // every keyless `A` fatal and echo the raw body. Both halves were wrong;
+        // see `super::reject` for the full argument and Lich's precedent.
+        //
+        // In short: a recognised rejection token is the credentials being wrong,
+        // which retrying cannot fix and which costs a strike. Anything else is
+        // "we do not know what that was", where stopping strands a session whose
+        // credentials are good -- the direction `wire.rs` itself calls unsafe.
+        let rejection = super::reject::classify_a_rejection(&a);
+        let detail = match &rejection {
+            super::reject::Rejection::Credentials(token) => {
+                format!("authentication rejected by the server: {token}")
+            }
+            // The body is deliberately absent: an unrecognised reply is the case
+            // most likely to be a WAF intercept page or a truncated fragment,
+            // and a length is all a diagnostic needs.
+            super::reject::Rejection::Divergence { bytes } => format!(
+                "unrecognised response to A ({bytes} bytes, body not logged -- it \
+                 may be an intercept page). Treated as TRANSIENT: this is not \
+                 evidence the credentials are wrong, and stopping here would \
+                 strand a session a retry could recover."
+            ),
+        };
+        let error = err("a_response", detail);
+        return Err(if rejection.is_fatal() {
+            error.fatal()
+        } else {
+            error
+        });
     }
     progress(&format!("[stage: a_response] OK: {}", redact(a.trim())));
     Ok(())
@@ -361,8 +400,15 @@ async fn resolve_character(
         .fatal()
     })?;
     // {:?} so a stray control byte in the parsed code is visible rather than
-    // invisibly breaking the L request.
-    progress(&format!("[stage: resolve_char] code={code:?}"));
+    // invisibly breaking the L request -- and REDACTED, because a character code
+    // is `W_<ACCOUNT>_<SLOT>` (`plan/10:472`) and this line printed the account
+    // on every login. Same exposure `redact` was added for; it closed the `A`
+    // response and left this one, because here the account is inside a field
+    // rather than a field of its own.
+    progress(&format!(
+        "[stage: resolve_char] code={:?}",
+        redact_char_code(code)
+    ));
     Ok(code.to_owned())
 }
 
