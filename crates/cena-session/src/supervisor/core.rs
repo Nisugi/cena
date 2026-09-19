@@ -25,7 +25,7 @@
 //! Carrying them forward would deliver a previous connection's answers.
 
 use crate::actor::Event;
-use crate::command::Inbox;
+use crate::command::{Farewell, Inbox, Outcome, Sent};
 use crate::lifecycle::GenerationCell;
 use cena_model::GameState;
 use cena_platform::{Recorder, SessionSink};
@@ -72,4 +72,111 @@ pub struct SessionCore {
     /// own cancel ends its connection, and cancelling this ends the whole
     /// supervised session including any reconnect it was about to attempt.
     pub(super) cancel: CancellationToken,
+}
+
+impl SessionCore {
+    /// Answer and discard every message parked since the last connection ended.
+    ///
+    /// # The defect this closes
+    ///
+    /// [`commands`](Self::commands) is durable **on purpose** -- a handle taken
+    /// in generation 0 must still reach the actor in generation 3. The cost is
+    /// that between one `actor.run()` returning and the next starting, the
+    /// receiver sits un-polled while handles keep sending successfully. Those
+    /// messages were addressed to a connection that no longer exists, and the
+    /// next actor used to drain them as if they were fresh.
+    ///
+    /// The worst case is `quit`. Its caller's wait is bounded, so a `quit`
+    /// issued during a reconnect answers `Unsent` -- documented as *"assume the
+    /// game was not told"*. The `Inbox::Quit` stayed in the channel anyway, and
+    /// **the next successful login was followed immediately by a logout**.
+    /// VERIFIED before the fix by the recorder's own transcript: `<prompt>`,
+    /// then `quit\n`, then the next generation's `<prompt>`.
+    ///
+    /// Review finding SE-1, reported HIGH. `plan/12` §5.1 already said what
+    /// should happen -- commands during `Reconnecting` *"fail immediately with
+    /// `Disconnected`"* -- so this implements a stated rule rather than
+    /// inventing one.
+    ///
+    /// # Why each message is ANSWERED rather than dropped
+    ///
+    /// A dropped `oneshot::Sender` resolves the caller's `await` to an error,
+    /// which every call site already maps to a pessimistic default. Answering
+    /// explicitly says the same thing in the vocabulary the caller reads, and
+    /// keeps a dropped sender meaning "the actor is gone" rather than "this was
+    /// swept".
+    ///
+    /// # Ordering
+    ///
+    /// Called immediately before the receiver is handed to a new actor, so the
+    /// window it clears is exactly "since the last connection ended". Anything
+    /// arriving after this point belongs to the new connection and is handled
+    /// normally.
+    /// # A swept message COUNTS AS ATTENDANCE, and the caller must record it
+    ///
+    /// Attendance is measured from `recorder.outbound_count()`, and a swept
+    /// command never reaches the recorder -- so without the caller noting it, a
+    /// player typing DURING a reconnect looks exactly like an empty chair, and
+    /// the unattended cap stops a session someone is sitting at.
+    ///
+    /// `io.rs`'s `write_bounded` states the principle for the live path: *"a
+    /// write that fails still means someone tried ... The supervisor's question
+    /// is 'is anyone here', not 'did the packet land'."* This is the same
+    /// question one layer out. The return value is non-zero exactly when
+    /// something was swept, which is what the supervisor feeds to
+    /// `after_connection`.
+    ///
+    /// # Discarding a command is NOT evidence that nobody is there
+    ///
+    /// `io.rs`'s `write_bounded` answers the idle warning **before** the write,
+    /// and says why: *"a write that fails still means someone tried, and the
+    /// session is attended either way. The supervisor's question is 'is anyone
+    /// here', not 'did the packet land'."*
+    ///
+    /// A command parked during a reconnect is that case exactly -- somebody
+    /// typed while the client was reconnecting -- so sweeping it answers the
+    /// idle warning too. Found by `idle_kick.rs`'s attended-session test going
+    /// red on the first version of this sweep: discarding the command erased
+    /// the only proof a human was present, and the supervisor then stopped an
+    /// attended session as idle. **That failure was the fix telling me it was
+    /// half-written.**
+    pub(super) fn discard_stale_inbox(&mut self) -> usize {
+        let mut swept = 0;
+        while let Ok(message) = self.commands.try_recv() {
+            swept += 1;
+            // Anything a caller SENT is someone acting, whatever becomes of it.
+            if matches!(
+                message,
+                Inbox::Command(_) | Inbox::SendNow { .. } | Inbox::Quit { .. }
+            ) {
+                self.state.answer_idle_warning();
+            }
+            match message {
+                // §5.1: a command aimed at a dead connection fails with
+                // `Disconnected`, which a behavior reads as "this connection
+                // died and a retry may work" -- not `Dead`, which is permanent.
+                Inbox::Command(envelope) => {
+                    let _ = envelope.reply.send(Outcome::Disconnected);
+                }
+                Inbox::SendNow { reply, .. } => {
+                    let _ = reply.send(Sent::Dead);
+                }
+                // **The one that logs the character out.** The caller has
+                // already been told `Unsent`; this makes that true.
+                Inbox::Quit { reply, .. } => {
+                    let _ = reply.send(Farewell::Unsent);
+                }
+                // A claim against a connection that no longer exists. Answering
+                // `Ok` would hand out authority over a queue that is about to
+                // be replaced.
+                Inbox::Claim { reply, .. } => {
+                    drop(reply);
+                }
+                // Nothing to answer, and nothing to release: the queue that
+                // held the authority died with the actor.
+                Inbox::Release(_) => {}
+            }
+        }
+        swept
+    }
 }

@@ -225,6 +225,9 @@ impl<C: Connector> SupervisedSession<C> {
         // Consecutive losses with no command sent. `MAX_UNATTENDED_LOSSES` of
         // these stops the session.
         let mut unattended = 0u32;
+        // Set when the sweep discards something a caller sent; read and cleared
+        // by `after_connection`. See the sweep's comment.
+        let mut attended_while_disconnected = false;
         loop {
             let generation = self.core.generation.get();
             // **Raced against the cancel token.** Only the backoff sleep was,
@@ -294,6 +297,9 @@ impl<C: Connector> SupervisedSession<C> {
             let sent_before = self.core.recorder.outbound_count();
             let received_before = self.core.recorder.inbound_count();
 
+            // **Before the new actor sees the channel.** See `sweep_inbox`.
+            attended_while_disconnected |= self.sweep_inbox();
+
             let actor = SessionActor::supervised(
                 source,
                 std::mem::take(&mut self.core.state),
@@ -336,9 +342,13 @@ impl<C: Connector> SupervisedSession<C> {
             // Did anyone use this connection? A command sent is a player (or a
             // behavior) present; none across MAX_UNATTENDED_LOSSES connections
             // is an abandoned client being idle-kicked in a loop.
-            if let Some(stop) =
-                self.after_connection(sent_before, received_before, &mut attempt, &mut unattended)
-            {
+            if let Some(stop) = self.after_connection(
+                sent_before,
+                received_before,
+                &mut attempt,
+                &mut unattended,
+                std::mem::take(&mut attended_while_disconnected),
+            ) {
                 stopped_because = stop;
                 break;
             }
@@ -377,6 +387,24 @@ impl<C: Connector> SupervisedSession<C> {
         }
     }
 
+    /// Discard everything parked since the last connection ended.
+    ///
+    /// Returns whether anything was swept, which the caller feeds to
+    /// [`Self::after_connection`] as attendance: a swept command never reaches
+    /// the recorder, but somebody typed it.
+    /// [`SessionCore::discard_stale_inbox`] has the full reasoning and the
+    /// transcript of the defect (review finding SE-1).
+    fn sweep_inbox(&mut self) -> bool {
+        let swept = self.core.discard_stale_inbox();
+        if swept == 0 {
+            return false;
+        }
+        self.log(&format!(
+            "discarded {swept} message(s) queued while disconnected"
+        ));
+        true
+    }
+
     /// Update the ladder and the unattended cap from what this connection did.
     ///
     /// Returns `Some` if the session should stop. Split from [`Self::run`] under
@@ -389,6 +417,7 @@ impl<C: Connector> SupervisedSession<C> {
         received_before: u64,
         attempt: &mut u32,
         unattended: &mut u32,
+        attended_while_disconnected: bool,
     ) -> Option<StoppedBecause> {
         // **Two different questions, and they were conflated.**
         //
@@ -406,7 +435,10 @@ impl<C: Connector> SupervisedSession<C> {
         // A connection that received nothing did not work, however much we
         // wrote at it: an accepted socket that dies before the login burst
         // is exactly the flapping case the ladder is for.
-        let attended = self.core.recorder.outbound_count() > sent_before;
+        // `|| attended_while_disconnected`: a command the sweep discarded
+        // never reached the recorder, but somebody typed it.
+        let attended =
+            self.core.recorder.outbound_count() > sent_before || attended_while_disconnected;
         let worked = self.core.recorder.inbound_count() > received_before;
         if worked {
             *attempt = 0;
