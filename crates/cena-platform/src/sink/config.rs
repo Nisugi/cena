@@ -24,13 +24,21 @@ use std::path::PathBuf;
 /// or date."* Both are already known from context and repeating them is waste
 /// at 30,000 lines a file:
 ///
-/// - the **date** is in the directory (`YYYY/MM`) and in the filename
+/// - the **date** is in the directory (`YYYY-MM-DD`, see [`date_dir`]) and in
+///   the filename (see [`file_stamp`])
 /// - the **zone** is the machine's, and one session does not cross zones
 ///
 /// `logxml.lic` defaults to `%F %T %Z` -- full date, time and zone -- but it
 /// offers that as a user-supplied `--timestamp` string rather than a considered
 /// default, and its own filenames already carry the date too.
 pub const TIME_FORMAT: &str = "%H:%M:%S%.3f";
+// NOT a format string anything passes to a formatter. [`line_time`] builds the
+// same shape by hand, because `jiff` needs no strftime pass to print four
+// integers. This exists to NAME the format in one place, so the doc above and
+// the hand-rolled builder cannot drift apart silently -- and `line_time`'s doc
+// links here for exactly that reason. Review (PL-8) read it as dead surface,
+// which is fair: a constant nothing reads looks like one. The test below is
+// what makes it load-bearing instead of decorative.
 
 /// The environment variable that names the log directory.
 ///
@@ -64,7 +72,7 @@ pub fn log_dir() -> PathBuf {
     std::env::var_os(LOG_DIR_ENV).map_or_else(|| PathBuf::from(DEFAULT_LOG_DIR), PathBuf::from)
 }
 
-/// Lines before the caller should roll to a new file. **A default, not a
+/// Writes before the caller should roll to a new file. **A default, not a
 /// rule** -- author's call, "I guess that should be editable."
 ///
 /// 30,000 -- "somewhere around 1mb" -- from `logxml.lic` and `log.lic`, which
@@ -72,9 +80,32 @@ pub fn log_dir() -> PathBuf {
 /// of operational experience chose this number; there is no reason to pick a
 /// different one and every reason to match the files already on disk.
 ///
-/// That ~1 MB is **their** measurement, of their format. This file wraps
-/// client input in markers and writes inbound verbatim, so it should land in
-/// the same neighbourhood -- UNVERIFIED until a real session is measured.
+/// # This counts WRITES, and Lich counts LINES. They are not the same unit.
+///
+/// The name says "lines" because Lich's does, and for Lich that is accurate:
+/// it rolls per logged line, so 30,000 of them land near the ~1 MB its
+/// authors measured.
+///
+/// Cena's counter lives in [`crate::sink::SessionSink::wire`], which is called
+/// **once per read chunk**, not once per line. A chunk is whatever the socket
+/// returned, bounded by the session's read buffer:
+///
+/// ```text
+/// $ grep -n 'const READ_BUF' crates/cena-session/src/actor.rs
+/// 147:const READ_BUF: usize = 8 * 1024;
+/// ```
+///
+/// So the worst case is 30,000 x 8,192 = **245,760,000 bytes (~234 MiB)** per
+/// part, not ~1 MB. The real figure sits between the two -- a chunk is usually
+/// far smaller than the buffer, and a busy line of combat is one small read --
+/// but the CEILING is what a rotation bound is for, and this one is 234x the
+/// number quoted beside it. UNVERIFIED against a real session; the ceiling is
+/// arithmetic, not measurement.
+///
+/// Left as a write count rather than changed to a line count, because the
+/// `.bytes` file's whole purpose is that chunk boundaries are preserved
+/// verbatim (`SessionSink::wire`) -- counting lines would mean scanning for
+/// newlines the format deliberately does not impose.
 ///
 /// Overridable via [`ROTATE_ENV`], and it moves into config when config
 /// exists.
@@ -180,4 +211,89 @@ pub fn line_time() -> String {
         now.second(),
         now.millisecond()
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// [`TIME_FORMAT`] and [`line_time`] describe the same shape.
+    ///
+    /// `line_time` formats by hand, so the constant is documentation that
+    /// nothing executes -- exactly the kind that goes stale silently. Review
+    /// finding PL-8 called the constant dead surface. It is not dead; it was
+    /// merely unchecked, which looks the same from outside.
+    ///
+    /// This walks the strftime string and asserts the output matches it field
+    /// for field, so editing either one alone fails here.
+    #[test]
+    fn line_time_matches_the_format_it_documents() {
+        assert_eq!(
+            TIME_FORMAT, "%H:%M:%S%.3f",
+            "if the format changes, the expectations below must change with it"
+        );
+        let t = line_time();
+        let (hms, millis) = t.split_once('.').expect("%.3f means a `.` separator");
+        let fields: Vec<&str> = hms.split(':').collect();
+        assert_eq!(fields.len(), 3, "%H:%M:%S is three fields: {t:?}");
+        for (field, name) in fields.iter().zip(["%H", "%M", "%S"]) {
+            assert_eq!(field.len(), 2, "{name} is zero-padded to 2 digits: {t:?}");
+            assert!(
+                field.bytes().all(|b| b.is_ascii_digit()),
+                "{name} is digits: {t:?}"
+            );
+        }
+        assert_eq!(millis.len(), 3, "%.3f is exactly 3 digits: {t:?}");
+        assert!(
+            millis.bytes().all(|b| b.is_ascii_digit()),
+            "%.3f is digits: {t:?}"
+        );
+        assert!(
+            !t.contains('-') && !t.contains('Z') && !t.contains('+'),
+            "the format is TIME ONLY -- no date, no zone (author, 2026-09-18): {t:?}"
+        );
+    }
+
+    /// The date really is in the directory and the filename, as [`TIME_FORMAT`]
+    /// justifies omitting it on the grounds that it is.
+    ///
+    /// That justification cited `YYYY/MM` -- `logxml.lic`'s nesting, not
+    /// Cena's. [`date_dir`] is one flat level. A doc that reasons from the
+    /// wrong layout is the citation rot `plan/05` §-2 exists to stop, so the
+    /// shapes are pinned rather than described.
+    #[test]
+    fn the_date_is_where_the_time_format_says_it_is() {
+        let dir = date_dir();
+        let parts: Vec<&str> = dir.split('-').collect();
+        assert_eq!(
+            parts.len(),
+            3,
+            "date_dir is flat YYYY-MM-DD, not nested: {dir:?}"
+        );
+        assert!(
+            !dir.contains('/') && !dir.contains('\\'),
+            "one level, so a day's captures list in one listing: {dir:?}"
+        );
+        assert_eq!(parts[0].len(), 4, "YYYY: {dir:?}");
+        assert_eq!(parts[1].len(), 2, "MM: {dir:?}");
+        assert_eq!(parts[2].len(), 2, "DD: {dir:?}");
+
+        let stamp = file_stamp();
+        let (date, time) = stamp
+            .split_once('_')
+            .unwrap_or_else(|| panic!("file_stamp is YYYY-MM-DD_HH-MM-SS: {stamp:?}"));
+        assert_eq!(
+            date, dir,
+            "the filename's date must agree with the directory"
+        );
+        assert_eq!(
+            time.split('-').count(),
+            3,
+            "HH-MM-SS, `-` because `:` is illegal on Windows: {stamp:?}"
+        );
+        assert!(
+            !time.contains(':'),
+            "`:` is not a legal Windows filename character: {stamp:?}"
+        );
+    }
 }

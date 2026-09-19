@@ -561,25 +561,25 @@ impl SessionSink {
         // reorder the record across a part boundary.
         self.drain_pending()?;
         self.bytes.flush()?;
-        self.part += 1;
+        // `part` is committed only AFTER the file exists. Incrementing first
+        // and then using `?` on `File::create` spends the number on a part
+        // that was never opened: the next roll takes the one after it, and the
+        // sequence has a permanent hole. A reader of a capture directory
+        // cannot then tell a transient ENOSPC from a part that was written and
+        // later deleted -- and for a capture format whose whole claim is that
+        // it is the wire verbatim, "a file is missing here" must mean exactly
+        // one thing. Found by review (PL-8).
+        let next_part = self.part + 1;
         let next = self.stem.with_file_name(format!(
             "{}-{:03}.bytes",
             self.stem.file_name().unwrap_or_default().to_string_lossy(),
-            self.part
+            next_part
         ));
         self.bytes = BufWriter::new(File::create(&next)?);
+        self.part = next_part;
         self.bytes_path = next;
         self.lines_written = 0;
         Ok(())
-    }
-
-    /// How many lines have been written, for the caller's rotation check.
-    ///
-    /// Rotation is the caller's because it needs a clock and a path, and this
-    /// type deliberately has neither (see [`Self::create`]).
-    #[must_use]
-    pub fn lines_written(&self) -> u64 {
-        self.lines_written
     }
 
     /// Append one debug line: a lifecycle change, an error -- something that
