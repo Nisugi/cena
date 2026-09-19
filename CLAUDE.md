@@ -145,10 +145,35 @@ From `plan/05-engineering-rules.md`:
    `Frame::Component`, not scanned text; manual command interleaved and the behavior continued.
    Criteria 2–8 are test-backed; `plan/10` §11 records what the live run taught.
 
-Reconnect and desync move to Milestone 2.
+4. ~~**The deferred tail** — reconnect and criterion 9.~~ **DONE 2026-09-18.** `12` §9c moved
+   these out of M1; they are now built and **live-verified**: an Ethernet drop mid-session
+   produced `Closed -> Reconnecting -> generation 1 -> full re-login -> Ready -> room`, with
+   §5.2's invalidated facts `Unknown` and the login burst re-teaching the rest. Also built:
+   the backoff ladder (`[1,2,5,10,30]`s, ±20% jitter, ported from `VellumFE`), the two stops
+   (fatal auth vs. `MAX_UNATTENDED_LOSSES`), `quit`-and-await-EOF (`16` §5b), and TCP
+   keepalive on the game socket (Lich's `idle: 30 / interval: 30`).
 
-**Milestone 1 is complete. The next step is Milestone 2** (`12` §9c: reconnect, desync,
-criterion 9) — or whatever the author picks up instead.
+> **A NAMING CORRECTION, 2026-09-18.** This work was called "Milestone 2" throughout, because
+> `12` §9c says reconnect "moved to Milestone 2". **That is not §8's Milestone 2**, which is
+> *"frame vocabulary breadth + golden corpus; full room/combat/vitals rendering"*. Two
+> different things wear the same label and nobody reconciled them until the author asked
+> whether there was a plan at all.
+>
+> What was built is **Milestone 1's deferred tail**. The milestone numbering that governs is
+> **`12` §8's table**, and §9c's "Milestone 2" means only "not in the first slice".
+>
+> The cost of the confusion was a wrong recommendation: `move`/`travel` was suggested as the
+> next thing, on the strength of having measurements for it. §8 puts the first real behavior
+> at **M6**, four milestones out.
+
+**Milestone 1 is complete, including its deferred tail. The next step is `12` §8's
+Milestone 2** — frame vocabulary breadth, a golden corpus, and full room/combat/vitals
+rendering — or whatever the author picks up instead.
+
+The first live session that printed game text (2026-09-18) is evidence for exactly that
+milestone: worn inventory arrived as `a` + `pebbled grey leather doublet` split at a link
+boundary, spell lists and the services table came through as unstructured text, and 99 events
+were dropped from the broadcast ring during the login burst.
 
 ## Credentials
 
