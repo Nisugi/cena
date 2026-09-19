@@ -72,6 +72,10 @@ impl<S: ByteSource> Session<S> {
                 sink: None,
                 cancel: cancel.clone(),
                 generation,
+                // A plain `Session` has nothing above it to reconnect, so a
+                // lost transport IS the end. A supervisor overrides this;
+                // see `SessionActor::on_disconnect`.
+                on_disconnect: crate::command::Outcome::Dead,
             },
             handle: SessionHandle::new(tx, generation),
             events,

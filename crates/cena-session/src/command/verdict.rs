@@ -139,7 +139,38 @@ pub enum Outcome {
     /// already have reached the game (`plan/12` §4.4).
     Interrupted,
     /// The session is gone.
+    ///
+    /// **Permanent.** Nothing is coming back: the handle is dead, the actor has
+    /// returned, and a caller that retries is spinning. Contrast
+    /// [`Self::Disconnected`], which is the same event with a future.
     Dead,
+    /// The connection was lost, and the session expects another.
+    ///
+    /// `plan/12` §5.1, on `Reconnecting`: *"no transport. All in-flight
+    /// commands fail immediately with `Disconnected`."*
+    ///
+    /// # Why this is not [`Self::Dead`]
+    ///
+    /// Because they call for opposite behaviour. `Dead` means **stop**;
+    /// this means **the command did not complete and the session will be
+    /// back**. Collapsing them leaves a behavior unable to tell "give up" from
+    /// "wait", which is the decision it most needs to get right after a drop.
+    ///
+    /// # It is NOT "the command did not happen"
+    ///
+    /// The same caveat [`Self::Timeout`] carries, for the same reason
+    /// (`plan/12` §4.4). The bytes may already have reached the game before the
+    /// socket died; what is lost is the *answer*, not necessarily the effect. A
+    /// behavior that re-sends on `Disconnected` must be re-sending something
+    /// safe to do twice.
+    ///
+    /// # Only a supervised session produces it
+    ///
+    /// A plain [`Session`](crate::Session) has nothing to reconnect it, so it
+    /// answers `Dead` -- promising a return that will never come would be the
+    /// same lie in the other direction. The actor carries which one it means;
+    /// see `SessionActor`'s `on_disconnect`.
+    Disconnected,
     /// Not run, with a reason.
     Refused(Refusal),
 }

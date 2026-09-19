@@ -61,7 +61,20 @@ pub enum BehaviorError {
     /// on the result", never "it did not happen".
     Cancelled,
     /// The session is gone.
+    ///
+    /// **Permanent**, unlike [`Self::Disconnected`]: nothing is coming back.
     Dead,
+    /// The connection was lost, and the session expects another.
+    ///
+    /// `plan/12` §5.1 puts a reconnecting session in a state where **"no
+    /// automation runs"**, so the correct response is to stop *this run* --
+    /// not to retry, and not to treat the session as finished. A behavior
+    /// cannot act with no transport, and whatever restarts behaviors once
+    /// `Ready` returns is above this layer.
+    ///
+    /// Separate from [`Self::Dead`] because a supervisor reads them
+    /// differently: `Dead` ends the session, this is an interruption in it.
+    Disconnected,
     /// Another behavior holds the command authority.
     ///
     /// `plan/12` §4.2: a behavior that wants a held authority "gets
@@ -196,6 +209,10 @@ async fn look_holding_authority(
             Outcome::Confirmed(_) | Outcome::Timeout | Outcome::Refused(_) => {}
             Outcome::Interrupted => return Err(BehaviorError::Cancelled),
             Outcome::Dead => return Err(BehaviorError::Dead),
+            // Stop this run and say why. NOT a retry: §5.1 says no automation
+            // runs while a session has no transport, so looping here would
+            // spin against a socket that is gone.
+            Outcome::Disconnected => return Err(BehaviorError::Disconnected),
         }
 
         // THE LOAD-BEARING AWAIT. A bare `sleep(LOOK_INTERVAL).await` here

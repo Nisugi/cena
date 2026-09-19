@@ -168,6 +168,25 @@ pub struct SessionActor<S: ByteSource> {
     sink: Option<SessionSink>,
     cancel: CancellationToken,
     generation: Generation,
+    /// What a lost transport means to whoever owns this actor.
+    ///
+    /// **Not a "supervised" flag.** It is a fact the owner knows and the actor
+    /// cannot: whether anything will open another connection. A plain
+    /// [`Session`] answers [`Outcome::Dead`](crate::Outcome::Dead) because
+    /// nothing will; a supervisor sets
+    /// [`Outcome::Disconnected`](crate::Outcome::Disconnected) because it
+    /// will.
+    ///
+    /// Getting this wrong is a lie in one direction or the other -- `Dead` when
+    /// a reconnect is coming tells a behavior to give up on a session that is
+    /// about to work, and `Disconnected` when nothing is coming leaves it
+    /// waiting forever. Neither is recoverable by the caller, which is why the
+    /// distinction is carried rather than guessed.
+    ///
+    /// Only ever `Dead` or `Disconnected`; it is an [`Outcome`](crate::Outcome)
+    /// rather than a `bool` so the value reads as what it is at the point it is
+    /// sent, instead of being re-derived from a flag.
+    on_disconnect: crate::command::Outcome,
 }
 
 impl<S: ByteSource> SessionActor<S> {
@@ -252,7 +271,7 @@ impl<S: ByteSource> SessionActor<S> {
                 }
             }
         }
-        self.shutdown().await;
+        self.shutdown(reason).await;
         SessionEnd {
             recorder: self.recorder,
             state: self.state,
@@ -291,11 +310,22 @@ impl<S: ByteSource> SessionActor<S> {
     /// during `Syncing` would be exactly that lockout, and it is not what
     /// either section asks for.
     /// Close the source and answer everyone still waiting.
-    async fn shutdown(&mut self) {
+    ///
+    /// Everyone is answered [`Self::on_disconnect`] -- `Dead` for a plain
+    /// session, `Disconnected` for a supervised one -- **except after a
+    /// cancellation**, which is always `Dead`: a deliberate stop is not
+    /// followed by a reconnect whoever owns the actor
+    /// ([`EndReason::warrants_reconnect`]).
+    async fn shutdown(&mut self, reason: EndReason) {
         // Idempotent by the trait's contract, which is why this is safe on
         // every one of the three exit paths.
         let _ = self.source.shutdown().await;
-        self.queue.drop_all_waiters();
+        let outcome = if reason.warrants_reconnect() {
+            self.on_disconnect.clone()
+        } else {
+            crate::command::Outcome::Dead
+        };
+        self.queue.answer_all_waiters(&outcome);
         self.transition(State::Closed);
         // Flush LAST, after the Closed transition has been logged, so the file
         // records its own end. Buffered writers otherwise lose the final lines

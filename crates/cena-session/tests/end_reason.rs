@@ -147,3 +147,68 @@ fn the_two_transport_losses_stay_distinguishable() {
          warrants_reconnect treats them identically"
     );
 }
+
+/// **An unsupervised session answers `Dead`, not `Disconnected`.**
+///
+/// `Outcome::Disconnected` promises another connection is coming. A plain
+/// [`Session`] has nothing above it to make that true, so saying it would leave
+/// a behavior waiting for a return that never happens — the same lie as `Dead`
+/// during a reconnect, pointed the other way.
+///
+/// # This test was worthless in its first form, and that is worth recording
+///
+/// It originally ended the session by **cancelling** it, and passed against an
+/// `on_disconnect` hard-coded to `Disconnected` — because `shutdown` maps every
+/// cancellation to `Dead` regardless of the field
+/// ([`EndReason::warrants_reconnect`]). It asserted the right value for the
+/// wrong reason and exercised nothing.
+///
+/// The fix is to end the session by a **transport loss**, which is the only
+/// path `on_disconnect` governs. `ReplaySource` at end-of-stream is exactly
+/// that: `read` returns `Ok(0)`, the actor breaks with `PeerClosed`, and the
+/// waiter's answer is then the field under test.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_unsupervised_session_answers_dead_rather_than_disconnected() {
+    // No chunks: the first read is end-of-stream, so the session ends the way a
+    // peer hang-up ends it -- a LOST TRANSPORT, not a deliberate stop.
+    let session = Session::new(ReplaySource::new(vec![]));
+    let handle = session.handle();
+    let task = tokio::spawn(session.into_actor().run());
+
+    let outcome = handle
+        .send_and_await(
+            CommandId(1),
+            "look",
+            Origin::Manual,
+            Duration::from_secs(30),
+            cena_session::queue::any_frame,
+        )
+        .await;
+
+    let end = task.await.expect("the actor must not panic");
+    assert!(
+        end.reason.warrants_reconnect(),
+        "guard: this must be a transport loss, or the assertion below passes          for the wrong reason -- a cancellation answers Dead whatever          `on_disconnect` says. Got {:?}",
+        end.reason
+    );
+    assert_eq!(
+        outcome,
+        cena_session::Outcome::Dead,
+        "a plain Session has nothing to reconnect it, so `Dead` is the honest          answer even though the transport was lost. `Disconnected` here would          promise a return that never comes."
+    );
+}
+
+/// A cancelled session answers `Dead` **even when supervised**.
+///
+/// `shutdown` consults [`EndReason::warrants_reconnect`] rather than
+/// `on_disconnect` alone, because a deliberate stop is not followed by a
+/// reconnect whoever owns the actor. Without that check a supervised session
+/// would answer `Disconnected` to a player who just quit.
+#[test]
+fn a_deliberate_stop_is_never_a_disconnection() {
+    assert!(
+        !EndReason::Cancelled.warrants_reconnect(),
+        "shutdown keys the waiters' answer off this, so a cancelled session \
+         answers Dead regardless of what its owner would otherwise mean"
+    );
+}

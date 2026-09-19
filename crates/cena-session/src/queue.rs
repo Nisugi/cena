@@ -242,28 +242,39 @@ impl CommandQueue {
         let _ = flight.reply.send(outcome);
     }
 
-    /// Drop every waiter, in flight and queued.
+    /// Answer every waiter, in flight and queued, then clear.
     ///
-    /// # Why this does not SEND an outcome
+    /// # The `&Outcome` parameter, restored -- and why that is not a reversal
     ///
-    /// An earlier version sent `Outcome::Dead` to each waiter, and its test
-    /// **passed with the call removed** -- which the house rule says makes it
-    /// worthless, so the code it covered was examined rather than the test
-    /// patched. It was redundant: dropping a `oneshot::Sender` already wakes
-    /// its receiver, and `SessionHandle::send_and_await` maps that to
-    /// `Outcome::Dead` (`command.rs:168`). So the explicit send produced the
-    /// same observable value by a longer route, and took an `&Outcome`
-    /// parameter that only ever received one value -- Rule -1's "no config
-    /// option with one value" in argument form.
+    /// An earlier version sent `Outcome::Dead` to each waiter and was cut back
+    /// to a plain drop, because dropping a `oneshot::Sender` already wakes its
+    /// receiver and `SessionHandle::send_and_await` maps that to
+    /// `Outcome::Dead`. The explicit send produced the same observable value by
+    /// a longer route, and its parameter "only ever received one value --
+    /// Rule -1's 'no config option with one value' in argument form."
     ///
-    /// This method remains because dropping the waiters at a NAMED POINT is
-    /// the thing criterion 6 is about: it happens in `shutdown`, before the
-    /// actor returns, rather than whenever the actor's memory happens to be
-    /// released. What it does not do is duplicate the channel's own semantics.
-    pub fn drop_all_waiters(&mut self) {
-        self.in_flight = None;
-        self.manual.clear();
-        self.held.clear();
+    /// **That was correct at the time and the test has now changed.** Milestone
+    /// 2 gives it a second caller: a supervised session answers
+    /// [`Outcome::Disconnected`] because another connection is coming, and an
+    /// unsupervised one answers [`Outcome::Dead`] because none is. Two callers,
+    /// two values, so Rule -1 is satisfied by the same standard that failed it
+    /// before -- not by relaxing it.
+    ///
+    /// The drop-based route cannot express this at all: dropping the sender
+    /// always yields `Dead`, so the distinction has to be *sent*.
+    ///
+    /// # Why it still happens at a NAMED POINT
+    ///
+    /// Unchanged from the version before: the waiters are answered in
+    /// `shutdown`, before the actor returns, rather than whenever the actor's
+    /// memory happens to be released. That is what criterion 6 is about.
+    pub fn answer_all_waiters(&mut self, outcome: &Outcome) {
+        if let Some(flight) = self.in_flight.take() {
+            let _ = flight.reply.send(outcome.clone());
+        }
+        for envelope in self.manual.drain(..).chain(self.held.drain(..)) {
+            let _ = envelope.reply.send(outcome.clone());
+        }
     }
 }
 
