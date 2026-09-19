@@ -353,7 +353,8 @@ impl Parser {
     /// line (see MULTI-LINE CAPTURES in `parser.rs`).
     fn inline_paired(&mut self, tag: &str, frames: &mut Vec<Frame>) {
         let id = text::attribute(tag, "id").unwrap_or_default();
-        let body = self.parse_runs(&inner_text(tag));
+        let mut unmodelled = Vec::new();
+        let body = self.parse_runs_reporting(&inner_text(tag), &mut unmodelled);
         // `<inv>` is a container's contents, not a room component: same shape
         // on the wire, different frame, so the name is what decides.
         if text::tag_name(tag) == "inv" {
@@ -363,6 +364,20 @@ impl Parser {
             });
         } else {
             frames.push(Frame::Component { id, body });
+        }
+        // **After the frame, in wire order.** A consumer sees the component it
+        // can use, then whatever the body carried that this parser does not
+        // model. Emitted here rather than inside `parse_runs_reporting`
+        // because only the caller knows which frame the body belonged to, and
+        // Rule 2.2's "survives to display" means *after* the thing it was
+        // found in (review PR-1).
+        for raw in unmodelled {
+            let name = text::tag_name(&raw).to_owned();
+            if tags::is_known(&name) {
+                frames.push(Frame::structural(&name, &raw));
+            } else {
+                frames.push(Frame::UnknownTag { name, raw });
+            }
         }
     }
 

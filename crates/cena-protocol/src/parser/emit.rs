@@ -90,7 +90,32 @@ impl Parser {
     /// regression tests for exactly this class of leak
     /// (`src/parser/tests.rs:654,755,801,897`); recomputing from a saved
     /// snapshot removes the class rather than re-earning the tests.
-    pub(super) fn parse_runs(&mut self, body: &str) -> Runs {
+    /// Parse a body into [`Runs`], surfacing tags it carried that this parser
+    /// does not model.
+    ///
+    /// # Why the body's unknown tags were being dropped
+    ///
+    /// `markup_state`'s `_ => {}` arm swallows anything that is not one of the
+    /// nine markup names, and inside a component body there is no frame vector
+    /// for a `Structural` or an `UnknownTag` to go into. The comment here said
+    /// that was acceptable because "the body's raw bytes are already
+    /// recoverable from the `Component` frame that encloses it".
+    ///
+    /// **They are not.** `Component { id, body: Runs }` carries parsed runs and
+    /// no raw bytes -- `frame.rs` says so directly ("`body` is parsed, not
+    /// raw"). So `<component id='room objs'>... a <newThing id='1'/>rock.
+    /// </component>` yielded runs and **no `UnknownTag` at all**: Rule 2.2
+    /// violated on M1's own room path, which is where the wire puts creatures
+    /// and loot (review PR-1).
+    ///
+    /// The names are collected here and emitted by the caller, after the frame
+    /// the body belongs to -- so a consumer sees the component first and then
+    /// what it could not understand, in wire order.
+    pub(super) fn parse_runs_reporting(
+        &mut self,
+        body: &str,
+        unmodelled: &mut Vec<String>,
+    ) -> Runs {
         let saved_bold = self.bold_depth;
         let saved_presets = std::mem::take(&mut self.presets);
         let saved_links = std::mem::take(&mut self.links);
@@ -114,9 +139,17 @@ impl Parser {
             self.push_run(&mut buffer, &mut runs);
             // `markup_state`, not `markup_tag`: a component body becomes
             // `Runs`, where the markup's effect is already carried by each
-            // run's own `style` and `link`. There is no frame vector here for
-            // a `Structural` to go into, and the body's raw bytes are already
-            // recoverable from the `Component` frame that encloses it.
+            // run's own `style` and `link`.
+            //
+            // A tag that is NOT markup is collected rather than swallowed --
+            // see this function's header for why the old comment's claim
+            // (that the raw bytes were recoverable) was false.
+            let name = super::text::tag_name(tag);
+            if !super::markup::is_markup(name) && !name.is_empty() {
+                // The WHOLE tag, not just the name: Rule 2.2 requires the raw
+                // form to reach the user, and a name alone cannot be shown.
+                unmodelled.push(tag.to_owned());
+            }
             self.markup_state(tag);
         }
         self.push_run(&mut buffer, &mut runs);

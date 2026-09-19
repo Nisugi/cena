@@ -222,3 +222,96 @@ fn a_bare_nav_has_no_room_id_rather_than_an_empty_one() {
         "a nav carrying rm= must still produce that id: {with_id:?}"
     );
 }
+
+/// An unmodelled tag inside a component body reaches the user.
+///
+/// # Rule 2.2, broken on M1's own room path
+///
+/// `parse_runs` walks a component body through `markup_state`, whose `_ => {}`
+/// arm swallows anything that is not one of the nine markup names — and inside
+/// a body there is no frame vector for an `UnknownTag` to go into. The comment
+/// justified that by saying "the body's raw bytes are already recoverable from
+/// the `Component` frame that encloses it".
+///
+/// They are not. `Component { id, body: Runs }` carries parsed runs and no raw
+/// bytes, which `frame.rs` states directly. So a tag the parser does not model
+/// vanished entirely (review PR-1).
+///
+/// The path matters: `<component id='room objs'>` is where the wire puts
+/// creatures and loot, links and all. A tag Simutronics adds there would have
+/// been invisible — and criterion 8 says unknown tags survive to display.
+#[test]
+fn an_unknown_tag_inside_a_component_body_still_surfaces() {
+    // Shaped on a real room-objs line from the author's 2026-01-01 combat log,
+    // with an unmodelled tag among the links.
+    let line = "<component id='room objs'>  You also see \
+                <a exist=\"103739\" noun=\"barrel\">old barrel</a> and a \
+                <newThing id='1'/>rock.</component>";
+    let mut parser = Parser::new();
+    let frames = parser.parse_line(line);
+
+    assert!(
+        frames.iter().any(|f| matches!(
+            f,
+            Frame::UnknownTag { name, raw } if name == "newThing" && raw.contains("id='1'")
+        )),
+        "the unmodelled tag must reach the user as a frame, with its raw form \
+         (Rule 2.2, criterion 8): {frames:?}"
+    );
+
+    // The component itself is unaffected: the body still parses, and the link
+    // inside it still carries its identity.
+    let body = frames.iter().find_map(|f| match f {
+        Frame::Component { id, body } if id == "room objs" => Some(body),
+        _ => None,
+    });
+    let Some(body) = body else {
+        panic!("the component must still be emitted: {frames:?}")
+    };
+    assert!(
+        body.runs.iter().any(|r| r.text == "old barrel"),
+        "the body's runs must be unchanged: {body:?}"
+    );
+    assert!(
+        body.runs.iter().any(|r| r.link.is_some()),
+        "and the links inside it must survive -- this is how the room's \
+         contents are identified: {body:?}"
+    );
+
+    // **Order is part of the contract.** The component comes first, then what
+    // its body could not be understood to mean.
+    let component_at = frames
+        .iter()
+        .position(|f| matches!(f, Frame::Component { .. }));
+    let unknown_at = frames
+        .iter()
+        .position(|f| matches!(f, Frame::UnknownTag { .. }));
+    assert!(
+        matches!((component_at, unknown_at), (Some(c), Some(u)) if c < u),
+        "the component must precede the tags found inside it: {frames:?}"
+    );
+}
+
+/// A KNOWN tag inside a component body is structural, not unknown.
+///
+/// The same path, with the other verdict: a name the tag table holds is not
+/// news, and reporting it as unknown would make the corpus replay's
+/// "0 unknown tags" meaningless.
+#[test]
+fn a_known_tag_inside_a_component_body_is_structural() {
+    let line = "<component id='room objs'>a <nav rm='7503251'/>rock.</component>";
+    let mut parser = Parser::new();
+    let frames = parser.parse_line(line);
+
+    assert!(
+        frames
+            .iter()
+            .any(|f| matches!(f, Frame::Structural { name, .. } if name == "nav")),
+        "a known tag is structural: {frames:?}"
+    );
+    assert!(
+        !frames.iter().any(|f| matches!(f, Frame::UnknownTag { .. })),
+        "and must NOT be reported as unknown, or `0 unknown tags` over the \
+         corpus stops meaning anything: {frames:?}"
+    );
+}
