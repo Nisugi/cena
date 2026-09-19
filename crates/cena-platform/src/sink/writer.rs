@@ -299,10 +299,30 @@ impl SessionSink {
             self.bytes.write_all(CLIENT_OPEN)?;
             self.bytes.write_all(redacted.trim_ascii_end())?;
             self.bytes.write_all(CLIENT_CLOSE)?;
-        }
-        if !redacted.ends_with(b"\n") {
+            // **The wrapper gets its own terminator, unconditionally**, because
+            // the command's own newline was just trimmed off. Without it the
+            // next inbound line is glued to `ENDCLIENT -->` and a reader
+            // splitting on lines sees one line where there were two.
+            //
+            // The old check tested `redacted` -- the UNTRIMMED buffer -- while
+            // writing the trimmed one, so a command ending in a newline took the
+            // "already terminated" branch and got nothing.
             self.bytes.write_all(b"\n")?;
         }
+        // **NOTHING is appended to inbound bytes**, and that fidelity is this
+        // file's whole purpose. This used to add a newline to any chunk that did
+        // not end in one, which splits a tag straddling a read: a boundary
+        // inside `<pushStream id='room'/>` was written with a newline in the
+        // middle of the attribute, so a replay parsed something the live session
+        // never saw.
+        //
+        // `wire`'s own doc says chunk boundaries are preserved because replaying
+        // the real split drives `Parser::push_bytes`'s partial-line path with a
+        // real boundary. The append contradicted the sentence above it.
+        //
+        // The `.bytes` file is what M2's golden corpus is cut from and what
+        // criterion 7 replays, so a byte invented here is inherited by every
+        // future fixture. Found by review.
         self.lines_written += 1;
         if self.lines_written >= self.rotate_after {
             self.roll()?;

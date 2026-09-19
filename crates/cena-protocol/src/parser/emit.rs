@@ -17,6 +17,23 @@ use crate::runs::{Run, Runs};
 use crate::text;
 
 impl Parser {
+    /// Mark the **last** text run of a finished line as ending it.
+    ///
+    /// Called once per `parse_line`, which is what makes the invariant a single
+    /// line of code: a line's runs carry `false` until exactly one is promoted.
+    /// A line whose frames are all non-text -- a bare `<prompt>`, an indicator --
+    /// promotes nothing, which is correct: it contributed no display text, so
+    /// there is no run for a printer to terminate.
+    pub(super) fn mark_line_end(frames: &mut [Frame]) {
+        if let Some(Frame::Text(text)) = frames
+            .iter_mut()
+            .rev()
+            .find(|frame| matches!(frame, Frame::Text(_)))
+        {
+            text.ends_line = true;
+        }
+    }
+
     /// Emit the buffered text, if any, as a [`Frame::Text`].
     pub(super) fn flush(&mut self, buffer: &mut String, frames: &mut Vec<Frame>) {
         if buffer.is_empty() {
@@ -39,6 +56,9 @@ impl Parser {
             stream: self.current_stream(),
             style: self.style(),
             link: self.links.first().cloned(),
+            // Set by `mark_line_end` once the line is fully parsed: a run
+            // cannot know here whether another follows it.
+            ends_line: false,
         })
     }
 

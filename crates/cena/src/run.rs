@@ -329,8 +329,11 @@ struct Screen {
     /// ```
     ///
     /// MEASURED from the author's live run, and confirmed against the raw
-    /// bytes: the wire carries that as ONE line. So the frame boundary is not
-    /// a line boundary, and only a newline in the content is.
+    /// bytes: the wire carries that as ONE line. So the frame boundary is not a
+    /// line boundary -- and neither is a newline in the content, because
+    /// `push_bytes` strips it. `TextFrame::ends_line` is the fact that was
+    /// missing; this waited on a newline that never arrives and joined every
+    /// line in the room together instead.
     pending: String,
     /// Which stream the pending text belongs to, so a line is not assembled
     /// from two different windows.
@@ -341,7 +344,7 @@ impl Screen {
     /// Show a frame the way a player would want to read it.
     fn show(&mut self, frame: &Frame) {
         match frame {
-            Frame::Text(text) => self.push(&text.content, &text.stream),
+            Frame::Text(text) => self.push(&text.content, &text.stream, text.ends_line),
             // The prompt is the game's "your turn". It terminates whatever was
             // being assembled, because a prompt never continues a line.
             Frame::Prompt { text, .. } => {
@@ -363,18 +366,25 @@ impl Screen {
     }
 
     /// Accumulate, emitting one line per newline actually on the wire.
-    fn push(&mut self, content: &str, stream: &str) {
+    fn push(&mut self, content: &str, stream: &str, ends_line: bool) {
         // A stream change ends the current line: main-window text and a
         // thought must not be spliced into one.
         if stream != self.stream {
             self.flush();
             stream.clone_into(&mut self.stream);
         }
+        // An embedded newline still splits -- `&#10;` decodes to one inside a
+        // room description -- but it is no longer the ONLY thing that does.
         for (i, piece) in content.split('\n').enumerate() {
             if i > 0 {
                 self.flush();
             }
             self.pending.push_str(piece);
+        }
+        // **The wire's own line boundary.** `push_bytes` strips the newline, so
+        // without this the printer waited for one that never arrives.
+        if ends_line {
+            self.flush();
         }
     }
 

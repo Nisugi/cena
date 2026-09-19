@@ -194,6 +194,17 @@ impl Parser {
     /// `tests/parser_never_panics.rs` drives it with arbitrary bytes and with
     /// real malformed corpus fragments.
     pub fn parse_line(&mut self, line: &str) -> Vec<Frame> {
+        // **Wrapped so the line-end mark happens exactly once, on every path.**
+        // The inner function has several early returns -- a settings blob, a
+        // blank line, the oversized guard -- and marking at each is the version
+        // that rots: a new early return would silently emit text runs that no
+        // consumer could terminate, which is the bug this field exists to fix.
+        let mut frames = self.parse_line_inner(line);
+        Self::mark_line_end(&mut frames);
+        frames
+    }
+
+    fn parse_line_inner(&mut self, line: &str) -> Vec<Frame> {
         let line = line.trim_end_matches(['\r', '\n']);
         let mut frames = Vec::new();
 

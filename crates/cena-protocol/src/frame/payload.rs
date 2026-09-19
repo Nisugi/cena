@@ -15,6 +15,34 @@ pub struct TextFrame {
     pub style: Style,
     /// The link this text sits inside, if any.
     pub link: Option<Link>,
+    /// Whether this run ended a **physical wire line**.
+    ///
+    /// # Why a frame has to say this at all
+    ///
+    /// `Parser::push_bytes` splits on newlines and the newline never reaches a
+    /// frame, so a consumer could not tell a *markup* boundary from a *line*
+    /// boundary -- and the parser emits one run per markup boundary. A terminal
+    /// printer that wrote a line per frame produced
+    ///
+    /// ```text
+    /// [inv]   a
+    /// [inv] pebbled grey leather doublet
+    /// ```
+    ///
+    /// because `<a exist=...>` sits between those two pieces; and one that
+    /// accumulated until a newline appeared joined every line in the room
+    /// together, because no newline ever arrives. **Both bugs were shipped**, one
+    /// fixing the other, before the missing fact was identified.
+    ///
+    /// `VellumFE` never needed this: its public API is `parse_line`, so its
+    /// caller does the splitting with `data.lines()` and knows every boundary
+    /// implicitly (`src/core/app_core/state.rs:1472`). Cena moved the split
+    /// *inside* `push_bytes` -- which is what lets it handle a chunk that ends
+    /// mid-line -- and that is the fact this field restores.
+    ///
+    /// **True on the last run of a line only.** A line yielding three runs
+    /// carries `false, false, true`.
+    pub ends_line: bool,
 }
 
 /// Markup that was open when a run of text was emitted.
