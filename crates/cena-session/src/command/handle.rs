@@ -98,20 +98,39 @@ pub enum Inbox {
 #[derive(Clone, Debug)]
 pub struct SessionHandle {
     sender: tokio::sync::mpsc::Sender<Inbox>,
-    generation: Generation,
+    /// **Shared, not copied.** A handle cloned before a reconnect must keep
+    /// working afterwards; see [`GenerationCell`] for why that does not weaken
+    /// `plan/12` §4.4's discard rule.
+    generation: crate::lifecycle::GenerationCell,
 }
 
 impl SessionHandle {
     /// Wrap a sender. Called by [`crate::actor`] when it builds the session.
     #[must_use]
-    pub fn new(sender: tokio::sync::mpsc::Sender<Inbox>, generation: Generation) -> Self {
+    pub fn new(
+        sender: tokio::sync::mpsc::Sender<Inbox>,
+        generation: crate::lifecycle::GenerationCell,
+    ) -> Self {
         Self { sender, generation }
     }
 
-    /// The generation this handle is bound to.
+    /// The generation this handle stamps **right now**.
+    ///
+    /// Reads the shared cell rather than a copy taken at construction, so a
+    /// handle cloned in an earlier generation reports the current one.
     #[must_use]
     pub fn generation(&self) -> Generation {
-        self.generation
+        self.generation.get()
+    }
+
+    /// The shared counter this handle reads its generation from.
+    ///
+    /// For a supervisor, which advances it between connections. Ordinary
+    /// callers want [`Self::generation`], which is the value rather than the
+    /// cell.
+    #[must_use]
+    pub fn generation_cell(&self) -> crate::lifecycle::GenerationCell {
+        self.generation.clone()
     }
 
     /// Send a command and wait for its typed [`Outcome`]. **One call.**
@@ -147,7 +166,7 @@ impl SessionHandle {
             line: line.to_owned(),
             origin,
             reply,
-            generation: self.generation,
+            generation: self.generation.get(),
             matcher,
         };
         match self.sender.try_send(Inbox::Command(Box::new(envelope))) {
@@ -267,7 +286,7 @@ impl SessionHandle {
         let message = Inbox::SendNow {
             line: line.to_owned(),
             origin,
-            generation: self.generation,
+            generation: self.generation.get(),
             gate,
             reply,
         };

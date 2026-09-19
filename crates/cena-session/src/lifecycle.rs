@@ -1,4 +1,5 @@
-//! Session lifecycle: the states Step 2 can reach, and [`Generation`].
+//! Session lifecycle: the states a session can reach, [`Generation`], and the
+//! [`GenerationCell`] that lets a handle outlive a connection.
 //!
 //! `plan/12` §5.1 gives the full contract:
 //!
@@ -6,35 +7,40 @@
 //! Connecting -> Authenticating -> Syncing -> Ready -> { Degraded | Reconnecting } -> Closed
 //! ```
 //!
-//! # Two of those states are deliberately NOT built
+//! # Six of seven are built; `Degraded` is not
 //!
-//! | State | Step 2 | Why |
+//! | State | Built | Why |
 //! |---|---|---|
-//! | `Connecting` | in | criterion 1 is built-not-exercised; replay enters it too |
-//! | `Authenticating` | in | ditto; replay transits it without work |
-//! | `Syncing` | in, pass-through | §5.3 gates behaviors on `Ready`, and criterion 4 needs that gate to exist |
-//! | `Ready` | in | behaviors run here |
-//! | `Closed` | in | criterion 6 |
-//! | `Degraded` | **OUT** | |
-//! | `Reconnecting` | **OUT** | |
+//! | `Connecting` | yes | criterion 1; a replay enters it too |
+//! | `Authenticating` | yes | ditto; a replay transits it without work |
+//! | `Syncing` | yes, pass-through | §5.3 gates behaviors on `Ready`, and criterion 4 needs that gate to exist |
+//! | `Ready` | yes | behaviors run here |
+//! | `Reconnecting` | **yes, Milestone 2** | see below |
+//! | `Closed` | yes | criterion 6 |
+//! | `Degraded` | **NO** | a state with an entry and no exit |
 //!
-//! **`Degraded` is out because it would be a state with an entry and no
-//! exit.** §5.4's entry condition is a truncation-class parse error that
-//! triggers a *targeted re-sync*, and there is no re-sync in Step 2 (§7.1 puts
-//! the ~15-command Infomon sync in the Out column). A session that entered
-//! `Degraded` could never leave it, which is worse than not having the state:
-//! the variant would exist, the gate would consult it, and nothing would ever
-//! set it -- a config option with one value, in enum form.
+//! **`Reconnecting` arrived in Milestone 2.** It was out for a *scope* reason
+//! rather than a design one -- "`plan/12` §9c says so explicitly: reconnect and
+//! criterion 9 moved to Milestone 2" -- and that reason expired when this
+//! milestone began.
 //!
-//! **`Reconnecting` is out because `plan/12` §9c says so explicitly**:
-//! "reconnect and criterion 9 moved to Milestone 2."
+//! It earns its place the same way `Syncing` does: it makes §5.1's rule
+//! **"No automation runs"** enforceable by a state rather than by a convention.
+//! [`State::behaviors_may_run`] is `matches!(self, Self::Ready)`, so adding the
+//! variant gates automation with **no change to the gate** -- which is the
+//! shape a state should have.
 //!
-//! `Syncing` was the close call, and the distinction that kept it is that
-//! `Syncing` is *transited* while `Degraded` would be *entered and never
-//! left*. It earns its existence by making §5.3's readiness gate nameable:
-//! without it, "behaviors may not start until `Ready`" has nothing to be
-//! not-`Ready` *at*, and criterion 4's stop test would run against a gate
-//! whose false branch is unreachable.
+//! **`Degraded` is still out, and for a reason that has not expired.** §5.4's
+//! entry condition is a truncation-class parse error that triggers a *targeted
+//! re-sync*, and there is still no re-sync (§7.1 puts the ~15-command Infomon
+//! sync in the Out column). A session that entered `Degraded` could never leave
+//! it, which is worse than not having the state: the variant would exist, the
+//! gate would consult it, and nothing would ever set it -- a config option with
+//! one value, in enum form.
+//!
+//! The distinction that keeps one and not the other is **transited versus
+//! entered-and-never-left**. `Syncing` and `Reconnecting` are both passed
+//! through; `Degraded` would be a trap.
 
 /// Which connection a fact belongs to.
 ///
@@ -64,6 +70,92 @@ impl Generation {
     }
 }
 
+/// A [`Generation`] every holder sees change at once.
+///
+/// # Why a handle cannot just hold a `Generation`
+///
+/// [`SessionHandle`](crate::SessionHandle) stamps its generation into every
+/// command it sends, and the actor discards anything from a prior one
+/// (`plan/12` §4.4). While nothing reconnected, a copied value was fine.
+///
+/// **It stops being fine the moment a second connection exists.** A handle
+/// cloned in generation 0 -- by a frontend, or by a behavior -- would keep
+/// stamping `0` forever, and after one reconnect every command it sent would be
+/// answered [`Outcome::Interrupted`](crate::Outcome::Interrupted) for the rest
+/// of the session. The session would reconnect successfully and then be deaf to
+/// every caller that existed before the drop.
+///
+/// So a handle **reads** the generation instead of carrying a copy of it.
+///
+/// # The subtlety that keeps §4.4's discard rule intact
+///
+/// Making the handle durable must not make the discard rule toothless, and it
+/// does not, because **the stamp happens at send time**:
+///
+/// * a handle held *across* a reconnect reads the new generation on its next
+///   send, so it keeps working;
+/// * a command already **in flight** when the connection died was stamped
+///   before the bump, still carries the old value, and is still discarded.
+///
+/// Those are exactly the two properties wanted, and they come from *when* the
+/// read happens rather than from any extra bookkeeping. The rejected
+/// alternative -- dropping generation from the handle and letting the actor
+/// stamp on admit -- would destroy the rule: a command queued before the
+/// disconnect would go out on the new connection as though it were fresh.
+///
+/// # Why `AtomicU32` and not `watch::Sender<Generation>`
+///
+/// Nothing needs to be *woken* by a change. The actor reads its own generation
+/// once when it is built, and a handle reads the cell at stamp time; a `watch`
+/// would add a channel whose only subscriber polls it (Rule -1).
+#[derive(Clone, Debug)]
+pub struct GenerationCell(std::sync::Arc<std::sync::atomic::AtomicU32>);
+
+impl GenerationCell {
+    /// A cell at [`Generation::FIRST`].
+    #[must_use]
+    pub fn first() -> Self {
+        Self(std::sync::Arc::new(std::sync::atomic::AtomicU32::new(
+            Generation::FIRST.0,
+        )))
+    }
+
+    /// The generation **now**.
+    #[must_use]
+    pub fn get(&self) -> Generation {
+        Generation(self.0.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
+    /// Advance to the next connection, returning it.
+    ///
+    /// Called by a supervisor **between** one actor ending and the next
+    /// beginning -- never while an actor is running, which is why `Relaxed` is
+    /// sufficient: there is no concurrent reader to order against. The actor
+    /// that ended has already returned, and the one that will read the new
+    /// value has not been built.
+    ///
+    /// Deliberately **not** `#[must_use]`: the point of the call is the side
+    /// effect -- every handle now reads the new value -- and a supervisor that
+    /// only wants to bump the counter should not have to bind or discard a
+    /// return. It returns the new generation for the caller that does want it,
+    /// which is a convenience rather than the result.
+    #[allow(
+        clippy::must_use_candidate,
+        reason = "the side effect is the point; the return is a convenience"
+    )]
+    pub fn advance(&self) -> Generation {
+        let next = self.get().next();
+        self.0.store(next.0, std::sync::atomic::Ordering::Relaxed);
+        next
+    }
+}
+
+impl Default for GenerationCell {
+    fn default() -> Self {
+        Self::first()
+    }
+}
+
 /// Where a session is in its life. Five of `plan/12` §5.1's seven; see the
 /// module docs for the two that are deliberately absent.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -78,6 +170,25 @@ pub enum State {
     Syncing,
     /// State is trustworthy; behaviors may run.
     Ready,
+    /// The transport is gone and another is being opened.
+    ///
+    /// `plan/12` §5.1: *"no transport. All in-flight commands fail immediately
+    /// with `Disconnected`. **No automation runs.**"*
+    ///
+    /// Both halves are enforced without new code:
+    ///
+    /// * **No automation** -- [`Self::behaviors_may_run`] is
+    ///   `matches!(self, Self::Ready)`, so a behavior's command is refused here
+    ///   by the gate that already existed.
+    /// * **`Disconnected`** -- the actor answers its waiters on the way out
+    ///   (`SessionActor::shutdown`), so by the time a session is in this state
+    ///   nobody is still waiting on the old connection.
+    ///
+    /// A session in this state has **no actor**: the previous one returned its
+    /// [`SessionEnd`](crate::actor::SessionEnd) and the next has not been
+    /// built. That is why the supervisor publishes the transition rather than
+    /// the actor doing it -- there is no actor to.
+    Reconnecting,
     /// The transport is gone and the task has ended.
     Closed,
 }

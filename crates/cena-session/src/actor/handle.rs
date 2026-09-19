@@ -58,7 +58,10 @@ impl<S: ByteSource> Session<S> {
         let (tx, rx) = mpsc::channel(COMMAND_CHANNEL_BOUND);
         let (events, _) = broadcast::channel(EVENT_CHANNEL_BOUND);
         let cancel = CancellationToken::new();
-        let generation = Generation::FIRST;
+        // The cell a handle reads. A plain `Session` never advances it -- one
+        // connection, one generation -- but the handle reads it the same way,
+        // so a supervised session needs no different handle type.
+        let generation = crate::lifecycle::GenerationCell::first();
         Self {
             actor: SessionActor {
                 source,
@@ -71,7 +74,7 @@ impl<S: ByteSource> Session<S> {
                 recorder: Recorder::new(),
                 sink: None,
                 cancel: cancel.clone(),
-                generation,
+                generation: generation.get(),
                 // A plain `Session` has nothing above it to reconnect, so a
                 // lost transport IS the end. A supervisor overrides this;
                 // see `SessionActor::on_disconnect`.
@@ -104,6 +107,19 @@ impl<S: ByteSource> Session<S> {
     #[must_use]
     pub fn handle(&self) -> SessionHandle {
         self.handle.clone()
+    }
+
+    /// The shared generation counter this session's handles read.
+    ///
+    /// A plain `Session` never advances it -- one connection, one generation.
+    /// It is exposed because a **supervisor** must: advancing it between
+    /// connections is what lets a [`SessionHandle`] cloned in an earlier
+    /// generation keep working, while a command already stamped stays
+    /// correctly stale (`plan/12` §4.4, and see
+    /// [`GenerationCell`](crate::GenerationCell)).
+    #[must_use]
+    pub fn generation_cell(&self) -> crate::lifecycle::GenerationCell {
+        self.handle.generation_cell()
     }
 
     /// The token that stops the session. `plan/12` §4.3: only an explicit
