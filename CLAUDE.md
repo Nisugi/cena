@@ -63,6 +63,12 @@ which cites it by line and records what it settles, what it contradicts, and wha
   Users do not author scripts.
 - **Multi-session**, 3–25 characters in one process, session-as-actor.
 - **Parse first.** Nothing above the protocol layer sees raw bytes or unparsed text.
+- **One parser, N classifiers** (`plan/12` §3a). Exactly one thing turns bytes into
+  structure; everything that recognises a game fact is a *stateless* classifier over its
+  frames, and anything needing memory across lines is a stateful consumer above the model.
+  A combat tracker is a classifier plus a consumer, **not** a second parser. The parser's
+  side of the bargain is that every fact the markup encodes survives into the frames --
+  verified against a real attack sequence, including `exist`/`noun` and bold depth.
 - **Desktop-first development.** Mobile is a CI compile check, not a product commitment.
 - **DragonRealms is deferred**, all-or-nothing. Do not add a `GameAdapter` abstraction for it
   (`12` §9d).

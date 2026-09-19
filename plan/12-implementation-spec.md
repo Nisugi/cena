@@ -148,6 +148,102 @@ wall — in Rust the read-only guarantee is `&` and injection is a trait.
 
 ---
 
+## 3a. One parser, N classifiers — SETTLED 2026-09-19
+
+**Exactly one thing turns bytes into structure.** Everything downstream that
+recognises game facts is a *stateless classifier* over what that parser
+produced, and anything needing memory across lines is a *stateful consumer*
+above the model.
+
+| | Remembers | Sees | Lives in |
+|---|---|---|---|
+| `Parser` | stream position, open links, partial line | bytes | `cena-protocol` |
+| classifier | nothing | one parsed line / frame | `cena-model` |
+| consumer | game situation | frames + classifier answers | `cena-session` and above |
+
+The pattern is already three deep: `crit` (2,394 crit-table regexes),
+`gameobj` (113 item-type patterns), and whatever combat becomes. None of them
+is a parser — none tokenizes, none holds state, none may see markup.
+
+### Parsing is not matching
+
+The distinguishing test is **does it need to remember anything.** `Parser` is
+per-session and stateful; feed it half a tag and it holds on. `crit::parse` is
+behind an `Arc` and total: same line in, same answer out, forever.
+
+That is why `Parser::new()` is one-per-session and `CritTables` is shared.
+
+### What the parser owes the classifiers
+
+**Every fact the markup encodes must survive into the frames**, because a
+classifier may not re-read XML to recover one. That is the whole content of
+this decision — "do not re-parse markup" is only honest if nothing is lost.
+
+VERIFIED against `GSIV-Nisugi/2026/01/xml/2026-01-01_22-51-49.xml`, the
+hardest line in a real attack sequence:
+
+```text
+Nearly insensible, <pushBold/>the <a exist="416327162" noun="shield-maiden">gigas
+shield-maiden</a><popBold/> desperately blocks the attack with <pushBold/><a
+exist="416327162" noun="shield-maiden">her</a><popBold/> <a exist="416327163"
+noun="spear">spear</a>!
+```
+
+through Cena's parser:
+
+```text
+TEXT "Nearly insensible, "       bold=0  | -
+TEXT "the "                      bold=1  | -
+TEXT "gigas shield-maiden"       bold=1  | exist=416327162 noun=shield-maiden
+TEXT " desperately blocks ... "  bold=0  | -
+TEXT "her"                       bold=1  | exist=416327162 noun=shield-maiden
+TEXT " "                         bold=0  | -
+TEXT "spear"                     bold=0  | exist=416327163 noun=spear
+TEXT "!"                         bold=0  | -
+```
+
+Everything Lich's `Combat::Parser` recovers by re-scanning XML is already
+typed: `exist` and `noun` (in `LinkKind::Exist`), bold depth, and link order.
+The pronoun `her` carries the creature's own `exist`, so it resolves without a
+heuristic — Lich needed a fix for exactly this after a 2026-09-07 hunt log
+recorded an attacker as "his".
+
+This is also the triple Lich builds `GameObj` from: `GameObj.new(id, noun,
+name)`, deduplicated by `"id|noun|name"`, sourced from `@obj_exist` /
+`@obj_noun` off the same `<a>` tag (`lib/common/xmlparser.rb`).
+
+### What the parser does NOT do: turn tags into world state
+
+`<crtrStatus exist= ...>` becomes `Frame::CreatureStatus { id, attrs }` with
+**`attrs` raw**. The parser lifts the identity because that is structure; it
+does not map flag names, because it does not know what a flag means.
+
+Lich's own handler carries a 25-line comment explaining why this separation
+matters: applying flags at the tag *worked*, and the creature then silently
+vanished from the room roster after the next `clear_room`, because
+registration happened on another path — *"it would sync but never reappear in
+`Creature.targets/.in_room`"*. Their fix was to defer.
+
+Cena cannot make that mistake structurally: `cena-protocol` has no idea what a
+room roster is.
+
+### Multi-line events
+
+Some facts span lines — an attack, its damage, and its crit message are three
+wire lines and one event. That does **not** call for a second parser. It calls
+for a stateful consumer reading `Frame`s, which remembers "an attack is in
+progress" and calls the stateless classifiers per line.
+
+### When to reopen
+
+If something needs to **re-tokenize** — read raw markup that the frames did
+not preserve. That is the signal the parser is losing a fact, and the fix is
+to widen the frame, not to add a parser. `Frame::AppInfo` gaining `game` and
+`title`, and `Runs` bodies reporting their unmodelled tags (review PR-1), are
+both that repair done in the right place.
+
+---
+
 ## 4. Command ownership and arbitration
 
 **The gap:** a queue prevents overlapping round-trips. It does not decide who wins when Hunt
