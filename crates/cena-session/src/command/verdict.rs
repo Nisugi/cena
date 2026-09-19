@@ -175,7 +175,7 @@ pub enum Outcome {
     Refused(Refusal),
 }
 
-/// What a [`SessionHandle::send_now`] did.
+/// What a [`SessionHandle::send_now`](super::SessionHandle::send_now) did.
 ///
 /// # Why this is not [`Outcome`]
 ///

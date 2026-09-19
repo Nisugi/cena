@@ -67,7 +67,8 @@ fn require(label: &str) -> io::Result<String> {
 
 /// What the human at the prompt typed.
 ///
-/// Owned `String`s because [`Credentials`] borrows, and the borrow must
+/// Owned `String`s because `cena_platform::Credentials` borrows, and the
+/// borrow must
 /// outlive the handshake. Nothing here reaches disk.
 pub struct Typed {
     pub account: String,

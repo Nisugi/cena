@@ -24,6 +24,14 @@ publish.workspace = true
 [lints.rust]
 unsafe_code = "deny"
 
+# Inherited from the workspace unchanged: a broken doc link is as wrong in the
+# crate that enforces the architecture as anywhere else. Restated by hand only
+# because this manifest cannot use `workspace = true` -- see the comment above.
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+redundant_explicit_links = "deny"
+
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 todo = "deny"

@@ -39,10 +39,10 @@
 //! # What stops it
 //!
 //! Reconnect is **automatic and bounded** (the author's decision 2), and the
-//! bounds are in [`retry`]: a [`Retryability::Fatal`] connect error stops it
+//! bounds are in `retry`: a [`Retryability::Fatal`] connect error stops it
 //! immediately, and [`MAX_UNATTENDED_LOSSES`] drops with no command sent stop
 //! it as an idle session. A transient failure on an *attended* session retries
-//! forever, on a ladder that caps at 30 seconds -- see [`Self::run`] for why
+//! forever, on a ladder that caps at 30 seconds -- see `Supervisor::run` for why
 //! that is deliberate rather than a missing third bound.
 
 mod connect;

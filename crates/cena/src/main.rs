@@ -9,8 +9,8 @@
 //!
 //! `CLAUDE.md`: "do not log into a live game service without the author
 //! present." No test in this workspace reaches the network, and
-//! `cena-platform`'s [`LiveSource`] and
-//! [`eaccess`] both carry a BUILT, NOT RUN header
+//! `cena-platform`'s `LiveSource` and `eaccess` both carry a BUILT, NOT RUN
+//! header
 //! saying so. Criterion 1 is met by **the author running this**, watching it,
 //! and nothing else.
 //!

@@ -220,7 +220,7 @@ impl Recorder {
     }
 
     /// The inbound chunks alone, in order, ready to build a
-    /// [`ReplaySource`] that reproduces this
+    /// [`ReplaySource`](crate::replay::ReplaySource) that reproduces this
     /// session's reads **with the same chunk boundaries**.
     #[must_use]
     pub fn inbound_chunks(&self) -> Vec<Vec<u8>> {

@@ -2,9 +2,9 @@
 //!
 //! Two modules, split when this one hit its cap as `send_now` landed:
 //!
-//! * [`verdict`] -- the **vocabulary**. [`Origin`], [`Refusal`], [`Outcome`],
+//! * `verdict` -- the **vocabulary**. [`Origin`], [`Refusal`], [`Outcome`],
 //!   [`Sent`], [`Gate`]: who asked, and what happened.
-//! * [`handle`] -- the **transport**. [`SessionHandle`], [`Envelope`],
+//! * `handle` -- the **transport**. [`SessionHandle`], [`Envelope`],
 //!   [`Inbox`]: how a command reaches the actor.
 //!
 //! The seam is the one the line cap forced and it turned out to be the right

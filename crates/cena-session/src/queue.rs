@@ -10,7 +10,7 @@
 //! interleaves manual commands with a running engine rather than killing it.
 //!
 //! **The rule is: manual input is never *queued behind* automation -- not that
-//! it *revokes* automation.** That is one method, [`CommandQueue::next`],
+//! it *revokes* automation.** That is one method, [`CommandQueue::take_next`],
 //! draining `manual` before `held`. It is not a priority system, and building
 //! one would be the superseded design.
 //!

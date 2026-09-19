@@ -363,7 +363,7 @@ impl SessionHandle {
     /// parked there is delivered to the NEXT connection, long after its caller
     /// gave up.
     ///
-    /// So it is bounded by [`ACTOR_REPLY_DEADLINE`], which is generous by design:
+    /// So it is bounded by `ACTOR_REPLY_DEADLINE`, which is generous by design:
     /// it is not a game timeout, it is a backstop for "nobody is home".
     ///
     /// # Errors

@@ -129,7 +129,7 @@ pub enum LinkKind {
     ///
     /// It is a variant rather than `Option::None` because the anchor still
     /// exists on the wire and the drop-nothing rule says the consumer should
-    /// know it was there. Before this, such tags fell into [`DirectText`] --
+    /// know it was there. Before this, such tags fell into [`LinkKind::DirectText`] --
     /// "send the link text as a command" -- so
     /// `<a char='Someone'>Someone</a>` became a link that would send a
     /// player's NAME to the game. That is invention rather than omission,

@@ -52,7 +52,7 @@ pub struct Credentials<'a> {
     /// list.
     pub character: &'a str,
     /// The instance code. **CASE-SENSITIVE on the wire** -- see
-    /// [`authenticate`]'s `M` check.
+    /// [`authenticate`](super::authenticate)'s `M` check.
     pub game_code: &'a str,
 }
 
@@ -157,7 +157,7 @@ pub struct EaccessError {
     /// is the one that built the error, which is why it says so here rather
     /// than leaving a caller to match on the message.
     ///
-    /// **Defaults to `false`** ([`err`] sets it), so a failure nobody has
+    /// **Defaults to `false`** (`err` sets it), so a failure nobody has
     /// classified is retried. That is the direction that fails safe: an
     /// unclassified error retried costs a bounded ladder, while an
     /// unclassified error treated as fatal costs the session.
@@ -352,7 +352,8 @@ pub fn redact(s: &str) -> String {
 /// Format: `C \t n \t n \t n \t n \t <code> \t <Name> [\t <code> \t <Name>]...`
 /// -- four counts, then code/name pairs from field 5.
 ///
-/// Split out of [`authenticate`] so it can be tested without a socket: this is
+/// Split out of [`authenticate`](super::authenticate) so it can be tested
+/// without a socket: this is
 /// the one piece of parsing in the sequence with an off-by-one to get wrong,
 /// and a live login is a poor place to discover it.
 #[must_use]

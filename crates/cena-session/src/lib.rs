@@ -11,7 +11,7 @@
 //! and the corrected rule that manual input **interleaves rather than
 //! preempts**), [`lifecycle`] for §5 and for which two of its states are
 //! deliberately not built, [`command`] for the typed [`Outcome`] and why
-//! `send_and_await` is one call, [`state`] for what is known and how criteria
+//! `send_and_await` is one call, `cena_model::state` for what is known and how criteria
 //! 2 and 8 land in it, and [`actor`] for the select loop.
 
 pub mod actor;

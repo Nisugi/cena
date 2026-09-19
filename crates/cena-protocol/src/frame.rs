@@ -64,7 +64,7 @@
 //!   `DialogControls`, `DialogDropDowns`, `DialogFields`, `DialogLabelList`
 //!   and `DialogProgressBars` are six variants of one shape -- "the game sent
 //!   a widget tag with these attributes" -- so they become one
-//!   [`DialogWidgets`](payload::DialogWidgets) keyed by the tag name. Rule of
+//!   [`payload::DialogWidgets`] keyed by the tag name. Rule of
 //!   three (`plan/05` §-1). `DialogOpen` and `DialogPanelOpen` are unaffected;
 //!   they carry a dialog, not a widget.
 //! - **-7 declared but never constructed.** An earlier draft of this file
@@ -166,7 +166,7 @@ pub enum Frame {
     /// `<label id= value=>`, and **which dialog enclosed it**.
     ///
     /// The dialog is load-bearing for the same reason it is on
-    /// [`ProgressBar`](crate::frame::ProgressBar) and
+    /// [`ProgressBar`] and
     /// [`Self::InjuryImage`]: `<label id='yourLvl'>` means a character level
     /// inside `expr` and a map legend inside `mapViewMain`, and the id alone
     /// cannot tell them apart.
@@ -242,7 +242,7 @@ pub enum Frame {
     /// the tag is not exclusive to them: MEASURED over 24 files, 1,313 of 2,155
     /// `<image>` tags are `nomap.jpg` map tiles and ~50 are toolbar buttons.
     /// `dialog` is what separates them, exactly as it does for
-    /// [`ProgressBar`](crate::frame::ProgressBar) -- the same tag shape meaning
+    /// [`ProgressBar`] -- the same tag shape meaning
     /// different things depending on the dialog that encloses it.
     ///
     /// Lich makes the same check by walking a stack of open element ids

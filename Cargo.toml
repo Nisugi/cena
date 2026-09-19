@@ -34,6 +34,24 @@ cena-ui = { path = "crates/cena-ui" }
 [workspace.lints.rust]
 unsafe_code = "deny"
 
+# A citation that resolves to nothing does not fail loudly; it manufactures a
+# false negative. `CLAUDE.md` records the cost in full: an agent searched a dead
+# path, got zero hits, and concluded the wiki does not document `styleIfClosed`.
+# It documents it five times.
+#
+# Intra-doc links are the machine-checkable half of that problem, so the machine
+# checks them. Review finding PL-11 found ~40 broken ones; `plan/05` Rule 0 says
+# a rule that is not enforced is a wish.
+#
+# `private_intra_doc_links` is included deliberately. A link from public docs to
+# a private item renders as plain text for anyone reading the built docs, so it
+# is a citation that silently resolves to nothing for exactly the audience the
+# docs are for.
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+redundant_explicit_links = "deny"
+
 [workspace.lints.clippy]
 # Group at negative priority so specific lints can override it; without this
 # Cargo errors on the ambiguity.

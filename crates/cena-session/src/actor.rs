@@ -30,7 +30,7 @@
 //!
 //! # The split this file declared in advance, and then took
 //!
-//! Frame-to-state folding is in [`crate::state`] and the queue is in
+//! Frame-to-state folding is in `cena_model::state` and the queue is in
 //! [`crate::queue`]. Following the precedent in
 //! `crates/cena-arch-tests/tests/ratchet.rs:4-8`, this header named its next
 //! split before it was needed: "if this file grows, `run_command` and `ingest`
@@ -39,19 +39,19 @@
 //! It grew -- to 424 lines against the 400 default, when `plan/12` §5.3's
 //! readiness gate landed -- and **the split was taken as written** rather than
 //! the cap being raised (`plan/05:352-353`). `pump` and `ingest` are now in
-//! [`io`]; what is here is the loop, the session's shape, and the gate.
+//! `io`; what is here is the loop, the session's shape, and the gate.
 //!
 //! That split has since been taken too: [`Session`] and [`Snapshot`] are in
-//! [`handle`].
+//! `handle`.
 //!
-//! And a third: [`EndReason`] is in [`ending`], moved there when Milestone 2's
+//! And a third: [`EndReason`] is in `ending`, moved there when Milestone 2's
 //! end-reason took this file to 402 against the cap. That seam had been named
 //! one commit earlier, which is the practice
 //! `crates/cena-arch-tests/tests/ratchet.rs:4-8` set -- **the fourth time it
 //! has paid.**
 //!
 //! **That split has been taken too**, one step later: `shutdown` and
-//! `transition` joined [`EndReason`] in [`ending`] when the supervisor took
+//! `transition` joined [`EndReason`] in `ending` when the supervisor took
 //! this file to 437. Named in advance, taken as written -- the fifth time.
 //!
 //! The logging helpers went with them and **came back**. They were moved to
@@ -60,7 +60,7 @@
 //! loop. When the author raised the default cap from 400 to 800 they returned.
 //!
 //! **The next split, named in advance and not yet needed:** [`SessionEnd`] and
-//! [`SessionActor::supervised`] to `actor/parts.rs` -- what a connection is
+//! `SessionActor::supervised` to `actor/parts.rs` -- what a connection is
 //! handed and what it hands back -- leaving `run` and the select loop alone.
 
 use crate::command::Envelope;
@@ -253,7 +253,7 @@ pub struct SessionActor<S: ByteSource> {
     ///
     /// **Not a "supervised" flag.** It is a fact the owner knows and the actor
     /// cannot: whether anything will open another connection. A plain
-    /// [`Session`] answers [`Outcome::Dead`](crate::Outcome::Dead) because
+    /// [`Session`] answers [`Outcome::Dead`](crate::command::Outcome::Dead) because
     /// nothing will; a supervisor sets
     /// [`Outcome::Disconnected`](crate::Outcome::Disconnected) because it
     /// will.
@@ -353,7 +353,7 @@ impl<S: ByteSource> SessionActor<S> {
     /// Run until cancelled, until the stream ends, or until a read fails.
     ///
     /// All three are **clean** ends (criterion 6): the source is shut down,
-    /// every waiter is answered [`Outcome::Dead`], and the function returns.
+    /// every waiter is answered [`Outcome::Dead`](crate::command::Outcome::Dead), and the function returns.
     /// None of them panics, and none of them leaves a socket open.
     pub async fn run(mut self) -> SessionEnd<S> {
         // The three states Step 2 transits before behaviors may run. A replay

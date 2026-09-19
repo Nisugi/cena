@@ -38,6 +38,16 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
       - run: cargo clippy --workspace --all-targets -- -D warnings
         if: matrix.os == 'ubuntu-latest'
+      # Intra-doc links are citations, and a citation that resolves to nothing
+      # does not fail loudly -- it manufactures a false negative (`CLAUDE.md`,
+      # the `styleIfClosed` incident). `[workspace.lints.rustdoc]` makes the
+      # three link lints DENY, so this run turns a broken link into a red build
+      # rather than a warning nobody reads. Review finding PL-11.
+      # One OS is enough: a link either resolves or does not, and it is the
+      # same answer on every platform.
+      - run: cargo doc --workspace --no-deps
+        if: matrix.os == 'ubuntu-latest'
+
       # Architecture tests are part of this. plan/06 section 4 item 5 calls
       # them out separately only because they gate merges.
       - run: cargo test --workspace

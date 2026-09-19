@@ -63,7 +63,7 @@ pub enum EndReason {
     PeerClosed,
     /// A read failed. The socket is gone.
     ReadFailed,
-    /// A write failed mid-[`pump`](Self::pump). The command it failed on has
+    /// A write failed mid-`pump`. The command it failed on has
     /// already been answered [`Outcome::Dead`](crate::Outcome::Dead).
     WriteFailed,
 }

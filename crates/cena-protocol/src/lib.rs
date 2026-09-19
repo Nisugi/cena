@@ -1,9 +1,9 @@
 //! cena-protocol
 //!
-//! The wire layer. Bytes arrive; [`Frame`](frame::Frame)s leave. Rule 2.1
+//! The wire layer. Bytes arrive; [`frame::Frame`]s leave. Rule 2.1
 //! (`plan/05:270-274`) makes this the vocabulary boundary: nothing above this
 //! crate ever sees a raw byte or an unparsed string, and the one deliberate
-//! exception is [`Frame::UnknownTag`](frame::Frame::UnknownTag), which Rule
+//! exception is [`frame::Frame::UnknownTag`], which Rule
 //! 2.2 (`:276-283`) mandates.
 //!
 //! Read [`frame`] for what the wire can say, [`parser`] for how a line becomes
