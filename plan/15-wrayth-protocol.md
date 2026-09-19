@@ -595,6 +595,44 @@ and the true boundary falls somewhere inside one.
 **UNVERIFIED:** whether `value` means the end of the *start* of that second or
 somewhere within it. The residual error is under one second either way.
 
+### 2a.4a MEASURED, 2026-09-18: the first capture from Cena's own client
+
+`E:\Gemstone\data\cena_logs6-09-18
+erten-*.bytes`, 87,494 bytes, ~75 seconds of live
+play driven by the binary's six-`search` capture. **Parsed by Cena: 2,344 frames, 0 unknown
+tags** -- the first time the parser has been run against traffic this client produced rather
+than a Lich archive.
+
+**1. `roundTime value` is the EXACT end instant.** Three independent roundtimes, and in every
+one the first plain `>` prompt lands precisely on `value`:
+
+| `roundTime value` | prompt at onset | stated | first `>` again |
+|---|---|---|---|
+| 1789775819 | 1789775809 | 10 sec | **1789775819** |
+| 1789775824 | 1789775821 | 3 sec | **1789775824** |
+| 1789775833 | 1789775827 | 6 sec | **1789775833** |
+
+This settles §2a.4's UNVERIFIED note: `value` is not "somewhere inside that second". A
+comparison of `game_time_now() < roundtime_end` is exact, not approximate.
+
+**2. `R>` tracks live state -- while prompts are arriving.** 28 `R>` against 30 plain `>`, and
+the flag flips off on the prompt at the end second, not the one after. But those prompts exist
+only because the `look` behavior was firing once a second. **An idle client receives no prompts
+and therefore sees a stale `R>` indefinitely**, which is the author's onset/offset point
+holding exactly, and the reason `game_time_now()` (`plan/17` §3) is the mechanism rather than
+the flag.
+
+**3. Indicators arrive as ONE bulk declaration at login.** All ten of Lich's `ICONMAP` ids on a
+single line, `IconSTANDING` the only `visible="y"`, and **no further indicator traffic in 75
+seconds** -- none of the conditions changed, so none was re-sent. They are state declarations,
+not an event stream: absence means unchanged, never "not happening".
+
+**4. Attribute quoting is NOT uniform.** `<indicator id="IconSTANDING" visible="y"/>` uses
+double quotes; `<roundTime value='1789775824'/>` uses single. A grep or matcher that assumes one
+form silently finds nothing -- which happened while reading this very capture, and was caught
+only because a broader search contradicted the narrow one. The parser is unaffected (it handles
+both), but anything that greps the corpus must not assume.
+
 ### 2a.5 What this means for `GameState`
 
 Every frame above is **already parsed and already discarded**:

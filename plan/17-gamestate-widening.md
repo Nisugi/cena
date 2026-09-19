@@ -91,6 +91,11 @@ Two fields and three functions. Why it is right:
   when something happens, so anything that waits for one to learn that roundtime ended waits
   forever.
 
+**MEASURED 2026-09-18** (`plan/15` §2a.4a): `roundTime value` is the exact end instant -- across
+three roundtimes the first plain `>` prompt landed precisely on `value`. So `game_time_now() <
+roundtime_end` is an exact test, not an approximation, and the sub-second worry that motivated
+the whole clock-calibration detour does not arise.
+
 `server_time_offset` (`core/messages/element.rs:866`) is a second, simpler thing:
 `server_time - local_time`, recomputed on **every prompt**, used where a caller needs server
 time from a local timestamp. No averaging, no calibration model — the latest sample, because
