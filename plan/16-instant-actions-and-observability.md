@@ -486,6 +486,82 @@ bound, and the bound is a **count**, not a sleep.
 **`send_now` needs no delay and no backoff ladder.** It needs to know how many of its sends have
 not yet been answered. That is a smaller mechanism than §5.2 anticipated.
 
+### 5.2d-bis FALSIFIED: 3 per group is NOT sustainable. Depth alone does not explain it.
+
+**Run 2026-09-18 20:23**, the author's sequence: `(3 looks | 50ms) x 10`.
+
+§5.2d predicted **zero refusals** -- 3 was exactly what every group accepted in the previous run,
+so if the accepted count were set by buffer depth alone, 3 could be sent forever. It was the
+model's own prediction used as the input, precisely so it could fail.
+
+**It failed. 30 sent, 17 refused, 13 accepted.**
+
+| round | sent | refused |
+|---|---|---|
+| 1 | 3 | 0 |
+| 2 | 3 | 0 |
+| 3 | 3 | 0 |
+| 4 | 3 | **3** |
+| 5 | 3 | 1 |
+| 6 | 3 | 2 |
+| 7 | 3 | 3 |
+| 8 | 3 | 0 |
+| 9 | 3 | 3 |
+| 10 | 3 | 3 |
+
+Round boundaries are approximate -- replies straddle them, see §5.2e -- but the shape is not in
+doubt: **the first three rounds were clean and refusals began at round 4**, then continued for the
+rest of the run.
+
+#### What this corrects
+
+§5.2d's model was *"the buffer refills as the server processes, so the accepted count is a depth,
+not a rate"*. The first half stands; **the conclusion drawn from it was too strong.** The previous
+run's groups were separated by 100-500ms pauses, and each group started with the buffer already
+drained -- so 3-of-4 was measured under conditions where the server was always caught up. That run
+could not distinguish "3 is the depth" from "3 is what drains between groups", because in it those
+were the same number.
+
+This run separates them. At 50ms the server **does not finish draining between rounds**, so the
+outstanding count climbs: three clean rounds while it keeps up, then refusals once it does not.
+
+**MEASURED, and this is the mechanism.** From the event log, the 10 rounds went out at **~61ms**
+apiece (the 50ms sleep plus ~11ms of send overhead), so all 30 commands were on the wire within
+**1.57 seconds** -- about **19 commands per second** sustained. They arrived inside **two server
+seconds** (`1789781016` alone carried **18** of the 29 prompts).
+
+The previous run spread 25 commands over 7 seconds. So the difference between the two runs is not
+the group size -- it is **how much work per second** the server was asked to do, and 19/s is past
+what it will absorb.
+
+#### The corrected model
+
+The limit is a **queue of depth 2** that drains at a finite rate. Both facts matter:
+
+- **Depth** bounds how many may be outstanding at any instant -- 3 accepted at a time, as §5.2d
+  measured.
+- **Drain rate** bounds the sustained throughput. Send faster than the server executes and the
+  queue stays full no matter how the sends are grouped.
+
+§5.2d's *"a delay-based send policy is the wrong shape"* was therefore **wrong**, or rather right
+for the wrong reason. Pausing does not help *within* the depth, which is what that run showed; but
+pausing absolutely helps *across* rounds, because it is what lets the server catch up. The previous
+run's pauses were not doing nothing -- they were the reason it never backed up.
+
+#### What this means for `send_now`
+
+The bound is **both**: at most `entitlement + 1` outstanding, *and* not faster than the server
+drains. The client can observe the first exactly (it knows what it sent and what came back) and
+cannot know the second, which moves with load -- exactly Kelfour's *"only during slow downs"*.
+
+So the honest policy is **count-based with evidence**: track commands sent against replies seen,
+and stop sending while too many are unanswered. That handles both bounds with one mechanism and
+needs no tuned delay, because a server that has slowed down stops replying and the count stops
+falling on its own.
+
+**This is still a smaller mechanism than a backoff ladder** -- but it needs the reply side, which
+`send_now` currently ignores. That is the open design question §5.3 should now carry.
+
 ### 5.2e The console undercounted: per-group attribution is not reliable
 
 The probe printed **5 refusals**; the wire has **7**. Both numbers are from the same run.
