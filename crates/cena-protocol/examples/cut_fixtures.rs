@@ -19,6 +19,9 @@ const CUTS: &[(&str, &str)] = &[
     ("prompt.src", "prompt.xml"),
     ("vitals.src", "vitals.xml"),
     ("vs.src", "vitals_secondary.xml"),
+    // M2's golden: every family the MODEL learned to hold. See
+    // `crates/cena-model/tests/golden_model.rs` for why the model needs its own.
+    ("m2model.src", "m2_model.xml"),
 ];
 
 /// Kept in step with `tests/fixtures_are_scrubbed.rs::PSEUDONYMS`; that test
@@ -41,7 +44,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     for (raw, fixture) in CUTS {
-        let text = std::fs::read_to_string(raw_dir.join(raw))?;
+        // **Skip a source that is not here, rather than failing the run.** The
+        // raw excerpts are not committed, so a caller regenerating ONE fixture
+        // has only that one source -- and making them re-cut all four to touch
+        // a fifth is what stops a tool like this being used.
+        let src = raw_dir.join(raw);
+        if !src.exists() {
+            println!("{fixture}: skipped, no {raw}");
+            continue;
+        }
+        let text = std::fs::read_to_string(src)?;
         let clean = scrubber.scrub(&text);
         std::fs::write(out.join(fixture), &clean)?;
         println!("{fixture}: {} bytes", clean.len());

@@ -20,6 +20,7 @@ The provenance below is what makes the cut reproducible.
 | `prompt.xml` | same | 247, 252-255, 1307 | 343 |
 | `vitals.xml` | same, plus `GSIV-Dicate/2025/09/xml/2025-09-22_01-49-25.xml` | 92-93, 154, 1286 / 15353 | 6,213 |
 | `vitals_secondary.xml` | same as `room.xml` | 94, 423, 1287-1288, synthesised `<roundTime>` | 2,866 |
+| `m2_model.xml` | `GSIV-Monstr/2025/09/xml/2025-09-07_16-15-48.xml` | 54, 56, 102, 106-111, 116-120, 192, 204-214 | 9,731 |
 
 Both source files are **pre-2026-08 GSIV** logs, per the corpus findings: that
 is the era with no `vellumImg` injection. Both were VERIFIED to contain zero
@@ -35,6 +36,25 @@ every *n*th taken to a quota of 8 — deterministic, and not `head`, which would
 have returned only `GSIV-Armler/2025`. Of the 227, only **39 contained a room
 at all** (`<compass>`); most logs are hunting streams. The two chosen are the
 cleanest of those 39.
+
+### `m2_model.xml` — Milestone 2's model golden
+
+Added 2026-09-19. Unlike the four above it is read by **`cena-model`**, not by
+the parser goldens: `crates/cena-model/tests/golden_model.rs` folds it all the
+way into `GameState`. Every model test before it used hand-written snippets,
+and `pbarStance` shipped in `vitals` past 17 green ones because of it.
+
+Its source was chosen by scoring a 48-file sample across 8 characters for how
+many M2 model families each carries; this is the **smallest** file scoring 12/12,
+at 143 KB. It is raw wire with no Lich line prefixes, so the cut needed no
+unwrapping — but `Scrubber` now strips `HH:MM:SS: ` anyway, so a future cut may
+come from any file in the archive.
+
+**Line 56 is in the cut for one reason**, and it is worth stating because the
+first version omitted it: `<dialogData id='combat'>` carrying `pbarStance`. As
+first cut this fixture carried only the `stance` dialog's copy, so re-introducing
+the exact bug the file exists to catch left all 18 tests GREEN. Verified by
+falsification, not assumed.
 
 ## What each fixture covers
 

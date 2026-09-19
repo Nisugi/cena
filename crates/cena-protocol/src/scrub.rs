@@ -117,7 +117,9 @@ impl Scrubber {
 
     /// Apply the non-dropping rewrites to a single line.
     fn rewrite(&self, line: &str) -> String {
-        let mut text = strip_vellum_images(line);
+        // FIRST: unwrap Lich's line prefix, so every rewrite below sees the wire
+        // rather than a decorated copy of it.
+        let mut text = strip_vellum_images(strip_lich_timestamp(line));
         text = redact_host_uris(&text);
         for (real, pseudonym) in &self.names {
             text = text.replace(real.as_str(), pseudonym.as_str());
@@ -152,6 +154,55 @@ pub fn strip_vellum_images(line: &str) -> String {
     }
     out.push_str(rest);
     out
+}
+
+/// Strip Lich's `HH:MM:SS: ` line prefix.
+///
+/// > **AUTHOR, 2026-09-19:** *"lich xml file is basically the wire"* ... *"You
+/// > can't just remove the timestamps from the ones you use as a fixture?"*
+///
+/// Both are right, and together they are why this exists. The XML in a Lich
+/// `.xml` log **is** the wire -- Lich does not rewrite tags -- but it prefixes
+/// some lines with a local clock. That prefix is not wire traffic, and a fixture
+/// keeping it teaches the parser a lie: VERIFIED that
+/// `01:46:11: <component id='room objs'>a rock</component>` parses as a spurious
+/// `Text("01:46:11: ")` frame followed by the component.
+///
+/// Removing it is a better answer than skipping such files. MEASURED: of a
+/// 48-file sample across 8 characters, most carry the prefix on some lines, and
+/// `tests/FIXTURES.md`'s original rule -- take only files with **zero**
+/// timestamped lines -- was discarding most of the archive to avoid a
+/// ten-character prefix.
+///
+/// **The exact shape is `HH:MM:SS: `** -- the third colon belongs to Lich's
+/// format, then exactly one space. MEASURED over 12 files across 4 characters:
+/// **83,515** lines match `HH:MM:SS: ` and **zero** match `HH:MM:SS ` without
+/// the trailing colon, so there is one form and this is it.
+///
+/// **Anchored at the start of the line, and only there.** A timestamp inside
+/// prose ("meet me at 01:46:11: sharp") is display text the game sent, and
+/// stripping it would edit the wire rather than unwrap it.
+#[must_use]
+pub fn strip_lich_timestamp(line: &str) -> &str {
+    let b = line.as_bytes();
+    if b.len() < 10 {
+        return line;
+    }
+    let digits = |i: usize| b[i].is_ascii_digit();
+    if digits(0)
+        && digits(1)
+        && b[2] == b':'
+        && digits(3)
+        && digits(4)
+        && b[5] == b':'
+        && digits(6)
+        && digits(7)
+        && b[8] == b':'
+        && b[9] == b' '
+    {
+        return &line[10..];
+    }
+    line
 }
 
 /// Replace every `druby://...` URI with [`REDACTED_HOST`].
@@ -189,6 +240,57 @@ pub fn redact_host_uris(line: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_lich_timestamp_prefix_is_stripped() {
+        // The exact shape, MEASURED at 83,515 occurrences against 0 of any other.
+        assert_eq!(
+            strip_lich_timestamp("01:46:11: <component id='room objs'>a rock</component>"),
+            "<component id='room objs'>a rock</component>"
+        );
+    }
+
+    #[test]
+    fn a_line_with_no_prefix_is_untouched() {
+        let line = "<playerID id='966483'/>";
+        assert_eq!(strip_lich_timestamp(line), line);
+    }
+
+    #[test]
+    fn a_timestamp_inside_prose_is_not_stripped() {
+        // Anchored at the start of the line and nowhere else. A time in the
+        // middle of a sentence is display text the game sent, and removing it
+        // would edit the wire rather than unwrap it.
+        let line = "You hear: meet me at 01:46:11: sharp";
+        assert_eq!(strip_lich_timestamp(line), line);
+    }
+
+    #[test]
+    fn a_near_miss_shape_is_not_stripped() {
+        // Without the third colon it is not Lich's prefix. MEASURED: zero lines
+        // in the archive take that form, so anything shaped like it is content.
+        assert_eq!(
+            strip_lich_timestamp("01:46:11 something"),
+            "01:46:11 something"
+        );
+        // And a short line cannot be a prefix at all.
+        assert_eq!(strip_lich_timestamp("01:46:1"), "01:46:1");
+    }
+
+    #[test]
+    fn scrub_unwraps_the_prefix_before_the_other_rewrites() {
+        // The ordering that matters: every rewrite below the unwrap must see the
+        // wire, not a decorated copy of it.
+        let s = Scrubber::new();
+        assert_eq!(
+            s.scrub(
+                "01:46:11: <a>x</a>
+"
+            ),
+            "<a>x</a>
+"
+        );
+    }
+
     use super::*;
 
     #[test]
