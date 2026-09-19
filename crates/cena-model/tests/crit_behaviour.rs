@@ -41,7 +41,7 @@ fn tables() -> CritTables {
                  reports a count of 0 and says nothing about the cause. The \
                  line above is the cause."
             );
-            CritTables::from_entries(Vec::new()).unwrap_or_default()
+            CritTables::empty()
         }
     }
 }
@@ -366,5 +366,65 @@ fn the_most_specific_entry_comes_first() {
         hits.windows(2)
             .all(|pair| pair[0].pattern.len() >= pair[1].pattern.len()),
         "results must be ordered by descending pattern length"
+    );
+}
+
+/// Two entries with an IDENTICAL pattern both survive, in a stated order.
+///
+/// # The divergence from Lich, pinned
+///
+/// `critranks.rb:116` is `matches[record[:regex]] = record`, a Hash keyed by
+/// `Regexp`. Equal sources are the same key, so Ruby keeps only the last.
+/// MEASURED:
+///
+/// ```text
+/// $ ruby -e 'h={}; h[/^abc/]="first"; h[/^abc/]="second";
+///            puts "size=#{h.size} values=#{h.values.inspect}"'
+/// size=1 values=["second"]
+/// ```
+///
+/// The TSV has exactly one such pair, and the two entries carry DIFFERENT
+/// damage (5 against 2), so the choice is visible to a consumer rather than
+/// cosmetic (review MO-9).
+///
+/// Cena keeps both. Lich's outcome is an artifact of its data structure --
+/// nothing in its tables says the second entry should win, only that it was
+/// loaded second -- so matching it would mean importing an accident.
+#[test]
+fn identical_patterns_both_survive_and_order_is_stated() {
+    let tables = tables();
+    let line = "The creature's right leg jerks momentarily.";
+    let hits: Vec<String> = tables
+        .parse(line)
+        .into_iter()
+        .map(|e| format!("{}/{}/{}", e.damage_type, e.location, e.rank))
+        .collect();
+
+    assert!(
+        hits.contains(&"disruption/right_leg/1".to_owned()),
+        "the disruption entry must be reachable: {hits:?}"
+    );
+    assert!(
+        hits.contains(&"unbalance/right_leg/1".to_owned()),
+        "and so must the unbalance entry with the identical pattern -- Lich \
+         keeps only this one, and dropping either is the behaviour this test \
+         exists to prevent: {hits:?}"
+    );
+
+    // The order is the documented one: equal pattern lengths, so the key
+    // tiebreak decides, and `disruption` sorts before `unbalance`.
+    let first = hits
+        .iter()
+        .position(|h| h == "disruption/right_leg/1")
+        .unwrap_or(usize::MAX);
+    let second = hits
+        .iter()
+        .position(|h| h == "unbalance/right_leg/1")
+        .unwrap_or(usize::MAX);
+    assert!(
+        first < second,
+        "with equal pattern lengths the key tiebreak orders these, and it \
+         must stay TOTAL and deterministic or `parse` returns a different \
+         first hit between runs: {hits:?}"
     );
 }

@@ -191,7 +191,7 @@ fn tables() -> CritTables {
                  reports a count of 0 and says nothing about the cause. The \
                  line above is the cause."
             );
-            CritTables::from_entries(Vec::new()).unwrap_or_default()
+            CritTables::empty()
         }
     }
 }

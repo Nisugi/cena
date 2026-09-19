@@ -71,7 +71,7 @@ fn a_blob_three_times_the_cap_does_not_swallow_the_login_burst() {
     assert!(
         found
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "the `<nav>` after the blob was swallowed: a login burst is lost after \
          any settings blob over twice the line cap"
     );
@@ -149,7 +149,7 @@ fn a_blob_split_across_reads_is_handled_the_same_way() {
     assert!(
         found
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "the burst was swallowed when the blob arrived in realistic chunks"
     );
 }
@@ -175,7 +175,7 @@ fn a_close_tag_straddling_a_chunk_boundary_still_closes_the_region() {
     assert!(
         found
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "999")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("999"))),
         "a `</settings>` split across two reads left the region open forever"
     );
 }
@@ -197,7 +197,7 @@ fn an_ordinary_runaway_line_is_still_truncated_and_reported() {
     assert!(
         found
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "42")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("42"))),
         "...and the parser must still resume on the next line"
     );
 }
@@ -221,7 +221,7 @@ fn the_byte_that_trips_the_cap_is_not_lost() {
     assert!(
         found
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7"))),
         "the region did not close, so the following line was swallowed"
     );
 }

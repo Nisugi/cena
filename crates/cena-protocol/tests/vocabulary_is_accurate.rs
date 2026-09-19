@@ -185,3 +185,40 @@ fn a_link_closed_on_its_own_line_still_carries_its_text() {
          {frames:?}"
     );
 }
+
+/// A bare `<nav/>` reports an arrival with **no** room id, not an empty one.
+///
+/// Lich documents the shape for `DragonRealms`, "which now emits it on every
+/// arrival ... a plain `<nav/>` with no rm attribute for a room that has no
+/// UID" (`reference/lich-5/lib/common/xmlparser.rb`).
+///
+/// `unwrap_or_default()` turned that into `id: ""`, handing a consumer an
+/// empty string it cannot distinguish from a real UID — and `GameState`
+/// stored it as `Some("")`, a room claiming to have been identified when it
+/// had not (review MO-10).
+#[test]
+fn a_bare_nav_has_no_room_id_rather_than_an_empty_one() {
+    let mut parser = Parser::new();
+
+    let bare = parser.parse_line("<nav/>");
+    let found = bare.iter().find_map(|f| match f {
+        Frame::RoomId { id } => Some(id.clone()),
+        _ => None,
+    });
+    assert_eq!(
+        found,
+        Some(None),
+        "a bare <nav/> must still report the ARRIVAL -- it is how a client \
+         learns the character moved -- while saying the id is unknown: \
+         {bare:?}"
+    );
+
+    // The ordinary form is unaffected.
+    let with_id = parser.parse_line("<nav rm='7503251'/>");
+    assert!(
+        with_id
+            .iter()
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
+        "a nav carrying rm= must still produce that id: {with_id:?}"
+    );
+}

@@ -133,9 +133,9 @@ impl Room {
     /// this module must not be able to build a `Room` that claims to have been
     /// told things it has not.
     #[must_use]
-    pub fn entering(id: String) -> Self {
+    pub fn entering(id: Option<String>) -> Self {
         Self {
-            id: Some(id),
+            id,
             ..Self::default()
         }
     }

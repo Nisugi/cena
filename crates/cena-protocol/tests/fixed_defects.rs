@@ -186,7 +186,7 @@ fn prose_containing_an_angle_bracket_is_not_eaten_as_markup() {
     assert!(
         mixed
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "a real tag beside prose angle brackets must still parse: {mixed:#?}"
     );
 

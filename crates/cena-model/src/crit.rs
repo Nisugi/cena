@@ -83,14 +83,16 @@ pub struct CritTables {
     index: MatchIndex,
 }
 
-impl Default for CritTables {
-    /// An empty table: no entries, no patterns.
+impl CritTables {
+    /// An empty table. **Matches nothing.**
     ///
-    /// Not a fallback anything should ship with -- `load` is the constructor.
-    /// It exists so a caller that cannot use the shipped data has a total
-    /// function to fall back to rather than an `unwrap`, which the workspace
-    /// denies (`plan/06` §1.5: the parser never panicking is non-negotiable).
-    fn default() -> Self {
+    /// Named rather than `Default`, which it was: `load().unwrap_or_default()`
+    /// is a natural line that satisfies the `unwrap` ban and yields a matcher
+    /// finding no crit in any line -- a failure with no symptom, since
+    /// "nothing matched" is what a non-crit line looks like too (review
+    /// MO-11). A combinator cannot reach a named constructor.
+    #[must_use]
+    pub fn empty() -> Self {
         Self {
             entries: Vec::new(),
             index: MatchIndex::empty(),
@@ -151,9 +153,21 @@ impl CritTables {
     /// `generic/unspecified/0` collisions (`.*? is stunned.` is the shortest
     /// pattern in every collision it takes part in) without touching the data.
     ///
-    /// This is a deliberate divergence from Lich, which preserves Ruby hash
-    /// insertion order. Ties are broken by key so the order stays total and
-    /// deterministic.
+    /// A deliberate divergence from Lich, with ties broken by key so the
+    /// order stays total.
+    ///
+    /// This said Lich "preserves Ruby hash insertion order". For entries with
+    /// IDENTICAL pattern sources it preserves neither: `critranks.rb:116` is
+    /// `matches[record[:regex]] = record`, a Hash keyed by `Regexp`, and equal
+    /// sources are one key. MEASURED -- `ruby -e 'h={}; h[/^abc/]="first";
+    /// h[/^abc/]="second"; p h.size, h.values'` prints `1` and `["second"]`.
+    ///
+    /// The TSV has one such pair (`^.*? right leg jerks momentarily.`:
+    /// disruption damage 5, unbalance damage 2), so **Lich returns unbalance
+    /// and Cena returns disruption** (review MO-9). Cena keeps both, because
+    /// Lich's outcome is an artifact of its data structure rather than a
+    /// decision -- nothing says the second should win, only that it loaded
+    /// second. Pinned by `tests/crit_behaviour.rs`.
     ///
     /// `line` must be **de-tagged text**. Lich's caller strips markup itself
     /// (`gsub(/<.+?>/, '')`); in Cena that is automatic, because Rule 2.1

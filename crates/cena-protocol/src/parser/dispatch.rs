@@ -129,8 +129,12 @@ impl Parser {
             // --- room -----------------------------------------------------
             "nav" => {
                 self.flush(buffer, frames);
+                // **No `unwrap_or_default()`.** A bare `<nav/>` is a real
+                // shape -- an arrival at a room with no UID -- and turning it
+                // into `id: ""` hands a consumer an empty string it cannot
+                // tell from a real UID (review MO-10).
                 frames.push(Frame::RoomId {
-                    id: text::attribute(tag, "rm").unwrap_or_default(),
+                    id: text::attribute(tag, "rm"),
                 });
             }
             "streamWindow" => {

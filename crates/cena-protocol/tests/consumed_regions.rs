@@ -76,7 +76,7 @@ fn an_unclosed_settings_region_does_not_swallow_the_session() {
     assert!(
         after
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "and traffic after it must parse normally: {after:#?}"
     );
 }

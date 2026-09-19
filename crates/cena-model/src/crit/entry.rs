@@ -56,7 +56,7 @@ pub struct CritEntry {
     pub stunned: u16,
     pub amputated: bool,
     /// **`false` in all 2,394 entries.** Kept because it is part of the schema
-    /// Lich documents (`generic_critical_table.rb:27`) and a future table may
+    /// Lich documents (`reference/lich-5/lib/gemstone/critranks/generic_critical_table.rb:25`) and a future table may
     /// set it, but it carries no information today. Measured:
     /// `cut -f9 crates/cena-model/data/crit_tables.tsv | tail -n +2 | sort -u`
     /// prints `0` and nothing else.

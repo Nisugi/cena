@@ -140,7 +140,7 @@ fn a_tag_split_across_two_reads_is_rejoined_before_parsing() {
     assert!(
         second
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "the rejoined tag must parse as one frame; got {second:#?}"
     );
     assert_eq!(parser.pending_len(), 0);
@@ -202,7 +202,7 @@ fn a_malformed_tag_does_not_desync_the_next_line() {
     assert!(
         frames
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "999")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("999"))),
         "the line after a malformed tag must parse normally; got {frames:#?}"
     );
 }
@@ -249,7 +249,7 @@ fn an_unclosed_component_is_reported_and_does_not_swallow_the_session() {
     assert!(
         third
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "an unclosed tag must not desync the parser; got {third:#?}"
     );
 }

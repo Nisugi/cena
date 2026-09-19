@@ -56,18 +56,10 @@
 //! (`sort -u` is load-bearing: `ActiveEffect` is both a variant name and the
 //! struct it wraps, so without it the line matches twice and the count is 52.)
 //!
-//! This said **50**, beside the command that prints 51 -- a measurement
-//! refuted by the evidence quoted under it, which is the failure `plan/05`
-//! §-2 exists to prevent in its second form: a number restated rather than
-//! re-run. `layering.rs` said 51 and was right (review PR-13).
-//!
-//! The missing one is `Structural`, a Cena addition that the arithmetic below
-//! never counted:
-//!
-//! ```text
-//! $ grep -c Structural reference/VellumFE/src/parser.rs
-//! 0
-//! ```
+//! This said **50**, beside the command that prints 51 -- a number restated
+//! rather than re-run, refuted by the evidence quoted under it (review
+//! PR-13). The missing one is `Structural`, a Cena addition the arithmetic
+//! below never counted (`grep -c Structural` over Vellum's parser: 0).
 //!
 //! `63 - 5 - 5 - 7 + 5 = 51`, where:
 //!
@@ -254,8 +246,12 @@ pub enum Frame {
         /// The window title the game suggests, verbatim.
         title: String,
     },
-    /// `<nav rm=>` -- the room changed.
-    RoomId { id: String },
+    /// `<nav rm=>` -- the room changed. **`None` for a bare `<nav/>`**: a real
+    /// shape meaning "arrived, and this room has no UID"
+    /// (`reference/lich-5/lib/common/xmlparser.rb`, for `DragonRealms`). It was
+    /// `String` via `unwrap_or_default()`, so that produced `id: ""` -- an
+    /// empty string a consumer cannot tell from a UID (review MO-10).
+    RoomId { id: Option<String> },
     /// `<streamWindow id= title= subtitle= ...>`.
     ///
     /// `id`, `title` and `subtitle` are lifted because M1 renders them.

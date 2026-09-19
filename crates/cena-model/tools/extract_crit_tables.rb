@@ -23,7 +23,7 @@
 #
 # ## The four data facts this tool normalises, each deliberately
 #
-# Measured over all 2,394 entries (see `crit_tables.rs`'s module docs for the
+# Measured over all 2,394 entries (see `crit.rs`'s module docs for the
 # commands). These are NOT silent fixes -- each one is asserted by the parity
 # test, so a future Lich update that removes or multiplies them goes red.
 #

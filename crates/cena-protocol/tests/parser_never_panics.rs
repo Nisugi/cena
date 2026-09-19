@@ -115,7 +115,7 @@ fn a_hostile_fragment_never_leaves_the_parser_unable_to_see_the_next_room() {
         assert!(
             frames
                 .iter()
-                .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+                .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
             "after {fragment:?} and a prompt, the parser could not see a room \
              change -- state did not recover"
         );
@@ -184,7 +184,7 @@ proptest! {
         let _ = parser.parse_line("<prompt time='1'>&gt;</prompt>");
         let frames = parser.parse_line("<nav rm='42'/>");
         prop_assert!(
-            frames.iter().any(|f| matches!(f, Frame::RoomId { id } if id == "42")),
+            frames.iter().any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("42"))),
             "parser failed to recover after {parts:?}"
         );
     }
@@ -281,7 +281,7 @@ fn a_component_that_never_closes_swallows_nothing_at_all() {
     assert!(
         frames
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "the parser must still be in sync afterwards"
     );
 }
@@ -322,7 +322,7 @@ fn an_oversized_line_never_smuggles_markup_into_prose() {
     assert!(
         after
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "the line after an oversized one must parse normally; got {after:#?}"
     );
 }
@@ -354,7 +354,7 @@ fn the_login_settings_blob_survives_being_bigger_than_the_line_cap() {
     assert!(
         frames
             .iter()
-            .any(|f| matches!(f, Frame::RoomId { id } if id == "7503251")),
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("7503251"))),
         "traffic after the blob must parse normally: {frames:#?}"
     );
 }

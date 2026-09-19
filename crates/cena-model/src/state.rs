@@ -58,11 +58,15 @@ pub use unknown::{MAX_UNKNOWN_TAGS, UnknownTag};
 ///
 /// `BTreeMap`, not `HashMap`, and that is load-bearing for criterion 7: a
 /// `HashMap`'s iteration order varies run to run, so a replay that asserted
-/// over one would be non-deterministic by construction. The arch tests already
-/// model this preference (`crates/cena-arch-tests/tests/architecture.rs:28`).
+/// over one would be non-deterministic by construction. Enforced by
+/// `crates/cena-session/tests/replay_determinism.rs`, not by an arch rule --
+/// there is no `BTreeMap` rule, and this used to claim there was.
 pub type Vitals = std::collections::BTreeMap<String, u32>;
 
-/// What the session knows. `plan/12` §7.1's In column, exactly.
+/// What the session knows: `plan/12` §7.1's In column, **plus** what
+/// `plan/17` and `plan/18` added -- `status`, `effects`, `character`,
+/// `inventory`, `streams` and the unknown-tag log. (This said "§7.1's In
+/// column, exactly", which those sections made untrue.)
 ///
 /// # `PartialEq` is hand-written, and deliberately ignores one field
 ///
@@ -256,6 +260,8 @@ impl GameState {
                 // EVERYTHING goes, including the per-component buffers and the
                 // typed collections. Creatures from the last room are the most
                 // dangerous thing to keep: a behavior would attack them.
+                // `id` may be `None` -- a bare `<nav/>`, an arrival at a room
+                // with no UID. Still an arrival; only the id is unknown.
                 self.room = Room::entering(id.clone());
             }
             // `compDef`/`component` ONLY. The room arrives in two shapes and

@@ -9,14 +9,35 @@
 //! `plan/12` §5.2 sorts facts into Invalidated / Retained / Suspect and says
 //! the invalidated ones become `Unknown` "until re-observed". That was a design
 //! assertion. It is now a measurement, taken from Cena's own logins on
-//! 2026-09-18 (`plan/15` §2b) by counting tags before the first client command:
+//! 2026-09-18 (`plan/15` §2a.4a) by counting tags before the first client command:
 //!
 //! | In the login burst | Absent from it |
 //! |---|---|
-//! | room description (`compDef`), ten vitals `progressBar`s, `playerID`, `inv`, layout | `nav rm`, `compass`, `prompt`, hands, `roundTime`, `indicator`, all four effect dialogs |
+//! | room description (`compDef`), ten vitals `progressBar`s, `playerID`, `inv`, layout | `nav rm`, `compass`, `prompt`, hands, `roundTime`, all four effect dialogs |
 //!
 //! **Unanimous across all seven logins.** The absent facts arrive only after
 //! the first command — they are answers to asking, not part of the login push.
+//!
+//! # `indicator` was in the Absent column and should not have been
+//!
+//! This table listed `indicator` as absent from the burst. `status.rs`'s
+//! header says the opposite, from the same capture, and `plan/15` §2a.4a
+//! settles it:
+//!
+//! > **Indicators arrive as ONE bulk declaration at login.** All ten of
+//! > Lich's `ICONMAP` ids on a single line, `IconSTANDING` the only
+//! > `visible="y"`.
+//!
+//! Two measurements of one capture disagreed inside one crate, and the wrong
+//! one was load-bearing here: it is the stated reason for clearing the
+//! indicators (review MO-12).
+//!
+//! **Clearing them is still right**, for the other reason `plan/12` §5.2
+//! gives -- they are Invalidated, and a stale `stunned` surviving a
+//! reconnect is exactly the belief that rule forbids. A field the burst
+//! refills is merely cleared and immediately repopulated, which §5.2's own
+//! text calls "pointless" rather than wrong. So the behaviour is unchanged
+//! and only the justification is corrected.
 //!
 //! So the rule implemented here is: **clear what the burst does not re-send.**
 //! A field the burst refills would be cleared and immediately repopulated,
@@ -155,7 +176,7 @@ impl GameState {
         streams.clear();
         pending.clear();
 
-        // Experience, injuries, stance and encumbrance. MEASURED (`plan/15` §2b):
+        // Experience, injuries, stance and encumbrance. MEASURED (`plan/15` §2a.4a):
         // NONE of the four dialogs is in the login burst -- they arrive only
         // after the first command, which is precisely §5.2's "invalidated" set.
         *character = super::Character::default();

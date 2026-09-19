@@ -41,7 +41,7 @@ fn the_room_fixture_yields_the_room_id() {
     let ids: Vec<&str> = frames
         .iter()
         .filter_map(|f| match f {
-            Frame::RoomId { id } => Some(id.as_str()),
+            Frame::RoomId { id } => id.as_deref(),
             _ => None,
         })
         .collect();
