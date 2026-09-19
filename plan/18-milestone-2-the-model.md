@@ -108,11 +108,45 @@ Measured in one session: `combat` ×10, `minivitals` ×8, `expr` ×5, `injuries`
 
 `ActiveSpells` already lands via `plan/17`'s `Effects`; this adds the rest.
 
-### 2c. Room contents
+### 2c. Room contents — **independent per-component buffers, not one blob**
 
-`Room` has `id`, `description`, `exits`. The wire also sends objects, creatures and players
-as `<component id='room objs'>` etc. This is what a `travel` behavior will eventually need
-to answer "did I arrive", and what makes a room render as a room.
+> **AUTHOR, 2026-09-19:** *"they all need to save/buffer/update independently, because you go
+> in a room and you will get constant room object updates as creatures come in and out, or
+> player updates if a player comes in and out, it's the real time feed right, so lets not say
+> room window feed is all one thing."*
+
+**This is a correctness requirement, not a display preference.** The room is not one message
+that arrives once on entry; it is several independent feeds that update as the world moves.
+If `Room` held one blob, a `room players` update carrying only players would either wipe the
+objects or be unapplicable — and the author's own capture shows the two arriving as separate
+components in the same burst, with `room players` **empty**:
+
+```text
+<component id='room objs'>  You also see an <a exist="-10378" noun="gate">ironwork gate</a>.</component>
+<component id='room players'></component>
+```
+
+An empty component is a real update meaning "nobody here", which a blob model cannot express
+distinctly from "not mentioned".
+
+**Vellum already solved it this way** (`CLAUDE.md`: read Vellum first — and the author said
+so: *"you can verify with vellum that's how we handled it there"*):
+
+| Vellum | Where |
+|---|---|
+| `room_components: HashMap<String, Vec<Vec<TextSegment>>>` — *"Room component buffers (id -> lines of segments)"* | `src/core/app_core/state.rs:282` |
+| `room_creatures`, `room_objects`, `room_players` as **typed** collections | `src/core/state.rs:127-151` |
+| a **generation counter per collection** (`room_creatures_generation`, …) | `src/core/state.rs:129,148` |
+| creatures **derived** from `room objs` by boldness, not a separate feed | `src/core/messages/component.rs:202-204` |
+
+So the shape is *both*: raw buffers keyed by component id, and typed collections derived from
+them. Cena takes the same split.
+
+**One hazard ported with it.** Vellum skips a component whose value is unchanged — but
+exempts `sprite`, because *"the game sends it EMPTY on every room change, so 'unchanged'
+would short-circuit before room-art injection runs"* (`component.rs:165-171`). That is the
+same class of bug the author is pointing at: an update that is meaningful *because* it is
+empty. Any unchanged-check Cena adds must be justified per component, not applied globally.
 
 ### 2d. Inventory
 
@@ -163,7 +197,7 @@ more readable than the last.
 | Step | What | Live-visible? |
 |---|---|---|
 | 1 | **Streams**: routing + per-stream buffers | **yes** — the login dump stops polluting the room |
-| 2 | **Room contents**: objects, creatures, players | **yes** — a room renders as a room |
+| 2 | **Room contents**: per-component buffers + typed collections | **yes** — a room renders as a room, and updates as the world moves |
 | 3 | **Dialogs**: expr, injuries, stance, encum | yes, once something displays them |
 | 4 | **Inventory**: containers and items | yes |
 | 5 | **Noun registry**: `exist=`/`noun=` | no — foundation for later |
