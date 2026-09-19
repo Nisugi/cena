@@ -106,10 +106,27 @@ impl Origin {
 /// Why a command was not run.
 ///
 /// The three game-state refusals map onto the exact conditions Lich's `fput`
-/// keys on (`reference/lich-5/lib/global_defs.rb:1555` roundtime,
-/// `:1577` stunned/webbed). **Step 2 detects and reports; it does not
-/// resend.** Lich's resend ladder with `max_resends` is behavior policy, and
+/// keys on (`reference/lich-5/lib/global_defs.rb:1556` roundtime, `:1578`
+/// stunned/webbed -- both were cited one line early). **Step 2 does not
+/// resend**: Lich's ladder with `max_resends` is behavior policy, and
 /// building it now would be a config option with no second caller (Rule -1).
+///
+/// # Only `Roundtime` is constructed today
+///
+/// This said "Step 2 detects and reports", of all three. `Roundtime` is
+/// reported -- `send_now`'s gate answers it from the model's clock -- and
+/// **`Stunned` and `Webbed` are never constructed anywhere**
+/// (`grep -rn 'Refusal::Stunned' crates/`: 0 hits outside this enum).
+///
+/// Nothing maps Lich's `:1578` regex to a refusal, because nothing scans
+/// server text for it: that means matching prose, and `plan/12` §5.2 already
+/// carries the same facts as typed state -- `status.known().stunned()` is the
+/// answer, from an `<indicator>` rather than from a sentence.
+///
+/// The variants are kept rather than deleted because a gated send is the
+/// natural place for them and `Gate` has room for exactly this, but they are
+/// **vocabulary ahead of a caller** and this comment now says so rather than
+/// implying the detection exists (review SE-11).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Refusal {
     /// Try again later: the queue was full, or the session was busy.

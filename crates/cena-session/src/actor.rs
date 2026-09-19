@@ -2,7 +2,32 @@
 //!
 //! `plan/12` §5.5 requires "one supervised task per session", "bounded
 //! channels everywhere", "every wait has a deadline" and "a panic kills one
-//! session, not the process". This module is all four.
+//! session, not the process".
+//!
+//! This module is the first three. **The fourth is the caller's**, and this
+//! header used to claim it outright (review SE-10).
+//!
+//! # Panic isolation, and where it actually comes from
+//!
+//! There is no `catch_unwind` here (`grep -rn catch_unwind crates/`: 0 hits).
+//! What isolates a panic is `tokio::spawn`: a panicking task is caught by the
+//! runtime and surfaces as a `JoinError`, and the process survives.
+//!
+//! So isolation holds exactly when the caller spawns. `crates/cena/src/main.rs`
+//! does. **`SupervisedSession::run` does not** -- it awaits `actor.run()`
+//! inline, so an actor panic unwinds *through* the supervisor: no reconnect,
+//! no `Closed` event, and the supervisor's own task dies with it.
+//!
+//! Spawning the actor there is not a one-line fix. The actor owns the command
+//! receiver, the recorder and the sink, and hands them back through
+//! `SessionEnd` so they survive a generation; a panicking task drops them, so
+//! a reconnect would lose the recording criterion 9 replays. Spawning also
+//! requires `S: Send + 'static`, which constrains every `ByteSource`.
+//!
+//! Recorded rather than half-built: no actor panic has been observed, and the
+//! outer `tokio::spawn` in `main` still keeps one session's panic from taking
+//! the process. What is NOT true today is that such a panic is survivable by
+//! the session -- it ends the supervisor too.
 //!
 //! # The session owns the socket, and one actor is one connection
 //!

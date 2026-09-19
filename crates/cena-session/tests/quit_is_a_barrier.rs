@@ -173,3 +173,121 @@ async fn a_command_sent_after_quit_does_not_reach_the_wire() {
     cancel.cancel();
     let _ = driver.await;
 }
+
+/// **A typed `quit` logs out rather than logging back in.**
+///
+/// Sent as an ordinary command, `quit` reaches the game, the server closes,
+/// and the actor reports `PeerClosed` — which `warrants_reconnect()` accepts,
+/// and which the inbox sweep counts as attendance because somebody typed. The
+/// supervisor then logs the character straight back in, on every attempt to
+/// leave (review SE-3).
+///
+/// `io.rs` cited Lich's `USER_EXIT_COMMAND` regex only to choose what Cena
+/// *sends*; nothing recognised the same intent arriving from a player. The
+/// binary has no typed-game-command surface yet, so this was latent — and it
+/// goes live the day a frontend adds one, which is when it would be hardest
+/// to diagnose.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_typed_quit_is_recognised_as_leaving() {
+    for typed in ["quit", "exit", "  QUIT  ", "<c>quit"] {
+        let (source, transcript) = AnsweringSource::new(PROMPT);
+        let session = Session::new(source);
+        let handle = session.handle();
+        let cancel = session.cancel_token();
+        let driver = tokio::spawn(session.into_actor().run());
+
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        let outcome = handle
+            .send_and_await(
+                CommandId(1),
+                typed,
+                Origin::Manual,
+                Duration::from_secs(5),
+                cena_session::queue::any_frame,
+            )
+            .await;
+
+        // The bytes Cena sends are its own `EXIT_COMMAND`, not the player's
+        // spelling: `exit` and `quit` mean the same thing to the game, and
+        // the session sends the one it always sends.
+        let lines = transcript.lines();
+        assert!(
+            lines.iter().any(|l| l == "quit"),
+            "{typed:?} must put the exit command on the wire: {lines:?}"
+        );
+
+        // And it must have gone through the quit machinery, which is what
+        // makes the server's close read as "because we asked". A command that
+        // merely reached the wire would be answered by the prompt that
+        // follows it.
+        assert_eq!(
+            outcome,
+            cena_session::Outcome::Disconnected,
+            "{typed:?} must be answered as a session ending, not as an \
+             ordinary command awaiting a frame"
+        );
+
+        // Nothing further is accepted, which is SE-2's guard reached through
+        // this path.
+        let after = handle
+            .send_and_await(
+                CommandId(2),
+                "look",
+                Origin::Manual,
+                Duration::from_millis(200),
+                cena_session::queue::any_frame,
+            )
+            .await;
+        assert_eq!(
+            after,
+            cena_session::Outcome::Disconnected,
+            "after a typed {typed:?} the session is leaving and must refuse \
+             further commands"
+        );
+
+        cancel.cancel();
+        let _ = driver.await;
+    }
+}
+
+/// An ordinary command that merely CONTAINS the word is not an exit.
+///
+/// Lich's regex anchors, and so must this: `quit guild` and `say quit` are
+/// game commands, and treating either as a logout would end the session on a
+/// sentence.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_command_merely_containing_quit_is_not_an_exit() {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let cancel = session.cancel_token();
+    let driver = tokio::spawn(session.into_actor().run());
+
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    let outcome = handle
+        .send_and_await(
+            CommandId(1),
+            "say quit already",
+            Origin::Manual,
+            Duration::from_secs(5),
+            cena_session::queue::any_frame,
+        )
+        .await;
+
+    let lines = transcript.lines();
+    assert!(
+        lines.iter().any(|l| l == "say quit already"),
+        "an ordinary command must go out verbatim: {lines:?}"
+    );
+    assert!(
+        !lines.iter().any(|l| l == "quit"),
+        "and must NOT be turned into a logout: {lines:?}"
+    );
+    assert!(
+        matches!(outcome, cena_session::Outcome::Confirmed(_)),
+        "it is an ordinary round trip: {outcome:?}"
+    );
+
+    cancel.cancel();
+    let _ = driver.await;
+}

@@ -31,6 +31,32 @@ use cena_protocol::Frame;
 /// thing to both Lich and the game.
 const EXIT_COMMAND: &str = "quit";
 
+/// How long a typed exit waits for the server's EOF.
+///
+/// The same bound `SessionHandle::quit` uses by default. A typed `quit` has no
+/// caller holding a deadline -- the player is not awaiting a `Farewell` -- so
+/// the actor supplies one rather than waiting unbounded, which `plan/12` §5.5
+/// forbids.
+const QUIT_EOF_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Is this line the player asking to log out?
+///
+/// Lich's own test (`reference/lich-5/lib/common/shutdown_intent.rb:7`):
+///
+/// ```text
+/// /\A\s*(?:<c>)?\s*(?:exit|quit)\s*\z/i
+/// ```
+///
+/// Reproduced without a regex crate -- `cena-session` has no `regex`
+/// dependency and one line of trimming is not worth acquiring one (Rule -1).
+/// The `<c>` prefix is Lich's client-command wrapper, kept because a frontend
+/// porting Lich's input path may pass it through.
+fn is_exit_intent(line: &str) -> bool {
+    let line = line.trim();
+    let line = line.strip_prefix("<c>").unwrap_or(line).trim();
+    line.eq_ignore_ascii_case("quit") || line.eq_ignore_ascii_case("exit")
+}
+
 impl<S: ByteSource> SessionActor<S> {
     /// Write one message, bounded by [`WRITE_DEADLINE`].
     ///
@@ -80,7 +106,49 @@ impl<S: ByteSource> SessionActor<S> {
         message: crate::command::Inbox,
     ) -> Option<super::EndReason> {
         match message {
-            crate::command::Inbox::Command(envelope) => self.admit(*envelope),
+            crate::command::Inbox::Command(envelope) => {
+                // **A typed `quit` means what it says.**
+                //
+                // Sent as an ordinary command, `quit` reaches the game, the
+                // server closes, and the actor reports `PeerClosed` -- which
+                // `warrants_reconnect()` accepts, and which the sweep counts
+                // as attendance because somebody typed. The supervisor then
+                // logs the character straight back in, on every attempt to
+                // leave (review SE-3).
+                //
+                // `begin_quit` is the same bytes with the session's own
+                // bookkeeping: it arms the EOF deadline and marks `quitting`,
+                // so the close is read as "the server closed because we
+                // asked" rather than as a drop. `plan/16` §5b is precisely
+                // that distinction.
+                //
+                // Latent today -- the binary has no typed-game-command
+                // surface -- and live the day a frontend adds one, which is
+                // when it would be hardest to diagnose.
+                if is_exit_intent(&envelope.line) {
+                    // The caller asked for a command outcome, and the honest
+                    // one is `Disconnected`: §5.1 defines it as "this
+                    // connection is ending", which is precisely what was just
+                    // asked for. `Confirmed` would need a matching frame and
+                    // there is none -- the server answers a quit by closing.
+                    //
+                    // The farewell goes nowhere because nobody is holding a
+                    // `Farewell` receiver: this arrived as a command, not as
+                    // `Inbox::Quit`.
+                    let (tx, _rx) = tokio::sync::oneshot::channel();
+                    let ok = self.begin_quit(QUIT_EOF_DEADLINE, tx).await;
+                    let _ = envelope.reply.send(if ok {
+                        Outcome::Disconnected
+                    } else {
+                        Outcome::Dead
+                    });
+                    if !ok {
+                        return Some(super::EndReason::WriteFailed);
+                    }
+                } else {
+                    self.admit(*envelope);
+                }
+            }
             crate::command::Inbox::Claim { token, reply } => {
                 let _ = reply.send(self.queue.claim(token));
             }
