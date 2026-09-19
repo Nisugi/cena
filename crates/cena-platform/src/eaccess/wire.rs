@@ -216,6 +216,8 @@ pub(super) fn err<E: fmt::Display>(stage: &'static str, e: E) -> EaccessError {
 /// or if any byte falls outside `0..=255`.
 pub fn hash_password(password: &[u8], key: &[u8]) -> Result<Vec<u8>, EaccessError> {
     if key.len() < password.len() {
+        // FATAL: the password is longer than the protocol's key can hash. That
+        // is a property of the password, not of this attempt.
         return Err(err(
             "hash",
             format!(
@@ -225,7 +227,8 @@ pub fn hash_password(password: &[u8], key: &[u8]) -> Result<Vec<u8>, EaccessErro
                 key.len(),
                 password.len()
             ),
-        ));
+        )
+        .fatal());
     }
 
     let mut out = Vec::with_capacity(password.len());
@@ -242,22 +245,27 @@ pub fn hash_password(password: &[u8], key: &[u8]) -> Result<Vec<u8>, EaccessErro
             // Fine in a throwaway spike; not in a shipped library whose own
             // test asserts the password does not leak.
             //
-            // Found by adversarial review. The index, the key byte and the
-            // result are enough to diagnose -- only `p` is secret, and the
-            // arithmetic is recoverable from the other three anyway for a
-            // reader who has the key.
-            let _ = p;
+            // **Only the INDEX survives.** An earlier version printed the key
+            // byte and the result and claimed the password byte was withheld --
+            // and the comment right here admitted the arithmetic was
+            // "recoverable from the other three", which is exactly right:
+            // `p = ((result - 32) ^ k) + 32`. Two reviews found it: one added the
+            // comment, one noticed the comment contradicted the message.
+            //
+            // The index is what a diagnosis actually needs ("the ninth character
+            // of your password") and reveals nothing about the byte.
+            let _ = (p, k, result);
             return Err(err(
                 "hash",
                 format!(
-                    "password byte {i} hashes out of range: (b - 32) ^ 0x{k:02x} \
-                     + 32 = {result}, outside 0..=255. Ruby raises here and Lich \
-                     has never sent such a byte, so the server's behavior is \
-                     UNOBSERVED (plan/10 §12.1 S3). Refusing to guess. (The \
-                     password byte itself is withheld: this message reaches \
-                     stderr.)"
+                    "password byte {i} hashes out of range, outside 0..=255. \
+                     Ruby raises here and Lich has never sent such a byte, so \
+                     the server's behavior is UNOBSERVED (plan/10 §12.1 S3). \
+                     Refusing to guess. Neither the byte nor the arithmetic is \
+                     shown: the key byte and the result together recover it."
                 ),
-            ));
+            )
+            .fatal());
         }
         #[expect(
             clippy::cast_possible_truncation,

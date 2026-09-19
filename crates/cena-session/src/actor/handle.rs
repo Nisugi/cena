@@ -80,6 +80,7 @@ impl<S: ByteSource> Session<S> {
                 // see `SessionActor::on_disconnect`.
                 on_disconnect: crate::command::Outcome::Dead,
                 quitting: None,
+                write_broke_the_stream: false,
             },
             handle: SessionHandle::new(tx, generation),
             events,

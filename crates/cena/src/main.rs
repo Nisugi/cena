@@ -217,9 +217,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     run_or_probe(&handle, &mut probe_events, &stop).await;
 
+    // **Ctrl-C ends the hold early and then falls through to the SAME orderly
+    // shutdown below.** There was no signal handling at all, so interrupting a
+    // run killed the process -- skipping both the `quit` (plan/16 5b) and the
+    // sink flush. The character was left link-dead and the log truncated, on
+    // the exit a person is most likely to use.
     let holding = hold_for();
-    eprintln!("[session] holding for {holding:?} (pass `-- --hold <seconds>` to change)");
-    tokio::time::sleep(holding).await;
+    eprintln!(
+        "[session] holding for {holding:?} (Ctrl-C to stop early;          `-- --hold <seconds>` to change)"
+    );
+    tokio::select! {
+        () = tokio::time::sleep(holding) => {}
+        result = tokio::signal::ctrl_c() => {
+            match result {
+                Ok(()) => eprintln!("
+    [session] interrupted -- shutting down cleanly"),
+                // A handler that cannot be installed must not skip the
+                // shutdown: say so and carry on to it.
+                Err(e) => eprintln!("
+    [session] could not listen for Ctrl-C ({e}); holding ended"),
+            }
+        }
+    }
 
     // --- Criterion 4: stop, within PREEMPT_GRACE ---------------------------
     // The latency is MEASURED in `cena-behavior`'s tests under virtual time,
@@ -275,23 +294,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // loop rather than out of the program -- which is why the evidence
             // here is the reason it stopped, not a socket's state.
             eprintln!(
-                "[disconnect] stopped_because={:?}, last connection ended {:?}, \
-                 connections={}, {} events recorded",
+                "[disconnect] stopped_because={:?}, last connection ended {:?}, connections={}, {} events recorded",
                 end.stopped_because,
                 end.reason,
-                end.generations.0 + 1,
+                // The COUNT of successful connections, not the generation
+                // number. `generations.0 + 1` printed "1" for a session that
+                // never connected at all, because the counter starts at zero
+                // and only advances on a reconnect.
+                connections_made(&end),
                 end.recorder.events().len()
             );
-            // Criteria 1-6 and `plan/16` §5b's orderly shutdown. **NOT
-            // criterion 9**, unless the connection actually dropped: a clean
-            // run never reconnects, which is the point of it being clean.
-            // `connections` above is the evidence either way -- 1 means the
-            // reconnect path was not exercised, however green everything else
-            // looks.
-            eprintln!(
-                "\nDone. Criteria 1-6 and the orderly shutdown exercised \
-                 against the live server."
-            );
+
+            // **A failed login must not exit 0 saying "Done".** Headless mode
+            // has nothing but the exit status to go on, and a mistyped
+            // character name printed the success banner and returned Ok.
+            match &end.stopped_because {
+                cena_session::StoppedBecause::Fatal(error) => {
+                    eprintln!(
+                        "
+[FAIL] the session never started: {error}. Nothing was exercised."
+                    );
+                    return Err(format!("login refused: {error}").into());
+                }
+                cena_session::StoppedBecause::Unattended => {
+                    // NOT an error: the session was re-openable and nobody was
+                    // there. Vellum surfaces this as "Session looked idle".
+                    eprintln!(
+                        "
+[idle] no command was sent across {} connection(s), so the session stopped rather than re-logging in all night.",
+                        connections_made(&end)
+                    );
+                }
+                cena_session::StoppedBecause::Cancelled => {
+                    // Criteria 1-6 and `plan/16` 5b's orderly shutdown. NOT
+                    // criterion 9 unless the connection actually dropped: a
+                    // clean run never reconnects. The connection count above is
+                    // the evidence either way.
+                    eprintln!(
+                        "
+Done. Criteria 1-6 and the orderly shutdown exercised against the live server."
+                    );
+                }
+            }
             Ok(())
         }
         Err(join) => {
@@ -359,6 +403,19 @@ async fn run_demo(
         !behavior.is_finished()
     );
     Some(behavior)
+}
+
+/// How many connections actually carried traffic.
+///
+/// `Generation` counts from zero and advances only on a **reconnect**, so
+/// `generations.0 + 1` reads "1 connection" for a session that never connected
+/// at all -- which is exactly what a refused login is.
+fn connections_made(end: &cena_session::SupervisedEnd) -> u32 {
+    if matches!(end.stopped_because, cena_session::StoppedBecause::Fatal(_)) {
+        0
+    } else {
+        end.generations.0 + 1
+    }
 }
 
 /// Build the session, attaching a log unless one cannot be opened.

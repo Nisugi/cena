@@ -56,7 +56,19 @@ impl<S: ByteSource> SessionActor<S> {
     /// operation that cannot block. `SendNow` writes to the socket in the turn
     /// it arrives -- that is the feature -- so routing became a wait. It is a
     /// short one: the same single `write_all` [`Self::pump`] does.
-    pub(super) async fn handle_inbox(&mut self, message: crate::command::Inbox) {
+    /// Returns an [`EndReason`](super::EndReason) if handling the message made
+    /// the connection unusable.
+    ///
+    /// **It used to return `()`, and that made `WRITE_DEADLINE` a half-measure.**
+    /// `actor.rs`'s comment says a timed-out write "ENDS THE CONNECTION", and
+    /// only `pump` did: `send_now` returned `Sent::Dead` and `begin_quit`
+    /// returned `Farewell::Unsent`, and the loop carried on reading a stream the
+    /// same comment calls untrustworthy. Found by review, against the commit
+    /// that added the deadline.
+    pub(super) async fn handle_inbox(
+        &mut self,
+        message: crate::command::Inbox,
+    ) -> Option<super::EndReason> {
         match message {
             crate::command::Inbox::Command(envelope) => self.admit(*envelope),
             crate::command::Inbox::Claim { token, reply } => {
@@ -74,9 +86,22 @@ impl<S: ByteSource> SessionActor<S> {
             } => {
                 let outcome = self.send_now(&line, origin, generation, gate).await;
                 let _ = reply.send(outcome);
+                // Set by `send_now`'s write path only -- NOT inferred from
+                // `Sent::Dead`, which a caller also sees for a generation
+                // mismatch or a closed transport. The flag names one specific
+                // thing: the bytes could not be written, so the stream is
+                // untrustworthy.
+                if std::mem::take(&mut self.write_broke_the_stream) {
+                    return Some(super::EndReason::WriteFailed);
+                }
             }
-            crate::command::Inbox::Quit { timeout, reply } => self.begin_quit(timeout, reply).await,
+            crate::command::Inbox::Quit { timeout, reply } => {
+                if !self.begin_quit(timeout, reply).await {
+                    return Some(super::EndReason::WriteFailed);
+                }
+            }
         }
+        None
     }
 
     /// Send the exit command and start waiting for the server's EOF
@@ -91,11 +116,13 @@ impl<S: ByteSource> SessionActor<S> {
     /// type-ahead buffer of 2 would spend a slot for nothing (`plan/16` §5.2b).
     /// The newer caller is answered when the first one resolves, so nobody is
     /// left waiting on a reply that never comes.
+    /// Returns `false` if the write failed, which means **the connection is
+    /// gone** and the caller must end it rather than keep reading.
     pub(super) async fn begin_quit(
         &mut self,
         timeout: std::time::Duration,
         reply: tokio::sync::oneshot::Sender<crate::command::Farewell>,
-    ) {
+    ) -> bool {
         if let Some(pending) = self.quitting.as_mut() {
             // Already asked. Whoever resolves first answers both -- but only
             // one sender fits, so the later caller is told the same thing
@@ -105,7 +132,7 @@ impl<S: ByteSource> SessionActor<S> {
             } else {
                 crate::command::Farewell::Unsent
             });
-            return;
+            return true;
         }
 
         // The write goes through the same one-write path every command uses:
@@ -121,7 +148,7 @@ impl<S: ByteSource> SessionActor<S> {
             // the state a shutdown was trying to reach.
             self.log("quit: could not send, transport gone");
             let _ = reply.send(crate::command::Farewell::Unsent);
-            return;
+            return false;
         }
         self.recorder.outbound(&message);
         self.log_wire(false, &message);
@@ -136,6 +163,7 @@ impl<S: ByteSource> SessionActor<S> {
             deadline: tokio::time::Instant::now() + timeout,
             reply: Some(reply),
         });
+        true
     }
 
     /// Send a line immediately, subject only to the roundtime gate.
@@ -210,6 +238,10 @@ impl<S: ByteSource> SessionActor<S> {
         // Same single write as `pump`: two writes can emit two TLS records and
         // the server drops the command (`cena_platform::bytes::ByteSource`).
         if !self.write_bounded(&message).await {
+            // See `handle_inbox`: this ends the connection, because a write that
+            // timed out may have put a partial command on the wire and
+            // `plan/10`'s single-write rule makes that unrecoverable.
+            self.write_broke_the_stream = true;
             return Sent::Dead;
         }
         self.recorder.outbound(&message);

@@ -226,7 +226,24 @@ impl<C: Connector> SupervisedSession<C> {
         let mut unattended = 0u32;
         loop {
             let generation = self.core.generation.get();
-            let connected = self.connector.connect(generation).await;
+            // **Raced against the cancel token.** Only the backoff sleep was,
+            // so `stop` during a reconnect ran the whole login to completion:
+            // the character was logged IN, the new actor then saw the cancel on
+            // its first turn and dropped the socket without a `quit`, and the
+            // character was left link-dead in-world. Found by review.
+            //
+            // A cancel here abandons the attempt rather than the result: if the
+            // login has already completed, the source is closed on the way out
+            // rather than leaked.
+            let connected = tokio::select! {
+                () = self.core.cancel.cancelled() => {
+                    self.log("cancelled while connecting");
+                    stopped_because = StoppedBecause::Cancelled;
+                    reason = EndReason::Cancelled;
+                    break;
+                }
+                connected = self.connector.connect(generation) => connected,
+            };
             // BEFORE anything is logged about this connection, and before a
             // single byte of it is written: a secret minted by the connect --
             // this generation's launch key -- would otherwise reach the

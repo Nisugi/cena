@@ -241,6 +241,8 @@ async fn select_instance(
     expect_echo(&m, 'M', "m_response")?;
     let codes = offered_game_codes(&m);
     if !codes.contains(&creds.game_code) {
+        // FATAL: the server's own list of instances does not contain this code.
+        // No number of retries adds one.
         return Err(err(
             "m_response",
             format!(
@@ -271,10 +273,14 @@ async fn select_instance(
         .iter()
         .any(|t| f.contains(t))
     {
+        // FATAL: an entitlement is account state. The fix is a subscription,
+        // not another login -- the same reasoning `refusal.rs` gives for
+        // PROBLEM 1.
         return Err(err(
             "f_response",
             format!("no entitlement for {}: {}", creds.game_code, f.trim()),
-        ));
+        )
+        .fatal());
     }
     // The RAW response, not a parsed field: parsing before seeing it fail
     // turned the server's bare "?" into an innocuous `tier="?"`.
@@ -341,6 +347,10 @@ async fn resolve_character(
     }
 
     let code = resolve_char_code(&c, creds.character).ok_or_else(|| {
+        // FATAL, and the one that prompted this sweep: a MISTYPED CHARACTER
+        // NAME retried every 30 seconds sends the password to eaccess
+        // indefinitely, which is precisely the account-lock risk `retry.rs`
+        // quotes from `VellumFE`. The author hit this case live.
         err(
             "resolve_char",
             format!(
@@ -348,6 +358,7 @@ async fn resolve_character(
                 creds.character, creds.game_code
             ),
         )
+        .fatal()
     })?;
     // {:?} so a stray control byte in the parsed code is visible rather than
     // invisibly breaking the L request.

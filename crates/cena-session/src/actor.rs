@@ -266,6 +266,13 @@ pub struct SessionActor<S: ByteSource> {
     /// check (`orderly_shutdown.rb:189`), which is the same distinction a
     /// reconnect needs.
     quitting: Option<Quitting>,
+    /// Set when a write failed or timed out, so [`Self::handle_inbox`] can end
+    /// the connection.
+    ///
+    /// A flag rather than a richer return from `send_now`, which has five early
+    /// returns that have nothing to do with writing. It names ONE thing --
+    /// "the bytes did not go out" -- and is taken (cleared) when read.
+    write_broke_the_stream: bool,
 }
 
 /// An exit command has been sent; this is what the loop owes the caller.
@@ -319,6 +326,7 @@ impl<S: ByteSource> SessionActor<S> {
             generation,
             on_disconnect: crate::command::Outcome::Disconnected,
             quitting: None,
+            write_broke_the_stream: false,
         }
     }
 
@@ -396,7 +404,10 @@ impl<S: ByteSource> SessionActor<S> {
                 // can send again; frames already in flight still matter, so
                 // the session ends when the STREAM does, not here.
                 received = self.commands.recv(), if !senders_gone => match received {
-                    Some(message) => self.handle_inbox(message).await,
+                    Some(message) => if let Some(failed) = self.handle_inbox(message).await {
+                        reason = failed;
+                        break;
+                    },
                     None => senders_gone = true,
                 },
 
@@ -464,7 +475,11 @@ impl<S: ByteSource> SessionActor<S> {
     /// `admit` the loop calls, not a second path that could drift from it.
     pub async fn drain_commands_once(&mut self) {
         while let Ok(message) = self.commands.try_recv() {
-            self.handle_inbox(message).await;
+            // A write failure here is DISCARDED, deliberately: this method is a
+            // test helper for the readiness gate and has no loop to end. The
+            // flag it may set is cleared by the next `handle_inbox`, so it
+            // cannot leak into a later turn as a spurious end.
+            let _ = self.handle_inbox(message).await;
         }
     }
 

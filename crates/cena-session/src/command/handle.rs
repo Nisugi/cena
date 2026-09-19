@@ -21,6 +21,19 @@
 //! [`verdict`]: super::verdict
 
 use super::verdict::{CommandId, Gate, Origin, Outcome, Refusal, Sent};
+
+/// How long to wait for the **actor** to answer a message that it answers in
+/// the turn it receives.
+///
+/// Not a game deadline: a live actor replies in microseconds. This bounds the
+/// case where there is no actor at all -- between generations, while the
+/// supervisor climbs its retry ladder and nothing reads the inbox. Without it
+/// `send_now` and `claim` waited forever, and `look` awaits `claim` outside its
+/// own cancel select, so `stop` could not stop a behavior during an outage.
+///
+/// Five seconds is far longer than any live reply and far shorter than an
+/// outage, which is what makes it a backstop rather than a policy.
+const ACTOR_REPLY_DEADLINE: std::time::Duration = std::time::Duration::from_secs(5);
 use crate::lifecycle::Generation;
 use tokio::sync::oneshot;
 
@@ -336,12 +349,22 @@ impl SessionHandle {
     /// `plan/12` §5.5 requires that "every wait has a deadline", and
     /// `send_and_await` takes one. This does not, because **it is not the same
     /// kind of wait.** `send_and_await` waits on the *game* -- an unbounded
-    /// party that may never answer -- so it needs a bound. This waits on the
-    /// *actor*, which answers in the same turn it receives the message: there
-    /// is no window to close and no frame to arrive. The one way it never
-    /// answers is the actor being gone, and that drops the sender, which
-    /// resolves immediately as [`Outcome::Dead`]. A timeout here would be a
-    /// deadline on a wait that cannot hang.
+    /// party that may never answer. This waits on the *actor*, which answers in
+    /// the same turn it receives the message.
+    ///
+    /// # That reasoning was true until the supervisor existed
+    ///
+    /// It used to end "a timeout here would be a deadline on a wait that cannot
+    /// hang", on the grounds that an absent actor drops the sender and resolves
+    /// immediately as [`Sent::Dead`]. **A supervised session breaks the
+    /// premise**: between generations there is no actor, and the sender is very
+    /// much alive because the *supervisor* holds the receiver. Nothing reads the
+    /// inbox during a retry ladder, so the wait is unbounded -- and a message
+    /// parked there is delivered to the NEXT connection, long after its caller
+    /// gave up.
+    ///
+    /// So it is bounded by [`ACTOR_REPLY_DEADLINE`], which is generous by design:
+    /// it is not a game timeout, it is a backstop for "nobody is home".
     ///
     /// # Errors
     ///
@@ -365,7 +388,12 @@ impl SessionHandle {
             }
             Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => return Sent::Dead,
         }
-        answer.await.unwrap_or(Sent::Dead)
+        // Bounded: see `ACTOR_REPLY_DEADLINE`. `Dead` for a timeout is the
+        // honest answer -- nothing read the message, so nothing sent it.
+        tokio::time::timeout(ACTOR_REPLY_DEADLINE, answer)
+            .await
+            .unwrap_or(Ok(Sent::Dead))
+            .unwrap_or(Sent::Dead)
     }
 
     /// Take the command authority.
@@ -391,8 +419,13 @@ impl SessionHandle {
         if self.sender.try_send(Inbox::Claim { token, reply }).is_err() {
             return Err(crate::queue::AuthorityHeld(token));
         }
-        answer
+        // Bounded for the same reason `send_now` is: between generations
+        // nothing reads the inbox, and `look` awaits this OUTSIDE its cancel
+        // select (`look.rs:155`), so an unbounded wait here made `stop` unable
+        // to stop a behavior during an outage.
+        tokio::time::timeout(ACTOR_REPLY_DEADLINE, answer)
             .await
+            .unwrap_or(Ok(Err(crate::queue::AuthorityHeld(token))))
             .unwrap_or(Err(crate::queue::AuthorityHeld(token)))
     }
 

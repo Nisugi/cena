@@ -53,35 +53,17 @@ fn refuses_out_of_range_instead_of_wrapping() {
     assert!(e.detail.contains("out of range"), "got: {}", e.detail);
 }
 
-/// The out-of-range error must not carry the password byte that caused it.
-///
-/// The spike printed `0x{p:02x}` -- one plaintext password byte, positioned.
-/// That error reaches stderr through `main`'s `Box<dyn Error>`, so it landed
-/// in scrollback and in any `2>` redirect. Found by adversarial review, with
-/// `credentials_debug_hides_the_password` passing and asserting the opposite.
-#[test]
-fn the_hash_error_does_not_leak_the_password_byte() {
-    // 0x61 ('a') against key 0xFF: (0x61 - 32) ^ 0xFF = 0x9E -> +32 = 190,
-    // in range. Use a byte that actually overflows: (0x20 - 32) ^ 0xFF = 255.
-    let e = hash_password(&[0x20], &[0xFF]).expect_err("must refuse");
-    assert!(
-        !e.detail.contains("0x20"),
-        "the password byte must not appear in an error that reaches stderr: {}",
-        e.detail
-    );
-    // The diagnosis must survive the redaction, or the fix traded one problem
-    // for another.
-    assert!(
-        e.detail.contains("0xff"),
-        "key byte is not secret: {}",
-        e.detail
-    );
-    assert!(
-        e.detail.contains("byte 0"),
-        "the position must still be named: {}",
-        e.detail
-    );
-}
+// **A test that ENFORCED the leak used to live here**, and it is worth recording
+// rather than quietly deleting.
+//
+// `the_hash_error_does_not_leak_the_password_byte` asserted
+// `e.detail.contains("0xff")` on the stated premise "key byte is not secret".
+// The premise is wrong: `p = ((result - 32) ^ k) + 32`, so the key byte and the
+// result together ARE the password byte. The test was pinning the leak in place,
+// and it would have failed the fix for it.
+//
+// Replaced by `the_hash_error_leaks_neither_the_byte_nor_its_arithmetic` below,
+// which asserts the absence of both terms and keeps the index.
 
 /// Ruby raises on a short key; Rust's `zip` would silently truncate and
 /// send a *wrong password*, which looks exactly like a typo.
@@ -523,5 +505,89 @@ fn an_unknown_launch_sub_code_is_not_fatal() {
     assert!(
         !launch_refusal_is_fatal("L	something else entirely"),
         "and so is an L that is not a PROBLEM at all -- nothing about it says          the account is at fault"
+    );
+}
+
+/// **Every refusal that cannot change between attempts is fatal.**
+///
+/// The failure this guards, found by review at `31c5d95`: only two `.fatal()`
+/// sites existed, and four refusals that no retry can fix were left transient --
+/// a game code the server does not offer, no entitlement, a character not on the
+/// account, and a password too long for the key.
+///
+/// The supervisor retries transient failures **forever, by design**. So a
+/// headless run with a **mistyped character name** sent the password to
+/// `eaccess` every 30 seconds indefinitely, which is precisely the account-lock
+/// risk `cena-session`'s `retry.rs` quotes from `VellumFE`. The author hit that
+/// case live.
+///
+/// This asserts the classification on constructed errors rather than by logging
+/// in. What it cannot check is that a NEW refusal added later is classified at
+/// all -- `Retryability` defaults to transient, which is the right default for
+/// an unknown failure and the wrong one for a known refusal.
+#[test]
+fn refusals_that_no_retry_can_fix_are_fatal() {
+    // Each of these is a REFUSAL: the server read the request and said no.
+    for (stage, detail) in [
+        ("a_response", "authentication rejected"),
+        (
+            "m_response",
+            "game code \"GS9\" is not offered by the server",
+        ),
+        ("f_response", "no entitlement for GS3"),
+        (
+            "resolve_char",
+            "character \"Nobdy\" is not on this account's list",
+        ),
+        ("hash", "key (8 bytes) shorter than password (12 bytes)"),
+        ("l_response", "launch refused (L PROBLEM 1)"),
+    ] {
+        let error = EaccessError {
+            stage,
+            detail: detail.to_owned(),
+            fatal: false,
+        }
+        .fatal();
+        assert!(
+            error.fatal,
+            "{stage} must be fatal: retrying it sends the password again for a \
+             refusal that cannot change"
+        );
+    }
+}
+
+/// **The hash error must not print the password byte, or anything it can be
+/// recovered from.**
+///
+/// Found by review, twice over. The message printed the key byte `k` and the
+/// `result`, and `p = ((result - 32) ^ k) + 32` recovers the byte -- while the
+/// message itself claimed *"the password byte itself is withheld"*. The comment
+/// beside it had already admitted the arithmetic was "recoverable from the other
+/// three" and nobody joined the two statements up.
+#[test]
+fn the_hash_error_leaks_neither_the_byte_nor_its_arithmetic() {
+    // A pair that hashes out of range: ((0x20 - 32) ^ 0xe0) + 32 == 256.
+    // Computed rather than guessed -- the first fixture tried did NOT overflow
+    // and the test failed for the wrong reason.
+    let password = [0x20u8];
+    let key = [0xE0u8];
+    let error = hash_password(&password, &key).expect_err("this pair must refuse");
+
+    let message = error.detail;
+    assert!(
+        !message.contains("0xe0") && !message.contains("0xE0"),
+        "the key byte must not appear: with the result, it recovers the \
+         password byte. Got: {message}"
+    );
+    // The arithmetic itself is the giveaway even without a literal: printing
+    // the formula plus two of its three terms is the same leak.
+    assert!(
+        !message.contains("^ 0x"),
+        "the hash arithmetic must not be shown alongside its inputs. Got: {message}"
+    );
+    assert!(
+        message.contains("password byte 0"),
+        "the INDEX is what a diagnosis needs, and it reveals nothing about the \
+         byte -- it must survive. Got: {message}"
     );
 }

@@ -14,7 +14,16 @@ cena-platform.workspace = true
 cena-session.workspace = true
 cena-ui.workspace = true
 
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
+# `signal` for Ctrl-C. Without it the only early exit was killing the process,
+# which skips BOTH the `quit` (plan/16 5b) and the sink flush -- so the run that
+# a person interrupts left the character link-dead and the log truncated.
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+    "sync",
+    "time",
+] }
 tokio-util = "0.7"
 
 [lints]
