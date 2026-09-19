@@ -16,9 +16,10 @@ cena-model.workspace = true
 # the same direction, one layer further. Recorded in ALLOWED_EDGES.
 cena-protocol.workspace = true
 # The transport the session owns. plan/12 §7.1 puts "Session actor: lifecycle
-# §5, queue §4" in M1's In column, and the session owns the socket -- there is
-# no connection manager above it, because reconnect is Milestone 2 (§9c) and a
-# manager today would be a trait with one implementor.
+# §5, queue §4" in M1's In column. The actor owns one connection; the
+# supervisor module owns what outlives one. That module is the connection
+# manager this comment used to say did not exist -- reconnect is built and
+# live-verified.
 cena-platform.workspace = true
 
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }

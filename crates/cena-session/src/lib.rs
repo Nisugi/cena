@@ -3,9 +3,15 @@
 //! One character's connection, as one actor: it owns the socket, the parser,
 //! the command queue and the state, and it runs as one supervised task.
 //!
-//! **The session owns the socket.** There is no connection-manager layer above
-//! it. `plan/12` §9c moves reconnect to Milestone 2, so a manager today would
-//! be a trait with one implementor -- Rule -1 (`plan/05` §-1).
+//! **The session owns the socket for one connection.** [`supervisor`] owns
+//! what outlives one: credentials, the command receiver, the event sender, the
+//! generation and the carried-over state.
+//!
+//! This said there was no such layer, on the grounds that `plan/12` §9c moved
+//! reconnect to Milestone 2 and a manager would be a trait with one
+//! implementor. Reconnect is built and live-verified, and the manager is a
+//! module rather than a crate or a trait, so Rule -1 is satisfied without the
+//! abstraction that clause was refusing.
 //!
 //! Read [`queue`] for `plan/12` §4 (command ownership, the authority token,
 //! and the corrected rule that manual input **interleaves rather than

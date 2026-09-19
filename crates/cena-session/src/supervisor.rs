@@ -52,6 +52,10 @@ mod retry;
 pub use connect::{ConnectError, Connector};
 pub use core::SessionCore;
 pub use retry::{MAX_UNATTENDED_LOSSES, Retryability, backoff};
+// Not re-exported: the jitter source is an implementation detail of the
+// ladder, and `backoff` takes the fraction as a parameter precisely so
+// callers never need it.
+use retry::jitter;
 
 use crate::actor::{EndReason, Event, SessionActor, Snapshot};
 use crate::command::SessionHandle;
@@ -551,34 +555,3 @@ impl<C: Connector> SupervisedSession<C> {
 // Attendance is still MEASURED rather than flagged, which was the point: the
 // recorder is the single source of truth for "did anyone send anything", and a
 // separate boolean could disagree with the recording.
-
-/// A jitter fraction in `0.0..=1.0`.
-///
-/// # Why this is not `rand`
-///
-/// It needs one byte of spread per reconnect, and `plan/05` Rule -1 does not
-/// support a dependency for that. `VellumFE` reaches for `getrandom` because it
-/// already depends on it (`runtime.rs:76`); `cena-session` does not, and adding
-/// a crate to a session actor to decorrelate a backoff is the wrong trade.
-///
-/// # Why this does not break replay determinism
-///
-/// Criterion 7 requires a replay to produce the same result every run, and this
-/// reads a clock. It is safe because **a replay never reaches it**: a
-/// [`ReplaySource`](cena_platform::ReplaySource) is handed over by a connector
-/// that has already decided what to serve, and the ladder only runs between
-/// connections that a test controls. The one test that *does* exercise the
-/// ladder asserts on [`backoff`] directly, which is a pure function taking the
-/// jitter as a parameter -- that split is why the randomness can live here
-/// without being untestable.
-fn jitter() -> f64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    // Nanoseconds since the epoch, low bits only. Not cryptographic and not
-    // trying to be: the requirement is that five characters dropped by one
-    // network blip do not re-login in the same millisecond, and their
-    // supervisors reach this line at genuinely different nanoseconds.
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |since| since.subsec_nanos());
-    f64::from(nanos % 1000) / 999.0
-}

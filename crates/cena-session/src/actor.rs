@@ -120,8 +120,21 @@ const EVENT_CHANNEL_BOUND: usize = 2048;
 /// How long one read may block before the loop takes a turn anyway.
 ///
 /// `plan/12` §5.5: "every wait has a deadline; no unbounded `await`". The
-/// deadline is not a failure -- a quiet game is normal -- it is what lets the
-/// loop notice a queued command while nothing is arriving.
+/// deadline is not a failure -- a quiet game is normal.
+///
+/// # What it does NOT buy
+///
+/// This used to say the deadline "is what lets the loop notice a queued
+/// command while nothing is arriving". That is false: `self.commands.recv()`
+/// is already an arm of the same `select!`, so a queued command wakes the loop
+/// the moment it is sent, deadline or no. Believing otherwise would justify
+/// *lowering* this constant to improve command latency, which would cost
+/// wakeups and buy nothing (review SE-11).
+///
+/// What it actually bounds is the wait on a SILENT socket: how long a cancel
+/// or an inbox drain can sit behind a read that may never return. At 500 ms
+/// that is two idle wakeups per second per session -- affordable at 25
+/// characters, and the reason it is not shorter.
 const READ_DEADLINE: Duration = Duration::from_millis(500);
 
 /// How long one write may block before the connection is considered gone.
@@ -503,17 +516,6 @@ impl<S: ByteSource> SessionActor<S> {
         }
     }
 
-    /// Accept a command, or refuse it because the session is not `Ready`.
-    ///
-    /// **This is `plan/12` §5.3's readiness gate**: "Behaviors may not start
-    /// until `Ready`." A gate that is only a method nobody calls is the wish
-    /// `plan/05` §0 warns about, so it is enforced at the one place a
-    /// behavior's command can enter the session.
-    ///
-    /// **Manual input is NOT gated.** §5.3 gates *behaviors*; §4.1 says the
-    /// player is never locked out of their character. Refusing a typed command
-    /// during `Syncing` would be exactly that lockout, and it is not what
-    /// either section asks for.
     /// Write one line to the session log, if there is one.
     ///
     /// **Swallows the error deliberately.** A full disk, a revoked permission

@@ -170,7 +170,20 @@ impl<S: ByteSource> SessionActor<S> {
         });
         self.log(&format!("quit: sent, awaiting EOF within {timeout:?}"));
         self.quitting = Some(super::Quitting {
-            deadline: tokio::time::Instant::now() + timeout,
+            // `checked_add`, because `Instant + Duration` PANICS on overflow
+            // and `timeout` is caller-supplied. `SessionHandle::quit` doubles
+            // its own backstop before passing it, so a caller near the top of
+            // the range gets there in one multiply. A panic here takes down
+            // the actor on the one path whose entire job is an orderly exit
+            // (review SE-11).
+            //
+            // Saturating means "no deadline in any practical sense", which is
+            // the honest reading of a caller asking to wait ~584 years.
+            deadline: tokio::time::Instant::now()
+                .checked_add(timeout)
+                .unwrap_or_else(|| {
+                    tokio::time::Instant::now() + std::time::Duration::from_hours(24)
+                }),
             reply: Some(reply),
         });
         true
@@ -264,6 +277,17 @@ impl<S: ByteSource> SessionActor<S> {
         Sent::Ok { at }
     }
 
+    /// Accept a command, or refuse it because the session is not `Ready`.
+    ///
+    /// **This is `plan/12` §5.3's readiness gate**: "Behaviors may not start
+    /// until `Ready`." A gate that is only a method nobody calls is the wish
+    /// `plan/05` §0 warns about, so it is enforced at the one place a
+    /// behavior's command can enter the session.
+    ///
+    /// **Manual input is NOT gated.** §5.3 gates *behaviors*; §4.1 says the
+    /// player is never locked out of their character. Refusing a typed command
+    /// during `Syncing` would be exactly that lockout, and it is not what
+    /// either section asks for.
     pub(super) fn admit(&mut self, envelope: Envelope) {
         if envelope.origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
             let _ = envelope

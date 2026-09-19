@@ -137,8 +137,113 @@ pub fn backoff(attempt: u32, jitter: f64) -> Duration {
     Duration::from_millis((base * scale) as u64)
 }
 
+/// A jitter fraction in `0.0..=1.0`.
+///
+/// # Why this is not `rand`
+///
+/// It needs one byte of spread per reconnect, and `plan/05` Rule -1 does not
+/// support a dependency for that. `VellumFE` reaches for `getrandom` because it
+/// already depends on it (`runtime.rs:76`); `cena-session` does not, and adding
+/// a crate to a session actor to decorrelate a backoff is the wrong trade.
+///
+/// # Why this does not break replay determinism
+///
+/// Criterion 7 requires a replay to produce the same result every run, and this
+/// reads a clock. It is safe because **a replay never reaches it**: a
+/// [`ReplaySource`](cena_platform::ReplaySource) is handed over by a connector
+/// that has already decided what to serve, and the ladder only runs between
+/// connections that a test controls. The one test that *does* exercise the
+/// ladder asserts on [`backoff`] directly, which is a pure function taking the
+/// jitter as a parameter -- that split is why the randomness can live here
+/// without being untestable.
+pub(super) fn jitter() -> f64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    // Nanoseconds since the epoch. Not cryptographic and not trying to be: the
+    // requirement is that five characters dropped by one network blip do not
+    // re-login in the same millisecond, and their supervisors reach this line
+    // at genuinely different times.
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |since| since.subsec_nanos());
+    // **MICROSECONDS, not the bottom three digits of the nanoseconds.**
+    //
+    // This was `nanos % 1000`, which reads digits below the clock's
+    // resolution. Windows `SystemTime` advances in 100 ns ticks, so those
+    // three digits are always a multiple of 100 and the jitter takes TEN
+    // values. MEASURED on the development machine, 300,000 samples:
+    //
+    // ```text
+    // nanos % 1000      -> 10 distinct, max 900
+    // (nanos/1000)%1000 -> 1000 distinct, max 999
+    // ```
+    //
+    // Two consequences, both against the point of having jitter. The max was
+    // 900/999 = 0.9009, so `backoff`'s `0.8 + j*0.4` never exceeded 1.160 --
+    // the +20% half of the documented +/-20% band was unreachable. And on any
+    // clock with microsecond resolution every sample is 0.0, so every session
+    // backs off in lockstep at -20%: exactly the herd this exists to break,
+    // with the decorrelation silently absent (review SE-9).
+    f64::from((nanos / 1_000) % 1000) / 999.0
+}
+
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
+    /// The jitter actually varies, on this machine's clock.
+    ///
+    /// # Why `backoff`'s tests did not catch this
+    ///
+    /// [`super::retry::backoff`] takes the jitter as a PARAMETER, and its
+    /// tests feed it `0.0` and `1.0` directly. That split is deliberate and
+    /// good -- it is what keeps the randomness out of the pure function -- but
+    /// it means the tests prove the band is +/-20% *given* a jitter spanning
+    /// `0.0..=1.0`, and nothing checked that the real source produces one.
+    ///
+    /// It did not. `nanos % 1000` reads digits below the clock's resolution:
+    /// Windows `SystemTime` ticks at 100 ns, so the value was always a
+    /// multiple of 100 and took ten values, maxing at 0.9009. The +20% end of
+    /// the documented band was unreachable, and on a microsecond-resolution
+    /// clock every sample would be 0.0 -- every session backing off in
+    /// lockstep at -20%, the herd this exists to break (review SE-9).
+    ///
+    /// The threshold is deliberately far below the 1000 values a working
+    /// implementation gives and far above the 10 the defect gave, so this is
+    /// not a test that fails on an unlucky sample or a different platform.
+    #[test]
+    fn the_jitter_source_spans_more_than_the_clocks_tick() {
+        // The fraction is `n / 999.0` for an integer n, so multiplying back
+        // and rounding recovers n exactly. `to_bits` rather than a numeric
+        // cast: the assertion is about how many DISTINCT values the source
+        // produces, and bit patterns compare distinctness without a cast
+        // clippy cannot prove safe.
+        let samples: BTreeSet<u64> = (0..20_000).map(|_| jitter().to_bits()).collect();
+
+        assert!(
+            samples.len() > 100,
+            "the jitter took only {} distinct values across 20,000 samples. \
+             That means it is reading digits below the clock's resolution, so \
+             sessions dropped by one network blip re-login in near-lockstep -- \
+             which is the entire reason the ladder is jittered. Values: {:?}",
+            samples.len(),
+            samples.iter().take(20).collect::<Vec<_>>()
+        );
+    }
+
+    /// The fraction stays in the range `backoff` documents.
+    #[test]
+    fn the_jitter_stays_within_zero_and_one() {
+        for _ in 0..20_000 {
+            let j = jitter();
+            assert!(
+                (0.0..=1.0).contains(&j),
+                "jitter escaped 0.0..=1.0: {j}. `backoff` clamps, so this \
+                 would not widen the band -- but it would silently pin the \
+                 delay to one end."
+            );
+        }
+    }
+
     use super::*;
 
     /// The ladder climbs and then holds. Asserted at the **midpoint jitter**,
