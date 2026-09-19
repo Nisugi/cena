@@ -538,6 +538,7 @@ fn game_names_outside_game_modules_are_flagged() {
         .into_iter()
         .filter(|hit| !hit.contains("/src/gemstone/") && !hit.contains("/src/dragonrealms/"))
         .filter(|hit| !is_module_plumbing(hit))
+        .filter(|hit| !is_game_data(hit))
         .collect();
     assert!(
         hits.is_empty(),
@@ -549,6 +550,46 @@ fn game_names_outside_game_modules_are_flagged() {
          evasion is review's job (plan/12 §9d); this catches drift.\n{}",
         hits.join("\n")
     );
+}
+
+/// Whether a flagged line is a row of **game data** rather than Rust code.
+///
+/// # Why data is different from code
+///
+/// Rule 3.4 bans game-specific code *"in shared modules behind an
+/// `if game == ...` branch"* (`plan/05:332-336`). **A data file cannot
+/// branch.** A `.tsv` row is a fact about the game, and the whole point of
+/// shipping the crit tables and the gameobj patterns as data is that they are
+/// ported rather than transcribed into Rust (`plan/13:125`).
+///
+/// FOUND 2026-09-19 by `cena-model/data/gameobj-data.tsv`, a transcription of
+/// Lich's `gameobj-data.xml`. Two of its 113 rows name in-game ITEMS --
+/// "scintillating mote of gemstone dust", "ancient crumbling gemstone" -- and
+/// the needle list cannot tell an item name from the game's title. The
+/// pre-existing `crit_tables.tsv` simply never happened to contain the word,
+/// which is why this only surfaced now.
+///
+/// # Why this is not a path exemption
+///
+/// `.tsv` is scanned **deliberately**: `harness.rs`'s `SOURCE_EXTENSIONS`
+/// comment records that `include_str!` of a data file would otherwise smuggle
+/// content past every rule in this suite, and
+/// `no_source_file_is_included_from_outside_the_scan` enforces that the list
+/// stays sufficient. Excluding `data/` by path would reopen exactly that hole
+/// for the `static mut` ban and the line cap as well.
+///
+/// So this narrows only the needles that **describe code shape** -- game names
+/// -- and only for extensions that cannot contain code. Every other rule still
+/// reads every byte of the file.
+fn is_game_data(hit: &str) -> bool {
+    // `scan_lines` formats a hit as `path:line: <code>`; the path is everything
+    // before the first `:` that a line number follows.
+    let path = hit.split(':').next().unwrap_or_default();
+    // Case-insensitive: a `.TSV` that slipped past this would be exempt from
+    // the game-name needles while still being compiled in by `include_str!`.
+    std::path::Path::new(path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("tsv"))
 }
 
 /// Whether a flagged line is the `mod` / `use` plumbing that REACHES a game
