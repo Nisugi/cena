@@ -619,3 +619,48 @@ fn the_hash_error_leaks_neither_the_byte_nor_its_arithmetic() {
          byte -- it must survive. Got: {message}"
     );
 }
+
+/// A stream-desync error does not print the credentials it stumbled on.
+///
+/// `expect_echo`'s premise is that the read and write streams are **out of
+/// step**, so whatever it received is by definition not the response expected.
+/// It may be the `A` reply, which carries the session key, the account name
+/// and the account holder's real name.
+///
+/// It printed that raw -- the exact exposure `redact` was added for, left open
+/// on the one path whose whole subject is "these bytes are not what we thought
+/// they were" (review PL-7).
+#[test]
+fn a_desync_error_redacts_what_it_stumbled_on() {
+    // The live shape, with stand-ins of the same form.
+    let a_response = "A\tSOMEACCT\tKEY\t9ac77c189205275c1b604953d7e2b6aa\tAda Lovelace";
+
+    let Err(error) = cena_platform::eaccess::expect_echo(a_response, 'G', "g_response") else {
+        panic!("an A response where a G was expected must be an error")
+    };
+    let text = error.to_string();
+
+    assert!(
+        !text.contains("9ac77c189205275c1b604953d7e2b6aa"),
+        "the session key reached an error message: {text}"
+    );
+    assert!(
+        !text.contains("SOMEACCT"),
+        "the account name reached an error message: {text}"
+    );
+    assert!(
+        !text.contains("Ada Lovelace"),
+        "the account holder's real name reached an error message: {text}"
+    );
+    // The diagnostic must survive: this error's job is to say the streams
+    // desynced, and a blanket suppression would lose that.
+    assert!(
+        text.contains("out of step"),
+        "the diagnosis must still be legible: {text}"
+    );
+    assert!(
+        text.contains('A'),
+        "and it must still show WHAT arrived, or a reader cannot tell which \
+         stage answered: {text}"
+    );
+}

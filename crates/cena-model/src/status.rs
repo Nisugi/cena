@@ -115,9 +115,64 @@ macro_rules! status_accessors {
         impl StatusInfo {
             $(
                 $(#[$m])*
+                ///
+                /// **Reads `false` when the game has never reported this id**,
+                /// including after a reconnect until the login burst re-teaches
+                /// it. See [`Self::known`] for the three-state reading, and the
+                /// type docs for why both exist.
                 #[must_use]
                 pub fn $name(&self) -> bool {
                     self.get(stringify!($name))
+                }
+            )*
+
+            /// Every indicator, as a **three-state** reading.
+            ///
+            /// `None` is `plan/12` §5.2's `Unknown`: the game has not said.
+            /// `Some(false)` is the game having said no.
+            ///
+            /// # Why this exists beside the `bool` accessors
+            ///
+            /// The typed accessors collapse those two, and they are what a
+            /// caller reaches for -- `status.stunned()` reads like a question
+            /// with an answer. After a reconnect it answers a confident
+            /// `false` for every indicator, because `reconnect.rs` clears the
+            /// map and `indicator` is absent from the login burst
+            /// (MEASURED: unanimous across all seven captured logins).
+            ///
+            /// A behavior that casts on "not stunned" would act on a belief
+            /// nothing supports, which is the stale-belief failure §5.2 exists
+            /// to prevent (review MO-4).
+            ///
+            /// The collapsing accessors are kept rather than replaced: for a
+            /// renderer, "no icon" is the right treatment of both states, and
+            /// forcing every display site through an `Option` would add noise
+            /// where there is no decision to make. The rule is the one §5.2
+            /// already states -- **anything that ACTS reads this; anything
+            /// that merely DISPLAYS may read the bool.**
+            #[must_use]
+            pub fn known(&self) -> StatusReading<'_> {
+                StatusReading { info: self }
+            }
+        }
+
+        /// A three-state view of [`StatusInfo`]. See [`StatusInfo::known`].
+        #[derive(Debug, Clone, Copy)]
+        pub struct StatusReading<'a> {
+            info: &'a StatusInfo,
+        }
+
+        impl StatusReading<'_> {
+            $(
+                $(#[$m])*
+                ///
+                /// `None` when the game has never reported this id
+                /// (`plan/12` §5.2's `Unknown`).
+                #[must_use]
+                pub fn $name(&self) -> Option<bool> {
+                    self.info
+                        .is_known(stringify!($name))
+                        .then(|| self.info.get(stringify!($name)))
                 }
             )*
         }

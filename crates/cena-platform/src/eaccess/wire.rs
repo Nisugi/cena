@@ -450,13 +450,23 @@ pub fn expect_echo(response: &str, letter: char, stage: &'static str) -> Result<
     if response.starts_with(&want) {
         return Ok(());
     }
+    // **REDACTED, because the premise of this error is that the streams are
+    // out of step.** Whatever is in `response` is by definition not the
+    // response expected -- so it may be the `A` reply, which carries the
+    // session key, the account name and the account holder's real name.
+    //
+    // Printing it raw was the exact exposure `redact` was added for, left open
+    // on the one path whose whole subject is "these bytes are not what we
+    // thought they were" (review PL-7). The diagnostic value is unaffected:
+    // `redact` blanks credential-shaped fields and passes the rest through,
+    // which is why it exists rather than a blanket suppression.
     Err(err(
         stage,
         format!(
             "expected a {letter} response, got {:?} -- the read and write \
              streams are out of step, and nothing parsed after this point is \
              meaningful",
-            response.trim()
+            redact(response.trim())
         ),
     ))
 }

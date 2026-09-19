@@ -261,3 +261,79 @@ fn equality_ignores_when_the_clock_reading_arrived_locally() {
          said at the time -- this is what criterion 7's replay compares"
     );
 }
+
+/// **After a reconnect, "not stunned" and "unknown" are different answers.**
+///
+/// The typed accessors collapse them: `status.stunned()` answers a confident
+/// `false` for an indicator the game has never mentioned, and after a
+/// reconnect that is every indicator — `reconnect.rs` clears the map and
+/// `indicator` is absent from the login burst, unanimously across all seven
+/// captured logins.
+///
+/// A behavior that casts on "not stunned" would then act on a belief nothing
+/// supports, which is the stale-belief failure `plan/12` §5.2 exists to
+/// prevent (review MO-4).
+#[test]
+fn an_unreported_indicator_is_unknown_not_false() {
+    let mut status = cena_model::StatusInfo::default();
+    status.set("stunned", true);
+
+    // Reported, and true.
+    assert!(status.stunned());
+    assert_eq!(status.known().stunned(), Some(true));
+
+    // Reported, and false: the game said no.
+    status.set("stunned", false);
+    assert!(!status.stunned());
+    assert_eq!(
+        status.known().stunned(),
+        Some(false),
+        "the game having said 'no' must stay distinguishable from silence"
+    );
+
+    // Never reported at all.
+    assert!(
+        !status.dead(),
+        "the collapsing accessor still reads false, which is right for a \
+         renderer: no icon is the correct display for both states"
+    );
+    assert_eq!(
+        status.known().dead(),
+        None,
+        "but anything that ACTS must be able to tell 'the game says you are \
+         alive' from 'the game has not said'. plan/12 section 5.2 calls the \
+         second Unknown, and treating it as a confident answer is the failure \
+         that rule exists to prevent."
+    );
+}
+
+/// The three-state reading survives what a reconnect does to the map.
+///
+/// This is the case the distinction is FOR: `invalidate_for_reconnect` clears
+/// the indicators, and nothing re-teaches them until the player acts.
+#[test]
+fn a_reconnect_makes_every_indicator_unknown_rather_than_false() {
+    let mut state = cena_model::GameState::default();
+    state.status.set("stunned", true);
+    state.status.set("dead", false);
+
+    state.invalidate_for_reconnect();
+
+    assert_eq!(
+        state.status.known().stunned(),
+        None,
+        "a stun the game reported before the drop is not still true, and not \
+         known to be false either -- it is Unknown"
+    );
+    assert_eq!(
+        state.status.known().dead(),
+        None,
+        "and so is an indicator that had been reported INACTIVE: the map is \
+         cleared, so the previous 'no' is gone with everything else"
+    );
+    assert!(
+        !state.status.stunned() && !state.status.dead(),
+        "the collapsing accessors still answer false, which is why anything \
+         that acts must not use them here"
+    );
+}

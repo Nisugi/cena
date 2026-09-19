@@ -51,11 +51,12 @@ pub fn describe_launch_refusal(l: &str) -> String {
         Some("3") => {
             "the server has no configuration for the selected game. \
              SERVER-SIDE. DO NOT RETRY. Check first that the game code was \
-             listed by M and that F, G and P each echoed the code that was \
-             sent -- a rejected G leaves the session pointed at an instance \
-             the server cannot launch, which produces exactly this. \
-             Byte-diffing the L request is a dead end: its bytes are correct \
-             in this failure."
+             listed by M, and that G selected the instance you meant -- a \
+             rejected G leaves the session pointed at an instance the server \
+             cannot launch, which produces exactly this, and NOTHING IN THIS \
+             CLIENT VERIFIES IT: the handshake checks each response's command \
+             letter, not the code it carries. Byte-diffing the L request is a \
+             dead end: its bytes are correct in this failure."
         }
         Some("4") => "the account service failed while assigning the character. RETRY: transient.",
         _ => {

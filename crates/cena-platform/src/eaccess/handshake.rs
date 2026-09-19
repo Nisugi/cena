@@ -374,9 +374,27 @@ async fn resolve_character(
     // Lich login showed 100, for the same account and character. The signal
     // was the disagreement, never the value. A bare count identifies nothing.
     //
-    // The instance is confirmed by F, G and P echoing the code that was sent,
-    // which `expect_echo` already enforces -- so this line is context for a
-    // human reading a failure, not a check.
+    // Context for a human reading a failure, not a check.
+    //
+    // This used to say the instance "is confirmed by F, G and P echoing the
+    // code that was sent, which `expect_echo` already enforces". Three things
+    // wrong with that (review PL-7):
+    //
+    // * `expect_echo` checks the command LETTER only -- `response.starts_with("G\t")`
+    //   -- and never the code.
+    // * `F` does not echo the code at all. It answers an entitlement word
+    //   (`NORMAL`, `PREMIUM`, `TRIAL`, `INTERNAL`, `FREE`), which the arm
+    //   above checks for by name.
+    // * `P` is not passed to `expect_echo` anywhere; its response is
+    //   deliberately discarded, as the comment at the `P` send records.
+    //
+    // So nothing verifies that the instance the server selected is the
+    // instance that was asked for. `refusal.rs`'s PROBLEM 3 advice says a
+    // rejected `G` produces exactly that failure, which is the case this
+    // would catch -- but catching it means comparing `G`'s echoed field to
+    // `creds.game_code`, which is a check nobody has written. Left unwritten
+    // rather than half-claimed: an unverified assumption stated as a
+    // guarantee is worse than one stated as an assumption.
     if let Some(slots) = c.trim().split('\t').nth(2) {
         progress(&format!(
             "[stage: c_response] max slots={slots} for {} (entitlement, not \
