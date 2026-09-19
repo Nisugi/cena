@@ -227,6 +227,17 @@ fn the_clock_advances_between_prompts() {
 /// The local receipt instant is an observation about WHEN state arrived, not
 /// part of the state. Two sessions that saw the same frames are in the same
 /// state regardless of when they saw them.
+///
+/// # This test was right and its fixture was too small
+///
+/// It feeds a bare prompt, so it covers only the field that `PartialEq`
+/// excludes by name. It stayed green while the same `Instant` reading reached
+/// the comparison through `Effect::ends_at`, which is compared -- because no
+/// effect is in the fixture (review MO-1).
+///
+/// `tests/effects_are_replayable.rs` is the case this one could not see. The
+/// pair is worth keeping separate: this asserts the exclusion, that one
+/// asserts nothing routes around it.
 #[test]
 fn equality_ignores_when_the_clock_reading_arrived_locally() {
     let prompt = b"<prompt time=\"1789775821\">R&gt;</prompt>\n";

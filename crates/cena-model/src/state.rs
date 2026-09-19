@@ -412,9 +412,37 @@ impl GameState {
                     // here, is what makes it comparable later; the duration
                     // itself goes stale immediately because the game only
                     // re-sends an effect when it changes.
+                    //
+                    // **`game_time`, not `game_time_now()`.**
+                    //
+                    // `game_time_now()` extrapolates: it adds
+                    // `game_time_received.elapsed()`, a reading of the LOCAL
+                    // monotonic clock. Baking that into `ends_at` put a local
+                    // measurement inside a value `PartialEq` compares -- and
+                    // `game_time_received` is destructured to `_` in that impl
+                    // specifically to keep local readings out of it. The
+                    // exclusion was correct and was being routed around
+                    // through this field (review MO-1).
+                    //
+                    // The cost was replay equality. Live, a refill arriving 90
+                    // seconds after its prompt gave `base + 90 + secs`;
+                    // replayed from the same recording, the frames arrive
+                    // back-to-back and give `base + secs`. Same bytes,
+                    // unequal state -- against criterion 7, which is what M2's
+                    // golden corpus rests on.
+                    //
+                    // Using the raw server clock needs no local reading at
+                    // all: the server sent the time and the duration, and
+                    // their sum is what the server said. The extrapolation
+                    // was never adding information, only the delay between
+                    // two frames the game sent together.
+                    //
+                    // `game_time_now()` remains right for READING the clock --
+                    // `in_roundtime` needs to know what time it is now. It is
+                    // wrong for STAMPING a fact the server already dated.
                     let ends_at = bar
                         .time_remaining_secs
-                        .and_then(|secs| Some(self.game_time_now()?.saturating_add(secs)));
+                        .and_then(|secs| Some(self.game_time?.saturating_add(secs)));
                     self.effects.insert(
                         bar.id.clone(),
                         crate::effects::Effect {

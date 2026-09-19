@@ -16,7 +16,7 @@
 //!
 //! | Source | Handling |
 //! |---|---|
-//! | wall-clock time | `start_paused = true`; no `Instant::now()` in session code |
+//! | wall-clock time | `start_paused = true`, and the one real-clock reading is excluded from comparison -- see below |
 //! | task scheduling | `flavor = "current_thread"`; a multi-thread runtime interleaves two ready tasks arbitrarily |
 //! | `select!` arm choice | `biased;` in the actor loop -- without it tokio picks a ready arm pseudo-randomly |
 //! | `HashMap` iteration | `BTreeMap` in `GameState::vitals`, asserted below |
@@ -24,6 +24,31 @@
 //! | read chunk boundaries | replayed from the recording, not regenerated |
 //! | `Generation` | a counter seeded at 0, never a clock or a random |
 //! | address / DNS / TLS | absent: `ReplaySource` touches none |
+//!
+//! # The wall-clock row, in full
+//!
+//! This row used to read *"no `Instant::now()` in session code"*. That was
+//! false, and in the way that matters: `GameState::apply` calls it on every
+//! prompt (`cena-model/src/state.rs`, `game_time_received`), and it is a
+//! **`std::time::Instant`**, which `start_paused = true` does not touch --
+//! tokio pauses its own clock, not the standard library's.
+//!
+//! What actually makes the replay deterministic is that the reading is
+//! **excluded from `GameState`'s `PartialEq`**, which destructures
+//! `game_time_received` to `_` and says so. The reading exists because the
+//! server clock must keep counting between prompts (an idle client gets no
+//! prompts at all), and it is an observation about when state arrived rather
+//! than part of the state.
+//!
+//! An exclusion is weaker than an absence, because a derived field can carry
+//! the excluded value back in. One did: `Effect::ends_at` was computed from
+//! the extrapolated clock and IS compared, so a live session and a replay of
+//! its own recording disagreed by however long the client had waited (review
+//! MO-1, fixed by stamping `ends_at` from the raw server clock).
+//!
+//! `cena-model/tests/effects_are_replayable.rs` is the guard on that, and the
+//! claim this row can honestly make is the narrow one: one real-clock reading
+//! exists, it is excluded, and nothing derives a compared value from it.
 
 mod support;
 
