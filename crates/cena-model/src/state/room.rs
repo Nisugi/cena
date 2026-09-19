@@ -82,7 +82,30 @@ pub struct Room {
     /// special case for the one component that is different.
     pub description: Option<Runs>,
     /// `<compass><dir value=>`. Direction tokens, not prose.
-    pub exits: Vec<String>,
+    ///
+    /// # Three states, not two
+    ///
+    /// `None` is **not yet observed**; `Some(vec![])` is **observed, and there
+    /// are no cardinal exits**. A bare `Vec` collapses those, which is
+    /// `plan/19` pattern A -- an `Option` (or here, a collection) read as two
+    /// states where three exist. Recorded there as §1c, OPEN, "the same shape"
+    /// as the roundtime bug that made a gated send fire early.
+    ///
+    /// **Both of the empty cases are real**, and they are different from each
+    /// other as well as from `None` (the author, 2026-09-19):
+    ///
+    /// - a room whose only way out is a **portal, door or teleport** rather
+    ///   than a cardinal direction. The compass is empty and the room is still
+    ///   exitable.
+    /// - a room with genuinely no exits at all -- the consultation lounge.
+    ///
+    /// So an empty compass is a fact the server stated, and the distinction
+    /// matters to anything that would route: "I have not looked yet" invites a
+    /// look, while "there are no cardinal exits" says to find the door.
+    ///
+    /// Invalidated on reconnect (`§5.2`), which is what makes `None`
+    /// reachable in a live session rather than only at startup.
+    pub exits: Option<Vec<String>>,
     /// The bold entries of `room objs`: creatures.
     pub creatures: Vec<RoomItem>,
     /// The non-bold entries of `room objs`: items and fixtures.

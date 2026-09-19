@@ -51,7 +51,7 @@ async fn a_room_renders_from_typed_frames_not_from_text() {
     // the sentence uses. The prose says "east"; the compass says "e".
     assert_eq!(
         state.room.exits,
-        vec!["e".to_owned(), "out".to_owned()],
+        Some(vec!["e".to_owned(), "out".to_owned()]),
         "exits must come from Frame::Compass. The display text says \
          'Obvious exits: east, out' -- if this were scraped from prose it \
          would read [\"east\", \"out\"], so the token form is the evidence that \

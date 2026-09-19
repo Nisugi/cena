@@ -192,7 +192,10 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
     assert_eq!(end.state.left_hand, None, "hands are Unknown");
     assert_eq!(end.state.right_hand, None);
     assert_eq!(end.state.room.id, None, "the room id is Unknown");
-    assert!(end.state.room.exits.is_empty(), "exits are Unknown");
+    assert_eq!(
+        end.state.room.exits, None,
+        "exits are Unknown -- `None`, NOT `Some(vec![])`. An empty compass is          something the server SAID (a room whose only way out is a portal, or          one with no exits at all), so invalidation must produce the          not-observed state rather than the observed-empty one"
+    );
     assert!(
         !end.state.status.is_known("standing"),
         "an indicator reported on the OLD connection must be Unknown, not \

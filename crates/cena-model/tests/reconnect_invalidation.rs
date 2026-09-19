@@ -68,7 +68,10 @@ fn facts_the_burst_omits_return_to_unknown() {
     // GUARD: without this, the assertions below pass on a default state and
     // the method under test could be empty.
     assert_eq!(state.room.id.as_deref(), Some("7503251"));
-    assert!(!state.room.exits.is_empty(), "exits were observed");
+    assert!(
+        state.room.exits.as_ref().is_some_and(|e| !e.is_empty()),
+        "exits were observed"
+    );
     assert!(state.prompt.is_some(), "a prompt was observed");
     assert!(state.left_hand.is_some() && state.right_hand.is_some());
     assert_eq!(state.roundtime_ends, Some(1_789_775_824));

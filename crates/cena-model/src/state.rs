@@ -287,7 +287,10 @@ impl GameState {
             // objects. See `state/room.rs` for the measurement.
             Frame::Component { id, body } => self.room.apply_component(id, body),
             Frame::Compass { directions } => {
-                self.room.exits.clone_from(directions);
+                // `Some`, even when `directions` is empty: the server SAID so,
+                // and "observed, no cardinal exits" is a different fact from
+                // "not looked yet". See `Room::exits`.
+                self.room.exits = Some(directions.clone());
             }
             // The server's idle warning. Text-derived, and the ONE line that is,
             // for the reasons in `tests/idle_warning.rs`: it is an exact string

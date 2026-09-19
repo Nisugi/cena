@@ -336,3 +336,84 @@ fn a_reconnect_forgets_the_room_contents() {
 }
 
 use cena_protocol::runs::Runs;
+
+// ---------------------------------------------------------------------------
+// `plan/19` §1c -- exits has THREE states, not two
+// ---------------------------------------------------------------------------
+
+/// An empty compass is a FACT, not an absence.
+///
+/// `plan/19` pattern A: a collection read as two states where three exist. The
+/// review left this OPEN as §1c, "the same shape" as the roundtime bug that
+/// made a gated send fire early.
+///
+/// The author settled the game fact (2026-09-19): both empty cases are real,
+/// and they are different from each other.
+///
+/// - a room whose only way out is a **portal, door or teleport** rather than a
+///   cardinal direction -- the compass is empty and the room IS exitable
+/// - the **consultation lounge**, with no exits at all
+///
+/// So "the server sent an empty compass" and "we have not seen a compass" are
+/// different facts, and anything that would route on them must act differently:
+/// one says look for a door, the other says look.
+#[test]
+fn an_empty_compass_is_observed_rather_than_unknown() {
+    // The trailing newline is REQUIRED: `push_bytes` emits on a line boundary,
+    // so a fixture without one yields no frames at all and this test would pass
+    // vacuously against a model that never saw a compass. Dropped it on the
+    // first cut and the test failed for that reason rather than the real one.
+    let state = fold(
+        b"<compass></compass>
+",
+    );
+
+    assert_eq!(
+        state.room.exits,
+        Some(Vec::new()),
+        "an empty compass must record that the server SAID there are no \
+         cardinal exits -- a room reached only by a portal looks exactly like \
+         this, and it is not the same as never having looked"
+    );
+}
+
+/// Before any compass arrives, exits are genuinely unknown.
+#[test]
+fn exits_are_unknown_until_a_compass_arrives() {
+    let state = GameState::default();
+    assert_eq!(
+        state.room.exits, None,
+        "a fresh state has not observed a compass, and must not claim the \
+         room has no exits"
+    );
+}
+
+/// The three states are distinguishable from one another.
+///
+/// Stated as one assertion because the point is the DISTINCTION: any two of
+/// these collapsing is the defect, and a test of each state alone cannot show
+/// they differ.
+#[test]
+fn the_three_exit_states_are_all_different() {
+    let unknown = GameState::default().room.exits;
+    let observed_empty = fold(
+        b"<compass></compass>
+",
+    )
+    .room
+    .exits;
+    let observed_some = fold(
+        b"<compass><dir value='n'/></compass>
+",
+    )
+    .room
+    .exits;
+
+    assert_ne!(
+        unknown, observed_empty,
+        "not-yet-observed collapsed into observed-with-no-exits"
+    );
+    assert_ne!(unknown, observed_some);
+    assert_ne!(observed_empty, observed_some);
+    assert_eq!(observed_some, Some(vec!["n".to_owned()]));
+}

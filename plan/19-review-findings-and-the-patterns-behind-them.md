@@ -20,7 +20,7 @@ mistakes**, and the fourth is the one that matters most:
 
 | Pattern | Shape | Items |
 |---|---|---|
-| **A** | `Option` used as two states where three exist | roundtime (real), effects (**not** — see §1b), `exits: []` |
+| **A** | `Option` used as two states where three exist | roundtime (real), effects (**not** — see §1b), `exits: []` (**fixed**, §1c) |
 | **B** | The reconnect layer assumes an actor exists behind a handle | `quit` hang, unbounded `send_now`/`claim`, `connect` unraced |
 | **C** | Guarding tests sized to the measured case, not past it | the settings blob, the chunk reassembly, the inbox |
 | **D** | **A test that pins a defect in place** | the hash-error leak |
@@ -104,11 +104,27 @@ changed and one was not: roundtime's cleared value produced a **false negative
 that acts** (a gated send fires early), while an effect's absent end time
 produces a **stale display that no gate reads**.
 
-### 1c. `exits: []`. OPEN, and the same shape.
+### 1c. `exits: []`. **FIXED 2026-09-19.** `Option<Vec<String>>`.
 
-An empty `Vec` cannot distinguish "a room with no exits" from "exits not yet
-observed". Noted for M2's room work, where per-component buffers
-(`plan/18` §2c) already require thinking about empty-versus-absent.
+An empty `Vec` could not distinguish "a room with no exits" from "exits not yet
+observed".
+
+**The author settled the game fact**, and it is stronger than the finding
+assumed — *both* empty cases are real, and they differ from each other:
+
+- a room whose only way out is a **portal, door or teleport** rather than a
+  cardinal direction. The compass is empty and the room **is** exitable.
+- the **consultation lounge**, with no exits at all.
+
+So an empty compass is something the server *stated*, and anything that would
+route must act differently on it: "not looked yet" invites a look, "no cardinal
+exits" says find the door.
+
+`Room::exits` is now `Option<Vec<String>>`: `None` unobserved, `Some(vec![])`
+observed-and-empty. The type change found all four consumers at compile time.
+`invalidate_for_reconnect` produces `None` (via `Room::default`), which is what
+makes the unobserved state reachable in a live session rather than only at
+startup.
 
 ---
 
