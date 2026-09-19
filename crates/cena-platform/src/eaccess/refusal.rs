@@ -66,3 +66,40 @@ pub fn describe_launch_refusal(l: &str) -> String {
     };
     format!("launch refused ({}): {detail}", l.trim())
 }
+
+/// Whether an `L PROBLEM` refusal is worth another attempt.
+///
+/// # Three of four are fatal, and the fourth is NOT
+///
+/// This was nearly written as "every launch refusal is fatal", on the strength
+/// of a plan that said all four sub-codes advise against retrying. **They do
+/// not**, and a test that read the messages rather than restating them caught
+/// it:
+///
+/// | Code | Verdict | Why |
+/// |---|---|---|
+/// | 1 | fatal | account state -- the fix is a subscription, not a login |
+/// | 2 | fatal | server-side, will not change between attempts |
+/// | 3 | fatal | server-side, no configuration for the game |
+/// | 4 | **transient** | *"the account service failed while assigning the character"* |
+///
+/// 4 is a service hiccup. Treating it as fatal would strand a session on a
+/// failure that a second attempt fixes, which is precisely the direction
+/// `VellumFE` warns about -- and it would have been an inference from a
+/// summary rather than from the strings themselves.
+///
+/// An unrecognised sub-code is **transient**, the same fail-safe default
+/// `EaccessError::fatal` takes: a fifth code the server grew is not something
+/// to give up on without evidence.
+#[must_use]
+pub fn launch_refusal_is_fatal(l: &str) -> bool {
+    let Some(rest) = l.trim().strip_prefix("L\tPROBLEM") else {
+        // Not a PROBLEM at all -- an unparseable L. Retryable, because nothing
+        // here says the account is at fault.
+        return false;
+    };
+    matches!(
+        rest.trim_start().split('\t').next().map(str::trim),
+        Some("1" | "2" | "3")
+    )
+}

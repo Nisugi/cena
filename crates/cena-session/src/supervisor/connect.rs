@@ -51,6 +51,31 @@ pub trait Connector: Send {
         &mut self,
         generation: Generation,
     ) -> impl Future<Output = Result<Self::Source, ConnectError>> + Send;
+
+    /// Secrets this connector produced that the session log must redact, taken
+    /// once and cleared.
+    ///
+    /// # Why a connector has anything to say about logging
+    ///
+    /// Because **a per-connection secret cannot be registered before the
+    /// connection exists**. One log spans every generation, and a reconnect is
+    /// a full re-login (`plan/10` §4.6: the SGE connection is *"strictly
+    /// single-use per auth"*), so each connection is issued its own launch key.
+    /// A redaction set fixed when the sink was opened would write generation
+    /// 2's key into the `.bytes` file **in the clear** -- it did not exist when
+    /// the set was built.
+    ///
+    /// The connector is the only thing that sees those keys, and the sink is
+    /// owned by the supervisor, so this is the seam between them. It is not a
+    /// logging API: it hands over strings that must never be written, and the
+    /// supervisor decides what to do with them.
+    ///
+    /// **Defaults to none**, so a connector that mints no secrets -- every test
+    /// double -- implements nothing. That is what keeps this from being a cost
+    /// paid by implementors who do not need it.
+    fn take_secrets(&mut self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 /// Why a connection could not be opened.

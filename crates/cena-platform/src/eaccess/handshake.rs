@@ -11,7 +11,7 @@
 //! Read [`super`] for why `EAccess` lives in `cena-platform` and for the BUILT,
 //! NOT RUN rule that governs every function below.
 
-use super::refusal::describe_launch_refusal;
+use super::refusal::{describe_launch_refusal, launch_refusal_is_fatal};
 use super::wire::hash_password;
 use super::wire::{
     Credentials, EACCESS_HOST, EACCESS_PORT, EaccessError, LaunchPayload, READ_BUF, err,
@@ -205,10 +205,14 @@ async fn prove_identity(
         // Failure path only: no KEY is present, so nothing in this response is
         // a session key and the whole thing is safe to show. `plan/10` §12.3's
         // warning is about the SUCCESS path, where the last field IS the key.
+        // FATAL: the server read the credentials and refused them. Distinct
+        // from `read_response` failing at this same stage, which is a link
+        // problem and stays retryable -- see `EaccessError::fatal`.
         return Err(err(
             "a_response",
             format!("authentication rejected. server said: {:?}", a.trim()),
-        ));
+        )
+        .fatal());
     }
     progress(&format!("[stage: a_response] OK: {}", redact(a.trim())));
     Ok(())
@@ -365,7 +369,18 @@ async fn launch_character(
     send(conn, &format!("L\t{char_code}\tSTORM"), "l_request").await?;
     let l = read_response(conn, "l_response").await?;
     if !l.starts_with("L\tOK") {
-        return Err(err("l_response", describe_launch_refusal(&l)));
+        // Fatal for sub-codes 1-3 and NOT for 4: `launch_refusal_is_fatal`
+        // reads them one at a time, because "the account service failed while
+        // assigning the character" is a hiccup and the other three are not.
+        // An earlier version marked every launch refusal fatal, on the
+        // strength of a summary that said all four advise against retrying;
+        // a test that read the strings caught it.
+        let error = err("l_response", describe_launch_refusal(&l));
+        return Err(if launch_refusal_is_fatal(&l) {
+            error.fatal()
+        } else {
+            error
+        });
     }
     progress(&format!("[stage: l_response] {}", redact(l.trim())));
     parse_launch(&l)

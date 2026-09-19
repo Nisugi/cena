@@ -131,6 +131,50 @@ pub struct EaccessError {
     pub stage: &'static str,
     /// What went wrong. Never contains a password or a key.
     pub detail: String,
+    /// Whether retrying is pointless: the account or the request was REFUSED,
+    /// as against the link failing on the way to asking.
+    ///
+    /// # Why this is a field and not a function of `stage`
+    ///
+    /// Because **one stage is both**. `a_response` covers the server saying
+    /// "authentication rejected" *and* `read_response` reporting "connection
+    /// closed by peer (0 bytes)" or a stage timeout -- a credential rejection
+    /// and two transport failures, under one name.
+    ///
+    /// `VellumFE` records both directions of getting this wrong, and they are
+    /// the same mistake made twice:
+    ///
+    /// > *"The headless reconnect supervisor stops retrying when it finds this
+    /// > in an error chain -- hammering the auth server with a wrong password
+    /// > would be pointless and **could lock the account**."*
+    ///
+    /// > *"EOF: ... a transient DROP, not a credential rejection -- it must NOT
+    /// > surface as `AuthFailed`, or the ... supervisor treats it as 'bad
+    /// > credentials, stop retrying' and **strands the session**."*
+    ///
+    /// So classifying on `stage` alone would strand a session on every drop
+    /// that happened to land mid-handshake. The layer that knows which it was
+    /// is the one that built the error, which is why it says so here rather
+    /// than leaving a caller to match on the message.
+    ///
+    /// **Defaults to `false`** ([`err`] sets it), so a failure nobody has
+    /// classified is retried. That is the direction that fails safe: an
+    /// unclassified error retried costs a bounded ladder, while an
+    /// unclassified error treated as fatal costs the session.
+    pub fatal: bool,
+}
+
+impl EaccessError {
+    /// Mark this failure as one no retry can fix.
+    ///
+    /// Used at the two places that are genuinely a refusal rather than a
+    /// transport failure: a rejected `A` response, and an `L PROBLEM` launch
+    /// refusal.
+    #[must_use]
+    pub fn fatal(mut self) -> Self {
+        self.fatal = true;
+        self
+    }
 }
 
 impl fmt::Display for EaccessError {
@@ -145,6 +189,8 @@ pub(super) fn err<E: fmt::Display>(stage: &'static str, e: E) -> EaccessError {
     EaccessError {
         stage,
         detail: e.to_string(),
+        // Transient unless a caller says otherwise -- see the `fatal` field.
+        fatal: false,
     }
 }
 

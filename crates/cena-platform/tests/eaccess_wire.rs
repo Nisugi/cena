@@ -24,10 +24,10 @@
 //! is what these are for.
 
 use cena_platform::eaccess::{
-    CLIENT_BANNER, describe_launch_refusal, expect_echo, hash_password, offered_game_codes,
-    parse_launch, redact, resolve_char_code, trim_ascii_whitespace,
+    CLIENT_BANNER, describe_launch_refusal, expect_echo, hash_password, launch_refusal_is_fatal,
+    offered_game_codes, parse_launch, redact, resolve_char_code, trim_ascii_whitespace,
 };
-use cena_platform::{Credentials, LaunchPayload};
+use cena_platform::{Credentials, EaccessError, LaunchPayload};
 
 /// The hash is XOR-based, so applying it twice returns the original.
 /// Uses the real key shape observed 2026-09-18: 32 bytes, not all
@@ -389,4 +389,139 @@ fn positional_redaction_applies_only_to_the_a_response() {
 
     let c = "C\t1\t100\t0\t0\tW_ACCOUNT_000\tNisugi";
     assert_eq!(redact(c), c, "a C response must pass through unchanged");
+}
+
+// ---------------------------------------------------------------------------
+// Retryability (M2 step 8). The one part of the live connector that can be
+// tested without a socket, and the part most worth testing: it decides whether
+// a supervisor retries, and `VellumFE` records both directions of getting it
+// wrong.
+// ---------------------------------------------------------------------------
+
+/// An unclassified failure is **retryable**, and that default is the safe one.
+///
+/// > *"EOF: ... a transient DROP, not a credential rejection -- it must NOT
+/// > surface as `AuthFailed`, or the ... supervisor treats it as 'bad
+/// > credentials, stop retrying' and strands the session."* (`VellumFE`)
+///
+/// An unclassified error retried costs a bounded ladder. An unclassified error
+/// treated as fatal costs the session.
+#[test]
+fn an_unclassified_eaccess_failure_is_retryable() {
+    let error = EaccessError {
+        stage: "tls_handshake",
+        detail: "connection reset".to_owned(),
+        fatal: false,
+    };
+    assert!(
+        !error.fatal,
+        "the default must be retryable: a transport failure nobody classified \
+         is far more likely than an account problem nobody classified"
+    );
+}
+
+/// `fatal()` marks, and marks only what it is asked to.
+#[test]
+fn fatal_is_opt_in_and_preserves_the_rest() {
+    let base = EaccessError {
+        stage: "a_response",
+        detail: "authentication rejected".to_owned(),
+        fatal: false,
+    };
+    let marked = base.clone().fatal();
+    assert!(marked.fatal);
+    assert_eq!(marked.stage, base.stage, "the stage is untouched");
+    assert_eq!(marked.detail, base.detail, "and so is the detail");
+}
+
+/// **The stage is NOT the classification**, which is the whole reason `fatal`
+/// is a field.
+///
+/// `a_response` covers three outcomes: the server refusing the credentials, and
+/// two ways the link can fail while asking. A supervisor that keyed on the
+/// stage name would stop retrying on every mid-handshake drop -- and one that
+/// keyed on it the other way would hammer the auth server with a known-bad
+/// password.
+///
+/// This test is what stops someone "simplifying" `fatal` into a
+/// `matches!(stage, "a_response" | "l_response")` later.
+#[test]
+fn one_stage_carries_both_verdicts() {
+    let rejected = EaccessError {
+        stage: "a_response",
+        detail: "authentication rejected. server said: \"A\tPASSWORD\"".to_owned(),
+        fatal: false,
+    }
+    .fatal();
+    // What `read_response` produces at the SAME stage when the link dies.
+    let dropped = EaccessError {
+        stage: "a_response",
+        detail: "connection closed by peer (0 bytes)".to_owned(),
+        fatal: false,
+    };
+
+    assert_eq!(
+        rejected.stage, dropped.stage,
+        "same stage -- this is the premise, and if it ever stops being true \
+         the rest of this test is measuring nothing"
+    );
+    assert!(rejected.fatal, "the refusal stops the ladder");
+    assert!(
+        !dropped.fatal,
+        "the DROP does not. Vellum: a transient drop surfacing as AuthFailed \
+         'strands the session'."
+    );
+}
+
+/// **Three of the four launch refusals are fatal, and the fourth is NOT.**
+///
+/// This test was FIRST WRITTEN asserting that all four say DO NOT RETRY,
+/// because the plan said so. It failed on PROBLEM 4, whose message is *"the
+/// account service failed while assigning the character. RETRY: transient."*
+///
+/// The plan was summarising, and the summary lost the exception. Recorded here
+/// rather than quietly corrected, because the shape of the mistake matters:
+/// the classification had already been written as "every launch refusal is
+/// fatal" on that summary's authority, and only reading the strings caught it.
+/// Treating 4 as fatal would strand a session on a server hiccup a retry fixes.
+#[test]
+fn launch_refusals_are_fatal_per_sub_code_not_wholesale() {
+    for code in [1, 2, 3] {
+        let l = format!("L	PROBLEM	{code}");
+        assert!(
+            launch_refusal_is_fatal(&l),
+            "PROBLEM {code} is fatal, and its own message says why: {}",
+            describe_launch_refusal(&l)
+        );
+        assert!(
+            describe_launch_refusal(&l).contains("DO NOT RETRY"),
+            "...and that verdict must still be what the message advises, or              this classification has drifted from its evidence"
+        );
+    }
+
+    let four = "L	PROBLEM	4";
+    assert!(
+        !launch_refusal_is_fatal(four),
+        "PROBLEM 4 is TRANSIENT -- {}",
+        describe_launch_refusal(four)
+    );
+    assert!(
+        describe_launch_refusal(four).contains("RETRY: transient"),
+        "and the message is the evidence for that, not this test's opinion"
+    );
+}
+
+/// An unrecognised sub-code is retryable: the same fail-safe default the rest
+/// of the classification takes.
+///
+/// `refusal.rs` says a fifth code would mean "the server grew one". Giving up
+/// on a session because of a code nobody has documented is a guess in the
+/// expensive direction.
+#[test]
+fn an_unknown_launch_sub_code_is_not_fatal() {
+    assert!(!launch_refusal_is_fatal("L	PROBLEM	9"));
+    assert!(
+        !launch_refusal_is_fatal("L	something else entirely"),
+        "and so is an L that is not a PROBLEM at all -- nothing about it says          the account is at fault"
+    );
 }

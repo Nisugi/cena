@@ -226,7 +226,22 @@ impl<C: Connector> SupervisedSession<C> {
         let mut unattended = 0u32;
         loop {
             let generation = self.core.generation.get();
-            let source = match self.connector.connect(generation).await {
+            let connected = self.connector.connect(generation).await;
+            // BEFORE anything is logged about this connection, and before a
+            // single byte of it is written: a secret minted by the connect --
+            // this generation's launch key -- would otherwise reach the
+            // `.bytes` file in the clear, because the sink's redaction set was
+            // built when the log was opened and that key did not exist yet.
+            //
+            // Taken on the failure path too. A refused login still names the
+            // stage it failed at, and the detail it carries is about to go
+            // through `self.log`.
+            for secret in self.connector.take_secrets() {
+                if let Some(sink) = self.core.sink.as_mut() {
+                    sink.redact_key(&secret);
+                }
+            }
+            let source = match connected {
                 Ok(source) => source,
                 Err(error) => {
                     self.log(&format!("connect failed: {error}"));

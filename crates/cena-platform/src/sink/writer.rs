@@ -361,6 +361,28 @@ impl SessionSink {
         )
     }
 
+    /// Register another launch key for redaction.
+    ///
+    /// # Why a sink outlives the secret it was opened with
+    ///
+    /// **One log spans every generation**, and a reconnect is a full re-login
+    /// (`plan/10` §4.6: the SGE connection is *"strictly single-use per
+    /// auth"*), so **every connection has a different launch key**. A sink
+    /// whose redaction set was fixed at creation would write generation 2's
+    /// key verbatim into a file opened during generation 1 -- the one secret
+    /// the `.bytes` file would otherwise carry in the clear, unredacted,
+    /// because it did not exist yet when the set was built.
+    ///
+    /// That is why this is narrow rather than a general `redactions_mut`: the
+    /// launch key is the only secret that is genuinely per-connection. The
+    /// account and character are typed once and registered at creation.
+    ///
+    /// Keys accumulate. An earlier generation's key stays redacted, because
+    /// the log still contains the bytes it appeared in.
+    pub fn redact_key(&mut self, key: &str) {
+        self.redactions.key(key);
+    }
+
     /// Flush both files.
     ///
     /// Called at shutdown, and worth calling on a lifecycle change: a session

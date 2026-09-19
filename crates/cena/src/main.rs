@@ -19,13 +19,23 @@
 //! frames; the behavior's commands and the manual one are both visible in the
 //! order the wire saw them.
 //!
-//! # Credentials are prompted, never stored
+//! # Credentials are prompted, never stored -- but now RETAINED in memory
 //!
 //! `plan/12` §7.1 puts "saved credentials, GUI login, web-login fallback"
-//! explicitly **Out** for Milestone 1. This prompts on stdin, keeps the
-//! password only as long as the handshake needs it, and writes nothing to
-//! disk. It is never logged, and the types that hold it redact themselves
-//! (`cena_platform::Credentials`'s `Debug`).
+//! explicitly **Out** for Milestone 1. This prompts on stdin and writes nothing
+//! to disk. It is never logged, and the types that hold it redact themselves
+//! (`cena_platform::Credentials`'s `Debug`, and `LiveConnector`'s).
+//!
+//! **CHANGED in Milestone 2 step 8.** This paragraph used to say the password
+//! was kept "only as long as the handshake needs it", and that is no longer
+//! true: it lives in [`LiveConnector`] for the session's whole life, because
+//! every reconnect is a full re-login and a session that dropped it could
+//! never open a second connection. The author's decision, and the reasoning is
+//! recorded on `LiveConnector` itself.
+//!
+//! What has *not* changed is that dropping it never zeroed it anyway -- the
+//! old comment admitted as much. The lifetime is longer and now honest;
+//! `zeroize` is still the step `plan/12` §7.1 puts Out of scope.
 //!
 //! **The prompt ECHOES what you type.** There is no terminal echo suppression
 //! here: the password appears on screen as it is typed and stays in the
@@ -49,13 +59,15 @@
 //! inside the session.
 
 mod ask;
+mod connector;
 mod probe;
 mod run;
 
 use ask::ask;
 use cena_behavior::look;
-use cena_platform::{ByteSource, Credentials, Redactions, SessionSink};
-use cena_session::{AuthorityToken, CommandId, Session};
+use cena_platform::{Redactions, SessionSink};
+use cena_session::{AuthorityToken, CommandId, SupervisedSession};
+use connector::LiveConnector;
 use run::{run_or_probe, send_manual, wait_for_room, watch_events};
 use std::io;
 use std::sync::Arc;
@@ -113,46 +125,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let typed = ask()?;
     eprintln!();
 
-    // --- Criterion 1: log in against the live server ------------------------
-    let creds = Credentials {
-        account: &typed.account,
-        password: &typed.password,
-        character: &typed.character,
-        game_code: &typed.game_code,
-    };
-    // Kept past `drop(typed)` below: the log filename needs it, and the
-    // character name is not a credential.
-    let typed_character = typed.character.clone();
-    let payload = cena_platform::authenticate(creds, |line| eprintln!("{line}")).await?;
-    // The credentials are finished with: the launch key replaces them, and the
-    // game socket never sees the password. Dropped here rather than at the end
-    // of `main` so it is not live across the whole game session.
+    // --- Criterion 1, now SUPERVISED ---------------------------------------
     //
-    // **This is not a security measure and must not be read as one.** Rust
-    // does not zero a dropped `String`, so the bytes stay in freed heap memory
-    // until something reuses the allocation. Zeroing on drop needs a type that
-    // does it (`zeroize`), which `plan/12` §7.1 puts Out of scope for M1 along
-    // with the rest of the credential ladder. Recorded so the gap is visible
-    // rather than assumed closed.
-    drop(typed);
-    eprintln!("\n[login] {payload:?}");
-
-    let socket = cena_platform::connect_game(&payload).await?;
-    eprintln!("[login] game socket open, WRAYTH banner and ready signals sent\n");
-
-    // --- The session owns the socket from here -----------------------------
-    let session = open_session(socket, &typed_character, &payload);
-    let handle = session.handle();
+    // The credentials move into the connector and stay there for the session's
+    // lifetime. `main` used to drop them the moment the handshake finished and
+    // explain why; that is no longer possible, and the reason is the author's:
+    //
+    //   AUTHOR: "I mean I don't understand the question. When would it get a
+    //            new socket that doesn't require a re-login?"
+    //
+    // It never would -- so a session that can reconnect is a session that keeps
+    // its password. `LiveConnector` carries the full cost, including what the
+    // old comment already admitted: dropping a `String` never zeroed it.
+    //
+    // NOTHING CONNECTS HERE. `SupervisedSession::new` touches no network; the
+    // login happens inside `run()`, once per generation.
+    let connector = LiveConnector::new(typed);
+    // The handle comes back WITH the session, because
+    // `SupervisedSession::new` mints it: it must be obtainable before `run`
+    // consumes the session, and there is no `handle()` accessor to call
+    // afterwards.
+    let (session, handle) = open_session(connector);
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
     // A SECOND receiver, for the probe. `events` is moved into the watcher
     // task below, and a `broadcast` receiver cannot be shared -- each one gets
     // its own copy of the stream. Taken here rather than later because
-    // `session` is consumed by `into_actor()`, and because a receiver only
+    // `session` is consumed by `run()`, and because a receiver only
     // sees what arrives after it is created: subscribing at the probe's own
     // call site would silently drop everything the login sent.
     let (_probe_snapshot, mut probe_events) = session.subscribe();
-    let actor = tokio::spawn(session.into_actor().run());
+    // The supervisor's `run` IS the login: it connects, runs one actor over
+    // the connection, and opens another if the reason warrants it. Everything
+    // below happens against whichever generation is current.
+    let supervisor = tokio::spawn(session.run());
 
     // --- Criterion 2: the room, from TYPED FRAMES --------------------------
     eprintln!("[waiting] for the first room description frame...");
@@ -239,19 +245,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // the process", and criterion 6's evidence is the shutdown report below --
     // so a panicking actor is exactly the case where that report matters most,
     // and `?` here would skip it and hide the panic inside a `JoinError`.
-    let joined = actor.await;
+    let joined = supervisor.await;
     watcher.abort();
 
     match joined {
-        Ok(mut end) => {
-            // "No leaked sockets" is checked by ASKING THE SOURCE, not by
-            // trusting a drop ran. A second shutdown is idempotent by the
-            // trait's contract.
-            let shutdown = end.source.shutdown().await;
+        Ok(end) => {
+            // **No `source` to ask, and that is the change a supervisor makes.**
+            // It owns one source per generation and shuts each down as that
+            // connection ends (`SessionActor::shutdown`), so there is no single
+            // socket left for `main` to interrogate. Criterion 6 moved INTO the
+            // loop rather than out of the program -- which is why the evidence
+            // here is the reason it stopped, not a socket's state.
             eprintln!(
-                "[disconnect] lifecycle={:?}, shutdown={:?}, {} events recorded",
-                end.lifecycle,
-                shutdown.is_ok(),
+                "[disconnect] stopped_because={:?}, last connection ended {:?}, \
+                 connections={}, {} events recorded",
+                end.stopped_because,
+                end.reason,
+                end.generations.0 + 1,
                 end.recorder.events().len()
             );
             eprintln!("\nDone. Criteria 1-6 exercised against the live server.");
@@ -275,16 +285,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Split from `main` under `plan/05` Rule 4.1 -- move code down, do not raise
 /// the cap -- when clippy caught `main` at 112 lines against a 100 limit.
 fn open_session(
-    socket: cena_platform::LiveSource,
-    character: &str,
-    payload: &cena_platform::LaunchPayload,
-) -> Session<cena_platform::LiveSource> {
+    connector: LiveConnector,
+) -> (
+    SupervisedSession<LiveConnector>,
+    cena_session::SessionHandle,
+) {
+    let character = connector.character().to_owned();
     // Logging is ON by default. Author's call, 2026-09-18: "we want it on by
     // default during our dev work. That way there's always a log for you."
     //
     // Opt-OUT, not opt-in: a session that fails in an interesting way is
     // exactly the one nobody remembered to enable logging for.
-    match open_log(character, payload) {
+    let (session, handle) = SupervisedSession::new(connector);
+    let session = match open_log(&character) {
         Ok(sink) => {
             eprintln!(
                 "[log] {}
@@ -292,15 +305,16 @@ fn open_session(
                 sink.bytes_path().display(),
                 sink.events_path().display()
             );
-            Session::new(socket).with_sink(sink)
+            session.with_sink(sink)
         }
         Err(e) => {
             // A log that cannot be opened must not stop a session. Say so
             // loudly -- silence here reads as "logging worked".
             eprintln!("[log] DISABLED -- could not open a log file: {e}");
-            Session::new(socket)
+            session
         }
-    }
+    };
+    (session, handle)
 }
 
 /// Open this session's log, with the credentials registered for redaction.
@@ -308,18 +322,24 @@ fn open_session(
 /// Returns the sink rather than storing it: the session owns it, one per
 /// session, no process-global logger (`plan/05` Rule 5.2).
 ///
-/// **The redaction set is built here, at the one point where every secret is
-/// in scope**: the account and character came from the prompt and the key from
-/// the `L` response. Registering them anywhere else would mean passing
-/// credentials further than they need to go.
-fn open_log(character: &str, payload: &cena_platform::LaunchPayload) -> io::Result<SessionSink> {
-    let mut redactions = Redactions::new();
-    redactions.key(&payload.key);
-    // The account name and the account holder's real name arrive in the `A`
-    // response, which `authenticate` has already printed by the time this
-    // runs. They are registered by the caller of `authenticate` in a later
-    // revision; for now the key is the credential that matters most, because
-    // it is the one the bytes file would otherwise carry verbatim.
+/// # The launch key is NOT registered here any more
+///
+/// It used to be, because the log was opened after the login and there was
+/// exactly one key. A supervised session has **one key per generation**
+/// (`plan/10` §4.6: the SGE connection is *"strictly single-use per auth"*),
+/// and the log is opened *before* the first login -- so the keys arrive later
+/// and keep arriving.
+///
+/// `Connector::take_secrets` is that seam: the supervisor drains it after every
+/// `connect` and calls [`SessionSink::redact_key`] before a byte of the new
+/// connection is written. Registering a key here would cover the first
+/// connection and silently miss every reconnect, which is worse than not
+/// pretending to.
+fn open_log(character: &str) -> io::Result<SessionSink> {
+    // Empty at creation, and filled per generation by the supervisor. The
+    // account name and the holder's real name arrive in the `A` response and
+    // are still not registered -- recorded in `plan/12` §6.4 as owed.
+    let redactions = Redactions::new();
     let dir = cena_platform::log_dir().join(cena_platform::date_dir());
     SessionSink::create(&dir, character, &cena_platform::file_stamp(), redactions)
 }
