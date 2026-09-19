@@ -171,8 +171,33 @@ impl SessionHandle {
     ///
     /// # What this is for
     ///
-    /// Instant actions: abilities that take effect immediately and incur no
-    /// roundtime of their own.
+    /// Any command that incurs **no roundtime of its own** and whose answer is
+    /// checked *later* rather than waited on.
+    ///
+    /// > **AUTHOR, 2026-09-18:** *"anything that doesn't cause roundtime would
+    /// > be an instant action."*
+    ///
+    /// In practice, in rough order of volume (`plan/16` §5.2g):
+    ///
+    /// | Caller | Verified by |
+    /// |---|---|
+    /// | **`travel`** -- a run of cardinal directions over a known route | arrival, at the end |
+    /// | observation -- `look`, `look <target>`, `assess <target>` | the text returned |
+    /// | instant abilities -- sigils, `515`, `140` | an `Effects` id lookup |
+    /// | combat openers -- `target`, `stance offensive`, `attack` | the attack's own result |
+    ///
+    /// **`move` is NOT in this list**, and the distinction is the author's:
+    ///
+    /// > *"movement is instant and we care. True but it depends. Let's call it
+    /// > `move` and `travel` so move we care and travel we dont."*
+    ///
+    /// A single `move` is instant but its answer decides what happens next, so
+    /// it belongs on [`Self::send_and_await`]. `travel` is the same command
+    /// batched over a route the mapdb already knows, verifying at the end --
+    /// which is what makes fast travel possible, and what every measurement in
+    /// `plan/16` §5.2 was for.
+    ///
+    /// Originally written for instant abilities alone:
     ///
     /// > **AUTHOR, 2026-09-18:** *"those sigils using fput suck because they
     /// > wait for a response instead of being instant."*

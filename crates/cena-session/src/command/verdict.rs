@@ -163,10 +163,29 @@ pub enum Outcome {
 pub enum Sent {
     /// The bytes reached the wire.
     ///
-    /// **Not "the action fired."** That is confirmed by its effect
-    /// (`plan/16` §2) -- an [`Effects`](cena_model::Effects) lookup on the
-    /// spell id, which the capture of 2026-09-18 showed is reliable: casting
-    /// `515` put `Rapid Fire` in `Buffs` under exactly that id.
+    /// **Not "the action fired", and not a receipt.** It is the *start* of a
+    /// verification the caller still owes (`plan/16` §1.1b):
+    ///
+    /// > **AUTHOR, 2026-09-18:** *"I said fire and forget when I meant fire and
+    /// > verify later, don't wait for verification then."*
+    ///
+    /// So every caller needs a named place the answer will appear:
+    ///
+    /// | Command | Verified by |
+    /// |---|---|
+    /// | a sigil, an instant cast | an [`Effects`](cena_model::Effects) id lookup (§2) |
+    /// | a movement | the next room frame |
+    /// | `look`, `assess` | the text it returns |
+    ///
+    /// The effects case is the one §2 was built on and the capture of
+    /// 2026-09-18 showed is reliable: casting `515` put `Rapid Fire` in `Buffs`
+    /// under exactly that id. **Movement is what shows it is not the only
+    /// case** -- the mechanism is "check somewhere specific, later", and the
+    /// *somewhere* varies by command.
+    ///
+    /// **A `send_now` with no such place is a bug.** A caller that cannot say
+    /// where it will check is not deferring verification; it is one that never
+    /// verifies.
     Ok {
         /// The server second the roundtime gate was decided against, when one
         /// ran. `None` under [`Gate::None`], where no clock is consulted.
@@ -185,27 +204,89 @@ pub enum Sent {
     Interrupted,
 }
 
-/// Whether an instant action is gated on roundtime.
+/// Whether a command is gated on roundtime.
 ///
 /// # Why this is not a `bool`
 ///
-/// Because the caller is asserting something about the game, and a bare
-/// `true` at the call site does not say what. `plan/16` §1.1 has two rules and
-/// this names which one applies:
+/// Because the caller is asserting something about the game, and a bare `true`
+/// at the call site does not say what.
 ///
 /// > **AUTHOR:** *"they can't be activated while in roundtime"* -- but also
 /// > *"shouldn't be subject to typeahead or waiting (**depending on the
 /// > action**)"*.
 ///
-/// That parenthesis is why there are two variants. Which actions are exempt is
-/// **UNVERIFIED** (`plan/16` §8, question 1), so the type carries the question
-/// rather than a guess: today every caller passes [`Self::Roundtime`], and the
-/// day one does not, it says so at the call site instead of flipping a
-/// boolean.
+/// # The definition, in one line
+///
+/// > **AUTHOR, 2026-09-18:** *"anything that doesn't cause roundtime would be
+/// > an instant action."*
+///
+/// **That is the whole rule, and it is a property rather than a list.** An
+/// instant action is not a curated set of abilities to enumerate -- it is any
+/// command that incurs no roundtime of its own. `plan/16` §1.2's seed list
+/// (515, 140, the Sunfist sigils) is therefore a set of *examples*, never the
+/// definition, and §1.2's note that "this list grows" understates it: there is
+/// nothing to grow, because membership is decided by what the command does.
+///
+/// Two earlier drafts of these docs got this wrong in opposite directions.
+/// The first called the exempt set **UNVERIFIED** and said "today every caller
+/// passes [`Self::Roundtime`]". The second, on learning that `look <target>`
+/// and `assess <target>` qualify, split it into "commands that act" versus
+/// "commands that look" -- closer, but still a taxonomy where a property was
+/// wanted. Observation is exempt *because* it causes no roundtime, not because
+/// it is observation.
+///
+/// MEASURED 2026-09-18 (`plan/16` §1.5): a `look` sent **inside a 7-second
+/// roundtime** executed normally -- full room render, no `...wait N`, no
+/// refusal. The server does not gate what does not cost roundtime, and a
+/// client that did would refuse commands the game would have run.
+///
+/// # This is NOT the same question as "when do we verify"
+///
+/// > **AUTHOR, 2026-09-18:** *"there is a difference between an instant action
+/// > as in something we fire and forget and something that's instant and we
+/// > care about the answer such as moving."* -- then, correcting it: *"I said
+/// > fire and forget when I meant fire and verify later, don't wait for
+/// > verification then."*
+///
+/// **Nothing is fire-and-forget.** The distinction is *when* the answer is
+/// checked, never *whether*:
+///
+/// | | fire, verify later | wait for the answer |
+/// |---|---|---|
+/// | **causes no roundtime** | a sigil (check `Effects`) | **a movement** |
+/// | **causes roundtime** | -- | an attack, a cast |
+///
+/// Both columns verify. The left one just does not **block** on it: a sigil is
+/// sent, the next command follows immediately, and the effect is confirmed
+/// afterwards by an id lookup (`plan/16` §2). That is what makes batching
+/// possible -- not an absence of checking, but the checking being deferred.
+///
+/// This type answers only the **rows**: may it be sent while a roundtime is
+/// running. Which *column* a command is in is a separate decision, made by
+/// picking [`SessionHandle::send_now`](crate::SessionHandle::send_now) or
+/// [`send_and_await`](crate::SessionHandle::send_and_await).
+///
+/// The top-right cell is why both exist. A movement is instant -- no roundtime
+/// to wait out, so `Gate::None` is correct -- but the client cannot go on
+/// without knowing the room changed, so it waits. `plan/16` §5.2g: a cardinal
+/// run batches and verifies after, a `StringProc` door waits for its replies.
+///
+/// **The design consequence is that [`Sent`] is not a receipt.** It says the
+/// bytes went out; it is the *start* of a verification the caller still owes,
+/// not the end of one. A caller in the left column must have somewhere to
+/// check later -- `Effects` for a sigil, the room for a move -- and a caller
+/// that has nowhere to check is not fire-and-verify-later, it is a caller that
+/// never verifies.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Gate {
-    /// Refuse while in roundtime. The default for everything measured so far.
+    /// Refuse while in roundtime. For any command that **causes** roundtime:
+    /// attacks, casts, most abilities.
     Roundtime,
-    /// Send regardless. For an action established not to be roundtime-gated.
+    /// Send regardless. For any command that causes **no** roundtime -- the
+    /// author's definition of an instant action.
+    ///
+    /// Sigils, Rapid Fire, Wall of Force; and equally `look`, `look <target>`,
+    /// `assess <target>`, which cost nothing and which the server MEASURED as
+    /// running during a roundtime.
     None,
 }

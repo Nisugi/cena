@@ -48,6 +48,123 @@ Two rules, and they are not the same rule the queue currently enforces:
 - **Gated on roundtime.** Not on whether another command is in flight.
 - **Batchable.** Several in a row, then the command they modify.
 
+### 1.1a THE DEFINITION, replacing the seed list as the rule
+
+> **AUTHOR, 2026-09-18:** *"anything that doesn't cause roundtime would be an instant action."*
+
+**A property, not a list.** §1.2 below reads as though instant actions were a set to enumerate and
+grow; they are not. Membership is decided by what the command costs, so the seed list is a set of
+*examples* and nothing in the design should iterate it.
+
+That widens the category well past abilities:
+
+> **AUTHOR:** *"look &lt;target&gt;, assess &lt;target&gt; would be instant actions"*
+
+MEASURED and already in hand (§1.5): a `look` sent **inside a 7-second roundtime** executed
+normally. Observation qualifies -- not as a special case, but because it costs no roundtime, which
+is the same reason a sigil does.
+
+### 1.1b THE SECOND AXIS: instant is not the same as fire-and-forget
+
+> **AUTHOR, 2026-09-18:** *"there is a difference between an instant action as in something we fire
+> and forget and something that's instant and we care about the answer such as moving."*
+>
+> **Corrected moments later:** *"I said fire and forget when I meant fire and verify later, don't
+> wait for verification then."*
+
+**Nothing is fire-and-forget**, and the correction is the load-bearing part. The distinction is
+*when* the answer is checked, never *whether*:
+
+| | fire, verify later | wait for the answer |
+|---|---|---|
+| **causes no roundtime** | a sigil (check `Effects`) | **a movement** |
+| **causes roundtime** | -- | an attack, a cast |
+
+Both columns verify. The left one merely does not **block** on it: the sigil goes out, the next
+command follows immediately, and the effect is confirmed afterwards by an id lookup (§2). **What
+makes batching possible is deferred checking, not absent checking.**
+
+- *Does it cause roundtime?* decides the **gate** -- `Gate::None` or `Gate::Roundtime`.
+- *When is it verified?* decides the **path** -- `send_now` or `send_and_await`.
+
+**The top-right cell is why both send paths exist**, and it is the one §1.4 did not anticipate.
+`send_now` was designed for fire-and-forget, and §2's confirm-by-effect was built on the assumption
+that an instant action's result shows up in a dialog. A movement fits neither: there is no roundtime
+to wait out, so the gate must be `None`, but the client absolutely cares whether the room changed,
+and the answer arrives as a room frame rather than as an effect.
+
+So `Gate` and the choice of send path are **orthogonal**, and a caller sets them separately. The
+combination that matters most in practice -- `Gate::None` with `send_and_await` -- is movement, and
+§5.2g is what it looks like in a travel route.
+
+#### `move` and `travel`: the same command, two verification policies
+
+> **AUTHOR, 2026-09-18:** *"movement is instant and we care. True but it depends. Let's call it
+> `move` and `travel` so move we care and travel we dont. giving us the ability to fast travel."*
+
+**This is what the rate measurement was for.** Both operations send cardinal directions; they
+differ only in **when they verify**, which puts them in different columns of §1.1b's table:
+
+| | Sends | Verifies | Path |
+|---|---|---|---|
+| **`move`** | one direction | the room changed, **before continuing** | `send_and_await` |
+| **`travel`** | a run of directions | arrival at the destination, **at the end** | `send_now`, batched |
+
+`travel` is the **fast path over a known route**. The mapdb already says which rooms connect, so
+confirming each hop individually buys nothing -- the client is not discovering the path, it is
+walking one it already has. Verification moves to the end: *am I where I meant to be?*
+
+**`move` is not obsolete.** It is what `travel` degrades to, and it is correct wherever the route
+is unknown, contested, or the answer changes what happens next.
+
+##### Why this is safe to batch, given everything measured
+
+- **Depth, not rate, is the bound** (§5.2f). A `travel` batch is capped at the entitlement -- 3 on
+  the author's account, 2 standard, **1 on free-to-play, where `travel` has no batch and collapses
+  into `move`**.
+- **The rate ceiling is far away.** 21.5 commands/second sustained clean; no travel route
+  approaches it, because the character's own movement delay paces the route.
+- **StringProcs are natural drain points** (§5.2g). A door needs its replies, so the batch ends
+  there, the queue empties, and the next cardinal run starts from a clean buffer. A route with a
+  door every few rooms paces itself with no delay logic at all.
+
+##### The failure mode `travel` must handle, and `move` does not
+
+**Not verifying each hop means a wrong turn is discovered late.** If a room does not connect the
+way the mapdb claims, or the character is stopped mid-run, `travel` finds out at the end -- with
+several commands already sent into a position it did not expect.
+
+`move` cannot have this problem, because it checks before continuing. So `travel` owes something
+`move` does not: **the recovery has to be re-pathing from wherever it actually is, never resuming
+the original plan.** That is cheap -- the room id says where it is and the mapdb can path again --
+but it must be designed in rather than bolted on, because the naive "retry the rest of the list" is
+wrong in exactly the case that matters.
+
+**UNVERIFIED:** whether a refused *movement* leaves the path intact (§5.2g). A refused `look` is
+harmless; a movement that is silently dropped rather than refused would leave `travel` believing it
+had moved when it had not, which is the desync `plan/12` §5.4 exists for. **This should be measured
+before `travel` is built** -- and it is the same one-deliberate-overflow test the probe already
+does, with a direction in place of a `look`.
+
+#### `Sent` is not a receipt, it is the start of a verification
+
+This corrects how §1.4's return value was described. `Sent::Ok` says the bytes went out. On the
+fire-and-verify-later path that is the **beginning** of a check the caller still owes, not the end
+of one -- and a caller with nowhere to check later is not deferring verification, it is a caller
+that never verifies.
+
+So every `send_now` call site needs a named place the answer will show up:
+
+| Command | Verified by |
+|---|---|
+| a sigil, an instant cast | `Effects` id lookup (§2) |
+| a movement | the next room frame |
+| `look`, `assess` | the text it returns |
+
+**A `send_now` with no such place is a bug**, and it is the shape §2's confirm-by-effect was
+written to prevent -- but §2 assumed the answer was always an effect. Movement shows it is not: the
+mechanism is "check somewhere specific, later", and the *somewhere* varies by command.
+
 ### 1.2 The seed list
 
 > **AUTHOR:** *"Look there's not a lot of them ok, 515 rapid fire is one, 140 wall of force is one,
@@ -710,6 +827,136 @@ The reply-tracking design is not wrong, but it solves the rate bound, and the ra
 problem. **UNVERIFIED whether a slow server pulls 21.5/s down** -- Kelfour's *"only during slow
 downs"* says it can -- but a client that never batches past its entitlement is not exposed to that
 either.
+
+### 5.2g THE REAL CASE: cross-town travel, and why it is two modes not one
+
+> **AUTHOR, 2026-09-18:** *"There is one thing beyond testing that would come anywhere close to
+> this and that is movement. travelling from one town to another is where this would come in to
+> play. It would also only work on cardinal directions, when you get to like a door that needs to
+> be opened or anything like that, we call them stringprocs in our mapdb, it needs to kind of catch
+> up and get responses for the mini script it needs to do."*
+
+This is the only real workload that approaches the limit, and it settles what `send_now` is
+**for**. Everything above measured the ceiling; this says which side of it the client actually
+lives on -- and the answer is **far** below it, in every use the author named.
+
+#### What `send_now` is actually for, in the author's words
+
+> **AUTHOR, 2026-09-18:** *"send_now is for the instant cast abilities, a few here and there, and
+> then movement for the most part."*
+>
+> *"maybe for changing stance to offensive and attacking in the same instant, or targeting, stance,
+> attack all at once."*
+
+Three uses, and they are not equally common:
+
+> **AUTHOR:** *"look &lt;target&gt;, assess &lt;target&gt; would be instant actions"*
+
+| Use | Volume | Shape |
+|---|---|---|
+| **Movement** | the bulk of it | long runs of cardinal directions |
+| **Observation** | frequent | `look <target>`, `assess <target>` -- free, no roundtime |
+| Instant abilities (§1) | *"a few here and there"* | one or two, then a trigger |
+| Combat openers | occasional | `target`, `stance offensive`, `attack` -- **an ordered batch of 3** |
+
+**Observation widens the category, and the measurement already supports it.** §1 framed instant
+actions as *abilities* -- sigils, Rapid Fire, Wall of Force -- but `look` and `assess` qualify on
+the same grounds: they incur no roundtime and must not wait for one.
+
+MEASURED, and it was in front of me the whole time: phase 4 sent a `look` **inside a 7-second
+roundtime** with `Gate::None` and it **executed normally** -- full room render, no `...wait N`, no
+refusal (§1.5). That was recorded as "roundtime does not gate every command"; the author's point is
+that the ungated commands are a **named class**, not an exception list.
+
+This matters for `Gate`. §1.4's `Gate::None` was written as the rare case, for an ability
+*"established not to be roundtime-gated"*. On this reading it is **not rare at all** -- every
+observation command takes it, and observation is frequent. `Gate::Roundtime` is for things that
+*act*; `Gate::None` is for things that *look*. That is a much clearer rule than an
+action-by-action table, and it is the one the type should encode.
+
+**The combat opener is the sharpest test of the design**, and it is worth noticing why:
+
+- It is **exactly 3** -- the author's premium entitlement, the number run C sustained. It fits, with
+  nothing to spare.
+- It is **strictly ordered**. A stance that lands after the attack is not a late stance, it is the
+  wrong attack. §1.1's batching claim ("several then a trigger") is really an *ordering* claim, and
+  this is the case where getting it wrong is silently wrong rather than visibly broken.
+- On **standard it does not fit** (2 accepted) and on **free-to-play it does not exist** (1). So the
+  same opener must degrade to two sends then one, or to three sequential sends, depending on the
+  account.
+
+That last row is the design consequence: **a behavior cannot hard-code "send these three
+together".** It has to hand the send layer an ordered group and let the layer decide how much of it
+goes at once. The entitlement is per-account and read from the wire (§5.2b-bis), so the split point
+is not known until the game says so.
+
+`Inbox::SendNow` riding the same channel as `Inbox::Command` is what makes the ordering safe --
+two channels would give no guarantee between the stance and the attack. That was written for §1.1's
+sigils; the combat opener is the case where it earns its keep.
+
+#### The mapdb already encodes the distinction
+
+VERIFIED in Lich: a `wayto` edge is **either a direction string or a `StringProc`**, and the
+travel loop branches on exactly that
+(`reference/lich-5/lib/dragonrealms/commons/common-travel.rb:206`):
+
+```ruby
+way = room.wayto[path.first.to_s]
+if way.is_a?(StringProc)
+  way.call          # a mini-script: send, read, decide
+else
+  move way          # a direction: send it
+end
+```
+
+StringProcs are stored with a `;e ` prefix and reconstituted on load
+(`lib/common/map/map_base.rb:377`), and the map layer is careful never to *evaluate* one while
+pathfinding -- `:773` notes weights must be numeric and "never evaluate StringProc". So the
+distinction is **data, already in the mapdb**, not something Cena has to infer.
+
+#### The two modes map onto Cena's two send paths exactly
+
+| Edge | Lich | Cena | Why |
+|---|---|---|---|
+| Cardinal direction | `move way` | **`send_now`** | Nothing to read. The next room arrives or it does not. |
+| StringProc | `way.call` | **`send_and_await`** | *"it needs to kind of catch up and get responses for the mini script"* -- open a door, wait for the reply, decide. |
+
+**This is the justification for having built both**, and it arrived after the fact rather than
+before: `send_now` was built for instant actions (§1) and turns out to be the movement primitive
+too. A run of cardinal directions is precisely the case with no reply worth waiting for, and
+`send_and_await`'s one-window-at-a-time is precisely what a door needs.
+
+#### The rate, in perspective
+
+A cross-town run is the **worst case for command volume in normal play**, and even it is far under
+the measured ceiling:
+
+- A room transition has its own movement delay; the server will not accept directions faster than
+  the character can walk.
+- Run C sustained **21.5 commands/second** clean, and run B needed **54/s** to trip.
+- No human and no travel route generates tens of moves per second.
+
+**So the rate bound is not a constraint on travel.** What *is* a constraint is the **depth**: a
+client that fires a whole path's worth of directions at once is batching past the entitlement
+immediately -- 2 on standard, and **1 on free-to-play, where there is no batch at all** (§5.2b-bis).
+
+#### What travel therefore needs from the send layer
+
+1. **Batch cardinal runs up to the entitlement, never past it.** The entitlement is read from the
+   wire's refusal, not assumed.
+2. **Stop batching at a StringProc.** It is a synchronisation point by definition -- the mini-script
+   needs its replies -- so the batch drains there naturally.
+3. **Treat a refusal as "the batch was too big", not as a failure to retry blindly.** The command
+   was refused, not executed; the path is intact and the move can simply be re-sent.
+
+That is the same conclusion §5.2f reached from the rate data, arriving from the workload instead:
+**bound the batch by entitlement, and let the natural synchronisation points do the pacing.** A
+StringProc every few rooms means the queue drains regularly without any delay logic at all.
+
+**UNVERIFIED:** whether a refused *movement* behaves like a refused `look` -- refused cleanly with
+the path intact -- or whether the server's movement handling differs. Worth one deliberate test
+before Travel is built, because a move that is silently dropped rather than refused would desync
+the client's idea of which room it is in.
 
 ### 5.2e The console undercounted: per-group attribution is not reliable
 
