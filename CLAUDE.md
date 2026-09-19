@@ -182,9 +182,44 @@ From `plan/05-engineering-rules.md`:
 > next thing, on the strength of having measurements for it. §8 puts the first real behavior
 > at **M6**, four milestones out.
 
-**Milestone 1 is complete, including its deferred tail. The next step is `12` §8's
-Milestone 2** — frame vocabulary breadth, a golden corpus, and full room/combat/vitals
-rendering — or whatever the author picks up instead.
+**Milestone 1 is complete, including its deferred tail.** `12` §8's **Milestone 2** —
+frame vocabulary breadth, a golden corpus, and full room/combat/vitals rendering — is
+**substantially done as of 2026-09-19**:
+
+- **Model work** — `plan/18`'s six steps, complete.
+- **Frame vocabulary breadth** — 126 tags; **zero unknown or malformed frames** across
+  the whole golden corpus (267 frames), including traffic from a Lich era newer than any
+  archive fixture.
+- **The golden corpus** — 12 committed fixtures, 41.5 KB, each under the 10 KB budget.
+  Six are M2's, cut 2026-09-19 from `E:\Gemstone\dev\lich-5\logs`; see
+  `crates/cena-protocol/tests/FIXTURES.md` for provenance and
+  `tests/golden_m2_corpus.rs` for the 17 tests.
+
+> **THE CORPUS EARNS ITS KEEP IMMEDIATELY.** Cutting it found a real defect:
+> `<crtrStatus>` typed correctly standing alone and degraded to
+> `Frame::Structural { raw }` **inside a `<component>` body**, with every flag trapped
+> in an unparsed string. MEASURED: **2,537 of 2,568 lines (98.8%)** put it inside a
+> component, so the path that worked served 1.2% of real traffic.
+>
+> Two lessons, both already rules here. First, §3a's reopen signal fired exactly as
+> written — a classifier would have had to re-tokenize markup — so the frame was widened
+> rather than the consumer taught to re-parse. Second, **the first fix was too broad and
+> the suite caught it**: routing every known tag through `thin_frame` turned
+> `<nav rm=>` into `WindowHints`. The existing test was right and the change was wrong.
+>
+> Also: **two of my own assertions were corrected by the fixtures.** I claimed the combat
+> exchange carried a `<roundTime>` tag and a `>` prompt. It carries the roundtime as prose,
+> and the prompt is `HR>`. A golden cut from real traffic does not accept a claim about
+> what the wire "should" contain.
+
+**Remaining before M2 is closed:** `plan/15` §2b-style recording of why `crtrStatus` is
+absent from the sampled archive months (answered: it is a newer Lich build — worth writing
+down), and **PR-10**, whose proptest strategies never reach `parse_runs`, `inner_text` or
+`directions`.
+
+**Deferred, each needing an author decision:** SE-4 (authority across generations),
+SE-6 (`Lagged` recovery unreachable), MO-3 (`active()` answers `None` for both "gone" and
+"never seen").
 
 The first live session that printed game text (2026-09-18) is evidence for exactly that
 milestone: worn inventory arrived as `a` + `pebbled grey leather doublet` split at a link
