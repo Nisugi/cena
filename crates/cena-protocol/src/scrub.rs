@@ -70,6 +70,32 @@ const THIRD_PARTY_MARKERS: &[&str] = &[
     "pushStream id='society'",
     "pushStream id=\"bounty\"",
     "pushStream id='bounty'",
+    // **ESP and speech, which the module doc promised and this list omitted**
+    // (review PR-7). Rule 3 above says private channels are DROPPED rather
+    // than pseudonymised, because consent for a stranger's words is not
+    // obtainable and a pseudonym does not make their sentence publishable.
+    //
+    // `thoughts` is the ESP/telepathy channel
+    // (`reference/wiki_clean/Wrayth protocol.txt:61`), and the wiki's own
+    // example is a named player's words:
+    //
+    //     You hear the faint thoughts of <name> echo in your mind:
+    //
+    // It is also an "Exclusive" stream (`:76`), so with the window closed the
+    // text falls through into main wrapped in a style -- which means the
+    // `pushStream` marker is not always present and the prose form has to be
+    // caught too.
+    "pushStream id=\"thoughts\"",
+    "pushStream id='thoughts'",
+    "<preset id=\"thought\">",
+    "<preset id='thought'>",
+    "thoughts of",
+    "pushStream id=\"speech\"",
+    "pushStream id='speech'",
+    // `voln` routes to `thoughts` when closed (`:77`), so it is the same
+    // channel arriving under another name.
+    "pushStream id=\"voln\"",
+    "pushStream id='voln'",
 ];
 
 /// Consistent pseudonyms, and the redaction rules that need no configuration.
@@ -121,11 +147,97 @@ impl Scrubber {
         // rather than a decorated copy of it.
         let mut text = strip_vellum_images(strip_lich_timestamp(line));
         text = redact_host_uris(&text);
-        for (real, pseudonym) in &self.names {
-            text = text.replace(real.as_str(), pseudonym.as_str());
-        }
-        text
+        replace_names(&text, &self.names)
     }
+}
+
+/// Replace every whole-word occurrence of a real name, in **one pass**.
+///
+/// # The three defects this replaces
+///
+/// It was `for (real, pseudonym) in &self.names { text = text.replace(..) }`,
+/// and each part of that was wrong (review PR-7):
+///
+/// 1. **Chained.** Each pass ran over the previous pass's OUTPUT, so with
+///    `{Al -> Bob, Bob -> Cy}` -- ordinary for a `BTreeMap` -- an `Al` became
+///    `Bob` and then `Cy`, and two players collapsed into one. A fixture that
+///    merges two people is worse than an unscrubbed one, because it looks
+///    correct.
+/// 2. **Substring.** `Eon` rewrote the inside of `Eonake`, corrupting a name
+///    that was never registered and producing text no parser should have to
+///    see.
+/// 3. **Case-sensitive.** The wire capitalises names at the start of a
+///    sentence and Lich lowercases them in some commands, so a registered
+///    `Alderin` left every `alderin` in place. So did the checker in
+///    `tests/fixtures_are_scrubbed.rs`, which is why nothing caught it.
+///
+/// One pass over the input fixes 1. Word boundaries fix 2. Case-insensitive
+/// matching fixes 3, and the pseudonym adopts the case pattern of what it
+/// replaced so a sentence still reads as a sentence.
+fn replace_names(text: &str, names: &std::collections::BTreeMap<String, String>) -> String {
+    if names.is_empty() {
+        return text.to_owned();
+    }
+    let lower = text.to_lowercase();
+    // Longest first, so `Eon` cannot claim the start of a registered
+    // `Eonake` before `Eonake` is tried.
+    let mut ordered: Vec<(&String, &String)> = names.iter().collect();
+    ordered.sort_by(|a, b| b.0.len().cmp(&a.0.len()).then_with(|| a.0.cmp(b.0)));
+
+    let bytes = text.as_bytes();
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+    'outer: while i < text.len() {
+        if text.is_char_boundary(i) && !is_name_byte(i.checked_sub(1).map(|p| bytes[p])) {
+            for (real, pseudonym) in &ordered {
+                let end = i + real.len();
+                if end <= text.len()
+                    && lower.is_char_boundary(i)
+                    && lower.is_char_boundary(end)
+                    && lower[i..end] == real.to_lowercase()
+                    && !is_name_byte(bytes.get(end).copied())
+                {
+                    out.push_str(&match_case(&text[i..end], pseudonym));
+                    i = end;
+                    continue 'outer;
+                }
+            }
+        }
+        let ch = text[i..].chars().next().unwrap_or('\0');
+        out.push(ch);
+        i += ch.len_utf8();
+    }
+    out
+}
+
+/// Is this byte part of a name, for word-boundary purposes?
+///
+/// `None` (start or end of input) is a boundary. Letters, digits and `_` are
+/// not: `Eonake` must not match a registered `Eon`, and `Alderin2` is a
+/// different token from `Alderin`.
+fn is_name_byte(b: Option<u8>) -> bool {
+    b.is_some_and(|b| b.is_ascii_alphanumeric() || b == b'_')
+}
+
+/// Give `pseudonym` the case pattern of the `matched` text it replaces.
+///
+/// The wire capitalises a name at the start of a sentence and lowercases it in
+/// some command echoes. Matching case-insensitively and then emitting the
+/// pseudonym verbatim would turn `alderin` into `Bob` mid-sentence, which is a
+/// tell that the fixture was rewritten -- and the fixtures exist to look like
+/// wire traffic.
+fn match_case(matched: &str, pseudonym: &str) -> String {
+    let upper = matched.chars().filter(|c| c.is_alphabetic());
+    let all_upper =
+        matched.chars().any(char::is_alphabetic) && upper.clone().all(char::is_uppercase);
+    if all_upper {
+        return pseudonym.to_uppercase();
+    }
+    let leading_lower = matched.chars().next().is_some_and(char::is_lowercase);
+    if leading_lower {
+        return pseudonym.to_lowercase();
+    }
+    pseudonym.to_owned()
 }
 
 /// Remove `<vellumImg .../>` elements.
@@ -300,7 +412,14 @@ mod tests {
         // RFC 3849 documentation address, not a real one -- see the module docs.
         let line = "Lich is at druby://2001:db8::1%12:50087. Go.";
         let out = redact_host_uris(line);
-        assert!(!out.contains("fe80"), "address survived: {out}");
+        // **`2001:db8`, the address actually in the input.** This asserted
+        // `!contains("fe80")`, which the input never held -- it could not
+        // fail, and the port assertion below was the only one working
+        // (review PR-7). The real corpus carries link-local `fe80::` URIs;
+        // the fixture uses the RFC 3849 documentation prefix, so the
+        // assertion has to name what the fixture has.
+        assert!(!out.contains("2001:db8"), "address survived: {out}");
+        assert!(!out.contains("::1"), "address tail survived: {out}");
         assert!(!out.contains("50087"), "port survived: {out}");
         assert!(out.ends_with(". Go."), "prose was eaten: {out}");
     }
