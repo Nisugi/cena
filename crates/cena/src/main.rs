@@ -186,7 +186,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //
     // NOTHING CONNECTS HERE. `SupervisedSession::new` touches no network; the
     // login happens inside `run()`, once per generation.
-    let connector = LiveConnector::new(typed);
+    let connector = LiveConnector::new(typed, run::login_provider());
     // The handle comes back WITH the session, because
     // `SupervisedSession::new` mints it: it must be obtainable before `run`
     // consumes the session, and there is no `handle()` accessor to call

@@ -25,6 +25,44 @@ pub(crate) fn demo_requested() -> bool {
     std::env::args().skip(1).any(|arg| arg == "--demo")
 }
 
+/// Whether this run was asked to force the **web-login** path (`-- --web-login`).
+///
+/// # Why this is needed to test the thing at all
+///
+/// `authenticate_with_fallback` reaches web login only when eaccess cannot be
+/// REACHED -- and eaccess is up almost always. So without a forcing flag the
+/// fallback is exercised for the first time during an outage, which is the
+/// worst possible moment to find a bug in it.
+///
+/// Lich carries the same escape hatch (`auth_provider: :web`).
+///
+/// An argument, not an env var, for the reason recorded on [`Script`]: an env
+/// var set once in a shell drove the character on every later run.
+#[must_use]
+pub(crate) fn web_login_forced() -> bool {
+    std::env::args().skip(1).any(|arg| arg == "--web-login")
+}
+
+/// Which login provider this run uses, announcing the choice when it is not
+/// the default.
+///
+/// Lives here rather than in `main` because it reads
+/// [`web_login_forced`] -- and because `main` is at its 100-line cap, which
+/// `plan/05` Rule 4.1 says to answer by moving code down.
+#[must_use]
+pub(crate) fn login_provider() -> cena_platform::Prefer {
+    if web_login_forced() {
+        eprintln!(
+            "
+[login] --web-login: forcing the HTTPS web-login path.
+[login] eaccess will NOT be tried, so there is no fallback if this fails."
+        );
+        cena_platform::Prefer::WebOnly
+    } else {
+        cena_platform::Prefer::Eaccess
+    }
+}
+
 /// Which experiment this run asked for, **named on the command line**.
 ///
 /// | Argument | What it does |

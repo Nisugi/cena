@@ -238,16 +238,31 @@ impl SessionSink {
         // Say what this file is and what it is not, in the file itself. A log
         // read six months from now must not have to guess whether it was
         // scrubbed.
+        // The set GROWS after this line: the launch key is minted by the
+        // connect and registered afterwards (`redact_key`), because it does not
+        // exist when the file is created. So this header must describe what was
+        // registered AT CREATION and point at the in-band marker for the rest.
+        //
+        // FIXED 2026-09-19, found by the first live web-login run. It used to
+        // say "redacted: NO -- nothing was registered, treat this file as raw"
+        // whenever the creation-time set was empty -- which is EVERY live
+        // session, since the key arrives later. The body of that same file then
+        // showed `redaction registered (session key)`, so the header
+        // contradicted its own contents and did so in the dangerous direction:
+        // it told a future reader to treat a redacted log as raw.
         writeln!(
             events,
             "# Hydra session log -- PRIVATE DEVELOPMENT LOG, not automatically shareable.\n\
-             # Credentials (account, real name, session key) are redacted: {}.\n\
+             # Credentials registered BEFORE the first byte: {}.\n\
+             # The session key is registered LATER, when the connect mints it --\n\
+             # look for `redaction registered (session key)` below. Everything\n\
+             # before that line predates its redaction.\n\
              # OTHER PLAYERS' NAMES ARE NOT REDACTED. Cut fixtures through\n\
              # cena_protocol::scrub with the names named, as CLAUDE.md requires.",
             if redactions.is_empty() {
-                "NO -- nothing was registered, treat this file as raw"
+                "none -- no account or character was registered"
             } else {
-                "yes"
+                "account and character"
             }
         )?;
 

@@ -79,8 +79,59 @@ pub enum Provider {
 /// instead, so it is visible without being mistaken for the diagnosis.
 pub async fn authenticate_with_fallback(
     creds: Credentials<'_>,
+    progress: impl FnMut(&str),
+) -> Result<(LaunchPayload, Provider), EaccessError> {
+    authenticate_via(creds, Prefer::Eaccess, progress).await
+}
+
+/// Which provider to try first, or to use alone.
+///
+/// # Why a forced web path exists at all
+///
+/// Because the fallback is otherwise **unreachable while eaccess is up**, and
+/// eaccess is up almost always -- which is the whole point of it. Without this,
+/// the web path could only ever be exercised during an outage, i.e. at the
+/// worst possible moment to discover a bug in it.
+///
+/// Lich has the same escape hatch for the same reason (`auth_provider: :web`,
+/// `authenticator.rb:105`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Prefer {
+    /// The normal path: eaccess, with web login if it cannot be reached.
+    Eaccess,
+    /// **Web login only.** eaccess is not tried, so there is nothing to fall
+    /// back to and a failure here is final.
+    WebOnly,
+}
+
+/// Authenticate, choosing the provider.
+///
+/// [`authenticate_with_fallback`] is this with [`Prefer::Eaccess`], which is
+/// what production wants. [`Prefer::WebOnly`] exists so the web path can be
+/// exercised on a day when eaccess is healthy -- see [`Prefer`].
+///
+/// # Errors
+///
+/// As [`authenticate_with_fallback`]. Under [`Prefer::WebOnly`] the error is
+/// the **web-login** failure, since no eaccess attempt was made to have one.
+pub async fn authenticate_via(
+    creds: Credentials<'_>,
+    prefer: Prefer,
     mut progress: impl FnMut(&str),
 ) -> Result<(LaunchPayload, Provider), EaccessError> {
+    if prefer == Prefer::WebOnly {
+        progress("[login] web login FORCED; eaccess will not be tried");
+        let launch = try_web(creds, &mut progress).await.map_err(|failure| {
+            // No primary error to carry, so this is the whole diagnosis.
+            EaccessError {
+                stage: "web_login",
+                detail: failure.to_string(),
+                fatal: failure.is_credential_refusal(),
+            }
+        })?;
+        return Ok((from_web(&launch, creds.game_code), Provider::WebLogin));
+    }
+
     let primary = match super::authenticate(creds, &mut progress).await {
         Ok(launch) => return Ok((launch, Provider::Eaccess)),
         Err(error) => error,
@@ -98,23 +149,34 @@ pub async fn authenticate_with_fallback(
         primary.stage
     ));
 
-    let request = WebLoginRequest {
-        account: creds.account,
-        password: creds.password,
-        character: creds.character,
-        game_code: creds.game_code,
-    };
-    match authenticate_via_web(request).await {
-        Ok(launch) => {
-            progress("[fallback] authenticated via web login");
-            Ok((from_web(&launch, creds.game_code), Provider::WebLogin))
-        }
+    match try_web(creds, &mut progress).await {
+        Ok(launch) => Ok((from_web(&launch, creds.game_code), Provider::WebLogin)),
         Err(secondary) => {
             // Reported, not returned. See this function's `# Errors`.
             progress(&format!("[fallback] web login also failed: {secondary}"));
             Err(carry_forward(&primary, &secondary))
         }
     }
+}
+
+/// Run the web-login flow, narrating each stage.
+///
+/// Shared by both paths so the forced run exercises **exactly** the code the
+/// fallback would -- a forced path that differs from the real one tests the
+/// wrong thing.
+async fn try_web(
+    creds: Credentials<'_>,
+    progress: &mut impl FnMut(&str),
+) -> Result<Launch, WebLoginFailure> {
+    let request = WebLoginRequest {
+        account: creds.account,
+        password: creds.password,
+        character: creds.character,
+        game_code: creds.game_code,
+    };
+    let launch = authenticate_via_web(request, progress).await?;
+    progress("[web] authenticated via web login");
+    Ok(launch)
 }
 
 /// A web-login [`Launch`] as a [`LaunchPayload`].
@@ -174,7 +236,7 @@ fn from_web(launch: &Launch, game_code: &str) -> LaunchPayload {
 /// it IS the distinction. `failure.rs` records why no four-variant predicate
 /// exists to be tempted by.
 fn carry_forward(primary: &EaccessError, secondary: &WebLoginFailure) -> EaccessError {
-    let credentials_refused = matches!(secondary, WebLoginFailure::LoginRejected);
+    let credentials_refused = secondary.is_credential_refusal();
     EaccessError {
         stage: primary.stage,
         detail: format!(

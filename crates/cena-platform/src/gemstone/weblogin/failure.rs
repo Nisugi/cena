@@ -76,6 +76,19 @@ pub enum WebLoginFailure {
     Transport(String),
 }
 
+impl WebLoginFailure {
+    /// Whether the **credentials themselves** were refused.
+    ///
+    /// Deliberately narrower than "did this attempt fail". It is the one thing
+    /// a web-login failure can say that stops a retry ladder, because it is the
+    /// one thing that stays true on the next attempt and through another
+    /// provider. See the note below on why there is no broader predicate.
+    #[must_use]
+    pub const fn is_credential_refusal(&self) -> bool {
+        matches!(self, Self::LoginRejected)
+    }
+}
+
 // NO `is_fatal` HERE, deliberately -- and this absence is the design, not an
 // omission.
 //

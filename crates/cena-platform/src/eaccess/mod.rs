@@ -60,7 +60,7 @@ mod reject;
 mod wire;
 
 pub use crate::gemstone::endpoint::other_spelling;
-pub use fallback::{Provider, authenticate_with_fallback};
+pub use fallback::{Prefer, Provider, authenticate_via, authenticate_with_fallback};
 pub use game::connect_game;
 pub use handshake::authenticate;
 pub use refusal::{describe_launch_refusal, launch_refusal_is_fatal};

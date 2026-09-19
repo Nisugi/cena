@@ -240,3 +240,51 @@ fn the_redaction_store_does_not_print_its_secrets() {
          {shown}"
     );
 }
+
+/// **The log header must not contradict the log body.**
+///
+/// FOUND 2026-09-19 by reading the log from the first live web-login run. The
+/// header said *"Credentials ... are redacted: NO -- nothing was registered,
+/// treat this file as raw"*, and eleven lines later the same file said
+/// `redaction registered (session key)`.
+///
+/// It was not an edge case: the launch key is minted by the connect and
+/// registered afterwards, so the creation-time set is empty in **every live
+/// session**. The header was therefore wrong every time, and wrong in the
+/// direction that matters -- it tells a future reader to treat a redacted log
+/// as raw, which is how a log gets shared that should not be.
+///
+/// No test asserted the header, which is why it shipped. This is that test.
+#[test]
+fn the_header_does_not_claim_nothing_is_redacted_when_a_key_arrives_later() {
+    let dir = std::env::temp_dir().join("cena-sink-header");
+    let _ = std::fs::remove_dir_all(&dir);
+    // An EMPTY set at creation, which is exactly the live case.
+    let mut sink = cena_platform::SessionSink::create(&dir, "Tester", "stamp", Redactions::new())
+        .expect("the sink must open");
+
+    // The key arrives after the file exists, as it does on every connect.
+    sink.redact_key("a-launch-key-long-enough-to-register");
+    sink.flush().expect("flush must work");
+    let path = sink.events_path().to_owned();
+    drop(sink);
+
+    let log = std::fs::read_to_string(&path).expect("the log must be readable");
+    let (header, body) = log
+        .split_once("redaction registered")
+        .expect("the in-band marker must be present");
+
+    assert!(
+        !header.contains("treat this file as raw"),
+        "the header told a reader to treat a redacted log as raw:\n{header}"
+    );
+    assert!(
+        header.contains("registered LATER"),
+        "the header must point at the in-band marker, since the set grows \
+         after creation:\n{header}"
+    );
+    assert!(
+        body.contains("(session key)"),
+        "the marker must name what was registered"
+    );
+}

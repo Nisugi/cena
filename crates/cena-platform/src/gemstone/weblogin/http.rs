@@ -97,8 +97,17 @@ const MAX_REDIRECTS: usize = 5;
 ///
 /// [`WebLoginFailure`], whose [`is_fatal`](WebLoginFailure::is_fatal) says
 /// whether anything else is worth trying.
-pub async fn authenticate_via_web(request: WebLoginRequest<'_>) -> Result<Launch, WebLoginFailure> {
+pub async fn authenticate_via_web(
+    request: WebLoginRequest<'_>,
+    progress: &mut impl FnMut(&str),
+) -> Result<Launch, WebLoginFailure> {
     let instance = instance_for(request.game_code).ok_or(WebLoginFailure::UnsupportedGameCode)?;
+    // Named because the web code for Prime is NOT the eaccess one, and a reader
+    // watching this run needs to see which was sent.
+    progress(&format!(
+        "[web] instance {} -> web code {}, character page {}",
+        instance.game_code, instance.web_game_code, instance.character_list_path
+    ));
 
     // `cookie_store` carries the ASP session cookie between these requests,
     // which is the whole reason the sequence works. `redirect::Policy::none()`
@@ -114,9 +123,10 @@ pub async fn authenticate_via_web(request: WebLoginRequest<'_>) -> Result<Launch
         .build()
         .map_err(|error| WebLoginFailure::Transport(error.to_string()))?;
 
-    login(&client, &request, instance).await?;
-    let char_code = resolve_char_code(&client, &request, instance).await?;
-    select_character(&client, &char_code, instance).await
+    login(&client, &request, instance, progress).await?;
+    let char_code = resolve_char_code(&client, &request, instance, progress).await?;
+    progress("[web] character resolved; selecting it");
+    select_character(&client, &char_code, instance, progress).await
 }
 
 /// Step 1: establish a session and authenticate.
@@ -124,12 +134,14 @@ async fn login(
     client: &reqwest::Client,
     request: &WebLoginRequest<'_>,
     instance: &Instance,
+    progress: &mut impl FnMut(&str),
 ) -> Result<(), WebLoginFailure> {
     // **This GET is not optional.** Posting `login.asp` cold -- with no session
     // cookie from the sign-in page -- returns a bare 500. A browser always
     // visits the sign-in page first, so the dependency is invisible in a
     // browser capture (`plan/10` §5.4, discovery 2).
     let sign_in = format!("{BASE}/{}/signin_needed.asp", instance.family);
+    progress("[web] GET sign-in page (for the session cookie)");
     client
         .get(&sign_in)
         .send()
@@ -148,6 +160,7 @@ async fn login(
         ("submit", "Login"),
     ];
 
+    progress("[web] POST login.asp");
     let response = client
         .post(format!("{BASE}/includes/common/login/login.asp"))
         .form(&form)
@@ -155,7 +168,13 @@ async fn login(
         .await
         .map_err(transport("login"))?;
 
-    match classify_login_redirect(location_of(&response).as_deref(), instance) {
+    let location = location_of(&response);
+    progress(&format!(
+        "[web] login.asp -> {} redirect {}",
+        response.status().as_u16(),
+        location.as_deref().unwrap_or("<no Location header>")
+    ));
+    match classify_login_redirect(location.as_deref(), instance) {
         LoginRedirect::Authenticated => Ok(()),
         LoginRedirect::Rejected => Err(WebLoginFailure::LoginRejected),
         LoginRedirect::Unexpected => Err(WebLoginFailure::UnexpectedResponse("login redirect")),
@@ -167,7 +186,9 @@ async fn resolve_char_code(
     client: &reqwest::Client,
     request: &WebLoginRequest<'_>,
     instance: &Instance,
+    progress: &mut impl FnMut(&str),
 ) -> Result<String, WebLoginFailure> {
+    progress(&format!("[web] GET {}", instance.character_list_path));
     let response = client
         .get(format!("{BASE}{}", instance.character_list_path))
         .send()
@@ -209,6 +230,7 @@ async fn select_character(
     client: &reqwest::Client,
     char_code: &str,
     instance: &Instance,
+    progress: &mut impl FnMut(&str),
 ) -> Result<Launch, WebLoginFailure> {
     let form = [
         ("charID", char_code),
@@ -221,6 +243,7 @@ async fn select_character(
         ("frontend", "web"),
     ];
 
+    progress("[web] POST goplay2.asp");
     let mut response = client
         .post(format!("{BASE}/includes/common/play/goplay2.asp"))
         .form(&form)
@@ -231,7 +254,7 @@ async fn select_character(
     // Followed by hand, bounded, because the chain's FINAL url is the payload.
     // An automatic follower would fetch the web client page and discard the
     // very URL being sought.
-    for _hop in 0..MAX_REDIRECTS {
+    for hop in 0..MAX_REDIRECTS {
         let Some(location) = location_of(&response) else {
             return Err(WebLoginFailure::UnexpectedResponse(
                 "character selection: chain ended without a launch url",
@@ -242,8 +265,14 @@ async fn select_character(
         // its path: the path has changed before and the parameters are what is
         // actually needed.
         if location.contains("host=") && location.contains("key=") {
+            // The URL itself is NOT printed: it carries the launch key.
+            progress(&format!(
+                "[web] launch url reached after {} hop(s)",
+                hop + 1
+            ));
             return parse_launch(&location, instance);
         }
+        progress(&format!("[web] hop {}: following redirect", hop + 1));
 
         let next = if location.starts_with("http") {
             location

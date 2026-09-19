@@ -50,6 +50,13 @@ pub struct LiveConnector {
     password: String,
     character: String,
     game_code: String,
+    /// Which login provider this run uses.
+    ///
+    /// Carried on the connector rather than read at the call site because a
+    /// RECONNECT must make the same choice as the first connect: a run started
+    /// with `--web-login` that silently reverted to eaccess on reconnect would
+    /// be testing something other than what was asked for.
+    prefer: cena_platform::Prefer,
     /// How many times `connect` has been called. For the log line only: the
     /// supervisor owns the real retry count.
     attempts: u32,
@@ -65,12 +72,13 @@ pub struct LiveConnector {
 
 impl LiveConnector {
     /// Retain what a re-login needs.
-    pub fn new(typed: crate::ask::Typed) -> Self {
+    pub fn new(typed: crate::ask::Typed, prefer: cena_platform::Prefer) -> Self {
         Self {
             account: typed.account,
             password: typed.password,
             character: typed.character,
             game_code: typed.game_code,
+            prefer,
             attempts: 0,
             secrets: Vec::new(),
         }
@@ -93,6 +101,7 @@ impl std::fmt::Debug for LiveConnector {
             .field("password", &"<redacted>")
             .field("character", &self.character)
             .field("game_code", &self.game_code)
+            .field("prefer", &self.prefer)
             .field("attempts", &self.attempts)
             .field("secrets", &format_args!("{} pending", self.secrets.len()))
             .finish()
@@ -123,7 +132,7 @@ impl Connector for LiveConnector {
         // the author reports that is still the pattern. A credential rejection
         // is NOT retried through it -- see `eaccess/fallback.rs`.
         let (payload, provider) =
-            cena_platform::authenticate_with_fallback(credentials, |line| eprintln!("{line}"))
+            cena_platform::authenticate_via(credentials, self.prefer, |line| eprintln!("{line}"))
                 .await
                 .map_err(classify)?;
         if provider == cena_platform::Provider::WebLogin {
