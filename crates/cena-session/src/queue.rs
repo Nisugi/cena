@@ -180,6 +180,30 @@ impl CommandQueue {
     /// not an iterator -- it returns `None` while a window is open and yields
     /// again once it closes.
     pub fn take_next(&mut self) -> Option<Envelope> {
+        // **A window whose caller has gone is a CLOSED window.** Only a
+        // terminator frame closes one (`actor/io.rs`), so a game that never
+        // sends another prompt -- a stalled server, a dropped reply -- wedged
+        // the queue permanently. REPRODUCED by review: after one timed-out
+        // `look`, a player's `flee` never reached the wire in 300 virtual
+        // seconds.
+        //
+        // That is `plan/12` §4.1's guarantee broken -- "the player is never
+        // locked out" -- and in combat it is the worst version of it. The
+        // abandoned-command skip below could not help, because it sits behind
+        // this early return.
+        //
+        // Dropping the flight does NOT resolve a waiter: there is nobody left
+        // to resolve. §4.4's "a window nobody is waiting on is discarded"
+        // already covers this case; what is new is noticing it here rather than
+        // only when a terminator eventually arrives.
+        if self
+            .in_flight
+            .as_ref()
+            .is_some_and(|flight| flight.reply.is_closed())
+        {
+            self.in_flight = None;
+            self.abandoned += 1;
+        }
         if self.in_flight.is_some() {
             return None;
         }

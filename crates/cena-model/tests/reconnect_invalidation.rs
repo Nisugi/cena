@@ -86,7 +86,22 @@ fn facts_the_burst_omits_return_to_unknown() {
     assert_eq!(state.prompt, None);
     assert_eq!(state.left_hand, None);
     assert_eq!(state.right_hand, None);
-    assert_eq!(state.roundtime_ends, None);
+    // **RETAINED**, and this assertion was flipped deliberately. It read
+    // `None`, encoding §5.2's "roundtime after reconnect is Unknown, never 0"
+    // literally -- but clearing it produced the opposite of Unknown: a review
+    // reproduced `in_roundtime() == Some(false)` with 20 real seconds left,
+    // because `clock.rs`'s `is_some_and` maps a cleared end to "not in
+    // roundtime" the moment a prompt restores the clock.
+    //
+    // `roundtime_ends` is an ABSOLUTE SERVER EPOCH, so unlike the room or the
+    // hands it cannot have gone stale while the socket was down. Keeping it is
+    // keeping a true fact; what §5.2 forbids is asserting "not in roundtime" on
+    // no evidence, which the clock's own invalidation below still prevents.
+    assert_eq!(
+        state.roundtime_ends,
+        Some(1_789_775_824),
+        "an absolute server epoch survives a reconnect -- clearing it made          `in_roundtime` report `Some(false)` during a live roundtime"
+    );
     assert!(state.effects.is_empty());
 }
 

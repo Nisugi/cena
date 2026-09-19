@@ -101,9 +101,26 @@ impl GameState {
         *left_hand = None;
         *right_hand = None;
 
-        // §5.2's headline example: "`world.roundtime` after reconnect is
-        // `Unknown`, never `0`." `Option<u32>` is what makes that expressible.
-        *roundtime_ends = None;
+        // **RETAINED, and §5.2 is still satisfied.** This used to clear it,
+        // citing §5.2's "`world.roundtime` after reconnect is `Unknown`, never
+        // `0`". The intent was right and the mechanism was wrong, in a way a
+        // review reproduced: `in_roundtime` maps a cleared `roundtime_ends` to
+        // `Some(false)` as soon as a prompt restores the clock
+        // (`clock.rs:93-96`, `is_some_and` on `None`), so "Unknown" became
+        // "not in roundtime" -- with 20 real seconds left, letting a
+        // `Gate::Roundtime` send through early.
+        //
+        // It is retained because **it is an absolute server epoch**, not a
+        // relative or connection-scoped fact. A roundtime that ends at server
+        // second N ends at N whether or not the socket survived; unlike the
+        // room or the hands, nothing about it can have changed while we were
+        // away. Keeping a true fact is not inventing a belief.
+        //
+        // What §5.2 actually forbids -- reporting `0`, i.e. "definitely not in
+        // roundtime", on no evidence -- is unchanged: with no clock
+        // `in_roundtime` still returns `None`, and a roundtime that has since
+        // expired compares as expired rather than being asserted.
+        let _ = roundtime_ends;
 
         // Both have a `clear` written FOR this path and, until now, no caller
         // (`status.rs`, `effects.rs`: "for `plan/12` §5.2's reconnect path").

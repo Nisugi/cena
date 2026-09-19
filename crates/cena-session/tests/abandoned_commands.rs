@@ -182,3 +182,64 @@ async fn send_now_is_not_affected() {
     cancel.cancel();
     let _ = task.await;
 }
+
+/// **The player is never locked out** (`plan/12` §4.1), even when the game stops
+/// answering.
+///
+/// # The wedge this guards, reproduced by review
+///
+/// Only a terminator frame closes a command window (`actor/io.rs`), and
+/// `take_next` returns `None` while one is open. So a game that never sends
+/// another prompt -- a stalled server, a lost reply -- wedged the queue
+/// **permanently**: the first caller got `Timeout`, and every command after it,
+/// including a player's, sat unsent forever.
+///
+/// In combat that is the worst version of a lockout: you type `flee` and nothing
+/// goes out. §4.1's guarantee is the one this restores.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_window_whose_caller_gave_up_does_not_wedge_the_queue() {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let cancel = session.cancel_token();
+    let task = tokio::spawn(session.into_actor().run());
+
+    // Nothing will ever answer, so the window opens and stays open.
+    transcript.hold_replies();
+    let first = handle
+        .send_and_await(
+            CommandId(1),
+            "look",
+            Origin::Manual,
+            Duration::from_secs(5),
+            cena_session::queue::any_frame,
+        )
+        .await;
+    assert_eq!(
+        first,
+        Outcome::Timeout,
+        "precondition: the window got no terminator"
+    );
+
+    // The player types something. It MUST reach the wire.
+    let second = handle
+        .send_and_await(
+            CommandId(2),
+            "flee",
+            Origin::Manual,
+            Duration::from_mins(5),
+            cena_session::queue::any_frame,
+        )
+        .await;
+
+    assert!(
+        transcript.lines().contains(&"flee".to_owned()),
+        "plan/12 §4.1: the player is never locked out. The first window's \
+         caller is gone, so the window is closed whether or not the game ever \
+         says so. Wire saw: {:?}, second outcome: {second:?}",
+        transcript.lines()
+    );
+
+    cancel.cancel();
+    let _ = task.await;
+}

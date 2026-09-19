@@ -28,9 +28,30 @@ use std::path::{Path, PathBuf};
 /// `A\tACCOUNT\tKEY\t<KEY-REDACTED>\tREAL NAME` -- the key was already
 /// redacted for the terminal; the account name and the author's real name were
 /// not, and would have gone to disk verbatim.
-#[derive(Debug, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct Redactions {
     secrets: Vec<(String, &'static str)>,
+}
+
+/// Hand-written, because the derive **printed every secret**.
+///
+/// `Redactions` exists to keep launch keys out of files, and deriving `Debug`
+/// meant any `{:?}` -- on it, on a `SessionSink`, or on a `SessionEnd` that
+/// contains one -- dumped the whole `Vec<(String, _)>` in the clear. Found by
+/// review. The same mistake `Credentials` and `LaunchPayload` were already
+/// written by hand to avoid.
+///
+/// The COUNT is shown, which is what a reader legitimately wants ("was anything
+/// registered?") and reveals nothing.
+impl std::fmt::Debug for Redactions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Redactions")
+            .field(
+                "secrets",
+                &format_args!("{} registered", self.secrets.len()),
+            )
+            .finish()
+    }
 }
 
 impl Redactions {

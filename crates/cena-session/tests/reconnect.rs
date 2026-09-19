@@ -175,7 +175,20 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
     );
 
     // Invalidated: the burst carries none of these.
-    assert_eq!(end.state.roundtime_ends, None, "roundtime is Unknown");
+    // **RETAINED**, flipped from `None` deliberately -- see
+    // `invalidate_for_reconnect`. Clearing it made `in_roundtime()` report
+    // `Some(false)` during a live roundtime, which is the opposite of the
+    // Unknown §5.2 asks for. An absolute server epoch cannot go stale while the
+    // socket is down.
+    //
+    // This fixture's roundtime (1789775824) is in the PAST relative to the
+    // second connection's prompt (1789775900), so retaining it is also visibly
+    // harmless here: it compares as expired rather than being asserted.
+    assert_eq!(
+        end.state.roundtime_ends,
+        Some(1_789_775_824),
+        "an absolute server epoch survives the reconnect"
+    );
     assert_eq!(end.state.left_hand, None, "hands are Unknown");
     assert_eq!(end.state.right_hand, None);
     assert_eq!(end.state.room.id, None, "the room id is Unknown");

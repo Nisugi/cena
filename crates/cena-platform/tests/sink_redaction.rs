@@ -210,3 +210,33 @@ fn the_bytes_file_rolls_and_the_parts_reassemble() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// **The redaction store must not print its own secrets.**
+///
+/// Found by review: `Redactions` derived `Debug`, so any `{:?}` on it -- or on a
+/// `SessionSink`, or on a `SessionEnd` holding one -- dumped every registered
+/// launch key in the clear. The type whose entire job is keeping secrets out of
+/// files was printing them on request.
+#[test]
+fn the_redaction_store_does_not_print_its_secrets() {
+    let mut redactions = Redactions::new();
+    redactions.key("SUPERSECRETLAUNCHKEY");
+    redactions.account("someaccount");
+
+    let shown = format!("{redactions:?}");
+    assert!(
+        !shown.contains("SUPERSECRETLAUNCHKEY"),
+        "the launch key must not appear in Debug output: {shown}"
+    );
+    assert!(
+        !shown.contains("someaccount"),
+        "nor the account name: {shown}"
+    );
+    // THREE, not two: `account()` registers the typed form and its uppercase
+    // echo, because the server sends the account name uppercased in `A`.
+    assert!(
+        shown.contains("3 registered"),
+        "the COUNT is what a reader legitimately wants, and it must survive: \
+         {shown}"
+    );
+}
