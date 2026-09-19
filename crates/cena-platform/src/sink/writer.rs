@@ -381,6 +381,15 @@ impl SessionSink {
     /// the log still contains the bytes it appeared in.
     pub fn redact_key(&mut self, key: &str) {
         self.redactions.key(key);
+        // **Recorded in the file, not just applied.** The header is written
+        // once at creation and cannot describe a set that grows afterwards, so
+        // a reader needs an in-band marker to tell which part of a log a
+        // redaction covers. Everything above this line predates it.
+        //
+        // The KEY IS NOT LOGGED, obviously -- only the fact that one was
+        // registered. It is applied to this very line, so a bug that wrote the
+        // secret here would redact it on the way out.
+        let _ = self.event("redaction registered (session key)");
     }
 
     /// Flush both files.

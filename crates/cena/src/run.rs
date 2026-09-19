@@ -15,6 +15,16 @@ use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
+/// Whether this run was asked to demonstrate criteria 3-5 (`-- --demo`).
+///
+/// It runs a `look` behavior at one-second intervals and interleaves a manual
+/// command, so it **sends** -- which is why it is opt-in alongside the scripts
+/// rather than always on.
+#[must_use]
+pub(crate) fn demo_requested() -> bool {
+    std::env::args().skip(1).any(|arg| arg == "--demo")
+}
+
 /// Which experiment this run asked for, **named on the command line**.
 ///
 /// | Argument | What it does |
@@ -23,8 +33,12 @@ use tokio_util::sync::CancellationToken;
 /// | `--capture` | six `search` commands, for clock and roundtime samples |
 /// | `--typeahead` | the probe, which deliberately provokes refusals |
 ///
+/// [`demo_requested`] gates the `look` behavior separately, for the same
+/// reason: it sends too.
+///
 ///  ```powershell
-///  cargo run -p cena                  # quiet, always
+///  cargo run -p cena                  # sends NOTHING
+///  cargo run -p cena -- --demo
 ///  cargo run -p cena -- --typeahead
 ///  ```
 ///

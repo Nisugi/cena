@@ -238,3 +238,49 @@ async fn a_command_resets_the_unattended_count() {
         "and it genuinely reconnected more than once"
     );
 }
+
+/// **A session that never connects still leaves a log.**
+///
+/// MEASURED, from a live run with a mistyped character name: both files came
+/// out at **zero bytes**. The supervisor had written "connect failed" into a
+/// `BufWriter`, and nothing flushed it -- the actor flushes on shutdown, and a
+/// login refused at the first attempt never gets an actor.
+///
+/// The run that most needed a log was the only one that had none, which is the
+/// shape of the bug worth a test: the failure path is the one nobody exercises
+/// until something has already gone wrong.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_session_that_never_connects_still_writes_its_log() {
+    let dir = std::env::temp_dir().join(format!("cena-supervisor-log-{}", std::process::id()));
+    let sink = cena_platform::SessionSink::create(
+        &dir,
+        "testchar",
+        "stamp",
+        cena_platform::Redactions::new(),
+    )
+    .expect("the test needs a writable temp dir");
+    let events_path = sink.events_path().to_path_buf();
+
+    let (connector, _attempts) =
+        LadderConnector::new(vec![], ConnectError::fatal("auth", "no such character"));
+    let (session, _handle) = SupervisedSession::new(connector);
+    let end = session.with_sink(sink).run().await;
+
+    assert_eq!(
+        end.stopped_because,
+        StoppedBecause::Fatal(ConnectError::fatal("auth", "no such character"))
+    );
+
+    let written = std::fs::read_to_string(&events_path).expect("the log file must exist");
+    assert!(
+        written.contains("connect failed"),
+        "the reason the session never started must be IN the log, not \
+         buffered and dropped. Got:\n{written}"
+    );
+    assert!(
+        written.contains("no such character"),
+        "...including the detail, which is the part that says what to fix"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

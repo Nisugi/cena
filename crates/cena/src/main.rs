@@ -195,33 +195,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // --- Criteria 3-5: the behavior, and a command interleaved with it -----
+    //
+    // **Behind `--demo`, because it SENDS.** A `look` every second for the
+    // whole run, plus a manual one at three seconds -- about thirteen commands
+    // on a default run. Scripts were made opt-in and this was left
+    // unconditional, so "quiet, always" was not true:
+    //
+    //   AUTHOR: "So whyt am I sending look every second still?"
+    //
     // The behavior and the manual surface hold the SAME handle type, cloned
     // from the same session. Criterion 3's "the same queue as the behavior's"
     // is structural here, not asserted.
-    let behavior_handle = handle.clone();
     let stop = CancellationToken::new();
-    let behavior_stop = stop.clone();
-    eprintln!("\n[behavior] starting `look`, interval 1s. Watch for interleaving.\n");
-    let behavior = tokio::spawn(async move {
-        look(&behavior_handle, &behavior_stop, ids(), AuthorityToken(1)).await
-    });
+    let demo = run::demo_requested();
 
-    // Print what crosses the wire, both directions, in order. This is what
-    // makes criterion 5 visible rather than merely true.
+    // The event watcher runs either way: it only READS, and a quiet session is
+    // still worth watching.
     let watcher = tokio::spawn(watch_events(events));
 
-    tokio::time::sleep(BEHAVIOR_WARMUP).await;
-
-    // Criterion 5: a manual command MID-BEHAVIOR. It jumps the queue, runs its
-    // round trip, and the behavior CONTINUES -- only an explicit stop preempts
-    // (`plan/12` §4.1, corrected 2026-09-18).
-    eprintln!("\n[manual] typing `look` mid-behavior -- the behavior must continue\n");
-    let outcome = send_manual(&handle, "look").await;
-    eprintln!("\n[manual] outcome: {outcome:?}");
-    eprintln!(
-        "[criterion 5] behavior still running: {}\n",
-        !behavior.is_finished()
-    );
+    let behavior = run_demo(&handle, demo, &stop).await;
 
     run_or_probe(&handle, &mut probe_events, &stop).await;
 
@@ -236,11 +228,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("\n[stop] cancelling the behavior");
     let at_stop = std::time::Instant::now();
     stop.cancel();
-    let result = behavior.await?;
-    eprintln!(
-        "[stop] behavior ended in {:?}: {result:?}",
-        at_stop.elapsed()
-    );
+    if let Some(behavior) = behavior {
+        let result = behavior.await?;
+        eprintln!(
+            "[stop] behavior ended in {:?}: {result:?}",
+            at_stop.elapsed()
+        );
+    }
 
     // --- Criterion 6: clean disconnect -------------------------------------
     //
@@ -311,6 +305,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(join.into())
         }
     }
+}
+
+/// The criteria 3-5 walkthrough: a `look` behavior, and a manual command
+/// interleaved with it.
+///
+/// **Returns `None` when `--demo` was not passed**, and sends nothing in that
+/// case. Split from `main` under `plan/05` Rule 4.1 when gating it pushed that
+/// function past clippy's 100-line limit.
+async fn run_demo(
+    handle: &cena_session::SessionHandle,
+    demo: bool,
+    stop: &CancellationToken,
+) -> Option<tokio::task::JoinHandle<Result<(), cena_behavior::BehaviorError>>> {
+    if !demo {
+        eprintln!(
+            "
+[behavior] none -- nothing is being sent. Pass `-- --demo` for the walkthrough.
+"
+        );
+        return None;
+    }
+
+    let behavior_handle = handle.clone();
+    let behavior_stop = stop.clone();
+    eprintln!(
+        "
+[behavior] starting `look`, interval 1s. Watch for interleaving.
+"
+    );
+    let behavior = tokio::spawn(async move {
+        look(&behavior_handle, &behavior_stop, ids(), AuthorityToken(1)).await
+    });
+
+    tokio::time::sleep(BEHAVIOR_WARMUP).await;
+
+    // Criterion 5: a manual command MID-BEHAVIOR. It jumps the queue, runs its
+    // round trip, and the behavior CONTINUES -- only an explicit stop preempts
+    // (`plan/12` §4.1, corrected 2026-09-18).
+    eprintln!(
+        "
+[manual] typing `look` mid-behavior -- the behavior must continue
+"
+    );
+    let outcome = send_manual(handle, "look").await;
+    eprintln!(
+        "
+[manual] outcome: {outcome:?}"
+    );
+    eprintln!(
+        "[criterion 5] behavior still running: {}
+",
+        !behavior.is_finished()
+    );
+    Some(behavior)
 }
 
 /// Build the session, attaching a log unless one cannot be opened.

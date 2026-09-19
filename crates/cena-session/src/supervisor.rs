@@ -340,6 +340,20 @@ impl<C: Connector> SupervisedSession<C> {
             }
         }
 
+        // **Flush, on every exit path.** The actor flushes when it shuts down,
+        // but a session that never got an actor -- a login refused at the first
+        // attempt -- would otherwise drop its buffered lines unwritten and
+        // leave a ZERO-BYTE log behind.
+        //
+        // MEASURED: a run with a wrong character name produced
+        // `nisugi-...-000.bytes` and `nisugi-....log` at 0 bytes each, with the
+        // "connect failed" line sitting in a `BufWriter` that was dropped. The
+        // one run that most needed a log was the one that had none.
+        self.log(&format!("session stopped: {stopped_because:?}"));
+        if let Some(sink) = self.core.sink.as_mut() {
+            let _ = sink.flush();
+        }
+
         SupervisedEnd {
             stopped_because,
             recorder: self.core.recorder,
