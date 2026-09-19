@@ -294,8 +294,37 @@ pub fn strip_vellum_images(line: &str) -> String {
 /// **Anchored at the start of the line, and only there.** A timestamp inside
 /// prose ("meet me at 01:46:11: sharp") is display text the game sent, and
 /// stripping it would edit the wire rather than unwrap it.
+///
+/// **THE SECOND SHAPE, added 2026-09-19.** A newer Lich build writes a full
+/// date and a spelled-out zone instead:
+///
+/// ```text
+/// 2026-09-01 15:13:58 Central Standard Time: <component id='room objs'>...
+/// ```
+///
+/// MEASURED in `E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi\2026\09\xml`:
+/// **4,427,147** occurrences across the month, one single zone spelling, and in
+/// the largest file **28,879 of 29,122 lines** carry it -- every one of them
+/// line-anchored, zero mid-line (`grep -c 'Central Standard Time: '` equals the
+/// anchored `grep -cE`, both 28,879).
+///
+/// The two shapes are **disjoint by era**, which is why this is not a
+/// duplicate to be folded together: of a 200-file sample of the archive,
+/// **zero** carry either prefix; of the 20 `dev/lich-5` files, all but each
+/// login preamble carry this one. The archive is the older build.
+///
+/// Without this rule those logs are unusable as fixtures, and the failure mode
+/// is the one the `HH:MM:SS: ` docs above already record -- VERIFIED by parsing
+/// a prefixed line, which yielded
+/// `Text("2026-09-01 15:13:58 Central Standard Time: ")` ahead of the real
+/// component. That is a fact the game never sent, baked into a golden.
 #[must_use]
 pub fn strip_lich_timestamp(line: &str) -> &str {
+    strip_zoned_timestamp(strip_bare_timestamp(line))
+}
+
+/// `HH:MM:SS: ` -- the older build's prefix.
+fn strip_bare_timestamp(line: &str) -> &str {
     let b = line.as_bytes();
     if b.len() < 10 {
         return line;
@@ -313,6 +342,80 @@ pub fn strip_lich_timestamp(line: &str) -> &str {
         && b[9] == b' '
     {
         return &line[10..];
+    }
+    line
+}
+
+/// `YYYY-MM-DD HH:MM:SS <Zone Name>: ` -- the newer build's prefix.
+///
+/// The zone is matched as "ASCII letters and spaces, then `: `" rather than
+/// against a list of zone names: the author travels between zones, and a list
+/// would silently stop stripping in a new one. The date and clock are matched
+/// exactly, so the letters-and-spaces run is only reachable on a line that
+/// already opens with a full timestamp -- which is what keeps this from eating
+/// prose.
+///
+/// **Every word must be Capitalised**, and that is not cosmetic -- it is what
+/// separates a zone name from a sentence. A letters-and-spaces scan alone
+/// accepted `is when the caravan leaves` and ate the prose after it; the
+/// test `a_date_in_prose_does_not_lose_its_sentence` FAILED on exactly that,
+/// before this condition existed. Zone spellings are title-case without
+/// exception (`Central Standard Time`, `UTC`, `Pacific Daylight Time`), so
+/// requiring an uppercase first letter per word costs nothing and refuses
+/// ordinary prose.
+///
+/// **Also bounded**, as a second line of defence. MEASURED: `Central Standard
+/// Time` is 21 characters; the longest such spelling in use, `Australian
+/// Central Western Standard Time`, is 40. The bound is 48.
+fn strip_zoned_timestamp(line: &str) -> &str {
+    const MAX_ZONE: usize = 48;
+    let b = line.as_bytes();
+    // `YYYY-MM-DD HH:MM:SS ` is 20 bytes, then at least `X: `.
+    if b.len() < 23 {
+        return line;
+    }
+    let digits = |i: usize| b[i].is_ascii_digit();
+    let shaped = digits(0)
+        && digits(1)
+        && digits(2)
+        && digits(3)
+        && b[4] == b'-'
+        && digits(5)
+        && digits(6)
+        && b[7] == b'-'
+        && digits(8)
+        && digits(9)
+        && b[10] == b' '
+        && digits(11)
+        && digits(12)
+        && b[13] == b':'
+        && digits(14)
+        && digits(15)
+        && b[16] == b':'
+        && digits(17)
+        && digits(18)
+        && b[19] == b' ';
+    if !shaped {
+        return line;
+    }
+    let mut i = 20;
+    let limit = (20 + MAX_ZONE).min(b.len());
+    let mut at_word_start = true;
+    while i < limit {
+        let c = b[i];
+        if c == b' ' {
+            at_word_start = true;
+        } else if c.is_ascii_alphabetic() && (!at_word_start || c.is_ascii_uppercase()) {
+            at_word_start = false;
+        } else {
+            break;
+        }
+        i += 1;
+    }
+    // A zone name is at least one character, does not end mid-space, and must be
+    // followed immediately by `: `.
+    if i > 20 && b[i - 1] != b' ' && i + 1 < b.len() && b[i] == b':' && b[i + 1] == b' ' {
+        return &line[i + 2..];
     }
     line
 }
@@ -373,6 +476,85 @@ mod tests {
         // middle of a sentence is display text the game sent, and removing it
         // would edit the wire rather than unwrap it.
         let line = "You hear: meet me at 01:46:11: sharp";
+        assert_eq!(strip_lich_timestamp(line), line);
+    }
+
+    #[test]
+    fn a_zoned_timestamp_prefix_is_stripped() {
+        // The newer Lich build's shape. MEASURED at 4,427,147 occurrences in
+        // `dev/lich-5/logs/GSIV-Nisugi/2026/09`, every one line-anchored.
+        assert_eq!(
+            strip_lich_timestamp(
+                "2026-09-01 15:13:58 Central Standard Time: \
+                 <component id='room objs'>a rock</component>"
+            ),
+            "<component id='room objs'>a rock</component>"
+        );
+    }
+
+    #[test]
+    fn a_zoned_prefix_in_any_zone_is_stripped() {
+        // Matched as letters-and-spaces rather than against a list, because the
+        // author travels and a list would silently stop stripping.
+        for zone in [
+            "UTC",
+            "Pacific Daylight Time",
+            "Australian Central Western Standard Time",
+        ] {
+            let line = format!("2026-09-01 15:13:58 {zone}: <prompt time='1'>&gt;</prompt>");
+            assert_eq!(
+                strip_lich_timestamp(&line),
+                "<prompt time='1'>&gt;</prompt>",
+                "zone {zone:?} was not stripped"
+            );
+        }
+    }
+
+    #[test]
+    fn a_date_in_prose_does_not_lose_its_sentence() {
+        // The falsification this bound exists for. An unbounded
+        // letters-and-spaces scan would eat the start of any sentence that
+        // happened to follow a timestamp.
+        let line = "2026-09-01 15:13:58 is when the caravan leaves: be there.";
+        assert_eq!(
+            strip_lich_timestamp(line),
+            line,
+            "a zone name must be followed by `: ` immediately, not eventually"
+        );
+    }
+
+    #[test]
+    fn a_blank_zone_is_not_a_prefix() {
+        // The `b[i - 1] != b' '` guard. Without it a "zone" consisting of
+        // nothing but spaces satisfies the scan and the line is stripped --
+        // MEASURED: dropping that condition left the other 15 tests GREEN, so
+        // this case is the only thing enforcing it (plan/05 §0).
+        for line in [
+            "2026-09-01 15:13:58  : <a>x</a>",
+            "2026-09-01 15:13:58 Central Standard Time : <a>x</a>",
+        ] {
+            assert_eq!(
+                strip_lich_timestamp(line),
+                line,
+                "a zone name must abut its colon"
+            );
+        }
+    }
+
+    #[test]
+    fn a_zone_longer_than_the_bound_is_left_alone() {
+        // Better to leave a prefix in (a visible, fixable fixture defect) than
+        // to eat 60 characters of game text (a silent one).
+        let long = "A".repeat(60);
+        let line = format!("2026-09-01 15:13:58 {long}: text");
+        assert_eq!(strip_lich_timestamp(&line), line);
+    }
+
+    #[test]
+    fn a_zoned_prefix_is_only_stripped_at_the_line_start() {
+        // Same anchoring rule as the bare form: a timestamp mid-sentence is
+        // display text the game sent.
+        let line = "You hear: 2026-09-01 15:13:58 Central Standard Time: go";
         assert_eq!(strip_lich_timestamp(line), line);
     }
 
