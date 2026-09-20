@@ -178,6 +178,20 @@ Byte-identical values on two keys is the signature of an alias; genuinely distin
 feats would differ somewhere. I read duplication and stopped, without asking what
 the feat *is*.
 
+### CONFIRMED ON THE WIRE, 2026-09-19
+
+The retraction above was written from the wiki page. It now has wire evidence:
+a `--psm` capture the author ran prints the feat table with **32 rows** where
+Lich's table has 33, and the one row reads
+
+```text
+   Weighting, Padding,  wps             0/1   Passive
+```
+
+One feat, one mnemonic, max rank **1**, Skill column truncated at 20
+characters -- cutting "Sighting" off the feat's full name. Two Lich entries,
+one game row: aliases, as the author said. (`plan/15` §2b.3.)
+
 ### The one real defect here
 
 **`"sighting"` is absent from the table entirely.** VERIFIED:

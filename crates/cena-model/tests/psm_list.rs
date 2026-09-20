@@ -15,10 +15,11 @@ use cena_model::{PsmCategory, PsmLine, PsmSet};
 use cena_protocol::Parser;
 use cena_protocol::frame::Frame;
 
-/// The reassembled rows of the fixture, each with whether it arrived bolded.
-fn psm_rows() -> Vec<(String, bool)> {
+/// The reassembled rows of a fixture, each with whether it arrived bolded.
+fn rows_of(fixture: &str) -> Vec<(String, bool)> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../cena-protocol/tests/fixtures/psm_list.xml");
+        .join("../cena-protocol/tests/fixtures")
+        .join(fixture);
     let bytes = std::fs::read(&path).unwrap_or_default();
     let mut parser = Parser::new();
     let mut frames = parser.push_bytes(&bytes);
@@ -43,6 +44,11 @@ fn psm_rows() -> Vec<(String, bool)> {
         lines.push((current, bolded));
     }
     lines
+}
+
+/// The `cman list` fixture, which most tests here use.
+fn psm_rows() -> Vec<(String, bool)> {
+    rows_of("psm_list.xml")
 }
 
 /// Bold marks KNOWN, not maxed.
@@ -321,4 +327,115 @@ fn there_are_five_psm_categories() {
     let names: Vec<&str> = PsmCategory::ALL.iter().map(|c| c.as_str()).collect();
     assert_eq!(names, vec!["armor", "cman", "feat", "shield", "weapon"]);
     assert_eq!(PsmCategory::parse("ascension"), None);
+}
+
+// ---------------------------------------------------------------------------
+// From the `--psm` capture the author ran on 2026-09-19. Six tables, and each
+// of the three tests below asserts something no single-table fixture could.
+// ---------------------------------------------------------------------------
+
+/// The column header is byte-identical across every table.
+///
+/// This was an assumption: `psm.rs`'s classifier was written against `cman`
+/// alone and generalised to five categories plus ascension. MEASURED across
+/// all six tables in the capture -- same six columns, same widths, same
+/// spelling.
+#[test]
+fn every_table_shares_one_header() {
+    const HEADER: &str =
+        "  Skill                Mnemonic        Ranks Type           Category        Subcategory";
+    for fixture in [
+        "psm_list.xml",
+        "psm_armor.xml",
+        "psm_feat.xml",
+        "ascension_info.xml",
+    ] {
+        let found = rows_of(fixture).iter().any(|(l, _)| l == HEADER);
+        assert!(found, "{fixture} does not carry the shared header");
+    }
+}
+
+/// The armor table classifies, and it is a different category from `cman`.
+///
+/// The point is coverage of a *second* real table: every shape in `psm.rs`
+/// was generalised from one capture of one category.
+#[test]
+fn a_second_category_classifies_the_same_way() {
+    let rows: Vec<PsmLine> = rows_of("psm_armor.xml")
+        .iter()
+        .filter_map(|(l, b)| PsmLine::classify_with_bold(l, *b))
+        .collect();
+    assert_eq!(rows.len(), 11, "armor has 11 specializations");
+    assert!(
+        rows.iter().all(|r| !r.mnemonic.is_empty()),
+        "every row must yield a mnemonic"
+    );
+}
+
+/// **The game prints ONE `wps` row**, which settles `inventory/10` §5.
+///
+/// That entry first claimed `weighting` and `padding` were two feats sharing
+/// one Infomon key -- a PORT-BLOCKER. The author corrected it by pointing at
+/// the wiki, and this is the wire agreeing: the feat table has **32** rows
+/// where Lich's table has 33, and the one row reads
+///
+/// ```text
+///    Weighting, Padding,  wps             0/1   Passive
+/// ```
+///
+/// Truncated at 20 characters, cutting "Sighting" off `Weighting, Padding,
+/// Sighting` -- which is the feat's name on the wiki page. One feat, one
+/// mnemonic, max rank 1. Lich's two entries are aliases.
+#[test]
+fn the_feat_table_has_one_wps_row() {
+    let rows: Vec<PsmLine> = rows_of("psm_feat.xml")
+        .iter()
+        .filter_map(|(l, b)| PsmLine::classify_with_bold(l, *b))
+        .collect();
+    assert_eq!(
+        rows.len(),
+        32,
+        "the wire prints 32 feats; Lich's table has 33"
+    );
+
+    let wps: Vec<&PsmLine> = rows.iter().filter(|r| r.mnemonic == "wps").collect();
+    assert_eq!(wps.len(), 1, "exactly one row carries the wps mnemonic");
+    let Some(row) = wps.first() else {
+        panic!("guarded above");
+    };
+    assert_eq!(row.display_name, "Weighting, Padding,");
+    assert_eq!(row.ranks.max, 1, "one feat, one rank");
+}
+
+/// A header with NO rows is a real shape, not a parse failure.
+///
+/// `ascension info` on a character with no ascension ranks prints the header
+/// and the rule and stops. A consumer that treated an empty table as "the
+/// command failed" would retry forever; one that treated it as "never read"
+/// could not tell it from a table nobody asked for. Both are the MO-3
+/// distinction, and `PsmSet::has_table` is what answers it.
+#[test]
+fn an_empty_table_is_a_real_answer() {
+    let lines = rows_of("ascension_info.xml");
+    let header_found = lines.iter().any(|(l, _)| {
+        cena_model::state::character::psm::classify_header(l).is_none()
+            && l.contains("Ascension Abilities")
+    });
+    assert!(
+        header_found,
+        "guard: the fixture carries the ascension header"
+    );
+
+    let rows: Vec<PsmLine> = lines
+        .iter()
+        .filter_map(|(l, b)| PsmLine::classify_with_bold(l, *b))
+        .collect();
+    assert!(rows.is_empty(), "an empty table yields no rows: {rows:?}");
+
+    // And the distinction that matters: read-but-empty is not never-read.
+    let mut set = PsmSet::default();
+    assert!(!set.has_table(PsmCategory::Armor), "guard: never read");
+    set.replace_category(PsmCategory::Armor, &rows);
+    assert!(set.has_table(PsmCategory::Armor), "read, and empty");
+    assert_eq!(set.len(PsmCategory::Armor), 0);
 }

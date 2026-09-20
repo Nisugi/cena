@@ -39,6 +39,14 @@ const CUTS: &[(&str, &str)] = &[
     // M3 step 6: `cman list` -- the PSM table. Bold spans WRAP across rows
     // here (`<popBold/><pushBold/>` mid-line), which no other fixture has.
     ("psm.src", "psm_list.xml"),
+    // M3 step 6, cut 2026-09-19 from a `--psm` capture run by the author.
+    // `armor list all all` is the smallest complete PSM table (11 rows);
+    // `feat list all all` carries the single truncated `Weighting, Padding,`
+    // row that settles the `feat.wps` question; `ascension info` is an EMPTY
+    // table, header and rule with no rows at all.
+    ("armorlist.src", "psm_armor.xml"),
+    ("featlist.src", "psm_feat.xml"),
+    ("ascinfo.src", "ascension_info.xml"),
 ];
 
 /// Kept in step with `tests/fixtures_are_scrubbed.rs::PSEUDONYMS`; that test
@@ -70,6 +78,10 @@ const PSEUDONYMS: &[(&str, &str)] = &[
     // character, so its name is unavoidable in this fixture -- which is exactly
     // why it is pseudonymised rather than the fixture avoided.
     ("Nisugi", "Ashryn"),
+    // The author's second character, in the `--psm` capture. Same reason as
+    // `Nisugi`: a `list` table is addressed to the logged-in character, so its
+    // name is unavoidable in the fixture.
+    ("Nerten", "Baelor"),
 ];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

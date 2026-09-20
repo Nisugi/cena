@@ -1,0 +1,45 @@
+<a exist="-11240167" noun="Baelor">Baelor</a>, the following Feats are available:
+
+<output class="mono"/>
+  Skill                Mnemonic        Ranks Type           Category        Subcategory
+  -------------------------------------------------------------------------------------
+  Absorb Magic         <d cmd='feat HELP absorbmagic'>absorbmagic</d>     0/1   <d cmd='feat LIST buff'>Buff</d>                                           
+  Chain Armor Proficie <d cmd='feat HELP chainarmor'>chainarmor</d>      0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Chastise             <d cmd='feat HELP chastise'>chastise</d>        0/1   <d cmd='feat LIST attack'>Attack</d>                                         
+  Combat Mastery       <d cmd='feat HELP combatmastery'>combatmastery</d>   0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Covert Art: Escape A <d cmd='feat HELP escapeartist'>escapeartist</d>    0/5   <d cmd='feat LIST reaction'>Reaction</d>                                       
+  Covert Art: Keen Eye <d cmd='feat HELP keeneye'>keeneye</d>         0/5   <d cmd='feat LIST passive'>Passive</d>                                        
+  Covert Art: Poisoncr <d cmd='feat HELP poisoncraft'>poisoncraft</d>     0/5   <d cmd='feat LIST passive'>Passive</d>                                        
+  Covert Art: Sidestep <d cmd='feat HELP sidestep'>sidestep</d>        0/5   <d cmd='feat LIST buff'>Buff</d>                                           
+  Covert Art: Swift Re <d cmd='feat HELP swiftrecovery'>swiftrecovery</d>   0/5   <d cmd='feat LIST passive'>Passive</d>                                        
+  Covert Art: Throw Po <d cmd='feat HELP throwpoison'>throwpoison</d>     0/5   <d cmd='feat LIST attack'>Attack</d>                                         
+  Covert Arts          <d cmd='feat HELP covert'>covert</d>          0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Critical Counter     <d cmd='feat HELP criticalcounter'>criticalcounter</d> 0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Dispel Magic         <d cmd='feat HELP dispelmagic'>dispelmagic</d>     0/1   <d cmd='feat LIST buff'>Buff</d>                                           
+  Dragonscale Skin     <d cmd='feat HELP dragonscaleskin'>dragonscaleskin</d> 0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Excoriate            <d cmd='feat HELP excoriate'>excoriate</d>       0/1   <d cmd='feat LIST attack'>Attack</d>                                         
+  Guard                <d cmd='feat HELP guard'>guard</d>           0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Kroderine Soul       <d cmd='feat HELP kroderinesoul'>kroderinesoul</d>   0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Light Armor Proficie <d cmd='feat HELP lightarmor'>lightarmor</d>      0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Martial Arts Mastery <d cmd='feat HELP martialarts'>martialarts</d>     0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Martial Mastery      <d cmd='feat HELP martialmastery'>martialmastery</d>  0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Mental Acuity        <d cmd='feat HELP mentalacuity'>mentalacuity</d>    0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Mystic Strike        <d cmd='feat HELP mysticstrike'>mysticstrike</d>    0/5   <d cmd='feat LIST buff'>Buff</d>                                           
+  Mystic Tattoo        <d cmd='feat HELP tattoo'>tattoo</d>          0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Perfect Self         <d cmd='feat HELP perfectself'>perfectself</d>     0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Plate Armor Proficie <d cmd='feat HELP platearmor'>platearmor</d>      0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Protect              <d cmd='feat HELP protect'>protect</d>         0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Scale Armor Proficie <d cmd='feat HELP scalearmor'>scalearmor</d>      0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+  Shadow Dance         <d cmd='feat HELP shadowdance'>shadowdance</d>     0/1   <d cmd='feat LIST buff'>Buff</d>                                           
+  Silent Strike        <d cmd='feat HELP silentstrike'>silentstrike</d>    0/5   <d cmd='feat LIST attack'>Attack</d>                                         
+  Vanish               <d cmd='feat HELP vanish'>vanish</d>          0/1   <d cmd='feat LIST buff'>Buff</d>                                           
+  Weapon Bonding       <d cmd='feat HELP weaponbonding'>weaponbonding</d>   0/5   <d cmd='feat LIST passive'>Passive</d>                                        
+  Weighting, Padding,  <d cmd='feat HELP wps'>wps</d>             0/1   <d cmd='feat LIST passive'>Passive</d>                                        
+
+The output listed above was generated based on the following filters:
+  Availability: all
+          Type: all
+      Category: all
+   Subcategory: all
+<output class=""/>
+<prompt time="1789872588">&gt;</prompt>

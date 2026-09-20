@@ -1057,6 +1057,91 @@ Worth keeping: the `Skill` column is truncated to 20 characters on the wire
 that the three 15-character short names (`resistdisintegr`, `resistdisruptio`,
 `twohandedweapon`) are a game-side column-width limit rather than typos.
 
+## 2b.3 The `--psm` capture: six tables, and two corrections
+
+Run 2026-09-19 by the author with `cargo run -p cena -- --psm`, the first
+capture this project generated for itself rather than mining from the archive.
+Eight commands, all reads. Log:
+`cena_logs/2026-09-19/nerten-2026-09-19_21-49-40-000.bytes`.
+
+### The header form is decided by the COMMAND, not the category
+
+**This corrects §2b.2, and the correction runs against me.** That section
+inferred from five archive files that the Ascension table only ever appears as
+`your ... are as follows:` -- the form Lich's `PSMStart` cannot match -- and
+raised the possibility that *"Lich has never stored ascension ranks."*
+
+MEASURED, and it is false:
+
+| Command | Header |
+|---|---|
+| `ascension list all all` | `the following Ascension Abilities are available:` |
+| `ascension info` | `your Ascension Abilities are as follows:` |
+
+Both forms are real, and the split is by **command**: `list` prints
+`available:`, `info` prints `as follows:`. The archive's Ascension captures
+were all `asc info`, which is why the `list` form never appeared in them.
+
+So Lich parses ascension fine, because `Infomon.sync` issues
+`ascension list all` -- the form it matches. What it drops is any `<x> INFO`
+output, for **every** category equally, which is the same defect §2b.2
+already recorded for `CMAN INFO`. Ascension was never special; I inferred a
+category-specific gap from a command-specific one.
+
+### Row counts: five of six match Lich exactly
+
+| Category | Wire | `psms/*.rb` |
+|---|---|---|
+| cman | 80 | 80 |
+| armor | 11 | 11 |
+| shield | 33 | 33 |
+| weapon | 24 | 24 |
+| ascension | 76 | 76 |
+| **feat** | **32** | **33** |
+
+**The feat discrepancy is `weighting`/`padding`, and it settles
+`inventory/10` §5.** The game prints one row:
+
+```text
+   Weighting, Padding,  wps             0/1   Passive
+```
+
+One feat, mnemonic `wps`, max rank 1, its Skill column truncated at 20
+characters -- cutting "Sighting" off `Weighting, Padding, Sighting`, which is
+the feat's name on the wiki. Lich's two entries are **aliases**, exactly as the
+author said. `inventory/10` §5 had claimed they were two feats colliding on one
+key; that retraction now has wire evidence behind it, not just a wiki page.
+
+### The 20-character Skill truncation is uniform
+
+Confirmed across all six tables, and it is why the mnemonic -- not the display
+name -- is the key. `Weighting, Padding,` and `Spiritual Lore - Ble` are both
+truncated mid-word, and a truncated name is ambiguous by construction.
+
+### An empty table is a real shape
+
+`ascension info` on a character with no ascension ranks printed the header and
+the rule and stopped:
+
+```text
+Baelor, your Ascension Abilities are as follows:
+  Skill                Mnemonic        Ranks Type           Category        Subcategory
+  -------------------------------------------------------------------------------------
+```
+
+Zero rows. A consumer treating that as a parse failure would retry forever; one
+treating it as "never read" could not tell it from a table nobody asked for.
+That is the MO-3 distinction, and `PsmSet::has_table` answers it.
+
+### `list` vs `list all all`
+
+Plain `cman list` printed 27 rows against `list all all`'s 80, and its filter
+footer reads `Availability: profession`. The table SHAPE is identical -- same
+header, same terminator, same columns -- so the suffix changes only which rows
+appear. Every structural claim in `state/character/psm.rs` was generalised from
+a filtered 27-row capture, which is why the unfiltered form was worth asking
+for.
+
 ## 2c. The `skill` table prints skills and spell circles in one shape
 
 MEASURED in `dev/lich-5/.../2026-09-01_20-24-11.xml`, and it settles an

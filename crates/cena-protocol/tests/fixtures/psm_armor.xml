@@ -1,0 +1,25 @@
+<a exist="-11240167" noun="Baelor">Baelor</a>, the following Armor Specializations are available:
+
+<output class="mono"/>
+  Skill                Mnemonic        Ranks Type           Category        Subcategory
+  -------------------------------------------------------------------------------------
+  Armor Blessing       <d cmd='armor HELP blessing'>blessing</d>        0/5   <d cmd='armor LIST buff'>Buff</d>                                           
+  Armor Reinforcement  <d cmd='armor HELP reinforcement'>reinforcement</d>   0/5   <d cmd='armor LIST buff'>Buff</d>                                           
+  Armor Spike Mastery  <d cmd='armor HELP spikemastery'>spikemastery</d>    0/2   <d cmd='armor LIST passive'>Passive</d>                                        
+  Armor Support        <d cmd='armor HELP support'>support</d>         0/5   <d cmd='armor LIST buff'>Buff</d>                                           
+  Armored Casting      <d cmd='armor HELP casting'>casting</d>         0/5   <d cmd='armor LIST buff'>Buff</d>                                           
+  Armored Evasion      <d cmd='armor HELP evasion'>evasion</d>         0/5   <d cmd='armor LIST buff'>Buff</d>                                           
+  Armored Fluidity     <d cmd='armor HELP fluidity'>fluidity</d>        0/5   <d cmd='armor LIST buff'>Buff</d>                                           
+  Armored Stealth      <d cmd='armor HELP stealth'>stealth</d>         0/5   <d cmd='armor LIST buff'>Buff</d>                                           
+  Crush Protection     <d cmd='armor HELP crush'>crush</d>           0/5   <d cmd='armor LIST passive'>Passive</d>                                        
+  Puncture Protection  <d cmd='armor HELP puncture'>puncture</d>        0/5   <d cmd='armor LIST passive'>Passive</d>                                        
+  Slash Protection     <d cmd='armor HELP slash'>slash</d>           0/5   <d cmd='armor LIST passive'>Passive</d>                                        
+
+The output listed above was generated based on the following filters:
+  Availability: all
+          Type: all
+      Category: all
+   Subcategory: all
+<output class=""/>
+<prompt tim<!-- CLIENT -->shield list all all<!-- ENDCLIENT -->
+e="1789872591">&gt;</prompt>
