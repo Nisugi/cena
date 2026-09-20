@@ -5,6 +5,20 @@
 //! operation every family needs: *the first def in this family that matches
 //! this text, with its captures*.
 //!
+//! # The gate
+//!
+//! Each family carries a [`RegexSet`] over its compiled patterns. One pass of
+//! the set says *which* defs match a line; only those are then run for their
+//! captures, lowest order first, so first-match-wins is exactly what a linear
+//! scan gives. Lich gates with a union of each pattern's longest literal
+//! (`defs/pattern_gate.rb`) because Ruby has no multi-pattern engine; the set
+//! is the same idea with no literal extraction to get wrong.
+//!
+//! MEASURED (release, warm, the 85 replay blobs, `first_match` once per
+//! family per line): **105 us/line linear, 3.6 us/line gated**; the `attack`
+//! family alone went 42.6 -> 0.9. `tests/combat_gate.rs` prints its own
+//! figure and proves the two agree on every fixture line in every family.
+//!
 //! # Nothing is dropped without saying so
 //!
 //! A row whose pattern will not compile under this crate's `regex` is kept
@@ -18,7 +32,7 @@
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-use regex::{Captures, Regex};
+use regex::{Captures, Regex, RegexSet, RegexSetBuilder};
 
 const ATTACKS_TSV: &str = include_str!("../../../data/combat_attacks.tsv");
 const RESULTS_TSV: &str = include_str!("../../../data/combat_results.tsv");
@@ -212,10 +226,57 @@ impl Def {
     }
 }
 
+/// One family: its defs in first-match order, and the gate over them.
+#[derive(Debug, Default)]
+struct Family {
+    defs: Vec<Def>,
+    /// The set over every def that compiled, or `None` when it would not
+    /// build -- the family then scans linearly and [`Defs::ungated`] says so.
+    gate: Option<RegexSet>,
+    /// Set index -> index into `defs`.
+    gated: Vec<usize>,
+}
+
+impl Family {
+    /// The gate's size limits. The defaults refuse the 362-pattern `attack`
+    /// family; these are generous rather than tuned.
+    const SIZE_LIMIT: usize = 1 << 30;
+    const DFA_SIZE_LIMIT: usize = 1 << 28;
+
+    fn build_gate(&mut self) {
+        self.gated = (0..self.defs.len())
+            .filter(|&i| self.defs[i].regex.is_some())
+            .collect();
+        let sources = self
+            .gated
+            .iter()
+            .filter_map(|&i| self.defs[i].regex.as_ref().map(Regex::as_str));
+        self.gate = RegexSetBuilder::new(sources)
+            .size_limit(Self::SIZE_LIMIT)
+            .dfa_size_limit(Self::DFA_SIZE_LIMIT)
+            .build()
+            .ok();
+    }
+
+    /// The defs that can match `text`, in first-match order. Empty -- and
+    /// unallocated -- for the great majority of lines.
+    fn candidates(&self, text: &str) -> Vec<&Def> {
+        match &self.gate {
+            // `SetMatches` iterates ascending, and `gated` is ascending.
+            Some(gate) => gate
+                .matches(text)
+                .into_iter()
+                .filter_map(|i| self.gated.get(i).and_then(|&d| self.defs.get(d)))
+                .collect(),
+            None => self.defs.iter().collect(),
+        }
+    }
+}
+
 /// The loaded tables.
 #[derive(Debug, Default)]
 pub struct Defs {
-    by_family: BTreeMap<String, Vec<Def>>,
+    by_family: BTreeMap<String, Family>,
     /// `(family, name, pattern, error)` for every row that did not compile.
     failures: Vec<(String, String, String, String)>,
     /// `markup=1` rows with no entry in [`HAND_PORTED`].
@@ -316,6 +377,7 @@ fn build() -> Defs {
             out.by_family
                 .entry(family.to_owned())
                 .or_default()
+                .defs
                 .push(Def {
                     family: family.to_owned(),
                     name: name.to_owned(),
@@ -328,8 +390,9 @@ fn build() -> Defs {
                 });
         }
     }
-    for defs in out.by_family.values_mut() {
-        defs.sort_by_key(|d| d.order);
+    for family in out.by_family.values_mut() {
+        family.defs.sort_by_key(|d| d.order);
+        family.build_gate();
     }
     out.addresses_self = Regex::new(r"(?i)\b(?:at|towards?|upon|around|near|on)\s+your?\b").ok();
     // Lich's `(?<weapon>[^<]+?) at (?=<|\S)`: the capture ends at the ` at `
@@ -363,7 +426,23 @@ impl Defs {
     /// Every def in a family, in first-match order. Empty for an unknown family.
     #[must_use]
     pub fn family(&self, name: &str) -> &[Def] {
-        self.by_family.get(name).map_or(&[], Vec::as_slice)
+        self.by_family.get(name).map_or(&[], |f| f.defs.as_slice())
+    }
+
+    /// The defs in `family` that can match `text`, in first-match order.
+    fn candidates(&self, family: &str, text: &str) -> Vec<&Def> {
+        self.by_family
+            .get(family)
+            .map_or_else(Vec::new, |f| f.candidates(text))
+    }
+
+    /// Families with patterns whose gate did not build: they scan linearly.
+    /// `tests/combat_gate.rs` asserts there are none.
+    pub fn ungated(&self) -> impl Iterator<Item = &str> {
+        self.by_family
+            .iter()
+            .filter(|(_, f)| f.gate.is_none() && !f.gated.is_empty())
+            .map(|(name, _)| name.as_str())
     }
 
     /// The family names the tables declare.
@@ -389,8 +468,8 @@ impl Defs {
     /// every Lich def module: first match wins, in assembly order.
     #[must_use]
     pub fn first_match<'t>(&self, family: &str, text: &'t str) -> Option<(&Def, Captures<'t>)> {
-        self.family(family)
-            .iter()
+        self.candidates(family, text)
+            .into_iter()
             .find_map(|d| d.captures(text).map(|c| (d, c)))
     }
 
@@ -402,8 +481,8 @@ impl Defs {
         role: Role,
         text: &'t str,
     ) -> Option<(&Def, Captures<'t>)> {
-        self.family(family)
-            .iter()
+        self.candidates(family, text)
+            .into_iter()
             .filter(|d| d.role == role)
             .find_map(|d| d.captures(text).map(|c| (d, c)))
     }
@@ -411,8 +490,8 @@ impl Defs {
     /// Does any def in `family` match `text`?
     #[must_use]
     pub fn any_match(&self, family: &str, text: &str) -> bool {
-        self.family(family)
-            .iter()
+        self.candidates(family, text)
+            .into_iter()
             .any(|d| d.captures(text).is_some())
     }
 

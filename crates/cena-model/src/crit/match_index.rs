@@ -26,7 +26,7 @@
 //! # UNVERIFIED, and the argument beside it was wrong
 //!
 //! **The table above cannot be reproduced from this repository.** There is no
-//! bench, no command, and no `RegexSet` code anywhere:
+//! bench, no command, and (when this was written) no `RegexSet` code anywhere:
 //!
 //! ```text
 //! $ grep -rn 'RegexSet' crates/ --include=*.rs
@@ -58,6 +58,18 @@
 //! rationale that was wrong, which is worth separating -- a right answer held
 //! for a wrong reason survives until the reason is load-bearing somewhere
 //! else.
+//!
+//! # 2026-09-20: a set over the residual, measured
+//!
+//! The buckets stay. What changed is the residual list: ~195 unanchored
+//! patterns tried one by one on every call, which was most of the cost.
+//! They now sit behind one `RegexSet` with a raised DFA budget. MEASURED
+//! (release, warm, every line of the 85 combat replay blobs):
+//! `CritTables::parse` went **17-20us to 1.6us per call**. The set only
+//! nominates; `entry_matches` still decides, so the veto is untouched.
+//! `tests/combat_gate.rs` compares the result with a full scan of all 2,394
+//! entries on every real fixture line, beside `tests/crit_index.rs`'s
+//! synthesised ones.
 //!
 //! # The index is exact, not an approximation
 //!
@@ -100,7 +112,7 @@
 //! 195 residual**, largest bucket 72. This doc said 455/194, contradicting a
 //! passing test eight lines of code away.
 
-use regex::Regex;
+use regex::{Regex, RegexSet, RegexSetBuilder};
 
 /// The one pattern in the corpus that Rust's `regex` crate cannot compile, and
 /// the rewrite that makes it compilable.
@@ -135,6 +147,11 @@ const EXCLUSIONS: [(&str, &str); 1] = [(
     ".*removes skull.",
 )];
 
+/// The residual set's lazy-DFA budget. The header's (unverified) table blames
+/// `RegexSet`'s default cache for a 30-80x slowdown at 2,394 patterns; at 195
+/// the question is smaller, and the number is generous rather than tuned.
+const RESIDUAL_DFA_LIMIT: usize = 1 << 26;
+
 /// One compiled pattern plus the exclusion its Lich source carried.
 struct Compiled {
     regex: Regex,
@@ -158,6 +175,10 @@ pub struct MatchIndex {
     /// Entries whose pattern is not anchored to a literal first word. These
     /// are checked on every line.
     residual: Vec<usize>,
+    /// One set over the residual patterns, so the ~195 of them cost one pass
+    /// rather than 195. `None` if it would not build: the residual list is
+    /// then scanned linearly, which is what this did before 2026-09-20.
+    residual_gate: Option<RegexSet>,
 }
 
 /// A pattern that would not compile, with its index and the regex error.
@@ -188,6 +209,7 @@ impl MatchIndex {
             compiled: Vec::new(),
             buckets: Vec::new(),
             residual: Vec::new(),
+            residual_gate: None,
         }
     }
 
@@ -220,10 +242,23 @@ impl MatchIndex {
             }
         }
 
+        // The set is over the COMPILED sources, so the one rewritten
+        // pattern is gated as rewritten; its veto still runs afterwards.
+        let residual_gate = RegexSetBuilder::new(
+            residual
+                .iter()
+                .filter_map(|&i| compiled.get(i))
+                .map(|c: &Compiled| c.regex.as_str()),
+        )
+        .dfa_size_limit(RESIDUAL_DFA_LIMIT)
+        .build()
+        .ok();
+
         Ok(Self {
             compiled,
             buckets: by_word.into_iter().collect(),
             residual,
+            residual_gate,
         })
     }
 
@@ -251,9 +286,24 @@ impl MatchIndex {
                 }
             }
         }
-        for &index in &self.residual {
-            if self.entry_matches(index, line) {
-                hits.push(index);
+        match &self.residual_gate {
+            Some(gate) => {
+                for index in gate
+                    .matches(line)
+                    .into_iter()
+                    .filter_map(|i| self.residual.get(i).copied())
+                {
+                    if self.entry_matches(index, line) {
+                        hits.push(index);
+                    }
+                }
+            }
+            None => {
+                for &index in &self.residual {
+                    if self.entry_matches(index, line) {
+                        hits.push(index);
+                    }
+                }
             }
         }
         hits.sort_unstable();
@@ -285,6 +335,13 @@ impl MatchIndex {
             .iter()
             .filter(|c| c.exclusion.is_some())
             .count()
+    }
+
+    /// Did the residual set build? `tests/combat_gate.rs` holds it true, so
+    /// a silent fall back to the linear scan is a red test, not a slow hunt.
+    #[must_use]
+    pub const fn residual_is_gated(&self) -> bool {
+        self.residual_gate.is_some()
     }
 
     /// `(bucket count, residual count, largest bucket)`, for the test that

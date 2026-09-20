@@ -219,6 +219,12 @@ impl CritTables {
         self.index.exclusion_count()
     }
 
+    /// Did the match index's residual gate build?
+    #[must_use]
+    pub const fn residual_is_gated(&self) -> bool {
+        self.index.residual_is_gated()
+    }
+
     /// `(buckets, residual, largest bucket)` of the match index.
     #[must_use]
     pub fn index_shape(&self) -> (usize, usize, usize) {

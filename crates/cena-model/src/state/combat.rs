@@ -54,38 +54,41 @@
 //! `<a>skald's</a>` -- is not a case at all, because a span that ends inside a
 //! run still overlaps it.
 //!
+//! # The gate, measured
+//!
+//! `plan/06` §1.9: *"Never port a performance conclusion; port the
+//! discipline of measuring, then measure here."* Lich gates each table with
+//! a union of literal fragments (`defs/pattern_gate.rb`). Here each family
+//! carries a `RegexSet` ([`defs`]), and the crit index one over its
+//! unanchored residual (`crit/match_index.rs`). `crit/match_index.rs` records
+//! `RegexSet` as the slowest option at 2,394 patterns; at 9 to 362 per
+//! family, with a raised DFA budget, it is the fastest thing measured.
+//!
+//! MEASURED, release, warm caches, the 85 replay blobs:
+//!
+//! ```text
+//!                                  linear      gated
+//! every family once per line      105 us      3.6 us    (tests/combat_gate.rs prints its own)
+//! CritTables::parse, per call    17-20 us     1.6 us
+//! the state machine, per line     142 us       10 us
+//! parser + chunk + FSM            ~145 us      13 us    (tests/combat_replay_events.rs)
+//! ```
+//!
+//! Lich's own figure is 35us/line with its gate. An earlier note here said
+//! 252us/line for the last row: that was ONE COLD PASS, and ~100ms of it was
+//! compiling the tables. A `regex` also builds its DFA lazily, so every
+//! timing here runs an untimed pass first.
+//!
+//! **Classify-once-per-line was considered and not done.** The machine asks
+//! `DamageLine` up to four times a line and `FlareLine` twice; with the gate
+//! each ask is ~0.2-0.4us, so the whole redundancy is under 3us of the 10.
+//! Threading a cache through eight branch modules to win that is not KISS.
+//!
+//! `tests/combat_gate.rs` proves the gate agrees with a linear scan on every
+//! fixture line in every family and role, and that no family fell back.
+//!
 //! # NOT ported, and why
 //!
-//! - **`PatternGate`**, Lich's literal-substring prefilter -- *not yet*.
-//!   `plan/06` §1.9: *"Never port a performance conclusion; port the
-//!   discipline of measuring, then measure here."* Each family is a
-//!   `Vec<Regex>` tried in order, which is what Lich does after its gate, and
-//!   the cost of having no gate was MEASURED on the 71 fixtures' real feed
-//!   lines (`tests/combat_bench.rs`, `--nocapture`):
-//!
-//!   ```text
-//!   954 patterns compiled in 664ms
-//!   728 lines x 20 rounds: 739µs/line, every family on every line
-//!   ```
-//!
-//!   That is ~0.76µs per regex attempt, times ~950 attempts -- the shape of
-//!   the number says everything: the patterns are cheap and there are a lot
-//!   of them. Lich's own figure is 35µs/line *with* its gate, so a gate is
-//!   worth roughly 20x here, and which gate is the next measurement:
-//!   `crit/match_index.rs` records `RegexSet` as the slowest option at 2,394
-//!   patterns, but these families are 9 to 362 each, which is a different
-//!   regime. The correctness work does not wait on it.
-//!
-//!   MEASURED again with the state machine on top, on the same fixtures
-//!   (`tests/combat_replay_events.rs`, `--release -- --nocapture`):
-//!
-//!   ```text
-//!   85 blobs, 733 lines through parser + FSM in 185ms: 252µs/line
-//!   ```
-//!
-//!   That is the parser, the chunk, every classifier the machine consults
-//!   per line, and the crit lookahead -- ~7x Lich's gated 35µs, with a
-//!   fresh parser and `GameState` per blob inside the number.
 //! - **`messages.rb`**: a separate hook the FSM never reads, and each def
 //!   carries a Ruby lambda for its payload. A later pass if a consumer wants it.
 //! - **`supplements.rb`**: player-supplied YAML patterns. Whether pattern

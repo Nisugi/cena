@@ -167,6 +167,12 @@ fn every_replay_blob_reproduces_its_header() {
     let blobs = load_blobs();
     assert!(blobs.len() >= 50, "replay_spec.rb asserts >= 50 blobs");
     let mut report = Vec::new();
+    // One untimed pass first. The tables compile on first touch (~100ms) and
+    // `regex` builds each DFA lazily, so a single cold pass measures startup,
+    // not the rate: it printed 286us/line for work that costs ~12.
+    for blob in &blobs {
+        let _ = run(&blob.lines, &tables);
+    }
     let started = std::time::Instant::now();
     let mut total_lines = 0usize;
     for blob in &blobs {
