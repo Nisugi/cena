@@ -1,0 +1,28 @@
+# The split-parent cap FLOOR. Do not edit casually -- see caps.baseline.
+#
+# WHY THIS FILE EXISTS. `the_cap_ratchet_only_turns_down` guarded
+# DEFAULT_MAX_LINES and MAX_CAP_EXCEPTIONS against caps.baseline, but the nine
+# split-parent numbers lived ONLY in caps.baseline -- the same file a raiser
+# edits. `split_parents_stay_facades` read the cap from there and checked only
+# `lines > cap`, so a split-parent cap could be raised with nothing failing.
+#
+# VERIFIED on 2026-09-19: raising all nine at once left the entire suite GREEN.
+# Rule 4.4 had the same defect Rule 4.1's ratchet was written to fix, and
+# `plan/05` §0 names it -- a rule that is not enforced is a wish.
+#
+# HOW IT WORKS. caps.baseline may hold a cap LOWER than the value here (a
+# ratchet turn, silent and encouraged). A HIGHER one fails until this file is
+# edited in the same commit, which puts the increase in a diff a reviewer
+# cannot miss. Same mechanism as caps.baseline itself, one level up.
+#
+# FORMAT: `<path> <value>`, `#` comments and blank lines ignored.
+
+crates/cena/src/probe.rs 350
+crates/cena-model/src/crit.rs 300
+crates/cena-model/src/state.rs 550
+crates/cena-protocol/src/frame.rs 500
+crates/cena-protocol/src/parser.rs 500
+crates/cena-protocol/src/tags.rs 400
+crates/cena-protocol/src/text.rs 450
+crates/cena-session/src/actor.rs 650
+crates/cena-session/src/supervisor.rs 650

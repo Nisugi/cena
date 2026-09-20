@@ -341,12 +341,28 @@ fn the_enforcer_inherits_every_workspace_lint_it_does_not_name() {
 /// because it is data the suite reads rather than a test.
 const CAPS_BASELINE: &str = "caps.baseline";
 
+/// The split-parent cap FLOOR -- the ratchet for the nine per-file caps.
+///
+/// `caps.baseline` is the enforced value; this is the value it may not exceed
+/// without an edit here. See `the_split_parent_caps_only_turn_down`.
+const CAPS_FLOOR: &str = "caps.floor";
+
 /// Read `<name> <value>` pairs from the baseline, ignoring comments and blanks.
 fn baseline_caps() -> std::collections::BTreeMap<String, usize> {
+    caps_from(CAPS_BASELINE)
+}
+
+/// The committed floor the baseline is measured against.
+fn floor_caps() -> std::collections::BTreeMap<String, usize> {
+    caps_from(CAPS_FLOOR)
+}
+
+/// Read a `<name> <value>` cap file.
+fn caps_from(file: &str) -> std::collections::BTreeMap<String, usize> {
     let path = workspace_root()
         .join("crates")
         .join("cena-arch-tests")
-        .join(CAPS_BASELINE);
+        .join(file);
     let text = fs::read_to_string(&path).unwrap_or_else(|e| {
         panic!(
             "{} must exist and be readable: {e}. It is the cap ratchet's \
@@ -390,6 +406,74 @@ fn baseline_caps() -> std::collections::BTreeMap<String, usize> {
 ///
 /// That is the honest reading of `plan/05:353`, and it is strictly stronger than
 /// what the prose describes in one respect: it also catches an increase made by
+/// **Rule 4.4's ratchet.** A split-parent cap may fall silently; raising one
+/// must appear in `caps.floor`'s diff.
+///
+/// # The hole this closes
+///
+/// `the_cap_ratchet_only_turns_down` guards `DEFAULT_MAX_LINES` and
+/// `MAX_CAP_EXCEPTIONS` against `caps.baseline`. The nine split-parent caps had
+/// no such guard: `split_parents_stay_facades` reads each cap **out of
+/// `caps.baseline`** and asserts only `lines > cap`, so the file that records
+/// the limit is the same file a raiser edits.
+///
+/// VERIFIED 2026-09-19 -- raising all nine caps at once left the whole suite
+/// GREEN. Rule 4.4 had precisely the defect Rule 4.1's ratchet exists to
+/// prevent, which is `plan/05` §0's own lesson: a rule that is not enforced is
+/// a wish. The author found it by asking where `state.rs`'s 500 came from.
+#[test]
+fn the_split_parent_caps_only_turn_down() {
+    let baseline = baseline_caps();
+    let floor = floor_caps();
+
+    let mut raised = Vec::new();
+    let mut missing = Vec::new();
+    let mut checked = 0usize;
+    for (name, cap) in &baseline {
+        if !name.contains('/') {
+            continue; // a scalar like DEFAULT_MAX_LINES, guarded elsewhere
+        }
+        checked += 1;
+        match floor.get(name) {
+            Some(limit) if cap > limit => {
+                raised.push(format!("{name}: baseline {cap}, floor {limit}"));
+            }
+            Some(_) => {}
+            // A NEW split parent is not a violation -- a file gains a submodule
+            // and needs a cap. But it must be recorded, or the next raise has
+            // nothing to be measured against.
+            None => missing.push(name.clone()),
+        }
+    }
+
+    // The guard against the guard: a floor emptied of paths would make every
+    // comparison above vacuous, exactly as `split_parents_stay_facades`
+    // protects itself.
+    assert!(
+        checked >= 9,
+        "only {checked} split parents were compared against caps.floor; there          were 9 when this rule was written. A parent missing from caps.baseline          is a parent nothing is watching."
+    );
+    assert!(
+        missing.is_empty(),
+        "these split parents have a cap in caps.baseline and no entry in          caps.floor, so their caps can be raised without any test failing. Add          them to caps.floor at their current value:
+{}",
+        missing.join("
+")
+    );
+    assert!(
+        raised.is_empty(),
+        "RULE 4.4: a split-parent cap went UP. Lowering one is silent and          encouraged; raising one has to be visible.
+
+{}
+
+         `plan/05:385-388`: \"if one trips, move code down into a submodule          instead of raising the cap.\"
+
+         If the increase is genuinely right, edit caps.floor in this same commit          and say why in caps.baseline -- with a measurement, as the 2026-09-19          re-baselining did.",
+        raised.join("
+")
+    );
+}
+
 /// someone who never looks at a diff at all.
 #[test]
 fn the_cap_ratchet_only_turns_down() {

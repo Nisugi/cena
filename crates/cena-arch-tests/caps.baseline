@@ -58,16 +58,39 @@ MAX_CAP_EXCEPTIONS 1
 # intent: "if one trips, move code down into a submodule instead of raising the
 # cap."
 #
-# These are the measured sizes at 2026-09-19 rounded up to the next 50, which is
-# how Vellum set its own ("the current size rounded up a little"). Headroom is
-# deliberate and small: enough that an ordinary edit does not trip it, little
-# enough that growth is a decision.
-crates/cena/src/probe.rs 300
-crates/cena-model/src/crit.rs 250
-crates/cena-model/src/state.rs 500
-crates/cena-protocol/src/frame.rs 450
-crates/cena-protocol/src/parser.rs 450
-crates/cena-protocol/src/tags.rs 350
-crates/cena-protocol/src/text.rs 400
-crates/cena-session/src/actor.rs 600
-crates/cena-session/src/supervisor.rs 600
+# RE-BASELINED 2026-09-19, by the author, after the first version failed at the
+# one thing this comment claims.
+#
+# The rule was "the measured size rounded up to the next 50". MEASURED against
+# what that produced: all nine files sat within 44 lines of their cap, and
+# `state.rs` within ONE.
+#
+#   probe.rs 283/300  crit.rs 227/250  state.rs 499/500  frame.rs 445/450
+#   parser.rs 424/450  tags.rs 306/350  text.rs 376/400  actor.rs 586/600
+#   supervisor.rs 557/600
+#
+# That is not "enough that an ordinary edit does not trip it". Rounding a 462-line
+# file up to 500 gives 38 lines, and ordinary M2 work then spent 37 of them --
+# so the cap stopped meaning "this file should not exceed 500" and came to mean
+# "this file was 462 once". Correcting a stale doc comment in `state.rs` had to
+# be written NET-NEUTRAL to fit, and a milestone's first step was shaped by
+# arithmetic rather than by cohesion.
+#
+# THE RULE IS NOW measured size + 50, rounded up to the next 50, which makes the
+# headroom a floor rather than a remainder. Applied to all nine at once, giving
+# 51-94 lines each. Every one is still far below DEFAULT_MAX_LINES.
+#
+# WHAT DID NOT CHANGE: the default is 800, set by the author on 2026-09-18, and
+# these nine are a SECOND and stricter rule (4.4) layered under it. Two numbers
+# governing one file is confusing enough that the author asked where 500 came
+# from -- the answer being that nobody chose it. If a cap here ever needs to
+# rise again, say why, with a measurement, as this note does.
+crates/cena/src/probe.rs 350
+crates/cena-model/src/crit.rs 300
+crates/cena-model/src/state.rs 550
+crates/cena-protocol/src/frame.rs 500
+crates/cena-protocol/src/parser.rs 500
+crates/cena-protocol/src/tags.rs 400
+crates/cena-protocol/src/text.rs 450
+crates/cena-session/src/actor.rs 650
+crates/cena-session/src/supervisor.rs 650
