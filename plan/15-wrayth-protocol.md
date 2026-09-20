@@ -814,10 +814,111 @@ tested by a live server change rather than by argument. A parser that had typed
 the flag set would have needed an edit and a release; one that carries `attrs`
 raw needed neither.
 
-**What this does NOT settle:** what `ascended`, `rider` and `hovering` mean, and
-whether `health` is a percentage or an absolute. `maxhealth` values vary per
-creature, which argues absolute, but that is INFERRED. A consumer that displays
-a creature's health needs the answer; the parser does not.
+**What this does NOT settle:** whether `health` is a percentage or an absolute.
+`maxhealth` values vary per creature, which argues absolute, but that is
+INFERRED. A consumer that displays a creature's health needs the answer; the
+parser does not.
+
+### 2b.1 The canonical flag vocabulary — mined, not inferred
+
+> **AUTHOR, 2026-09-19:** *"I was talking about crtrStatus statuses"* ... *"But
+> like you said, they all should work regardless?"*
+
+Both halves matter and they answer different questions.
+
+**The flags work regardless — VERIFIED, not assumed.** All 24 canonical flags
+below were fed through the parser at once, inside a `<component>` body, with
+`health="-10"`: **24 of 24 survived** into `attrs`, 27 attributes total, zero
+unknown tags, `AscensionBoss`'s CamelCase intact. So a new flag needs no parser
+work, which is the property `attrs` raw exists for.
+
+**But the LIST is not in the wire, and neither are its semantics.** The capture
+that prompted this carried 13 of the 24; inferring the vocabulary from traffic
+would have missed 11. `reference/lich-5/lib/common/creature/creature_base.rb`
+(748 lines) has all of it, and reading it first would have replaced an hour of
+measurement.
+
+#### Two disjoint tables, and the split is semantic
+
+EXTRACTED from `creature_base.rb:112-146`. Left column is the XML attribute,
+right is Lich's canonical name where it differs.
+
+**`CRTR_STATUS_FLAGS` — 13 transient states** (`:112`):
+`immobile`→*immobilized*, `webbed`, `sleeping`, `disoriented`, `stunned`,
+`rooted`, `calmed`→*calm*, `kneeling`, `prone`, `sitting`, `flying`, `hovering`,
+`hidden`.
+
+**`CRTR_CLASSIFICATION_FLAGS` — 11 relationship/kind facts** (`:135`):
+`hostile`, `disengaged`, `dead`, `sympathetic`, `ascended`, `inferior`,
+`AscensionBoss`→*ascension_boss*, `MiniBoss`→*mini_boss*, `challenging`,
+`rider`, `mount`.
+
+So the three attributes §2b recorded as unexplained are **classifications, not
+statuses**: `ascended`, `rider`, and `mount`; `hovering` is a status. Four names
+are renamed between wire and canonical, including two CamelCase.
+
+#### The tag is a SNAPSHOT, and the clearing is deliberately scoped
+
+`creature_base.rb:647-668` (`sync_crtr_status`), the two facts a capture cannot teach:
+
+> *"The tag is a full snapshot of what is currently active, not a delta. A
+> missing flag, or a flag set to "0", means inactive even if it was active a
+> moment ago, so absent known flags are cleared rather than ignored."*
+
+And the scoping, which is a bug someone already hit:
+
+> *"Scoped to `CRTR_STATUS_FLAGS` on purpose: `@status` has two writers, this
+> feed and the combat parser reading messaging. The feed is a full snapshot only
+> of the states it reports, so it owns removal for exactly those — and must not
+> touch the rest. blind, poisoned, natures_decay and the other message-only
+> effects never appear in the tag; reconciling them here would clear them on the
+> next one and make them impossible to model."*
+
+MEASURED against `STATUS_DURATIONS` (`creature_base.rb:71`, 23 entries): **17
+statuses exist only in messages and never in the tag** — `amputated`, `bind`,
+`blind`, `breeze`, `crippled`, `dazed`, `entangle`, `hypnotism`, `limb_favored`,
+`mass_calm`, `poisoned`, `roundtime`, `silenced`, `sleep`, `slowed`, `sunburst`,
+`web` — and only **6** overlap with it (`calm`, `hidden`, `immobilized`,
+`prone`, `stunned`, `webbed`). A consumer that cleared every status on each tag
+would wipe those 17 on the next creature update.
+
+Ten of the 23 carry a duration and 13 are message-cleared. **Do not port the
+ten durations as facts.**
+
+> **AUTHOR, 2026-09-19:** *"some of those are good and some are bad. for example,
+> entangled is from tangle weed, but the time I believe actually comes from the
+> critical it does."*
+
+Correct, and the table half-admits it: every timed entry is commented
+**"typical"**, and the block's own note says where the real number lives —
+*"`roundtime` is set with an explicit duration by the combat processor (critical
+tables report it in seconds); these defaults apply when a source supplies no
+duration of its own."*
+
+So these are **fallbacks for when no better source spoke**, not durations. The
+better source is the crit table, and Cena already has it: `crit_tables.tsv`
+carries `roundtime` and `stunned` columns per entry, typed as
+`CritEntry::roundtime` and `CritEntry::stunned` (rounds, with `STUN_UNKNOWN` for
+the one entry that says "stunned" without saying how long).
+
+The rule for Cena, therefore: **a crit-derived duration comes from the crit
+entry; a spell-derived one from the spell; the constant is the last resort.** A
+consumer that took `entangle => 10` as truth would expire a Tangleweed early or
+late depending on the crit that landed, and the wire never said 10.
+
+#### Absent means different things in the two tables
+
+`crtr_flag?` (`:680`) answers `false` for an unseen classification, because *"live XML
+flags are always-sent booleans"* — but `crtr_flags?` (`:693`) exists separately to
+distinguish *"the feed said not hostile"* from *"the feed has said nothing"*,
+and their example is exact: *"A ridden mount carries a bold creature link but
+never a `<crtrStatus>` of its own."* That is `StatusInfo::is_known`'s
+distinction (`status.rs:88`) arrived at independently, which is some evidence it
+is the right shape.
+
+**All of this is CONSUMER knowledge.** None of it belongs in `cena-protocol`,
+which is why the parser needed no change — but it is due in full when the
+creature consumer is built, and it is not rediscoverable from traffic.
 
 ## 2c. The `skill` table prints skills and spell circles in one shape
 
