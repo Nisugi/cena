@@ -327,7 +327,10 @@ impl<'a> Injuries<'a> {
         }
         // **`nsys` is in this list and not in `HEAD_AND_NERVES`'s usage
         // above** -- the rank-2 check here is arms, hands and nerves, with the
-        // head excluded. Faithful to `injured.rb:187`.
+        // head excluded. Faithful to `injured.rb:187`, and **VERIFIED in the
+        // game by the author** (2026-09-20) against a wiki table that lists
+        // only spellcasting and searching for rank-2 nerves. The table is
+        // incomplete, not contradictory (`inventory/10` §9b).
         let blocking: Vec<&PartId> = groups::ARMS
             .into_iter()
             .chain(groups::HANDS)

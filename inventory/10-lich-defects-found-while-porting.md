@@ -318,16 +318,26 @@ The wiki supports that call: it discards rank-1 scars (*"Rank 1 scars never
 have any mechanical penalties"*) and describes Sigil explicitly, both of which
 `eherbs.lic` ignores.
 
-### 9b. `injured.rb` blocks ranged on rank-2 nerves; the wiki's table does not
+### 9b. RESOLVED: rank-2 nerves DO block ranged, and the wiki is incomplete
 
 `injured.rb:187` includes `nsys` in the rank-2 block for
 `able_to_use_ranged?`. `reference/wiki_clean/Wound.txt`'s penalty table lists
-only *"nervous system | Rank 2: prevents spellcasting, searching"* -- ranged is
-absent.
+only *"nervous system | Rank 2: prevents spellcasting, searching"*, so this was
+first recorded as a disagreement and marked UNVERIFIED.
 
-Ported as Lich has it, per the author's call on 9a. **UNVERIFIED against the
-game**; the wiki table may be incomplete rather than contradictory, since it
-also omits the cumulative rules that `injured.rb` implements.
+**AUTHOR, 2026-09-20: *"I personally tested ranged for injured.rb."*** So
+`injured.rb` is right and the wiki's table is **incomplete**, not wrong --
+which is consistent with it also omitting the cumulative rules
+(`injured.rb:128-133`) and the per-side arm/hand merge that the same file
+implements.
+
+**The lesson is about the oracle, not the rule.** The wiki was promoted to
+oracle for these tests precisely because it is a primary source, and it earned
+that once by catching a wrong assertion (a rank-2 arm does not block casting).
+It does not follow that its silence is evidence: a table that omits three
+known rules cannot be read as an exhaustive list, and treating absence there
+as a contradiction was the same mistake as reading absence from the login
+burst as invalidation (`plan/15` §2a.4a.3a).
 
 ### 9c. Rank-3 legs are called "NOT critical" while behaving critically
 

@@ -1,9 +1,25 @@
 //! The four injury predicates, checked against the wiki's own penalty table.
 //!
 //! Ported from `lib/gemstone/injured.rb`, with
-//! `reference/wiki_clean/Wound.txt` as the oracle. The wiki is a primary
-//! source and Lich is a reading of it, so where a test can assert the wiki's
-//! prose directly it does.
+//! `reference/wiki_clean/Wound.txt` as an oracle for what it *states*.
+//!
+//! # The wiki is authoritative where it speaks, and silent elsewhere
+//!
+//! It earned the oracle role by catching a wrong assertion: I had written from
+//! the Ruby that a rank-2 arm blocks casting, and the table says plainly that
+//! it prevents ranged attacks only.
+//!
+//! It does **not** follow that the table is exhaustive. It omits the
+//! cumulative rules (`injured.rb:128-133`), the per-side arm/hand merge, and
+//! the rank-2 nerves block on ranged -- and that last one the author settled
+//! by testing it:
+//!
+//! > **AUTHOR, 2026-09-20:** *"I personally tested ranged for injured.rb."*
+//!
+//! So a row's absence is not evidence against a rule. That is the same error
+//! as reading absence from the login burst as invalidation
+//! (`plan/15` §2a.4a.3a), and it is worth naming twice because both times the
+//! silent source looked authoritative.
 //!
 //! The table the last group of tests walks, verbatim from that page:
 //!
@@ -209,10 +225,16 @@ fn a_rank_three_head_adds_ranged() {
     assert_eq!(state.able_to_sneak(), Able::Yes, "still not sneaking");
 }
 
-/// `nervous system | Rank 2: prevents spellcasting, searching`
+/// `nervous system | Rank 2: prevents spellcasting, searching` -- **and ranged.**
 ///
-/// And ranged, which `injured.rb:187` blocks at rank 2 but the wiki's table
-/// does not list. Recorded rather than silently reconciled.
+/// The wiki's table omits ranged here. `injured.rb:187` blocks it, and the
+/// author settled which is right by testing it in the game:
+///
+/// > **AUTHOR, 2026-09-20:** *"I personally tested ranged for injured.rb."*
+///
+/// So the table is incomplete rather than contradictory, which is consistent
+/// with it also omitting the cumulative rules and the per-side arm/hand merge.
+/// A primary source's silence is not evidence (`inventory/10` §9b).
 #[test]
 fn a_rank_two_nervous_system_prevents_casting_and_searching() {
     let parts = injuries(&[("nsys", 2, 0)]);
