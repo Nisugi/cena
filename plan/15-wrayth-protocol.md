@@ -920,6 +920,75 @@ is the right shape.
 which is why the parser needed no change — but it is due in full when the
 creature consumer is built, and it is not rediscoverable from traffic.
 
+## 2a.5 How Lich frames the stream, and where Cena differs
+
+From `lib/games.rb` (1,678 lines). Worth recording because framing is the one
+thing a packet capture shows only indirectly.
+
+**Bytes become lines in exactly one place** (`games.rb:926`):
+
+```ruby
+return READ_TIMEOUT unless IO.select([@socket], nil, nil, read_timeout)
+@socket.gets
+```
+
+`TCPSocket#gets` with no separator splits on `"\n"`, so **every line Lich reads
+keeps its trailing `"\r\n"`**; the `\r\n` split happens twice, both *after*
+parsing (`:1092` for script dispatch, `:1400` for `Infomon::Parser.parse`).
+Their doc comment explains the `IO.select`: *"Ruby does not reliably surface
+SO_RCVTIMEO through TCPSocket#gets on every supported platform."*
+
+Socket options, which Cena already ports: keepalive `idle: 30 / interval: 30`,
+linger 5s, 30s recv/send timeouts, 32 KB buffers, `TCP_NODELAY`, and on Windows
+`tcp_maxrt: 10`. Configuration failure is **non-fatal** there -- it logs
+*"WARNING: Socket running with default OS settings"* and continues.
+
+### Truncation: the reasoning is the valuable part
+
+Lich promotes four Ox parse errors to a `GameStreamDesyncError`
+(`games.rb:356-361`), and the comment above them is the most load-bearing in the
+file (`:334-355`). Condensed, with the parts that matter to any port:
+
+> *"Ox error-callback messages that mean the fragment ended mid-token -- the only
+> unambiguous truncation signal, since a complete line cannot end inside an open
+> tag, attribute list, or quoted value."*
+
+and the discrimination it turns on:
+
+> *"The message prefix matters: 'Unexpected Character: element not closed' (a
+> start tag that never got its '>') is truncation, while the similarly worded
+> 'Start End Mismatch: element ... not closed' (an element missing its end tag)
+> is routine."*
+
+and one they deliberately excluded:
+
+> *"'attribute value not in quotes' is intentionally NOT here: it fires on a
+> *complete* unquoted-attribute line (`<a x=y>`), so matching it false-resets a
+> fully-parsed fragment."*
+
+**The general fact, and it is the one Cena builds on:** Simu's stream is routine
+almost-XML. Bare text, multiple top-level elements, nested quotes, unescaped
+ampersands and missing `</d>` end tags are all *normal* and must stay tolerated.
+Only a mid-token end is damage. That is the same conclusion `plan/12`'s
+permissive-parser decision reached from the corpus, arrived at independently.
+
+### Three places Cena is structurally better, and one to watch
+
+| | Lich | Cena |
+|---|---|---|
+| partial line | `$strip_xml_multiline`, a **process global** cleared by hand in `initialize_buffers` (`:432-434`), *"so a fragment left open before a reconnect does not bleed into the next session"* | `Parser::pending`, per-session, reset by construction -- a new connection gets a new actor and `Parser::new()` |
+| unbounded buffering | `buffer_room_objs` holds a split `<component>` with **no size bound and no timeout** (`:224`); a `</component>` that never arrives buffers forever | `MAX_LINE_BYTES` = 256 KB, which a measured 513,700-byte line already exercises |
+| multi-session | those globals are why Lich runs **one process per character** | no `static` anywhere in the parser (Rule 5.2), which is what lets 3-25 sessions share a process |
+
+**To watch:** their `@server_queue` is a `SizedQueue` of 4,096 that raises
+`ServerQueueOverflow` rather than blocking, with the reason stated at `:383-384`
+-- *"A full queue means the parser cannot preserve the game stream. Dropping
+records or blocking the socket reader would both make recovery unsafe."* Cena's
+broadcast ring drops instead, and the first live session dropped 99 events
+during the login burst. Their answer is to fail loudly; ours is to report the
+gap. Both are defensible, but the choice should be deliberate rather than
+inherited -- recorded here so it is not rediscovered at M4.
+
 ## 2b.2 PSM lists come in TWO header forms, and Lich reads only one
 
 The `<psm> list all` commands (`cman`, `feat`, `armor`, `shield`, `weapon`,
