@@ -1,0 +1,18 @@
+<!-- CLIENT --><c>info<!-- ENDCLIENT -->
+<dialogData id='minivitals'><skin id='manaSkin' name='manaBar' controls='mana' left='25%' top='0%' width='25%' height='100%'/><progressBar id='mana' value='100' text='mana 413/413' left='25%' customText='t' top='0%' width='25%' height='100%'/></dialogData><dialogData id='minivitals'><skin id='healthSkin' name='healthBar' controls='health' left='0%' top='0%' width='25%' height='100%'/><progressBar id='health' value='100' text='health 193/193' left='0%' customText='t' top='0%' width='25%' height='100%'/></dialogData><dialogData id='injuries'><skin id='healthSkin' name='healthBar2' controls='health2' align='n' top='160' width='140' left='0' height='15'/><progressBar id='health2' value='100' text='health 193/193' customText='t' align='n' top='160' width='140' left='0' height='15'/></dialogData><dialogData id='minivitals'><skin id='staminaSkin' name='staminaBar' controls='stamina' left='50%' top='0%' width='25%' height='100%'/><progressBar id='stamina' value='100' text='stamina 158/158' left='50%' customText='t' top='0%' width='25%' height='100%'/></dialogData><dialogData id='expr'><label id='yourLvl' value='Level 100' top='0' left='0' align='n' width='160' height='15'/><progressBar id='mindState' value='100' text='saturated' top='45' left='3' field_exp='1445' max_field_exp='1403' ascension_exp='24158344' fashlonae='2' exp='43904921' until_next='79' align='n' width='160' height='15'/><progressBar id='nextLvlPB' value='100' text='43904921 experience' top='20' left='3' align='n' width='160' height='15'/></dialogData><dialogData id='minivitals'><skin id='manaSkin' name='manaBar' controls='mana' left='25%' top='0%' width='25%' height='100%'/><progressBar id='mana' value='100' text='mana 413/413' left='25%' customText='t' top='0%' width='25%' height='100%'/></dialogData><dialogData id='minivitals'><skin id='staminaSkin' name='staminaBar' controls='stamina' left='50%' top='0%' width='25%' height='100%'/><progressBar id='stamina' value='100' text='stamina 158/158' left='50%' customText='t' top='0%' width='25%' height='100%'/></dialogData><output class="mono"/>
+Name: <a exist="-10966483" noun="Ashryn">Ashryn</a> Race: Half-Elf  Profession: Ranger (shown as: Hero)
+Gender: Male    Age: 36    Expr: 43,904,921    Level:  100
+                Ascended (Bonus)  ...  Enhanced (Bonus)
+    Strength (STR):   115 (32)    ...  115 (32)
+Constitution (CON):    97 (23)    ...   97 (23)
+   Dexterity (DEX):   116 (38)    ...  116 (38)
+     Agility (AGI):   102 (36)    ...  102 (36)
+  Discipline (DIS):    98 (19)    ...   98 (19)
+        Aura (AUR):    98 (24)    ...   98 (24)
+       Logic (LOG):    95 (22)    ...   95 (22)
+   Intuition (INT):    98 (24)    ...  <pushBold/>106<popBold/> (<pushBold/>28<popBold/>)
+      Wisdom (WIS):   114 (32)    ...  <pushBold/>129<popBold/> (<pushBold/>39<popBold/>)
+   Influence (INF):    90 (25)    ...   90 (25)
+Mana:  413   Silver: 0
+<output class=""/>
+<prompt time="1788298106">&gt;</prompt>

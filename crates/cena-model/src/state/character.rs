@@ -48,6 +48,7 @@
 //! * **`nsys`** -- the nervous system -- is one of the parts, not a separate
 //!   mechanism.
 
+pub mod stats;
 pub mod vocabulary;
 
 use std::collections::BTreeMap;

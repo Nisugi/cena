@@ -53,6 +53,8 @@ const PSEUDONYMS: &[(&str, &str)] = &[
     ("Jinxt", "Ithriel"),
     ("Richland", "Jorvath"),
     ("Berean", "Kelmond"),
+    // The author's own character, from `character_info.xml`'s `Name:` line.
+    ("Nisugi", "Ashryn"),
 ];
 
 /// Substrings that must not appear in any committed fixture.

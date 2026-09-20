@@ -30,6 +30,8 @@ const CUTS: &[(&str, &str)] = &[
     ("creatures.src", "creature_status.xml"),
     ("effects.src", "effect_dialogs.xml"),
     ("inventory.src", "inventory_container.xml"),
+    // M3: the `info` command's blob -- ten stat lines, two of them enhancive.
+    ("info.src", "character_info.xml"),
 ];
 
 /// Kept in step with `tests/fixtures_are_scrubbed.rs::PSEUDONYMS`; that test
@@ -56,6 +58,11 @@ const PSEUDONYMS: &[(&str, &str)] = &[
     ("Jinxt", "Ithriel"),
     ("Richland", "Jorvath"),
     ("Berean", "Kelmond"),
+    // **The author's own character**, in `character_info.xml`'s `Name:` line at
+    // both the `noun=` and text sites. `info` output is about the logged-in
+    // character, so its name is unavoidable in this fixture -- which is exactly
+    // why it is pseudonymised rather than the fixture avoided.
+    ("Nisugi", "Ashryn"),
 ];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
