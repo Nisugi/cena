@@ -36,6 +36,13 @@ pub use state::character::vocabulary::{
 };
 pub use state::chunks::{Chunk, ChunkLine, MAX_CHUNK_LINES};
 pub use state::claim::{Claim, Occupants};
+// NOTE: `creature::Stat` and `creature::status::Classification` are NOT
+// re-exported here: `character::stats::Stat` and `gameobj::Classification`
+// already hold those names at the facade, and three types called `Stat` in
+// one namespace would make every use site ambiguous to a reader rather than
+// only to the compiler. They are reached by their module path.
+pub use state::creature::status::{CreatureStatus, Status};
+pub use state::creature::{Area, Attack, Creature, MessageKind, Treasure};
 pub use state::gameobj::{Classification, ObjectTypes};
 pub use state::societies::membership::MembershipLine;
 pub use state::societies::{Ability, AbilityKind, AlternateCost, Cost, CostTiming, Target};

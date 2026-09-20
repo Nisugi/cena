@@ -1,0 +1,1604 @@
+creature_id	name	as	as_raw	damage_type
+agresh_bear	Claw	144..179		
+agresh_bear	Bite	174		
+agresh_troll_chieftain	Flail	247		
+agresh_troll_chieftain	Military pick	227		
+agresh_troll_scout	War hammer	171		
+agresh_troll_scout	Ensnare			
+agresh_troll_scout	Pound			
+agresh_troll_scout	Stomp			
+agresh_troll_warrior	War hammer	165		
+agresh_troll_warrior	Fist	115		
+aivren	Bite (attack)	398		
+aivren	Claw (attack)	378		
+aivren	Bite	403		
+aivren	Massive beak	358		
+aivren	Razor-sharp claw	410		
+aivren	Swoop	410		
+albino_tomb_spider	Claw	106..116		
+albino_tomb_spider	Pincer (attack)	116		
+albino_tomb_spider	Pincer	116		
+ancient_ghoul_master	Battle axe	147		
+animated_slush	Pound			
+animated_slush	Icy appendage	263..267		
+animated_slush	Stream of water	243		
+arachne_acolyte	War hammer	161		
+arachne_priest	Broadsword	219		
+arachne_priest	Scimitar	294		
+arachne_priest	Short sword	266		
+arachne_servant	Morning star	150..190		
+arch_wight	Scimitar	144..156		
+arch_wight	Claw	136		
+arch_wight	Twohanded sword	150		
+arctic_manticore	Bite	194		
+arctic_manticore	Claw	194		
+arctic_puma	Claw	168		
+arctic_puma	Bite	168		
+arctic_titan	Handaxe	262		
+arctic_titan	Closed fist	242		
+arctic_titan	Stomp (attack)	232		
+arctic_wolverine	Bite	155..194		
+arctic_wolverine	Claw	184..204		
+arctic_wolverine	(quarantine-recovered)	238		
+ash_guardian	Falchion	402		
+ash_guardian	Ensnare	346		
+ash_guardian	Jagged shard of obsidian	406		
+ash_guardian	Sharp beak	295		
+ash_guardian	Beak	375		
+ash_hag	Slap	210		
+ash_hag	Bite (attack)	180		
+ashen_patrician_vampire	Rapier		566 to	
+ashen_patrician_vampire	Charge	530		
+athletic_dark_eyed_incubus	Ensnare		(lunge) 245-276	
+baesrukha	Claw	247..273		
+baesrukha	Bite	187..262		
+baesrukha	Roaring ball of fire	220		
+banded_rattlesnake	Bite	182		
+banded_rattlesnake	(quarantine-recovered)	163		
+banshee	Claw (attack)	275		
+banshee	Claw	265..275		
+barbed_cavern_urchin	Barbed spines	176		
+barghest	Charge (attack)	229		
+barghest	Bite	197..234		
+barghest	Charge	206..214		
+behemothic_gorefrost_golem	closed fist	480..500		
+behemothic_gorefrost_golem	pound	445		
+behemothic_gorefrost_golem	stomp	495..505		
+behemothic_gorefrost_golem	Colossal fist of ice	502..527		
+behemothic_gorefrost_golem	Charge	529		
+behemothic_gorefrost_golem	Clawed fists	475		
+behemothic_gorefrost_golem	Huge hooves	521		
+behemothic_gorefrost_golem	Tusks	519		
+bent_being	Stomp	386		
+bent_being	Claw	356		
+bent_being	Foot	386		
+big_ugly_kobold	Short sword	55		
+big_ugly_kobold	Unknown	62		
+bighorn_sheep	Impale	168..183		
+black_bear	Bite (attack)	180		
+black_bear	Claw (attack)	190		
+black_bear	Charge (attack)	190		
+black_bear	Bite	150		
+black_bear	Claw	171		
+black_boar	Bite	153..171		
+black_boar	Charge (attack)	181		
+black_forest_ogre	DharaDhara (Rogues)	340		
+black_forest_ogre	Closed fistClosed fist (Wizards)	294		
+black_forest_ogre	Closed fist	273		
+black_forest_ogre	Rust-covered dhara	336		
+black_forest_viper	Bite	340		
+black_leopard	Claw	134..168		
+black_leopard	Bite	128..168		
+black_rolton	Bite	23		
+black_rolton	Unknown	36		
+black_winged_daggerbeak	Bite	36		
+black_winged_daggerbeak	Unknown	36		
+blackened_decaying_tumbleweed	Stinger (attack)			
+blackened_decaying_tumbleweed	Stinger	252		
+blazing_red_phoenix	Claw (attack)	330..390		
+blazing_red_phoenix	Bite (attack)	380		
+blazing_red_phoenix	Beak	375		
+blazing_red_phoenix	Beak of flame	393		
+blazing_red_phoenix	Flaming maw	396		
+blazing_red_phoenix	Lash	402		
+blazing_red_phoenix	Roaring ball of fire	357		
+blazing_red_phoenix	Sharp beak	377		
+blazing_red_phoenix	Stream of fire	361		
+bloated_kiramon_broodtender	Barbed stinger	557		
+bloated_kiramon_broodtender	Bladed forelegs	523		
+blood_eagle	Claw	100		
+blood_eagle	Bite			
+blood_eagle	Pound			
+blood_eagle	Ensnare	96		
+blood_eagle	Black fists	86		
+bloody_halfling_cannibal	bite	474		
+bloody_halfling_cannibal	grimy little fists	464..544		
+bloody_halfling_cannibal	hurtle	327..564		
+bloody_halfling_cannibal	wiry arms	464..544		
+bloody_halfling_cannibal	Clawed fists	475..585		
+bloody_halfling_cannibal	Feras mattock	489		
+bloody_halfling_cannibal	Twisted obsidian dagger	584..606		
+bloody_halfling_cannibal	Charge	529		
+bloody_halfling_cannibal	Huge hooves	525		
+bloody_halfling_cannibal	Shark-like teeth	505..573		
+bloody_halfling_cannibal	Tusks	531..544		
+bloody_halfling_cannibal	Lunge	520		
+bobcat	Bite (attack)	80		
+bobcat	Claw (attack)	90		
+bobcat	Charge (attack)	90		
+bobcat	Bite	72		
+bobcat	Claw	81		
+bog_spectre	Claw	242..269		
+bog_spectre	Ensnare	220..275		
+bog_troll	Thick Wooden Knurl	244..314		
+bog_troll	Claw	234		
+bog_wight	Bite	270..274		
+bog_wight	Claw	204..284		
+bog_wraith	Claw	216		
+bog_wraith	Ensnare	94..239		
+bone_golem	Ensnare	97		
+bone_golem	Pound	107		
+bone_golem	Skeletal fist	97		
+brackish_bilge_mass	Huge black alloy greatsword	592		
+brawny_gigas_shield-maiden	shield strike	525..566		
+brawny_gigas_shield-maiden	spear	525..590		
+brawny_gigas_shield-maiden	Charge	529		
+brawny_gigas_shield-maiden	Enormous tusks	529..538		
+brawny_gigas_shield-maiden	Golden targe	536..590		
+brawny_gigas_shield-maiden	Immense fel-hafted handaxe	540..566		
+brawny_gigas_shield-maiden	Lunge	524..570		
+bresnahanini_rolton	Bite (attack)	60		
+bresnahanini_rolton	Charge (attack)	70		
+bresnahanini_rolton	Bite	48..50		
+bresnahanini_rolton	Charge	63		
+bristly_black_tapir	Bite	184..232		
+bristly_black_tapir	Charge (attack)	194..242		
+brown_boar	Bite	121..171		
+brown_boar	Charge (attack)	187		
+brown_boar	Charge	151		
+brown_gak	Impale	48		
+brown_gak	Tusk	43		
+brown_spinner	Claw			
+brown_spinner	Pincer (attack)			
+brown_spinner	Pincer	107		
+burly_reiver	Steel dirk	232		
+cadaverous_tatterdemalion_ghast	Claw (attack)	484		
+cadaverous_tatterdemalion_ghast	Pound (attack)	484		
+cadaverous_tatterdemalion_ghast	Bite	524..555		
+cadaverous_tatterdemalion_ghast	Fist	484..519		
+cadaverous_tatterdemalion_ghast	Kick	530		
+cadaverous_tatterdemalion_ghast	Charge	565		
+caedera	Bite	369..411		
+caedera	Charge (attack)			
+caedera	Ensnare (attack)			
+caedera	Charge	421		
+caedera	Ensnare	421		
+carceris	Major Cold (907)	160		
+carceris	Major Fire (908)	160		
+carceris	Major Shock (910)	160		
+carceris	Bite	189		
+carceris	Claw	139		
+caribou	Charge	238		
+caribou	Kick	232		
+caribou	(quarantine-recovered)	238		
+caribou	Antlers	238		
+carrion_worm	Charge	39		
+carrion_worm	Bite	29		
+carrion_worm	Unknown	29		
+cave_bear	Claw	217..227		
+cave_bear	Bite	202..225		
+cave_gnoll	Scimitar	58..68		
+cave_gnoll	Unknown	73		
+cave_gnoll	Closed fist	52		
+cave_gnome	Cudgel	52		
+cave_gnome	Handaxe	52		
+cave_gnome	Short sword	46..52		
+cave_gnome	Unknown	52		
+cave_gnome	Closed fist	42		
+cave_lizard	Claw	183..203		
+cave_lizard	Bite	189		
+cave_nipper	Charge	43..63		
+cave_nipper	Unknown	53		
+cave_nipper	Claw	53		
+cave_troll	Short sword	191		
+cave_troll	Spear	191		
+cave_troll	Pitted battle axe	191		
+cave_troll	Unknown	191		
+cave_worm	Ensnare	139		
+cave_worm	Bite	129		
+cave_worm	Charge (attack)	139		
+cave_worm	Charge	119		
+centaur	Longsword	208		
+centaur	Greatsword	208		
+centaur	Scimitar	166		
+centaur_ranger	Long bow	208		
+centaur_ranger	Plain wooden arrow	209		
+chitinous_kiramon_myrmidon	Bite			
+chitinous_kiramon_myrmidon	Pincer (attack)			
+chitinous_kiramon_myrmidon	Bladed forelegs	532..541		
+cinder_wasp	Stinger (attack)	276		
+cinder_wasp	Stinger	276		
+cloud_sprite_bully	Mace	185..235		
+cloud_sprite_meddler	Short bow	216		
+cloud_sprite_meddler	Wooden mace	209		
+cobra	Bite	68		
+cockatrice	Claw (attack)	99		
+cockatrice	Pincer (attack)	99		
+cockatrice	Charge (attack)	109		
+cockatrice	Strike	80..99		
+coconut_crab	Claw	43		
+coconut_crab	Unknown	53		
+cold_guardian	Closed fist	240		
+cold_guardian	Charge	220		
+colossal_boreal_undansormr	Crush	594..624		
+colossus_vulture	Bite	235		
+colossus_vulture	Claw	220..245		
+colossus_vulture	Impale	235		
+colossus_vulture	Swoop	220..245		
+colossus_vulture	Beak	211		
+cook_s_assistant	Quarterstaff	208		
+cook_s_assistant	Cleaver	188		
+corpulent_kresh_ravager	Bladed forelegs	532		
+cougar	Bite	196..203		
+cougar	Claw	208		
+coyote	Bite	76..95		
+coyote	Charge	85..95		
+crackling_lightning_fiend	Lightning Torrent(?)			
+crackling_lightning_fiend	Crackling blue and golden spark	317		
+crazed_canine	Bite	94..118		
+crazed_canine	Charge (attack)	128		
+crazed_canine	Charge	128		
+crazed_zombie	Bite	181..202		
+crazed_zombie	Claw	202		
+crested_basilisk	Bite	206..220		
+crested_basilisk	Claw	221		
+crocodile	Charge (attack)	137		
+crocodile	Bite	127		
+crocodile	Charge	70..137		
+crystal_crab	Ensnare	109..122		
+crystal_crab	Claw	100..112		
+crystal_golem	Ensnare	140		
+crystal_golem	Pound	134		
+crystal_golem	Stomp	144		
+crystal_golem	Crystalline fist	117		
+csetairi	Scimitar	369..417		
+cyclops	Cudgel	238		
+cyclops	Pound (attack)	238		
+cyclops	Stomp (attack)	238		
+cyclops	Splintered tree trunk	187		
+cyclops	Fist	175		
+dark_apparition	Bite	48		
+dark_apparition	Claw	58		
+dark_frosty_plant	ranged: frosty seed	260		
+dark_frosty_plant	Frost-covered crystalline flower	138..260		
+dark_frosty_plant	melee: stab	260		
+dark_frosty_plant	Stinger	242		
+dark_orc	Halberd	147..157		
+dark_orc	Scimitar	157		
+dark_orc	Morning star	157		
+dark_orc	Falchion	157		
+dark_panther	Claw	178..198		
+dark_panther	Bite	198		
+dark_shambler	Two-handed sword	175		
+dark_shambler	Immense dark steel bidenhander	165		
+dark_shambler	Twohanded sword	175		
+dark_shambler	Broadsword	175		
+dark_vysan	Ensnare	54		
+dark_vysan	Pound	44		
+dark_vysan	Charge (attack)	54		
+dark_vysan	Fist	44		
+dark_vysan	Unknown	44		
+dark_vysan	Charge	54		
+darkwoode	Claw	127		
+darkwoode	Ensnare	137		
+death_dirge	Closed fist	98		
+death_dirge	Black scimitar	98		
+deathsworn_fanatic	Major Fire	462		
+deathsworn_fanatic	Bronze cutlass	549		
+deathsworn_fanatic	Ensnare	413		
+deathsworn_fanatic	Heel of his hand	420		
+deathsworn_fanatic	Strike	459		
+decaying_citadel_guardsman	Hammer of Kai	327		
+deranged_sentry	Halberd	167		
+desiccated_half_krolvin_strigoi	Closed fist			
+desiccated_half_krolvin_strigoi	Ensnare (attack)			
+dhu_goleras	Dagger	379..387		
+direbear	Bite (attack)	349		
+direbear	Claw (attack)	340..355		
+direbear	Bite	270..280		
+disfigured_hive_thrall	Charge			
+disfigured_hive_thrall	Claw			
+disfigured_hive_thrall	Barbed stinger	557		
+dobrem	Bite			
+dobrem	Claw	198..249		
+dreadnought_raptor	Impale	271..274		
+dreadnought_raptor	Bite			
+dreadnought_raptor	Claw	275..281		
+dreadnought_raptor	Swoop	252..281		
+dreadnought_raptor	Beak	234		
+dybbuk	Length of Rusted Chain	293..298		
+earth_elemental	Pound (attack)	401		
+earth_elemental	Foot	422		
+earth_elemental	Heavy earthen fists	421		
+ebon_swine	Bite	158		
+ebon_swine	Charge	181		
+eidolon	Closed fist	248..307		
+elder_ghoul_master	Claidhmore	128		
+elder_tree_spirit	Ensnare (attack)			
+elder_tree_spirit	Ensnare	182		
+emaciated_hierophant	Espadon	331		
+enormous_mosquito	Dive	216		
+enormous_mosquito	(quarantine-recovered)	216		
+enormous_rift_crawler	Bite	449..461		
+enormous_rift_crawler	Charge (attack)	447		
+enormous_rift_crawler	Charge	459..475		
+ethereal_mage_apprentice	Hissing stream of acid	293		
+ethereal_mage_apprentice	Large boulder	261		
+ethereal_mage_apprentice	Polished black oak runestaff	288		
+ethereal_mage_apprentice	Roaring ball of fire	265		
+ethereal_mage_apprentice	Stream of fire	288		
+ethereal_triton_psionicist	Unarmed combat		390 UAF	
+eyeless_black_valravn	Talons	600..620		
+eyeless_black_valravn	Dagger-sharp beak	610..620		
+eyeless_black_valravn	Yellowed brittle bone cudgel	603		
+eyeless_black_valravn	?: Blow raises a welt	582		
+eyeless_black_valravn	Crush	614		
+eyeless_black_valravn	Huge black alloy greatsword	679		
+eyeless_black_valravn	Shining metallic spear	628..657		
+fallen_crusader	Barbed tentacle	428..450		
+fallen_crusader	Gilt-edged steel talon sword	506..515		
+fallen_crusader	Gold-spiked black morning star	440..506		
+fanged_goblin	Handaxe	36..46		
+fanged_goblin	Spear	36..46		
+fanged_goblin	Unknown	36		
+fanged_rodent	Bite	44		
+fanged_rodent	Unknown	44		
+fanged_viper	Bite	68		
+fanged_viper	Unknown	68		
+fenghai	kris	146..173		
+fenghai	Freezing ball of pure cold	200		
+fenghai	Hissing stream of acid	206		
+fenghai	Large boulder	123		
+fenghai	Powerful lightning bolt	208		
+fenghai	Scimitar	209		
+fenghai	Small surge of electricity	202		
+fenghai	Stream of fire	167		
+fenghai	Fist	133		
+festering_taint	Claw	370..408		
+fire_ant	Bite	41		
+fire_ant	Charge	51		
+fire_ant	Unknown	6		
+fire_cat	Claw	135..164		
+fire_cat	Bite	157..170		
+fire_elemental	Ensnare	346		
+fire_giant	War mattock	209..262		
+fire_guardian	Closed fist	122..152		
+fire_guardian	Ensnare (attack)	152		
+fire_guardian	Charge (attack)	152		
+fire_mage	Closed fist	115		
+fire_mage	Gnarled black staff	274		
+fire_ogre	Flail	245		
+fire_rat	Bite	139..169		
+fire_rat	Claw	169		
+fire_salamander	Bite	42		
+fire_salamander	Charge	52		
+fire_salamander	Claw	42		
+fire_salamander	Unknown	52		
+fire_sprite	Closed fist	294..327		
+firebird	Claw (attack)	288..385		
+firebird	Bite (attack)	375		
+firebird	Impale (attack)	380		
+firebird	Beak	375		
+firebird	Roaring ball of fire	302		
+firebird	Sharp beak	381		
+firebird	Stream of fire	322		
+firephantom	Closed fist	77		
+firethorn_shoot	Ensnare (attack)	244		
+firethorn_shoot	Stinger (attack)	254		
+firethorn_shoot	Stinger	254		
+flayed_gigas_disciple	Gigantic hand	597		
+flayed_gigas_disciple	Skinless fist down	587		
+flesh_golem	Pound (double attack)	300		
+flesh_golem	Stomp	300		
+flesh_golem	Fist	230..304		
+flickering_mist_wreathed_banshee	Bite	520		
+flickering_mist_wreathed_banshee	Kick	555		
+forest_bendith	Scimitar	230..256		
+forest_bendith	Morning star	235..256		
+forest_ogre	Closed fist	178		
+forest_ogre	Falchion	160..186		
+forest_ogre	Pound	178		
+forest_ogre	Stomp	178		
+forest_trali	Broadsword	244..274		
+forest_trali	Dart	298		
+forest_trali_shaman	Mace	271		
+forest_troll	Cudgel	173..201		
+forest_troll	Scimitar	173		
+forest_troll	Bite	153		
+forest_troll	Claw	153		
+forest_troll	Dagger	173		
+forest_troll	Flail	173		
+forest_troll	Mace	173		
+forest_troll	War mattock	173		
+forest_troll	Unknown	201		
+frost_giant	War hammer			
+frost_giant	Battle axe	251		
+frost_giant	Freezing ball of pure cold	204		
+frost_giant	Frost-covered battle-axe	244		
+frost_giant	Morning star	216		
+frozen_corpse	Ice Pick	282..286		
+fulminating_stormborn_primordial	Crackling Sparks	476		
+gaudy_phantasmic_conjurer	Bite	520..547		
+gaunt_feral_selkie	Hand of Tonis (505)			
+gaunt_feral_selkie	Major Cold (907)			
+gaunt_feral_selkie	Charge	298		
+ghost	Short sword	58		
+ghost_wolf	Bite	143		
+ghost_wolf	Claw	143		
+ghost_wolf	Unknown	143		
+ghostly_mara	Longsword	208		
+ghostly_mara	Falchion	208		
+ghostly_pooka	Bite	189..217		
+ghostly_warrior	Broadsword	173		
+ghostly_warrior	Morning star	168		
+ghostly_warrior	Flail	153		
+ghoul_master	Bite	137		
+ghoul_master	Claw	147		
+ghoul_master	Pound (attack)	137		
+ghoul_master	Fist	137		
+giant_albino_scorpion	Pincer (attack)	197		
+giant_albino_scorpion	Stinger (attack)	207		
+giant_albino_scorpion	Pincer	157..177		
+giant_albino_scorpion	Stinger	207		
+giant_albino_tomb_spider	Ensnare	222		
+giant_albino_tomb_spider	Bite	212		
+giant_ant	Bite	36..41		
+giant_ant	Charge (attack)	46		
+giant_ant	Unknown	46		
+giant_fog_beetle	Pincer (attack)	228		
+giant_fog_beetle	Pincer	205..208		
+giant_hawk_owl	Impale	247		
+giant_hawk_owl	Bite	247		
+giant_hawk_owl	Claw	203..247		
+giant_hawk_owl	Swoop	194		
+giant_marmot	Bite	131		
+giant_marmot	Claw	121..131		
+giant_rat	Bite	34		
+giant_rat	Unknown	34		
+giant_veaba	Bite	178		
+giant_veaba	Claw	189		
+giant_weasel	Bite	151		
+giant_weasel	Claw	144..166		
+gigantic_lightning_whelk	Huge hooves	519		
+gigantic_lightning_whelk	Tusks	519		
+glacial_morph	Pound			
+glacial_morph	Ensnare			
+glacial_morph	Elongated block of ice	310		
+glistening_cerebralite	Barbed tentacle	176..410		
+glistening_cerebralite	Bladed forearms	476		
+gnarled_being	Claw	406		
+gnarled_being	Impale	396		
+gnarled_being	Smash	398..412		
+gnarled_being	Tusk	356		
+gnoll_miner	Handaxe	125		
+gnoll_ranger	Handaxe	171		
+gnoll_ranger	Unknown	150		
+gnoll_thief	Short sword	162		
+gnoll_thief	Unknown	159		
+gnoll_worker	Hatchet	112..125		
+gnoll_worker	Unknown	125		
+goblin	Flail	46		
+goblin	Scimitar	36		
+goblin	Unknown	46		
+great_boar	Charge	138..148		
+great_boar	Bite	128..138		
+great_brown_bear	Claw	189..191		
+great_brown_bear	Bite	182..184		
+great_brown_bear	Charge (attack)	194		
+great_brown_bear	Charge	179		
+great_stag	Charge (attack)	165		
+great_stag	Impale (attack)	165		
+great_stag	Antlers	148		
+great_stag	Charge	148		
+greater_bog_troll	Axe	262		
+greater_burrow_orc	Short sword	118..128		
+greater_burrow_orc	Unknown	108		
+greater_construct	Stomp			
+greater_construct	Arm	449..460		
+greater_construct	Smash	459..468		
+greater_earth_elemental	Pound (attack)			
+greater_earth_elemental	Thrown Rock	419		
+greater_earth_elemental	Fist	397		
+greater_earth_elemental	Heavy earthen fists	439		
+greater_earth_elemental	Large rock	423		
+greater_earth_elemental	Foot	440		
+greater_faeroth	Bite	302..342		
+greater_faeroth	Claw	318..340		
+greater_faeroth	Pound	305..338		
+greater_faeroth	Fist	297		
+greater_fetid_corpse	Bite	262		
+greater_ghoul	Claw	63		
+greater_ghoul	Unknown	63		
+greater_ice_giant	Battle-axe	236..306		
+greater_ice_spider	Pincer (attack)	48		
+greater_ice_spider	Stinger (attack)	71		
+greater_ice_spider	Pincer	54		
+greater_kappa	Handaxe	107		
+greater_krynch	Pound (attack)	427		
+greater_krynch	Fist	427		
+greater_krynch	Heavy earthen fists	417		
+greater_moor_wight	Broadsword			
+greater_moor_wight	Handaxe	226..252		
+greater_moor_wight	Rusty steel flyssa	246		
+greater_moor_wight	Wickedly curved scimitar	226		
+greater_orc	Spear	126		
+greater_orc	War mattock	113		
+greater_orc	Mace	113		
+greater_orc	Scimitar	113		
+greater_orc	Short sword	113		
+greater_skayl	Pound	392		
+greater_skayl	Ensnare	404..424		
+greater_skayl	Fist	358..410		
+greater_spider	Claw	104..116		
+greater_spider	Pincer (attack)	116		
+greater_spider	Pincer	104		
+greater_spider	Unknown	116		
+greater_vruul	Claw	213..238		
+greater_water_elemental	Pound	441		
+greater_water_elemental	Fist	425..500		
+greenwing_hornet	Stinger (attack)	172		
+greenwing_hornet	Stinger	172		
+gremlock	Claw	325..427		
+grey_orc	Composite bow	139		
+grifflet	Impale	342		
+grifflet	Bite	342		
+grifflet	Claw	352		
+grifflet	Swoop	342		
+grim_gigas_skald	Immense fel-hafted handaxe	520..566		
+grim_gigas_skald	Enormous tusks	529..549		
+grim_gigas_skald	Lunge	520..560		
+grim_gigas_skald	Golden targe	581		
+grim_gigas_skald	Clawed fists	560		
+grim_gigas_skald	Shark-like teeth	450		
+grimswarm_orc_archer	Plain wooden arrow	267		
+grimswarm_orc_hunter	Ball and chain	256		
+grimswarm_orc_pillager	Polished longsword	197		
+grimswarm_orc_ranger	Mace	231		
+grimswarm_orc_ranger	Plain wooden arrow	274..465		
+grimswarm_orc_ranger	Trident	269		
+grimswarm_orc_skirmisher	Handaxe	87		
+grimswarm_troll_ranger	Dagger	279		
+grimswarm_troll_ranger	Plain wooden bolt	124		
+grimswarm_troll_ranger	Plain wooden arrow	408		
+grimswarm_troll_scourge	Dagger	228		
+grimswarm_troll_skirmisher	Wooden heavy crossbow bolt	474		
+grimswarm_troll_soldier	Twohanded sword	456		
+grisly_corpse_hulk	Stomp (attack)	310		
+grisly_corpse_hulk	Closed fist	310		
+grisly_corpse_hulk	Ensnare	326		
+grizzly_bear	Charge	286		
+grizzly_bear	Claw	242..285		
+grizzly_bear	Bite	269		
+grutik_savage	Spear	188..230		
+grutik_savage	Dart	249		
+grutik_savage	Closed fist	200		
+grutik_savage	Crude stone axe	206		
+grutik_savage	Crude wooden club	215		
+grutik_shaman	Quarterstaff	220		
+hapless_charmed_corsair	Cudgel	605		
+hapless_charmed_corsair	Huge black alloy greatsword	592		
+heavily_armored_battle_mastodon	trunk slam	532		
+heavily_armored_battle_mastodon	Enormous tusks	527..566		
+heavily_armored_battle_mastodon	Golden targe	556..562		
+heavily_armored_battle_mastodon	Great foot	531..575		
+heavily_armored_battle_mastodon	Lunge	520..551		
+heavily_armored_battle_mastodon	Charge	529		
+heavily_armored_battle_mastodon	Clawed fists	475		
+heavily_armored_battle_mastodon	Copper-traced dark steel hatchet	532..535		
+heavily_armored_battle_mastodon	Huge hooves	519		
+heavily_armored_battle_mastodon	Shark-like teeth	498		
+heavily_armored_battle_mastodon	Tusks	521		
+hill_troll	Two-handed sword			
+hill_troll	War mattock			
+hill_troll	War hammer			
+hill_troll	Spear			
+hill_troll	Cudgel	207		
+hill_troll	Military pick	194		
+hill_troll	Unknown	182		
+hisskra_chieftain	Dart	260		
+hisskra_chieftain	Trident	235		
+hisskra_shaman	Trident	208..222		
+hisskra_warrior	Dart	247		
+hisskra_warrior	Trident	205..227		
+hobgoblin	Claidhmore	68		
+hobgoblin	Handaxe	68		
+hobgoblin	Rapier	68		
+hobgoblin	Iron battle axe	58		
+hobgoblin	Morning star	54		
+hobgoblin	Unknown	68		
+hobgoblin_acolyte	Leather whip			
+hobgoblin_shaman	Leather whip	111		
+hobgoblin_shaman	Mace	111		
+hooded_figure	Broadsword			
+hooded_figure	Morning star			
+hooded_figure	Falchion	186..231		
+hooded_figure	Short sword	231		
+horned_basalt_grotesque	Closed fist	525..565		
+horned_basalt_grotesque	Stomp	526..555		
+horned_basalt_grotesque	Bite	530		
+horned_vor_taz	Charge	290..296		
+huge_earth_elemental	Pound	460		
+huge_fire_elemental	Claw	460		
+huge_fire_elemental	Roaring ball of fire	469		
+huge_fire_elemental	Stream of fire	469		
+huge_ice_elemental	Pound	430		
+huge_jungle_toad	Bite (attack)	222		
+huge_jungle_toad	Charge (attack)	232		
+huge_jungle_toad	Bite	199..230		
+huge_lava_elemental	Pound (double attack)	450		
+huge_lava_elemental	Molten fist	409..496		
+huge_lava_elemental	Roaring ball of fire	469		
+huge_lightning_elemental	Charge	460..495		
+huge_lightning_elemental	Powerful lightning bolt	469		
+huge_mein_golem	Ensnare	250		
+huge_mein_golem	Heavy mein right fist	234..255		
+huge_steam_elemental	Ensnare	460		
+huge_steam_elemental	Boiling tendril	469..491		
+huge_water_elemental	Pound	450		
+hulking_forest_ape	Pound (attack)	200..278		
+hulking_forest_ape	Bite (attack)	200..278		
+hulking_forest_ape	Charge (attack)	200..278		
+humpbacked_puma	Bite (attack)	168		
+humpbacked_puma	Claw (attack)	168		
+humpbacked_puma	Bite	148		
+humpbacked_puma	Claw	142		
+humpbacked_puma	Unknown	145		
+hunch_backed_dogmatist	Kaskara	350		
+hunter_troll	Jeddart-axe	232		
+hunter_troll	Bite	212..222		
+hunter_troll	Claw	212		
+ice_golem	Pound			
+ice_golem	Stomp	319		
+ice_golem	Ensnare	333		
+ice_golem	Fist	327..335		
+ice_golem	Foot	265..333		
+ice_hound	Bite	192		
+ice_hound	Freezing ball of pure cold	171		
+ice_troll	Sword	228		
+ice_troll	Battle-axe	205		
+ice_troll	Enruned ice-covered battle axe	200		
+ice_troll	Freezing ball of pure cold	179..185		
+ice_wraith	Kaskara	238		
+illoke_elder	Stomp (attack)			
+illoke_elder	Sledgehammer			
+illoke_elder	Stalagmite			
+illoke_elder	Rock (hurled)			
+illoke_elder	Enormous stalagmite	419		
+illoke_elder	Fist	389		
+illoke_elder	Foot	292		
+illoke_elder	Giant granite sledgehammer	417		
+illoke_elder	Heavy earthen fists	431		
+illoke_elder	Heavy stone hammer	409		
+illoke_elder	Large rock	429		
+illoke_jarl	Fist	392		
+illoke_jarl	Hammer	422..435		
+illoke_jarl	Foot	405		
+illoke_jarl	Heavy earthen fists	419		
+illoke_jarl	Huge rock	434		
+illoke_mystic	Giant stone hammer	341		
+illoke_mystic	Heavy stone hammer	255		
+illoke_mystic	Large rock	356		
+illoke_shaman	War mattock			
+illoke_shaman	Fist	337		
+illoke_shaman	Foot	303		
+illoke_shaman	Huge stone maul	316		
+illoke_shaman	Massive granite hammer	325..335		
+ilvari_pixie	Giant bee stinger	348		
+immense_gold-bristled_hinterboar	stomp	515..529		
+immense_gold-bristled_hinterboar	impale	509..523		
+immense_gold-bristled_hinterboar	charge (attack)	529		
+immense_gold-bristled_hinterboar	Charge	529..557		
+immense_gold-bristled_hinterboar	Huge hooves	519..549		
+immense_gold-bristled_hinterboar	Tusks	519..549		
+immense_gold-bristled_hinterboar	Lunge	557		
+imposing_elk	Antlers	139		
+imposing_elk	Charge	148		
+infernal_death_knight	Trio of blue-black diamonds	610..645		
+infernal_death_knight	Bite	520		
+infernal_death_knight	Charge	565		
+infernal_death_knight	Kick	520		
+ithzir_adept	Quarterstaff	408		
+ithzir_adept	Twisted crystal-tipped staff	408..428		
+ithzir_champion	Flamberge	446..456		
+ithzir_champion	Maul	440..461		
+ithzir_herald	Falchion			
+ithzir_herald	Curved crystal-edged blade	413		
+ithzir_herald	Curved silvery blade	413..416		
+ithzir_initiate	Quarterstaff	433		
+ithzir_initiate	Twisted crystal-tipped staff	428..503		
+ithzir_janissary	Longsword	428		
+ithzir_janissary	Military fork			
+ithzir_janissary	Mace	421		
+ithzir_janissary	Smash	453		
+ithzir_janissary	Spiral-hafted crystal-edged handaxe	402..423		
+ithzir_janissary	Spiral-hafted handaxe	413..421		
+ithzir_janissary	Twisted crystal-tipped staff	431		
+ithzir_janissary	Gleaming crystal-edged broadsword	413		
+ithzir_scout	Broadsword	414..436		
+ithzir_scout	Closed fist	402		
+ithzir_scout	Smash	443..459		
+ithzir_seer	Quarterstaff	398		
+ithzir_seer	Twisted crystal-tipped staff	411..499		
+ithzir_seer	Gleaming crystal-edged broadsword	341		
+jungle_feyling	Fist-scythe	198		
+jungle_troll	Falchion	209		
+jungle_troll	Claw (attack)	199		
+jungle_troll	Bamboo-hilted machete	209		
+jungle_troll_chieftain	Bastard sword	212		
+jungle_troll_chieftain	Claw (attack)	227		
+jungle_troll_chieftain	Vine-wrapped rusting bastard sword	272		
+kiramon_defender	Tongue Strike	256		
+kiramon_defender	Charge (attack)	262		
+kiramon_defender	Claw	230..256		
+kiramon_defender	Charge	236		
+kiramon_worker	Claw	236		
+kiramon_worker	Charge (attack)	246		
+kiramon_worker	Charge	196		
+kobold	Short sword	36		
+kobold	(quarantine-recovered)	16		
+kobold	Javelin	36		
+kobold	Unknown	36		
+kobold_shepherd	Quarterstaff	50		
+kobold_shepherd	Unknown	50		
+krag_dweller	Pound	400		
+krag_dweller	Fist	383		
+krag_yeti	Hairy hand	328..364		
+krag_yeti	Ensnare	335		
+krag_yeti	Closed fist	346..388		
+krolvin_corsair	Tackle			
+krolvin_corsair	Plain steel cutlass	228		
+krolvin_mercenary	Broadsword	178		
+krolvin_mercenary	Unknown	178		
+krolvin_slaver	Scimitar	212..230		
+krolvin_warfarer	Awl-pike	200		
+krolvin_warfarer	Claidhmore	200		
+krolvin_warfarer	Falchion	162..200		
+krolvin_warfarer	Morning star	196		
+krolvin_warfarer	Broadsword	204		
+krolvin_warrior	War mattock	156..195		
+krolvin_warrior	Morning star	166..195		
+krolvin_warrior	Jeddart-axe	185		
+krynch	Pound			
+krynch	Fist	250		
+large_ogre	Claw	145		
+large_ogre	Closed fist	130..155		
+large_ogre	Flail	165		
+large_ogre	Two-handed sword	165		
+large_ogre	Mace	155		
+large_ogre	Spear	165		
+large_ring_tailed_lemur	Bite (attack)	118		
+large_ring_tailed_lemur	Closed fist	118		
+large_ring_tailed_lemur	Bite	111		
+large_ring_tailed_lemur	Charge	208		
+large_ring_tailed_lemur	Sharp claws	117		
+large_thorned_shrub	small glistening thorn	299		
+large_thorned_shrub	Twig	279		
+lava_golem	Pound (attack)	325		
+lava_golem	Stomp (attack)	320		
+lava_golem	Fist	331..345		
+lava_golem	Foot	321		
+lava_troll	Maul	215		
+lava_troll	Warsword	215		
+lava_troll	Leather-wound ruddy steel sledgehammer	215		
+leaper	Bite	84..94		
+leaper	Claw	94		
+leaper	Stomp	94		
+leaper	Foot	84		
+lesser_burrow_orc	Short sword	101..127		
+lesser_construct	Flail			
+lesser_construct	Stomp	404		
+lesser_construct	Massive arm	404..424		
+lesser_construct	Smash	404..416		
+lesser_faeroth	Bite	257..281		
+lesser_faeroth	Claw	236..291		
+lesser_faeroth	Pound	271..281		
+lesser_frost_shade	Handaxe	33..43		
+lesser_frost_shade	Unknown	23		
+lesser_ghoul	Claw	31		
+lesser_ghoul	Unknown	31		
+lesser_griffin	Impale	341		
+lesser_griffin	Bite	338..341		
+lesser_griffin	Claw	348..351		
+lesser_griffin	Beak	329		
+lesser_griffin	Swoop	315..344		
+lesser_ice_elemental	Ensnare			
+lesser_ice_elemental	Lash	255..301		
+lesser_ice_giant	Massive Icicle	299		
+lesser_minotaur	Greataxe	338		
+lesser_minotaur	Waraxe	341..376		
+lesser_moor_wight	Broadsword	250		
+lesser_moor_wight	Blackened twisted steel longsword	225..250		
+lesser_moor_wight	Slender enruned steel longsword	250		
+lesser_mummy	Claw	108		
+lesser_mummy	Ensnare	118		
+lesser_orc	Cudgel	108		
+lesser_orc	Short sword	88..108		
+lesser_orc	Unknown	108		
+lesser_red_orc	Scimitar	99..111		
+lesser_shade	Short sword	33..43		
+lesser_shade	Falchion	43		
+lesser_stone_gargoyle	Bite	180..201		
+lesser_stone_gargoyle	Claw	201		
+lesser_vruul	Battle axe	248..263		
+lesser_vruul	Short sword	263		
+lesser_wood_sprite	Estoc	190..222		
+lesser_wood_sprite	Composite bow			
+lesser_wood_sprite	Impale	198		
+lich	Runestaff	466		
+lich	Crystal-set smooth ironwood scepter	466		
+lich	Barbed tentacle	430		
+lich	Bladed forearms	487		
+lich_qyn_arj	Bite	368..382		
+lich_qyn_arj	Smash	363		
+lithe_veiled_sentinel	Kick	418..484		
+lithe_veiled_sentinel	Bloated arms	450		
+lithe_veiled_sentinel	Bronze cutlass	481..553		
+lithe_veiled_sentinel	Heel of her hand	433..438		
+lithe_veiled_sentinel	Heel of his hand	408..483		
+lost_soul	Scythe	370..493		
+lost_soul	Scorched black ball and chain	404..501		
+luminous_arachnid	Bite	150		
+luminous_arachnid	Ensnare	148..152		
+luminous_worm	Charge (attack)	156		
+luminous_worm	Charge	154..162		
+magna_vereri	Repel (Fear)			
+magna_vereri	Decaying fists	354		
+magna_vereri	Leather whip	363		
+magna_vereri	Mouth full of rotting teeth	327..364		
+magna_vereri	Slash	354..360		
+magru	Pound	210		
+magru	Fist	260		
+major_glacei	Lash	259		
+major_glacei	Strike	234..281		
+major_spider	Bite	168		
+major_spider	Ensnare	178..186		
+mammoth_arachnid	Bite	190..215		
+mammoth_arachnid	Ensnare	204..226		
+manticore	Claw	112		
+manticore	Closed fist	122		
+manticore	Unknown	122		
+martial_eagle	Bite	230		
+martial_eagle	Claw	230		
+martial_eagle	Swoop	220		
+massive_black_boar	Charge (attack)	335		
+massive_black_boar	Impale (attack)	292		
+massive_black_boar	Bite (attack)	312		
+massive_black_boar	Bite	325		
+massive_black_boar	Charge	335		
+massive_black_boar	Tusk	325		
+massive_grahnk	Cudgel			
+massive_grahnk	Foot	151		
+massive_grahnk	Heavy stone club	192		
+massive_pyrothag	Quarterstaff	302		
+massive_pyrothag	Stomp (attack)	253		
+massive_pyrothag	Pound (attack)	283		
+massive_pyrothag	Massive glaes club	243..302		
+massive_troll_king	Bite	339		
+massive_troll_king	Claw	522		
+massive_troll_king	Bite (enraged)			
+massive_troll_king	Claw (enraged)			
+massive_troll_king	Fist	502		
+mastodonic_leopard	Bite	242..269		
+mastodonic_leopard	Claw	279		
+maw_spore	Stinger (attack)	227		
+maw_spore	Stinger	227		
+mezic	Ball and chain			
+mezic	Stream of water	198		
+minor_glacei	Lash	217..246		
+minor_glacei	Strike	247..250		
+minotaur_magus	Runestaff	336		
+minotaur_warrior	Greataxe	368		
+minotaur_warrior	Moon axe	368..384		
+minotaur_warrior	Lustrous steel battle axe	348		
+mist_wraith	Closed fist	81		
+mist_wraith	Claw	71		
+mist_wraith	Ensnare	71..81		
+mistydeep_siren	Dagger	50		
+mistydeep_siren	Unknown	30		
+moaning_phantom	Closed fist	28		
+moaning_phantom	Unknown	28		
+moaning_spirit	Claw	218..235		
+moaning_spirit	Closed fist	228..245		
+monastic_lich	claidhmore	180..255		
+monastic_lich	kris	180..255		
+monastic_lich	whip	180..255		
+mongrel_hobgoblin	Morning star	99		
+mongrel_hobgoblin	Spiked club	79..89		
+mongrel_hobgoblin	Unknown	99		
+mongrel_kobold	Handaxe	65..73		
+mongrel_kobold	Short sword	65..73		
+mongrel_troll	Spear	167		
+mongrel_wolfhound	Bite	132..150		
+mongrel_wolfhound	Charge	161		
+monkey	Bite	88		
+monkey	Mace			
+monkey	Closed fist	88		
+monkey	Leather whip			
+monkey	Length of coiled red vine	70		
+monkey	Thin oaken cudgel	63		
+monkey	Iron-tipped wooden cane	70		
+monstrous_direwolf	Bite (attack)	365		
+monstrous_direwolf	Claw (attack)	355		
+monstrous_direwolf	Bite	345		
+monstrous_direwolf	Claw	319		
+moor_eagle	Claw	233..259		
+moor_eagle	Impale	249		
+moor_eagle	Swoop	267		
+moor_hound	Bite	232		
+moor_hound	Charge	242		
+moor_hound	Claw	232..242		
+moor_witch	Dagger	211..252		
+moulis	Attack	380		
+moulis	Powerful lightning bolt	277		
+mountain_goat	Bite	161..175		
+mountain_lion	Claw	159..165		
+mountain_lion	Bite	132..168		
+mountain_ogre	War mattock	173		
+mountain_ogre	Broadsword	173		
+mountain_ogre	Crude pine mattock	177		
+mountain_ogre	Cudgel	177		
+mountain_rolton	Bite	28..36		
+mountain_rolton	Unknown	28		
+mountain_snowcat	Bite	59		
+mountain_snowcat	Claw	49..59		
+mountain_troll	Flail	190		
+mountain_troll	Military pick	190		
+mud_wasp	Stinger (attack)	254		
+mud_wasp	Stinger	254		
+muddy_hog	Bite	161		
+muddy_hog	Charge	171		
+muddy_hog	Unknown	171		
+murky_soul_siphon	Dual armrake	471		
+murky_soul_siphon	Bladed forearms	477..491		
+murky_soul_siphon	Barbed tentacle	436		
+muscular_brindlecat	Bite	142		
+muscular_brindlecat	Claw	119		
+muscular_brindlecat	Unknown	137		
+muscular_supplicant	Flamberge	273..342		
+myklian	Charge	251		
+myklian	Claw	241		
+myklian	Stomp	241		
+myklian	Foot	241		
+n_ecare	Falchion	386..503		
+n_ecare	Mace	386..396		
+n_ecare	Long blackened jeddart-axe	491..520		
+naisirc	Charge (attack)	400		
+naisirc	Ensnare (attack)	396		
+naisirc	Charge	374		
+naisirc	Ensnare	366..370		
+nasty_little_gremlin	Dagger	100		
+nasty_little_gremlin	Unknown	100		
+nasty_little_gremlin	Nip	80		
+neartofar_orc	Morning star	149..159		
+neartofar_troll	Longsword	179		
+necrotic_snake	Strike	254..288		
+nedum_vereri	Morning star	161		
+nedum_vereri	Gilt-thorned steel spikestar	120		
+nedum_vereri	Claw	141		
+night_golem	Ensnare	96		
+night_golem	Pound	86		
+night_golem	Black fists	77		
+night_hound	Bite	192		
+night_hound	Claw	182..202		
+nightmare_steed	Bite	327		
+nightmare_steed	Charge	337		
+nightmare_steed	Foot	327		
+niirsha	Goupillon	164		
+niveous_giant_warg	bite	527		
+niveous_giant_warg	Foreclaw	553..610		
+niveous_giant_warg	Lunge	545..608		
+niveous_giant_warg	Charge	525		
+niveous_giant_warg	Golden targe	556		
+niveous_giant_warg	Huge hooves	515		
+niveous_giant_warg	Immense fel-hafted handaxe	559		
+niveous_giant_warg	Shark-like teeth	501		
+niveous_giant_warg	Tusks	501..529		
+nonomino	Ball and chain	160		
+nonomino	Dagger	147..160		
+ogre_sentry	Sunder Shield			
+ogre_sentry	Thin-bladed steel handaxe	193..199		
+ogre_warrior	Mace	173..201		
+ogre_warrior	Military pick	177..193		
+ogre_warrior	Broad-bladed steel hatchet	169		
+ogre_warrior	Unknown	173		
+pale_crab	Claw	43		
+pale_crab	Ensnare	23..53		
+pale_scaled_shaper	Major Fire			
+pale_scaled_shaper	Long acacia runestaff	517		
+panther	Bite	150..174		
+panther	Claw	134..174		
+patchwork_flesh_monstrosity	Ensnare (attack)Ensnare	450		
+patchwork_flesh_monstrosity	Stomp (attack)Stomp			
+patchwork_flesh_monstrosity	Bloated arms	438..480		
+patchwork_flesh_monstrosity	Bronze cutlass	543		
+patchwork_flesh_monstrosity	Heel of his hand	418		
+patchwork_flesh_monstrosity	Kick	390		
+patchwork_flesh_monstrosity	Heel of her hand	427		
+phantasma	Leather whip	217		
+phantasma	Barbed whip	237		
+phantasma	Splintered lance	227		
+phantasmal_bestial_swordsman	Hammer of Kai			
+phantasmal_bestial_swordsman	Black steel claidhmore	272		
+phantasmal_bestial_swordsman	Black steel twohanded sword	342		
+phantasmal_bestial_swordsman	Rhimar trident	345		
+phantom	Closed fist	28		
+phantom	Dagger	0		
+phosphorescent_worm	Charge (attack)	154		
+phosphorescent_worm	Charge	154		
+plains_lion	Bite	165		
+plains_lion	Claw	165		
+plains_ogre	Closed fist	165		
+plains_ogre	Mace	157..175		
+plains_ogre	Claw	155		
+plains_orc_chieftain	Machete	171..195		
+plains_orc_chieftain	Morning star	191..195		
+plains_orc_scout	Longsword	157..175		
+plains_orc_shaman	Kris	164		
+plains_orc_shaman	Mace	164		
+plains_orc_warrior	Morning star	176..180		
+plains_orc_warrior	Handaxe	140..180		
+plumed_cockatrice	Charge	167		
+plumed_cockatrice	Claw	157		
+plumed_cockatrice	Pincer (attack)	157		
+plumed_cockatrice	Strike	143		
+polar_bear	Bite	278..319		
+polar_bear	Charge	315		
+polar_bear	Claw	319		
+pra_eda	Closed fist	281		
+puma	Bite	134..171		
+puma	Claw	160..163		
+putrefied_citadel_herald	Runestaff	277..302		
+quivering_sanguine_ooze	Huge black alloy greatsword	596..679		
+quivering_sanguine_ooze	Yellowed brittle bone cudgel	583		
+quivering_sanguine_ooze	Fists	558..559		
+quivering_sanguine_ooze	Glistening tendril	595..606		
+quivering_sanguine_ooze	Talons	600		
+quivering_sanguine_ooze	Crush	614		
+quivering_sanguine_ooze	Shark-like teeth	505		
+rabid_guard_dog	Bite	106		
+rabid_guard_dog	Charge (attack)			
+rabid_guard_dog	Charge	106		
+rabid_squirrel	Nip (attack)			
+rabid_squirrel	Nip	36..46		
+raider_orc	Twohanded sword	122..132		
+raving_lunatic	Short sword	371		
+raving_lunatic	Bite	315..367		
+raving_lunatic	Claw	351..398		
+raving_lunatic	Midnight black spiked whip	415		
+raving_lunatic	Twisted kris	391..401		
+red_bear	Claw	160..174		
+red_bear	Bite	174		
+red_scaled_thrak	Bite (attack)	278		
+red_scaled_thrak	Claw (attack)	278		
+red_scaled_thrak	Bite	278		
+red_scaled_thrak	Claw	278		
+red_tsark	Leap			
+red_tsark	Bite	293		
+red_tsark	Claw	347		
+red_tsark	Roaring ball of fire	294		
+reiver	Broadsword	222		
+reiver	Handaxe	222		
+reiver	Falchion	222		
+reiver	Spear	222		
+reiver	Two-handed sword	222		
+reiver	Fist	202		
+reiver	Unknown	222		
+relnak	Bite	61		
+relnak	Charge (attack)	71		
+relnak	Stomp	61		
+relnak	Charge	71		
+relnak	Foot	61		
+relnak	Unknown	71		
+revenant	Closed fist	57		
+revenant	Broadsword	0		
+ridge_orc	Handaxe	74..84		
+ridgeback_boar	Charge	140..170		
+ridgeback_boar	Bite	160..170		
+ridgeback_boar	Impale	170		
+ridgeback_boar	Tusk	150		
+roa_ter	Charge	244		
+roa_ter_wormling	Charge (attack)	197		
+roa_ter_wormling	Charge	191..197		
+rock_troll_zombie	Claw	227..245		
+roiling_crimson_angargeist	Dagger-sharp beak	610..616		
+roiling_crimson_angargeist	Huge black alloy greatsword	589..667		
+roiling_crimson_angargeist	Shining metallic spear	616..654		
+roiling_crimson_angargeist	Slash	574..583		
+roiling_crimson_angargeist	Talons	600..610		
+roiling_crimson_angargeist	?: Blow raises a welt	582		
+rolton	Bite	32		
+rolton	Unknown	36		
+rotting_chimera	Bite	276		
+rotting_chimera	Claw	244..276		
+rotting_chimera	Pound	276		
+rotting_chimera	Bestial jaws	248		
+rotting_chimera	Enormous humanoid fist	230..248		
+rotting_citadel_arbalester	Heavy crossbow	312		
+rotting_citadel_arbalester	Wooden burning bolt	312		
+rotting_citadel_arbalester	Wooden heavy crossbow bolt	318		
+rotting_corpse	Scythe	236..266		
+rotting_corpse	Bite (attack)	233		
+rotting_farmhand	Rusted pitchfork	243		
+rotting_krolvin_pirate	Handaxe	173		
+rotting_krolvin_pirate	Trident	173		
+rotting_krolvin_pirate	Corroded long-handled gaff	155		
+rotting_krolvin_pirate	Weathered boarding axe	153		
+rotting_woodsman	Battle axe	202		
+rotting_woodsman	Huge logging axe	207		
+sabre_tooth_tiger	Bite	244..313		
+sabre_tooth_tiger	Charge	283..315		
+sacristan_spirit	a twisted black steel half moon	211		
+sacristan_spirit	Twisted black steel half moon	172..207		
+sand_beetle	Pincer (attack)	232		
+sand_devil	Claw (attack)	273		
+sand_devil	Pound (attack)	303		
+sand_devil	Claw	293		
+sand_devil	Fist	303		
+sand_devil	Small surge of electricity	283		
+sand_devil	Stream of water	283		
+savage_fork-tongued_wendigo	attack	530..630		
+savage_fork-tongued_wendigo	bite (attack)	505..605		
+savage_fork-tongued_wendigo	claw (attack)	515..615		
+savage_fork-tongued_wendigo	Elongated talon	481..628		
+savage_fork-tongued_wendigo	Clawed fists	475..636		
+savage_fork-tongued_wendigo	Shark-like teeth	612..625		
+savage_fork-tongued_wendigo	Charge	529		
+savage_fork-tongued_wendigo	Huge hooves	517		
+savage_fork-tongued_wendigo	Tusks	525		
+scaly_burgee	Charge (attack)	250		
+scaly_burgee	Claw	225..247		
+scaly_burgee	Charge	221		
+sea_nymph	Dagger	50		
+sea_nymph	Handaxe	50		
+sea_nymph	Spear	50		
+sea_nymph	Unknown	50		
+seeker	Earthen Fury (917)			
+seeker	Gas cloud			
+seeker	Strength (509)			
+seeker	Elemental Dispel			
+seeker	Ancient walking stick	243..271		
+seething_pestilent_vision	Disintegrate (705)			
+seething_pestilent_vision	Corrupt Essence (703)			
+seething_pestilent_vision	Claw	330		
+seraceris	Claw (attack)	291		
+seraceris	Claw	380..384		
+shadow_mare	Bite	188..211		
+shadow_mare	Foot	188..211		
+shadow_mare	Charge	175		
+shadow_steed	Charge	254		
+shadow_steed	Foot	228..242		
+shambling_lurk	Bite	450		
+shambling_lurk	Bloated arms	438..470		
+shambling_lurk	Strike	459		
+shambling_lurk	Bronze cutlass	452..533		
+shan_bardess	Lance	320..337		
+shan_cleric	Morning star	212		
+shan_cleric	Spiked holy-water sprinkler	307		
+shan_empath	Spirit Strike			
+shan_empath	Modwir-hafted mace	260..378		
+shan_ranger	Longsword	276..294		
+shan_sorceress	Ball of greenish-black flame	326		
+shan_warrior	Flamberge	259..271		
+shan_warrior	Longsword	231..259		
+shan_warrior	Jeddart-axe	237..259		
+shan_warrior	Sharply-honed vultite handaxe	375		
+shan_wizard	Dagger	254		
+shelfae_assailant	Bite	110		
+shelfae_assailant	Claw	120		
+shelfae_chieftain	Halberd	130		
+shelfae_chieftain	Morning star	130		
+shelfae_guard	Bite	82		
+shelfae_guard	Claw	82		
+shelfae_soldier	Trident	102		
+shelfae_warlord	Falchion	170		
+sheruvian_harbinger	Broadsword	324..404		
+sheruvian_initiate	Jeddart-axe	230..280		
+sheruvian_initiate	Lunge	220		
+sheruvian_initiate	Closed fist	220		
+sheruvian_monk	Jeddart-axe	239..314		
+sheruvian_monk	Lunge	269..299		
+sheruvian_priest	Runestaff	253		
+sheruvian_warlock	Runestaff	253		
+shining_winged_disir	Lance		?	
+shining_winged_disir	Dagger-sharp beak	610		
+shining_winged_disir	Shining metallic spear	654..670		
+shining_winged_disir	Talons	600..610		
+shining_winged_disir	Huge black alloy greatsword	667		
+shining_winged_disir	Yellowed brittle bone cudgel	583		
+shrickhen	Bite	393		
+shrickhen	Claw	403		
+shrickhen	Severed shrickhen arm	50..411		
+shriveled_icy_creeper	melee: stab	285		
+shriveled_icy_creeper	Stinger	289		
+sidewinder	Bite	459		
+sidewinder	Strike	469		
+silver_scaled_cold_wyrm	Bite	826		
+silver_scaled_cold_wyrm	Claw	826		
+silver_scaled_cold_wyrm	Tail swing	826		
+silver_scaled_cold_wyrm	Dive	826		
+silverback_orc	Falchion	158..163		
+siren	Ensnare	446..449		
+siren	Coral-hilted sharply tapered longsword	428		
+siren_lizard	claw (attack)	267		
+siren_lizard	Pound (attack)	267		
+siren_lizard	Ensnare (attack)	277		
+siren_lizard	Tail (attack)	255		
+siren_lizard	Claw	267		
+siren_lizard	Ensnare	277		
+siren_lizard	Fist	267		
+skayl	Closed fist	257..328		
+skayl	Ensnare (attack)	328		
+skayl	Ensnare	257..302		
+skeletal_giant	Pound	227		
+skeletal_giant	Fist	227		
+skeletal_ice_troll	Battle axe	205		
+skeletal_lord	Lance	274		
+skeletal_soldier	Disarm Weapon			
+skeletal_soldier	Crude black iron morning star	224		
+skeletal_soldier	Claw	207		
+skeletal_warhorse	Charge	262		
+skeletal_warhorse	Stomp	240		
+skeletal_warhorse	Foot	235		
+skeleton	Broadsword			
+skeleton	Dagger	31		
+skeleton	Unknown	31		
+skeleton	Bite	11		
+sleek_black_kiramon_stalker	Claw			
+sleek_black_kiramon_stalker	Stinger (attack)	591..597		
+sleek_black_kiramon_stalker	Bite	565..597		
+sleek_black_kiramon_stalker	Bladed forelegs	519		
+sleek_black_kiramon_stalker	Razor-sharp foreleg	600..607		
+slimy_little_grub	Stinger (attack)	47		
+slimy_little_grub	Stinger	37		
+smouldering_skeletal_dreadsteed	Bite (attack)	520		
+smouldering_skeletal_dreadsteed	Charge (attack)	530		
+smouldering_skeletal_dreadsteed	Stomp (attack)	520		
+smouldering_skeletal_dreadsteed	Bite	567..575		
+smouldering_skeletal_dreadsteed	Charge	530..576		
+smouldering_skeletal_dreadsteed	Kick	555..561		
+snow_leopard	Bite	182..203		
+snow_leopard	Charge	213		
+snow_leopard	Claw	187..213		
+snow_madrinol	Bite	291..301		
+snow_madrinol	Claw	311		
+snow_spectre	Closed fist	98		
+snowy_cockatrice	Charge (attack)	109		
+snowy_cockatrice	Claw	99		
+snowy_cockatrice	Pincer (attack)	99		
+snowy_cockatrice	Strike	99		
+soldier_ant	Bite	45		
+soldier_ant	Charge (attack)	55		
+soul_golem	Pound (attack)	337		
+soul_golem	Ensnare (attack)	353		
+spectacled_bear	Bite	180		
+spectacled_bear	Charge	171		
+spectacled_bear	Claw	171		
+spectral_black_warhorse	Charge (attack)			
+spectral_black_warhorse	Stomp	250		
+spectral_black_warhorse	Charge	190		
+spectral_fisherman	Trident	94		
+spectral_fisherman	Bite			
+spectral_fisherman	Claw (attack)Claw			
+spectral_lord	Ball and chain	250		
+spectral_lord	Morning star	222..250		
+spectral_miner	Mining pick	243..311		
+spectral_monk	Quarterstaff	227		
+spectral_monk	Scythe	227		
+spectral_shade	Blackened scythe	239		
+spectral_shade	Powerful lightning bolt	162		
+spectral_triton_defender	Lackluster blue steel harpoon	444		
+spectral_triton_defender	Seaweed-wound rusted steel hatchet	424..433		
+spectral_triton_defender	Curved vaalorn handaxe	432		
+spectral_triton_defender	Tarnished dark silver harpoon	433		
+spectral_triton_protector	Ball and chain	424..449		
+spectral_triton_protector	Claw	414		
+spectral_warrior	Claw	230		
+spectral_warrior	Flail	230..250		
+spectral_warrior	Broadsword	250		
+spectral_warrior	Halberd	250..288		
+spectral_woodsman	Battle axe			
+spectral_woodsman	Hissing stream of acid	192		
+spectral_woodsman	Powerful lightning bolt	172		
+spectral_woodsman	Roaring ball of fire	176		
+spectre	Halberd	102		
+spectre	Battle axe	102		
+spectre	Fist	102		
+spiked_cavern_urchin	Pincer (attack)		(barbed spines) 176	
+spotted_gak	Impale	48		
+spotted_gak	Tusk	48		
+spotted_gnarp	Impale	32		
+spotted_gnarp	Tusk	23..36		
+spotted_gnarp	Unknown	23		
+spotted_leaper	Bite	68..76		
+spotted_leaper	Claw	76		
+spotted_leaper	Stomp	76		
+spotted_leaper	Unknown	76		
+spotted_lynx	Bite	92		
+spotted_lynx	Charge	92..102		
+spotted_lynx	Claw	91..102		
+spotted_lynx	Unknown	102		
+squamous_reptilian_mutant	Cudgel	573..598		
+squamous_reptilian_mutant	Crush	614		
+squamous_reptilian_mutant	Fists	543..554		
+squamous_reptilian_mutant	Slash	568..583		
+squamous_reptilian_mutant	?: Blow raises a welt	546		
+steam_dervish	Longsword	402..452		
+steel_golem	Ensnare	168..178		
+steel_golem	Pound	188		
+steel_golem	Stomp	198		
+steel_golem	Metallic hand	150..169		
+stone_gargoyle	Bite	134..242		
+stone_gargoyle	Claw	242		
+stone_giant	Pound			
+stone_giant	Stomp			
+stone_giant	War mattock	324		
+stone_giant	Large rock	267		
+stone_mastiff	Bite	229..268		
+stone_mastiff	Claw	337		
+stone_sentinel	Pound	380		
+stone_sentinel	Fist	350..380		
+stone_troll	Thrown	321		
+stone_troll	War hammer	321		
+stone_troll	Foot	296		
+stone_troll	Giant stone hammer	298		
+stooped_being	Claw	406		
+stooped_being	Bite	356..396		
+stooped_titan_stormcaller	Leering Lightning(?)			
+stooped_titan_stormcaller	Glowing hand	205		
+storm_giant	Morning star	247		
+storm_giant	Spear	197..247		
+storm_giant	Weathered huge zorchar maul	252		
+storm_griffin	Claw	338..368		
+storm_griffin	Impale	358		
+storm_griffin	Bite	327..362		
+storm_griffin	Swoop	331..368		
+storm_griffin	Beak	325		
+storm_griffin	Powerful lightning bolt	293		
+storm_hound	Bite	192		
+storm_hound	Claw	202		
+storm_hound	Powerful lightning bolt	202		
+striped_gak	Impale	61		
+striped_gak	Tusk	54		
+striped_relnak	Bite	31..61		
+striped_relnak	Charge (attack)	71		
+striped_relnak	Stomp	61		
+striped_relnak	Foot	61		
+striped_relnak	Unknown	41		
+striped_warcat	Claw	185..195		
+striped_warcat	Bite	166..193		
+striped_warcat	Unknown	185		
+stunted_halfling_bloodspeaker	attack	420..550		
+stunted_halfling_bloodspeaker	Shark-like teeth	505..522		
+stunted_halfling_bloodspeaker	Tusks	499..519		
+stunted_halfling_bloodspeaker	Charge	504..529		
+stunted_halfling_bloodspeaker	Huge hooves	529		
+stunted_halfling_bloodspeaker	Misshapen limbs	499		
+supple_ivasian_inciter	Kick	414		
+supple_ivasian_inciter	Whip	294..329		
+supple_ivasian_inciter	Quick jab	323..363		
+swamp_hag	Slap	255		
+swamp_troll	Cudgel	155..173		
+swirling_spectre	Claw	144		
+swirling_spectre	Ensnare	222		
+tattooed_gigas_berserker	hatchet	531..563		
+tattooed_gigas_berserker	Charge	529..535		
+tattooed_gigas_berserker	Enormous tusks	529..539		
+tattooed_gigas_berserker	Golden targe	556		
+tattooed_gigas_berserker	Immense fel-hafted handaxe	520..545		
+tattooed_gigas_berserker	Lunge	520..545		
+tattooed_gigas_berserker	Crush	500		
+tattooed_gigas_berserker	Tusks	519		
+tawny_brindlecat	Bite	147..150		
+tawny_brindlecat	Claw	136..162		
+tegursh_sentry	Falchion	207		
+tegursh_sentry	Jeddart-axe	176..225		
+tenebrific_wraith_shark	Crush	614		
+thrak	Bite	110		
+thrak	Charge	120		
+thrak	Claw	110		
+thrak	Unknown	120		
+three_toed_tegu	Impale	237		
+three_toed_tegu	Bite	227..237		
+three_toed_tegu	Claw	237		
+thunder_troll	War mattock	163		
+thunder_troll	Flamberge	163		
+thunder_troll	Nut brown steel bastard sword	163		
+thunder_troll	Unknown	163		
+thunder_troll	Claw	153		
+thyril	Closed fist	42		
+thyril	Scimitar	52		
+thyril	Unknown	52		
+tomb_troll	Morning star	248..273		
+tomb_troll	Huge swollen right fist	235		
+tomb_troll_necromancer	Runestaff	133..283		
+tomb_wight	Broadsword	131..163		
+tomb_wight	Two-handed sword	157		
+tomb_wight	Twohanded sword	127..157		
+tomb_wight	Blackened claidhmore	141		
+translucent_kiramon_strandweaver	Barbed stinger	565		
+translucent_kiramon_strandweaver	Bladed forelegs	519		
+tree_spirit	Ensnare	190		
+tree_viper	Bite	195..218		
+treekin_druid	Pound	400		
+treekin_druid	Root lash	400		
+treekin_druid	Root slam	400		
+treekin_druid	Large boulder	265		
+treekin_druid	Leafy fist	370		
+treekin_sapling	Branch rake	355		
+treekin_sapling	Root lash	355		
+treekin_warrior	Pound	390		
+treekin_warrior	Root lash	390		
+treekin_warrior	Root slam	390		
+treekin_warrior	Leafy fist	355		
+triton_assassin	Longsword			
+triton_assassin	Main gauche			
+triton_assassin	Claw	443		
+triton_assassin	Coral-hilted heavy ball and chain	433		
+triton_brawler	UCS		414 UAF	
+triton_combatant	Claw	414		
+triton_combatant	Trident	424..444		
+triton_combatant	Seaweed-wound rusted steel hatchet	424..426		
+triton_dissembler	Empathic Assault (1110)	404		
+triton_dissembler	Fine-grained deep cerulean runestaff	391		
+triton_executioner	Handaxe	433..451		
+triton_executioner	Heavy crossbow			
+triton_executioner	longsword	433..453		
+triton_executioner	Streaked pale driftwood bolt	433..453		
+triton_fanatic	Hammer of Kai	423..539		
+triton_magus	Arrow	431		
+triton_magus	Powerful lightning bolt	409		
+triton_radical	Scaling fork	430..520		
+triton_radical	Trident	430		
+triton_warden	Longbow			
+triton_warden	Pale driftwood arrow	431..456		
+triton_warden	Sapphire-tipped arrow	431..456		
+triton_warden	Brackish green arrow	446		
+triton_warlock	Runestaff	402..427		
+triton_warlock	Claw	417		
+troglodyte	Cudgel	68		
+troglodyte	Unknown	68		
+troglodyte	Closed fist	46		
+troll_chieftain	Battle axe	216..270		
+troll_wraith	Claw	214..215		
+tundra_giant	Claw (attack)	235		
+tusked_ursian	Claw	200..260		
+tusked_ursian	Charge (attack)	260		
+tusked_ursian	Bite	260		
+twisted_being	Bite	356..396		
+twisted_being	Claw	396		
+undertaker_bat	Bite	217..242		
+undertaker_bat	Claw	182..226		
+urgh	Impale	84		
+urgh	Tusk	74		
+vaespilon	Implosion (720)			
+vaespilon	Spirit Strike (117)			
+vaespilon	Bravery (211)			
+vaespilon	Blackened wooden staff	495		
+vapor_hound	Bite	192		
+vapor_hound	Claw	202		
+velnalin	Bite	48..61		
+velnalin	Charge	61..71		
+velnalin	Stomp	61		
+vesperti	Flail	229		
+vesperti	Whip	229		
+vesperti	Scimitar	229		
+vesperti	Blackened cutlass	202		
+veteran_reiver	Old claidhmore	207		
+veteran_reiver	Unknown	207		
+vourkha	Bite	226..252		
+vourkha	Claw	235..262		
+vourkha	Swoop	235		
+vvrael_destroyer	Claidhmore	450..469		
+vvrael_destroyer	Maul	450..470		
+vvrael_warlock	Whip	356..401		
+vvrael_warlock	Ball of greenish-black flame	459..466		
+vvrael_warlock	Midnight black longsword	470		
+vvrael_witch	Minor Acid (904)			
+vvrael_witch	Chunk of ice	349		
+vvrael_witch	Large boulder	314..349		
+vvrael_witch	Midnight black morning star	323..355		
+vvrael_witch	Powerful lightning bolt	314..360		
+vvrael_witch	Stream of fire	349		
+vvrael_witch	Midnight black curved dagger	374		
+vvrael_witch	Midnight black spiked whip	362		
+waern	Claw	257..295		
+waern	Charge	286..294		
+wall_guardian	Military pick	153		
+war_griffin	Bite	465..475		
+war_griffin	Claw	465..467		
+war_griffin	Impale	436		
+war_griffin	Beak	444..471		
+war_griffin	Smash	443		
+war_griffin	Swoop	457..475		
+war_troll	Two-handed sword			
+war_troll	War hammer	175		
+war_troll	Unknown	211		
+warped_tree_spirit	Fear			
+warped_tree_spirit	Pain (711)			
+warped_tree_spirit	Ensnare	301		
+warrior_shade	Halberd	253..325		
+warthog	Charge (attack)	226		
+warthog	Impale (attack)	216		
+warthog	Charge	206		
+warthog	Tusk	208		
+wasp_nest	Dreadful droning of their wings	367		
+water_elemental	Pound	424		
+water_elemental	Fist	428..439		
+water_elemental	Stream of water	260..310		
+water_hound	Bite	182..192		
+water_hound	Claw	202		
+water_hound	Stream of water	202		
+water_moccasin	Bite	68		
+water_moccasin	Unknown	68		
+water_witch	Spear	94		
+water_witch	Gold-edged steel jeddart-axe	66		
+water_wyrd	Trident	197		
+water_wyrd	Stream of water	227		
+werebear	Bite	130		
+werebear	Claw	130		
+werebear	Charge (attack)	140		
+wharf_rat	Bite	4		
+whiptail	Impale	65		
+whiptail	Pincer (attack)	65		
+whiptail	Pincer	65		
+whiptail	Tusk	45..65		
+white_vysan	Ensnare	54		
+white_vysan	Pound	44		
+white_vysan	Fist	34..44		
+white_vysan	Unknown	44		
+wind_witch	Dagger	161		
+wind_witch	Knife	161		
+wind_wraith	Claw (attack)	294		
+wind_wraith	Claw	300..303		
+winged_viper	Bite	294		
+winged_viper	Swoop	298		
+withered_shadow-cloaked_draugr	greatsword	586..693		
+withered_shadow-cloaked_draugr	Dagger-sharp beak	610..622		
+withered_shadow-cloaked_draugr	Lunge	545		
+withered_shadow-cloaked_draugr	Shadow-drenched fist down	582..647		
+withered_shadow-cloaked_draugr	Shining metallic spear	654		
+withered_shadow-cloaked_draugr	Smash	582..662		
+withered_shadow-cloaked_draugr	Talons	600..610		
+withered_shadow-cloaked_draugr	Yellowed brittle bone cudgel	608		
+withered_shadow-cloaked_draugr	?: Blow raises a welt	657		
+withered_shadow-cloaked_draugr	Shark-like teeth	465		
+wolfshade	Bite	103..133		
+wolfshade	Claw	133		
+wolverine	Bite	234		
+wolverine	Claw	234		
+wood_sprite	Jeddart-axe	201..214		
+wood_sprite	Spear	230		
+wood_sprite	Quarterstaff	250		
+wood_wight	Claw	156		
+wood_wight	Closed fist	166		
+wood_wight	Pound	146		
+wooly_mammoth	Foot	302		
+wooly_mammoth	Impale	266..336		
+wraith	Broadsword	147		
+wraith	Handaxe	147		
+wraith	Short sword	147		
+writhing_frost_glazed_vine	Vine fling			
+writhing_frost_glazed_vine	Stinger	217		
+writhing_icy_bush	small glistening thorn	260		
+writhing_icy_bush	Stinger (attack)	220		
+writhing_icy_bush	Thorn	230		
+yeti	Pound	347..359		
+yeti	Stomp	289..347		
+yeti	Monstrous hairy hand	312		
+young_grass_snake	Bite	23		
+young_grass_snake	Unknown	23		
+zombie	Bite	202..206		
+zombie	Claw	202		
+zombie_rolton	Bite	32		
+zombie_rolton	Claw	32		
+zombie_rolton	Unknown	32		

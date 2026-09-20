@@ -94,6 +94,24 @@ struct AllowedStatic {
 /// The reviewed statics.
 const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
+        path: "crates/cena-model/src/state/creature.rs",
+        name: "BESTIARY",
+        justification: "A OnceLock<Bestiary> holding the 627 creature templates, joined from four \
+                        include_str! TSVs on first use and never mutated. The same argument as \
+                        armaments.rs's TABLES and gameobj.rs's TABLE, and the same honest caveat: \
+                        it IS process-wide state, made safe by holding no session handle and \
+                        being a pure function of compile-time strings. This is the largest of \
+                        them -- 627 creatures, 1,394 room UID spans, 1,603 attacks and 3,862 \
+                        message lines across 580 KB of TSV -- and the join is four passes with a \
+                        BTreeMap lookup per row, so parsing it per query is not a tradeoff worth \
+                        making: a hunting consumer asks `what lives in this room` on every room \
+                        change. Lich holds the same data in a class variable behind an @@loaded \
+                        flag (creature.rb:11-12, :81-122). Deliberately NOT included is any \
+                        live per-creature state: CreatureInstance's damage, stun estimates and \
+                        room roster stay unported precisely because they would be mutable \
+                        process-wide state, which this rule exists to forbid.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/societies/membership.rs",
         name: "STANDING",
         justification: "A OnceLock<Option<Regex>> holding ONE compiled pattern: the society \

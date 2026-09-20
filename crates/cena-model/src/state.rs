@@ -44,6 +44,7 @@ pub mod character;
 pub mod chunks;
 pub mod claim;
 mod clock;
+pub mod creature;
 pub mod gameobj;
 mod idle;
 mod inventory;
