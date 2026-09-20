@@ -49,6 +49,7 @@
 //!   mechanism.
 
 pub mod blocks;
+pub mod body;
 pub mod enhancive;
 pub mod injured;
 pub mod psm;
