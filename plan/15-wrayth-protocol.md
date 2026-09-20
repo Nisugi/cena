@@ -1379,6 +1379,35 @@ live `skill` command would reveal.
   coordinate lookups against a `cmdlist` dictionary, and `<menu>` carries **no labels**; the
   client resolves `coord` → label + command template. Needed for point-and-click, not for M1.
 
+  > **THE WIKI IS WRONG ABOUT WHEN THE DICTIONARY ARRIVES, 2026-09-20.** `:28` says *"At
+  > login the server sends the point-and-click command dictionary"*, and this era's wire
+  > does not. MEASURED over the author's six most recent logins, in
+  > `C:\Gemstone\lich-5\logs\GSIV-Nisugi\2026\09`:
+  >
+  > ```sh
+  > for f in $(ls -t *.xml | head -6); do
+  >   echo "$f cmdlist=$(grep -c cmdlist $f) cli=$(grep -c '<cli ' $f)" \
+  >        "menu=$(grep -oc '<menu ' $f) mi=$(grep -oc '<mi ' $f)"
+  > done
+  > # cmdlist=0 and cli=0 in all six; menu=2 and mi=60 across them
+  > ```
+  >
+  > So `cmdlist1.xml` is **static data a client ships**, not wire traffic -- which is how
+  > the author found it (*"I just found the file in a folder and started using it"*) and
+  > how VellumFE uses it (`src/cmdlist.rs:29`, loaded from disk). Only the `<menu>`
+  > response is live.
+  >
+  > This is the §0 hazard in its other form. `CLAUDE.md` records a citation that resolved
+  > to nothing manufacturing a false negative; this is a citation that resolves to
+  > something **stating a fact about behaviour that the corpus contradicts**. The wiki is
+  > a primary source for what the tags MEAN; it is not a source for what the server
+  > currently DOES. Measure the second against the corpus, always.
+
+  **The response framing is FIXED** (`crates/cena-protocol/tests/menu_responses.rs`):
+  `<menu>` is a paired tag, so a menu and its items are one `Frame::MenuResponse`
+  carrying `id`, `path`, `cat_list` and typed items. It was splitting into one frame per
+  `<mi>` with an empty id, which orphaned every coordinate from the menu it answered.
+
 ---
 
 ## 5. Open, and settleable against the corpus

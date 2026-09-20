@@ -131,7 +131,8 @@ use crate::runs::Runs;
 mod payload;
 
 pub use payload::{
-    ActiveEffect, Amount, DialogWidgets, Link, LinkKind, ProgressBar, Style, TextFrame,
+    ActiveEffect, Amount, DialogWidgets, Link, LinkKind, Menu, MenuItem, ProgressBar, Style,
+    TextFrame,
 };
 
 /// Attribute bag: name/value pairs exactly as the wire spelled them.
@@ -296,8 +297,16 @@ pub enum Frame {
     ActiveEffect(ActiveEffect),
     /// `<objectives action=><objective>`.
     ObjectivesUpdate { action: String, entries: Vec<Attrs> },
-    /// `<menu>` + `<mi>`.
-    MenuResponse { id: String, items: Vec<Attrs> },
+    /// A context menu the game built for one object: `<menu>` and its
+    /// `<mi>` items, as **one** frame.
+    ///
+    /// The items were separate frames carrying an empty `id`, so the
+    /// coordinates arrived orphaned from the menu they answer and no
+    /// consumer could tell which request they belonged to. They open and
+    /// close on one line -- VERIFIED in a live log, a 60-item menu on one
+    /// line (`GSIV-Nisugi/2026/09/2026-09-20_12-19-45.xml:267`) -- so the
+    /// envelope is assembled here, as `<component>` is.
+    MenuResponse(Menu),
 
     // --- dialogs and quickbar ---------------------------------------------
     /// `<switchQuickBar id=>`.

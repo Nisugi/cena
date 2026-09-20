@@ -420,5 +420,15 @@ fn is_paired(tag: &str) -> bool {
             | "compDef"
             | "inv"
             | "worldEvent"
+            // A context menu's body is a run of `<mi>` children, so it is
+            // captured whole and assembled in `dispatch.rs`. Without this the
+            // items tokenize separately and arrive orphaned from the menu
+            // that answers for them -- VERIFIED against a real 60-item menu
+            // (`2026-09-20_12-19-45.xml:267`).
+            //
+            // `objectives` is excluded just above for having children rather
+            // than text; the difference is that nothing yet assembles ITS
+            // children, and something assembles these.
+            | "menu"
     )
 }

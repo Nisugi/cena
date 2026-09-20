@@ -203,6 +203,14 @@ impl Parser {
                 self.flush(buffer, frames);
                 self.inline_paired(tag, frames);
             }
+            // Also one line, always: a 60-item menu arrives on one
+            // (`2026-09-20_12-19-45.xml:267`). Assembled rather than emitted
+            // per-tag, so the coordinates stay attached to the menu that
+            // answers for them.
+            "menu" => {
+                self.flush(buffer, frames);
+                frames.push(Frame::MenuResponse(menu(tag)));
+            }
             // `picture=` is what makes a `<resource>` a room picture. Without
             // it there is nothing to model -- but "nothing to model" is not
             // "nothing happened", and the `if let` alone emitted no frame at
@@ -375,7 +383,7 @@ impl Parser {
     }
 
     /// A `<component>`/`<compDef>`/`<inv>`, which always opens and closes on
-    /// one line: 447,095 opens in a 272-file corpus sample, none spanning a
+    /// one line (see [`menu`] for the other shape of the same idea): 447,095 opens in a 272-file corpus sample, none spanning a
     /// line (see MULTI-LINE CAPTURES in `parser.rs`).
     fn inline_paired(&mut self, tag: &str, frames: &mut Vec<Frame>) {
         let id = text::attribute(tag, "id").unwrap_or_default();
@@ -605,5 +613,33 @@ fn body_tag_frame(name: &str, raw: &str) -> Frame {
         // `inferior`, `immobile`) trapped in a raw string.
         "crtrStatus" => super::thin::thin_frame(name, raw, None),
         _ => Frame::structural(name, raw),
+    }
+}
+
+/// Assemble a `<menu>` and the `<mi>` items in its body.
+///
+/// The body is scanned for tags rather than run through `parse_runs`: a menu
+/// carries no prose, only items, and every attribute of each is kept so
+/// Rule 2.2a holds for a wire that adds one.
+fn menu(tag: &str) -> crate::frame::Menu {
+    let items = inner_text(tag)
+        .split('<')
+        .filter(|part| part.starts_with("mi "))
+        .map(|part| {
+            let raw = format!("<{}>", part.trim_end_matches(['/', '>']).trim_end());
+            crate::frame::MenuItem {
+                coord: text::attribute(&raw, "coord"),
+                noun: text::attribute(&raw, "noun"),
+                attrs: text::attributes(&raw),
+            }
+        })
+        .collect();
+    crate::frame::Menu {
+        id: text::attribute(tag, "id").unwrap_or_default(),
+        path: text::attribute(tag, "path"),
+        categories: text::attribute(tag, "cat_list")
+            .map(|list| list.split_whitespace().map(str::to_owned).collect())
+            .unwrap_or_default(),
+        items,
     }
 }

@@ -220,6 +220,57 @@ pub struct Amount {
     pub max: i32,
 }
 
+/// A context menu the game returned for one object.
+///
+/// # What a menu is, and why it carries no labels
+///
+/// Right-click menus are **coordinate lookups**. The client asks with
+/// `_menu #<exist id>`; the game answers with this, where every item is a
+/// key into a command dictionary (`cmdlist1.xml`, 588 entries) and nothing
+/// else. The dictionary maps each coordinate to a label and a command
+/// template, in which `@` substitutes the object's noun and `#` its exist
+/// id. `reference/wiki_clean/Wrayth protocol.txt:429` states the contract;
+/// `reference/VellumFE/src/cmdlist.rs` is the working implementation.
+///
+/// **The dictionary does not arrive on this wire.** MEASURED over the
+/// author's six most recent logins (`C:\Gemstone\lich-5\logs\GSIV-Nisugi`):
+/// `cmdlist` 0, `cli` 0, `menu` 2, `mi` 60. The wiki says it is sent at
+/// login and this era's traffic does not carry it -- so it is static data a
+/// client ships, which is how Vellum uses it, and only the response below
+/// is live. Recorded in `plan/15` §1a rather than left as a wiki claim
+/// nobody checked.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Menu {
+    /// `id=`: which request this answers.
+    pub id: String,
+    /// `path=`, e.g. `" in #103330"` -- where the object is.
+    pub path: Option<String>,
+    /// `cat_list=`: the order to present categories in, e.g. `"1 2 3 6"`.
+    pub categories: Vec<String>,
+    /// The items, in wire order.
+    pub items: Vec<MenuItem>,
+}
+
+/// One `<mi>`: a key into the command dictionary.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MenuItem {
+    /// `coord=`, e.g. `"2524,1703"`. The dictionary key.
+    pub coord: Option<String>,
+    /// `noun=`, which **disambiguates a repeated coordinate**.
+    ///
+    /// Not decoration: one real menu carries nine items all on coordinate
+    /// `2524,1906`, separated only by this -- `amplify`, `codex`, `dust`,
+    /// `instill`, `reshape`, `shatter`, `unbind`, `unlock`, `writing`
+    /// (`2026-09-20_12-19-45.xml:267`). Dropping it collapses nine commands
+    /// into one.
+    pub noun: Option<String>,
+    /// Everything the item carried, verbatim, including the two above.
+    ///
+    /// Rule 2.2a: the typed fields are what today's consumer needs, and this
+    /// is what stops tomorrow's from being unable to see the rest.
+    pub attrs: super::Attrs,
+}
+
 /// One row of an effects dialog.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ActiveEffect {

@@ -121,10 +121,20 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
             action: text::attribute(tag, "action").unwrap_or_default(),
             entries: vec![attrs],
         },
-        "menu" | "mi" => Frame::MenuResponse {
+        // A `<menu>` is assembled whole in `dispatch.rs`; this is the
+        // stray-item path -- an `<mi>` outside any menu, which the wire is
+        // not known to send. Typed as a one-item menu with no id rather than
+        // dropped, so a wire change goes visible instead of silent.
+        "menu" | "mi" => Frame::MenuResponse(crate::frame::Menu {
             id: id(),
-            items: vec![attrs],
-        },
+            path: text::attribute(tag, "path"),
+            categories: Vec::new(),
+            items: vec![crate::frame::MenuItem {
+                coord: text::attribute(tag, "coord"),
+                noun: text::attribute(tag, "noun"),
+                attrs,
+            }],
+        }),
         "switchQuickBar" => Frame::QuickbarSwitch { id: id() },
         "openDialog" | "opendialog" => {
             let title = text::attribute(tag, "title");
