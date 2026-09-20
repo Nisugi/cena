@@ -42,6 +42,7 @@ pub mod armaments;
 pub mod bounty;
 pub mod character;
 pub mod chunks;
+pub mod claim;
 mod clock;
 pub mod gameobj;
 mod idle;

@@ -35,6 +35,7 @@ pub use state::character::vocabulary::{
     AccountType, Che, DeathsSting, PsmCategory, ResourceType, Society, Warcry,
 };
 pub use state::chunks::{Chunk, ChunkLine, MAX_CHUNK_LINES};
+pub use state::claim::{Claim, Occupants};
 pub use state::gameobj::{Classification, ObjectTypes};
 pub use state::societies::membership::MembershipLine;
 pub use state::societies::{Ability, AbilityKind, AlternateCost, Cost, CostTiming, Target};
