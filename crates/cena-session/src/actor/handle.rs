@@ -76,6 +76,7 @@ impl<S: ByteSource> Session<S> {
                 sink: None,
                 combat: None,
                 menu_dir: None,
+                persistence: Box::default(),
                 combat_refusals_logged: 0,
                 cancel: cancel.clone(),
                 generation: generation.get(),
@@ -127,6 +128,20 @@ impl<S: ByteSource> Session<S> {
     #[must_use]
     pub fn with_menu_store(mut self, dir: std::path::PathBuf) -> Self {
         self.actor.menu_dir = Some(dir);
+        self
+    }
+
+    /// Persist this character's facts under `dir`.
+    ///
+    /// Written **five minutes after they stop changing**, and unconditionally
+    /// on a clean shutdown. See [`crate::dirty_groups`].
+    ///
+    /// Separate from [`Session::new`] for the reason [`Session::with_sink`]
+    /// is: no test wants a file, and a required argument would have them all
+    /// passing `None`.
+    #[must_use]
+    pub fn with_character_store(mut self, dir: std::path::PathBuf) -> Self {
+        self.actor.persistence.dir = Some(dir);
         self
     }
 

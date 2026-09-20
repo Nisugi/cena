@@ -634,6 +634,16 @@ impl<S: ByteSource> SessionActor<S> {
             // a file whose rows have not changed.
             let is_push = matches!(frame, Frame::CmdListUpdate(_) | Frame::CmdTimestamp { .. });
             let terminator = self.state.apply(&frame);
+            // Whatever that frame taught the character. Taken every frame
+            // rather than only on a prompt, because the mailbox is emptied by
+            // whoever takes it and a second reader would get nothing.
+            let taught = self.state.character.take_taught();
+            if !taught.is_empty() {
+                self.persistence.groups.mark_all(taught);
+                // "Five minutes after it stops CHANGING": every mark pushes
+                // the deadline out, so a burst of facts writes once, after.
+                self.defer_save();
+            }
             if is_push {
                 self.persist_learned_commands();
             }

@@ -107,4 +107,28 @@ impl GameState {
 /// MEASURED 2026-09-19: 6 occurrences across 6 characters in the log archive,
 /// byte-identical every time. Matched whole, never as a substring -- see
 /// `GameState::apply`.
+///
+/// # Nothing inbound clears it
+///
+/// A measurement rather than an omission. The obvious guess -- "the next
+/// prompt means the player answered" -- is false: MEASURED on `GSIV-Dicate`
+/// (2024-10-12), the session idled on for minutes after the warning with
+/// prompts arriving every few seconds, driven by `dialogData id='Buffs'`
+/// refreshes and by a bystander emoting. **A prompt is sent when ANYTHING
+/// happens, not when the player acts.**
+///
+/// Only an OUTBOUND command answers an idle warning, and this model is
+/// inbound-only by design. So the actor clears it on write --
+/// `cena-session/src/actor/io.rs`, in `write_bounded`, which is the one
+/// chokepoint all three send paths pass through.
+///
+/// # Why this one line is text-derived
+///
+/// For the reasons `tests/idle_warning.rs` records: it is an exact string with
+/// nothing to extract, and the supervisor cannot otherwise tell an idle kick
+/// from a network drop.
+///
+/// Matched with `trim() ==`, not `contains`: a player can say anything, and a
+/// `contains` would let one make the supervisor stop reconnecting by typing
+/// it.
 pub(super) const IDLE_WARNING: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";

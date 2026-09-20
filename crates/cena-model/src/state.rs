@@ -299,33 +299,7 @@ impl GameState {
     pub fn apply(&mut self, frame: &Frame) -> bool {
         match frame {
             Frame::RoomId { id } => self.arrive(id.as_deref()),
-            // `compDef`/`component` ONLY. The room arrives in two shapes and
-            // they mean different things (author, 2026-09-18, from live
-            // traffic):
-            //
-            //   * `<compDef id='room desc'>` feeds the ROOM WINDOW and is
-            //     truth for WHERE THE CHARACTER IS. It is also truth for the
-            //     creatures, objects and players in the room, each in its own
-            //     `compDef`, which is why the window feed stays structured.
-            //   * inline text styled `<style id="roomDesc"/>` feeds the STORY
-            //     WINDOW and is only WHAT THE CHARACTER SAW. It is flattened:
-            //     the live capture shows `room objs` appended into the prose
-            //     rather than kept separate.
-            //
-            // **Abilities that look into another room emit the story form
-            // WITHOUT the window form.** That asymmetry is not noise -- it is
-            // exactly how a client knows the character did NOT move. Folding
-            // the styled text here would turn every scry into a phantom
-            // relocation, and the bug would only appear for players who use
-            // those abilities.
-            //
-            // So `look` does not update `room.description`, by design. A
-            // consumer that wants the looked-at prose reads the published
-            // `Frame::Text`; `GameState` tracks location, not narration.
-            // **Every room component, each replacing only its own entry.**
-            // `plan/18` §2c and the author's requirement: the room is several
-            // independent feeds, so a `room players` update must not disturb the
-            // objects. See `state/room.rs` for the measurement.
+            // See `apply_room_component` for why the styled form is refused.
             Frame::Component { id, body } => self.apply_room_component(id, body),
             Frame::CreatureStatus { id, attrs } => self.apply_creature_status(id, attrs),
             Frame::Compass { directions } => {
@@ -334,15 +308,7 @@ impl GameState {
                 // "not looked yet". See `Room::exits`.
                 self.room.exits = Some(directions.clone());
             }
-            // The server's idle warning. Text-derived, and the ONE line that is,
-            // for the reasons in `tests/idle_warning.rs`: it is an exact string
-            // with nothing to extract, and the supervisor cannot otherwise tell
-            // an idle kick from a network drop.
-            //
-            // `trim() ==`, not `contains`: a player can say anything, and a
-            // `contains` would let one make the supervisor stop reconnecting by
-            // typing it. The bells the wire wraps it in are already gone --
-            // `text::strip_control_chars` runs in the parser.
+            // See `state/idle.rs` for why this one line is text-derived.
             Frame::Text(text) => {
                 if text.content.trim() == IDLE_WARNING {
                     // The clock as it stands, which may be `None` during a login
@@ -360,18 +326,6 @@ impl GameState {
                 // the one line from the buffer the moment routing arrived.
                 self.route_text(text);
             }
-            // NOTHING INBOUND CLEARS IT, and that is a measurement rather than
-            // an omission. The obvious guess -- "the next prompt means the
-            // player answered" -- is false: MEASURED on `GSIV-Dicate`
-            // (2024-10-12), the session idled on for minutes after the warning
-            // with prompts arriving every few seconds, driven by `dialogData
-            // id='Buffs'` refreshes and by a bystander emoting. A prompt is sent
-            // when ANYTHING happens, not when the player acts.
-            //
-            // Only an OUTBOUND command answers an idle warning, and this model
-            // is inbound-only by design. So the actor clears it on write --
-            // `cena-session/src/actor/io.rs`, in `write_bounded`, which is the
-            // one chokepoint all three send paths pass through.
             Frame::Prompt { time, text } => {
                 self.prompt = Some(text.clone());
                 // The server's clock, and when it reached us. Together these
@@ -403,21 +357,15 @@ impl GameState {
                     self.effects.clear_category(id);
                 }
             }
+            Frame::AppInfo { .. } => self.character.identify(frame),
             Frame::LeftHand { item, .. } => self.left_hand = Some(item.clone()),
             Frame::RightHand { item, .. } => self.right_hand = Some(item.clone()),
             Frame::RoundTime { value } => self.roundtime_ends = Some(*value),
-            // `plan/18` step 4. `<container>` declares, `<clearContainer>`
-            // empties, `<inv>` adds one line; see `state/inventory.rs`.
-            Frame::Container { id, title, target } => {
-                self.inventory
-                    .declare(id, title.as_deref(), target.as_deref());
-            }
-            Frame::ClearContainer { id } => self.inventory.clear(id),
-            Frame::DeleteContainer { id } => self.inventory.delete(id),
-            Frame::ContainerItem {
-                container_id,
-                content,
-            } => self.inventory.add_line(container_id, content),
+            // `plan/18` step 4, all four in `state/inventory.rs`.
+            Frame::Container { .. }
+            | Frame::ClearContainer { .. }
+            | Frame::DeleteContainer { .. }
+            | Frame::ContainerItem { .. } => self.apply_container(frame),
             // `plan/18` step 3. Both carry the enclosing dialog, which is the
             // only thing separating `yourLvl` in `expr` from a map legend, or a
             // body part from one of the 1,313 `nomap.jpg` tiles.

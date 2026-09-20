@@ -138,6 +138,34 @@ pub struct Character {
     pub stats: BTreeMap<stats::StatKind, stats::Stat>,
     /// Race, profession, gender and age, from `info`.
     pub identity: stats::Identity,
+    /// Groups taught since a caller last asked, for one that persists them.
+    ///
+    /// **A mailbox, not state.** [`Self::take_taught`] empties it.
+    ///
+    /// This crate does no I/O -- an architecture test enforces it -- so the
+    /// model reports what changed and the session decides what that costs.
+    taught: std::collections::BTreeSet<snapshot::Group>,
+    /// The character's name, from `<playerID>` via [`Frame::AppInfo`].
+    ///
+    /// **Who this file is about.** `identity.race` and its siblings come from
+    /// `info`, which a character may never have run; this comes from the login
+    /// burst, so it is known from the first moments of every session.
+    ///
+    /// [`Frame::AppInfo`]: cena_protocol::Frame::AppInfo
+    pub name: Option<String>,
+    /// The instance -- `Prime`, `Platinum`, `Shattered`, `Test`.
+    ///
+    /// **Part of the identity, not decoration.** Lich keys its table
+    /// `game_name` (`infomon.rb:86`) because two characters of the same name
+    /// on different instances are different characters, and `frame.rs` records
+    /// the same fact about `<settingsInfo>`.
+    pub instance: Option<String>,
+    /// The 46 skills and the spell circles, from `skills`.
+    pub skills: skills::SkillSet,
+    /// The five PSM tables, each from its own `<category> list all all`.
+    pub psms: psm::PsmSet,
+    /// Enhancive totals, from `inventory enhancive totals`.
+    pub enhancives: enhancive::EnhanciveTotals,
     /// Society, citizenship, warcries and resources.
     ///
     /// Filled from single lines rather than from a block: most of these
@@ -233,6 +261,12 @@ impl Character {
             encumbrance_detail,
             stats,
             identity,
+            name,
+            instance,
+            taught,
+            skills,
+            psms,
+            enhancives,
             standing,
             shrouded,
         } = self;
@@ -251,6 +285,26 @@ impl Character {
             encumbrance_detail,
             stats,
             identity,
+            // KEPT. A fact taught just before the transport dropped is
+            // still a fact, and dropping the mark would lose the only record
+            // that it needs writing.
+            taught,
+            // KEPT. Who the character IS does not change across a
+            // reconnect -- and the login burst re-sends `<playerID>` anyway,
+            // so clearing would be undone within a few lines while leaving a
+            // window where the store has no filename to write under.
+            name,
+            instance,
+            // KEPT, all three, for the reason `stats` is kept: a command
+            // taught them and no reconnect re-sends them. Enhancives are the
+            // one worth a second thought -- they depend on what is WORN, and
+            // a character could in principle change gear while disconnected.
+            // They are kept anyway: the alternative is discarding good data on
+            // the chance it went stale, and `inventory enhancive totals`
+            // re-teaches the whole set whenever it is run.
+            skills,
+            psms,
+            enhancives,
             // KEPT. Society, citizenship and warcries are facts about the
             // character, not about the connection -- and unlike `stats` they
             // are taught by ORDINARY PLAY as well as by a sync, so clearing
@@ -364,6 +418,26 @@ impl Character {
 }
 
 impl Character {
+    /// Record who this character is, from the login burst.
+    ///
+    /// Empty strings are refused rather than stored: they would name a file
+    /// after nobody, and `character_store::store_path` would reject them
+    /// anyway -- better to hold `None` and say "not yet known".
+    pub(crate) fn identify(&mut self, frame: &cena_protocol::Frame) {
+        let cena_protocol::Frame::AppInfo {
+            character, game, ..
+        } = frame
+        else {
+            return;
+        };
+        if !character.is_empty() {
+            self.name = Some(character.clone());
+        }
+        if !game.is_empty() {
+            self.instance = Some(game.clone());
+        }
+    }
+
     /// Read whatever command reports a completed chunk carries.
     ///
     /// Called once per prompt from `GameState::close_chunk`. Each report type
@@ -372,8 +446,26 @@ impl Character {
     pub(crate) fn consume_chunk(&mut self, chunk: &crate::state::chunks::Chunk) {
         if let Some(report) = blocks::InfoReport::read(chunk) {
             self.apply_info(&report);
+            self.taught.insert(snapshot::Group::Stats);
+            // Identity is REFUSED while shrouded, so nothing was taught --
+            // marking it would stamp the group fresh on a report whose
+            // identity fields were thrown away.
+            if !self.shrouded {
+                self.taught.insert(snapshot::Group::Identity);
+            }
         }
-        self.consume_standing(chunk);
+        if self.consume_standing(chunk) {
+            self.taught.insert(snapshot::Group::Standing);
+        }
+    }
+
+    /// Take the groups taught since this was last called.
+    ///
+    /// Empties the mailbox, so whoever takes them owns writing them -- a
+    /// second caller would get nothing and silently skip a save.
+    #[must_use]
+    pub fn take_taught(&mut self) -> Vec<snapshot::Group> {
+        std::mem::take(&mut self.taught).into_iter().collect()
     }
 
     /// Read the single-line facts a chunk carries.
@@ -388,18 +480,23 @@ impl Character {
     /// prefix tests -- and it is the only shape that works when the same chunk
     /// can hold a `society` report, a `resource` report, and a PSM the
     /// character trained while the command was in flight.
-    fn consume_standing(&mut self, chunk: &crate::state::chunks::Chunk) {
+    fn consume_standing(&mut self, chunk: &crate::state::chunks::Chunk) -> bool {
         let mut warcries = std::collections::BTreeSet::new();
         let mut saw_warcry_report = false;
+        // Whether a value actually MOVED. A re-sync that finds everything
+        // identical reports nothing, so it does not delay a pending write.
+        let mut changed = false;
 
         for line in chunk.lines() {
             let text = line.text();
 
             if let Some(event) = standing::society_line(&text) {
-                self.standing.apply_society(event);
+                changed |= self.standing.apply_society(event);
             }
             if let Some(town) = standing::citizenship_line(&text) {
-                self.standing.citizenship = Some(town);
+                let town = Some(town);
+                changed |= self.standing.citizenship != town;
+                self.standing.citizenship = town;
             }
             // A warcry report states the COMPLETE set, so the lines are
             // gathered and applied once below. Applying them one at a time
@@ -411,20 +508,25 @@ impl Character {
                 }
             }
             if let Some(amounts) = standing::resource_line(&text) {
+                changed |= self.standing.resources != Some(amounts);
                 self.standing.resources = Some(amounts);
             }
             if let Some((kind, amount)) = standing::suffused_line(&text) {
+                changed |= self.standing.resource_type != Some(kind)
+                    || self.standing.suffused != Some(amount);
                 self.standing.resource_type = Some(kind);
                 self.standing.suffused = Some(amount);
             }
             if let Some(charges) = standing::covert_arts_line(&text) {
+                changed |= self.standing.covert_arts_charges != Some(charges);
                 self.standing.covert_arts_charges = Some(charges);
             }
         }
 
         if saw_warcry_report {
-            self.standing.set_warcries(warcries);
+            changed |= self.standing.set_warcries(warcries);
         }
+        changed
     }
 
     ///

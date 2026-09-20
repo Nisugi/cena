@@ -182,6 +182,61 @@ impl CharacterSnapshot {
         }
     }
 
+    /// Take a snapshot of what a live character has been taught.
+    ///
+    /// **The timestamps are the caller's**, not `SystemTime::now()`: only the
+    /// caller knows which groups this write is recording as fresh, and a
+    /// snapshot that stamped every group on every save would report a group as
+    /// current when nothing had re-taught it.
+    ///
+    /// `instance` and `character` come from the wire (`<settingsInfo>` and
+    /// `<playerID>`) rather than from the character, because they identify the
+    /// FILE and a character does not know its own filename.
+    #[must_use]
+    pub fn of(
+        character_name: &str,
+        instance: &str,
+        character: &super::Character,
+        updated_at: BTreeMap<Group, SystemTime>,
+    ) -> Self {
+        Self {
+            schema_version: SCHEMA_VERSION,
+            instance: instance.to_owned(),
+            character: character_name.to_owned(),
+            stats: character.stats.clone(),
+            identity: character.identity.clone(),
+            skills: character.skills.clone(),
+            psms: character.psms.clone(),
+            enhancives: character.enhancives.clone(),
+            standing: character.standing.clone(),
+            updated_at,
+        }
+    }
+
+    /// Restore what a stored snapshot knows into a live character.
+    ///
+    /// **Only the persisted groups are touched.** Everything else on a
+    /// `Character` -- stance, encumbrance, injuries, the `expr` experience --
+    /// is connection state that the login burst re-sends, and overwriting it
+    /// from a file would replace a fresh fact with an old one.
+    ///
+    /// Refused outright when the schema version does not match, for the reason
+    /// [`Self::is_current`] gives: a file written by a different classifier may
+    /// have read a column differently, and reading its fields as if they meant
+    /// what they mean here is the error the version exists to prevent.
+    pub fn restore_into(&self, character: &mut super::Character) -> bool {
+        if !self.is_current() {
+            return false;
+        }
+        character.stats.clone_from(&self.stats);
+        character.identity.clone_from(&self.identity);
+        character.skills.clone_from(&self.skills);
+        character.psms.clone_from(&self.psms);
+        character.enhancives.clone_from(&self.enhancives);
+        character.standing.clone_from(&self.standing);
+        true
+    }
+
     /// When this group was last taught, if ever.
     #[must_use]
     pub fn group_updated_at(&self, group: Group) -> Option<SystemTime> {

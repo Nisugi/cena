@@ -155,3 +155,30 @@ impl Inventory {
         }
     }
 }
+
+impl crate::GameState {
+    /// The four container frames: declare, clear, delete, add a line.
+    ///
+    /// Grouped here rather than as four arms in `GameState::apply` because
+    /// they are one feed -- `plan/18` step 4 -- and because Rule 4.1 puts the
+    /// work in the module rather than in the facade.
+    ///
+    /// Anything else is ignored: the caller matches exactly these four, so a
+    /// fifth frame arriving here would be a caller bug, not wire data.
+    pub(super) fn apply_container(&mut self, frame: &cena_protocol::Frame) {
+        use cena_protocol::Frame;
+        match frame {
+            Frame::Container { id, title, target } => {
+                self.inventory
+                    .declare(id, title.as_deref(), target.as_deref());
+            }
+            Frame::ClearContainer { id } => self.inventory.clear(id),
+            Frame::DeleteContainer { id } => self.inventory.delete(id),
+            Frame::ContainerItem {
+                container_id,
+                content,
+            } => self.inventory.add_line(container_id, content),
+            _ => {}
+        }
+    }
+}

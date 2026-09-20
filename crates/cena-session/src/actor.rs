@@ -313,6 +313,14 @@ pub struct SessionActor<S: ByteSource> {
     /// The combat recorder's queue, if one is attached. `Option` for the
     /// reason `sink` is: a session without one is otherwise identical.
     combat: Option<crate::combat_recorder::worker::RecorderHandle>,
+    /// What is waiting to be written, where, and when.
+    ///
+    /// **Boxed.** One field rather than three, and a session that never
+    /// persists pays one null pointer instead of the whole struct.
+    ///
+    /// See `run`'s timer arm for what this costs `run`'s future and why the
+    /// `large_futures` warnings it produces are left alone.
+    persistence: Box<crate::dirty_groups::Persistence>,
     /// Where the learned menu dictionary is written, if anywhere.
     ///
     /// **`Option`, for the reason `sink` is**: a session without one behaves
@@ -429,6 +437,7 @@ impl<S: ByteSource> SessionActor<S> {
             sink,
             combat,
             menu_dir: None,
+            persistence: Box::default(),
             combat_refusals_logged: 0,
             cancel,
             generation,
@@ -481,6 +490,15 @@ impl<S: ByteSource> SessionActor<S> {
                     self.finish_quit(crate::command::Farewell::TimedOut);
                     reason = EndReason::Cancelled;
                     break;
+                }
+
+                // The five-minute idle window, so a character's facts do not
+                // wait on a logout. Guarded, so a session that has learned
+                // nothing arms no timer at all.
+                //
+                // See `save_deadline` for why this is its own arm.
+                () = tokio::time::sleep_until(self.save_deadline()), if self.persistence.deadline.is_some() => {
+                    self.save_character();
                 }
 
                 // ONLY ARMED WHILE A QUIT IS PENDING, and the guard matters for
