@@ -50,6 +50,7 @@
 
 pub mod blocks;
 pub mod enhancive;
+pub mod injured;
 pub mod psm;
 pub mod skills;
 pub mod snapshot;
@@ -294,15 +295,44 @@ impl Character {
     /// Fold an `<image>` from the `injuries` dialog.
     ///
     /// `name` equal to `id` means the part is whole; `Injury<n>` and `Scar<n>`
-    /// are the severities. **A scar clears the wound**, per Lich
-    /// (`xmlparser.rb:813-816`): a scar is what a healed wound leaves behind, so
-    /// reporting both would double-count one injury.
+    /// are the severities.
+    ///
+    /// # A part can carry a wound AND a scar, and this used to lose one
+    ///
+    /// > **AUTHOR, 2026-09-20:** *"I'm healthy, I get injured and I get a
+    /// > wound, rank 1, 2, or 3. If an empath heals me then the wound is
+    /// > healed. If I heal from an herb though, the wound heals 1 rank, and I
+    /// > gain a scar of the rank that was healed. So R2W -> R1W & R2S ->
+    /// > R0W & R2S -> R1S -> Healthy."*
+    ///
+    /// So `R1W & R2S` is a real state: herb healing steps the wound down and
+    /// leaves a scar recording the worst it reached. This method previously
+    /// wrote `Injury { wound, scar: 0 }` on every `Injury<n>`, which **erased
+    /// a known scar the moment a new wound arrived** -- and the doc justified
+    /// it by saying a scar clears the wound, which has the relationship
+    /// backwards.
+    ///
+    /// Lich gets this right and is the citation: `xmlparser.rb:811-815` sets
+    /// the wound alone on `Injury<n>`, and sets `wound = 0` plus the scar on
+    /// `Scar<n>`. The asymmetry is the rule -- a scar image means the wound is
+    /// gone, a wound image says nothing about the scar.
+    ///
+    /// **The wire still shows only one per part**, because a wound covers a
+    /// scar in the default injury mode. Keeping the last-known scar is
+    /// therefore the best available answer rather than a complete one; see
+    /// [`injured`](super::injured) for what that costs.
     pub(super) fn apply_injury_image(&mut self, part: &str, name: &str) {
         let rank = |prefix: &str| -> Option<u8> { name.strip_prefix(prefix)?.parse().ok() };
+        let known = self.injuries.get(part).copied().unwrap_or_default();
         let injury = if let Some(wound) = rank("Injury") {
-            Injury { wound, scar: 0 }
+            // **The scar is retained.** A wound image is not evidence that a
+            // previously-reported scar healed; it is the wound covering it.
+            Injury {
+                wound,
+                scar: known.scar,
+            }
         } else if let Some(scar) = rank("Scar") {
-            // The wound is gone: this is the mark it left.
+            // A scar image means no wound remains over it.
             Injury { wound: 0, scar }
         } else {
             // `name == id`, or anything else the game sends: whole.

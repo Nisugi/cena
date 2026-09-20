@@ -288,6 +288,65 @@ port a chain whose correctness depends on suffixes staying distinct.
 
 ---
 
+## 9. `Injured`'s rules disagree with a second implementation and with the wiki
+
+Found 2026-09-20 while porting `lib/gemstone/injured.rb`. Three separate
+issues, none a defect in the usual sense -- these are places where two
+community implementations of one game rule do not agree.
+
+### 9a. `eherbs.lic` has its own `able_to_cast` and it is a different rule
+
+`reference/scripts/scripts/eherbs.lic:2885-2914` reimplements the predicate:
+
+```ruby
+stacked_left_scar += h['scar']
+stacked_left_wound += h['wound']
+if (stacked_left_scar > 1 || stacked_left_wound > 1)
+```
+
+| | `injured.rb` | `eherbs.lic` |
+|---|---|---|
+| arm + hand | `max(arm, hand)` per side, wound and scar merged | sums wound and scar **separately** across the pair |
+| rank-1 scars | discarded | counted in the sum |
+| Sigil of Determination | bypasses rank ≤ 2 | not consulted at all |
+
+**AUTHOR, 2026-09-20: *"I would say injured.rb implementation is the right
+one."*** Ported accordingly. Recorded because a reader comparing the two will
+find the disagreement and should not have to re-derive which won.
+
+The wiki supports that call: it discards rank-1 scars (*"Rank 1 scars never
+have any mechanical penalties"*) and describes Sigil explicitly, both of which
+`eherbs.lic` ignores.
+
+### 9b. `injured.rb` blocks ranged on rank-2 nerves; the wiki's table does not
+
+`injured.rb:187` includes `nsys` in the rank-2 block for
+`able_to_use_ranged?`. `reference/wiki_clean/Wound.txt`'s penalty table lists
+only *"nervous system | Rank 2: prevents spellcasting, searching"* -- ranged is
+absent.
+
+Ported as Lich has it, per the author's call on 9a. **UNVERIFIED against the
+game**; the wiki table may be incomplete rather than contradictory, since it
+also omits the cumulative rules that `injured.rb` implements.
+
+### 9c. Rank-3 legs are called "NOT critical" while behaving critically
+
+`injured.rb:143`:
+
+> *"Rank 3 leg/foot injuries always prevent sneaking, but these are NOT
+> critical (Sigil cannot bypass, but they're not in the critical list for
+> other actions)"*
+
+The parenthesis describes Lich's own data structures, not a game rule. A
+rank-3 leg blocks sneaking and Sigil does not help -- which is exactly what
+"critical" means for every other action -- so the distinction names nothing
+observable.
+
+**AUTHOR, 2026-09-20: "Lich quirk -- flag it."** Ported as a critical refusal,
+because that is the behaviour; only the label differs.
+
+---
+
 ## 8. Already recorded elsewhere
 
 These were found earlier in M3 and are carried here so the list is in one place.
