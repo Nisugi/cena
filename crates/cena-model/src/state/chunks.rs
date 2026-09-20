@@ -228,7 +228,10 @@ impl super::GameState {
         // The combat state machine reads the same chunk with no new
         // buffering, stamped with the prompt that closed it.
         let mut facts = if chunk.is_empty() {
-            super::combat::ChunkFacts::default()
+            super::combat::ChunkFacts {
+                at,
+                ..Default::default()
+            }
         } else {
             self.character.consume_chunk(&chunk);
             self.combat.parse_chunk(&chunk, at)

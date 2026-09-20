@@ -78,7 +78,7 @@ pub fn attack(target: &Actor, damage: u32) -> AttackEvent {
 pub fn chunk(events: Vec<AttackEvent>) -> ChunkFacts {
     ChunkFacts {
         events,
-        facts: Vec::new(),
+        ..ChunkFacts::default()
     }
 }
 
@@ -86,8 +86,8 @@ pub fn chunk(events: Vec<AttackEvent>) -> ChunkFacts {
 #[must_use]
 pub fn facts(facts: Vec<Fact>) -> ChunkFacts {
     ChunkFacts {
-        events: Vec::new(),
         facts,
+        ..ChunkFacts::default()
     }
 }
 

@@ -49,9 +49,12 @@
 //!   have. [`CombatRecorder::drain_finished_sessions`] is kept: it is the
 //!   pollable half of the same hook and costs a `Vec`.
 //! - **`migrate!`.** See [`schema`].
-//! - **Wiring into the session actor.** Like [`crate::character_store`], this
-//!   is the I/O half, tested on its own; the actor does not yet give the
-//!   tracker its crit tables either, and both arrive together.
+//!
+//! # How a session feeds it
+//!
+//! Not by calling it. [`worker`] moves the recorder onto its own thread and
+//! gives the session a [`worker::RecorderHandle`]; the actor offers each
+//! closed chunk's facts to it and never waits (`actor/combat.rs`).
 //!
 //! # One loss inherited, marked
 //!
@@ -64,6 +67,7 @@
 mod attack;
 pub mod schema;
 mod status;
+pub mod worker;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;

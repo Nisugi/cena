@@ -74,6 +74,8 @@ impl<S: ByteSource> Session<S> {
                 events: events.clone(),
                 recorder: Recorder::new(),
                 sink: None,
+                combat: None,
+                combat_refusals_logged: 0,
                 cancel: cancel.clone(),
                 generation: generation.get(),
                 // A plain `Session` has nothing above it to reconnect, so a
@@ -101,6 +103,30 @@ impl<S: ByteSource> Session<S> {
     #[must_use]
     pub fn with_sink(mut self, sink: SessionSink) -> Self {
         self.actor.sink = Some(sink);
+        self
+    }
+
+    /// Give the combat tracker its crit tables.
+    ///
+    /// Shared, not loaded here: compiling 2,394 patterns is ~94ms and the
+    /// tables are immutable, so the binary loads them once and every session
+    /// holds the same `Arc`. Without them every hit records `crit: None`.
+    #[must_use]
+    pub fn with_crit_tables(
+        mut self,
+        tables: std::sync::Arc<cena_model::crit::CritTables>,
+    ) -> Self {
+        self.actor.state.combat_mut().set_crit_tables(tables);
+        self
+    }
+
+    /// Offer every closed chunk's combat facts to this recorder.
+    #[must_use]
+    pub fn with_combat_recorder(
+        mut self,
+        recorder: crate::combat_recorder::worker::RecorderHandle,
+    ) -> Self {
+        self.actor.combat = Some(recorder);
         self
     }
 

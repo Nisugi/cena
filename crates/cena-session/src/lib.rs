@@ -29,6 +29,9 @@ pub mod queue;
 pub mod supervisor;
 
 pub use actor::{EndReason, Event, Session, SessionActor, Snapshot};
+// `CritTables` is this crate's own vocabulary, not a relay: `with_crit_tables`
+// takes one, and the binary that calls it has no edge to `cena-model`.
+pub use cena_model::crit::CritTables;
 pub use cena_model::{GameState, Room, UnknownTag};
 pub use command::{
     CommandId, Envelope, Farewell, Gate, Origin, Outcome, Refusal, Sent, SessionHandle,

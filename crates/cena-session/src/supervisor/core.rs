@@ -64,6 +64,8 @@ pub struct SessionCore {
     /// Where this session's wire traffic is written, if anywhere. Durable so a
     /// log spans the reconnect rather than restarting at it.
     pub(super) sink: Option<SessionSink>,
+    /// Cloned into each connection's actor, so one hunt spans a reconnect.
+    pub(super) combat: Option<crate::combat_recorder::worker::RecorderHandle>,
     /// The shared generation every handle reads.
     pub(super) generation: GenerationCell,
     /// Stops the **session**, not one connection.

@@ -90,7 +90,7 @@ pub fn data_dir() -> PathBuf {
 ///
 /// An empty result is refused by the caller rather than defaulted, because a
 /// store named after nobody is worse than no store.
-fn safe_component(name: &str) -> String {
+pub(crate) fn safe_component(name: &str) -> String {
     name.chars().filter(char::is_ascii_alphanumeric).collect()
 }
 

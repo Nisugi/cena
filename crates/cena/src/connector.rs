@@ -84,6 +84,13 @@ impl LiveConnector {
         }
     }
 
+    /// The game instance code (`GS3`, `GSX`), for a data filename: two
+    /// characters of one name on different instances are different
+    /// characters. Not a credential.
+    pub fn game_code(&self) -> &str {
+        &self.game_code
+    }
+
     /// The character this logs in, for a log filename. Not a credential.
     pub fn character(&self) -> &str {
         &self.character

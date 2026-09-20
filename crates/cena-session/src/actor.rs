@@ -98,6 +98,7 @@ use std::time::Duration;
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
 
+mod combat;
 mod ending;
 mod handle;
 mod io;
@@ -189,10 +190,26 @@ const READ_BUF: usize = 8 * 1024;
 /// `plan/12` §3 and §4.4: observation never competes with attribution. Every
 /// frame is published here **and** offered to an open window; the two are not
 /// alternatives.
-#[derive(Clone, Debug, PartialEq, Eq)]
+// Not `Eq`: a roll's UCS total is fractional, so combat facts are
+// `PartialEq` only.
+#[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     /// A frame arrived from the game.
     Frame(Box<Frame>),
+    /// A prompt closed a chunk that held combat: every attack event and fact
+    /// it yielded, whole and in order.
+    ///
+    /// **One event per chunk, never one per fact.** Lich emits six topics
+    /// and its recorder reassembles the chunk from them with per-chunk uids,
+    /// a batch id and an emit-order rule; several bugs recorded in
+    /// `recorder.rb` are reassembly bugs. A consumer here reads the chunk
+    /// the state machine produced, and an event's index is its identity.
+    ///
+    /// Published AFTER the prompt's own [`Event::Frame`], and after the
+    /// model applied it: a subscriber that reads state on this event sees
+    /// the creatures as the chunk left them. `Arc` because every subscriber
+    /// and the recorder share one allocation.
+    Combat(std::sync::Arc<cena_model::state::combat::ChunkFacts>),
     /// A command's bytes went out. Carries the origin, so a behavior can
     /// "notice the player moved the character and re-orient" (`plan/12` §4.1)
     /// without being cancelled by it.
@@ -293,6 +310,12 @@ pub struct SessionActor<S: ByteSource> {
     /// existing test -- and criterion 7's replay in particular -- untouched by
     /// this field. The binary attaches one; tests do not.
     sink: Option<SessionSink>,
+    /// The combat recorder's queue, if one is attached. `Option` for the
+    /// reason `sink` is: a session without one is otherwise identical.
+    combat: Option<crate::combat_recorder::worker::RecorderHandle>,
+    /// Recorder refusals already written to the log, so the log says when
+    /// the count MOVES rather than once per dropped chunk.
+    combat_refusals_logged: u64,
     cancel: CancellationToken,
     generation: Generation,
     /// What a lost transport means to whoever owns this actor.
@@ -375,6 +398,7 @@ impl<S: ByteSource> SessionActor<S> {
         events: broadcast::Sender<Event>,
         recorder: Recorder,
         sink: Option<SessionSink>,
+        combat: Option<crate::combat_recorder::worker::RecorderHandle>,
         cancel: CancellationToken,
         generation: Generation,
     ) -> Self {
@@ -389,6 +413,8 @@ impl<S: ByteSource> SessionActor<S> {
             events,
             recorder,
             sink,
+            combat,
+            combat_refusals_logged: 0,
             cancel,
             generation,
             on_disconnect: crate::command::Outcome::Disconnected,

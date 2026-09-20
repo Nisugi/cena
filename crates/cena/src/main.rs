@@ -276,7 +276,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // `SupervisedSession::new` mints it: it must be obtainable before `run`
     // consumes the session, and there is no `handle()` accessor to call
     // afterwards.
-    let (session, handle) = open_session(connector);
+    let (session, handle, combat_flush) = open_session(connector);
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
     // A SECOND receiver, for the probe. `events` is moved into the watcher
@@ -384,6 +384,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // and `?` here would skip it and hide the panic inside a `JoinError`.
     let joined = supervisor.await;
     watcher.abort();
+    flush_combat(combat_flush);
 
     match joined {
         Ok(end) => {
@@ -527,8 +528,10 @@ fn open_session(
 ) -> (
     SupervisedSession<LiveConnector>,
     cena_session::SessionHandle,
+    Option<std::thread::JoinHandle<()>>,
 ) {
     let character = connector.character().to_owned();
+    let game = connector.game_code().to_owned();
     let account = connector.account_for_redaction().to_owned();
     // Logging is ON by default. Author's call, 2026-09-18: "we want it on by
     // default during our dev work. That way there's always a log for you."
@@ -553,7 +556,54 @@ fn open_session(
             session
         }
     };
-    (session, handle)
+    let (session, combat_flush) = attach_combat(session, &game, &character);
+    (session, handle, combat_flush)
+}
+
+/// Give the session its crit tables and its combat database.
+///
+/// Both are optional to a working session and neither may stop one, which is
+/// `open_log`'s rule: say loudly what is missing, then carry on. Without the
+/// tables every hit records no crit; without the database nothing records.
+fn attach_combat(
+    session: SupervisedSession<LiveConnector>,
+    game: &str,
+    character: &str,
+) -> (
+    SupervisedSession<LiveConnector>,
+    Option<std::thread::JoinHandle<()>>,
+) {
+    let session = match cena_session::CritTables::load() {
+        Ok(tables) => session.with_crit_tables(Arc::new(tables)),
+        Err(e) => {
+            eprintln!("[combat] crit tables DISABLED -- {e}");
+            session
+        }
+    };
+    let dir = cena_session::character_store::data_dir();
+    match cena_session::combat_recorder::worker::open_live(&dir, game, character) {
+        Ok((recorder, flush, path)) => {
+            eprintln!("[combat] {}", path.display());
+            (session.with_combat_recorder(recorder), Some(flush))
+        }
+        Err(e) => {
+            eprintln!("[combat] recorder DISABLED -- {e}");
+            (session, None)
+        }
+    }
+}
+
+/// Wait for the recorder to write what is queued and close its hunt.
+///
+/// Its thread ends when the last handle drops, which the supervisor's return
+/// just did. Without this wait the process can exit between the last chunk
+/// and its commit.
+fn flush_combat(flush: Option<std::thread::JoinHandle<()>>) {
+    if let Some(flush) = flush
+        && flush.join().is_err()
+    {
+        eprintln!("[combat] the recorder thread panicked; the last hunt may be open");
+    }
 }
 
 /// Open this session's log, with the credentials registered for redaction.

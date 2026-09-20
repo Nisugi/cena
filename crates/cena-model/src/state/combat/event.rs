@@ -482,12 +482,17 @@ pub struct ChunkFacts {
     pub events: Vec<AttackEvent>,
     /// The facts beside them.
     pub facts: Vec<Fact>,
+    /// The server time of the prompt that closed the chunk. Facts carry no
+    /// time of their own, and a chunk of facts alone -- a confirmed death --
+    /// still has to be recorded at one. `None`: no clock was known.
+    pub at: Option<u32>,
 }
 
 impl ChunkFacts {
     /// Nothing at all.
     #[must_use]
     pub fn is_empty(&self) -> bool {
+        // `at` is when, not what: a stamped chunk with nothing in it is empty
         self.events.is_empty() && self.facts.is_empty()
     }
 }

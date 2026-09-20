@@ -431,6 +431,9 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
             // point rather than the demo. A client that connects and shows the
             // player nothing the game said is not a client.
             Ok(Event::Frame(frame)) => screen.show(&frame),
+            // Not rendered yet: the recorder takes these over its own queue,
+            // and a combat view is a frontend's to build.
+            Ok(Event::Combat(_)) => {}
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and
             // `-> [behavior]` lines for the rest of the run -- and those

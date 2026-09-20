@@ -134,6 +134,10 @@ impl Cursor<'_> {
                 other => other,
             })
             .collect();
-        ChunkFacts { events, facts }
+        ChunkFacts {
+            events,
+            facts,
+            at: self.at,
+        }
     }
 }

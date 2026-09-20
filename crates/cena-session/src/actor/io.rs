@@ -579,6 +579,9 @@ impl<S: ByteSource> SessionActor<S> {
             let terminator = self.state.apply(&frame);
             let _ = self.events.send(Event::Frame(Box::new(frame)));
             if terminator {
+                // before the `send_now` early-out below: a chunk closed
+                // whoever the prompt was owed to
+                self.publish_combat();
                 // A prompt owed to an earlier `send_now` is NOT this window's
                 // terminator. Spend one and leave the window open; the
                 // in-flight command's own prompt is still coming (SE-5).

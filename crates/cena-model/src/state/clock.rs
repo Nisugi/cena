@@ -17,6 +17,17 @@
 use super::GameState;
 
 impl GameState {
+    /// The last prompt's own server time, unextrapolated.
+    ///
+    /// What a RECORD of the past wants: it is a fact of the stream, so a
+    /// replay reads the same value. [`Self::game_time_now`] moves with the
+    /// wall clock between prompts, which is what "is my roundtime over"
+    /// wants and what a recorder must not use.
+    #[must_use]
+    pub const fn game_time(&self) -> Option<u32> {
+        self.game_time
+    }
+
     /// The server's clock **now**, extrapolated.
     ///
     /// The last prompt's timestamp plus how long ago it arrived on the local

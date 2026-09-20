@@ -151,6 +151,7 @@ impl<C: Connector> SupervisedSession<C> {
                 state: GameState::default(),
                 recorder: Recorder::new(),
                 sink: None,
+                combat: None,
                 generation,
                 cancel: CancellationToken::new(),
             },
@@ -164,6 +165,29 @@ impl<C: Connector> SupervisedSession<C> {
     #[must_use]
     pub fn with_sink(mut self, sink: SessionSink) -> Self {
         self.core.sink = Some(sink);
+        self
+    }
+
+    /// Give the combat tracker its crit tables. See
+    /// [`Session::with_crit_tables`](crate::Session::with_crit_tables); the
+    /// state is carried across connections, so once is enough.
+    #[must_use]
+    pub fn with_crit_tables(
+        mut self,
+        tables: std::sync::Arc<cena_model::crit::CritTables>,
+    ) -> Self {
+        self.core.state.combat_mut().set_crit_tables(tables);
+        self
+    }
+
+    /// Offer every closed chunk's combat facts to this recorder, on every
+    /// connection this session makes.
+    #[must_use]
+    pub fn with_combat_recorder(
+        mut self,
+        recorder: crate::combat_recorder::worker::RecorderHandle,
+    ) -> Self {
+        self.core.combat = Some(recorder);
         self
     }
 
@@ -311,6 +335,7 @@ impl<C: Connector> SupervisedSession<C> {
                 self.core.events.clone(),
                 std::mem::take(&mut self.core.recorder),
                 self.core.sink.take(),
+                self.core.combat.clone(),
                 // A CHILD token: cancelling the session cancels the running
                 // connection, but a connection ending does not cancel the
                 // session.
