@@ -217,3 +217,177 @@ fn invalidation_is_idempotent() {
         "clearing nothing changes nothing"
     );
 }
+
+// ---------------------------------------------------------------------------
+// M3 step 9: the character model is invalidated PER GROUP.
+// ---------------------------------------------------------------------------
+
+/// **Stats survive a reconnect, because a reconnect does not change them.**
+///
+/// This is the step-9 correction. `invalidate_for_reconnect` did
+/// `*character = Character::default()`, which was right when the struct held
+/// only the four dialogs and became wrong the moment M3 added `stats`.
+///
+/// The change was INVISIBLE to the whole suite when it was made -- every test
+/// here stayed green either way -- which is why this exists. Guard-before-
+/// assert, so it cannot pass against a default.
+#[test]
+fn stats_survive_a_reconnect() {
+    let mut state = GameState::default();
+    let (line, bolded) = cena_model::StatLine::classify_with_bold(
+        "   Strength (STR):   115 (32)    ...  115 (32)",
+        &[],
+    )
+    .expect("the stat line should classify");
+    state.character.stats.insert(
+        line.kind,
+        cena_model::InfoReport::merge_into(&line, bolded, cena_model::Stat::default()),
+    );
+
+    // Guard: the fact is known before anything clears it.
+    assert!(
+        state
+            .character
+            .stats
+            .contains_key(&cena_model::StatKind::Strength),
+        "guard: Strength must be known first"
+    );
+
+    state.invalidate_for_reconnect();
+
+    let strength = state.character.stats.get(&cena_model::StatKind::Strength);
+    assert!(
+        strength.is_some(),
+        "a reconnect does not change a character's Strength -- it was taught \
+         by an `info` a person typed, and the burst was never going to \
+         volunteer it"
+    );
+    assert_eq!(
+        strength.and_then(|s| s.ascended).map(|v| v.value),
+        Some(115)
+    );
+}
+
+/// Race and profession survive too, for the same reason.
+#[test]
+fn identity_survives_a_reconnect() {
+    let mut state = GameState::default();
+    state.character.identity.race = Some("Half-Elf".to_owned());
+    state.character.identity.profession = Some("Ranger".to_owned());
+
+    assert!(state.character.identity.race.is_some(), "guard");
+
+    state.invalidate_for_reconnect();
+
+    assert_eq!(state.character.identity.race.as_deref(), Some("Half-Elf"));
+    assert_eq!(
+        state.character.identity.profession.as_deref(),
+        Some("Ranger")
+    );
+}
+
+/// The four dialogs still go, because the burst's silence about THEM means
+/// the fact is unobserved.
+///
+/// The other half of the split: without this, "keep the character" would be
+/// indistinguishable from "keep everything", and a stale `stance` would
+/// survive a generation.
+#[test]
+fn the_dialog_facts_are_still_invalidated() {
+    let mut state = GameState::default();
+    state.character.stance = Some("offensive".to_owned());
+    state.character.stance_percent = Some(0);
+    state.character.encumbrance = Some("Heavy".to_owned());
+    state
+        .character
+        .injuries
+        .insert("head".to_owned(), cena_model::Injury { wound: 2, scar: 0 });
+    state.character.experience.level = Some("Level 100".to_owned());
+
+    // Guard: all five are known.
+    assert!(state.character.stance.is_some(), "guard");
+    assert!(state.character.encumbrance.is_some(), "guard");
+    assert!(!state.character.injuries.is_empty(), "guard");
+    assert!(state.character.experience.level.is_some(), "guard");
+
+    state.invalidate_for_reconnect();
+
+    assert_eq!(state.character.stance, None);
+    assert_eq!(state.character.stance_percent, None);
+    assert_eq!(state.character.encumbrance, None);
+    assert!(state.character.injuries.is_empty());
+    assert_eq!(state.character.experience.level, None);
+}
+
+/// **`shrouded` is cleared, and the reason is the effect list beside it.**
+///
+/// It is a spell, and `effects` is invalidated on the same path. A surviving
+/// `shrouded = true` would make the new session refuse every `info` identity
+/// on the strength of an effect nobody has re-observed -- a stale belief
+/// silently suppressing good data, which is worse than the lie it guards
+/// against.
+#[test]
+fn the_shroud_does_not_survive_its_own_effect_list() {
+    let mut state = GameState::default();
+    state.character.shrouded = true;
+    assert!(state.character.shrouded, "guard");
+
+    state.invalidate_for_reconnect();
+
+    assert!(
+        !state.character.shrouded,
+        "the effect that sets this is itself invalidated; keeping it would \
+         suppress the first good `info` of the new generation"
+    );
+}
+
+/// **What persists and what survives a reconnect are the same set.**
+///
+/// Two layers make the same judgement independently: `CharacterSnapshot`
+/// chooses what to write to disk, and `Character::invalidate_for_reconnect`
+/// chooses what to keep across a generation. They must agree, because the
+/// question is the same one -- *"was this taught by a command, or volunteered
+/// by the connection?"*
+///
+/// `plan/12` §8's step 9 note says the `expr`-derived level must not survive.
+/// It does not, on either path: cleared here, and absent from the snapshot.
+/// This asserts the agreement rather than leaving it to coincidence, because
+/// the two decisions live in different files and a later field could satisfy
+/// one and not the other.
+#[test]
+fn persistence_and_reconnect_agree_on_what_a_command_taught() {
+    let mut state = GameState::default();
+    state.character.identity.race = Some("Half-Elf".to_owned());
+    state.character.experience.level = Some("Level 100".to_owned());
+    state
+        .character
+        .stats
+        .insert(cena_model::StatKind::Strength, cena_model::Stat::default());
+
+    state.invalidate_for_reconnect();
+
+    // Survives a reconnect AND is persisted: taught by `info`.
+    assert!(state.character.identity.race.is_some());
+    assert!(!state.character.stats.is_empty());
+
+    // Survives neither: `<dialogData id='expr'>` is pushed by the connection,
+    // changes continuously, and `info`'s own level is explicitly not to be
+    // trusted (`infomon/parser.rb:246`).
+    assert_eq!(state.character.experience.level, None);
+
+    // The persistence half of the same judgement: the snapshot has no
+    // experience field at all, so the question cannot even be asked of it.
+    // Asserted through `Group`, which is the vocabulary of what gets synced --
+    // there is no `Group::Experience`, and adding one would be the moment to
+    // revisit this test rather than to quietly widen it.
+    //
+    // Checked this way rather than by serialising, because `serde_json` is not
+    // a `cena-model` dependency and adding one so a test can grep a string
+    // would be a test reshaping the crate graph.
+    assert!(
+        cena_model::state::character::snapshot::Group::ALL
+            .iter()
+            .all(|g| !format!("{g:?}").eq_ignore_ascii_case("experience")),
+        "a persisted `expr` level would be stale the moment it was written"
+    );
+}

@@ -145,6 +145,79 @@ pub struct Character {
 }
 
 impl Character {
+    /// Forget what a new connection has not been told, and keep what it has.
+    ///
+    /// M3 step 9. `GameState::invalidate_for_reconnect` used to do
+    /// `*character = Character::default()` -- correct when this struct held
+    /// only the four dialogs, and **wrong once M3 added `stats` and
+    /// `identity`**, which the login burst does not re-send.
+    ///
+    /// # The split is the same measurement, applied twice
+    ///
+    /// `plan/15` §2a.4a counted tags before the first client command across
+    /// seven logins. The four dialogs -- `expr`, injuries, stance,
+    /// encumbrance -- are **absent** from every burst, so they are `plan/12`
+    /// §5.2's Invalidated set and must go.
+    ///
+    /// Stats and identity are absent too, and that is precisely why they must
+    /// **stay**. They are not connection state: they were taught by an `info`
+    /// a person typed, and nothing in a reconnect changes a character's
+    /// Strength. Clearing them would leave the character blank until someone
+    /// retyped the command, which is the failure the author's design is about:
+    ///
+    /// > *"you do it manually to populate then it should stay updated"*
+    ///
+    /// The difference is not "is it in the burst" but **"does the burst's
+    /// silence mean anything"**. For stance, silence means the fact is
+    /// unobserved and a stale value is a lie. For Strength, silence means
+    /// nothing at all -- the server was never going to volunteer it.
+    ///
+    /// # `shrouded` is cleared, and that is the subtle one
+    ///
+    /// It is a *spell*, and the effect list that sets it is itself invalidated
+    /// (`reconnect.rs` clears `effects`). Keeping `shrouded = true` across a
+    /// generation would make the new session refuse every `info` identity on
+    /// the strength of an effect nobody has re-observed -- a stale belief
+    /// silently suppressing good data, which is worse than the lie it guards
+    /// against. Cleared, the first `info` is trusted and the re-sent effect
+    /// list restores the guard if the spell is still up.
+    ///
+    /// # The destructuring is the point
+    ///
+    /// Every field named, mirroring `GameState::invalidate_for_reconnect` and
+    /// for the identical reason: adding a field is a compile error here, and
+    /// whoever adds it has to decide which side it belongs on.
+    pub(super) fn invalidate_for_reconnect(&mut self) {
+        let Self {
+            experience,
+            injuries,
+            stance,
+            stance_percent,
+            encumbrance,
+            encumbrance_percent,
+            encumbrance_detail,
+            stats,
+            identity,
+            shrouded,
+        } = self;
+
+        // --- Cleared: the burst does not carry these, and its silence means
+        //     the fact is unobserved -------------------------------------
+        *experience = Experience::default();
+        injuries.clear();
+        *stance = None;
+        *stance_percent = None;
+        *encumbrance = None;
+        *encumbrance_percent = None;
+        *encumbrance_detail = None;
+        // A spell, whose effect list is invalidated beside it. See the docs.
+        *shrouded = false;
+
+        // --- Retained: taught by a command, and a reconnect does not change
+        //     a character's Strength ---------------------------------------
+        let _ = (stats, identity);
+    }
+
     /// Fold a `<progressBar>` that belongs to one of step 3's dialogs.
     ///
     /// Returns whether it was consumed, so the caller can fall through to the

@@ -190,10 +190,22 @@ impl GameState {
         // explicitly here is the whole difference.
         *chunk = super::chunks::Chunk::default();
 
-        // Experience, injuries, stance and encumbrance. MEASURED (`plan/15` §2a.4a):
-        // NONE of the four dialogs is in the login burst -- they arrive only
-        // after the first command, which is precisely §5.2's "invalidated" set.
-        *character = super::Character::default();
+        // **PER GROUP, not wholesale.** This was
+        // `*character = Character::default()`, which was right when the struct
+        // held only the four dialogs -- experience, injuries, stance,
+        // encumbrance, none of them in the burst (MEASURED, `plan/15` §2a.4a).
+        //
+        // M3 added `stats` and `identity`, and they are absent from the burst
+        // for the OPPOSITE reason: not "unobserved after a reconnect" but
+        // "never volunteered at all". They were taught by an `info` a person
+        // typed, and nothing about reconnecting changes a character's
+        // Strength. Wiping them would blank the character until someone
+        // retyped the command.
+        //
+        // The test that a fact is invalidated is not "is it in the burst" but
+        // "does the burst's silence mean anything". See
+        // `Character::invalidate_for_reconnect` for the per-field split.
+        character.invalidate_for_reconnect();
 
         // Containers. The login burst DOES re-send worn items, but not the
         // contents of every container, and a stale container mirror is exactly
