@@ -441,8 +441,14 @@ fn a_room_arrival_carries_its_id_and_its_metadata() {
 
 #[test]
 fn the_login_burst_identifies_the_character_and_the_instance() {
-    // What arrives before the first command, and therefore what a reconnect
-    // can rely on being re-taught (`plan/15` §2b).
+    // What arrives before the first command (`plan/15` §2a.4a.3a for the full
+    // measured tag set -- §2b, cited here before, is about `crtrStatus`).
+    //
+    // **Note what this fixture is NOT.** `login_burst.xml` is a PARTIAL cut:
+    // no hands, no indicators, no vitals. `login_burst_full.xml` is the one
+    // cut from `<app>` onward, and it exists because a claim about what the
+    // burst omits went unchallenged for months against a fixture that could
+    // not have exhibited it either way.
     let frames = parse_fixture("login_burst.xml");
     assert!(
         frames.iter().any(|f| matches!(

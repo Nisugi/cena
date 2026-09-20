@@ -394,8 +394,8 @@ fn a_reconnect_forgets_only_what_the_connection_owned() {
         "container CONTENTS are the one inventory fact the burst does not          re-send, so a stale mirror would never be corrected"
     );
     assert!(
-        state.character.injuries.is_empty(),
-        "the `injuries` dialog is re-sent by the burst, and step 9 clears the          dialog-derived facts while keeping what a command taught"
+        !state.character.injuries.is_empty(),
+        "wounds do not heal while the character is out of the world, and the          burst carries `dialogData id='injuries'` regardless"
     );
     assert!(state.streams().next().is_none());
     assert!(

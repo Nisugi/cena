@@ -145,48 +145,74 @@ pub struct Character {
 }
 
 impl Character {
-    /// Forget what a new connection has not been told, and keep what it has.
+    /// Forget what belonged to the connection; keep what is still true.
     ///
-    /// M3 step 9. `GameState::invalidate_for_reconnect` used to do
-    /// `*character = Character::default()` -- correct when this struct held
-    /// only the four dialogs, and **wrong once M3 added `stats` and
-    /// `identity`**, which the login burst does not re-send.
+    /// M3 step 9, **rewritten 2026-09-20** after the author corrected the rule
+    /// twice. `GameState::invalidate_for_reconnect` used to do
+    /// `*character = Character::default()`; step 9 split that per group, on
+    /// the reasoning that the four dialogs are absent from the login burst and
+    /// are therefore `plan/12` §5.2's Invalidated set.
     ///
-    /// # The split is the same measurement, applied twice
+    /// **Both halves of that reasoning were wrong.**
     ///
-    /// `plan/15` §2a.4a counted tags before the first client command across
-    /// seven logins. The four dialogs -- `expr`, injuries, stance,
-    /// encumbrance -- are **absent** from every burst, so they are `plan/12`
-    /// §5.2's Invalidated set and must go.
+    /// # The facts were wrong
     ///
-    /// Stats and identity are absent too, and that is precisely why they must
-    /// **stay**. They are not connection state: they were taught by an `info`
-    /// a person typed, and nothing in a reconnect changes a character's
-    /// Strength. Clearing them would leave the character blank until someone
-    /// retyped the command, which is the failure the author's design is about:
+    /// MEASURED 2026-09-20 across two captures, from `<app>` to the first
+    /// client command: `dialogData id='expr'`, `id='injuries'`, `encumlevel`
+    /// and `encumblurb` are all **in** the burst, with real values. Only
+    /// `pbarStance` is genuinely absent -- zero occurrences in either burst.
     ///
-    /// > *"you do it manually to populate then it should stay updated"*
+    /// # And the rule was wrong
     ///
-    /// The difference is not "is it in the burst" but **"does the burst's
-    /// silence mean anything"**. For stance, silence means the fact is
-    /// unobserved and a stale value is a lie. For Strength, silence means
-    /// nothing at all -- the server was never going to volunteer it.
+    /// > **AUTHOR, 2026-09-20:** *"time stops for 99.9% of things when you're
+    /// > offline ... you can't really change rooms when you're logged off."*
     ///
-    /// # `shrouded` is cleared, and that is the subtle one
+    /// A logged-off character is out of the world. Nothing re-stances them,
+    /// nothing wounds them, nothing changes what they are carrying. So
+    /// absence from the burst is not a reason to forget: it means the server
+    /// had no need to restate a fact that never stopped being true.
     ///
-    /// It is a *spell*, and the effect list that sets it is itself invalidated
-    /// (`reconnect.rs` clears `effects`). Keeping `shrouded = true` across a
-    /// generation would make the new session refuse every `info` identity on
-    /// the strength of an effect nobody has re-observed -- a stale belief
-    /// silently suppressing good data, which is worse than the lie it guards
-    /// against. Cleared, the first `info` is trusted and the re-sent effect
-    /// list restores the guard if the spell is still up.
+    /// # What that leaves
+    ///
+    /// **Everything here is kept**, and this method now clears exactly one
+    /// field. It is retained rather than deleted because the destructure is
+    /// load-bearing -- see below -- and because "the character model survives
+    /// a reconnect intact" is a claim worth having a single place to state.
+    ///
+    /// | Field | Kept | Why |
+    /// |---|---|---|
+    /// | `experience` | yes | in the burst, AND the one thing that genuinely moves offline (*"you can absorb experience extremely slowly if you enable that option"*) -- so the burst's value is the authority and arrives unprompted |
+    /// | `injuries` | yes | wounds do not heal or appear while out of the world; `id='injuries'` is in the burst |
+    /// | `stance`, `stance_percent` | yes | **not** in the burst, and that is fine: nobody shifts a logged-off character's stance |
+    /// | `encumbrance` and friends | yes | in the burst; nothing is picked up or dropped while away |
+    /// | `stats`, `identity` | yes | taught by a command, which was step 9's original point and is the one part that survived |
+    ///
+    /// # `shrouded` is the exception, and it is not about elapsed time
+    ///
+    /// It is a **belief derived from another subsystem** -- the effects layer
+    /// sets it -- and it is a *suppression* flag: while true, an `info`
+    /// report's identity fields are refused, because Shroud of Deception
+    /// falsifies them.
+    ///
+    /// A suppression flag that outlives the evidence for it is the one shape
+    /// where keeping is worse than forgetting. If the spell dropped while we
+    /// were away, a surviving `shrouded = true` makes the new session refuse
+    /// every `info` identity on the strength of an effect nobody has
+    /// re-observed -- **silently discarding good data**. Cleared, the worst
+    /// case is that one `info` is believed before the effect list catches up,
+    /// and the effect list then restores the guard.
+    ///
+    /// So the asymmetry is deliberate: a stale fact is corrected by the next
+    /// observation, but a stale *refusal to observe* is not.
     ///
     /// # The destructuring is the point
     ///
     /// Every field named, mirroring `GameState::invalidate_for_reconnect` and
     /// for the identical reason: adding a field is a compile error here, and
-    /// whoever adds it has to decide which side it belongs on.
+    /// whoever adds it has to decide which side it belongs on. That matters
+    /// more now that all but one field is on the "keep" side -- a new field
+    /// silently defaulting to "keep" is the easy mistake, and this makes it a
+    /// decision instead.
     pub(super) fn invalidate_for_reconnect(&mut self) {
         let Self {
             experience,
@@ -201,21 +227,21 @@ impl Character {
             shrouded,
         } = self;
 
-        // --- Cleared: the burst does not carry these, and its silence means
-        //     the fact is unobserved -------------------------------------
-        *experience = Experience::default();
-        injuries.clear();
-        *stance = None;
-        *stance_percent = None;
-        *encumbrance = None;
-        *encumbrance_percent = None;
-        *encumbrance_detail = None;
-        // A spell, whose effect list is invalidated beside it. See the docs.
+        // --- Cleared: a suppression flag whose evidence is gone ------------
         *shrouded = false;
 
-        // --- Retained: taught by a command, and a reconnect does not change
-        //     a character's Strength ---------------------------------------
-        let _ = (stats, identity);
+        // --- Kept: a logged-off character is out of the world --------------
+        let _ = (
+            experience,
+            injuries,
+            stance,
+            stance_percent,
+            encumbrance,
+            encumbrance_percent,
+            encumbrance_detail,
+            stats,
+            identity,
+        );
     }
 
     /// Fold a `<progressBar>` that belongs to one of step 3's dialogs.

@@ -353,17 +353,20 @@ fn identity_survives_a_reconnect() {
     );
 }
 
-/// The four dialogs still go, because the burst's silence about THEM means
-/// the fact is unobserved.
+/// The dialog-derived facts survive too, which reverses this test.
 ///
-/// The other half of the split: without this, "keep the character" would be
-/// indistinguishable from "keep everything", and a stale `stance` would
-/// survive a generation.
+/// It was `the_dialog_facts_are_still_invalidated`, written for step 9 on the
+/// premise that the four dialogs are absent from the burst and therefore
+/// unobserved. MEASURED 2026-09-20: `expr`, `injuries`, `encumlevel` and
+/// `encumblurb` are all in the burst, and only `pbarStance` is absent -- which
+/// under the corrected rule is not a reason to forget it either.
+///
+/// > **AUTHOR, 2026-09-20:** *"time stops for 99.9% of things when you're
+/// > offline"*
 #[test]
-fn the_dialog_facts_are_still_invalidated() {
+fn the_dialog_facts_survive_a_reconnect() {
     let mut state = GameState::default();
     state.character.stance = Some("offensive".to_owned());
-    state.character.stance_percent = Some(0);
     state.character.encumbrance = Some("Heavy".to_owned());
     state
         .character
@@ -371,19 +374,20 @@ fn the_dialog_facts_are_still_invalidated() {
         .insert("head".to_owned(), cena_model::Injury { wound: 2, scar: 0 });
     state.character.experience.level = Some("Level 100".to_owned());
 
-    // Guard: all five are known.
-    assert!(state.character.stance.is_some(), "guard");
-    assert!(state.character.encumbrance.is_some(), "guard");
-    assert!(!state.character.injuries.is_empty(), "guard");
-    assert!(state.character.experience.level.is_some(), "guard");
-
     state.invalidate_for_reconnect();
 
-    assert_eq!(state.character.stance, None);
-    assert_eq!(state.character.stance_percent, None);
-    assert_eq!(state.character.encumbrance, None);
-    assert!(state.character.injuries.is_empty());
-    assert_eq!(state.character.experience.level, None);
+    assert_eq!(
+        state.character.stance.as_deref(),
+        Some("offensive"),
+        "nobody re-stances a logged-off character"
+    );
+    assert_eq!(state.character.encumbrance.as_deref(), Some("Heavy"));
+    assert!(!state.character.injuries.is_empty());
+    assert_eq!(
+        state.character.experience.level.as_deref(),
+        Some("Level 100"),
+        "and the burst re-sends `expr` anyway, which is the authority"
+    );
 }
 
 /// **`shrouded` is cleared, and the reason is the effect list beside it.**
@@ -408,19 +412,22 @@ fn the_shroud_does_not_survive_its_own_effect_list() {
     );
 }
 
-/// **What persists and what survives a reconnect are the same set.**
+/// **Persistence and reconnect ask DIFFERENT questions**, and `expr` is where
+/// they diverge.
 ///
-/// Two layers make the same judgement independently: `CharacterSnapshot`
-/// chooses what to write to disk, and `Character::invalidate_for_reconnect`
-/// chooses what to keep across a generation. They must agree, because the
-/// question is the same one -- *"was this taught by a command, or volunteered
-/// by the connection?"*
+/// This test asserted they were the same set, on the step-9 premise that the
+/// `expr` dialog is absent from the burst and therefore invalidated. It is in
+/// the burst (MEASURED 2026-09-20), so the two answers separate:
 ///
-/// `plan/12` §8's step 9 note says the `expr`-derived level must not survive.
-/// It does not, on either path: cleared here, and absent from the snapshot.
-/// This asserts the agreement rather than leaving it to coincidence, because
-/// the two decisions live in different files and a later field could satisfy
-/// one and not the other.
+/// | | reconnect | store |
+/// |---|---|---|
+/// | stats, identity | keep -- a command taught them | **write** -- only a command will teach them again |
+/// | `expr` level | keep -- nothing invalidated it | **refuse** -- it changes continuously and the dialog is the live authority |
+///
+/// The store's question is *"will anything re-teach this on its own?"* The
+/// reconnect's is *"did this stop being true?"* They coincide for stats and
+/// diverge for experience, which is why `Group` has no `Experience` variant
+/// while `Character` keeps the field.
 #[test]
 fn persistence_and_reconnect_agree_on_what_a_command_taught() {
     let mut state = GameState::default();
@@ -437,10 +444,19 @@ fn persistence_and_reconnect_agree_on_what_a_command_taught() {
     assert!(state.character.identity.race.is_some());
     assert!(!state.character.stats.is_empty());
 
-    // Survives neither: `<dialogData id='expr'>` is pushed by the connection,
-    // changes continuously, and `info`'s own level is explicitly not to be
-    // trusted (`infomon/parser.rb:246`).
-    assert_eq!(state.character.experience.level, None);
+    // **Survives the reconnect, and is still not PERSISTED**, which is the
+    // distinction this test now draws. It used to assert `None` here, on the
+    // step-9 premise that `expr` is absent from the burst -- it is not.
+    //
+    // A reconnect keeps it because nothing invalidated it; the store refuses
+    // it because it changes continuously and `<dialogData id='expr'>` is the
+    // live authority (`infomon/parser.rb:246` says the same of `info`'s own
+    // level: captured, but do not rely on it). Those are different questions
+    // with different answers, which is why both halves are asserted.
+    assert!(
+        state.character.experience.level.is_some(),
+        "kept across the reconnect -- and re-sent by the burst regardless"
+    );
 
     // The persistence half of the same judgement: the snapshot has no
     // experience field at all, so the question cannot even be asked of it.

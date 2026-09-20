@@ -287,24 +287,77 @@ fn a_partial_dialog_leaves_the_rest_unknown() {
     assert_eq!(state.character.experience.mind_percent, None);
 }
 
+/// **The character model survives a reconnect**, except the shroud flag.
+///
+/// This test was `a_reconnect_forgets_all_four`, and its comment read:
+/// *"MEASURED (`plan/15` §2b): NONE of the four dialogs is in the login
+/// burst."* §2b is about `crtrStatus` gaining health and says nothing about
+/// the burst -- a citation that resolves to a real section not supporting the
+/// claim, which is `CLAUDE.md`'s `styleIfClosed` hazard in its harder form. The
+/// claim is false -- MEASURED 2026-09-20 from `<app>` to the first client
+/// command, `dialogData id='expr'`, `id='injuries'`, `encumlevel` and
+/// `encumblurb` are all present with real values. Only `pbarStance` is absent.
+///
+/// The rule was wrong too:
+///
+/// > **AUTHOR, 2026-09-20:** *"time stops for 99.9% of things when you're
+/// > offline ... you can't really change rooms when you're logged off."*
+///
+/// A logged-off character is out of the world, so nothing re-stances them,
+/// wounds them, or changes what they carry. Absence from the burst means the
+/// server had no need to restate a fact that never stopped being true.
 #[test]
-fn a_reconnect_forgets_all_four() {
-    // MEASURED (`plan/15` §2b): NONE of the four dialogs is in the login burst.
-    // They arrive only after the first command, which is exactly §5.2's
-    // invalidated set -- so keeping them would be a stale belief with no burst
-    // to correct it.
+fn the_character_model_survives_a_reconnect() {
     let mut wire = EXPR.to_vec();
     wire.extend_from_slice(
-        b"<dialogData id='injuries'><image id=\"head\" name=\"Injury1\"/></dialogData>\n",
+        b"<dialogData id='injuries'><image id=\"head\" name=\"Injury1\"/></dialogData>
+",
     );
     wire.extend_from_slice(
-        b"<dialogData id='stance'><progressBar id='pbarStance' value='80' text='forward'/></dialogData>\n",
+        b"<dialogData id='stance'><progressBar id='pbarStance' value='80' text='forward'/></dialogData>
+",
     );
     let mut state = fold(&wire);
+
+    // Guards, so the assertions below cannot pass on a default.
     assert!(state.character.experience.level.is_some());
     assert!(!state.character.injuries.is_empty());
+    assert!(state.character.stance.is_some());
 
     state.invalidate_for_reconnect();
 
-    assert_eq!(state.character, cena_model::Character::default());
+    assert!(
+        state.character.experience.level.is_some(),
+        "the burst carries `expr`, and experience is the one thing that moves          offline -- so the burst's value is the authority, not a default"
+    );
+    assert!(
+        !state.character.injuries.is_empty(),
+        "wounds do not heal while the character is out of the world"
+    );
+    assert!(
+        state.character.stance.is_some(),
+        "stance is the one dialog genuinely absent from the burst, and that          is not a reason to forget it -- nobody re-stances a logged-off          character"
+    );
+}
+
+/// **The shroud flag is the one thing a reconnect drops, and not because of
+/// elapsed time.**
+///
+/// It is a *suppression* flag: while true, an `info` report's identity fields
+/// are refused, because Shroud of Deception falsifies them. A suppression flag
+/// that outlives the evidence for it is the one shape where keeping is worse
+/// than forgetting -- it silently discards good data on the strength of an
+/// effect nobody has re-observed.
+///
+/// A stale fact is corrected by the next observation. A stale refusal to
+/// observe is not.
+#[test]
+fn the_shroud_flag_does_not_outlive_its_effect_list() {
+    let mut state = fold(EXPR);
+    state.character.shrouded = true;
+    assert!(state.character.shrouded, "guard");
+
+    state.invalidate_for_reconnect();
+
+    assert!(!state.character.shrouded);
 }
