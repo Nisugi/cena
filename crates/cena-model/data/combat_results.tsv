@@ -1,0 +1,223 @@
+family	name	role	order	flags	extra	pattern
+damage	basic		1			\.\.\.\s*and hits? for (?<damage>\d+) points? of damage!
+damage	basic		2			\.\.\.\s*(?<damage>\d+) points? of damage!
+damage	basic		3			\.\.\.\s*hits for (?<damage>\d+) points? of damage!
+damage	basic		4			\.\.\.\s*and receives (?<damage>\d+) points? of damage!
+damage	basic		5			\.\.\.\s*and causes? (?<damage>\d+) points? of damage!
+damage	basic		6			\.\.\.\s*(?<damage>\d+) points? of damage \.\.\.
+damage	basic		7			pulses for an additional (?<damage>\d+) points? of damage
+damage	basic		8			sears .+? for (?<damage>\d+) damage!
+damage	basic		9			dissipating with a final discharge of (?<damage>\d+) points? of damage!
+damage	basic		10			\.\.\.\s*(?<damage>\d+) damage!
+damage	basic		11			(?<target>.+?) is hit for (?<damage>\d+) points? of damage!
+damage	basic		12			(?<target>.+?) is smashed for (?<damage>\d+) points? of damage!
+damage	basic		13			(?<target>.+?) suffers an additional (?<damage>\d+) damage!
+damage	spell		14			Consumed by the hallowed flames, (?<target>.+?) is ravaged for (?<damage>\d+) points? of damage!
+damage	spell		15			Wisps of black smoke swirl around (?<target>.+?) and it bursts into flame causing (?<damage>\d+) points? of damage!
+damage	spell		16			Sound waves disrupt for (?<damage>\d+) damage!
+damage	spell		17			(?<target>.+?) is cloaked in a blinding platinum light and assailed for (?<damage>\d+) points? of damage!
+damage	spell		18			Ripples of cold white flame flare up around (?<target>.+?) and blister .+? for (?<damage>\d+) points? of damage!
+damage	spell		19			Cloudy tendrils writhe throughout (?<target>.+?) form, ravaging .+? for (?<damage>\d+) points? of damage!
+damage	spell		20			\w+ internal disruption for (?<damage>\d+) points? of damage!
+damage	spell		21			(?<target>.+?) is struck by a burning projectile, taking (?<damage>\d+) points? of damage!
+damage	spell		22			Blazing light, hot and blistering, coalesces around (?<target>.+?) for (?<damage>\d+) points? of damage!
+damage	spell		23			The stone hand throws (?<target>.+?) and .+? goes flying through the air, then hits the ground with a loud thud\.\s+(?<damage>\d+) points? of damage!
+damage	spell		24			The stone hand lets (?<target>.+?) go free for a moment, then quickly moves to slap (?:him|her|it)\.\s*(?<damage>\d+) points? of damage!
+damage	spell		25			The stone hand closes its grasp around (?<target>.+?) and squeezes\.\s*(?<damage>\d+) points? of damage!
+damage	spell		26			The stone hand raises (?<target>.+?) into the air and brings (?:him|her|it) down, pounding (?:him|her|it) into the (?:floor|ground)\.\s*(?<damage>\d+) points? of damage!
+damage	spell		27			The (?:rocks|hailstones|hail|winds|bolts|heat) (?:pummels?|burns?|electrif(?:y|ies)|assaults?) (?<target>.+?) for (?<damage>\d+) points? of damage!
+damage	environmental		28			quickly (?:arcs?|swirls?|orbits?) around (?<target>[^,]+), causing (?<damage>\d+) points? of damage!
+damage	environmental		29			quickly (?:arcs?|swirls?|orbits?) (?<target>[^,]+), causing (?<damage>\d+) points? of damage!
+damage	fallback		30			(?<target>.+?) for (?<damage>\d+) points? of damage[.!]
+damage	fallback		31			causing (?<damage>\d+) points? of damage!
+damage	fallback		32			inflicting (?<damage>\d+) points? of damage(?: in their wake)?!
+damage	fallback		33			(?<target>.+?) for (?<damage>\d+) damage!
+damage	fallback		34			 (?<damage>\d+) hits!
+resolution	as_ds		1			AS: (?<as>[+\-\d]+) vs DS: (?<ds>[+\-\d]+) with AvD: (?<avd>[+\-\d]+) \+ (?:(?<bonus>\d+) \+ )?d\d+ roll: (?<roll>[+\-\d]+) = (?<result>[+\-\d]+)
+resolution	cs_td		2			CS: (?<cs>[+\-\d]+) - TD: (?<td>[+\-\d]+) \+ CvA: (?<cva>[+\-\d]+) \+ d\d+: (?<roll>[+\-\d]+) \+ Bonus: (?<bonus>[+\-\d]+) == (?<result>[+\-\d]+)
+resolution	cs_td		3			CS: (?<cs>[+\-\d]+) - TD: (?<td>[+\-\d]+) \+ CvA: (?<cva>[+\-\d]+) \+ d\d+: (?<roll>[+\-\d]+)(?: - (?<penalty>[+\-\d]+))? == (?<result>[+\-\d]+)
+resolution	uaf_udf		4			UAF: (?<uaf>\d+) vs UDF: (?<udf>\d+) = (?<total>[.\d]+) \* MM: (?<mm>\d+) \+ d\d+: (?<roll>\d+) = (?<result>\d+)
+resolution	smr		5			\[SMR result: (?<result>-?\d+) \(Open d100: (?<roll>[+\-\d]+)(?:, Bonus: (?<bonus>[+\-\d]+))?(?:, Penalt(?:y|ies): (?<penalty>[+\-\d]+))?\)\]
+resolution	ssr		6			\[SSR result: (?<result>-?\d+) \(Open d100: (?<roll>[+\-\d]+)\)\]
+resolution	activation		7			1d100: (?<roll>[+\-\d]+) \+ Modifiers: (?<mods>[+\-\d]+) == (?<result>[+\-\d]+)
+resolution	maneuver_roll		8			\[Roll result: (?<result>-?\d+) \(open d100: (?<roll>-?\d+)\)(?:,? (?:Bonus: (?<bonus>-?\d+)|Penalt(?:y|ies): (?<penalty>-?\d+)))?\]
+resolution	fear		9			FS: (?<fs>[+\-\d]+) - FD: (?<fd>[+\-\d]+) \+ FvP: (?<fvp>[+\-\d]+) \+ d100\(L\): (?<roll>[+\-\d]+) = (?<result>[+\-\d]+)
+crit_rider	knockdown		1			Despite desperate windmilling to catch (?:his|her|its|their) balance, .+? topples
+outcome	miss		1			A clean miss.
+outcome	miss		2			A close miss.
+outcome	miss		3			Nowhere close.
+outcome	miss		4			(?<attacker>.+?)'s swing goes wide.
+outcome	miss		5			The (?:arrow|bolt) streaks off into the distance.
+outcome	miss		6			Though (?<target>.+?) is caught unaware, you manage to completely miss your strike.
+outcome	miss		7			You make a grab for (?<target>.+?) but miss, leaving yourself open.
+outcome	miss		8			You stumble slightly as you leap from hiding, revealing yourself in the process.
+outcome	miss		9			You move towards (?<target>.+?) to finish your kill, but .+? thwarts your attempt.
+outcome	miss		10			The shadowy barb strikes harmlessly at the ground near (?<target>[^.]+).
+outcome	miss		11			A falling arrow flashes past (?<target>.+?) and shatters against the (?:ground|floor).
+outcome	miss		12			An incoming arrow just misses (?<target>[^!]+).
+outcome	miss		13			An arrow falls to the (?:ground|floor), narrowly missing (?<target>[^!]+).
+outcome	miss		14			(?<target>.+?) moves at the last moment to avoid an incoming arrow.
+outcome	miss		15			The spray of arrows leaves (?<target>.+?) unscathed and undeterred.
+outcome	miss		16			The .+? (?:vine|briar) (?:lashes out at|grabs at) (?<target>.+?),? (?:but is unable to grasp|unable to find a purchase)
+outcome	miss		17			Your strike misses its mark.
+outcome	miss		18			(?<attacker>.+?) whacks your legs to no effect.
+outcome	miss		19			You whack (?<target>.+?'s) legs futilely.
+outcome	miss		20			You end up missing entirely, leaving you slightl?y off balance.
+outcome	miss		21			(?<target>.+?) avoids your bash.
+outcome	miss		22			(?<target>.+?) is unaffected by your futile bash.
+outcome	miss		23			Your (?<weapon>.+?) flies wide, narrowly missing (?<target>[^!]+).
+outcome	miss		24			The net flies past you and collapses into a useless heap.
+outcome	miss		25			(?<attacker>.+?) stumbles behind you like a top out of control.
+outcome	miss		26			The enormous hand attempts to grab you, but you manage to avoid it at the last moment.
+outcome	miss		27			(?<attacker>.+?) completely misses you, stumbles, and flails around!
+outcome	miss		28			The goopy appendage flies wide before retracting back into the central mass of
+outcome	hit		29			(?:A|Good) hit!
+outcome	hit		30			(?<attacker>.+?)'s angry trumpeting startles you!
+outcome	hit		31			Your heart quavers in your chest and you find yourself unable to focus on defending yourself!
+outcome	hit		32			(?<target>.+?) is struck by a sharp piece of \S+(?: \S+)? debris!
+outcome	hit		33			One of the large, pointed slivers of \S+(?: \S+)? debris hits (?<target>[^!]+)!
+outcome	hit		34			(?<target>.+?) shudders with \w+ convulsions as pearlescent ripples envelop (?:his|her|its|your) body\.
+outcome	warded		35			Warded off!
+outcome	ward_failed		36			Warding failed!
+outcome	intercept		37			The thorny barrier surrounding (?<target>.+?) blocks your .+?!
+outcome	intercept		38			The thorny barrier surrounding you blocks the attack from (?<attacker>[^!]+)!
+outcome	intercept		39			The thorny barrier surrounding (?<target>.+?) blocks the attack from .+?!
+outcome	intercept		40			The evanescent shield shrouding (?<target>.+?) flares to life and absorbs the (?:oncoming blow|essence of the spell, dissipating it harmlessly)\.
+outcome	intercept		41			The evanescent shield shrouding you flares to life and absorbs the (?:oncoming blow|essence of the spell, dissipating it harmlessly)\.
+outcome	intercept		42			The layer of bark on you hardens and absorbs the attack!
+outcome	intercept		43			The layer of bark on (?<target>.+?) hardens and absorbs the attack!
+outcome	intercept		44			A heavy barrier of stone momentarily forms around (?<target>.+?) and blocks the attack!
+outcome	intercept		45			A complex pattern of .+? energy flashes briefly into existence between .+? and (?<target>.+?), deflecting the assault entirely\.
+outcome	intercept		46			(?<attacker>.+?)'s spell is deflected by your barrier in a flash of \w+ light!
+outcome	intercept		47			Your spell is deflected by the (?<target>.+?)'s barrier in a flash of \w+ light!
+outcome	intercept		48			A mirror image of (?:you|.+?) shimmers into view, gaining substance just long enough to intercept the attack!
+outcome	evade		49			By amazing chance, (?<target>.+?) evades the .+?!
+outcome	evade		50			Lying flat on .+? back, (?<target>.+?) leans to one side and dodges the .+?!
+outcome	evade		51			Nearly insensible, (?<target>.+?) desperately evades the .+?!
+outcome	evade		52			Rolling hurriedly, (?<target>.+?) blocks the .+? with .+?!
+outcome	evade		53			Stupefied, (?<target>.+?) evades the .+? by blind luck!
+outcome	evade		54			Unable to focus clearly, (?<target>.+?) blindly evades the .+?!
+outcome	evade		55			(?<target>.+?) barely dodges the .+?!
+outcome	evade		56			(?<target>.+?) dodges just in the nick of time!
+outcome	evade		57			(?<target>.+?) dodges out of the way!
+outcome	evade		58			(?<target>.+?) evades the .+? by a hair!
+outcome	evade		59			(?<target>.+?) evades the .+? by inches!
+outcome	evade		60			(?<target>.+?) evades the .+? with ease!
+outcome	evade		61			(?<target>.+?) flails on the ground but manages to barely dodge the .+?!
+outcome	evade		62			(?<target>.+?) gracefully avoids the .+?!
+outcome	evade		63			(?<target>.+?) moves at the last moment to evade the .+?!
+outcome	evade		64			(?<target>.+?) rolls to one side and evades the .+?!
+outcome	evade		65			(?<target>.+?) skillfully dodges the .+?!
+outcome	evade		66			(?<target>.+?) stumbles dazedly, somehow managing to evade the .+?!
+outcome	evade		67			(?<target>.+?) outmaneuvers the attack and completely avoids it!
+outcome	evade		68			You outmaneuver the attack and completely avoid it!
+outcome	evade		69			(?<target>.+?) dodges an incoming arrow!
+outcome	evade		70			Sensing your attack coming, (?<target>.+?) leaps to safety as you move to attack (?:him|her|it), leaving you out of position!
+outcome	evade		71			With preternatural speed, (?<target>.+?) bounds to safety as you move to attack (?:him|her|it), leaving you off-balance!
+outcome	evade		72			You avoid the push!
+outcome	evade		73			Bobbing and weaving, you dodge the spray of shrapnel!
+outcome	evade		74			You duck to narrowly avoid the flying vermiforms!
+outcome	evade		75			(?<attacker>.+?) feints (?:high|low|to the (?:left|right)), but you aren't fooled for a second\.
+outcome	evade		76			Unable to focus clearly, you blindly evade the attack!
+outcome	evade		77			You barely dodge the attack!
+outcome	evade		78			Unfortunately, your aim is off and your attack goes wide!
+outcome	evade		79			You evade the (?:attack|missile|bolt) by inches!
+outcome	evade		80			You evade the (?:attack|missile|bolt) by a hair!
+outcome	evade		81			You evade the (?:attack|missile|bolt) with ease!
+outcome	evade		82			You evade the attack with incredible finesse!
+outcome	evade		83			You dodge just in the nick of time!
+outcome	evade		84			You dodge out of the way!
+outcome	evade		85			By amazing chance, you evade the .+?!
+outcome	evade		86			You move at the last moment to evade the .+?!
+outcome	evade		87			You gracefully avoid the .+?!
+outcome	evade		88			You skillfully dodge the .+?!
+outcome	evade		89			With blinding speed, (?:you|(?<target>.+?)) dodges? the .+?!
+outcome	evade		90			You move slightly, letting the attack pass harmlessly by!
+outcome	evade		91			You move quickly avoiding the magic!
+outcome	evade		92			You manage to jump out of the way!
+outcome	evade		93			Staggering like a punch-drunk brawler, you dodge the .+?!
+outcome	evade		94			Sensing an impending attack, you manage to roll hard to the side
+outcome	evade		95			Stupefied, you evade the .+? by blind luck!
+outcome	evade		96			You manage to dodge (?<attacker>.+?)'s blow!
+outcome	evade		97			(?<attacker>.+?) attempts to bearhug (?<target>.+?), but .+? to evade (?:his|her|its) grasp!
+outcome	evade		98			You dodge the .+? with barely a hair's breadth to spare!
+outcome	evade		99			You manage to dodge .+?(?:, and it passes harmlessly by| in the nick of time)!
+outcome	evade		100			You dodge the .+? by a hair!
+outcome	evade		101			Bobbing and weaving, you dodge the .+?!
+outcome	evade		102			(?<target>.+?) deftly avoids the stroke\.
+outcome	evade		103			(?<target>.+?) avoids the incense smoke!
+outcome	block		104			Amazingly, (?<target>.+?) manages to block the .+? with .+?!
+outcome	block		105			At the last moment, (?<target>.+?) blocks the .+? with .+?!
+outcome	block		106			Fumbling aimlessly, (?<target>.+?) manages to deflect the .+? with .+?!
+outcome	block		107			In the nick of time, (?<target>.+?) interposes .+? between .+? and the .+?!
+outcome	block		108			Lying flat on .+? back, (?<target>.+?) barely deflects the .+? with .+?!
+outcome	block		109			Nearly insensible, (?<target>.+?) desperately blocks the .+? with .+?!
+outcome	block		110			Nearly insensible, (?<target>.+?) wildly blocks the .+? with .+?!
+outcome	block		111			Reeling and staggering, (?<target>.+?) barely blocks the .+? with .+?!
+outcome	block		112			Stupefied, (?<target>.+?) blocks the .+? by blind luck!
+outcome	block		113			You harmlessly deflect the charge!
+outcome	block		114			Unable to focus clearly, (?<target>.+?) blindly blocks the .+?!
+outcome	block		115			With extreme effort, (?<target>.+?) blocks the .+? with .+?!
+outcome	block		116			With no room to spare, (?<target>.+?) blocks the .+? with .+?!
+outcome	block		117			(?<target>.+?) awkwardly scrambles along the ground to avoid the .+?!
+outcome	block		118			(?<target>.+?) awkwardly scrambles to the right and blocks the .+?!
+outcome	block		119			(?<target>.+?) barely manages to block the .+? with .+?!
+outcome	block		120			(?<target>.+?) easily blocks the .+? with .+?!
+outcome	block		121			(?<target>.+?) flails on the ground but manages to block the .+? with .+?!
+outcome	block		122			(?<target>.+?) interposes .+? between .+? and the .+?!
+outcome	block		123			(?<target>.+?) manages to block the .+? with .+?!
+outcome	block		124			(?<target>.+?) rolls to one side and deflects the .+? with .+?!
+outcome	block		125			(?<target>.+?) skillfully blocks the .+? with .+?!
+outcome	block		126			(?<target>.+?) skillfully interposes .+? between .+? and the .+?!
+outcome	block		127			(?<target>.+?) stumbles dazedly, but (?:manages to )?blocks? the .+? with .+?!
+outcome	block		128			(?<target>.+?) deflects your (?<weapon>.+?) with (?:his|her|its) .+?!
+outcome	block		129			(?<target>.+?) stumbles dazedly, somehow managing to block the .+? with .+?!
+outcome	block		130			(?<target>.+?) tumbles to the side and deflects the .+? with .+?!
+outcome	block		131			(?<target>.+?) harmlessly deflects the charge!
+outcome	block		132			You gauge the attack and expertly deflect it with your .+?!
+outcome	block		133			At the last moment, you block the missile with your .+?!
+outcome	block		134			In the nick of time, you interpose your .+? between yourself and the (?:missile|blow|attack)!
+outcome	block		135			Though dazed, you easily deflect the .+? with your .+?!
+outcome	block		136			Although completely oblivious, you instinctively block the .+? with your .+?!
+outcome	block		137			You skillfully block the missile with your .+?!
+outcome	block		138			(?:With no room to spare|With blinding speed|With extreme effort|Amazingly), you(?: manage to)? block the .+? with your .+?!
+outcome	block		139			At the last moment, you block the (?:attack|missile|bolt|blow) with your .+?!
+outcome	block		140			You (?:easily|skillfully) block the (?:attack|missile|bolt|blow) with your .+?!
+outcome	block		141			You barely manage to block the .+? with your .+?!
+outcome	block		142			With incredible finesse, you deflect the .+? with your .+?!
+outcome	block		143			You block the (?:attack|missile|bolt|blow) with your .+?!
+outcome	block		144			You manage to deflect (?<attacker>.+?)'s blow in the nick of time!
+outcome	parry		145			Amazingly, (?<target>.+?) manages to parry the .+? with .+?!
+outcome	parry		146			At the last moment, (?<target>.+?) parries the .+? with .+?!
+outcome	parry		147			Using the bone plates surrounding .+? forearms, (?<target>.+?) parries your .+?!
+outcome	parry		148			With extreme effort, (?<target>.+?) beats back the .+? with .+?!
+outcome	parry		149			With no room to spare, (?<target>.+?) manages to parry the .+? with .+?!
+outcome	parry		150			(?<target>.+?) barely manages to fend off the .+? with .+?!
+outcome	parry		151			(?<target>.+?) flails on the ground but manages to parry the .+? with .+?!
+outcome	parry		152			(?<target>.+?) rolls to one side and parries the .+? with .+?!
+outcome	parry		153			With no room to spare, you manage to parry the blow with your .+?!
+outcome	parry		154			Using the bone plates surrounding your forearms, you parry the attack!
+outcome	parry		155			(?<target>.+?) manages to fend off (?:your|(?<attacker>.+?)'s) attack!
+outcome	parry		156			At the last moment, you parry the .+? with your .+?!
+outcome	parry		157			Amazingly, you manage to parry the .+? with your .+?!
+outcome	parry		158			You barely manage to fend off the .+? with your .+?!
+outcome	parry		159			With extreme effort, you beat back the .+? with your .+?!
+outcome	parry		160			You gauge the attack and expertly parry it with your .+?!
+outcome	resisted		161			(?<target>.+?) shrugs off some of the damage!
+outcome	resisted		162			(?<target>.+?)'s exterior hardens for a moment and softens the attack!
+outcome	resisted		163			(?<target>.+?) aura absorbs some of the damage!
+outcome	resisted		164			(?<target>.+?) manages to block some of the (?:elemental )?damage with (?:his|her|its) .+?!
+outcome	resisted		165			(?<armor>.+?) partially deflects the onslaught of the \w+ attack\.
+outcome	resisted		166			Your body resists the \w+ damage and lessens the severity of the attack!
+outcome	resisted		167			Fear still claws at your heart, but you stand fast against .+? unnerving howl!
+outcome	resisted		168			You keep your wits amidst .+? angry trumpeting!
+outcome	unaffected		169			(?<target>.+?) does not seem to be affected\.
+outcome	unaffected		170			(?<target>.+?) is buffeted by the .+?, but is unaffected\.
+outcome	unaffected		171			(?<target>.+?) is unaffected\.
+outcome	unaffected		172			(?<target>.+?) is unharmed by the (?:plasma|electricity|cold|heat|impact)!
+outcome	unaffected		173			(?<target>.+?) endures the luminescence and is unscathed!
+outcome	unaffected		174			(?<target>.+?)'s face goes blank for a moment before returning to normal, as (?:he|she|it) successfully avoids the effects of the magical attack!
+outcome	already_dead		175			(?<target>.+?) is quite dead already\.
+outcome	fumble		176			d100 == 1 FUMBLE!
+outcome	hindrance		177			\[Spell Hindrance for (?<armor>.+?) is (?<hindrance_amount>\d+)% with current Armor Use skill, d100= (?<roll>\d+)\]
+outcome	confused		178			Something confusing enters your mind at the worst possible moment, and the distraction disrupts your .+?!

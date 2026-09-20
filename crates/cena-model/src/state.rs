@@ -36,6 +36,7 @@ use crate::effects::Effects;
 use crate::status::StatusInfo;
 use cena_protocol::Frame;
 use cena_protocol::runs::Runs;
+use idle::IdleWarning;
 use std::time::Instant;
 
 pub mod armaments;
@@ -44,6 +45,7 @@ pub mod character;
 pub mod chunks;
 pub mod claim;
 mod clock;
+pub mod combat;
 pub mod creature;
 pub mod gameobj;
 mod idle;
@@ -187,26 +189,6 @@ pub struct GameState {
     /// `info` reader, a future `skill` reader and a combat tracker share one
     /// accumulator instead of each growing their own.
     chunk: chunks::Chunk,
-}
-
-/// Whether the server has warned about idling, and when.
-///
-/// **Three states, so a named enum rather than `Option<Option<u32>>`.** That was
-/// the first shape here and clippy's `option_option` objected, correctly: the
-/// review pattern `plan/19` (A) records is an `Option` read as two states where
-/// three exist, and a nested one makes a reader decode the nesting to find the
-/// third. Naming them costs nine lines and removes the decoding.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum IdleWarning {
-    /// Never warned, or warned and since answered by an outbound command.
-    #[default]
-    None,
-    /// Warned before any `<prompt>` arrived, so there was no server clock to
-    /// stamp. Real, and not the same as never warned -- the login burst carries
-    /// no prompt until its end.
-    Unstamped,
-    /// Warned at this server epoch second.
-    At(u32),
 }
 
 impl PartialEq for GameState {

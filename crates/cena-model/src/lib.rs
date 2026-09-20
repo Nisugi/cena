@@ -36,6 +36,16 @@ pub use state::character::vocabulary::{
 };
 pub use state::chunks::{Chunk, ChunkLine, MAX_CHUNK_LINES};
 pub use state::claim::{Claim, Occupants};
+pub use state::combat::Actor;
+pub use state::combat::attack::{AmbushKind, AmbushPrefix, AttackLine, RedirectPrefix, TargetKind};
+pub use state::combat::bracket::{AssaultName, BracketStart, SequenceName};
+pub use state::combat::damage::DamageLine;
+pub use state::combat::flare::FlareLine;
+pub use state::combat::outcome::{Outcome, OutcomeKind};
+pub use state::combat::resolution::{Resolution, ResolutionKind};
+pub use state::combat::spell_loss::SpellLoss;
+pub use state::combat::status::{StatusAction, StatusLine, StatusName};
+pub use state::combat::ucs::{PositionTier, UcsAttack, UcsLine};
 // NOTE: `creature::Stat` and `creature::status::Classification` are NOT
 // re-exported here: `character::stats::Stat` and `gameobj::Classification`
 // already hold those names at the facade, and three types called `Stat` in

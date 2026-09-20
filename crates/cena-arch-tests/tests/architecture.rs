@@ -94,6 +94,23 @@ struct AllowedStatic {
 /// The reviewed statics.
 const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
+        path: "crates/cena-model/src/state/combat/defs.rs",
+        name: "DEFS",
+        justification: "A OnceLock<Defs> holding the 954 combat definition rows from three \
+                        include_str! TSVs -- 946 of them compiled regexes -- built on first use \
+                        and never mutated. The same argument as bounty.rs's MATCHERS, gameobj.rs's \
+                        TABLE, armaments.rs's TABLES and creature.rs's BESTIARY, and the same \
+                        caveat: it IS process-wide state, made safe by holding no session handle \
+                        and being a pure function of compile-time strings. Compiling ~950 regexes \
+                        per classification, or per session, is not a tradeoff worth making: a \
+                        combat consumer asks every family of every line of every prompt-bounded \
+                        chunk during a fight. Lich holds the same tables as frozen module \
+                        constants, one TABLE per def file. Also folded into this one \
+                        static, rather than owning statics of their own: parser.rb's \
+                        SELF_IN_PATTERN and SWING_WEAPON_PATTERN, two regexes the attack \
+                        classifier reads.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/creature.rs",
         name: "BESTIARY",
         justification: "A OnceLock<Bestiary> holding the 627 creature templates, joined from four \

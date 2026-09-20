@@ -31,7 +31,31 @@
 //! nesting to find the third. The field stays private and these methods are the
 //! contract.
 
-use super::{GameState, IdleWarning};
+use super::GameState;
+
+/// Whether the server has warned about idling, and when.
+///
+/// **Three states, so a named enum rather than `Option<Option<u32>>`.** That was
+/// the first shape here and clippy's `option_option` objected, correctly: the
+/// review pattern `plan/19` (A) records is an `Option` read as two states where
+/// three exist, and a nested one makes a reader decode the nesting to find the
+/// third. Naming them costs nine lines and removes the decoding.
+///
+/// Moved here from `state.rs` on 2026-09-20 under Rule 4.1, when `pub mod
+/// combat;` took that file to 551 of its 550-line cap: the type lives with the
+/// three methods that read it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum IdleWarning {
+    /// Never warned, or warned and since answered by an outbound command.
+    #[default]
+    None,
+    /// Warned before any `<prompt>` arrived, so there was no server clock to
+    /// stamp. Real, and not the same as never warned -- the login burst carries
+    /// no prompt until its end.
+    Unstamped,
+    /// Warned at this server epoch second.
+    At(u32),
+}
 
 impl GameState {
     /// Has the server warned that this character is idle, without an answer

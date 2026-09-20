@@ -1,0 +1,357 @@
+family	name	role	order	flags	extra	pattern
+flare	acid		1		damaging=1;aoe=1;spawns=0	\*\* Your .+? releases? a spray of acid! \*\*
+flare	acid		2		damaging=1;aoe=1;spawns=0	\*\* Your .+? releases? a spray of acid at (?<target>.+?)! \*\*
+flare	acid		3		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? releases? a spray of acid(?: at (?<target>.+?))?! \*\*
+flare	acuity		4		damaging=0;aoe=1;spawns=0	Your .+? glows intensely with a verdant light!
+flare	acuity		5		damaging=0;aoe=1;spawns=0	(?<attacker>.+?)'s .+? glows intensely with a verdant light!
+flare	air		6		damaging=1;aoe=1;spawns=0	\*\* Your .+? unleashes a blast of air! \*\*
+flare	air		7		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? unleashes a blast of air! \*\*
+flare	air_flourish		8		damaging=1;aoe=1;spawns=0	\*\* A fierce whirlwind erupts around .+?, encircling (?<target>.+?) in a suffocating cyclone! \*\*
+flare	arcane_reflex		9		damaging=0;aoe=1;spawns=0	Vital energy infuses you, hastening your arcane reflexes!
+flare	blink		10		damaging=1;aoe=0;spawns=1	Your .+? suddenly lights up with hundreds of tiny blue sparks!
+flare	blessings_flourish		11		damaging=1;aoe=1;spawns=0	\*\* A crackling wave arcs across your body, striking (?<target>.+?) with lightning speed!  A spiritual resonance warms your core, lending you renewed strength! \*\*
+flare	blessings_flourish		12		damaging=1;aoe=1;spawns=0	\*\* Shimmering arcs of lightning stream from your hands, colliding with (?<target>.+?) in a rapid burst!  A stirring force ignites within you, augmenting your spirit! \*\*
+flare	blessings_flourish		13		damaging=1;aoe=1;spawns=0	\*\* Sparkling tendrils of energy weave around your limbs, shocking (?<target>.+?) in a bright flare!  The pulse leaves you feeling spiritually emboldened! \*\*
+flare	blessings_flourish		14		damaging=1;aoe=1;spawns=0	\*\* A faint hum courses through you as arcs of electricity coil around your arms, jolting (?<target>.+?) in a vivid burst!  The current resonates with your spirit, boosting your energy! \*\*
+flare	blessings_flourish		15		damaging=1;aoe=1;spawns=0	\*\* You feel a tingling surge channel through your arms, blasting (?<target>.+?) with crackling electricity!  A reassuring feeling of mental acuity settles over you! \*\*
+flare	blessings_flourish		16		damaging=1;aoe=1;spawns=0	\*\* Jagged sparks dance along your open palms, lashing out at (?<target>.+?) in a crackling surge!  Your resolve feels bolstered as the energy courses through you! \*\*
+flare	blessings_flourish		17		damaging=1;aoe=1;spawns=0	\*\* An electrified aura coalesces around you, crackling outward to shock (?<target>[^!]+)!  The charge resonates with your spirit, heightening your prowess! \*\*
+flare	blessings_flourish		18		damaging=1;aoe=1;spawns=0	\*\* Threads of charged light spiral around your arms, striking (?<target>.+?) with a pulsing shock!  A resonant force ripples through you, amplifying your spirit! \*\*
+flare	blessings_flourish		19		damaging=1;aoe=1;spawns=0	\*\* Sparks of crackling energy race along your fingertips, shocking (?<target>.+?) with a brilliant flash!  A surge of spiritual power rushes through your veins! \*\*
+flare	breeze		20		damaging=0;aoe=1;spawns=0	(?<target>.+?) is buffeted by a burst of wind and pushed back!
+flare	breeze		21		damaging=0;aoe=1;spawns=0	(?<target>.+?) is buffeted by a sudden gust of wind!
+flare	breeze		22		damaging=0;aoe=1;spawns=0	A gust of wind shoves (?<target>.+?) back!
+flare	briar		23		damaging=1;aoe=1;spawns=0	Vines of vicious briars whip out from your [^,]+, raking the \w+ with its thorns\.  The \w+ looks slightly ill as the glistening emerald coating from each briar works itself under its skin\.
+flare	chameleon_shroud		24		damaging=0;aoe=1;spawns=0	A tenebrous shroud stitches itself into existence around you as you gracefully retreat into the shadows!
+flare	cold		25		damaging=1;aoe=1;spawns=0	Your .+? glows intensely with a cold blue light!
+flare	cold		26		damaging=1;aoe=1;spawns=0	(?<attacker>.+?)'s .+? glows intensely with a cold blue light!
+flare	cold_gef		27		damaging=1;aoe=1;spawns=0	\*\* A vortex of razor-sharp ice gusts from .+? and coalesces around (?<target>[^!]+)! \*\*
+flare	concussive_blows		28		damaging=1;aoe=1;spawns=0	\*\* Your blow slams the (?<target>.+?) with concussive force! \*\*
+flare	concussive_blows		29		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s blow slams the (?<target>.+?) with concussive force! \*\*
+flare	disintegration		30		damaging=1;aoe=1;spawns=0	\*\* Your .+? releases a shimmering beam of disintegration! \*\*
+flare	disintegration		31		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? releases a shimmering beam of disintegration! \*\*
+flare	dispel_flux		32		damaging=1;aoe=0;spawns=0	The (?:elemental aura|hazy film|murky veil) around (?<target>.+?) fluxes chaotically!
+flare	dispel		33		damaging=1;aoe=0;spawns=0	\*\* Your .+? glows? brightly for a moment, consuming the magical energies around (?<target>[^!]+)! \*\*
+flare	dispel		34		damaging=1;aoe=0;spawns=0	\*\* (?<attacker>.+?)'s .+? glows brightly for a moment, consuming the magical energies around (?<target>[^!]+)! \*\*
+flare	disruption		35		damaging=1;aoe=1;spawns=0	\*\* Your .+? releases a quivering wave of disruption! \*\*
+flare	disruption		36		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? releases a quivering wave of disruption! \*\*
+flare	earth_flourish		37		damaging=1;aoe=1;spawns=0	\*\* Chunks of earth violently orbit .+?, pelting (?<target>.+?) with heavy debris and stone! \*\*
+flare	earth_gef		38		damaging=1;aoe=1;spawns=0	\*\* A violent explosion of frenetic energy rumbles from .+? and pummels (?<target>[^!]+)! \*\*
+flare	energy		39		damaging=1;aoe=1;spawns=0;markup=1	\*\* A beam of .+? energy emits from the tip of your .+? and collides with (?<target>.+?</a>) .+?! \*\*
+flare	ensorcell		40		damaging=0;aoe=1;spawns=0	\*\* Necrotic energy from your .+? overflows into you! \*\*
+flare	ensorcell		41		damaging=0;aoe=1;spawns=0	\*\* Necrotic energy from (?<attacker>.+?) flares up momentarily! \*\*
+flare	fire		42		damaging=1;aoe=1;spawns=0	\*\* Your .+? flares with a burst of flame! \*\*
+flare	fire		43		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? flares with a burst of flame! \*\*
+flare	fire_flourish		44		damaging=1;aoe=1;spawns=0	\*\* A blazing inferno erupts around .+?, engulfing (?<target>.+?) and scorching everything in its wake! \*\*
+flare	fire_gef		45		damaging=1;aoe=1;spawns=0	\*\* Burning orbs of pure flame burst from .+? and engulf (?<target>[^!]+)! \*\*
+flare	firewheel		46		damaging=1;aoe=1;spawns=0	\*\* Your .+? emits a fist-sized ball of lightning-suffused flames! \*\*
+flare	ghezyte		47		damaging=0;aoe=1;spawns=0	\*\* Cords of plasma-veined grey mist seep from your .+? and entangle (?<target>[^,]+), causing .+? to tremble violently! \*\*
+flare	ghezyte		48		damaging=0;aoe=1;spawns=0	\*\* Cords of plasma-veined grey mist seep from (?<attacker>.+?)'s .+? and entangle (?<target>[^,]+), causing .+? to tremble violently! \*\*
+flare	grapple		49		damaging=1;aoe=1;spawns=0	\*\* Your .+? releases a twisted tendril of force! \*\*
+flare	grapple		50		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? releases a twisted tendril of force! \*\*
+flare	guiding_light		51		damaging=1;aoe=1;spawns=0	\*\* Your .+? sprays with a burst of plasma energy! \*\*
+flare	holy_water		52		damaging=1;aoe=0;spawns=0	\*\* Your .+? sprays forth a shower of pure water! \*\*
+flare	hurl_boulder		53		damaging=1;aoe=0;spawns=0	You hurl a large boulder at (?<target>[^!]+)!
+flare	immolation		54		damaging=1;aoe=0;spawns=0	You bring a hand up to your lips and form a sign with your fingers as you whisper a quiet invocation for Immolation\.\.\.
+flare	impact		55		damaging=1;aoe=1;spawns=0	\*\* Your .+? release a blast of vibrating energy at the (?<target>[^!]+)! \*\*
+flare	lightning		56		damaging=1;aoe=1;spawns=0	\*\* Your .+? emits a searing bolt of lightning! \*\*
+flare	lightning		57		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? emits? a searing bolt of lightning! \*\*
+flare	lightning_gef		58		damaging=1;aoe=1;spawns=0	\*\* A vicious torrent of crackling lightning surges from .+? and strikes (?<target>[^!]+)! \*\*
+flare	magma		59		damaging=1;aoe=1;spawns=0	\*\* Your .+? expel a glob of molten magma at the (?<target>[^!]+)! \*\*
+flare	mana		60		damaging=0;aoe=1;spawns=0	[Yy]ou feel \d+ mana surge into you!
+flare	natures_decay		61		damaging=0;aoe=1;spawns=0	Soot brown specks of leaf mold trail in the wake of (?<target>.+?) movements, distorted by a murky haze\.
+flare	natures_decay		62		damaging=0;aoe=1;spawns=0	The earthy, sweet aroma clinging to (?<target>.+?) grows more pervasive\.
+flare	natures_decay		63		damaging=0;aoe=1;spawns=0	An earthy, sweet aroma wafts from (?<target>.+?) in a murky haze\.
+flare	natures_decay		64		damaging=0;aoe=1;spawns=0	An earthy, sweet aroma clings to (?<target>.+?) in a murky haze, accompanied by soot brown specks of leaf mold\.
+flare	necromancy_flourish		65		damaging=1;aoe=1;spawns=0	\*\* A sickly green aura radiates from .+? and seeps into (?<target>.+?) wounds! \*\*
+flare	parasite		66		damaging=1;aoe=1;spawns=0	A slender .+? and black tendril lashes out from .+? and slashes (?<target>.+?) .+?!
+flare	physical_prowess		67		damaging=0;aoe=1;spawns=0	The vitality of nature bestows you with a burst of strength!
+flare	plasma		68		damaging=1;aoe=1;spawns=0	\*\* Your .+? pulses with a burst of plasma energy(?: at (?<target>[^!]+))?! \*\*
+flare	plasma		69		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? pulses with a burst of plasma energy(?: at (?<target>[^!]+))?! \*\*
+flare	phosphorescence		70		damaging=1;aoe=1;spawns=0	\*\* Countless points of pale phosphorescence awaken across your .+?, rapidly brightening before bursting into brilliant light around (?<target>.+?)! \*\*
+flare	phosphorescence		71		damaging=1;aoe=1;spawns=0	\*\* Countless points of pale phosphorescence awaken across (?<attacker>.+?)'s .+?, rapidly brightening before bursting into brilliant light around (?<target>.+?)! \*\*
+flare	glowbright		72		damaging=0;aoe=1;spawns=0	\*\* Phosphorescent light races through the .+? as its entire surface blossoms with dazzling radiance, flooding the surroundings in ghostly light! \*\*
+flare	spectral_bloom		73		damaging=1;aoe=1;spawns=0	\*\* A bloom of spectral light blossoms around (?<target>.+?), engulfing .+? in searing brilliance! \*\*
+flare	psychic_assault		74		damaging=1;aoe=1;spawns=0	\*\* Your .+? unleashes a blast of psychic energy(?: at the (?<target>[^!]+))?! \*\*
+flare	psychic_assault		75		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? unleashes a blast of psychic energy(?: at the (?<target>[^!]+))?! \*\*
+flare	religion_flourish		76		damaging=1;aoe=1;spawns=0	\*\* Divine flames kindle around .+?, leaping forth to engulf (?<target>.+?) in a sacred inferno! \*\*
+flare	rusalkan		77		damaging=0;aoe=1;spawns=0	Succumbing to the force of the tidal wave, (?<target>.+?) is thrown to the ground\.
+flare	sigil_dispel		78		damaging=1;aoe=0;spawns=0	\*\* Tendrils of .+? lash out from your .+? toward (?<target>.+?) and cage .+? within bands of concentric geometry that constrict as one, shattering upon impact! \*\*
+flare	sigil_dispel		79		damaging=1;aoe=0;spawns=0	\*\* Tendrils of .+? lash out from (?<attacker>.+?)'s .+? toward (?<target>.+?) and cage .+? within bands of concentric geometry
+flare	sigil_dispel		80		damaging=1;aoe=0;spawns=0	\*\* A bolt of energy leaps from (?<attacker>.+?)'s .+? and sets the sigils along .+? ablaze\.  Tendrils of .+? lash out at (?<target>.+?) and cage .+? within bands of concentric geometry
+flare	weapon_cast		81		damaging=0;aoe=0;spawns=0	(?:\*\* )?As (?:you attempt to strike with your|your) (?<weapon>.+?)(?: hits)?, it sends a surge of power through you that quickly leaps out at (?:the )?(?<target>[^!]+)!
+flare	weapon_cast		82		damaging=0;aoe=0;spawns=0	(?:\*\* )?As you attempt to strike with your (?<weapon>.+?), you briefly feel a surge of power, but it dissipates before reaching (?:the )?(?<target>[^!.]+)
+flare	sigil_cast		83		damaging=1;aoe=0;spawns=1	\*\* Numerous sigils along your .+? abruptly flare to brilliance!  .+? surges from each, twining into an echo of your last spell\.\.\. \*\*
+flare	sigil_cast		84		damaging=1;aoe=0;spawns=1	\*\* Numerous sigils along (?<attacker>.+?)'s .+? abruptly flare to brilliance!  .+? surges from each, twining into an echo of .+? last spell\.\.\. \*\*
+flare	sigil_cast		85		damaging=1;aoe=0;spawns=1	\*\* Spiraling sigils flare to sudden visibility along (?:your|(?<attacker>.+?)'s) .+?, pulsing forth an echo of the spell within! \*\*
+flare	slashing_strikes		86		damaging=1;aoe=1;spawns=0	\*\* Your .+? finds its mark, slicing deep into (?:the )?(?<target>.+?)'s (?<location>[^!]+)! \*\*
+flare	slashing_strikes		87		damaging=1;aoe=1;spawns=0	\*\* (?<attacker>.+?)'s .+? finds its mark, slicing deep into (?:the )?(?<target>.+?)'s (?<location>[^!]+)! \*\*
+flare	somnis		88		damaging=0;aoe=1;spawns=0	\*\* For a split second, the striations of your .+? expand into a sinuous pearlescent mist that rushes towards the (?<target>[^,]+), enveloping .+? entirely(?: and causing .+? to collapse, fast asleep)?! \*\*
+flare	somnis		89		damaging=0;aoe=1;spawns=0	\*\* For a split second, the striations of (?<attacker>.+?)'s .+? expand into a sinuous pearlescent mist that rushes towards (?<target>[^,]+), enveloping .+? entirely! \*\*
+flare	sprite		90		damaging=1;aoe=1;spawns=0;markup=1	\*\* The .+? sprite on your shoulder sends forth a cylindrical, .+? blast of magic at (?<target>.+?</a>) .+?! \*\*
+flare	steam		91		damaging=1;aoe=1;spawns=0	\*\* Your .+? erupts with a plume of steam! \*\*
+flare	steam		92		damaging=1;aoe=1;spawns=0	\*\* Your .+? erupt with a plume of steam at the (?<target>[^!]+)! \*\*
+flare	summoning_flourish		93		damaging=1;aoe=1;spawns=0	\*\* A radiant mist surrounds .+?, unfurling into a whip of plasma that wreathes (?<target>.+?) in its sizzling embrace! \*\*
+flare	tailwind		94		damaging=0;aoe=1;spawns=0	A favorable tailwind springs up behind you\.
+flare	tailwind		95		damaging=0;aoe=1;spawns=0	You shift position, taking advantage of a favorable tailwind\.
+flare	tailwind		96		damaging=0;aoe=1;spawns=0	The wind turns in your favor\.
+flare	telepathy_flourish		97		damaging=1;aoe=1;spawns=0	\*\* Rippling and half-seen, strands of psychic power unravel from .+? to strike at (?<target>.+?)! \*\*
+flare	terror		98		damaging=0;aoe=1;spawns=0	\*\* A series of cacophonous caws and screeches fills the air as a murder of crows appears out of nowhere, swarming (?<target>.+?) and pecking .+? relentlessly! \*\*
+flare	terror		99		damaging=0;aoe=1;spawns=0	\*\* A wave of wicked power surges forth from your .+? and fills (?<target>.+?) with terror, .+? form trembling with unmitigated fear! \*\*
+flare	terror		100		damaging=0;aoe=1;spawns=0	\*\* A wave of wicked power surges forth from (?<attacker>.+?)'s .+? and fills (?<target>.+?) with terror, .+? form trembling with unmitigated fear! \*\*
+flare	unbalance		101		damaging=1;aoe=1;spawns=0	\*\* Your .+? unleashes an invisible burst of force! \*\*
+flare	vacuum		102		damaging=1;aoe=1;spawns=0	\*\* As you hit, the (?:edge|outer rim) of your .+? seems to fold inward upon itself drawing everything it touches along with it! \*\*
+flare	valence		103		damaging=1;aoe=1;spawns=0	\*\* A coil of spectral .+? energy bursts out of thin air and strikes (?<target>[^!]+)! \*\*
+flare	wall_of_thorns		104		damaging=0;aoe=1;spawns=0	One of the vines surrounding you lashes out at the (?<target>[^,]+), scraping a thorn across .+? body!  .+? flinches slightly.
+flare	water		105		damaging=1;aoe=1;spawns=0	\*\* Your .+? shoot a blast of water! \*\*
+flare	water_flourish		106		damaging=1;aoe=1;spawns=0	\*\* A watery deluge erupts violently around .+?, crushing (?<target>.+?) with relentless force! \*\*
+flare	shield_spike		107		damaging=1;aoe=0;spawns=0	\*\* A spike on (?<attacker>.+?)'s .+? jabs into (?<target>[^!]+)! \*\*
+flare	shield_spike		108		damaging=1;aoe=0;spawns=0	\*\* A spike on your .+? jabs into (?<target>[^!]+)! \*\*
+flare	shield_spike		109		damaging=1;aoe=0;spawns=0	A spike on your (?<weapon>.+?) jabs into (?<target>[^!]+)!
+flare	boil_blood		110		damaging=1;aoe=0;spawns=0	\*\* A fiery aura spirals from (?<attacker>.+?) hands into (?<target>.+?) body, roiling .+? blood to a boil! \*\*
+flare	weapon_poison		111		damaging=0;aoe=0;spawns=0	\*\* (?:Afflicted|Envenomed) by (?<attacker>.+?), (?<target>.*?) reels as the .+? poison does its work! \*\*
+flare	thundercloud		112		damaging=1;aoe=0;spawns=0	Suddenly a lightning bolt explodes from the .+? thundercloud and strikes (?<target>.+?) with a brilliant flash!
+flare	vulnerability		113		damaging=0;aoe=0;spawns=0	The attack exposes (?:a vulnerability in )?(?<target>.+?) defenses!
+flare	vulnerability		114		damaging=0;aoe=0;spawns=0	Your attack exposes a vulnerability in (?<target>.+?)'s defenses!
+flare	sonic_weapon		115		damaging=1;aoe=0;spawns=0	\*\* Your sonic .+? unleashes a blast of sonic energy at (?<target>[^!]+)! \*\*
+flare	sonic_weapon		116		damaging=1;aoe=0;spawns=0	\*\* With a loud snap, a blast of energy bursts from your sonic .+?! \*\*
+flare	retribution_aura		117		damaging=1;aoe=0;spawns=0	\*\* Your aura unleashes a blast of divine retribution at (?<target>[^!]+)! \*\*
+flare	terror_weapon		118		damaging=0;aoe=0;spawns=0	\*\* Your .+? releases? a distorted black shadow! \*\*
+flare	terror_weapon		119		damaging=0;aoe=0;spawns=0	\*\* Your .+? releases? a distorted black shadow at (?:the )?(?<target>[^!]+)! \*\*
+flare	terror_weapon		120		damaging=0;aoe=0;spawns=0	\*\* (?<attacker>.+?)'s .+? releases? a distorted black shadow(?: at .+?)?! \*\*
+flare	vethinye		121		damaging=1;aoe=0;spawns=0	\*\* As a resonating song emanates from (?:your|(?<attacker>.+?)'s) .+?, it entwines .+? in night blue wisps of ephemera\.  Suddenly, a star-sparked rush of percussive pressure .*?whips out at (?<target>[^!]+)! \*\*
+flare	xazkruvrixis		122		damaging=0;aoe=0;spawns=0	\*\* Your .+? emits an ominous black-green glow(?: at (?:the )?(?<target>[^!]+))?! \*\*
+flare	forceful_blows		123		damaging=0;aoe=0;spawns=0	\*\* With a mighty swing of your .+?, you deal (?<target>.+?) a forceful blow! \*\*
+flare	critical_hit		124		damaging=1;aoe=0;spawns=0	\*\* Critical hit!  Your .+? strikes (?<target>.+?) a savage blow! \*\*
+flare	crusade		125		damaging=1;aoe=1;spawns=0	Your (?:.+?|body) surges with power as .+? radiance coalesces around it!
+flare	banshee		126		damaging=0;aoe=1;spawns=0	Your .+? emits a deafening wail as a bright red glow erupts from its surface, surrounding you!
+flare	incoming_elemental		127		damaging=1;aoe=0;spawns=0	\*\* As (?<attacker>.+?)'s (?<weapon>.+?) hits you, it emits a burst of flame! \*\*
+flare	holy_fire		128		damaging=1;aoe=0;spawns=0	\*\* (?:Your|(?<attacker>.+?)'s) .+? bursts alight with leaping tongues of holy fire! \*\*
+flare	shadow_daggers		129		damaging=1;aoe=0;spawns=0	\*\* Striking out of the darkness, unseen daggers stab at (?:the )?(?<target>.+?) from behind! \*\*
+flare	bloodstone		130		damaging=1;aoe=0;spawns=0	\*\* Sanguine brilliance strikes (?:the )?(?<target>.+?) a rupturing blow! \*\*
+flare	arcarium		131		damaging=0;aoe=1;spawns=0	\*\* Harvested essence stirs within your arcarium, rising to a keening ululation\.
+flare	magma_ghosts		132		damaging=1;aoe=0;spawns=0	\*\* Splashing magma everywhere, charred red ghosts rise out of (?<attacker>.+?)'s .+? and sail through the air
+flare	spirit_animal		133		damaging=1;aoe=1;spawns=0	\*\* .+? ethereal (?<animal>[\w -]+?) (?:charges forward|rushes forward|dives down|lumbers forward|scurries forward|circles in the air|glides unsteadily downward)
+flare	spirit_animal_echo		134		damaging=0;aoe=0;spawns=0	A turbulent cloud of .+? light lashes out from (?:a|an) .+? with an echoing (?:screech|howl|bellow|growl|roar|huff)!
+flare	spirit_animal_growl		135		damaging=0;aoe=0;spawns=0	A deafening growl impacts (?<target>.+?) with a gust of displaced air!
+flare	gauntlet_tendrils		136		damaging=1;aoe=0;spawns=0	\*\* Tendrils of energy lash out from your (?<weapon>.+?) and surge towards (?<target>[^!]+)! \*\*
+flare	unyielding_force		137		damaging=1;aoe=0;spawns=0	\*\* (?:Your|(?<attacker>.+?)'s) (?<weapon>.+?) meets (?<target>.+?) with unyielding force! \*\*
+flare	sigil_dispel_failed		138		damaging=0;aoe=0;spawns=0	\*\* Tendrils of .+? lash out from your .+? toward (?<target>.+?) and cage .+? within bands of concentric geometry that constrict as one, but dissipate harmlessly
+flare	mirror_image		139		damaging=1;aoe=0;spawns=0	\*\* Fleeting and insubstantial, a mirror image of you shimmers into view at your side, echoing your attack with one of its own! \*\*
+flare	mirror_image		140		damaging=1;aoe=0;spawns=0	\*\* Fleeting and insubstantial, a whisper of shadow coalesces beside you, echoing your attack with one of its own! \*\*
+flare	mirror_image		141		damaging=1;aoe=0;spawns=0	\*\* Fleeting and insubstantial, a mirror image of (?<attacker>.+?) shimmers into view beside (?:him|her), echoing (?:his|her) attack with one of its own! \*\*
+flare	mirror_image		142		damaging=1;aoe=0;spawns=0	\*\* Fleeting and insubstantial, a whisper of shadow coalesces beside (?<attacker>.+?), echoing (?:his|her) attack with one of its own! \*\*
+flare	hunters_afterimage		143		damaging=0;aoe=0;spawns=0	\*\* A radiant afterimage of the .+? appears in your ready hand, coalescing to replace its predecessor! \*\*
+flare	hunters_afterimage		144		damaging=0;aoe=0;spawns=0	\*\* A radiant afterimage of the .+? appears in (?<attacker>.+?)'s ready hand, coalescing to replace its predecessor! \*\*
+flare	glittering_motes		145		damaging=1;aoe=0;spawns=0	\*\* A winking spray of glittering motes erupts from your .+?, showering (?<target>.+?) in sparkling flecks of clinging radiance! \*\*
+flare	glittering_motes		146		damaging=1;aoe=0;spawns=0	\*\* A winking spray of glittering motes erupts from (?<attacker>.+?)'s .+?, showering (?<target>.+?) in sparkling flecks of clinging radiance! \*\*
+flare	reckoning		147		damaging=1;aoe=0;spawns=0	\*\* Falling like a hammer from the sky, a golden light strikes (?:the )?(?<target>.+?) with resounding force! \*\*
+flare	alchemical_fire		148		damaging=1;aoe=0;spawns=0	\*\* A swirl of alchemical fire, .+?, erupts from your (?<weapon>[^!]+)! \*\*
+flare	sigil_bane		149		damaging=0;aoe=0;spawns=0	\*\* A bolt of energy leaps from your .+? and sets the sigils along your .+? ablaze\.\s+Tendrils of .+? lash out at (?<target>.+?) and cage
+flare	spring_rod		150		damaging=1;aoe=0;spawns=0	\*\* Your .+? releases? a small spring-loaded rod! \*\*
+flare	shadow_strike		151		damaging=1;aoe=0;spawns=0	\*\* The shadows surrounding your .+? swirl off and strike! \*\*
+flare	filament_corona		152		damaging=0;aoe=0;spawns=0	\*\* Branching filaments of power snap outward from your .+? in a lambent silver corona! \*\*
+flare	shadow_shroud		153		damaging=0;aoe=0;spawns=0	As (?<attacker>.+?) attacks you, a cyclone of shadows emerges? from your .+?\.\s+The shadows swirl around in an attempt to conceal you!
+flare_weapon_link	weapon		1		markup=1	Your <a exist="(?<id>\d+)" noun="[^"]+">(?<name>[^<]+)</a>
+status	blind	add	1			You blinded (?<target>[^!]+)!
+status	blind	add	2			You are blinded!
+status	blind	add	3			Your eyes suddenly cloud over\.  A moment later you realize you cannot see at all\.
+status	blind	add	4			Suddenly, a silver mist swirls about you\.  Golden arcs streak across your vision
+status	blind	add	5			(?<target>.+?) is blinded!
+status	blind	add	6			(?<target>.+?) is already blinded\.
+status	immobilized	add	7			(?<target>.+?) form is entangled in an unseen force that restricts .+? movement\.
+status	immobilized	add	8			(?<target>.+?) shakes in utter terror!
+status	immobilized	add	9			An unseen force entangles you, restricting your movement!
+status	immobilized	add	10			(?<target>.+?) is caught fast, the light of (?:Liabo|Lornon|Tilaok|the moon) arresting (?:his|her|its) movements\.
+status	immobilized	add	11			You are pinned in place, unable to move\.
+status	immobilized	add	12			(?<target>.+?) is rooted in place!
+status	immobilized	add	13			(?<target>.+?) struggles as (?:he|she|it) tries to move\.
+status	prone	add	14			It is knocked to the ground!
+status	prone	add	15			(?<target>.+?) is knocked to the ground!
+status	prone	add	16			(?<target>.+?) falls to the ground!
+status	prone	add	17			(?<target>.+?) slumps to the ground unconscious\.
+status	prone	add	18			You are knocked to the ground!
+status	prone	add	19			You lose your footing and fall to the ground!
+status	prone	add	20			Your feet are suddenly swept from under you!
+status	prone	add	21			You fall flat on the floor\.
+status	prone	add	22			You fall to the ground!
+status	prone	add	23			(?<target>.+?) loses (?:his|her|its) balance and falls to the ground\.
+status	prone	add	24			(?<target>.+?) falls to the ground grasping (?:his|her|its) mangled (?:right|left) (?:leg|arm)!
+status	prone	add	25			(?<target>.+?) falls to (?:his|her|its) knees in pain!
+status	prone	add	26			(?<target>.+?) loses (?:his|her|its) balance and falls over\.
+status	prone	add	27			The wind knocks (?<target>.+?) off balance and (?:he|she|it) falls over!
+status	prone	add	28			Reeling from the sonic onslaught, (?<target>.+?) staggers and falls over, writh(?:ing|es)
+status	prone	add	29			(?<target>.+?) falls to the ground and rolls, trying to smother the flames
+status	prone	add	30			(?<target>.+?) wobbles painfully and (?:he|she|it) falls to the ground\.
+status	prone	add	31			(?<target>.+?) slumps to the ground\.
+status	kneeling	add	32			(?<target>.+?)(?<! dazed and)(?<! paralyzed and) is (?:knocked|driven) to (?:his|her|its) knees!
+status	kneeling	add	33			You crash to the ground, falling to your knees!
+status	sitting	add	34			(?<target>.+?) is knocked into a sitting position!
+status	stunned	add	35			The (?<target>.+?) is stunned!
+status	stunned	add	36			(?<target>.+?) is badly stunned!
+status	stunned	add	37			^\s*(?<target>(?:He|She|It)) is stunned[.!]
+status	stunned	add	38			You are stunned(?: for (?<rounds>\d+) rounds?)?!
+status	stunned	add	39			^You are still stunned\.
+status	stunned	add	40			(?<target>.+?) grits (?:his|her|its) teeth, but is unable to recover (?:his|her|its) wits\.
+status	stunned	add	41			(?<target>.+?) staggers slightly, swaying about in a daze\.
+status	stunned	add	42			(?<target>.+?) looks sluggishly about with dazed eyes\.
+status	dispelled	add	43			(?<target>.+?) blinks and looks around in confusion for a moment\.
+status	disarmed	add	44			^\s+The (?<target>.+?)'s (?<weapon>.+?) falls to the ground\.
+status	sunburst	add	45			(?<target>.+?) reels and stumbles under the intense flare!
+status	webbed	add	46			(?<target>.+?) becomes ensnared in thick strands of webbing!
+status	webbed	add	47			You become ensnared in thick strands of webbing!
+status	webbed	add	48			(?<target>.+?) is firmly webbed in place\.
+status	sleeping	add	49			(?<target>.+?) falls into a deep slumber\.
+status	sleeping	add	50			(?<target>.+?) falls asleep\.
+status	sleeping	add	51			(?<target>.+?) falls to the ground in a deep slumber\.
+status	sleeping	add	52			(?<target>.+?)'s eyes roll up into its head as it slumps to the ground\.
+status	sleeping	add	53			(?<target>.+?) slumps to the ground unconscious\.
+status	sleeping	add	54			(?<target>.+?) goes limp as (?:he|she|it) falls unconscious[.!]
+status	poisoned	add	55			(?<target>.+?) appears to be suffering from a poison\.
+status	poisoned	add	56			You feel a fierce poison coursing through your veins!
+status	poisoned	add	57			A virulent poison courses through your veins!
+status	poisoned	add	58			You feel poison coursing through your veins\.
+status	poisoned	add	59			Bilious poison seeps into (?<target>.+?) flesh, sending (?:him|her|it) into paroxysms of agony!
+status	roundtime	add	60			(?<target>.+?) struggles momentarily with the gale\.
+status	sounds	add	61			(?<target>.+?) seems to be distracted by something\.
+status	calm	add	62			A calm washes over (?<target>.+?)\.
+status	natures_decay	add	63			An earthy, sweet aroma clings to (?<target>.+?) in a murky haze, accompanied by soot brown specks of leaf mold\.
+status	natures_decay	add	64			An earthy, sweet aroma wafts from (?<target>.+?) in a murky haze\.
+status	natures_decay	add	65			The earthy, sweet aroma clinging to (?<target>.+?) grows more pervasive\.
+status	tangleweed	add	66			You notice .+? scrape into (?<target>.+?) skin. .+? suddenly looks very weak!
+status	unconscious	add	67			(?<target>.+?) goes limp as (?:he|she|it) is rendered unconscious!
+status	unconscious	add	68			You go limp as you are rendered unconscious!
+status	unconscious	add	69			(?<target>.+?) slumps to the ground in an unconscious heap\.
+status	slowed	add	70			(?<target>.+?) movements slow to a crawl!
+status	slowed	add	71			(?<target>.+?) suddenly slows all movements\.
+status	dazed	add	72			(?<target>.+?) appears dazed and unsure\.
+status	paralyzed	add	73			(?<target>.+?) is (?:paralyzed|dazed)(?: and is driven to (?:his|her|its) knees)?!
+status	terrified	add	74			Your limbs lock and you quiver with fright!
+status	terrified	add	75			You shake with terror!
+status	terrified	add	76			You are immobilized with sheer terror!
+status	terrified	add	77			(?<target>.+?) freezes in place, quivering with fright!
+status	terrified	add	78			(?<target>.+?) freezes in place, shaking with terror!
+status	terrified	add	79			(?<target>.+?) shakes with terror!
+status	terrified	add	80			(?<target>.+?) freezes in utter terror!
+status	terrified	add	81			(?<target>.+?) is frozen with fear!
+status	terrified	add	82			(?<target>.+?) is frightened into utter immobility!
+status	demoralized	add	83			Upon witnessing your vicious display, (?<target>.+?) appears profoundly unsettled\.
+status	silenced	add	84			(?<target>.+?) chokes, momentarily unable to speak!
+status	weakened	add	85			(?<target>.+?) suddenly looks very weak!
+status	weakened	add	86			(?<target>.+?) appears weak and feeble, (?:his|her|its) movements sluggish\.
+status	vulnerable	add	87			(?<target>.+?)'s defenses are diminished in the wake of the flames\.
+status	burning	add	88			Wisps of black smoke swirl around (?<target>.+?) and (?:he|she|it) bursts into flame
+status	burning	add	89			The flames around (?<target>.+?) continue to burn!
+status	off_balance	add	90			leaves? (?<target>.+?) off balance and exposed to
+status	off_balance	add	91			leaves? (?<target>.+?) off balance\.
+status	hardened	add	92			In response to the \w+, (?<target>.+?)'s skin seems to discolor and harden, lending the .+? unnatural durability!
+status	blind	remove	93			(?<target>.+?) vision clears\.
+status	blind	remove	94			(?<target>.+?) steadies (?:himself|herself|itself) as (?:he|she|it) recovers from (?:his|her|its) blindness\.
+status	immobilized	remove	95			(?<target>.+?) movements no longer appear hampered as the lunar light encircling .+? fades away\.
+status	immobilized	remove	96			The restricting force enveloping (?<target>.+?) fades away\.
+status	prone	remove	97			(?<target>.+?) stands back up\.
+status	prone	remove	98			(?<target>.+?) gets back to .+? feet\.
+status	prone	remove	99			(?<target>.+?) rises to .+? feet\.
+status	prone	remove	100			(?<target>.+?) stands up\.
+status	prone	remove	101			(?<target>.+?) leaps (?:back )?up from the ground
+status	prone	remove	102			(?<target>.+?) rises back into a standing position
+status	prone	remove	103			(?<target>.+?) stands up with a grunt\.
+status	sitting	remove	104			(?<target>.+?) stands back up\.
+status	sitting	remove	105			(?<target>.+?) gets back to .+? feet\.
+status	sitting	remove	106			(?<target>.+?) rises to .+? feet\.
+status	sitting	remove	107			(?<target>.+?) stands up\.
+status	stunned	remove	108			(?<target>.+?) shakes off the stun(?: effect)?[.!]
+status	stunned	remove	109			(?<target>.+?) twitches fiercely, shaking off the stun!
+status	stunned	remove	110			(?<target>.+?) throws .+? head back and howls, shaking off the stun!
+status	stunned	remove	111			(?<target>.+?) regains .+? composure\.
+status	stunned	remove	112			(?<target>.+?) is no longer stunned\.
+status	stunned	remove	113			You are no longer stunned\.
+status	stunned	remove	114			with a sudden surge of strength, you throw off your stunned state!
+status	stunned	remove	115			(?<target>.+?) shudders violently before visibly recovering from (?:his|her|its) stunned state\.
+status	stunned	remove	116			(?<target>.+?) throws off (?:his|her|its) dazed state
+status	stunned	remove	117			(?<target>.+?) shakes free from (?:his|her|its) stunned state
+status	stunned	remove	118			Rivulets of swirling incarnadine energy envelop (?<target>.+?) scarred flesh, allowing (?:him|her|it) to move freely once more\.
+status	sunburst	remove	119			(?<target>.+?) blinks a few times, regaining a sense of balance\.
+status	webbed	remove	120			(?<target>.+?) breaks free of the webs\.
+status	webbed	remove	121			(?<target>.+?) struggles free of the webs\.
+status	webbed	remove	122			(?<target>.+?) tears through the webbing\.
+status	webbed	remove	123			The webs dissolve from around (?<target>.+?)\.
+status	sleeping	remove	124			(?<target>.+?) wakes up\.
+status	sleeping	remove	125			(?<target>.+?) awakens\.
+status	sleeping	remove	126			(?<target>.+?) opens .+? eyes\.
+status	sleeping	remove	127			(?<target>.+?) is awakened by your attack!
+status	poisoned	remove	128			(?<target>.+?) looks much better\.
+status	poisoned	remove	129			(?<target>.+?) recovers from the poison\.
+status	poisoned	remove	130			(?<target>.+?) collects (?:himself|herself|itself) as the poison afflicting (?:him|her|it) finally runs its course\.
+status	calm	remove	131			The calmed look leaves (?<target>.+?)\.
+status	calm	remove	132			(?<target>.+?) is enraged by your attack\!
+status	natures_decay	remove	133			The earthy, sweet aroma surrounding (?<target>.+?) dwindles as the murky haze disperses.
+status	tangleweed	remove	134			(?<target>.+?) appears to recover some strength\.
+status	unconscious	remove	135			(?<target>.+?) is awakened by (?<attacker>.+?)'s attack!
+status	unconscious	remove	136			(?<target>.+?) slowly comes back to consciousness\.
+status	terrified	remove	137			You regain control of your senses!
+status	terrified	remove	138			(?<target>.+?) gathers (?:himself|herself|itself) and shakes off the fear\.
+status	demoralized	remove	139			(?<target>.+?) composes (?:himself|herself|itself), shedding (?:his|her|its) apparent demoralization\.
+status	weakened	remove	140			(?<target>.+?) appears to recover some strength\.
+status	burning	remove	141			(?<target>.+?) shakes off the effects of the flames\.
+status	off_balance	remove	142			(?<target>.+?) regains (?:his|her|its) balance\.
+status	hidden	remove	143			(?<target>.+?) is revealed from hiding\.
+status	hidden	remove	144			(?<target>.+?) is forced out of hiding[.!]
+spell_loss	107		1		spell_name=Spirit Warding II	Deep blue motes swirl away from (?<target>.+?) and fade\.
+spell_loss	107		2		spell_name=Spirit Warding II	The deep blue glow leaves (?<target>[^.]+)\.
+spell_loss	120		3		spell_name=Lesser Shroud	The very powerful look leaves (?<target>[^.]+)\.
+spell_loss	120		4		spell_name=Lesser Shroud	The white light leaves (?<target>[^.]+)\.
+spell_loss	1109		5		spell_name=Empathic Focus	(?<target>.+?) loses (?:his|her|its) focused look\.
+spell_loss	1119		6		spell_name=Strength of Will	(?<target>.+?) loses an aura of resolve\.
+spell_loss	1130		7		spell_name=Intensity	(?<target>.+?) loses an intense expression\.
+spell_loss	303		8		spell_name=Prayer of Protection	A white glow rushes away from (?<target>[^.]+)\.
+spell_loss	513		9		spell_name=Elemental Focus	(?<target>.+?) no longer bristles with energy\.
+spell_loss	911		10		spell_name=Mass Blur	(?<target>.+?) becomes solid again\.
+spell_loss	1605		11		spell_name=Arm of the Arkati	(?<target>.+?)'s movements no longer appear to be influenced by a divine power as the spiritual force fades from around (?:his|her|its) arms\.
+spell_loss	319		12		spell_name=Soul Ward	The air about (?<target>.+?) shimmers momentarily before the evanescent shield surrounding (?:him|her|it|you) collapses\.
+spell_loss	1209		13		spell_name=Dragonclaw	The scales covering (?<target>.+?)'s hands turn brittle and flake away\.
+spell_loss	1214		14		spell_name=Brace	The thick plates of bone around (?<target>.+?)'s forearms begin to crack, then shatter into a fine white dust\.
+spell_loss	1208		15		spell_name=Mindward	A series of [\w ]+ lines suddenly appears on (?<target>.+?)'s face, quickly racing towards the center of (?:his|her|its) forehead before detaching and dissipating in the air\.
+spell_loss	1204		16		spell_name=Foresight	(?<target>.+?) takes a deep breath, blinking a couple of times before resuming a calm expression\.
+spell_loss	unknown		17		spell_name=unknown	(?<target>.+?) appears somehow different\.
+spell_loss	unknown		18		spell_name=unknown	(?<target>.+?) seems slightly different\.
+assault	flurry	start	1			You rotate your wrist, your .+? executing a casual spin to establish your flow as you advance upon (?<target>.+?)!
+assault	flurry	start	2			You rotate your wrists, your .+? and .+? executing a casual spin to establish your flow as you advance upon (?<target>[^!]+)!
+assault	barrage	start	3			Drawing several arrows from your .+?, you grip them loosely between your fingers in preparation for a rapid barrage\.
+assault	pummel	start	4			You take a menacing step toward (?<target>.+?), sweeping your .+? out low to your side in your advance\.
+assault	guardant_thrust	start	5			Retaining a defensive profile, you raise your .+? in a hanging guard and prepare to unleash a barrage of guardant thrusts upon (?<target>[^!]+)!
+assault	thrash	start	6			You rush (?<target>.+?), raising your .+? high to deliver a sound thrashing!
+assault	flurry	end	7			The mesmerizing sway of body and blade glides to its inevitable end with one final twirl of (?:your|.+?'s) .+?\.
+assault	flurry	end	8			Distracted, you hesitate, and your assault is broken\.  You give your blades a quick, sweeping flick of annoyance as you lower them\.
+assault	barrage	end	9			Upon firing your last arrow, you release a measured breath and lower your .+?\.
+assault	barrage	end	10			Distracted, you hesitate, and your assault is broken\.  Frustrated, you return your remaining arrows\.
+assault	pummel	end	11			With a final snap of your wrist, you sweep your .+? back to the ready, your assault complete\.
+assault	pummel	end	12			Distracted, you hesitate, and in doing so lose the rhythm of your assault\.  You return to the ready with a final, frustrated flick of your .+?\.
+assault	guardant_thrust	end	13			You complete your assault, your weight on your rear foot as you snap your .+? back to a defensive angle\.
+assault	guardant_thrust	end	14			Distracted, you hesitate, and in doing so lose the rhythm of your assault\.  You shift your grip on your .+? to a more neutral position and watch for new opportunities\.
+assault	thrash	end	15			With a final, explosive breath, you pull your .+? back to a ready position\.
+assault	thrash	end	16			Distracted, you hesitate, and in doing so lose the rhythm of your assault\.  You pull your .+? back to a ready position with a wary eye to your environs\.
+sequence	earthen_fury	start	1			The ground beneath (?<target>.+?) begins to boil violently!
+sequence	earthen_fury	start	2			The ground beneath (?<target>.+?) suddenly frosts and rumbles violently!
+sequence	earthen_fury	start	3			The ground beneath (?<target>.+?) boils with renewed vigor!
+sequence	earthen_fury	start	4			The ground beneath (?<target>.+?) rumbles with renewed vigor!
+sequence	mstrike	start	5			With great haste, you let loose a volley of shots!
+sequence	mstrike	start	6			With instinctive motions, you weave to and fro striking with deliberate and unrelenting fury!
+sequence	mstrike	start	7			You explode into a fury of strikes and ripostes, moving with a singular purpose and will!
+sequence	natures_fury	start	8			You close your eyes in a moment of intense concentration, channeling the pure natural power of your surroundings\.
+sequence	volley	start	9			An ominous shadow falls over your surroundings as a whistling hail of arrows arcs down from above!
+sequence	earthen_fury	end	10			The ground beneath (?<target>.+?) suddenly calms\.
+sequence	mstrike	end	11			Your series of strikes and ripostes leaves you winded and out of position.
+sequence	mstrike	end	12			Your series of strikes and ripostes leaves you off-balance and out of position.
+sequence	mstrike	end	13			Your series of rapid shots and maneuvers leaves you off-balance and out of position.
+sequence	natures_fury	end	14			As swiftly as the chaos came to be, it recedes again into the surroundings\.
+sequence	volley	end	15			The air clears as the deadly volley of arrows abates\.
+ucs	position		1	i	markup=1	^You have (decent|good|excellent) positioning against.+<a exist="([0-9]+)"
+ucs	position_inbound		2	i	markup=1	<a exist="([0-9]+)"[^>]*>[^<]+</a>(?:<popBold/>)? has (decent|good|excellent) positioning against you\.
+ucs	tierup		3	i		Strike leaves foe vulnerable to a followup (jab|grapple|punch|kick) attack!
+ucs	smite_applied		4	i	markup=1	^ *A crimson mist suddenly surrounds .+<a exist="([0-9]+)"
+ucs	smite_held		5	i	markup=1	The crimson mist surrounding .+<a exist="([0-9]+)".+held in the corporeal plane
+ucs	smite_removed		6	i	markup=1	^ *The crimson mist surrounding .+<a exist="([0-9]+)".+returns to an ethereal state
+ucs_tier	decent		1		tier=1	
+ucs_tier	good		2		tier=2	
+ucs_tier	excellent		3		tier=3	
