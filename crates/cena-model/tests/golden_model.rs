@@ -364,9 +364,20 @@ fn a_carried_item_resolves_to_its_container() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn a_reconnect_forgets_everything_this_capture_taught() {
-    // `plan/12` §5.2 on real traffic rather than on a snippet: what the login
-    // burst does not re-send must return to Unknown.
+fn a_reconnect_forgets_only_what_the_connection_owned() {
+    // `plan/12` §5.2 on real traffic rather than on a snippet.
+    //
+    // **RENAMED and rewritten 2026-09-20.** This was
+    // `a_reconnect_forgets_everything_this_capture_taught`, and asserted that
+    // the room and the whole character model went to Unknown. Both are wrong:
+    //
+    // > **AUTHOR:** *"time stops for 99.9% of things when you're offline ...
+    // > you can't really change rooms when you're logged off."*
+    //
+    // A logged-off character is out of the world, so what it knew is still
+    // true. What a reconnect forgets is what belonged to the CONNECTION -- the
+    // clock's extrapolation, the idle warning, half-assembled lines -- plus
+    // container contents, which the burst does not re-send.
     let mut state = golden();
     assert!(state.room.id.is_some());
     assert!(!state.inventory.is_empty());
@@ -374,9 +385,18 @@ fn a_reconnect_forgets_everything_this_capture_taught() {
 
     state.invalidate_for_reconnect();
 
-    assert_eq!(state.room.id, None);
-    assert!(state.inventory.is_empty());
-    assert_eq!(state.character, cena_model::Character::default());
+    assert!(
+        state.room.id.is_some(),
+        "the room survives: a logged-off character does not walk anywhere"
+    );
+    assert!(
+        state.inventory.is_empty(),
+        "container CONTENTS are the one inventory fact the burst does not          re-send, so a stale mirror would never be corrected"
+    );
+    assert!(
+        state.character.injuries.is_empty(),
+        "the `injuries` dialog is re-sent by the burst, and step 9 clears the          dialog-derived facts while keeping what a command taught"
+    );
     assert!(state.streams().next().is_none());
     assert!(
         !state.vitals.is_empty(),

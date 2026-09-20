@@ -687,40 +687,86 @@ single line, `IconSTANDING` the only `visible="y"`, and **no further indicator t
 seconds** -- none of the conditions changed, so none was re-sent. They are state declarations,
 not an event stream: absence means unchanged, never "not happening".
 
-**3a. CORRECTED 2026-09-20: what the burst carries, and what that does NOT mean.**
+**3a. CORRECTED TWICE, 2026-09-20: what the burst carries, and what a reconnect
+should forget.**
 
-`cena-model/src/state/reconnect.rs` carried a table splitting facts into "in
-the login burst" and "absent from it", citing this section. **This section
-never contained that table** -- the citation pointed at a real section that
-does not support the claim, which is the `styleIfClosed` hazard `CLAUDE.md`
-records, in the form that is harder to catch: the path resolves.
+`reconnect.rs` carried a table splitting facts into "in the login burst" and
+"absent from it", citing this section. **This section never contained that
+table** -- the citation pointed at a real section that does not support the
+claim, which is the `styleIfClosed` hazard `CLAUDE.md` records in its harder
+form: the path resolves.
 
-MEASURED 2026-09-20 across two independent `--psm` captures, anchored on
-`<app `:
+MEASURED 2026-09-20 across two `--psm` captures, counted from `<app>` to the
+first client command:
 
-| In the burst | Count |
+```text
+nav rm   left   right   spell   indicator x10   compDef x5   crtrStatus x4
+dialogData: expr, injuries, minivitals, combat, espMasterData
+progressBar x10   streamWindow x5   deleteContainer x4
+```
+
+**Absent: `compass`, `prompt`, `roundTime`.** That is the entire list.
+
+The old table claimed the burst omitted the **hands**, the **indicators**,
+**`nav rm`** and the **`expr` dialog**. All four are wrong, found one at a time
+over months. The measurement above is one command over a whole burst, which is
+the form that would have caught all four at once.
+
+**The indicators are declared in full, including the negatives:**
+
+```text
+<indicator id="IconSTANDING" visible="y"/>
+<indicator id="IconSTUNNED"  visible="n"/>
+```
+
+The server states the condition of all ten rather than only what changed. That
+is what makes keeping them safe: anything that did change while away is
+corrected unprompted.
+
+### The rule was wrong twice, and the second correction undid the first
+
+> **AUTHOR:** *"The login burst is all the stuff needed to populate the ui on
+> login. It doesn't mean delete stuff."*
+
+That retired *"clear what the burst does not re-send"* -- a rule about
+rendering, posing as a rule about truth.
+
+> **AUTHOR:** *"actually time stops for 99.9% of things when you're offline,
+> you can absorb experience extremely slowly if you enable that option, you
+> can't really change rooms when you're logged off."*
+
+And that retired the replacement. I had written *"could this have changed while
+we were disconnected?"* -- the right question -- and then answered it as though
+the world kept running with the character still in it. The table said *"a
+character can be moved while disconnected"* and *"spells tick down in real
+time"*. **Neither is true.** A logged-off character is out of the world.
+
+### So the default is KEEP
+
+| Cleared | Why |
 |---|---|
-| `<left>` / `<right>` | 1 each, with **real contents** -- `<left exist="364757584" noun="gift">plain gift`, `<right>Empty` |
-| `<spell>` | 1 (`None`) |
-| `<indicator>` | 10 |
-| `compDef` | 3-10 |
-| `progressBar` | 4-5 |
-| `<streamWindow>` | 2 |
+| `game_time` + `game_time_received` | extrapolated from a **local** `Instant`; the reading was true, the extrapolation is what breaks across a gap |
+| `idle_warning` | a fact about the connection that ended |
+| `streams`, `pending`, `chunk` | half a sentence nobody will finish |
+| `prompt` | one of the three tags the burst omits; renders the dead connection's last moment |
+| `inventory` | container **contents** are the one thing the burst does not re-send |
+| `room.creatures` / `players` / `objects` | **other people are still online** |
+| the four dialog-derived facts | step 9's split; the burst re-sends them |
 
-So **hands are in the burst**, and the old table put them in the absent
-column. That is the second field this same table got wrong -- `indicator` was
-the first (review MO-12) -- and the two errors together had produced a rule.
+Everything else is kept.
 
-**The rule was wrong, and the author said so:**
+**The room splits.** `id`, `description` and `exits` describe a place that
+cannot have changed. `creatures`, `players` and `objects` describe who else is
+standing in it -- and other players kept playing while we were gone. Each entry
+carries a targetable `exist` id, so a stale roster is a live handle to
+something that is not there. Found by `noun_resolution.rs`, which failed the
+moment the room was kept whole.
 
-> **AUTHOR, 2026-09-20:** *"The login burst is all the stuff needed to populate
-> the ui on login. It doesn't mean delete stuff."*
-
-The burst is a **UI population message**: what a fresh client needs to draw its
-windows. Absence from it is not evidence that a fact stopped being true, and
-"clear what the burst does not re-send" was a rule about rendering dressed up
-as a rule about truth. The test is whether a fact **could have changed while
-disconnected**, which is what `plan/12` §5.2 said in the first place.
+**The experience exception, which the author named:** *"you can absorb
+experience extremely slowly if you enable that option"*. So `expr` is the one
+thing that genuinely moves while offline -- and it needs no special handling,
+because the burst carries `dialogData id='expr'` with the current level and
+mind state.
 
 **4. Attribute quoting is NOT uniform.** `<indicator id="IconSTANDING" visible="y"/>` uses
 double quotes; `<roundTime value='1789775824'/>` uses single. A grep or matcher that assumes one

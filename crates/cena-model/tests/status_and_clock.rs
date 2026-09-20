@@ -307,12 +307,35 @@ fn an_unreported_indicator_is_unknown_not_false() {
     );
 }
 
-/// The three-state reading survives what a reconnect does to the map.
+/// **Indicators SURVIVE a reconnect**, and the burst re-declares them anyway.
 ///
-/// This is the case the distinction is FOR: `invalidate_for_reconnect` clears
-/// the indicators, and nothing re-teaches them until the player acts.
+/// This test used to be `a_reconnect_makes_every_indicator_unknown_rather_
+/// than_false`, and its doc said *"`invalidate_for_reconnect` clears the
+/// indicators, and nothing re-teaches them until the player acts"*. Both
+/// halves are false, and the second is measurably so.
+///
+/// > **AUTHOR, 2026-09-20:** *"time stops for 99.9% of things when you're
+/// > offline"*
+///
+/// A character out of the world does not stop standing, and a stun does not
+/// tick away while nobody is playing. MEASURED in two captures: the burst
+/// declares **all ten** indicators explicitly, `visible="n"` included --
+///
+/// ```text
+/// <indicator id="IconSTANDING" visible="y"/>
+/// <indicator id="IconSTUNNED"  visible="n"/>
+/// ```
+///
+/// -- so the server states the full truth about every one, unprompted. Keeping
+/// them is correct, and anything that did change is corrected in the same
+/// breath.
+///
+/// The three-state distinction this test was written to protect still matters
+/// and still has a test: `a_cleared_status_is_unknown_rather_than_reported_
+/// false` in `reconnect_invalidation.rs` asserts it against `StatusInfo::clear`
+/// directly, which is the path that does drop indicators.
 #[test]
-fn a_reconnect_makes_every_indicator_unknown_rather_than_false() {
+fn a_reconnect_keeps_the_indicators_the_burst_will_re_declare() {
     let mut state = cena_model::GameState::default();
     state.status.set("stunned", true);
     state.status.set("dead", false);
@@ -321,19 +344,12 @@ fn a_reconnect_makes_every_indicator_unknown_rather_than_false() {
 
     assert_eq!(
         state.status.known().stunned(),
-        None,
-        "a stun the game reported before the drop is not still true, and not \
-         known to be false either -- it is Unknown"
+        Some(true),
+        "a stun does not tick away while the character is out of the world"
     );
     assert_eq!(
         state.status.known().dead(),
-        None,
-        "and so is an indicator that had been reported INACTIVE: the map is \
-         cleared, so the previous 'no' is gone with everything else"
-    );
-    assert!(
-        !state.status.stunned() && !state.status.dead(),
-        "the collapsing accessors still answer false, which is why anything \
-         that acts must not use them here"
+        Some(false),
+        "and a reported-false indicator stays reported-false, not Unknown"
     );
 }

@@ -167,6 +167,48 @@ impl Room {
         self.components.contains_key("room players")
     }
 
+    /// Forget who and what is standing here, keeping the place itself.
+    ///
+    /// **The split a reconnect needs** (`reconnect.rs`, 2026-09-20). `id`,
+    /// `description` and `exits` describe somewhere that cannot have changed
+    /// while the character was out of the world. The roster is the opposite:
+    /// **other people are still online**, so creatures wander and players come
+    /// and go whether or not we are watching.
+    ///
+    /// Each roster entry carries an `exist` id a behavior can target, so a
+    /// stale one is a live handle to something that is not there -- not a
+    /// cosmetic error.
+    ///
+    /// Clears the raw component bodies too, which is what makes
+    /// [`Self::saw_players`] answer "we have not been told" rather than
+    /// "nobody is here". The typed lists alone cannot express that difference,
+    /// which is the whole reason that method exists.
+    pub(super) fn forget_contents(&mut self) {
+        let Self {
+            id,
+            description,
+            exits,
+            creatures,
+            objects,
+            players,
+            components,
+        } = self;
+
+        // Kept: the place.
+        let _ = (id, description, exits);
+
+        // Cleared: who else is in it.
+        creatures.clear();
+        objects.clear();
+        players.clear();
+        components.retain(|key, _| {
+            !matches!(
+                key.as_str(),
+                "room objs" | "room players" | "room creatures"
+            )
+        });
+    }
+
     /// Fold one `<component>` / `<compDef>` body into the room.
     ///
     /// The two spellings are **one feed**: `compDef` is the room-entry snapshot

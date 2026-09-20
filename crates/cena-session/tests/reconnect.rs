@@ -206,26 +206,30 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
         Some(1_789_775_824),
         "an absolute server epoch survives the reconnect"
     );
-    // **Cleared, but NOT because the burst omits them.** This said "hands are
-    // Unknown", which read as "the burst does not re-send them". MEASURED
-    // 2026-09-20: it does, with real contents -- `<left exist=...>plain gift`,
-    // `<right>Empty` (`plan/15` §2a.4a.3a). The clear is harmless rather than
-    // necessary; a character's hands do not empty because a socket dropped.
-    // Asserted so the behaviour is pinned, with the reason stated correctly.
+    // **KEPT.** These asserted `None`, through two wrong rules in succession:
+    // first "the burst does not re-send them" (false -- it sends real
+    // contents), then "cleared but harmless".
+    //
+    // > **AUTHOR, 2026-09-20:** *"time stops for 99.9% of things when you're
+    // > offline ... you can't really change rooms when you're logged off."*
+    //
+    // A logged-off character is out of the world. Nothing empties the hands,
+    // nothing walks the character elsewhere, and no indicator changes. The
+    // burst re-declares all of it anyway -- including every `visible="n"` --
+    // so keeping is both true and immediately corrected.
     assert_eq!(
-        end.state.left_hand, None,
-        "hands are cleared, then refilled"
+        end.state.left_hand.as_deref(),
+        Some("a brass lantern"),
+        "nothing empties a logged-off character's hands"
     );
-    assert_eq!(end.state.right_hand, None);
-    assert_eq!(end.state.room.id, None, "the room id is Unknown");
-    assert_eq!(
-        end.state.room.exits, None,
-        "exits are Unknown -- `None`, NOT `Some(vec![])`. An empty compass is          something the server SAID (a room whose only way out is a portal, or          one with no exits at all), so invalidation must produce the          not-observed state rather than the observed-empty one"
+    assert!(end.state.right_hand.is_some());
+    assert!(
+        end.state.room.id.is_some(),
+        "a logged-off character does not walk anywhere"
     );
     assert!(
-        !end.state.status.is_known("standing"),
-        "an indicator reported on the OLD connection must be Unknown, not \
-         false: a new generation has been told nothing"
+        end.state.status.is_known("standing"),
+        "the burst declares all ten indicators, `visible=\"n\"` included, so          an indicator from the old connection is still true and re-stated"
     );
     // **`Some(false)`, and that is the right answer -- it asserted `None`
     // before the retry ladder landed.** Not a regression: the ladder changed

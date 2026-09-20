@@ -11,7 +11,7 @@
 //! assertion is preceded by an assertion that the fact was **known**, which is
 //! what makes the clearing the thing under test rather than the default.
 
-use cena_model::{GameState, Room};
+use cena_model::GameState;
 use cena_protocol::Frame;
 
 /// Drive a burst through the real parser, as a live session would.
@@ -100,10 +100,33 @@ fn facts_the_burst_omits_return_to_unknown() {
 
     state.invalidate_for_reconnect();
 
-    assert_eq!(state.room, Room::default(), "the room goes whole");
+    // **KEPT, and this is the 2026-09-20 correction.** These used to assert
+    // `None`, on the stated grounds that "a character can be moved while
+    // disconnected" and that spells "tick down in real time".
+    //
+    // > **AUTHOR:** *"time stops for 99.9% of things when you're offline ...
+    // > you can't really change rooms when you're logged off."*
+    //
+    // A logged-off character is out of the world, so none of these went stale.
+    // The burst re-sends all of them regardless (`nav rm`, `left`, `right`,
+    // ten `indicator`s), so keeping them is both true and immediately
+    // corrected -- but the reason to keep is the first, not the second.
+    assert_eq!(
+        state.room.id.as_deref(),
+        Some("7503251"),
+        "a logged-off character does not walk anywhere"
+    );
+    assert!(state.left_hand.is_some(), "nothing empties the hands");
+    assert!(state.right_hand.is_some());
+    assert!(
+        state.status.is_known("standing"),
+        "indicators do not change while out of the world"
+    );
+
+    // The prompt IS cleared: it is one of the three tags the burst genuinely
+    // omits (with `compass` and `roundTime`), and it renders the dead
+    // connection's last moment rather than a fact about the character.
     assert_eq!(state.prompt, None);
-    assert_eq!(state.left_hand, None);
-    assert_eq!(state.right_hand, None);
     // **RETAINED**, and this assertion was flipped deliberately. It read
     // `None`, encoding §5.2's "roundtime after reconnect is Unknown, never 0"
     // literally -- but clearing it produced the opposite of Unknown: a review
@@ -120,7 +143,10 @@ fn facts_the_burst_omits_return_to_unknown() {
         Some(1_789_775_824),
         "an absolute server epoch survives a reconnect -- clearing it made          `in_roundtime` report `Some(false)` during a live roundtime"
     );
-    assert!(state.effects.is_empty());
+    assert!(
+        !state.effects.is_empty(),
+        "spell durations do not run down while the character is out of the world"
+    );
 }
 
 /// **Unknown is not `false`**, and `StatusInfo` is where that distinction is
@@ -129,20 +155,46 @@ fn facts_the_burst_omits_return_to_unknown() {
 /// `get` collapses "reported inactive" with "never reported"; only `is_known`
 /// separates them. So asserting `!state.status.standing()` would pass on an
 /// implementation that wrote `false` into every key rather than removing it —
-/// which is a confident belief about a connection that has ended, exactly what
-/// `plan/12` §5.2 forbids.
+/// which is a confident belief nobody reported.
+///
+/// # This test used to assert the opposite, and its premise was wrong
+///
+/// It read: *"cleared indicators are Unknown rather than reported false"* --
+/// on the assumption that a reconnect clears them. It does not, as of
+/// 2026-09-20: indicators describe a character who is out of the world and
+/// cannot have changed, and the burst re-declares all ten anyway.
+///
+/// The DISTINCTION it protected is still worth a test, so it now checks the
+/// same property on a `StatusInfo` cleared directly. That keeps the guard
+/// against "write `false` everywhere" without asserting a reconnect behaviour
+/// that is no longer correct.
 #[test]
-fn cleared_indicators_are_unknown_rather_than_reported_false() {
+fn a_cleared_status_is_unknown_rather_than_reported_false() {
     let mut state = a_fully_known_session();
     assert!(state.status.is_known("standing"), "guard: it was reported");
 
-    state.invalidate_for_reconnect();
+    // `StatusInfo::clear` is still the right shape for the paths that DO drop
+    // indicators -- it is simply not the reconnect path any more.
+    state.status.clear();
 
     assert!(!state.status.standing(), "it no longer reads true");
     assert!(
         !state.status.is_known("standing"),
-        "...and it must be UNKNOWN, not known-false. A new generation has been \
-         told nothing; writing `false` would be a belief nobody reported."
+        "...and it must be UNKNOWN, not known-false. Writing `false` would be          a belief nobody reported."
+    );
+}
+
+/// Indicators SURVIVE a reconnect, which is the 2026-09-20 correction.
+#[test]
+fn indicators_survive_a_reconnect() {
+    let mut state = a_fully_known_session();
+    assert!(state.status.standing(), "guard: IconSTANDING was y");
+
+    state.invalidate_for_reconnect();
+
+    assert!(
+        state.status.standing(),
+        "a character out of the world does not stop standing"
     );
 }
 
@@ -449,5 +501,51 @@ fn the_login_burst_carries_the_hands() {
     assert!(
         state.status.is_known("standing"),
         "and all ten indicators, in one bulk declaration"
+    );
+    assert!(
+        state.room.id.is_some(),
+        "and `<nav rm>` -- which the old table also called absent"
+    );
+}
+
+/// **The burst declares every indicator, `visible="n"` included.**
+///
+/// This is what makes keeping them safe rather than merely true. The server
+/// does not send only what changed; it states the full condition of all ten,
+/// so anything that DID change while away is corrected unprompted:
+///
+/// ```text
+/// <indicator id="IconSTANDING" visible="y"/>
+/// <indicator id="IconSTUNNED"  visible="n"/>
+/// ```
+///
+/// MEASURED in two captures. Pinned because "the burst re-declares it" is the
+/// safety argument behind half the keep decisions in `reconnect.rs`, and it is
+/// the kind of claim that was wrong four times before it was measured.
+#[test]
+fn the_burst_declares_negative_indicators_too() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../cena-protocol/tests/fixtures/login_burst_full.xml");
+    let bytes = std::fs::read(&path).unwrap_or_default();
+    let mut parser = cena_protocol::Parser::new();
+    let mut state = GameState::default();
+    for frame in parser.push_bytes(&bytes) {
+        state.apply(&frame);
+    }
+
+    assert_eq!(
+        state.status.known().standing(),
+        Some(true),
+        "IconSTANDING visible=y"
+    );
+    assert_eq!(
+        state.status.known().stunned(),
+        Some(false),
+        "IconSTUNNED visible=n -- stated, not omitted"
+    );
+    assert_eq!(
+        state.status.known().dead(),
+        Some(false),
+        "and IconDEAD, likewise"
     );
 }
