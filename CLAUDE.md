@@ -218,8 +218,8 @@ down), and **PR-10**, whose proptest strategies never reach `parse_runs`, `inner
 `directions`.
 
 **Deferred, each needing an author decision:** SE-4 (authority across generations),
-SE-6 (`Lagged` recovery unreachable), MO-3 (`active()` answers `None` for both "gone" and
-"never seen").
+SE-6 (`Lagged` recovery unreachable). **MO-3 is FIXED** (M3 step 10): `Effects::active_in`
+distinguishes "the game stated this list and your id is not in it" from "nobody has said".
 
 The first live session that printed game text (2026-09-18) is evidence for exactly that
 milestone: worn inventory arrived as `a` + `pebbled grey leather doublet` split at a link

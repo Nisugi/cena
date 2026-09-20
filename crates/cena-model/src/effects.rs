@@ -56,7 +56,7 @@
 //! Not every id is a spell number: the same capture carried `37594784` and
 //! `199554666`. They are kept verbatim; nothing here parses an id.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// One active effect.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -138,6 +138,36 @@ pub struct Effects {
     /// shared id is ever observed, this is the line to change and those are
     /// the measurements to re-run.
     by_id: BTreeMap<String, Effect>,
+    /// Categories the game has declared a COMPLETE list for, this generation.
+    ///
+    /// **Review MO-3.** Without this, `active()` answers `None` both for an
+    /// effect nobody ever mentioned and for one the game has just said is
+    /// gone -- and those are opposite facts. A rebuff behavior following
+    /// §5.2's "unknown means ask, never assume" can then never learn that a
+    /// spell dropped, because the answer never changes from `None`.
+    ///
+    /// The distinction is the same one [`Room::saw_players`] and
+    /// [`PsmSet::has_table`] draw, and it needs recording for the same reason:
+    /// an empty collection cannot say whether it is empty because nothing is
+    /// there or because nobody looked.
+    ///
+    /// [`Room::saw_players`]: crate::Room::saw_players
+    /// [`PsmSet::has_table`]: crate::PsmSet::has_table
+    ///
+    /// # Why `clear='t'` is the signal, and an ordinary refill is not
+    ///
+    /// MEASURED in a live capture: `<dialogData id='Buffs' clear='t'>` arrives
+    /// **empty**, immediately followed by the populated element -- the game
+    /// saying "forget what you had, here is everything". That is a complete
+    /// list, and absence from it is meaningful.
+    ///
+    /// A `Buffs` element **without** `clear` is not. The same capture has
+    /// `Buffs` arriving 10 times with only 5 clears, so the other 5 are
+    /// incremental and an id missing from one of those says nothing at all.
+    ///
+    /// Scoped per category, because the four dialogs refill independently: a
+    /// `Buffs` clear tells you nothing about `Cooldowns`.
+    observed: BTreeSet<String>,
 }
 
 impl Effects {
@@ -146,14 +176,29 @@ impl Effects {
         self.by_id.insert(id, effect);
     }
 
-    /// Drop every effect in one category.
+    /// Drop every effect in one category, and record that the game is about
+    /// to state the complete list.
     ///
     /// For `<dialogData id='Buffs' clear='t'>`, which MEASURED arrives as an
     /// **empty** element immediately before the populated one -- clear, then
     /// refill. Scoped to the category because the four dialogs refill
     /// independently: a `Buffs` refill says nothing about `Cooldowns`.
+    ///
+    /// **Marking the category observed is what fixes MO-3.** After this, an id
+    /// absent from the category is absent because the game said so, which
+    /// [`Self::active`] can report as `Some(false)` rather than `None`.
     pub fn clear_category(&mut self, category: &str) {
         self.by_id.retain(|_, e| e.category != category);
+        self.observed.insert(category.to_owned());
+    }
+
+    /// Has the game declared a complete list for this category?
+    ///
+    /// True from the first `clear='t'` for it until the effects are
+    /// invalidated. See [`Self::active_in`].
+    #[must_use]
+    pub fn saw_category(&self, category: &str) -> bool {
+        self.observed.contains(category)
     }
 
     /// The effect with this id, whether or not it has expired.
@@ -167,10 +212,51 @@ impl Effects {
     /// Returns `None` when the effect is not listed at all -- unknown, not
     /// "inactive" (`plan/12` §5.2). An effect with no end time is active while
     /// listed: it never ticks, so there is nothing to compare.
+    ///
+    /// **This cannot distinguish "gone" from "never seen"**, because it is not
+    /// told which category to look in and an id it has never seen belongs to
+    /// no category. [`Self::active_in`] is the one that can, and it is what a
+    /// behavior deciding whether to rebuff should call (review MO-3).
     #[must_use]
     pub fn active(&self, id: &str, now_server: u32) -> Option<bool> {
         let effect = self.by_id.get(id)?;
         Some(effect.ends_at.is_none_or(|ends| now_server < ends))
+    }
+
+    /// Whether this effect is active, **knowing which list it would be in**.
+    ///
+    /// The MO-3 fix. Three answers instead of two:
+    ///
+    /// | | meaning |
+    /// |---|---|
+    /// | `Some(true)` | listed and not expired |
+    /// | `Some(false)` | either listed and expired, **or** absent from a category the game has stated in full |
+    /// | `None` | the category has never been stated -- genuinely unknown |
+    ///
+    /// The middle row is the one `active()` cannot produce. Without it, a
+    /// rebuff behavior reading `None` as "ask again" never learns a spell
+    /// dropped, and one reading `None` as `false` recasts live spells after a
+    /// reconnect. Both failures are real and they pull in opposite directions,
+    /// which is why the answer has to be three-valued rather than defaulted
+    /// either way.
+    ///
+    /// The caller supplies the category because it knows which one it cares
+    /// about: a rebuff behavior looking for spell 515 knows it would be in
+    /// `Active Spells`, and no data structure can recover that for an id it
+    /// has never seen.
+    #[must_use]
+    pub fn active_in(&self, category: &str, id: &str, now_server: u32) -> Option<bool> {
+        if let Some(effect) = self.by_id.get(id) {
+            // **Only answers for THIS category.** An id found under another
+            // dialog says nothing about this one, and the categories refill
+            // independently.
+            if effect.category == category {
+                return Some(effect.ends_at.is_none_or(|ends| now_server < ends));
+            }
+        }
+        // Absent here. That is a fact only if the game has stated this
+        // category in full.
+        self.saw_category(category).then_some(false)
     }
 
     /// Seconds left on this effect at `now_server`, saturating at zero.
@@ -206,9 +292,27 @@ impl Effects {
         self.by_id.is_empty()
     }
 
-    /// Forget everything, for `plan/12` §5.2's reconnect path.
+    /// Forget everything, **including which categories were stated**.
+    ///
+    /// # This has NO CALLER, and that is deliberate as of 2026-09-20
+    ///
+    /// It was written for `plan/12` §5.2's reconnect path and called from
+    /// `reconnect.rs`. That call is gone: effects are now **kept** across a
+    /// generation, because a logged-off character is out of the world and
+    /// spell durations do not run down while nobody is playing (author,
+    /// 2026-09-20).
+    ///
+    /// Kept as API rather than deleted, because `observed` makes its contract
+    /// worth stating: **both fields must go together**. Clearing `by_id` alone
+    /// would leave every category marked observed with nothing in it, so
+    /// [`Self::active_in`] would answer a confident `Some(false)` for every id
+    /// in a list that had been emptied rather than restated -- the §5.2
+    /// failure arriving through the very mechanism added to prevent it.
+    ///
+    /// If a future path does need to forget effects, this is the one to call.
     pub fn clear(&mut self) {
         self.by_id.clear();
+        self.observed.clear();
     }
 }
 

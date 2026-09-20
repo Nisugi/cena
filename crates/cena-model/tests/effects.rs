@@ -260,3 +260,204 @@ fn clear(dialog: &str) -> cena_protocol::frame::Frame {
         id: dialog.to_owned(),
     }
 }
+
+// ---------------------------------------------------------------------------
+// M3 step 10 — review MO-3: "gone" and "never seen" are different answers.
+// ---------------------------------------------------------------------------
+
+/// Drive wire text into a state that already has a server clock.
+///
+/// The prompt is not optional: `ends_at` is derived from the server clock, so
+/// without one an effect's `time=` cannot become an absolute instant.
+fn stated(wire: &str) -> (GameState, u32) {
+    const NOW: u32 = 1_789_777_252;
+    let mut parser = cena_protocol::Parser::new();
+    let mut state = GameState::default();
+    for frame in parser.push_bytes(
+        b"<prompt time=\"1789777252\">&gt;</prompt>
+",
+    ) {
+        state.apply(&frame);
+    }
+    for frame in parser.push_bytes(wire.as_bytes()) {
+        state.apply(&frame);
+    }
+    (state, NOW)
+}
+
+/// **The exact MO-3 scenario**, from the finding's own words:
+///
+/// > After `<dialogData id='Buffs' clear='t'>` plus a refill without 515,
+/// > `active("515") == None` -- the same answer as never-observed.
+///
+/// The consequence it names is why this matters: *"A rebuff behavior following
+/// §5.2 ('unknown -> error') can never learn 515 dropped; one reading `None` as
+/// false recasts live spells in the window after a reconnect."* Two real
+/// failures pulling opposite ways, which is why the answer must be
+/// three-valued rather than defaulted either direction.
+#[test]
+fn an_effect_dropped_from_a_stated_list_is_known_gone() {
+    let (state, now) = stated(concat!(
+        "<dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'>",
+        r#"<progressBar id='515' value='100' text="Rapid Fire" time='00:10:00'/>"#,
+        "</dialogData>
+",
+    ));
+    assert_eq!(
+        state.effects.active_in("Buffs", "515", now),
+        Some(true),
+        "guard: 515 is listed and live"
+    );
+
+    // Clear, then refill WITHOUT it: the game has stated the complete list.
+    let (state, now) = stated(concat!(
+        "<dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'>",
+        r#"<progressBar id='515' value='100' text="Rapid Fire" time='00:10:00'/>"#,
+        "</dialogData>",
+        "<dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'>",
+        r#"<progressBar id='601' value='100' text="Natural Colors" time='00:10:00'/>"#,
+        "</dialogData>
+",
+    ));
+
+    assert_eq!(
+        state.effects.active_in("Buffs", "515", now),
+        Some(false),
+        "the game just said 515 is not in Buffs -- knowledge, not a gap"
+    );
+    assert_eq!(
+        state.effects.active_in("Buffs", "601", now),
+        Some(true),
+        "...and the one that IS listed is still live"
+    );
+    assert_eq!(
+        state.effects.active("515", now),
+        None,
+        "the category-less accessor still cannot tell -- which is why          `active_in` exists rather than replacing it"
+    );
+}
+
+/// An id in a category the game has never stated is still `None`.
+///
+/// The other half, and what stops this fix from becoming MO-4: it must not
+/// answer `Some(false)` merely because an id is missing.
+#[test]
+fn an_unstated_category_answers_unknown() {
+    let (state, now) = stated(
+        "<dialogData id='Buffs' clear='t'></dialogData>
+",
+    );
+
+    assert!(
+        state.effects.saw_category("Buffs"),
+        "guard: Buffs was stated"
+    );
+    assert!(!state.effects.saw_category("Cooldowns"));
+
+    assert_eq!(
+        state.effects.active_in("Buffs", "515", now),
+        Some(false),
+        "stated and absent"
+    );
+    assert_eq!(
+        state.effects.active_in("Cooldowns", "515", now),
+        None,
+        "never stated -- a behavior must ask rather than assume"
+    );
+}
+
+/// A plain refill, with no `clear='t'`, does NOT state a complete list.
+///
+/// MEASURED in a live capture: `Buffs` arrives 10 times with only 5 clears, so
+/// half are incremental. An id missing from an incremental update says
+/// nothing, and treating it as a statement would invent MO-3's opposite error.
+#[test]
+fn an_incremental_refill_states_nothing() {
+    let (state, now) = stated(concat!(
+        "<dialogData id='Buffs'>",
+        r#"<progressBar id='601' value='100' text="Natural Colors" time='00:10:00'/>"#,
+        "</dialogData>
+",
+    ));
+
+    assert!(
+        !state.effects.saw_category("Buffs"),
+        "a refill without `clear='t'` is not a complete list"
+    );
+    assert_eq!(
+        state.effects.active_in("Buffs", "515", now),
+        None,
+        "so an absent id remains unknown"
+    );
+}
+
+/// `active_in` answers only for the category asked about.
+///
+/// The same spell can appear in two dialogs under different wire ids (the
+/// module docs measure this), and the categories refill independently.
+#[test]
+fn a_category_answers_only_for_itself() {
+    let (state, now) = stated(concat!(
+        "<dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'>",
+        r#"<progressBar id='515' value='100' text="Rapid Fire" time='00:10:00'/>"#,
+        "</dialogData>
+",
+    ));
+
+    assert_eq!(state.effects.active_in("Buffs", "515", now), Some(true));
+    assert_eq!(
+        state.effects.active_in("Cooldowns", "515", now),
+        None,
+        "515 is a Buffs id; Cooldowns has never been stated"
+    );
+}
+
+/// An expired effect and an absent one both answer `Some(false)`.
+///
+/// Presence is not liveness -- the game leaves an expired effect in the dialog
+/// until it bothers to re-send. Both paths to "not active" must agree, or a
+/// caller has to know which one it is looking at.
+#[test]
+fn expired_and_absent_both_answer_false() {
+    let (state, _) = stated(concat!(
+        "<dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'>",
+        r#"<progressBar id='515' value='0' text="Rapid Fire" time='00:00:01'/>"#,
+        "</dialogData>
+",
+    ));
+
+    let later = 1_789_777_252 + 600;
+    assert_eq!(
+        state.effects.active_in("Buffs", "515", later),
+        Some(false),
+        "listed but expired"
+    );
+    assert_eq!(
+        state.effects.active_in("Buffs", "999", later),
+        Some(false),
+        "absent from a stated list -- same answer, as it must be"
+    );
+}
+
+/// `clear` drops the observations with the effects.
+///
+/// Guard-before-clear. Keeping `observed` while emptying `by_id` would make
+/// every id in the category answer a confident `Some(false)` from a list that
+/// had been emptied rather than restated.
+#[test]
+fn clearing_effects_forgets_the_observations_too() {
+    let (mut state, now) = stated(
+        "<dialogData id='Buffs' clear='t'></dialogData>
+",
+    );
+    assert!(state.effects.saw_category("Buffs"), "guard");
+
+    state.effects.clear();
+
+    assert!(!state.effects.saw_category("Buffs"));
+    assert_eq!(
+        state.effects.active_in("Buffs", "515", now),
+        None,
+        "forgetting the effects must forget that the list was ever stated"
+    );
+}
