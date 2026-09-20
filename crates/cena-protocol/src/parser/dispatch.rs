@@ -465,7 +465,17 @@ impl Parser {
         // this stream's close. Such a close falls through and emits
         // `Structural` -- "every close emits" is the rule above, and a close
         // that popped nothing is not a pop.
-        if name == "stream"
+        // **`dynaStream` too**, which this missed. The open arm above takes
+        // `"stream" | "dynaStream"` together and calls `open_stream(.., true)`
+        // for both, so both push a paired entry -- but only `stream` popped
+        // one. Reproduced by review: `<dynaStream id='bugStream'>Details
+        // </dynaStream>Back in main` left "Back in main" tagged `bugStream`,
+        // and every line after it, for the life of the session.
+        //
+        // The asymmetry is the tell. A tag that opens a routing context in one
+        // arm and is absent from its closer is a leak by construction, which
+        // is why the two lists are now written to match.
+        if matches!(name, "stream" | "dynaStream")
             && let Some(at) = self.streams.iter().rposition(|s| s.paired)
         {
             let open = self.streams.remove(at);

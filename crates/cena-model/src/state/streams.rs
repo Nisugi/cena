@@ -1,7 +1,7 @@
 //! Per-stream text buffers: **M2 step 1**, `plan/18` §2a.
 //!
-//! Split out of `state.rs` beside [`clock`](super::clock),
-//! [`idle`](super::idle) and [`reconnect`](super::reconnect), under Rule 4.1
+//! Split out of `state.rs` beside `clock`, `idle` and `reconnect` (private
+//! siblings, so named rather than linked), under Rule 4.1
 //! (`plan/05:352-353`) -- move code down, do not raise the cap.
 //!
 //! # What this is not
@@ -46,6 +46,33 @@
 //! Evidence and the full census are in
 //! `crates/cena-model/tests/stream_routing.rs`.
 
+/// How many completed lines one stream retains before the oldest are dropped.
+///
+/// **A scrollback depth, not a protocol fact.** Lich's combat tracker caps its
+/// analysis buffer at 200 (`chunks.rs` ports that number for the same reason),
+/// but this is display history rather than one command's output, so it is
+/// larger: 2,000 lines is roughly what a terminal scrollback holds and well
+/// past what any classifier looks back over.
+///
+/// Fixed rather than configurable, per Rule -1: no config option with one
+/// value. When a frontend needs a different depth it will say so, and that is
+/// the moment to make it a parameter.
+pub const MAX_STREAM_LINES: usize = 2_000;
+
+/// How many completed lines were routed, and how many the cap discarded.
+///
+/// **Seen is not retained**, and the difference is why both are counted: *"the
+/// model never lags however far behind a subscriber falls"* is a claim about
+/// being FED, which a retained-line count cannot express once a cap starts
+/// dropping. `event_ring.rs` asserts the first and used to measure the second.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LineTally {
+    /// Completed lines ever routed.
+    pub seen: u64,
+    /// Lines discarded to [`MAX_STREAM_LINES`].
+    pub dropped: u64,
+}
+
 use super::GameState;
 use cena_protocol::frame::TextFrame;
 use cena_protocol::runs::Runs;
@@ -58,6 +85,25 @@ use cena_protocol::runs::Runs;
 pub type StreamBuffers = std::collections::BTreeMap<String, Vec<Runs>>;
 
 impl GameState {
+    /// How many completed lines this session has ever routed.
+    ///
+    /// **Counts what the model was FED, not what it kept.** The two diverge
+    /// once [`MAX_STREAM_LINES`] starts dropping.
+    #[must_use]
+    pub const fn lines_seen(&self) -> u64 {
+        self.tally.seen
+    }
+
+    /// How many lines the scrollback cap has discarded.
+    ///
+    /// Reported rather than silent, the rule `Chunk::dropped` follows: a
+    /// consumer may want to know its history is incomplete, and Rule 2.2's
+    /// floor is that nothing is dropped without saying so.
+    #[must_use]
+    pub const fn lines_dropped(&self) -> u64 {
+        self.tally.dropped
+    }
+
     /// One stream's buffered lines, oldest first.
     ///
     /// An unseen stream is **empty rather than absent**: there is nothing worth
@@ -109,10 +155,25 @@ impl GameState {
                     bold: line.bold_fragments(),
                 });
             }
-            self.streams
-                .entry(text.stream.clone())
-                .or_default()
-                .push(line);
+            let buffer = self.streams.entry(text.stream.clone()).or_default();
+            // **Bounded.** Found by review: every completed line was retained
+            // forever, including ordinary main-window output, and nothing ever
+            // dropped one -- `clearStream` empties a NAMED stream on the
+            // game's say-so, and the prompt closes the analysis chunk without
+            // touching this. A probe measured 2,000 lines retained from 2,000,
+            // so a session left running accumulates text, styles and links
+            // without limit.
+            //
+            // Oldest dropped first, which is the same rule and the same
+            // reasoning as `chunks.rs`'s cap: the recent lines are the ones a
+            // reader or a renderer wants, and a scrollback that forgets its
+            // beginning is a scrollback rather than a leak.
+            if buffer.len() >= MAX_STREAM_LINES {
+                buffer.remove(0);
+                self.tally.dropped = self.tally.dropped.saturating_add(1);
+            }
+            buffer.push(line);
+            self.tally.seen = self.tally.seen.saturating_add(1);
         }
     }
 

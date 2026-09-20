@@ -485,3 +485,59 @@ fn a_registered_account_is_redacted_and_the_header_names_it() {
         "the header must name WHAT is registered, not just say yes:\n{header}"
     );
 }
+
+/// **A secret split across a rotation boundary is still redacted.**
+///
+/// Review finding 3. `roll` called `drain_pending()` first, on the reasoning
+/// that those bytes arrived while the old part was open and belong in it --
+/// true, and it defeated the buffer's purpose. `pending` holds back a suffix
+/// precisely because it might be the first half of a registered secret, so
+/// draining it at the boundary wrote both fragments in clear, one per part.
+///
+/// The fix carries the suffix across. It costs at most `hold` bytes of
+/// boundary precision; a part edge landing a few bytes early is cosmetic, and
+/// a secret in clear is not recoverable.
+#[test]
+fn a_secret_split_across_a_rotation_is_redacted() {
+    let dir = std::env::temp_dir().join("cena-sink-split-secret");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let mut redactions = Redactions::new();
+    redactions.add("SECRETVALUE", "[REDACTED]");
+
+    // Threshold of one, so every write rotates -- the boundary is guaranteed
+    // to fall between the two halves.
+    let mut sink =
+        cena_platform::SessionSink::create_with_rotation(&dir, "Tester", "stamp", redactions, 1)
+            .expect("the sink must open");
+
+    let _ = sink.wire(true, b"prefix SECRET");
+    let _ = sink.wire(
+        true,
+        b"VALUE suffix
+",
+    );
+    drop(sink);
+
+    let mut all = String::new();
+    let mut entries: Vec<_> = std::fs::read_dir(&dir)
+        .expect("read_dir")
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "bytes"))
+        .collect();
+    entries.sort();
+    for path in entries {
+        all.push_str(&std::fs::read_to_string(&path).unwrap_or_default());
+    }
+
+    assert!(
+        !all.contains("SECRETVALUE"),
+        "the whole secret must not appear: {all:?}"
+    );
+    assert!(
+        !all.contains("SECRET"),
+        "and neither must the first fragment, which is what rotation used to \
+         flush in clear: {all:?}"
+    );
+}

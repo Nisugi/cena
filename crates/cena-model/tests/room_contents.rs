@@ -417,3 +417,81 @@ fn the_three_exit_states_are_all_different() {
     assert_ne!(observed_empty, observed_some);
     assert_eq!(observed_some, Some(vec!["n".to_owned()]));
 }
+
+/// **A `<nav>` for the room we are already in is a re-declaration, not an
+/// arrival.**
+///
+/// Review finding 4. The login burst sends `<nav rm='7086'/>` for the room the
+/// character is already in and carries **no `compass`** to replace what a full
+/// reset throws away -- so a reconnect that had just been taught to keep the
+/// exits lost them to the burst one frame later.
+#[test]
+fn re_declaring_the_same_room_keeps_its_exits() {
+    let mut parser = cena_protocol::Parser::new();
+    let mut state = cena_model::GameState::default();
+    for frame in
+        parser.push_bytes(b"<nav rm='7086'/><compass><dir value='n'/><dir value='e'/></compass>\n")
+    {
+        state.apply(&frame);
+    }
+    assert!(state.room.exits.is_some(), "guard: exits were observed");
+
+    for frame in parser.push_bytes(b"<nav rm='7086'/>\n") {
+        state.apply(&frame);
+    }
+
+    assert_eq!(
+        state.room.exits.as_deref(),
+        Some(["n".to_owned(), "e".to_owned()].as_slice()),
+        "the same room id is the same room; nothing was replaced"
+    );
+}
+
+/// A DIFFERENT room still resets everything.
+///
+/// The other half, and the one that must not regress: creatures from the last
+/// room are the most dangerous thing to keep, because a behavior would attack
+/// them.
+#[test]
+fn a_different_room_still_resets_whole() {
+    let mut parser = cena_protocol::Parser::new();
+    let mut state = cena_model::GameState::default();
+    for frame in parser.push_bytes(b"<nav rm='7086'/><compass><dir value='n'/></compass>\n") {
+        state.apply(&frame);
+    }
+    assert!(state.room.exits.is_some(), "guard");
+
+    for frame in parser.push_bytes(b"<nav rm='9999'/>\n") {
+        state.apply(&frame);
+    }
+
+    assert_eq!(state.room.id.as_deref(), Some("9999"));
+    assert_eq!(
+        state.room.exits, None,
+        "a new room invalidates the old exits"
+    );
+}
+
+/// Two bare `<nav/>`s are two arrivals, not one.
+///
+/// `id.is_some()` guards the comparison because unknown is not equal to
+/// unknown: treating two id-less arrivals as the same room would keep the
+/// previous room's creatures.
+#[test]
+fn two_id_less_arrivals_are_not_the_same_room() {
+    let mut parser = cena_protocol::Parser::new();
+    let mut state = cena_model::GameState::default();
+    for frame in parser.push_bytes(b"<nav/><compass><dir value='n'/></compass>\n") {
+        state.apply(&frame);
+    }
+    assert!(state.room.exits.is_some(), "guard");
+
+    for frame in parser.push_bytes(b"<nav/>\n") {
+        state.apply(&frame);
+    }
+
+    assert_eq!(
+        state.room.exits, None,
+        "unknown is not equal to unknown -- this is a second arrival"
+    );
+}

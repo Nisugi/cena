@@ -556,10 +556,28 @@ impl SessionSink {
     /// swallows it -- a session must survive a failed log (`plan/12` §5.5) --
     /// but it is returned rather than hidden so the caller *can* report it.
     fn roll(&mut self) -> io::Result<()> {
-        // BEFORE the part closes: these bytes arrived while this part was
-        // open, so they belong in it. Deferring them to the next part would
-        // reorder the record across a part boundary.
-        self.drain_pending()?;
+        // **The pending suffix is NOT drained here**, and that reverses what
+        // this line used to do.
+        //
+        // It read `self.drain_pending()?`, on the reasoning that those bytes
+        // arrived while this part was open and belong in it. True, and it
+        // defeats the buffer's whole purpose: `pending` holds back a suffix
+        // precisely because it might be the FIRST HALF of a registered
+        // secret. Found by review -- with `SECRET` registered and a rotation
+        // between a chunk ending `SEC` and one starting `RET`, both fragments
+        // were written unredacted, one per part.
+        //
+        // Carrying it across costs the ordering guarantee its comment claimed:
+        // at most `hold` bytes move from the end of one part to the start of
+        // the next. That is the right trade. A part boundary that falls a few
+        // bytes early is a cosmetic imprecision in a log; a secret written in
+        // clear is not recoverable, and the whole point of this file's
+        // redaction is that it never happens.
+        //
+        // Reassembly is unaffected: concatenating the parts in order still
+        // reproduces the stream exactly, because the bytes are not lost, only
+        // deferred. The independently-valid-part claim above is the one that
+        // weakens, and only by `hold` bytes at the seam.
         self.bytes.flush()?;
         // `part` is committed only AFTER the file exists. Incrementing first
         // and then using `?` on `File::create` spends the number on a part

@@ -46,7 +46,7 @@ mod inventory;
 mod nouns;
 mod reconnect;
 mod room;
-mod streams;
+pub mod streams;
 mod unknown;
 
 pub use character::{Character, Experience, Injury};
@@ -69,7 +69,7 @@ pub type Vitals = std::collections::BTreeMap<String, u32>;
 /// `inventory`, `streams` and the unknown-tag log. (This said "§7.1's In
 /// column, exactly", which those sections made untrue.)
 ///
-/// # `PartialEq` is hand-written, and deliberately ignores one field
+/// # `PartialEq` is hand-written, and deliberately ignores TWO fields
 ///
 /// `game_time_received` is a **local `Instant`**, so two replays of
 /// one recording produce two different values -- microseconds apart, but
@@ -159,6 +159,8 @@ pub struct GameState {
     /// so "a stream nobody has pushed to" answers empty rather than making every
     /// call site unwrap an `Option`.
     streams: streams::StreamBuffers,
+    /// Routed and discarded line tallies; see [`streams::LineTally`].
+    tally: streams::LineTally,
     /// The line being assembled for each stream, not yet terminated.
     ///
     /// **A frame boundary is not a line boundary.** The parser emits one run per
@@ -221,6 +223,12 @@ impl PartialEq for GameState {
             unknown_tag_counts,
             idle_warning,
             streams,
+            // **Excluded from equality, for a different reason than
+            // `game_time_received`.** That one is unreproducible; this is a
+            // tally of the process's behaviour rather than a fact about the
+            // game. Two states that know the same things are equal whether or
+            // not one has been running longer.
+            tally: _,
             pending,
             chunk,
             character,
@@ -255,6 +263,37 @@ impl PartialEq for GameState {
 const IDLE_WARNING: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";
 
 impl GameState {
+    /// Handle `<nav>`: an arrival, or a re-declaration of the room we are in.
+    ///
+    /// Split out of [`Self::apply`] under Rule 4.1 -- adding the same-room
+    /// guard took that function to 101 lines against its 100 cap, and the rule
+    /// is to move code down rather than raise the limit.
+    ///
+    /// A new room invalidates the old description and exits: they describe
+    /// somewhere the character no longer is, and keeping them is how a
+    /// consumer renders the previous room's exits under the new room's name.
+    /// EVERYTHING goes, including the per-component buffers and the typed
+    /// collections -- creatures from the last room are the most dangerous
+    /// thing to keep, because a behavior would attack them.
+    ///
+    /// **Unless it is the SAME room, in which case this is a re-declaration
+    /// and not an arrival.** Found by review: the login burst sends
+    /// `<nav rm='7086'/>` for the room the character is already in and carries
+    /// no `compass` to replace what a full reset throws away -- so a reconnect
+    /// that had just been taught to KEEP the exits lost them to the burst one
+    /// frame later.
+    ///
+    /// Guarded on `Some`, because a bare `<nav/>` cannot be compared: two
+    /// consecutive id-less arrivals are two different rooms as far as anything
+    /// here can tell, and treating them as one would keep a previous room's
+    /// creatures. **Unknown is not equal to unknown.**
+    fn arrive(&mut self, id: Option<&str>) {
+        let same_room = id.is_some() && id == self.room.id.as_deref();
+        if !same_room {
+            self.room = Room::entering(id.map(str::to_owned));
+        }
+    }
+
     /// Fold one frame into the state.
     ///
     /// Returns `true` if the frame closed a round-trip window, which is the
@@ -263,18 +302,7 @@ impl GameState {
     /// frame, so splitting them would mean matching twice.
     pub fn apply(&mut self, frame: &Frame) -> bool {
         match frame {
-            Frame::RoomId { id } => {
-                // A new room invalidates the old description and exits: they
-                // describe somewhere the character no longer is. Keeping them
-                // is how a consumer renders the previous room's exits under
-                // the new room's name.
-                // EVERYTHING goes, including the per-component buffers and the
-                // typed collections. Creatures from the last room are the most
-                // dangerous thing to keep: a behavior would attack them.
-                // `id` may be `None` -- a bare `<nav/>`, an arrival at a room
-                // with no UID. Still an arrival; only the id is unknown.
-                self.room = Room::entering(id.clone());
-            }
+            Frame::RoomId { id } => self.arrive(id.as_deref()),
             // `compDef`/`component` ONLY. The room arrives in two shapes and
             // they mean different things (author, 2026-09-18, from live
             // traffic):

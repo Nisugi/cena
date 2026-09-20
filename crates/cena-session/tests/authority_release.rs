@@ -100,3 +100,70 @@ fn traffic_stops_one_slot_short_and_a_release_fits_in_it() {
 // `CommandQueue::release`'s own behaviour in `command_queue.rs`. The seam
 // between them -- "the actor applies a release it received" -- is three lines
 // (`queue.rs:143-147`) and is exercised by every authority test in that file.
+
+/// **An abandoned claim does not lock out every later behavior.**
+///
+/// Review finding 2: `claim` mutated the queue and the reply's send result was
+/// discarded, so a caller that dropped its future between sending and
+/// receiving left its token holding authority **permanently** -- and every
+/// later claimant got `AuthorityHeld` naming a token whose owner no longer
+/// exists.
+///
+/// # Asserted through the actor, and why that is safe here
+///
+/// This file's other test is narrow because the reserve is arithmetic on a
+/// channel the actor drains. This one is the opposite: the bug lives in what
+/// the actor does with a dropped receiver, so the actor has to run. There is
+/// no race to lose -- the first claim's receiver is dropped before the actor
+/// ever starts, so the `send` it eventually makes cannot succeed however the
+/// scheduler orders things.
+#[tokio::test(flavor = "current_thread")]
+async fn a_claim_whose_caller_vanished_is_rolled_back() {
+    use cena_platform::ReplaySource;
+    use cena_session::Session;
+
+    let source = ReplaySource::new(vec![
+        b"<prompt time=\"1789775900\">&gt;</prompt>\n".to_vec(),
+    ]);
+    let session = Session::new(source);
+    let handle = session.handle();
+
+    let first = AuthorityToken(1);
+    let second = AuthorityToken(2);
+
+    // **POLL the claim once, then drop it.** `claim` is `async`, so merely
+    // constructing the future runs no code and sends nothing -- the first
+    // version of this test dropped an unpolled future and passed with the fix
+    // removed, which is the trap this file's other test documents.
+    //
+    // One poll gets as far as `try_send(Inbox::Claim)` and then parks on the
+    // oneshot. Dropping there is the real scenario: the message is in the
+    // inbox and the receiver is gone.
+    // Polled by hand rather than with a futures helper: `cena-session` has no
+    // futures dev-dependency, and adding one so a single test can poll once
+    // would be a test reshaping the crate graph.
+    let mut abandoned = Box::pin(handle.claim(first));
+    let waker = std::task::Waker::noop();
+    let mut cx = std::task::Context::from_waker(waker);
+    let polled = std::future::Future::poll(abandoned.as_mut(), &mut cx);
+    assert!(
+        polled.is_pending(),
+        "the claim must park awaiting the actor's reply"
+    );
+    drop(abandoned);
+
+    let actor = tokio::spawn(session.into_actor().run());
+
+    // The second behavior must be able to claim: nobody owns the first.
+    let granted = tokio::time::timeout(std::time::Duration::from_secs(5), handle.claim(second))
+        .await
+        .expect("the claim must not hang");
+
+    assert!(
+        granted.is_ok(),
+        "an abandoned claim left the authority held forever: {granted:?}"
+    );
+
+    drop(handle);
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(5), actor).await;
+}

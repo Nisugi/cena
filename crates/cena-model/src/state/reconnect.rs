@@ -144,6 +144,7 @@ impl GameState {
             unknown_tag_counts,
             idle_warning,
             streams,
+            tally,
             pending,
             chunk,
             character,
@@ -217,6 +218,13 @@ impl GameState {
         // connection's bytes are not its continuation.
         streams.clear();
         pending.clear();
+
+        // **The counters are NOT reset.** They describe the SESSION -- how
+        // much text this process has routed and how much the scrollback
+        // dropped -- not the connection, so they belong with `unknown_tags`
+        // on the retained side for the same reason: a fact about our own
+        // behaviour is most useful across a reconnect, not least.
+        let _ = tally;
 
         // And the chunk those lines were accumulating into. A command whose
         // output was interrupted will never see its terminating prompt, so the

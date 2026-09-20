@@ -358,3 +358,63 @@ fn a_line_split_across_two_reads_is_still_one_line() {
         "a line split across two READS was buffered as more than one line"
     );
 }
+
+/// **Stream history is bounded**, which it was not.
+///
+/// Review finding 6: every completed line was retained forever, including
+/// ordinary main-window output. `clearStream` empties a NAMED stream on the
+/// game's say-so and the prompt closes the analysis chunk, but nothing ever
+/// dropped a line from this history -- so a long session accumulated text,
+/// styles and links without limit.
+#[test]
+fn stream_history_is_capped() {
+    let mut parser = cena_protocol::Parser::new();
+    let mut state = cena_model::GameState::default();
+    let over = cena_model::MAX_STREAM_LINES + 500;
+    let mut wire = Vec::new();
+    for i in 0..over {
+        wire.extend_from_slice(format!("line {i}\n").as_bytes());
+    }
+    for frame in parser.push_bytes(&wire) {
+        state.apply(&frame);
+    }
+
+    assert_eq!(
+        state.stream("").len(),
+        cena_model::MAX_STREAM_LINES,
+        "the buffer must stop at its cap"
+    );
+    assert_eq!(
+        state.lines_seen(),
+        over as u64,
+        "and every line was still FED to the model"
+    );
+    assert_eq!(state.lines_dropped(), 500, "reported, not silent");
+}
+
+/// The cap drops the OLDEST line, keeping recent history.
+///
+/// Same rule as `chunks.rs`: the recent lines are the ones a reader wants, and
+/// a scrollback that forgets its beginning is a scrollback rather than a leak.
+#[test]
+fn the_cap_drops_the_oldest_line() {
+    let mut parser = cena_protocol::Parser::new();
+    let mut state = cena_model::GameState::default();
+    let mut wire = Vec::new();
+    for i in 0..=cena_model::MAX_STREAM_LINES {
+        wire.extend_from_slice(format!("line {i}\n").as_bytes());
+    }
+    for frame in parser.push_bytes(&wire) {
+        state.apply(&frame);
+    }
+
+    let first = state
+        .stream("")
+        .first()
+        .map(cena_protocol::runs::Runs::plain);
+    assert_eq!(
+        first.as_deref(),
+        Some("line 1"),
+        "line 0 was dropped, line 1 is now the oldest"
+    );
+}

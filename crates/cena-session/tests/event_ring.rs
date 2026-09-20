@@ -69,8 +69,14 @@ async fn the_model_never_lags_however_far_behind_a_subscriber_falls() {
         .await
         .expect("the session must finish");
 
+    // **`lines_seen`, not `stream("").len()`.** This measured the retained
+    // buffer, which conflates two claims: "the model was fed every line" and
+    // "the model keeps every line forever". Only the first is this test's
+    // subject, and the second stopped being true when `streams.rs` gained a
+    // scrollback cap (review finding 6). Counting what was fed asserts
+    // exactly what the comment above promises.
     assert_eq!(
-        end.state.stream("").len(),
+        end.state.lines_seen(),
         5_000,
         "the model lost lines while a subscriber was asleep; it is supposed to be \
          fed synchronously, before the broadcast"
@@ -134,9 +140,16 @@ async fn overflow_is_reported_rather_than_silent() {
         matches!(first, Err(RecvError::Lagged(_))),
         "a subscriber that missed thousands of events was not told: {first:?}"
     );
+    // Same correction: every line REACHED the model, whatever the scrollback
+    // chose to retain.
+    assert_eq!(
+        end.state.lines_seen(),
+        20_000,
+        "and the model was still fed every line"
+    );
     assert_eq!(
         end.state.stream("").len(),
-        20_000,
-        "and the model still has every line"
+        cena_model::MAX_STREAM_LINES,
+        "...while the scrollback holds its cap, which is a different claim"
     );
 }

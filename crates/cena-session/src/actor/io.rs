@@ -150,7 +150,27 @@ impl<S: ByteSource> SessionActor<S> {
                 }
             }
             crate::command::Inbox::Claim { token, reply } => {
-                let _ = reply.send(self.queue.claim(token));
+                // **Roll back a claim nobody will hear about.** Found by
+                // review: `claim` mutates and the send result was discarded,
+                // so a caller that dropped its future between sending and
+                // receiving left the token holding authority PERMANENTLY --
+                // and every later claimant got `AuthorityHeld` naming a token
+                // whose owner no longer exists.
+                //
+                // `oneshot::Sender::send` returns `Err` exactly when the
+                // receiver is gone, which is the same condition, so the
+                // rollback is the send's own error path rather than a
+                // separate liveness check.
+                //
+                // Only a SUCCESSFUL claim is rolled back. An `AuthorityHeld`
+                // reply that goes unheard changed nothing, and releasing on it
+                // would take the authority away from whoever legitimately
+                // holds it.
+                let outcome = self.queue.claim(token);
+                let granted = outcome.is_ok();
+                if reply.send(outcome).is_err() && granted {
+                    self.queue.release(token);
+                }
             }
             crate::command::Inbox::Release(token) => self.queue.release(token),
             // Handled inline rather than queued: queueing it is the exact
@@ -504,7 +524,56 @@ impl<S: ByteSource> SessionActor<S> {
         for frame in self.parser.push_bytes(chunk) {
             // Offered to the waiter AND published. `plan/12` §4.4:
             // "observation never competes with attribution."
-            if self.queue.window_is_open() && !matches!(frame, Frame::Prompt { .. }) {
+            //
+            // **Not while an instant action's reply is outstanding.** Found by
+            // review: `send_now_prompts_owed` protected the TERMINATOR but not
+            // the frames before it, so text answering a sigil was offered to a
+            // waiting `attack`'s matcher -- reproduced as
+            // `Confirmed("You feel a surge.")` attributed to the attack.
+            //
+            // The counter already says whose text this is. A non-zero count
+            // means at least one instant action was sent after the waiting
+            // command and its prompt has not arrived, so everything up to that
+            // prompt is the instant action's response. Skipping only the
+            // terminator left the frames in between attributed to whoever
+            // happened to be waiting.
+            //
+            // This is `plan/12` §4.4's own rule read the other way round:
+            // observation must not compete with attribution, and attributing
+            // ANOTHER command's text is the sharper failure -- a matcher that
+            // sees nothing times out and retries, while one that matches the
+            // wrong text returns a confident wrong answer. `offer` records the
+            // FIRST match and never revises it (`queue.rs:283`), so the
+            // instant action's text wins permanently once it lands.
+            //
+            // # NOT UNIT-TESTED, stated rather than faked
+            //
+            // Three attempts failed, and all three would have shipped as false
+            // coverage:
+            //
+            //  1. `send_now.rs` with `release_one` -- `AnsweringSource`
+            //     delivers one fixed reply per command, text and prompt as a
+            //     single unit, so the owed prompt is always spent on the same
+            //     delivery that carries the text. The defect cannot occur.
+            //  2. The same, asserting the attack stays unresolved -- passed
+            //     under the defect for the same reason.
+            //  3. `command_queue.rs` with `ReplaySource`, which CAN split text
+            //     from prompt -- but it drains every chunk as fast as it is
+            //     read, so the sigil's text arrives before the attack is even
+            //     sent. The result was a `Timeout`, i.e. the test measuring
+            //     the scheduler rather than the rule.
+            //
+            // What is needed is a source that withholds bytes until told AND
+            // can deliver text without its prompt. `AnsweringSource` has the
+            // first, `ReplaySource` the second, neither has both. Building one
+            // is the honest fix and it is more than this change should carry;
+            // until then this is **enforced by review**, and the mutation that
+            // removes `owned_by_send_now` leaves the suite green.
+            let owned_by_send_now = self.send_now_prompts_owed > 0;
+            if self.queue.window_is_open()
+                && !owned_by_send_now
+                && !matches!(frame, Frame::Prompt { .. })
+            {
                 self.queue.offer(&frame);
             }
             let terminator = self.state.apply(&frame);
