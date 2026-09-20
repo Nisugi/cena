@@ -22,6 +22,7 @@ pub mod state;
 pub mod status;
 
 pub use effects::{Effect, Effects};
+pub use state::bounty::{Task, TaskKind};
 pub use state::character::blocks::InfoReport;
 pub use state::character::body::{Body, Track};
 pub use state::character::enhancive::{Bonus, EnhanciveLine, EnhanciveTotals, Resource, Section};

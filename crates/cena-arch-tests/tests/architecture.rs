@@ -91,11 +91,17 @@ struct AllowedStatic {
     justification: &'static str,
 }
 
-/// The reviewed statics. One so far, and it is the expected one.
-const ALLOWED_STATICS: &[AllowedStatic] = &[AllowedStatic {
-    path: "crates/cena-protocol/src/tags.rs",
-    name: "KNOWN_WIRE_TAGS",
-    justification: "An interned table of wire element names, which plan/05:408 names as fine: \
+/// The reviewed statics.
+const ALLOWED_STATICS: &[AllowedStatic] = &[
+    AllowedStatic {
+        path: "crates/cena-model/src/state/bounty.rs",
+        name: "MATCHERS",
+        justification: "A OnceLock<Vec<(TaskKind, Regex)>> holding the 22 compiled bounty task                         patterns, built on first use and never mutated after. It is process-wide                         state and this entry does not pretend otherwise -- what makes it safe is                         that it holds no handle to anything a session owns and its contents are                         a pure function of string literals in the same file, so two sessions                         reading it concurrently cannot observe different values or interfere.                         The alternative is compiling 22 regexes per bounty check, per session;                         `regex` documents compilation as the expensive step and matching as the                         cheap one. `crit.rs` faces the same tradeoff for ~2,395 patterns and                         resolves it with an owned table threaded through the model, which is the                         better shape -- this should move to it when a second consumer needs the                         patterns, and until then a table with one reader does not earn the                         plumbing (Rule -1).",
+    },
+    AllowedStatic {
+        path: "crates/cena-protocol/src/tags.rs",
+        name: "KNOWN_WIRE_TAGS",
+        justification: "An interned table of wire element names, which plan/05:408 names as fine: \
                     `&[&str]` of string literals, immutable, with no interior mutability and no \
                     handle to anything a session owns. It is read through is_known(), a \
                     binary_search over the slice. Ported from \
@@ -107,7 +113,8 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[AllowedStatic {
                     grep -cE '^    .[^.]+.,$' crates/cena-protocol/src/tags.rs -- this said \
                     121, which was true when written. A count copied into a second place is \
                     a count that drifts, so the command is here and not only the number.",
-}];
+    },
+];
 
 #[test]
 fn every_static_is_allowlisted() {

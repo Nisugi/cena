@@ -38,6 +38,7 @@ use cena_protocol::Frame;
 use cena_protocol::runs::Runs;
 use std::time::Instant;
 
+pub mod bounty;
 pub mod character;
 pub mod chunks;
 mod clock;
