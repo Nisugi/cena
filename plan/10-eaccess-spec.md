@@ -1798,7 +1798,23 @@ question."*
 **Three consequences:**
 
 1. **`K` has no trailing newline**, so the hash loop consumes exactly the bytes sent. A Rust
-   port that strips or preserves a terminator behaves identically — the hazard is void.
+   port that strips or preserves a *trailing* terminator behaves identically on this capture.
+
+   > **CONFIRMED AGAINST LICH, 2026-09-19.** The capture settled this from the wire; the
+   > reference implementation now settles it from the source. `lib/common/authentication/
+   > eaccess.rb:216-219` XORs against the raw `K` response **"including any trailing
+   > whitespace/newline the server sent — there is no strip"**. Lich agrees with the capture.
+   >
+   > **VellumFE is the outlier**, and this is the one place the "read Vellum first" rule
+   > does not settle a question: `network.rs:760` calls `hash_key.trim()`, which is
+   > unconditional. On this capture it is harmless because there is no terminator to remove
+   > — but `trim` also removes LEADING bytes, and the key is 32 bytes of random binary in
+   > which `0x09`, `0x0A`, `0x0D` and `0x20` are ordinary values. A key beginning with one
+   > shifts every XOR index by one, which sends a wrong password, earns a `PASSWORD`
+   > refusal, and puts a bad-password strike on the account. Nothing errors.
+   >
+   > Cena uses the key whole (`crates/cena-platform/src/eaccess/handshake.rs:176`). Two
+   > independent sources now say that is right.
 2. **Framing is by read, not by delimiter.** A framed reader cannot scan for a terminator
    because there is none. Read what the socket yields and dispatch on the **leading command
    letter**, which is present and unambiguous in every response (`A`, `M`, `F`, `G`, `P`, `C`,
