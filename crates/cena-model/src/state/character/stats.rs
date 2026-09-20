@@ -55,8 +55,9 @@
 //!
 //! [`StatLine::classify`] takes the reassembled text because that is what a
 //! classifier is (§3a: stateless, one line in, typed answer out). The bold runs
-//! are carried separately, by [`StatLine::classify_runs`], for the caller that
-//! has them.
+//! are carried separately, by [`StatLine::classify_with_bold`], for the caller
+//! that has them -- bold is in the FRAMES, not in the joined line, so a
+//! classifier given only text cannot recover it.
 
 use super::vocabulary::AccountType;
 
@@ -308,6 +309,36 @@ impl StatLine {
             columns,
             column_count: count,
         })
+    }
+
+    /// Classify a line **and** learn which of its numbers the wire bolded.
+    ///
+    /// `bold` is the set of text fragments that arrived with `bold_depth > 0`,
+    /// in wire order -- for an enhanced stat that is exactly
+    /// `["106", "28"]`, the enhanced value and its bonus.
+    ///
+    /// # Why this exists separately from [`Self::classify`]
+    ///
+    /// Bold lives in the FRAMES, not in the reassembled text. A classifier given
+    /// only the joined line cannot see it, so `enhanced_is_bolded` could never be
+    /// set -- which is what the field looked like before this method existed: a
+    /// documented signal that was always `false`.
+    ///
+    /// The caller has the runs (it did the reassembly), so it passes what it saw.
+    /// Stateless and total, like every classifier: same line and same bold set
+    /// in, same answer out.
+    #[must_use]
+    pub fn classify_with_bold(line: &str, bold: &[&str]) -> Option<(Self, bool)> {
+        let parsed = Self::classify(line)?;
+        // The enhanced column is what bold marks. Asking "did a bold fragment
+        // carry the enhanced value" is stricter than "was anything bold", and it
+        // is the question the field answers.
+        let enhanced = parsed.enhanced();
+        let bolded = enhanced.is_some_and(|value| {
+            let shown = value.value.to_string();
+            bold.iter().any(|fragment| fragment.trim() == shown)
+        });
+        Some((parsed, bolded))
     }
 
     /// The `normal` column, present only on an `info full` line.
