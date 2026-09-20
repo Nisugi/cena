@@ -226,8 +226,10 @@ impl super::GameState {
         if chunk.is_empty() {
             return;
         }
-        // `info`, and later `skill`. Others register here as they are built --
-        // a combat tracker reads the same chunk with no new buffering.
+        // `info`, and later `skill`. Others register here as they are built.
         self.character.consume_chunk(&chunk);
+        // The combat state machine reads the same chunk with no new
+        // buffering, stamped with the prompt that closed it.
+        self.combat.consume_chunk(&chunk, self.game_time);
     }
 }

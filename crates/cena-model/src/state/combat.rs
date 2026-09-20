@@ -75,25 +75,46 @@
 //!   `crit/match_index.rs` records `RegexSet` as the slowest option at 2,394
 //!   patterns, but these families are 9 to 362 each, which is a different
 //!   regime. The correctness work does not wait on it.
+//!
+//!   MEASURED again with the state machine on top, on the same fixtures
+//!   (`tests/combat_replay_events.rs`, `--release -- --nocapture`):
+//!
+//!   ```text
+//!   85 blobs, 733 lines through parser + FSM in 185ms: 252µs/line
+//!   ```
+//!
+//!   That is the parser, the chunk, every classifier the machine consults
+//!   per line, and the crit lookahead -- ~7x Lich's gated 35µs, with a
+//!   fresh parser and `GameState` per blob inside the number.
 //! - **`messages.rb`**: a separate hook the FSM never reads, and each def
 //!   carries a Ruby lambda for its payload. A later pass if a consumer wants it.
 //! - **`supplements.rb`**: player-supplied YAML patterns. Whether pattern
 //!   supplements fall under `plan/12`'s no-user-scripting decision is an
 //!   author question, not one to answer by porting them.
-//! - **The processor** (`processor.rb`, the 1,470-line `parse_events` FSM) is
-//!   the stateful consumer these classifiers feed. It is the next unit, not
-//!   this one.
+//!
+//! # The consumer above the classifiers
+//!
+//! [`parse`] is `processor.rb`'s `parse_events`, the 1,470-line state machine
+//! these classifiers feed, and [`tracker`] is what it keeps between chunks.
+//! `GameState::close_chunk` hands every prompt-bounded chunk to
+//! [`CombatTracker::consume_chunk`]; the [`event`] types are what comes out.
+//! Its module doc records what was and was not carried across.
 
 pub mod attack;
 pub mod bracket;
 pub mod damage;
 pub mod defs;
+pub mod event;
 pub mod flare;
 pub mod outcome;
+pub mod parse;
 pub mod resolution;
 pub mod spell_loss;
 pub mod status;
 pub mod target;
+pub mod tracker;
 pub mod ucs;
 
+pub use event::{AttackEvent, ChunkFacts, Fact};
 pub use target::Actor;
+pub use tracker::CombatTracker;

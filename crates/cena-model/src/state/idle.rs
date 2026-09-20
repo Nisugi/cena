@@ -100,3 +100,11 @@ impl GameState {
         self.idle_warning = IdleWarning::None;
     }
 }
+
+/// The server's idle warning, exactly as it arrives once the parser has stripped
+/// the bell characters that wrap it on the wire.
+///
+/// MEASURED 2026-09-19: 6 occurrences across 6 characters in the log archive,
+/// byte-identical every time. Matched whole, never as a substring -- see
+/// `GameState::apply`.
+pub(super) const IDLE_WARNING: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";

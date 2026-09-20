@@ -145,6 +145,7 @@ impl GameState {
             idle_warning,
             streams,
             tally,
+            combat,
             pending,
             chunk,
             character,
@@ -218,6 +219,10 @@ impl GameState {
         // connection's bytes are not its continuation.
         streams.clear();
         pending.clear();
+
+        // A held cast or pre-flare belongs to a chunk the old connection
+        // never finished; an assault bracket cannot outlive its fight.
+        combat.invalidate_for_reconnect();
 
         // **The counters are NOT reset.** They describe the SESSION -- how
         // much text this process has routed and how much the scrollback

@@ -36,7 +36,7 @@ use crate::effects::Effects;
 use crate::status::StatusInfo;
 use cena_protocol::Frame;
 use cena_protocol::runs::Runs;
-use idle::IdleWarning;
+use idle::{IDLE_WARNING, IdleWarning};
 use std::time::Instant;
 
 pub mod armaments;
@@ -181,6 +181,9 @@ pub struct GameState {
     /// `pushStream` can interrupt an unterminated run and the enclosing stream
     /// resumes afterwards.
     pending: std::collections::BTreeMap<String, Runs>,
+    /// The combat state machine (`state/combat/tracker.rs`). Private: its
+    /// inputs are the chunk and the clock, both owned here.
+    combat: combat::CombatTracker,
     /// Lines of the command output since the last prompt.
     ///
     /// **The prompt is a universal boundary, not an `info`-specific one** --
@@ -217,6 +220,11 @@ impl PartialEq for GameState {
             // game. Two states that know the same things are equal whether or
             // not one has been running longer.
             tally: _,
+            // Excluded for the tally's reason: it holds a queue a consumer
+            // drains and a handle the session provides, neither a fact
+            // about the game. What it knows of the game -- a held cast, an
+            // open assault -- is re-derived from the same chunks.
+            combat: _,
             pending,
             chunk,
             character,
@@ -242,15 +250,18 @@ impl PartialEq for GameState {
     }
 }
 
-/// The server's idle warning, exactly as it arrives once the parser has stripped
-/// the bell characters that wrap it on the wire.
-///
-/// MEASURED 2026-09-19: 6 occurrences across 6 characters in the log archive,
-/// byte-identical every time. Matched whole, never as a substring -- see
-/// [`GameState::apply`].
-const IDLE_WARNING: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";
-
 impl GameState {
+    /// The combat state machine, to read its facts.
+    #[must_use]
+    pub const fn combat(&self) -> &combat::CombatTracker {
+        &self.combat
+    }
+
+    /// The combat state machine, to hand it crit tables or drain its facts.
+    pub const fn combat_mut(&mut self) -> &mut combat::CombatTracker {
+        &mut self.combat
+    }
+
     /// Handle `<nav>`: an arrival, or a re-declaration of the room we are in.
     ///
     /// Split out of [`Self::apply`] under Rule 4.1 -- adding the same-room

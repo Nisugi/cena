@@ -225,6 +225,12 @@ pub struct Defs {
     addresses_self: Option<Regex>,
     /// `parser.rb:252`'s `SWING_WEAPON_PATTERN`, likewise.
     swing_weapon: Option<Regex>,
+    /// `processor.rb`'s `NARRATION_PATTERN`: creature-linked lines that
+    /// carry no combat fact and must not drive the target switcher.
+    narration: Vec<Regex>,
+    /// `processor.rb:1205`: *"You nock <ammo> in your <bow>."* -- the only
+    /// clue a pre-empted fire was a fire.
+    nock: Option<Regex>,
 }
 
 fn table() -> &'static Defs {
@@ -333,6 +339,23 @@ fn build() -> Defs {
         r"^You(?: take aim and)? (?:swing|fire) (?:an? |your |some )?(?<weapon>.+?) at \S",
     )
     .ok();
+    out.narration = [
+        r" leaps from the back of .+? as .+? topples, narrowly avoiding being pinned",
+        r" looks a little bit more wary after that display!",
+        // a hidden creature revealed by an AoE flare: printed BEFORE the
+        // bloom line that names it (hunt log 2026-09-07 22:14:27)
+        r" is forced out of hiding!",
+        r" gurgles out an animalistic shriek of rage, ",
+        // a sanguine ooze splitting on the hit (hunt log 2026-09-07 23:19)
+        r" splatter across the ground, wobbling disconcertingly as they twitch together to form ",
+        r" pulses larger, bubbling grotesquely with new mass\.",
+        r" pulses monstrously as .+? swells to its full size!",
+        r"^You are now targeting ",
+    ]
+    .iter()
+    .filter_map(|p| Regex::new(p).ok())
+    .collect();
+    out.nock = Regex::new(r"^You nock .+? in your (?<weapon>[^.]+)\.\s*$").ok();
     out
 }
 
@@ -414,6 +437,27 @@ impl Defs {
     #[must_use]
     pub fn swing_weapon(&self, text: &str) -> Option<String> {
         self.swing_weapon
+            .as_ref()?
+            .captures(text)?
+            .name("weapon")
+            .map(|m| m.as_str().to_owned())
+    }
+
+    /// Is this narration that links a creature but states no combat fact?
+    ///
+    /// `processor.rb:335-356`: a rider leaping clear of its toppling mount,
+    /// bystanders growing wary, our own target-set echo. *"Fed to the target
+    /// switcher these split the open attack into phantom per-creature
+    /// events."*
+    #[must_use]
+    pub fn is_narration(&self, text: &str) -> bool {
+        self.narration.iter().any(|re| re.is_match(text))
+    }
+
+    /// The bow a *"You nock ... in your <bow>."* line names.
+    #[must_use]
+    pub fn nock_weapon(&self, text: &str) -> Option<String> {
+        self.nock
             .as_ref()?
             .captures(text)?
             .name("weapon")
