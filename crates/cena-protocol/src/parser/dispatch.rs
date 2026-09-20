@@ -209,7 +209,7 @@ impl Parser {
             // answers for them.
             // Bodies that are not prose on this line: three assembled from
             // CHILDREN, and one captured across lines. See `assembled`.
-            "menu" | "objectives" | "inventoryManager" | "inventoryViewItem" => {
+            "menu" | "objectives" | "inventoryManager" | "inventoryViewItem" | "cmdlist" => {
                 self.flush(buffer, frames);
                 self.assembled(name, tag, frames);
             }
@@ -663,6 +663,7 @@ impl Parser {
     fn assembled(&mut self, name: &str, tag: &str, frames: &mut Vec<Frame>) {
         match name {
             "menu" => frames.push(Frame::MenuResponse(menu(tag))),
+            "cmdlist" => frames.push(cmdlist(tag)),
             "inventoryManager" => frames.push(super::inventory::inventory_manager(tag)),
             "inventoryViewItem" => self.open_view_item(tag, frames),
             _ => frames.push(objectives(tag)),
@@ -703,4 +704,25 @@ pub(super) fn objective(tag: &str) -> crate::frame::Objective {
         cadence: text::attribute(tag, "cadence"),
         expires: text::attribute(tag, "expires"),
     }
+}
+
+/// Assemble a `<cmdlist>` and the `<cli>` dictionary rows in its body.
+///
+/// See [`crate::frame::CmdListUpdate`] for what the push is and why the
+/// client's `cmdlist1.xml` is a cache of it rather than shipped data.
+fn cmdlist(tag: &str) -> Frame {
+    let entries = inner_text(tag)
+        .split('<')
+        .filter(|part| part.starts_with("cli "))
+        .map(|part| {
+            let row = format!("<{}>", part.trim_end_matches(['/', '>']).trim_end());
+            crate::frame::CmdListEntry {
+                coord: text::attribute(&row, "coord").unwrap_or_default(),
+                label: text::attribute(&row, "menu").unwrap_or_default(),
+                command: text::attribute(&row, "command").unwrap_or_default(),
+                category: text::attribute(&row, "menu_cat").unwrap_or_default(),
+            }
+        })
+        .collect();
+    Frame::CmdListUpdate(crate::frame::CmdListUpdate { entries })
 }

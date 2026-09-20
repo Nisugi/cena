@@ -117,15 +117,20 @@ fn the_documented_variant_count_is_the_actual_variant_count() {
 
     assert!(in_enum, "the enum body was never found in frame.rs");
 
-    // The number the module header states, in both places it is stated.
-    let claimed = 51;
+    // The number the module header states, in both places it is stated --
+    // and in this test, which is the THIRD copy. The message below said
+    // "update BOTH"; there are three, and the third is the one that decides
+    // whether the test passes. A test that hardcodes the thing it verifies is
+    // a copy like any other and drifts like any other.
+    let claimed = 53;
     assert_eq!(
         names.len(),
         claimed,
-        "frame.rs's header and crates/cena-arch-tests/tests/layering.rs both \
-         say {claimed} variants; the enum has {}. Update BOTH, and the \
-         arithmetic in frame.rs's header that derives it, rather than only \
-         the number that happens to be in front of you. Found: {names:?}",
+        "frame.rs's header, crates/cena-arch-tests/tests/layering.rs, and \
+         `claimed` in this test all say {claimed} variants; the enum has \
+         {}. Update ALL THREE, and the arithmetic in \
+         frame.rs's header that derives it, not only the number in \
+         front of you. Found: {names:?}",
         names.len()
     );
 }

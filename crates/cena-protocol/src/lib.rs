@@ -19,7 +19,7 @@ pub mod tags;
 pub mod text;
 
 pub use frame::{
-    Capacity, Continuation, Frame, InventoryItem, InventoryResponse, ItemDetail, ItemView, Menu,
-    MenuItem, Objective, ObjectivesAction, RoomMeta,
+    Capacity, CmdListEntry, CmdListUpdate, Continuation, Frame, InventoryItem, InventoryResponse,
+    ItemDetail, ItemView, Menu, MenuItem, Objective, ObjectivesAction, RoomMeta,
 };
 pub use parser::Parser;

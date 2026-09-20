@@ -184,6 +184,12 @@ fn thin_frame_rest(name: &str, tag: &str, attrs: Attrs) -> Frame {
             target: text::attribute(tag, "target"),
         },
         "clearContainer" => Frame::ClearContainer { id: id() },
+        // The dictionary version the server just stated. Typed rather than
+        // bagged because a client compares it against what it holds to know
+        // whether it is current.
+        "cmdtimestamp" => Frame::CmdTimestamp {
+            version: text::attribute(tag, "data").unwrap_or_default(),
+        },
         // The token is carried in `id=`, not in an attribute called `token`:
         // VERIFIED against `reference/VellumFE/src/parser/handlers.rs:910`,
         // `token: Self::extract_attribute(tag, "id")`. Reading `token` meant
@@ -250,12 +256,10 @@ fn thin_frame_rest(name: &str, tag: &str, attrs: Attrs) -> Frame {
 fn known_fallback(name: &str, tag: &str, attrs: Attrs) -> Frame {
     match name {
         "playerID" | "settings" | "settingsInfo" | "sentSettings" | "presets" | "palette"
-        | "macros" | "cmdlist" | "endSetup" | "mode" | "FEVersion" | "LichWebUI" => {
-            Frame::WindowHints {
-                id: name.to_owned(),
-                attrs,
-            }
-        }
+        | "macros" | "endSetup" | "mode" | "FEVersion" | "LichWebUI" => Frame::WindowHints {
+            id: name.to_owned(),
+            attrs,
+        },
         // `reward` was here and was destroying its own payload. The wire
         // sends `<reward type='fame' amount='20000'/>` -- self-closing, with
         // neither `id` nor `time` nor body text. Every field this arm reads

@@ -558,6 +558,67 @@ pub struct Objective {
     pub expires: Option<String>,
 }
 
+/// One `<cli>` row of a `<cmdlist>` push: a dictionary entry from the server.
+///
+/// The same four fields as a row of `cmdlist1.xml`, because that file is the
+/// client's CACHE of these pushes -- see [`CmdListUpdate`].
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CmdListEntry {
+    /// `coord=`, e.g. `"2524,12785"`. The dictionary key.
+    pub coord: String,
+    /// `menu=`: the display template, e.g. `"sense @"`.
+    pub label: String,
+    /// `command=`: the command template, e.g. `"sense #"`.
+    pub command: String,
+    /// `menu_cat=`: the category, e.g. `"5_roleplay"`.
+    pub category: String,
+}
+
+/// `<cmdlist>`: the server teaching the client new context-menu commands.
+///
+/// # This is how the dictionary stays current
+///
+/// A `<menu>` carries coordinates and no labels, so a client needs a
+/// dictionary to render one. That dictionary is NOT static data a client is
+/// expected to find: the server pushes changes to it and stamps a version.
+///
+/// VERIFIED live, in a Wrayth-banner session:
+///
+/// ```text
+/// <cmdlist><cli coord="2524,12785" menu="sense @" command="sense #"
+///               menu_cat="5_roleplay"/>
+///          <cli coord="2524,12784" menu="whisper @ about %"
+///               command="whisper # about %" menu_cat="9_questions"/>
+/// </cmdlist><cmdtimestamp data='1788300900.1.1.1'/>
+/// ```
+///
+/// That timestamp is **exactly** the one in the Wrayth client's own
+/// `cmdlist1.xml` header, which is what identifies the file as a cache of
+/// these pushes rather than shipped data.
+///
+/// # A delta, not a full dump
+///
+/// > **AUTHOR, 2026-09-20:** *"makes sense cause it's a lot of commands to
+/// > push."*
+///
+/// The dictionary is 1,106 rows and the observed push carried **2**. The
+/// author's reasoning is the load-bearing argument here; the single
+/// observation is consistent with it but does not prove it alone, and only
+/// one push has ever been captured. So the merge is **additive** -- see
+/// `cena-model`'s menu store for why that is the safe direction to be wrong
+/// in either way.
+///
+/// # It arrives mid-session
+///
+/// MEASURED: 85 lines after `<endSetup/>`, not in the login burst -- a third
+/// independent confirmation of the correction `plan/15` §1a records about the
+/// wiki's "at login" claim, this time from a different client entirely.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CmdListUpdate {
+    /// The rows the server sent, in wire order.
+    pub entries: Vec<CmdListEntry>,
+}
+
 /// A context menu the game returned for one object.
 ///
 /// # What a menu is, and why it carries no labels

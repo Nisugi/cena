@@ -65,7 +65,7 @@ pub mod vitals;
 pub use character::{Character, Experience, Injury};
 pub use inventory::{Container, Inventory};
 pub use inventory_snapshot::InventorySnapshot;
-pub use menu::{MenuCommand, MenuCommands, ResolvedItem};
+pub use menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem};
 pub use nouns::{Found, Where};
 pub use objectives::Objectives;
 pub use room::{PlayerStatus, Room, RoomItem};
@@ -114,6 +114,9 @@ pub struct GameState {
     pub vitals: Vitals,
     /// The quest and bounty list (`<objectives>`).
     pub objectives: Objectives,
+    /// Dictionary rows the server has taught us this session
+    /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
+    pub learned_commands: LearnedCommands,
     /// The whole-inventory snapshot (`<inventoryManager>`).
     ///
     /// Distinct from [`Self::inventory`], which is the passive container
@@ -243,6 +246,7 @@ impl PartialEq for GameState {
             character,
             inventory,
             inventory_snapshot,
+            learned_commands,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -259,6 +263,7 @@ impl PartialEq for GameState {
             && vitals == &other.vitals
             && objectives == &other.objectives
             && inventory_snapshot == &other.inventory_snapshot
+            && learned_commands == &other.learned_commands
             && status == &other.status
             && effects == &other.effects
             && game_time == &other.game_time
@@ -518,6 +523,8 @@ impl GameState {
             }
             // Both inventory responses, moved down under Rule 4.1: this
             // function was at 113 of 100 lines.
+            Frame::CmdListUpdate(update) => self.learned_commands.apply(&update.entries),
+            Frame::CmdTimestamp { version } => self.learned_commands.set_version(version),
             Frame::InventoryManager(_) | Frame::InventoryViewItem(_) => {
                 self.apply_inventory(frame);
             }

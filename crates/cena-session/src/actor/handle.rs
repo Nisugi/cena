@@ -75,6 +75,7 @@ impl<S: ByteSource> Session<S> {
                 recorder: Recorder::new(),
                 sink: None,
                 combat: None,
+                menu_dir: None,
                 combat_refusals_logged: 0,
                 cancel: cancel.clone(),
                 generation: generation.get(),
@@ -103,6 +104,29 @@ impl<S: ByteSource> Session<S> {
     #[must_use]
     pub fn with_sink(mut self, sink: SessionSink) -> Self {
         self.actor.sink = Some(sink);
+        self
+    }
+
+    /// Persist learned menu-command rows under `dir`.
+    ///
+    /// Separate from [`Session::new`] for the reason [`Session::with_sink`]
+    /// is: no test wants a file, and a required argument would have them all
+    /// passing `None`.
+    ///
+    /// The file is written **the moment a `<cmdlist>` push arrives**, which is
+    /// what Lich does for the same kind of fact (`infomon.rb:211-217` queues
+    /// the write inside `set`, per value, rather than saving at logout). Lich
+    /// drains those through a background thread because a sync writes
+    /// thousands of values; a push was MEASURED at once in a month of logs, so
+    /// the write is direct. If pushes ever turn out to be frequent, that queue
+    /// is the known fix.
+    ///
+    /// `dir` is a directory rather than a path because the dictionary is
+    /// **global**: every character receives the same push, so all sessions in
+    /// a process share one file. See [`crate::menu_store`].
+    #[must_use]
+    pub fn with_menu_store(mut self, dir: std::path::PathBuf) -> Self {
+        self.actor.menu_dir = Some(dir);
         self
     }
 

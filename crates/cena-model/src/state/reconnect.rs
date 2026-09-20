@@ -64,6 +64,7 @@
 //! | `streams`, `pending`, `chunk` | **cleared** | half a sentence nobody will finish; the next connection's bytes are not a continuation |
 //! | `inventory` | **cleared** | see its own comment: container CONTENTS are not re-sent, and Lich drops them for the same reason |
 //! | `inventory_snapshot` | kept | a logged-off character gains and loses nothing; it is not in the login burst, and it is point-in-time by contract either way |
+//! | `learned_commands` | kept | what a menu coordinate MEANS is a fact about the game, and the push is not repeated on reconnect |
 //!
 //! The three that remain cleared have nothing to do with elapsed game time.
 //! Two are facts about the dead connection, and one is a local clock that
@@ -154,6 +155,7 @@ impl GameState {
             character,
             inventory,
             inventory_snapshot,
+            learned_commands,
         } = self;
 
         // --- KEPT: a logged-off character is out of the world -------------
@@ -210,6 +212,14 @@ impl GameState {
         // Contrast `inventory`, the passive container model, which IS
         // cleared: it mirrors windows the server reopens on login.
         let _ = inventory_snapshot;
+
+        // Dictionary rows the server taught us. A fact about the GAME -- what
+        // the coordinate 2524,12785 means -- not about the connection, and
+        // the push is not repeated on reconnect: it arrives when the server
+        // decides the client is behind. Clearing it would silently drop back
+        // to the shipped table's older copy of a row the server has since
+        // changed.
+        let _ = learned_commands;
 
         // An absolute server epoch: a roundtime that ends at server second N
         // ends at N whether or not the socket survived. §5.2 forbids reporting

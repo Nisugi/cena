@@ -313,6 +313,20 @@ pub struct SessionActor<S: ByteSource> {
     /// The combat recorder's queue, if one is attached. `Option` for the
     /// reason `sink` is: a session without one is otherwise identical.
     combat: Option<crate::combat_recorder::worker::RecorderHandle>,
+    /// Where the learned menu dictionary is written, if anywhere.
+    ///
+    /// **`Option`, for the reason `sink` is**: a session without one behaves
+    /// exactly as it did before this existed, which is what leaves every
+    /// existing test untouched. The binary attaches one; tests do not.
+    ///
+    /// The file is GLOBAL rather than per-session -- a coordinate's meaning is
+    /// a fact about the game, and every character receives the same push -- so
+    /// this is a directory, not a path, and two sessions in one process write
+    /// the same file. That is safe because the write is atomic
+    /// (`menu_store::save`'s temp-then-rename) and because both sessions merge
+    /// with what is on disk before writing, so the later write cannot drop the
+    /// earlier one's rows.
+    menu_dir: Option<std::path::PathBuf>,
     /// Recorder refusals already written to the log, so the log says when
     /// the count MOVES rather than once per dropped chunk.
     combat_refusals_logged: u64,
@@ -414,6 +428,7 @@ impl<S: ByteSource> SessionActor<S> {
             recorder,
             sink,
             combat,
+            menu_dir: None,
             combat_refusals_logged: 0,
             cancel,
             generation,

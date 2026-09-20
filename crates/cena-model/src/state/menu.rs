@@ -84,7 +84,7 @@
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-use cena_protocol::{Menu, MenuItem};
+use cena_protocol::{CmdListEntry, Menu, MenuItem};
 
 const MENU_COMMANDS_TSV: &str = include_str!("../../data/menu_commands.tsv");
 
@@ -155,9 +155,137 @@ pub struct ResolvedItem {
     pub needs_secondary: bool,
 }
 
+/// Dictionary rows the SERVER taught us, layered over the shipped table.
+///
+/// # Why an overlay and not an edit
+///
+/// The shipped table is `include_str!`'d into the binary, so a running
+/// process cannot write to it -- the path does not exist on a user's machine.
+/// Learned rows therefore have to live somewhere else whatever one's
+/// preference, and this is that place.
+///
+/// It is also a mutable thing, which the shipped table deliberately is not:
+/// `plan/05` Rule 5.2 forbids mutable process globals, so the static holding
+/// the baseline is immutable and this rides beside it, owned by whoever holds
+/// the session rather than by the process.
+///
+/// # The merge is additive
+///
+/// A `<cmdlist>` push is a DELTA, not a full dump:
+///
+/// > **AUTHOR, 2026-09-20:** *"makes sense cause it's a lot of commands to
+/// > push."*
+///
+/// The dictionary is 1,106 rows and the one captured push carried 2, which is
+/// consistent with that but does not prove it alone -- only one push has ever
+/// been observed. So rows are ADDED and never removed, which is the safe
+/// direction under either reading: if it is a delta, adding is correct; if it
+/// were ever a full dump, the cost is a stale row for a coordinate the server
+/// no longer sends, and a coordinate the server does not send never appears
+/// in a `<menu>` to be resolved.
+///
+/// A row that repeats a coordinate REPLACES it. The server is the authority
+/// on what a coordinate means, including when it changes meaning, and both
+/// captured rows were already byte-identical to the shipped table -- so
+/// replacement is what keeps a genuine change from being ignored.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct LearnedCommands {
+    entries: BTreeMap<String, MenuCommand>,
+    version: Option<String>,
+}
+
+impl LearnedCommands {
+    /// Absorb one `<cmdlist>` push.
+    pub fn apply(&mut self, entries: &[CmdListEntry]) {
+        let rows: Vec<MenuCommand> = entries
+            .iter()
+            .map(|entry| MenuCommand {
+                coord: entry.coord.clone(),
+                label: entry.label.clone(),
+                command: entry.command.clone(),
+                category: entry.category.clone(),
+            })
+            .collect();
+        self.absorb(&rows);
+    }
+
+    /// Absorb rows that are already [`MenuCommand`]s.
+    ///
+    /// The same merge as [`apply`], for rows that did not arrive as a
+    /// `<cmdlist>` -- reading back the supplemental file a previous session
+    /// wrote, whose rows came from the wire but not from *this* connection.
+    ///
+    /// Both paths go through here so the rule cannot drift between them: a
+    /// coordinate REPLACES, and an empty coordinate is skipped because it is
+    /// the key and a row without one could never be looked up.
+    ///
+    /// [`apply`]: Self::apply
+    pub fn absorb(&mut self, rows: &[MenuCommand]) {
+        for row in rows {
+            if row.coord.is_empty() {
+                continue;
+            }
+            self.entries.insert(row.coord.clone(), row.clone());
+        }
+    }
+
+    /// Record the dictionary version from `<cmdtimestamp>`.
+    pub fn set_version(&mut self, version: &str) {
+        if !version.is_empty() {
+            self.version = Some(version.to_owned());
+        }
+    }
+
+    /// The dictionary version the server last stated.
+    ///
+    /// `None` until one arrives. The shipped table's own version is not
+    /// assumed here: it is a property of the file, and claiming it as the
+    /// session's would make a stale cache look current.
+    #[must_use]
+    pub fn version(&self) -> Option<&str> {
+        self.version.as_deref()
+    }
+
+    /// One learned row.
+    #[must_use]
+    pub fn entry(&self, coord: &str) -> Option<&MenuCommand> {
+        self.entries.get(coord)
+    }
+
+    /// Every learned row, in coordinate order.
+    pub fn all(&self) -> impl Iterator<Item = &MenuCommand> {
+        self.entries.values()
+    }
+
+    /// How many rows have been learned.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Whether nothing has been learned.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Rows that differ from the shipped table, or are absent from it.
+    ///
+    /// What a supplemental file needs to carry, and what a person folding
+    /// updates back into the shipped TSV would want to look at: a row
+    /// identical to the baseline is noise.
+    pub fn novel(&self) -> impl Iterator<Item = &MenuCommand> {
+        let shipped = MenuCommands::get();
+        self.entries
+            .values()
+            .filter(move |row| shipped.entry(&row.coord) != Some(*row))
+    }
+}
+
 /// The command dictionary, keyed by coordinate.
 pub struct MenuCommands {
     by_coord: BTreeMap<String, MenuCommand>,
+    version: Option<String>,
 }
 
 fn dictionary() -> &'static MenuCommands {
@@ -167,8 +295,19 @@ fn dictionary() -> &'static MenuCommands {
 
 fn build() -> MenuCommands {
     let mut by_coord = BTreeMap::new();
-    for line in MENU_COMMANDS_TSV.lines().skip(1) {
-        if line.trim().is_empty() {
+    let mut version = None;
+    for line in MENU_COMMANDS_TSV.lines() {
+        // The `<cmdtimestamp>` this table was cut at. Carried IN the file
+        // rather than in a comment in this source, because it is a property
+        // of the data: a release that folds learned rows in updates the file,
+        // and a version that lived here would have to be edited in lockstep
+        // by whoever remembered to.
+        if let Some(stamp) = line.strip_prefix("# cmdtimestamp	") {
+            version = Some(stamp.trim().to_owned());
+            continue;
+        }
+        if line.trim().is_empty() || line.starts_with('#') || line == "coord	label	command	category"
+        {
             continue;
         }
         let cols: Vec<&str> = line.split('\t').collect();
@@ -187,10 +326,23 @@ fn build() -> MenuCommands {
             },
         );
     }
-    MenuCommands { by_coord }
+    MenuCommands { by_coord, version }
 }
 
 impl MenuCommands {
+    /// The `<cmdtimestamp>` version the shipped table was cut at.
+    ///
+    /// `None` only if the file lost its version line, which
+    /// `the_shipped_table_states_its_version` fails on.
+    ///
+    /// This is the **baseline** of the staleness chain: a release that folds
+    /// learned rows into this file advances it, and the supplemental file is
+    /// then discardable up to that point.
+    #[must_use]
+    pub fn version(&self) -> Option<&str> {
+        self.version.as_deref()
+    }
+
     /// The dictionary.
     #[must_use]
     pub fn get() -> &'static Self {
@@ -246,7 +398,7 @@ impl MenuCommands {
         Some(substitute(&entry.command, noun, exist, secondary))
     }
 
-    /// Resolve one wire item.
+    /// Resolve one wire item, consulting what the server has taught us first.
     ///
     /// An unknown coordinate resolves to an item with no label and no
     /// command rather than to nothing: the game sent it, so the player has
@@ -258,9 +410,15 @@ impl MenuCommands {
         item: &MenuItem,
         exist: &str,
         secondary: Option<&str>,
+        learned: Option<&LearnedCommands>,
     ) -> ResolvedItem {
         let coord = item.coord.clone().unwrap_or_default();
-        let entry = self.entry(&coord);
+        // **The server's row wins.** A `<cmdlist>` push is the game stating
+        // what a coordinate means now; the shipped table is a cache of older
+        // pushes, and can only be staler.
+        let entry = learned
+            .and_then(|l| l.entry(&coord))
+            .or_else(|| self.entry(&coord));
         // The wire's noun is the object's own; the dictionary's `@` is a
         // slot for it.
         let noun = item.noun.as_deref().unwrap_or_default();
@@ -291,10 +449,16 @@ impl MenuCommands {
     /// answers *which request is this* and never *which object*. The object
     /// is whatever the player right-clicked, which only the caller knows.
     #[must_use]
-    pub fn resolve(&self, menu: &Menu, exist: &str, secondary: Option<&str>) -> Vec<ResolvedItem> {
+    pub fn resolve(
+        &self,
+        menu: &Menu,
+        exist: &str,
+        secondary: Option<&str>,
+        learned: Option<&LearnedCommands>,
+    ) -> Vec<ResolvedItem> {
         menu.items
             .iter()
-            .map(|item| self.resolve_item(item, exist, secondary))
+            .map(|item| self.resolve_item(item, exist, secondary, learned))
             .collect()
     }
 
@@ -315,10 +479,11 @@ impl MenuCommands {
         menu: &Menu,
         exist: &str,
         secondary: Option<&str>,
+        learned: Option<&LearnedCommands>,
     ) -> Vec<(Option<String>, Vec<ResolvedItem>)> {
         let mut groups: BTreeMap<Option<String>, Vec<ResolvedItem>> = BTreeMap::new();
         let mut seen: Vec<Option<String>> = Vec::new();
-        for item in self.resolve(menu, exist, secondary) {
+        for item in self.resolve(menu, exist, secondary, learned) {
             let key = item.category.clone();
             if !groups.contains_key(&key) {
                 seen.push(key.clone());

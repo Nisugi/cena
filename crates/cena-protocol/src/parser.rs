@@ -466,5 +466,10 @@ fn is_paired(tag: &str) -> bool {
             // they degraded to `Structural` with every attribute trapped in a
             // raw string. MEASURED: 5,364 rows lost across 36 snapshots.
             | "inventoryManager"
+            // The server teaching us dictionary rows. Without this each
+            // `<cli>` tokenizes separately into `WindowHints` -- carrying its
+            // attributes, so nothing was lost, but arriving with nothing to
+            // join them to.
+            | "cmdlist"
     )
 }

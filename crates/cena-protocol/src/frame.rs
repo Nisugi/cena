@@ -46,11 +46,11 @@
 //!
 //! # The arithmetic, stated so it can be checked
 //!
-//! This enum has **51** variants:
+//! This enum has **53** variants:
 //!
 //! ```text
 //! $ awk '/^pub enum Frame \{/,/^\}/' src/frame.rs | grep -oE '^    [A-Z][A-Za-z0-9]*' | sort -u | wc -l
-//! 51
+//! 53
 //! ```
 //!
 //! (`sort -u` is load-bearing: `ActiveEffect` is both a variant name and the
@@ -61,7 +61,7 @@
 //! PR-13). The missing one is `Structural`, a Cena addition the arithmetic
 //! below never counted (`grep -c Structural` over Vellum's parser: 0).
 //!
-//! `63 - 5 - 5 - 7 + 5 = 51`, where:
+//! `63 - 5 - 5 - 7 + 7 = 53`, where:
 //!
 //! - **-5 not-wire variants**, each named above: `VellumImage`,
 //!   `VellumCommand`, `VellumTimer`, `Event`, `LichWebUI`.
@@ -94,14 +94,17 @@
 //!   puts it above this crate; `ClearActiveEffects` is what
 //!   [`Frame::ClearDialogData`] already emits now that `clear='t'` is read on
 //!   the open tag.
-//! - **+5 Cena adds**: [`Frame::UnknownTag`] and [`Frame::MalformedTag`], both
+//! - **+7 Cena adds**: [`Frame::UnknownTag`] and [`Frame::MalformedTag`], both
 //!   mandated by Rule 2.2; [`Frame::ClientCommand`] and
 //!   [`Frame::ClientSettings`], which the gated corpus replay found in real
 //!   traffic that Vellum's vocabulary does not name; and
 //!   [`Frame::Structural`], which types the tags that carry no payload of
 //!   their own so Rule 2.2's "nothing is silently dropped" holds for them too.
 //!   This read `+4` and omitted `Structural`, which is where the 50 came
-//!   from.
+//!   from. It then read `+5`, before [`Frame::CmdListUpdate`] and
+//!   [`Frame::CmdTimestamp`] were added: the extended feed pushes dictionary
+//!   rows that Vellum never typed, because Vellum reads the `<menu>` and not
+//!   the `<cmdlist>` that keeps its labels current.
 //!
 //! One variant is renamed rather than changed (`LaunchURL` ->
 //! [`Frame::LaunchUrl`]), which nets to zero. Every dropped variant is
@@ -131,9 +134,9 @@ use crate::runs::Runs;
 mod payload;
 
 pub use payload::{
-    ActiveEffect, Amount, Capacity, Continuation, DialogWidgets, InventoryItem, InventoryResponse,
-    ItemDetail, ItemView, Link, LinkKind, Menu, MenuItem, Objective, ObjectivesAction, ProgressBar,
-    RoomMeta, Style, TextFrame,
+    ActiveEffect, Amount, Capacity, CmdListEntry, CmdListUpdate, Continuation, DialogWidgets,
+    InventoryItem, InventoryResponse, ItemDetail, ItemView, Link, LinkKind, Menu, MenuItem,
+    Objective, ObjectivesAction, ProgressBar, RoomMeta, Style, TextFrame,
 };
 
 /// Attribute bag: name/value pairs exactly as the wire spelled them.
@@ -320,6 +323,18 @@ pub enum Frame {
     /// line (`GSIV-Nisugi/2026/09/2026-09-20_12-19-45.xml:267`) -- so the
     /// envelope is assembled here, as `<component>` is.
     MenuResponse(Menu),
+    /// `<cmdlist>`: dictionary rows the server is teaching us.
+    ///
+    /// One frame carrying its `<cli>` children, for the same reason
+    /// [`Frame::MenuResponse`] is: the rows are the payload, and they used to
+    /// arrive as separate `WindowHints` bags that nothing joined.
+    CmdListUpdate(CmdListUpdate),
+    /// `<cmdtimestamp data=>`: the dictionary version the server just sent.
+    ///
+    /// Separate from [`Frame::CmdListUpdate`] because the wire sends it as a
+    /// separate tag, and because it is meaningful alone: a timestamp with no
+    /// rows says the client is already current.
+    CmdTimestamp { version: String },
 
     // --- dialogs and quickbar ---------------------------------------------
     /// `<switchQuickBar id=>`.

@@ -222,13 +222,13 @@ mod resolving_a_real_menu {
 
     #[test]
     fn every_item_survives_resolution() {
-        let items = MenuCommands::get().resolve(&menu(REAL_MENU), EXIST, None);
+        let items = MenuCommands::get().resolve(&menu(REAL_MENU), EXIST, None, None);
         assert_eq!(items.len(), 4, "the menu the game sent, entire");
     }
 
     #[test]
     fn a_known_coordinate_is_fully_resolved() {
-        let items = MenuCommands::get().resolve(&menu(REAL_MENU), EXIST, None);
+        let items = MenuCommands::get().resolve(&menu(REAL_MENU), EXIST, None, None);
         let attack = &items[0];
         assert_eq!(attack.label.as_deref(), Some("attack"));
         assert_eq!(attack.command.as_deref(), Some("attack #121654846"));
@@ -245,7 +245,7 @@ mod resolving_a_real_menu {
         // Dropping the item would silently shorten the player's menu, which
         // is Rule 2.2's whole point. A visibly unnamed entry is the honest
         // failure.
-        let items = MenuCommands::get().resolve(&menu(REAL_MENU), EXIST, None);
+        let items = MenuCommands::get().resolve(&menu(REAL_MENU), EXIST, None, None);
         let unknown = items.iter().find(|i| i.coord == "9999,9999").expect("kept");
         assert_eq!(unknown.label, None);
         assert_eq!(unknown.command, None);
@@ -263,12 +263,12 @@ mod resolving_a_real_menu {
             r#"<mi coord="2524,1543"/>"#, // attack #
             r#"</menu>"#,
         ));
-        let items = MenuCommands::get().resolve(&m, EXIST, None);
+        let items = MenuCommands::get().resolve(&m, EXIST, None, None);
         assert!(items[0].needs_secondary, "transfer wants a second item");
         assert!(!items[1].needs_secondary, "attack does not");
 
         // ...and stops needing one once it is supplied.
-        let filled = MenuCommands::get().resolve(&m, EXIST, Some("left arm"));
+        let filled = MenuCommands::get().resolve(&m, EXIST, Some("left arm"), None);
         assert!(!filled[0].needs_secondary);
     }
 
@@ -279,7 +279,7 @@ mod resolving_a_real_menu {
         // Substituting it for `#` would send `attack #1`.
         let m = menu(REAL_MENU);
         assert_eq!(m.id, "1");
-        let items = MenuCommands::get().resolve(&m, EXIST, None);
+        let items = MenuCommands::get().resolve(&m, EXIST, None, None);
         assert_eq!(
             items[0].command.as_deref(),
             Some("attack #121654846"),
@@ -296,7 +296,7 @@ mod grouping {
         // `<menu cat_list="1 2 3 …">` is the game stating how to present
         // them, so it leads -- even though the items arrived attack-first,
         // and even though `BTreeMap` would otherwise sort "12" before "6".
-        let groups = MenuCommands::get().resolve_grouped(&menu(REAL_MENU), EXIST, None);
+        let groups = MenuCommands::get().resolve_grouped(&menu(REAL_MENU), EXIST, None, None);
         let order: Vec<Option<&str>> = groups.iter().map(|(c, _)| c.as_deref()).collect();
         assert_eq!(
             order,
@@ -307,7 +307,7 @@ mod grouping {
 
     #[test]
     fn items_stay_grouped_with_their_category() {
-        let groups = MenuCommands::get().resolve_grouped(&menu(REAL_MENU), EXIST, None);
+        let groups = MenuCommands::get().resolve_grouped(&menu(REAL_MENU), EXIST, None, None);
         let combat = groups
             .iter()
             .find(|(c, _)| c.as_deref() == Some("6"))
@@ -326,7 +326,7 @@ mod grouping {
             r#"<mi coord="2524,1543" menu_cat="2"/>"#,
             r#"</menu>"#,
         ));
-        let items = MenuCommands::get().resolve(&m, EXIST, None);
+        let items = MenuCommands::get().resolve(&m, EXIST, None, None);
         assert_eq!(items[0].category.as_deref(), Some("2"), "the wire wins");
         assert_eq!(
             MenuCommands::get()
@@ -347,7 +347,7 @@ mod grouping {
             r#"<mi coord="2524,1543" menu_cat="99"/>"#,
             r#"</menu>"#,
         ));
-        let groups = MenuCommands::get().resolve_grouped(&m, EXIST, None);
+        let groups = MenuCommands::get().resolve_grouped(&m, EXIST, None, None);
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].0.as_deref(), Some("99"));
     }
@@ -364,7 +364,7 @@ fn the_noun_disambiguates_a_repeated_coordinate() {
         r#"<mi coord="2524,1906" noun="shatter"/>"#,
         r#"</menu>"#,
     ));
-    let items = MenuCommands::get().resolve(&m, EXIST, None);
+    let items = MenuCommands::get().resolve(&m, EXIST, None, None);
     let labels: Vec<&str> = items.iter().filter_map(|i| i.label.as_deref()).collect();
     assert_eq!(labels.len(), 2);
     assert_ne!(labels[0], labels[1], "two commands, not one repeated");

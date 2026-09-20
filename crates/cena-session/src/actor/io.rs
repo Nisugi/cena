@@ -518,6 +518,40 @@ impl<S: ByteSource> SessionActor<S> {
     /// The bytes go to [`Parser::push_bytes`], never to `parse_line`: that is
     /// the read boundary, and it is what rejoins a tag split across two reads
     /// (`crates/cena-protocol/src/parser/read.rs:16-22`).
+    /// Fold this session's learned dictionary rows into the global file.
+    ///
+    /// Does nothing when no directory is configured, which is every test and
+    /// any caller that has not opted in.
+    ///
+    /// A failure is LOGGED AND SWALLOWED rather than propagated. The rows are
+    /// already in the model, so the session is correct either way; refusing to
+    /// continue playing because a cache file could not be written would be the
+    /// wrong trade. The next push retries, and `merge_and_save` re-reads the
+    /// file first, so a write that failed is not compounded by the one after.
+    fn persist_learned_commands(&mut self) {
+        let Some(dir) = self.menu_dir.clone() else {
+            return;
+        };
+        match crate::menu_store::merge_and_save(&dir, &self.state.learned_commands) {
+            // `None` is the ordinary case on a current install: the pushed
+            // rows match the shipped table, so there is nothing novel to
+            // record and no file is created.
+            Ok(None) => {}
+            Ok(Some(path)) => {
+                self.log(&format!(
+                    "learned menu commands written to {}",
+                    path.display()
+                ));
+            }
+            Err(err) => {
+                self.log(&format!(
+                    "could not write learned menu commands to {}: {err}",
+                    dir.display()
+                ));
+            }
+        }
+    }
+
     pub(super) fn ingest(&mut self, chunk: &[u8]) {
         self.recorder.inbound(chunk);
         self.log_wire(true, chunk);
@@ -576,7 +610,33 @@ impl<S: ByteSource> SessionActor<S> {
             {
                 self.queue.offer(&frame);
             }
+            // A `<cmdlist>` push is the game correcting the dictionary the
+            // shipped table caches. Written THE MOMENT IT ARRIVES rather than
+            // at disconnect:
+            //
+            // > **AUTHOR, 2026-09-20:** *"option 1 of course."*
+            //
+            // The cost is one file write on an event MEASURED at once in a
+            // month of logs, and the benefit is that a crash cannot lose rows
+            // the server may not push again -- it pushes when it decides the
+            // client is behind, not on every connection.
+            //
+            // Applied to the model FIRST, so what is written is the merged
+            // set rather than this push alone.
+            // BOTH frames, not just the rows. The wire sends `<cmdlist>`
+            // and then `<cmdtimestamp>` as separate tags, so writing on the
+            // rows alone stored them with `version: None` -- a file that
+            // cannot say which dictionary version it is current with. Found
+            // by `a_push_is_written_the_moment_it_arrives`.
+            //
+            // The timestamp frame alone is also meaningful: it is the server
+            // saying "you are up to date", and re-writing then is a no-op on
+            // a file whose rows have not changed.
+            let is_push = matches!(frame, Frame::CmdListUpdate(_) | Frame::CmdTimestamp { .. });
             let terminator = self.state.apply(&frame);
+            if is_push {
+                self.persist_learned_commands();
+            }
             let _ = self.events.send(Event::Frame(Box::new(frame)));
             if terminator {
                 // before the `send_now` early-out below: a chunk closed

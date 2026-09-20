@@ -88,7 +88,7 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // (`crates/cena-model/Cargo.toml:8`), so this is the same direction one
     // layer further; it closes no cycle and skips no layer upward. Routing it
     // through `cena-model` was the alternative and was rejected: re-exporting
-    // `Parser` and 51 `Frame` variants (measured: python over the enum body in crates/cena-protocol/src/frame.rs, counting 4-space-indented variant heads) is a pass-through facade with one
+    // `Parser` and 53 `Frame` variants (measured: python over the enum body in crates/cena-protocol/src/frame.rs, counting 4-space-indented variant heads) is a pass-through facade with one
     // caller, which Rule -1 (`plan/05` §-1) forbids.
     //
     // `cena-platform` -- the session OWNS THE SOCKET. `plan/12` §9c moves
