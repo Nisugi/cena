@@ -55,12 +55,27 @@ fn a_fully_known_session() -> GameState {
     state
 }
 
-/// The facts the login burst does **not** re-send all return to `Unknown`.
+/// The facts a new connection has not been told return to `Unknown`.
 ///
-/// MEASURED 2026-09-18, 7/7 logins: the burst carries no `nav rm`, no
-/// `compass`, no `prompt`, no hands, no `roundTime`, no `indicator` and none of
-/// the four effect dialogs (`plan/15` §2b). A reconnected session genuinely has
-/// not been told them, so `Unknown` is the only honest value.
+/// # This doc used to name the wrong rule, and two wrong facts
+///
+/// It read: *"the burst carries no `nav rm`, no `compass`, no `prompt`, no
+/// hands, no `roundTime`, no `indicator`..."* -- and **hands and `indicator`
+/// are both in the burst**. `indicator` was corrected in `reconnect.rs`
+/// (review MO-12) and not here; hands were MEASURED 2026-09-20, arriving with
+/// real contents (`plan/15` §2a.4a.3a).
+///
+/// The rule was wrong too, not just the facts:
+///
+/// > **AUTHOR, 2026-09-20:** *"The login burst is all the stuff needed to
+/// > populate the ui on login. It doesn't mean delete stuff."*
+///
+/// The burst is a UI population message. What this test actually asserts is
+/// `plan/12` §5.2's rule -- a fact that **could have changed while
+/// disconnected** is not believed on the strength of the old connection. The
+/// room can change (a character can be moved), spells tick down, the clock
+/// drifts. Hands are cleared too, and that one is merely harmless rather than
+/// necessary; see `reconnect.rs`.
 #[test]
 fn facts_the_burst_omits_return_to_unknown() {
     let mut state = a_fully_known_session();
@@ -389,5 +404,50 @@ fn persistence_and_reconnect_agree_on_what_a_command_taught() {
             .iter()
             .all(|g| !format!("{g:?}").eq_ignore_ascii_case("experience")),
         "a persisted `expr` level would be stale the moment it was written"
+    );
+}
+
+/// **What the login burst actually carries, from a real burst.**
+///
+/// The claim this file and `reconnect.rs` both rested on -- that the burst
+/// omits the hands -- was false, and neither could have caught it: the old
+/// `login_burst.xml` fixture is a partial cut with no hands, no indicators and
+/// no vitals in it at all. A fixture that cannot exhibit the fact cannot
+/// refute a claim about it.
+///
+/// `login_burst_full.xml` is cut from `<app>` onward, so it can. What it shows
+/// (MEASURED, and matching a second independent capture):
+///
+/// * hands arrive with **real contents**, not placeholders
+/// * all ten indicators arrive in one bulk declaration
+/// * `<spell>` arrives
+///
+/// # Why this test exists rather than a comment
+///
+/// > **AUTHOR, 2026-09-20:** *"The login burst is all the stuff needed to
+/// > populate the ui on login. It doesn't mean delete stuff."*
+///
+/// The burst is a UI population message, so what is in it was never the right
+/// basis for deciding what to forget. But the wrong rule was derived from two
+/// wrong facts, and facts are the part a test can pin.
+#[test]
+fn the_login_burst_carries_the_hands() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../cena-protocol/tests/fixtures/login_burst_full.xml");
+    let bytes = std::fs::read(&path).unwrap_or_default();
+    let mut parser = cena_protocol::Parser::new();
+    let mut state = GameState::default();
+    for frame in parser.push_bytes(&bytes) {
+        state.apply(&frame);
+    }
+
+    assert!(
+        state.left_hand.is_some(),
+        "the burst carries the left hand -- the old table said it did not"
+    );
+    assert!(state.right_hand.is_some(), "and the right");
+    assert!(
+        state.status.is_known("standing"),
+        "and all ten indicators, in one bulk declaration"
     );
 }

@@ -13,37 +13,53 @@
 //!
 //! | In the login burst | Absent from it |
 //! |---|---|
-//! | room description (`compDef`), ten vitals `progressBar`s, `playerID`, `inv`, layout | `nav rm`, `compass`, `prompt`, hands, `roundTime`, all four effect dialogs |
+//! | room (`compDef`), vitals `progressBar`s, `playerID`, `inv`, layout, **hands**, **`spell`**, **all ten `indicator`s** | `nav rm`, `compass`, `prompt`, `roundTime`, the four effect dialogs |
 //!
-//! **Unanimous across all seven logins.** The absent facts arrive only after
-//! the first command — they are answers to asking, not part of the login push.
+//! # The rule this file used to state was WRONG, and the author corrected it
 //!
-//! # `indicator` was in the Absent column and should not have been
+//! > **AUTHOR, 2026-09-20:** *"The login burst is all the stuff needed to
+//! > populate the ui on login. It doesn't mean delete stuff."*
 //!
-//! This table listed `indicator` as absent from the burst. `status.rs`'s
-//! header says the opposite, from the same capture, and `plan/15` §2a.4a
-//! settles it:
+//! This file said, in as many words: **"clear what the burst does not
+//! re-send."** That is not a rule about truth, it is a rule about what a fresh
+//! client needs to draw its windows -- and those are different questions. The
+//! burst is a UI population message. Absence from it is not evidence that a
+//! fact has stopped being true.
 //!
-//! > **Indicators arrive as ONE bulk declaration at login.** All ten of
-//! > Lich's `ICONMAP` ids on a single line, `IconSTANDING` the only
-//! > `visible="y"`.
+//! **The right question is: could this have changed while we were away, and
+//! would a stale value mislead?**
 //!
-//! Two measurements of one capture disagreed inside one crate, and the wrong
-//! one was load-bearing here: it is the stated reason for clearing the
-//! indicators (review MO-12).
+//! | Fact | Cleared | Because |
+//! |---|---|---|
+//! | `room` | yes | a character can be moved while disconnected |
+//! | `status`, `effects` | yes | spells tick down in real time; a stale `stunned` is exactly the belief §5.2 forbids |
+//! | `game_time` | yes | extrapolated from a local `Instant`, so a carried clock reports a server time in the future |
+//! | `idle_warning` | yes | a fact about the connection that just ended |
+//! | `streams`, `pending`, `chunk` | yes | half a sentence nobody will finish |
+//! | hands | yes | **and the old reason was false** -- see below |
+//! | `roundtime_ends` | no | an absolute server epoch; it ends when it ends |
+//! | `vitals` | no | re-sent, and clearing opens a window where health reads `Unknown` |
+//! | stats, identity | no | taught by a command; a reconnect does not change Strength |
 //!
-//! **Clearing them is still right**, for the other reason `plan/12` §5.2
-//! gives -- they are Invalidated, and a stale `stunned` surviving a
-//! reconnect is exactly the belief that rule forbids. A field the burst
-//! refills is merely cleared and immediately repopulated, which §5.2's own
-//! text calls "pointless" rather than wrong. So the behaviour is unchanged
-//! and only the justification is corrected.
+//! # Two measurements of the same capture were wrong the same way
 //!
-//! So the rule implemented here is: **clear what the burst does not re-send.**
-//! A field the burst refills would be cleared and immediately repopulated,
-//! which is merely pointless. A field the burst does *not* refill and that is
-//! left alone is a **stale belief surviving a generation**, which is the whole
-//! failure §5.2 exists to prevent.
+//! The table above used to put **hands** and **`indicator`** in the Absent
+//! column. Both are wrong, and both were caught separately rather than as one
+//! error:
+//!
+//! * `indicator` was corrected earlier (review MO-12) when `status.rs`'s
+//!   header contradicted it -- *"all ten of Lich's `ICONMAP` ids on a single
+//!   line"*.
+//! * **hands** stood until 2026-09-20. MEASURED in two independent captures,
+//!   the burst carries real contents rather than placeholders:
+//!   `<left exist="364757584" noun="gift">plain gift` and `<right>Empty`,
+//!   beside `<spell>None` and the ten indicators.
+//!
+//! Clearing the hands is still harmless -- the burst refills them in the same
+//! breath -- but it was being done for a stated reason that is false, and the
+//! **rule** derived from those two errors was load-bearing for every field in
+//! this file. That is the cost of a proxy: "is it in the burst" was easy to
+//! measure and answered a question nobody had asked.
 //!
 //! # Why Cena invalidates where Vellum does not
 //!
@@ -70,8 +86,10 @@ use super::{GameState, Room};
 impl GameState {
     /// Forget everything a new connection has not yet been told.
     ///
-    /// Called between generations, never during one. What survives is what the
-    /// login burst re-sends unprompted; everything else returns to `Unknown`.
+    /// Called between generations, never during one. What survives is what
+    /// **cannot have changed while we were away**, or what a command taught.
+    /// See the module docs: "in the login burst" is NOT the test, and this
+    /// method used to say it was.
     ///
     /// # Not `Default::default()`
     ///
@@ -126,6 +144,20 @@ impl GameState {
         // the description anyway, so nothing is lost.
         *room = Room::default();
         *prompt = None;
+
+        // **The hands, and the reason is not the one this file used to give.**
+        // The old table put them in the "absent from the burst" column;
+        // MEASURED 2026-09-20 in two captures, that is false -- the burst
+        // sends `<left exist=... >plain gift` and `<right>Empty`, real
+        // contents rather than placeholders.
+        //
+        // Cleared anyway, and only because the burst refills them immediately:
+        // a character's hands do not empty because a socket dropped, so the
+        // honest position is that this clear is POINTLESS rather than
+        // necessary (`plan/12` §5.2's own word for a field the burst refills).
+        // It is kept because "clear, then be told" has one ordering and
+        // "keep, and hope the burst agrees" has two, and the difference costs
+        // nothing here.
         *left_hand = None;
         *right_hand = None;
 

@@ -52,6 +52,11 @@ const CUTS: &[(&str, &str)] = &[
     // not the order `parser.rb` lists them in -- the clique, measured.
     ("enhtotals.src", "enhancive_totals.xml"),
     ("enhdetails.src", "enhancive_details.xml"),
+    // The REAL login burst, anchored on `<app>`, cut 2026-09-20 after the
+    // author corrected what the burst means. `login_burst.xml` is a partial
+    // cut that carries no hands, no indicators and no vitals, so it could not
+    // have supported -- or refuted -- the claim that hands are absent.
+    ("burst2.src", "login_burst_full.xml"),
 ];
 
 /// Kept in step with `tests/fixtures_are_scrubbed.rs::PSEUDONYMS`; that test

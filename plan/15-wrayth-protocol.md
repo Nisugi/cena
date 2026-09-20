@@ -687,6 +687,41 @@ single line, `IconSTANDING` the only `visible="y"`, and **no further indicator t
 seconds** -- none of the conditions changed, so none was re-sent. They are state declarations,
 not an event stream: absence means unchanged, never "not happening".
 
+**3a. CORRECTED 2026-09-20: what the burst carries, and what that does NOT mean.**
+
+`cena-model/src/state/reconnect.rs` carried a table splitting facts into "in
+the login burst" and "absent from it", citing this section. **This section
+never contained that table** -- the citation pointed at a real section that
+does not support the claim, which is the `styleIfClosed` hazard `CLAUDE.md`
+records, in the form that is harder to catch: the path resolves.
+
+MEASURED 2026-09-20 across two independent `--psm` captures, anchored on
+`<app `:
+
+| In the burst | Count |
+|---|---|
+| `<left>` / `<right>` | 1 each, with **real contents** -- `<left exist="364757584" noun="gift">plain gift`, `<right>Empty` |
+| `<spell>` | 1 (`None`) |
+| `<indicator>` | 10 |
+| `compDef` | 3-10 |
+| `progressBar` | 4-5 |
+| `<streamWindow>` | 2 |
+
+So **hands are in the burst**, and the old table put them in the absent
+column. That is the second field this same table got wrong -- `indicator` was
+the first (review MO-12) -- and the two errors together had produced a rule.
+
+**The rule was wrong, and the author said so:**
+
+> **AUTHOR, 2026-09-20:** *"The login burst is all the stuff needed to populate
+> the ui on login. It doesn't mean delete stuff."*
+
+The burst is a **UI population message**: what a fresh client needs to draw its
+windows. Absence from it is not evidence that a fact stopped being true, and
+"clear what the burst does not re-send" was a rule about rendering dressed up
+as a rule about truth. The test is whether a fact **could have changed while
+disconnected**, which is what `plan/12` §5.2 said in the first place.
+
 **4. Attribute quoting is NOT uniform.** `<indicator id="IconSTANDING" visible="y"/>` uses
 double quotes; `<roundTime value='1789775824'/>` uses single. A grep or matcher that assumes one
 form silently finds nothing -- which happened while reading this very capture, and was caught

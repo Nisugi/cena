@@ -206,7 +206,16 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
         Some(1_789_775_824),
         "an absolute server epoch survives the reconnect"
     );
-    assert_eq!(end.state.left_hand, None, "hands are Unknown");
+    // **Cleared, but NOT because the burst omits them.** This said "hands are
+    // Unknown", which read as "the burst does not re-send them". MEASURED
+    // 2026-09-20: it does, with real contents -- `<left exist=...>plain gift`,
+    // `<right>Empty` (`plan/15` §2a.4a.3a). The clear is harmless rather than
+    // necessary; a character's hands do not empty because a socket dropped.
+    // Asserted so the behaviour is pinned, with the reason stated correctly.
+    assert_eq!(
+        end.state.left_hand, None,
+        "hands are cleared, then refilled"
+    );
     assert_eq!(end.state.right_hand, None);
     assert_eq!(end.state.room.id, None, "the room id is Unknown");
     assert_eq!(
