@@ -42,6 +42,7 @@ pub mod bounty;
 pub mod character;
 pub mod chunks;
 mod clock;
+pub mod gameobj;
 mod idle;
 mod inventory;
 mod nouns;

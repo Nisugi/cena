@@ -357,6 +357,58 @@ because that is the behaviour; only the label differs.
 
 ---
 
+## 10. `GameObj`'s classifier has two matcher arms that cannot fire
+
+Found 2026-09-20 while porting `GameObj#type` / `#sellable`.
+`matching_data_keys` (`lib/common/gameobj.rb:1504-1512`) is the whole rule:
+
+```ruby
+matches = (@name =~ entry[:name] || @noun =~ entry[:noun] || obj_full_name =~ entry[:full_name])
+excluded = entry[:exclude] && @name =~ entry[:exclude]
+matches && !excluded
+```
+
+MEASURED against the transcribed data (`cena-model/data/gameobj-data.tsv`,
+113 rows from `gameobj-data.xml`):
+
+| Field | Rows | Read by the matcher? |
+|---|---|---|
+| `name` | 62 | yes |
+| `noun` | 26 | yes |
+| `exclude` | 23 | yes, as a veto |
+| `suffix` | 2 | **no** |
+| `full_name` | **0** | yes, but nothing declares one |
+
+**`suffix` is declared and never read.** Two rows carry `^(s)$` -- plural
+matching for the `furrier` sellable and the `skin` type -- and
+`matching_data_keys` inspects `:name`, `:noun`, `:full_name` and `:exclude`
+only. Whatever those rows were meant to do, they do nothing.
+
+**`full_name` is read and never declared.** The arm exists and the data has no
+`<full_name>` element, so it cannot fire. It is not dead code in the ordinary
+sense -- a future data file could populate it -- but as shipped it is a
+`Regexp` match against `nil` on every candidate.
+
+Neither is a defect with a visible symptom, which is why both are recorded
+rather than fixed: implementing a `suffix` matcher would be **inventing**
+behaviour, not porting it, and the port cannot know what plural matching was
+supposed to mean.
+
+Cena's port skips `suffix` rows explicitly and counts them
+(`ObjectTypes::skipped()` returns exactly 2), so the deliberate omission is
+distinguishable from a pattern that failed to compile.
+
+### 10a. Not a defect: the exclude veto reads the name after a noun match
+
+`:1509` tests `@name =~ entry[:exclude]` unconditionally, so a category
+matched via its **noun** is still vetoed by a **name** pattern. That reads
+like an oversight and is load-bearing: `alchemy equipment` matches the noun
+`mortar` and excludes the name `small blue clay mortar`, which only works
+because the veto is not scoped to the arm that matched. Ported as written,
+with a test.
+
+---
+
 ## 8. Already recorded elsewhere
 
 These were found earlier in M3 and are carried here so the list is in one place.
