@@ -23,6 +23,7 @@ pub mod status;
 
 pub use effects::{Effect, Effects};
 pub use state::character::blocks::InfoReport;
+pub use state::character::psm::{AscensionTable, PsmLine, PsmRanks, PsmSet};
 pub use state::character::skills::{Skill, SkillKind, SkillLine, SkillSet};
 pub use state::character::stats::{Identity, Stat, StatKind, StatLine, StatValue};
 pub use state::character::vocabulary::{

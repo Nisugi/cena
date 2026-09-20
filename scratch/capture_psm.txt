@@ -1,0 +1,60 @@
+Commands to capture the PSM / ascension tables
+==============================================
+
+Run these in the game with Lich logging on, then tell me the log filename.
+Pause a beat between each so the blobs do not run together.
+
+The five PSMs
+-------------
+    cman list all all
+    feat list all all
+    armor list all all
+    shield list all all
+    weapon list all all
+
+Ascension (not a PSM -- see below)
+----------------------------------
+    ascension list all all
+
+Why each one matters
+--------------------
+
+**All five PSMs, not just cman.** I have only a `cman list` capture, and it
+was the filtered form (`Availability: profession`), so it shows just what this
+character can learn. Every shape below was generalised from that one table and
+needs checking against the others:
+
+  - whether the six columns are always the same six
+  - whether `Category` / `Subcategory` are ever populated for the others
+    (cman fills them only for guild skills -- "Warrior Guild", "Rogue Guild")
+  - whether the 20-character truncation of the Skill column is uniform
+
+**`list all all`, which I had not seen.** Plain `cman list` filters to
+profession availability. The doubled `all` should lift that, giving the full
+vocabulary rather than one character's slice -- which is what a port needs,
+since the table has to parse for every profession, not just a ranger's.
+
+**Ascension is the one I most need.** MEASURED in the 2025-03 archive file:
+
+    <Name>, your Ascension Abilities are as follows:     <- what I have
+    <Name>, the following ... are available:             <- what PSMs print
+
+Ascension used the `as follows:` header and had **no** `Subcategory: all`
+terminator -- it just ended at `<output class=""/>`. Lich's parser only
+matches the `available:` form, so if `ascension list all all` also prints
+`as follows:`, Lich has never stored ascension ranks at all and the port
+should not copy that. If it prints `available:`, then the archive capture was
+`asc info`, a different command, and both forms are real.
+
+This is also the open hazard `plan/15` §2b.2 flagged: across five archive
+files, "the following Ascension Abilities are available:" appears **zero**
+times. We have never captured one.
+
+Optional, if it is no trouble
+-----------------------------
+    cman list
+    ascension info
+
+The unfiltered/filtered pair would confirm that the `list all all` suffix
+changes only which rows appear and not the table's shape -- worth one line of
+evidence rather than an assumption.

@@ -1,0 +1,41 @@
+<!-- CLIENT --><c>cman list<!-- ENDCLIENT -->
+<a exist="-10966483" noun="Ashryn">Ashryn</a>, the following Combat Maneuvers are available:
+
+<output class="mono"/>
+  Skill                Mnemonic        Ranks Type           Category        Subcategory
+  -------------------------------------------------------------------------------------
+  Acrobat's Leap       <d cmd='cman HELP acrobatsleap'>acrobatsleap</d>    0/1   <d cmd='cman LIST passive'>Passive</d>                                        
+<pushBold/>  Combat Focus         <d cmd='cman HELP focus'>focus</d>           5/5   <d cmd='cman LIST passive'>Passive</d>                                        
+<popBold/><pushBold/>  Combat Movement      <d cmd='cman HELP cmovement'>cmovement</d>       5/5   <d cmd='cman LIST passive'>Passive</d>                                        
+<popBold/><pushBold/>  Combat Toughness     <d cmd='cman HELP toughness'>toughness</d>       3/3   <d cmd='cman LIST passive'>Passive</d>                                        
+<popBold/>  Cunning Defense      <d cmd='cman HELP cdefense'>cdefense</d>        0/5   <d cmd='cman LIST passive'>Passive</d>                                        
+  Dirtkick             <d cmd='cman HELP dirtkick'>dirtkick</d>        0/5   <d cmd='cman LIST setup'>Setup</d>                                          
+<pushBold/>  Disarm Weapon        <d cmd='cman HELP disarm'>disarm</d>          5/5   <d cmd='cman LIST setup'>Setup</d>          Warrior Guild                   
+<popBold/>  Dislodge             <d cmd='cman HELP dislodge'>dislodge</d>        0/5   <d cmd='cman LIST setup'>Setup</d>                                          
+  Exsanguinate         <d cmd='cman HELP exsanguinate'>exsanguinate</d>    0/5   <d cmd='cman LIST attack'>Attack</d>                                         
+  Feint                <d cmd='cman HELP feint'>feint</d>           0/5   <d cmd='cman LIST setup'>Setup</d>          Warrior Guild                   
+  Garrote              <d cmd='cman HELP garrote'>garrote</d>         0/5   <d cmd='cman LIST concentration'>Concentration</d>                                  
+  Groin Kick           <d cmd='cman HELP gkick'>gkick</d>           0/5   <d cmd='cman LIST setup'>Setup</d>                                          
+<pushBold/>  Hamstring            <d cmd='cman HELP hamstring'>hamstring</d>       4/5   <d cmd='cman LIST setup'>Setup</d>                                          
+<popBold/>  Leap Attack          <d cmd='cman HELP leapattack'>leapattack</d>      0/1   <d cmd='cman LIST attack'>Attack</d>                                         
+<pushBold/>  Precision            <d cmd='cman HELP precision'>precision</d>       2/2   <d cmd='cman LIST passive'>Passive</d>                                        
+<popBold/><pushBold/>  Retreat              <d cmd='cman HELP retreat'>retreat</d>         3/5   <d cmd='cman LIST buff'>Buff</d>                                           
+<popBold/>  Shield Bash          <d cmd='cman HELP sbash'>sbash</d>           0/5   <d cmd='cman LIST setup'>Setup</d>                                          
+  Side by Side         <d cmd='cman HELP sidebyside'>sidebyside</d>      0/5   <d cmd='cman LIST passive'>Passive</d>                                        
+<pushBold/>  Spell Thieve         <d cmd='cman HELP sthieve'>sthieve</d>         5/5   <d cmd='cman LIST setup'>Setup</d>                                          
+<popBold/>  Spike Focus          <d cmd='cman HELP spikefocus'>spikefocus</d>      0/2   <d cmd='cman LIST passive'>Passive</d>                                        
+  Spin Attack          <d cmd='cman HELP sattack'>sattack</d>         0/5   <d cmd='cman LIST attack'>Attack</d>         Warrior Guild                   
+  Stance Perfection    <d cmd='cman HELP stance'>stance</d>          0/2   <d cmd='cman LIST passive'>Passive</d>        Warrior Guild                   
+  Sweep                <d cmd='cman HELP sweep'>sweep</d>           0/5   <d cmd='cman LIST setup'>Setup</d>          Rogue Guild                     
+  Trip                 <d cmd='cman HELP trip'>trip</d>            0/5   <d cmd='cman LIST setup'>Setup</d>                                          
+  True Strike          <d cmd='cman HELP truestrike'>truestrike</d>      0/5   <d cmd='cman LIST attack'>Attack</d>                                         
+<pushBold/>  Unarmed Specialist   <d cmd='cman HELP unarmedspec'>unarmedspec</d>     1/1   <d cmd='cman LIST passive'>Passive</d>                                        
+<popBold/>  Vault Kick           <d cmd='cman HELP vaultkick'>vaultkick</d>       0/5   <d cmd='cman LIST setup'>Setup</d>                                          
+
+The output listed above was generated based on the following filters:
+  Availability: profession
+          Type: all
+      Category: all
+   Subcategory: all
+<output class=""/>
+<prompt time="1742469737">&gt;</prompt>

@@ -302,9 +302,18 @@ impl fmt::Display for Warcry {
     }
 }
 
-/// The six categories of player-skill mnemonic.
+/// The five PSM categories.
 ///
-/// Each has its own `<category> list all` command and its own rank table.
+/// > **AUTHOR, 2026-09-19:** *"there's a few .. cman, shield, weapon, armor,
+/// > feat are psms"*
+///
+/// This enum had **six** variants, including `Ascension`, taken from
+/// `infomon/cli.rb`'s sync list where six `<x> list all` commands sit together.
+/// That grouping is Lich's sync convenience, not the game's taxonomy, and the
+/// wire agrees with the author -- see [`AscensionTable`](super::psm::AscensionTable) for the three ways
+/// ascension's output differs.
+///
+/// Each PSM has its own `<category> list all` command and its own rank table.
 ///
 /// **The header phrase and the key prefix differ**, and not uniformly:
 /// "Combat Maneuvers" is stored under `cman`. Lich maps between them with a
@@ -313,7 +322,6 @@ impl fmt::Display for Warcry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PsmCategory {
     Armor,
-    Ascension,
     CombatManeuver,
     Feat,
     Shield,
@@ -322,9 +330,8 @@ pub enum PsmCategory {
 
 impl PsmCategory {
     /// Every category.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 5] = [
         Self::Armor,
-        Self::Ascension,
         Self::CombatManeuver,
         Self::Feat,
         Self::Shield,
@@ -336,7 +343,6 @@ impl PsmCategory {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Armor => "armor",
-            Self::Ascension => "ascension",
             Self::CombatManeuver => "cman",
             Self::Feat => "feat",
             Self::Shield => "shield",
@@ -352,7 +358,6 @@ impl PsmCategory {
     pub const fn heading(self) -> &'static str {
         match self {
             Self::Armor => "Armor Specializations",
-            Self::Ascension => "Ascension Abilities",
             Self::CombatManeuver => "Combat Maneuvers",
             Self::Feat => "Feats",
             Self::Shield => "Shield Specializations",

@@ -197,9 +197,15 @@ fn a_warcry_knows_both_of_the_names_lich_stores_it_under() {
 #[test]
 fn psm_categories_match_the_wire_alternation() {
     // The KEY prefix, which is what `Infomon.get("cman.x")` uses.
+    //
+    // **FIVE, not six.** This listed `ascension` between `armor` and `cman`,
+    // because `infomon/cli.rb`'s sync issues six `<x> list all` commands
+    // together and I read that grouping as the game's taxonomy. It is Lich's
+    // sync convenience. See `a_psm_categorys_heading_is_not_its_key` for the
+    // author's correction and the three ways the wire agrees with it.
     check(
         &PsmCategory::ALL,
-        &["armor", "ascension", "cman", "feat", "shield", "weapon"],
+        &["armor", "cman", "feat", "shield", "weapon"],
         PsmCategory::parse,
         "PsmCategory",
     );
@@ -216,7 +222,6 @@ fn a_psm_categorys_heading_is_not_its_key() {
 
     // Every heading from `parser.rb:29`'s PSMStart alternation resolves.
     for (heading, want) in [
-        ("Ascension Abilities", PsmCategory::Ascension),
         ("Armor Specializations", PsmCategory::Armor),
         ("Combat Maneuvers", PsmCategory::CombatManeuver),
         ("Feats", PsmCategory::Feat),
@@ -234,6 +239,23 @@ fn a_psm_categorys_heading_is_not_its_key() {
         None,
         "a key prefix is not a heading; the two namespaces stay separate"
     );
+
+    // **Ascension is NOT a PSM**, and this asserts the exclusion rather than
+    // leaving it as a variant nobody wrote.
+    //
+    // > **AUTHOR, 2026-09-19:** *"there's a few .. cman, shield, weapon,
+    // > armor, feat are psms"*
+    //
+    // This enum had six variants, taken from `infomon/cli.rb`'s sync list
+    // where six `<x> list all` commands sit together. That grouping is Lich's
+    // sync convenience, not the game's taxonomy, and the wire agrees with the
+    // author: ascension uses the `as follows:` header, has no
+    // `Subcategory: all` terminator, and its rows are SKILL names
+    // (`agility`, `edgedweapons`, `slblessings`) rather than maneuver
+    // mnemonics. See `state/character/psm.rs`'s `AscensionTable`.
+    assert_eq!(PsmCategory::ALL.len(), 5);
+    assert_eq!(PsmCategory::parse("ascension"), None);
+    assert_eq!(PsmCategory::parse_heading("Ascension Abilities"), None);
 }
 
 #[test]

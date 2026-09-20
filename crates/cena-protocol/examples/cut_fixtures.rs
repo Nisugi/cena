@@ -36,6 +36,9 @@ const CUTS: &[(&str, &str)] = &[
     // spell circle under its own `Spell Lists` header. Bold marks the
     // enhancive cells, per-number rather than per-line.
     ("skills.src", "character_skills.xml"),
+    // M3 step 6: `cman list` -- the PSM table. Bold spans WRAP across rows
+    // here (`<popBold/><pushBold/>` mid-line), which no other fixture has.
+    ("psm.src", "psm_list.xml"),
 ];
 
 /// Kept in step with `tests/fixtures_are_scrubbed.rs::PSEUDONYMS`; that test
