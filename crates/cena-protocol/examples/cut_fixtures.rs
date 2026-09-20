@@ -47,6 +47,11 @@ const CUTS: &[(&str, &str)] = &[
     ("armorlist.src", "psm_armor.xml"),
     ("featlist.src", "psm_feat.xml"),
     ("ascinfo.src", "ascension_info.xml"),
+    // M3 step 7: `inventory enhancive totals` and its `details` form. Six
+    // sections whose headers arrive BOLDED, and whose order on the wire is
+    // not the order `parser.rb` lists them in -- the clique, measured.
+    ("enhtotals.src", "enhancive_totals.xml"),
+    ("enhdetails.src", "enhancive_details.xml"),
 ];
 
 /// Kept in step with `tests/fixtures_are_scrubbed.rs::PSEUDONYMS`; that test

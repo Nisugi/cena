@@ -1142,6 +1142,88 @@ appear. Every structural claim in `state/character/psm.rs` was generalised from
 a filtered 27-row capture, which is why the unfiltered form was worth asking
 for.
 
+## 2b.4 `INVENTORY ENHANCIVE TOTALS`: two forms, and Lich reads almost none of the longer one
+
+Captured 2026-09-19 with `cargo run -p cena -- --psm`, both forms, on a
+level-100 character with every section populated.
+Log: `cena_logs/2026-09-19/Nisugi-2026-09-19_22-00-51-000.bytes:719-834`.
+
+### The section order is not Lich's declaration order
+
+MEASURED:
+
+```text
+Stats:   Skills:   Resources:   Self Knowledge Spells:   Martial Knowledge Skills:   Statistics:
+```
+
+`parser.rb:115-127` declares **Martial before Spells**. The wire prints Spells
+first. This is harmless for Lich, whose `case` tries every pattern, but it
+falsifies the obvious reading of that file -- and a port that walked the
+sections in declaration order would mis-section every martial row.
+
+It is also the clique made visible. `parser.rb:178-193` lets any enhancive
+state follow any other precisely because the order is not fixed and sections
+may be absent: a character with no enhancive skills has no `Skills:` section
+at all.
+
+### The headers arrive BOLDED
+
+`<pushBold/>Stats:` on the wire. Lich anchors on `/^Stats:$/` and never sees
+it. A third independent signal, recorded because a section header is exactly
+what a future format change would re-style.
+
+### Lich drops the whole item-attribution layer
+
+The `DETAILS` form attributes each bonus to the item granting it:
+
+```text
+Stats:
+  Wisdom (WIS): 15/40
+    +10: a veniom-bound witchwood badge
+    +5: a gilded locus
+```
+
+MEASURED by running Lich's own five row regexes against those lines: **every
+attribution line matches nothing.** `+10: a veniom-bound witchwood badge`,
+`215: a shackled and distraught elven wizard tattoo` -- all dropped. So
+`TOTALS DETAILS` stores exactly what `TOTALS` would, and the extra command
+buys nothing.
+
+### ...and loses the martial skills entirely, which `TOTALS` does not
+
+The one line whose *shape* changes between forms:
+
+```text
+  Coup de Grace: +2 ranks                                      <- TOTALS
+  +2 Ranks Coup de Grace: a pallid jade green dragonfly tattoo  <- DETAILS
+```
+
+`EnhanciveMartialSkill` (`parser.rb:123`) is
+`/^\s+(?<name>[\w\s']+?):\s+\+(?<value>\d+)\s+ranks?$/` -- it requires
+`name: +N ranks`. The details form puts the rank first, so it matches nothing.
+
+**A `TOTALS DETAILS` parse therefore stores strictly LESS than `TOTALS`**: the
+same stats, skills and resources, minus every martial enhancive. Cena reads
+both shapes (`state/character/enhancive.rs`), and a mutation that removes the
+details branch -- reproducing Lich's behaviour exactly -- fails two tests.
+
+### The key space, measured
+
+`enhancive.rb:368-369` zeroes everything before each parse, commented
+*"Critical because game output only shows non-zero values."* The space:
+
+| Group | Keys |
+|---|---|
+| stats | 10 |
+| skills (ranks + bonus) | 92 |
+| resources | 5 |
+| martial (all 80 cman) | 80 |
+| spells + statistics | 4 |
+| **total** | **191** |
+
+The plan's estimate was ~180. Every group maps onto a type this crate already
+has, so `Default` is the zeroing and there is nothing to forget.
+
 ## 2c. The `skill` table prints skills and spell circles in one shape
 
 MEASURED in `dev/lich-5/.../2026-09-01_20-24-11.xml`, and it settles an

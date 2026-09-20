@@ -49,6 +49,7 @@
 //!   mechanism.
 
 pub mod blocks;
+pub mod enhancive;
 pub mod psm;
 pub mod skills;
 pub mod stats;

@@ -1,0 +1,51 @@
+<pushBold/>Stats:
+<popBold/>  Wisdom (WIS): 15/40
+    +10: a <a exist="365063375" noun="badge">veniom-bound witchwood badge</a>
+    +5: a <a exist="365063425" noun="locus">gilded locus</a>
+
+
+<pushBold/>Skills:
+<popBold/>  Two Weapon Combat Bonus: 10/50
+    +10: a <a exist="365063375" noun="badge">veniom-bound witchwood badge</a>
+
+  Combat Maneuvers Bonus: 17/50
+    +10: a <a exist="365063375" noun="badge">veniom-bound witchwood badge</a>
+    +7: a <a exist="365063380" noun="backpack">patchwork dwarf skin backpack</a> bound by interwoven briar vines
+
+  Ranged Weapons Bonus: 1/50
+    +1: a <a exist="365063425" noun="locus">gilded locus</a>
+
+  Dodging Bonus: 3/50
+    +3: a <a exist="365063380" noun="backpack">patchwork dwarf skin backpack</a> bound by interwoven briar vines
+
+  Spiritual Lore - Blessings Bonus: 1/50
+    +1: a <a exist="365063425" noun="locus">gilded locus</a>
+
+  Spiritual Lore - Summoning Bonus: 10/50
+    +10: a <a exist="365063425" noun="locus">gilded locus</a>
+
+
+<pushBold/>Resources:
+<popBold/>  Max Stamina: 6/300
+    +6: a <a exist="365063425" noun="locus">gilded locus</a>
+
+
+<pushBold/>Self Knowledge Spells:
+<popBold/>  215: a shackled and distraught elven <a exist="365063367" noun="tattoo">wizard tattoo</a>
+  506: a shackled and distraught elven <a exist="365063367" noun="tattoo">wizard tattoo</a>
+  515: <a exist="365063374" noun="puppies">several ebon-inked puppies</a> playing tug-of-war with a floriated vine
+  1109: <a exist="365063374" noun="puppies">several ebon-inked puppies</a> playing tug-of-war with a floriated vine
+
+
+<pushBold/>Martial Knowledge Skills:
+<popBold/>  +2 Ranks Coup de Grace: a <a exist="365063368" noun="tattoo">pallid jade green dragonfly tattoo</a>
+
+
+<pushBold/>Statistics:
+<popBold/>  Enhancive Items: 6
+  Enhancive Properties: 15
+  Total Enhancive Amount: 63
+
+<output class=""/>
+For fewer details, see <d>INVENTORY ENHANCIVE TOTALS</d>.
+<prompt time="1789873284">&gt;</prompt>
