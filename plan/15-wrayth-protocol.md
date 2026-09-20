@@ -776,6 +776,96 @@ catching up.
 
 ---
 
+## 2b. `crtrStatus` gained health, and two new flags — 2026-09-19
+
+**The server widened this tag while M3 was being built.** The author supplied
+`C:\Gemstone\lich-5\logs\GSIV-Nisugi\2026\09\2026-09-19_18-47-47.xml`:
+
+> *"looks like they pushed an update to the crtrStatus feed to include hp"*
+
+MEASURED in that capture — **437 `crtrStatus` tags, and all 437 carry `health`
+and `maxhealth`**, which no earlier capture does. (182 is the number of *lines*
+containing one; several lines carry a whole room's worth, so count the tags:
+`grep -oE '<crtrStatus [^/]*/>' <file> | wc -l`.) Three attribute names are new
+against the set recorded for the M2 fixture (`hostile`, `dead`, `stunned`,
+`prone`, `rooted`, `flying`, `inferior`, `immobile`):
+
+| New | Seen on |
+|---|---|
+| `health`, `maxhealth` | every occurrence |
+| `ascended` | 331 occurrences, **all 331 also `hostile`** |
+| `rider` | 19 occurrences |
+| `hovering` | 2 occurrences |
+
+**`health` is signed.** `health="-10"` appears on dead creatures; the observed
+range is −10 to 900. A `u16` would wrap that.
+
+### Cena needed no change, and that is the point
+
+VERIFIED by feeding all three new shapes through today's parser: each produced
+`Frame::CreatureStatus { id, attrs }` with every new attribute present, zero
+unknown tags, and the negative health intact — **including inside a
+`<component>` body**, which only works because of the fix committed the day
+before (`plan/12` §3a's "reopen" signal, 98.8% of occurrences).
+
+That is `§3a`'s *"the parser lifts the identity because that is structure; it
+does not map flag names, because it does not know what a flag means"* being
+tested by a live server change rather than by argument. A parser that had typed
+the flag set would have needed an edit and a release; one that carries `attrs`
+raw needed neither.
+
+**What this does NOT settle:** what `ascended`, `rider` and `hovering` mean, and
+whether `health` is a percentage or an absolute. `maxhealth` values vary per
+creature, which argues absolute, but that is INFERRED. A consumer that displays
+a creature's health needs the answer; the parser does not.
+
+## 2c. The `skill` table prints skills and spell circles in one shape
+
+MEASURED in `dev/lich-5/.../2026-09-01_20-24-11.xml`, and it settles an
+ambiguity Lich resolves only by match order.
+
+Both look like `  <name>....|  <numbers>`:
+
+```text
+  Two Weapon Combat..................|     312     212
+  Perception.........................|     302     202
+  Minor Spiritual....................|      40
+  Ranger.............................|     162
+```
+
+**The discriminator is the field count**: a skill line carries **two** numbers
+(bonus, then ranks); a spell-circle line carries **one** (rank). Lich's `Skill`
+regex requires both and `SpellRanks` requires one, and `parser.rb` tries `Skill`
+first (`:303` before `:312`) — so the order is load-bearing and undocumented.
+Cena should key on the count, which is the actual fact.
+
+### Bold marks an enhancive here too
+
+The same signal as the `info` stat table (§2a.4b's sibling finding):
+
+```text
+  Two Weapon Combat..................|   <pushBold/>  312<popBold/>     <pushBold/>212<popBold/>
+  Armor Use..........................|     302     202
+```
+
+So the reassembly rule applies to this block as well: a bolded row is several
+frames with one `ends_line`, and `bold_depth` says which numbers are enhanced
+without a regex.
+
+### The 46 skill names are only written down in one place
+
+`attributes/skills.rb:39` has the 46 **symbols**; the 46 **display names** the
+wire prints exist only in `attributes/enhancive.rb:42-89`'s `SKILL_NAME_MAP`.
+EXTRACTED and cross-checked: the two agree exactly, 46 for 46, no drift either
+way. Against the wire, 27 of 29 names matched character-for-character — the
+other two were the spell circles above, and the 19 unmatched table entries are
+skills this Ranger has never trained.
+
+Worth stating because the spellings are not mechanical: `Two-Handed Weapons` is
+hyphenated while `Multi Opponent Combat` is not, and the lores use ` - ` as a
+separator. Transcribing them by hand would have introduced errors that only a
+live `skill` command would reveal.
+
 ## 3. What this confirms about the M1 slice
 
 `plan/12` §7.1 scopes M1 to room + prompt + vitals. This document names exactly what those need:
