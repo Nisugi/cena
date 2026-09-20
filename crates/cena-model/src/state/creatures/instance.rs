@@ -165,7 +165,18 @@ pub struct CreatureInstance {
     stun_rounds: Option<u16>,
     stun_until: Option<u32>,
     /// The bestiary's max HP, looked up once by name.
+    ///
+    /// The **fallback**. The server now states real hit points for hostile
+    /// creatures, and [`Self::stated_health`] outranks this wherever both
+    /// exist -- see [`Self::max_hp`].
     template_max_hp: Option<u32>,
+    /// `<crtrStatus health=>`: current hit points, as the server last stated.
+    ///
+    /// **Signed**: a dead creature reads `health="-10"`.
+    stated_health: Option<i32>,
+    /// `<crtrStatus maxhealth=>`: maximum hit points, as the server last
+    /// stated. `Some(0)` means the creature has no HP model.
+    stated_max_health: Option<u32>,
     /// When the feed first and last showed it.
     pub first_seen_at: Option<u32>,
     pub last_seen_at: Option<u32>,
@@ -192,6 +203,8 @@ impl CreatureInstance {
             stun_rounds: None,
             stun_until: None,
             template_max_hp: template_max_hp(name),
+            stated_health: None,
+            stated_max_health: None,
             first_seen_at: now,
             last_seen_at: now,
         }
@@ -297,6 +310,58 @@ impl CreatureInstance {
         for c in Classification::ALL {
             self.flags.insert(c, status.is_classified(c));
         }
+        // Absolute hit points, when the server states them. A frame that
+        // omits them says nothing, so the last stated value stands -- unlike
+        // the flags above, which the tag re-sends in full every time.
+        if status.health.is_some() {
+            self.stated_health = status.health;
+        }
+        if status.max_health.is_some() {
+            self.stated_max_health = status.max_health;
+        }
+    }
+
+    /// Current hit points as the server last stated them.
+    ///
+    /// Negative for a dead creature.
+    #[must_use]
+    pub const fn stated_health(&self) -> Option<i32> {
+        self.stated_health
+    }
+
+    /// Maximum hit points as the server last stated them.
+    ///
+    /// `Some(0)` means the creature has no HP model -- a shopkeeper rather
+    /// than a combatant.
+    #[must_use]
+    pub const fn stated_max_health(&self) -> Option<u32> {
+        self.stated_max_health
+    }
+
+    /// **Does our damage tally agree with what the server says?**
+    ///
+    /// > **AUTHOR, 2026-09-20:** *"damage_taken becomes a check on our combat
+    /// > parser, if damage_taken and max_health - health are not the same,
+    /// > then we know our tracking missed something."*
+    ///
+    /// Returns the signed discrepancy in hit points: `damage_taken` minus the
+    /// server's `maxhealth - health`. Zero is agreement. **Positive** means we
+    /// counted damage the creature did not take; **negative** means it lost
+    /// health we never saw -- another hunter's blow, a damage-over-time tick,
+    /// or a message form the parser does not recognise. That last case is the
+    /// one worth surfacing: it is the combat parser silently missing a line.
+    ///
+    /// `None` when the server has stated no HP model for this creature, when
+    /// `maxhealth` is 0, or when nothing has been stated at all -- there is
+    /// nothing to reconcile against.
+    #[must_use]
+    pub fn damage_discrepancy(&self) -> Option<i64> {
+        let (health, max) = (self.stated_health?, self.stated_max_health?);
+        if max == 0 {
+            return None;
+        }
+        let server_lost = i64::from(max) - i64::from(health);
+        Some(i64::from(self.damage_taken) - server_lost)
     }
 
     /// A classification flag. Always-sent booleans: unseen is `false`.
@@ -377,16 +442,43 @@ impl CreatureInstance {
         self.fatal_crit
     }
 
-    /// Max HP: the template's, else [`FALLBACK_MAX_HP`].
+    /// Max HP: **the server's when it has stated one**, else the bestiary
+    /// template's, else [`FALLBACK_MAX_HP`].
+    ///
+    /// The stated value wins because it is the answer rather than an
+    /// estimate. A `maxhealth` of 0 is not an answer -- it means the creature
+    /// has no HP model -- so it falls through to the template.
     #[must_use]
     pub fn max_hp(&self) -> u32 {
-        self.template_max_hp.unwrap_or(FALLBACK_MAX_HP)
+        self.stated_max_health
+            .filter(|max| *max > 0)
+            .or(self.template_max_hp)
+            .unwrap_or(FALLBACK_MAX_HP)
     }
 
-    /// Max HP less damage taken, floored at zero.
+    /// Current HP: **the server's when it has stated one**, else max less the
+    /// damage this session counted.
+    ///
+    /// The inferred form is what a combat tracker had to do before the game
+    /// reported hit points, and it is still right for every creature the
+    /// server says nothing about.
     #[must_use]
     pub fn current_hp(&self) -> u32 {
+        if self.stated_max_health.is_some_and(|max| max > 0)
+            && let Some(health) = self.stated_health
+        {
+            // Negative is a dead creature; this accessor is unsigned because
+            // "how many hit points does it have" floors at none.
+            // `stated_health` keeps the sign for anything that needs it.
+            return health.max(0).unsigned_abs();
+        }
         self.max_hp().saturating_sub(self.damage_taken)
+    }
+
+    /// Whether [`Self::current_hp`] is the server's number rather than ours.
+    #[must_use]
+    pub fn hp_is_stated(&self) -> bool {
+        self.stated_health.is_some() && self.stated_max_health.is_some_and(|max| max > 0)
     }
 
     /// Current HP as a percentage, 0..=100.

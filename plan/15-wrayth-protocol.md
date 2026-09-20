@@ -1677,7 +1677,7 @@ is a modelling gap, not a drop-nothing gap. Deferred; see §6.9.
 > `<objective>` and `<action>` keep their full attributes via `WindowHints`, and `<task>`
 > surfaces as `UnknownTag` with raw bytes.
 
-### 6.5 `crtrStatus health` — the corpus overrules Saga
+### 6.5 `crtrStatus health` — the corpus overruled Saga, and then the wire turned it on
 
 Saga's changelog lists a `health` attribute on `<crtrStatus>`. **The wire does not send one.**
 VERIFIED, 1,547-file sample:
@@ -1693,8 +1693,76 @@ attrs by frequency: exist 235476, hostile 201106, inferior 147378, ascended 4326
 
 The Saga research README flags this itself — "future-proofing, not evidence the live feed sends
 it". **This is the ordering in §6.1 doing its job:** a client may recognize more than the
-server emits, and only the corpus can tell you which. Cena needs no change; `crtrStatus` keeps
-its attributes as a raw bag, which is exactly what makes a future `health` arrive for free.
+server emits, and only the corpus can tell you which.
+
+> **OVERTAKEN BY EVENTS, 2026-09-20. The wire now sends it.** Everything above was true when
+> written and is now history. MEASURED over the author's September logs:
+>
+> ```sh
+> for f in $(ls -t *.xml); do echo "$f $(grep -oc 'crtrStatus[^>]*health=' $f)"; done
+> # 2026-09-20_12-19-45.xml  189      <- of 240 crtrStatus
+> # 2026-09-19_18-47-47.xml  182      <- of 437
+> # every older file           0      <- including one with 11,414 crtrStatus
+> ```
+>
+> **2 files of 127, both 2026-09-19 or later, and zero before.** The same creature proves it is
+> a feature turning on rather than a property of particular creatures: the jeweler Etaenia
+> (`exist="-285052"`) appears **236 times without health and 7 times with**.
+>
+> So §6.1's ordering held in both directions. The corpus was right that the feed did not send
+> it, and the corpus is what noticed when that changed. **A measurement is true as of its
+> date**, which is why this section is amended rather than rewritten.
+
+**What that cost, and what it did not.** The raw-bag design meant nothing was *lost* — but
+nothing was *used* either. `health` and `maxhealth` landed in `CreatureStatus::unknown`, the
+map whose doc says "the game added a flag since this table was cut", while
+`CreatureInstance` went on estimating the same number from a bestiary template and an
+accumulated damage tally. Rule 2.2 surfaced the protocol change exactly as designed and
+nobody read the map for a day. **A bag is a good place for a fact to survive and a bad place
+for it to live.**
+
+Now typed. The author's design (2026-09-20):
+
+> *"We have health, max_health, calculated percent_health, damage_taken. damage_taken becomes
+> a check on our combat parser, if damage_taken and max_health - health are not the same, then
+> we know our tracking missed something."*
+
+So stated HP outranks the estimate, and the tally becomes
+`CreatureInstance::damage_discrepancy()` — signed, where negative means the creature lost
+health we never saw and the combat parser missed a line.
+
+**Three facts the corpus settled, one of them a bug caught before it shipped:**
+
+1. **Hostile creatures always carry it.** VERIFIED 331 of 331 in the health-era file, matching
+   the author's assumption.
+2. **`maxhealth="0"` means no HP model, not "not hostile".** All 42 zero-max rows are
+   non-hostile, so the author's reading holds — but it does **not** invert: the jeweler carries
+   a real `240/240` and is not hostile. `health_percent()` returns `None` for a zero max rather
+   than reporting a shopkeeper at 0% to a target-picker.
+3. **Health goes NEGATIVE and the field must be signed.** A dead creature reads
+   `health="-10" maxhealth="360" dead="1"`. An unsigned field cannot parse that, so it silently
+   became `None` — a creature flagged `dead` carrying *no health information at all*. Found by
+   driving a real log, not by review: the unsigned code reported **327 of 331** hostile rows
+   with health where `grep` counted **331**. The four it lost were the dead ones. The
+   reconciliation arithmetic is signed for the same reason — 370 damage brings a 360-HP
+   creature to -10, and an unsigned subtraction would saturate at 360 and report a phantom 10
+   points of overcounting on *every kill*.
+
+After the fix, both health-era files parse exactly: **437/437 and 240/240 rows carrying HP,
+0 unknown attributes.**
+
+**Not ported, on the author's word.** `hpest` and `injuries` appear in `VellumFE`'s
+`CreatureFlags` and neither is a game fact. VERIFIED: `CreatureFlags.injuries` is **written
+and never read** anywhere in Vellum — every `.injuries` reader is `game_state.injuries`, the
+*player's* injury doll from `<dialogData id='injuries'>`, a different thing entirely.
+
+> **AUTHOR, 2026-09-20:** *"injuries, if that is in crtrStatus, then that would have been using
+> a script vellum_creatures to insert it for a test. I don't think the game sends injuries in
+> an attribute for creatures."*
+
+`hpest` only dims a UI element's alpha. `condition` is left alone: 0 corpus hits, and the
+author's read is that it is another attribute Saga was ready for — which is exactly how
+`health` behaved until last week.
 
 ### 6.6 `<streamWindow>` was dropping 12 of its 15 attributes — FIXED
 

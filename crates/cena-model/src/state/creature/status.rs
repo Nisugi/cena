@@ -34,6 +34,54 @@
 //! the flag-name mapping"* (`frame.rs:201`, Vellum's own principle). This is
 //! that layer.
 //!
+//! # Real hit points, and when they started arriving
+//!
+//! `health=` and `maxhealth=` are **absolute hit points**, not a percentage
+//! and not a flag: `health="30" maxhealth="600"` is a creature nearly dead.
+//! This is the game's own answer to a question that used to require
+//! inference -- a combat tracker accumulating damage against a bestiary
+//! estimate, which is what [`CreatureInstance`](crate::CreatureInstance)
+//! still does when the wire says nothing.
+//!
+//! **The feature is new.** MEASURED over the author's September logs: health
+//! appears in **2 files of 127**, both 2026-09-19 or later, and in **zero**
+//! older ones -- including one session carrying 11,414 `<crtrStatus>` tags
+//! and no health at all. The same creature proves it is not a per-creature
+//! property: the jeweler Etaenia (`exist="-285052"`) appears **236 times
+//! without health and 7 times with**.
+//!
+//! Until this was typed, both attributes fell into [`CreatureStatus::unknown`]
+//! -- which is Rule 2.2 working exactly as intended. The map surfaced a
+//! protocol change; nobody read it for a day.
+//!
+//! ## Hostile creatures always carry it
+//!
+//! > **AUTHOR, 2026-09-20:** *"we assume the server sends hp data for all
+//! > hostile creatures."*
+//!
+//! VERIFIED in the two health-era files: **331 of 331** rows carrying
+//! `hostile=` also carry `health=`, with none missing it.
+//!
+//! ## Health goes NEGATIVE, so it is signed
+//!
+//! A dead creature reads `health="-10" maxhealth="360" dead="1"`. An unsigned
+//! field cannot parse that: it fails, and [`CreatureStatus::health`] silently
+//! becomes `None` -- so a creature with a `dead` flag would report *no health
+//! information at all*, which is the opposite of what the row says.
+//!
+//! Found by driving a real log rather than by review: an early `u32` version
+//! of this code reported 327 of 331 hostile rows carrying health where raw
+//! `grep` counted 331. The four it lost were the dead ones.
+//!
+//! ## `maxhealth="0"` means no HP model, NOT "not hostile"
+//!
+//! All 42 `maxhealth="0"` rows are non-hostile, so the author's reading that
+//! a zero marks a non-combatant holds in that direction. It does **not**
+//! invert: the jeweler carries `health="240" maxhealth="240"` and is not
+//! hostile. So a zero max is "this NPC has no hit points to speak of", and
+//! [`CreatureStatus::health_percent`] returns `None` for it rather than
+//! dividing by zero.
+//!
 //! # A flag that is present but `0` is OFF
 //!
 //! The wire writes `stunned="1"` to set and may write `stunned="0"` to clear.
@@ -246,6 +294,14 @@ pub struct CreatureStatus {
     pub statuses: BTreeMap<Status, bool>,
     /// Each classification the frame mentioned, and whether it was set.
     pub classifications: BTreeMap<Classification, bool>,
+    /// `health=`: current hit points, absolute.
+    ///
+    /// **Signed**: a dead creature reads `health="-10"`. `None` when
+    /// unstated.
+    pub health: Option<i32>,
+    /// `maxhealth=`: maximum hit points. `None` when unstated, and `0` when
+    /// the creature has no HP model -- see [`Self::health_percent`].
+    pub max_health: Option<u32>,
     /// Attributes that are neither, other than `exist`.
     ///
     /// Non-empty means the game added a flag since this table was cut. Kept
@@ -271,6 +327,20 @@ impl CreatureStatus {
             if name == "exist" {
                 continue;
             }
+            // Absolute hit points, not flags: parsed as numbers before the
+            // `"0"`-means-off rule below, which would read `health="0"` --
+            // a dead creature -- as "the health flag is off".
+            match name {
+                "health" => {
+                    out.health = value.trim().parse().ok();
+                    continue;
+                }
+                "maxhealth" => {
+                    out.max_health = value.trim().parse().ok();
+                    continue;
+                }
+                _ => {}
+            }
             // `stunned="1"` sets, `stunned="0"` clears. Both are statements.
             let on = value != "0";
             if let Some(status) = Status::parse(name) {
@@ -282,6 +352,30 @@ impl CreatureStatus {
             }
         }
         out
+    }
+
+    /// Current health as a percentage, 0..=100.
+    ///
+    /// `None` when either value is unstated, **or when `maxhealth` is 0** --
+    /// an NPC with no HP model, 42 such rows in the author's logs. Reporting
+    /// 0% for a shopkeeper would read as "nearly dead" to anything choosing
+    /// a target.
+    #[must_use]
+    pub fn health_percent(&self) -> Option<u32> {
+        let (health, max) = (self.health?, self.max_health?);
+        if max == 0 {
+            return None;
+        }
+        // Negative health is a dead creature, and 0% is the honest reading;
+        // clamping before the cast keeps the unsigned result meaningful.
+        let health = health.max(0);
+        // The `.min(100)` is DEFENSIVE, not measured: `health > maxhealth`
+        // occurs 0 times in 677 health-bearing rows, so no test pins it and
+        // a mutation removing it survives. It stays because a percentage
+        // above 100 would be nonsense in a gauge, and `VellumFE` clamps the
+        // same way (`src/core/state.rs:837`) -- but it is an assumption
+        // about the wire, not a fact from it.
+        Some(((health.unsigned_abs() * 100) / max).min(100))
     }
 
     /// Is this status set?
