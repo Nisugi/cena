@@ -131,8 +131,8 @@ use crate::runs::Runs;
 mod payload;
 
 pub use payload::{
-    ActiveEffect, Amount, DialogWidgets, Link, LinkKind, Menu, MenuItem, ProgressBar, Style,
-    TextFrame,
+    ActiveEffect, Amount, DialogWidgets, Link, LinkKind, Menu, MenuItem, Objective,
+    ObjectivesAction, ProgressBar, RoomMeta, Style, TextFrame,
 };
 
 /// Attribute bag: name/value pairs exactly as the wire spelled them.
@@ -202,8 +202,8 @@ pub enum Frame {
     /// `<crtrStatus exist= ...>`; `attrs` raw so the layer above owns the
     /// flag-name mapping (Vellum's own principle, `src/parser.rs:134-137`).
     CreatureStatus { id: String, attrs: Attrs },
-    /// `<roommeta .../>`.
-    RoomMeta { attrs: Attrs },
+    /// `<roommeta .../>`: the room's environment codes.
+    RoomMeta(RoomMeta),
 
     // --- stream stack -----------------------------------------------------
     /// `<popStream/>`, bare or `<popStream id=>`.
@@ -295,8 +295,20 @@ pub enum Frame {
     StatusIndicator { id: String, active: bool },
     /// A row of `ActiveSpells` / `Buffs` / `Debuffs` / `Cooldowns`.
     ActiveEffect(ActiveEffect),
-    /// `<objectives action=><objective>`.
-    ObjectivesUpdate { action: String, entries: Vec<Attrs> },
+    /// `<objectives action=>` and the `<objective>` rows it carries.
+    ///
+    /// One frame, like [`Frame::MenuResponse`] and for the same reason: the
+    /// rows used to tokenize separately and land in
+    /// [`Frame::WindowHints`] -- the placement-attrs bag, which is not what
+    /// a quest is -- while the action arrived on a frame of its own. An
+    /// update that says `delete-objective` is meaningless apart from the
+    /// rows it deletes.
+    ObjectivesUpdate {
+        /// What to do with `entries`.
+        action: ObjectivesAction,
+        /// The rows, in wire order.
+        entries: Vec<Objective>,
+    },
     /// A context menu the game built for one object: `<menu>` and its
     /// `<mi>` items, as **one** frame.
     ///

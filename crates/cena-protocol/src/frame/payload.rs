@@ -220,6 +220,108 @@ pub struct Amount {
     pub max: i32,
 }
 
+/// `<roommeta>`: the room's environment, as the game's own codes.
+///
+/// Eight attributes, and the wire sends **all eight every time** -- MEASURED
+/// over the author's September logs, 2,043 occurrences and 2,043 of each:
+///
+/// ```sh
+/// grep -oh '<roommeta [^>]*>' *.xml | grep -oE '[a-z]+=' | sort | uniq -c
+/// ```
+///
+/// # The codes are NOT decoded here
+///
+/// `terrain="13"` and `climate="2"` are the game's own integers, and no
+/// source in this repository says what they mean: Lich stores them as
+/// integers (`common/xmlparser.rb:537-545`) and so does `VellumFE`
+/// (`src/core/state.rs:1081-1092`). Inventing a mapping would be fabricating
+/// a fact, which `plan/05` §-2 forbids.
+///
+/// The wiki shows `terrain='forest'` (`:133`) and this era's wire sends
+/// `terrain="1"`, so the attribute has changed shape at least once. That is
+/// the other reason to keep the code: it is what the server said.
+///
+/// `Option` on every field: a tag that omits one has not said, and §5.2's
+/// `Unknown` is not a fabricated zero.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RoomMeta {
+    /// `weather=`. Observed: 0, 2.
+    pub weather: Option<u32>,
+    /// `bonfire=`. Observed: 0, 1 -- a flag in practice.
+    pub bonfire: Option<u32>,
+    /// `inside=`. Observed: 0, 1.
+    pub inside: Option<u32>,
+    /// `water=`. Observed: 0.
+    pub water: Option<u32>,
+    /// `sanctuary=`. Observed: 0, 1.
+    ///
+    /// The one a behavior asks about first: no combat in a sanctuary.
+    pub sanctuary: Option<u32>,
+    /// `realm=`. Observed: 15, 19. `VellumFE` keys alert packs off this
+    /// (`src/config/alertpacks.rs:45`).
+    pub realm: Option<u32>,
+    /// `climate=`. Observed: 1..=10.
+    pub climate: Option<u32>,
+    /// `terrain=`. Observed: 0..=14.
+    pub terrain: Option<u32>,
+}
+
+/// What an `<objectives>` update does to the list.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObjectivesAction {
+    /// `full-refresh`: this IS the list now.
+    FullRefresh,
+    /// `patch-objective`: add or update these.
+    Patch,
+    /// `delete-objective`: remove these.
+    Delete,
+    /// An action this port has not seen. Kept rather than dropped, because
+    /// a new verb is a protocol change and silently ignoring it would apply
+    /// the wrong operation to the list.
+    Other(&'static str),
+}
+
+impl ObjectivesAction {
+    /// The wire's word.
+    #[must_use]
+    pub fn parse(text: &str) -> Self {
+        match text {
+            "full-refresh" => Self::FullRefresh,
+            "patch-objective" => Self::Patch,
+            "delete-objective" => Self::Delete,
+            // A leak-free `Other`: the three above are every action MEASURED
+            // in the author's September logs, so an unknown one is a change
+            // worth seeing rather than a string worth keeping.
+            _ => Self::Other("unrecognised"),
+        }
+    }
+}
+
+/// One quest or bounty on the objectives list.
+///
+/// MEASURED over the author's September logs: `type` and `id` on all 1,067,
+/// `state`/`name`/`description` on 945, `location`/`cadence` on 708, and
+/// `expires` on 1. So only the first two are guaranteed.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Objective {
+    /// `id=`, e.g. `"24330"`.
+    pub id: String,
+    /// `type=`. Observed: `QUEST`, `BOUNTY`.
+    pub kind: String,
+    /// `state=`. Observed: `available`, `offered`.
+    pub state: Option<String>,
+    /// `name=`, e.g. `"Shadow's Descent"`.
+    pub name: Option<String>,
+    /// `description=`. Carries newlines as `&#10;` on the wire.
+    pub description: Option<String>,
+    /// `location=`, e.g. `"The Rift"`.
+    pub location: Option<String>,
+    /// `cadence=`. Observed: `weekly`, `monthly`.
+    pub cadence: Option<String>,
+    /// `expires=`. Seen once in 1,067.
+    pub expires: Option<String>,
+}
+
 /// A context menu the game returned for one object.
 ///
 /// # What a menu is, and why it carries no labels
@@ -264,11 +366,20 @@ pub struct MenuItem {
     /// (`2026-09-20_12-19-45.xml:267`). Dropping it collapses nine commands
     /// into one.
     pub noun: Option<String>,
-    /// Everything the item carried, verbatim, including the two above.
+    /// `menu_cat=`, which **overrides the dictionary's own category**.
     ///
-    /// Rule 2.2a: the typed fields are what today's consumer needs, and this
-    /// is what stops tomorrow's from being unable to see the rest.
-    pub attrs: super::Attrs,
+    /// The dictionary gives each coordinate a category, and the wire may
+    /// disagree: `2524,1639` is `5_roleplay` in `cmdlist1.xml:369` and
+    /// arrives as `5_Survivalist's_Kit`. The game is grouping that item
+    /// under the container it came from, so the wire's word wins.
+    ///
+    /// MEASURED over the author's September logs -- `coord` 425, `noun` 10,
+    /// `menu_cat` 8, and nothing else:
+    ///
+    /// ```sh
+    /// grep -o '<mi [^>]*>' *.xml | grep -oE '[a-z_]+=' | sort | uniq -c
+    /// ```
+    pub menu_cat: Option<String>,
 }
 
 /// One row of an effects dialog.

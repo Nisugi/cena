@@ -430,5 +430,12 @@ fn is_paired(tag: &str) -> bool {
             // than text; the difference is that nothing yet assembles ITS
             // children, and something assembles these.
             | "menu"
+            // `<objectives>` was excluded here for having children rather
+            // than text, back when nothing assembled them. Something does
+            // now (`dispatch::objectives`), and without this its rows
+            // tokenize separately and land in `WindowHints` -- the
+            // placement-attrs bag -- divorced from the action that says what
+            // to do with them.
+            | "objectives"
     )
 }

@@ -172,6 +172,13 @@ pub struct Room {
     pub objects: Vec<RoomItem>,
     /// The entries of `room players`.
     pub players: Vec<RoomItem>,
+    /// `<roommeta>`: the room's environment, as the game's own codes.
+    ///
+    /// `None` until the wire states it. The codes are not decoded -- see
+    /// [`cena_protocol::RoomMeta`] for why -- but `sanctuary` is the one a
+    /// behavior asks first, and it was sitting in an untyped attribute bag
+    /// that nothing consumed.
+    pub meta: Option<cena_protocol::RoomMeta>,
     /// Raw component bodies, keyed by component id.
     ///
     /// What a renderer draws -- prose, punctuation and all. The typed collections
@@ -252,10 +259,15 @@ impl Room {
             objects,
             players,
             components,
+            meta,
         } = self;
 
         // Kept: the place.
         let _ = (id, description, exits);
+        // Kept: the environment is a fact about the ROOM, not about who is
+        // standing in it. A room does not stop being a sanctuary because
+        // the roster went stale, and the next `<roommeta>` restates it.
+        let _ = meta;
 
         // Cleared: who else is in it.
         creatures.clear();

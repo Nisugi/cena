@@ -52,6 +52,7 @@ pub mod gameobj;
 mod idle;
 mod inventory;
 mod nouns;
+pub mod objectives;
 mod reconnect;
 mod room;
 pub mod societies;
@@ -62,6 +63,7 @@ pub mod vitals;
 pub use character::{Character, Experience, Injury};
 pub use inventory::{Container, Inventory};
 pub use nouns::{Found, Where};
+pub use objectives::Objectives;
 pub use room::{PlayerStatus, Room, RoomItem};
 pub use unknown::{MAX_UNKNOWN_TAGS, UnknownTag};
 pub use vitals::{Vital, Vitals};
@@ -106,6 +108,8 @@ pub struct GameState {
     pub roundtime_ends: Option<u32>,
     /// Gauge id to percentage, e.g. `health` -> 97.
     pub vitals: Vitals,
+    /// The quest and bounty list (`<objectives>`).
+    pub objectives: Objectives,
     /// What the game says is true of the character right now.
     ///
     /// `plan/17` §2, ported from Vellum. Read it through the typed accessors
@@ -203,6 +207,7 @@ impl PartialEq for GameState {
             right_hand,
             roundtime_ends,
             vitals,
+            objectives,
             status,
             effects,
             game_time,
@@ -241,6 +246,7 @@ impl PartialEq for GameState {
             && right_hand == &other.right_hand
             && roundtime_ends == &other.roundtime_ends
             && vitals == &other.vitals
+            && objectives == &other.objectives
             && status == &other.status
             && effects == &other.effects
             && game_time == &other.game_time
@@ -495,6 +501,12 @@ impl GameState {
             // `<clearStream id=>`: the wire's own snapshot boundary, and the
             // ONLY thing that empties a buffer. See `state/streams.rs` for the
             // measurement that chose this over clearing on push.
+            // The room's environment. Part of the room, so it is invalidated
+            // with the rest of it on a reconnect.
+            Frame::RoomMeta(meta) => self.room.meta = Some(*meta),
+            Frame::ObjectivesUpdate { action, entries } => {
+                self.objectives.apply(*action, entries);
+            }
             Frame::ClearStream { id } => {
                 self.clear_stream(id);
                 self.pending.remove(id);

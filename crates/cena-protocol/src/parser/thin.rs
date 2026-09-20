@@ -82,7 +82,7 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
             id: text::attribute(tag, "exist").unwrap_or_default(),
             attrs,
         },
-        "roommeta" => Frame::RoomMeta { attrs },
+        "roommeta" => Frame::RoomMeta(room_meta(tag)),
         "closeDialog" | "closedialog" => Frame::CloseDialog { id: id() },
         "exposeDialog" | "exposeStream" | "exposeContainer" => Frame::Expose {
             kind: name.to_owned(),
@@ -117,10 +117,15 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
             id: id(),
             active: text::attribute(tag, "visible").as_deref() == Some("y"),
         },
-        "objectives" => Frame::ObjectivesUpdate {
-            action: text::attribute(tag, "action").unwrap_or_default(),
-            entries: vec![attrs],
-        },
+        // `<objectives>` has NO arm here, deliberately. It is a paired tag,
+        // so every form of it -- self-closing, empty, or carrying rows --
+        // reaches `dispatch::objectives` and never this function. An arm
+        // here was unreachable, and a mutation test proved it: hard-coding
+        // its action to `FullRefresh` broke nothing, because nothing ran it.
+        //
+        // A stray `<objective>` outside any envelope IS reachable: typed as
+        // itself rather than falling through to the placement-attrs bag.
+        "objective" => stray_objective(tag),
         // A `<menu>` is assembled whole in `dispatch.rs`; this is the
         // stray-item path -- an `<mi>` outside any menu, which the wire is
         // not known to send. Typed as a one-item menu with no id rather than
@@ -132,7 +137,7 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
             items: vec![crate::frame::MenuItem {
                 coord: text::attribute(tag, "coord"),
                 noun: text::attribute(tag, "noun"),
-                attrs,
+                menu_cat: text::attribute(tag, "menu_cat"),
             }],
         }),
         "switchQuickBar" => Frame::QuickbarSwitch { id: id() },
@@ -281,5 +286,35 @@ fn known_fallback(name: &str, tag: &str, attrs: Attrs) -> Frame {
             id: text::attribute(tag, "id").unwrap_or_else(|| name.to_owned()),
             attrs,
         },
+    }
+}
+
+/// `<roommeta>`: eight environment codes, each `None` when unstated.
+///
+/// The codes are the game's own and are NOT decoded here; see
+/// [`crate::frame::RoomMeta`] for why, and for the census that says all
+/// eight arrive together.
+fn room_meta(tag: &str) -> crate::frame::RoomMeta {
+    let code = |name: &str| text::attribute(tag, name).and_then(|v| v.parse().ok());
+    crate::frame::RoomMeta {
+        weather: code("weather"),
+        bonfire: code("bonfire"),
+        inside: code("inside"),
+        water: code("water"),
+        sanctuary: code("sanctuary"),
+        realm: code("realm"),
+        climate: code("climate"),
+        terrain: code("terrain"),
+    }
+}
+
+/// An `<objective>` that arrived outside any `<objectives>` envelope.
+///
+/// Treated as a patch of one: the wire is not known to send this, and
+/// assuming a refresh would let one stray row erase the list.
+fn stray_objective(tag: &str) -> Frame {
+    Frame::ObjectivesUpdate {
+        action: crate::frame::ObjectivesAction::Patch,
+        entries: vec![crate::parser::dispatch::objective(tag)],
     }
 }

@@ -136,6 +136,7 @@ impl GameState {
             right_hand,
             roundtime_ends,
             vitals,
+            objectives,
             status,
             effects,
             game_time,
@@ -187,6 +188,13 @@ impl GameState {
         // character is out of the world, and the burst re-declares all ten
         // indicators in one line anyway.
         let _ = (status, effects);
+
+        // The quest and bounty list. A logged-off character completes no
+        // quests and is offered none, and the list is not in the login burst
+        // -- the game sends it when something changes or when asked. Clearing
+        // it would leave `is_known()` false with no way back until the next
+        // change, which is worse than a stale entry and also less true.
+        let _ = objectives;
 
         // An absolute server epoch: a roundtime that ends at server second N
         // ends at N whether or not the socket survived. §5.2 forbids reporting

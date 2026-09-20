@@ -224,20 +224,24 @@ fn a_malformed_attribute_does_not_drop_the_attributes_after_it() {
 
     // A valueless attribute is dropped, not merged into the next key.
     // `("bonfire inside", "1")` is a name no consumer can match, and it took
-    // `inside` down with it.
-    let meta = parser.parse_line("<roommeta weather='rain' bonfire inside='1' sanctuary='1'/>");
-    let attrs = meta
+    // `inside` down with it. Now that `<roommeta>` is typed, the symptom is
+    // sharper: the compound key means `inside` parses as `None`.
+    let meta = parser.parse_line("<roommeta weather='0' bonfire inside='1' sanctuary='1'/>");
+    let room_meta = meta
         .iter()
         .find_map(|f| match f {
-            Frame::RoomMeta { attrs } => Some(attrs),
+            Frame::RoomMeta(meta) => Some(*meta),
             _ => None,
         })
         .expect("roommeta parses");
-    let keys: Vec<&str> = attrs.iter().map(|(k, _)| k.as_str()).collect();
     assert_eq!(
-        keys,
-        vec!["weather", "inside", "sanctuary"],
-        "a valueless attribute must not fabricate a compound key"
+        (room_meta.weather, room_meta.inside, room_meta.sanctuary),
+        (Some(0), Some(1), Some(1)),
+        "a valueless attribute must not fabricate a compound key and take          the attribute after it down too"
+    );
+    assert_eq!(
+        room_meta.bonfire, None,
+        "the valueless attribute itself said nothing, and None is that"
     );
 }
 

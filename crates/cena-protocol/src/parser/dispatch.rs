@@ -207,9 +207,12 @@ impl Parser {
             // (`2026-09-20_12-19-45.xml:267`). Assembled rather than emitted
             // per-tag, so the coordinates stay attached to the menu that
             // answers for them.
-            "menu" => {
+            // Two tags whose body is a run of CHILDREN rather than prose,
+            // both always on one line. Assembled whole so the rows stay
+            // attached to the envelope that says what they are.
+            "menu" | "objectives" => {
                 self.flush(buffer, frames);
-                frames.push(Frame::MenuResponse(menu(tag)));
+                frames.push(child_bearing(name, tag));
             }
             // `picture=` is what makes a `<resource>` a room picture. Without
             // it there is nothing to model -- but "nothing to model" is not
@@ -619,8 +622,13 @@ fn body_tag_frame(name: &str, raw: &str) -> Frame {
 /// Assemble a `<menu>` and the `<mi>` items in its body.
 ///
 /// The body is scanned for tags rather than run through `parse_runs`: a menu
-/// carries no prose, only items, and every attribute of each is kept so
-/// Rule 2.2a holds for a wire that adds one.
+/// carries no prose, only items.
+///
+/// **Every attribute the wire sends is typed** -- `coord`, `noun`,
+/// `menu_cat`, and no others exist (the census in [`MenuItem::menu_cat`]).
+/// An attribute bag beside them would be dead weight today and a place for
+/// a new attribute to hide tomorrow; `tests/menu_responses.rs` fails if the
+/// wire grows one, which is the honest enforcement of Rule 2.2a here.
 fn menu(tag: &str) -> crate::frame::Menu {
     let items = inner_text(tag)
         .split('<')
@@ -630,7 +638,7 @@ fn menu(tag: &str) -> crate::frame::Menu {
             crate::frame::MenuItem {
                 coord: text::attribute(&raw, "coord"),
                 noun: text::attribute(&raw, "noun"),
-                attrs: text::attributes(&raw),
+                menu_cat: text::attribute(&raw, "menu_cat"),
             }
         })
         .collect();
@@ -641,5 +649,49 @@ fn menu(tag: &str) -> crate::frame::Menu {
             .map(|list| list.split_whitespace().map(str::to_owned).collect())
             .unwrap_or_default(),
         items,
+    }
+}
+
+/// A tag whose body is children, assembled into one frame.
+fn child_bearing(name: &str, tag: &str) -> Frame {
+    if name == "menu" {
+        Frame::MenuResponse(menu(tag))
+    } else {
+        objectives(tag)
+    }
+}
+
+/// Assemble an `<objectives>` and the `<objective>` rows in its body.
+fn objectives(tag: &str) -> Frame {
+    let entries = inner_text(tag)
+        .split('<')
+        .filter(|part| part.starts_with("objective "))
+        .map(|part| {
+            objective(&format!(
+                "<{}>",
+                part.trim_end_matches(['/', '>']).trim_end()
+            ))
+        })
+        .collect();
+    Frame::ObjectivesUpdate {
+        action: crate::frame::ObjectivesAction::parse(
+            &text::attribute(tag, "action").unwrap_or_default(),
+        ),
+        entries,
+    }
+}
+
+/// One `<objective>` row. Every attribute the wire sends is typed; see
+/// [`crate::frame::Objective`] for which are guaranteed.
+pub(super) fn objective(tag: &str) -> crate::frame::Objective {
+    crate::frame::Objective {
+        id: text::attribute(tag, "id").unwrap_or_default(),
+        kind: text::attribute(tag, "type").unwrap_or_default(),
+        state: text::attribute(tag, "state"),
+        name: text::attribute(tag, "name"),
+        description: text::attribute(tag, "description"),
+        location: text::attribute(tag, "location"),
+        cadence: text::attribute(tag, "cadence"),
+        expires: text::attribute(tag, "expires"),
     }
 }
