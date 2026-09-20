@@ -14,6 +14,8 @@ in code"* — this is the list of places where the code is the wrong thing to co
 differ. **FIX-ON-PORT** = reproduce the behaviour, correct the defect.
 **LATENT** = not currently wrong, but fragile in a way the port should not inherit.
 **BENIGN** = looks like a defect, is not; recorded so it is not "found" again.
+**RETRACTED** = claimed here as a defect, since disproved; kept with the disproof,
+because a list that silently drops its errors teaches nothing about how they got in.
 
 ---
 
@@ -136,7 +138,10 @@ being an **enum**, not a `String`, which is what M3's design already says.
 
 ---
 
-## 5. `feat.wps` — two feats share one Infomon key — **PORT-BLOCKER**
+## 5. `feat.wps` — **RETRACTED.** They are aliases, not a collision. One real gap: `sighting` is missing — **FIX-ON-PORT**
+
+**This entry first claimed two feats shared one Infomon key, as a PORT-BLOCKER. That
+was wrong, and the author corrected it by pointing at the wiki page.**
 
 `lib/gemstone/psms/feat.rb`:
 
@@ -145,35 +150,68 @@ being an **enum**, not a `String`, which is what M3's design already says.
 "padding"   => { :short_name => "wps", ... }   # :265
 ```
 
-`PSMS.find_name` (`lib/gemstone/psms.rb:72`) resolves with `.find`, which returns
-the **first** match:
+`PSMS.find_name` (`lib/gemstone/psms.rb:72`) resolves with `.find`, returning the
+**first** match, and `psms.rb:123` builds the Infomon key from that `short_name` —
+so both entries do resolve to the single key `feat.wps`. That much is accurate.
 
-```ruby
-.find { |h| h[:long_name].eql?(name) || h[:short_name].eql?(name) }
+**What is wrong is the inference.** `reference/wiki_clean/Weighting_ Padding_
+Sighting.txt:1-3` is one page for one feat:
+
+> **Weighting, Padding, Sighting — Mnemonic `[wps]` — Type Passive — Available To
+> Warriors**
+
+and the command takes the variant as an **argument**, not as a separate feat
+(`:96`):
+
+```text
+FEAT WPS ASSESS (DAMAGE or CRITICAL or SIGHTING) (ITEM)
 ```
 
-and the Infomon key is built from that `short_name` (`psms.rb:123`):
+Weighting, padding and sighting are three services of **one** passive feat with one
+rank. `feat.wps` holding one value is therefore **correct**, and Lich's two entries
+are **aliases** — two names a user might type for the same thing.
 
-```ruby
-Infomon.get("#{type.downcase}.#{seek_psm[:short_name]}")
+**Lich's own table was evidence against the collision reading and I misread it.**
+Both entries carry identical `:type`, `:cost`, `:usage => nil` and an identical
+`:regex` of `/USAGE\: FEAT WPS \{options\} \[args\]/` — the shared usage banner.
+Byte-identical values on two keys is the signature of an alias; genuinely distinct
+feats would differ somewhere. I read duplication and stopped, without asking what
+the feat *is*.
+
+### The one real defect here
+
+**`"sighting"` is absent from the table entirely.** VERIFIED:
+
+```sh
+grep -n "sighting\|weighting\|padding" lib/gemstone/psms/feat.rb
+# 258: "weighting"
+# 265: "padding"
 ```
 
-So **weighting and padding read and write the same key, `feat.wps`**. They are
-distinct feats with distinct ranks; whichever is parsed second overwrites the first,
-and `find` makes the winner depend on hash insertion order rather than on anything
-meaningful.
+Two of the mnemonic's three names resolve; the third does not. `Feat.known?("sighting")`
+returns false for a warrior who has the feat, because `find_name` cannot match a name
+nobody wrote down.
 
-**For the port:** the key space must be keyed on the long name, which is unique.
-This is the one entry here that forbids a faithful port outright — reproducing the
-`short_name`-keyed store reproduces the data loss.
+**For the port:** model this as one feat with an alias set — `{weighting, padding,
+sighting}` → `wps` — which makes the missing third name a data-completeness question
+a test can ask, rather than a lookup that silently fails. Do **not** key the store on
+the long name, which was this entry's original recommendation: it would split one
+feat's rank across three slots and invent the very bug this entry wrongly alleged.
+
+### Why this was worth keeping rather than deleting
+
+The failure mode is the one `plan/05` §−2 exists to catch, in a form the rule does
+not name: every *fact* I cited was verified — the line numbers, the `.find`, the key
+construction. The **inference** on top of them was not, and a chain of verified facts
+lent it unearned weight. Checking what the feat was would have taken one page read.
+`reference/wiki_clean/` was sitting there.
 
 ---
 
 ## 6. The same `short_name` **across** categories is safe — **BENIGN**
 
 `blockspec` appears in `cman.rb:46` and `shield.rb:30`; `spikemastery` in
-`armor.rb:43` and `shield.rb:165`. These look like #5 and are not, because
-`psms.rb:123` namespaces the key by category:
+`armor.rb:43` and `shield.rb:165`. `psms.rb:123` namespaces the key by category:
 
 ```ruby
 Infomon.get("#{type.downcase}.#{seek_psm[:short_name]}")
@@ -183,9 +221,14 @@ Infomon.get("#{type.downcase}.#{seek_psm[:short_name]}")
 They land as `cman.blockspec` and `shield.blockspec` — genuinely different maneuvers
 that happen to share a display name.
 
-**Recorded for the contrast, which is the useful part:** a shared `short_name` is
-safe *across* categories and unsafe *within* one. #5 is the within-category case.
-A port that keys on `(category, name)` is correct for both.
+**With #5 retracted, this entry and that one now say the same thing from two
+directions:** a repeated `short_name` is not by itself evidence of anything. Across
+categories the namespacing separates genuinely different maneuvers; within a category
+(#5) the repetition marks aliases for one feat. In neither case is it a collision,
+and in both cases I initially read it as one.
+
+A port that keys on `(category, short_name)` and carries an explicit alias set is
+correct for both.
 
 ---
 
@@ -248,17 +291,35 @@ Each is VERIFIED in the source; see M3's plan for the porting decision.
 
 ## What this list is evidence for
 
-Five of the twelve entries (#1, #4, #5, and two in §8) are **key-spelling or
+Four of the twelve entries (#1, #4, and two in §8) are **key-spelling or
 string-comparison defects** — a value written under one name and read under another.
-Every one of them is structurally impossible in a typed model with named fields,
-which is the case `research/04-inherited-decisions.md:1878` (C21) makes on other
-grounds. The port is not merely reproducing Lich's knowledge in a faster language;
-in this specific class of defect the type system is doing work Lich has to do by
-convention, and does not always get right.
+Every one is structurally impossible in a typed model with named fields, which is the
+case `research/04-inherited-decisions.md:1878` (C21) makes on other grounds. In this
+specific class of defect the type system does work Lich has to do by convention, and
+does not always get right.
 
 That is worth stating precisely, because the opposite claim is easy to make and
 wrong: Lich is a mature, working client whose protocol knowledge is the reason this
-project can exist at all. These twelve defects are the residue of ten years of
-accreted Ruby, found by reading all 327 logic files. They are not a reason to trust
-it less — they are the specific places where "port it faithfully" is the wrong
-instruction.
+project can exist at all. These defects are the residue of ten years of accreted
+Ruby, found by reading all 327 logic files. They are not a reason to trust it less —
+they are the specific places where "port it faithfully" is the wrong instruction.
+
+## A methodology note, earned twice
+
+**Three of the seven originally-flagged items did not survive re-verification**: the
+`Skills` gsub chain (#7, downgraded to LATENT), the cross-category `short_name`
+repetition (#6, BENIGN), and `feat.wps` (#5, retracted outright). All three were
+"this looks duplicated, therefore it is broken" — pattern-matching on shape without
+checking meaning.
+
+The first two I caught myself by running the code. **#5 I did not**, and it shipped
+as the list's only PORT-BLOCKER until the author pointed at
+`reference/wiki_clean/Weighting_ Padding_ Sighting.txt`. The difference is instructive:
+executing a gsub chain is cheap and I did it; reading a wiki page about what a feat
+*is* is equally cheap and I did not, because the source-code evidence felt sufficient.
+
+**Lich's table is not a specification of the game.** It is one client's model of the
+game, and where that model looks strange the game is the tiebreaker —
+`reference/wiki_clean/` first, then the corpus. `CLAUDE.md` already ranks these
+sources for the *protocol*; the same ranking applies to game mechanics, and this
+entry is why it is now written down.
