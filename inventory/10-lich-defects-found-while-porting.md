@@ -1,0 +1,264 @@
+# Defects found in Lich-5 while porting — triaged
+
+**Scope and date.** Written 2026-09-19 against the working copy at
+`E:/Cena/reference/lich-5`, during M3 (the typed character model). Every entry
+below was surfaced by the seven `lib/` inventory agents and then **re-verified by
+hand against the source** before being written here. Line numbers are from that
+working copy.
+
+This file exists because a port that faithfully reproduces its source reproduces
+its source's bugs. `plan/13` §4a says to *"port aggressively where knowledge lives
+in code"* — this is the list of places where the code is the wrong thing to copy.
+
+**Status vocabulary.** **PORT-BLOCKER** = do not reproduce; the typed design must
+differ. **FIX-ON-PORT** = reproduce the behaviour, correct the defect.
+**LATENT** = not currently wrong, but fragile in a way the port should not inherit.
+**BENIGN** = looks like a defect, is not; recorded so it is not "found" again.
+
+---
+
+## 1. `ignorable_cooldown` is written as a String and read as a Symbol — **FIX-ON-PORT**
+
+Three combat maneuvers declare the flag with a **string** key:
+
+| Maneuver | Site |
+|---|---|
+| `burst_of_swiftness` | `lib/gemstone/psms/cman.rb:66` |
+| `surge_of_strength` | `lib/gemstone/psms/cman.rb:579` |
+| `swiftkick` | `lib/gemstone/psms/cman.rb:595` |
+
+```ruby
+"ignorable_cooldown" => true
+```
+
+`CMan.available?` reads it with a **symbol** (`cman.rb:754`):
+
+```ruby
+if @@combat_mans.fetch(PSMS.find_name(name, "CMan")[:long_name])[:ignorable_cooldown] && ignore_cooldown
+```
+
+Ruby hash keys are typed: `h["x"]` and `h[:x]` are different slots.
+`[:ignorable_cooldown]` returns `nil`, the guard is always false, and the `else`
+branch runs unconditionally — so **`CMan.available?(name, ignore_cooldown: true)`
+silently ignores the caller's request** for all three maneuvers that declare it. The
+keyword argument is accepted, documented (`cman.rb:745-750`), and discarded.
+
+**For the port:** a typed struct field cannot have two spellings. This defect is
+structurally impossible once `ignorable_cooldown` is a `bool` on a Rust struct,
+which is the same argument C21 makes for typed named fields generally.
+
+---
+
+## 2. `percent_health` and `percent_spirit` lack the zero-divisor guard their siblings have — **FIX-ON-PORT**
+
+`lib/attributes/char.rb:83-105`. Four parallel methods, two of which guard:
+
+| Method | Site | Guards `max == 0`? |
+|---|---|---|
+| `percent_health` | `:83` | **no** |
+| `percent_mana` | `:87` | yes — returns `100` |
+| `percent_spirit` | `:95` | **no** |
+| `percent_stamina` | `:99` | yes — returns `100` |
+
+```ruby
+def Char.percent_health
+  ((XMLData.health.to_f / XMLData.max_health.to_f) * 100).to_i
+end
+```
+
+In Ruby `0.0 / 0.0` is `NaN` and `NaN.to_i` is `0`. Before the first vitals frame
+arrives — a fresh login, or any moment after a reconnect and before the burst —
+`percent_health` returns **0**, which reads as *"dead"*, while `percent_mana`
+returns **100** on identical evidence.
+
+**This is the exact failure `plan/12` §5.2 exists to prevent**: reporting a definite
+value on no evidence. The asymmetry between the four siblings is itself the proof it
+is an oversight rather than a decision.
+
+**For the port:** `Option<u8>`, and `None` before the first observation. The guard
+disappears because the type carries the distinction the guard was approximating.
+
+---
+
+## 3. `Spellsong.duration_base_level` returns a wrong number for level > 100 — **FIX-ON-PORT**
+
+`lib/attributes/spellsong.rb:43-58`:
+
+```ruby
+def self.duration_base_level(level = Stats.level)
+  total = 120
+  case level
+  when (0..25)   then total += level * 4
+  when (26..50)  then total += 100 + (level - 25) * 3
+  when (51..75)  then total += 175 + (level - 50) * 2
+  when (76..100) then total += 225 + (level - 75)
+  else
+    Lich.log("unhandled case in Spellsong.duration level=#{level}")
+  end
+  return total
+end
+```
+
+The `else` branch logs and **falls through to `return total`**, still holding its
+initial `120`. A level-101 bard therefore gets a shorter base duration (120) than a
+level-25 one (220) — a discontinuous cliff at the level cap, not a plateau.
+
+GemStone's cap has been above 100 for years, so this is reachable in normal play.
+The `Lich.log` call is evidence the author knew the case was unhandled; the defect
+is that it returns a **plausible wrong number** instead of signalling.
+
+**For the port:** return `Option`, or saturate at the 76..100 formula. Do not
+reproduce a silent fallthrough to a sentinel that looks like data.
+
+---
+
+## 4. `Spells.get_circle_name(90)` returns `'Micellaneous'` — **FIX-ON-PORT**
+
+`lib/attributes/spells.rb:24`:
+
+```ruby
+when '90' then 'Micellaneous'
+```
+
+Missing the second `s`. VERIFIED this is the **only** occurrence in `lib/`:
+
+```sh
+grep -rn "Micellaneous\|Miscellaneous" lib/    # 1 hit, the typo
+```
+
+That it is the only spelling anywhere means nothing in Lich compares against the
+correct word — so the typo is self-consistent *within* Lich and breaks only at the
+boundary, for a script or a port that spells it correctly.
+
+**For the port:** spell it correctly, and note that any ported script comparing
+circle names by string needs the same correction. This is an argument for the circle
+being an **enum**, not a `String`, which is what M3's design already says.
+
+---
+
+## 5. `feat.wps` — two feats share one Infomon key — **PORT-BLOCKER**
+
+`lib/gemstone/psms/feat.rb`:
+
+```ruby
+"weighting" => { :short_name => "wps", ... }   # :258
+"padding"   => { :short_name => "wps", ... }   # :265
+```
+
+`PSMS.find_name` (`lib/gemstone/psms.rb:72`) resolves with `.find`, which returns
+the **first** match:
+
+```ruby
+.find { |h| h[:long_name].eql?(name) || h[:short_name].eql?(name) }
+```
+
+and the Infomon key is built from that `short_name` (`psms.rb:123`):
+
+```ruby
+Infomon.get("#{type.downcase}.#{seek_psm[:short_name]}")
+```
+
+So **weighting and padding read and write the same key, `feat.wps`**. They are
+distinct feats with distinct ranks; whichever is parsed second overwrites the first,
+and `find` makes the winner depend on hash insertion order rather than on anything
+meaningful.
+
+**For the port:** the key space must be keyed on the long name, which is unique.
+This is the one entry here that forbids a faithful port outright — reproducing the
+`short_name`-keyed store reproduces the data loss.
+
+---
+
+## 6. The same `short_name` **across** categories is safe — **BENIGN**
+
+`blockspec` appears in `cman.rb:46` and `shield.rb:30`; `spikemastery` in
+`armor.rb:43` and `shield.rb:165`. These look like #5 and are not, because
+`psms.rb:123` namespaces the key by category:
+
+```ruby
+Infomon.get("#{type.downcase}.#{seek_psm[:short_name]}")
+#            ^^^^^^^^^^^^^^^^^
+```
+
+They land as `cman.blockspec` and `shield.blockspec` — genuinely different maneuvers
+that happen to share a display name.
+
+**Recorded for the contrast, which is the useful part:** a shared `short_name` is
+safe *across* categories and unsafe *within* one. #5 is the within-category case.
+A port that keys on `(category, name)` is correct for both.
+
+---
+
+## 7. `Skills`' shorthand gsub-chain is order-dependent — **LATENT**
+
+`lib/attributes/skills.rb:48-63` defines 36 backwards-compatible shorthand methods
+by squashing each long name and comparing:
+
+```ruby
+method.to_s.gsub(/_/, '')
+      .gsub(/elementallore/, 'el')
+      .gsub(/spirituallore/, 'sl')
+      .gsub(/sorcerouslore/, 'sl')      # <-- same output as the line above
+      .gsub(/mentallore/,    'ml')
+      ...
+      .eql?(shorthand.to_s)
+```
+
+Two different inputs map to the same prefix `sl`. VERIFIED by executing the chain
+that this is currently **harmless** — all five lore skills still produce distinct
+results (`sldemonology`, `slnecromancy`, `slblessings`, `slreligion`,
+`slsummoning`), because the suffixes differ.
+
+It is listed anyway because of how it fails if that ever stops being true. The
+lookup is a `.find`, which returns `nil` on no match, and the `nil` is then
+**captured by a closure**:
+
+```ruby
+self.define_singleton_method(shorthand) do
+  Skills.send(long_hand)     # long_hand may be nil, captured at definition time
+end
+```
+
+An unresolved shorthand therefore does **not** raise at load. It defines a method
+that raises `NoMethodError` on `nil` the first time a script calls it — moving the
+failure from startup, where it would be obvious, to whenever some script first
+touches that one skill.
+
+**For the port:** the 46 skills are a static table (`enhancive.rb:42-89`'s
+`SKILL_NAME_MAP` is the only place the wire strings are written down). Generate the
+aliases from an explicit pair list, and make a missing entry a compile error. Do not
+port a chain whose correctness depends on suffixes staying distinct.
+
+---
+
+## 8. Already recorded elsewhere
+
+These were found earlier in M3 and are carried here so the list is in one place.
+Each is VERIFIED in the source; see M3's plan for the porting decision.
+
+| Defect | Site | Status |
+|---|---|---|
+| `SocietyJoin`'s `'Lodge'` branch is unreachable — the scan is `/Order\|Council\|Guardians/`, which cannot produce `'Lodge'`, so **joining Council of Light records nothing** | `infomon/parser.rb:415-425` | FIX-ON-PORT |
+| `warcry.` has two key spellings — presence writes `warcry.bellow`, absence zeroes `warcry.bertrandts_bellow`, so **a learned warcry is never un-learned** | `parser.rb:379` vs `:369-374` | PORT-BLOCKER |
+| `SocietyStep` does `get + 1` on a possibly-`nil` | `parser.rb:428` | FIX-ON-PORT |
+| Platinum collapses into Premium, unrecoverably | `parser.rb:579-580` | PORT-BLOCKER |
+| Unrecognized enhancive names are silently dropped (Rule 2.2 violation) | `parser.rb:715` et al. | FIX-ON-PORT |
+
+---
+
+## What this list is evidence for
+
+Five of the twelve entries (#1, #4, #5, and two in §8) are **key-spelling or
+string-comparison defects** — a value written under one name and read under another.
+Every one of them is structurally impossible in a typed model with named fields,
+which is the case `research/04-inherited-decisions.md:1878` (C21) makes on other
+grounds. The port is not merely reproducing Lich's knowledge in a faster language;
+in this specific class of defect the type system is doing work Lich has to do by
+convention, and does not always get right.
+
+That is worth stating precisely, because the opposite claim is easy to make and
+wrong: Lich is a mature, working client whose protocol knowledge is the reason this
+project can exist at all. These twelve defects are the residue of ten years of
+accreted Ruby, found by reading all 327 logic files. They are not a reason to trust
+it less — they are the specific places where "port it faithfully" is the wrong
+instruction.
