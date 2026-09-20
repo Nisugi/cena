@@ -32,10 +32,7 @@ fn state_from_fixture() -> GameState {
 fn chunk_of(lines: &[&str]) -> Chunk {
     let mut chunk = Chunk::default();
     for text in lines {
-        chunk.push_line(ChunkLine {
-            text: (*text).to_owned(),
-            bold: Vec::new(),
-        });
+        chunk.push_line(ChunkLine::plain(text));
     }
     chunk
 }
@@ -181,16 +178,13 @@ fn a_chunk_is_bounded_and_says_when_it_truncated() {
     // truncated chunk is a fact a consumer may refuse to act on (Rule 2.2).
     let mut chunk = Chunk::default();
     for i in 0..(cena_model::MAX_CHUNK_LINES + 5) {
-        chunk.push_line(ChunkLine {
-            text: format!("line {i}"),
-            bold: Vec::new(),
-        });
+        chunk.push_line(ChunkLine::plain(&format!("line {i}")));
     }
     assert_eq!(chunk.lines().len(), cena_model::MAX_CHUNK_LINES);
     assert_eq!(chunk.dropped(), 5);
     assert!(chunk.is_truncated());
     assert_eq!(
-        chunk.lines()[0].text,
+        chunk.lines()[0].text(),
         "line 5",
         "the OLDEST are dropped: the newest lines are the ones a terminator \
          would have applied"

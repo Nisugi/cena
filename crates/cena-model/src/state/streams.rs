@@ -150,10 +150,11 @@ impl GameState {
             // refusing lines while `XMLData.in_stream` is true
             // (`combat/tracker.rb:481`).
             if text.stream.is_empty() {
-                self.chunk.push_line(super::chunks::ChunkLine {
-                    text: line.plain(),
-                    bold: line.bold_fragments(),
-                });
+                // The runs themselves, not a rendering of them: the links are
+                // what a combat consumer reads, and this used to drop them
+                // (`chunks.rs`, CORRECTED 2026-09-20).
+                self.chunk
+                    .push_line(super::chunks::ChunkLine { runs: line.clone() });
             }
             let buffer = self.streams.entry(text.stream.clone()).or_default();
             // **Bounded.** Found by review: every completed line was retained

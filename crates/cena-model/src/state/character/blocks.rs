@@ -54,7 +54,7 @@ impl InfoReport {
         let mut stats = Vec::new();
 
         for line in chunk.lines() {
-            if let Some(found) = classify_identity(&line.text) {
+            if let Some(found) = classify_identity(&line.text()) {
                 // A second header in one chunk means two reports ran with no
                 // prompt between. The later one wins, as it would if they had
                 // arrived in separate chunks.
@@ -66,13 +66,13 @@ impl InfoReport {
                 continue;
             }
             if let Some((stat, bolded)) =
-                StatLine::classify_with_bold(&line.text, &line.bold_refs())
+                StatLine::classify_with_bold(&line.text(), &line.bold_refs())
             {
                 stats.push((stat.kind, stat, bolded));
                 continue;
             }
             if let (Some((gender, age)), Some(id)) =
-                (classify_gender_age(&line.text), identity.as_mut())
+                (classify_gender_age(&line.text()), identity.as_mut())
             {
                 id.gender = Some(gender);
                 id.age = Some(age);

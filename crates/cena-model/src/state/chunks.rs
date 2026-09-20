@@ -42,25 +42,77 @@
 //!
 //! Cena's frames carry `LinkKind::Exist` and `bold_depth` already, so a chunk
 //! here holds **parsed** lines and no consumer needs a second parser.
+//!
+//! > **CORRECTED 2026-09-20.** The paragraph above was true of the pipeline and
+//! > false of the type. [`ChunkLine`] was built as `{ text, bold }` -- the plain
+//! > text and the bold fragments -- and **discarded every `Link`** on the way in
+//! > (`streams.rs`, the `push_line` call). The `info` reader never noticed,
+//! > because a stat line has no links; the combat port would have, on its first
+//! > line, because a swing's target is a link and nothing else. Found while
+//! > inventorying the combat tracker (`inventory/11` §6a). A line now holds the
+//! > [`Runs`] it was reassembled from, and text and bold are derived.
 
-/// One completed line of a chunk: its text, and which spans arrived bolded.
+use cena_protocol::frame::Style;
+use cena_protocol::runs::{Run, Runs};
+
+/// One completed line of a chunk, as the parser reassembled it.
 ///
-/// Bold is separated because it is the wire's own emphasis signal and several
-/// readers need it -- enhancive stats (`character/stats.rs`) and enhancive
-/// skills both mark their enhanced numbers this way (`plan/15` §2c).
+/// Holds the runs rather than a rendering of them, so every fact the parser
+/// extracted stays reachable: the text, which spans arrived bolded, and **which
+/// spans were links** -- `exist` and `noun` for a creature, the id a combat
+/// consumer needs to say *who* was hit. Bold matters to the `info` and `skill`
+/// readers (`plan/15` §2c); links matter to combat.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ChunkLine {
-    /// The reassembled text, markup removed.
-    pub text: String,
-    /// The fragments that arrived with `bold_depth > 0`, in wire order.
-    pub bold: Vec<String>,
+    /// The runs, in wire order, with their styles and links.
+    pub runs: Runs,
 }
 
 impl ChunkLine {
+    /// A line of plain text with no markup, for tests and synthetic input.
+    #[must_use]
+    pub fn plain(text: &str) -> Self {
+        Self {
+            runs: Runs {
+                runs: vec![Run {
+                    text: text.to_owned(),
+                    style: Style::default(),
+                    link: None,
+                }],
+            },
+        }
+    }
+
+    /// The reassembled text, markup removed.
+    #[must_use]
+    pub fn text(&self) -> String {
+        self.runs.plain()
+    }
+
+    /// The fragments that arrived with `bold_depth > 0`, in wire order.
+    #[must_use]
+    pub fn bold(&self) -> Vec<String> {
+        self.runs.bold_fragments()
+    }
+
     /// The bold fragments as string slices, for a classifier that takes `&[&str]`.
     #[must_use]
     pub fn bold_refs(&self) -> Vec<&str> {
-        self.bold.iter().map(String::as_str).collect()
+        self.runs
+            .runs
+            .iter()
+            .filter(|r| r.style.bold_depth > 0)
+            .map(|r| r.text.as_str())
+            .collect()
+    }
+
+    /// Every link on the line, in order.
+    ///
+    /// What a combat consumer reads to learn a target's `exist` and `noun`
+    /// without a second parser -- `plan/12` §3a's bargain, kept by the type
+    /// rather than only by the pipeline.
+    pub fn links(&self) -> impl Iterator<Item = &cena_protocol::frame::Link> {
+        self.runs.links()
     }
 }
 
@@ -137,6 +189,26 @@ impl Chunk {
 }
 
 impl super::GameState {
+    /// How many lines the currently-open chunk holds.
+    ///
+    /// The chunk is mid-flight state, not a fact about the character, so it is
+    /// not part of the model's public shape -- but its size is observable, which
+    /// is what lets a test assert that a reconnect dropped it.
+    #[must_use]
+    pub fn open_chunk_len(&self) -> usize {
+        self.chunk.lines().len()
+    }
+
+    /// The currently-open chunk, read-only.
+    ///
+    /// Exposed so a test can assert what a line *carries* -- its links, its
+    /// bold spans -- before the prompt hands it to consumers and it is gone.
+    /// The guard for the 2026-09-20 correction above lives on this.
+    #[must_use]
+    pub const fn open_chunk(&self) -> &Chunk {
+        &self.chunk
+    }
+
     /// Hand the completed chunk to every consumer, then clear it.
     ///
     /// Called from exactly one place -- the `Frame::Prompt` arm -- because the
@@ -149,16 +221,6 @@ impl super::GameState {
     /// combat exchange is several lines and one event (`plan/12` §3a's
     /// "multi-line events"). Line-at-a-time delivery would push that memory
     /// back into the consumers, which is what this refactor removes.
-    /// How many lines the currently-open chunk holds.
-    ///
-    /// The chunk itself is private -- it is mid-flight state, not a fact about
-    /// the character -- but its size is observable, which is what lets a test
-    /// assert that a reconnect dropped it.
-    #[must_use]
-    pub fn open_chunk_len(&self) -> usize {
-        self.chunk.lines().len()
-    }
-
     pub(super) fn close_chunk(&mut self) {
         let chunk = self.chunk.take();
         if chunk.is_empty() {
