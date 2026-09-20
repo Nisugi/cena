@@ -920,6 +920,74 @@ is the right shape.
 which is why the parser needed no change — but it is due in full when the
 creature consumer is built, and it is not rediscoverable from traffic.
 
+## 2b.2 PSM lists come in TWO header forms, and Lich reads only one
+
+The `<psm> list all` commands (`cman`, `feat`, `armor`, `shield`, `weapon`,
+`ascension`) are six of the fifteen `Infomon.sync` issues. VERIFIED against the
+archive that the game emits **two** different block headers for the same data:
+
+```text
+<Name>, the following Combat Maneuvers are available:     <- CMAN LIST
+<Name>, your Combat Maneuvers are as follows:             <- CMAN INFO
+```
+
+MEASURED in `GSIV-Nisugi/2025/03/xml/2025-03-20_06-02-48.xml`: one `available:`
+header and **four** `as follows:` headers (two Combat Maneuvers, two Ascension
+Abilities). Both are followed by the identical `Skill / Mnemonic / Ranks / Type
+/ Category / Subcategory` table.
+
+**Lich matches only the first.** `infomon/parser.rb:29`'s `PSMStart` requires
+`the following ... are available:`, and `grep -c "as follows"` over the whole
+file returns **0**. So `CMAN INFO` output is silently dropped: the rows that
+follow would parse fine under `PSM` (`:30`), but `@psm_cat` is never set and no
+accumulator is opened, so nothing is written.
+
+### The terminators differ too
+
+```text
+   Subcategory: all                          <- LIST, 37 lines after the header
+Available Ascension Abilities Points: 21     <- INFO, 15 lines after
+```
+
+`PSMEnd` (`:31`) is the literal `/^   Subcategory: all$/`, three leading spaces.
+The `INFO` form has no such trailer at all.
+
+**The suspected mutex wedge is UNPROVEN, and worth stating as such.** The
+reasoning runs: a block that opens on a header and commits on `PSMEnd` would,
+given a header with no trailer, hold `Infomon.mutex` forever. But the `INFO`
+header does not match `PSMStart`, so no block opens and nothing wedges. It
+would only bite if an **`ASCENSION LIST`** (the `available:` form, which does
+open a block) also lacked the trailer -- and MEASURED: across the five archive
+files carrying PSM output, `the following Ascension Abilities are available:`
+appears **zero** times. We have never captured one. Recorded as a hazard to
+check before porting, not as a defect.
+
+### The mnemonic column IS the table's `short_name`
+
+This settles a question the port had open. Lich writes PSM keys from **the
+game's mnemonic column** (`parser.rb:362`, `match[:command]`), never checking it
+against its own table, while the learn/unlearn path writes
+`PSMS.find_name(...)[:short_name]` and `PSMS.assess` reads the same. Three
+writers, and a suspicion that they disagree.
+
+MEASURED across the five files: **27 distinct Combat Maneuver mnemonics, 27/27
+matching `cman.rb`'s `:short_name` exactly** (`acrobatsleap`, `cmovement`,
+`exsanguinate`, `sidebyside`, `unarmedspec`, `vaultkick`, and 21 more). Eight
+Ascension mnemonics likewise match `ascension.rb`, including the two irregular
+ones -- `trandest` for `transcend_destiny` and `slblessings` for
+`spiritual_lore_blessings`.
+
+A suspected `cman.predator` vs `cman.predatorseye` collision for Predator's Eye
+is **REFUTED**: Lich's own spec fixture
+(`spec/lib/gemstone/infomon_spec.rb:394`) is a verbatim capture reading
+`Predator's Eye       predator        3/3   Martial Stance`, so all three
+writers produce `cman.predator`.
+
+Worth keeping: the `Skill` column is truncated to 20 characters on the wire
+(`Spiritual Lore - Ble`) while `Mnemonic` is not, which supports the reading
+that the three 15-character short names (`resistdisintegr`, `resistdisruptio`,
+`twohandedweapon`) are a game-side column-width limit rather than typos.
+
 ## 2c. The `skill` table prints skills and spell circles in one shape
 
 MEASURED in `dev/lich-5/.../2026-09-01_20-24-11.xml`, and it settles an
