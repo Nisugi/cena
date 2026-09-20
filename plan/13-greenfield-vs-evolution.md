@@ -123,69 +123,75 @@ Greenfield is about *structure*, not about retyping solved problems. Specificall
 | The parser and its 4,393 lines of tests | the single most valuable inherited asset |
 | `parser_edge_cases.xml` and the fixture corpus | every entry is a production bug someone found |
 | Crit tables, creature templates | static data; ships as data files |
-| ~~spell data~~ | **NOT static.** See §4a.1 |
+| Spell data (`effect-list.xml`) | formulas over modelled inputs; see §4a.1 |
 | mapdb / pathing / travel algorithms | solved problems, portable as algorithms |
 
-### 4a.1 `effect-list.xml` is not a data file, and this row was wrong
+### 4a.1 `effect-list.xml` IS a data store, and it is portable
 
-**MEASURED 2026-09-20** while scoping the `spell.rb` port. The table above
-listed "spell data" beside the crit tables as *"static data; ships as data
-files"*. It is not static. `effect-list.xml` (230 KB, 517 spells, the file
-`Spell.load` downloads from the EO scripts repo) stores its durations and
-bonuses as **embedded Ruby expressions**:
+**This section first said the opposite, and the author corrected it.**
 
-```xml
-<duration cast-type='self'>(Spell[101].known? ? 120 : 20) + Spells.minorspiritual</duration>
-<bonus type='physical-as'>0-(20+((Spells.minorspiritual-2)/2))</bonus>
-```
+> **AUTHOR, 2026-09-20:** *"There may be a ruby thing there but ask yourself
+> what it's actually doing? effect-list.xml is indeed a data store. It is
+> calculating their duration based on a formula. If you know the spell it
+> starts at 120 minutes + 1 minute for each spell you know in that circle for
+> each cast. If you don't know the spell, so you cast it from a scroll or a
+> magic item, then you get 20 minutes + 1 minute for each spell you know in
+> that circle for each cast."*
 
-| Field | Values | Plain integers | Expressions |
-|---|---|---|---|
-| `duration` | 340 | 163 | **177 (52%)** |
-| `bonus` | 232 | 103 | **129 (55%)** |
-| `cost` | 395 | 353 | 42 (10%) |
+MEASURED (230 KB, 517 spells): the durations and bonuses are stored as Ruby
+expressions, and **52% of durations are not plain integers**. My first reading
+stopped there and concluded the file needed a Ruby interpreter, which
+`CLAUDE.md`'s no-scripting-language rule forbids.
 
-The constructs, counted across all 306 expressions:
+That was reading the syntax instead of the content. Normalising the
+expressions -- replacing spell numbers, skill names and literals with
+placeholders -- collapses them:
 
 ```text
- 189  Spells.<skill> lookup          82  Spell[n].known? / .active?
- 123  array .max/.min                45  Stats.<x>
-  84  ternary                        20  if/end block
-   5  reget -- reads the SCROLLBACK
+177 duration expressions -> 36 distinct SHAPES
+
+ 72  (Spell[N].known? ? N : N) + Spells.SKILL     <- the author's rule
+ 28  N + Spells.SKILL
+ 17  N.N
+ 12  Spellsong.timeleft
+ 10  N + Stats.level / N.N
+  5  Society.rank / N.N
 ```
 
-The last one is the decisive one. Five durations call `reget`, walk the
-scrollback backwards, regex-match a `CS: +N - TD: +N` line and do arithmetic
-on the capture, to derive how long a spell landed for. That is not data with a
-formula in it; it is a program that reads the client's own output buffer.
+**Six shapes cover 144 of 177 (81%)**, and the largest is one game rule
+written 72 times: base 120 minutes if the spell is known, 20 if cast from a
+scroll or item, plus one minute per rank in the circle. That is a formula in a
+data store, not a program.
 
-**Porting it faithfully would require evaluating Ruby**, which
-`CLAUDE.md`'s first settled decision forbids: *"No embedded scripting
-language. No Lua, no Luau, no Rhai, no DSL."* Three options exist and none is
-free:
+Bonuses are more varied -- 129 expressions, 66 shapes, top ten covering 44% --
+but they are all the same *kind* of thing: arithmetic over skill ranks and
+stats with `.max`/`.min` clamping, which is ordinary Rust.
 
-1. **Take the plain values only** (48% of durations, 45% of bonuses) and treat
-   the rest as unknown. Honest, and leaves a spell model that cannot answer
-   "how long will this last" for half the spell list.
-2. **Re-express the formulas in Rust.** ~306 expressions, each needing a
-   reading of what the Ruby meant, against no oracle -- and the `reget` five
-   have no Rust equivalent at all, since a model crate has no scrollback.
-3. **Derive durations from the wire.** `<dialogData id='Active Spells'>`
-   carries a live countdown per spell, which is the *observed* duration rather
-   than the *predicted* one. Sufficient for "is it about to drop"; useless for
-   "should I cast it".
+### The `reget` cases are five, not a class
 
-Option 3 is already implemented -- `Effects` reads exactly that feed -- so the
-practical answer is that **Cena does not need most of this file**, and the
-port is deferred until a behavior needs prediction rather than observation.
-Recorded here so the "spell data is static" claim does not send the next
-reader down the same path.
+My first reading called these "a program that reads the client's own output
+buffer" and treated them as decisive. MEASURED: **five durations across four
+spells** (102, 210, 214, 513), and four of the five are `cast-type='target'`
+-- the duration when the character casts the spell on someone ELSE, which a
+client tracking its own effects rarely needs.
 
-**This is not a defect in Lich.** Its spell model is a scripting engine and
-these expressions run in it natively, which is exactly why the file has this
-shape. It is a place where the two architectures genuinely diverge, and
-`plan/12` §9d's rule applies: do not build the abstraction that would make it
-portable.
+What they compute is `(CS_result - 100) / 60.0`: a hostile spell's duration
+depends on the endroll that landed it. The CS line is on the wire, so Cena can
+have that number structurally rather than by scraping scrollback -- which is
+`plan/12` §3a's bargain again, and would be better than the original.
+
+### So what a port actually needs
+
+1. **A duration evaluator over ~36 shapes**, not 177 expressions. The inputs
+   are `Spell[n].known?`, `Spells.<circle>`, `Stats.level` and `Society.rank`
+   -- all of which this crate already models.
+2. **A bonus evaluator** over clamped arithmetic. More shapes, no new inputs.
+3. **Nothing for the five `reget` durations** beyond leaving them unknown
+   until a behavior needs a hostile spell's duration, at which point the CS
+   frame is the better source.
+
+Deferred rather than blocked, and the distinction matters: the earlier version
+of this section would have kept anyone from trying.
 
 **This is not a contradiction of greenfield.** The `Frame` vocabulary should be *derived from*
 `ParsedElement`, not reinvented — designing my own would mean rediscovering the same 61
