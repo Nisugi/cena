@@ -282,6 +282,63 @@ and reaches a log for diagnosis. It never panics and is never silently dropped.
 
 *Enforced by:* parser tests assert unknown input round-trips rather than erroring.
 
+**Rule 2.2a — The model drops nothing the parser preserved, without the author's
+explicit permission.**
+
+Rule 2.2 stops at the parser. A frame may reach `cena-model` complete and leave it
+diminished — a field read and discarded, a number narrowed to a percentage, a list kept
+only by its length — and no test above notices, because every test asserts on what the
+model *keeps*.
+
+**A frame consumed is not a frame preserved.** When a `Frame` arm reads a payload, every
+field of that payload either lands in `GameState`, is deliberately routed elsewhere, or
+carries a comment naming the author's decision to drop it. There is no fourth option, and
+"nothing needed it yet" is not one of them — the consumer that needs it arrives later and
+has no way to know the datum was ever on the wire.
+
+> **The author's rule, 2026-09-20**, after finding vitals stored as a bare percentage:
+> *"model drops nothing without my explicit permission."*
+
+### The defect that produced this rule
+
+`<progressBar id='health' value='95' text='health 213/223'/>`. `cena-protocol` parsed
+`current`/`max` into `payload::Amount` in M2 and documented why the pair is `Option`
+rather than fabricated. `GameState` then stored `bar.percent` alone
+(`state.rs:505`, pre-`e0e5949`), so the model remembered **95** of what the game had
+spelled out as **213 of 223**.
+
+Nothing was red. Every vitals test asserted on the percentage, because the percentage was
+all there was — the tests were written against the lossy shape and then defended it. The
+cost is not hypothetical: *"can I afford this spell"* is unanswerable from `GameState`,
+and a Heal behavior reading a percentage cannot see how many points of healing it needs.
+`plan/18`'s `pbarStance` lesson is the same shape one layer down.
+
+Note what did **not** catch it. Rule 2.2's `every_tag_is_observable.rs` was green — the
+tag *was* observable; its contents were not preserved. §0's ratchet was green. Code review
+was green, twice: the field was dropped in M2 and the model's own summary then reported
+mana as DONE.
+
+### Who decides
+
+**The author, and only the author.** An implementer who drops a field and writes his own
+justification for it has not followed this rule; he has laundered a decision into a
+comment. `cena-model/tests/model_drops_nothing.rs` therefore keeps **two** lists:
+`KNOWN_DROPS`, which records decisions the author actually gave, and `UNDECIDED`, which
+records fields nobody has ruled on yet and which are owed a question.
+
+`UNDECIDED` being non-empty is not a violation. Leaving it unasked is.
+
+*Enforced by:* `cena-model/tests/model_drops_nothing.rs` — the model's counterpart to
+`cena-protocol/tests/every_tag_is_observable.rs`. It feeds real wire text and asserts the
+audited fields survive into `GameState`, and it holds the two ledgers above.
+
+> **The enforcement is narrower than the rule, and says so.** It pins regressions on
+> fields that have been audited; it cannot fail for a field nobody has thought about. A
+> per-payload exhaustiveness check — every field of every consumed payload, derived rather
+> than listed — is the version that would close that, and it is not built. §0 is honest
+> about what that means: to the extent this rule reaches beyond the test, it is still
+> partly a wish.
+
 **Rule 2.3 — The read path cannot write.**
 A type that exposes game state must not own a command sink. In Rust this is structural: the
 read API hands out `&GameState` (or a snapshot), and `&` cannot send.
