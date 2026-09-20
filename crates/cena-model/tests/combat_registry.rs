@@ -183,6 +183,101 @@ fn a_flare_crit_stuns_the_flares_own_creature() {
     );
 }
 
+/// A crit's statuses leave the registry as facts, tied to their event, and
+/// ahead of the facts the parse produced -- Lich's emit order
+/// (`processor.rb:117-172`), which a recorder reads as a stream.
+mod crit_facts {
+    use super::*;
+
+    #[test]
+    fn a_knockdown_crit_is_a_status_fact_on_its_event() {
+        let mut state = GameState::default();
+        let mut lines = knockdown();
+        lines.push(format!("{} is badly stunned!", lizard()));
+        let facts = run(&mut state, &refs(&lines));
+        // the table row stuns AND knocks down: both are facts, the estimate
+        // first, as `apply_hit_crit_statuses` emits them
+        assert!(matches!(
+            facts.facts.first(),
+            Some(Fact::Stun {
+                event: 0,
+                flare_seq: None,
+                ..
+            })
+        ));
+        let prone = facts.facts.iter().position(|f| {
+            matches!(
+                f,
+                Fact::Status {
+                    status: StatusName::Prone,
+                    event: Some(0),
+                    flare_seq: None,
+                    ..
+                }
+            )
+        });
+        let parsed = facts.facts.iter().position(|f| {
+            matches!(
+                f,
+                Fact::Status {
+                    status: StatusName::Stunned,
+                    ..
+                }
+            )
+        });
+        assert!(prone.is_some(), "{:?}", facts.facts);
+        assert!(parsed.is_some(), "guard: the message's own fact");
+        assert!(prone < parsed, "crit-derived facts precede the parsed ones");
+    }
+
+    #[test]
+    fn a_suppressed_knockdown_is_not_a_fact() {
+        let mut state = GameState::default();
+        let mut lines = knockdown();
+        lines.push(format!("{} stands up.", lizard()));
+        let facts = run(&mut state, &refs(&lines));
+        assert!(!facts.facts.iter().any(|f| matches!(
+            f,
+            Fact::Status {
+                status: StatusName::Prone,
+                action: cena_model::StatusAction::Add,
+                ..
+            }
+        )));
+    }
+
+    #[test]
+    fn a_flare_crits_stun_names_its_flare_and_its_rounds() {
+        let zerk = bolded(121_654_846, "berserker", "a tattooed gigas berserker");
+        let masto = bolded(121_678_494, "mastodon", "a heavily armored battle mastodon");
+        let mut state = GameState::default();
+        let facts = run(
+            &mut state,
+            &[
+                &format!("You fire a faewood arrow at {zerk}!"),
+                "   ... and hit for 188 points of damage!",
+                &format!(
+                    " ** A bloom of spectral light blossoms around {masto}, engulfing it in searing brilliance! **"
+                ),
+                "   ... 5 points of damage!",
+                "   Smack to the eye bursts blood vessels.",
+            ],
+        );
+        let stun = facts.facts.iter().find_map(|f| match f {
+            Fact::Stun {
+                creature,
+                rounds,
+                event,
+                flare_seq,
+            } => Some((creature.id, *rounds, *event, *flare_seq)),
+            _ => None,
+        });
+        let (id, rounds, event, flare_seq) = stun.expect("a stun fact");
+        assert_eq!((id, event, flare_seq), (Some(121_678_494), 0, Some(1)));
+        assert!(rounds > 0);
+    }
+}
+
 mod death_watch {
     use super::*;
     use cena_protocol::Parser;

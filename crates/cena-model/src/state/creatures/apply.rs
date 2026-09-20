@@ -10,6 +10,16 @@
 //! second reproduces that -- including the one place the order shows: a
 //! knockdown crit is judged against a stand-up message by LINE, not by
 //! application order (`position_recovered?`, `processor.rb:2023-2036`).
+//!
+//! # What this adds to the chunk's facts, and in what order
+//!
+//! A crit's statuses are facts too: Lich emits `:stun`, `:roundtime` and
+//! `:status` while it persists each event (`processor.rb:2258-2296`), then
+//! the death sweep's `dead`, and only then the parse-phase facts it deferred
+//! (`process`, `processor.rb:117-172`). The chunk's facts leave here in that
+//! order -- crit-derived, deaths, parsed -- because a recorder reads them as
+//! a stream. A knockdown the recovery rule suppressed is not a fact and is
+//! not emitted, as in Lich.
 
 use super::Creatures;
 use super::body::BodyPart;
@@ -47,15 +57,24 @@ impl Creatures {
                         self.apply_ucs(id, kind, at);
                     }
                 }
-                Fact::Status { .. } | Fact::SpellLoss { .. } | Fact::Dead { .. } => {}
+                // `Stun`, `Roundtime` and `Dead` are this function's own
+                // output; a parsed chunk carries none.
+                Fact::Status { .. }
+                | Fact::SpellLoss { .. }
+                | Fact::Stun { .. }
+                | Fact::Roundtime { .. }
+                | Fact::Dead { .. } => {}
             }
         }
-        for event in &facts.events {
-            self.persist_event(event, at);
+        let mut derived = Vec::new();
+        for (index, event) in facts.events.iter().enumerate() {
+            self.persist_event(index, event, at, &mut derived);
         }
         for creature in self.sweep_deaths() {
-            facts.facts.push(Fact::Dead { creature });
+            derived.push(Fact::Dead { creature });
         }
+        derived.append(&mut facts.facts);
+        facts.facts = derived;
     }
 
     /// A message status (`apply_status_to_target`).
@@ -116,7 +135,13 @@ impl Creatures {
     }
 
     /// One event's damage, wounds and crit statuses (`persist_event`).
-    fn persist_event(&mut self, event: &AttackEvent, at: Option<u32>) {
+    fn persist_event(
+        &mut self,
+        index: usize,
+        event: &AttackEvent,
+        at: Option<u32>,
+        out: &mut Vec<Fact>,
+    ) {
         // A nearby player's attack resolves onto a creature we can see, but
         // its damage belongs to that player: never applied.
         if event.foreign_caster {
@@ -156,15 +181,15 @@ impl Creatures {
         // Crit statuses: the swing's on its creature, each flare's on its own.
         if let Some(id) = target {
             for crit in event.hits.iter().filter_map(|h| h.crit.as_ref()) {
-                self.apply_crit_statuses(id, crit, at);
+                self.apply_crit_statuses(id, crit, at, (index, None), out);
             }
         }
-        for flare in &event.flares {
+        for (seq, flare) in event.flares.iter().enumerate() {
             let Some(id) = self.flare_target(flare.target.as_ref(), target, at) else {
                 continue;
             };
             for crit in flare.hits.iter().filter_map(|h| h.crit.as_ref()) {
-                self.apply_crit_statuses(id, crit, at);
+                self.apply_crit_statuses(id, crit, at, (index, Some(seq + 1)), out);
             }
         }
         // Watch every creature this event touched for the room feed's death.
@@ -220,18 +245,44 @@ impl Creatures {
     }
 
     /// The statuses a crit carries (`apply_hit_crit_statuses`). Units differ
-    /// inside one entry: `stunned` is rounds, `roundtime` is seconds.
-    fn apply_crit_statuses(&mut self, id: i64, crit: &Crit, at: Option<u32>) {
+    /// inside one entry: `stunned` is rounds, `roundtime` is seconds. Each
+    /// one applied is also a fact in `out`, tied to `(event, flare_seq)`.
+    fn apply_crit_statuses(
+        &mut self,
+        id: i64,
+        crit: &Crit,
+        at: Option<u32>,
+        (event, flare_seq): (usize, Option<usize>),
+        out: &mut Vec<Fact>,
+    ) {
         let recovered = self.recovered_after(id, Some(crit.line));
         let Some(c) = self.instances.get_mut(&id) else {
             return;
         };
+        let creature = Actor {
+            id: Some(c.id),
+            noun: c.noun.clone(),
+            name: c.name.clone(),
+        };
+        let mut statuses = Vec::new();
         if crit.stunned > 0 {
             c.add_status(StatusName::Stunned, at, None);
             c.add_stun_estimate(crit.stunned, at);
+            out.push(Fact::Stun {
+                creature: creature.clone(),
+                rounds: crit.stunned,
+                event,
+                flare_seq,
+            });
         }
         if crit.roundtime > 0 {
             c.add_status(StatusName::Roundtime, at, Some(u32::from(crit.roundtime)));
+            out.push(Fact::Roundtime {
+                creature: creature.clone(),
+                seconds: crit.roundtime,
+                event,
+                flare_seq,
+            });
         }
         // A recovery message later in this chunk already said the creature
         // is up: the EARLIER knockdown must not overwrite the LATER stand-up.
@@ -244,7 +295,7 @@ impl Creatures {
                     c.remove_status(p);
                 }
             }
-            c.add_status(status, at, None);
+            statuses.push(status);
         }
         for (flag, status) in [
             (crit.silenced, StatusName::Silenced),
@@ -255,8 +306,19 @@ impl Creatures {
             (crit.limb_favored, StatusName::LimbFavored),
         ] {
             if flag {
-                c.add_status(status, at, None);
+                statuses.push(status);
             }
+        }
+        for status in statuses {
+            c.add_status(status, at, None);
+            out.push(Fact::Status {
+                subject: Subject::Creature(creature.clone()),
+                status,
+                action: StatusAction::Add,
+                event: Some(event),
+                flare_seq,
+                line: crit.line,
+            });
         }
     }
 }

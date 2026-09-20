@@ -428,6 +428,31 @@ pub enum Fact {
         /// Which.
         kind: UcsKind,
     },
+    /// A crit table's stun estimate, beside the `Stunned` status it implies.
+    ///
+    /// Produced by the registry, not the parse (`processor.rb:2258`): the
+    /// table's row says how long, which no message does.
+    Stun {
+        /// The creature stunned.
+        creature: Actor,
+        /// The table's estimate, in rounds.
+        rounds: u16,
+        /// The event whose crit said so.
+        event: usize,
+        /// The 1-based flare on that event, for a flare's crit.
+        flare_seq: Option<usize>,
+    },
+    /// A crit table's roundtime, in seconds (`processor.rb:2267`).
+    Roundtime {
+        /// The creature slowed.
+        creature: Actor,
+        /// Seconds, already -- not rounds.
+        seconds: u8,
+        /// The event whose crit said so.
+        event: usize,
+        /// The 1-based flare on that event, for a flare's crit.
+        flare_seq: Option<usize>,
+    },
     /// A creature a room refresh confirmed dead after an event touched it.
     Dead {
         /// The creature.

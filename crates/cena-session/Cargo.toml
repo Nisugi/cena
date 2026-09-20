@@ -23,6 +23,8 @@ cena-protocol.workspace = true
 # live-verified.
 cena-platform.workspace = true
 
+rusqlite.workspace = true
+
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 # CancellationToken. plan/12 §5.5 names it by name as the mechanism for "every
 # behavior is cancellable", and §4.3's PREEMPT_GRACE is measured against it.

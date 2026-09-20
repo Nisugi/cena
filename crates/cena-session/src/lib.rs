@@ -22,6 +22,7 @@
 
 pub mod actor;
 pub mod character_store;
+pub mod combat_recorder;
 pub mod command;
 pub mod lifecycle;
 pub mod queue;
