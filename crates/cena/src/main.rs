@@ -198,6 +198,17 @@ pub(crate) const CAPTURE_SEARCHES: usize = 6;
 /// `<prompt>` that arrives in it is a clock sample.
 pub(crate) const CAPTURE_GAP: Duration = Duration::from_secs(6);
 
+/// The gap between PSM capture commands.
+///
+/// Not a rate limit: it is a **blob separator**. Each command's output is
+/// bounded by its terminating prompt (`plan/15` §2a.4b), and leaving room
+/// between them keeps two tables from running together in the log, which would
+/// make the fixture cut guess where one ended.
+///
+/// Shorter than `CAPTURE_GAP` because no roundtime has to expire -- a `list`
+/// costs nothing and produces none.
+pub(crate) const PSM_GAP: Duration = Duration::from_secs(3);
+
 /// How long to wait for the first room description after login.
 ///
 /// The login burst carries the room unprompted (MEASURED 2026-09-18: 2,347

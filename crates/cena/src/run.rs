@@ -8,7 +8,7 @@
 //! is real: everything here happens *after* a session exists, and none of it
 //! knows how one is built.
 
-use crate::{CAPTURE_GAP, CAPTURE_SEARCHES, ROOM_DEADLINE, probe};
+use crate::{CAPTURE_GAP, CAPTURE_SEARCHES, PSM_GAP, ROOM_DEADLINE, probe};
 use cena_behavior::is_room_description;
 use cena_session::{CommandId, Event, Frame, Origin, SessionHandle};
 use std::time::Duration;
@@ -94,12 +94,16 @@ pub(crate) async fn run_or_probe(
             eprintln!(
                 "
 [script] none -- the session is idle and the character is yours.
-[script] pass `-- --capture` or `-- --typeahead` to run one."
+[script] pass `-- --capture`, `-- --psm` or `-- --typeahead` to run one."
             );
             return;
         }
         Script::Capture => {
             run_capture(handle).await;
+            return;
+        }
+        Script::Psm => {
+            run_psm_capture(handle).await;
             return;
         }
         Script::Typeahead => {}
@@ -136,6 +140,8 @@ pub(crate) enum Script {
     Capture,
     /// The type-ahead probe, which deliberately provokes server refusals.
     Typeahead,
+    /// The PSM and ascension tables, for M3's golden fixtures.
+    Psm,
 }
 
 impl Script {
@@ -153,12 +159,89 @@ impl Script {
         for arg in args {
             match arg.as_ref() {
                 "--capture" => return Self::Capture,
+                "--psm" => return Self::Psm,
                 "--typeahead" => return Self::Typeahead,
                 _ => {}
             }
         }
         Self::None
     }
+}
+
+/// The commands the PSM capture issues, in order.
+///
+/// **Every one is a read.** `list` and `info` print a table and change
+/// nothing -- no cost, no roundtime, no item touched. That is the same rule
+/// `probe.rs` states for the typeahead commands, and it is why this can run
+/// against the author's own character.
+///
+/// # Why `list all all` and not `list all`
+///
+/// > **AUTHOR, 2026-09-19:** *"you can set up a login test that does a
+/// > `weapon list all all` `shield list all all` `ascension list all all` ect."*
+///
+/// MEASURED in the one archive capture we have: plain `cman list` prints
+/// `Availability: profession` in its filter footer, so it shows only what that
+/// character can learn. The port has to parse the table for every profession,
+/// so the unfiltered form is the one worth having. Both are sent, last, so the
+/// pair proves the suffix changes only which rows appear and not the shape.
+///
+/// # Why ascension is here at all
+///
+/// It is **not** a PSM (`state/character/psm.rs`'s `AscensionTable` records
+/// the three ways the wire says so). It is in this capture because it is the
+/// open question: Lich's `PSMStart` matches only `the following ... are
+/// available:`, and across five archive files the Ascension table has only
+/// ever appeared as `your ... are as follows:`. If `ascension list all all`
+/// also prints `as follows:`, **Lich has never stored ascension ranks** -- the
+/// rows parse but no accumulator opens. Either answer is worth the two
+/// commands.
+const PSM_COMMANDS: &[&str] = &[
+    // The five PSMs, unfiltered.
+    "cman list all all",
+    "feat list all all",
+    "armor list all all",
+    "shield list all all",
+    "weapon list all all",
+    // Not a PSM; the open question.
+    "ascension list all all",
+    // The filtered/unfiltered pair, for the shape comparison.
+    "cman list",
+    "ascension info",
+];
+
+/// Capture the PSM and ascension tables for M3's fixtures.
+///
+/// Each command's output is a **blob** in `plan/15` §2a.4b's sense -- client
+/// echo, table, terminating prompt -- so the gap between them exists to keep
+/// the blobs separate in the log. Two tables running together would still
+/// parse, but the fixture cut would have to guess where one ended.
+///
+/// Nothing is asserted here. The measurement is the `.bytes` log, exactly as
+/// `run_capture` says: this prints a commentary so the author can see it
+/// working, and the fixtures are cut from the wire afterwards.
+async fn run_psm_capture(handle: &SessionHandle) {
+    eprintln!(
+        "
+[psm] capturing {} tables. Every command is a read -- nothing is spent.",
+        PSM_COMMANDS.len()
+    );
+    for (i, command) in PSM_COMMANDS.iter().enumerate() {
+        let outcome = send_manual(handle, command).await;
+        eprintln!(
+            "[psm] {}/{}: {command} -> {outcome:?}",
+            i + 1,
+            PSM_COMMANDS.len()
+        );
+        // Long enough for the table to finish printing and its prompt to
+        // arrive. A PSM table is ~40 lines; the gap is not a rate limit but a
+        // blob separator.
+        tokio::time::sleep(PSM_GAP).await;
+    }
+    eprintln!(
+        "
+[psm] done. The tables are in the .bytes log -- cut fixtures from there."
+    );
 }
 
 /// Send a few `search` commands, to make roundtimes happen on purpose.
@@ -442,7 +525,7 @@ impl Screen {
 
 #[cfg(test)]
 mod tests {
-    use super::Script;
+    use super::{PSM_COMMANDS, Script};
 
     /// **A run with no arguments drives nothing.** The whole point.
     #[test]
@@ -457,6 +540,7 @@ mod tests {
     #[test]
     fn each_script_is_named_explicitly() {
         assert_eq!(Script::from_args(["--capture"]), Script::Capture);
+        assert_eq!(Script::from_args(["--psm"]), Script::Psm);
         assert_eq!(Script::from_args(["--typeahead"]), Script::Typeahead);
     }
 
@@ -482,9 +566,10 @@ mod tests {
     /// what leaves no room for that.
     #[test]
     fn selection_comes_only_from_its_argument() {
-        let cases: [(&[&str], Script); 4] = [
+        let cases: [(&[&str], Script); 5] = [
             (&[], Script::None),
             (&["--capture"], Script::Capture),
+            (&["--psm"], Script::Psm),
             (&["--typeahead"], Script::Typeahead),
             (&["--not-a-script"], Script::None),
         ];
@@ -502,6 +587,73 @@ mod tests {
                  regression this test is named for"
             );
         }
+    }
+
+    /// **Every PSM capture command is a read.**
+    ///
+    /// The rule `probe.rs` states for the typeahead commands, enforced here
+    /// rather than trusted: this script runs against the author's live
+    /// character, so a command that spent, moved, dropped or attacked would
+    /// cost something real. `list` and `info` print a table and change
+    /// nothing.
+    ///
+    /// Checked by construction -- every command must start with a known
+    /// category word and contain only `list`/`info` after it -- so adding a
+    /// command that does anything else is a test failure, not a discovery made
+    /// live.
+    #[test]
+    fn every_psm_command_is_a_read() {
+        const CATEGORIES: &[&str] = &["cman", "feat", "armor", "shield", "weapon", "ascension"];
+        for command in PSM_COMMANDS {
+            let mut words = command.split_whitespace();
+            let category = words.next().unwrap_or_default();
+            assert!(
+                CATEGORIES.contains(&category),
+                "{command:?} does not start with a known category"
+            );
+            let verb = words.next().unwrap_or_default();
+            assert!(
+                verb == "list" || verb == "info",
+                "{command:?} is not a read -- only `list` and `info` are"
+            );
+            for rest in words {
+                assert_eq!(
+                    rest, "all",
+                    "{command:?} carries an argument that is not a filter"
+                );
+            }
+        }
+    }
+
+    /// The capture covers all five PSMs, and ascension.
+    ///
+    /// A category silently missing from the list would mean a fixture nobody
+    /// cut and a table shape nobody checked -- which is how `cman` came to be
+    /// generalised to all five in the first place.
+    ///
+    /// **The five are written out here rather than read from
+    /// `PsmCategory::ALL`.** `cena` depends on `cena-session`, which
+    /// re-exports what a session needs (`GameState`, `Room`, `UnknownTag`) and
+    /// not the character vocabulary. Adding a `cena-model` dependency, or
+    /// widening the facade, to let one test avoid five string literals would
+    /// be the test shaping the crate graph -- and the graph IS the
+    /// architecture (`CLAUDE.md`). If a sixth category ever appears, this list
+    /// and `PsmCategory::ALL` are both hand-edited, and
+    /// `there_are_five_psm_categories` in `cena-model` is what holds that one
+    /// honest.
+    #[test]
+    fn the_psm_capture_covers_every_category() {
+        for category in ["cman", "feat", "armor", "shield", "weapon"] {
+            let wanted = format!("{category} list all all");
+            assert!(
+                PSM_COMMANDS.contains(&wanted.as_str()),
+                "no unfiltered capture for {category}"
+            );
+        }
+        assert!(
+            PSM_COMMANDS.iter().any(|c| c.starts_with("ascension")),
+            "ascension is not a PSM but is the open question -- capture it"
+        );
     }
 
     /// A typo runs nothing rather than falling through to a script.
