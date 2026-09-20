@@ -34,6 +34,25 @@ impl Runs {
         self.runs.iter().map(|r| r.text.as_str()).collect()
     }
 
+    /// The text of every run the wire bolded, in order.
+    ///
+    /// **Bold is a wire signal, not decoration.** The game marks an enhancive
+    /// value by bolding it -- `<pushBold/>106<popBold/>` in an `info` stat line,
+    /// and the same in a `skill` table (`plan/15` §2c) -- so a reader needs to
+    /// know which numbers were emphasised, not merely that something was.
+    ///
+    /// Returned as fragments rather than a flag because the fragments are the
+    /// answer: an enhanced stat line bolds exactly its value and its bonus, and
+    /// the classifier matches them against the column it parsed.
+    #[must_use]
+    pub fn bold_fragments(&self) -> Vec<String> {
+        self.runs
+            .iter()
+            .filter(|r| r.style.bold_depth > 0)
+            .map(|r| r.text.clone())
+            .collect()
+    }
+
     /// True when there is no display text at all.
     ///
     /// `<compDef id='room players'></compDef>` -- an empty room -- is a real

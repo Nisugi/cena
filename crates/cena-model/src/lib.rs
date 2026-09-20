@@ -22,10 +22,12 @@ pub mod state;
 pub mod status;
 
 pub use effects::{Effect, Effects};
+pub use state::character::blocks::InfoReport;
 pub use state::character::stats::{Identity, Stat, StatKind, StatLine, StatValue};
 pub use state::character::vocabulary::{
     AccountType, Che, DeathsSting, PsmCategory, ResourceType, Society, Warcry,
 };
+pub use state::chunks::{Chunk, ChunkLine, MAX_CHUNK_LINES};
 pub use state::{
     Character, Container, Experience, Found, GameState, Injury, Inventory, MAX_UNKNOWN_TAGS, Room,
     RoomItem, UnknownTag, Where,

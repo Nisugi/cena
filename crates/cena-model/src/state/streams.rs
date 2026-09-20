@@ -97,6 +97,18 @@ impl GameState {
         pending.runs.push(text.as_run());
         if text.ends_line {
             let line = std::mem::take(pending);
+            // **The chunk sees the line too, and only the main stream's.**
+            // A report's output is prose in the main window; a `thoughts` or
+            // `bounty` stream carries someone else's words and must not become
+            // part of the command's answer. Lich gates the same way, by
+            // refusing lines while `XMLData.in_stream` is true
+            // (`combat/tracker.rb:481`).
+            if text.stream.is_empty() {
+                self.chunk.push_line(super::chunks::ChunkLine {
+                    text: line.plain(),
+                    bold: line.bold_fragments(),
+                });
+            }
             self.streams
                 .entry(text.stream.clone())
                 .or_default()

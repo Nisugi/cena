@@ -1,180 +1,98 @@
-//! The command-output block machine: which multi-line report is open.
+//! Reading a command report out of a completed chunk.
 //!
-//! M3 step 4. `info`, `skill`, `experience` and the rest arrive as **blobs** --
-//! a command echo, some lines of prose, and a terminating prompt (`plan/15`
-//! §2a.4b). One line of that prose means nothing on its own: `115 (32)` needs to
-//! know it is inside `info`, and `  Ranger....|  162` needs to know it is inside
-//! `skill`.
+//! M3 step 4, **rewritten as a chunk consumer** (author's call, 2026-09-19):
 //!
-//! That memory is what makes this a **consumer** rather than a classifier
-//! (`plan/12` §3a): classifiers are stateless, so anything needing to remember
-//! which report is open lives here.
+//! > *"The combat tracker parser, it chunks items and then parses the blob it
+//! > chunked. Could it not use the same concept? same parser even?"*
 //!
-//! # Where it sits
+//! The concept, yes -- see `state/chunks.rs` for the three places Lich uses the
+//! prompt as a boundary. The *parser*, no: Lich's combat parser re-scans raw XML
+//! to recover `exist`, `noun` and bold, and four of its recorded bugs come from
+//! exactly that. Cena's frames carry those typed, so a chunk here holds parsed
+//! lines and this file needs no pattern for markup at all.
 //!
-//! Below `GameState::route_text`, which already reassembles runs into lines via
-//! `pending`. A completed line is offered here; the machine decides whether it
-//! belongs to an open block and hands it to the right classifier.
+//! # What that removed
 //!
-//! Reassembly matters more than it looks: an enhancive stat line is **five
-//! frames** with one `ends_line` (`stats.rs`'s module doc measures it), so a
-//! machine fed frames rather than lines would see `"106"` on its own.
+//! The first version of this file owned a buffer and a `Block` state machine:
+//! lines were offered one at a time, an opener set `open = Block::Info`, and a
+//! terminator committed. All of it is gone. **The chunk is already the report's
+//! boundary**, so "which block is open" is answered by looking at the chunk's
+//! own lines rather than remembered across them.
 //!
-//! # What Lich does, and the two places this differs
-//!
-//! `infomon/parser.rb` has two mechanisms and they are worth separating:
-//!
-//! 1. Four `@*_hold` accumulator arrays, opened by a start pattern and committed
-//!    by a terminator, with **the mutex being held as the only "am I inside a
-//!    block" signal** -- and only the skills arm actually checks it
-//!    (`parser.rb:304`).
-//! 2. An explicit `State` FSM (`parser.rb:165-203`) for `Goals`, `Profile` and
-//!    the six enhancive sections, which **raises** on an illegal transition.
-//!
-//! **Difference one: a block that never terminates.** In Lich, a disconnect
-//! mid-`info` leaves the mutex locked and the hold array dirty; the next block's
-//! start reassigns the array and calls `mutex_lock`, which is a no-op when
-//! already held (`infomon.rb:54`). So the previous block's rows are silently
-//! discarded and the mutex unlocks one level too shallow. Here, [`Blocks::end`]
-//! is called at the terminating prompt **and** on reconnect, and an unterminated
-//! block is dropped explicitly rather than by accident.
-//!
-//! **Difference two: no partial commit.** Lich pushes rows as it reads them and
-//! commits at the terminator. This accumulates into a typed value and applies it
-//! whole, so a truncated `info` cannot leave four stats updated and six stale.
+//! What remains is a pure function of one chunk, which is a better shape for
+//! the same reason a classifier is: same chunk in, same answer out, and nothing
+//! left dirty when a connection drops mid-report.
 
 use super::stats::{Identity, Stat, StatKind, StatLine};
+use crate::state::chunks::Chunk;
 
-/// Which multi-line command report is currently open.
-///
-/// **A named enum, not an `Option<&str>`.** The set is closed -- these are the 15
-/// commands `Infomon.sync` issues (`infomon/cli.rb:19-33`) -- and a typo in a
-/// string would silently open a block nothing ever closes.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Block {
-    /// No report open; ordinary game text.
-    #[default]
-    None,
-    /// `info` or `info full`: identity and the ten statistics.
-    Info,
-}
-
-/// The block machine, plus whatever the open block has accumulated.
-///
-/// Lives in [`super::Character`], not in `GameState` directly, because it is
-/// character knowledge and because `state.rs` is a split parent with little
-/// headroom (Rule 4.1).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Blocks {
-    /// Which report is open.
-    open: Block,
-    /// Stat lines seen since the block opened, in wire order, each with
-    /// whether the wire bolded its enhanced column.
-    ///
-    /// Held rather than applied line-by-line so a truncated block applies
-    /// nothing -- see the module doc's "no partial commit".
-    stats: Vec<(StatKind, StatLine, bool)>,
-    /// Identity fields seen since the block opened.
-    identity: Identity,
-}
-
-impl Blocks {
-    /// Which block is open, if any.
-    #[must_use]
-    pub const fn open(&self) -> Block {
-        self.open
-    }
-
-    /// Offer one **reassembled** line.
-    ///
-    /// Returns `true` if the line was recognised as part of a report -- either
-    /// opening one or contributing to the open one. The caller still routes the
-    /// line for display: recognising a line must not consume it, the rule
-    /// `state.rs:320-324` records for the idle warning ("observing a line must
-    /// not consume it").
-    pub fn offer(&mut self, line: &str) -> bool {
-        self.offer_with_bold(line, &[])
-    }
-
-    /// [`Self::offer`], plus the bold fragments the caller saw on this line.
-    ///
-    /// The caller did the reassembly, so it is the only thing that knows which
-    /// runs were bold -- and bold is the wire's own enhancement signal
-    /// (`stats.rs`'s module doc measures it). A caller with no bold information
-    /// passes `&[]` and every stat reads as unenhanced, which is the honest
-    /// answer when nothing observed it.
-    pub fn offer_with_bold(&mut self, line: &str, bold: &[&str]) -> bool {
-        // An opener is recognised whatever is open, because a report can follow
-        // another with no prompt between when the user types two commands fast.
-        if let Some(identity) = classify_identity(line) {
-            self.open = Block::Info;
-            self.stats.clear();
-            self.identity = identity;
-            return true;
-        }
-        if self.open == Block::None {
-            return false;
-        }
-        if let Some((stat, bolded)) = StatLine::classify_with_bold(line, bold) {
-            self.stats.push((stat.kind, stat, bolded));
-            return true;
-        }
-        if let Some((gender, age)) = classify_gender_age(line) {
-            self.identity.gender = Some(gender);
-            self.identity.age = Some(age);
-            return true;
-        }
-        false
-    }
-
-    /// End the open block at a prompt, returning what it accumulated.
-    ///
-    /// `None` when no block was open, or when the block carried nothing --
-    /// **a caller must not be handed an empty update to apply.**
-    ///
-    /// Called at the terminating prompt, which is what `plan/15` §2a.4b
-    /// establishes as a blob's end, and on reconnect, where an unterminated
-    /// block is dropped.
-    pub fn end(&mut self) -> Option<InfoReport> {
-        let was = std::mem::replace(&mut self.open, Block::None);
-        let stats = std::mem::take(&mut self.stats);
-        let identity = std::mem::take(&mut self.identity);
-        if was != Block::Info || stats.is_empty() {
-            return None;
-        }
-        Some(InfoReport { stats, identity })
-    }
-
-    /// Drop any open block without applying it.
-    ///
-    /// For a reconnect: a block opened before the drop describes a session that
-    /// is gone, and its remaining lines will never arrive.
-    pub fn abandon(&mut self) {
-        self.open = Block::None;
-        self.stats.clear();
-        self.identity = Identity::default();
-    }
-}
-
-/// A complete `info` report, ready to fold into typed state.
+/// A complete `info` report read from one chunk.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InfoReport {
     /// The stat lines, in wire order, each with whether its enhanced column
     /// arrived bolded.
     pub stats: Vec<(StatKind, StatLine, bool)>,
-    /// The identity fields the blob carried.
+    /// Race, profession, gender and age.
     pub identity: Identity,
 }
 
 impl InfoReport {
+    /// Read an `info` report out of a chunk, or `None` if it is not one.
+    ///
+    /// **The header is required.** `Name: ... Race: ... Profession: ...` is
+    /// `info`'s first line of prose and Lich's own opener
+    /// (`infomon/parser.rb:10`'s `CharRaceProf`). Without it, a chunk that
+    /// merely contains a stat-shaped line -- a player typing one into a channel
+    /// -- is not a report. That is the rule `state.rs:306-309` records for the
+    /// idle warning: *"a player can say anything"*.
+    ///
+    /// **Nothing is returned for a chunk with no stat lines.** A caller must
+    /// not be handed an empty update to apply.
+    #[must_use]
+    pub fn read(chunk: &Chunk) -> Option<Self> {
+        let mut identity = None;
+        let mut stats = Vec::new();
+
+        for line in chunk.lines() {
+            if let Some(found) = classify_identity(&line.text) {
+                // A second header in one chunk means two reports ran with no
+                // prompt between. The later one wins, as it would if they had
+                // arrived in separate chunks.
+                identity = Some(found);
+                stats.clear();
+                continue;
+            }
+            if identity.is_none() {
+                continue;
+            }
+            if let Some((stat, bolded)) =
+                StatLine::classify_with_bold(&line.text, &line.bold_refs())
+            {
+                stats.push((stat.kind, stat, bolded));
+                continue;
+            }
+            if let (Some((gender, age)), Some(id)) =
+                (classify_gender_age(&line.text), identity.as_mut())
+            {
+                id.gender = Some(gender);
+                id.age = Some(age);
+            }
+        }
+
+        let identity = identity?;
+        if stats.is_empty() {
+            return None;
+        }
+        Some(Self { stats, identity })
+    }
+
     /// Fold one stat line into a [`Stat`], preserving columns the line did not
     /// carry.
     ///
     /// **`normal` is only overwritten by a line that had it.** `info` sends two
     /// columns and `info full` three, so a plain `info` run after an `info full`
     /// must not erase the base values it never mentioned. That is the difference
-    /// between "unknown" and "unchanged", and merging rather than replacing is
-    /// what keeps it.
+    /// between "unknown" and "unchanged".
     #[must_use]
     pub fn merge_into(line: &StatLine, bolded: bool, previous: Stat) -> Stat {
         Stat {
@@ -196,21 +114,17 @@ impl InfoReport {
 /// Name: Ashryn Race: Half-Elf  Profession: Ranger (shown as: Hero)
 /// ```
 ///
-/// This is Lich's own opener -- `parser.rb:10`'s `CharRaceProf`, used at `:238`
-/// to reset the accumulator.
-///
-/// **Not the command echo.** `<c>info` arrives as `Frame::ClientCommand`, and
-/// keying on that would open a block for a player who typed `info` into a chat
-/// channel. This triple is server prose.
-///
 /// # Three things deliberately not taken from this line
 ///
-/// * **The name.** `parser.rb:237` says so outright: *"name captured here, but
-///   do not rely on it - use XML instead"*. `<playerID>` and the `<a exist>` link
-///   are authoritative.
+/// * **The name.** `infomon/parser.rb:237` says so outright: *"name captured
+///   here, but do not rely on it - use XML instead"*. `<playerID>` and the
+///   `<a exist>` link are authoritative.
 /// * **`(shown as: Hero)`.** A title, not a profession, and Lich strips it too.
-/// * **Anything under Shroud of Deception.** See [`Identity`]'s docs -- the
-///   caller decides, because only it knows whether 1212 is active.
+/// * **Anything at all, while Shroud of Deception is up.** The spell falsifies
+///   race, profession, gender and age, and Lich refuses to store them while
+///   spell 1212 is active (`parser.rb:243`, `:249`) -- while still storing the
+///   numbers, which the shroud does not touch. **This function cannot see the
+///   effect list, so the caller enforces it**; see `Character::consume_chunk`.
 fn classify_identity(line: &str) -> Option<Identity> {
     let rest = line.strip_prefix("Name: ")?;
     let (_name, rest) = rest.split_once(" Race: ")?;

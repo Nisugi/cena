@@ -122,6 +122,22 @@ pub struct Character {
     pub encumbrance_percent: Option<u32>,
     /// `<label id='encumblurb' value='You are not encumbered enough to notice.'>`.
     pub encumbrance_detail: Option<String>,
+    /// The ten statistics, as far as `info` has taught them.
+    ///
+    /// `BTreeMap` rather than ten named fields: criterion 7 needs a
+    /// deterministic iteration order, and a stat the wire has never mentioned
+    /// is absent rather than zero -- the same "unknown is not a default" rule
+    /// `roundtime_ends` follows (`plan/12` §5.2).
+    pub stats: BTreeMap<stats::StatKind, stats::Stat>,
+    /// Race, profession, gender and age, from `info`.
+    pub identity: stats::Identity,
+    /// Whether Shroud of Deception (spell 1212) is believed active.
+    ///
+    /// **Set by the effects layer, read here.** While it is true, an `info`
+    /// report's identity fields are refused: the spell falsifies them, and a
+    /// stored lie is permanent because nothing later retracts it. The stat
+    /// numbers are stored regardless -- the shroud does not touch those.
+    pub shrouded: bool,
 }
 
 impl Character {
@@ -194,6 +210,75 @@ impl Character {
             self.injuries.insert(part.to_owned(), injury);
         } else {
             self.injuries.remove(part);
+        }
+    }
+}
+
+impl Character {
+    /// Read whatever command reports a completed chunk carries.
+    ///
+    /// Called once per prompt from `GameState::close_chunk`. Each report type
+    /// is a pure function of the chunk (`blocks::InfoReport::read` and, later,
+    /// the `skill` reader), so this is dispatch and nothing else.
+    pub(crate) fn consume_chunk(&mut self, chunk: &crate::state::chunks::Chunk) {
+        if let Some(report) = blocks::InfoReport::read(chunk) {
+            self.apply_info(&report);
+        }
+    }
+
+    ///
+    /// # Identity is not taken while Shroud of Deception is up
+    ///
+    /// Spell **1212** falsifies race, profession, gender and age in `info`
+    /// output. Lich refuses to store those four while it is active
+    /// (`infomon/parser.rb:243`, `:249`) and `Infomon.sync` force-STOPs the
+    /// spell before scraping, warning `TEND TO YOUR SHROUD!` afterwards
+    /// (`infomon/cli.rb:11-18`, `:41`).
+    ///
+    /// **The numbers are stored regardless**, because the shroud does not touch
+    /// them -- which is why this is a partial refusal rather than dropping the
+    /// report.
+    ///
+    /// Persisting a shrouded identity is permanent damage: nothing later says
+    /// "that was a lie", so the wrong race stays until someone runs `info`
+    /// again unshrouded.
+    /// Fold an `info` report into the typed stats.
+    ///
+    /// # Identity is not taken while Shroud of Deception is up
+    ///
+    /// Spell **1212** falsifies race, profession, gender and age in `info`
+    /// output. Lich refuses to store those four while it is active
+    /// (`infomon/parser.rb:243`, `:249`) and `Infomon.sync` force-STOPs the
+    /// spell before scraping, warning `TEND TO YOUR SHROUD!` afterwards
+    /// (`infomon/cli.rb:11-18`, `:41`).
+    ///
+    /// **The numbers are stored regardless**, because the shroud does not touch
+    /// them -- which is why this is a partial refusal rather than a dropped
+    /// report.
+    ///
+    /// Persisting a shrouded identity is permanent damage: nothing later says
+    /// "that was a lie", so the wrong race stays until someone runs `info`
+    /// again unshrouded.
+    pub fn apply_info(&mut self, report: &blocks::InfoReport) {
+        for (kind, line, bolded) in &report.stats {
+            let slot = self.stats.entry(*kind).or_default();
+            *slot = blocks::InfoReport::merge_into(line, *bolded, *slot);
+        }
+        if self.shrouded {
+            return;
+        }
+        let identity = &report.identity;
+        if identity.race.is_some() {
+            self.identity.race.clone_from(&identity.race);
+        }
+        if identity.profession.is_some() {
+            self.identity.profession.clone_from(&identity.profession);
+        }
+        if identity.gender.is_some() {
+            self.identity.gender.clone_from(&identity.gender);
+        }
+        if identity.age.is_some() {
+            self.identity.age = identity.age;
         }
     }
 }

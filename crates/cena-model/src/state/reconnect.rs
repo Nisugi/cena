@@ -110,6 +110,7 @@ impl GameState {
             idle_warning,
             streams,
             pending,
+            chunk,
             character,
             inventory,
         } = self;
@@ -175,6 +176,19 @@ impl GameState {
         // line is half of a sentence nobody will finish.
         streams.clear();
         pending.clear();
+
+        // And the chunk those lines were accumulating into. A command whose
+        // output was interrupted by the drop will never see its terminating
+        // prompt, so the lines it did carry describe a report that cannot be
+        // completed -- the same argument as `pending`, one level up.
+        //
+        // This is also the failure Lich handles badly and by accident: its
+        // accumulator is guarded only by a mutex, so a disconnect mid-`info`
+        // leaves the mutex locked and the hold array dirty, and the NEXT
+        // block's start silently discards the rows while unlocking one level
+        // too shallow (`infomon.rb:54`, `infomon/parser.rb:239`). Dropping it
+        // explicitly here is the whole difference.
+        *chunk = super::chunks::Chunk::default();
 
         // Experience, injuries, stance and encumbrance. MEASURED (`plan/15` §2a.4a):
         // NONE of the four dialogs is in the login burst -- they arrive only

@@ -39,6 +39,7 @@ use cena_protocol::runs::Runs;
 use std::time::Instant;
 
 pub mod character;
+pub mod chunks;
 mod clock;
 mod idle;
 mod inventory;
@@ -170,6 +171,14 @@ pub struct GameState {
     /// `pushStream` can interrupt an unterminated run and the enclosing stream
     /// resumes afterwards.
     pending: std::collections::BTreeMap<String, Runs>,
+    /// Lines of the command output since the last prompt.
+    ///
+    /// **The prompt is a universal boundary, not an `info`-specific one** --
+    /// Lich closes container fills, combat chunks and its parser FSM on it
+    /// (`state/chunks.rs` cites all three). Owning the buffer here means the
+    /// `info` reader, a future `skill` reader and a combat tracker share one
+    /// accumulator instead of each growing their own.
+    chunk: chunks::Chunk,
 }
 
 /// Whether the server has warned about idling, and when.
@@ -213,6 +222,7 @@ impl PartialEq for GameState {
             idle_warning,
             streams,
             pending,
+            chunk,
             character,
             inventory,
         } = self;
@@ -221,6 +231,7 @@ impl PartialEq for GameState {
             && idle_warning == &other.idle_warning
             && streams == &other.streams
             && pending == &other.pending
+            && chunk == &other.chunk
             && room == &other.room
             && prompt == &other.prompt
             && left_hand == &other.left_hand
@@ -347,6 +358,12 @@ impl GameState {
                     self.game_time = Some(t);
                     self.game_time_received = Some(Instant::now());
                 }
+                // **The chunk closes here**, and this is the only place it
+                // does. See `state/chunks.rs`: Lich closes container fills,
+                // combat chunks and its own parser FSM on the prompt, for the
+                // same reason -- a command's output has no terminator of its
+                // own.
+                self.close_chunk();
                 return true;
             }
             Frame::StatusIndicator { id, active } => {
