@@ -1,0 +1,70 @@
+<!-- CLIENT --><c>skills full<!-- ENDCLIENT -->
+<a exist="-10966483" noun="Ashryn">Ashryn</a> (at level 100), your current skill bonuses and ranks (including all modifiers) are:
+<output class="mono"/>
+  Skill Name                         | Current Current
+                                     |   Bonus   Ranks
+  Two Weapon Combat..................|   <pushBold/>  312<popBold/>     <pushBold/>212<popBold/>
+  Armor Use..........................|       0       0
+  Shield Use.........................|       0       0
+  Combat Maneuvers...................|   <pushBold/>  319<popBold/>     <pushBold/>219<popBold/>
+  Edged Weapons......................|     302     202
+  Blunt Weapons......................|       0       0
+  Two-Handed Weapons.................|       0       0
+  Ranged Weapons.....................|   <pushBold/>  323<popBold/>     <pushBold/>223<popBold/>
+  Thrown Weapons.....................|       0       0
+  Polearm Weapons....................|       0       0
+  Brawling...........................|     302     202
+  Ambush.............................|   <pushBold/>  312<popBold/>     <pushBold/>212<popBold/>
+  Multi Opponent Combat..............|     201     101
+  Physical Fitness...................|     302     202
+  Dodging............................|   <pushBold/>  305<popBold/>     <pushBold/>205<popBold/>
+  Arcane Symbols.....................|     201     101
+  Magic Item Use.....................|     201     101
+  Spell Aiming.......................|       0       0
+  Harness Power......................|     302     202
+  Elemental Mana Control.............|     166      66
+  Mental Mana Control................|       0       0
+  Spirit Mana Control................|     201     101
+  Elemental Lore - Air...............|     117      29
+  Elemental Lore - Earth.............|       0       0
+  Elemental Lore - Fire..............|       0       0
+  Elemental Lore - Water.............|       0       0
+  Spiritual Lore - Blessings.........|   <pushBold/>  222<popBold/>     <pushBold/>122<popBold/>
+  Spiritual Lore - Religion..........|       0       0
+  Spiritual Lore - Summoning.........|   <pushBold/>   10<popBold/>       <pushBold/>2<popBold/>
+  Sorcerous Lore - Demonology........|       0       0
+  Sorcerous Lore - Necromancy........|       0       0
+  Mental Lore - Divination...........|       0       0
+  Mental Lore - Manipulation.........|       0       0
+  Mental Lore - Telepathy............|       0       0
+  Mental Lore - Transference.........|       0       0
+  Mental Lore - Transformation.......|     201     101
+  Survival...........................|     403     303
+  Disarming Traps....................|       0       0
+  Picking Locks......................|       0       0
+  Stalking and Hiding................|     302     202
+  Perception.........................|     302     202
+  Climbing...........................|     200     100
+  Swimming...........................|     200     100
+  First Aid..........................|     201     101
+  Trading............................|     302     202
+  Pickpocketing......................|       0       0
+
+Spell Lists
+  Minor Spiritual....................|              40
+
+Spell Lists
+  Ranger.............................|             162
+
+Training Points: 3673 Phy 0 Mnt (2866 Phy converted to Mnt)
+(Use <d>SKILLS BASE</d> to display unmodified ranks and goals)
+
+244 days remain until the annual FIXSKILLS is to be granted, on 05/20/2027.
+
+You started this migration period on Thursday, 8/20/2026 at 14:08:38 EDT.  You have 20 hours, 22 minutes remaining in your current 30 day migration period.
+
+You're currently migrating at a rate of .001 skill points per pulse, and have converted 109.136 training points this migration period.
+
+Further information can be found in the <d cmd='skill faqs'>FAQs</d>.
+<output class=""/>
+<prompt time="1789767956">&gt;</prompt>

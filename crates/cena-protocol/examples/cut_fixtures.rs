@@ -32,6 +32,10 @@ const CUTS: &[(&str, &str)] = &[
     ("inventory.src", "inventory_container.xml"),
     // M3: the `info` command's blob -- ten stat lines, two of them enhancive.
     ("info.src", "character_info.xml"),
+    // M3 step 5: `skills full` -- all 46 skills (zeros included), then each
+    // spell circle under its own `Spell Lists` header. Bold marks the
+    // enhancive cells, per-number rather than per-line.
+    ("skills.src", "character_skills.xml"),
 ];
 
 /// Kept in step with `tests/fixtures_are_scrubbed.rs::PSEUDONYMS`; that test

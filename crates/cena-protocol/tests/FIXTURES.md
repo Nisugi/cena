@@ -189,6 +189,53 @@ Also measured across all six: **267 frames, zero unknown or malformed tags**.
 The ported 126-tag vocabulary has no hole in current traffic, which is M2's
 breadth claim.
 
+## M3's character model — two command blobs
+
+Both are **blobs** in `plan/15` §2a.4b's sense: a client echo, the command's
+output, and a terminating prompt. That boundary is why they are cut whole
+rather than as excerpts — the prompt is what a consumer uses to know the
+report is complete, so a fixture without one would test a shape that cannot
+occur.
+
+### `character_info.xml` — the `info` stat block
+
+Cut from `GSIV-Nisugi/2026/09/xml/2026-09-01_15-13-56.xml:28249-28266`.
+Ten stat lines, two of them enhancive. Read by `tests/character_stats.rs`.
+
+The enhancive lines are the point: `<pushBold/>106<popBold/>` makes one stat
+line **five frames** with a single `ends_line`, which is the measurement that
+put line reassembly in the consumer rather than the parser.
+
+### `character_skills.xml` — the `skills full` table
+
+Cut from `GSIV-Nisugi/2026/09/2026-09-18_15-49-13.xml:11197-11266` (the live
+`C:/Gemstone/lich-5/logs` tree, not the archive). 3,895 bytes. Read by
+`tests/character_skills.rs`.
+
+One edit at cut time, recorded because the fixture is meant to be reproducible:
+the source line glues a `<dialogData id='minivitals'>` burst onto the front of
+the table header, so that prefix is stripped. Keeping it would have made a
+4 KB fixture into a vitals dump that happens to contain a skill table.
+
+### What the cut found
+
+**Three design assumptions were wrong, and the capture is what corrected them.**
+Each had been written into a plan before the bytes were read:
+
+| Assumed | MEASURED |
+|---|---|
+| columns are `Ranks` then `Bonus` | **`Bonus` then `Ranks`** — the header says so |
+| untrained skills are omitted | all 46 arrive, untrained ones as explicit `0 0` |
+| spell circles are rows of the same table | each has its own repeated `Spell Lists` header and **one** number |
+
+The second reversed a recommendation I had made to the author. The third
+changes the classifier's shape: the discriminator is the field count, so a
+circle and a skill are told apart by their own form rather than by which
+pattern was tried first — which is how Lich does it (`parser.rb:23` before
+`:24`, and it must be in that order).
+
+A hand-written snippet would have encoded all three mistakes and passed.
+
 ## Not in M1 scope
 
 Deliberately absent, per the corpus findings: `<dialogData id='combat'>` as a
