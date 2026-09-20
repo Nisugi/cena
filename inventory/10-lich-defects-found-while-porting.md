@@ -416,17 +416,71 @@ Each is VERIFIED in the source; see M3's plan for the porting decision.
 
 | Defect | Site | Status |
 |---|---|---|
-| `SocietyJoin`'s `'Lodge'` branch is unreachable — the scan is `/Order\|Council\|Guardians/`, which cannot produce `'Lodge'`, so **joining Council of Light records nothing** | `infomon/parser.rb:415-425` | FIX-ON-PORT |
+| `SocietyJoin`'s `'Lodge'` branch is unreachable — the scan is `/Order\|Council\|Guardians/`, which cannot produce `'Lodge'`, so **joining Council of Light records nothing** | `infomon/parser.rb:415-425` | **FIXED** (`societies/membership.rs`) |
 | `warcry.` has two key spellings — presence writes `warcry.bellow`, absence zeroes `warcry.bertrandts_bellow`, so **a learned warcry is never un-learned** | `parser.rb:379` vs `:369-374` | PORT-BLOCKER |
-| `SocietyStep` does `get + 1` on a possibly-`nil` | `parser.rb:428` | FIX-ON-PORT |
+| `SocietyStep` does `get + 1` on a possibly-`nil` | `parser.rb:428` | **FIXED** (`MembershipLine::Advanced` carries no number) |
 | Platinum collapses into Premium, unrecoverably | `parser.rb:579-580` | PORT-BLOCKER |
 | Unrecognized enhancive names are silently dropped (Rule 2.2 violation) | `parser.rb:715` et al. | FIX-ON-PORT |
 
 ---
 
+## 11. `Symbol of Retribution` has two favor costs and Lich models one — **FIXED**
+
+The first defect in this list found by **a second source rather than by
+reading Lich**, which is the whole reason the wiki check was done.
+
+`order_of_voln.rb:10` cites the wiki as the source of its favor table:
+
+```ruby
+# Calculate Cost of Symbol using data from here # https://gswiki.play.net/Favor#Symbol_Use_Favor_Cost
+```
+
+That page is in `reference/wiki_clean/Favor.txt`. Diffing it against Lich
+found **one** disagreement in 160 compared values:
+
+| Wiki factor | Lich | Site |
+|---|---|---|
+| `Retribution (attack version)` 0.04 | 0.04 | `order_of_voln.rb:182` |
+| `Retribution (self-cast version)` 0.30 | **absent** | — |
+
+Lich knows about the second cost — it is written on the same line:
+
+```ruby
+cost_modifier: 0.04, # attack version, 0.30 for selfcast
+```
+
+but, unlike `symbol_of_blessing` three hundred lines above, it never puts the
+alternate into an `alt_cost_modifier` field. `alt_cost_modifier` and
+`alt_cost_reason` appear **twice in the whole of `reference/lich-5/lib/`**, both
+on Blessing:
+
+```sh
+grep -rn "alt_cost" reference/lich-5/lib/     # 2 hits, both order_of_voln.rb
+```
+
+So `OrderOfVoln.affordable?("retribution")` reports a self-cast Retribution as
+costing an eighth of its real price — 87 favor against 653 at level 100.
+
+**FIXED**, using the structure Lich already has for Blessing rather than a new
+one: `Cost::Favor { modifier, alternate }`, asserted by
+`retribution_has_both_costs` and mutation-tested.
+
+### What this one is evidence for
+
+The other ten entries were found by reading Lich closely. This one could not
+have been: the source is internally consistent, the comment and the code agree
+about what the code does, and nothing about line 182 looks wrong. It took a
+second source that disagreed.
+
+That is the argument for checking a cited oracle rather than trusting the
+citation — and the citation was *right there in the file*, unread until the
+port.
+
+---
+
 ## What this list is evidence for
 
-Four of the twelve entries (#1, #4, and two in §8) are **key-spelling or
+Four of the thirteen entries (#1, #4, and two in §8) are **key-spelling or
 string-comparison defects** — a value written under one name and read under another.
 Every one is structurally impossible in a typed model with named fields, which is the
 case `research/04-inherited-decisions.md:1878` (C21) makes on other grounds. In this

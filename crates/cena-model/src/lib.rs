@@ -36,6 +36,8 @@ pub use state::character::vocabulary::{
 };
 pub use state::chunks::{Chunk, ChunkLine, MAX_CHUNK_LINES};
 pub use state::gameobj::{Classification, ObjectTypes};
+pub use state::societies::membership::MembershipLine;
+pub use state::societies::{Ability, AbilityKind, AlternateCost, Cost, CostTiming, Target};
 pub use state::streams::{LineTally, MAX_STREAM_LINES};
 pub use state::{
     Character, Container, Experience, Found, GameState, Injury, Inventory, MAX_UNKNOWN_TAGS, Room,

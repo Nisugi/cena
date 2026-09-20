@@ -49,6 +49,7 @@ mod inventory;
 mod nouns;
 mod reconnect;
 mod room;
+pub mod societies;
 pub mod streams;
 mod unknown;
 

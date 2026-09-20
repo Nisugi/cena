@@ -94,6 +94,22 @@ struct AllowedStatic {
 /// The reviewed statics.
 const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
+        path: "crates/cena-model/src/state/societies/membership.rs",
+        name: "STANDING",
+        justification: "A OnceLock<Option<Regex>> holding ONE compiled pattern: the society \
+                        standing line (parser.rb:38), which is the only membership line needing \
+                        captures -- it reads a society name and an optional rank out of the \
+                        middle of the text. It is built on first use, never mutated, holds no \
+                        session handle and is a pure function of a string literal in the same \
+                        file, so concurrent readers cannot observe different values. It is an \
+                        Option rather than an expect() because a pattern that failed to compile \
+                        should make classification return None, not abort the process. The other \
+                        six membership patterns were regexes in the first draft and are now \
+                        plain string prefixes compared with starts_with: every one of them is a \
+                        literal with no regex syntax in it, so compiling them bought nothing and \
+                        cost six more statics to justify. Only this one earns the machinery.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/armaments.rs",
         name: "TABLES",
         justification: "A OnceLock<Tables> holding the weapon, armor, shield and alias tables,                         parsed from four include_str! TSVs on first use and never mutated. The                         third of these in the crate and the argument does not change: process-                         wide state, made safe by holding no session handle and being a pure                         function of compile-time strings. 96 weapons, 18 armor sub-groups, 4                         shields and 706 aliases, parsed once rather than per lookup -- and a                         loot filter or a damage estimate reads them per item, so per-call                         parsing is not a tradeoff worth making. Lich holds the same data in                         class variables behind Lich::Util.deep_freeze                         (armaments/weapon_stats.rb:55).",
