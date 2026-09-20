@@ -186,6 +186,20 @@ impl Script {
 /// so the unfiltered form is the one worth having. Both are sent, last, so the
 /// pair proves the suffix changes only which rows appear and not the shape.
 ///
+/// # The enhancive totals, added for M3 step 7
+///
+/// `inventory enhancive totals` prints six sections -- Stats, Skills,
+/// Resources, Martial Knowledge Skills, Self Knowledge Spells, Statistics --
+/// whose headers form a **clique, not a chain**: `parser.rb:178-193` lets any
+/// of them follow any other, because a character with no enhancive skills
+/// simply has no `Skills:` section. The `details` form is the longer one, and
+/// both are captured so the difference is measured rather than assumed.
+///
+/// **The bare `inventory enhancive` is the TOGGLE** -- it turns every
+/// enhancive item's benefits on or off. It is never sent, and
+/// `the_enhancive_toggle_is_never_sent` is what holds that true rather than
+/// this comment.
+///
 /// # Why ascension is here at all
 ///
 /// It is **not** a PSM (`state/character/psm.rs`'s `AscensionTable` records
@@ -208,6 +222,12 @@ const PSM_COMMANDS: &[&str] = &[
     // The filtered/unfiltered pair, for the shape comparison.
     "cman list",
     "ascension info",
+    // M3 step 7: the enhancive totals. Six sections whose headers form a
+    // CLIQUE rather than a chain -- `parser.rb:178-193` lets any of them
+    // follow any other, because a character with no enhancive skills simply
+    // has no `Skills:` section. The `details` form is the longer one.
+    "inventory enhancive totals",
+    "inventory enhancive totals details",
 ];
 
 /// Capture the PSM and ascension tables for M3's fixtures.
@@ -597,29 +617,62 @@ mod tests {
     /// cost something real. `list` and `info` print a table and change
     /// nothing.
     ///
-    /// Checked by construction -- every command must start with a known
-    /// category word and contain only `list`/`info` after it -- so adding a
-    /// command that does anything else is a test failure, not a discovery made
-    /// live.
+    /// Checked by construction -- every command must be a known noun followed
+    /// by one of that noun's read verbs -- so adding a command that does
+    /// anything else is a test failure, not a discovery made live.
     #[test]
     fn every_psm_command_is_a_read() {
-        const CATEGORIES: &[&str] = &["cman", "feat", "armor", "shield", "weapon", "ascension"];
+        // `(noun, the verbs that may follow it)`. The whitelist is per-noun
+        // because `inventory`'s read is not `list` or `info`, and a flat verb
+        // list would have had to admit `enhancive` -- which is also how you
+        // TOGGLE enhancives. See `the_enhancive_toggle_is_never_sent`.
+        const READS: &[(&str, &[&str])] = &[
+            ("cman", &["list", "info"]),
+            ("feat", &["list", "info"]),
+            ("armor", &["list", "info"]),
+            ("shield", &["list", "info"]),
+            ("weapon", &["list", "info"]),
+            ("ascension", &["list", "info"]),
+            ("inventory", &["enhancive"]),
+        ];
+        // Words that may follow the verb: filters and sub-selectors only.
+        const MODIFIERS: &[&str] = &["all", "totals", "details"];
+
         for command in PSM_COMMANDS {
             let mut words = command.split_whitespace();
-            let category = words.next().unwrap_or_default();
-            assert!(
-                CATEGORIES.contains(&category),
-                "{command:?} does not start with a known category"
-            );
+            let noun = words.next().unwrap_or_default();
+            let Some((_, verbs)) = READS.iter().find(|(n, _)| *n == noun) else {
+                panic!("{command:?} does not start with a known read noun");
+            };
             let verb = words.next().unwrap_or_default();
             assert!(
-                verb == "list" || verb == "info",
-                "{command:?} is not a read -- only `list` and `info` are"
+                verbs.contains(&verb),
+                "{command:?} is not a read -- {noun} reads are {verbs:?}"
             );
             for rest in words {
-                assert_eq!(
-                    rest, "all",
-                    "{command:?} carries an argument that is not a filter"
+                assert!(
+                    MODIFIERS.contains(&rest),
+                    "{command:?} carries {rest:?}, which is not a filter"
+                );
+            }
+        }
+    }
+
+    /// **`inventory enhancive` alone is never sent.**
+    ///
+    /// The bare form is the TOGGLE -- it turns the benefits of every enhancive
+    /// item on or off (`parser.rb`'s `EnhanciveOn`/`EnhanciveOff` match its
+    /// replies). Only `totals` reads. A capture script that flipped the
+    /// author's enhancives would be exactly the "cost the character something"
+    /// failure the read-only rule exists to prevent, and it is one missing
+    /// word away.
+    #[test]
+    fn the_enhancive_toggle_is_never_sent() {
+        for command in PSM_COMMANDS {
+            if command.starts_with("inventory enhancive") {
+                assert!(
+                    command.contains("totals"),
+                    "{command:?} is the enhancive TOGGLE, not a read"
                 );
             }
         }
