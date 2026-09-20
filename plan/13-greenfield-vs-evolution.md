@@ -167,28 +167,94 @@ Bonuses are more varied -- 129 expressions, 66 shapes, top ten covering 44% --
 but they are all the same *kind* of thing: arithmetic over skill ranks and
 stats with `.max`/`.min` clamping, which is ordinary Rust.
 
-### The `reget` cases are five, not a class
+### The `reget` cases are five, and the combat parser removes them
 
 My first reading called these "a program that reads the client's own output
 buffer" and treated them as decisive. MEASURED: **five durations across four
 spells** (102, 210, 214, 513), and four of the five are `cast-type='target'`
--- the duration when the character casts the spell on someone ELSE, which a
-client tracking its own effects rarely needs.
+-- the duration when the character casts the spell on someone ELSE.
 
-What they compute is `(CS_result - 100) / 60.0`: a hostile spell's duration
-depends on the endroll that landed it. The CS line is on the wire, so Cena can
-have that number structurally rather than by scraping scrollback -- which is
-`plan/12` §3a's bargain again, and would be better than the original.
+Strip the scrollback machinery from Bind's and what remains is:
+
+```text
+13 + (endroll - 100) / 60.0        ...or 0.25 if the endroll is not found
+```
+
+**One arithmetic expression over one number.** The `reget`, the `reverse`, the
+`index`, the regex and the `history[index+2]` are all Lich recovering a value
+it never stored -- and the `else 0.25` is a 15-second guess for when that
+recovery fails.
+
+> **AUTHOR, 2026-09-20:** *"once we get the combat parser in, it will be able
+> to record outcomes (endrolls) and all that, so the reget wouldn't be
+> needed?"*
+
+Right, and stronger than "not needed": it makes the value **structural**. A
+combat parser that records outcomes holds the endroll as a fact captured when
+it arrived, so these five durations become the same arithmetic over a field
+rather than over a scrollback scrape -- and the `0.25` fallback has no reason
+to fire.
+
+That is `plan/12` §3a's bargain in its clearest form. Lich re-scans its own
+output because the parse threw the number away; Cena's rule is that every fact
+the markup encodes survives into the frames, so there is nothing to re-scan.
+The same argument `state/chunks.rs` records about the combat tracker's four
+re-scanning bugs.
+
+**So this is a dependency, not an obstacle.** The five wait on the combat
+parser, which `plan/12` §8 already schedules, rather than on an interpreter
+this project will not have.
+
+### The wiki is a second source for 98% of them
+
+> **AUTHOR, 2026-09-20:** *"keep in mind every one of those spells are in here
+> `reference/wiki_clean`"*
+
+MEASURED: of the 315 real spells in `effect-list.xml` (numbers under 1800, not
+the `x99` circle-wide pseudo-entries), **310 have a wiki page** named
+`<Name> _NNN_.txt`. The five without are cooldown entries -- `Rapid Fire
+Penalty`, `Celerity Recovery`, three `Core Tap Recovery` charges -- not spells.
+
+And the pages state the duration **in prose, in an infobox**:
+
+```text
+Spirit Warding I (101)  Mnemonic [SWARDING1]
+  Base Duration   2 hours (self) / 1200 secs (other)
+  Added Duration  60 sec per MnS rank
+```
+
+which is exactly what the Ruby says:
+
+```ruby
+(Spell[101].known? ? 120 : 20) + Spells.minorspiritual
+```
+
+**120 minutes self, 20 minutes other, plus one minute per rank in the
+circle.** Sampled twelve spells across six circles (101, 103, 107, 120, 215,
+406, 414, 503, 513, 601, 613, 1109): all twelve read `2 hours (self) / 1200
+secs (other)`.
+
+And the constants do not vary. Of the 35 spells whose self-duration uses the
+canonical shape, **all 35 carry 120/20** -- so this is one rule applied 35
+times, not 35 formulas. The numbers in the Ruby are the rule.
+
+**That changes the port from transcription to verification.** Two independent
+sources -- Lich's expressions and the wiki's infoboxes -- state the same
+thing, so a port can be checked rather than trusted, which is exactly the
+position the bounty spec corpus put that port in. It also means the ~36 shapes
+are not 36 guesses: each can be read off a page that says what it means.
 
 ### So what a port actually needs
 
 1. **A duration evaluator over ~36 shapes**, not 177 expressions. The inputs
    are `Spell[n].known?`, `Spells.<circle>`, `Stats.level` and `Society.rank`
-   -- all of which this crate already models.
+   -- all of which this crate already models -- and each shape can be checked
+   against the wiki page for a spell that uses it.
 2. **A bonus evaluator** over clamped arithmetic. More shapes, no new inputs.
-3. **Nothing for the five `reget` durations** beyond leaving them unknown
-   until a behavior needs a hostile spell's duration, at which point the CS
-   frame is the better source.
+3. **Nothing for the five `reget` durations** until the combat parser lands.
+   It records the endroll, at which point those five are
+   `13 + (endroll - 100) / 60.0` over a stored field -- and the `0.25`
+   fallback Lich needs for a failed scrollback scrape has nothing to guard.
 
 Deferred rather than blocked, and the distinction matters: the earlier version
 of this section would have kept anyone from trying.
