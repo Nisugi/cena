@@ -1,0 +1,1107 @@
+coord	label	command	category
+2524,1541	ambush @	ambush #	6
+2524,1542	appraise @	appraise #	1
+2524,1543	attack @	attack #	6
+2524,1544	batter @	batter #	3
+2524,1545	beam @	beam #	5_roleplay
+2524,1546	clear from befriend list	befriend clear #	7_befriend
+2524,1547	find @	befriend find #	7_befriend
+2524,1548	befriend @ cold	befriend # cold	7_befriend
+2524,1549	befriend @ friendly	befriend # friendly	7_befriend
+2524,1550	befriend @ neutral	befriend # neutral	7_befriend
+2524,1551	befriend @ reserved	befriend # reserved	7_befriend
+2524,1552	befriend @ warm	befriend # warm	7_befriend
+2524,1553	bless spell into @	_dialog # bless 1	3_bless
+2524,1554	Common Pool Deity Bless @	_dialog # bless 2	3_bless
+2524,1555	bounce @	bounce #	5_roleplay
+2524,1556	bow @	bow #	5_roleplay
+2524,1557	bundle	bundle	10
+2524,1558	unbundle	bundle remove	10
+2524,1559	buy	buy	2
+2524,1560	cast @	cast #	6
+2524,1561	initiate challenge	_dialog # challen	9_challenge
+2524,1562	beg merciful end to challenge	challenge # mercy	9_challenge
+2524,1563	request end to challenge	challenge # stop	9_challenge
+2524,1564	cheapshot eyepoke @	cheapshot eyepoke #	6_cheapshot
+2524,1565	cheapshot footstomp @	cheapshot footstomp #	6_cheapshot
+2524,1566	cheapshot kneebash @	cheapshot kneebash #	6_cheapshot
+2524,1567	cheapshot nosetweak @	cheapshot nosetweak #	6_cheapshot
+2524,1568	cheapshot swiftkick @	cheapshot swiftkick #	6_cheapshot
+2524,1569	cheapshot templeshot @	cheapshot templeshot #	6_cheapshot
+2524,1570	cheapshot throatchop @	cheapshot throatchop #	6_cheapshot
+2524,1571	chuckle @	chuckle #	5_roleplay
+2524,1572	climb @	climb #	4
+2524,1573	close @	close #	3
+2524,1574	curtsy @	curtsy #	5_roleplay
+2524,1575	check demeanor @	demeanor #	7_befriend
+2524,1576	describe @	describe #	1
+2524,1577	disarm @	disarm #	3
+2524,1578	start dragging @	drag #	4
+2524,1579	drink @	drink #	3
+2524,1580	drool @	drool #	5_roleplay
+2524,1581	drop @	drop #	2
+2524,1582	eat @	eat #	3
+2524,1583	encumbrance @	encumbrance #	1
+2524,1584	exchange % with @	_dialog # exchange left	8
+2524,1585	exchange % with @	_dialog # exchange right	8
+2524,1586	fire @	fire #	6
+2524,1587	flirt @	flirt #	5_roleplay
+2524,1588	frown @	frown #	5_roleplay
+2524,1589	gaze @	gaze #	5_roleplay
+2524,1590	get @	get #	2
+2524,1591	giggle at @	giggle #	5_roleplay
+2524,1592	give % to @	give # left	8
+2524,1593	give % to @	give # right	8
+2524,1594	give silvers to @	_dialog # give	8
+2524,1595	glance @	glance #	5_roleplay
+2524,1596	go @	go #	4
+2524,1597	greet @	greet #	5_roleplay
+2524,1598	grin @	grin #	5_roleplay
+2524,1599	grumble @	grumble #	5_roleplay
+2524,1600	hold hands with @	hold #	7
+2524,1601	home guest @	home guest #	7
+2524,1602	hug @	hug #	5_roleplay
+2524,1603	hum @	hum #	5_roleplay
+2524,1604	hurl % at @	hurl #	6
+2524,1605	imbed spell into @	_dialog # imbed	3
+2524,1606	inspect @	inspect #	1
+2524,1607	inspect @	inspect % #	1
+2524,1608	join @	join #	7
+2524,1609	laugh at @	laugh at #	5_roleplay
+2524,1610	lean @	lean #	5_roleplay
+2524,1611	leave @	leave #	7
+2524,1612	light @	light #	3
+2524,1613	look at @	look #	1
+2524,1614	look behind @	look behind #	1
+2524,1615	look in @	look in #	1
+2524,1616	look on @	look on #	1
+2524,1617	look under @	look under #	1
+2524,1618	measure @	measure #	1
+2524,1619	mock @	mock #	5_roleplay
+2524,1620	multistrike (melee)	mstrike attack #	6_focused multistrike
+2524,1621	multistrike tricks	mstrike #	5_roleplay
+2524,1622	nod @	nod #	5_roleplay
+2524,1623	open @	open #	3
+2524,1624	peer @	peer #	5_roleplay
+2524,1625	pick @ with %	pickloc # with left	3
+2524,1626	pick @ with %	pickloc # with right	3
+2524,1627	play @	play #	3_play
+2524,1628	play @ aimlessly	play # aimless	3_play
+2524,1629	play @ fast	play # fast	3_play
+2524,1630	play @ flamboyantly	play # flamboyant	3_play
+2524,1631	play @ inspiringly	play # inspiring	3_play
+2524,1632	play @ intensely	play # intense	3_play
+2524,1633	play @ jauntily	play # jaunty	3_play
+2524,1634	play @ joyfully	play # joyful	3_play
+2524,1635	play @ mournfully	play # mournful	3_play
+2524,1636	play @ slow	play # slow	3_play
+2524,1637	play @ softly	play # soft	3_play
+2524,1638	play @ somberly	play # somber	3_play
+2524,1639	point @	point #	5_roleplay
+2524,1640	pour @	pour #	3
+2524,1641	pull @	pull #	5_roleplay
+2524,1642	put % behind @	put left behind #	2_put
+2524,1643	put % in @	put left in #	2_put
+2524,1644	put % on @	put left on #	2_put
+2524,1645	put % under @	put left under #	2_put
+2524,1646	put % behind @	put right behind #	2_put
+2524,1647	put % in @	put right in #	2_put
+2524,1648	put % on @	put right on @	2_put
+2524,1649	put % under @	put right under #	2_put
+2524,1650	puzzle over @	puzzle #	5_roleplay
+2524,1651	read @	read #	1
+2524,1652	remove @	remove #	2
+2524,1653	rest @	rest #	5_roleplay
+2524,1654	rub @	rub #	5_roleplay
+2524,1655	sacrifice @	sacrifice #	6
+2524,1656	scowl @	scowl #	5_roleplay
+2524,1657	search @	search #	1
+2524,1658	sell @	sell #	2
+2524,1659	send mana	_dialog # send	8
+2524,1660	shake hands with @	shake hands with #	5_roleplay
+2524,1661	shake head at @	shake head at #	5_roleplay
+2524,1662	sheathe @	sheathe @	2
+2524,1663	sing @	sing #	6
+2524,1664	skin @ using left	skin # left	10
+2524,1665	skin @ using right	skin # right	10
+2524,1666	smooch @	smooch #	5_roleplay
+2524,1667	sneak @	sneak #	4
+2524,1668	snuggle with @	snuggle #	5_roleplay
+2524,1669	squint @	squint #	5_roleplay
+2524,1670	stare @	stare #	5_roleplay
+2524,1671	stow @	stow #	2
+2524,1672	stow %	stow left	2
+2524,1673	stow %	stow right	2
+2524,1674	set as default container	stow set #	1
+2524,1675	stun maneuver attack @	stunman attack @	6_stunned maneuvers
+2524,1676	subdue @	subdue #	6
+2524,1677	swear @	swear #	5_roleplay-swear
+2524,1678	cast aspersions at @	swear # aspersion	5_roleplay-swear
+2524,1679	swear under breath at @	swear # breath	5_roleplay-swear
+2524,1680	swear at ancestors of @	swear # curse	5_roleplay-swear
+2524,1681	swear at @ eloquently	swear # eloquent	5_roleplay-swear
+2524,1682	swear at @ flamingly	swear # flame	5_roleplay-swear
+2524,1683	swear at @ fluid	swear # fluid	5_roleplay-swear
+2524,1684	swear at @ indignantly	swear # indignant	5_roleplay-swear
+2524,1685	swear at @ loudly	swear # loud	5_roleplay-swear
+2524,1686	swear at @ lyrically	swear # lyric	5_roleplay-swear
+2524,1687	swear guttural oaths at @	swear # oath	5_roleplay-swear
+2524,1688	swear about shoddy workmanship	swear # shoddy	5_roleplay-swear
+2524,1689	hurl vitriolic oaths at @	swear # spasm	5_roleplay-swear
+2524,1690	swear at @ darkly	swear # spite	5_roleplay-swear
+2524,1691	swear at @ with spittle	swear # spittle	5_roleplay-swear
+2524,1692	swear at @ thornily	swear # thorn	5_roleplay-swear
+2524,1693	swear at @ vehemently	swear # tree	5_roleplay-swear
+2524,1694	swear at @ unheard	swear # unheard	5_roleplay-swear
+2524,1695	swear at @ vilely	swear # vile	5_roleplay-swear
+2524,1696	sweep @	sweep #	6
+2524,1697	swim @	swim #	4
+2524,1698	symbol of blessing @	symbol of blessing #	3
+2524,1699	symbol of holiness @	symbol of holiness #	6_voln
+2524,1700	symbol of preservation @	symbol of preservation #	6_voln
+2524,1701	symbol of retribution @	symbol of retribution #	6_voln
+2524,1702	symbol of submission @	symbol of submission #	6_voln
+2524,1703	tackle @	tackle #	6
+2524,1704	tap @	tap #	5_roleplay
+2524,1705	target @	target #	6
+2524,1706	clear current target	target clear	6
+2524,1707	tell @	tell @	1
+2524,1708	tell eye to go @	tell eye to go #	3_tell
+2524,1709	tell eye to inspect @	tell eye to inspect #	3_tell
+2524,1710	tell eye to look at @	tell eye to look at #	3_tell
+2524,1711	tell eye to look behind @	tell eye to look behind #	3_tell
+2524,1712	tell eye to look in @	tell eye to look in #	3_tell
+2524,1713	tell eye to look on @	tell eye to look on #	3_tell
+2524,1714	tell eye to look under @	tell eye to look under #	3_tell
+2524,1715	tell eye to read @	tell eye to read #	3_tell
+2524,1716	tell familiar to drop @	tell familiar to drop #	3_tell
+2524,1717	tell familiar to get @	tell familiar to get #	3_tell
+2524,1718	tell familiar to go @	tell familiar to go #	4
+2524,1719	think to @	_dialog # think	9
+2524,1720	toss @	toss #	5_roleplay
+2524,1721	touch @	touch #	5_roleplay
+2524,1722	trip @	trip #	6
+2524,1723	turn @	turn #	3
+2524,1724	kick @	kick #	6_voln
+2524,1725	punch @	punch #	6_voln
+2524,1726	throw @	throw #	6_voln
+2524,1727	warcry bellow @	warcry bellow #	6_warcry
+2524,1728	warcry cry @	warcry cry #	6_warcry
+2524,1729	warcry growl @	warcry growl #	6_warcry
+2524,1730	warcry holler @	warcry holler #	6_warcry
+2524,1731	warcry shout @	warcry shout #	6_warcry
+2524,1732	warcry yowlp @	warcry yowlp #	6_warcry
+2524,1733	wave @	wave #	5_roleplay
+2524,1734	wave % at @	wave left at #	3
+2524,1735	wave % at @	wave right at #	3
+2524,1736	wear @	wear #	2
+2524,1737	weigh @	weight #	1
+2524,1738	whisper group	_dialog # whisper group	9
+2524,1739	whisper	_dialog # whisper	9
+2524,1740	wink @	wink #	5_roleplay
+2524,1741	help @	help @	0
+2524,1742	depart CONFIRM	depart confirm	0
+2524,1743	deposit @	deposit #	8
+2524,1744	sign @	sign @	0
+2524,1745	aim @	aim @	0
+2524,1746	stop @	stop @	0
+2524,1747	tend @ %	tend # %	8
+2524,1748	unwrap @	unwrap @	0
+2524,1749	cry @	cry @	0
+2524,1750	grin @	grin @	0
+2524,1751	laugh @	laugh @	0
+2524,1752	guild @	gld @	0
+2524,1753	accept	accept	0
+2524,1754	cancel	cancel	0
+2524,1755	decline	decline	0
+2524,1757	symbol @	symbol @	0
+2524,1758	stance @	stance @	0
+2524,1759	accept confirm	accept confirm	0
+2524,1760	clench @	clench @	0
+2524,1761	group open	group open	0
+2524,1762	group close	group close	0
+2524,1763	policy	policy @	0
+2524,1764	gaze @	gaze @	0
+2524,1765	flags @	flags @	0
+2524,1767	scratch @	scratch @	0
+2524,1769	tilt @	tilt @	0
+2524,1770	stunmaneuver @	stunman @	0
+2524,1772	accept challenge	challenge # accept	9_challenge
+2524,1773	refuse challenge	challenge # refuse	9_challenge
+2524,1774	grunt @	grunt @	0
+2524,1775	swear @	swear @	0
+2524,1788	agree	agree	0
+2524,1790	news @	news @	0
+2524,1791	next news item	news next	0
+2524,1792	sweat @	sweat @	0
+2524,1796	default quicklinks	_qlinks default	0
+2524,1797	combat quicklinks	_qlinks combat	0
+2524,1798	Simutronics Info Quicklinks	_qlinks simu	0
+2524,1799	mentor quicklinks	_qlinks mentor	0
+2524,1800	custom quicklinks	_qlinks custom	0
+2524,1801	strut @	strut @	0
+2524,1802	crack @	crack @	0
+2524,1803	wiggle @	wiggle @	0
+2524,1805	befriend clear all	befriend clear all	0
+2524,1806	befriend list	befriend list	0
+2524,1807	available cultural background ti	title culture list	0
+2524,1808	display your current title	title show	0
+2524,1809	available prename titles	title prename list	0
+2524,1810	clear your prename title	title prename clear	0
+2524,1811	available profession titles	title profession list	0
+2524,1812	clear your profession title	title profession clear	0
+2524,1813	available ancillary titles	title ancillary list	0
+2524,1814	fold @	fold #	5_roleplay
+2524,1815	fold @	fold @	0
+2524,1816	roshambo @	roshambo @	0
+2524,1817	view full player list	who full	0
+2524,1818	tremble @	tremble @	0
+2524,1819	breathe @	breathe @	0
+2524,1821	beg @	beg @	0
+2524,1822	alteration guidelines	alter @	0
+2524,1823	attend @	attend @	0
+2524,1824	express @	express @	0
+2524,1825	vote start @	vote start @	0
+2524,1826	vote @	vote @	0
+2524,1827	open dialog	_dialog # @	0
+2524,1828	age @	age @	0
+2524,1829	age set @	age set @	0
+2524,1830	set age descriptor	age set descriptor @	0
+2524,1831	tone @	tone @	0
+2524,1833	convert set @	convert set @	0
+2524,1834	convert set @ confirm	convert set @ confirm	0
+2524,1835	daydream	daydream	0
+2524,1836	speak @	speak @	0
+2524,1837	ready help	ready help	2
+2524,1864	go @	go @	4
+2524,1865	prepare @	prepare @	0
+2524,1867	spell all	_spell _spell_bard	0
+2524,1868	spell all	_spell _spell_cleric	0
+2524,1869	spell all	_spell _spell_empath	0
+2524,1870	spell all	_spell _spell_major_elemental	0
+2524,1871	spell all	_spell _spell_minor_elemental	0
+2524,1872	spell all	_spell _spell_major_mental	0
+2524,1873	spell all	_spell _spell_major_spirit	0
+2524,1874	spell all	_spell _spell_monk	0
+2524,1875	spell all	_spell _spell_paladin	0
+2524,1876	spell all	_spell _spell_oldempath	0
+2524,1877	spell all	_spell _spell_ranger	0
+2524,1878	spell all	_spell _spell_savant	0
+2524,1879	spell all	_spell _spell_sorcerer	0
+2524,1880	spell all	_spell _spell_update_links	0
+2524,1881	spell all	_spell _spell_update_old_1	0
+2524,1882	spell all	_spell _spell_update_old_2	0
+2524,1883	spell all	_spell _spell_update_old_3	0
+2524,1884	spell all	_spell _spell_wizard	0
+2524,1885	spell all	_spell _spell_minor_spirit	0
+2524,1886	spell all	_spell _spell_minor_mental	0
+2524,1887	news @	news @	1_news
+2524,1888	advice	advice	0
+2524,1889	get directions to @	directions @	0
+2524,1890	news help	news help	0
+2524,1897	chant retribution @	chant retribution @	6
+2524,1898	look @	look @	1
+2524,1899	stand up	stand	0
+2524,1900	lean @	lean @	4
+2524,1901	ask @	ask @	9
+2524,1902	order	order @	8
+2524,1903	check balance	check balance	1
+2524,1904	swim @	swim @	4
+2524,1906	ask @ about %	ask # about %	9_questions
+2524,1907	ask @ for %	ask # for %	9_questions
+2524,1908	tell eye to blink %	tell eye to blink %	3_tell
+2524,1909	tell eye to bat %	tell eye to bat %	3_tell
+2524,1910	directions	directions @	7
+2524,1922	unlatch @	unlatch #	3
+2524,1923	latch @	latch #	3
+2524,1924	give	give @	8
+2524,1925	order	order #	2
+2524,1926	go @	go table	3
+2524,1927	ring @	ring #	3
+2524,1928	yawn	yawn #	5
+2524,1929	waggle fingers	waggle #	5
+2524,1930	grip %	grip @	3
+2524,1931	society reset	society reset	0
+2524,1932	society reset confirm	society reset confirm	0
+2524,1933	cast at self	cast	6
+2524,1934	release	release	6
+2524,1935	sing at self	sing	6
+2524,1936	jump @	jump #	4
+2524,1937	check in	check in	1
+2524,1938	push @	push #	3
+2524,1940	pay	pay @	0
+2524,1941	pay @	_dialog # pay	0
+2524,1942	pin @	pin @	0
+2524,1943	get coins from @	_dialog # get	2
+2524,1944	put coins in @	_dialog # drop	2
+2524,1945	lock @	lock #	3
+2524,1946	unlock @	unlock #	3
+2524,1947	giftbox @	giftbox @	0
+2524,1948	sit on @	sit #	5_roleplay
+2524,1949	assist @	assist @	1
+2524,1950	assist request	_dialog # assist request	1
+2524,1951	bug	bug	1
+2524,1952	typo @	_dialog # typo	1
+2524,1953	comment @	_dialog # comment	1
+2524,1954	queue	queue	1
+2524,1957	referral @	referral @	1
+2524,1958	report @	_dialog # report	1
+2524,1959	profile @	profile #	1
+2524,1960	answer	_dialog # answer	9
+2524,1961	profile toggle group	profile toggle group	0
+2524,1962	profile toggle level	profile toggle level	0
+2524,1963	profile toggle age	profile toggle age	0
+2524,1964	profile toggle house	profile toggle house	0
+2524,1965	profile toggle society	profile toggle society	0
+2524,1966	profile toggle guild	profile toggle guild	0
+2524,1967	profile toggle deity	profile toggle deity	0
+2524,1968	profile toggle foe	profile toggle foe	0
+2524,1969	profile toggle bio	profile toggle bio	0
+2524,1970	profile quote clear	profile quote clear	0
+2524,1971	0	0	0
+2524,1972	profile info	profile info                   	0
+2524,1973	rgambit @	rgambit @	1
+2524,1975	learn @	cman learn @	1
+2524,1976	unlearn @	cman unlearn @	1
+2524,1978	info	cman info	1
+2524,1979	help @	cman help @	1
+2524,1982	list @	cman list @	1
+2524,1983	target random	target random	0
+2524,1984	set as default sheath	sheathe #	1
+2524,1985	clear default sheath	sheathe clear	1
+2524,1986	set as default weapon	unsheathe #	1
+2524,1987	clear default weapon	unsheathe clear	1
+2524,1988	unsheathe @	unsheathe @	2
+2524,1989	store @	store @	2
+2524,1990	ready @	ready @	2
+2524,1991	set as default shield	ready shield #	1
+2524,1992	clear default shield	ready shield clear	1
+2524,1993	invoke %	invoke %	3_invoke spell
+2524,1994	invoke %	invoke @	0
+2524,1997	shriek @	shriek #	5_roleplay
+2524,1998	wtricks @	wtricks @	0
+2524,1999	buy @	buy #	10
+2524,2000	more	more	0
+2524,2001	backroom	backroom	0
+2524,2002	menu	menu	0
+2524,2003	done	done	0
+2524,2004	customize	customize	0
+2524,2005	back	back	0
+2524,2006	refuse offer	refuse offer	0
+2524,2007	offer silvers	_dialog # offer	8
+2524,2008	1	1	0
+2524,2009	2	2	0
+2524,2010	3	3	0
+2524,2011	4	4	4
+2524,2012	5	5	0
+2524,2013	6	6	0
+2524,2014	7	7	drag
+2524,2015	8	8	0
+2524,2016	9	9	0
+2524,2017	unlink @	unlink @	0
+2524,2018	help @	_help @	1
+2524,2019	movement @	movement @	0
+2524,2020	smile @	smile #	5_roleplay
+2524,2021	squeal @	squeal #	5_roleplay
+2524,2022	lick @	lick #	3
+2524,2023	hiss @	hiss #	5
+2524,2025	smell @	smell #	5_roleplay
+2524,2026	pinch @	pinch #	5_roleplay
+2524,2027	roll @	roll #	5_roleplay
+2524,2028	raise @	raise #	3
+2524,2029	thump @	thump #	6
+2524,2030	ponder @	ponder #	5_roleplay
+2524,2031	gawk @	gawk #	5_roleplay
+2524,2032	glower @	glower #	5_roleplay
+2524,2033	pet @	pet #	5_roleplay
+2524,2034	place bet	_dialog # 135	3
+2524,2035	mount @	mount #	5_roleplay
+2524,2036	dismiss @	dismiss #	5_roleplay
+2524,2037	pour % on @	pour % on #	3_pour
+2524,2038	wave % at @	wave % at @	3
+2524,2039	offer @	offer #	0
+2524,2040	poke @	poke #	5_roleplay
+2524,2041	kick @	kick #	6
+2524,2042	punch @	punch #	6
+2524,2043	lie on @	lie #	5_roleplay
+2524,2044	groan @	groan #	5_roleplay
+2524,2045	steal from @	steal #	8
+2524,2046	cheer @	cheer #	5_roleplay
+2524,2047	tell eye to return	tell eye to return	3_tell
+2524,2048	tell eye to look	tell eye to look	3_tell
+2524,2049	nudge @	nudge #	5_roleplay
+2524,2050	pour % in @	pour right in #	3_pour
+2524,2051	pour % in @	pour left in #	3_pour
+2524,2052	kiss @	kiss #	5_roleplay
+2524,2053	bury @	bury #	5_roleplay
+2524,2054	kneel @	kneel #	5_roleplay
+2524,2055	fly @	fly #	3
+2524,2056	light @ with %	light # with %	3
+2524,2057	tickle @	tickle #	5_roleplay
+2524,2058	blink @	blink #	5_roleplay
+2524,2059	check time until departure	depart	0
+2524,2060	cringe @	cringe #	5_roleplay
+2524,2061	splash @	splash #	5_roleplay
+2524,2062	gasp @	gasp #	5_roleplay
+2524,2063	glare @	glare #	5_roleplay
+2524,2064	snort @	snort #	5_roleplay
+2524,2065	sneer @	sneer #	5_roleplay
+2524,2066	scoff @	scoff #	5_roleplay
+2524,2067	cower from @	cower #	5_roleplay
+2524,2068	spin @	spin #	3
+2524,2069	puff @	puff #	5_roleplay
+2524,2070	extinguish @	extinguish #	3
+2524,2071	smack your lips	smooch	0
+2524,2072	dig	dig	5_roleplay
+2524,2073	slap @	slap #	5_roleplay
+2524,2074	prod @	prod #	5_roleplay
+2524,2075	crack your knuckles	pinch	0
+2524,2076	water @	water #	5_roleplay
+2524,2077	grimace @	grimace #	5_roleplay
+2524,2080	throw @	throw #	6
+2524,2081	listen @	listen #	9
+2524,2082	fire @	fire #	6
+2524,2083	throw % at @	throw % at #	5_roleplay
+2524,2084	pour % behind @	pour % behind #	3_pour
+2524,2085	pour % in @	pour % in #	3_pour
+2524,2086	pour %	pour left	3_pour
+2524,2087	pour % behind @	pour left behind #	3_pour
+2524,2088	pour % on @	pour left on #	3_pour
+2524,2089	pour % under @	pour left under #	3_pour
+2524,2090	pour %	pour right	3_pour
+2524,2091	pour % behind @	pour right behind #	3_pour
+2524,2092	pour % on @	pour right on #	3_pour
+2524,2093	pour % under @	pour right under #	3_pour
+2524,2094	pour % under @	pour % under #	3_pour
+2524,2095	ambush @ %	ambush # @	6_ambush
+2524,2096	shake @	shake #	5_roleplay
+2524,2097	register @	register #	1
+2524,2098	inquire about @	register info #	1
+2524,2099	deposit	_dialog # deposit	0
+2524,2100	check	check	0
+2524,2101	withdraw	_dialog # withdra	0
+2524,2102	group	group	0
+2524,2103	demeanor @	demeanor @	0
+2524,2104	demeanor % @	demeanor % @	0
+2524,2105	turn @ %	turn # %	5
+2524,2106	premium @	premium @	0
+2524,2107	climb	climb @	0
+2524,2108	sweat @	sweat #	5_roleplay
+2524,2109	pierce @	pierce @	2
+2524,2113	message a mentor	_dialog # mentor message	11_mentor
+2524,2114	attune @	attune @	0
+2524,2115	tell familiar to go @	tell familiar to go @	0
+2524,2116	swap	swap	1
+2524,2119	challenge @ to joust	joust challenge @	6
+2524,2120	accept challenge	joust accept @	6
+2524,2121	sit %	sit %	5_roleplay
+2524,2122	joust @	joust @	6
+2524,2123	invite @	invite #	5
+2524,2124	invite group led by @	invite # group	5
+2524,2125	guild stance advanced	gld stance advance	0
+2524,2126	guild stance forward	gld stance forward	0
+2524,2127	guild stance neutral	gld stance neutral	0
+2524,2128	guild stance guarded	gld stance guarded	0
+2524,2129	go @	go booth	3
+2524,2130	convert list	convert list	0
+2524,2131	advance towards @	joust advance @	6
+2524,2136	blush at @	blush @	5_roleplay
+2524,2137	fix @	fix @	3
+2524,2138	citizen @	citizen @	1
+2524,2139	hide	hide	0
+2524,2140	hoot	hoot	5
+2524,2141	cmastery @	cman cmastery @	6
+2524,2142	tell eye to go @	tell eye to go @	0
+2524,2143	tell eye to bloodshot	tell eye to bloodshot	0
+2524,2145	cure %	cure %	6
+2524,2146	cure blood loss	cure	6
+2524,2153	seek out a Mentor	helpme	0
+2524,2159	tell eye to sneeze	tell eye to sneeze	0
+2524,2160	tell eye to roll	tell eye to roll	0
+2524,2161	tell @ %	tell @ %	1
+2524,2162	show right to @	show right to #	8
+2524,2163	show left to @	show left to #	8
+2524,2165	tell eye to revolve	tell eye to revolve	0
+2524,2166	tell eye to cry	tell eye to cry	0
+2524,2167	smell @	smell #	5_roleplay
+2524,2168	roll @	roll #	7
+2524,2169	stop dragging @	drag stop	4
+2524,2170	tell eye to blind	tell eye to blind	0
+2524,2171	help on profiles	profile help	0
+2524,2172	tell eye to widen	tell eye to widen	0
+2524,2173	tell eye to narrow	tell eye to narrow	0
+2524,2174	tell eye to hover	tell eye to hover	0
+2524,2176	lean right	lean right	0
+2524,2177	lean left	lean left	0
+2524,2178	submit bug report @	_dialog # bugitem	0
+2524,2179	cock @	cock #	3
+2524,2180	load @	load #	3
+2524,2181	ponder @	ponder #	5_roleplay
+2524,2182	tend @	tend @	8
+2524,2183	diagnose @	diagnose #	8
+2524,2184	transfer @ %	transfer # %	8
+2524,2185	transfer @ right leg	transfer # right leg	8
+2524,2186	transfer @ left leg	transfer # left leg	8
+2524,2187	transfer @ right arm	transfer # right arm	8
+2524,2188	transfer @ left arm	transfer # left arm	8
+2524,2189	transfer @ right hand	transfer # right hand	8
+2524,2190	transfer @ left hand	transfer # left hand	8
+2524,2191	transfer @ head	transfer # head	8
+2524,2192	transfer @ neck	transfer # neck	8
+2524,2193	transfer @ chest	transfer # chest	8
+2524,2194	transfer @ abdomen	transfer # abdomen	8
+2524,2195	transfer @ back	transfer # back	8
+2524,2196	transfer @ right eye	transfer # right eye	8
+2524,2197	transfer @ left eye	transfer # left eye	8
+2524,2198	transfer @ nerves	transfer # nerves	8
+2524,2199	transfer @ health damage	transfer #	8
+2524,2200	transfer @ any	transfer # any	8
+2524,2201	write	write @	3
+2524,2202	write @	write #	3
+2524,2203	clean @	clean #	5_roleplay
+2524,2204	blush @	blush @	5
+2524,2210	quickstrike @	cman qstrike #	6_combat maneuvers
+2524,2211	shield bash @	cman sbash #	6_combat maneuvers
+2524,2212	shield charge @	cman scharge #	6_combat maneuvers
+2524,2213	mighty blow @	cman mblow #	6_combat maneuvers
+2524,2214	sunder shield @	cman sunder #	6_combat maneuvers
+2524,2215	growl @	growl @	5
+2524,2216	howl @	howl @	5
+2524,2217	bark @	bark @	5
+2524,2218	purr @	purr @	5
+2524,2219	whistle @	whistle @	5
+2524,2220	whistle bird @	whistle bird @	3_roleplay
+2524,2221	hoot @	hoot @	5
+2524,2222	imitate bird @	imitate bird @	5
+2524,2223	imitate owl @	imitate owl @	5
+2524,2224	imitate feline @	imitate feline @	5
+2524,2225	imitate bear @	imitate bear @	5
+2524,2226	imitate dog @	imitate dog @	5
+2524,2227	imitate wolf @	imitate wolf @	5
+2524,2228	imitate howl @	imitate howl @	5
+2524,2229	imitate purr @	imitate purr @	5
+2524,2230	imitate growl @	imitate growl @	5
+2524,2231	imitate hoot @	imitate hoot @	5
+2524,2232	imitate whistle @	imitate whistle @	5
+2524,2233	imitate bark @	imitate bark @	5
+2524,2234	imitate features of @	imitate features #	5_roleplay
+2524,2235	imitate @	imitate @	5
+2524,2236	say @	say @	5
+2524,2237	gather	gather #	2
+2524,2238	send thought	_dialog # think open	9
+2524,2239	search	search	0
+2524,2240	stick out tongue	lick	0
+2524,2242	tes&t	/josh	0
+2524,2243	wave	wave	5_RP
+2524,2249	tilt @	tilt #	5_roleplay
+2524,2250	flip @	flip #	5_roleplay
+2524,2251	engrave @	engrave @	3
+2524,2252	/STATUS	/STATUS #	13
+2524,2257	tap your foot	tap	0
+2524,2258	peer	peer	0
+2524,2259	info @	info @	1
+2524,2260	gawk @	gawk @	5_roleplay
+2524,2261	exhale	exhale	0
+2524,2264	scratch @	scratch #	5_roleplay
+2524,2271	speak to	_dialog # say	9
+2524,2272	steal from @	steal #	8
+2524,2273	loresing @	loresing @	0
+2524,2274	bid @	bid @	0
+2524,2275	help on groups	group help	0
+2524,2276	designate as leader	group leader #	7
+2524,2277	remove from group	group remove #	7
+2524,2279	disband group	disband	0
+2524,2281	bid start	_dialog @ bid start	0
+2524,2282	bid increment percent	_dialog @ bid increment percent	0
+2524,2283	bid increment absolute	_dialog @ bid increment absolute	0
+2524,2284	bid minimum	_dialog @ bid minimum	0
+2524,2285	bid minimum default	_dialog @ bid minimum default	0
+2524,2286	bid dutch start	_dialog @ bid dutch start	0
+2524,2287	bid dutch decrement	_dialog @ bid dutch decrement	0
+2524,2288	bid dutch change	_dialog @ bid dutch change	0
+2524,2289	bid silent start	_dialog @ bid silent start	0
+2524,2290	bid	_dialog @ bid amount	9
+2524,2291	bid	_dialog % bid amount	9
+2524,2292	bid ban @	bid ban #	9
+2524,2293	auction @	auction @	0
+2524,2294	roll	roll	0
+2524,2295	garrote stop	garrote stop	6
+2524,2296	garrote stop	garrote stop	6
+2524,2297	shiver	shiver	0
+2524,2298	scowl	scowl	0
+2524,2299	wealth	wealth	0
+2524,2300	bet	bet	0
+2524,2301	bet on %	_dialog # bet %	0
+2524,2303	roleplay award nomination	_dialog # roleplay nominate	5_roleplay
+2524,2316	twist @	twist #	5_roleplay
+2524,2317	pray	pray	0
+2524,2318	give	give	0
+2524,2319	exhale @	exhale #	5_roleplay
+2524,2320	illusion @	illusion @	5
+2524,2321	illusion teach list	illusion teach list	5
+2524,2322	list titles	title list @	0
+2524,2323	set title	title set @	0
+2524,2324	cover @	cover #	5_roleplay
+2524,2325	punish @	punish #	5_RP
+2524,2326	beam	beam	0
+2524,2327	bow	bow @	0
+2524,2328	chuckle	chuckle	0
+2524,2329	frown	frown	0
+2524,2330	glance	glance	0
+2524,2331	glare	glare	0
+2524,2332	nod	nod	0
+2524,2333	dust @	dust #	5_roleplay
+2524,2334	slide @	slide #	0
+2524,2335	flick @	flick #	2
+2524,2336	dig @	dig #	5_roleplay
+2524,2338	stare into space	stare	0
+2524,2340	feed @	feed #	3
+2524,2341	cuddle @	cuddle #	51
+2524,2342	pound @	pound @	5_roleplay
+2524,2343	belch @	belch @	0
+2524,2345	gld abandon	_dialog @ gld abandon	1
+2524,2349	fidget @	fidget @	0
+2524,2350	fidget @	fidget @	0
+2524,2351	Real Gem info	gem	0
+2524,2352	imitate roar @	imitate roar @	5
+2524,2353	imitate squeal @	imitate squeal @	5
+2524,2354	imitate shriek @	imitate shriek @	5
+2524,2356	turn @ to %	_dialog # turn	5
+2524,2361	berserk @	berserk #	6
+2524,2363	flap at @	flap #	5
+2524,2364	flap at @	flap    	5
+2524,2365	flutter	flutter	5
+2524,2366	flutter at @	flutter_at @	5
+2524,2367	ask	ask	0
+2524,2373	blink	blink	0
+2524,2374	flirt	flirt	0
+2524,2375	squint	squint	0
+2524,2376	bristle	bristle	5
+2524,2377	bristle smug	bristle smug	5
+2524,2380	bristle sleepy	bristle sleepy	5
+2524,2381	bristle nervous	bristle nervous	5
+2524,2382	bristle anxious	bristle anxious	5
+2524,2383	bristle excited	bristle excited	5
+2524,2384	bristle impatient	bristle impatient	5
+2524,2385	bristle satisfied	bristle satisfied	5
+2524,2386	bristle proud	bristle proud	5
+2524,2387	bristle happy	bristle happy	5
+2524,2388	bristle self	bristle self	5
+2524,2389	fall	fall	0
+2524,2390	stumble	stumble	0
+2524,2391	bark loud	bark loud	5
+2524,2392	bark angry	bark angry	5
+2524,2393	bark happy	bark happy	5
+2524,2394	bark hello	bark hello	5
+2524,2395	bark bye	bark bye	5
+2524,2396	bark fear	bark fear	5
+2524,2397	bark pain	bark pain	5
+2524,2398	bark no	bark no	5
+2524,2399	bark yes	bark yes	5
+2524,2400	bark laugh	bark laugh	5
+2524,2401	bark joy	bark joy	5
+2524,2402	bark pleasure	bark pleasure	5
+2524,2403	bark proud	bark proud	5
+2524,2404	bark self	bark self	5
+2524,2407	draw @	draw @	0
+2524,2408	dip @	dip @	5_roleplay
+2524,2409	roar	roar	0
+2524,2410	clench @	clench #	5_RP
+2524,2411	knock on @	knock #	5_RP
+2524,2412	sniff	smell	0
+2524,2413	disarm @	disarm @	0
+2524,2414	tear @	tear #	5_RP
+2524,2415	water @	water @	0
+2524,2416	prune @	prune @	0
+2524,2422	shuffle your feet	shuffle	0
+2524,2423	exhale @ at %	exhale @ at %	5_roleplay
+2524,2424	shuffle east	shuffle east	4
+2524,2425	shuffle west	shuffle west	4
+2524,2426	duck	duck	0
+2524,2428	cut @	cut #	3
+2524,2429	song @	song @	0
+2524,2430	sing @	sing @	0
+2524,2431	gobble	gobble	0
+2524,2437	assume @	assume @	0
+2524,2438	listen	listen	0
+2524,2439	paint @	paint #	5_RP
+2524,2440	point % at @	point % at @	3
+2524,2441	show % to @	show % to #	2
+2524,2442	whistle	whistle	0
+2524,2443	wink	wink	0
+2524,2445	snap your fingers	snap	0
+2524,2446	shout @	shout @	5_roleplay
+2524,2449	snort	snort	0
+2524,2452	sing to	_dialog # sing	9
+2524,2453	recite to	_dialog # recite	9
+2524,2454	pluck @	pluck #	5_RP
+2524,2455	break @	break #	3
+2524,2457	stab @ head	stab # head	3
+2524,2458	stab @ neck	stab # neck	3
+2524,2459	stab @ right arm	stab # right arm	3
+2524,2460	stab @ left arm	stab # left arm	3
+2524,2461	stab @ right leg	stab # right leg	3
+2524,2462	stab @ left leg	stab # left leg	3
+2524,2463	stab @ right hand	stab # right hand	3
+2524,2464	stab @ left hand	stab # left hand	3
+2524,2465	stab @ chest	stab # chest	3
+2524,2466	stab @ abdomen	stab # abdomen	3
+2524,2467	stab @ back	stab # back	3
+2524,2468	stab @ right eye	stab # right eye	3
+2524,2469	stab @ left eye	stab # left eye	3
+2524,2470	kneel	kneel	0
+2524,2471	grovel	grovel	0
+2524,2472	dance	dance	0
+2524,2473	grovel @	grovel #	5_RP
+2524,2474	wave % at @	wave #	3
+2524,2475	tell @ %	tell # %	1
+2524,2476	spellsong renewal	renew	0
+2524,2480	think	think	0
+2524,2481	act puzzled	puzzle	0
+2524,2486	offer my coffer to @	offer my coffer to @	0
+2524,2487	give % to @	give % to #	8
+2524,2489	grind % in @	grind % in #	3
+2524,2490	purr	purr	0
+2524,2493	sigil @	sigil @	0
+2524,2494	sigil of intimidation @	sigil of intimidation #	6
+2524,2495	sneer	sneer	0
+2524,2496	preen	preen	0
+2524,2497	preen @	preen #	5_RP
+2524,2498	appear frustrated	thump	0
+2524,2505	leer @	leer #	5_roleplay
+2524,2508	sleep @	sleep #	5_roleplay
+2524,2509	snore @	snore #	5_roleplay
+2524,2510	wake @	wake #	5_roleplay
+2524,2511	sleep	sleep	0
+2524,2512	snore	snore	0
+2524,2513	wake	wake	0
+2524,2514	grieve	grieve	5_roleplay
+2524,2515	grieve @	grieve #	5_roleplay
+2524,2516	carve #	carve %	3
+2524,2517	.society @	.society #	12_host
+2524,2518	.society @ task	.society # task	12_host
+2524,2519	beg @	beg #	5_RP
+2524,2520	pray @	pray_to @	5_roleplay
+2524,2521	pray @	pray @	5_roleplay
+2524,2524	COMMUNE	commune @	0
+2524,2525	shake % at @	shake % at @	5_roleplay
+2524,2526	wrap	wrap	5
+2524,2544	analyze @	analyze #	1
+2524,2545	curtsy	curtsy	0
+2524,2546	applaud @	applaud @	0
+2524,2549	deposit ore	smelt deposit	2
+2524,2550	sit down	sit	0
+2524,2551	play help	play	0
+2524,2552	meditate	meditate	0
+2524,2553	ponder	ponder	0
+2524,2554	sob	sob	0
+2524,2556	confirm	push_confirm	3
+2524,2557	panic	panic	0
+2524,2558	salute @	salute #	5_RP
+2524,2559	bounce	bounce	0
+2524,2564	jab @	jab #	6
+2524,2565	grapple @	grapple #	6
+2524,2566	symbol of diminishment @	symbol of diminishment #	6_voln
+2524,2567	symbol of sleep @	symbol of sleep #	6_voln
+2524,2568	symbol of turning @	symbol of turning #	6_voln
+2524,2569	smite @	smite #	6
+2524,2570	snarl	snarl	0
+2524,2571	pry @	pry #	5_RP
+2524,2575	snap fingers at @	snap #	5_RP
+2524,2576	pose	pose	0
+2524,2586	bark	bark	0
+2524,2587	unload @	unload #	3
+2524,2588	stomp	stomp	5_roleplay
+2524,2589	rest	rest	0
+2524,2590	yell @	yell #	0
+2524,2591	sashay	sashay	0
+2524,2594	dance at @	dance #	5_roleplay
+2524,2595	pose at @	pose #	5_roleplay
+2524,2596	infuse at @	infuse #	5_roleplay
+2524,2608	redeem @	redeem #	3_redeem
+2524,2609	whine	whine	0
+2524,2610	stomp @	stomp #	5_roleplay
+2524,2615	spell all	_spell _spell_arcane	0
+2524,2616	swoon	swoon	0
+2524,2617	score	score	0
+2524,2618	sense	sense	0
+2524,2619	multistrike (jab)	mstrike jab #	6_focused multistrike
+2524,2620	multistrike (punch)	mstrike punch #	6_focused multistrike
+2524,2621	multistrike (grapple)	mstrike grapple #	6_focused multistrike
+2524,2622	multistrike (kick)	mstrike kick #	6_focused multistrike
+2524,2623	whimper	whimper	0
+2524,2624	stride	stride	0
+2524,2625	bob @	bob #	5_RP
+2524,2626	row	row	0
+2524,2627	extract @	extract #	3
+2524,2628	approximate your weight	weight	0
+2524,2629	leave	leave	0
+2524,2630	squirm	squirm	0
+2524,2631	gag	gag	0
+2524,2632	infuse	infuse	0
+2524,2634	sashay towards @	sashay #	5_RP
+2524,2635	squeal	squeal	0
+2524,2636	gnash teeth	gnash	0
+2524,2637	dismiss	dismiss	0
+2524,2641	brush	brush	0
+2524,2642	brush @	brush #	5_RP
+2524,2643	stretch	stretch	0
+2524,2644	chant	chant	0
+2524,2645	shrug	shrug	0
+2524,2646	gasp	gasp	0
+2524,2653	clutch @	clutch #	5_roleplay
+2524,2658	weave @	weave #	0
+2524,2659	weave % with @	weave % with @	0
+2524,2660	tuck @	tuck #	5_roleplay
+2524,2661	untuck @	untuck #	5_roleplay
+2524,2662	place @	place #	2
+2524,2663	place %	place right	2
+2524,2664	place %	place left	2
+2524,2665	stretch @	stretch #	5_roleplay
+2524,2666	hang @	hang #	5_RP
+2524,2667	hang @	hang #	5_roleplay
+2524,2668	hold @	hold #	5_roleplay
+2524,2669	surrender @	surrender #	5_roleplay
+2524,2670	place feet @	place feet #	2
+2524,2671	spell all	_spell _spell_lostart	0
+2524,4066	twitch at @	twitch #	5_RP
+2524,4587	lie down	lie	0
+2524,6317	policy report	policy report @	1
+2524,11665	armor support @	armor support #	6_armor specializations
+2524,11666	armored evasion @	armor evasion #	6_armor specializations
+2524,11667	armored casting @	armor casting #	6_armor specializations
+2524,11668	armored fluidity @	armor fluidity #	6_armor specializations
+2524,11669	armored stealth @	armor stealth #	6_armor specializations
+2524,11670	armor reinforcement @	armor reinforcement #	6_armor specializations
+2524,11671	armor blessing @	armor blessing #	6_armor specializations
+2524,11731	charge @	weapon charge #	6_weapon techniques
+2524,11732	fury @	weapon fury #	6_weapon techniques
+2524,11733	twin hammerfists @	weapon twinhammer #	6_weapon techniques
+2524,11734	clash @	weapon clash #	6_weapon techniques
+2524,11735	spin kick @	weapon spinkick #	6_weapon techniques
+2524,11736	dizzying swing @	weapon dizzyingswing #	6_weapon techniques
+2524,11737	clobber @	weapon clobber #	6_weapon techniques
+2524,11738	pummel @	weapon pummel #	6_weapon techniques
+2524,11739	pulverize @	weapon pulverize #	6_weapon techniques
+2524,11740	cripple @	weapon cripple #	6_weapon techniques
+2524,11741	riposte @	weapon riposte #	6_weapon techniques
+2524,11742	flurry @	weapon flurry #	6_weapon techniques
+2524,11743	whirling blade @	weapon wblade #	6_weapon techniques
+2524,11744	guardant thrusts @	weapon gthrusts #	6_weapon techniques
+2524,11745	cyclone @	weapon cyclone #	6_weapon techniques
+2524,11746	radial sweep @	weapon radialsweep #	6_weapon techniques
+2524,11747	reactive shot @	weapon reactiveshot #	6_weapon techniques
+2524,11748	pin down @	weapon pindown #	6_weapon techniques
+2524,11749	barrage @	weapon barrage #	6_weapon techniques
+2524,11750	volley @	weapon volley #	6_weapon techniques
+2524,11751	overpower @	weapon overpower #	6_weapon techniques
+2524,11752	thrash @	weapon thrash #	6_weapon techniques
+2524,11753	reverse strike @	weapon reversestrike #	6_weapon techniques
+2524,11754	whirlwind @	weapon whirlwind #	6_weapon techniques
+2524,12072	pick @ with %	pick # with %	3
+2524,12073	wait	wait	0
+2524,12123	breathe @	breathe #	5_RP
+2524,12124	watch	watch	0
+2524,12125	gulp	gulp	0
+2524,12126	mumble	mumble	0
+2524,12180	tinker @	tinker #	5_roleplay
+2524,12329	eviscerate @	cman eviscerate #	6_combat maneuvers
+2524,12330	vault kick @	cman vaultkick #	6_combat maneuvers
+2524,12331	bearhug @	cman bearhug #	6_combat maneuvers
+2524,12332	dirtkick @	cman dirtkick #	6_combat maneuvers
+2524,12333	shield bash @	cman sbash #	6_combat maneuvers
+2524,12334	leap attack @	cman leapattack #	6_combat maneuvers
+2524,12335	retreat @	cman retreat #	6_combat maneuvers
+2524,12336	mighty blow @	cman mblow #	6_combat maneuvers
+2524,12337	sunder shield @	cman sunder #	6_combat maneuvers
+2524,12338	disarm weapon @	cman disarm #	6_combat maneuvers
+2524,12339	sweep @	cman sweep #	6_combat maneuvers
+2524,12340	feint @	cman feint #	6_combat maneuvers
+2524,12341	hamstring @	cman hamstring #	6_combat maneuvers
+2524,12342	headbutt @	cman headbutt #	6_combat maneuvers
+2524,12343	tackle @	cman tackle #	6_combat maneuvers
+2524,12344	haymaker @	cman haymaker #	6_combat maneuvers
+2524,12345	mug @	cman mug #	6_combat maneuvers
+2524,12346	garrote @	cman garrote #	6_combat maneuvers
+2524,12347	subdue @	cman subdue #	6_combat maneuvers
+2524,12348	stun maneuvers @	cman stunman #	6_combat maneuvers
+2524,12349	cheapshots @	cman cheapshots #	6_combat maneuvers
+2524,12350	groin kick @	cman gkick #	6_combat maneuvers
+2524,12351	exsanguinate @	cman exsanguinate #	6_combat maneuvers
+2524,12352	footstomp @	cman footstomp #	6_combat maneuvers
+2524,12353	berserk @	cman berserk #	6_combat maneuvers
+2524,12354	nosetweak @	cman nosetweak #	6_combat maneuvers
+2524,12355	templeshot @	cman templeshot #	6_combat maneuvers
+2524,12356	kneebash @	cman kneebash #	6_combat maneuvers
+2524,12357	spin attack @	cman sattack #	6_combat maneuvers
+2524,12358	sucker punch @	cman spunch #	6_combat maneuvers
+2524,12359	crowd press @	cman cpress #	6_combat maneuvers
+2524,12360	coup de grace @	cman coupdegrace #	6_combat maneuvers
+2524,12361	eyepoke @	cman eyepoke #	6_combat maneuvers
+2524,12362	true strike @	cman truestrike #	6_combat maneuvers
+2524,12363	bull rush @	cman bullrush #	6_combat maneuvers
+2524,12364	surge of strength @	cman surge #	6_combat maneuvers
+2524,12365	staggering blow @	cman sblow #	6_combat maneuvers
+2524,12366	trip @	cman trip #	6_combat maneuvers
+2524,12367	dust shroud @	cman shroud #	6_combat maneuvers
+2524,12368	cutthroat @	cman cutthroat #	6_combat maneuvers
+2524,12369	divert @	cman divert #	6_combat maneuvers
+2524,12370	throatchop @	cman throatchop #	6_combat maneuvers
+2524,12371	burst of swiftness @	cman burst #	6_combat maneuvers
+2524,12372	swiftkick @	cman swiftkick #	6_combat maneuvers
+2524,12373	internal power @	cman ipower #	6_combat maneuvers
+2524,12374	ki focus @	cman kifocus #	6_combat maneuvers
+2524,12375	spell cleave @	cman scleave #	6_combat maneuvers
+2524,12376	spell thieve @	cman sthieve #	6_combat maneuvers
+2524,12377	dislodge @	cman dislodge #	6_combat maneuvers
+2524,12378	dismount	dismount	0
+2524,12379	swoon @	swoon #	5_RP
+2524,12380	babble	babble	0
+2524,12411	wince	wince	0
+2524,12412	giggle	giggle	0
+2524,12413	twitch	twitch	0
+2524,12414	simper	simper	0
+2524,12415	attend to @	attend #	5_RP
+2524,12416	gawk	gawk	0
+2524,12417	growl	growl	0
+2524,12418	hiss	hiss	0
+2524,12419	imitate	imitate_link_bleat	5
+2524,12420	splash	splash	0
+2524,12421	lower @	lower #	5_roleplay
+2524,12448	blanch	blanch	0
+2524,12449	pout	pout	0
+2524,12450	approve	approve	0
+2524,12451	smirk	smirk	0
+2524,12452	fly	fly	4
+2524,12453	transfer @	transfer #	8
+2524,12481	hum	hum	0
+2524,12482	dispel magic @	feat dispelmagic #	6_feats
+2524,12483	absorb magic @	feat absorbmagic #	6_feats
+2524,12484	mystic strike @	feat mysticstrike #	6_feats
+2524,12485	shadow dance @	feat shadowdance #	6_feats
+2524,12486	silent strike @	feat silentstrike #	6_feats
+2524,12487	vanish @	feat vanish #	6_feats
+2524,12488	covert art: sidestep @	feat sidestep #	6_feats
+2524,12489	covert art: escape artist @	feat escapeartist #	6_feats
+2524,12490	covert art: throw poison @	feat throwpoison #	6_feats
+2524,12495	grind @	grind @	3
+2524,12496	sway	sway	0
+2524,12517	shield bash @	shield bash #	6_shield specializations
+2524,12518	shield charge @	shield charge #	6_shield specializations
+2524,12519	shield push @	shield push #	6_shield specializations
+2524,12520	shield pin @	shield pin #	6_shield specializations
+2524,12521	shield throw @	shield throw #	6_shield specializations
+2524,12522	shield mind @	shield mind #	6_shield specializations
+2524,12523	shield strike @	shield strike #	6_shield specializations
+2524,12524	shield trample @	shield trample #	6_shield specializations
+2524,12525	minor bash @	shield minorbash #	6_shield specializations
+2524,12526	steely resolve @	shield resolve #	6_shield specializations
+2524,12527	face @ east	turn # east	3_Turn
+2524,12528	face @ north	turn # north	3_Turn
+2524,12529	face @ northeast	turn # northeast	3_Turn
+2524,12530	face @ northwest	turn # northwest	3_Turn
+2524,12531	face @ south	turn # south	3_Turn
+2524,12532	face @ southeast	turn # southeast	3_Turn
+2524,12533	face @ southwest	turn # southwest	3_Turn
+2524,12534	face @ west	turn # west	3_Turn
+2524,12554	dispel magic @	feat dispelmagic #	6_feats
+2524,12555	absorb magic @	feat absorbmagic #	6_feats
+2524,12556	mystic strike @	feat mysticstrike #	6_feats
+2524,12557	shadow dance @	feat shadowdance #	6_feats
+2524,12558	silent strike @	feat silentstrike #	6_feats
+2524,12559	vanish @	feat vanish #	6_feats
+2524,12560	covert art: sidestep @	feat sidestep #	6_feats
+2524,12561	covert art: escape artist @	feat escapeartist #	6_feats
+2524,12562	covert art: throw poison @	feat throwpoison #	6_feats
+2524,12563	chastise @	feat chastise #	6_feats
+2524,12574	shield bash @	shield bash #	6_shield specializations
+2524,12575	shield charge @	shield charge #	6_shield specializations
+2524,12576	shield push @	shield push #	6_shield specializations
+2524,12577	shield pin @	shield pin #	6_shield specializations
+2524,12578	shield throw @	shield throw #	6_shield specializations
+2524,12579	shield mind @	shield mind #	6_shield specializations
+2524,12580	shield strike @	shield strike #	6_shield specializations
+2524,12581	shield trample @	shield trample #	6_shield specializations
+2524,12582	minor bash @	shield minorbash #	6_shield specializations
+2524,12583	steely resolve @	shield resolve #	6_shield specializations
+2524,12584	eviscerate @	cman eviscerate #	6_combat maneuvers
+2524,12585	vault kick @	cman vaultkick #	6_combat maneuvers
+2524,12586	bearhug @	cman bearhug #	6_combat maneuvers
+2524,12587	dirtkick @	cman dirtkick #	6_combat maneuvers
+2524,12588	shield bash @	cman sbash #	6_combat maneuvers
+2524,12589	leap attack @	cman leapattack #	6_combat maneuvers
+2524,12590	retreat @	cman retreat #	6_combat maneuvers
+2524,12591	mighty blow @	cman mblow #	6_combat maneuvers
+2524,12592	sunder shield @	cman sunder #	6_combat maneuvers
+2524,12593	disarm weapon @	cman disarm #	6_combat maneuvers
+2524,12594	sweep @	cman sweep #	6_combat maneuvers
+2524,12595	feint @	cman feint #	6_combat maneuvers
+2524,12596	hamstring @	cman hamstring #	6_combat maneuvers
+2524,12597	headbutt @	cman headbutt #	6_combat maneuvers
+2524,12598	tackle @	cman tackle #	6_combat maneuvers
+2524,12599	haymaker @	cman haymaker #	6_combat maneuvers
+2524,12600	mug @	cman mug #	6_combat maneuvers
+2524,12601	garrote @	cman garrote #	6_combat maneuvers
+2524,12602	subdue @	cman subdue #	6_combat maneuvers
+2524,12603	stun maneuvers @	cman stunman #	6_combat maneuvers
+2524,12604	cheapshots @	cman cheapshots #	6_combat maneuvers
+2524,12605	groin kick @	cman gkick #	6_combat maneuvers
+2524,12606	exsanguinate @	cman exsanguinate #	6_combat maneuvers
+2524,12607	footstomp @	cman footstomp #	6_combat maneuvers
+2524,12608	berserk @	cman berserk #	6_combat maneuvers
+2524,12609	nosetweak @	cman nosetweak #	6_combat maneuvers
+2524,12610	templeshot @	cman templeshot #	6_combat maneuvers
+2524,12611	kneebash @	cman kneebash #	6_combat maneuvers
+2524,12612	spin attack @	cman sattack #	6_combat maneuvers
+2524,12613	sucker punch @	cman spunch #	6_combat maneuvers
+2524,12614	crowd press @	cman cpress #	6_combat maneuvers
+2524,12615	coup de grace @	cman coupdegrace #	6_combat maneuvers
+2524,12616	eyepoke @	cman eyepoke #	6_combat maneuvers
+2524,12617	true strike @	cman truestrike #	6_combat maneuvers
+2524,12618	bull rush @	cman bullrush #	6_combat maneuvers
+2524,12619	surge of strength @	cman surge #	6_combat maneuvers
+2524,12620	staggering blow @	cman sblow #	6_combat maneuvers
+2524,12621	trip @	cman trip #	6_combat maneuvers
+2524,12622	dust shroud @	cman shroud #	6_combat maneuvers
+2524,12623	cutthroat @	cman cutthroat #	6_combat maneuvers
+2524,12624	divert @	cman divert #	6_combat maneuvers
+2524,12625	throatchop @	cman throatchop #	6_combat maneuvers
+2524,12626	burst of swiftness @	cman burst #	6_combat maneuvers
+2524,12627	swiftkick @	cman swiftkick #	6_combat maneuvers
+2524,12628	internal power @	cman ipower #	6_combat maneuvers
+2524,12629	ki focus @	cman kifocus #	6_combat maneuvers
+2524,12630	spell cleave @	cman scleave #	6_combat maneuvers
+2524,12631	spell thieve @	cman sthieve #	6_combat maneuvers
+2524,12632	dislodge @	cman dislodge #	6_combat maneuvers
+2524,12653	dispel magic @	feat dispelmagic #	6_feats
+2524,12654	absorb magic @	feat absorbmagic #	6_feats
+2524,12655	mystic strike @	feat mysticstrike #	6_feats
+2524,12656	shadow dance @	feat shadowdance #	6_feats
+2524,12657	silent strike @	feat silentstrike #	6_feats
+2524,12658	vanish @	feat vanish #	6_feats
+2524,12659	covert art: sidestep @	feat sidestep #	6_feats
+2524,12660	covert art: escape artist @	feat escapeartist #	6_feats
+2524,12661	covert art: throw poison @	feat throwpoison #	6_feats
+2524,12662	chastise @	feat chastise #	6_feats
+2524,12762	dispel magic @	feat dispelmagic #	6_feats
+2524,12763	absorb magic @	feat absorbmagic #	6_feats
+2524,12764	mystic strike @	feat mysticstrike #	6_feats
+2524,12765	shadow dance @	feat shadowdance #	6_feats
+2524,12766	silent strike @	feat silentstrike #	6_feats
+2524,12767	vanish @	feat vanish #	6_feats
+2524,12768	covert art: sidestep @	feat sidestep #	6_feats
+2524,12769	covert art: escape artist @	feat escapeartist #	6_feats
+2524,12770	covert art: throw poison @	feat throwpoison #	6_feats
+2524,12771	chastise @	feat chastise #	6_feats
+2524,12772	excoriate @	feat excoriate #	6_feats
+2524,12773	mutter	mutter	0
+2524,12774	cluck your tongue	scold	0
+2524,12775	scold @	scold #	5_RP
+2524,12776	panic @	panic #	5_RP
+2524,12779	summon @	summon #	0
+2524,12780	summon item @	summon item #	0
+2524,12781	wail	wail	0
+2524,12782	offer % to @	offer % to #	0
+2524,12783	dance with @	dance #	5_RP
+2524,12784	whisper @ about %	whisper # about %	9_questions
+2524,12785	sense @	sense #	5_roleplay

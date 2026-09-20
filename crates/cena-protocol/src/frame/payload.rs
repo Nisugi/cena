@@ -577,7 +577,7 @@ pub struct Objective {
 /// client ships, which is how Vellum uses it, and only the response below
 /// is live. Recorded in `plan/15` §1a rather than left as a wiki claim
 /// nobody checked.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Menu {
     /// `id=`: which request this answers.
     pub id: String,
@@ -590,7 +590,7 @@ pub struct Menu {
 }
 
 /// One `<mi>`: a key into the command dictionary.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MenuItem {
     /// `coord=`, e.g. `"2524,1703"`. The dictionary key.
     pub coord: Option<String>,

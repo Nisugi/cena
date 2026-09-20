@@ -111,6 +111,23 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
                         classifier reads.",
     },
     AllowedStatic {
+        path: "crates/cena-model/src/state/menu.rs",
+        name: "DICT",
+        justification: "A OnceLock<MenuCommands> holding the 1,106 context-menu command rows \
+                        from one include_str! TSV, built on first use and never mutated. The \
+                        same argument as defs.rs's DEFS and creature.rs's BESTIARY, and the same \
+                        honest caveat: it IS process-wide state, made safe by holding no session \
+                        handle and being a pure function of compile-time strings. The dictionary \
+                        is the game's own, keyed by coordinate, and a `<menu>` response carries \
+                        NO labels -- MEASURED over 425 `<mi>` in the corpus, zero carry a label \
+                        or command -- so every frontend of every session resolves against the \
+                        identical table and none of them may mutate it. Holding it per session \
+                        would parse the same 1,106 rows N times for N characters and produce N \
+                        identical maps. Deliberately NOT included is anything about a menu that \
+                        was actually received: a ResolvedItem is returned to its caller and the \
+                        exist id it substitutes belongs to the caller, never to this table.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/creature.rs",
         name: "BESTIARY",
         justification: "A OnceLock<Bestiary> holding the 627 creature templates, joined from four \

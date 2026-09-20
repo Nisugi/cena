@@ -72,7 +72,33 @@ DEFAULT_MAX_LINES 800
 #
 # The direction to travel is still down. If the bestiary is ever split by
 # hunting area or loaded from one file, these should collapse back.
-MAX_CAP_EXCEPTIONS 4
+#
+# RAISED 4 -> 5 on 2026-09-20, for `menu_commands.tsv` at 1300 (1,106 actual
+# rows). Same case as the four above and no new argument: DATA, one row per
+# line, a flat sequence keyed by coordinate with no seam to split on, and
+# plan/13:125 specifies this exact shape.
+#
+# What it buys: a context menu arrives as bare coordinates and NOTHING else --
+# measured over 425 menu items in the corpus, zero carry a label or a command.
+# Without this table the menu is a list of numbers, and the wire offers no
+# fallback.
+#
+# THE HONEST COST, because this note exists to record it rather than to argue
+# the entry is special: the table grew by one and the default cap is what
+# should have absorbed this instead. It did not, because the file is 1,106
+# lines and the default is 800.
+#
+# What was NOT done to make room: `tests/file_rules.rs` went to 804 of 800
+# when this entry was added, and it was SPLIT rather than exempted -- Rule 2.1
+# and its allowlist moved to `tests/raw_text_escapes.rs`. That file has now
+# gone red five times and split five times without once raising its own cap,
+# which is the behaviour this whole mechanism is for.
+#
+# The 1300 is ~18% headroom over 1,106. It is deliberately tight because this
+# file is KNOWN to grow: regenerating it from the live client's copy rather
+# than the 2003 one the reference ships added 514 rows in a single step, with
+# nothing removed. The next regeneration should go red and be looked at.
+MAX_CAP_EXCEPTIONS 5
 
 # SPLIT PARENTS -- Rule 4.4's other half. `plan/05:385-388` cites Vellum's
 # `split_parents_stay_facades` BY NAME, and Cena implemented only the
