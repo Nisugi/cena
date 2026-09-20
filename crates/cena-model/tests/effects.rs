@@ -162,7 +162,11 @@ fn an_effect_bar_does_not_become_a_vital() {
         state.apply(&frame);
     }
 
-    assert_eq!(state.vitals.get("mana"), Some(&93), "the vital landed");
+    assert_eq!(
+        state.vitals.get("mana").map(|v| v.percent),
+        Some(93),
+        "the vital landed"
+    );
     assert!(
         !state.vitals.contains_key("515"),
         "the effect must NOT be a vital -- both are progressBars and only the \

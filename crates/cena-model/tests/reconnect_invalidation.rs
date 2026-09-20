@@ -229,17 +229,17 @@ fn the_clock_does_not_survive_a_reconnect() {
 #[test]
 fn vitals_survive_because_the_burst_re_sends_them() {
     let mut state = a_fully_known_session();
-    assert_eq!(state.vitals.get("health"), Some(&97));
+    assert_eq!(state.vitals.get("health").map(|v| v.percent), Some(97));
 
     state.invalidate_for_reconnect();
 
     assert_eq!(
-        state.vitals.get("health"),
-        Some(&97),
+        state.vitals.get("health").map(|v| v.percent),
+        Some(97),
         "the login burst carries ten progressBars (MEASURED, 7/7 logins), so \
          these are refreshed rather than unobserved"
     );
-    assert_eq!(state.vitals.get("mana"), Some(&42));
+    assert_eq!(state.vitals.get("mana").map(|v| v.percent), Some(42));
 }
 
 /// Unknown tags survive: they are a fact about the protocol, not the socket.

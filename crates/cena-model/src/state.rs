@@ -57,21 +57,14 @@ mod room;
 pub mod societies;
 pub mod streams;
 mod unknown;
+pub mod vitals;
 
 pub use character::{Character, Experience, Injury};
 pub use inventory::{Container, Inventory};
 pub use nouns::{Found, Where};
 pub use room::{PlayerStatus, Room, RoomItem};
 pub use unknown::{MAX_UNKNOWN_TAGS, UnknownTag};
-
-/// A vitals gauge, as a percentage.
-///
-/// `BTreeMap`, not `HashMap`, and that is load-bearing for criterion 7: a
-/// `HashMap`'s iteration order varies run to run, so a replay that asserted
-/// over one would be non-deterministic by construction. Enforced by
-/// `crates/cena-session/tests/replay_determinism.rs`, not by an arch rule --
-/// there is no `BTreeMap` rule, and this used to claim there was.
-pub type Vitals = std::collections::BTreeMap<String, u32>;
+pub use vitals::{Vital, Vitals};
 
 /// What the session knows: `plan/12` §7.1's In column, **plus** what
 /// `plan/17` and `plan/18` added -- `status`, `effects`, `character`,
@@ -497,13 +490,7 @@ impl GameState {
                 {
                     return false;
                 }
-                let is_own = bar
-                    .dialog
-                    .as_deref()
-                    .is_none_or(|d| !d.starts_with("injuries-"));
-                if is_own {
-                    self.vitals.insert(bar.id.clone(), bar.percent);
-                }
+                self.record_vital(bar);
             }
             // `<clearStream id=>`: the wire's own snapshot boundary, and the
             // ONLY thing that empties a buffer. See `state/streams.rs` for the

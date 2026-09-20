@@ -255,8 +255,8 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
 
     // Retained: the burst re-sent these, so they are observed rather than stale.
     assert_eq!(
-        end.state.vitals.get("health"),
-        Some(&100),
+        end.state.vitals.get("health").map(|v| v.percent),
+        Some(100),
         "vitals come from the NEW burst (100, not the old 97)"
     );
 }

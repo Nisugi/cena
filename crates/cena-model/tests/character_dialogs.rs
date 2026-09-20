@@ -88,7 +88,7 @@ fn the_players_own_vitals_still_land_in_vitals() {
     let state = fold(
         b"<dialogData id='minivitals'><progressBar id='health' value='97' text='health 213/223'/></dialogData>\n",
     );
-    assert_eq!(state.vitals.get("health"), Some(&97));
+    assert_eq!(state.vitals.get("health").map(|v| v.percent), Some(97));
 }
 
 #[test]
