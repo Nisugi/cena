@@ -156,19 +156,67 @@ fn a_hidden_player_is_seen_in_the_objects_list() {
     );
 }
 
-/// **A hidden player is never subtracted against the group.**
+/// **The nameless sign is never subtracted against the group.**
 ///
-/// They have no name, so they cannot be matched -- and Lich does the same,
-/// pushing `:hidden` into the list it subtracts from with nothing that can
-/// remove it. A grouped partner who hides contests their own room, which is
-/// the conservative answer and the only one the information allows.
+/// It has no name, so it cannot be matched -- and Lich does the same, pushing
+/// `:hidden` into the list it subtracts from with nothing that can remove it.
+///
+/// This does not strand a hiding partner; see
+/// `a_hiding_group_member_is_named_and_is_subtracted` below, which is the case
+/// that makes refusing to subtract the sign *right* rather than merely
+/// cautious.
 #[test]
-fn a_hidden_player_cannot_be_subtracted() {
+fn the_nameless_sign_cannot_be_subtracted() {
     let room = room_with("", HIDDEN);
     let big_group = ["Dicate".to_owned(), "Grhim".to_owned(), "Xorus".to_owned()];
     assert!(
         !claim_room(&room, &big_group).is_mine(),
         "no roster can clear an occupant with no name"
+    );
+}
+
+/// **A hiding member of your own group is visible, BY NAME.**
+///
+/// > *"a grouped partner that is hidden is visible to the group
+/// > `Also here: Demandred who is hiding`"* -- the author, 2026-09-20.
+///
+/// So the two hiding facts are complementary rather than contradictory: the
+/// roster names everyone it can, including a hiding partner, and the nameless
+/// `room objs` sign covers only the stranger it cannot name.
+///
+/// An earlier draft of `claim.rs` claimed a hiding partner "contests their own
+/// room". That was wrong, and this is the test that would have caught it.
+#[test]
+fn a_hiding_group_member_is_named_and_is_subtracted() {
+    let room = room_with(
+        "Also here: <a exist=\"-1\" noun=\"Demandred\">Demandred</a> who is hiding, \
+         <a exist=\"-2\" noun=\"Kiyna\">Kiyna</a>.",
+        JUST_A_DISK,
+    );
+
+    assert_eq!(
+        room.players
+            .iter()
+            .map(|p| p.noun.as_str())
+            .collect::<Vec<_>>(),
+        ["Demandred", "Kiyna"],
+        "a hiding partner is an ordinary named entry in the roster"
+    );
+
+    assert_eq!(
+        claim_room(&room, &["Demandred".to_owned(), "Kiyna".to_owned()]),
+        Claim::Mine,
+        "both are in my group, so the room is mine even though one hides"
+    );
+
+    // And a hiding STRANGER still contests it.
+    assert_eq!(
+        claim_room(&room, &["Kiyna".to_owned()]),
+        Claim::Contested {
+            others: vec!["Demandred".to_owned()],
+            hidden: false,
+        },
+        "hiding does not exempt someone from contesting the room"
     );
 }
 

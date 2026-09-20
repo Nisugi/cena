@@ -68,6 +68,66 @@ pub struct RoomItem {
     pub noun: String,
     /// The link's display text, e.g. `wary-eyed halfling lookout`.
     pub text: String,
+    /// What the room says this player is doing: `hiding`, `sitting`, `dead`.
+    ///
+    /// **Only ever set for `room players`**, and only when the room said so.
+    /// Ports `GameObj#status` for PCs (`gameobj.rb:311-317`), which Lich fills
+    /// from `xmlparser.rb:1152-1155`.
+    ///
+    /// The status is **prose outside the `<a>` link**, so it is not an
+    /// attribute and cannot be read off the link at all:
+    ///
+    /// ```text
+    /// Also here: <a exist="-1" noun="Demandred">Demandred</a> who is hiding, ...
+    /// ```
+    ///
+    /// `None` means the room named this player and said nothing further --
+    /// which is the ordinary case, standing and visible. It does not mean
+    /// "unknown": the roster states every occupant's condition or states none,
+    /// so absence here is the game saying "nothing to report".
+    pub status: Option<PlayerStatus>,
+}
+
+/// What a player in the room is doing.
+///
+/// Two wire forms, both at `xmlparser.rb:1152`:
+///
+/// - `who is hiding` / `who appears dead` -- a clause after the link
+/// - `(hiding)` -- parenthesised, and the wire may carry **two**
+///
+/// Kept as the joined text rather than an enum. Lich concatenates multiple
+/// statuses with a space (`:1153-1154`) and never matches the result against a
+/// closed set, and the vocabulary is the game's: `hiding`, `sitting`,
+/// `kneeling`, `lying down`, `stunned`, `dead`, `sleeping`, and combinations.
+/// C21 reserves typed variants for closed vocabularies, and this is not one --
+/// a `stunned Seaward Gutstorm who is lying down` appears in the reference logs
+/// and would need a variant nobody enumerated.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PlayerStatus(String);
+
+impl PlayerStatus {
+    /// The status text as the room stated it, e.g. `hiding`, `lying down`.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Is this player hiding?
+    ///
+    /// The one status a hunting check cares about, and the reason this field
+    /// exists: a hiding **group member** is named in the roster, unlike a
+    /// hiding stranger, who is reported only as a nameless sign in `room objs`
+    /// (see [`crate::state::claim`]).
+    #[must_use]
+    pub fn is_hiding(&self) -> bool {
+        self.0.split_whitespace().any(|word| word == "hiding")
+    }
+}
+
+impl std::fmt::Display for PlayerStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
 }
 
 /// The room the character is in, as the wire stated it.
@@ -227,7 +287,7 @@ impl Room {
                 self.creatures = items(body, true);
                 self.objects = items(body, false);
             }
-            "room players" => self.players = items(body, false),
+            "room players" => self.players = items_with_status(body, false, true),
             _ => {}
         }
         self.components.insert(id.to_owned(), body.clone());
@@ -241,19 +301,90 @@ impl Room {
 /// A `<d>` link is a command rather than a thing, so it is not an item either --
 /// which is what keeps `room exits`' `<d>north</d>` out of the object list.
 fn items(body: &Runs, bold: bool) -> Vec<RoomItem> {
-    body.runs
-        .iter()
-        .filter(|run| (run.style.bold_depth > 0) == bold)
-        .filter_map(|run| {
+    items_with_status(body, bold, false)
+}
+
+/// As [`items`], but reading each link's trailing status clause.
+///
+/// Only `room players` passes `with_status`: the clause is a property of a
+/// person, and reading it for objects would attribute `who is hiding` to a
+/// disk that merely followed a hiding player in the list.
+fn items_with_status(body: &Runs, bold: bool, with_status: bool) -> Vec<RoomItem> {
+    let runs: Vec<_> = body.runs.iter().collect();
+    runs.iter()
+        .enumerate()
+        .filter(|(_, run)| (run.style.bold_depth > 0) == bold)
+        .filter_map(|(index, run)| {
             let link = run.link.as_ref()?;
             let LinkKind::Exist { id, noun } = &link.kind else {
                 return None;
+            };
+            // The status is prose in the NEXT run, because it sits outside the
+            // link. `runs` is in wire order, which is what makes this readable
+            // without re-parsing markup (Rule 2.1).
+            let status = if with_status {
+                runs.get(index + 1)
+                    .filter(|next| next.link.is_none())
+                    .and_then(|next| parse_status(&next.text))
+            } else {
+                None
             };
             Some(RoomItem {
                 id: id.clone(),
                 noun: noun.clone(),
                 text: link.text.clone(),
+                status,
             })
         })
         .collect()
+}
+
+/// Read a status clause from the prose that follows a player's link.
+///
+/// Ports `xmlparser.rb:1152`'s two alternatives:
+///
+/// ```ruby
+/// text_string =~ /^ who (?:is|appears) ([\w\s]+)(?:,| and|\.|$)/
+/// text_string =~ / \(([\w\s]+)\)(?: \(([\w\s]+)\))?/
+/// ```
+///
+/// Both are ported; the parenthesised form may carry two statuses, which Lich
+/// joins with a space (`:1153-1154`) and so does this.
+///
+/// Returns `None` for ordinary separators (`, `, `.`, ` and `), which is most
+/// of what follows a link.
+fn parse_status(text: &str) -> Option<PlayerStatus> {
+    // `who is hiding,` / `who appears dead.`
+    if let Some(rest) = text
+        .strip_prefix(" who is ")
+        .or_else(|| text.strip_prefix(" who appears "))
+    {
+        let status: String = rest
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || c.is_whitespace())
+            .collect();
+        let status = status.trim();
+        if !status.is_empty() {
+            return Some(PlayerStatus(status.to_owned()));
+        }
+    }
+
+    // ` (hiding)` or ` (hiding) (stunned)`, joined as Lich joins them.
+    let mut parts: Vec<&str> = Vec::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('(') {
+        let Some(close) = rest[open..].find(')') else {
+            break;
+        };
+        let inner = rest[open + 1..open + close].trim();
+        if !inner.is_empty() && inner.chars().all(|c| c.is_alphanumeric() || c == ' ') {
+            parts.push(inner);
+        }
+        rest = &rest[open + close + 1..];
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(PlayerStatus(parts.join(" ")))
+    }
 }

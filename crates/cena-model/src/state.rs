@@ -57,7 +57,7 @@ mod unknown;
 pub use character::{Character, Experience, Injury};
 pub use inventory::{Container, Inventory};
 pub use nouns::{Found, Where};
-pub use room::{Room, RoomItem};
+pub use room::{PlayerStatus, Room, RoomItem};
 pub use unknown::{MAX_UNKNOWN_TAGS, UnknownTag};
 
 /// A vitals gauge, as a percentage.

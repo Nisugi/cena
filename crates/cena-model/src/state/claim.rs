@@ -56,15 +56,26 @@
 //! run by one player as one party. A caller that wants it folds those names
 //! into the roster it passes, which is what the subtraction did anyway.
 //!
-//! # A hidden player counts, and has no name
+//! # Hiding is two different facts, and only one of them is nameless
 //!
-//! `xmlparser.rb:1187-1188` watches room text for `obvious signs of someone
-//! hiding` and pushes the symbol `:hidden` into the arrival list -- a member of
-//! the occupant list that is not a name, because there is no name to know.
+//! **A hiding member of your own group is visible to you, by name**, with the
+//! status in the room roster itself (author, 2026-09-20):
 //!
-//! This matters and is easy to miss: a hidden player is **not** in `room
-//! players`. The sign is the last item of the room's **`You also see ...`**
-//! list -- `room objs` -- alongside the disks and the fallen branches:
+//! ```text
+//! Also here: Demandred who is hiding, Kiyna.
+//! ```
+//!
+//! MEASURED through Cena's parser: that line yields two ordinary players,
+//! `noun="Demandred"` and `noun="Kiyna"`, with the `who is hiding` clause
+//! landing in the raw component because it sits outside the `<a>` link. So a
+//! hiding partner is subtracted against the group roster like anyone else, and
+//! needs no special case -- see [`super::room::PlayerStatus`] for the status
+//! itself, which is parsed for callers that want it.
+//!
+//! **A hiding stranger is not in `room players` at all.** There is no name to
+//! know, so the game reports only that someone is there: the last item of the
+//! room's **`You also see ...`** list -- `room objs` -- alongside the disks and
+//! the fallen branches:
 //!
 //! ```text
 //! You also see the faenor Demandred disk inlaid with intersecting bands of
@@ -72,7 +83,9 @@
 //! ```
 //!
 //! A claim check that read only `room players` would call that room empty,
-//! which is exactly the mistake the feature exists to prevent.
+//! which is exactly the mistake the feature exists to prevent. The two facts
+//! are complementary, not redundant: the roster names everyone it can, and the
+//! `You also see` sign covers the one it cannot.
 //!
 //! **MEASURED, and it is always the same place.** Across the reference logs:
 //!
@@ -220,11 +233,15 @@ pub fn claim(occupants: &Occupants, with_me: &[String]) -> Claim {
         .cloned()
         .collect();
 
-    // **A hidden player is never subtracted.** They have no name, so they
-    // cannot be matched against the roster -- and Lich does the same, pushing
-    // `:hidden` into the list it subtracts from with nothing that can remove
-    // it. A grouped partner who hides therefore contests their own room; that
-    // is the conservative answer and the one the game's information allows.
+    // **The nameless sign is never subtracted.** It has no name to match
+    // against the roster -- and Lich does the same, pushing `:hidden` into the
+    // list it subtracts from with nothing that can remove it.
+    //
+    // This does NOT strand a hiding partner: a hiding member of your own group
+    // appears in `room players` BY NAME (`Also here: Demandred who is hiding`)
+    // and is cleared by the subtraction above like anyone else. The sign here
+    // is only ever a stranger, which is why refusing to subtract it is right
+    // rather than merely conservative.
     if others.is_empty() && !occupants.hidden {
         Claim::Mine
     } else {

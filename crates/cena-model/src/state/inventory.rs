@@ -148,6 +148,9 @@ impl Inventory {
                 id: exist.clone(),
                 noun: noun.clone(),
                 text: link.text.clone(),
+                // Container contents are things, not people; `status` is a
+                // property of a player in a room roster.
+                status: None,
             });
         }
     }

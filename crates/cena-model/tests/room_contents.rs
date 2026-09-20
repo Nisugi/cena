@@ -495,3 +495,124 @@ fn two_id_less_arrivals_are_not_the_same_room() {
         "unknown is not equal to unknown -- this is a second arrival"
     );
 }
+
+/// **A player's status is prose OUTSIDE the link, and it is read.**
+///
+/// `GameObj#status` for PCs (`gameobj.rb:311-317`), filled from
+/// `xmlparser.rb:1152-1155`. The clause follows the `<a>` element, so it is not
+/// an attribute and cannot be read off the link:
+///
+/// ```text
+/// Also here: <a exist="-1" noun="Demandred">Demandred</a> who is hiding, ...
+/// ```
+///
+/// The line is the author's own (2026-09-20). MEASURED through the parser
+/// before the field existed: it yielded two ordinary players and dropped the
+/// clause into the raw component, which is what this now fixes.
+#[test]
+fn a_player_status_is_read_from_the_prose_after_the_link() {
+    let state = fold(
+        b"<component id='room players'>Also here: \
+<a exist=\"-1\" noun=\"Demandred\">Demandred</a> who is hiding, \
+<a exist=\"-2\" noun=\"Kiyna\">Kiyna</a>.</component>\n",
+    );
+
+    let players = &state.room.players;
+    assert_eq!(players.len(), 2);
+
+    assert_eq!(players[0].noun, "Demandred");
+    assert_eq!(
+        players[0]
+            .status
+            .as_ref()
+            .map(cena_model::PlayerStatus::as_str),
+        Some("hiding"),
+        "the clause after the link is this player's status"
+    );
+    assert!(
+        players[0]
+            .status
+            .as_ref()
+            .is_some_and(cena_model::PlayerStatus::is_hiding)
+    );
+
+    // **A player the room said nothing about has no status**, which is the
+    // ordinary case and must not inherit the previous player's.
+    assert_eq!(players[1].noun, "Kiyna");
+    assert_eq!(
+        players[1].status, None,
+        "a status must not leak from the player before"
+    );
+}
+
+/// Every status form the wire uses.
+///
+/// `who is X`, `who appears X`, a multi-word status, and the parenthesised
+/// form -- which may carry two, joined as Lich joins them
+/// (`xmlparser.rb:1153-1154`).
+#[test]
+fn every_status_form_is_read() {
+    let cases: &[(&str, &str)] = &[
+        (" who is hiding,", "hiding"),
+        (" who is sitting,", "sitting"),
+        (" who is lying down,", "lying down"),
+        (" who appears dead.", "dead"),
+        (" (hiding)", "hiding"),
+        (" (hiding) (stunned)", "hiding stunned"),
+    ];
+    for (suffix, expected) in cases {
+        let wire = format!(
+            "<component id='room players'>Also here: \
+<a exist=\"-1\" noun=\"Demandred\">Demandred</a>{suffix}</component>\n"
+        );
+        let state = fold(wire.as_bytes());
+        assert_eq!(
+            state.room.players[0]
+                .status
+                .as_ref()
+                .map(cena_model::PlayerStatus::as_str),
+            Some(*expected),
+            "reading {suffix:?}"
+        );
+    }
+}
+
+/// Ordinary separators are not statuses.
+///
+/// Most of what follows a link is `, ` or `.`, and reading those as a status
+/// would give every player in a busy room a nonsense condition.
+#[test]
+fn a_separator_is_not_a_status() {
+    for suffix in [", ", ".", " and ", ""] {
+        let wire = format!(
+            "<component id='room players'>Also here: \
+<a exist=\"-1\" noun=\"Demandred\">Demandred</a>{suffix}</component>\n"
+        );
+        let state = fold(wire.as_bytes());
+        assert_eq!(
+            state.room.players[0].status, None,
+            "{suffix:?} is a separator, not a status"
+        );
+    }
+}
+
+/// **Objects and creatures never carry a status.**
+///
+/// The clause belongs to a person. Reading it for `room objs` would let a
+/// hiding player's clause attach to whatever object followed them in the list.
+#[test]
+fn only_players_carry_a_status() {
+    let state = fold(
+        b"<component id='room objs'>  You also see<b> <pushBold/>a \
+<a exist=\"1\" noun=\"kobold\">kobold</a><popBold/></b> who is hiding, a \
+<a exist=\"2\" noun=\"disk\">disk</a>.</component>\n",
+    );
+    assert!(
+        state.room.creatures.iter().all(|c| c.status.is_none()),
+        "a creature has no player status"
+    );
+    assert!(
+        state.room.objects.iter().all(|o| o.status.is_none()),
+        "nor does an object"
+    );
+}
