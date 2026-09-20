@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+serde_json.workspace = true
 cena-model.workspace = true
 # The session drives the parser directly. `Parser` is stateful and explicitly
 # one per session (crates/cena-protocol/src/parser.rs:113-120: "One per

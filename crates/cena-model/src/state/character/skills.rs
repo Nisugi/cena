@@ -85,7 +85,7 @@ use std::collections::BTreeMap;
 /// table does carry both for all 46, but `skills base` (referenced by the
 /// capture's own footer, `(Use SKILLS BASE to display unmodified ranks...)`) is
 /// a second form this type must not misreport when it is implemented.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Skill {
     /// Ranks trained.
     pub ranks: Option<u16>,
@@ -115,7 +115,9 @@ impl Skill {
 ///
 /// Ported from `lib/attributes/enhancive.rb:42-88` (`SKILL_NAME_MAP`). The
 /// order is the capture's, which is also the map's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum SkillKind {
     TwoWeaponCombat,
     ArmorUse,
@@ -443,7 +445,7 @@ impl SkillLine {
 ///
 /// Ordered, per `Vitals`' reason: a `HashMap`'s iteration order varies run to
 /// run, and criterion 7 requires a replay to be deterministic.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SkillSet {
     skills: BTreeMap<SkillKind, Skill>,
     circles: BTreeMap<String, u16>,

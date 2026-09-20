@@ -41,7 +41,9 @@ use std::fmt;
 /// Ordered as the game orders it, least to worst, and `Ord` follows that order
 /// so a behavior can ask whether the sting is worse than `Light` without a
 /// lookup table.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum DeathsSting {
     None,
     Light,
@@ -101,7 +103,9 @@ impl fmt::Display for DeathsSting {
 /// reader must know to special-case; `Option<Society>` says the same thing in
 /// the type. See [`Society::max_rank`] for the one piece of arithmetic the
 /// societies do not share.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Society {
     OrderOfVoln,
     CouncilOfLight,
@@ -166,7 +170,9 @@ impl fmt::Display for Society {
 /// non-capturing group, so the type is only learned from a `Suffused` line. A
 /// character with no suffused resource has amounts but no type, which is why
 /// the type is stored separately and independently optional.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum ResourceType {
     Essence,
     NecroticEnergy,
@@ -239,7 +245,9 @@ impl fmt::Display for ResourceType {
 /// The two never meet, so in Lich a learned war cry can never be un-learned:
 /// the zeroing writes keys the reader does not consult. A named variant has one
 /// identity and the bug cannot be expressed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Warcry {
     BertrandtsBellow,
     YertiesYowlp,
@@ -319,7 +327,9 @@ impl fmt::Display for Warcry {
 /// "Combat Maneuvers" is stored under `cman`. Lich maps between them with a
 /// regex `case` (`parser.rb:205-220`); here they are two methods on one value,
 /// so the pair cannot drift apart.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum PsmCategory {
     Armor,
     CombatManeuver,
@@ -397,7 +407,9 @@ impl fmt::Display for PsmCategory {
 ///
 /// Cena keeps all four. Platinum is a different game instance with different
 /// mechanics, so conflating it with Premium loses a fact a behavior may need.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum AccountType {
     Free,
     Normal,
@@ -456,7 +468,9 @@ impl fmt::Display for AccountType {
 /// The wire form reaches Lich through `Lich::Util.normalize_name`, so the
 /// stored string is already canonical -- which means this set *is* the stored
 /// vocabulary, not merely the wire's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Che {
     ArgentAspis,
     RisingPhoenix,

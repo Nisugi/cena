@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+serde.workspace = true
 cena-protocol.workspace = true
 
 # The crit-table matcher (plan/13 section 4a). plan/05:180 names the

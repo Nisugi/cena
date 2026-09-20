@@ -31,6 +31,15 @@ cena-session = { path = "crates/cena-session" }
 cena-behavior = { path = "crates/cena-behavior" }
 cena-ui = { path = "crates/cena-ui" }
 
+# The first and only serialization in the workspace, added for M3 step 8.
+# `research/04-inherited-decisions.md:1878` (C21) argues the character store is
+# a serde SNAPSHOT rather than a storage model: Lich needs SQLite because Ruby
+# has no cheap typed serialization, not because the access pattern wants a
+# database. `derive` because the snapshot is ~10 structs of named fields, and
+# hand-writing `Serialize` for them is the kind of work the macro exists for.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 

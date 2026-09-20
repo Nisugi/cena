@@ -75,7 +75,7 @@ use super::stats::StatKind;
 /// **`cap` is the item's ceiling, not the character's.** `Wisdom (WIS): 15/40`
 /// means 15 granted against a 40 cap, and `enhancive.rb:36`'s `RESOURCE_CAPS`
 /// records the same shape for resources.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Bonus {
     /// The bonus currently granted.
     pub value: u16,
@@ -86,7 +86,9 @@ pub struct Bonus {
 /// Which section of the report a line belongs to.
 ///
 /// **A clique, not a chain.** Any may follow any other, and any may be absent.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Section {
     Stats,
     Skills,
@@ -138,7 +140,9 @@ impl Section {
 /// The five resources an enhancive may raise.
 ///
 /// Ported from `enhancive.rb:35`'s `RESOURCES`. Closed, so typed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Resource {
     MaxMana,
     MaxHealth,
@@ -356,7 +360,7 @@ impl EnhanciveLine {
 /// parse because its store has no deletion; here, building a fresh
 /// `EnhanciveTotals` and filling it is the same operation with nothing to
 /// forget. See the module docs.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct EnhanciveTotals {
     stats: BTreeMap<StatKind, Bonus>,
     skill_bonus: BTreeMap<SkillKind, Bonus>,

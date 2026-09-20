@@ -84,7 +84,7 @@ use std::collections::BTreeMap;
 use super::vocabulary::PsmCategory;
 
 /// One PSM's ranks, as the table printed them.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PsmRanks {
     /// Ranks trained.
     pub ranks: u16,
@@ -247,7 +247,7 @@ impl PsmLine {
 ///
 /// Open set: keyed by the wire's own mnemonic, so a PSM added to the game after
 /// this port was written is stored and reported rather than dropped.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PsmSet {
     by_category: BTreeMap<PsmCategory, BTreeMap<String, PsmRanks>>,
 }

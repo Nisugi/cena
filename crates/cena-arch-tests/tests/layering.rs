@@ -11,7 +11,10 @@
 //! Read `tests/architecture.rs`'s module header first: its "what these tests
 //! do NOT claim" paragraph governs this file too.
 
-use cena_arch_tests::harness::{crate_dependency_names, member_crates};
+use cena_arch_tests::harness::{
+    crate_dependency_names, member_crates, relative, scannable_sources,
+};
+use cena_arch_tests::lexical::scan_lines;
 use std::collections::{BTreeMap, BTreeSet};
 
 // ---------------------------------------------------------------------------
@@ -302,4 +305,59 @@ fn a_dev_only_edge_stays_out_of_the_shipped_graph() {
              leaving it listed makes this test pass by checking nothing."
         );
     }
+}
+
+/// **`cena-model` does no file I/O.**
+///
+/// The crate holds the game's *meaning* -- typed facts and stateless
+/// classifiers -- and the crate graph is the architecture (`CLAUDE.md`). A
+/// `File::create` in it would give the meaning layer a dependency on the
+/// machine it runs on, and would put the persistence format somewhere the
+/// layering table (`layering.rs:73-76`) does not account for.
+///
+/// # Written when the rule was adopted, which is the point
+///
+/// `plan/05` §0: *"a rule that is not enforced is a wish."* Before M3 step 8
+/// this was true by habit -- `grep -rn "std::fs" crates/cena-model/src/`
+/// returned nothing -- and nothing would have failed if `store.rs` had been
+/// written there. It nearly was: `cena-platform` was the intended home until
+/// `layering.rs:74` turned out to give that crate **no** dependencies at all,
+/// so a store there would have had to depend on `cena-model` and invert the
+/// arrow. `cena-session` is the only crate that may hold both.
+///
+/// Scans for the spellings that reach the filesystem. Like Rule 3.4's test,
+/// this FLAGS a lexical pattern rather than proving absence -- a determined
+/// evasion is review's job; this catches drift.
+///
+/// It lives here rather than in `file_rules.rs` because it is a statement
+/// about the crate graph, which is this file's subject -- and because adding
+/// it there put that file at 801 lines against its 800 cap. Rule 4.1: move
+/// code down, do not raise the cap.
+#[test]
+fn model_does_no_file_io() {
+    let needles = &[
+        "std::fs",
+        "File::open",
+        "File::create",
+        "fs::read",
+        "fs::write",
+        "OpenOptions",
+    ];
+    let sources: Vec<(std::path::PathBuf, String)> = scannable_sources()
+        .into_iter()
+        .filter(|(path, _)| relative(path).starts_with("crates/cena-model/src/"))
+        .collect();
+    assert!(
+        !sources.is_empty(),
+        "the scan found no cena-model sources, so this test is vacuous"
+    );
+    let hits = scan_lines(&sources, needles);
+    assert!(
+        hits.is_empty(),
+        "cena-model is the meaning layer and must not touch the filesystem. \
+         The snapshot TYPE lives here; loading and saving it lives in \
+         `cena-session/src/character_store.rs`, the only crate the layering \
+         table lets hold both (layering.rs:98-101).\n{}",
+        hits.join("\n")
+    );
 }

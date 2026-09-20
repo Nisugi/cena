@@ -69,7 +69,19 @@ use super::vocabulary::AccountType;
 /// stat below the racial mean, so `u16` would wrap it into nonsense.
 ///
 /// `i16` rather than `i32`: stats cap well under 32,767 and the type says so.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct StatValue {
     /// The stat itself, e.g. 115.
     pub value: i16,
@@ -88,7 +100,19 @@ pub struct StatValue {
 ///
 /// `plan/12` §5.2: "`Unknown` is a first-class value, not a default." A zeroed
 /// `StatValue` is indistinguishable from a real stat of 0 with no bonus.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct Stat {
     /// The base value, before ascension and enhancives. `info full` only.
     pub normal: Option<StatValue>,
@@ -135,7 +159,9 @@ impl Stat {
 ///
 /// `attributes/stats.rs:30`'s `@@stats`, which is also the wire's print order --
 /// verified against the fixture, where STR..INF appear in exactly this sequence.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum StatKind {
     Strength,
     Constitution,
@@ -402,7 +428,7 @@ fn parse_column(field: &str) -> Option<StatValue> {
 /// here, but do not rely on it - use XML instead"*), because they change
 /// continuously and `info` is a snapshot. `<dialogData id='expr'>` carries the
 /// live value, so this struct holds neither.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Identity {
     /// `Race: Half-Elf`.
     pub race: Option<String>,

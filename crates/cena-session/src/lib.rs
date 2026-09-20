@@ -21,6 +21,7 @@
 //! 2 and 8 land in it, and [`actor`] for the select loop.
 
 pub mod actor;
+pub mod character_store;
 pub mod command;
 pub mod lifecycle;
 pub mod queue;
