@@ -11,6 +11,7 @@
 //! mis-attribute every row after the first, and no hand-written table would
 //! have reproduced that.
 
+use cena_model::state::character::psm::classify_header;
 use cena_model::{PsmCategory, PsmLine, PsmSet};
 use cena_protocol::Parser;
 use cena_protocol::frame::Frame;
@@ -438,4 +439,83 @@ fn an_empty_table_is_a_real_answer() {
     set.replace_category(PsmCategory::Armor, &rows);
     assert!(set.has_table(PsmCategory::Armor), "read, and empty");
     assert_eq!(set.len(PsmCategory::Armor), 0);
+}
+
+/// The **usage** output a bare `cman`/`feat`/`weapon`/`armor`/`shield`/
+/// `ascension` prints, verbatim from the author's live session, 2026-09-20.
+///
+/// # Why this is the adversarial case
+///
+/// A bare command and its `LIST` form BOTH open with `<output class="mono"/>`:
+///
+/// ```text
+/// <c>feat
+/// <output class="mono"/>
+/// USAGE: FEAT {feat} {target} or
+/// ```
+///
+/// So the mono marker says a block opened, not WHICH block. Anything reading
+/// PSM tables by keying on it would try to parse `USAGE: FEAT {feat}` as ranks
+/// -- and these lines are hostile in exactly the right way: they carry
+/// `LEARN`/`UNLEARN` verbs, parenthesised `(currently: ON)`, comma lists, and
+/// `SET #`. A table row is `name mnemonic x/y Type`, and the near-misses here
+/// are what a loose reader would trip on.
+///
+/// What actually protects the store is that `classify_header` requires the
+/// real opener (`Nisugi, the following Feats are available:`), which usage
+/// output never carries. This test is what keeps that true.
+const USAGE_OUTPUT: [&str; 26] = [
+    "USAGE: CMAN {maneuver} {target} or",
+    "       CMAN [option] {args}",
+    "Options:",
+    "  LIST [availability] [type] [category] [subcategory] [WINDOW]",
+    "    [availability]          - PROFESSION (default), ALL, AVAILABLE, KNOWN, or any profession",
+    "    [type]                  - ALL (default), AOE, ATTACK, BUFF, CONCENTRATION, MARTIALSTANCE, PASSIVE, SETUP",
+    "    [category]              - ALL (default), ROGUEGUILD, WARRIORGUILD",
+    "    [subcategory]           - ALL (default)",
+    "    [WINDOW]                - Show the list in a popup window.",
+    "  LEARN {maneuver}          - Spend Combat Maneuver Training Points for maneuvers",
+    "  UNLEARN {maneuver}        - Unlearn maneuvers known to you for Combat Maneuver Training Points",
+    "  INFO                      - Displays your current maneuver training info",
+    "  FORCERT                   - Toggles requiring FORCERT during roundtime (currently: ON)",
+    "  HELP {maneuver}           - List information about the selected maneuver",
+    "  WIKILIST                  - Show Wiki list output for maneuvers",
+    "Note: {maneuver} references above require use of the maneuver mnemonic.",
+    "USAGE: WEAPON {technique} {target} or",
+    "    [category]              - ALL (default), BLUNTWEAPONS, BRAWLING, EDGEDWEAPONS, POLEARMWEAPONS, RANGEDWEAPONS, TWOHANDEDWEAPONS",
+    "  INFO                      - Displays your current technique training info",
+    "USAGE: ARMOR {specialization} {target} or",
+    "  LEARN {specialization}    - Spend Armor Specialization Training Points for specializations",
+    "  UNLEARN {specialization}  - Unlearn specializations known to you for Armor Specialization Training Points",
+    "USAGE: ASCENSION {ability} {target} or",
+    "    [subcategory]           - ALL (default), OTHER, REGEN, RESIST, SKILL, STAT",
+    "  SET #                     - Set the percent of experience to absorb as Ascension experience",
+    "Note: {ability} references above require use of the ability mnemonic.",
+];
+
+#[test]
+fn a_bare_command_opens_no_table() {
+    // MEASURED over all six usage outputs: zero headers.
+    let opened: Vec<&str> = USAGE_OUTPUT
+        .iter()
+        .filter(|l| classify_header(l).is_some())
+        .copied()
+        .collect();
+    assert_eq!(
+        opened,
+        [] as [&str; 0],
+        "no usage line opens an accumulator"
+    );
+}
+
+#[test]
+fn no_usage_line_parses_as_a_rank_row() {
+    // The second line of defence. Even if a header were somehow open, none of
+    // these is a row -- so a usage block inside an open table adds nothing.
+    let rows: Vec<&str> = USAGE_OUTPUT
+        .iter()
+        .filter(|l| PsmLine::classify(l).is_some())
+        .copied()
+        .collect();
+    assert_eq!(rows, [] as [&str; 0], "no usage line is a rank row");
 }

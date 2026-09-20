@@ -51,6 +51,7 @@ use serde::{Deserialize, Serialize};
 use super::enhancive::EnhanciveTotals;
 use super::psm::PsmSet;
 use super::skills::SkillSet;
+use super::standing::Standing;
 use super::stats::{Identity, Stat, StatKind};
 
 /// The format version of a written snapshot.
@@ -88,16 +89,24 @@ pub enum Group {
     Psms,
     /// Enhancive totals, from `inventory enhancive totals`.
     Enhancives,
+    /// Society, citizenship, warcries and resources.
+    ///
+    /// **The one group ordinary play keeps current.** The others are only
+    /// ever taught by a command someone runs; this one is also taught by
+    /// living in the world -- you join a society, you train a PSM, and the
+    /// game says so unprompted. See `standing.rs`.
+    Standing,
 }
 
 impl Group {
-    /// All five.
-    pub const ALL: [Self; 5] = [
+    /// All six.
+    pub const ALL: [Self; 6] = [
         Self::Stats,
         Self::Identity,
         Self::Skills,
         Self::Psms,
         Self::Enhancives,
+        Self::Standing,
     ];
 
     /// The command that refreshes this group.
@@ -116,6 +125,10 @@ impl Group {
             Self::Skills => "skills full",
             Self::Psms => "cman list all all",
             Self::Enhancives => "inventory enhancive totals",
+            // One of four, like `Psms`: `citizenship`, `warcry` and
+            // `resource` each teach a different part. `society` is the one a
+            // caller refreshing a single group most likely means.
+            Self::Standing => "society",
         }
     }
 }
@@ -148,6 +161,8 @@ pub struct CharacterSnapshot {
     pub psms: PsmSet,
     /// Enhancive totals.
     pub enhancives: EnhanciveTotals,
+    /// Society, citizenship, warcries and resources.
+    pub standing: Standing,
     /// When each group was last taught.
     ///
     /// Absent means never. `BTreeMap` rather than five `Option` fields so

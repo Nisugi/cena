@@ -73,6 +73,18 @@ impl Parser {
         match name {
             "pushBold" => self.bold_depth = self.bold_depth.saturating_add(1),
             "popBold" => self.bold_depth = self.bold_depth.saturating_sub(1),
+            // A FONT INSTRUCTION, not a block boundary:
+            //
+            // > **AUTHOR, 2026-09-20:** *"the mono marker is for the frontend
+            // > more so they know to swap between normal font and mono font
+            // > for the output. then swap back at the output \"\"."*
+            //
+            // Which is why it is carried as a flag on the runs rather than
+            // used to frame anything. `<output class="mono"/>` opens both a
+            // `feat list` table AND the usage text a bare `feat` prints, so a
+            // consumer that treated it as "a table starts here" would parse
+            // `USAGE: FEAT {feat}` as rank rows. `cena-model`'s
+            // `a_bare_command_opens_no_table` holds that line.
             "output" => {
                 self.mono = text::attribute(tag, "class").as_deref() == Some("mono");
             }

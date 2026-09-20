@@ -55,6 +55,7 @@ pub mod injured;
 pub mod psm;
 pub mod skills;
 pub mod snapshot;
+pub mod standing;
 pub mod stats;
 pub mod vocabulary;
 
@@ -137,6 +138,12 @@ pub struct Character {
     pub stats: BTreeMap<stats::StatKind, stats::Stat>,
     /// Race, profession, gender and age, from `info`.
     pub identity: stats::Identity,
+    /// Society, citizenship, warcries and resources.
+    ///
+    /// Filled from single lines rather than from a block: most of these
+    /// arrive during ordinary play, not during a sync. See
+    /// [`standing`] for why that distinction drives the store's design.
+    pub standing: standing::Standing,
     /// Whether Shroud of Deception (spell 1212) is believed active.
     ///
     /// **Set by the effects layer, read here.** While it is true, an `info`
@@ -226,6 +233,7 @@ impl Character {
             encumbrance_detail,
             stats,
             identity,
+            standing,
             shrouded,
         } = self;
 
@@ -243,6 +251,13 @@ impl Character {
             encumbrance_detail,
             stats,
             identity,
+            // KEPT. Society, citizenship and warcries are facts about the
+            // character, not about the connection -- and unlike `stats` they
+            // are taught by ORDINARY PLAY as well as by a sync, so clearing
+            // them would wait for a resync that nothing schedules. A resigned
+            // society is announced when it happens; a reconnect announces
+            // nothing.
+            standing,
         );
     }
 
@@ -357,6 +372,58 @@ impl Character {
     pub(crate) fn consume_chunk(&mut self, chunk: &crate::state::chunks::Chunk) {
         if let Some(report) = blocks::InfoReport::read(chunk) {
             self.apply_info(&report);
+        }
+        self.consume_standing(chunk);
+    }
+
+    /// Read the single-line facts a chunk carries.
+    ///
+    /// Separate from the report readers above because these are **not a
+    /// report**: each line stands alone, and most of them arrive during
+    /// ordinary play rather than inside a command's output. A chunk closed by
+    /// a prompt after joining a society carries exactly one of them and no
+    /// report at all.
+    ///
+    /// Every line is offered to every classifier. That is cheap -- they are
+    /// prefix tests -- and it is the only shape that works when the same chunk
+    /// can hold a `society` report, a `resource` report, and a PSM the
+    /// character trained while the command was in flight.
+    fn consume_standing(&mut self, chunk: &crate::state::chunks::Chunk) {
+        let mut warcries = std::collections::BTreeSet::new();
+        let mut saw_warcry_report = false;
+
+        for line in chunk.lines() {
+            let text = line.text();
+
+            if let Some(event) = standing::society_line(&text) {
+                self.standing.apply_society(event);
+            }
+            if let Some(town) = standing::citizenship_line(&text) {
+                self.standing.citizenship = Some(town);
+            }
+            // A warcry report states the COMPLETE set, so the lines are
+            // gathered and applied once below. Applying them one at a time
+            // could not express "you have none".
+            if let Some(warcry) = standing::warcry_line(&text) {
+                saw_warcry_report = true;
+                if let Some(warcry) = warcry {
+                    warcries.insert(warcry);
+                }
+            }
+            if let Some(amounts) = standing::resource_line(&text) {
+                self.standing.resources = Some(amounts);
+            }
+            if let Some((kind, amount)) = standing::suffused_line(&text) {
+                self.standing.resource_type = Some(kind);
+                self.standing.suffused = Some(amount);
+            }
+            if let Some(charges) = standing::covert_arts_line(&text) {
+                self.standing.covert_arts_charges = Some(charges);
+            }
+        }
+
+        if saw_warcry_report {
+            self.standing.set_warcries(warcries);
         }
     }
 
