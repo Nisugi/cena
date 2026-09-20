@@ -199,17 +199,20 @@ pub enum Event {
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///
-    /// **One event per chunk, never one per fact.** Lich emits six topics
-    /// and its recorder reassembles the chunk from them with per-chunk uids,
-    /// a batch id and an emit-order rule; several bugs recorded in
-    /// `recorder.rb` are reassembly bugs. A consumer here reads the chunk
-    /// the state machine produced, and an event's index is its identity.
+    /// **One event per chunk, never one per fact** -- see
+    /// [`ChunkFacts`](cena_model::state::combat::ChunkFacts) for why.
     ///
     /// Published AFTER the prompt's own [`Event::Frame`], and after the
     /// model applied it: a subscriber that reads state on this event sees
     /// the creatures as the chunk left them. `Arc` because every subscriber
     /// and the recorder share one allocation.
     Combat(std::sync::Arc<cena_model::state::combat::ChunkFacts>),
+    /// The store was read, and these groups are stale.
+    ///
+    /// Empty means nothing is stale, and is still published: "checked, nothing
+    /// to do" and "never checked" are different facts. See `load_character`
+    /// for when this fires and why it reports rather than syncs.
+    SyncNeeded(Vec<cena_model::state::character::snapshot::Group>),
     /// A command's bytes went out. Carries the origin, so a behavior can
     /// "notice the player moved the character and re-orient" (`plan/12` §4.1)
     /// without being cancelled by it.

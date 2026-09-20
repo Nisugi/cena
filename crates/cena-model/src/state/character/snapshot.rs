@@ -109,6 +109,39 @@ impl Group {
         Self::Standing,
     ];
 
+    /// Every command that teaches this group, in send order.
+    ///
+    /// **Not one command.** [`Self::refresh_command`] answers with the single
+    /// most representative one, which is right for "refresh this" in a menu
+    /// and wrong for a sync: `Psms` needs six `<category> list all all` and
+    /// `Standing` needs four unrelated reports. A sync that sent one per group
+    /// would leave five of the six PSM tables empty and still stamp the group
+    /// fresh.
+    ///
+    /// Ported from Lich's own list (`infomon/cli.rb:19-33`), minus the three
+    /// it sends that this model does not yet read (`profile full`,
+    /// `citizenship` is here, `spell` and `experience` belong to groups not
+    /// yet built). Those arrive with the classifiers that consume them.
+    #[must_use]
+    pub const fn sync_commands(self) -> &'static [&'static str] {
+        match self {
+            // One report teaches both, and sending `info full` twice would
+            // double the traffic to learn nothing.
+            Self::Stats | Self::Identity => &["info full"],
+            Self::Skills => &["skills full"],
+            Self::Psms => &[
+                "armor list all all",
+                "cman list all all",
+                "feat list all all",
+                "shield list all all",
+                "weapon list all all",
+                "ascension list all all",
+            ],
+            Self::Enhancives => &["inventory enhancive totals"],
+            Self::Standing => &["society", "citizenship", "warcry", "resource"],
+        }
+    }
+
     /// The command that refreshes this group.
     ///
     /// Here rather than in the session layer because it is a fact about the

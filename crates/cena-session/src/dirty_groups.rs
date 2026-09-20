@@ -126,4 +126,11 @@ pub struct Persistence {
     /// Where this character's facts are written. `None` writes nothing, which
     /// is every test and any caller that has not opted in.
     pub dir: Option<std::path::PathBuf>,
+    /// Whether the stored snapshot has been read back yet.
+    ///
+    /// The load needs a name, which arrives with `<app>` partway into the
+    /// login burst, so it cannot happen at construction. This makes it happen
+    /// **once**: a second load would overwrite facts the session has learned
+    /// since with the older ones on disk.
+    pub loaded: bool,
 }

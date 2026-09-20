@@ -477,6 +477,14 @@ pub enum UcsKind {
 
 /// Everything one chunk yielded.
 #[derive(Debug, Clone, Default, PartialEq)]
+///
+/// # One per chunk, never one per fact
+///
+/// Lich emits six topics and its recorder reassembles the chunk from them with
+/// per-chunk uids, a batch id and an emit-order rule; several bugs recorded in
+/// `recorder.rb` are reassembly bugs. A consumer of `Event::Combat` reads the
+/// chunk the state machine produced instead, and an event's index is its
+/// identity.
 pub struct ChunkFacts {
     /// The attack events, in emit order.
     pub events: Vec<AttackEvent>,

@@ -61,6 +61,22 @@ pub const DEFAULT_DATA_DIR: &str = "data";
 /// The environment variable that moves the store directory.
 pub const DATA_DIR_ENV: &str = "CENA_DATA_DIR";
 
+/// How old a stored group may be before a login reports it stale.
+///
+/// **Thirty days, a judgement rather than a measurement.** Lich uses a
+/// hardcoded cutoff DATE instead (`infomon/cli.rb:76`), bumped by hand when
+/// its parser changes -- a different mechanism for a different problem: a date
+/// invalidates everyone's store after a code change. Cena does that with
+/// `SCHEMA_VERSION`, which `restore_into` refuses on, so this only has to
+/// answer "how long before a character has probably trained".
+// `from_days` would read better and is not yet stable as a `const fn`
+// (rust-lang#120301), so the arithmetic is spelled out instead.
+#[allow(
+    clippy::duration_suboptimal_units,
+    reason = "from_days is not const-stable"
+)]
+pub const MAX_STALE: std::time::Duration = std::time::Duration::from_secs(30 * 24 * 60 * 60);
+
 /// The configured data directory, or the default.
 ///
 /// Set with, in PowerShell:

@@ -634,6 +634,11 @@ impl<S: ByteSource> SessionActor<S> {
             // a file whose rows have not changed.
             let is_push = matches!(frame, Frame::CmdListUpdate(_) | Frame::CmdTimestamp { .. });
             let terminator = self.state.apply(&frame);
+            // The frame that teaches the character's name is the first moment
+            // there is a file to read. Cheap after the first: one bool.
+            if matches!(frame, Frame::AppInfo { .. }) {
+                self.load_character();
+            }
             // Whatever that frame taught the character. Taken every frame
             // rather than only on a prompt, because the mailbox is emptied by
             // whoever takes it and a second reader would get nothing.

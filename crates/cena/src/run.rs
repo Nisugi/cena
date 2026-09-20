@@ -431,6 +431,23 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
             // point rather than the demo. A client that connects and shows the
             // player nothing the game said is not a client.
             Ok(Event::Frame(frame)) => screen.show(&frame),
+            // REPORTED, NOT ACTED ON. Running the sync means sending up to
+            // fourteen commands, which needs the authority token
+            // (`plan/12` §4.2) that this watcher does not hold -- it renders,
+            // it does not claim. `cena_behavior::sync` is what runs it, and
+            // the character's owner decides whether to spend that traffic.
+            Ok(Event::SyncNeeded(groups)) if groups.is_empty() => {
+                eprintln!("  .. character store: up to date");
+            }
+            Ok(Event::SyncNeeded(groups)) => eprintln!(
+                "  .. character store: {} group(s) stale -- {}",
+                groups.len(),
+                groups
+                    .iter()
+                    .map(|g| format!("{g:?}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
             // Not rendered yet: the recorder takes these over its own queue,
             // and a combat view is a frontend's to build.
             Ok(Event::Combat(_)) => {}

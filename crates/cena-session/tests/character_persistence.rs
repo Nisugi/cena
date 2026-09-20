@@ -15,18 +15,18 @@ use cena_session::{Session, character_store};
 
 /// Who the character is, which the login burst sends and the store needs for
 /// a filename.
-const WHO: &str = concat!(
+pub(crate) const WHO: &str = concat!(
     r#"<app char="Nisugi" game="GS" title="[GSIV: Nisugi, the Ranger] (Prime)"/>"#,
     "\n",
 );
 
 /// A `society` report: one fact, in one chunk closed by a prompt.
-const SOCIETY: &str = concat!(
+pub(crate) const SOCIETY: &str = concat!(
     "<popBold/>   You are a Master of the Guardians of Sunfist.\n",
     "<prompt time=\"1\">&gt;</prompt>\n",
 );
 
-fn temp_dir(name: &str) -> std::path::PathBuf {
+pub(crate) fn temp_dir(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("cena-persist-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir
@@ -170,4 +170,179 @@ async fn the_login_burst_teaches_who_the_file_is_about() {
     let end = session.into_actor().run().await;
     assert_eq!(end.state.character.name.as_deref(), Some("Nisugi"));
     assert_eq!(end.state.character.instance.as_deref(), Some("GS"));
+}
+
+mod loading {
+    use super::{SOCIETY, WHO, temp_dir};
+    use cena_model::state::character::snapshot::Group;
+    use cena_model::state::character::vocabulary::Society;
+    use cena_platform::ReplaySource;
+    use cena_session::{Session, character_store};
+
+    /// One session learns and saves; the next reads it back.
+    ///
+    /// **The point of the whole feature.** Without this the store only ever
+    /// writes, and every login starts blank -- so a character would re-sync
+    /// sixteen commands every time regardless of what was on disk.
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn a_second_session_starts_from_what_the_first_learned() {
+        let dir = temp_dir("round-trip");
+
+        let first = format!("{WHO}{SOCIETY}");
+        let end = Session::new(ReplaySource::from_bytes(first.as_bytes()))
+            .with_character_store(dir.clone())
+            .into_actor()
+            .run()
+            .await;
+        assert_eq!(
+            end.state.character.standing.society_rank,
+            Some(20),
+            "guard: the first session learned it"
+        );
+
+        // The second session is told WHO it is and nothing else.
+        let end = Session::new(ReplaySource::from_bytes(WHO.as_bytes()))
+            .with_character_store(dir.clone())
+            .into_actor()
+            .run()
+            .await;
+        assert_eq!(
+            end.state.character.standing.society,
+            Some(Some(Society::GuardiansOfSunfist)),
+            "restored from disk, not from the wire"
+        );
+        assert_eq!(end.state.character.standing.society_rank, Some(20));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn a_character_with_no_file_starts_blank_rather_than_failing() {
+        // The ordinary case for a character nobody has synced. It must not be
+        // an error: a session that refused to start would be worse than one
+        // that syncs.
+        let dir = temp_dir("no-file");
+        let end = Session::new(ReplaySource::from_bytes(WHO.as_bytes()))
+            .with_character_store(dir.clone())
+            .into_actor()
+            .run()
+            .await;
+        assert_eq!(end.state.character.standing.society, None);
+        assert_eq!(end.state.character.name.as_deref(), Some("Nisugi"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn what_the_session_learns_outranks_what_was_stored() {
+        // The load happens on `<app>`, which arrives BEFORE the game teaches
+        // anything else -- so a fact from this session always lands on top of
+        // the restored one rather than under it. A load that ran later, or
+        // twice, would overwrite fresh facts with old ones.
+        let dir = temp_dir("fresh-wins");
+
+        // Store a Voln membership.
+        let voln = format!(
+            "{WHO}   You are a member in the Order of Voln at rank 5.\n<prompt time=\"1\">&gt;</prompt>\n"
+        );
+        let _ = Session::new(ReplaySource::from_bytes(voln.as_bytes()))
+            .with_character_store(dir.clone())
+            .into_actor()
+            .run()
+            .await;
+        assert_eq!(
+            character_store::load(&dir, "GS", "Nisugi")
+                .expect("stored")
+                .standing
+                .society,
+            Some(Some(Society::OrderOfVoln)),
+            "guard: Voln is on disk"
+        );
+
+        // Now a session where the game says Sunfist.
+        let end = Session::new(ReplaySource::from_bytes(
+            format!("{WHO}{SOCIETY}").as_bytes(),
+        ))
+        .with_character_store(dir.clone())
+        .into_actor()
+        .run()
+        .await;
+        assert_eq!(
+            end.state.character.standing.society,
+            Some(Some(Society::GuardiansOfSunfist)),
+            "the wire wins over the file"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn a_second_app_frame_does_not_reload_over_fresh_facts() {
+        // MUTATION-FOUND. Removing the `loaded` guard left the whole suite
+        // green, because `<app>` arrives once in a replay. It does NOT arrive
+        // once in life: the login burst re-sends it on every reconnect
+        // (`reconnect.rs` measures the burst), so without the guard a
+        // reconnect mid-session would overwrite everything learned since with
+        // the older values on disk.
+        let dir = temp_dir("reload");
+
+        // Voln on disk.
+        let voln = format!(
+            "{WHO}   You are a member in the Order of Voln at rank 5.
+<prompt time=\"1\">&gt;</prompt>
+"
+        );
+        let _ = Session::new(ReplaySource::from_bytes(voln.as_bytes()))
+            .with_character_store(dir.clone())
+            .into_actor()
+            .run()
+            .await;
+
+        // Learn Sunfist, THEN receive `<app>` again as a reconnect would.
+        let wire = format!("{WHO}{SOCIETY}{WHO}");
+        let end = Session::new(ReplaySource::from_bytes(wire.as_bytes()))
+            .with_character_store(dir.clone())
+            .into_actor()
+            .run()
+            .await;
+        assert_eq!(
+            end.state.character.standing.society,
+            Some(Some(Society::GuardiansOfSunfist)),
+            "the second `<app>` must not restore Voln over it"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn the_restored_timestamps_survive_a_later_save() {
+        // What makes the staleness chain work across sessions: a group taught
+        // long ago keeps its stamp when a different group is written today.
+        let dir = temp_dir("stamps");
+
+        let _ = Session::new(ReplaySource::from_bytes(
+            format!("{WHO}{SOCIETY}").as_bytes(),
+        ))
+        .with_character_store(dir.clone())
+        .into_actor()
+        .run()
+        .await;
+        let first = character_store::load(&dir, "GS", "Nisugi").expect("stored");
+        let stamp = first
+            .group_updated_at(Group::Standing)
+            .expect("Standing stamped");
+
+        // A second session that learns the SAME thing -- nothing changes, so
+        // nothing is marked, so the stamp must not move.
+        let _ = Session::new(ReplaySource::from_bytes(
+            format!("{WHO}{SOCIETY}").as_bytes(),
+        ))
+        .with_character_store(dir.clone())
+        .into_actor()
+        .run()
+        .await;
+        let second = character_store::load(&dir, "GS", "Nisugi").expect("stored");
+        assert_eq!(
+            second.group_updated_at(Group::Standing),
+            Some(stamp),
+            "a re-sync that finds nothing new does not restamp"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

@@ -166,6 +166,89 @@ impl<S: ByteSource> SessionActor<S> {
     /// A far-future instant when nothing is waiting, so the `select!` arm is
     /// always well-formed; its guard is what stops it firing. Same shape as
     /// [`Self::quit_deadline`], for the same reason.
+    /// Read this character's stored facts into the model, once.
+    ///
+    /// # It reports rather than syncs
+    ///
+    /// Publishes [`Event::SyncNeeded`] with whatever the store says is stale.
+    /// Running the sync means sending up to fourteen commands, and `plan/12`
+    /// §4.2 gives the authority to one claimant at a time -- an actor that
+    /// issued them on its own would be a claimant nobody claimed. So the
+    /// session says what it found and whoever owns the character decides
+    /// whether to spend that traffic; `cena_behavior::sync` is what runs it.
+    ///
+    /// # Why this is not in the constructor
+    ///
+    /// The file is named after the character, and the character's name arrives
+    /// with `<app>` partway into the login burst -- so there is nothing to
+    /// load from until the game says who logged in. This runs on the frame
+    /// that teaches it.
+    ///
+    /// # Why it is refused after the first time
+    ///
+    /// A second load would overwrite what the session has learned since with
+    /// the older values on disk. `<app>` is re-sent on reconnect, which is
+    /// exactly when that would happen.
+    ///
+    /// A missing file is the ordinary case for a character nobody has synced,
+    /// and a stale one is refused by `restore_into` rather than migrated. Both
+    /// leave the model empty, which `stale_groups` then reports as everything
+    /// needing a sync -- the right answer in both cases.
+    pub(super) fn load_character(&mut self) {
+        if self.persistence.loaded {
+            return;
+        }
+        let (Some(dir), Some(name), Some(instance)) = (
+            self.persistence.dir.clone(),
+            self.state.character.name.clone(),
+            self.state.character.instance.clone(),
+        ) else {
+            return;
+        };
+        self.persistence.loaded = true;
+        // What the store says needs re-reading. Computed from whatever was
+        // loaded -- including nothing, where every group is stale and the
+        // answer is a full sync.
+        let mut stale = cena_model::state::character::snapshot::Group::ALL.to_vec();
+        match crate::character_store::load(&dir, &instance, &name) {
+            Ok(snapshot) => {
+                let restored = snapshot.restore_into(&mut self.state.character);
+                // `restore_into` re-checks the schema version, so a file the
+                // store accepted can still be refused here. Logged either way:
+                // "loaded nothing" and "loaded a character" are different
+                // facts and a session log that showed neither would make a
+                // blank character look like a fresh one.
+                self.log(&format!(
+                    "character store: {} for {instance}_{name}",
+                    if restored {
+                        "restored stored facts"
+                    } else {
+                        "refused a snapshot from another schema version"
+                    }
+                ));
+                // Only from a snapshot we actually believed. A refused one has
+                // timestamps written by a different parser, so trusting them
+                // would skip a sync the version check exists to force.
+                if restored {
+                    stale = snapshot.stale_groups(
+                        std::time::SystemTime::now(),
+                        crate::character_store::MAX_STALE,
+                    );
+                }
+            }
+            Err(crate::character_store::LoadError::Missing) => {
+                self.log("character store: nothing stored for this character yet");
+            }
+            Err(err) => {
+                self.log(&format!("character store: could not load: {err}"));
+            }
+        }
+        if !stale.is_empty() {
+            self.log(&format!("character store: {} group(s) stale", stale.len()));
+        }
+        let _ = self.events.send(Event::SyncNeeded(stale));
+    }
+
     /// # Its own `select!` arm, not folded into the quit timer
     ///
     /// Merging them saves one `Sleep` in `run`'s future. That was tried and
