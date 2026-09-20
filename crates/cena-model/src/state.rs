@@ -51,6 +51,7 @@ pub mod creatures;
 pub mod gameobj;
 mod idle;
 mod inventory;
+pub mod inventory_snapshot;
 mod nouns;
 pub mod objectives;
 mod reconnect;
@@ -62,6 +63,7 @@ pub mod vitals;
 
 pub use character::{Character, Experience, Injury};
 pub use inventory::{Container, Inventory};
+pub use inventory_snapshot::InventorySnapshot;
 pub use nouns::{Found, Where};
 pub use objectives::Objectives;
 pub use room::{PlayerStatus, Room, RoomItem};
@@ -110,6 +112,12 @@ pub struct GameState {
     pub vitals: Vitals,
     /// The quest and bounty list (`<objectives>`).
     pub objectives: Objectives,
+    /// The whole-inventory snapshot (`<inventoryManager>`).
+    ///
+    /// Distinct from [`Self::inventory`], which is the passive container
+    /// model. This one is requested, complete and point-in-time; that one is
+    /// streamed, partial and live. See `inventory_snapshot.rs`.
+    pub inventory_snapshot: InventorySnapshot,
     /// What the game says is true of the character right now.
     ///
     /// `plan/17` §2, ported from Vellum. Read it through the typed accessors
@@ -232,6 +240,7 @@ impl PartialEq for GameState {
             chunk,
             character,
             inventory,
+            inventory_snapshot,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -247,6 +256,7 @@ impl PartialEq for GameState {
             && roundtime_ends == &other.roundtime_ends
             && vitals == &other.vitals
             && objectives == &other.objectives
+            && inventory_snapshot == &other.inventory_snapshot
             && status == &other.status
             && effects == &other.effects
             && game_time == &other.game_time
@@ -498,15 +508,20 @@ impl GameState {
                 }
                 self.record_vital(bar);
             }
-            // `<clearStream id=>`: the wire's own snapshot boundary, and the
-            // ONLY thing that empties a buffer. See `state/streams.rs` for the
-            // measurement that chose this over clearing on push.
             // The room's environment. Part of the room, so it is invalidated
             // with the rest of it on a reconnect.
             Frame::RoomMeta(meta) => self.room.meta = Some(*meta),
             Frame::ObjectivesUpdate { action, entries } => {
                 self.objectives.apply(*action, entries);
             }
+            // Both inventory responses, moved down under Rule 4.1: this
+            // function was at 113 of 100 lines.
+            Frame::InventoryManager(_) | Frame::InventoryViewItem(_) => {
+                self.apply_inventory(frame);
+            }
+            // `<clearStream id=>`: the wire's own snapshot boundary, and the
+            // ONLY thing that empties a buffer. See `state/streams.rs` for the
+            // measurement that chose this over clearing on push.
             Frame::ClearStream { id } => {
                 self.clear_stream(id);
                 self.pending.remove(id);

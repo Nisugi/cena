@@ -1769,6 +1769,95 @@ Facts recorded here and **not** implemented, each with the reason:
 
 ---
 
+### 6.10 `<i>` is an inventory row, not italics — FIXED
+
+**A styling arm was eating a payload.** `parser/markup.rs`'s `is_markup` listed
+`"a" | "d" | "b" | "i" | ...`, so `<i>` was treated as a tag that only changes text style
+and emits no frame of its own.
+
+`GemStone` has no italic tag. The entry was written in this crate's first parser commit
+(`2aaba9c`) as HTML instinct: `<b>` and `<i>` are a pair in HTML, so both were typed.
+**Neither reference supports it** — `VellumFE` lists `i` only in its known-tags table
+(`src/parser/text.rs:182`) and never styles on it, and Lich's `common/xmlparser.rb` has no
+`i` handling at all.
+
+MEASURED over the author's September logs:
+
+```sh
+grep -oh '<i[ >]' *.xml | wc -l                                          # 5364
+grep -ohE '<inventoryManager [^>]*>.*' *.xml | grep -oh '<i[ >]' | wc -l # 5364
+```
+
+**All 5,364 are `<inventoryManager>` item rows. Zero italics.** Every one degraded to
+`Frame::Structural { name: "i", raw: "<i id=… />" }` with its attributes trapped in an
+unparsed string — the same shape the golden corpus caught in `crtrStatus`.
+
+This is **Rule 2.2a in a form the rule did not anticipate**: not a partially consumed
+payload, but one consumed by the *wrong handler entirely*, on an assumption never checked
+against a source. It is also §6.8's methodology warning in its second form — the
+observable-tags table had already recorded *"`<i>` does not occur at all (0 in those 60
+files)"*, a real zero with a wrong conclusion drawn from it. Those 60 files held no
+`inventoryManager` response. **A measured zero over a sample that cannot contain the case
+is not evidence of absence.**
+
+`<b>` was checked before being kept: 91,254 occurrences, `</b>` balanced exactly, wrapping
+bold creature names. It stays.
+
+### 6.11 The inventory feed — `<inventoryManager>` and `<inventoryViewItem>`
+
+Both were untyped attribute bags carrying only their envelope. MEASURED over the author's
+September logs, and the parser now reproduces every count exactly:
+
+```text
+snapshots=36  items=5364  views=13  sections=52  links=132  strays=0
+```
+
+**`<inventoryManager>`** is one line carrying the whole nested tree: ~149 items per
+snapshot, each with `id`, `loc`, `name`, `weight` and optionally `long`, `in_max`,
+`on_max`, `flags`. It is now a paired tag assembled in `parser/inventory.rs`. Three wire
+conventions are knowledge-in-code, taken from `VellumFE`'s port rather than guessed:
+
+- `loc="in,309585706"` splits into a relation and the parent's exist id; the bare `room`
+  has no parent.
+- `name="a scorched,glowbark long,bow"` is three comma fields, article/adjective/noun.
+  VERIFIED: all 149 names in the sampled snapshot carry exactly two commas.
+- `in_max` / `on_max` are **packed**: `v / 10` pounds, `v % 10` max item count with 0
+  meaning unlimited (`VellumFE/src/core/state.rs:1281-1290`).
+- `weight="-1"` is a sentinel for a fixture that cannot be picked up, which is why the
+  field is **signed**.
+
+**`<inventoryViewItem>`** spans **7 to 50 lines** and carries four `<result>` sections per
+item (`look`, `inspect`, `analyze`, `recall`; 13 responses, 52 sections). The section
+headers were landing in `Frame::WindowHints` — the window *placement* bag.
+
+This is the **documented upgrade trigger** for MULTI-LINE CAPTURES in `parser.rs`. That
+note removed an earlier capture path on evidence (0 occurrences in 1,230,355 lines, against
+a window where 4,297 consecutive lines could be swallowed silently) and specified that if
+one ever came back it must be **bounded by lines, not bytes**. It is: `MAX_VIEWITEM_LINES
+= 200`, four times the observed maximum, and a `<prompt>` still tears the block and
+resyncs.
+
+Unlike `VellumFE`, which flattens the prose to a plain string
+(`src/parser/handlers.rs:866`), Cena keeps the typed links — this parser already produces
+them, so the nouns in a description stay clickable.
+
+**Two defects found by measurement, not by review.** Sections came out 39 against the
+wire's 52, exactly one lost per response: the envelope opened the capture but the *rest of
+that same line* kept parsing normally, so the first `<result>` escaped. And a second
+envelope arriving while one was open was flattened into the first block's prose and lost
+entirely, because an open capture owns the line before dispatch sees it.
+
+**`<continuation>` has 0 corpus hits** and is typed anyway. The frame's own doc already
+claimed to carry these rows while carrying none, and `VellumFE` answers them with
+`_inventory manager <token> continue <room> <root> <last>`
+(`src/core/inventory_service.rs:1-8`). A cursor we fail to surface is a snapshot silently
+truncated at a page boundary, so `InventorySnapshot::is_complete()` reports false when one
+arrives. **The request/continuation service is NOT built** — nothing in Cena issues these
+requests yet; the model absorbs what the game sends.
+
+21 mutants, 21 killed (`crates/cena-protocol/tests/inventory_feed.rs`,
+`crates/cena-model/tests/inventory_snapshot.rs`).
+
 ## 2b. MEASURED: what the login burst does and does not re-send
 
 **Measured 2026-09-18 across all seven of Cena's own logins** (`E:\Gemstone\data\cena_logs`),

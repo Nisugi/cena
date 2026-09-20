@@ -288,7 +288,7 @@ fn an_inventory_manager_token_comes_from_the_id_attribute() {
     assert!(
         frames
             .iter()
-            .any(|f| matches!(f, Frame::InventoryManager { token, .. } if token == "tok99")),
+            .any(|f| matches!(f, Frame::InventoryManager(s) if s.token == "tok99")),
         "the correlation token lives in id=: {frames:#?}"
     );
 }

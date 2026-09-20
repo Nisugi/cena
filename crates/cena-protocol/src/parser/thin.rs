@@ -191,11 +191,10 @@ fn thin_frame_rest(name: &str, tag: &str, attrs: Attrs) -> Frame {
         // request. The tag is absent from a 272-file corpus sample, so this
         // was latent rather than live -- but an always-empty named field is a
         // claim the type makes and does not keep.
-        "inventoryManager" => Frame::InventoryManager {
-            token: text::attribute(tag, "id").unwrap_or_default(),
-            attrs,
-        },
-        "inventoryViewItem" => Frame::InventoryViewItem { id: id(), attrs },
+        // `inventoryManager` and `inventoryViewItem` are assembled rather
+        // than thinned -- one in `dispatch.rs` (its body is `<i>` children on
+        // one line), one in `view_item.rs` (its body spans lines). Neither
+        // reaches this function.
         "launchURL" | "LaunchURL" => Frame::LaunchUrl {
             url: text::attribute(tag, "src")
                 .or_else(|| text::attribute(tag, "url"))

@@ -18,5 +18,8 @@ pub mod scrub;
 pub mod tags;
 pub mod text;
 
-pub use frame::{Frame, Menu, MenuItem, Objective, ObjectivesAction, RoomMeta};
+pub use frame::{
+    Capacity, Continuation, Frame, InventoryItem, InventoryResponse, ItemDetail, ItemView, Menu,
+    MenuItem, Objective, ObjectivesAction, RoomMeta,
+};
 pub use parser::Parser;

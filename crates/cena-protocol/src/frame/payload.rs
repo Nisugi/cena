@@ -220,6 +220,242 @@ pub struct Amount {
     pub max: i32,
 }
 
+/// One `<i>` row from an `<inventoryManager>` snapshot: a single item.
+///
+/// # The defect this closes
+///
+/// [`Frame::InventoryManager`](crate::Frame::InventoryManager) used to say it
+/// carried "its `<i>` / `<continuation>` rows" and carried **neither** -- only
+/// a token and an `attrs` bag of the two envelope attributes. Every row fell
+/// out separately as `Frame::Structural`, so the inventory tree the response
+/// exists to deliver was never assembled. MEASURED: 5,364 rows lost across
+/// 36 snapshots.
+///
+/// # `<i>` is an item, not italics
+///
+/// This crate's first commit put `i` in the styling arm beside `b`, on HTML
+/// instinct, and every row here degraded to `Frame::Structural` with its
+/// attributes trapped in a raw string. See `parser::markup::is_markup` for
+/// the census that settled it: 5,364 `<i>` in the author's September logs,
+/// all 5,364 inside an `<inventoryManager>`, zero italics.
+///
+/// # What the wire states
+///
+/// MEASURED over those logs, 5,364 rows across 36 snapshots (~149 items
+/// each):
+///
+/// ```sh
+/// grep -ohE '<inventoryManager [^>]*>.*' *.xml ///   | grep -oE '<i [^>]*>' | grep -oE '[a-z_]+=' | sort | uniq -c
+/// #  5364 id=   5364 loc=   5364 name=   5364 weight=
+/// #  1044 long=  468 in_max=   72 on_max=    36 flags=
+/// ```
+///
+/// So `id`, `loc`, `name` and `weight` are on every row and the rest are not.
+/// The fields `VellumFE` also reads -- `encum`, `in_encum`, `in_selector`,
+/// `locker`, `familyvault` -- are absent from this corpus but kept, because
+/// its port reads them from the same feed (`src/core/state.rs:1133-1176`) and
+/// an attribute we do not read is one we silently drop.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct InventoryItem {
+    /// `id=`: the item's exist id.
+    pub id: String,
+    /// `loc=`, split: where the item sits relative to [`Self::parent`].
+    ///
+    /// `worn,player` -> `("worn", "player")`; `in,309585704` -> `("in", that
+    /// container)`; the bare `room` -> `("room", "room")`.
+    ///
+    /// MEASURED: 4,212 `in,*` and 1,152 `worn,*` in these logs.
+    pub relation: String,
+    /// What [`Self::relation`] is relative to: `player`, `room`, or a
+    /// container's exist id.
+    pub parent: String,
+    /// `name=`, rejoined for display: `"a scorched glowbark long bow"`.
+    pub name: String,
+    /// `name=`'s first comma field. May be empty.
+    pub article: String,
+    /// `name=`'s second comma field. May be empty.
+    pub adjective: String,
+    /// `name=`'s third comma field, or the whole value when it does not split
+    /// into three -- losing the item is worse than an odd noun.
+    pub noun: String,
+    /// `long=` with `VellumFE`'s `$_` emphasis markers stripped, when stated.
+    pub long: Option<String>,
+    /// `weight=` in pounds. `None` when unstated.
+    ///
+    /// **Signed, and `-1` is a sentinel** meaning the item cannot be picked
+    /// up -- room furniture and fixtures (`VellumFE/src/core/state.rs:1152`).
+    /// See [`Self::can_pick_up`].
+    pub weight: Option<i32>,
+    /// `encum=`: an encumbrance override, `-1` for a fixed item.
+    pub encum: Option<i32>,
+    /// `in_max=`: packed contents capacity. Decode with [`Self::in_capacity`].
+    pub in_max: Option<u32>,
+    /// `on_max=`: packed surface capacity, same encoding.
+    pub on_max: Option<u32>,
+    /// `in_encum=`: pounds currently inside, when the server reports it.
+    pub in_encum: Option<u32>,
+    /// `in_selector=`: a noun phrase to address the container by instead of
+    /// its id (lockers and similar).
+    pub in_selector: Option<String>,
+    /// `locker="1"`.
+    pub locker: bool,
+    /// `familyvault="1"`.
+    pub familyvault: bool,
+    /// `flags=`, comma-split. Observed: `closed` (36 rows, all on a purse).
+    pub flags: Vec<String>,
+}
+
+/// A container's capacity, decoded from a packed `in_max` / `on_max`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Capacity {
+    /// Weight capacity in pounds.
+    pub pounds: u32,
+    /// Maximum item count; `None` means unlimited.
+    pub max_items: Option<u32>,
+}
+
+impl InventoryItem {
+    /// Decode a packed capacity: `v / 10` pounds, `v % 10` item count with
+    /// 0 meaning unlimited.
+    ///
+    /// Ported from `VellumFE/src/core/state.rs:1281-1290`.
+    const fn decode_capacity(packed: u32) -> Capacity {
+        Capacity {
+            pounds: packed / 10,
+            max_items: match packed % 10 {
+                0 => None,
+                n => Some(n),
+            },
+        }
+    }
+
+    /// Contents capacity, when this is a container (`in_max` nonzero).
+    #[must_use]
+    pub fn in_capacity(&self) -> Option<Capacity> {
+        self.in_max.filter(|v| *v > 0).map(Self::decode_capacity)
+    }
+
+    /// Surface capacity, when things rest on this (`on_max` nonzero).
+    #[must_use]
+    pub fn on_capacity(&self) -> Option<Capacity> {
+        self.on_max.filter(|v| *v > 0).map(Self::decode_capacity)
+    }
+
+    /// Whether the item holds things in either orientation.
+    #[must_use]
+    pub fn is_container(&self) -> bool {
+        self.in_capacity().is_some() || self.on_capacity().is_some()
+    }
+
+    /// Whether the item can be picked up.
+    ///
+    /// `encum == -1`, or an unstated `encum` with `weight == -1`, marks a
+    /// fixture (`VellumFE/src/core/state.rs:1310-1315`). An item that states
+    /// neither is assumed portable, which is the common case.
+    #[must_use]
+    pub fn can_pick_up(&self) -> bool {
+        match self.encum {
+            Some(e) => e != -1,
+            None => self.weight != Some(-1),
+        }
+    }
+
+    /// Whether the wire flagged the item closed.
+    #[must_use]
+    pub fn is_closed(&self) -> bool {
+        self.flags.iter().any(|f| f == "closed")
+    }
+
+    /// Whether the wire flagged the item locked.
+    #[must_use]
+    pub fn is_locked(&self) -> bool {
+        self.flags.iter().any(|f| f == "locked")
+    }
+}
+
+/// An `<inventoryManager>` response: the whole item tree, assembled.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct InventoryResponse {
+    /// `id=`: the request token this answers. Named `token` because that is
+    /// what it is -- see the note in `thin.rs`.
+    pub token: String,
+    /// `room=`: the room the snapshot was taken in.
+    pub room: String,
+    /// `root=`: set on a continuation response, echoing the cursor.
+    pub root: Option<String>,
+    /// `after=`: set on a continuation response, echoing the cursor.
+    pub after: Option<String>,
+    /// `state=`: the server's error marker, e.g. `stale`. `None` on a good
+    /// response.
+    pub state: Option<String>,
+    /// The item rows, in wire order.
+    pub items: Vec<InventoryItem>,
+    /// Cursors saying the snapshot is incomplete.
+    pub continuations: Vec<Continuation>,
+}
+
+/// An `<inventoryViewItem>` response: one item's detail sections.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ItemView {
+    /// `id=`: the request token.
+    pub token: String,
+    /// `exist=`: the item being described.
+    pub exist: String,
+    /// `state=`: the server's error marker, or `malformed` when a `<prompt>`
+    /// tore the block mid-send.
+    pub state: Option<String>,
+    /// `closed="1"`: the container is closed, so `look` says nothing about
+    /// its contents. Presence is the signal, not the value.
+    pub closed: bool,
+    /// The `<result>` sections, in wire order.
+    pub results: Vec<ItemDetail>,
+}
+
+/// A `<continuation>` cursor: the snapshot is paginated and there is more.
+///
+/// **Absent from the author's logs** -- 0 in 36 snapshots -- but typed rather
+/// than dropped. `Frame::InventoryManager`'s doc already claimed to carry
+/// these while carrying none, and `VellumFE`'s port answers them with
+/// `_inventory manager <token> continue <room> <root> <last>`
+/// (`src/core/inventory_service.rs:1-8`). A cursor we fail to surface is a
+/// snapshot silently truncated at the page boundary.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Continuation {
+    /// `root=`: the container whose contents were cut off.
+    pub root: String,
+    /// `last=`: the last item id delivered under that root.
+    pub last: String,
+}
+
+/// One `<result command=>` section of an `<inventoryViewItem>` response.
+///
+/// These used to land in `Frame::WindowHints` -- the window PLACEMENT bag --
+/// because the section header is a tag of its own and nothing assembled the
+/// block. The response spans 7 to 50 lines, so assembling it needed the
+/// parser's only multi-line capture (`parser/view_item.rs`), bounded by
+/// lines as `parser.rs`'s MULTI-LINE CAPTURES note requires.
+///
+/// MEASURED: four per response, always the same four commands, in this order
+/// -- `look`, `inspect`, `analyze`, `recall` (13 responses, 52 sections).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ItemDetail {
+    /// `command=`: which query this section answers.
+    pub command: String,
+    /// The section's prose, with physical line breaks preserved.
+    ///
+    /// The wire formats `analyze` and `inspect` with real lines -- indented
+    /// tables and blank separators -- so flattening them runs the paragraphs
+    /// together (`VellumFE/src/parser/handlers.rs:779-783`).
+    pub text: String,
+    /// Item links found in the prose, in order.
+    ///
+    /// `VellumFE` flattens these away into plain text
+    /// (`src/parser/handlers.rs:866`). This parser already types links, so
+    /// keeping them costs nothing and means a frontend can make the nouns in
+    /// a description clickable, exactly as the game intends.
+    pub links: Vec<Link>,
+}
+
 /// `<roommeta>`: the room's environment, as the game's own codes.
 ///
 /// Eight attributes, and the wire sends **all eight every time** -- MEASURED

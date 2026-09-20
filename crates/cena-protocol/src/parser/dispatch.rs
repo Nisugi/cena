@@ -207,12 +207,11 @@ impl Parser {
             // (`2026-09-20_12-19-45.xml:267`). Assembled rather than emitted
             // per-tag, so the coordinates stay attached to the menu that
             // answers for them.
-            // Two tags whose body is a run of CHILDREN rather than prose,
-            // both always on one line. Assembled whole so the rows stay
-            // attached to the envelope that says what they are.
-            "menu" | "objectives" => {
+            // Bodies that are not prose on this line: three assembled from
+            // CHILDREN, and one captured across lines. See `assembled`.
+            "menu" | "objectives" | "inventoryManager" | "inventoryViewItem" => {
                 self.flush(buffer, frames);
-                frames.push(child_bearing(name, tag));
+                self.assembled(name, tag, frames);
             }
             // `picture=` is what makes a `<resource>` a room picture. Without
             // it there is nothing to model -- but "nothing to model" is not
@@ -653,11 +652,21 @@ fn menu(tag: &str) -> crate::frame::Menu {
 }
 
 /// A tag whose body is children, assembled into one frame.
-fn child_bearing(name: &str, tag: &str) -> Frame {
-    if name == "menu" {
-        Frame::MenuResponse(menu(tag))
-    } else {
-        objectives(tag)
+impl Parser {
+    /// Tags whose body is not prose on this line.
+    ///
+    /// Three carry a run of CHILDREN, always on one line, and are assembled
+    /// whole so the rows stay attached to the envelope that says what they
+    /// are. The fourth opens a capture that owns every following line until
+    /// its close -- its body is prose in `<result>` sections, 7 to 50 lines
+    /// of it (`view_item.rs`).
+    fn assembled(&mut self, name: &str, tag: &str, frames: &mut Vec<Frame>) {
+        match name {
+            "menu" => frames.push(Frame::MenuResponse(menu(tag))),
+            "inventoryManager" => frames.push(super::inventory::inventory_manager(tag)),
+            "inventoryViewItem" => self.open_view_item(tag, frames),
+            _ => frames.push(objectives(tag)),
+        }
     }
 }
 

@@ -67,9 +67,15 @@ const OBSERVABLE_VIA: &[(&str, &str)] = &[
         "b",
         "redundant wrapper: 234531/234531 <b> blocks wrap <pushBold/>",
     ),
+    // NOT an italic tag. `<i>` is an `<inventoryManager>` ITEM ROW, and the
+    // "0 occurrences" recorded here was a sampling artifact: those 60 files
+    // held no inventoryManager response. MEASURED over the author's
+    // September logs, 5,364 `<i>` and all 5,364 inside one -- see
+    // `parser::markup::is_markup` for the full census and what claiming it
+    // as styling cost.
     (
         "i",
-        "absent from this wire: 0 occurrences in 60 stratified files",
+        "an inventory item row; typed into InventoryManager.items",
     ),
     ("prompt", "dispatched whole; body is Prompt.text"),
     ("component", "dispatched whole; body is Component.body"),
@@ -145,13 +151,19 @@ fn the_authors_reproductions() {
         );
     }
 
-    // Bold and italic text. The author measured three Text frames all with
-    // bold_depth 0 and read it as "the bold is lost entirely".
+    // Bold text. The author measured three Text frames all with bold_depth 0
+    // and read it as "the bold is lost entirely".
     //
     // The text frames are RIGHT to read depth 0 -- `<b>` carries no bold on
     // this wire, `<pushBold/>` does (see OBSERVABLE_VIA). What WAS lost is
-    // that a `<b>` element was present at all. Now it is not: each of the
-    // four markup tags emits a Structural frame, interleaved with the text.
+    // that a `<b>` element was present at all. Now it is not: both markup
+    // tags emit a Structural frame, interleaved with the text.
+    //
+    // This assertion used to expect `["b", "b", "i", "i"]`, on the premise
+    // that `<i>` is italic markup. It is not -- GemStone has no italic tag
+    // and `<i>` is an inventory row -- so the open is now typed by its own
+    // arm and only the close is Structural. The test encoded an invented
+    // premise, and is corrected rather than accommodated.
     let frames = Parser::new().parse_line("<b>bold</b> and <i>ital</i>");
     let names: Vec<&str> = frames
         .iter()
@@ -162,8 +174,8 @@ fn the_authors_reproductions() {
         .collect();
     assert_eq!(
         names,
-        ["b", "b", "i", "i"],
-        "every <b>/<i> open and close must be recorded, got {frames:?}"
+        ["b", "b", "i"],
+        "every <b> open and close, and the </i>, must be recorded, got          {frames:?}"
     );
     for frame in &frames {
         if let Frame::Text(text) = frame {

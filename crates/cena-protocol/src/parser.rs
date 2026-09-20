@@ -97,9 +97,11 @@ use crate::text;
 mod dispatch;
 mod emit;
 mod inner;
+mod inventory;
 mod markup;
 mod read;
 mod thin;
+mod view_item;
 mod wire;
 
 use wire::{CLIENT_OPEN, COMMENT_CLOSE, SETTINGS_CLOSE, client_region};
@@ -152,6 +154,12 @@ pub struct Parser {
     /// skip the line cap entirely while a blob is open -- see its `in_settings`
     /// arm for the three defects that removes.
     settings_tail: Vec<u8>,
+    /// The `<inventoryViewItem>` block being captured across lines.
+    ///
+    /// The parser's ONLY multi-line capture. See `view_item.rs` for why this
+    /// one exists when the general capture path was removed, and for the
+    /// line bound that keeps its worst case countable.
+    view_item: Option<view_item::ViewItem>,
     /// Discarding the tail of a line that exceeded [`MAX_LINE_BYTES`].
     ///
     /// Set when the cap fires, cleared by the next newline. It is what lets
@@ -262,6 +270,11 @@ impl Parser {
         let mut frames = Vec::new();
 
         if let Some(done) = self.continue_settings_blob(line) {
+            return done;
+        }
+
+        // An open `<inventoryViewItem>` owns the line until its close.
+        if let Some(done) = self.continue_view_item(line) {
             return done;
         }
 
@@ -394,6 +407,20 @@ impl Parser {
             }
 
             self.dispatch(tag, &mut buffer, &mut frames);
+
+            // Opening an `<inventoryViewItem>` hands the REST of this line to
+            // the capture. Without this the envelope opened the capture and
+            // the line kept parsing normally, so the `<result command='look'>`
+            // that follows it on the same line routed to `WindowHints` and
+            // its whole section was lost -- MEASURED against a real block:
+            // 39 sections captured where the wire sent 52, exactly one lost
+            // per response.
+            if self.view_item.is_some() && !rest.is_empty() {
+                let tail = std::mem::take(&mut rest);
+                self.flush(&mut buffer, &mut frames);
+                frames.extend(self.continue_line_in_capture(tail));
+                break;
+            }
         }
 
         self.flush(&mut buffer, &mut frames);
@@ -403,11 +430,16 @@ impl Parser {
 
 /// Tags whose body is content and must be dispatched whole.
 ///
-/// Ported from Vellum's `PAIRED_TAGS` (`src/parser.rs:637-651`), minus
-/// `objectives`, whose body is a run of `<objective>` children rather than
-/// text. `<a>` and `<d>` are absent deliberately: their bodies are display
-/// text that belongs in the text stream, so they stay markup tags and their
-/// close is what pops the link.
+/// Ported from Vellum's `PAIRED_TAGS` (`src/parser.rs:637-651`). `<a>` and
+/// `<d>` are absent deliberately: their bodies are display text that belongs
+/// in the text stream, so they stay markup tags and their close is what pops
+/// the link.
+///
+/// Three of these -- `menu`, `objectives`, `inventoryManager` -- have bodies
+/// of CHILDREN rather than text, and are here because something assembles
+/// those children (`dispatch.rs`). The doc used to say `objectives` was
+/// excluded for exactly that reason; it was, until it wasn't, and each time
+/// the children tokenized separately and landed in `WindowHints`.
 fn is_paired(tag: &str) -> bool {
     matches!(
         text::tag_name(tag),
@@ -426,16 +458,13 @@ fn is_paired(tag: &str) -> bool {
             // that answers for them -- VERIFIED against a real 60-item menu
             // (`2026-09-20_12-19-45.xml:267`).
             //
-            // `objectives` is excluded just above for having children rather
-            // than text; the difference is that nothing yet assembles ITS
-            // children, and something assembles these.
             | "menu"
-            // `<objectives>` was excluded here for having children rather
-            // than text, back when nothing assembled them. Something does
-            // now (`dispatch::objectives`), and without this its rows
-            // tokenize separately and land in `WindowHints` -- the
-            // placement-attrs bag -- divorced from the action that says what
-            // to do with them.
             | "objectives"
+            // A whole-inventory snapshot: one line, 149 items in the measured
+            // case, all of them `<i>` children. Without this each row
+            // tokenized on its own -- and `<i>` was in the STYLING arm, so
+            // they degraded to `Structural` with every attribute trapped in a
+            // raw string. MEASURED: 5,364 rows lost across 36 snapshots.
+            | "inventoryManager"
     )
 }

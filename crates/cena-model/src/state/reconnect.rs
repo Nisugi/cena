@@ -63,6 +63,7 @@
 //! | `idle_warning` | **cleared** | a fact about the connection that just ended, not about the character |
 //! | `streams`, `pending`, `chunk` | **cleared** | half a sentence nobody will finish; the next connection's bytes are not a continuation |
 //! | `inventory` | **cleared** | see its own comment: container CONTENTS are not re-sent, and Lich drops them for the same reason |
+//! | `inventory_snapshot` | kept | a logged-off character gains and loses nothing; it is not in the login burst, and it is point-in-time by contract either way |
 //!
 //! The three that remain cleared have nothing to do with elapsed game time.
 //! Two are facts about the dead connection, and one is a local clock that
@@ -152,6 +153,7 @@ impl GameState {
             chunk,
             character,
             inventory,
+            inventory_snapshot,
         } = self;
 
         // --- KEPT: a logged-off character is out of the world -------------
@@ -195,6 +197,19 @@ impl GameState {
         // it would leave `is_known()` false with no way back until the next
         // change, which is worse than a stale entry and also less true.
         let _ = objectives;
+
+        // The whole-inventory snapshot. A logged-off character neither gains
+        // nor loses items, so the tree is as true after the reconnect as
+        // before -- and it is NOT in the login burst, so clearing it would
+        // leave `is_known()` false until the user asked again by hand. The
+        // freshness contract already says this is point-in-time rather than
+        // live (`inventory_snapshot.rs`), which is what makes keeping it
+        // honest: a consumer that needs current data re-requests, reconnect
+        // or no reconnect.
+        //
+        // Contrast `inventory`, the passive container model, which IS
+        // cleared: it mirrors windows the server reopens on login.
+        let _ = inventory_snapshot;
 
         // An absolute server epoch: a roundtime that ends at server second N
         // ends at N whether or not the socket survived. §5.2 forbids reporting

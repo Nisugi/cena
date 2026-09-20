@@ -19,13 +19,17 @@
 //! now also emits [`crate::frame::Frame::Structural`], so the tag is
 //! recoverable from `raw` whether or not a neighbour arrives.
 //!
-//! `<b>` and `<i>` are the interesting case. They do **not** feed
-//! `bold_depth`, and must not: measured over 60 stratified corpus files,
-//! 234,531 `<b>` blocks and 234,531 of them wrapping a
-//! `<pushBold/>...<popBold/>` pair, with **zero** containing no `pushBold`.
-//! Counting both would report depth 2 on every monsterbold creature in the
-//! game. `<i>` does not occur on this wire at all (0 in those 60 files).
-//! `Structural` is how they become visible without being double-counted.
+//! `<b>` is the interesting case. It does **not** feed `bold_depth`, and must
+//! not: measured over 60 stratified corpus files, 234,531 `<b>` blocks and
+//! 234,531 of them wrapping a `<pushBold/>...<popBold/>` pair, with **zero**
+//! containing no `pushBold`. Counting both would report depth 2 on every
+//! monsterbold creature in the game. `Structural` is how it becomes visible
+//! without being double-counted.
+//!
+//! This paragraph used to say "`<b>` and `<i>`", and that `<i>` "does not
+//! occur on this wire at all (0 in those 60 files)". The zero was real and
+//! the conclusion was wrong: those files held no `<inventoryManager>`
+//! response, which is the only place `<i>` appears. See [`is_markup`].
 
 use super::Parser;
 use crate::frame::Frame;
@@ -127,9 +131,38 @@ impl Parser {
 }
 
 /// Tags that only change style state.
+///
+/// **`i` was here and does not belong.** It was written in this crate's first
+/// commit (`2aaba9c`) as `"b" | "i"`, which is HTML instinct: those two travel
+/// together in HTML, so both were typed. `GemStone` has no italic tag.
+///
+/// Neither reference supports it. `VellumFE` lists `i` only in its known-tags
+/// table (`src/parser/text.rs:182`) and never styles on it; Lich's
+/// `common/xmlparser.rb` has no `i` handling at all.
+///
+/// MEASURED over the author's September logs -- **5,364 `<i>` tags, and all
+/// 5,364 are `<inventoryManager>` item rows. Zero italics:**
+///
+/// ```sh
+/// grep -oh '<i[ >]' *.xml | wc -l                                  # 5364
+/// grep -ohE '<inventoryManager [^>]*>.*' *.xml | grep -oh '<i[ >]' | wc -l
+/// #                                                                  5364
+/// ```
+///
+/// The cost was not cosmetic. Claiming the tag here meant every inventory
+/// item degraded to `Frame::Structural { name: "i", raw: "<i id=... />" }`
+/// with its attributes trapped in an unparsed string -- the same shape the
+/// golden corpus caught in `crtrStatus`. A styling arm was eating a payload.
+///
+/// This is Rule 2.2a in its purest form: not a partially consumed payload,
+/// but one consumed by the **wrong handler entirely**, on an assumption that
+/// was never checked against a source.
+///
+/// `b` is real and stays: 91,254 in the same logs, `</b>` balanced exactly,
+/// wrapping bold creature names.
 pub(super) fn is_markup(name: &str) -> bool {
     matches!(
         name,
-        "a" | "d" | "b" | "i" | "preset" | "style" | "pushBold" | "popBold" | "output"
+        "a" | "d" | "b" | "preset" | "style" | "pushBold" | "popBold" | "output"
     )
 }

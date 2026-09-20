@@ -131,8 +131,9 @@ use crate::runs::Runs;
 mod payload;
 
 pub use payload::{
-    ActiveEffect, Amount, DialogWidgets, Link, LinkKind, Menu, MenuItem, Objective,
-    ObjectivesAction, ProgressBar, RoomMeta, Style, TextFrame,
+    ActiveEffect, Amount, Capacity, Continuation, DialogWidgets, InventoryItem, InventoryResponse,
+    ItemDetail, ItemView, Link, LinkKind, Menu, MenuItem, Objective, ObjectivesAction, ProgressBar,
+    RoomMeta, Style, TextFrame,
 };
 
 /// Attribute bag: name/value pairs exactly as the wire spelled them.
@@ -358,10 +359,18 @@ pub enum Frame {
     ClearContainer { id: String },
     /// `<inv id=>` -- one item in a container.
     ContainerItem { container_id: String, content: Runs },
-    /// `<inventoryManager>` with its `<i>` / `<continuation>` rows.
-    InventoryManager { token: String, attrs: Attrs },
-    /// `<inventoryViewItem>`.
-    InventoryViewItem { id: String, attrs: Attrs },
+    /// `<inventoryManager>`: a whole-inventory snapshot, assembled.
+    ///
+    /// One frame, like [`Frame::MenuResponse`] and
+    /// [`Frame::ObjectivesUpdate`]: a snapshot is only a snapshot whole. See
+    /// [`InventoryResponse`] for the fields and for the defect it closes.
+    InventoryManager(InventoryResponse),
+    /// `<inventoryViewItem>`: one item's detail, assembled across lines.
+    ///
+    /// The parser's only multi-line capture; `parser/view_item.rs` records
+    /// why this one exists when the general path was removed. See
+    /// [`ItemView`] for the fields.
+    InventoryViewItem(ItemView),
 
     // --- misc -------------------------------------------------------------
     /// `<launchURL>` / `<LaunchURL>`. The scheme allowlist is the UI's job.
