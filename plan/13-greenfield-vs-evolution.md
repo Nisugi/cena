@@ -122,8 +122,70 @@ Greenfield is about *structure*, not about retyping solved problems. Specificall
 | `ParsedElement` (61 variants) + `KNOWN_WIRE_TAGS` (~130) | years of discovering what the wire contains; irreplaceable |
 | The parser and its 4,393 lines of tests | the single most valuable inherited asset |
 | `parser_edge_cases.xml` and the fixture corpus | every entry is a production bug someone found |
-| Crit tables, creature templates, spell data | static data; ships as data files |
+| Crit tables, creature templates | static data; ships as data files |
+| ~~spell data~~ | **NOT static.** See §4a.1 |
 | mapdb / pathing / travel algorithms | solved problems, portable as algorithms |
+
+### 4a.1 `effect-list.xml` is not a data file, and this row was wrong
+
+**MEASURED 2026-09-20** while scoping the `spell.rb` port. The table above
+listed "spell data" beside the crit tables as *"static data; ships as data
+files"*. It is not static. `effect-list.xml` (230 KB, 517 spells, the file
+`Spell.load` downloads from the EO scripts repo) stores its durations and
+bonuses as **embedded Ruby expressions**:
+
+```xml
+<duration cast-type='self'>(Spell[101].known? ? 120 : 20) + Spells.minorspiritual</duration>
+<bonus type='physical-as'>0-(20+((Spells.minorspiritual-2)/2))</bonus>
+```
+
+| Field | Values | Plain integers | Expressions |
+|---|---|---|---|
+| `duration` | 340 | 163 | **177 (52%)** |
+| `bonus` | 232 | 103 | **129 (55%)** |
+| `cost` | 395 | 353 | 42 (10%) |
+
+The constructs, counted across all 306 expressions:
+
+```text
+ 189  Spells.<skill> lookup          82  Spell[n].known? / .active?
+ 123  array .max/.min                45  Stats.<x>
+  84  ternary                        20  if/end block
+   5  reget -- reads the SCROLLBACK
+```
+
+The last one is the decisive one. Five durations call `reget`, walk the
+scrollback backwards, regex-match a `CS: +N - TD: +N` line and do arithmetic
+on the capture, to derive how long a spell landed for. That is not data with a
+formula in it; it is a program that reads the client's own output buffer.
+
+**Porting it faithfully would require evaluating Ruby**, which
+`CLAUDE.md`'s first settled decision forbids: *"No embedded scripting
+language. No Lua, no Luau, no Rhai, no DSL."* Three options exist and none is
+free:
+
+1. **Take the plain values only** (48% of durations, 45% of bonuses) and treat
+   the rest as unknown. Honest, and leaves a spell model that cannot answer
+   "how long will this last" for half the spell list.
+2. **Re-express the formulas in Rust.** ~306 expressions, each needing a
+   reading of what the Ruby meant, against no oracle -- and the `reget` five
+   have no Rust equivalent at all, since a model crate has no scrollback.
+3. **Derive durations from the wire.** `<dialogData id='Active Spells'>`
+   carries a live countdown per spell, which is the *observed* duration rather
+   than the *predicted* one. Sufficient for "is it about to drop"; useless for
+   "should I cast it".
+
+Option 3 is already implemented -- `Effects` reads exactly that feed -- so the
+practical answer is that **Cena does not need most of this file**, and the
+port is deferred until a behavior needs prediction rather than observation.
+Recorded here so the "spell data is static" claim does not send the next
+reader down the same path.
+
+**This is not a defect in Lich.** Its spell model is a scripting engine and
+these expressions run in it natively, which is exactly why the file has this
+shape. It is a place where the two architectures genuinely diverge, and
+`plan/12` §9d's rule applies: do not build the abstraction that would make it
+portable.
 
 **This is not a contradiction of greenfield.** The `Frame` vocabulary should be *derived from*
 `ParsedElement`, not reinvented — designing my own would mean rediscovering the same 61
