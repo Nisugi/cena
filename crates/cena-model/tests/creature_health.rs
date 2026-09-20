@@ -249,3 +249,144 @@ mod registry {
         assert_eq!(c.damage_discrepancy(), None, "and 0 max is not a number");
     }
 }
+
+/// **The feed owns the fact; combat tracking owns the detail.**
+///
+/// `<crtrStatus>` is a binary switch: it says a creature *is* stunned and
+/// never says for how long. The duration comes from elsewhere -- the crit
+/// table knows a stun's rounds, some statuses have fixed durations
+/// (`StatusName::duration`), and others are message-driven.
+///
+/// > **AUTHOR, 2026-09-20:** *"while crtrStatus gives us status now, Combat
+/// > Tracking can give us more detail about that status."*
+///
+/// The ordering that matters, and the one these tests pin:
+///
+/// > **AUTHOR, 2026-09-20:** *"if they had stun and then we get a crtrStatus
+/// > without stun, then they are no longer stunned regardless of any timer."*
+///
+/// An estimate can never outlive the fact. The server is the authority on
+/// *whether*, so a tag that omits the flag retires the estimate however much
+/// time it had left -- a creature that shook off a stun early is a creature
+/// that will act, and a stale timer would say otherwise.
+mod estimates_never_outlive_the_feed {
+    use super::*;
+    use cena_model::StatusName;
+    use cena_model::state::creatures::CreatureInstance;
+
+    /// A stunned creature, as the tag states it.
+    const STUNNED: &[(&str, &str)] = &[("hostile", "1"), ("stunned", "1")];
+    /// The same creature, one tag later, no longer stunned.
+    const NOT_STUNNED: &[(&str, &str)] = &[("hostile", "1")];
+
+    fn stunned_with_estimate(rounds: u16, at: u32) -> CreatureInstance {
+        let mut c = CreatureInstance::new(-285_052, None, "an ashen orc", Some(at));
+        c.sync_crtr_status(&status(STUNNED), Some(at));
+        c.add_stun_estimate(rounds, Some(at));
+        c
+    }
+
+    #[test]
+    fn the_crit_supplies_a_duration_the_tag_never_carries() {
+        // 4 rounds at STUN_ROUND_SECONDS=5 is 20 seconds from the blow.
+        let c = stunned_with_estimate(4, 100);
+        assert!(c.has_status(StatusName::Stunned, Some(100)));
+        assert_eq!(c.stun_rounds(Some(100)), Some(4));
+        assert_eq!(c.stunned_for(Some(110)), 10, "ten seconds still to run");
+    }
+
+    #[test]
+    fn a_tag_without_the_flag_retires_an_unexpired_estimate() {
+        // THE RULE. The estimate said ten more seconds; the server says the
+        // creature is not stunned. The server wins.
+        let mut c = stunned_with_estimate(4, 100);
+        assert_eq!(c.stunned_for(Some(110)), 10, "guard: still running");
+
+        c.sync_crtr_status(&status(NOT_STUNNED), Some(110));
+
+        assert!(!c.has_status(StatusName::Stunned, Some(110)));
+        assert_eq!(c.stun_rounds(Some(110)), None, "the estimate retired");
+        assert_eq!(c.stunned_for(Some(110)), 0);
+    }
+
+    #[test]
+    fn the_estimate_does_not_revive_when_the_flag_returns() {
+        // A fresh stun needs a fresh crit. Without one there is no duration
+        // to report -- the flag is true and the rounds are unknown, which is
+        // the honest answer rather than the retired estimate's leftovers.
+        let mut c = stunned_with_estimate(4, 100);
+        c.sync_crtr_status(&status(NOT_STUNNED), Some(110));
+        c.sync_crtr_status(&status(STUNNED), Some(111));
+
+        assert!(c.has_status(StatusName::Stunned, Some(111)));
+        assert_eq!(
+            c.stun_rounds(Some(111)),
+            None,
+            "stunned again, and we do not know for how long"
+        );
+    }
+
+    #[test]
+    fn an_estimate_is_inert_while_the_feed_says_not_stunned() {
+        // The guard runs the other way too: an estimate recorded against a
+        // creature the tag says is fine reports nothing, rather than
+        // asserting a stun the server never confirmed.
+        let mut c = CreatureInstance::new(-285_052, None, "an ashen orc", Some(100));
+        c.sync_crtr_status(&status(NOT_STUNNED), Some(100));
+        c.add_stun_estimate(4, Some(100));
+        assert_eq!(c.stun_rounds(Some(101)), None);
+        assert_eq!(c.stunned_for(Some(101)), 0);
+    }
+
+    #[test]
+    fn a_second_crit_extends_a_stun_but_never_shortens_it() {
+        // Two blows land; the longer estimate stands. Shortening on the
+        // second would predict the creature acting while it is still stunned.
+        let mut c = stunned_with_estimate(4, 100); // until 120
+        c.add_stun_estimate(1, Some(100)); // would be until 105
+        assert_eq!(c.stun_rounds(Some(100)), Some(4), "the longer one holds");
+        c.add_stun_estimate(6, Some(100)); // until 130
+        assert_eq!(c.stun_rounds(Some(100)), Some(6), "a longer one replaces");
+    }
+
+    #[test]
+    fn a_stun_break_message_retires_the_estimate_too() {
+        // The same rule from the other side. Durations are an estimate and
+        // things shorten them -- resistances, and creatures with stun breaks.
+        //
+        // > **AUTHOR, 2026-09-20:** *"There are things that reduce stun
+        // > durations, creatures have stun breaks, etc. but a stun break
+        // > would be caught by the combat tracker if we have the def for
+        // > it."*
+        //
+        // We have 11 of them: `combat_effects.tsv:263-273`, `status stunned
+        // remove`, covering "shakes off the stun", "regains its composure",
+        // "is no longer stunned" and the rest. They route through
+        // `remove_status`, which is the same door the tag uses -- so a break
+        // retires the crit's estimate exactly as a tag omitting the flag
+        // does, and neither path can leave a timer running past the fact.
+        let mut c = stunned_with_estimate(4, 100);
+        assert_eq!(c.stunned_for(Some(105)), 15, "guard: fifteen left");
+
+        c.remove_status(StatusName::Stunned);
+
+        assert!(!c.has_status(StatusName::Stunned, Some(105)));
+        assert_eq!(c.stun_rounds(Some(105)), None);
+        assert_eq!(c.stunned_for(Some(105)), 0);
+    }
+
+    #[test]
+    fn the_tag_only_reconciles_the_flags_it_can_carry() {
+        // `<crtrStatus>` is a full snapshot of ITS OWN vocabulary and silent
+        // on everything else. Blind, poisoned and the other message-driven
+        // effects never appear in it, so a tag omitting them says nothing --
+        // clearing them here would wipe a real status on every tag.
+        let mut c = CreatureInstance::new(-285_052, None, "an ashen orc", Some(100));
+        c.add_status(StatusName::Blind, Some(100), None);
+        c.sync_crtr_status(&status(NOT_STUNNED), Some(101));
+        assert!(
+            c.has_status(StatusName::Blind, Some(101)),
+            "a message-driven status survives a tag that cannot mention it"
+        );
+    }
+}
