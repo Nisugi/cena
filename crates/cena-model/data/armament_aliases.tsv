@@ -1,0 +1,707 @@
+kind	alias	id	category
+armor	aketon	double_leather	leather
+armor	aketon	reinforced_leather	leather
+armor	arming coat	double_leather	leather
+armor	arming coat	reinforced_leather	leather
+armor	arming doublet	reinforced_leather	leather
+armor	arming doublet	full_leather	leather
+armor	armor	leather_breastplate	scale
+armor	armor	brigandine_armor	scale
+armor	armor	studded_leather	scale
+armor	armor	cuirboulli_leather	scale
+armor	attire	normal_clothing	cloth
+armor	augmented breastplate	augmented_plate	plate
+armor	augmented chain	augmented_chain	chain
+armor	augmented chainmail	augmented_chain	chain
+armor	banded armor	brigandine_armor	scale
+armor	body armor	full_plate	plate
+armor	body armor	chain_hauberk	chain
+armor	bodysuit	double_leather	leather
+armor	breastplate	leather_breastplate	scale
+armor	breastplate	augmented_plate	plate
+armor	breastplate	metal_breastplate	plate
+armor	brigandine	brigandine_armor	scale
+armor	brigandine armor	brigandine_armor	scale
+armor	brigandine leather	brigandine_armor	scale
+armor	brigandine shirt	cuirboulli_leather	scale
+armor	brigandine shirt	leather_breastplate	scale
+armor	buffcoat	light_leather	leather
+armor	buffcoat	full_leather	leather
+armor	byrnie	chain_mail	chain
+armor	casting leather	light_leather	leather
+armor	casting leather	full_leather	leather
+armor	casting leathers	full_leather	leather
+armor	casting leathers	light_leather	leather
+armor	chain	chain_mail	chain
+armor	chain	augmented_chain	chain
+armor	chain	double_chain	chain
+armor	chain	chain_hauberk	chain
+armor	chain armor	double_chain	chain
+armor	chain armor	augmented_chain	chain
+armor	chain armor	chain_hauberk	chain
+armor	chain armor	chain_mail	chain
+armor	chain corslet/corselet	chain_mail	chain
+armor	chain corslet/corselet	double_chain	chain
+armor	chain hauberk	chain_hauberk	chain
+armor	chain shirt	chain_mail	chain
+armor	chain shirt	double_chain	chain
+armor	chain tunic	double_chain	chain
+armor	chain tunic	chain_mail	chain
+armor	chainmail	augmented_chain	chain
+armor	chainmail	chain_mail	chain
+armor	chainmail	double_chain	chain
+armor	chainmail	chain_hauberk	chain
+armor	clothes	normal_clothing	cloth
+armor	clothing	normal_clothing	cloth
+armor	coat-of-plates	brigandine_armor	scale
+armor	coracia	augmented_plate	plate
+armor	corslet/corselet	leather_breastplate	scale
+armor	cuirass	metal_breastplate	plate
+armor	cuirass	cuirboulli_leather	scale
+armor	cuirass	augmented_plate	plate
+armor	cuirass	leather_breastplate	scale
+armor	cuirboulli	cuirboulli_leather	scale
+armor	cuirboulli leather	cuirboulli_leather	scale
+armor	cuirboulli leathers	cuirboulli_leather	scale
+armor	disc armor	metal_breastplate	plate
+armor	double chain	double_chain	chain
+armor	double chainmail	double_chain	chain
+armor	double leather	double_leather	leather
+armor	double leathers	double_leather	leather
+armor	ensemble	normal_clothing	cloth
+armor	field plate	full_plate	plate
+armor	field platemail	full_plate	plate
+armor	full leather	full_leather	leather
+armor	full leathers	full_leather	leather
+armor	full plate	full_plate	plate
+armor	full platemail	full_plate	plate
+armor	gambeson	reinforced_leather	leather
+armor	gambeson	double_leather	leather
+armor	garb	normal_clothing	cloth
+armor	garments	normal_clothing	cloth
+armor	half plate	half_plate	plate
+armor	half-plate	half_plate	plate
+armor	haubergeon	double_chain	chain
+armor	haubergeon	augmented_chain	chain
+armor	hauberk	chain_hauberk	chain
+armor	hunts	reinforced_leather	leather
+armor	hunts	double_leather	leather
+armor	hunts	light_leather	leather
+armor	hunts	full_leather	leather
+armor	jack	leather_breastplate	scale
+armor	jack	light_leather	leather
+armor	jack-of-plates	brigandine_armor	scale
+armor	jazerant	augmented_chain	chain
+armor	jazerant	double_chain	chain
+armor	jazerant hauberk	chain_hauberk	chain
+armor	jerkin	leather_breastplate	scale
+armor	jerkin	cuirboulli_leather	scale
+armor	kuyak	brigandine_armor	scale
+armor	lamellar armor	brigandine_armor	scale
+armor	lamellar corslet/corselet	cuirboulli_leather	scale
+armor	lamellar leather	studded_leather	scale
+armor	lamellar shirt	leather_breastplate	scale
+armor	lamellar shirt	cuirboulli_leather	scale
+armor	laminar armor	brigandine_armor	scale
+armor	lasktol'zko	full_plate	plate
+armor	leather	light_leather	leather
+armor	leather	full_leather	leather
+armor	leather	reinforced_leather	leather
+armor	leather	double_leather	leather
+armor	leather breastplate	leather_breastplate	scale
+armor	leather corslet/corselet	cuirboulli_leather	scale
+armor	leather cyclas	light_leather	leather
+armor	leather jerkin	light_leather	leather
+armor	leather pourpoint	full_leather	leather
+armor	leather shirt	full_leather	leather
+armor	leather shirt	light_leather	leather
+armor	leather tunic	light_leather	leather
+armor	leather vest	light_leather	leather
+armor	leathers	light_leather	leather
+armor	leathers	full_leather	leather
+armor	leathers	double_leather	leather
+armor	leathers	reinforced_leather	leather
+armor	light leather	light_leather	leather
+armor	light leathers	light_leather	leather
+armor	mail	chain_hauberk	chain
+armor	mail	double_chain	chain
+armor	mail	chain_mail	chain
+armor	mail	augmented_chain	chain
+armor	metal breastplate	metal_breastplate	plate
+armor	mirror armor	metal_breastplate	plate
+armor	normal clothing	normal_clothing	cloth
+armor	outfit	normal_clothing	cloth
+armor	plate	half_plate	plate
+armor	plate	full_plate	plate
+armor	plate armor	augmented_plate	plate
+armor	plate armor	metal_breastplate	plate
+armor	plate armor	half_plate	plate
+armor	plate armor	full_plate	plate
+armor	plate corselet	metal_breastplate	plate
+armor	plate corselet	augmented_plate	plate
+armor	plate corslet	augmented_plate	plate
+armor	plate corslet	metal_breastplate	plate
+armor	plate-and-mail	full_plate	plate
+armor	plate-and-mail	augmented_plate	plate
+armor	plate-and-mail	metal_breastplate	plate
+armor	plate-and-mail	half_plate	plate
+armor	platemail	full_plate	plate
+armor	platemail	augmented_plate	plate
+armor	platemail	half_plate	plate
+armor	quilted leather	reinforced_leather	leather
+armor	reinforced leather	reinforced_leather	leather
+armor	reinforced leathers	reinforced_leather	leather
+armor	ringmail	augmented_chain	chain
+armor	ringmail	chain_hauberk	chain
+armor	ringmail	double_chain	chain
+armor	ringmail	chain_mail	chain
+armor	robe	robes	cloth
+armor	robes	robes	cloth
+armor	scale	leather_breastplate	scale
+armor	scale	cuirboulli_leather	scale
+armor	scalemail	brigandine_armor	scale
+armor	scalemail	leather_breastplate	scale
+armor	scalemail	cuirboulli_leather	scale
+armor	splint armor	brigandine_armor	scale
+armor	splint leather	studded_leather	scale
+armor	splint mail	brigandine_armor	scale
+armor	splinted armor	brigandine_armor	scale
+armor	splinted leather	studded_leather	scale
+armor	splinted mail	brigandine_armor	scale
+armor	studded leather	studded_leather	scale
+armor	studded leathers	studded_leather	scale
+armor	tunic	robes	cloth
+armor	tunic	cuirboulli_leather	scale
+armor	tunic	leather_breastplate	scale
+armor	vestments	robes	cloth
+shield	aegis	large_shield	large_shield
+shield	battle shield	medium_shield	medium_shield
+shield	buckler	small_shield	small_shield
+shield	greatshield	tower_shield	tower_shield
+shield	heater	medium_shield	medium_shield
+shield	heater shield	medium_shield	medium_shield
+shield	kidney shield	small_shield	small_shield
+shield	kite shield	large_shield	large_shield
+shield	knight's shield	medium_shield	medium_shield
+shield	krytze	medium_shield	medium_shield
+shield	lantern shield	medium_shield	medium_shield
+shield	large shield	large_shield	large_shield
+shield	mantlet	tower_shield	tower_shield
+shield	medium shield	medium_shield	medium_shield
+shield	pageant shield	large_shield	large_shield
+shield	parma	medium_shield	medium_shield
+shield	pavis	tower_shield	tower_shield
+shield	round shield	large_shield	large_shield
+shield	scutum	large_shield	large_shield
+shield	small shield	small_shield	small_shield
+shield	targe	small_shield	small_shield
+shield	target shield	medium_shield	medium_shield
+shield	tower shield	tower_shield	tower_shield
+shield	wall shield	tower_shield	tower_shield
+weapon		broadhead	missile
+weapon	acinaces	short_sword	edged
+weapon	adze	battle_axe	two_handed
+weapon	ahlspiess	awl_pike	polearm
+weapon	aklys	cudgel	blunt
+weapon	alfange	dagger	edged
+weapon	angon	spear	polearm
+weapon	antler sword	short_sword	edged
+weapon	arming sword	longsword	edged
+weapon	arrow	arrow	edged
+weapon	asaya	runestave	runestave
+weapon	atgeir	halberd	polearm
+weapon	atlatl	spear	polearm
+weapon	awl-pike	awl_pike	polearm
+weapon	backslasher	short_sword	edged
+weapon	backsword	backsword	edged
+weapon	baculus	cudgel	blunt
+weapon	badelaire	falchion	edged
+weapon	balestarius	battle_axe	two_handed
+weapon	ball and chain	ball_and_chain	blunt
+weapon	balta	handaxe	thrown
+weapon	balta	handaxe	edged
+weapon	barbed claw	tiger_claw	unarmed
+weapon	barbed claw	tiger_claw	brawling
+weapon	bardiche	halberd	polearm
+weapon	baselard	short_sword	edged
+weapon	basilard	dagger	edged
+weapon	bastard sword	bastard_sword	edged
+weapon	bastard sword	bastard_sword	two_handed
+weapon	battle axe	battle_axe	two_handed
+weapon	battle hammer	maul	two_handed
+weapon	battle-axe	battle_axe	two_handed
+weapon	battle-quoit	quoit	thrown
+weapon	battlesword	two_handed_sword	two_handed
+weapon	beaked axe	jeddart_axe	polearm
+weapon	bearded axe	battle_axe	two_handed
+weapon	beheading sword	two_handed_sword	two_handed
+weapon	bidenhander	two_handed_sword	two_handed
+weapon	bilbo	rapier	edged
+weapon	bill	halberd	polearm
+weapon	binnol	ball_and_chain	blunt
+weapon	bisacuta	military_pick	two_handed
+weapon	bite	bite	natural
+weapon	blackjack	blackjack	brawling
+weapon	bladed claw	troll_claw	brawling
+weapon	bladed wheel	quoit	thrown
+weapon	bladed-disc	quoit	thrown
+weapon	bladed-ring	quoit	thrown
+weapon	bladestaff	naginata	polearm
+weapon	bludgeon	blackjack	brawling
+weapon	blunt	blunt	missile
+weapon	bo stick	quarterstaff	two_handed
+weapon	boar spear	spear	polearm
+weapon	boarding axe	handaxe	thrown
+weapon	boarding axe	handaxe	edged
+weapon	bodice dagger	dagger	edged
+weapon	bodkin	dagger	edged
+weapon	bodkin point	bodkin_point	missile
+weapon	bola	bola	thrown
+weapon	bolas	bola	thrown
+weapon	boleadoras	bola	thrown
+weapon	boot dagger	dagger	edged
+weapon	boots	footwraps	unarmed
+weapon	bovai	hammer_of_kai	polearm
+weapon	bracelet dagger	dagger	edged
+weapon	brandestoc	halberd	polearm
+weapon	braquemar	short_sword	edged
+weapon	breach pike	awl_pike	polearm
+weapon	broad axe	handaxe	edged
+weapon	broad axe	handaxe	thrown
+weapon	broadhead	broadhead	missile
+weapon	broadsword	broadsword	edged
+weapon	bulawa	mace	blunt
+weapon	bullwhip	leather_whip	blunt
+weapon	butcher knife	dagger	edged
+weapon	carp's tongue	broadsword	edged
+weapon	carp's-tongue	broadsword	edged
+weapon	cat o' nine tails	leather_whip	blunt
+weapon	cateia	spear	polearm
+weapon	cestus	cestus	unarmed
+weapon	cestus	cestus	brawling
+weapon	chakram	quoit	thrown
+weapon	charge	charge	natural
+weapon	charl's-tail	scimitar	edged
+weapon	chereb	short_sword	edged
+weapon	chest-ripper	awl_pike	polearm
+weapon	cinquedea	dagger	edged
+weapon	claidhmore	claidhmore	two_handed
+weapon	claw	claw	natural
+weapon	cleaver	handaxe	thrown
+weapon	cleaver	handaxe	edged
+weapon	closed fist	closed_fist	brawling
+weapon	club	cudgel	blunt
+weapon	colichemarde	rapier	edged
+weapon	composite bow	composite_bow	missile
+weapon	composite recurve bow	composite_bow	missile
+weapon	contus	javelin	polearm
+weapon	contus	javelin	thrown
+weapon	coustille	short_sword	edged
+weapon	craquemarte	falchion	edged
+weapon	crescent	crescent	missile
+weapon	crescent axe	handaxe	edged
+weapon	crescent axe	handaxe	thrown
+weapon	crescent dagger	dagger	edged
+weapon	cresset sword	bastard_sword	two_handed
+weapon	cresset sword	bastard_sword	edged
+weapon	croc	halberd	polearm
+weapon	crook	runestave	runestave
+weapon	crosier	runestave	runestave
+weapon	crowbill	crowbill	blunt
+weapon	cudgel	cudgel	blunt
+weapon	cutlass	scimitar	edged
+weapon	dagger	dagger	edged
+weapon	dart	dart	thrown
+weapon	default	broadhead	missile
+weapon	dhara	mace	blunt
+weapon	dirk	dagger	edged
+weapon	disackn	scimitar	edged
+weapon	disc	discus	thrown
+weapon	discus	discus	thrown
+weapon	doloire	battle_axe	two_handed
+weapon	dory	spear	polearm
+weapon	double-bit axe	handaxe	thrown
+weapon	double-bit axe	handaxe	edged
+weapon	ensnare	ensnare	natural
+weapon	epee	rapier	edged
+weapon	espadon	bastard_sword	two_handed
+weapon	espadon	bastard_sword	edged
+weapon	estoc	estoc	edged
+weapon	executioner's axe	battle_axe	two_handed
+weapon	executioner's sword	two_handed_sword	two_handed
+weapon	falarica	spear	polearm
+weapon	falcastra	halberd	polearm
+weapon	falcata	falchion	edged
+weapon	falchion	falchion	edged
+weapon	falx	two_handed_sword	two_handed
+weapon	fang	war_hammer	blunt
+weapon	fantail dagger	dagger	edged
+weapon	fauchard	halberd	polearm
+weapon	field-axe	handaxe	thrown
+weapon	field-axe	handaxe	edged
+weapon	fist-scythe	fist_scythe	brawling
+weapon	flail	flail	two_handed
+weapon	flamberge	flamberge	two_handed
+weapon	flanged mace	mace	blunt
+weapon	fleuret	rapier	edged
+weapon	flyssa	broadsword	edged
+weapon	foil	rapier	edged
+weapon	footman's hammer	maul	two_handed
+weapon	footwraps	footwraps	unarmed
+weapon	forked dagger	dagger	edged
+weapon	framea	lance	polearm
+weapon	francisca	handaxe	thrown
+weapon	francisca	handaxe	edged
+weapon	fuscina	trident	polearm
+weapon	gaesum	spear	polearm
+weapon	gaizaz	spear	polearm
+weapon	gauntlet	handwraps	unarmed
+weapon	gauntlet-sword	katar	hybrid
+weapon	gimlet knife	dagger	edged
+weapon	gladius	short_sword	edged
+weapon	gladius graecus	short_sword	edged
+weapon	glaive	halberd	polearm
+weapon	gloves	handwraps	unarmed
+weapon	godendag	halberd	polearm
+weapon	goliah	broadsword	edged
+weapon	goupillon	ball_and_chain	blunt
+weapon	grab-stabber	paingrip	unarmed
+weapon	grab-stabber	paingrip	brawling
+weapon	greataxe	battle_axe	two_handed
+weapon	greatsword	two_handed_sword	two_handed
+weapon	guisarme	halberd	polearm
+weapon	hakapik	crowbill	blunt
+weapon	halberd	halberd	polearm
+weapon	half moon	halberd	polearm
+weapon	half-moon	halberd	polearm
+weapon	Hammer of Kai	hammer_of_kai	polearm
+weapon	hammerbeak	war_hammer	blunt
+weapon	hand crossbow	hand_crossbow	missile
+weapon	hand-hook	fist_scythe	brawling
+weapon	handaxe	handaxe	edged
+weapon	handaxe	handaxe	thrown
+weapon	handwraps	handwraps	unarmed
+weapon	harpoon	spear	polearm
+weapon	hasta	spear	polearm
+weapon	hatchet	handaxe	edged
+weapon	hatchet	handaxe	thrown
+weapon	heavy arbalest	heavy_crossbow	missile
+weapon	heavy crossbow	heavy_crossbow	missile
+weapon	hektov sket	battle_axe	two_handed
+weapon	hippe	halberd	polearm
+weapon	holy water sprinkler	morning_star	blunt
+weapon	hook	fist_scythe	brawling
+weapon	hook-claw	fist_scythe	brawling
+weapon	hook-knife	hook_knife	brawling
+weapon	hoolurge	war_hammer	blunt
+weapon	horseman's hammer	war_hammer	blunt
+weapon	hunting axe	handaxe	edged
+weapon	hunting axe	handaxe	thrown
+weapon	hunting hatchet	handaxe	thrown
+weapon	hunting hatchet	handaxe	edged
+weapon	ice axe	handaxe	thrown
+weapon	ice axe	handaxe	edged
+weapon	impale	impale	natural
+weapon	jackblade	jackblade	brawling
+weapon	jaculum	javelin	thrown
+weapon	jaculum	javelin	polearm
+weapon	javelin	javelin	polearm
+weapon	javelin	javelin	thrown
+weapon	jeddart-axe	jeddart_axe	polearm
+weapon	jitte	sai	brawling
+weapon	jo stick	cudgel	blunt
+weapon	kaiken	dagger	edged
+weapon	kama	fist_scythe	brawling
+weapon	kaskara	longsword	edged
+weapon	katana	katana	two_handed
+weapon	katana	katana	edged
+weapon	katar	katar	hybrid
+weapon	katzbalger	broadsword	edged
+weapon	kerambit	halberd	polearm
+weapon	kheten	battle_axe	two_handed
+weapon	khopesh	falchion	edged
+weapon	kidney dagger	dagger	edged
+weapon	kilij	scimitar	edged
+weapon	kiss-of-ivas	falchion	edged
+weapon	knee-breaker	mace	blunt
+weapon	knife	dagger	edged
+weapon	knopkierie	javelin	thrown
+weapon	knopkierie	javelin	polearm
+weapon	knuckle-blade	knuckle_blade	brawling
+weapon	knuckle-blade	knuckle_blade	unarmed
+weapon	knuckle-duster	knuckle_duster	brawling
+weapon	knuckle-duster	knuckle_duster	unarmed
+weapon	knuckle-guard	knuckle_duster	unarmed
+weapon	knuckle-guard	knuckle_duster	brawling
+weapon	knuckles	knuckle_duster	brawling
+weapon	knuckles	knuckle_duster	unarmed
+weapon	koncerz	estoc	edged
+weapon	kopis	falchion	edged
+weapon	korseke	awl_pike	polearm
+weapon	kozuka	dagger	edged
+weapon	kris	short_sword	edged
+weapon	krizta	dagger	edged
+weapon	kubikiri	dagger	edged
+weapon	kukri	short_sword	edged
+weapon	kumade	troll_claw	brawling
+weapon	kunai	katar	hybrid
+weapon	kurutai	bola	thrown
+weapon	kurzsax	broadsword	edged
+weapon	kut'ziko	heavy_crossbow	missile
+weapon	kut'zikokra	light_crossbow	missile
+weapon	lance	lance	polearm
+weapon	lancea	javelin	polearm
+weapon	lancea	javelin	thrown
+weapon	langsax	longsword	edged
+weapon	langseax	longsword	edged
+weapon	leather whip	leather_whip	blunt
+weapon	light arbalest	light_crossbow	missile
+weapon	light crossbow	light_crossbow	missile
+weapon	limb-cleaver	handaxe	edged
+weapon	limb-cleaver	handaxe	thrown
+weapon	lisan	cudgel	blunt
+weapon	logging axe	handaxe	edged
+weapon	logging axe	handaxe	thrown
+weapon	long bow	long_bow	missile
+weapon	long recurve bow	long_bow	missile
+weapon	longbow	long_bow	missile
+weapon	longhammer	hammer_of_kai	polearm
+weapon	longsword	longsword	edged
+weapon	lutk'azi	composite_bow	missile
+weapon	lutk'quoab	long_bow	missile
+weapon	mace	mace	blunt
+weapon	mace and chain	ball_and_chain	blunt
+weapon	machera	broadsword	edged
+weapon	machete	falchion	edged
+weapon	magari-yari	trident	polearm
+weapon	main gauche	main_gauche	edged
+weapon	manople	katar	hybrid
+weapon	massuelle	mace	blunt
+weapon	mattina	mace	blunt
+weapon	mattock	war_mattock	two_handed
+weapon	maul	maul	two_handed
+weapon	meat cleaver	handaxe	thrown
+weapon	meat cleaver	handaxe	edged
+weapon	mekya ne'rutka	two_handed_sword	two_handed
+weapon	mekya t'rhet	longsword	edged
+weapon	military flail	flail	two_handed
+weapon	military fork	awl_pike	polearm
+weapon	military pick	military_pick	two_handed
+weapon	miner's axe	handaxe	thrown
+weapon	miner's axe	handaxe	edged
+weapon	mining pick	military_pick	two_handed
+weapon	misericord	dagger	edged
+weapon	moon axe	handaxe	edged
+weapon	moon axe	handaxe	thrown
+weapon	morning star	morning_star	blunt
+weapon	mortuary sword	backsword	edged
+weapon	nage-yari	javelin	thrown
+weapon	nage-yari	javelin	polearm
+weapon	nagimaki	jeddart_axe	polearm
+weapon	naginata	naginata	polearm
+weapon	nagyka	dart	thrown
+weapon	nifa otti	mace	blunt
+weapon	Niima's-embrace	short_sword	edged
+weapon	nip	nip	natural
+weapon	no-dachi	two_handed_sword	two_handed
+weapon	oncin	war_mattock	two_handed
+weapon	ono	handaxe	thrown
+weapon	ono	handaxe	edged
+weapon	ox mace	mace	blunt
+weapon	paingrip	paingrip	brawling
+weapon	paingrip	paingrip	unarmed
+weapon	paiscush	katar	hybrid
+weapon	palache	scimitar	edged
+weapon	palache	broadsword	edged
+weapon	parazonium	dagger	edged
+weapon	parrying dagger	main_gauche	edged
+weapon	partisan	spear	polearm
+weapon	partizan	spear	polearm
+weapon	pastoral staff	runestave	runestave
+weapon	pata	katar	hybrid
+weapon	pavade	dagger	edged
+weapon	pelta	javelin	polearm
+weapon	pelta	javelin	thrown
+weapon	periperiu	cudgel	blunt
+weapon	pernat	mace	blunt
+weapon	pickaxe	war_mattock	two_handed
+weapon	pike	lance	polearm
+weapon	pill spear	spear	polearm
+weapon	pilum	pilum	polearm
+weapon	pincer	pincer	natural
+weapon	pit-knife	hook_knife	brawling
+weapon	pitch fork	trident	polearm
+weapon	pitchfork	trident	polearm
+weapon	poignard	dagger	edged
+weapon	pole axe	halberd	polearm
+weapon	pole-axe	halberd	polearm
+weapon	poleaxe	jeddart_axe	polearm
+weapon	polehammer	hammer_of_kai	polearm
+weapon	pound	pound	natural
+weapon	pugio	dagger	edged
+weapon	push dagger	dagger	edged
+weapon	quadrelle	mace	blunt
+weapon	quarterstaff	quarterstaff	two_handed
+weapon	quoit	quoit	thrown
+weapon	raiding axe	handaxe	edged
+weapon	raiding axe	handaxe	thrown
+weapon	ranseur	awl_pike	polearm
+weapon	rapier	rapier	edged
+weapon	razorpaw	razorpaw	brawling
+weapon	razorpaw	razorpaw	unarmed
+weapon	reaver	flamberge	two_handed
+weapon	repeating crossbow	heavy_crossbow	missile
+weapon	ridgemace	mace	blunt
+weapon	riding sword	backsword	edged
+weapon	roa'ter axe	battle_axe	two_handed
+weapon	rune staff	runestave	runestave
+weapon	runestaff	runestave	runestave
+weapon	runestave	runestave	runestave
+weapon	runka	awl_pike	polearm
+weapon	sabar	war_mattock	two_handed
+weapon	sabiet	hook_knife	brawling
+weapon	sabre	scimitar	edged
+weapon	sai	sai	brawling
+weapon	sap	blackjack	brawling
+weapon	sapara	scimitar	edged
+weapon	sarissa	lance	polearm
+weapon	scaling fork	awl_pike	polearm
+weapon	scepter	runestave	runestave
+weapon	scepter-of-Lumnis	runestave	runestave
+weapon	schiavona	broadsword	edged
+weapon	schlager	rapier	edged
+weapon	scimitar	scimitar	edged
+weapon	scorpion	halberd	polearm
+weapon	scramasax	dagger	edged
+weapon	scythe	halberd	polearm
+weapon	seax	broadsword	edged
+weapon	sgian achlais	dagger	edged
+weapon	sgian dubh	dagger	edged
+weapon	shail	javelin	polearm
+weapon	shail	javelin	thrown
+weapon	shamshir	scimitar	edged
+weapon	sheering sword	longsword	edged
+weapon	shield-sword	main_gauche	edged
+weapon	shillelagh	cudgel	blunt
+weapon	short bow	short_bow	missile
+weapon	short recurve bow	short_bow	missile
+weapon	short sword	short_sword	edged
+weapon	short-sword	short_sword	edged
+weapon	shortsword	short_sword	edged
+weapon	sica	short_sword	edged
+weapon	sickle	fist_scythe	brawling
+weapon	sidearm-of-Onar	dagger	edged
+weapon	sidesword	backsword	edged
+weapon	siege crossbow	heavy_crossbow	missile
+weapon	signal whip	leather_whip	blunt
+weapon	single-tail whip	leather_whip	blunt
+weapon	sitka	arrow	edged
+weapon	skull-crusher	war_hammer	blunt
+weapon	skull-piercer	crowbill	blunt
+weapon	slap-slasher	razorpaw	unarmed
+weapon	slap-slasher	razorpaw	brawling
+weapon	slash-fist	knuckle_blade	brawling
+weapon	slash-fist	knuckle_blade	unarmed
+weapon	slash-jack	jackblade	brawling
+weapon	slasher	katar	hybrid
+weapon	sledgehammer	maul	two_handed
+weapon	spadroon	broadsword	edged
+weapon	sparte	handaxe	thrown
+weapon	sparte	handaxe	edged
+weapon	spatha	broadsword	edged
+weapon	spetum	awl_pike	polearm
+weapon	spiculum	javelin	polearm
+weapon	spiculum	javelin	thrown
+weapon	spike	dagger	edged
+weapon	spike-fist	yierka_spur	unarmed
+weapon	spike-fist	yierka_spur	brawling
+weapon	spiked mace	morning_star	blunt
+weapon	spiked-hammer	hammer_of_kai	polearm
+weapon	spiked-staff	flail	two_handed
+weapon	spikestar	morning_star	blunt
+weapon	splitting axe	handaxe	thrown
+weapon	splitting axe	handaxe	edged
+weapon	spontoon	spear	polearm
+weapon	staff	runestave	runestave
+weapon	staff	quarterstaff	two_handed
+weapon	staff-of-lumnis	runestave	runestave
+weapon	stiletto	dagger	edged
+weapon	stinger	stinger	natural
+weapon	stomp	stomp	natural
+weapon	studded mace	mace	blunt
+weapon	sudis	lance	polearm
+weapon	sword-breaker	main_gauche	edged
+weapon	sword-of-Phoen	flamberge	two_handed
+weapon	swordstaff	naginata	polearm
+weapon	taavish	war_hammer	blunt
+weapon	tabar	battle_axe	two_handed
+weapon	tachi	longsword	edged
+weapon	tail swing	tail_swing	natural
+weapon	takouba	falchion	edged
+weapon	talon sword	broadsword	edged
+weapon	tambara	cudgel	blunt
+weapon	tanto	dagger	edged
+weapon	taper	handaxe	edged
+weapon	taper	handaxe	thrown
+weapon	tetsubo	maul	two_handed
+weapon	thrak-bite	tiger_claw	brawling
+weapon	thrak-bite	tiger_claw	unarmed
+weapon	throwing axe	handaxe	thrown
+weapon	throwing axe	handaxe	edged
+weapon	throwing disc	discus	thrown
+weapon	throwing net	throwing_net	thrown
+weapon	tiger-claw	tiger_claw	brawling
+weapon	tiger-claw	tiger_claw	unarmed
+weapon	tizona	rapier	edged
+weapon	tock	rapier	edged
+weapon	tocke	rapier	edged
+weapon	tomahawk	handaxe	edged
+weapon	tomahawk	handaxe	thrown
+weapon	toporok	handaxe	thrown
+weapon	toporok	handaxe	edged
+weapon	toyak	quarterstaff	two_handed
+weapon	trail knife	dagger	edged
+weapon	trailknife	dagger	edged
+weapon	training whip	leather_whip	blunt
+weapon	trident	trident	polearm
+weapon	troll-claw	troll_claw	brawling
+weapon	truncheon	cudgel	blunt
+weapon	tuck	rapier	edged
+weapon	tvekre	katar	hybrid
+weapon	two-handed sword	two_handed_sword	two_handed
+weapon	verdun	rapier	edged
+weapon	verutum	spear	polearm
+weapon	voulge	jeddart_axe	polearm
+weapon	waihaka	cudgel	blunt
+weapon	wakizashi	short_sword	edged
+weapon	walking staff	quarterstaff	two_handed
+weapon	walking stick	runestave	runestave
+weapon	war club	cudgel	blunt
+weapon	war hammer	war_hammer	blunt
+weapon	war mattock	war_mattock	two_handed
+weapon	war sword	bastard_sword	edged
+weapon	war sword	bastard_sword	two_handed
+weapon	war-quoit	quoit	thrown
+weapon	waraxe	handaxe	edged
+weapon	waraxe	handaxe	thrown
+weapon	warblade	falchion	edged
+weapon	warlance	lance	polearm
+weapon	warpike	lance	polearm
+weapon	warstaff	quarterstaff	two_handed
+weapon	wave-bladed sword	flamberge	two_handed
+weapon	weighted-cord	bola	thrown
+weapon	whip	leather_whip	blunt
+weapon	whip-blade	whip_blade	edged
+weapon	whipblade	whip_blade	edged
+weapon	wight-claw	troll_claw	brawling
+weapon	woodsman's axe	battle_axe	two_handed
+weapon	xiphos	broadsword	edged
+weapon	yari	spear	polearm
+weapon	yataghan	scimitar	edged
+weapon	yierka-spur	yierka_spur	unarmed
+weapon	yierka-spur	yierka_spur	brawling
+weapon	yoribo	quarterstaff	two_handed
+weapon	yumi	long_bow	missile
+weapon	zinnor	trident	polearm
+weapon	zirah bouk	dagger	edged
+weapon	zweihander	two_handed_sword	two_handed

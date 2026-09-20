@@ -94,6 +94,11 @@ struct AllowedStatic {
 /// The reviewed statics.
 const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
+        path: "crates/cena-model/src/state/armaments.rs",
+        name: "TABLES",
+        justification: "A OnceLock<Tables> holding the weapon, armor, shield and alias tables,                         parsed from four include_str! TSVs on first use and never mutated. The                         third of these in the crate and the argument does not change: process-                         wide state, made safe by holding no session handle and being a pure                         function of compile-time strings. 96 weapons, 18 armor sub-groups, 4                         shields and 706 aliases, parsed once rather than per lookup -- and a                         loot filter or a damage estimate reads them per item, so per-call                         parsing is not a tradeoff worth making. Lich holds the same data in                         class variables behind Lich::Util.deep_freeze                         (armaments/weapon_stats.rb:55).",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/gameobj.rs",
         name: "TABLE",
         justification: "A OnceLock<Table> holding the compiled gameobj classification patterns,                         built from an include_str! of data/gameobj-data.tsv on first use and                         never mutated after. Same argument as bounty.rs's MATCHERS below, and                         the same caveat: it IS process-wide state, made safe by holding no                         session handle and being a pure function of a compile-time string. The                         table is ~100 regexes over a 135 KB TSV, one of which is a 40 KB                         alternation of creature names, so compiling it per object -- which is                         what a non-static would mean for a loot filter walking a room -- is not                         a tradeoff worth making. Lich reaches the same conclusion with class                         variables plus a memo cache (gameobj.rb:42, :260); the cache is NOT                         ported, because keying it by object identity would be per-session state                         in a crate that holds none.",

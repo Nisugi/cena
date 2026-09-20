@@ -1,0 +1,5 @@
+id	category	base_name	size_modifier	evade_modifier	base_weight
+small_shield	small_shield	small shield	-0.15	-0.22	6
+medium_shield	medium_shield	medium shield	0	-0.3	8
+large_shield	large_shield	large shield	0.15	-0.38	9
+tower_shield	tower_shield	tower shield	0.3	-0.5	12
