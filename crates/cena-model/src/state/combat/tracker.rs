@@ -170,13 +170,20 @@ impl CombatTracker {
         self.pending.back()
     }
 
-    /// Feed one completed chunk.
+    /// Parse one completed chunk into its facts, without publishing them.
     ///
     /// `at` is the chunk's prompt time -- the server epoch second the prompt
-    /// carried -- which stamps every event.
-    pub fn consume_chunk(&mut self, chunk: &Chunk, at: Option<u32>) {
+    /// carried -- which stamps every event. `GameState::close_chunk` applies
+    /// the facts to the creature registry between this and [`Self::publish`],
+    /// which is Lich's `process`: parse, persist, then emit.
+    pub fn parse_chunk(&mut self, chunk: &Chunk, at: Option<u32>) -> ChunkFacts {
         self.chunks_seen = self.chunks_seen.saturating_add(1);
-        let facts = super::parse::parse_chunk(self, chunk, at);
+        super::parse::parse_chunk(self, chunk, at)
+    }
+
+    /// Queue a chunk's facts for a consumer to drain. Empty facts are not
+    /// queued.
+    pub fn publish(&mut self, facts: ChunkFacts) {
         if facts.is_empty() {
             return;
         }
@@ -185,6 +192,12 @@ impl CombatTracker {
             self.dropped = self.dropped.saturating_add(1);
         }
         self.pending.push_back(facts);
+    }
+
+    /// Parse and publish in one step: the registry-less path.
+    pub fn consume_chunk(&mut self, chunk: &Chunk, at: Option<u32>) {
+        let facts = self.parse_chunk(chunk, at);
+        self.publish(facts);
     }
 
     /// Forget everything a new connection has not re-taught.

@@ -53,6 +53,7 @@ pub use state::combat::ucs::{PositionTier, UcsAttack, UcsLine};
 // only to the compiler. They are reached by their module path.
 pub use state::creature::status::{CreatureStatus, Status};
 pub use state::creature::{Area, Attack, Creature, MessageKind, Treasure};
+pub use state::creatures::{BodyPart, CreatureInstance, Creatures};
 pub use state::gameobj::{Classification, ObjectTypes};
 pub use state::societies::membership::MembershipLine;
 pub use state::societies::{Ability, AbilityKind, AlternateCost, Cost, CostTiming, Target};

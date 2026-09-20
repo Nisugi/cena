@@ -388,3 +388,60 @@ fn parse_status(text: &str) -> Option<PlayerStatus> {
         Some(PlayerStatus(parts.join(" ")))
     }
 }
+
+impl super::GameState {
+    /// A room component: the room takes it, and a `room objs` body also
+    /// rebuilds the creature roster from the bold links it just parsed.
+    pub(super) fn apply_room_component(&mut self, id: &str, body: &Runs) {
+        self.room.apply_component(id, body);
+        if id == "room objs" {
+            let now = self.game_time_now();
+            self.creatures.apply_room_objs(&self.room.creatures, now);
+        }
+    }
+
+    /// A `<crtrStatus>`. The flags precede the link they describe inside a
+    /// `room objs` body, so the registry holds them until the body names
+    /// the creature.
+    pub(super) fn apply_creature_status(&mut self, id: &str, attrs: &cena_protocol::frame::Attrs) {
+        let now = self.game_time_now();
+        let status = super::creature::status::CreatureStatus::from_attrs(
+            id,
+            attrs.iter().map(|(k, v)| (k.as_str(), v.as_str())),
+        );
+        self.creatures.note_status(status, now);
+    }
+
+    /// Handle `<nav>`: an arrival, or a re-declaration of the room we are in.
+    ///
+    /// Split out of [`Self::apply`] under Rule 4.1 -- adding the same-room
+    /// guard took that function to 101 lines against its 100 cap, and the rule
+    /// is to move code down rather than raise the limit.
+    ///
+    /// A new room invalidates the old description and exits: they describe
+    /// somewhere the character no longer is, and keeping them is how a
+    /// consumer renders the previous room's exits under the new room's name.
+    /// EVERYTHING goes, including the per-component buffers and the typed
+    /// collections -- creatures from the last room are the most dangerous
+    /// thing to keep, because a behavior would attack them.
+    ///
+    /// **Unless it is the SAME room, in which case this is a re-declaration
+    /// and not an arrival.** Found by review: the login burst sends
+    /// `<nav rm='7086'/>` for the room the character is already in and carries
+    /// no `compass` to replace what a full reset throws away -- so a reconnect
+    /// that had just been taught to KEEP the exits lost them to the burst one
+    /// frame later.
+    ///
+    /// Guarded on `Some`, because a bare `<nav/>` cannot be compared: two
+    /// consecutive id-less arrivals are two different rooms as far as anything
+    /// here can tell, and treating them as one would keep a previous room's
+    /// creatures. **Unknown is not equal to unknown.**
+    pub(super) fn arrive(&mut self, id: Option<&str>) {
+        let same_room = id.is_some() && id == self.room.id.as_deref();
+        if !same_room {
+            self.room = Room::entering(id.map(str::to_owned));
+            // The creature roster is room contents too (`xmlparser.rb:410`).
+            self.creatures.on_nav();
+        }
+    }
+}

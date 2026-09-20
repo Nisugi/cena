@@ -172,9 +172,12 @@ fn every_named_kind_in_the_data_has_a_variant() {
         .map(|d| d.name.as_str())
         .collect();
     for s in StatusName::ALL {
-        assert!(
+        // ...except the six only the `<crtrStatus>` feed and the crit tables
+        // produce, which by construction no message def names.
+        assert_eq!(
             statuses.contains(s.as_str()),
-            "{s:?} has no rows in the data"
+            !StatusName::FEED_ONLY.contains(&s),
+            "{s:?}: a message status has rows in the data, a feed-only one has none"
         );
     }
 }

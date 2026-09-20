@@ -161,6 +161,7 @@ fn summarize(facts: &ChunkFacts) -> (BTreeSet<(String, String)>, usize) {
 
 /// **Every blob's header is reproduced by the state machine.**
 #[test]
+#[allow(clippy::cast_precision_loss)] // a line count, printed as a rate
 fn every_replay_blob_reproduces_its_header() {
     let tables = Arc::new(CritTables::load().expect("crit tables load"));
     let blobs = load_blobs();

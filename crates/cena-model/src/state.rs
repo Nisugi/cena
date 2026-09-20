@@ -47,6 +47,7 @@ pub mod claim;
 mod clock;
 pub mod combat;
 pub mod creature;
+pub mod creatures;
 pub mod gameobj;
 mod idle;
 mod inventory;
@@ -184,6 +185,9 @@ pub struct GameState {
     /// The combat state machine (`state/combat/tracker.rs`). Private: its
     /// inputs are the chunk and the clock, both owned here.
     combat: combat::CombatTracker,
+    /// Every creature the feed has shown, with what combat did to it.
+    /// `state/creatures.rs`.
+    creatures: creatures::Creatures,
     /// Lines of the command output since the last prompt.
     ///
     /// **The prompt is a universal boundary, not an `info`-specific one** --
@@ -225,12 +229,14 @@ impl PartialEq for GameState {
             // about the game. What it knows of the game -- a held cast, an
             // open assault -- is re-derived from the same chunks.
             combat: _,
+            creatures,
             pending,
             chunk,
             character,
             inventory,
         } = self;
-        inventory == &other.inventory
+        creatures == &other.creatures
+            && inventory == &other.inventory
             && character == &other.character
             && idle_warning == &other.idle_warning
             && streams == &other.streams
@@ -262,35 +268,10 @@ impl GameState {
         &mut self.combat
     }
 
-    /// Handle `<nav>`: an arrival, or a re-declaration of the room we are in.
-    ///
-    /// Split out of [`Self::apply`] under Rule 4.1 -- adding the same-room
-    /// guard took that function to 101 lines against its 100 cap, and the rule
-    /// is to move code down rather than raise the limit.
-    ///
-    /// A new room invalidates the old description and exits: they describe
-    /// somewhere the character no longer is, and keeping them is how a
-    /// consumer renders the previous room's exits under the new room's name.
-    /// EVERYTHING goes, including the per-component buffers and the typed
-    /// collections -- creatures from the last room are the most dangerous
-    /// thing to keep, because a behavior would attack them.
-    ///
-    /// **Unless it is the SAME room, in which case this is a re-declaration
-    /// and not an arrival.** Found by review: the login burst sends
-    /// `<nav rm='7086'/>` for the room the character is already in and carries
-    /// no `compass` to replace what a full reset throws away -- so a reconnect
-    /// that had just been taught to KEEP the exits lost them to the burst one
-    /// frame later.
-    ///
-    /// Guarded on `Some`, because a bare `<nav/>` cannot be compared: two
-    /// consecutive id-less arrivals are two different rooms as far as anything
-    /// here can tell, and treating them as one would keep a previous room's
-    /// creatures. **Unknown is not equal to unknown.**
-    fn arrive(&mut self, id: Option<&str>) {
-        let same_room = id.is_some() && id == self.room.id.as_deref();
-        if !same_room {
-            self.room = Room::entering(id.map(str::to_owned));
-        }
+    /// The creature registry.
+    #[must_use]
+    pub const fn creatures(&self) -> &creatures::Creatures {
+        &self.creatures
     }
 
     /// Fold one frame into the state.
@@ -329,7 +310,8 @@ impl GameState {
             // `plan/18` §2c and the author's requirement: the room is several
             // independent feeds, so a `room players` update must not disturb the
             // objects. See `state/room.rs` for the measurement.
-            Frame::Component { id, body } => self.room.apply_component(id, body),
+            Frame::Component { id, body } => self.apply_room_component(id, body),
+            Frame::CreatureStatus { id, attrs } => self.apply_creature_status(id, attrs),
             Frame::Compass { directions } => {
                 // `Some`, even when `directions` is empty: the server SAID so,
                 // and "observed, no cardinal exits" is a different fact from

@@ -52,11 +52,27 @@ pub enum StatusName {
     Vulnerable,
     Weakened,
     Webbed,
+    // --- from `<crtrStatus>` and the crit tables, never from a message def ---
+    // `creature_base.rb:112-126` and `processor.rb:2292`: the creature
+    // registry's status vocabulary is one namespace whatever the source, so
+    // the six names only those two sources produce live here too.
+    /// Disoriented (`<crtrStatus disoriented=>`).
+    Disoriented,
+    /// Rooted in place (`<crtrStatus rooted=>`).
+    Rooted,
+    /// Flying (`<crtrStatus flying=>`).
+    Flying,
+    /// Hovering (`<crtrStatus hovering=>`).
+    Hovering,
+    /// Crippled (a crit-table flag).
+    Crippled,
+    /// Favouring a limb (a crit-table flag).
+    LimbFavored,
 }
 
 impl StatusName {
     /// Every status.
-    pub const ALL: [Self; 30] = [
+    pub const ALL: [Self; 36] = [
         Self::Blind,
         Self::Burning,
         Self::Calm,
@@ -87,6 +103,12 @@ impl StatusName {
         Self::Vulnerable,
         Self::Weakened,
         Self::Webbed,
+        Self::Disoriented,
+        Self::Rooted,
+        Self::Flying,
+        Self::Hovering,
+        Self::Crippled,
+        Self::LimbFavored,
     ];
 
     /// The TSV spelling.
@@ -123,6 +145,12 @@ impl StatusName {
             Self::Vulnerable => "vulnerable",
             Self::Weakened => "weakened",
             Self::Webbed => "webbed",
+            Self::Disoriented => "disoriented",
+            Self::Rooted => "rooted",
+            Self::Flying => "flying",
+            Self::Hovering => "hovering",
+            Self::Crippled => "crippled",
+            Self::LimbFavored => "limb_favored",
         }
     }
 
@@ -139,6 +167,61 @@ impl StatusName {
     #[must_use]
     pub const fn is_position(self) -> bool {
         matches!(self, Self::Prone | Self::Sitting | Self::Kneeling)
+    }
+
+    /// The six statuses no message def produces: only the `<crtrStatus>` feed
+    /// and the crit tables do. The def data has no rows for these, and a test
+    /// asserts it has rows for every other.
+    pub const FEED_ONLY: [Self; 6] = [
+        Self::Disoriented,
+        Self::Rooted,
+        Self::Flying,
+        Self::Hovering,
+        Self::Crippled,
+        Self::LimbFavored,
+    ];
+
+    /// The canonical name of a `<crtrStatus>` flag.
+    ///
+    /// `CRTR_STATUS_FLAGS` (`creature_base.rb:112-126`): the feed and the
+    /// message parser spell one state two ways (`immobile` /
+    /// `immobilized`), and the registry stores the canonical one.
+    #[must_use]
+    pub const fn from_crtr(status: crate::state::creature::status::Status) -> Self {
+        use crate::state::creature::status::Status as S;
+        match status {
+            S::Immobilized => Self::Immobilized,
+            S::Webbed => Self::Webbed,
+            S::Sleeping => Self::Sleeping,
+            S::Disoriented => Self::Disoriented,
+            S::Stunned => Self::Stunned,
+            S::Rooted => Self::Rooted,
+            S::Calm => Self::Calm,
+            S::Kneeling => Self::Kneeling,
+            S::Prone => Self::Prone,
+            S::Sitting => Self::Sitting,
+            S::Flying => Self::Flying,
+            S::Hovering => Self::Hovering,
+            S::Hidden => Self::Hidden,
+        }
+    }
+
+    /// How long the status lasts with no removal message, in seconds.
+    ///
+    /// `STATUS_DURATIONS` (`creature_base.rb:71-110`): `None` means the
+    /// server sends a reliable removal and the status must not expire on a
+    /// timer. Lich's table also lists `breeze`, `bind`, `web`, `entangle`,
+    /// `hypnotism`, `mass_calm` and `sleep` -- INFERRED dead keys: no
+    /// producer spells a status that way (`sleep` vs `sleeping`, `web` vs
+    /// `webbed`), so they are not carried.
+    #[must_use]
+    pub const fn duration(self) -> Option<u32> {
+        match self {
+            Self::Calm => Some(15),
+            Self::Roundtime => Some(5),
+            Self::Dazed => Some(10),
+            _ => None,
+        }
     }
 }
 

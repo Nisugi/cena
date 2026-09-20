@@ -146,6 +146,7 @@ impl GameState {
             streams,
             tally,
             combat,
+            creatures,
             pending,
             chunk,
             character,
@@ -223,6 +224,9 @@ impl GameState {
         // A held cast or pre-flare belongs to a chunk the old connection
         // never finished; an assault bracket cannot outlive its fight.
         combat.invalidate_for_reconnect();
+        // What combat did to a creature is still true of it; who is standing
+        // in the room is not (the rule `room.forget_contents` states).
+        creatures.invalidate_for_reconnect();
 
         // **The counters are NOT reset.** They describe the SESSION -- how
         // much text this process has routed and how much the scrollback

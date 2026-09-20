@@ -223,13 +223,20 @@ impl super::GameState {
     /// back into the consumers, which is what this refactor removes.
     pub(super) fn close_chunk(&mut self) {
         let chunk = self.chunk.take();
-        if chunk.is_empty() {
-            return;
-        }
+        let at = self.game_time;
         // `info`, and later `skill`. Others register here as they are built.
-        self.character.consume_chunk(&chunk);
         // The combat state machine reads the same chunk with no new
         // buffering, stamped with the prompt that closed it.
-        self.combat.consume_chunk(&chunk, self.game_time);
+        let mut facts = if chunk.is_empty() {
+            super::combat::ChunkFacts::default()
+        } else {
+            self.character.consume_chunk(&chunk);
+            self.combat.parse_chunk(&chunk, at)
+        };
+        // Lich's `process`: parse, persist to the registry, then emit -- and
+        // the death sweep runs on a quiet chunk too, because a room refresh
+        // can flag a death a chunk after the killing blow.
+        self.creatures.apply_chunk(&mut facts, at);
+        self.combat.publish(facts);
     }
 }
