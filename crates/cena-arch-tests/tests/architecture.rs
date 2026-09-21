@@ -128,6 +128,22 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
                         exist id it substitutes belongs to the caller, never to this table.",
     },
     AllowedStatic {
+        path: "crates/cena-model/src/spells.rs",
+        name: "TABLE",
+        justification: "A OnceLock<BTreeMap<u16, Spell>> holding the 514 spells cut from Lich's \
+                        data/effect-list.xml by tools/extract_spells.rb, parsed from one \
+                        include_str! TSV on first use and never mutated. The same argument as \
+                        creature.rs's BESTIARY, armaments.rs's TABLES and gameobj.rs's TABLE, and \
+                        the same honest caveat: it IS process-wide state, made safe by holding no \
+                        session handle and being a pure function of compile-time strings. The \
+                        source file lists 515 <spell> elements and 514 distinct numbers -- 9052 \
+                        appears twice, byte-identical -- and the first wins, which is also \
+                        spell.rb:160's rule. Smaller than the bestiary, but asked on every spell \
+                        up and down message, so parsing per query would be a per-line cost. NOT \
+                        included: anything about which spells are ACTIVE, which is per-session \
+                        and lives in Effects and in the character model.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/creature.rs",
         name: "BESTIARY",
         justification: "A OnceLock<Bestiary> holding the 627 creature templates, joined from four \

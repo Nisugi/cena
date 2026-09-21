@@ -503,11 +503,37 @@ which *other characters* a spell has locked out. Five spells declare one:
 > | 219 Spell Shield | group | 360 |
 > | 506 Celerity | target | 240 |
 
-`target` cooldowns pair with a `target-start` message naming the character
-(`A wall of force surrounds (?<noun>[A-Z][a-z]+)\.`); `group` cooldowns are
-stamped optimistically across everyone grouped at the time of an EVOKE, because
-the game tells the caster nothing about who it landed on. `Group.spell_cooldowns`
-keys by spell number then member **noun**.
+**The two kinds are two cast mechanics, not two data sources** (author,
+2026-09-20): *"the ones looking at member are ones that are self cast but
+affect your group."*
+
+| Kind | How it is cast | How the target is learned |
+|---|---|---|
+| `group` | **on yourself**, lands on everyone grouped | it is not — stamp all members |
+| `target` | at one character | the `target-start` message names them |
+
+VERIFIED as a structural invariant, not a coincidence of five samples: across
+the whole table, **every `target` cooldown has a `target-start` message and no
+`group` cooldown has one.** There is nothing to capture in a self-cast, because
+no name appears in the line.
+
+That is also why the group case is optimistic. The caster's only notice is a
+clause inside their own start message — each of the three is one pattern with
+`your group` as an optional alternation:
+
+```text
+211 Bravery       You (?:and your group stand tall and )?feel more confident\.
+215 Heroism       A brilliant aura surrounds you and (?:sinks into your skin|your group)\.…
+219 Spell Shield  An opalescent aura surrounds you(?: and your group)?\.
+```
+
+and `parser.rb:662` tells the two views apart with `line.include?('your group')`.
+
+**506 Celerity carries both**, which is the case that proves the split is about
+mechanics rather than about the spell: self-cast with `and your group` it starts
+group cooldowns, cast at someone else its `target-start` names them.
+
+`Group.spell_cooldowns` keys by spell number then member **noun**.
 
 Two things in that port are worth carrying over verbatim, both recorded in
 Lich's own comments: a member still locked out is **skipped rather than
