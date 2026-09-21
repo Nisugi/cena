@@ -15,6 +15,7 @@
 use super::{COMMAND_CHANNEL_BOUND, EVENT_CHANNEL_BOUND, Event, SessionActor};
 use crate::command::SessionHandle;
 use crate::lifecycle::{Generation, State};
+use crate::observation::{EventPublisher, ObservationRequests};
 use crate::queue::CommandQueue;
 use cena_model::GameState;
 use cena_platform::{ByteSource, Recorder, SessionSink};
@@ -42,6 +43,10 @@ pub struct Snapshot {
     pub lifecycle: State,
     /// Which connection this belongs to (`plan/12` §5.2).
     pub generation: Generation,
+    /// Last published event included in this snapshot's fence.
+    pub cursor: u64,
+    /// Most recent retry decision while reconnecting, cleared on transition.
+    pub retry: Option<crate::RetryStatus>,
 }
 
 /// Everything a caller needs to drive and observe one session.
@@ -49,7 +54,7 @@ pub struct Snapshot {
 pub struct Session<S: ByteSource> {
     actor: SessionActor<S>,
     handle: SessionHandle,
-    events: broadcast::Sender<Event>,
+    events: EventPublisher,
     cancel: CancellationToken,
 }
 
@@ -62,12 +67,12 @@ impl<S: ByteSource> Session<S> {
     #[must_use]
     pub fn new(source: S) -> Self {
         let (tx, rx) = mpsc::channel(COMMAND_CHANNEL_BOUND);
-        let (events, _) = broadcast::channel(EVENT_CHANNEL_BOUND);
         let cancel = CancellationToken::new();
         // The cell a handle reads. A plain `Session` never advances it -- one
         // connection, one generation -- but the handle reads it the same way,
         // so a supervised session needs no different handle type.
         let generation = crate::lifecycle::GenerationCell::first();
+        let events = EventPublisher::new(EVENT_CHANNEL_BOUND, generation.clone());
         Self {
             actor: SessionActor {
                 source,
@@ -78,6 +83,7 @@ impl<S: ByteSource> Session<S> {
                 send_now_prompts_owed: 0,
                 commands: rx,
                 events: events.clone(),
+                observations: ObservationRequests::new(),
                 recorder: Recorder::new(),
                 sink: None,
                 combat: None,
@@ -183,6 +189,12 @@ impl<S: ByteSource> Session<S> {
         self.handle.clone()
     }
 
+    /// Read-only access that remains usable after `into_actor` consumes this owner.
+    #[must_use]
+    pub fn observer(&self) -> crate::SessionObserver {
+        self.actor.observations.observer()
+    }
+
     /// The shared generation counter this session's handles read.
     ///
     /// A plain `Session` never advances it -- one connection, one generation.
@@ -205,26 +217,14 @@ impl<S: ByteSource> Session<S> {
 
     /// Subscribe to events.
     ///
-    /// `plan/12` §6.2 wants `(snapshot, events)` as one operation. Before the
-    /// actor runs the snapshot is trivially the initial state; after it is
-    /// running, a subscriber calls this and then reads, and the actor is the
-    /// only writer, so nothing is interleaved.
+    /// This owner can only be borrowed before the actor is running. Use
+    /// `observer()` for fresh subscriptions while it runs.
     #[must_use]
     pub fn subscribe(&self) -> (Snapshot, broadcast::Receiver<Event>) {
         let receiver = self.events.subscribe();
         (
-            Snapshot {
-                // An unsupervised `Session` is a single connection with no
-                // supervisor to allocate ids, so it is always the first. The
-                // id lives on `SessionCore` (`supervisor/core.rs`), which is
-                // the thing that outlives connections -- threading one through
-                // the actor as well would mean two places could disagree about
-                // a value the actor never reads.
-                session: crate::lifecycle::SessionId::FIRST,
-                state: self.actor.state.clone(),
-                lifecycle: self.actor.lifecycle,
-                generation: self.actor.generation,
-            },
+            self.events
+                .snapshot(&self.actor.state, self.actor.lifecycle),
             receiver,
         )
     }

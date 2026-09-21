@@ -28,6 +28,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Frontend wire and reconnect contract
+        run: node crates/cena-web/assets/tests/session.test.mjs
+
       # plan/06 section 4 lists these as 1. test, 2. clippy, 3. fmt. Reordered
       # cheapest-first so a formatting slip does not wait on a full build; the
       # set of required checks is unchanged.
@@ -106,3 +112,18 @@ jobs:
       # which plan/12:63 also binds. If either exclusion is unacceptable then
       # plan/12:63 is not implementable without NDK/perl/clang machinery, and
       # the document should change rather than the check being faked.
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned browser test tools
+        working-directory: crates/cena-web/browser-tests
+        run: |
+          npm install --no-save --package-lock=false playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Despana rendering and same-tab pairing regression
+        run: node crates/cena-web/browser-tests/smoke.mjs

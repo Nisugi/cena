@@ -1,0 +1,123 @@
+//! Version 1 messages. Identity, generation and cursors are decimal strings.
+
+use serde::{Deserialize, Serialize};
+
+use crate::view::{SessionView, StoryLine};
+
+pub const WIRE_VERSION: u16 = 1;
+
+/// Input does not expose lifecycle control or behavior authority.
+///
+/// Authentication and command validation are performed by the listener before
+/// these values can reach a session. Unknown fields are rejected to expose
+/// incompatible clients rather than silently ignoring their intent.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ClientMessage {
+    Authenticate {
+        version: u16,
+        token: String,
+    },
+    Command {
+        version: u16,
+        session: String,
+        generation: String,
+        request_id: String,
+        line: String,
+    },
+}
+
+/// What the sender can establish. No variant asserts game action completion.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReceiptStatus {
+    /// Command bytes were sent; a reply may have been observed.
+    Sent,
+    /// The command was refused before sending.
+    Refused,
+    /// The send outcome cannot be established. Do not retry automatically.
+    Uncertain,
+}
+
+/// A snapshot replaces the browser's view/history; updates append whole lines.
+///
+/// The listener owns monotonically increasing presentation cursors, independent
+/// of native event numbering. All identity-sized integers use decimal strings
+/// to survive JavaScript's narrower integer precision. Receipts echo the
+/// requested generation so a stale refusal remains attributable to its input.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ServerMessage {
+    Snapshot {
+        version: u16,
+        session: String,
+        generation: String,
+        cursor: String,
+        view: SessionView,
+        story: Vec<StoryLine>,
+        history_gap: bool,
+    },
+    Update {
+        version: u16,
+        session: String,
+        generation: String,
+        cursor: String,
+        view: SessionView,
+        lines: Vec<StoryLine>,
+    },
+    Receipt {
+        version: u16,
+        session: String,
+        generation: String,
+        request_id: String,
+        status: ReceiptStatus,
+        detail: String,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn browser_fixture_round_trips_without_losing_large_identifiers() {
+        let fixture = include_str!("../tests/fixtures/snapshot-v1.json");
+        let message: ServerMessage = serde_json::from_str(fixture).unwrap();
+        let json = serde_json::to_value(&message).unwrap();
+        assert_eq!(
+            json,
+            serde_json::from_str::<serde_json::Value>(fixture).unwrap()
+        );
+        assert_eq!(json["session"], "18446744073709551615");
+        assert_eq!(json["view"]["vitals"]["mana"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn unknown_input_fields_and_unversioned_input_are_refused() {
+        for json in [
+            r#"{"kind":"authenticate","version":1,"token":"x","extra":true}"#,
+            r#"{"kind":"authenticate","token":"x"}"#,
+            r#"{"kind":"delete_session","version":1}"#,
+        ] {
+            assert!(serde_json::from_str::<ClientMessage>(json).is_err());
+        }
+    }
+
+    #[test]
+    fn unobserved_retry_schedule_is_null_not_attempt_zero() {
+        let lifecycle = crate::LifecycleView::Reconnecting {
+            attempt: None,
+            retry_delay_ms: None,
+            detail: None,
+        };
+        assert_eq!(
+            serde_json::to_value(lifecycle).unwrap(),
+            serde_json::json!({
+                "kind": "reconnecting",
+                "attempt": null,
+                "retry_delay_ms": null,
+                "detail": null,
+            })
+        );
+    }
+}

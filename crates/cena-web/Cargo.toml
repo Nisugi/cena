@@ -1,0 +1,17 @@
+[package]
+name = "cena-web"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cena-ui.workspace = true
+cena-session.workspace = true
+axum = { version = "0.8", features = ["ws"] }
+tokio = { version = "1", features = ["macros", "rt", "sync", "time", "net"] }
+tokio-util = "0.7"
+serde_json.workspace = true
+getrandom = "0.3"
+
+[lints]
+workspace = true

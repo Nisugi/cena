@@ -66,6 +66,7 @@
 
 mod ask;
 mod connector;
+mod frontend;
 mod probe;
 mod run;
 
@@ -134,23 +135,24 @@ async fn stop_the_behavior(
 /// it is worth being able to say "keep it up while I look at something". An
 /// argument rather than an env var for the same reason scripts are
 /// ([`run::Script`]): one mechanism, and nothing left set in a shell.
-fn hold_for() -> Duration {
+fn hold_for(web_active: bool) -> Option<Duration> {
     const DEFAULT: Duration = Duration::from_secs(10);
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         // `--hold=60` is the other form people type, and it silently became
         // the default because the match was for the bare flag only.
         if let Some(inline) = arg.strip_prefix("--hold=") {
-            return parse_hold(inline).unwrap_or(DEFAULT);
+            return Some(parse_hold(inline).unwrap_or(DEFAULT));
         }
         if arg == "--hold" {
-            return args
-                .next()
-                .and_then(|raw| parse_hold(&raw))
-                .unwrap_or(DEFAULT);
+            return Some(
+                args.next()
+                    .and_then(|raw| parse_hold(&raw))
+                    .unwrap_or(DEFAULT),
+            );
         }
     }
-    DEFAULT
+    (!web_active).then_some(DEFAULT)
 }
 
 /// Parse a `--hold` value, **saying so when it cannot**.
@@ -277,6 +279,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // consumes the session, and there is no `handle()` accessor to call
     // afterwards.
     let (session, handle, combat_flush) = open_session(connector);
+    let observer = session.observer();
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
     // A SECOND receiver, for the probe. `events` is moved into the watcher
@@ -290,6 +293,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // the connection, and opens another if the reason warrants it. Everything
     // below happens against whichever generation is current.
     let supervisor = tokio::spawn(session.run());
+    let frontend = frontend::Frontend::start(observer, handle.clone()).await;
 
     // --- Criterion 2: the room, from TYPED FRAMES --------------------------
     eprintln!("[waiting] for the first room description frame...");
@@ -331,29 +335,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // run killed the process -- skipping both the `quit` (plan/16 5b) and the
     // sink flush. The character was left link-dead and the log truncated, on
     // the exit a person is most likely to use.
-    let holding = hold_for();
-    eprintln!(
-        "[session] holding for {holding:?} (Ctrl-C to stop early;          `-- --hold <seconds>` to change)"
-    );
-    tokio::select! {
-        () = tokio::time::sleep(holding) => {}
-        result = tokio::signal::ctrl_c() => {
-            match result {
-                Ok(()) => eprintln!("
-    [session] interrupted -- shutting down cleanly"),
-                // A handler that cannot be installed must not skip the
-                // shutdown: say so and carry on to it.
-                Err(e) => eprintln!("
-    [session] could not listen for Ctrl-C ({e}); holding ended"),
-            }
-        }
-    }
+    frontend::wait_for_stop(hold_for(frontend.is_some()), &supervisor).await;
 
     // --- Criterion 4: stop, within PREEMPT_GRACE ---------------------------
     // The latency is MEASURED in `cena-behavior`'s tests under virtual time,
     // where it is a property of the code rather than of this machine's load.
     // Here it is only demonstrated.
     stop_the_behavior(behavior, &stop).await;
+    if let Some(frontend) = frontend {
+        frontend.shutdown().await;
+    }
 
     // --- Criterion 6: clean disconnect -------------------------------------
     //
