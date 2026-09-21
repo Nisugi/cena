@@ -6,9 +6,9 @@
 # plan/21 §5 step 2 -- nothing is ported yet, so these are upstream's totals.
 # `costs` counts scripted costs on exits that exist: upstream has 1,873 scripted
 # `timeto` values, but 13 price a destination with no `wayto`.
-crossings 11
-costs 6
+crossings 0
+costs 0
 # Rooms reached from room 228 knowing nothing about the walker. Only rises.
-reachable 18538
+reachable 19939
 # The same, for a walker with urchin guides and portmasters on and no profession.
-reachable_equipped 22708
+reachable_equipped 22712

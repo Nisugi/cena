@@ -118,6 +118,24 @@ pub enum Routine {
     /// names it, and the Travel behaviour knows how it goes. What each one
     /// does is written on [`Puzzle`].
     Puzzle { puzzle: Puzzle },
+    /// A Chronomage day pass between two towns, `route` naming them as
+    /// upstream's setting does -- `wl,imt`, from and then to. Take a pass
+    /// that is valid for both towns out of the profile's `day_pass_sack`,
+    /// dropping any that have expired; with none, and the profile saying to
+    /// buy, walk to the clerk and ask twice, fetching silver from the bank
+    /// once if short. Raise the pass, and put it back. The clerk's walk and
+    /// what to ask for differ by town and are in the pinned scripts.
+    ///
+    /// **Which passes the walker holds is the planner's to find out before
+    /// it prices anything** -- upstream does it inside the cost script, by
+    /// opening the sack and reading each pass. Here that is the flag
+    /// `day_pass:imt,wl`, the two towns in alphabetical order since one pass
+    /// serves both ways (`cena_map::Cost` cannot send commands, and should
+    /// not).
+    DayPass { route: String },
+    /// A crossing that stops part-way to **make another trip** and come
+    /// back: to a bank, a shop, a ticket seller. See [`Errand`].
+    Errand { errand: Errand },
     Patrol {
         /// `None` keeps a gap upstream left: positions matter.
         starts: Vec<Option<RoomId>>,
@@ -129,6 +147,34 @@ pub enum Routine {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         after: Vec<String>,
     },
+}
+
+/// The errands of [`Routine::Errand`], each pinned verbatim to upstream's
+/// script as the puzzles are. They are what the Travel behaviour's stack of
+/// trips is for (`plan/21` §4.7): every one may walk to a bank and a shop
+/// and back before it crosses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Errand {
+    /// Room 6274, the kobold village's way to River's Rest: the giant wants
+    /// driftwood and a crystal amulet. Find them in the walker's
+    /// containers, or buy what is missing -- bank, alchemist, bank -- then
+    /// put both in the giant and go.
+    GiantToRiversRest,
+    /// Room 11032, the same giant the other way, where the driftwood comes
+    /// from the general store.
+    GiantFromRiversRest,
+    /// Room 11753, Marshtown's pier: find a ticket that names the walker, in
+    /// a hand or a container, or walk to the storefront and buy one; then
+    /// wait for the smugglers' cutter and board.
+    CutterFromMarshtown,
+    /// Room 18677, the same cutter from under River's Rest's bridge, where
+    /// the ticket seller is a trip away.
+    CutterFromRiversRest,
+    /// Room 6955, the gorge: the rim is reached through a pool, prying a
+    /// gap with a sword bought for the purpose -- bank, shop, bank -- and
+    /// recovered afterwards. The exit's cost asks for level 20.
+    SwordInTheGorge,
 }
 
 /// The puzzles of [`Routine::Puzzle`]. Each is pinned to upstream's script,

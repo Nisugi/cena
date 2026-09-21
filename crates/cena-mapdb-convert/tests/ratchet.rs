@@ -211,8 +211,10 @@ fn the_gate_skips_when_unset_and_is_loud_when_wrong() {
 
 #[test]
 fn the_baseline_parses() {
-    assert!(baseline("crossings").unwrap() > 0);
-    assert!(baseline("costs").unwrap() > 0);
+    // Both reached zero on 2026-09-21: every upstream script is ported. What
+    // is asked of them now is only that they are there to be read.
+    assert!(baseline("crossings").is_some());
+    assert!(baseline("costs").is_some());
     assert!(baseline("reachable").unwrap() > 0);
     assert!(baseline("reachable_equipped").unwrap() > 0);
 }

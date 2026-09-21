@@ -16,6 +16,7 @@
 use cena_map::{Action, Cost, Crossing, Pass, Step};
 
 mod costs;
+mod day_pass;
 mod facts;
 mod keys;
 mod ladder;
@@ -77,6 +78,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| singles::crossing(script))
         .or_else(|| singles_b::crossing(script))
         .or_else(|| named::crossing(script))
+        .or_else(|| day_pass::crossing(script))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
         .or_else(|| arctic_waters(script))
@@ -123,6 +125,7 @@ pub fn cost(script: &str, room: &RoomFacts<'_>) -> Option<Cost> {
         .or_else(|| tail_d::cost(script))
         .or_else(|| tail_h::cost(script))
         .or_else(|| ladder::cost(script))
+        .or_else(|| day_pass::cost(script))
 }
 
 pub(super) fn always(action: Action) -> Step {

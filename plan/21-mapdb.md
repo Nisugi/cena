@@ -1425,12 +1425,32 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    un-hasted price to be the sum of the two parts. What is left of the costs is the day
    pass (6).
 
+   **ZERO (2026-09-21, `recognise/day_pass.rs`).** The last 11 crossings and 6 costs: the
+   Chronomage day passes and five errands, named and pinned verbatim
+   (`Routine::DayPass { route }`, `Routine::Errand { errand }`). **Every upstream script is
+   now ported** -- 0 unported crossings, 0 unported costs -- and the ratchet holds it there:
+   a new or edited upstream script fails it offline.
+
+   The day pass is where upstream and Hydra part ways. Upstream's *cost* script opens the
+   sack and reads every pass before it answers; a `Cost` cannot send commands and should
+   not. So **which passes the walker holds is a flag the planner fills in before pricing**
+   (`day_pass:imt,wl`, towns in alphabetical order since one pass serves both ways), and
+   the price is a ladder: held -> 0.8 s, profile says buy -> the dearer price, else shut.
+   Upstream's `buy_day_pass` may list several routes; here it names one, or says yes.
+
+   "Ported" means two different things, and the difference is the Travel behaviour's
+   worklist: a `Steps` crossing is fully described by the map, while a `Routine` is only
+   *named* -- `Puzzle` (12), `Errand` (5), `DayPass`, `BronzeGate`, `ColourBarrier`,
+   `Mirror`, `RingWedges`, `FlightOfSteps`, `SearchRooms`, and the earlier `Confluence`,
+   `MinotaurMaze`, `Signposts`, `Seeking`, `Trinket`, `GuildPassword`, `Patrol` -- and each
+   still has to be written in Rust, from the script it is pinned to.
+
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **11** |
-   | unported costs | 1,860 | **6** |
-   | reachable from Wehnimer's, knowing nothing | 6,969 | **18,538** |
-   | reachable with paid services on | — | **22,708** |
+   | unported crossings | 7,923 | **0** |
+   | unported costs | 1,860 | **0** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **19,939** |
+   | reachable with paid services on | — | **22,712** |
 
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
