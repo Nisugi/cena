@@ -767,7 +767,46 @@ Each gets a short design note in this document before its code exists.
    cargo run --release -p cena-mapdb-convert -- <upstream-map.json> <dir>
    cargo run --release -p cena-map-combine  -- <dir> <dir>\hydra.map
    ```
-4. Room identification from live frames.
+4. **Room identification.** The question is **BUILT 2026-09-20**; the wiring is not.
+   `cena_map::locate` is a pure function over a loaded map: a `Sighting` (the game's number,
+   title, description, exits line, and a `location` reading if anyone has asked) plus an
+   `Origin` (nowhere / still in room X / just left room X) gives `Here { room, by }`,
+   `Ambiguous(candidates)` or `Unknown`.
+
+   Vellum and Lich were read first and **neither is copied**. Vellum (`map_service.rs:718`)
+   is number-first and never guesses, which is kept — but for a number several rooms share
+   it takes the last one silently (`mapdb/mod.rs:407`), it draws a session-only sketch for
+   any room the map has no number for, and its text fallback is dead on a live stream
+   because the title field it reads is never written (`travel_ticks.rs:942`). Lich
+   (`map_gs.rb:165-308`) text-matches well but **takes the first room that fits**, and
+   sends `location` and `peer` to the game from inside the lookup. The ladder here:
+   the number → text among the rooms sharing it → *for a number the map has never seen,
+   text among only the rooms that could own it* (no number recorded, or tagged
+   `map:multi-uid`) → standing still / the one candidate the room just left leads to →
+   `Ambiguous`. A filter that matches nothing is ignored, not obeyed (Vellum's lesson:
+   stale text is not "nowhere"). Fog and `random-paths` rooms skip the exits check (Lich's).
+
+   MEASURED over all 36,838 rooms, each shown its own recorded text
+   (`crates/cena-map/tests/locate_real_map.rs`, `CENA_MAP`-gated, 2.9 s for ~50,000 lookups):
+
+   | | found | ambiguous | unknown | **wrong** |
+   |---|---|---|---|---|
+   | rooms with a number | 28,962 | 0 | 0 | **0** |
+   | rooms without one, from nowhere | 7,495 | 329 | 52 (no title recorded) | **0** |
+   | rooms without one, walked into (every exit into one) | 13,500 | 32 | 0 | **0** |
+
+   The test's assertion is the last column: a room's own text names that room or declines.
+   All 42 numbers shared by several rooms are separated by text alone
+   (`research/mapdb-inventory/identify.py`).
+
+   **Not built, on purpose:** asking the game. `location` would settle 122 of the ambiguous
+   rooms and `peer` 22; both are *actions*, belong to a behavior, and `Sighting.location`
+   is already the slot the answer goes in. **Not wired:** the model keeps the number,
+   description, compass and the `room exits` component but **not the room title** — the
+   parser emits it (`Frame::StreamWindow.subtitle`) and the model drops it.
+   `title_from_subtitle` turns the wire's form into the map's. Adding the field is a
+   `cena-model` change, left until the other session is out of that crate; joining model
+   to map belongs in `cena-session`, the first crate allowed to see both.
 5. Dijkstra with per-character costs. Answer key: `Map.dijkstra` results captured from the
    author's live Lich.
 6. §4's design notes.
