@@ -42,7 +42,7 @@
 //! - Every list is bounded: [`MAX_PASSES`] passes looked at, one bank trip.
 
 use cena_map::{Action, Step};
-use cena_session::{ChunkLine, LinkKind};
+use cena_session::{ChunkLine, GameState, LinkKind};
 
 use super::{Next, Seen, Solver};
 
@@ -522,16 +522,17 @@ impl DayPass {
         ) else {
             return Next::Failed;
         };
-        self.sack = sack_in(seen, name).map_or_else(|| format!("my {name}"), |id| format!("#{id}"));
+        self.sack =
+            sack_in(seen.state, name).map_or_else(|| format!("my {name}"), |id| format!("#{id}"));
         self.at = At::LookedIn(false);
         Next::Put(format!("look in {}", self.sack))
     }
 }
 
 /// Upstream's four ways of finding the sack among what is worn, in order.
-fn sack_in(seen: &Seen<'_>, named: &str) -> Option<String> {
+pub(in crate::travel) fn sack_in(state: &GameState, named: &str) -> Option<String> {
     let lower = named.to_lowercase();
-    let worn = || seen.state.inventory_snapshot.on_person();
+    let worn = || state.inventory_snapshot.on_person();
     let in_order = |name: &str| {
         let name = name.to_lowercase();
         let mut from = 0;

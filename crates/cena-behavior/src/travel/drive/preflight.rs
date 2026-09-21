@@ -19,6 +19,7 @@ use cena_map::{RoomId, Target, Uid};
 use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::super::preflight::{silver_for, urchin_access, withdraw_command};
+use super::super::routines::day_pass;
 use super::{Cx, Driver, Ended};
 
 /// The Long Snow's encampment and Cairnfang Manor's attic: the two ends of
@@ -41,6 +42,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 self.found.insert("urchin_access".to_owned(), access);
             }
         }
+        self.day_passes(cx).await?;
         // Silver is priced from a room; an unplaced walker is the walk's to
         // wait for, and the ferryman's to refuse.
         let Some(here) = self.locate(cx.map) else {
@@ -69,6 +71,46 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             return Ok(());
         }
         self.by_way_of_the_bank(cx, here, goal, have).await
+    }
+
+    /// Which day passes the walker holds (`day_pass_cost_head.rb`): upstream
+    /// finds out inside the cost script, opening the sack and reading each
+    /// pass while Dijkstra runs. Here it is asked once, of a profile that
+    /// uses passes and names the sack they are kept in, and each pass that is
+    /// still good becomes the flag the map asks for: `day_pass:imt,wl`.
+    async fn day_passes(&mut self, cx: &mut Cx<'_>) -> Result<(), Ended> {
+        /// Upstream reads every pass in the sack; nobody keeps this many.
+        const MAX_PASSES: usize = 20;
+        let sack = cx.notes.settings.get("day_pass_sack");
+        let Some(sack) = sack.filter(|sack| !sack.is_empty() && is_on(cx, "use_day_pass")) else {
+            return Ok(());
+        };
+        let sack = day_pass::sack_in(&self.state, sack)
+            .map_or_else(|| format!("my {sack}"), |id| format!("#{id}"));
+        let mut inside = self.put(cx.trip, &format!("look in {sack}")).await?;
+        let shut = inside.iter().any(|line| line.text().contains("closed"));
+        if shut {
+            self.put(cx.trip, &format!("open {sack}")).await?;
+            inside = self.put(cx.trip, &format!("look in {sack}")).await?;
+        }
+        let now = self.state.game_time().map(i64::from);
+        for id in day_pass::passes_in(&inside).into_iter().take(MAX_PASSES) {
+            let looked = self.put(cx.trip, &format!("look #{id}")).await?;
+            let Some(pass) = day_pass::read_pass(&looked) else {
+                continue;
+            };
+            let flag = pass.towns.as_ref().and_then(|(one, other)| {
+                pass.serves(one, other, now)
+                    .then(|| day_pass::flag_for(one, other))?
+            });
+            if let Some(flag) = flag {
+                self.found.insert(flag, true);
+            }
+        }
+        if shut {
+            self.put(cx.trip, &format!("close {sack}")).await?;
+        }
+        Ok(())
     }
 
     /// To or from the Hinterwilds by gigas fragments (`go2.lic:2191-2200`,

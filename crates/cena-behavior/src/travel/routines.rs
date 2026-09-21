@@ -38,7 +38,7 @@ mod colour_barrier;
 mod confluence;
 mod crown_door;
 mod cutter;
-mod day_pass;
+pub(super) mod day_pass;
 mod eye_spy_runes;
 mod familiar_doors;
 mod flight_of_steps;

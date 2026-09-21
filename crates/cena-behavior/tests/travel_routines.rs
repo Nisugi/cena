@@ -388,3 +388,70 @@ async fn the_hinterwilds_are_reached_by_fragments_when_there_are_enough() {
     assert_eq!(transcript.lines(), ["wealth gigas", "north"]);
     session.cancel();
 }
+
+/// The Chronomage's way 1 -> 2 is for a walker holding a pass for both towns;
+/// everyone else goes round by 3.
+const CHRONOMAGE: &str = r#"[
+  {"id":1,"uid":[1001],"exits":[
+     {"to":2,"kind":"go","cmd":"go portal","cost":{"when":{"flag":"day_pass:imt,wl"},"then":1}},
+     {"to":3,"kind":"cardinal","cmd":"east","cost":50}]},
+  {"id":3,"uid":[1003],"exits":[{"to":2,"kind":"cardinal","cmd":"north","cost":50}]},
+  {"id":2,"uid":[1002]}
+]"#;
+
+fn pass_holder() -> TravelNotes {
+    let mut notes = with(&["use_day_pass"]);
+    notes
+        .settings
+        .insert("day_pass_sack".into(), "cloak".into());
+    notes
+}
+
+const IN_THE_CLOAK: &[u8] = b"In the cloak you see a <a exist=\"55\" noun=\"pass\">Chronomage day \
+    pass</a>.\n<prompt time=\"2\">&gt;</prompt>\n";
+
+/// `day_pass_cost_head.rb`: which passes the walker holds is found out before
+/// anything is priced, and is what prices the Chronomage's way.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_pass_in_the_sack_is_read_before_the_plan_and_prices_it() {
+    let (walk, transcript, session) = set_out(CHRONOMAGE, 2, pass_holder());
+    transcript.answer("look in my cloak", IN_THE_CLOAK);
+    transcript.answer(
+        "look #55",
+        b"Bold calligraphy states simply, \"This <a exist=\"55\" noun=\"pass\">pass</a> entitles \
+          the original purchaser to one (1) day of unlimited travel between the towns of \
+          Wehnimer's Landing and Icemule Trace, commencing at the time of purchase.\"\n\
+          [Your pass will expire on Mon Sep 21 14:03:22 ET 2026.]\n\
+          <prompt time=\"3\">&gt;</prompt>\n",
+    );
+    transcript.answer("go portal", &arrival(1002));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(
+        transcript.lines(),
+        ["look in my cloak", "look #55", "go portal"]
+    );
+    session.cancel();
+}
+
+/// A pass stamped EXPIRED prices nothing: the long way is walked.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_expired_pass_prices_nothing() {
+    let (walk, transcript, session) = set_out(CHRONOMAGE, 2, pass_holder());
+    transcript.answer("look in my cloak", IN_THE_CLOAK);
+    transcript.answer(
+        "look #55",
+        b"Bold red block letters spelling out \"EXPIRED\" appear to have been stamped across \
+          the face and reverse of the <a exist=\"55\" noun=\"pass\">pass</a>.\n\
+          <prompt time=\"3\">&gt;</prompt>\n",
+    );
+    transcript.answer("east", &arrival(1003));
+    transcript.answer("north", &arrival(1002));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(
+        transcript.lines(),
+        ["look in my cloak", "look #55", "east", "north"]
+    );
+    session.cancel();
+}
