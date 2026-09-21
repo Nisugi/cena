@@ -94,6 +94,11 @@ struct AllowedStatic {
 /// The reviewed statics.
 const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
+        path: "crates/cena-session/src/travel_store.rs",
+        name: "WRITING",
+        justification: "A Mutex<()>: it holds NO state, only the right to read-change-write                         travel.json. Unlike every other entry here it is not an immutable                         table, so the argument is its own: the thing it guards is itself                         process-wide by the author's decision (2026-09-21, 'a global file with                         character spots within it'), and 3-25 sessions in one process may each                         finish a trip at once. Without it two saves interleave as read, read,                         write, write and the first character's memories are lost -- which                         strands it at an event, the module's stated worst case. It names no                         session and reaches none; a per-session lock could not do the job,                         because the file is not per-session. The alternative considered was a                         lock file on disk, which would also cover two processes; not built,                         since one process is the product (plan/12, one binary) and a stale lock                         file is a worse failure than the one it prevents.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/combat/defs.rs",
         name: "DEFS",
         justification: "A OnceLock<Defs> holding the 954 combat definition rows from three \

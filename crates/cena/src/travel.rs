@@ -270,11 +270,21 @@ pub(crate) async fn run(
     let walker = walker_from(state, &notes, state.game_time().unwrap_or(0));
     remember_room(&mut file, &mut notes, here);
     if matches!(errand, Errand::Save(_)) {
-        save_target(&mut file, to, here);
-        say(
-            NoticeKind::Info,
-            format!("Travel: {to:?} is room {} from now on.", here.0),
-        );
+        // Said only of a save that happened: this announced a target it had
+        // failed to write.
+        match save_target(file.as_ref(), to, here) {
+            Ok(()) => say(
+                NoticeKind::Info,
+                format!(
+                    "Travel: {to:?} is room {} from now on, for every character here.",
+                    here.0
+                ),
+            ),
+            Err(why) => say(
+                NoticeKind::Error,
+                format!("Travel: {to:?} was not saved -- {why}."),
+            ),
+        }
         return;
     }
     let Some(goal) = destination(&map, &walker, here, to, &notes.targets) else {
@@ -420,17 +430,18 @@ fn load_map(handle: &SessionHandle) -> Option<Map> {
 /// How many rooms a destination that fits several is listed with.
 const MAX_LISTED: usize = 40;
 
-/// `;go2 save <name>`: the name means this room from now on. One room, as
+/// `;go2 save <name>`: the name means this room from now on, **for every
+/// character of this instance**, as go2's custom targets are. One room, as
 /// go2 saves it; a name that meant several is replaced.
-fn save_target(file: &mut Option<(PathBuf, TravelFile)>, name: &str, here: RoomId) {
-    let Some((dir, file)) = file.as_mut() else {
-        eprintln!("  !! [travel] no travel file to save the target in");
-        return;
-    };
-    file.targets.insert(name.to_owned(), vec![here.0]);
-    if let Err(e) = travel_store::save(dir, file) {
-        eprintln!("  !! [travel] could not save the travel file: {e}");
-    }
+fn save_target(
+    file: Option<&(PathBuf, TravelFile)>,
+    name: &str,
+    here: RoomId,
+) -> Result<(), String> {
+    let (dir, file) = file.ok_or("the travel file could not be read, so it was left alone")?;
+    travel_store::save_target(dir, &file.instance, name, &[here.0])
+        .map(|_| ())
+        .map_err(|why| why.to_string())
 }
 
 /// Write down where the character is, for the next login to break a tie with.

@@ -445,6 +445,22 @@ a version-1 **build** reading a version-2 file would not know the new fields and
 them on its next save, losing the player's targets silently. Now it refuses the file as
 `Newer` and leaves it alone.
 
+**The travel file is ONE file, version 3** (author, 2026-09-21: *"travel file should be a
+global file with character spots within it"*). `<CENA_DATA_DIR>/travel.json` holds a spot
+per character -- settings, memories, last room -- and **targets shared by every character
+of an instance**, as go2's `GameSettings['custom targets']` are. This supersedes the
+file-per-character of versions 1 and 2, above and in §5: a character with no spot yet and
+an old `<instance>_<character>.travel.json` is read from it (its targets into the
+instance's, a name already shared kept as it is), and the old file is left where it is.
+
+With 3-25 characters in one process, **a save changes one spot and never writes back what it
+read**: it reads the file afresh, changes that character's spot or that one target, and
+writes it, under a lock (`travel_store::WRITING`, allowlisted with its reasoning). Tested
+with two characters saving copies loaded before either saved. A file that cannot be read
+refuses saves as well as loads, since one character's save would otherwise erase everyone.
+*Found by mutation:* the test for "one spot however the name is spelt" counted `shryn`,
+which `ASHRYN` does not contain -- green over a duplicated spot until the count ignored case.
+
 **Still open from that list:** command links and target windows in Messaging, which wait
 for their first caller (likely the route table: click a room to go there).
 
@@ -550,7 +566,9 @@ nothing) and is recorded in `cena-arch-tests/tests/layering.rs` when it is added
   never stops for a creature, and a waylaid caravan just plans again.
 - **Memories go with the character, in a file of their own** (author): 
   `<instance>_<character>.travel.json`, beside the snapshot, holding memories and the travel
-  profile, so a snapshot rewrite can never clobber them.
+  profile, so a snapshot rewrite can never clobber them. **SUPERSEDED the same day** by one
+  `travel.json` with a spot per character (§3, "The travel file is ONE file"); what stands
+  is the reason -- never in the snapshot.
 
 ## 6. The travel profile — audited against go2, 2026-09-21
 
