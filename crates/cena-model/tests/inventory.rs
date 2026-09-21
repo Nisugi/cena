@@ -190,3 +190,126 @@ fn a_reconnect_forgets_the_containers() {
 
     assert!(state.inventory.is_empty());
 }
+
+/// The prose either side of an item's link, which `full_name` joins.
+///
+/// Three runs per line, VERIFIED by probing the parser with this exact wire:
+///
+/// ```text
+/// Run { text: " a ",          link: None }
+/// Run { text: "leather sack", link: Some(Exist { id: "111", noun: "sack" }) }
+/// Run { text: " is closed.",  link: None }
+/// ```
+const QUALIFIED: &[u8] = b"<container id='stow' title=\"My Cloak\" target='#100'/>\
+<clearContainer id=\"stow\"/>\
+<inv id='stow'>In the <a exist=\"100\" noun=\"cloak\">cloak</a>:</inv>\
+<inv id='stow'> a <a exist=\"111\" noun=\"sack\">leather sack</a> is closed.</inv>\
+<inv id='stow'> an <a exist=\"112\" noun=\"anklet\">nightshade anklet</a> caught with spiders</inv>\
+<inv id='stow'> a <a exist=\"113\" noun=\"rod\">slender wooden rod</a></inv>\
+<inv id='stow'> a <a exist=\"114\" noun=\"orb\">shimmering green orb</a> </inv>\n";
+
+#[test]
+fn an_item_keeps_the_prose_either_side_of_its_link() {
+    // **The Rule 2.2a fix.** `gameobj.rb:227`'s `full_name` joins
+    // before/name/after, and `eherbs.lic:1132` matches against that joined
+    // form. Keeping only the link text handed a consumer the middle third of
+    // what the game said.
+    let state = fold(QUALIFIED);
+    let items = &state.inventory.container("stow").expect("declared").items;
+
+    assert_eq!(items.len(), 4, "guard: four items, header excluded");
+
+    assert_eq!(items[0].before.as_deref(), Some("a"));
+    assert_eq!(items[0].text, "leather sack");
+    assert_eq!(
+        items[0].after.as_deref(),
+        Some("is closed."),
+        "the one after-text with a structural meaning (`xmlparser.rb:1264`)"
+    );
+
+    // `an`, not `a` -- the article is the game's, not reconstructed.
+    assert_eq!(items[1].before.as_deref(), Some("an"));
+    assert_eq!(items[1].after.as_deref(), Some("caught with spiders"));
+}
+
+#[test]
+fn an_item_with_no_trailing_run_has_no_after_text() {
+    // The wire emits **two** runs for a line ending at the link -- VERIFIED by
+    // probe -- so there is no trailing run to read and `None` comes from the
+    // index being off the end.
+    let state = fold(QUALIFIED);
+    let items = &state.inventory.container("stow").expect("declared").items;
+
+    assert_eq!(items[2].text, "slender wooden rod");
+    assert_eq!(items[2].before.as_deref(), Some("a"), "guard: before is read");
+    assert_eq!(items[2].after, None);
+}
+
+#[test]
+fn a_trailing_whitespace_run_is_not_after_text() {
+    // **THE INPUT IS THE POINT.** A first draft asserted this over the line
+    // above, which emits no trailing run at all -- so the whitespace guard was
+    // never reached and a mutant returning `Some("")` for every run passed
+    // green. This line ends `</a> </inv>`, which the parser DOES split into a
+    // third run of one space.
+    //
+    // §5.2: `Some("")` is not absence. A consumer joining `full_name` would
+    // render it as a trailing space that the game never sent.
+    let state = fold(QUALIFIED);
+    let items = &state.inventory.container("stow").expect("declared").items;
+
+    assert_eq!(items[3].text, "shimmering green orb");
+    assert_eq!(
+        items[3].after, None,
+        "a whitespace-only run is nothing, not an empty qualifier"
+    );
+}
+
+#[test]
+fn the_containers_own_header_is_still_not_an_item() {
+    // The header line `In the <a exist="100">cloak</a>:` has prose either side
+    // too -- `In the` and `:`. Reading before/after must not make the header
+    // look like an item with a qualifier.
+    let state = fold(QUALIFIED);
+    let items = &state.inventory.container("stow").expect("declared").items;
+    assert!(
+        items.iter().all(|item| item.id != "100"),
+        "the container listed itself: {items:?}"
+    );
+}
+
+/// Two links abutting, with no prose between them.
+///
+/// The wire sends one item per `<inv>` line -- MEASURED at 45,839 linked lines
+/// -- so this shape is not expected. It is tested because the *guard against
+/// it* is otherwise unenforced: a mutant deleting the link check passed all
+/// fifteen other tests, since no fixture put two links next to each other.
+const ABUTTING: &[u8] = b"<container id='stow' title=\"My Cloak\" target='#100'/>\
+<clearContainer id=\"stow\"/>\
+<inv id='stow'> a <a exist=\"115\" noun=\"pin\">silver pin</a><a exist=\"116\" noun=\"gem\">ruby gem</a></inv>\n";
+
+#[test]
+fn a_neighbouring_item_is_not_this_items_qualifier() {
+    // VERIFIED by probe: this emits three runs, the second and third both
+    // links. Without the guard, the pin's `after` becomes `ruby gem` and the
+    // gem's `before` becomes `silver pin` -- each item claiming the other's
+    // name as its own description, which `full_name` would then render as
+    // `a silver pin ruby gem`.
+    let state = fold(ABUTTING);
+    let items = &state.inventory.container("stow").expect("declared").items;
+
+    assert_eq!(items.len(), 2, "guard: both links became items");
+    assert_eq!(items[0].text, "silver pin");
+    assert_eq!(items[1].text, "ruby gem");
+
+    assert_eq!(
+        items[0].after, None,
+        "the next run is the gem's link, not prose about the pin"
+    );
+    assert_eq!(
+        items[1].before, None,
+        "the previous run is the pin's link, not prose about the gem"
+    );
+    // The pin's own `before` still reads, so this is not vacuous.
+    assert_eq!(items[0].before.as_deref(), Some("a"));
+}

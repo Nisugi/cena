@@ -68,6 +68,32 @@ pub struct RoomItem {
     pub noun: String,
     /// The link's display text, e.g. `wary-eyed halfling lookout`.
     pub text: String,
+    /// The line's text **before** the link, trimmed: `a`, `an`, `some`.
+    ///
+    /// Ports `GameObj#before_name` (`gameobj.rb:189`), filled at
+    /// `xmlparser.rb:1040` from the `<inv>` runs preceding the `<a>`.
+    ///
+    /// **This is not decoration.** `full_name` (`gameobj.rb:227`) joins
+    /// before/name/after, and scripts match against that joined form --
+    /// `eherbs.lic:1132` does `item.full_name.lstrip =~ /#{thing}/`. Dropping
+    /// these two fields kept only the middle third of what the game said about
+    /// an item, which is the Rule 2.2a loss this field closes.
+    ///
+    /// `None` where no run precedes the link, or where the construction site
+    /// has no line context to read (room rosters name the whole line's items,
+    /// so a per-item before/after would be the wrong attribution).
+    pub before: Option<String>,
+    /// The line's text **after** the link, trimmed.
+    ///
+    /// `gameobj.rb:190`'s `@after_name`, from `xmlparser.rb:1042`. Carries the
+    /// qualifier the game appends to a listing: `caught with bloodwood
+    /// spiders`, `scuffed at the corners`, and -- the one with a consequence --
+    /// `is closed.`, which `xmlparser.rb:1264` reads to drop a container.
+    ///
+    /// Kept as the game's text rather than parsed into cases. The vocabulary is
+    /// open prose and only one value is known to mean anything structural; a
+    /// consumer that wants that one tests for it.
+    pub after: Option<String>,
     /// What the room says this player is doing: `hiding`, `sitting`, `dead`.
     ///
     /// **Only ever set for `room players`**, and only when the room said so.
@@ -358,6 +384,17 @@ fn items_with_status(body: &Runs, bold: bool, with_status: bool) -> Vec<RoomItem
                 id: id.clone(),
                 noun: noun.clone(),
                 text: link.text.clone(),
+                // **Deliberately not read here.** A room roster is one line
+                // naming many things -- `You also see a rock, a stick and ...`
+                // -- so the prose between two links is a separator, not a
+                // qualifier belonging to either. `<inv>` lines carry one item
+                // each, which is what makes the positional read sound there.
+                //
+                // `None` is therefore "this listing does not say", not "the
+                // game sent nothing" -- §5.2, and the reason these are
+                // `Option` rather than `String`.
+                before: None,
+                after: None,
                 status,
             })
         })

@@ -130,7 +130,7 @@ impl Inventory {
     /// link at all; an item line has exactly one.
     pub(super) fn add_line(&mut self, id: &str, body: &Runs) {
         let entry = self.containers.entry(id.to_owned()).or_default();
-        for run in &body.runs {
+        for (index, run) in body.runs.iter().enumerate() {
             let Some(link) = run.link.as_ref() else {
                 continue;
             };
@@ -144,16 +144,45 @@ impl Inventory {
             if exist == id || entry.target.as_deref() == Some(exist.as_str()) {
                 continue;
             }
+            // The prose either side of the link, which together with the link
+            // text is what `gameobj.rb:227`'s `full_name` joins. Read
+            // positionally off the runs, in wire order, exactly as `room.rs`
+            // reads a player's status from the following run -- no re-parsing
+            // of markup (Rule 2.1).
+            //
+            // **Adjacent runs only.** A line carrying two links would otherwise
+            // attribute the whole tail to the first: `xmlparser.rb:1040-1042`
+            // has the same restriction by construction, since it overwrites
+            // `@obj_before_name` on each `<a>`. MEASURED at 45,839 linked
+            // `<inv>` lines, the wire sends one item per line.
+            let before = adjacent_prose(body, index.checked_sub(1));
+            let after = adjacent_prose(body, Some(index + 1));
             entry.items.push(RoomItem {
                 id: exist.clone(),
                 noun: noun.clone(),
                 text: link.text.clone(),
+                before,
+                after,
                 // Container contents are things, not people; `status` is a
                 // property of a player in a room roster.
                 status: None,
             });
         }
     }
+}
+
+/// The trimmed text of a neighbouring run, when it is prose rather than a link.
+///
+/// `None` for an index off either end, for a run that is itself a link -- two
+/// items abutting are not each other's qualifiers -- and for text that is
+/// nothing but whitespace, which `xmlparser.rb:1040`'s `.strip` also discards.
+fn adjacent_prose(body: &Runs, index: Option<usize>) -> Option<String> {
+    let run = body.runs.get(index?)?;
+    if run.link.is_some() {
+        return None;
+    }
+    let trimmed = run.text.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_owned())
 }
 
 impl crate::GameState {
