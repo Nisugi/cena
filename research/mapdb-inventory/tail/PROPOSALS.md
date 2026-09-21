@@ -1,7 +1,7 @@
 # Vocabulary proposed by round two of the long tail
 
 **Status: PROPOSALS, 2026-09-21.** Collected from the reports of the agents that ported
-slices F, G and H (slice E to be added). Each is what an agent found it could *not* say with
+slices E, F, G and H. Each is what an agent found it could *not* say with
 the vocabulary as it stood, and what it would add. Nothing here is decided. Evidence, not
 instruction (`CLAUDE.md`): the main session and the author choose; shape ids are the
 converter's (`report/unported_crossings.tsv`, `unported_costs.tsv`).
@@ -60,6 +60,32 @@ Puzzles with their own state. Named in the map, written in Rust in the Travel be
 | `ThreePillars` | 1 | look at each pillar, cast the 70x spell its symbol names. Sorcerers only: a cost gate |
 | `LabyrinthEntry` | 1 | touch the leaves (waiting while another player is at it), recite, then arrive within 20 s |
 | `MuralOfDeities` | 1 | touch it, map each verse to a deity, answer each. Upstream has a `Char.name ==` special case that is dropped |
+
+## Added by slice E
+
+Slice E proposed the same `PutUntil`, `Stance`/`RestoreStance`, things-in-the-room and
+wait-on-a-condition as F and G did — three agents arriving at one shape independently is
+the best argument for it. Its `PutUntil` carries a bound: `{ command, until: Vec<String>,
+tries: Option<u32> }`, the fields `routine::Opening` already has. It unlocks ~19 exits in
+E alone (searches for a path, a crack, a trail, a staircase).
+
+| # | proposal | exits | notes |
+|---|---|---|---|
+| E1 | keyed doors: cost `Wearing`/`Carries(key)`; steps `remove key`, `unlock D`, `open D`, `go D`, `close D`, `lock D`, `wear key` | 8 | upstream addresses the key by its `#id`; Hydra needs the full name in the command or a put-on-item step |
+| E2 | `Cond::OwnDiskHere` — the walker's own floating disk is in the room (its name holds the character's name, so it cannot be a literal) | 6 | wait for the disk to follow, else cast Floating Disk, then move |
+| E3 | the cell doors: `go door` if a `ruined cell door` is there, else `batter door` until destroyed. **The script refuses an empty-handed walker**: a cost gate | 4 | four exits calling room 18700's script |
+| E4 | `Action::Speak(language)` / `RestoreSpeech` | 2 | wizard guild doors: speak the password in the right language |
+| E5 | `AwaitArrival` should be skipped when already at the destination, as `Replan` is — else a climb that lands directly there waits forever | 1 | a definition to tighten, not a variant |
+
+Routines E found: `FlightOfSteps { wall }` (4: read which flight is on the wanted wall,
+climb that ordinal), `ColourBarrier` (1), `SearchRooms { rooms, noun, enter }` (2: visit a
+list of rooms until a thing is seen — like `Patrol`, but travelling by pathfinding),
+`EyeSpyRunes` (1), the workshop pillars (1, needs `CastAt`), the bridge wheel (1, **can
+pause for help**), the vaalorn door (1, **pauses for the user to hold a gem** — a cost
+gate or a fetch), the River's Rest cutter ticket (1, an errand).
+
+One upstream bug to look at: shape 10c86bf5 searches `until the answer is NOT /low
+opening/` (`break if res !~`), which reads like an inverted test.
 
 ## Reserved for the main session
 
