@@ -1,0 +1,204 @@
+n = 751
+accuracy         68.2%  (512/751)
+baseline (always 'none of these')  39.9%
+
+key distribution
+  none of these   300  39.9%
+  locker          89  11.9%
+  bank            36  4.8%
+  inn             21  2.8%
+  pawnshop        21  2.8%
+  furrier         20  2.7%
+  gemshop         20  2.7%
+  herbalist       16  2.1%
+  alchemist       16  2.1%
+  postoffice      15  2.0%
+  locksmith       14  1.9%
+  general store    13  1.7%
+  consignment     13  1.7%
+  weaponshop      12  1.6%
+  adventurer guild    12  1.6%
+  armorshop       11  1.5%
+  forge           11  1.5%
+  chronomage      11  1.5%
+  stable          11  1.5%
+  collectibles    11  1.5%
+  dyers           10  1.3%
+  fletcher        10  1.3%
+  cleric          10  1.3%
+  healer          10  1.3%
+  movers          10  1.3%
+  reagent shop    10  1.3%
+  exchange         9  1.2%
+  cobbling         9  1.2%
+
+confusion  expected -> chosen
+  none of these -> none of these   238
+  locker       -> none of these    80  <-- wrong
+  bank         -> bank            32
+  gemshop      -> gemshop         19
+  none of these -> general store    19  <-- wrong
+  inn          -> inn             18
+  furrier      -> furrier         18
+  pawnshop     -> pawnshop        16
+  postoffice   -> postoffice      15
+  herbalist    -> herbalist       12
+  locksmith    -> locksmith       12
+  general store -> general store    11
+  consignment  -> consignment     11
+  weaponshop   -> weaponshop      10
+  alchemist    -> alchemist       10
+  fletcher     -> fletcher        10
+  chronomage   -> none of these    10  <-- wrong
+  collectibles -> collectibles    10
+  armorshop    -> armorshop        9
+  locker       -> locker           9
+  none of these -> weaponshop       9  <-- wrong
+  exchange     -> exchange         8
+  cleric       -> none of these     8  <-- wrong
+  stable       -> stable           8
+  dyers        -> none of these     7  <-- wrong
+  healer       -> healer           7
+  movers       -> movers           7
+  adventurer guild -> none of these     6  <-- wrong
+  adventurer guild -> adventurer guild     6
+  cobbling     -> cobbling         6
+  forge        -> forge            5
+  none of these -> armorshop        5  <-- wrong
+  none of these -> pawnshop         5  <-- wrong
+  reagent shop -> alchemist        4  <-- wrong
+  reagent shop -> pawnshop         4  <-- wrong
+  none of these -> alchemist        4  <-- wrong
+  herbalist    -> none of these     3  <-- wrong
+  dyers        -> dyers            3
+  inn          -> none of these     3  <-- wrong
+  forge        -> none of these     3  <-- wrong
+  alchemist    -> none of these     3  <-- wrong
+  pawnshop     -> collectibles     3  <-- wrong
+  stable       -> none of these     3  <-- wrong
+  none of these -> gemshop          3  <-- wrong
+  none of these -> furrier          3  <-- wrong
+  none of these -> locker           3  <-- wrong
+  forge        -> general store     2  <-- wrong
+  cleric       -> cleric           2
+  general store -> none of these     2  <-- wrong
+  furrier      -> none of these     2  <-- wrong
+  movers       -> postoffice       2  <-- wrong
+  cobbling     -> none of these     2  <-- wrong
+  consignment  -> alchemist        2  <-- wrong
+  healer       -> herbalist        2  <-- wrong
+  bank         -> none of these     2  <-- wrong
+  none of these -> dyers            2  <-- wrong
+  none of these -> stable           2  <-- wrong
+  none of these -> inn              2  <-- wrong
+  armorshop    -> forge            1  <-- wrong
+  alchemist    -> pawnshop         1  <-- wrong
+  alchemist    -> general store     1  <-- wrong
+  reagent shop -> none of these     1  <-- wrong
+  armorshop    -> none of these     1  <-- wrong
+  exchange     -> none of these     1  <-- wrong
+  alchemist    -> herbalist        1  <-- wrong
+  reagent shop -> locker           1  <-- wrong
+  forge        -> weaponshop       1  <-- wrong
+  healer       -> inn              1  <-- wrong
+  chronomage   -> inn              1  <-- wrong
+  cobbling     -> furrier          1  <-- wrong
+  weaponshop   -> armorshop        1  <-- wrong
+  weaponshop   -> none of these     1  <-- wrong
+  collectibles -> general store     1  <-- wrong
+  pawnshop     -> none of these     1  <-- wrong
+  locksmith    -> none of these     1  <-- wrong
+  locksmith    -> forge            1  <-- wrong
+  herbalist    -> alchemist        1  <-- wrong
+  movers       -> none of these     1  <-- wrong
+  bank         -> exchange         1  <-- wrong
+  pawnshop     -> bank             1  <-- wrong
+  bank         -> pawnshop         1  <-- wrong
+  gemshop      -> none of these     1  <-- wrong
+  none of these -> movers           1  <-- wrong
+  none of these -> forge            1  <-- wrong
+  none of these -> exchange         1  <-- wrong
+  none of these -> postoffice       1  <-- wrong
+  none of these -> herbalist        1  <-- wrong
+
+accuracy by stated probability of the chosen option
+  band               n  correct  accuracy   cumulative >= lo
+  0.00-0.50         39       12     30.8%      68.2% (n=751)
+  0.50-0.70         79       41     51.9%      70.2% (n=712)
+  0.70-0.80         53       32     60.4%      72.5% (n=633)
+  0.80-0.90         65       35     53.8%      73.6% (n=580)
+  0.90-0.95         74       43     58.1%      76.1% (n=515)
+  0.95-0.99         85       55     64.7%      79.1% (n=441)
+  0.99-1.00        356      294     82.6%      82.6% (n=356)
+
+accuracy by stated confidence
+  band               n  correct  accuracy
+  0.00-0.50         52       18     34.6%
+  0.50-0.70         75       39     52.0%
+  0.70-0.80         53       34     64.2%
+  0.80-0.90         63       35     55.6%
+  0.90-0.95         78       47     60.3%
+  0.95-0.99         92       62     67.4%
+  0.99-1.00        338      277     82.0%
+
+mistakes: 239  (first 20 below)
+
+  389 -> -  '[Moot Hall, Storage Hall]'
+    expected locker, chose none of these (p=0.97, conf=0.97)
+
+  390 -> -  '[Moot Hall, Storage Hall]'
+    expected locker, chose none of these (p=0.71, conf=0.69)
+
+  391 -> -  '[Moot Hall, Storage Hall]'
+    expected locker, chose none of these (p=0.99, conf=0.99)
+
+  392 -> -  '[Moot Hall, Storage Hall]'
+    expected locker, chose none of these (p=0.96, conf=0.96)
+
+  393 -> -  '[Moot Hall, Storage Hall]'
+    expected locker, chose none of these (p=0.97, conf=0.97)
+
+  394 -> -  '[Moot Hall, Storage Hall]'
+    expected locker, chose none of these (p=0.94, conf=0.93)
+
+  401 -> -  '[Aznell's Armory, Forge]'
+    expected armorshop, chose forge (p=0.84, conf=0.83)
+
+  1253 -> -  '[Reignbeau Caverns]'
+    expected dyers, chose none of these (p=0.81, conf=0.8)
+
+  1954 -> -  '[Teras Isle Forging Supply Shop]'
+    expected forge, chose general store (p=0.29, conf=0.25)
+
+  2405 -> -  '[Cottage, Back Room]'
+    expected cleric, chose none of these (p=0.50, conf=0.47)
+
+  3363 -> -  '[Leaftoe's Health and Bake Shop]'
+    expected herbalist, chose none of these (p=0.89, conf=0.88)
+
+  3778 -> -  '[Adventurer's Guild, Lobby]'
+    expected adventurer guild, chose none of these (p=0.64, conf=0.62)
+
+  3820 -> -  '[Our Colorful Place, Entry]'
+    expected dyers, chose none of these (p=0.53, conf=0.5)
+
+  4034 -> -  '[Hall of Patrons, Chamber]'
+    expected cleric, chose none of these (p=1.00, conf=0.99)
+
+  4649 -> -  '[Treetop Market]'
+    expected general store, chose none of these (p=0.55, conf=0.52)
+
+  4687 -> -  '[Naerine Hostelry, Lobby]'
+    expected inn, chose none of these (p=0.91, conf=0.91)
+
+  5039 -> -  '[Metalworkers' Central Platform]'
+    expected forge, chose none of these (p=0.54, conf=0.51)
+
+  5883 -> -  '[Stone Turret, Ground Floor]'
+    expected chronomage, chose none of these (p=0.69, conf=0.67)
+
+  6257 -> -  '[Alchemist's House, Commodities]'
+    expected reagent shop, chose alchemist (p=0.84, conf=0.83)
+
+  8618 -> -  '[Public Workshops Supply Stall]'
+    expected forge, chose none of these (p=0.69, conf=0.67)

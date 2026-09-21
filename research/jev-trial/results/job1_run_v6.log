@@ -1,0 +1,24 @@
+25/553 asked=25 cached=0
+50/553 asked=50 cached=0
+75/553 asked=75 cached=0
+100/553 asked=100 cached=0
+125/553 asked=125 cached=0
+150/553 asked=150 cached=0
+175/553 asked=175 cached=0
+200/553 asked=198 cached=2
+225/553 asked=223 cached=2
+250/553 asked=248 cached=2
+275/553 asked=273 cached=2
+300/553 asked=298 cached=2
+325/553 asked=323 cached=2
+350/553 asked=348 cached=2
+375/553 asked=373 cached=2
+400/553 asked=398 cached=2
+425/553 asked=423 cached=2
+450/553 asked=448 cached=2
+475/553 asked=473 cached=2
+500/553 asked=498 cached=2
+525/553 asked=523 cached=2
+550/553 asked=548 cached=2
+done: 553 items, 551 asked, 2 cached
+tokens in=645403 out=21813 cost=$0.027107

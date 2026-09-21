@@ -1,0 +1,157 @@
+n = 300
+accuracy         90.0%  (270/300)
+baseline (always 'up')  76.0%
+
+key distribution
+  up             228  76.0%
+  down            72  24.0%
+
+confusion  expected -> chosen
+  up           -> up             213
+  down         -> down            57
+  down         -> up              13  <-- wrong
+  up           -> down            13  <-- wrong
+  up           -> same floor       2  <-- wrong
+  down         -> same floor       2  <-- wrong
+
+accuracy by stated probability of the chosen option
+  band               n  correct  accuracy   cumulative >= lo
+  0.00-0.50          9        4     44.4%      90.0% (n=300)
+  0.50-0.70         37       23     62.2%      91.4% (n=291)
+  0.70-0.80         20       17     85.0%      95.7% (n=254)
+  0.80-0.90         31       29     93.5%      96.6% (n=234)
+  0.90-0.95         19       16     84.2%      97.0% (n=203)
+  0.95-0.99         44       42     95.5%      98.4% (n=184)
+  0.99-1.00        140      139     99.3%      99.3% (n=140)
+
+accuracy by stated confidence
+  band               n  correct  accuracy
+  0.00-0.50         39       21     53.8%
+  0.50-0.70         27       23     85.2%
+  0.70-0.80         22       20     90.9%
+  0.80-0.90         21       20     95.2%
+  0.90-0.95         19       16     84.2%
+  0.95-0.99         56       54     96.4%
+  0.99-1.00        116      116    100.0%
+
+mistakes: 30  (first 20 below)
+
+  867 -> 9664  'go promontory'
+    expected down, chose up (p=0.77, conf=0.65)
+    back command: 'up'
+    from: [Whistler's Pass, Mountain Ledge]
+    to: [Whistler's Pass, Overlook]
+
+  1193 -> 1192  'go ironwood bridge'
+    expected up, chose same floor (p=0.65, conf=0.47)
+    back command: 'down'
+    from: [Vipershroud, Ferry Landing]
+    to: [Locksmehr River, South Dock]
+
+  4618 -> 9394  'climb boulder'
+    expected up, chose down (p=0.62, conf=0.43)
+    back command: 'down'
+    from: [Vornavis Cliffs, River Trail]
+    to: [Cascade of Tears, Promontory]
+
+  4943 -> 4944  'go stairwell'
+    expected down, chose up (p=0.57, conf=0.35)
+    back command: 'up'
+    from: [Gyldemar Forest, Ruined Hall]
+    to: [Gyldemar Forest, Stairwell]
+
+  7009 -> 7010  'go steps'
+    expected up, chose down (p=0.38, conf=0.08)
+    back command: 'down'
+    from: [Castle Darkstone, Guardtower]
+    to: [Castle Darkstone, Guardtower]
+
+  7014 -> 7015  'go steps'
+    expected up, chose down (p=0.55, conf=0.33)
+    back command: 'down'
+    from: [Castle Darkstone, Guardtower]
+    to: [Castle Darkstone, Guardtower]
+
+  7043 -> 7044  'go steps'
+    expected up, chose down (p=0.66, conf=0.48)
+    back command: 'down'
+    from: [Castle Darkstone, Tower]
+    to: [Castle Darkstone, Tower]
+
+  10145 -> 10157  'go trail'
+    expected up, chose same floor (p=0.55, conf=0.32)
+    back command: 'down'
+    from: [Fethayl Bog, Ivory Pillar]
+    to: [Fethayl Bog, Lone Grave]
+
+  10539 -> 10540  'go trail'
+    expected down, chose same floor (p=0.94, conf=0.91)
+    back command: 'up'
+    from: [The Toadwort, Blackened Morass]
+    to: [Lunule Weald, Slade]
+
+  13229 -> 13309  'go font'
+    expected up, chose down (p=0.39, conf=0.07)
+    back command: 'down'
+    from: [Oleani's Temple, Sanctuary]
+    to: [Oleani's Temple, Baptism Font]
+
+  13778 -> 13922  'go dock'
+    expected down, chose same floor (p=0.42, conf=0.13)
+    back command: 'up'
+    from: [Ravelin, River's Edge]
+    to: [Ravelin, Riverside Dock]
+
+  17248 -> 17249  'climb stairs'
+    expected down, chose up (p=0.65, conf=0.47)
+    back command: 'up'
+    from: [Citadel, Vault]
+    to: [Citadel, Icehouse]
+
+  17249 -> 17250  'climb ladder'
+    expected down, chose up (p=0.99, conf=0.98)
+    back command: 'up'
+    from: [Citadel, Icehouse]
+    to: [Citadel, Darkroom]
+
+  19891 -> 19895  'go stairs'
+    expected down, chose up (p=0.50, conf=0.24)
+    back command: 'up'
+    from: [Cleric Guild, Alchemy Lobby]
+    to: [Cleric Guild, Alchemy Storage]
+
+  21250 -> 21225  'go narrow staircase'
+    expected up, chose down (p=0.68, conf=0.52)
+    back command: 'down'
+    from: [Silvergate, Hallway]
+    to: [Silvergate, A Small Landing]
+
+  21765 -> 21766  'go platform'
+    expected up, chose down (p=0.59, conf=0.38)
+    back command: 'down'
+    from: [House Phoenix, Observatory]
+    to: [House Phoenix, Platform]
+
+  22105 -> 22100  'go staircase'
+    expected down, chose up (p=0.93, conf=0.89)
+    back command: 'up'
+    from: [Bard Guild, Entry Hall]
+    to: [Bard Guild, Landing]
+
+  23387 -> 23388  'go iron ladder'
+    expected down, chose up (p=0.95, conf=0.92)
+    back command: 'up'
+    from: [Dragonspine, Mountainside]
+    to: [A Narrow Shaft, Ladder]
+
+  23767 -> 23785  'go steps'
+    expected up, chose down (p=0.51, conf=0.27)
+    back command: 'down'
+    from: [Duskruin Arena, Foyer]
+    to: [Duskruin Arena, Southern Arc]
+
+  26064 -> 26065  'go passageway'
+    expected up, chose down (p=0.85, conf=0.77)
+    back command: 'down'
+    from: [Sylvanfair, Summoning Chamber]
+    to: [Sylvanfair, Secret Passageway]

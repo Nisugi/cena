@@ -1,0 +1,40 @@
+{"item": "E0041", "direction": "up", "confidence": 62, "reason": "command climbs a staircase between temple chambers, no downward cue; climb implies ascent"}
+{"item": "E0042", "direction": "down", "confidence": 88, "reason": "room left describes loose shale making a downward slide into the gloom, and arrival is at the foot of a steep slope"}
+{"item": "E0043", "direction": "same floor", "confidence": 60, "reason": "hidden pool is merely screened from the basin by outcroppings and pines, a backwater beside it rather than above"}
+{"item": "E0044", "direction": "up", "confidence": 92, "reason": "sewer room says a ladder rises from the floor into the rafters, arriving in a ground-level shop"}
+{"item": "E0045", "direction": "up", "confidence": 90, "reason": "the dais rises over the rest of the chancel and a single copper step descends back to the nave"}
+{"item": "E0046", "direction": "same floor", "confidence": 75, "reason": "tiled steps into a pool that surrounds the same column in the same room space, a neighbouring space on one level"}
+{"item": "E0047", "direction": "down", "confidence": 92, "reason": "the ladder descends below the tunnel and metalwork sound filters up the shaft from the workshop"}
+{"item": "E0048", "direction": "down", "confidence": 80, "reason": "lobby's cascading tiers of steps lead down to the arches opening into the auditorium"}
+{"item": "E0049", "direction": "up", "confidence": 70, "reason": "climbing a root on a cliff face; the arrived room says the tree grew right below this path, so it is higher"}
+{"item": "E0050", "direction": "down", "confidence": 85, "reason": "entering a crypt from an outdoor graveyard path into subterranean gloom"}
+{"item": "E0051", "direction": "same floor", "confidence": 70, "reason": "a pebble path leads over a grassy bank to an orchard dock at the same riverside level"}
+{"item": "E0052", "direction": "down", "confidence": 90, "reason": "attic to basement; the basement's long staircase winds upward toward the sky"}
+{"item": "E0053", "direction": "down", "confidence": 65, "reason": "leaving an elevated banyan platform into a burrow among the roots, an enclosed alcove below the platform level"}
+{"item": "E0054", "direction": "same floor", "confidence": 60, "reason": "a fissure from a mine chamber into an adjacent small cave, which has its own separate down exit"}
+{"item": "E0055", "direction": "down", "confidence": 88, "reason": "a hole in a hut floor leads into a catacomb crypt chamber with a low ceiling, underground"}
+{"item": "E0056", "direction": "same floor", "confidence": 78, "reason": "entering through the gaping hole where the tower doorway was, onto the tower's grass-covered ground floor"}
+{"item": "E0057", "direction": "up", "confidence": 82, "reason": "broad stone steps lead up through columns into the entryway, and the entry says the steps lead down to the clearing"}
+{"item": "E0058", "direction": "up", "confidence": 92, "reason": "climbing stairs onto the catwalks that hang suspended above the vats"}
+{"item": "E0059", "direction": "down", "confidence": 78, "reason": "the passage has a slope leading steeply downward at its far end into the Skyfall opening"}
+{"item": "E0060", "direction": "up", "confidence": 80, "reason": "climbing a ledge from the top of a tall earthen cliff into a hidden man-made area above"}
+{"item": "E0061", "direction": "up", "confidence": 72, "reason": "steps from the courtyard up onto the manor's long front porch, a raised level of the building"}
+{"item": "E0062", "direction": "down", "confidence": 55, "reason": "a dark hollow under banyan roots, but the arrival is an ordinary jungle mushroom bed at ground level"}
+{"item": "E0063", "direction": "up", "confidence": 93, "reason": "the rooftop says a ladder leads through a trapdoor back down into the building below"}
+{"item": "E0064", "direction": "same floor", "confidence": 70, "reason": "an urchin guide walks the character across town to a bank lobby at street level"}
+{"item": "E0065", "direction": "up", "confidence": 78, "reason": "cobbled path leads to the porch steps, climbing onto the raised hardwood porch of the hall"}
+{"item": "E0066", "direction": "up", "confidence": 62, "reason": "the catwalk says a wide ramp leads down and away from it, so the ramp rises from the dock to the catwalk"}
+{"item": "E0067", "direction": "down", "confidence": 82, "reason": "entering a crypt burial vault from the outdoor graveyard path"}
+{"item": "E0068", "direction": "same floor", "confidence": 65, "reason": "crossing the felled logs of the dam to the lake bank; the separate down exit goes to the creek bed below"}
+{"item": "E0069", "direction": "down", "confidence": 72, "reason": "entering a narrow gorge carved by an ice floe at its bottom, sheltered below the trail"}
+{"item": "E0070", "direction": "same floor", "confidence": 80, "reason": "arrival is the ground floor of the tower, entered from the woods path"}
+{"item": "E0071", "direction": "same floor", "confidence": 70, "reason": "a door off the treetop landing into a chamber in the same tree level, alongside other same-level doors"}
+{"item": "E0072", "direction": "down", "confidence": 82, "reason": "the quay's south side descends in a broad stretch of steps to the water, arriving at algae-coated steps between the tide marks"}
+{"item": "E0073", "direction": "up", "confidence": 68, "reason": "climbing out of the creek bed up its sodden banks onto the south bank ground"}
+{"item": "E0074", "direction": "same floor", "confidence": 70, "reason": "the foyer's simple arch to the north leads out into the open-air courtyard, one level"}
+{"item": "E0075", "direction": "up", "confidence": 72, "reason": "the cobbled road rises from the waters of the stream and ascends the stream bank"}
+{"item": "E0076", "direction": "up", "confidence": 88, "reason": "white stairs climb up to the pawnshop porch"}
+{"item": "E0077", "direction": "up", "confidence": 93, "reason": "spiral stair extends up to the next level, arriving on the highest level of the building"}
+{"item": "E0078", "direction": "same floor", "confidence": 88, "reason": "a door along the second-floor corridor's east wall into a room on that floor"}
+{"item": "E0079", "direction": "same floor", "confidence": 78, "reason": "entering the bank's front doors from the court into its lobby at street level"}
+{"item": "E0080", "direction": "same floor", "confidence": 70, "reason": "both rooms are subterranean cave passages connected by a tunnel with no rise or drop described"}

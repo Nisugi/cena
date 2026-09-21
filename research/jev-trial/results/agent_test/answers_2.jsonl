@@ -1,0 +1,40 @@
+{"item": "E0041", "direction": "same floor", "confidence": 78, "reason": "walking from a hilltop onto a stone bridge spanning between hills; a span is level with its ends"}
+{"item": "E0042", "direction": "up", "confidence": 95, "reason": "rope dangles from a perch above your head and is the only way to continue upwards"}
+{"item": "E0043", "direction": "same floor", "confidence": 62, "reason": "a path leading onto a gradual mountain ascent; a trail to another spot, not a storey change"}
+{"item": "E0044", "direction": "same floor", "confidence": 60, "reason": "a secret passageway behind a bookcase off an already-underground chamber; the tunnel spirals down beyond, not on this step"}
+{"item": "E0045", "direction": "same floor", "confidence": 55, "reason": "steps lead upward into the east wall but the Nexus chambers sit in a ring with flat compass links between them"}
+{"item": "E0046", "direction": "up", "confidence": 92, "reason": "climbing the spiral stairway from the tower base to a landing that still has up available"}
+{"item": "E0047", "direction": "up", "confidence": 95, "reason": "arrived room is the second level of the tower with the staircase continuing to the third"}
+{"item": "E0048", "direction": "up", "confidence": 95, "reason": "wide stone steps lead up the pyramid to the First Level, which says steps lead down to the streets below"}
+{"item": "E0049", "direction": "up", "confidence": 90, "reason": "staircases circle up from the foyer to a landing above; the chamber's own stair ascends further up the tower"}
+{"item": "E0050", "direction": "up", "confidence": 70, "reason": "rising shallow steps from the atrium up into the arena's travertine risers/seating"}
+{"item": "E0051", "direction": "same floor", "confidence": 80, "reason": "stepping from a shoreline walkway onto a bridge section; a span is level with its end"}
+{"item": "E0052", "direction": "same floor", "confidence": 85, "reason": "walking out onto a narrow bridge spanning the chasm, level with the chasm edge"}
+{"item": "E0053", "direction": "down", "confidence": 80, "reason": "jumping onto a crate sagging low in the room leads to a buried ship's hold with a hole above it"}
+{"item": "E0054", "direction": "up", "confidence": 55, "reason": "a staircase out of a castle tower room most likely climbs to the shrine above"}
+{"item": "E0055", "direction": "down", "confidence": 78, "reason": "a ladder from a rocky wall down into an underground grotto with a pool and dripping ceiling"}
+{"item": "E0056", "direction": "up", "confidence": 88, "reason": "steps twist up the cliff and the arrived junction is higher, with its own down back along the flight"}
+{"item": "E0057", "direction": "up", "confidence": 90, "reason": "climbing the cliff steps in a dizzy ascent; room left has down to the street"}
+{"item": "E0058", "direction": "same floor", "confidence": 82, "reason": "stepping from the bridge approach onto the bridge span itself"}
+{"item": "E0059", "direction": "down", "confidence": 88, "reason": "the grate is in the center of the floor with heat rising from it, so it leads to a room below"}
+{"item": "E0060", "direction": "down", "confidence": 88, "reason": "arrived supply room says the ramp leads back up to the main level"}
+{"item": "E0061", "direction": "same floor", "confidence": 72, "reason": "a porch raised a single ply from the ground off an alley; a step, not a storey"}
+{"item": "E0062", "direction": "same floor", "confidence": 75, "reason": "a small alley off the lane at the same cobbled level, crowded with crates"}
+{"item": "E0063", "direction": "up", "confidence": 95, "reason": "staircase spirals further upward to the fifth level, arriving at a room whose stair goes to the sixth"}
+{"item": "E0064", "direction": "same floor", "confidence": 65, "reason": "a passage from a hillside path into the jungle interior approach; no level language"}
+{"item": "E0065", "direction": "up", "confidence": 85, "reason": "flight of steps ascends upward from the kitchen to the solar, mirroring the stairway to the bed chamber"}
+{"item": "E0066", "direction": "same floor", "confidence": 55, "reason": "entering the stairwell landing itself, which then has its own down to the basement"}
+{"item": "E0067", "direction": "up", "confidence": 68, "reason": "moving from the road into raised viewing stands set on stacked stumps above the grounds"}
+{"item": "E0068", "direction": "up", "confidence": 85, "reason": "stone steps lead up into the arena stands from the entrance"}
+{"item": "E0069", "direction": "up", "confidence": 88, "reason": "arrived tower top is outdoors at parapet level and says steps lead down into the tower"}
+{"item": "E0070", "direction": "up", "confidence": 88, "reason": "winding stairway around a rod reaching up through the ceiling; arrived stair has a warm draft from below"}
+{"item": "E0071", "direction": "up", "confidence": 95, "reason": "a knotted cord dangles from a high branch and leads to a cabin cradled in the oak's branches"}
+{"item": "E0072", "direction": "down", "confidence": 80, "reason": "a decline across the floor below leads to a cavern where rocks tumble down from high above"}
+{"item": "E0073", "direction": "up", "confidence": 78, "reason": "the landing joins two flights and has down to the fest hall, so these stairs climb to the upper stairwell with a rooftop vista"}
+{"item": "E0074", "direction": "same floor", "confidence": 88, "reason": "an arch from the triage room into the central foyer on the same level"}
+{"item": "E0075", "direction": "up", "confidence": 88, "reason": "the spiral staircase serves upper and lower chambers and the room left already uses down for the level below"}
+{"item": "E0076", "direction": "same floor", "confidence": 82, "reason": "a stone arch between two subterranean tunnels, walked through by miners on the level"}
+{"item": "E0077", "direction": "up", "confidence": 60, "reason": "the mountain pass continues climbing a slope, but still ordinary outdoor terrain rather than a storey"}
+{"item": "E0078", "direction": "up", "confidence": 78, "reason": "the stands have a short row of steps leading down to the road, so entering them goes up"}
+{"item": "E0079", "direction": "same floor", "confidence": 85, "reason": "walking from the village onto a manor porch at ground level"}
+{"item": "E0080", "direction": "same floor", "confidence": 88, "reason": "passing through a gate into a shadowy passageway under the barbican at street level"}

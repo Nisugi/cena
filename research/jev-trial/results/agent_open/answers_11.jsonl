@@ -1,0 +1,40 @@
+{"item": "E0401", "direction": "same floor", "confidence": 70, "reason": "both rooms already subterranean burrow interior; ingress leads level into the plaza via a curving path"}
+{"item": "E0402", "direction": "same floor", "confidence": 60, "reason": "both temple chambers flat with no height language; hatch reads as a lateral passage"}
+{"item": "E0403", "direction": "same floor", "confidence": 75, "reason": "a bedroom door off the hall's end, with the stairs to the third floor taken separately"}
+{"item": "E0404", "direction": "up", "confidence": 80, "reason": "left room says low granite steps lead upwards into the bank"}
+{"item": "E0405", "direction": "same floor", "confidence": 70, "reason": "climbing over a boulder pile between two stretches of the same pass, both mountainous cleft floor"}
+{"item": "E0406", "direction": "up", "confidence": 92, "reason": "arrives in Upstairs Hall via a spiral stairway"}
+{"item": "E0407", "direction": "down", "confidence": 65, "reason": "crevice floor inclines up away from the fissure and the arrival is an Underground Chamber below"}
+{"item": "E0408", "direction": "same floor", "confidence": 70, "reason": "entering a crypt set into the row beside the path, no descent described"}
+{"item": "E0409", "direction": "down", "confidence": 75, "reason": "arrival is a sunken chamber with a window near its ceiling looking into the room beyond"}
+{"item": "E0410", "direction": "same floor", "confidence": 78, "reason": "stage left steps onto the stage itself, one level of the theatre"}
+{"item": "E0411", "direction": "up", "confidence": 85, "reason": "slope levels off above the trail and the arrival is the crest of the rockslide with the slope leading down"}
+{"item": "E0412", "direction": "same floor", "confidence": 70, "reason": "handholds cut to climb over a boulder pile between two pass segments at the same level"}
+{"item": "E0413", "direction": "down", "confidence": 60, "reason": "arrival tunnel continues downward and debris is climbed over into it"}
+{"item": "E0414", "direction": "up", "confidence": 88, "reason": "Shaft Base platform says guild wizards pass through the foyer below"}
+{"item": "E0415", "direction": "same floor", "confidence": 80, "reason": "crossing a bridge to a ledge; a span is level with its ends"}
+{"item": "E0416", "direction": "up", "confidence": 88, "reason": "slate steps lead to the top of a twelve-foot enclosure and the arrival looks at the tank below"}
+{"item": "E0417", "direction": "down", "confidence": 72, "reason": "a trapdoor from the treetop into a cavernous chamber within the trunk, well below the canopy"}
+{"item": "E0418", "direction": "same floor", "confidence": 75, "reason": "squeezing through a fissure between boulders in one wall into a hidden room beside the waterfall"}
+{"item": "E0419", "direction": "up", "confidence": 82, "reason": "terraced benches rise to the east and the arrival is the amphitheatre's upper platform above the ground below"}
+{"item": "E0420", "direction": "down", "confidence": 70, "reason": "stairs emerge from beneath a low awning, so the pawnshop lies below the wagon row"}
+{"item": "E0421", "direction": "up", "confidence": 82, "reason": "climbing a staircase from the common room to an upper-floor story room"}
+{"item": "E0422", "direction": "same floor", "confidence": 65, "reason": "a shop hollow entered off the slope path alongside other wagons and tents"}
+{"item": "E0423", "direction": "up", "confidence": 88, "reason": "winding stairway climbed from the antechamber to the First Stratum, whose stairs spiral down to lower levels"}
+{"item": "E0424", "direction": "up", "confidence": 85, "reason": "left room says the cliff below looks scalable but arrival is reached by a jagged cliff leading upward with handholds"}
+{"item": "E0425", "direction": "down", "confidence": 78, "reason": "cliff top; the staircase room is at the base of the 50-foot cliff face"}
+{"item": "E0426", "direction": "down", "confidence": 82, "reason": "the cavern says steep stone steps climb upwards back to the viewing chamber overlooking the pit"}
+{"item": "E0427", "direction": "down", "confidence": 85, "reason": "left room describes long steps descending into the wide courtyard"}
+{"item": "E0428", "direction": "same floor", "confidence": 55, "reason": "trapdoor between two rock-built Caligos interiors with no stated drop; weak evidence"}
+{"item": "E0429", "direction": "up", "confidence": 80, "reason": "granite staircase from the foyer to an upper hallway flanked by staircases"}
+{"item": "E0430", "direction": "up", "confidence": 80, "reason": "climbing a trail from a narrow ledge onto the Eastern Peak where it levels off"}
+{"item": "E0431", "direction": "up", "confidence": 78, "reason": "a ladder from the entry to the permit office, which adjoins Roofs and Ceilings displays"}
+{"item": "E0432", "direction": "down", "confidence": 88, "reason": "a pitch-black hole gaping in the floor, and the arrival senses space above"}
+{"item": "E0433", "direction": "same floor", "confidence": 82, "reason": "a wide ramp onto a catwalk over the quay; a walkway is level with its ends"}
+{"item": "E0434", "direction": "down", "confidence": 80, "reason": "stockroom says the steps lead up into the main shop"}
+{"item": "E0435", "direction": "down", "confidence": 78, "reason": "arrival opens with a short step down into the shop hallway"}
+{"item": "E0436", "direction": "down", "confidence": 78, "reason": "left room is at the top of the steps and the arrival street snakes down the cliffside"}
+{"item": "E0437", "direction": "down", "confidence": 80, "reason": "the arena slopes down from the dark stone tunnel to the mound"}
+{"item": "E0438", "direction": "up", "confidence": 72, "reason": "marble steps rise from the pool-ringed base into the temple"}
+{"item": "E0439", "direction": "up", "confidence": 85, "reason": "a ladder from the sewers to an antechamber that feels like a lobby above ground"}
+{"item": "E0440", "direction": "up", "confidence": 82, "reason": "a slatted ramp winds around the tree up to a hollowed interior pavilion in its core"}

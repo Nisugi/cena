@@ -1,0 +1,12 @@
+100/1189 asked=203 cost=$0.0106
+200/1189 asked=402 cost=$0.0212
+300/1189 asked=601 cost=$0.0314
+400/1189 asked=802 cost=$0.0419
+500/1189 asked=1002 cost=$0.0522
+600/1189 asked=1197 cost=$0.0626
+700/1189 asked=1393 cost=$0.0729
+800/1189 asked=1581 cost=$0.0828
+900/1189 asked=1771 cost=$0.0926
+1000/1189 asked=1964 cost=$0.1026
+1100/1189 asked=2163 cost=$0.1127
+done: 1189 pairs, 2333 calls asked, tokens in=2896352 out=72323 cost=$0.121647

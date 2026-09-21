@@ -1,0 +1,40 @@
+{"item": "E0121", "direction": "down", "confidence": 88, "reason": "stone steps lead down into the pool; arrived room says steps lead back up"}
+{"item": "E0122", "direction": "same floor", "confidence": 62, "reason": "pass floor continues between walls; the ascent into the hills is further north"}
+{"item": "E0123", "direction": "same floor", "confidence": 70, "reason": "stepping into a low hollow within a stump at ground level, exiting south back to the clearing"}
+{"item": "E0124", "direction": "same floor", "confidence": 88, "reason": "gap in a low crumbling wall onto a dirt footpath, both plain dirt outdoors"}
+{"item": "E0125", "direction": "down", "confidence": 95, "reason": "stairway leads down and music drifts up from below to the fest hall"}
+{"item": "E0126", "direction": "same floor", "confidence": 82, "reason": "a narrow passage between parlor and kitchens; the basement is a separate small door down"}
+{"item": "E0127", "direction": "same floor", "confidence": 80, "reason": "walking from village ground onto a manor porch, both outdoors with level exits back"}
+{"item": "E0128", "direction": "same floor", "confidence": 72, "reason": "garden to manor entrance, both outdoors ground level; the steps up lead to doors beyond"}
+{"item": "E0129", "direction": "up", "confidence": 85, "reason": "the mound rises twenty feet above the surrounding moor"}
+{"item": "E0130", "direction": "up", "confidence": 93, "reason": "crates are an unsafe method of gaining the upper level"}
+{"item": "E0131", "direction": "same floor", "confidence": 68, "reason": "walking into ground-level viewing stands beside the track, trampled grass below"}
+{"item": "E0132", "direction": "same floor", "confidence": 85, "reason": "a curtained nook within the same shop alcove"}
+{"item": "E0133", "direction": "down", "confidence": 78, "reason": "a wider path descends down the hill west into the grassland"}
+{"item": "E0134", "direction": "up", "confidence": 92, "reason": "others climbed up to a ledge that shadows the trail; ledge exits up back to switchbacks"}
+{"item": "E0135", "direction": "up", "confidence": 88, "reason": "rockslide rises over two hundred feet; arrived room sees the canyon rim not far above"}
+{"item": "E0136", "direction": "up", "confidence": 93, "reason": "perched atop a stack of casks with the floor visible beneath you"}
+{"item": "E0137", "direction": "down", "confidence": 70, "reason": "torture chamber with a trap door in its floor sits below the tower, reached by staircase"}
+{"item": "E0138", "direction": "up", "confidence": 88, "reason": "arrived room is atop the walls with steps leading down into the guardtower"}
+{"item": "E0139", "direction": "same floor", "confidence": 72, "reason": "stepping from the shore out onto the frozen river surface"}
+{"item": "E0140", "direction": "same floor", "confidence": 75, "reason": "trail from moor to the cliff top, which looks down on waves below"}
+{"item": "E0141", "direction": "down", "confidence": 78, "reason": "steps lead from the entrance down into the cavern arena and its sloping benches"}
+{"item": "E0142", "direction": "up", "confidence": 80, "reason": "a dull light shines from the top of the staircase and the other exit is down"}
+{"item": "E0143", "direction": "up", "confidence": 93, "reason": "handholds ascend the mast to a plank crossing it, ladder continues up and down"}
+{"item": "E0144", "direction": "up", "confidence": 62, "reason": "stairs from the hall to a library whose own exit continues up to a sky watch"}
+{"item": "E0145", "direction": "up", "confidence": 80, "reason": "emerge onto the summit landing above a sea of cloud"}
+{"item": "E0146", "direction": "same floor", "confidence": 85, "reason": "stepping onto a bridge spanning the chasm, level with its edge"}
+{"item": "E0147", "direction": "same floor", "confidence": 88, "reason": "an overgrown forest path continuing from a clearing"}
+{"item": "E0148", "direction": "up", "confidence": 85, "reason": "the shop sits on a platform supported by the broad limbs of a towering tree"}
+{"item": "E0149", "direction": "same floor", "confidence": 65, "reason": "crossing to a wood-planked pier/dock across the divide, a span at one level"}
+{"item": "E0150", "direction": "same floor", "confidence": 80, "reason": "door at the stair's conclusion opens into the lobby at that same height"}
+{"item": "E0151", "direction": "up", "confidence": 93, "reason": "staircase spirals further upward to the fourth level of the tower"}
+{"item": "E0152", "direction": "up", "confidence": 85, "reason": "gate stands before steps ascending the tower; arrived room continues up"}
+{"item": "E0153", "direction": "down", "confidence": 88, "reason": "the slope leads down from the prominence to the lake below"}
+{"item": "E0154", "direction": "up", "confidence": 90, "reason": "steep trail winds up the canyon wall from the ledge to the ridge garden"}
+{"item": "E0155", "direction": "down", "confidence": 78, "reason": "trail leads down the canyon wall west; arrived garden's exit up returns to Dragon's Ridge"}
+{"item": "E0156", "direction": "down", "confidence": 85, "reason": "a depression in the hillside with a dark pit at the bottom; you balance above the pit water"}
+{"item": "E0157", "direction": "down", "confidence": 90, "reason": "a down-sloping ramp; the ramp room takes light from the room above"}
+{"item": "E0158", "direction": "same floor", "confidence": 82, "reason": "a cobbled path winding away from the plaza, both hard flat outdoors"}
+{"item": "E0159", "direction": "up", "confidence": 93, "reason": "staircase spirals further upward to the sixth level of the tower"}
+{"item": "E0160", "direction": "up", "confidence": 88, "reason": "a stony ledge rises up at the tunnel's end, above the darkness of the tunnel below"}

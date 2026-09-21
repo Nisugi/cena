@@ -1,0 +1,40 @@
+{"item": "E0081", "direction": "up", "confidence": 88, "reason": "twin flights of stairs rise to east and west from the gallery, arriving at a hallway where the marble stairway meets it"}
+{"item": "E0082", "direction": "same floor", "confidence": 70, "reason": "a magical teleport sliver between two distant areas, both ground-level shops/chambers with no vertical language"}
+{"item": "E0083", "direction": "same floor", "confidence": 65, "reason": "stepping from a raft tethered to the ledge onto that ledge at water level"}
+{"item": "E0084", "direction": "down", "confidence": 70, "reason": "beach room enters a hidden cavern under the brambles whose own tunnel leads down steeply"}
+{"item": "E0085", "direction": "down", "confidence": 90, "reason": "room left says a flight of stone steps leads down into a passageway, and we arrive in the passageway"}
+{"item": "E0086", "direction": "same floor", "confidence": 85, "reason": "crawling along a level tunnel under the moat; both rooms are the same crawling passage"}
+{"item": "E0087", "direction": "up", "confidence": 70, "reason": "chapel is far beneath the roots of the Temple, arrived room is set into the outer wall with an exit straight out to the square"}
+{"item": "E0088", "direction": "same floor", "confidence": 65, "reason": "chamber to an adjoining alcove of the same shop; the separate 'up' exit already handles the level above"}
+{"item": "E0089", "direction": "down", "confidence": 88, "reason": "a wide timber stairway set into the turf descends to the doorway of a half-buried building"}
+{"item": "E0090", "direction": "same floor", "confidence": 75, "reason": "courtyard steps into the ground-floor foyer, which has its own staircase up to the Second Floor"}
+{"item": "E0091", "direction": "same floor", "confidence": 80, "reason": "entering under the drooping pine's branches that sweep down to the ground, not climbing it"}
+{"item": "E0092", "direction": "up", "confidence": 78, "reason": "a ladder from the pavilion into a study whose books tower thirteen feet and whose curtains drape high above"}
+{"item": "E0093", "direction": "same floor", "confidence": 78, "reason": "stepping off the lakeside path onto a shop porch and into its salesroom at ground level"}
+{"item": "E0094", "direction": "same floor", "confidence": 82, "reason": "swimming across the lake surface to the shallowest part, both at water level"}
+{"item": "E0095", "direction": "same floor", "confidence": 75, "reason": "the cave leads into the cliffside from the ledge, level with it rather than above or below"}
+{"item": "E0096", "direction": "up", "confidence": 88, "reason": "an iron ladder rises toward the oak ceiling and a trap door, arriving in a lockup cell above the sewers"}
+{"item": "E0097", "direction": "down", "confidence": 92, "reason": "swim down from the riverbank to Underwater, which has 'swim up' back to the strand"}
+{"item": "E0098", "direction": "up", "confidence": 72, "reason": "climbing a pile of massive boulders onto a trail wending up a steep hillside"}
+{"item": "E0099", "direction": "down", "confidence": 90, "reason": "room left says the stone stairway drops away quickly to the southeast, and the platform's stone stairway leads upward back"}
+{"item": "E0100", "direction": "down", "confidence": 92, "reason": "swim down to Underwater, which lists 'swim up' back to Ravelin"}
+{"item": "E0101", "direction": "up", "confidence": 90, "reason": "stairs lead up toward the tower from the overlook, and the tower room has stairs leading down"}
+{"item": "E0102", "direction": "same floor", "confidence": 78, "reason": "walking off the village edge into a fissure alcove in the granite wall at ground level"}
+{"item": "E0103", "direction": "same floor", "confidence": 75, "reason": "both underground temple chambers connected by a fissure with no vertical wording"}
+{"item": "E0104", "direction": "down", "confidence": 78, "reason": "arrived room's granite stairs rise up toward the top of the wall we came from, so we descended to the river edge"}
+{"item": "E0105", "direction": "same floor", "confidence": 70, "reason": "a boulder against the southern wall opens into an adjoining den in the same cavern system"}
+{"item": "E0106", "direction": "up", "confidence": 85, "reason": "wooden steps climb from the orchard to an enclosed porch on a two-story villa"}
+{"item": "E0107", "direction": "same floor", "confidence": 62, "reason": "steps from the alley into a ground-level shop; the balcony is reached by a separate ladder exit"}
+{"item": "E0108", "direction": "same floor", "confidence": 60, "reason": "ramp leads up to the building but arrives in the foyer, which itself has stairs up to the second floor"}
+{"item": "E0109", "direction": "up", "confidence": 90, "reason": "arrived landing says the staircase climbs out of the shop below to the second story"}
+{"item": "E0110", "direction": "down", "confidence": 78, "reason": "the coral stairway leads downward into the sunken pit"}
+{"item": "E0111", "direction": "up", "confidence": 88, "reason": "wide switchback steps wind upwards from the cavern, arriving at a cave entry with streams flowing down steps outside"}
+{"item": "E0112", "direction": "up", "confidence": 92, "reason": "the bloodwood staircase ascends to the second story, and we arrive in the Upper Hallway"}
+{"item": "E0113", "direction": "down", "confidence": 85, "reason": "the landing is an upper level with a trapdoor to the roof; steps descend to the keep's great hall with doors to the courtyard"}
+{"item": "E0114", "direction": "same floor", "confidence": 60, "reason": "a hidden statue mechanism opening onto an adjacent small chamber with no vertical language"}
+{"item": "E0115", "direction": "up", "confidence": 82, "reason": "climbing through a narrow gap high in the west wall of the lava pipe"}
+{"item": "E0116", "direction": "up", "confidence": 88, "reason": "the stairwell's other exit is down to the Landing, and the office occupies the building's third floor"}
+{"item": "E0117", "direction": "down", "confidence": 92, "reason": "swim down from the river surface into the Underwater room at depth"}
+{"item": "E0118", "direction": "down", "confidence": 88, "reason": "crooked wooden stairs traverse from the plateau top to the beach below, arriving at the toe of the bluff"}
+{"item": "E0119", "direction": "down", "confidence": 80, "reason": "steep stairs lead downward from an already subterranean chamber into a burial vault"}
+{"item": "E0120", "direction": "same floor", "confidence": 80, "reason": "entering the tower from the street to its base, where a staircase then rises into the heights"}

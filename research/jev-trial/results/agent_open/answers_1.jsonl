@@ -1,0 +1,40 @@
+{"item": "E0001", "direction": "same floor", "confidence": 70, "reason": "benches descend toward the stage in the same hall, so the stage is a step away on one level"}
+{"item": "E0002", "direction": "down", "confidence": 95, "reason": "left room has a wide hole in the floor, arrived room has a wide hole in the ceiling"}
+{"item": "E0003", "direction": "down", "confidence": 90, "reason": "arrived room is named Under Altar and the left room's only other exit is up"}
+{"item": "E0004", "direction": "down", "confidence": 85, "reason": "arrived passage has the wooden trapdoor set in its low ceiling"}
+{"item": "E0005", "direction": "same floor", "confidence": 85, "reason": "a rickety bridge spans level between the west and north ledges"}
+{"item": "E0006", "direction": "down", "confidence": 80, "reason": "arrived beach says the cliff looms high above it"}
+{"item": "E0007", "direction": "same floor", "confidence": 70, "reason": "both rooms are stretches of the same winding trail, the rocks merely block it"}
+{"item": "E0008", "direction": "same floor", "confidence": 50, "reason": "both are cavern floors and the rope only leads out of the cavern, with no stated rise or drop"}
+{"item": "E0009", "direction": "same floor", "confidence": 85, "reason": "a wide ramp joins a pier to a catwalk, both docking structures over the water"}
+{"item": "E0010", "direction": "up", "confidence": 85, "reason": "arrived room notes a fresh scent, a change after the decay below, higher in the banyan"}
+{"item": "E0011", "direction": "same floor", "confidence": 55, "reason": "a tunnel between two subterranean spaces with no stated rise or drop"}
+{"item": "E0012", "direction": "same floor", "confidence": 50, "reason": "a vision-like boulder passage with no height language in either room"}
+{"item": "E0013", "direction": "same floor", "confidence": 85, "reason": "the hall has separate up and down staircases, so a door off it is on the same storey"}
+{"item": "E0014", "direction": "up", "confidence": 80, "reason": "the command climbs stairs and the arrived hall's wide steps lead down to a sunken dais"}
+{"item": "E0015", "direction": "down", "confidence": 90, "reason": "left room says steep stairs lead lower into darkness; arrived room's stairs lead up to the higher parts"}
+{"item": "E0016", "direction": "up", "confidence": 95, "reason": "arrived diving tower looks down on the pool from a height"}
+{"item": "E0017", "direction": "down", "confidence": 75, "reason": "water flows down through the hole and the arrived room is at a steep drop-off"}
+{"item": "E0018", "direction": "same floor", "confidence": 55, "reason": "climbing over a landslide barrier onto the path, which only then continues upward"}
+{"item": "E0019", "direction": "down", "confidence": 80, "reason": "left room places you at the top of the steps"}
+{"item": "E0020", "direction": "up", "confidence": 85, "reason": "left room's iron ladder explicitly leads up out of the sewer nexus"}
+{"item": "E0021", "direction": "up", "confidence": 85, "reason": "arrived waiting room's stairs lead down into the chapels below"}
+{"item": "E0022", "direction": "down", "confidence": 90, "reason": "entering an open pit and standing in a plundered grave"}
+{"item": "E0023", "direction": "same floor", "confidence": 55, "reason": "a tunnel dips under the lake and comes back out on flat ground"}
+{"item": "E0024", "direction": "same floor", "confidence": 80, "reason": "the hatch leads outside the wagon into its yard at ground level"}
+{"item": "E0025", "direction": "same floor", "confidence": 80, "reason": "the canopy arcs over a resting area on the same terrace"}
+{"item": "E0026", "direction": "same floor", "confidence": 70, "reason": "the small hole opens into the banyan's interior off the same platform level"}
+{"item": "E0027", "direction": "up", "confidence": 60, "reason": "the command climbs stairs from the kitchen, though neither room states a level"}
+{"item": "E0028", "direction": "up", "confidence": 85, "reason": "a flight of wide steps leads up to a building perched on a base of stone"}
+{"item": "E0029", "direction": "down", "confidence": 60, "reason": "left room is on the very edge of a canyon wall above the depths, arrived room is the canyon floor"}
+{"item": "E0030", "direction": "up", "confidence": 95, "reason": "the trapdoor is in the ceiling above the stairs and leads to the rooftop"}
+{"item": "E0031", "direction": "up", "confidence": 90, "reason": "the stairs curve up and the arrived hall has stairwells curving down to where we came from"}
+{"item": "E0032", "direction": "up", "confidence": 55, "reason": "stairs within a tower between office and bunk room, with no stated direction"}
+{"item": "E0033", "direction": "up", "confidence": 60, "reason": "a staircase from the pub entry to the lounge, direction not stated"}
+{"item": "E0034", "direction": "down", "confidence": 90, "reason": "the rungs descend into darkness and the arrived room sees a chamber below and has a down exit"}
+{"item": "E0035", "direction": "same floor", "confidence": 70, "reason": "climbing over a rubble blockade between two adjoining mine passages"}
+{"item": "E0036", "direction": "down", "confidence": 90, "reason": "the ledge says a steep trail leads down the cliffside and the slope says it winds up"}
+{"item": "E0037", "direction": "down", "confidence": 95, "reason": "the spiralling staircase cuts through the floor to a darkened chamber below"}
+{"item": "E0038", "direction": "same floor", "confidence": 80, "reason": "entering the tower at its base, where the staircase only then ascends"}
+{"item": "E0039", "direction": "up", "confidence": 70, "reason": "a trapdoor from a river tunnel into the back of a barn above"}
+{"item": "E0040", "direction": "up", "confidence": 95, "reason": "climbing the spire to a mountain top crag in the clouds"}

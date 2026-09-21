@@ -1,0 +1,1189 @@
+{"a": "5", "b": "13303", "a_to_b": "climb staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "70", "b": "71", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "74", "b": "75", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "102", "b": "103", "a_to_b": "climb protrusion", "b_to_a": "climb protrusion", "fwd": {"choice": "down", "p": 0.72}, "rev": {"choice": "up", "p": 0.59}}
+{"a": "150", "b": "1432", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.54}, "rev": {"choice": "down", "p": 1}}
+{"a": "152", "b": "154", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "189", "b": "190", "a_to_b": "climb root", "b_to_a": "climb root", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "290", "b": "29559", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "291", "b": "13245", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "387", "b": "395", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "397", "b": "23839", "a_to_b": "go ladder", "b_to_a": "go hatch", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "401", "b": "23831", "a_to_b": "go sturdy ladder", "b_to_a": "go wooden hatch", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "403", "b": "404", "a_to_b": "go stair", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "410", "b": "477", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "486", "b": "7601", "a_to_b": "climb path", "b_to_a": "climb path", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "520", "b": "7682", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.86}}
+{"a": "578", "b": "9708", "a_to_b": "climb tree", "b_to_a": "go tree", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "579", "b": "9709", "a_to_b": "climb tree", "b_to_a": "go tree", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "599", "b": "13211", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "752", "b": "26036", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.84}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "883", "b": "884", "a_to_b": "climb boulders", "b_to_a": "climb boulders", "fwd": {"choice": "up", "p": 0.71}, "rev": {"choice": "up", "p": 0.7}}
+{"a": "963", "b": "964", "a_to_b": "climb boulders", "b_to_a": "climb boulders", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "down", "p": 0.5}}
+{"a": "1017", "b": "1018", "a_to_b": "climb cliff", "b_to_a": "climb precipice", "fwd": {"choice": "up", "p": 0.76}, "rev": {"choice": "up", "p": 0.62}}
+{"a": "1019", "b": "1020", "a_to_b": "climb crevice", "b_to_a": "climb crevice", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "1029", "b": "1030", "a_to_b": "climb cliff", "b_to_a": "climb cliff", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "up", "p": 0.61}}
+{"a": "1246", "b": "1247", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.52}, "rev": {"choice": "up", "p": 0.79}}
+{"a": "1247", "b": "8912", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "1273", "b": "1427", "a_to_b": "go ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "1275", "b": "36158", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "1386", "b": "9374", "a_to_b": "climb rocks", "b_to_a": "climb rocks", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "1425", "b": "33346", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 1}}
+{"a": "1427", "b": "1428", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "1430", "b": "1431", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "1441", "b": "9008", "a_to_b": "climb steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "1459", "b": "9056", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "1483", "b": "5949", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "1500", "b": "4583", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "1568", "b": "14234", "a_to_b": "climb ramp", "b_to_a": "go ramp", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "1584", "b": "5410", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "1626", "b": "9863", "a_to_b": "climb fracture", "b_to_a": "climb fracture", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "1693", "b": "1695", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "1700", "b": "1701", "a_to_b": "climb rope", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "1701", "b": "1704", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "1778", "b": "3980", "a_to_b": "climb overhang", "b_to_a": "climb outcropping", "fwd": {"choice": "down", "p": 0.69}, "rev": {"choice": "up", "p": 1}}
+{"a": "1826", "b": "1827", "a_to_b": "climb trunk", "b_to_a": "climb trunk", "fwd": {"choice": "up", "p": 0.87}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "1832", "b": "1833", "a_to_b": "climb tree", "b_to_a": "climb tree", "fwd": {"choice": "up", "p": 0.78}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "1843", "b": "1844", "a_to_b": "go stairs", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "1873", "b": "1874", "a_to_b": "climb fence", "b_to_a": "climb fence", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "1884", "b": "1892", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "1886", "b": "12982", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "1906", "b": "14798", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "1970", "b": "18081", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.75}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "1992", "b": "12547", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "2096", "b": "2099", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.58}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "2139", "b": "2176", "a_to_b": "climb skylight", "b_to_a": "climb hole", "fwd": {"choice": "up", "p": 0.61}, "rev": {"choice": "up", "p": 0.8}}
+{"a": "2140", "b": "2154", "a_to_b": "climb hill", "b_to_a": "climb hill", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "2166", "b": "2167", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "2172", "b": "12764", "a_to_b": "climb slope", "b_to_a": "climb slope", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "2179", "b": "2180", "a_to_b": "climb gap", "b_to_a": "climb gap", "fwd": {"choice": "up", "p": 0.83}, "rev": {"choice": "up", "p": 0.58}}
+{"a": "2210", "b": "2211", "a_to_b": "climb glass", "b_to_a": "climb glass", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "2278", "b": "2279", "a_to_b": "climb rubble", "b_to_a": "climb rubble", "fwd": {"choice": "down", "p": 0.66}, "rev": {"choice": "down", "p": 0.51}}
+{"a": "2320", "b": "2332", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "2332", "b": "2356", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "2359", "b": "3726", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "2389", "b": "3424", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "2402", "b": "3425", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "2419", "b": "3408", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "2462", "b": "2463", "a_to_b": "go white stairs", "b_to_a": "go white stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "2487", "b": "3058", "a_to_b": "climb snowbank", "b_to_a": "climb snowbank", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "2509", "b": "2510", "a_to_b": "climb bank", "b_to_a": "climb bank", "fwd": {"choice": "down", "p": 0.75}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "2523", "b": "2524", "a_to_b": "climb rockslide", "b_to_a": "climb rockslide", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "up", "p": 0.76}}
+{"a": "2681", "b": "2682", "a_to_b": "climb slope", "b_to_a": "climb slope", "fwd": {"choice": "up", "p": 0.64}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "2689", "b": "2690", "a_to_b": "climb slope", "b_to_a": "climb slope", "fwd": {"choice": "down", "p": 0.67}, "rev": {"choice": "up", "p": 0.52}}
+{"a": "2703", "b": "2704", "a_to_b": "climb slope", "b_to_a": "climb slope", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "2708", "b": "2709", "a_to_b": "climb steps", "b_to_a": "climb west steps", "fwd": {"choice": "down", "p": 0.81}, "rev": {"choice": "up", "p": 0.51}}
+{"a": "2709", "b": "2710", "a_to_b": "climb east steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.78}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "2715", "b": "2716", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.68}}
+{"a": "2716", "b": "2717", "a_to_b": "climb path", "b_to_a": "climb path", "fwd": {"choice": "up", "p": 0.84}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "2762", "b": "2763", "a_to_b": "climb stones", "b_to_a": "climb stones", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "2765", "b": "2766", "a_to_b": "climb rocks", "b_to_a": "climb rocks", "fwd": {"choice": "down", "p": 0.68}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "2773", "b": "2775", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "2777", "b": "2788", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "2835", "b": "2836", "a_to_b": "climb slope", "b_to_a": "climb slope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "2838", "b": "2839", "a_to_b": "climb incline", "b_to_a": "climb inc", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "2840", "b": "2871", "a_to_b": "climb slope", "b_to_a": "climb slope", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "2842", "b": "2847", "a_to_b": "climb incline", "b_to_a": "climb incline", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "2843", "b": "2844", "a_to_b": "climb incline", "b_to_a": "climb inc", "fwd": {"choice": "up", "p": 0.76}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "2845", "b": "2846", "a_to_b": "climb bou", "b_to_a": "climb edge", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "2898", "b": "2901", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "2944", "b": "2945", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "2946", "b": "2947", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "2952", "b": "2953", "a_to_b": "go stairs", "b_to_a": "go stone stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "2954", "b": "2955", "a_to_b": "go steps", "b_to_a": "go stone stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "2963", "b": "2964", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "up", "p": 1}}
+{"a": "2967", "b": "2968", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "2973", "b": "2974", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "3094", "b": "3095", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "3104", "b": "3118", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "3264", "b": "3280", "a_to_b": "climb stair", "b_to_a": "climb stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "3309", "b": "15794", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "3410", "b": "15699", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "3431", "b": "8977", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "3448", "b": "8982", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "3458", "b": "3459", "a_to_b": "climb well", "b_to_a": "climb lip", "fwd": {"choice": "down", "p": 0.75}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "3483", "b": "25590", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "3490", "b": "25588", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "3503", "b": "5909", "a_to_b": "climb grate", "b_to_a": "climb grate", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "up", "p": 1}}
+{"a": "3516", "b": "25587", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "3574", "b": "3576", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "3587", "b": "3613", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "3608", "b": "4196", "a_to_b": "climb bank", "b_to_a": "climb bank", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "3619", "b": "14627", "a_to_b": "go steep stair", "b_to_a": "go steep stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "3735", "b": "21226", "a_to_b": "go carpeted staircase", "b_to_a": "go carpeted staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "3736", "b": "26229", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.6}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "3739", "b": "14674", "a_to_b": "go sweeping staircase", "b_to_a": "go stone staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "3746", "b": "10382", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.58}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "3781", "b": "9240", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "3867", "b": "16306", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "up", "p": 1}}
+{"a": "3880", "b": "15474", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "3979", "b": "24811", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "4208", "b": "4209", "a_to_b": "climb rockslide", "b_to_a": "climb rockslide", "fwd": {"choice": "down", "p": 0.62}, "rev": {"choice": "up", "p": 0.61}}
+{"a": "4321", "b": "8178", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "4535", "b": "7325", "a_to_b": "climb ramp", "b_to_a": "climb ramp", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "4572", "b": "9881", "a_to_b": "climb tree", "b_to_a": "climb tree", "fwd": {"choice": "up", "p": 0.6}, "rev": {"choice": "up", "p": 0.73}}
+{"a": "4602", "b": "17008", "a_to_b": "climb crack", "b_to_a": "climb crack", "fwd": {"choice": "down", "p": 0.8}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "4610", "b": "8619", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "4638", "b": "4685", "a_to_b": "climb path", "b_to_a": "climb path", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "4641", "b": "4650", "a_to_b": "climb tree", "b_to_a": "climb tree", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 1}}
+{"a": "4642", "b": "4643", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 1}}
+{"a": "4644", "b": "4645", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.78}}
+{"a": "4651", "b": "27860", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.71}, "rev": {"choice": "up", "p": 0.78}}
+{"a": "4659", "b": "4684", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.72}, "rev": {"choice": "down", "p": 0.54}}
+{"a": "4662", "b": "4665", "a_to_b": "climb stones", "b_to_a": "climb stones", "fwd": {"choice": "down", "p": 0.8}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "4670", "b": "17132", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "4672", "b": "4674", "a_to_b": "climb footbridge", "b_to_a": "climb footbridge", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "4674", "b": "4675", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "4680", "b": "4682", "a_to_b": "climb tunnel", "b_to_a": "climb tunnel", "fwd": {"choice": "up", "p": 0.56}, "rev": {"choice": "up", "p": 0.61}}
+{"a": "4684", "b": "4685", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "up", "p": 0.56}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "4687", "b": "4691", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "4704", "b": "17145", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "4706", "b": "4707", "a_to_b": "go ladder", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "4750", "b": "10802", "a_to_b": "climb branch", "b_to_a": "climb branch", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "4800", "b": "4801", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "4808", "b": "4811", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "4809", "b": "4815", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "4844", "b": "10780", "a_to_b": "climb rocks", "b_to_a": "climb western steps", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "4846", "b": "10780", "a_to_b": "climb rocks", "b_to_a": "climb eastern steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "4880", "b": "4882", "a_to_b": "climb cleft", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.51}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "4956", "b": "4989", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.57}}
+{"a": "4965", "b": "4968", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.63}}
+{"a": "5010", "b": "9987", "a_to_b": "climb ravine", "b_to_a": "climb wall", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "5045", "b": "5046", "a_to_b": "climb path", "b_to_a": "climb path", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "5166", "b": "5167", "a_to_b": "climb path", "b_to_a": "climb path", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "up", "p": 1}}
+{"a": "5176", "b": "5178", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "5179", "b": "5180", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 1}}
+{"a": "5223", "b": "5225", "a_to_b": "climb cliff", "b_to_a": "climb cliff", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "5228", "b": "5264", "a_to_b": "climb tree", "b_to_a": "climb tree", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "5239", "b": "5241", "a_to_b": "climb ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "5298", "b": "5323", "a_to_b": "climb hill", "b_to_a": "climb hill", "fwd": {"choice": "up", "p": 0.87}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "5398", "b": "5640", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "5536", "b": "5561", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "5547", "b": "5556", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "5549", "b": "14597", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "5564", "b": "5566", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "5570", "b": "5571", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "5572", "b": "14601", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "5585", "b": "5588", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "down", "p": 0.69}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "5589", "b": "5592", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.76}}
+{"a": "5590", "b": "5605", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "5640", "b": "5686", "a_to_b": "climb staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "5691", "b": "5692", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "5713", "b": "13243", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "5719", "b": "5721", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "5730", "b": "9396", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "up", "p": 1}}
+{"a": "5778", "b": "9459", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.74}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "5831", "b": "10659", "a_to_b": "climb gully", "b_to_a": "climb gully", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "5879", "b": "10685", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "5883", "b": "13779", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "5916", "b": "5917", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "5999", "b": "10482", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.8}, "rev": {"choice": "up", "p": 0.77}}
+{"a": "6240", "b": "6245", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "up", "p": 0.62}}
+{"a": "6322", "b": "32368", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "6332", "b": "6355", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "6333", "b": "6334", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "6348", "b": "6351", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "6350", "b": "6353", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "6361", "b": "15513", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.75}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "6394", "b": "6395", "a_to_b": "climb crevice", "b_to_a": "climb crevice", "fwd": {"choice": "up", "p": 0.72}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "6404", "b": "6405", "a_to_b": "climb trunk", "b_to_a": "climb trunk", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "6463", "b": "6469", "a_to_b": "climb rockfall", "b_to_a": "climb rockfall", "fwd": {"choice": "up", "p": 0.62}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "6473", "b": "6474", "a_to_b": "climb slope", "b_to_a": "go slope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "6570", "b": "6571", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "6572", "b": "6573", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.65}}
+{"a": "6580", "b": "6581", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.66}}
+{"a": "6598", "b": "6604", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "6600", "b": "6603", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "6610", "b": "6611", "a_to_b": "climb steps", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.77}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "6692", "b": "6707", "a_to_b": "climb slope", "b_to_a": "climb slope", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "6719", "b": "6720", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "6734", "b": "6735", "a_to_b": "climb rocks", "b_to_a": "climb rocks", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "6736", "b": "6737", "a_to_b": "climb landslide", "b_to_a": "climb landslide", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 1}}
+{"a": "6841", "b": "6842", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "6848", "b": "6849", "a_to_b": "climb colossus", "b_to_a": "climb shin", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "6850", "b": "6851", "a_to_b": "climb arm", "b_to_a": "climb arm", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "6854", "b": "6855", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "6856", "b": "6863", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "7228", "b": "7229", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "7481", "b": "7486", "a_to_b": "go stairway", "b_to_a": "go cavern", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "7536", "b": "7543", "a_to_b": "climb rubble", "b_to_a": "climb rubble", "fwd": {"choice": "up", "p": 0.7}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "7544", "b": "7562", "a_to_b": "climb stout rope", "b_to_a": "climb stout rope", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "7618", "b": "7635", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "7771", "b": "7790", "a_to_b": "climb ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "7811", "b": "7812", "a_to_b": "climb stones", "b_to_a": "climb rocks", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 1}}
+{"a": "7852", "b": "14258", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "7913", "b": "7916", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "7914", "b": "7915", "a_to_b": "go stairs", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "7919", "b": "7920", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "7995", "b": "8187", "a_to_b": "climb pine", "b_to_a": "climb treetop", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.71}}
+{"a": "8034", "b": "8036", "a_to_b": "climb boulder", "b_to_a": "climb boulder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "8044", "b": "8045", "a_to_b": "climb crevice", "b_to_a": "climb crevice", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "8064", "b": "8066", "a_to_b": "climb incline", "b_to_a": "climb incline", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "8065", "b": "8067", "a_to_b": "climb mountainside", "b_to_a": "climb mountainside", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "down", "p": 0.68}}
+{"a": "8093", "b": "8125", "a_to_b": "climb crack", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "8115", "b": "8116", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "8142", "b": "8143", "a_to_b": "climb boulder", "b_to_a": "climb boulder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.77}}
+{"a": "8427", "b": "8430", "a_to_b": "climb ledge", "b_to_a": "climb ledge", "fwd": {"choice": "up", "p": 0.72}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "8440", "b": "8443", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "8447", "b": "8450", "a_to_b": "climb ridge", "b_to_a": "climb ridge", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "8473", "b": "8477", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "8479", "b": "8480", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "8499", "b": "8500", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "8624", "b": "8625", "a_to_b": "climb stair", "b_to_a": "climb stair", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "8671", "b": "8672", "a_to_b": "go stairs", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "8674", "b": "8807", "a_to_b": "climb stair", "b_to_a": "climb staircase", "fwd": {"choice": "down", "p": 0.67}, "rev": {"choice": "up", "p": 1}}
+{"a": "8675", "b": "18247", "a_to_b": "climb ladder", "b_to_a": "go hatch", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "8687", "b": "8688", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "8730", "b": "14963", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "8747", "b": "24056", "a_to_b": "go wooden stairs", "b_to_a": "go wooden stairs", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "8773", "b": "14621", "a_to_b": "go marble steps", "b_to_a": "go marble steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "8815", "b": "15556", "a_to_b": "climb ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "8907", "b": "8908", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "8965", "b": "23641", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "9001", "b": "9002", "a_to_b": "go staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "9010", "b": "9011", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "9012", "b": "9013", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.64}}
+{"a": "9015", "b": "9016", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.67}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "9017", "b": "9018", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "9020", "b": "9021", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.77}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "9083", "b": "9084", "a_to_b": "climb wall", "b_to_a": "climb edge", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "9214", "b": "9239", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "down", "p": 0.71}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "9228", "b": "9238", "a_to_b": "climb pole", "b_to_a": "climb pole", "fwd": {"choice": "down", "p": 0.69}, "rev": {"choice": "down", "p": 0.57}}
+{"a": "9232", "b": "9237", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "9244", "b": "9267", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "up", "p": 0.74}}
+{"a": "9255", "b": "9265", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "9316", "b": "9317", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "9374", "b": "9375", "a_to_b": "climb outcroppings", "b_to_a": "climb outcropping", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "9378", "b": "9381", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "9380", "b": "9390", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 1}}
+{"a": "9433", "b": "31075", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.79}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "9447", "b": "16914", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.75}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "9554", "b": "9555", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "9579", "b": "9580", "a_to_b": "climb rocks", "b_to_a": "climb rocks", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "down", "p": 0.59}}
+{"a": "9633", "b": "9634", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "9638", "b": "9639", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "up", "p": 0.65}}
+{"a": "9689", "b": "17153", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.51}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "9739", "b": "9740", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.87}, "rev": {"choice": "up", "p": 0.79}}
+{"a": "9740", "b": "9741", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "9740", "b": "9747", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "9750", "b": "9751", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "up", "p": 0.8}}
+{"a": "9761", "b": "9762", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.68}}
+{"a": "9764", "b": "9766", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "9856", "b": "9865", "a_to_b": "climb ridge", "b_to_a": "climb ridge", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "9863", "b": "9864", "a_to_b": "climb outcropping", "b_to_a": "climb outcropping", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "up", "p": 0.51}}
+{"a": "9920", "b": "9922", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "9989", "b": "9990", "a_to_b": "climb rocks", "b_to_a": "climb rocks", "fwd": {"choice": "up", "p": 0.71}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "9991", "b": "9992", "a_to_b": "climb slope", "b_to_a": "climb slope", "fwd": {"choice": "down", "p": 0.54}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "9996", "b": "9997", "a_to_b": "climb slope", "b_to_a": "climb mound", "fwd": {"choice": "up", "p": 0.64}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "10004", "b": "10006", "a_to_b": "climb rocks", "b_to_a": "climb rocks", "fwd": {"choice": "up", "p": 0.74}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "10006", "b": "10008", "a_to_b": "climb stairs", "b_to_a": "climb ravine", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "10121", "b": "15931", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.54}}
+{"a": "10123", "b": "10126", "a_to_b": "climb gully", "b_to_a": "climb ridge", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "10147", "b": "10149", "a_to_b": "climb vines", "b_to_a": "climb blood-vines", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "10242", "b": "10262", "a_to_b": "climb wall", "b_to_a": "climb west wall", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "10243", "b": "10263", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "10258", "b": "10262", "a_to_b": "climb wall", "b_to_a": "climb north wall", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "10283", "b": "10284", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "10303", "b": "10306", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "10305", "b": "10308", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "10336", "b": "10340", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.6}}
+{"a": "10384", "b": "13312", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "10385", "b": "10389", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "10421", "b": "13993", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.55}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "10424", "b": "10425", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "10435", "b": "10437", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "10438", "b": "10761", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "10497", "b": "10499", "a_to_b": "climb bank", "b_to_a": "climb bank", "fwd": {"choice": "down", "p": 0.7}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "10776", "b": "10778", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "10843", "b": "27604", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "10857", "b": "10858", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "10879", "b": "10880", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "10934", "b": "16017", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "10946", "b": "10947", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "10947", "b": "10948", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "10960", "b": "10961", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "10991", "b": "10994", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "11009", "b": "11011", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "11034", "b": "23960", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "11064", "b": "11065", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "11065", "b": "11066", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.64}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "11066", "b": "11137", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "up", "p": 0.61}}
+{"a": "11092", "b": "11093", "a_to_b": "climb ratlines", "b_to_a": "climb ratlines", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "11092", "b": "11094", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "11117", "b": "11122", "a_to_b": "climb chain", "b_to_a": "climb chain", "fwd": {"choice": "down", "p": 0.71}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "11230", "b": "11231", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "11247", "b": "11248", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "up", "p": 0.61}}
+{"a": "11267", "b": "11268", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.83}, "rev": {"choice": "up", "p": 0.56}}
+{"a": "11375", "b": "11376", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.78}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "11386", "b": "11387", "a_to_b": "climb staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "11423", "b": "11426", "a_to_b": "climb trap", "b_to_a": "climb opening", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "11429", "b": "11748", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "11434", "b": "17657", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "11589", "b": "11590", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "11589", "b": "11591", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 1}}
+{"a": "11715", "b": "16213", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "11837", "b": "11838", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "11846", "b": "11850", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.5}}
+{"a": "11893", "b": "11894", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "11894", "b": "11895", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "11990", "b": "11991", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "11994", "b": "11995", "a_to_b": "climb steps", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.73}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "11995", "b": "11996", "a_to_b": "climb hole", "b_to_a": "climb hole", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "12017", "b": "12022", "a_to_b": "climb benches", "b_to_a": "climb benches", "fwd": {"choice": "down", "p": 0.51}, "rev": {"choice": "up", "p": 0.62}}
+{"a": "12018", "b": "12023", "a_to_b": "climb benches", "b_to_a": "climb benches", "fwd": {"choice": "up", "p": 0.75}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "12019", "b": "12025", "a_to_b": "climb blocks", "b_to_a": "climb blocks", "fwd": {"choice": "up", "p": 0.83}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "12021", "b": "12024", "a_to_b": "climb benches", "b_to_a": "climb slab", "fwd": {"choice": "up", "p": 0.64}, "rev": {"choice": "down", "p": 0.57}}
+{"a": "12023", "b": "12041", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.67}, "rev": {"choice": "up", "p": 0.78}}
+{"a": "12024", "b": "12045", "a_to_b": "climb steps", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "12039", "b": "12040", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "12048", "b": "12054", "a_to_b": "climb tree", "b_to_a": "climb trunk", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "12067", "b": "30584", "a_to_b": "climb tree", "b_to_a": "climb trunk", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "12086", "b": "30585", "a_to_b": "climb tree", "b_to_a": "climb trunk", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "12161", "b": "12352", "a_to_b": "climb ladder", "b_to_a": "climb fo'c'sle ladder", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "12161", "b": "12365", "a_to_b": "climb shrouds", "b_to_a": "climb shrouds", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "12281", "b": "12282", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "12291", "b": "12293", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "12313", "b": "12314", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "12320", "b": "16411", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.86}, "rev": {"choice": "up", "p": 1}}
+{"a": "12352", "b": "12367", "a_to_b": "climb aftcastle ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "12352", "b": "12372", "a_to_b": "climb maindeck ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "12353", "b": "12354", "a_to_b": "climb maindeck ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.54}, "rev": {"choice": "up", "p": 1}}
+{"a": "12365", "b": "12366", "a_to_b": "climb rigging", "b_to_a": "climb rigging", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "12367", "b": "12368", "a_to_b": "climb mizzen shrouds", "b_to_a": "climb shrouds", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "12367", "b": "12370", "a_to_b": "climb main shrouds", "b_to_a": "climb shrouds", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "12368", "b": "12369", "a_to_b": "climb rigging", "b_to_a": "climb rigging", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "12370", "b": "12371", "a_to_b": "climb rigging", "b_to_a": "climb rigging", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "12415", "b": "12418", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "12447", "b": "12448", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "12493", "b": "12496", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.63}}
+{"a": "12498", "b": "12984", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "12502", "b": "14833", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "12504", "b": "12507", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "12555", "b": "12563", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "12574", "b": "12981", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "12582", "b": "28709", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "12677", "b": "12678", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.63}}
+{"a": "12693", "b": "12694", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "12707", "b": "12717", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.58}, "rev": {"choice": "up", "p": 0.59}}
+{"a": "12708", "b": "12749", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "12712", "b": "20786", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.55}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "12718", "b": "12720", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "12771", "b": "12774", "a_to_b": "climb rubble", "b_to_a": "climb rubble", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "up", "p": 0.76}}
+{"a": "12776", "b": "12787", "a_to_b": "climb slide", "b_to_a": "climb slide", "fwd": {"choice": "up", "p": 0.69}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "12790", "b": "12791", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "12813", "b": "12814", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "12815", "b": "13239", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "12819", "b": "12823", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "12984", "b": "14824", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "up", "p": 1}}
+{"a": "13013", "b": "13015", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "13026", "b": "13027", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "13095", "b": "13098", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.76}}
+{"a": "13098", "b": "15932", "a_to_b": "climb trapdoor", "b_to_a": "climb trapdoor", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "13102", "b": "14974", "a_to_b": "climb switchback", "b_to_a": "climb switchback", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "13104", "b": "13116", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "13119", "b": "13500", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "13178", "b": "13180", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "13184", "b": "13185", "a_to_b": "go stairway", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "13196", "b": "14155", "a_to_b": "climb stairwell", "b_to_a": "climb stairwell", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "13199", "b": "13206", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "13207", "b": "14219", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "13228", "b": "28092", "a_to_b": "climb stair", "b_to_a": "climb stair", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.68}}
+{"a": "13243", "b": "17931", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "13354", "b": "13359", "a_to_b": "go ladder", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "13430", "b": "13433", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.56}}
+{"a": "13463", "b": "13464", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "13489", "b": "13490", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "13536", "b": "13541", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "13701", "b": "21223", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "13847", "b": "13848", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.62}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "13922", "b": "13923", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "13934", "b": "13935", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "13954", "b": "13955", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "13961", "b": "14663", "a_to_b": "climb stair", "b_to_a": "climb stair", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "13975", "b": "14579", "a_to_b": "go dark stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "13975", "b": "17378", "a_to_b": "go spiral stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "13992", "b": "13994", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "14018", "b": "14019", "a_to_b": "climb mahogany", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "14113", "b": "14114", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "14115", "b": "14116", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "14117", "b": "14245", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 0.67}, "rev": {"choice": "up", "p": 1}}
+{"a": "14129", "b": "14241", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "down", "p": 0.56}, "rev": {"choice": "up", "p": 1}}
+{"a": "14141", "b": "14142", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "14152", "b": "17422", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.66}}
+{"a": "14221", "b": "14222", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "14244", "b": "14247", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "14258", "b": "14259", "a_to_b": "climb ladder", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "14301", "b": "14302", "a_to_b": "climb pile", "b_to_a": "climb path", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "14303", "b": "14304", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "14326", "b": "14327", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "14333", "b": "14334", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "14378", "b": "14379", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "14379", "b": "14380", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "14403", "b": "14404", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "14448", "b": "19950", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "14513", "b": "14514", "a_to_b": "go winding staircase", "b_to_a": "go winding staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "14514", "b": "31440", "a_to_b": "go winding steps", "b_to_a": "go winding steps", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "up", "p": 1}}
+{"a": "14622", "b": "14623", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "14645", "b": "14646", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "14650", "b": "15567", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "14815", "b": "14816", "a_to_b": "climb stemples", "b_to_a": "climb stemples", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "up", "p": 0.57}}
+{"a": "14853", "b": "14854", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.89}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "14860", "b": "14861", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "14865", "b": "14866", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "14941", "b": "24677", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "15650", "b": "15651", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "15680", "b": "15815", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "15691", "b": "15782", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 1}}
+{"a": "15695", "b": "15892", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 1}}
+{"a": "15792", "b": "15822", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 1}}
+{"a": "15823", "b": "15912", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "15826", "b": "15827", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "15986", "b": "15998", "a_to_b": "go stone steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "15991", "b": "15992", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "15991", "b": "16807", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "15995", "b": "32599", "a_to_b": "go black stair", "b_to_a": "go black stair", "fwd": {"choice": "up", "p": 0.53}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "15996", "b": "23247", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "16009", "b": "16019", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "16010", "b": "16020", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "down", "p": 0.53}, "rev": {"choice": "up", "p": 1}}
+{"a": "16034", "b": "16035", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "16176", "b": "16177", "a_to_b": "climb planks", "b_to_a": "climb planks", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "16176", "b": "16178", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "16183", "b": "16184", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.56}}
+{"a": "16201", "b": "16203", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "16282", "b": "16283", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "down", "p": 0.81}, "rev": {"choice": "up", "p": 1}}
+{"a": "16395", "b": "16396", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "16415", "b": "16416", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.67}}
+{"a": "16425", "b": "16426", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "16431", "b": "16432", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "16442", "b": "16443", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "16454", "b": "16455", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.72}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "16459", "b": "16460", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "16497", "b": "16498", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "16534", "b": "16536", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "16691", "b": "16692", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "16843", "b": "16844", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "16844", "b": "32822", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "16914", "b": "16915", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "16961", "b": "17841", "a_to_b": "climb stairway", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "16990", "b": "16991", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "16990", "b": "16992", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "17097", "b": "17098", "a_to_b": "climb ramp", "b_to_a": "climb ramp", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "17109", "b": "17115", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "17141", "b": "17142", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "up", "p": 0.83}, "rev": {"choice": "down", "p": 0.55}}
+{"a": "17153", "b": "17154", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "17159", "b": "17160", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "17170", "b": "17171", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "up", "p": 0.6}}
+{"a": "17258", "b": "17259", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.64}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "17354", "b": "17355", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "17424", "b": "19297", "a_to_b": "go spiraling staircase", "b_to_a": "go spiraling staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "17428", "b": "17429", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "17441", "b": "17442", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "17463", "b": "17464", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "17543", "b": "17550", "a_to_b": "go small ladder", "b_to_a": "go small ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "17590", "b": "17591", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "17592", "b": "17593", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "17600", "b": "17601", "a_to_b": "climb staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "17706", "b": "17707", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "17727", "b": "17728", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "17731", "b": "17732", "a_to_b": "go stairs", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "17809", "b": "17810", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "17818", "b": "17819", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "17838", "b": "17839", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "17858", "b": "17859", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "17891", "b": "17892", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "17907", "b": "17908", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "down", "p": 0.63}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "17912", "b": "17913", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "17933", "b": "17934", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "17949", "b": "17950", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "17951", "b": "17952", "a_to_b": "climb tree", "b_to_a": "climb tree", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "17968", "b": "17969", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "17985", "b": "17986", "a_to_b": "climb shaft", "b_to_a": "climb shaft", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "17987", "b": "17988", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "18042", "b": "18043", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.62}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "18114", "b": "18117", "a_to_b": "climb ramp", "b_to_a": "climb ramp", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.7}}
+{"a": "18140", "b": "18144", "a_to_b": "climb silver staircase", "b_to_a": "climb silver staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "18265", "b": "18266", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.54}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "18270", "b": "18271", "a_to_b": "climb path", "b_to_a": "climb path", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.67}}
+{"a": "18286", "b": "18287", "a_to_b": "climb sandstone", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.84}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "18288", "b": "18289", "a_to_b": "climb dune", "b_to_a": "climb decline", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "18314", "b": "18315", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 0.59}}
+{"a": "18343", "b": "18344", "a_to_b": "climb path", "b_to_a": "climb path", "fwd": {"choice": "up", "p": 0.83}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "18392", "b": "18393", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "18410", "b": "18576", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "18476", "b": "18477", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "18531", "b": "18532", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "18631", "b": "18632", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "18679", "b": "18685", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.62}}
+{"a": "18681", "b": "18720", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "18686", "b": "18690", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "18708", "b": "18709", "a_to_b": "go stairs", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "18712", "b": "18713", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.84}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "18746", "b": "18747", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "18758", "b": "18765", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "18831", "b": "18832", "a_to_b": "climb ravine", "b_to_a": "climb ravine", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "18891", "b": "18893", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "18932", "b": "18933", "a_to_b": "climb ramp", "b_to_a": "climb ramp", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.67}}
+{"a": "18957", "b": "18959", "a_to_b": "climb staircase", "b_to_a": "climb east staircase", "fwd": {"choice": "down", "p": 0.65}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "18959", "b": "18960", "a_to_b": "climb west staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "18979", "b": "18981", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "down", "p": 0.52}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "19007", "b": "19008", "a_to_b": "climb ramp", "b_to_a": "climb ramp", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.54}}
+{"a": "19048", "b": "19049", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "19055", "b": "19057", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "19062", "b": "19065", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "up", "p": 0.65}}
+{"a": "19066", "b": "19067", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.78}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "19068", "b": "19070", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "19105", "b": "23468", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.87}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "19157", "b": "19158", "a_to_b": "climb volcano", "b_to_a": "climb volcano", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "19212", "b": "33356", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "19225", "b": "19226", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "19276", "b": "19277", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "19290", "b": "19294", "a_to_b": "go fieldstone steps", "b_to_a": "go fieldstone steps", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "19311", "b": "19312", "a_to_b": "climb tree", "b_to_a": "climb knotted rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "19357", "b": "19358", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "19376", "b": "19377", "a_to_b": "go steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "19518", "b": "19519", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "19538", "b": "19539", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.68}}
+{"a": "19551", "b": "19552", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "19586", "b": "24557", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "19594", "b": "19595", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.64}}
+{"a": "19607", "b": "19608", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.87}, "rev": {"choice": "up", "p": 0.8}}
+{"a": "19609", "b": "19610", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "19618", "b": "19619", "a_to_b": "climb staircase", "b_to_a": "climb iron staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "19619", "b": "19626", "a_to_b": "climb mahogany staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "19655", "b": "19656", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "19734", "b": "19737", "a_to_b": "climb stairway", "b_to_a": "climb short stairway", "fwd": {"choice": "up", "p": 0.52}, "rev": {"choice": "up", "p": 1}}
+{"a": "19737", "b": "19738", "a_to_b": "climb winding stairway", "b_to_a": "climb winding stairway", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "19737", "b": "19742", "a_to_b": "climb terraced stairway", "b_to_a": "climb stairway", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "19738", "b": "19740", "a_to_b": "climb stone stairway", "b_to_a": "climb stone stairway", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "19740", "b": "19741", "a_to_b": "climb wooden stairway", "b_to_a": "climb stairway", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.67}}
+{"a": "19759", "b": "19760", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "19791", "b": "19792", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "19837", "b": "19838", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.64}, "rev": {"choice": "up", "p": 0.64}}
+{"a": "19860", "b": "19869", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "19920", "b": "19921", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "19923", "b": "19924", "a_to_b": "climb stairwell", "b_to_a": "climb stairwell", "fwd": {"choice": "down", "p": 0.63}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "19936", "b": "19938", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.75}}
+{"a": "19938", "b": "19943", "a_to_b": "go ladder", "b_to_a": "go hatch", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "19988", "b": "19989", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "19993", "b": "19994", "a_to_b": "go staircase", "b_to_a": "climb staircase", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "20060", "b": "20062", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "20071", "b": "20072", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.71}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "20129", "b": "20130", "a_to_b": "climb ramp", "b_to_a": "climb ramp", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "20130", "b": "20361", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "20175", "b": "20176", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "20183", "b": "23143", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "down", "p": 0.76}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "20197", "b": "23153", "a_to_b": "go wooden ladder in niche", "b_to_a": "go wooden ladder", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 1}}
+{"a": "20200", "b": "20202", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "20334", "b": "20335", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "20348", "b": "24214", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "20412", "b": "22589", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "20532", "b": "20533", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "20631", "b": "20639", "a_to_b": "go ladder", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "20640", "b": "33357", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.68}}
+{"a": "20668", "b": "20669", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "20684", "b": "20686", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "20689", "b": "20690", "a_to_b": "go stairs", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "20689", "b": "20691", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "20698", "b": "20718", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "20706", "b": "20708", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "20730", "b": "20731", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "20734", "b": "20739", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "20753", "b": "20754", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "20766", "b": "20767", "a_to_b": "go stairs", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.51}}
+{"a": "20767", "b": "20770", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.73}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "20771", "b": "20772", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "20773", "b": "20774", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "20781", "b": "20782", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "20788", "b": "20791", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "20788", "b": "20793", "a_to_b": "go granite staircase", "b_to_a": "go granite staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.78}}
+{"a": "20791", "b": "20796", "a_to_b": "go marble staircase", "b_to_a": "go marble staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "20793", "b": "20811", "a_to_b": "go mithril staircase", "b_to_a": "go mithril staircase", "fwd": {"choice": "up", "p": 0.53}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "20795", "b": "20830", "a_to_b": "go spiral stairs", "b_to_a": "go spiral stairs", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "20796", "b": "20804", "a_to_b": "go covered stairway", "b_to_a": "go covered stairway", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 1}}
+{"a": "20811", "b": "20818", "a_to_b": "go dark staircase", "b_to_a": "go dark staircase", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "20870", "b": "20871", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "20987", "b": "20990", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "21090", "b": "21093", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.68}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "21098", "b": "21099", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "21112", "b": "21113", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.52}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "21127", "b": "21128", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "21132", "b": "21133", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "21136", "b": "21137", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "21142", "b": "21147", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "21156", "b": "21157", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "21186", "b": "21187", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.53}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "21304", "b": "28692", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "21330", "b": "21331", "a_to_b": "go spiral staircase", "b_to_a": "go spiral staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "21398", "b": "21400", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "21401", "b": "21402", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.83}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "21489", "b": "21491", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "21516", "b": "21517", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "21548", "b": "21549", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "21637", "b": "21639", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "21639", "b": "21645", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "21650", "b": "21651", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "21659", "b": "21660", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.57}}
+{"a": "21681", "b": "21682", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "21689", "b": "29528", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "21748", "b": "21755", "a_to_b": "go stairway", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "21749", "b": "21750", "a_to_b": "go staircase", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "21755", "b": "21757", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.63}}
+{"a": "21764", "b": "21765", "a_to_b": "go stair", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.59}}
+{"a": "21842", "b": "21843", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "21842", "b": "21844", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "21863", "b": "21864", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "21865", "b": "21929", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "21958", "b": "21959", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "22034", "b": "22035", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "22062", "b": "34405", "a_to_b": "go marble stairway", "b_to_a": "go marble stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "22074", "b": "22075", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "22081", "b": "22082", "a_to_b": "go staircase", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.59}}
+{"a": "22111", "b": "22115", "a_to_b": "go elegant stairway", "b_to_a": "go sweeping staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "22139", "b": "22152", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "22248", "b": "22249", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "22282", "b": "22283", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "22283", "b": "22288", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "22286", "b": "22287", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "22506", "b": "22507", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "22507", "b": "22508", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "22508", "b": "22509", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "23107", "b": "23108", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "23110", "b": "23111", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "23211", "b": "23213", "a_to_b": "go staircase", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "23272", "b": "23273", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.82}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "23362", "b": "23375", "a_to_b": "go central staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "23380", "b": "23382", "a_to_b": "go grey staircase", "b_to_a": "go grey staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "23422", "b": "23423", "a_to_b": "go rope ladder", "b_to_a": "go rope ladder", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 1}}
+{"a": "23521", "b": "24046", "a_to_b": "climb stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.6}}
+{"a": "23542", "b": "23543", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "23542", "b": "23544", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "23551", "b": "23552", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "23663", "b": "23664", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "23673", "b": "23674", "a_to_b": "go steps", "b_to_a": "go step", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "23720", "b": "23721", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "23723", "b": "23724", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "23759", "b": "26851", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "23760", "b": "23761", "a_to_b": "go stairway", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "23846", "b": "23847", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "23850", "b": "23851", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.77}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "23856", "b": "23857", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "23858", "b": "24829", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.71}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "23861", "b": "23862", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "23923", "b": "23924", "a_to_b": "go spiral staircase", "b_to_a": "go spiral staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "23924", "b": "23925", "a_to_b": "go hemp ladder", "b_to_a": "go hemp ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "24046", "b": "24048", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.86}}
+{"a": "24048", "b": "24049", "a_to_b": "climb ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "24108", "b": "24109", "a_to_b": "go stone stairwell", "b_to_a": "go stone stairwell", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.66}}
+{"a": "24177", "b": "24178", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "24191", "b": "24206", "a_to_b": "go marble stairs", "b_to_a": "go marble stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "24192", "b": "24206", "a_to_b": "go golden steps", "b_to_a": "go golden steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "24196", "b": "24206", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "24216", "b": "24217", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "24240", "b": "24243", "a_to_b": "go sturdy ladder", "b_to_a": "go sturdy ladder", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "up", "p": 0.77}}
+{"a": "24281", "b": "24282", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "24297", "b": "24298", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "24308", "b": "24309", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "down", "p": 0.59}}
+{"a": "24309", "b": "24310", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "24397", "b": "24398", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "24407", "b": "24472", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "24421", "b": "24422", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "up", "p": 0.86}}
+{"a": "24455", "b": "24460", "a_to_b": "go sweeping stairwell", "b_to_a": "go steep stairwell", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "24473", "b": "24475", "a_to_b": "go descending staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "24502", "b": "24506", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.59}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "24504", "b": "24505", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "24507", "b": "24508", "a_to_b": "go hemp ladder", "b_to_a": "go hemp ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "24526", "b": "24533", "a_to_b": "climb hillside", "b_to_a": "climb hillside", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "24565", "b": "24566", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "24677", "b": "24678", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.78}}
+{"a": "24720", "b": "24721", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.58}}
+{"a": "24779", "b": "24797", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "25221", "b": "25222", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "25405", "b": "25416", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 1}}
+{"a": "25408", "b": "25411", "a_to_b": "go ladder", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "25425", "b": "25429", "a_to_b": "climb ladder", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "25512", "b": "25513", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "25514", "b": "25515", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "25515", "b": "25516", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "25517", "b": "25518", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "25605", "b": "25607", "a_to_b": "go stair", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "25625", "b": "25626", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "25630", "b": "25631", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "25631", "b": "25633", "a_to_b": "go rung", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "25634", "b": "25635", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "25641", "b": "25642", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "25675", "b": "25678", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.7}}
+{"a": "25678", "b": "27817", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "25714", "b": "25715", "a_to_b": "go staircase", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "25798", "b": "25801", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "25801", "b": "25802", "a_to_b": "go coral staircase", "b_to_a": "go coral staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "25816", "b": "25817", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "25837", "b": "25841", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "25870", "b": "25875", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "25888", "b": "25988", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "25918", "b": "25934", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "25996", "b": "26906", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "26011", "b": "26012", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "26057", "b": "26058", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "26058", "b": "26059", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "26091", "b": "26092", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "26102", "b": "26103", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "26224", "b": "26226", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "26280", "b": "26281", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "26417", "b": "26418", "a_to_b": "go stairs", "b_to_a": "go stairwell", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "26421", "b": "27487", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.81}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "26438", "b": "26439", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "26450", "b": "26451", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "26464", "b": "26465", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.61}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "26487", "b": "26488", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "26494", "b": "26647", "a_to_b": "go ladder", "b_to_a": "go hole", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "26501", "b": "26502", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.71}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "26507", "b": "26508", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "26530", "b": "26531", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "26557", "b": "26558", "a_to_b": "go stairs", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.86}}
+{"a": "26590", "b": "26591", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "down", "p": 0.58}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "26592", "b": "26593", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "26615", "b": "26616", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.75}}
+{"a": "26795", "b": "26796", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.52}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "26796", "b": "26797", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "26816", "b": "26821", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "26834", "b": "36470", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "26839", "b": "27162", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "26841", "b": "26843", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "26901", "b": "26909", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "26903", "b": "31411", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "27019", "b": "27020", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "27157", "b": "27158", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "27394", "b": "27758", "a_to_b": "climb odd boulder", "b_to_a": "climb odd boulder", "fwd": {"choice": "up", "p": 0.8}, "rev": {"choice": "down", "p": 0.55}}
+{"a": "27515", "b": "28506", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "27644", "b": "27645", "a_to_b": "go stairs", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "27682", "b": "27687", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "27821", "b": "27822", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "28064", "b": "28065", "a_to_b": "go set steps", "b_to_a": "go set steps", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "28158", "b": "28203", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "28204", "b": "28205", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "28225", "b": "28226", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "28286", "b": "28287", "a_to_b": "go west staircase", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.69}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "28286", "b": "28289", "a_to_b": "go east staircase", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "28298", "b": "28299", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "28307", "b": "28308", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "28400", "b": "28401", "a_to_b": "go staircase", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "28401", "b": "28402", "a_to_b": "go staircase", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "28402", "b": "28403", "a_to_b": "go staircase", "b_to_a": "go step", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "28403", "b": "28443", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "28430", "b": "28431", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "28509", "b": "28516", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "28599", "b": "28600", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "28613", "b": "28614", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "28636", "b": "28637", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "28700", "b": "29559", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "28711", "b": "28712", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "up", "p": 1}}
+{"a": "28711", "b": "29839", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "28767", "b": "28770", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "28890", "b": "28891", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "28921", "b": "29082", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "28929", "b": "28930", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "28946", "b": "28948", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "28963", "b": "29245", "a_to_b": "go steps", "b_to_a": "go step", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "28995", "b": "28996", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "28996", "b": "29005", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "28997", "b": "28998", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "29012", "b": "29013", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "29012", "b": "29014", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.59}}
+{"a": "29078", "b": "29079", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "29083", "b": "29088", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "29091", "b": "29092", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "29106", "b": "29108", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "29141", "b": "29142", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "down", "p": 0.57}}
+{"a": "29246", "b": "29247", "a_to_b": "climb staircase", "b_to_a": "climb staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "29281", "b": "29282", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "29288", "b": "29293", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "29366", "b": "29367", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "29405", "b": "29406", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "29776", "b": "29777", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.69}}
+{"a": "29776", "b": "29778", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "29847", "b": "29848", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "29873", "b": "29880", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "29954", "b": "29955", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.78}}
+{"a": "30036", "b": "30037", "a_to_b": "climb rubble", "b_to_a": "climb rubble", "fwd": {"choice": "up", "p": 0.63}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "30050", "b": "30051", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "30070", "b": "30071", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "up", "p": 1}}
+{"a": "30278", "b": "30940", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "30279", "b": "30282", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "30279", "b": "30284", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "30331", "b": "30346", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "30552", "b": "30553", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "30609", "b": "30610", "a_to_b": "go knotty staircase", "b_to_a": "go knotty staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "30620", "b": "30621", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 1}}
+{"a": "30633", "b": "30634", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "30649", "b": "30650", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.58}, "rev": {"choice": "down", "p": 0.67}}
+{"a": "30774", "b": "30777", "a_to_b": "go obsidian-inlaid stairs", "b_to_a": "go obsidian-inlaid stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "30871", "b": "30872", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "30876", "b": "30878", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "30895", "b": "30896", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.51}}
+{"a": "30954", "b": "30955", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "30959", "b": "30960", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "30972", "b": "30973", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "30980", "b": "30981", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "30985", "b": "30986", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "31121", "b": "31126", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "31126", "b": "31134", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "31209", "b": "31210", "a_to_b": "go staircase", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "31209", "b": "31213", "a_to_b": "go steps", "b_to_a": "go tiled steps", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.71}}
+{"a": "31261", "b": "31262", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 1}}
+{"a": "31334", "b": "31335", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "31353", "b": "31355", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "31360", "b": "31362", "a_to_b": "go stairway", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "31368", "b": "31371", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.78}}
+{"a": "31426", "b": "31427", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "31435", "b": "31437", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "31485", "b": "31486", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "31485", "b": "31524", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "31527", "b": "31530", "a_to_b": "go wood staircase", "b_to_a": "go wood staircase", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "31533", "b": "31536", "a_to_b": "go stone steps", "b_to_a": "go stone steps", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "up", "p": 0.78}}
+{"a": "31575", "b": "33980", "a_to_b": "go stairs", "b_to_a": "go broad stairs", "fwd": {"choice": "down", "p": 0.65}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "31594", "b": "31597", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "31609", "b": "31610", "a_to_b": "go wide stairs", "b_to_a": "go wide stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "31633", "b": "31634", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "31645", "b": "31646", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "31770", "b": "31771", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "31792", "b": "31793", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 1}}
+{"a": "31800", "b": "31801", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "31800", "b": "31802", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "31805", "b": "31806", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "31805", "b": "31807", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "31811", "b": "31812", "a_to_b": "go ebonwood staircase", "b_to_a": "go ebonwood staircase", "fwd": {"choice": "up", "p": 0.73}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "31905", "b": "31906", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "31921", "b": "32180", "a_to_b": "go stone stairwell", "b_to_a": "go stone stairwell", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "31926", "b": "31927", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "down", "p": 0.81}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "31927", "b": "32105", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.64}, "rev": {"choice": "down", "p": 0.59}}
+{"a": "31946", "b": "31947", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "31953", "b": "31954", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "31967", "b": "32085", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.62}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "32177", "b": "32178", "a_to_b": "go narrow staircase", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "32182", "b": "32183", "a_to_b": "go spiral staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "32187", "b": "32188", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "32192", "b": "32193", "a_to_b": "go spiraling stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "32193", "b": "32194", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "32312", "b": "32313", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "32333", "b": "32335", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "32465", "b": "32466", "a_to_b": "go bloodwood staircase", "b_to_a": "go bloodwood staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.77}}
+{"a": "32485", "b": "32486", "a_to_b": "go stone stairwell", "b_to_a": "go stone stairwell", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "32502", "b": "32503", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "32504", "b": "32505", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "32509", "b": "32510", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "33048", "b": "33049", "a_to_b": "go golden stair", "b_to_a": "go golden stair", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "33100", "b": "33101", "a_to_b": "go steel ladder", "b_to_a": "go steel ladder", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "33219", "b": "33220", "a_to_b": "go spiral staircase", "b_to_a": "go spiral staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.51}}
+{"a": "33283", "b": "33302", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.84}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "33296", "b": "33297", "a_to_b": "go wall-hugging stairs", "b_to_a": "go wall-hugging stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "33335", "b": "33336", "a_to_b": "climb wall", "b_to_a": "climb handholds", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.51}}
+{"a": "33354", "b": "33355", "a_to_b": "go iron ladder", "b_to_a": "go driftwood hatch", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "33371", "b": "33372", "a_to_b": "go silver-gilt staircase", "b_to_a": "go silver-gilt staircase", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "33384", "b": "33385", "a_to_b": "go set of stairs", "b_to_a": "go set of stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "33409", "b": "33423", "a_to_b": "go stone steps", "b_to_a": "go stone steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "33415", "b": "33425", "a_to_b": "go steps", "b_to_a": "go stone steps", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "33420", "b": "33421", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "33438", "b": "33442", "a_to_b": "go narrow stair", "b_to_a": "go narrow stair", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "33901", "b": "33902", "a_to_b": "go flora-wrought staircase", "b_to_a": "go flora-wrought staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "33919", "b": "33920", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "down", "p": 0.63}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "34093", "b": "34095", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "34096", "b": "34098", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "34099", "b": "34101", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "34292", "b": "34293", "a_to_b": "climb ledge", "b_to_a": "climb trail", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "34332", "b": "34333", "a_to_b": "climb rise", "b_to_a": "climb descent", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "34337", "b": "34338", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "34437", "b": "34438", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "34440", "b": "34444", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "34545", "b": "34546", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "34546", "b": "34547", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "34708", "b": "34709", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "34718", "b": "34719", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "34805", "b": "34806", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "34845", "b": "34851", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "34846", "b": "34847", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "up", "p": 0.61}}
+{"a": "34944", "b": "35234", "a_to_b": "go stairs", "b_to_a": "go stair", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "34987", "b": "34990", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "35011", "b": "35012", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "35054", "b": "35055", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "35146", "b": "35147", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "35237", "b": "36724", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "35251", "b": "35253", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "35291", "b": "35293", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "35360", "b": "35361", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "35365", "b": "35366", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "35510", "b": "35512", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "35590", "b": "35591", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.86}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "35593", "b": "35603", "a_to_b": "climb mast", "b_to_a": "climb mast", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "35594", "b": "35600", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "35637", "b": "35699", "a_to_b": "climb wall", "b_to_a": "climb rocks", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "35642", "b": "35659", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "35659", "b": "35693", "a_to_b": "climb hand", "b_to_a": "climb talon", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "35678", "b": "35679", "a_to_b": "climb base", "b_to_a": "climb base", "fwd": {"choice": "up", "p": 0.72}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "35679", "b": "35680", "a_to_b": "climb column", "b_to_a": "climb column", "fwd": {"choice": "up", "p": 0.87}, "rev": {"choice": "up", "p": 0.55}}
+{"a": "35778", "b": "35781", "a_to_b": "go knotty staircase", "b_to_a": "go knotty staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "35802", "b": "35803", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.76}}
+{"a": "35807", "b": "35808", "a_to_b": "climb rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "35809", "b": "35810", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.73}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "36037", "b": "36038", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "36051", "b": "36057", "a_to_b": "go larch steps", "b_to_a": "go larch steps", "fwd": {"choice": "down", "p": 0.8}, "rev": {"choice": "up", "p": 1}}
+{"a": "36078", "b": "36080", "a_to_b": "go granite staircase", "b_to_a": "go hewn staircase", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "36094", "b": "36097", "a_to_b": "go spiral staircase", "b_to_a": "go spiral staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "36096", "b": "36122", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "36100", "b": "36104", "a_to_b": "go wooden stairs", "b_to_a": "go wooden staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.55}}
+{"a": "36113", "b": "36114", "a_to_b": "go steep staircase", "b_to_a": "go steep staircase", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "36172", "b": "36174", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "36176", "b": "36466", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.84}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "36177", "b": "36181", "a_to_b": "go stairwell", "b_to_a": "go stairwell", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "36184", "b": "36186", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "36231", "b": "36233", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.7}}
+{"a": "36261", "b": "36262", "a_to_b": "go ironwood ladder", "b_to_a": "go ironwood tower", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "36270", "b": "36273", "a_to_b": "go spiral staircase", "b_to_a": "go spiral staircase", "fwd": {"choice": "up", "p": 0.61}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "36273", "b": "36275", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "36283", "b": "36284", "a_to_b": "go spiral staircase", "b_to_a": "go spiral staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "36302", "b": "36321", "a_to_b": "go carved staircase", "b_to_a": "go carved staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "36326", "b": "36327", "a_to_b": "go mahogany staircase", "b_to_a": "go mahogany staircase", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "36370", "b": "36371", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "36372", "b": "36415", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.73}}
+{"a": "36373", "b": "36374", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "36401", "b": "36402", "a_to_b": "go stairwell", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.56}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "36472", "b": "36474", "a_to_b": "go wooden stairs", "b_to_a": "go twisting staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "36496", "b": "36497", "a_to_b": "go driftwood ladder", "b_to_a": "go driftwood ladder", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "36535", "b": "36537", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "36649", "b": "36652", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "36653", "b": "36658", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "36662", "b": "36678", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "36670", "b": "36688", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.83}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "36714", "b": "36717", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "36725", "b": "36746", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "36757", "b": "36760", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.71}}
+{"a": "36767", "b": "36768", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "36795", "b": "36798", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "271", "b": "3809", "a_to_b": "go stairway", "b_to_a": "go doors", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "440", "b": "13033", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "449", "b": "21538", "a_to_b": "climb of spidersilk", "b_to_a": "climb of spidersilk", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "506", "b": "7673", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "down", "p": 1}}
+{"a": "669", "b": "21538", "a_to_b": "climb spidersilk", "b_to_a": "climb spidersilk", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "1199", "b": "7816", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "1499", "b": "13349", "a_to_b": "climb tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "1787", "b": "1788", "a_to_b": "climb boulder", "b_to_a": "climb boulder", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "1789", "b": "1791", "a_to_b": "climb rocks", "b_to_a": "climb rocks", "fwd": {"choice": "up", "p": 0.8}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "2209", "b": "2208", "a_to_b": "climb fissure", "b_to_a": "climb fissure", "fwd": {"choice": "up", "p": 0.77}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "2413", "b": "15690", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "2647", "b": "2658", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "up", "p": 1}}
+{"a": "2659", "b": "2658", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "2660", "b": "2658", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "2661", "b": "2658", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "2674", "b": "2673", "a_to_b": "go stair", "b_to_a": "go #-9293", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.63}}
+{"a": "2676", "b": "2673", "a_to_b": "go stair", "b_to_a": "go #-9292", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "2725", "b": "21538", "a_to_b": "climb of spidersilk", "b_to_a": "climb of spidersilk", "fwd": {"choice": "up", "p": 0.72}, "rev": {"choice": "up", "p": 0.74}}
+{"a": "2917", "b": "2916", "a_to_b": "climb cliff", "b_to_a": "climb cliff", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "up", "p": 1}}
+{"a": "2998", "b": "2997", "a_to_b": "climb landslide", "b_to_a": "climb landslide", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "3263", "b": "3245", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 0.76}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "3358", "b": "2357", "a_to_b": "climb ledge", "b_to_a": "go slide", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "3438", "b": "15690", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "3714", "b": "7071", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.52}}
+{"a": "3793", "b": "3794", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "4077", "b": "15519", "a_to_b": "climb platform", "b_to_a": "go floor", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "4116", "b": "7803", "a_to_b": "climb path", "b_to_a": "go path", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "4168", "b": "4154", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.51}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "4563", "b": "4562", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "5250", "b": "5251", "a_to_b": "climb hole", "b_to_a": "climb hole", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "5547", "b": "14604", "a_to_b": "go stairway", "b_to_a": "go #-7293", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "5644", "b": "5637", "a_to_b": "climb hole", "b_to_a": "climb hole", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 1}}
+{"a": "6119", "b": "6110", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "down", "p": 0.77}, "rev": {"choice": "up", "p": 0.66}}
+{"a": "6173", "b": "6175", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "6228", "b": "9651", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "6326", "b": "6327", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "6985", "b": "6986", "a_to_b": "climb ledge", "b_to_a": "go path", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "7307", "b": "7206", "a_to_b": "climb chimney", "b_to_a": "climb chimney", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "7329", "b": "7332", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "up", "p": 0.7}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "7696", "b": "7690", "a_to_b": "climb roots", "b_to_a": "climb roots", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "7991", "b": "8748", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "8072", "b": "14456", "a_to_b": "climb spire", "b_to_a": "climb spire", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "8625", "b": "13894", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.56}}
+{"a": "8662", "b": "8663", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.6}}
+{"a": "8686", "b": "7517", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.77}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "8748", "b": "8749", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "8749", "b": "8750", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "8912", "b": "8913", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.77}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "9247", "b": "9271", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "9248", "b": "9272", "a_to_b": "go stairs", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "9249", "b": "9273", "a_to_b": "go stairs", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "9250", "b": "9274", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "9251", "b": "9275", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "9609", "b": "9606", "a_to_b": "climb rocks", "b_to_a": "go pool", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "9688", "b": "9689", "a_to_b": "go stairway", "b_to_a": "go walkway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "9862", "b": "90", "a_to_b": "climb rock", "b_to_a": "go pool", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "10845", "b": "10844", "a_to_b": "climb bank", "b_to_a": "climb bank", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "10883", "b": "11427", "a_to_b": "go stair", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "11105", "b": "11090", "a_to_b": "climb grate", "b_to_a": "go grate", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "11115", "b": "11116", "a_to_b": "climb bowsprit", "b_to_a": "go bowsprit", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.65}}
+{"a": "11116", "b": "11117", "a_to_b": "climb chain", "b_to_a": "climb chain", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "11314", "b": "11313", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "11349", "b": "11403", "a_to_b": "climb rubble", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "11936", "b": "12032", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "12016", "b": "12015", "a_to_b": "climb benches", "b_to_a": "go benches", "fwd": {"choice": "up", "p": 0.57}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "12020", "b": "12026", "a_to_b": "climb benches", "b_to_a": "go benches", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "up", "p": 0.7}}
+{"a": "12037", "b": "12040", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "12682", "b": "12691", "a_to_b": "go stairs", "b_to_a": "go door", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "14139", "b": "14140", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.64}, "rev": {"choice": "down", "p": 0.75}}
+{"a": "14541", "b": "14486", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "down", "p": 0.63}}
+{"a": "14595", "b": "14594", "a_to_b": "climb steps", "b_to_a": "go kitchen", "fwd": {"choice": "up", "p": 0.65}, "rev": {"choice": "down", "p": 0.68}}
+{"a": "14650", "b": "19967", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "14995", "b": "14996", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "15567", "b": "237", "a_to_b": "climb drainpipe", "b_to_a": "climb drainpipe", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "15984", "b": "15990", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "15993", "b": "15996", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.89}, "rev": {"choice": "up", "p": 0.73}}
+{"a": "16192", "b": "16193", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "17079", "b": "14604", "a_to_b": "go stairway", "b_to_a": "go #-7296", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "17094", "b": "17109", "a_to_b": "go steps", "b_to_a": "go doors", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "17517", "b": "16323", "a_to_b": "climb steps", "b_to_a": "go simple arch", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "17682", "b": "17684", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "17682", "b": "23208", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "17930", "b": "9490", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "17954", "b": "1462", "a_to_b": "climb gutter", "b_to_a": "climb gutter", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "18004", "b": "19220", "a_to_b": "go step", "b_to_a": "out", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "18080", "b": "18081", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.75}, "rev": {"choice": "up", "p": 0.71}}
+{"a": "18179", "b": "18178", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "up", "p": 1}}
+{"a": "18347", "b": "17833", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "18357", "b": "18358", "a_to_b": "go rope", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.64}, "rev": {"choice": "up", "p": 0.53}}
+{"a": "19172", "b": "19173", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "19173", "b": "19128", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "up", "p": 1}}
+{"a": "19213", "b": "17941", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "19371", "b": "19373", "a_to_b": "climb dune", "b_to_a": "go dune", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "19603", "b": "19604", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "19608", "b": "19609", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "19610", "b": "19607", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "19946", "b": "19945", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "20054", "b": "14448", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "20060", "b": "19966", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "20115", "b": "20114", "a_to_b": "climb vines", "b_to_a": "go vines", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "up", "p": 1}}
+{"a": "20153", "b": "20151", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.67}, "rev": {"choice": "up", "p": 0.65}}
+{"a": "20195", "b": "20126", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "20331", "b": "20140", "a_to_b": "go steps", "b_to_a": "go wooden shack", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "20509", "b": "20510", "a_to_b": "climb opening", "b_to_a": "climb opening", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "20568", "b": "20543", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "20604", "b": "434", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.59}}
+{"a": "20641", "b": "19937", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.5}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "20645", "b": "460", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "20751", "b": "20756", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "20855", "b": "20848", "a_to_b": "go stairs", "b_to_a": "go mirror", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "20907", "b": "20909", "a_to_b": "climb lattice-work", "b_to_a": "go bark", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "20951", "b": "20952", "a_to_b": "climb plateau", "b_to_a": "go descent", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "21121", "b": "21122", "a_to_b": "go ladder", "b_to_a": "go slab", "fwd": {"choice": "up", "p": 0.56}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "21134", "b": "19347", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "21154", "b": "19359", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "21155", "b": "22062", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "21163", "b": "21152", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "21182", "b": "18261", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "21184", "b": "21185", "a_to_b": "go ladder", "b_to_a": "go chute", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "21190", "b": "19390", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.51}}
+{"a": "21193", "b": "12282", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "21194", "b": "3845", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "21197", "b": "12288", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "21201", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "21203", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "21204", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "21205", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "21206", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "21207", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "21212", "b": "17591", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "21213", "b": "17600", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "21366", "b": "23839", "a_to_b": "climb tree", "b_to_a": "climb tree", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "21688", "b": "279", "a_to_b": "climb walls", "b_to_a": "climb walls", "fwd": {"choice": "up", "p": 0.69}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "21743", "b": "21744", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "22028", "b": "22027", "a_to_b": "go steps", "b_to_a": "go pool", "fwd": {"choice": "up", "p": 0.65}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "22292", "b": "22291", "a_to_b": "go stairs", "b_to_a": "go demonwall", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "22361", "b": "22360", "a_to_b": "go steps", "b_to_a": "go enclave", "fwd": {"choice": "down", "p": 0.81}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "22543", "b": "20319", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.68}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "23120", "b": "20072", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "23366", "b": "23365", "a_to_b": "go narrow staircase", "b_to_a": "go small door", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "23401", "b": "23399", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.78}, "rev": {"choice": "down", "p": 0.55}}
+{"a": "23904", "b": "23903", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "23926", "b": "23845", "a_to_b": "go wooden ladder", "b_to_a": "go wooden ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "24209", "b": "21394", "a_to_b": "go steep stairs", "b_to_a": "go steep stairs", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "24488", "b": "24484", "a_to_b": "go small staircase", "b_to_a": "go small staircase", "fwd": {"choice": "up", "p": 0.71}, "rev": {"choice": "up", "p": 0.63}}
+{"a": "24493", "b": "23903", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.84}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "24570", "b": "24564", "a_to_b": "go ladder", "b_to_a": "go crack", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "24985", "b": "24756", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "25186", "b": "26898", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "25367", "b": "25366", "a_to_b": "go stairwell", "b_to_a": "pull lever", "fwd": {"choice": "down", "p": 0.62}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "25374", "b": "25361", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.89}, "rev": {"choice": "up", "p": 1}}
+{"a": "25411", "b": "25417", "a_to_b": "push rope", "b_to_a": "push rope", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "25596", "b": "25595", "a_to_b": "go staircase", "b_to_a": "go opening", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "25658", "b": "30887", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.53}}
+{"a": "25739", "b": "25738", "a_to_b": "go steps", "b_to_a": "go tub", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "26091", "b": "36810", "a_to_b": "climb archway", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "26231", "b": "1948", "a_to_b": "go stairs", "b_to_a": "go mahogany wagon", "fwd": {"choice": "down", "p": 0.79}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "26410", "b": "26409", "a_to_b": "go stairway", "b_to_a": "go dock", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "26421", "b": "26422", "a_to_b": "go stairway", "b_to_a": "go pier", "fwd": {"choice": "down", "p": 0.79}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "26837", "b": "35186", "a_to_b": "go stairs", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.67}}
+{"a": "26851", "b": "29841", "a_to_b": "go steps", "b_to_a": "go door", "fwd": {"choice": "down", "p": 0.65}, "rev": {"choice": "up", "p": 0.58}}
+{"a": "26862", "b": "23740", "a_to_b": "go rickety stairs", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "26911", "b": "26890", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "27015", "b": "27016", "a_to_b": "go stairway", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "27383", "b": "27373", "a_to_b": "go stairway", "b_to_a": "go ascending passageway", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "27578", "b": "27556", "a_to_b": "go steps", "b_to_a": "go large jetty", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "up", "p": 0.57}}
+{"a": "27581", "b": "26516", "a_to_b": "go steps", "b_to_a": "go black pavilion", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "27663", "b": "2429", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.53}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "27705", "b": "27704", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.67}}
+{"a": "27712", "b": "27711", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "up", "p": 0.86}}
+{"a": "27719", "b": "27718", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "27726", "b": "27725", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "27733", "b": "27732", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.58}}
+{"a": "27740", "b": "27739", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "27812", "b": "25676", "a_to_b": "go stair", "b_to_a": "go redwood door", "fwd": {"choice": "up", "p": 0.52}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "28121", "b": "28122", "a_to_b": "climb rock", "b_to_a": "climb rock", "fwd": {"choice": "up", "p": 0.56}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "28319", "b": "4989", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "28436", "b": "28432", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.53}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "28477", "b": "28435", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "up", "p": 0.73}}
+{"a": "28497", "b": "3483", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 1}}
+{"a": "28524", "b": "26427", "a_to_b": "go steps", "b_to_a": "go canvas-draped wagon", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "28532", "b": "28546", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "28816", "b": "2952", "a_to_b": "go stone stairs", "b_to_a": "go stone stairs", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "28868", "b": "2968", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "28869", "b": "2967", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 1}}
+{"a": "28875", "b": "2974", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "28878", "b": "2955", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "28879", "b": "2954", "a_to_b": "go stone stairs", "b_to_a": "go stone stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "28892", "b": "29112", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "29104", "b": "28891", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.79}, "rev": {"choice": "up", "p": 1}}
+{"a": "29105", "b": "28890", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.56}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "29111", "b": "29112", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.8}, "rev": {"choice": "up", "p": 0.77}}
+{"a": "29649", "b": "28064", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.6}, "rev": {"choice": "up", "p": 0.81}}
+{"a": "29825", "b": "23728", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "29996", "b": "29997", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "30018", "b": "30019", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.68}}
+{"a": "30148", "b": "30153", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "30163", "b": "30164", "a_to_b": "go angled staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "30348", "b": "30338", "a_to_b": "go stairway", "b_to_a": "go companionway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "30425", "b": "30426", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.68}, "rev": {"choice": "up", "p": 0.76}}
+{"a": "30630", "b": "30631", "a_to_b": "climb ladder", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "30882", "b": "8663", "error": "HTTP 400: {\"error\":{\"message\":\"HTTP 400: {\\\"detail\\\":{\\\"error_type\\\":\\\"api_usage_error\\\",\\\"message\\\":\\\"Unknown model: jev-1.13.0\\\"}}\",\"code\":400}}"}
+{"a": "30886", "b": "15800", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "30889", "b": "10881", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.7}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "30899", "b": "10437", "a_to_b": "go step", "b_to_a": "go step", "fwd": {"choice": "up", "p": 0.61}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "30900", "b": "13484", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.8}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "30918", "b": "30917", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "up", "p": 0.5}}
+{"a": "31064", "b": "29876", "a_to_b": "climb sliver", "b_to_a": "climb sliver", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "31529", "b": "31527", "a_to_b": "go stone staircase", "b_to_a": "go stone staircase", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "31794", "b": "35967", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "31915", "b": "31914", "a_to_b": "go steps", "b_to_a": "go door", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "31967", "b": "31966", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.65}}
+{"a": "32384", "b": "32383", "a_to_b": "go ladder", "b_to_a": "go sinkhole", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "down", "p": 1}}
+{"a": "33224", "b": "33219", "a_to_b": "go ladder", "b_to_a": "push floats", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "33292", "b": "20016", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "33336", "b": "33337", "a_to_b": "climb wall", "b_to_a": "go talon", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "33401", "b": "33402", "a_to_b": "go wooden staircase", "b_to_a": "go metal-framed door", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.77}}
+{"a": "33441", "b": "33442", "a_to_b": "go narrow stair", "b_to_a": "go narrow stair", "fwd": {"choice": "up", "p": 0.84}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "33451", "b": "24962", "a_to_b": "go stairs", "b_to_a": "go right", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "33452", "b": "24962", "a_to_b": "go stairs", "b_to_a": "go left", "fwd": {"choice": "down", "p": 0.58}, "rev": {"choice": "up", "p": 0.73}}
+{"a": "33714", "b": "33713", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "34940", "b": "34939", "a_to_b": "go staircase", "b_to_a": "go lighthouse", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "35448", "b": "12981", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "35477", "b": "35478", "a_to_b": "go stairway", "b_to_a": "go railing", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "35517", "b": "35568", "a_to_b": "go spiraled staircase", "b_to_a": "go driftwood door", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "35740", "b": "35738", "a_to_b": "go steps", "b_to_a": "go entrance", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "35875", "b": "35873", "a_to_b": "go grey steps", "b_to_a": "go hot spring", "fwd": {"choice": "down", "p": 0.62}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "35967", "b": "35965", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "36262", "b": "29867", "a_to_b": "go rope-secured barricade", "b_to_a": "go log-framed encampment", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 0.69}}

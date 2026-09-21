@@ -1,0 +1,40 @@
+{"item": "E0201", "direction": "up", "confidence": 92, "reason": "clock tower steeple above the upper clock tower, rods push up through the floor into the bells"}
+{"item": "E0202", "direction": "same floor", "confidence": 85, "reason": "clearing leads level into a cave mouth in a hillock, no descent described"}
+{"item": "E0203", "direction": "down", "confidence": 80, "reason": "climbing through a skylight hole in the chamber's dome from flats above into the lake chamber below"}
+{"item": "E0204", "direction": "down", "confidence": 93, "reason": "arrived room is a six-foot deep grave with walls vertical and intimidating from this angle"}
+{"item": "E0205", "direction": "same floor", "confidence": 80, "reason": "a narrow tunnel connects two rooms carved in the same glacier level"}
+{"item": "E0206", "direction": "same floor", "confidence": 82, "reason": "an oak archway onto the 3rd floor hallway, which has its own staircase down to the lounge"}
+{"item": "E0207", "direction": "up", "confidence": 90, "reason": "the stairs are carved of sandstone and lead upwards; arrived room's other exit is up"}
+{"item": "E0208", "direction": "up", "confidence": 93, "reason": "left room's steps ascend to the landing above; arrived landing's steps descend to the landing below"}
+{"item": "E0209", "direction": "same floor", "confidence": 72, "reason": "the crack's water tumbles out onto the trail outside, so the cave opens level with the trail"}
+{"item": "E0210", "direction": "up", "confidence": 90, "reason": "guest rooms are at the top of the creaky wooden stairs from the front desk"}
+{"item": "E0211", "direction": "down", "confidence": 90, "reason": "split log steps lead down to a door half below ground level"}
+{"item": "E0212", "direction": "same floor", "confidence": 88, "reason": "entering the turret's ground floor from the road outside"}
+{"item": "E0213", "direction": "same floor", "confidence": 65, "reason": "observation platform reached by steps off the open top level, apparently the same tower top"}
+{"item": "E0214", "direction": "down", "confidence": 95, "reason": "swim down into an underwater room whose return exit is swim up"}
+{"item": "E0215", "direction": "up", "confidence": 93, "reason": "climbing a rope from a room under stained glass skylights to the rooftop where those skylights are set in the floor"}
+{"item": "E0216", "direction": "same floor", "confidence": 55, "reason": "a magical hole in a vision landscape into a guild room with no height cue either way"}
+{"item": "E0217", "direction": "up", "confidence": 85, "reason": "a worn set of steps leads up to the raised courtyard that is the guild entryway"}
+{"item": "E0218", "direction": "same floor", "confidence": 78, "reason": "stepping off a bridge onto a connected ledge of the same circle of bridges and ledges"}
+{"item": "E0219", "direction": "up", "confidence": 94, "reason": "trapdoor in the attic's ceiling leads to the cupola, whose trapdoor is set into its floor"}
+{"item": "E0220", "direction": "same floor", "confidence": 60, "reason": "foyer staircase into the theatre seating area, no clear level change stated"}
+{"item": "E0221", "direction": "same floor", "confidence": 60, "reason": "a secret door opened by a statue into an adjacent small chamber with no vertical cue"}
+{"item": "E0222", "direction": "up", "confidence": 92, "reason": "sweeping staircase ascends to the tower's upper floors, landing has further up exit"}
+{"item": "E0223", "direction": "down", "confidence": 92, "reason": "water pours over the staircase to the water below; dais staircase leads to the floor above"}
+{"item": "E0224", "direction": "down", "confidence": 95, "reason": "swim down from the bank into an underwater room"}
+{"item": "E0225", "direction": "up", "confidence": 92, "reason": "staircase carved into the hillside leading upwards to a wide ledge"}
+{"item": "E0226", "direction": "down", "confidence": 72, "reason": "tunnel from the corridor into a sunken chamber with a window near its ceiling onto the room beyond"}
+{"item": "E0227", "direction": "up", "confidence": 88, "reason": "the staircase connects the kitchen with the rooms above; arrived room is on the upper floor"}
+{"item": "E0228", "direction": "down", "confidence": 88, "reason": "the dorter waits at the top of a narrow staircase that climbs the walls from the cloistered walk"}
+{"item": "E0229", "direction": "same floor", "confidence": 70, "reason": "the cave mouth is two feet from the cliff ledge, entered level; descent happens further in via down"}
+{"item": "E0230", "direction": "down", "confidence": 95, "reason": "swim down from the island shore into the river bottom"}
+{"item": "E0231", "direction": "same floor", "confidence": 85, "reason": "a crevasse passage through boulders onto a forest trail, the same stream running through both"}
+{"item": "E0232", "direction": "up", "confidence": 60, "reason": "climb steps between tree platforms; dyeing room is described as deeper in with a further up exit, weak cue"}
+{"item": "E0233", "direction": "down", "confidence": 78, "reason": "the hole is at your feet on the peak and leads back into a darkened recess below"}
+{"item": "E0234", "direction": "up", "confidence": 88, "reason": "a steep trail leading up lends no aid to those ascending the switchback; arrived room has a steep trail leading further down"}
+{"item": "E0235", "direction": "up", "confidence": 78, "reason": "the curved stairway cuts alongside and up from the grotto pool, whose other exit is down"}
+{"item": "E0236", "direction": "same floor", "confidence": 88, "reason": "one of the painted doors lining the upstairs hall opens on a room on that floor"}
+{"item": "E0237", "direction": "up", "confidence": 85, "reason": "an ironwood staircase leads upwards from the main deck to a curtained archway"}
+{"item": "E0238", "direction": "up", "confidence": 90, "reason": "the winding staircase disappears through the great hall's ceiling to the study"}
+{"item": "E0239", "direction": "up", "confidence": 82, "reason": "ladder ascends to a small platform projecting from the north wall into the hall"}
+{"item": "E0240", "direction": "down", "confidence": 88, "reason": "a short stair on the east side leads down to a similarly robust door"}

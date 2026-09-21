@@ -1,0 +1,13 @@
+100/1241 asked=202 cost=$0.0116
+200/1241 asked=403 cost=$0.0231
+300/1241 asked=680 cost=$0.0386
+400/1241 asked=798 cost=$0.0452
+500/1241 asked=998 cost=$0.0567
+600/1241 asked=1196 cost=$0.0678
+700/1241 asked=1368 cost=$0.0778
+800/1241 asked=1536 cost=$0.0873
+900/1241 asked=1703 cost=$0.0968
+1000/1241 asked=1868 cost=$0.1063
+1100/1241 asked=2046 cost=$0.1164
+1200/1241 asked=2238 cost=$0.1272
+done: 1241 pairs, 2318 calls asked, tokens in=3135737 out=90630 cost=$0.131701

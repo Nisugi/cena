@@ -1,0 +1,40 @@
+{"item": "E0321", "direction": "up", "confidence": 72, "reason": "climbing onto a raised wooden platform in the warehouse, which gives a view over all the floor activity"}
+{"item": "E0322", "direction": "up", "confidence": 96, "reason": "arrived room is the 3rd Floor Hallway whose staircase leads back to the lounge far below"}
+{"item": "E0323", "direction": "up", "confidence": 93, "reason": "room left says the staircase appears to lead up to a second floor"}
+{"item": "E0324", "direction": "down", "confidence": 70, "reason": "climbing a crevice into a subterranean cavern from a non-subterranean one"}
+{"item": "E0325", "direction": "same floor", "confidence": 72, "reason": "the hollow is entered from the platform level of the tree, a room beside it rather than above or below"}
+{"item": "E0326", "direction": "same floor", "confidence": 75, "reason": "the dunes merely provide easy access between beach and the lane; both outdoor street-level rooms"}
+{"item": "E0327", "direction": "up", "confidence": 94, "reason": "room left says a narrow staircase leads up to an open hallway above"}
+{"item": "E0328", "direction": "up", "confidence": 68, "reason": "arrived lair describes steam escaping from the ground below, i.e. from where we came"}
+{"item": "E0329", "direction": "same floor", "confidence": 90, "reason": "a tunnel curtain into another chamber of the same temple, which lists a separate 'down' exit to the crypt"}
+{"item": "E0330", "direction": "same floor", "confidence": 76, "reason": "both rooms are underground chambers of the same chancery connected to the same garden"}
+{"item": "E0331", "direction": "up", "confidence": 78, "reason": "the room already has a 'down' exit to the tunnel, so the stairs exit continues upward"}
+{"item": "E0332", "direction": "up", "confidence": 95, "reason": "room left says a knotted rope leads up through a hole in the ceiling"}
+{"item": "E0333", "direction": "down", "confidence": 96, "reason": "swimming down from a strand to an Underwater room whose surface breaks overhead"}
+{"item": "E0334", "direction": "down", "confidence": 74, "reason": "the hall describes steps leading upwards into the shadows, so the clerk's office above comes down to the hall"}
+{"item": "E0335", "direction": "up", "confidence": 93, "reason": "circular staircase whose peak disappears above rises into the common room, which continues up to a trapdoor"}
+{"item": "E0336", "direction": "up", "confidence": 65, "reason": "bedroom reached by a carved stone staircase from the ground-floor chamber, typical upper storey"}
+{"item": "E0337", "direction": "up", "confidence": 90, "reason": "climbing out of a deep trench/battlement onto the battlefield surface above"}
+{"item": "E0338", "direction": "up", "confidence": 92, "reason": "narthex says the stairway rises toward a plaza and the stair room itself continues up"}
+{"item": "E0339", "direction": "same floor", "confidence": 80, "reason": "a round wooden door into a home built directly into the barrow at ground level"}
+{"item": "E0340", "direction": "up", "confidence": 85, "reason": "the tavern is set back up a slight incline and a wooden stairway leads up to its door"}
+{"item": "E0341", "direction": "up", "confidence": 60, "reason": "a wide staircase marked Staff Only leads out of the hallway, most likely to an upper hall with a skylight"}
+{"item": "E0342", "direction": "up", "confidence": 90, "reason": "room left says the ice ramp leads up and east, and the arrived room says a ramp descends westward"}
+{"item": "E0343", "direction": "up", "confidence": 62, "reason": "climbing a staircase out of a cavern into a panelled den that itself has down and up exits"}
+{"item": "E0344", "direction": "up", "confidence": 88, "reason": "short wooden stairs lead up to the wagon door and we arrive inside the wagon"}
+{"item": "E0345", "direction": "up", "confidence": 82, "reason": "leaving a valley with steep walls rising high above, arriving at a pasture where the trail weaves from the rising valley walls"}
+{"item": "E0346", "direction": "down", "confidence": 90, "reason": "a wide black hole set in the floor of the hall leads to a dungeon cell below"}
+{"item": "E0347", "direction": "up", "confidence": 92, "reason": "room left says a curving staircase ascends to the forecastle, and we arrive on the Forecastle Deck"}
+{"item": "E0348", "direction": "up", "confidence": 90, "reason": "the east hall says a wide staircase leads up, arriving at the gallery"}
+{"item": "E0349", "direction": "up", "confidence": 95, "reason": "climbing a tree through the broken ceiling onto the Conservatory Roof"}
+{"item": "E0350", "direction": "up", "confidence": 85, "reason": "steps of roots rise up to the hall's entrance and the destination is named High Hall"}
+{"item": "E0351", "direction": "same floor", "confidence": 62, "reason": "both are identical outdoor bramble-patch rooms of a path, no level change described"}
+{"item": "E0352", "direction": "down", "confidence": 78, "reason": "a ladder from a pier on raised pillars down into a dive bar with pipes overhead, below the deck"}
+{"item": "E0353", "direction": "up", "confidence": 94, "reason": "the canyon rim is visible not far above, and the arrived rim room looks down on the rockslide"}
+{"item": "E0354", "direction": "up", "confidence": 92, "reason": "arrived Landing says the stone staircase leads down into the belly of the building"}
+{"item": "E0355", "direction": "same floor", "confidence": 60, "reason": "a step into the entrance of a level engineered tunnel marked by a crossbeam, no rise or drop described"}
+{"item": "E0356", "direction": "same floor", "confidence": 85, "reason": "both are sections of the same underground spiral passageway lined with shops"}
+{"item": "E0357", "direction": "same floor", "confidence": 70, "reason": "both rooms are the same outdoor forest trail; climbing the tree returns to trail level"}
+{"item": "E0358", "direction": "up", "confidence": 90, "reason": "arrived Sign Room says a broad semicircular staircase leads down"}
+{"item": "E0359", "direction": "down", "confidence": 90, "reason": "room left says three steps lead downwards toward the glassed end and the half-moon chamber"}
+{"item": "E0360", "direction": "up", "confidence": 90, "reason": "entryway says the sweeping dual staircase leads to the upper floor"}

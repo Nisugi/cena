@@ -1,0 +1,40 @@
+{"item": "E0161", "direction": "down", "confidence": 80, "reason": "planetarium has stairs up and spiral stairs down; the other exit 'climb staircase' already takes the up one to the Observatory"}
+{"item": "E0162", "direction": "same floor", "confidence": 70, "reason": "the bowsprit is a spar extending out from the bow, level with the forecastle, with the anchor chain leading down separately"}
+{"item": "E0163", "direction": "same floor", "confidence": 85, "reason": "a shop entered from a canyon alley at street level"}
+{"item": "E0164", "direction": "down", "confidence": 93, "reason": "left room has a 'descending stairway' and the arrived Lower Hall says its stairway leads to the floor above"}
+{"item": "E0165", "direction": "up", "confidence": 78, "reason": "temple steps with landings lead up to the temple entrance above"}
+{"item": "E0166", "direction": "up", "confidence": 72, "reason": "climbing a heaped pile of rubble and rocks onto a ringed stone area"}
+{"item": "E0167", "direction": "same floor", "confidence": 80, "reason": "a narrow ledge leads out around the waterfall to the waterfall room at its foot, no climb described"}
+{"item": "E0168", "direction": "up", "confidence": 85, "reason": "left room says stone steps lead up to a high platform, and the plaza says the ruined section is down a few steps to the south"}
+{"item": "E0169", "direction": "up", "confidence": 80, "reason": "switchback steps climbed; arrived room's steps proceed down into the gorge, so it is the higher section"}
+{"item": "E0170", "direction": "up", "confidence": 85, "reason": "the bridge spans to an 'upper southern ledge' and the ledge is a 'lofty vantage point'"}
+{"item": "E0171", "direction": "same floor", "confidence": 82, "reason": "stepping into a merchant wagon parked on the slope"}
+{"item": "E0172", "direction": "down", "confidence": 88, "reason": "the tunnel is 'descended at a sharp dip' toward a nexus on a lower level, and the nexus says only the brick-lined tunnel leads up"}
+{"item": "E0173", "direction": "up", "confidence": 78, "reason": "a steep path twists up the slope of the hill to the cave entrance on the cliffside"}
+{"item": "E0174", "direction": "up", "confidence": 88, "reason": "narrow stairway from the shop to a retreat whose picture window looks out over the var below"}
+{"item": "E0175", "direction": "same floor", "confidence": 80, "reason": "entering the tower's ground-level interior from the plaza; the staircase up to the Upper Clock Tower is a separate exit"}
+{"item": "E0176", "direction": "down", "confidence": 90, "reason": "the shaft in the well-like structure descends into blackness"}
+{"item": "E0177", "direction": "up", "confidence": 75, "reason": "front steps lead up to the manor's porch and its floorboards"}
+{"item": "E0178", "direction": "same floor", "confidence": 85, "reason": "a door off the second floor hallway into a room on that floor"}
+{"item": "E0179", "direction": "up", "confidence": 78, "reason": "a stairway climbed from the foyer to a lounge, which itself has steps up to the training hall"}
+{"item": "E0180", "direction": "same floor", "confidence": 78, "reason": "walking through a leather flap into the cave mouth in the cliff face, no rise or drop described"}
+{"item": "E0181", "direction": "same floor", "confidence": 72, "reason": "a door off the top-level observatory into a bedchamber on the same highest level"}
+{"item": "E0182", "direction": "up", "confidence": 88, "reason": "left room says a small ledge lies a ways up the mountain and only a goat would enjoy the climb up to it"}
+{"item": "E0183", "direction": "down", "confidence": 95, "reason": "swimming down from the river surface into the deep underwater channel, which returns via 'swim up'"}
+{"item": "E0184", "direction": "same floor", "confidence": 58, "reason": "a fissure from the geode chamber into the crystal cave, with a separate 'down' exit beyond it"}
+{"item": "E0185", "direction": "same floor", "confidence": 80, "reason": "one of several bedroom doors off the treetop rose garden level"}
+{"item": "E0186", "direction": "down", "confidence": 55, "reason": "a stair from a hall into a tunnel-fed altar room deeper in the labyrinth; the text does not state a level change"}
+{"item": "E0187", "direction": "down", "confidence": 62, "reason": "left room mentions a ledge below with a northwest trail, and the arrived room is a small ledge whose trail winds down to the northwest"}
+{"item": "E0188", "direction": "down", "confidence": 82, "reason": "a knotted rope dangling from an oak limb above the deep pool drops you into the swimming hole"}
+{"item": "E0189", "direction": "up", "confidence": 92, "reason": "narrow stairs head upward through a hole in the ceiling, and the banquet hall has a narrow staircase leading down"}
+{"item": "E0190", "direction": "up", "confidence": 92, "reason": "stone steps cut into the rock face lead to a ledge above the room, and the arrived room looks down on the cavern"}
+{"item": "E0191", "direction": "up", "confidence": 58, "reason": "a stairway between the shop and the cafe; no level stated, stairway implies a storey change and the cafe sits with the dining room"}
+{"item": "E0192", "direction": "up", "confidence": 88, "reason": "a narrow trail cuts its way up the mountainside, and the arrived room has a further steep trail up"}
+{"item": "E0193", "direction": "up", "confidence": 82, "reason": "climbing out of the pool onto the stream bank; the waterfall room describes the pool at the bottom"}
+{"item": "E0194", "direction": "up", "confidence": 68, "reason": "climbing a path from the coast into the jungle wilds, whose southward travel is a steeply descending path back"}
+{"item": "E0195", "direction": "down", "confidence": 80, "reason": "the ladder runs down a chimney with a roaring noise from below and mist rising up it; the arrived cavern's stairs lead upwards"}
+{"item": "E0196", "direction": "same floor", "confidence": 88, "reason": "the oak door to the east off the second-floor landing, with separate up and down stairway exits"}
+{"item": "E0197", "direction": "up", "confidence": 82, "reason": "a rougher trail heads up the side of the hill to the north"}
+{"item": "E0198", "direction": "same floor", "confidence": 80, "reason": "stepping up to the altar that stands in the same chamber, no descent described"}
+{"item": "E0199", "direction": "up", "confidence": 55, "reason": "a mithril staircase between two hallways; the arrived hallway's dark staircase leads down to a cavern, suggesting it sits higher"}
+{"item": "E0200", "direction": "up", "confidence": 90, "reason": "the west hall describes a wide staircase leading up, and Founder's Hall windows give an expansive distant view"}

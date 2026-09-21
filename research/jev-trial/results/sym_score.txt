@@ -1,0 +1,30 @@
+pairs=1241 errors=0
+consistent 864/1241 = 69.6%
+
+by the LOWER of the two stated probabilities
+  gate      pairs  consistent    rate  coverage
+  >=0.0      1241         864   69.6%    100.0%
+  >=0.5      1153         828   71.8%     92.9%
+  >=0.7       828         671   81.0%     66.7%
+  >=0.8       666         583   87.5%     53.7%
+  >=0.9       467         427   91.4%     37.6%
+  >=0.95      307         290   94.5%     24.7%
+  >=0.99      136         131   96.3%     11.0%
+
+answer pairs (forward, reverse)
+  up          down           518
+  down        up             264
+  up          up             217  <-- inconsistent
+  down        down            83  <-- inconsistent
+  same floor  same floor      82
+  up          same floor      23  <-- inconsistent
+  down        same floor      20  <-- inconsistent
+  same floor  down            19  <-- inconsistent
+  same floor  up              15  <-- inconsistent
+
+inconsistent with BOTH answers at p>=0.99: 5
+  6332<->6355  'go stairs'=up  'go stairs'=up
+  6333<->6334  'go stairs'=up  'go stairs'=up
+  6348<->6351  'go stairs'=up  'go stairs'=up
+  8064<->8066  'climb incline'=up  'climb incline'=up
+  30620<->30621  'go staircase'=up  'go staircase'=up

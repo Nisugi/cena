@@ -1,0 +1,25 @@
+pairs=553 errors=0
+  accept rule                              accepted  coverage  correct  accuracy
+  forward answer alone, any confidence          553    100.0%      494     89.3%
+  forward answer alone, p>=0.99                 254     45.9%      252     99.2%
+  consistent pair                               434     78.5%      407     93.8%
+  consistent, both p>=0.7                       350     63.3%      333     95.1%
+  consistent, at least one p>=0.99              242     43.8%      239     98.8%
+  consistent, both p>=0.99                       81     14.6%       81    100.0%
+
+consistent but WRONG: 27 (the failure the open test cannot see)
+  867->9664 'go promontory' expected down, said up p=0.62/0.86
+  1189->1190 'go ironwood bridge' expected up, said same floor p=0.83/0.88
+  1193->1192 'go ironwood bridge' expected up, said same floor p=0.95/0.94
+  2505->2504 'climb tree' expected up, said same floor p=0.63/0.57
+  10145->10157 'go trail' expected up, said same floor p=0.98/1.00
+  10539->10540 'go trail' expected down, said same floor p=1.00/0.98
+  13229->13308 'go altar' expected up, said same floor p=0.96/0.96
+  13229->13309 'go font' expected up, said same floor p=0.75/0.68
+  13307->18696 'go path' expected down, said same floor p=0.93/0.81
+  13778->13922 'go dock' expected down, said same floor p=0.83/0.86
+  20899->20900 'go passage' expected up, said same floor p=0.68/0.74
+  22105->22100 'go staircase' expected down, said up p=0.94/0.73
+  23217->23218 'go stone steps' expected down, said same floor p=0.53/0.64
+  26512->29316 'go trail' expected down, said same floor p=0.85/0.78
+  28051->28057 'go viewing stands' expected up, said same floor p=0.81/0.85

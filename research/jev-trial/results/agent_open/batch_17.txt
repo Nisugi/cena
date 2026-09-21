@@ -1,0 +1,1014 @@
+=== E0641 ===
+  command typed: go tunnel
+  ROOM LEFT
+    name: [Burghal Enclave, Gem Passage]
+    area: Ta'Vaalor
+    setting: indoors
+    game terrain: subterranean
+    description 1: The mouth of the tunnel opens into a wide crossing corridor running off to the east.  The rough ceiling of bedrock above descends
+      into white tufa walls.  Sturdy brick arches bolster the tunnel's ceiling and are fashioned from unmortared stone bricks.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Burghal Enclave, Gem Passage]
+  ROOM ARRIVED IN
+    name: [Burghal Enclave, Shimeraern Var]
+    area: Ta'Vaalor
+    setting: indoors
+    game terrain: subterranean
+    description 1: Terminating at a large, metal-banded door, a rough-hewn tunnel leads away, its further end hidden by several abrupt turns.  The
+      passageway's ceiling plunges through the layers of bedrock in its descent and is periodically reinforced with bricked tufa arches.
+    other ways out of this room (the exit being judged is left out):
+      go door  ->  [Ta'Vaalor, Shimeraern Var]
+
+=== E0642 ===
+  command typed: go stairs
+  ROOM LEFT
+    name: [Nereid's Cradle, Canopied Walk]
+    area: Kraken's Fall
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: Multiple pieces of stitched-together linens cover the area and drape down to the boardwalk's edges, forming a dim tunnel of planks,
+      pillars, and cloth.  Through a few pinned-back sections of this linen canopy, the night sky is visible.  Small, rug-covered squares line the
+      tunnel, offering additional space for market stalls.  This tunnel gives way to an open boardwalk with a wooden fountain at its center,
+      surrounded by several cloth pillows and a series of lanterns.
+    description 2: Multiple pieces of colorful, stitched-together linen cover the area and drape down to the boardwalk's edges, which paints this area
+      in a soft, multihued glow during the day.  Small, rug-covered squares mark the path forward and offer additional space for market stalls.  These
+      stalls give way to an open boardwalk with a wooden fountain at its center, surrounded by several cloth pillows and a series of lanterns.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Nereid's Cradle, Canopied Walk]
+      west  ->  [Nereid's Cradle, Canopied Walk]
+  ROOM ARRIVED IN
+    name: [Nereid's Cradle, Aside the Walk]
+    area: Kraken's Fall
+    setting: outdoors
+    game terrain: sandy
+    description 1: The sand alongside the boardwalk is cool and flecked with bits of washed ashore seaweed and organic material.  Many pieces of
+      colorful, stitched-together linens drape down over the boardwalk's edges and reach nearly to the sand.  These linens billow in the breeze and
+      are backlit by lights from above.  Fronting these vibrant pieces of cloth and lit by stout candles, a long and battered driftwood table has been
+      placed.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Nereid's Cradle, Aside the Walk]
+      n  ->  [Nereid's Cradle, Aside the Walk]
+
+=== E0643 ===
+  command typed: climb stairway
+  ROOM LEFT
+    name: [Empath Guild, Corridor]
+    area: Zul Logoth
+    setting: indoors
+    description 1: Carefully imbedded into the walls are tiny shards of local gemstones in a spiraling pattern that runs from floor to ceiling.  A
+      pair of blue-toned luminescent toadstools flank the rails of a winding stone stairway.
+    other ways out of this room (the exit being judged is left out):
+      northwest  ->  [Empath Guild, Corridor]
+      go doors  ->  [Guildmaster's Office]
+      north  ->  [Empath Guild, Atrium]
+      northeast  ->  [Empath Guild, Corridor]
+  ROOM ARRIVED IN
+    name: [Empath Guild, Annex]
+    area: Zul Logoth
+    setting: indoors
+    description 1: A trio of archways lead away from the half-moon annex, partially obscured by velvety curtains.  The grey marble floor has been
+      inlaid with a repeating diamond design, alternating in color between shades of red and blue.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Empath Guild, Quiet Chamber]
+      east  ->  [Empath Guild, Storage]
+      north  ->  [Empath Guild, Fountain Cavern]
+
+=== E0644 ===
+  command typed: go tunnel
+  ROOM LEFT
+    name: [Dark Cavern, Tunnels]
+    area: the dark caverns
+    setting: indoors
+    game terrain: plain dirt
+    description 1: A beam of light filters through a crack in the stone above, throwing a bright patch on the floor.  A breeze of fresh air helps to
+      dissipate the unpleasant acrid smell that seems to come from a deep tunnel that winds down into the dirt floor.  Faint clicking noises echo on
+      the rock walls, but you cannot tell their source.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Dark Cavern, Tunnels]
+  ROOM ARRIVED IN
+    name: [Ant Nest, Tunnels]
+    area: the dark caverns
+    setting: indoors
+    game terrain: plain dirt
+    description 1: The passage ends here in a wall of solid rock, but you notice a tunnel winding up through the dirt next to the slab.  Piles of
+      refuse, glowing with the greenish lichen that has spread over them, litter the ground at your feet.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Ant Nest, Tunnels]
+
+=== E0645 ===
+  command typed: climb stones
+  ROOM LEFT
+    name: [Cysaegir, Pond]
+    area: the village of Cysaegir
+    setting: outdoors
+    game terrain: grassland
+    description 1: The lotus-shaped blossoms of water lilies dot the moon-streaked surface of the pond, and several stepping stones lead down into the
+      water.  Towering over a square cottage and a matching riverstone bungalow is an old birch tree.  Pieces of its papery-thin bark litter the
+      ground, and an assortment of red and blue trafel mushrooms grows at the base of its trunk.
+    description 2: The lotus-shaped blossoms of water lilies bounce and bob on the surface of the pond, and several stepping stones lead down into the
+      water.  A family of frolicking geese creates a cacophony of sound as they playfully swim around the pond nipping at each other.  A lone duck
+      swims the circumference of a barrel, which is next to the entrance of a square cottage made of riverstone.  Towering over the cottage is an old
+      birch tree, pieces of its papery-thin bark litter the ground.
+    description 3: The lotus-shaped blossoms of water lilies dot the moon-streaked surface of the pond, and several stepping stones lead down into the
+      water.  Towering over a square cottage made of riverstone is an old birch tree.  Pieces of its papery-thin bark litter the ground, and an
+      assortment of red and blue trafel mushrooms grows at the base of its trunk.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Cysaegir, Boulder]
+      north  ->  [Cysaegir, Waterwheels]
+      south  ->  [Cysaegir, Retreat]
+      go cottage  ->  [Morvaeyn's Armory]
+      go riverstone bungalow  ->  [Absolute Scentsibility]
+  ROOM ARRIVED IN
+    name: [Cysaegir, Pond]
+    area: the village of Cysaegir
+    setting: outdoors
+    game terrain: riparian
+    description 1: Low, drooping branches of a willow tree gently caress the surface of the warm, crystal clear water.  Wisps of steam rise up,
+      prompted by the thermal vents along the bottom of the spring, and create a series of effervescent bubbles that glide along the surface.  Moss
+      clings thickly to the tree, and every so often a strong breeze causes a flurry of its catkins to take flight.  Thriving swamp buttercups break
+      the surface and lily pads float serenely around the circumference of the pond.
+
+=== E0646 ===
+  command typed: go north ledge
+  ROOM LEFT
+    name: [Bridge]
+    area: the Citadel
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: From here you can see the ravine below as it runs east-west beneath you.  The main doors to the Citadel stand on the northern ledge
+      from here.  Wind howls by threatening to toss you off the bridge, making you feel a bit nervous.
+  ROOM ARRIVED IN
+    name: [Outside Citadel]
+    area: the Citadel
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: To the south in the ravine, you see a odd contraption that looks like half of a bridge, there are levers and weights and gears and
+      pulleys.  You also stand next to the mighty doors to the Citadel.
+    other ways out of this room (the exit being judged is left out):
+      go doors  ->  [Entrance Hall]
+
+=== E0647 ===
+  command typed: climb wall
+  ROOM LEFT
+    name: [Solhaven, Eastbridge Lane] / [Solhaven, Eastbridge End]
+    area: the southern part of Solhaven
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: The tapered top of a single yew tree peaks over the corner of the high stone wall surrounding the villa to the southeast, but no
+      roof is visible beyond the wall, nor does the solid oak gate permit any glimpse of what lies within.  The rough stone wall forming the northeast
+      corner of the intersection is not nearly as tall, and a copper-sheathed dome can be seen beyond it, gleaming in the starlight.
+    description 2: The tapered top of a single yew tree peaks over the corner of the high stone wall surrounding the villa to the southeast, but no
+      roof is visible beyond, nor does the solid oak gate permit any glimpse of what lies within.  The rough stone rise forming the northeast corner
+      of the intersection is not nearly as tall, and a copper-sheathed dome can be seen beyond it, gleaming in the starlight.
+    description 3: The tapered top of a single yew tree peaks over the corner of the high stone wall surrounding the villa to the southeast, but no
+      roof is visible beyond, nor does the solid oak gate permit any glimpse of what lies within.  The rough stone rise forming the northeast corner
+      of the intersection is not nearly as tall, and a copper-sheathed dome can be seen beyond it.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Solhaven, Lornon and Eastbridge]
+      east  ->  [Solhaven, Scaup Road]
+      southeast  ->  [Solhaven, Limpet Trail]
+  ROOM ARRIVED IN
+    name: [Kraken Manor, Courtyard]
+    area: Solhaven
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Standing in the center of the walled courtyard is a masterfully crafted water fountain created in the image of a sea kraken.
+      Wrapped in the kraken's tentacles is a flawless crown-of-Charl shell, from which the water cascades into the base of the fountain.  Well-kept
+      flowerbeds containing an assortment of exotic flowers have been bordered with a collection of ruby-lined nassa shells, along with yellow, pink,
+      and blue coquina shells.  An opal-flecked walkway leads up to a set of double doors.
+
+=== E0648 ===
+  command typed: go cave
+  ROOM LEFT
+    name: [Luinne Bheinn, Pass]
+    area: Luinne Bheinn
+    setting: outdoors
+    game terrain: mountainous
+    description 1: Dark, granite mountain walls hem the small trail.  A cave is partly hidden in the shadows.  Strange-looking symbols are chiseled
+      around the cave opening.  An eerie aura seems to emanate from the cave and you can't help but notice that the locals stay well away from it.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Luinne Bheinn, Pass]
+      east  ->  [Luinne Bheinn, Pass]
+  ROOM ARRIVED IN
+    name: [Luinne Bheinn, Cave]
+    area: Luinne Bheinn
+    setting: indoors
+    game terrain: plain dirt
+    description 1: Enough moonlight leaks in to make the outermost portion of the cave hazily visible.  A couple of rusted torch-holders are bolted to
+      the walls, and fantastical petroglyphs adorn most of the surfaces.  The ground is hardpacked soil and surprisingly flat.  The depth of the cave
+      disappears in darkness, though a small crevice can be seen just where the blackness usurps the remaining light.
+    description 2: Enough light leaks in to make the outermost portion of the cave hazily visible.  A couple of rusted torch-holders are bolted to the
+      walls, and fantastical petroglyphs adorn most of the surfaces.  The ground is hardpacked soil and surprisingly flat.  The depth of the cave
+      disappears in darkness, though a small crevice can be seen just where the blackness usurps the remaining light.
+
+=== E0649 ===
+  command typed: go ladder
+  ROOM LEFT
+    name: [Ta'Illistim, Rocky Trail]
+    area: Seethe Naedal
+    setting: outdoors
+    game terrain: mountainous
+    description 1: Here the weathered rocks provide many hand and footholds for easy climbing.  Cool patches of moss provide relief for sore hands.
+      The trail above grows steadily steeper as it winds its way up the mountain.  The soft hooting of an owl can be heard in the distance.
+    description 2: Here the weathered rocks provide many hand and footholds for easy climbing.  Cool patches of moss provide relief for sore hands.
+      The trail above grows steadily steeper as it winds its way up the mountain.
+    other ways out of this room (the exit being judged is left out):
+      down  ->  [Ta'Illistim, Rocky Trail]
+      up  ->  [Ta'Illistim, Rocky Trail]
+  ROOM ARRIVED IN
+    name: [The Black Rose, Foredeck]
+    area: The Black Rose, inside the elven fortress of Ta'Vaalor
+    setting: outdoors
+    description 1: A bronze-beaked falcon figurehead adorns the prow of the vessel, its spread metal wings cleaving to the crimson-painted hull.
+      Wrought from the same metal, a high railing takes the form of a knotted rope supported by sculpted figures of slender men and women spaced about
+      the edges of the deck.  A polished redwood ship's wheel crowns a raised platform several paces behind the metal falcon.
+    other ways out of this room (the exit being judged is left out):
+      e  ->  [The Black Rose, Amidships]
+
+=== E0650 ===
+  command typed: go tunnel
+  ROOM LEFT
+    name: [Hall of the Dead, Tunnel]
+    area: the Graveyard
+    setting: indoors
+    game terrain: hard, flat
+    description 1: The stone of the room is worn smooth with the passing of many feet.  Flickering torches cast forbidding shadows on the walls, which
+      reflect little light.  Here the paint has lost all of its sheen and has seen little care.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Hall of the Dead, Tunnel]
+      south  ->  [Hall of the Dead]
+  ROOM ARRIVED IN
+    name: [Hall of the Dead, Common Crypt]
+    area: the Graveyard
+    setting: indoors
+    game terrain: hard, flat
+    description 1: You find more notches to house the dead, but all the care has gone out of the carving of the receptacles.  Here the only interest
+      was in conserving space.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Hall of the Dead, Common Crypt]
+      north  ->  [Hall of the Dead, Common Crypt]
+
+=== E0651 ===
+  command typed: go burrow
+  ROOM LEFT
+    name: [Circle of Trees, Platform Level]
+    area: Mist Harbor
+    setting: outdoors
+    description 1: The aerial prop roots of a great banyan tree have been used here to suspend several platforms at varying heights, while the main
+      trunk rises even higher into the air.  Deep grooves between the roots offer glimpses of the forest beyond, and some of them contain small
+      offerings like bundles of herbs or dried flowers.  A set of parallel woven ropes extends to the east, affording tremulous travel at this height,
+      while a thin wooden ramp extends to the southwest.
+    other ways out of this room (the exit being judged is left out):
+      go grooves  ->  [Circle of Trees, Ground Level]
+      southwest  ->  [Circle of Trees, Platform Level]
+      east  ->  [Circle of Trees, Platform Level]
+      go cranny  ->  [Mitsoku's Niche]
+      go shadowy burrow  ->  [Balmy Blooms]
+  ROOM ARRIVED IN
+    name: [Balmy Blooms]
+    area: Mist Harbor
+    setting: indoors
+    description 1: Dusky golden sunlight pours in from an arched glass window that forms nearly the entire back wall of the divided alcove.
+      Blossoming wildflowers and feathered greenery are softly strewn through the entire space, a few of the wayward blooms gathered in small
+      offerings around a slender blue quartz reliquary.  Grown over with intensely verdant mosses, an ivory sculpture of Imaera and Jaston sits at the
+      center of the room, the opaque planes of their eyes perpetually gazing up towards the sky.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Balmy Blooms, Nook]
+
+=== E0652 ===
+  command typed: go stairs
+  ROOM LEFT
+    name: [Gavelsdown Hall, Hallway]
+    area: Evermore Hollow
+    setting: indoors
+    description 1: Carved of alabaster and onyx, a pair of elegant statues flanks a flight of broad mahogany stairs, their arms raised above their
+      head as they hold frosted orbs aloft.  Ochre fleur-de-lis patterns decorate the burgundy rug that covered the floorboards, while matching velvet
+      swatches cover the walls.  Standing opposite the stairs are a set of polished double doors.
+    other ways out of this room (the exit being judged is left out):
+      go doors  ->  [Gavelsdown Hall, Library]
+  ROOM ARRIVED IN
+    name: [Gavelsdown Hall, Entry]
+    area: Evermore Hollow
+    setting: indoors
+    description 1: Brightly illuminated by polished brass sconces that are evenly spaced upon the crimson and ebon bourde walls, the entry is carpeted
+      with a deep burgundy rug that muffles all sound.  Flanked on the eastern wall by a lacquered ebonwood archway and the western by glass-paned
+      doors, a flight of broad mahogany stairs ascends to the second floor and is decorated with carved balusters.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Evermore Hollow, Inner Ring]
+      go glass-paned doors  ->  [Gavelsdown Hall, Sitting Room]
+      go ebonwood archway  ->  [Gavelsdown Hall, Parlor]
+
+=== E0653 ===
+  command typed: go flora-wrought staircase
+  ROOM LEFT
+    name: [The Onyx-Petaled Taerethil]
+    area: Ta'Nalfein
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Ceiling-high windows are draped in a fall of onyx-petaled taerethil, the blooms arcing over the curved lattices framing the faenor-
+      chained chandelier at the center of the shop.  A gilded cabinet of ebony stands behind an elongated glass-paneled counter, the surface encasing
+      rows of pastries labeled with vellum placards and placed upon leaf-framed platters.  Nestled in the back corner is a nacre velvet curtain,
+      partially concealing a spiraled flora-wrought staircase entwined with thin vines.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Nielira Harbor, Markets]
+  ROOM ARRIVED IN
+    name: [Onyx-Petaled Taerethil, Rooftop]
+    area: Ta'Nalfein
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: Trellises of latticed ebony provide the framework for a series of domed enclosures scattered across the pebbled garden, the stones
+      creating a pale walkway through the lawn.  Lacquered lengths of rope suspend vivid faerthiel interspersed by sailor's knots, the tiny lanterns
+      dancing like fireflies along with the ambient breezes off the nearby waters.  The faint echoes of music reverberate throughout the area, the
+      instruments occasionally accompanied by a passing choir of impromptu performers.
+
+=== E0654 ===
+  command typed: go ramp
+  ROOM LEFT
+    name: [The Resonant Hull, Deck]
+    area: the Flotilla
+    setting: outdoors
+    description 1: Weathered cypress and aged cedar form this double-masted vessel, its hull and railings lacquered in deep vermilion.  Two angular
+      fin-shaped sails rise from the deck like the wings of a folding screen, while the vessel's heart houses a small-roofed chamber, its sliding
+      paper-paneled screens and graceful hipped roof framed by natural wood planking.  Bare plank decking runs stem to stern between carved rail
+      posts, where a narrow boarding ramp extends like an outstretched hand.
+    other ways out of this room (the exit being judged is left out):
+      go chamber  ->  [The Resonant Hull, Chamber]
+  ROOM ARRIVED IN
+    name: [Corsairs' Corner]
+    area: the Flotilla
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: The battered teak dock makes an abrupt right angle turn, reducing the capacity for docking vessels somewhat.  A colorful sea glass
+      kraken cuddled up with a bevy of merpeople has been inlaid into the center of the deck with the phrase, "Something for everyone at the Great
+      Piratical Flotilla," carved beneath it.  Barnacle-encrusted posts and seaweed-covered bumpers mark off individual docking slips.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Seafarers' Shops]
+      west  ->  [Raiders' Resources]
+      go schooner  ->  [The Jocular Oculist, Main Deck]
+      go junk  ->  [The Dragon Macaw, Deck]
+      go skiff  ->  [The Peashirmen]
+      go galleon  ->  [The Lucky Nirisaka]
+
+=== E0655 ===
+  command typed: go steps
+  ROOM LEFT
+    name: [Bathhouse, Atrium]
+    area: Mist Harbor
+    setting: outdoors
+    description 1: Stepping down three stone steps, the jungle closes in, creating a garden walled in by verdant greenery growing about carved wooden
+      columns.  A latticework of blossoming vines crisscrosses between, creating a fragrant ceiling for the walkway.  Sunlight streams through,
+      patterning the ground below and illuminating a garden path leading deeper into the complex.
+    description 2: Stepping down three stone steps, the jungle closes in, creating a garden walled in by verdant greenery growing about carved wooden
+      columns.  A latticework of blossoming vines crisscrosses between, creating a fragrant ceiling for the walkway.  Moonlight streams through,
+      patterning the ground below and illuminating a garden path leading deeper into the complex.
+    other ways out of this room (the exit being judged is left out):
+      go path  ->  [Bathhouse, Central Atrium]
+      northeast  ->  [Bathhouse, Atrium]
+      northwest  ->  [Bathhouse, Atrium]
+  ROOM ARRIVED IN
+    name: [Tanglevine Hall, Northeast Lawn]
+    area: Mist Harbor
+    setting: outdoors
+    description 1: Overwhelmed by the surrounding jungle, a large teak building disappears into the greenery.  A grouping of amber and chime trees
+      grows on either side of the path, their trunks surrounded by bushes and huge leafy ferns.  Standing off to the side is a monkey topiary that
+      seems to be hopping on one leg.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Tanglevine Hall, North Lawn]
+      south  ->  [Tanglevine Hall, East Lawn]
+
+=== E0656 ===
+  command typed: climb staircase
+  ROOM LEFT
+    name: [Maaghara Tower, Landing]
+    area: Ta'Illistim
+    setting: indoors
+    game terrain: hard, flat
+    description 1: This spacious landing serves as a junction for twin, spiraling stairs leading up and some steep steps leading down into the misty
+      darkness below.  The walls facing the interior of the tree here are porous with small, irregular holes allowing glimpses of the hollow area
+      outside.  The omnipresent veins run through the floor and stairs in all sizes and configurations.
+    other ways out of this room (the exit being judged is left out):
+      climb steps  ->  [Maaghara Tower, Landing]
+      climb stairs  ->  [Maaghara Tower, Stair]
+  ROOM ARRIVED IN
+    name: [Maaghara Tower, Stair]
+    area: Ta'Illistim
+    setting: indoors
+    game terrain: hard, flat
+    description 1: The tree towers up and up into the misty darkness, while the spiraling steps continue their climb up the side of the trunk.  High
+      above, bats circle in and amongst the huge, woody branches and growths that run across the interior of the tree.  Mists rise from below,
+      cloaking the bottom of the tower in a hazy shroud.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Maaghara Tower, Stair]
+
+=== E0657 ===
+  command typed: go fissure
+  ROOM LEFT
+    name: [Wehnimer's, Burrow Way]
+    area: the town of Wehnimer's Landing
+    setting: indoors
+    game terrain: subterranean
+    description 1: Huge in size, the underground chamber is set with blazing torches along every wall.  Old wagons have been pulled to one side of the
+      pathway, all of them in need of serious repair.
+    other ways out of this room (the exit being judged is left out):
+      southeast  ->  [Wehnimer's, Burrow Way]
+  ROOM ARRIVED IN
+    name: [Wehnimer's, Burrow Way]
+    area: the town of Wehnimer's Landing
+    setting: indoors
+    game terrain: subterranean
+    description 1: A narrow path winds through darkened rocks, their edges jagged and jutting out dangerously.  The walls of the burrow glisten
+      slightly, their surface slick with moisture.  Strange, glowing green lichen clings to the walls, creating an eerie viridian glow throughout the
+      area.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Wehnimer's, Burrow Way]
+      west  ->  [Wehnimer's, Burrow Way]
+
+=== E0658 ===
+  command typed: go ledge
+  ROOM LEFT
+    name: [Icewall Penitentiary, Bridge]
+    area: Icemule Trace
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Four sections of iron-shod rope, each consisting of several lengths wound around another, offer dire passage over an ensured death
+      below.  From an icy ledge to the east, the plankless bridge extends over the chasm and has been securely tethered to both sides of a circular
+      opening to the west.  Hooded iron sconces offer limited torchlight on either end of the bridge.
+    other ways out of this room (the exit being judged is left out):
+      go opening  ->  [Icewall Penitentiary, Corridor]
+  ROOM ARRIVED IN
+    name: [Icewall Penitentiary, Ledge]
+    area: Icemule Trace
+    setting: indoors
+    game terrain: hard, flat
+    description 1: The guards at the top of an imflass-chain ladder stamp their feet in a vain attempt to fight off the biting cold.  A single torch
+      set in an unadorned iron sconce provides only scarce light, causing shadows to flitter about the area.  Near the torch, a thick imflass door has
+      been fixed securely into the ice and bears a prominent mithril plaque.  To the west, a suspended rope bridge crosses a narrow chasm.
+    other ways out of this room (the exit being judged is left out):
+      climb ladder  ->  [Icewall Penitentiary, Entryway]
+      go door  ->  [Icewall Penitentiary, Office]
+
+=== E0659 ===
+  command typed: climb wall
+  ROOM LEFT
+    name: [Vineyard]
+    area: the grasslands
+    setting: outdoors
+    game terrain: cultivated
+    description 1: Thorn-covered vines have usurped the position of the grapes that once grew on the surrounding trellises, binding the wooden posts
+      and rails in a weave of greenery as tight as a sailor's knot.  The path amongst the vines is blocked by a wall to the east, but continues on to
+      the south and west.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Vineyard]
+      south  ->  [Vineyard]
+  ROOM ARRIVED IN
+    name: [Wildflower Field, Pond]
+    area: the grasslands
+    setting: outdoors
+    game terrain: cultivated
+    description 1: A sparkling stream of water pouring from beneath a small white building to the east feeds into a small clear pond.  Roughly oval in
+      shape, the pond is little more than a stone-lined depression in the ground, surrounded by grass and flowers, with a stacked stone wall to the
+      north and west.
+    other ways out of this room (the exit being judged is left out):
+      climb north wall  ->  [Apple Orchard]
+      south  ->  [Wildflower Field]
+      southeast  ->  [Wildflower Field]
+
+=== E0660 ===
+  command typed: climb ladder
+  ROOM LEFT
+    name: [Channel]
+    area: Ta'Vaalor
+    setting: indoors
+    description 1: The passage slowly curves and leads to a rusted iron ladder that leads back up.  Something heavy must have fallen from above, as
+      the cobblestones at the base of the ladder are cracked badly.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Channel]
+  ROOM ARRIVED IN
+    name: [Inn]
+    area: Ta'Vaalor
+    setting: indoors
+    description 1: Quite a contrast from the squalor of the tunnels below, this comfortable common room looks well-furnished.  Several tables and
+      chairs allow folks a comfortable place to sit and chat.  Large portraits adorn the walls, most depicting the more famous buildings of Ta'Vaalor.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Hall]
+      go door  ->  [Inn]
+
+=== E0661 ===
+  command typed: go stairs
+  ROOM LEFT
+    name: [Icemule Trace, North Gate]
+    area: Icemule Trace
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: Several town guards watch the northern gate of the town, which is little more than a chasm hollowed out of the encroaching glacier.
+      Though armed, the guards seem less focused on watching for foes from the ice and more on discouraging the unwary or unprepared from braving the
+      frigid depths.  The faint shadow of what once must have been the actual gates is visible through the ice, evidently devoured during the
+      glacier's unrelenting advance.  Some stairs cut into the ice leading up to the city walls climb the natural wall created by the ice.
+    description 2: Several well-armed guards stand to either side of a hole in the glacier.  People wander in and out of the opening, which apparently
+      serves as a gate to the town.  Within the ice you can see the faint shadow of what once must have been the actual gates.  However, the glacier
+      has devoured it over time, and the resourceful halflings have taken advantage of the natural wall created by the ice.
+    description 3: Several well-armed guards stand to either side of a hole in the glacier.  People wander in and out of the opening, which apparantly
+      serves as a gate to the town.  Within the ice you can see the faint shadow of what once must have been the actual gates.  However, the glacier
+      has devoured it over time, and the resourceful halflings have taken advantage of the natural wall created by the ice.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Icemule Trace, North Road]
+      west  ->  [Magical Burrow, Banshee Lane]
+      go ice-encrusted gate  ->  [Icemule Trace, Exterior]
+  ROOM ARRIVED IN
+    name: [Icemule Defenses, North Wall]
+    area: Icemule Trace
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: This vantage point affords a view of the North Gate and the wide North Road running straight into the heart of Icemule Trace.  The
+      few travelers at the near end of the road slip and slide over the ice-covered cobbles, while a few local citizens measure their strides for a
+      more steady pace.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Icemule Defenses, North Wall]
+      west  ->  [Icemule Defenses, North Wall]
+
+=== E0662 ===
+  command typed: go brick-lined tunnel
+  ROOM LEFT
+    name: [Coliseum, Southeast Corridor]
+    area: Ta'Vaalor
+    setting: indoors
+    description 1: Polished stone walls reflect the light of a trio of steel-banded torches that has been inset into ornate brackets.  Centered over a
+      brick-lined tunnel is a golden banner that reads "Arena Entrance" embroidered in thick ebon thread.  An ebon banner over a golden arch reads
+      "Viewing Chamber" in elegant golden embroidery.
+    other ways out of this room (the exit being judged is left out):
+      northwest  ->  [Coliseum, Lower Nexus]
+      go arch  ->  [Seating Area]
+  ROOM ARRIVED IN
+    name: [Amphitheater of the Fallen]
+    area: Ta'Vaalor
+    setting: indoors
+    description 1: Smooth stone walls encase this sunken chamber and faint, dark red stains mar the scorched stone floor.  Near the ceiling on one
+      wall is a large window, providing a glimpse of the wall-hung tapestries in the room beyond.
+
+=== E0663 ===
+  command typed: go staircase
+  ROOM LEFT
+    name: [Journey's End, Foyer]
+    area: Solhaven
+    setting: indoors
+    description 1: Covered with stone tiles, the floor of the entryway is a colorful mosaic depicting a rose pattern.  A mirrored coat rack stands
+      next to a carved beechwood door, a reflection of the room echoed in the smooth glass.  Suspended from a silver chain, a large candelabra hangs
+      above, illuminating the area.
+    other ways out of this room (the exit being judged is left out):
+      go beechwood door  ->  [Journey's End, Lawn]
+      north  ->  [Journey's End, Sitting Room]
+      west  ->  [Journey's End, Study]
+  ROOM ARRIVED IN
+    name: [Journey's End, Lounge]
+    area: Solhaven
+    setting: indoors
+    description 1: This expansive lounge feels vast, furnished with deep leather couches paired with mahogany side tables.  Tall curtained windows
+      along the northern wall soften any light that spills in.  A long driftwood bar spans the space in front of the windows.  The eastern wall is
+      claimed by a massive stone fireplace crowned by a thick mantle, while on the opposite wall a dark mahogany double door opens into an adjoining
+      bedchamber.  Polished hardwood floors complement raised-panel wainscoting covering the walls.
+    other ways out of this room (the exit being judged is left out):
+      go double door  ->  [Journey's End, Bedchamber]
+
+=== E0664 ===
+  command typed: go tunnel
+  ROOM LEFT
+    name: [Cleric Guild, Prayer Room]
+    area: Kharam-Dzu
+    setting: indoors
+    description 1: Faces stare out of the stone.  Each is of the same woman, her eyes holding nothing resembling sanity.  Every face is different,
+      some happy, some sad, some angry and some simply lunatic.  In the back corner stands a statue, the place where the face would go smooth and
+      featureless.  A small tunnel leads off behind the statue.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Cleric Guild, Meditation Room]
+  ROOM ARRIVED IN
+    name: [Cleric Guild, Lava Room]
+    area: Kharam-Dzu
+    setting: indoors
+    description 1: The room is filled with bubbling magma.  A small island sits in the center of the pool, connected to the outside by a thin stone
+      bridge.  On the island stands a tall statue of a woman, her wings stretching high into the cavern.  Pieces of skeletons ring both shores of the
+      lava lake, some trying to crawl away, others towards the beautiful statue.  A pedestal of stone rests at her feet.
+
+=== E0665 ===
+  command typed: go bank
+  ROOM LEFT
+    name: [Slither Creek]
+    area: the Graveyard
+    setting: outdoors
+    game terrain: riparian
+    description 1: A few dead fish float here, trapped in the dangling branches of a berry bush on the bank.  The smell is noxious, and you briefly
+      wonder what killed the fish only in this area of the creek.  The dirt and rocks beneath your feet are very slick, and you don't care to think
+      about what you may be stepping on.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Slither Creek]
+      east  ->  [Slither Creek]
+  ROOM ARRIVED IN
+    name: [Slither Creek, South Bank]
+    area: the Graveyard
+    setting: outdoors
+    game terrain: riparian
+    description 1: Several bushes covered with berries cling to the bank of the creek.  The berries are plump and dark, and very tempting, but as you
+      reach for some you notice the corpse of a small animal beneath the bush.  Several half-eaten berries sit near the body, and you wonder if eating
+      anything from these bushes would be a good idea.  The bank seems solid enough for you to walk into the creek without difficulty.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Slither Creek, South Bank]
+      west  ->  [Slither Creek, South Bank]
+
+=== E0666 ===
+  command typed: climb trail
+  ROOM LEFT
+    name: [Top of the World, Aenatumgana]
+    area: the great mountain Aenatumgana
+    setting: outdoors
+    game terrain: mountainous
+    description 1: Jagged cliffs seal off most of this end of the ravine.  A steep trail leads to the east at a sharp angle, climbing the wall that
+      isolates the area.  The trail is extremely narrow and appears treacherous at best.
+    other ways out of this room (the exit being judged is left out):
+      northeast  ->  [Top of the World, Aenatumgana]
+  ROOM ARRIVED IN
+    name: [Top of the World, Aenatumgana]
+    area: the great mountain Aenatumgana
+    setting: outdoors
+    game terrain: mountainous
+    description 1: About halfway up a steep slope, a small ledge stands exposed to the bitter elements, cleared of snow by the driving blasts of wind.
+      A trail to the west skirts the icy wall into a ravine below, and to the north a path winds its way up the rock-littered slope.  Both directions
+      appear extremely dangerous.
+    other ways out of this room (the exit being judged is left out):
+      climb path  ->  [Top of the World, Aenatumgana]
+
+=== E0667 ===
+  command typed: go steps
+  ROOM LEFT
+    name: [Seethe Naedal, Hot Springs]
+    area: Seethe Naedal
+    setting: outdoors
+    game terrain: mountainous
+    description 1: Sunlight streams through the branches of the pine trees that surround the springs while short bushes fight for what sun they can
+      gain in the shadow of the pines.  Lush grass creates a ring of green carpet around the pool.  A hollow log rests near a circle of flat stones
+      that surround the hot springs.
+    description 2: Moonlight flows through the branches of the pines trees that surround the springs while short bushes fill the spaces between the
+      pine.  Dark green grass creates a ring of dark carpet around the pool.  A hollow log rests near a circle of flat stones that surrounds the hot
+      springs.
+    description 3: Moonlight flows through the branches of the trees that surround the springs while short bushes fill the spaces between the pines.
+      Lush grass carpets the area around a circle of flat stones that surrounds the steaming pool, one side of the formation creating steps that
+      descend into the water.  A hollow log rests near a thick hedgerow that grows to either side of a scrollworked wrought-iron gate.
+    description 4: Sunlight streams through the branches of the trees that surround the springs while short bushes fight for what sun they can gain in
+      the shadow of the pines.  Lush grass carpets the area around a circle of flat stones that surrounds the steaming pool, one side of the formation
+      creating steps that descend into the water.  A hollow log rests near a thick hedgerow that grows to either side of a scrollworked wrought-iron
+      gate.
+    other ways out of this room (the exit being judged is left out):
+      go trail  ->  [Seethe Naedal, Winding Path]
+      go gate  ->  [Aspis Embassy, Courtyard]
+  ROOM ARRIVED IN
+    name: [Seethe Naedal, Hot Springs]
+    area: Seethe Naedal
+    setting: outdoors
+    game terrain: riparian
+    description 1: Wisps of steam rise off the pool as the hot water comes in contact with the cool mountain air.  Centered in the pool is a flat
+      rock, barely protruding above the surface.  The rock has become home to several dragonflies.  Shadows from the tree branches above dance across
+      the water.
+    description 2: Wisps of steam rise from the pool as the hot water comes in contact with the cool night breeze.  Moonlight illuminates a flat rock
+      centered in the pool which has become home to several dragonflies.  The midnight-black water mirrors the night sky, seemingly an extension of
+      the heavens above.
+
+=== E0668 ===
+  command typed: go stairway
+  ROOM LEFT
+    name: [Solhaven Hall, Larder]
+    area: Solhaven
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Marble counters stretch along two walls, copper cooking utensils littering their surfaces.  Beneath the counters a large circular
+      shelf slowly turns, hiding then revealing an assortment of spice-filled jars, bags of food staples, and canned preserves.  Just above a large
+      basin, rosewood cupboards with etched glass panels display various styles of dinnerware.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Solhaven Hall, Atrium]
+  ROOM ARRIVED IN
+    name: [Solhaven Hall, The Stumble Inn]
+    area: Solhaven
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Looking more like a lounge than the typical pub, the room is furnished with low divans and thickly cushioned chairs assembled
+      around tables in vague groupings.  Behind a scuffed bar, a mirror reflects the oddly shaped liquor bottles lining the shelves.  Dimly lit by
+      scattered pillar candles, a long mural fills the wall nearest a tiled arch.
+    other ways out of this room (the exit being judged is left out):
+      go arch  ->  [Solhaven Hall, Balcony]
+
+=== E0669 ===
+  command typed: go trapdoor
+  ROOM LEFT
+    name: [Zoo, Storage Room]
+    area: the Citadel
+    setting: indoors
+    game terrain: hard, flat
+    description 1: The room is barren except for a pile of blankets in the corner.  The thick dust is criss-cossed with footprints.
+  ROOM ARRIVED IN
+    name: [Zoo, Fox Cage]
+    area: the Citadel
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: A clean-picked fox skeleton lies in the back corner of this cage.  Aside from the small wooden box that was once its den, the cage
+      is barren.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Zoo, Cage Area]
+
+=== E0670 ===
+  command typed: swim down
+  ROOM LEFT
+    name: [Mistydeep, South of Ravelin]
+    area: the northern reaches of the Mistydeep River
+    setting: outdoors
+    game terrain: riparian
+    description 1: From this vantage point, the island appears silent and brooding, its lofty central stone spire looking down on an eclectic
+      collection of dense trees and plant life.  The surface of the edifice reveals the handiwork of ancient masons as windows and platforms emerge
+      from the tower's face, skillfully hewn from granite.  Details are obscure, but the imposing structure exudes an aura of desolation.  At the
+      island's rim, a mottled brown lizard suns itself on a shelf of bedrock.
+    description 2: From this vantage point, the island appears silent and brooding, its lofty central rock spire overlooking a dense cluster of trees
+      and plant life.  A thin shroud of fog enfolds the edifice, yet does not extend into the woods below.  Shifting shadows unveil gaping windows and
+      jutting platforms skillfully hewn from the granite.  Details are obscure, but the structure exudes a haunting aura of desolation.  A ghost-white
+      owl perched on a high branch lifts its head with a seeming challenge of, "Whooo!"
+  ROOM ARRIVED IN
+    name: [Mistydeep, Underwater]
+    area: the northern reaches of the Mistydeep River
+    setting: indoors
+    description 1: Several large boulders rising up from the sandy bottom dominate this stretch of the riverbed, rising far enough up to be a hazard
+      to navigation without breaking the surface.  The algae and moss that have taken up residence there serve, in turn, as host to schools of minnows
+      that nibble at their edges with dainty jabs.
+    other ways out of this room (the exit being judged is left out):
+      swim northwest  ->  [Mistydeep, Underwater]
+      swim southwest  ->  [Mistydeep, Underwater]
+      swim southeast  ->  [Mistydeep, Underwater]
+
+=== E0671 ===
+  command typed: go oak door
+  ROOM LEFT
+    name: [Silvergate, Private Lounge] / [Silvergate Inn, Private Lounge]
+    area: Wehnimer's Landing
+    setting: indoors
+    description 1: Leaded glass windows provide a glimpse of the sun-dappled back gardens.  Overstuffed burgundy damask sofas and chairs with matching
+      footrests face a carved marble fireplace.  Exquisitely detailed tapestries adorn the ivory silk-covered walls, and an Inn News chalkboard hangs
+      above a mahogany marble-topped bar spanning the west wall, near a wide carpeted staircase.  An antique cabinet stands opposite an ancient oak
+      door, and a bubbling fountain can be seen through a dark stone arch.
+    description 2: The grey stone of the manor walls is softened by a silvery wool carpet and large tapestries depicting the histories of the peoples
+      of this land.  Comfortable chairs and a sofa, flanked by end tables, are arranged to provide a quiet spot to sit and compare notes at the end of
+      a long day's hunt.  In the far corner of the lounge you see a silver veined marble bar, its mahogany base gleaming in the light which filters
+      through windows overlooking the wilderness beyond this haven.
+    description 3: Leaded glass windows provide a glimpse of the sun-dappled back gardens.  Overstuffed burgundy damask sofas and chairs with matching
+      footrests face a carved marble fireplace.  Exquisitely detailed tapestries adorn the ivory silk-covered walls, and an Inn News board hangs above
+      a mahogany marble-topped bar spanning the west wall, near a wide carpeted staircase.  An antique cabinet stands opposite an ancient oak door,
+      and a bubbling fountain can be seen through a dark stone arch.
+    other ways out of this room (the exit being judged is left out):
+      go stone arch  ->  [Silvergate, A Small Courtyard]
+      go stuffed boar  ->  [Silvergate, A Small Landing]
+      go carpeted staircase  ->  [Silvergate, 3rd Floor Hallway]
+  ROOM ARRIVED IN
+    name: [Silvergate, Foyer]
+    area: Wehnimer's Landing
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Comfortable sofas fronted with low tables are arranged neatly around this welcoming lobby.  Well-placed sconces highlight the
+      paintings and statues which decorate the walls.  Small groups of smiling people pass through, filling the lobby with their voices, while at the
+      far end of the room a cheerful clerk stands behind a large modwir desk, busily attending to the Inn's guests.  To the southwest is a secure-
+      looking ancient oak door.
+    description 2: A polished maoral table holding a bouquet of roses and jasmine rests near the tall arched doors leading to the courtyard.  Damask-
+      covered sofas are arranged neatly around this welcoming lobby.  Silver sconces highlight paintings which decorate the walls, and chandeliers
+      dance with light overhead.  The lobby bustles with life, while a cheerful clerk stands behind a large modwir desk, busily attending to the inn's
+      guests.  To the southwest is an ancient oak door guarded by a footman.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Silvergate, Grand Ballroom]
+      north  ->  [Silvergate Inn, Tea Room]
+      west  ->  [Silvergate, Grand Hall]
+      northwest  ->  [Silvergate, Lion's Den Pub]
+      go arched doors  ->  [Silvergate, Courtyard]
+      go desk  ->  [Silvergate, Front Desk]
+      go steps  ->  [Silvergate Inn, Art Studio]
+
+=== E0672 ===
+  command typed: go rope
+  ROOM LEFT
+    name: [Evermore Hotel, Stairs]
+    area: Naidem
+    setting: indoors
+    description 1: Sinuous winged viper statues wrap around marble posts at the foot of a sweeping staircase leading up to a chandelier-lit landing.
+      The landing splits to the east and west, the carpeted steps climbing up and vanishing from sight.  From a high vantage point mid-flight, a young
+      lady peers out from an oak-framed oil painting, her emerald eyes seeming to follow the retreating footsteps of the hotel guests.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Evermore Hotel, Hallway]
+  ROOM ARRIVED IN
+    name: [A Carpeted Landing]
+    area: Naidem
+    setting: indoors
+    description 1: Crystal droplets, pendants, and beads draped over an elaborate gold leaf frame create a dazzling display of illumination in the
+      grand stairwell of the hotel.  Framed by gilded railings on both sides, the centerpiece is a sweeping, curved staircase, clad in polished
+      mahogany and adorned with a crimson carpet featuring gold floral motifs.  A dried garland of purplish black hissing ivy and midnight belladonna
+      cascades down each banister, filling the air with a sweet, yet acrid, fragrance.
+    other ways out of this room (the exit being judged is left out):
+      go staircase  ->  [Seventh Floor, Front Stairs]
+
+=== E0673 ===
+  command typed: go stairs
+  ROOM LEFT
+    name: [Rogue Guild, Entry]
+    area: Mist Harbor
+    setting: indoors
+    description 1: Murky shadows obscure the details of the room, though a sense of being watched is heavily prevalent.  A small halo of golden light,
+      produced by the candlelight spilling under the oaken door, illuminates the edge of a set of wide stone stairs that leads downward into a dank
+      darkness.
+    other ways out of this room (the exit being judged is left out):
+      go door  ->  [The Broken Stein, Backroom]
+  ROOM ARRIVED IN
+    name: [Rogue Guild, Entry]
+    area: Mist Harbor
+    setting: indoors
+    description 1: Damp runnels of water trickle over the moist surface of the curved wall, with the occasional drip echoing in the chamber as it
+      plinks into the stagnant water on the floor.  Several spiders have made flimsy webs, anchoring them between the ceiling and the upper curves of
+      the walls.  The majority of the webs cover the bulbous, rounded dead end to the south end of the sewer.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Guild Shop]
+
+=== E0674 ===
+  command typed: go oak door
+  ROOM LEFT
+    name: [Sylvanfair, Vestibule]
+    area: Solhaven
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Square in shape, the vestibule is bathed in a shaft of muted gold sunlight streaming through the open top section of the front
+      door.  A richly carved staircase rises from the terracotta-tiled floor, cantilevered against the four walls to provide a perfect viewing
+      platform for the irregularly shaped table that dominates the center of the room.  Mismatched cabinets and battered trunks fill the asymmetrical
+      spaces beneath the stairway, crammed with assorted timekeeping devices and navigational instruments.
+    other ways out of this room (the exit being judged is left out):
+      go carved staircase  ->  [Sylvanfair, Loft]
+      go low-beamed archway  ->  [Sylvanfair, Library]
+  ROOM ARRIVED IN
+    name: [Solhaven, Tumbledown Lane]
+    area: the free port of Solhaven
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: Close to the bottom of the cliffs, the cobblestone street is somewhat level.  A tidy row of stone cottages faces the bay, moonlight
+      glinting on their glaes window panes.  A well-dressed elven man walks by at a fast clip, his eyes glued to the pavement.
+    description 2: Close to the bottom of the cliffs, the cobblestone street is somewhat level.  A tidy row of stone cottages faces the bay, sunlight
+      glinting on their glaes window panes.  A well-dressed elven man walks by at a fast clip, his eyes glued to the pavement.
+    other ways out of this room (the exit being judged is left out):
+      go steps  ->  [Solhaven, Tumbledown Lane]
+      north  ->  [Solhaven, Tumbledown Lane]
+
+=== E0675 ===
+  command typed: climb stairway
+  ROOM LEFT
+    name: [Lobby]
+    area: the old Logging Road
+    setting: indoors
+    game terrain: hard, flat
+    description 1: This square room seems to have been carved out of solid rock, as evidenced by the smooth, hard walls.  A simple, deep brown rug
+      covers the center of the floor.  A mural has been painted on one wall, covering it from floor to ceiling with a detailed image of the Eye of
+      V'Tull.  Two granite benches sit against the adjacent walls, and a refreshment cart stands in the corner.  A sign hangs over a carved stone
+      stairway, and a rounded arch is carved in the fourth wall, nearly hidden by deep blue curtains.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Stone Tunnel]
+  ROOM ARRIVED IN
+    name: [Kharam Dzu, Departure Annex]
+    area: the old Logging Road
+    setting: indoors
+    game terrain: hard, flat
+    description 1: This room is sparse, having no seating or amenities.  Wall-mounted torches provide illumination for the room's only decoration, a
+      portrait hanging on an otherwise bare wall.  A sign hangs near a carved stone stairway.
+
+=== E0676 ===
+  command typed: go spiraled staircase
+  ROOM LEFT
+    name: [Tideswept Bazaar]
+    area: Mist Harbor
+    setting: indoors
+    description 1: Glasstide roses bloom in fragile clusters secreted among the rocky walls, their translucent petals refracting the shifting light.
+      A jagged archway of stone marks the entrance to the bazaar that stretches over a soft, sandy bottom where rippling currents carve delicate
+      patterns in the grains.  Vivid corals in deep blues, golds, and crimsons cling to the walls, their branching forms creating a labyrinth of
+      color.  Schools of fish dart past drifting strands of sea flora swaying with the tide.
+    other ways out of this room (the exit being judged is left out):
+      go archway  ->  [Craggy Rock Approach]
+      ne  ->  [Tideswept Bazaar]
+      nw  ->  [Tideswept Bazaar]
+      go kelp curtain  ->  [The Tidal Stitch]
+      go thick curtain  ->  [Tideglass Trinkets]
+      go coral-beaded curtain  ->  [Seaside Sweets]
+      go flag cavern  ->  [The Whimsical Wave]
+  ROOM ARRIVED IN
+    name: [Ebb and Flow]
+    area: Mist Harbor
+    setting: indoors
+    description 1: Elaborately paneled with a mosaic of coral, the ceiling rises high above in a dome of brilliant, vivid colors that depict the bed
+      of an ocean.  Rays of natural light from narrow slats in the ceiling penetrate swathes of chiffon in shades of blue, green, and silver cut to
+      resemble ocean currents cascading down from above.  Shelves are built into the walls and a few racks are placed about the room to display items
+      for sale.
+
+=== E0677 ===
+  command typed: go oak-bound door
+  ROOM LEFT
+    name: [Ancient Keep, Office]
+    area: Icemule Trace
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Long, twisting veins of mithril and rhimar entwine around each other across the circular room's ceiling.  Several rectangular
+      cubbyholes line the walls, each containing an intricately carved ice sculpture within.  Presiding over the center of the office is a large
+      mahogany chair cushioned with rich leather, with an elegant mahogany desk behind it.  Framed with etched rhimar, an oak-bound door leads back
+      out.
+  ROOM ARRIVED IN
+    name: [Ancient Keep, Foyer]
+    area: Icemule Trace
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Circular in shape, the floor is completely made from square-cut sections of black marble.  Large, blackened marble pillars line the
+      walls, ending with a domed glass ceiling high overhead.  A narrow gap on the far side of the room leads to a sweeping stairwell with a mithglin-
+      plated door beneath it.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Ancient Burrow, Courtyard]
+      east  ->  [Ancient Keep, Ballroom]
+      west  ->  [Ancient Keep, Lounge]
+      go sweeping stairwell  ->  [Ancient Keep, Council Room]
+
+=== E0678 ===
+  command typed: climb staircase
+  ROOM LEFT
+    name: [Tower Chamber]
+    area: Castle Anwyn
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Cold inhabits the chamber as if it were bred here.  Across the floor, debris and dust mark uninhabited time as well as a clock,
+      sifting into the room's corners in gentle drifts.  The odor of decay hangs over the emptiness with its secretive nuances, speaking a subtle
+      language universal to all lands.
+    other ways out of this room (the exit being judged is left out):
+      down  ->  [Anwyn Castle, East Tower]
+  ROOM ARRIVED IN
+    name: [Turret]
+    area: Castle Anwyn
+    setting: indoors
+    game terrain: hard, flat
+    description 1: The turret is dark and empty -- at first glance.  Then one after another, and then another winged shape swoops past your line of
+      vision.  A look at the ceiling reveals the whole of it is covered by a vast complex of hornet nests.  Their papery convolutions curve around the
+      roof's beams like a blanket, folding out here and there into incredible blossoms of living chambers.  Busy winged workers labor across the
+      surface of the monstrous construction.  The staircase leading down looks exceedingly inviting.
+
+=== E0679 ===
+  command typed: climb ramp
+  ROOM LEFT
+    name: [Solhaven, Beacon Ring]
+    area: the southern part of Solhaven
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: The circling roadways from the north and south meet here on a level with the rooftops of buildings to the north, east and south.  A
+      steep ramp reaches upward to the west, ending at a jagged opening in the tower's base where a gateway must once have stood long ago.  Paired
+      torches bracket the tower's entrance and light the ramp's summit.
+    description 2: The steep incline of the circling roadways from the north and south meet here on a level with the rooftops of the buildings
+      directly north, east and south.  Rising to the west is a ramp that leads through the opening at the tower's base.  Noticeable repair is evident
+      where white limestones replace the old, darker stones around a fitted steel portcullis.  Paired torches, in polished brass brackets, flank the
+      refurbished tower entrance and illuminate the ramp's summit.
+    description 3: The steep incline of the circling roadways from the north and south meet here, level with the rooftops of the buildings directly
+      north, east, and south.  Rising to the west is a ramp that leads through the opening at the tower's base.  Noticeable repair is evident where
+      white limestones replace the old, darker stones around a fitted steel portcullis.  Paired torches in polished brass brackets flank the
+      refurbished tower entrance and illuminate the ramp's summit.
+    description 4: The steep incline of the circling roadways from the north and south meet here, level with the rooftops of the buildings directly
+      north, east, and south.  Rising to the west is a ramp that leads through the opening at the tower's base.  Noticeable repair is evident where
+      white limestones replace the old, darker stones around a fitted steel portcullis.  Paired torches in polished brass brackets flank the
+      refurbished tower entrance.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Solhaven, Beacon Circle East]
+      northwest  ->  [Solhaven, Beacon Ring]
+      southwest  ->  [Solhaven, Beacon Ring]
+  ROOM ARRIVED IN
+    name: [Solhaven, Beacon Tower]
+    area: the southern part of Solhaven
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: White limestone mixes with the tower's dark foundation from its base to its crown and is a marked sign of renovation to the ancient
+      premises.  Against the outer wall, a stone stairway spirals upward towards four landings and is wrapped by dark ebonwood banisters.  Above the
+      stairway, daylight trickles across the eight crenellated points, outlining new and old stone work, some of which glints with foreign metal.
+    description 2: White limestone mixes with the tower's dark foundation from its base to its crown and is a marked sign of renovation to the ancient
+      premises.  Against the outer wall, a stone stairway spirals upward, its course illuminated by bracketed torches and interrupted by four
+      landings.  Above the stairway, the roof of the tower has been removed to expose the night sky and all eight crenellated points have been
+      repaired.
+    other ways out of this room (the exit being judged is left out):
+      climb stairway  ->  [Solhaven, Beacon Tower]
+
+=== E0680 ===
+  command typed: go grey tower
+  ROOM LEFT
+    name: [Icemule Trace, Forest]
+    area: the southern snowfields
+    setting: outdoors
+    game terrain: coniferous forest
+    description 1: The air is still, heavy with the closeness of the spruce and fir trees.  The movement of a bird or squirrel high above in the trees
+      sends a cascade of snow from the upper branches down onto the path.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Icemule Trace, Forest]
+      south  ->  [Icemule Trace, Forest]
+      west  ->  [Icemule Trace, Hillside]
+  ROOM ARRIVED IN
+    name: [Sylvanfair, Rime Hall]
+    area: Icemule Trace
+    setting: indoors
+    game terrain: hard, flat
+    description 1: The heat radiating from a firepit in the middle of the vast hall scarcely reaches the grey stone walls, leaving them cold.  Carved
+      into the frosted surface is an ethereal forest of leaf-bare trees creating the image of perpetual winter in familiar deciduous groves.  Pools of
+      pale wax mar the tiled floor where tiered candles set in cast iron chandeliers overhead have been left to drip.  Oaken benches circle the
+      blazing fire with the added comfort of thick furs draped over their high backs.
+    other ways out of this room (the exit being judged is left out):
+      go dimly archway  ->  [Sylvanfair, Gallery]

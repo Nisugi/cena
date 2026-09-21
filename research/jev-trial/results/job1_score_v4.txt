@@ -1,0 +1,155 @@
+n = 300
+accuracy         92.7%  (278/300)
+baseline (always 'up')  76.0%
+
+key distribution
+  up             228  76.0%
+  down            72  24.0%
+
+confusion  expected -> chosen
+  up           -> up             216
+  down         -> down            62
+  up           -> down            12  <-- wrong
+  down         -> up              10  <-- wrong
+
+accuracy by stated probability of the chosen option
+  band               n  correct  accuracy   cumulative >= lo
+  0.00-0.50          0        0         -      92.7% (n=300)
+  0.50-0.70         24       14     58.3%      92.7% (n=300)
+  0.70-0.80         22       18     81.8%      95.7% (n=276)
+  0.80-0.90         27       21     77.8%      96.9% (n=254)
+  0.90-0.95         24       23     95.8%      99.1% (n=227)
+  0.95-0.99         36       35     97.2%      99.5% (n=203)
+  0.99-1.00        167      167    100.0%     100.0% (n=167)
+
+accuracy by stated confidence
+  band               n  correct  accuracy
+  0.00-0.50         34       23     67.6%
+  0.50-0.70         22       16     72.7%
+  0.70-0.80         18       15     83.3%
+  0.80-0.90         24       23     95.8%
+  0.90-0.95         20       20    100.0%
+  0.95-0.99         49       48     98.0%
+  0.99-1.00        133      133    100.0%
+
+mistakes: 22  (first 20 below)
+
+  867 -> 9664  'go promontory'
+    expected down, chose up (p=0.75, conf=0.5)
+    back command: 'up'
+    from: [Whistler's Pass, Mountain Ledge]
+    to: [Whistler's Pass, Overlook]
+
+  4943 -> 4944  'go stairwell'
+    expected down, chose up (p=0.76, conf=0.52)
+    back command: 'up'
+    from: [Gyldemar Forest, Ruined Hall]
+    to: [Gyldemar Forest, Stairwell]
+
+  7009 -> 7010  'go steps'
+    expected up, chose down (p=0.67, conf=0.33)
+    back command: 'down'
+    from: [Castle Darkstone, Guardtower]
+    to: [Castle Darkstone, Guardtower]
+
+  7014 -> 7015  'go steps'
+    expected up, chose down (p=0.68, conf=0.36)
+    back command: 'down'
+    from: [Castle Darkstone, Guardtower]
+    to: [Castle Darkstone, Guardtower]
+
+  9126 -> 9125  'climb fissure'
+    expected up, chose down (p=0.54, conf=0.09)
+    back command: 'down'
+    from: [Gas Pocket]
+    to: [Dark Fissure]
+
+  10145 -> 10157  'go trail'
+    expected up, chose down (p=0.57, conf=0.14)
+    back command: 'down'
+    from: [Fethayl Bog, Ivory Pillar]
+    to: [Fethayl Bog, Lone Grave]
+
+  13229 -> 13309  'go font'
+    expected up, chose down (p=0.65, conf=0.3)
+    back command: 'down'
+    from: [Oleani's Temple, Sanctuary]
+    to: [Oleani's Temple, Baptism Font]
+
+  17249 -> 17250  'climb ladder'
+    expected down, chose up (p=0.94, conf=0.88)
+    back command: 'up'
+    from: [Citadel, Icehouse]
+    to: [Citadel, Darkroom]
+
+  19891 -> 19895  'go stairs'
+    expected down, chose up (p=0.73, conf=0.46)
+    back command: 'up'
+    from: [Cleric Guild, Alchemy Lobby]
+    to: [Cleric Guild, Alchemy Storage]
+
+  20899 -> 20900  'go passage'
+    expected up, chose down (p=0.62, conf=0.24)
+    back command: 'down'
+    from: [Monsoon Jungle, Hillside Path]
+    to: [Monsoon Jungle, Canopy Approach]
+
+  21250 -> 21225  'go narrow staircase'
+    expected up, chose down (p=0.50, conf=0)
+    back command: 'down'
+    from: [Silvergate, Hallway]
+    to: [Silvergate, A Small Landing]
+
+  22105 -> 22100  'go staircase'
+    expected down, chose up (p=0.89, conf=0.79)
+    back command: 'up'
+    from: [Bard Guild, Entry Hall]
+    to: [Bard Guild, Landing]
+
+  23387 -> 23388  'go iron ladder'
+    expected down, chose up (p=0.82, conf=0.65)
+    back command: 'up'
+    from: [Dragonspine, Mountainside]
+    to: [A Narrow Shaft, Ladder]
+
+  23776 -> 23794  'go steps'
+    expected up, chose down (p=0.52, conf=0.03)
+    back command: 'down'
+    from: [Duskruin Arena, Entrance]
+    to: [Duskruin Arena, Western Arc]
+
+  26064 -> 26065  'go passageway'
+    expected up, chose down (p=0.98, conf=0.96)
+    back command: 'down'
+    from: [Sylvanfair, Summoning Chamber]
+    to: [Sylvanfair, Secret Passageway]
+
+  26617 -> 26615  'go ladder'
+    expected up, chose down (p=0.87, conf=0.74)
+    back command: 'down'
+    from: [Caligos Isle, Wall of Despair]
+    to: [Caligos Isle, Shadowed Grotto]
+
+  28550 -> 28549  'go steps'
+    expected down, chose up (p=0.58, conf=0.17)
+    back command: 'up'
+    from: [Arena of the Abyss, Atrium]
+    to: [Arena of the Abyss, Influx]
+
+  28555 -> 28554  'go steps'
+    expected down, chose up (p=0.75, conf=0.51)
+    back command: 'up'
+    from: [Arena of the Abyss, Atrium]
+    to: [Arena of the Abyss, Pestilence]
+
+  30668 -> 30667  'go stairway'
+    expected up, chose down (p=0.52, conf=0.04)
+    back command: 'down'
+    from: [Kharam Dzu Hall, Refectory]
+    to: [Kharam Dzu Hall, Stairway]
+
+  34008 -> 34007  'go staircase'
+    expected down, chose up (p=0.81, conf=0.61)
+    back command: 'up'
+    from: [Dollhouse, Corridor]
+    to: [Dollhouse, Kitchen]

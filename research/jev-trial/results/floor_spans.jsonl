@@ -1,0 +1,11 @@
+{"from": "33714", "to": "33713", "direction": "up", "floors_crossed": 2, "edge": "llm", "floor_from": 0, "floor_to": 2}
+{"from": "29559", "to": "28700", "direction": "down", "floors_crossed": 2, "edge": "llm", "floor_from": 1, "floor_to": -1}
+{"from": "29559", "to": "28700", "direction": "down", "floors_crossed": 2, "edge": "llm", "floor_from": 1, "floor_to": -1}
+{"from": "13245", "to": "28699", "direction": "down", "floors_crossed": 2, "edge": "llm", "floor_from": 1, "floor_to": -1}
+{"from": "13245", "to": "28699", "direction": "down", "floors_crossed": 2, "edge": "llm", "floor_from": 1, "floor_to": -1}
+{"from": "6715", "to": "6703", "direction": "down", "floors_crossed": 2, "edge": "llm", "floor_from": 1, "floor_to": -1}
+{"from": "6715", "to": "6703", "direction": "down", "floors_crossed": 2, "edge": "llm", "floor_from": 1, "floor_to": -1}
+{"from": "16283", "to": "16282", "direction": "up", "floors_crossed": 2, "edge": "llm", "floor_from": -1, "floor_to": 1}
+{"from": "16283", "to": "16282", "direction": "up", "floors_crossed": 2, "edge": "llm", "floor_from": -1, "floor_to": 1}
+{"from": "20842", "to": "20843", "direction": "down", "floors_crossed": 6, "edge": "llm", "floor_from": 6, "floor_to": 0}
+{"from": "20842", "to": "20843", "direction": "down", "floors_crossed": 6, "edge": "llm", "floor_from": 6, "floor_to": 0}

@@ -1,0 +1,7 @@
+100/696 asked=203 cost=$0.0121
+200/696 asked=401 cost=$0.0229
+300/696 asked=601 cost=$0.0342
+400/696 asked=801 cost=$0.0457
+500/696 asked=1001 cost=$0.0570
+600/696 asked=1202 cost=$0.0689
+done: 696 pairs, 1392 calls asked, tokens in=1897071 out=54817 cost=$0.079677

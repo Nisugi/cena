@@ -1,0 +1,40 @@
+{"item": "E0241", "direction": "same floor", "confidence": 55, "reason": "office and tribunal chamber both open off the reformatory entry level; no descent or ascent stated"}
+{"item": "E0242", "direction": "up", "confidence": 92, "reason": "planetarium says a narrow stone staircase leads up and the observatory says a narrow stone staircase leads down"}
+{"item": "E0243", "direction": "same floor", "confidence": 80, "reason": "jumping a chasm across to a cavern on the same glacier level; the separate 'down' exit is the other way"}
+{"item": "E0244", "direction": "same floor", "confidence": 88, "reason": "entering a ground-level pavilion tent from a bazaar, like the other go wagon/go tent shop exits"}
+{"item": "E0245", "direction": "down", "confidence": 70, "reason": "waiting room is above both chapels, with ash stairs leading down into the ebon chapel and the marble staircase the parallel route to the white chapel"}
+{"item": "E0246", "direction": "same floor", "confidence": 60, "reason": "entering the bottom of a stairway room from a study on the same level; the climb up is the go door exit to the observatory"}
+{"item": "E0247", "direction": "same floor", "confidence": 70, "reason": "a tunnel through a hill of ice at street's end, level with the road"}
+{"item": "E0248", "direction": "same floor", "confidence": 75, "reason": "entering the tower's ground-level guardroom/entry hall from the courtyard; the staircase up is a separate exit"}
+{"item": "E0249", "direction": "up", "confidence": 65, "reason": "foyer has a spiral staircase with the kitchen hidden under it, and the lounge has a balcony, so the staircase rises to an upper level"}
+{"item": "E0250", "direction": "up", "confidence": 78, "reason": "the council room says three steps lead up to the dais and the arrived room is on the dais"}
+{"item": "E0251", "direction": "up", "confidence": 85, "reason": "climbing stairs from an inn lobby to the guest-room hallway above"}
+{"item": "E0252", "direction": "same floor", "confidence": 88, "reason": "a wide tunnel between two subterranean caverns of the same shelter, with no rise or drop mentioned"}
+{"item": "E0253", "direction": "same floor", "confidence": 72, "reason": "wriggling through a hole beneath a boulder into an adjacent tunnel on the same level"}
+{"item": "E0254", "direction": "up", "confidence": 85, "reason": "the landing is near the bottom of the spiral stairwell and the arrived room is the top of that stairwell with steps leading down"}
+{"item": "E0255", "direction": "same floor", "confidence": 55, "reason": "a fissure into a cramped cave at the peak; no rise or drop stated"}
+{"item": "E0256", "direction": "up", "confidence": 90, "reason": "the arrived platform rises fifty feet into the air and is reached by climbing a ramp"}
+{"item": "E0257", "direction": "down", "confidence": 92, "reason": "the corridor says a flight of steps descends to a landing below where the Guild Office is"}
+{"item": "E0258", "direction": "same floor", "confidence": 82, "reason": "a fissure cutting a direct path inward through the shell to the heart of the spiral, horizontal travel"}
+{"item": "E0259", "direction": "up", "confidence": 90, "reason": "the rickety stairway leads up to a second floor and the arrived room is a hallway with a collapsed ceiling overlooking the forest"}
+{"item": "E0260", "direction": "up", "confidence": 72, "reason": "the carpeted landing's sweeping staircase rises to the upper floors and the arrival is the Seventh Floor front stairs"}
+{"item": "E0261", "direction": "same floor", "confidence": 80, "reason": "stepping from a midstream rock to the stream bank; the climb up the ridge is a separate up exit"}
+{"item": "E0262", "direction": "up", "confidence": 93, "reason": "the kitchen's stout wooden steps disappear through the ceiling into the store room above"}
+{"item": "E0263", "direction": "down", "confidence": 78, "reason": "the room left says the slope descends amidst cliffs to a trail below, and the arrived room is at the base where the slope climbs upwards"}
+{"item": "E0264", "direction": "same floor", "confidence": 80, "reason": "a narrow archway leading toward the adjoining smithy; the vertical route is the spiral staircase to the temple"}
+{"item": "E0265", "direction": "down", "confidence": 88, "reason": "the arrived gneiss tunnel says wide stairs lead from the granite quarry above into a lower layer of gneiss"}
+{"item": "E0266", "direction": "up", "confidence": 70, "reason": "a stair in a watchtower leading from the headquarters to the barracks, which itself has a ladder further up to the roof"}
+{"item": "E0267", "direction": "up", "confidence": 85, "reason": "the rope is secured above the corrie floor and the arrived room is a clifftop twenty feet above the valley floor with the rope going over the side"}
+{"item": "E0268", "direction": "up", "confidence": 70, "reason": "tracks disappear up a fairly steep incline and the command is climb"}
+{"item": "E0269", "direction": "same floor", "confidence": 55, "reason": "the arrived crossroads is a mostly level spot on a gently sloping trail, a respite rather than a new level"}
+{"item": "E0270", "direction": "down", "confidence": 85, "reason": "the arrived chamber says a tunnel in the eastern wall leads upward toward the main training area"}
+{"item": "E0271", "direction": "same floor", "confidence": 65, "reason": "entering a bank lobby from the avenue; the broad steps are a short entry rise, not a storey"}
+{"item": "E0272", "direction": "down", "confidence": 85, "reason": "the hole is at the base of a tree and the shrine is a buried dirt chamber with moonlight streaming down through an opening in its ceiling"}
+{"item": "E0273", "direction": "same floor", "confidence": 60, "reason": "passing through a wide fissure into an adjoining cavern tunnel; each room's vertical route is its own separate up exit"}
+{"item": "E0274", "direction": "same floor", "confidence": 78, "reason": "climbing a wall barely as tall as a giantman between two hill rooms on the same hillside"}
+{"item": "E0275", "direction": "down", "confidence": 70, "reason": "the arrived room says the protrusion is visible just below the trail"}
+{"item": "E0276", "direction": "same floor", "confidence": 65, "reason": "the fissure opens at the level part of the slope and the grotto's descent is its own separate down exit"}
+{"item": "E0277", "direction": "same floor", "confidence": 80, "reason": "a door at one end of the balcony into a box seat, both high above the lobby on the same upper level"}
+{"item": "E0278", "direction": "up", "confidence": 90, "reason": "the arrived porch says a spiral staircase following the tree's contour descends back to the forest floor"}
+{"item": "E0279", "direction": "same floor", "confidence": 75, "reason": "stepping behind a large flat boulder into a makeshift recess on the same hard-packed ground"}
+{"item": "E0280", "direction": "up", "confidence": 92, "reason": "the hall left has ascending stairs and the arrived landing has descending stairs"}

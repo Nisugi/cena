@@ -1,0 +1,1898 @@
+{
+"E0001": {
+"from": "16964",
+"to": "16963",
+"command": "go west steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8956357985855835
+},
+"E0002": {
+"from": "35372",
+"to": "35373",
+"command": "go step",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.7926779587676622
+},
+"E0003": {
+"from": "13229",
+"to": "13309",
+"command": "go font",
+"expected": "up",
+"jev": "same floor",
+"jev_estimate": 0.8964063682043704
+},
+"E0004": {
+"from": "11405",
+"to": "11406",
+"command": "climb ledge",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.889048922690572
+},
+"E0005": {
+"from": "28329",
+"to": "28330",
+"command": "go stairs",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8034311194526936
+},
+"E0006": {
+"from": "13778",
+"to": "13922",
+"command": "go dock",
+"expected": "down",
+"jev": "same floor",
+"jev_estimate": 0.9276735905271692
+},
+"E0007": {
+"from": "6995",
+"to": "6996",
+"command": "climb tower",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8123845598384882
+},
+"E0008": {
+"from": "4580",
+"to": "4600",
+"command": "go entrance",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.8787888311621084
+},
+"E0009": {
+"from": "26942",
+"to": "26941",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7883331687427748
+},
+"E0010": {
+"from": "33631",
+"to": "33651",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.802025009846094
+},
+"E0011": {
+"from": "17249",
+"to": "17250",
+"command": "climb ladder",
+"expected": "down",
+"jev": "up",
+"jev_estimate": 0.8131331848407971
+},
+"E0012": {
+"from": "16185",
+"to": "16186",
+"command": "go arch",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8536212480448794
+},
+"E0013": {
+"from": "2571",
+"to": "2570",
+"command": "go glacier",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8759864189782751
+},
+"E0014": {
+"from": "10006",
+"to": "10007",
+"command": "go ledge",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9130672113397438
+},
+"E0015": {
+"from": "28021",
+"to": "28020",
+"command": "go viewing stands",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9054792436724834
+},
+"E0016": {
+"from": "19891",
+"to": "19895",
+"command": "go stairs",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.728480039607048
+},
+"E0017": {
+"from": "2412",
+"to": "2486",
+"command": "go south gate",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9227109878291115
+},
+"E0018": {
+"from": "25610",
+"to": "25606",
+"command": "go stairs",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8107332702322173
+},
+"E0019": {
+"from": "20108",
+"to": "20107",
+"command": "go walkway",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7588440413721186
+},
+"E0020": {
+"from": "9167",
+"to": "9191",
+"command": "climb desk",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7922097537804684
+},
+"E0021": {
+"from": "26523",
+"to": "26738",
+"command": "go sandy trail",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8859622449898048
+},
+"E0022": {
+"from": "9130",
+"to": "9131",
+"command": "climb stalagmite",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8370923160903676
+},
+"E0023": {
+"from": "24685",
+"to": "24686",
+"command": "go ladder",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8921496017489942
+},
+"E0024": {
+"from": "4996",
+"to": "9926",
+"command": "go clearing",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7492337647919085
+},
+"E0025": {
+"from": "28550",
+"to": "28549",
+"command": "go steps",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.7122927277181057
+},
+"E0026": {
+"from": "9170",
+"to": "9190",
+"command": "climb plank",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7720231255779366
+},
+"E0027": {
+"from": "2054",
+"to": "2055",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8536831312374482
+},
+"E0028": {
+"from": "11422",
+"to": "11417",
+"command": "go passage",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9179737669822116
+},
+"E0029": {
+"from": "27648",
+"to": "27649",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7730343682008728
+},
+"E0030": {
+"from": "35283",
+"to": "35370",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9224288446438386
+},
+"E0031": {
+"from": "36452",
+"to": "36458",
+"command": "climb hummock",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9274164745295231
+},
+"E0032": {
+"from": "7652",
+"to": "7651",
+"command": "swim north",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7563340581917041
+},
+"E0033": {
+"from": "31943",
+"to": "32092",
+"command": "go crevice",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.6891581692447887
+},
+"E0034": {
+"from": "18173",
+"to": "18172",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7843620719765942
+},
+"E0035": {
+"from": "35771",
+"to": "35780",
+"command": "go sandy path",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7361697932406691
+},
+"E0036": {
+"from": "13918",
+"to": "13960",
+"command": "go boardwalk",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8783013189117007
+},
+"E0037": {
+"from": "7063",
+"to": "7070",
+"command": "climb rubble",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9025550710818091
+},
+"E0038": {
+"from": "26424",
+"to": "26423",
+"command": "go steps",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.7438539748723494
+},
+"E0039": {
+"from": "35524",
+"to": "35537",
+"command": "go opening",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8708551549004995
+},
+"E0040": {
+"from": "1952",
+"to": "30667",
+"command": "go stairway",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.9276985129287342
+},
+"E0041": {
+"from": "71",
+"to": "72",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9271250559421604
+},
+"E0042": {
+"from": "24684",
+"to": "24685",
+"command": "go rope",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8811240279539078
+},
+"E0043": {
+"from": "28112",
+"to": "28125",
+"command": "go path",
+"expected": "same floor",
+"jev": "up",
+"jev_estimate": 0.9205713365463895
+},
+"E0044": {
+"from": "26064",
+"to": "26065",
+"command": "go passageway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8125306979931041
+},
+"E0045": {
+"from": "16964",
+"to": "16965",
+"command": "go east steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8184609027850447
+},
+"E0046": {
+"from": "14234",
+"to": "14353",
+"command": "climb stairway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.892805733423469
+},
+"E0047": {
+"from": "25904",
+"to": "25907",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8976495351049669
+},
+"E0048": {
+"from": "12031",
+"to": "12032",
+"command": "climb steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9212099597874527
+},
+"E0049": {
+"from": "15566",
+"to": "15569",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8078635811746996
+},
+"E0050": {
+"from": "28555",
+"to": "28554",
+"command": "go steps",
+"expected": "down",
+"jev": "up",
+"jev_estimate": 0.684279339800294
+},
+"E0051": {
+"from": "3904",
+"to": "3905",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7309878778866331
+},
+"E0052": {
+"from": "5810",
+"to": "5811",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8860924195939527
+},
+"E0053": {
+"from": "31969",
+"to": "32119",
+"command": "jump crate",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.837185534306156
+},
+"E0054": {
+"from": "7035",
+"to": "7036",
+"command": "go staircase",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.7917153015599508
+},
+"E0055": {
+"from": "26617",
+"to": "26615",
+"command": "go ladder",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.6397026925962743
+},
+"E0056": {
+"from": "14698",
+"to": "12386",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7756132278816348
+},
+"E0057": {
+"from": "1930",
+"to": "14698",
+"command": "climb steps",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.8141699001366884
+},
+"E0058": {
+"from": "32422",
+"to": "32423",
+"command": "go bridge",
+"expected": "up",
+"jev": "same floor",
+"jev_estimate": 0.5811639331056165
+},
+"E0059": {
+"from": "24218",
+"to": "24353",
+"command": "go grate",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.6419251181536698
+},
+"E0060": {
+"from": "26156",
+"to": "26157",
+"command": "go ramp",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7850311361192572
+},
+"E0061": {
+"from": "26867",
+"to": "35183",
+"command": "go shack",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7552705774819765
+},
+"E0062": {
+"from": "19350",
+"to": "19351",
+"command": "go alley",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9072810408040624
+},
+"E0063": {
+"from": "25909",
+"to": "25910",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7771333651343003
+},
+"E0064": {
+"from": "20899",
+"to": "20900",
+"command": "go passage",
+"expected": "up",
+"jev": "same floor",
+"jev_estimate": 0.8263831715372717
+},
+"E0065": {
+"from": "30773",
+"to": "30776",
+"command": "go flight steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7720013378224044
+},
+"E0066": {
+"from": "4943",
+"to": "4944",
+"command": "go stairwell",
+"expected": "down",
+"jev": "up",
+"jev_estimate": 0.7410794876275577
+},
+"E0067": {
+"from": "28061",
+"to": "28060",
+"command": "go stands",
+"expected": "up",
+"jev": "same floor",
+"jev_estimate": 0.8991481067336295
+},
+"E0068": {
+"from": "23770",
+"to": "23788",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8804877109340186
+},
+"E0069": {
+"from": "7009",
+"to": "7010",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9069273471641951
+},
+"E0070": {
+"from": "8922",
+"to": "8932",
+"command": "climb stairway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9080261862316863
+},
+"E0071": {
+"from": "4765",
+"to": "4766",
+"command": "climb cord",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9248149325853378
+},
+"E0072": {
+"from": "26596",
+"to": "26597",
+"command": "go decline",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8932756179054303
+},
+"E0073": {
+"from": "25606",
+"to": "25605",
+"command": "go stairs",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8177011839671343
+},
+"E0074": {
+"from": "14261",
+"to": "7852",
+"command": "go arch",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8460606033632537
+},
+"E0075": {
+"from": "26940",
+"to": "26939",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7602679330426714
+},
+"E0076": {
+"from": "9418",
+"to": "9509",
+"command": "go arch",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8578428829618729
+},
+"E0077": {
+"from": "6107",
+"to": "6108",
+"command": "go pass",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8288139691195248
+},
+"E0078": {
+"from": "28016",
+"to": "28017",
+"command": "go viewing stands",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8684056853379986
+},
+"E0079": {
+"from": "2087",
+"to": "2112",
+"command": "go house",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8995728467863645
+},
+"E0080": {
+"from": "2487",
+"to": "2486",
+"command": "go gate",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9148009464080575
+},
+"E0081": {
+"from": "32440",
+"to": "32439",
+"command": "go stone bridge",
+"expected": "down",
+"jev": "same floor",
+"jev_estimate": 0.6274499057034844
+},
+"E0082": {
+"from": "30926",
+"to": "30928",
+"command": "go walkway",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8928810441127734
+},
+"E0083": {
+"from": "23217",
+"to": "23218",
+"command": "go stone steps",
+"expected": "down",
+"jev": "same floor",
+"jev_estimate": 0.8537530530750572
+},
+"E0084": {
+"from": "25907",
+"to": "25908",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9187195188707712
+},
+"E0085": {
+"from": "7028",
+"to": "7022",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9248063215611007
+},
+"E0086": {
+"from": "23480",
+"to": "23467",
+"command": "go hatch",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.7170872437529104
+},
+"E0087": {
+"from": "34766",
+"to": "34767",
+"command": "go webs",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.689568934962774
+},
+"E0088": {
+"from": "35371",
+"to": "35372",
+"command": "go step",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7845451730893024
+},
+"E0089": {
+"from": "2502",
+"to": "2503",
+"command": "climb branch",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7302084170593033
+},
+"E0090": {
+"from": "25079",
+"to": "25080",
+"command": "go stairway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7667865977899493
+},
+"E0091": {
+"from": "9975",
+"to": "9985",
+"command": "go mound",
+"expected": "same floor",
+"jev": "up",
+"jev_estimate": 0.9151563691477346
+},
+"E0092": {
+"from": "3041",
+"to": "3234",
+"command": "go gate",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9121272494722262
+},
+"E0093": {
+"from": "7490",
+"to": "7500",
+"command": "go stairway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9298358050971393
+},
+"E0094": {
+"from": "9165",
+"to": "9192",
+"command": "climb books",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7749448456757846
+},
+"E0095": {
+"from": "23390",
+"to": "23389",
+"command": "go iron ladder",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8905345298854248
+},
+"E0096": {
+"from": "4291",
+"to": "6372",
+"command": "go trail",
+"expected": "same floor",
+"jev": "up",
+"jev_estimate": 0.7159435091653392
+},
+"E0097": {
+"from": "7043",
+"to": "7044",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9032800695110168
+},
+"E0098": {
+"from": "13532",
+"to": "13533",
+"command": "climb staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8032600434480663
+},
+"E0099": {
+"from": "27158",
+"to": "27160",
+"command": "swim northeast",
+"expected": "same floor",
+"jev": "up",
+"jev_estimate": 0.7431223225385922
+},
+"E0100": {
+"from": "35370",
+"to": "35371",
+"command": "go step",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8152021709967412
+},
+"E0101": {
+"from": "1929",
+"to": "1930",
+"command": "climb steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9066039046793211
+},
+"E0102": {
+"from": "2505",
+"to": "2504",
+"command": "climb tree",
+"expected": "up",
+"jev": "same floor",
+"jev_estimate": 0.8604799913196896
+},
+"E0103": {
+"from": "13956",
+"to": "13928",
+"command": "go footbridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9083761259426422
+},
+"E0104": {
+"from": "5950",
+"to": "3549",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9145119684255082
+},
+"E0105": {
+"from": "21185",
+"to": "31409",
+"command": "go kitchen",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9268409569741196
+},
+"E0106": {
+"from": "3222",
+"to": "3229",
+"command": "go gates",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9104103287564487
+},
+"E0107": {
+"from": "19646",
+"to": "19647",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9236304365103414
+},
+"E0108": {
+"from": "6428",
+"to": "6432",
+"command": "go porch",
+"expected": "up",
+"jev": "same floor",
+"jev_estimate": 0.7774868310032068
+},
+"E0109": {
+"from": "30773",
+"to": "30774",
+"command": "go narrow stairway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9224288446438386
+},
+"E0110": {
+"from": "7662",
+"to": "7663",
+"command": "go crevice",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.896769455279821
+},
+"E0111": {
+"from": "4781",
+"to": "10786",
+"command": "go stump",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.6904160292706741
+},
+"E0112": {
+"from": "36430",
+"to": "36431",
+"command": "go gate",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7656074416213684
+},
+"E0113": {
+"from": "26939",
+"to": "26938",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8951254384257755
+},
+"E0114": {
+"from": "31551",
+"to": "31552",
+"command": "go stairs",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8598506847669546
+},
+"E0115": {
+"from": "36795",
+"to": "36794",
+"command": "go ramp",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.7265296332870339
+},
+"E0116": {
+"from": "1143",
+"to": "1142",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7604426953970396
+},
+"E0117": {
+"from": "26440",
+"to": "26645",
+"command": "go quay",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.9196365692550434
+},
+"E0118": {
+"from": "34864",
+"to": "34865",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7776741152467844
+},
+"E0119": {
+"from": "3032",
+"to": "3031",
+"command": "go trail",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8760536672389948
+},
+"E0120": {
+"from": "11106",
+"to": "11105",
+"command": "climb cask",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7634450029278173
+},
+"E0121": {
+"from": "23668",
+"to": "23670",
+"command": "go steps",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.9025877400032392
+},
+"E0122": {
+"from": "9343",
+"to": "9344",
+"command": "go pass",
+"expected": "same floor",
+"jev": "up",
+"jev_estimate": 0.9164414468826498
+},
+"E0123": {
+"from": "10787",
+"to": "10786",
+"command": "go stump",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.7060843691565984
+},
+"E0124": {
+"from": "513",
+"to": "525",
+"command": "go gap",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9120525677830089
+},
+"E0125": {
+"from": "25659",
+"to": "25656",
+"command": "go stairway",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.802025009846094
+},
+"E0126": {
+"from": "23363",
+"to": "23365",
+"command": "go narrow passage",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9193074464575497
+},
+"E0127": {
+"from": "2089",
+"to": "2112",
+"command": "go house",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7779842090606759
+},
+"E0128": {
+"from": "22107",
+"to": "22110",
+"command": "go manor",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8908210403789038
+},
+"E0129": {
+"from": "9974",
+"to": "9985",
+"command": "go mound",
+"expected": "same floor",
+"jev": "up",
+"jev_estimate": 0.9227109878291115
+},
+"E0130": {
+"from": "9172",
+"to": "9189",
+"command": "climb crates",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7597205263214167
+},
+"E0131": {
+"from": "28051",
+"to": "28057",
+"command": "go viewing stands",
+"expected": "up",
+"jev": "same floor",
+"jev_estimate": 0.9244879883406164
+},
+"E0132": {
+"from": "34569",
+"to": "23898",
+"command": "go floral curtain",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8870303424033407
+},
+"E0133": {
+"from": "10185",
+"to": "10184",
+"command": "go path",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8563844869889717
+},
+"E0134": {
+"from": "1306",
+"to": "9312",
+"command": "climb ledge",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7167853517590851
+},
+"E0135": {
+"from": "6114",
+"to": "7919",
+"command": "climb rockslide",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9036892716784365
+},
+"E0136": {
+"from": "15558",
+"to": "15557",
+"command": "climb casks",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9218171138726814
+},
+"E0137": {
+"from": "7043",
+"to": "7045",
+"command": "go staircase",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.9274164745295231
+},
+"E0138": {
+"from": "7014",
+"to": "7015",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9044281356410109
+},
+"E0139": {
+"from": "2511",
+"to": "2510",
+"command": "go river",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8001516297093897
+},
+"E0140": {
+"from": "12588",
+"to": "12589",
+"command": "go trail",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.5382976809368174
+},
+"E0141": {
+"from": "23776",
+"to": "23794",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.6265098603321797
+},
+"E0142": {
+"from": "23398",
+"to": "23397",
+"command": "go stairs",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8605872824120119
+},
+"E0143": {
+"from": "5243",
+"to": "5245",
+"command": "go mast",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8980345222016068
+},
+"E0144": {
+"from": "23835",
+"to": "28865",
+"command": "go stairs",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9177462107221265
+},
+"E0145": {
+"from": "18183",
+"to": "18184",
+"command": "go vines",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8644406025602007
+},
+"E0146": {
+"from": "5812",
+"to": "5811",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8552643149820643
+},
+"E0147": {
+"from": "4881",
+"to": "4883",
+"command": "go path",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7512801245544732
+},
+"E0148": {
+"from": "4673",
+"to": "33262",
+"command": "go canopy-covered shop",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8870427510669399
+},
+"E0149": {
+"from": "26611",
+"to": "26724",
+"command": "go pathway",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.7255758091012839
+},
+"E0150": {
+"from": "14810",
+"to": "14811",
+"command": "go door",
+"expected": "same floor",
+"jev": "up",
+"jev_estimate": 0.8573907618779009
+},
+"E0151": {
+"from": "25908",
+"to": "25909",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7920314396544922
+},
+"E0152": {
+"from": "27737",
+"to": "27738",
+"command": "go gate",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8439413123764677
+},
+"E0153": {
+"from": "2889",
+"to": "2890",
+"command": "go slope",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8060320879768158
+},
+"E0154": {
+"from": "12549",
+"to": "14712",
+"command": "climb trail",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8096818642334174
+},
+"E0155": {
+"from": "12561",
+"to": "14712",
+"command": "climb trail",
+"expected": "down",
+"jev": "up",
+"jev_estimate": 0.6826193619370052
+},
+"E0156": {
+"from": "428",
+"to": "6961",
+"command": "go depression",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8634684188372614
+},
+"E0157": {
+"from": "1926",
+"to": "14799",
+"command": "go ramp",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8883597330578565
+},
+"E0158": {
+"from": "1840",
+"to": "20775",
+"command": "go path",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9014639840136863
+},
+"E0159": {
+"from": "25910",
+"to": "25911",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7982649812909935
+},
+"E0160": {
+"from": "21956",
+"to": "21957",
+"command": "go ledge",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9157149509272934
+},
+"E0161": {
+"from": "17052",
+"to": "17057",
+"command": "go doorway",
+"expected": "same floor",
+"jev": "up",
+"jev_estimate": 0.7321922978863125
+},
+"E0162": {
+"from": "26423",
+"to": "26422",
+"command": "go steps",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.9021634345615651
+},
+"E0163": {
+"from": "6847",
+"to": "6848",
+"command": "climb staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9282678064901136
+},
+"E0164": {
+"from": "34827",
+"to": "34828",
+"command": "go gash",
+"expected": "down",
+"jev": "up",
+"jev_estimate": 0.7199031962192385
+},
+"E0165": {
+"from": "4650",
+"to": "17130",
+"command": "climb pedestal",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8919380472416006
+},
+"E0166": {
+"from": "7659",
+"to": "7658",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9144003597026605
+},
+"E0167": {
+"from": "21765",
+"to": "21766",
+"command": "go platform",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.7593928125076168
+},
+"E0168": {
+"from": "26537",
+"to": "26624",
+"command": "go alley",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.6455296584363107
+},
+"E0169": {
+"from": "14150",
+"to": "14151",
+"command": "go dais",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8500778339314244
+},
+"E0170": {
+"from": "23399",
+"to": "23398",
+"command": "go stairs",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8408359407886647
+},
+"E0171": {
+"from": "15569",
+"to": "15571",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8204565963986239
+},
+"E0172": {
+"from": "17062",
+"to": "17057",
+"command": "go doorway",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.8790704790732831
+},
+"E0173": {
+"from": "33282",
+"to": "33283",
+"command": "go cobbled stairs",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7615343984654355
+},
+"E0174": {
+"from": "26512",
+"to": "29316",
+"command": "go trail",
+"expected": "down",
+"jev": "same floor",
+"jev_estimate": 0.8663673501238431
+},
+"E0175": {
+"from": "20835",
+"to": "20841",
+"command": "climb stair",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9212099597874527
+},
+"E0176": {
+"from": "14720",
+"to": "14711",
+"command": "go door",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.8902537275842114
+},
+"E0177": {
+"from": "27716",
+"to": "27717",
+"command": "go gate",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9255556840846024
+},
+"E0178": {
+"from": "4959",
+"to": "4960",
+"command": "climb face",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.7985936183346728
+},
+"E0179": {
+"from": "2088",
+"to": "2112",
+"command": "go house",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.772697639765658
+},
+"E0180": {
+"from": "1189",
+"to": "1190",
+"command": "go ironwood bridge",
+"expected": "up",
+"jev": "same floor",
+"jev_estimate": 0.9293614905839671
+},
+"E0181": {
+"from": "28354",
+"to": "28370",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8689183136566703
+},
+"E0182": {
+"from": "22105",
+"to": "22100",
+"command": "go staircase",
+"expected": "down",
+"jev": "up",
+"jev_estimate": 0.9230185921371298
+},
+"E0183": {
+"from": "1628",
+"to": "0",
+"command": "go atrium",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9224199832632138
+},
+"E0184": {
+"from": "14165",
+"to": "14166",
+"command": "go staircase",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8998117065458903
+},
+"E0185": {
+"from": "30668",
+"to": "30667",
+"command": "go stairway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7706261110762577
+},
+"E0186": {
+"from": "11304",
+"to": "11312",
+"command": "go stairway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7514592969985229
+},
+"E0187": {
+"from": "35374",
+"to": "35378",
+"command": "go steps",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7105836425832964
+},
+"E0188": {
+"from": "26941",
+"to": "26940",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7685633778236025
+},
+"E0189": {
+"from": "23767",
+"to": "23785",
+"command": "go steps",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.7592401551590411
+},
+"E0190": {
+"from": "27723",
+"to": "27724",
+"command": "go gate",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.850189047617191
+},
+"E0191": {
+"from": "1950",
+"to": "12574",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.761163376317626
+},
+"E0192": {
+"from": "35380",
+"to": "35381",
+"command": "go staircase",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.799363830415011
+},
+"E0193": {
+"from": "14696",
+"to": "14699",
+"command": "climb ridge",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7841788580638173
+},
+"E0194": {
+"from": "27163",
+"to": "27162",
+"command": "swim southwest",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8659744114098629
+},
+"E0195": {
+"from": "2047",
+"to": "12571",
+"command": "climb tree",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9248149325853378
+},
+"E0196": {
+"from": "3193",
+"to": "3194",
+"command": "go tomb",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8348551267394387
+},
+"E0197": {
+"from": "4039",
+"to": "26829",
+"command": "go dais",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.6824115365561654
+},
+"E0198": {
+"from": "31095",
+"to": "31096",
+"command": "go gazebo",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8968642419194148
+},
+"E0199": {
+"from": "1309",
+"to": "9312",
+"command": "climb ledge",
+"expected": "down",
+"jev": "up",
+"jev_estimate": 0.8391434909744067
+},
+"E0200": {
+"from": "1007",
+"to": "32823",
+"command": "go stone arch",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8834747202670903
+},
+"E0201": {
+"from": "9126",
+"to": "9125",
+"command": "climb fissure",
+"expected": "up",
+"jev": "down",
+"jev_estimate": 0.6235726158471087
+},
+"E0202": {
+"from": "2056",
+"to": "2055",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8919380472416006
+},
+"E0203": {
+"from": "24241",
+"to": "24240",
+"command": "go stone arch",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.804091044341485
+},
+"E0204": {
+"from": "7657",
+"to": "7658",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.91539042969497
+},
+"E0205": {
+"from": "2057",
+"to": "2058",
+"command": "go road",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9199644665213039
+},
+"E0206": {
+"from": "32824",
+"to": "32823",
+"command": "go cobblestone arch",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.6446648893956018
+},
+"E0207": {
+"from": "26413",
+"to": "26414",
+"command": "go aftcastle",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9265305531090823
+},
+"E0208": {
+"from": "35379",
+"to": "35380",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.797781259938433
+},
+"E0209": {
+"from": "2183",
+"to": "12768",
+"command": "climb chimney",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.6969041989882075
+},
+"E0210": {
+"from": "1393",
+"to": "1392",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9227021559783785
+},
+"E0211": {
+"from": "3562",
+"to": "3563",
+"command": "go trail",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.7630984075384499
+},
+"E0212": {
+"from": "14811",
+"to": "30903",
+"command": "go walkway",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.7568625522603246
+},
+"E0213": {
+"from": "31940",
+"to": "31941",
+"command": "go spiraling stairway",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9065934185861992
+},
+"E0214": {
+"from": "5792",
+"to": "5793",
+"command": "climb hole",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.839789742840865
+},
+"E0215": {
+"from": "7245",
+"to": "7244",
+"command": "go pile",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8952311969499128
+},
+"E0216": {
+"from": "23387",
+"to": "23388",
+"command": "go iron ladder",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8856712195819563
+},
+"E0217": {
+"from": "26943",
+"to": "26942",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7492570215816632
+},
+"E0218": {
+"from": "5794",
+"to": "5793",
+"command": "climb chimney",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8535194129982069
+},
+"E0219": {
+"from": "27161",
+"to": "27158",
+"command": "swim northwest",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.7759684096614194
+},
+"E0220": {
+"from": "14388",
+"to": "14161",
+"command": "go arch",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.923612964630101
+},
+"E0221": {
+"from": "433",
+"to": "453",
+"command": "go clearing",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9230009919480856
+},
+"E0222": {
+"from": "1391",
+"to": "1392",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9251062634761982
+},
+"E0223": {
+"from": "27762",
+"to": "27770",
+"command": "go icy stairs",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.9174006579982278
+},
+"E0224": {
+"from": "30053",
+"to": "30054",
+"command": "go dais",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7655616560362212
+},
+"E0225": {
+"from": "14721",
+"to": "14711",
+"command": "go door",
+"expected": "same floor",
+"jev": "down",
+"jev_estimate": 0.8873489687745109
+},
+"E0226": {
+"from": "10161",
+"to": "13130",
+"command": "go trail",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.7749664341396781
+},
+"E0227": {
+"from": "10794",
+"to": "10795",
+"command": "climb branches",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9161575231773139
+},
+"E0228": {
+"from": "35373",
+"to": "35374",
+"command": "go planks",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8270731312042747
+},
+"E0229": {
+"from": "23386",
+"to": "23385",
+"command": "go dense forest",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.8800714655425188
+},
+"E0230": {
+"from": "28931",
+"to": "28932",
+"command": "go ladder",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.8677119819291373
+},
+"E0231": {
+"from": "36789",
+"to": "36788",
+"command": "go n",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.6815526422319221
+},
+"E0232": {
+"from": "27730",
+"to": "27731",
+"command": "go gate",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9143155857893922
+},
+"E0233": {
+"from": "13067",
+"to": "13068",
+"command": "go bridge",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.6769144587942163
+},
+"E0234": {
+"from": "23397",
+"to": "23396",
+"command": "go pointed archway",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.6290756987749778
+},
+"E0235": {
+"from": "34008",
+"to": "34007",
+"command": "go staircase",
+"expected": "down",
+"jev": "down",
+"jev_estimate": 0.8818322340723173
+},
+"E0236": {
+"from": "24549",
+"to": "24548",
+"command": "swim west",
+"expected": "same floor",
+"jev": "same floor",
+"jev_estimate": 0.9239085697641461
+},
+"E0237": {
+"from": "26944",
+"to": "26943",
+"command": "go staircase",
+"expected": "up",
+"jev": "up",
+"jev_estimate": 0.9187195188707712
+}
+}

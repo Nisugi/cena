@@ -1,0 +1,40 @@
+{"item": "E0001", "direction": "up", "confidence": 80, "reason": "steam room says identical steps lead upward into west and east walls, and the fire chamber has steps descending through its floor"}
+{"item": "E0002", "direction": "up", "confidence": 55, "reason": "the staircase climbs the dragon's spine and the room left already has a separate down exit, but both rooms share a name and look like level stages"}
+{"item": "E0003", "direction": "down", "confidence": 60, "reason": "the font sits on a raised platform with steps descending into a sunken pool, entered from the sanctuary floor"}
+{"item": "E0004", "direction": "up", "confidence": 93, "reason": "the ledge juts out above with the cavern floor below and more hand-holds leading to the top"}
+{"item": "E0005", "direction": "up", "confidence": 60, "reason": "sanctuary's only other exit is down to the study, so the stairs from it lead up to the laboratory"}
+{"item": "E0006", "direction": "same floor", "confidence": 85, "reason": "stepping from the riverbank onto a dock platform, which has its own ladder down to the boat mooring"}
+{"item": "E0007", "direction": "up", "confidence": 90, "reason": "the siege tower stands above the battlefield and the command is climb tower"}
+{"item": "E0008", "direction": "same floor", "confidence": 75, "reason": "walking off a mountain trail into a cave mouth on the same slope"}
+{"item": "E0009", "direction": "up", "confidence": 70, "reason": "the spiritual chamber has an ascending and descending staircase with down already leading to Planar, so the staircase exit goes up a tower level"}
+{"item": "E0010", "direction": "same floor", "confidence": 65, "reason": "the great hall opens into the tower stairwell, which itself has up as a separate exit"}
+{"item": "E0011", "direction": "down", "confidence": 55, "reason": "a ladder from the icehouse where up already leads to the vault, so this ladder likely drops to the darkroom"}
+{"item": "E0012", "direction": "same floor", "confidence": 80, "reason": "arches on the gallery wall open directly onto the terrace at the same level"}
+{"item": "E0013", "direction": "same floor", "confidence": 70, "reason": "both glacier rooms are ice field stretches and the arrived room keeps a separate up exit"}
+{"item": "E0014", "direction": "up", "confidence": 85, "reason": "the ledge is described as above the piles of jagged rocks below in the ravine's end"}
+{"item": "E0015", "direction": "up", "confidence": 70, "reason": "the stands have a short row of steps leading down to the muddy road, so entering from the road is up"}
+{"item": "E0016", "direction": "same floor", "confidence": 50, "reason": "text gives no level cue; the storage chamber reads as adjacent to the lobby despite the stairs command"}
+{"item": "E0017", "direction": "same floor", "confidence": 88, "reason": "passing under the barbican gate along the road at ground level"}
+{"item": "E0018", "direction": "same floor", "confidence": 55, "reason": "the landing is a turn between two flights, reached from the hall; no clear level change stated"}
+{"item": "E0019", "direction": "up", "confidence": 60, "reason": "the walkway is explicitly raised on supports above the black water, but a plank walkway span is arguably level"}
+{"item": "E0020", "direction": "up", "confidence": 92, "reason": "the desk is an unsafe method of reaching the upper level"}
+{"item": "E0021", "direction": "down", "confidence": 92, "reason": "the sandy trail descends from the plateau and the arrived room is named Descent, departing from the plateau above"}
+{"item": "E0022", "direction": "up", "confidence": 75, "reason": "climbing a stalagmite up out of the hollow to the top of a hill whose split top reveals the mossy cave below"}
+{"item": "E0023", "direction": "up", "confidence": 93, "reason": "the perch says the oak ladder leads up to another platform"}
+{"item": "E0024", "direction": "same floor", "confidence": 80, "reason": "a clearing just behind the trees off the trail, both at ground level"}
+{"item": "E0025", "direction": "down", "confidence": 65, "reason": "the atrium's rising steps level into the viewing floor, so the steps lead down to the arena sands"}
+{"item": "E0026", "direction": "up", "confidence": 90, "reason": "the plank is a makeshift ladder and the arrival is the bridge spanning the top of the keep"}
+{"item": "E0027", "direction": "same floor", "confidence": 85, "reason": "stepping from the river's edge onto a suspension bridge span"}
+{"item": "E0028", "direction": "same floor", "confidence": 85, "reason": "both rooms are subterranean lair chambers connected by a passage"}
+{"item": "E0029", "direction": "up", "confidence": 90, "reason": "a narrow staircase leads to a small loft, and the arrived room has a low ceiling riddled with holes"}
+{"item": "E0030", "direction": "up", "confidence": 88, "reason": "the grand staircase rises towards the cliffs above and the arrived steps wind up through terraces"}
+{"item": "E0031", "direction": "up", "confidence": 78, "reason": "climbing onto the crest of a small hummock of high ground above the field"}
+{"item": "E0032", "direction": "same floor", "confidence": 75, "reason": "swimming north through shallow water from one cave chamber into a tidal cave, both ankle-to-wading depth"}
+{"item": "E0033", "direction": "same floor", "confidence": 80, "reason": "a crevice connecting showroom and workroom in the same cave"}
+{"item": "E0034", "direction": "same floor", "confidence": 88, "reason": "the stone bridge spans the gap between east and west ledges, level with the landing"}
+{"item": "E0035", "direction": "down", "confidence": 78, "reason": "the sandy path winds downward toward a wooden dock, arriving at the pier by the shoreline"}
+{"item": "E0036", "direction": "same floor", "confidence": 85, "reason": "a narrow boardwalk leads west back to shore, so the dock is level with the bank"}
+{"item": "E0037", "direction": "up", "confidence": 85, "reason": "the arrived room is atop an immense pile of rubble with sounds from above"}
+{"item": "E0038", "direction": "down", "confidence": 70, "reason": "carved stone steps lead down towards the sea from the landing to the dockside stairway"}
+{"item": "E0039", "direction": "same floor", "confidence": 78, "reason": "a narrow opening at the end of the tunnel into a hollow, with se leading straight back"}
+{"item": "E0040", "direction": "down", "confidence": 90, "reason": "the entrance says the flagstone stairway descends and the stairway room drops to the refectory"}

@@ -1,0 +1,300 @@
+{"from": "228", "to": "8665", "command": "go oak tree", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "428", "to": "6961", "command": "go depression", "expected": "down", "choice": "down", "confidence": 0.98, "probabilities": {"down": 0.99, "up": 0.01}}
+{"from": "648", "to": "1836", "command": "climb boulder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "674", "to": "17527", "command": "go knotted rope", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "867", "to": "9664", "command": "go promontory", "expected": "down", "choice": "up", "confidence": 0.5, "probabilities": {"up": 0.75, "down": 0.25}}
+{"from": "1042", "to": "1265", "command": "climb boulder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "1189", "to": "1190", "command": "go ironwood bridge", "expected": "up", "choice": "up", "confidence": 0.84, "probabilities": {"up": 0.92, "down": 0.08}}
+{"from": "1193", "to": "1192", "command": "go ironwood bridge", "expected": "up", "choice": "up", "confidence": 0.34, "probabilities": {"down": 0.33, "up": 0.67}}
+{"from": "1251", "to": "1252", "command": "go tunnel", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "1264", "to": "8812", "command": "go stairway", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "1306", "to": "9312", "command": "climb ledge", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "1309", "to": "9312", "command": "climb ledge", "expected": "down", "choice": "down", "confidence": 0.59, "probabilities": {"down": 0.8, "up": 0.2}}
+{"from": "1520", "to": "13478", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "1599", "to": "13188", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "1926", "to": "14799", "command": "go ramp", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"up": 0, "down": 1}}
+{"from": "1929", "to": "1930", "command": "climb steps", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "1930", "to": "14698", "command": "climb steps", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"up": 0.98, "down": 0.02}}
+{"from": "1950", "to": "12574", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "1952", "to": "30667", "command": "go stairway", "expected": "down", "choice": "down", "confidence": 0.99, "probabilities": {"down": 1, "up": 0}}
+{"from": "2047", "to": "12571", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "2183", "to": "12768", "command": "climb chimney", "expected": "up", "choice": "up", "confidence": 0.95, "probabilities": {"up": 0.97, "down": 0.03}}
+{"from": "2278", "to": "12546", "command": "climb scaffolding", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "2381", "to": "2382", "command": "go fog", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "2502", "to": "2503", "command": "climb branch", "expected": "up", "choice": "up", "confidence": 0.93, "probabilities": {"up": 0.97, "down": 0.03}}
+{"from": "2505", "to": "2504", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 0.55, "probabilities": {"up": 0.78, "down": 0.22}}
+{"from": "2558", "to": "2557", "command": "go chasm", "expected": "down", "choice": "down", "confidence": 0.74, "probabilities": {"down": 0.87, "up": 0.13}}
+{"from": "2849", "to": "2850", "command": "go cave", "expected": "down", "choice": "down", "confidence": 0.97, "probabilities": {"up": 0.02, "down": 0.98}}
+{"from": "2889", "to": "2890", "command": "go slope", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "3032", "to": "3031", "command": "go trail", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "3110", "to": "3112", "command": "go ravine", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "3193", "to": "3194", "command": "go tomb", "expected": "down", "choice": "down", "confidence": 0.91, "probabilities": {"up": 0.05, "down": 0.95}}
+{"from": "3739", "to": "28324", "command": "go stone steps", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "3773", "to": "3774", "command": "go boulder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "3807", "to": "6932", "command": "go wooden steps", "expected": "up", "choice": "up", "confidence": 0.94, "probabilities": {"up": 0.97, "down": 0.03}}
+{"from": "4039", "to": "26829", "command": "go dais", "expected": "up", "choice": "up", "confidence": 0.96, "probabilities": {"down": 0.02, "up": 0.98}}
+{"from": "4618", "to": "9394", "command": "climb boulder", "expected": "up", "choice": "up", "confidence": 0.39, "probabilities": {"up": 0.7, "down": 0.3}}
+{"from": "4650", "to": "17130", "command": "climb pedestal", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "4673", "to": "33262", "command": "go canopy-covered shop", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "4733", "to": "10791", "command": "climb oak", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "4741", "to": "10793", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "4745", "to": "4746", "command": "climb cords", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "4765", "to": "4766", "command": "climb cord", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "4943", "to": "4944", "command": "go stairwell", "expected": "down", "choice": "up", "confidence": 0.52, "probabilities": {"up": 0.76, "down": 0.24}}
+{"from": "4959", "to": "4960", "command": "climb face", "expected": "up", "choice": "up", "confidence": 0.85, "probabilities": {"up": 0.93, "down": 0.07}}
+{"from": "5243", "to": "5245", "command": "go mast", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "5792", "to": "5793", "command": "climb hole", "expected": "up", "choice": "up", "confidence": 0.68, "probabilities": {"down": 0.16, "up": 0.84}}
+{"from": "5794", "to": "5793", "command": "climb chimney", "expected": "down", "choice": "down", "confidence": 0.17, "probabilities": {"up": 0.42, "down": 0.58}}
+{"from": "6102", "to": "6105", "command": "go tunnel", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"up": 0, "down": 1}}
+{"from": "6114", "to": "7919", "command": "climb rockslide", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "6428", "to": "6432", "command": "go porch", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "6847", "to": "6848", "command": "climb staircase", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "6931", "to": "6930", "command": "go ladder", "expected": "down", "choice": "down", "confidence": 0.91, "probabilities": {"down": 0.96, "up": 0.04}}
+{"from": "6932", "to": "6933", "command": "go wooden steps", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "6995", "to": "6996", "command": "climb tower", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "7009", "to": "7010", "command": "go steps", "expected": "up", "choice": "down", "confidence": 0.33, "probabilities": {"up": 0.33, "down": 0.67}}
+{"from": "7014", "to": "7015", "command": "go steps", "expected": "up", "choice": "down", "confidence": 0.36, "probabilities": {"down": 0.68, "up": 0.32}}
+{"from": "7028", "to": "7022", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.33, "probabilities": {"up": 0.67, "down": 0.33}}
+{"from": "7035", "to": "7036", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.63, "probabilities": {"down": 0.19, "up": 0.81}}
+{"from": "7040", "to": "7041", "command": "go staircase", "expected": "down", "choice": "down", "confidence": 0.8, "probabilities": {"up": 0.1, "down": 0.9}}
+{"from": "7043", "to": "7044", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.23, "probabilities": {"down": 0.39, "up": 0.61}}
+{"from": "7043", "to": "7045", "command": "go staircase", "expected": "down", "choice": "down", "confidence": 0.52, "probabilities": {"down": 0.76, "up": 0.24}}
+{"from": "7063", "to": "7070", "command": "climb rubble", "expected": "up", "choice": "up", "confidence": 0.8, "probabilities": {"down": 0.1, "up": 0.9}}
+{"from": "7245", "to": "7244", "command": "go pile", "expected": "down", "choice": "down", "confidence": 0.26, "probabilities": {"up": 0.37, "down": 0.63}}
+{"from": "7490", "to": "7500", "command": "go stairway", "expected": "up", "choice": "up", "confidence": 0.75, "probabilities": {"up": 0.88, "down": 0.12}}
+{"from": "7510", "to": "7521", "command": "go arch", "expected": "up", "choice": "up", "confidence": 0.85, "probabilities": {"down": 0.07, "up": 0.93}}
+{"from": "7662", "to": "7663", "command": "go crevice", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"up": 0, "down": 1}}
+{"from": "7818", "to": "7819", "command": "climb hill", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "7899", "to": "7900", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "7917", "to": "7918", "command": "climb wall", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "8267", "to": "8271", "command": "go trapdoor", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "8815", "to": "8812", "command": "go stairway", "expected": "down", "choice": "down", "confidence": 0.84, "probabilities": {"up": 0.08, "down": 0.92}}
+{"from": "8904", "to": "8905", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "8922", "to": "8932", "command": "climb stairway", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "8944", "to": "15850", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "8945", "to": "15724", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.84, "probabilities": {"down": 0.08, "up": 0.92}}
+{"from": "8971", "to": "15788", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.81, "probabilities": {"up": 0.91, "down": 0.09}}
+{"from": "8981", "to": "15627", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.89, "probabilities": {"up": 0.94, "down": 0.06}}
+{"from": "9099", "to": "9098", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.06, "probabilities": {"up": 0.53, "down": 0.47}}
+{"from": "9102", "to": "9101", "command": "go flue", "expected": "up", "choice": "up", "confidence": 0.94, "probabilities": {"down": 0.03, "up": 0.97}}
+{"from": "9111", "to": "9125", "command": "climb fissure", "expected": "down", "choice": "down", "confidence": 0.6, "probabilities": {"up": 0.2, "down": 0.8}}
+{"from": "9126", "to": "9125", "command": "climb fissure", "expected": "up", "choice": "down", "confidence": 0.09, "probabilities": {"down": 0.54, "up": 0.46}}
+{"from": "9130", "to": "9131", "command": "climb stalagmite", "expected": "up", "choice": "up", "confidence": 0.92, "probabilities": {"up": 0.96, "down": 0.04}}
+{"from": "9165", "to": "9192", "command": "climb books", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "9167", "to": "9191", "command": "climb desk", "expected": "up", "choice": "up", "confidence": 0.92, "probabilities": {"up": 0.96, "down": 0.04}}
+{"from": "9170", "to": "9190", "command": "climb plank", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "9172", "to": "9189", "command": "climb crates", "expected": "up", "choice": "up", "confidence": 0.94, "probabilities": {"up": 0.97, "down": 0.03}}
+{"from": "9724", "to": "9725", "command": "climb stairs", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "10006", "to": "10007", "command": "go ledge", "expected": "up", "choice": "up", "confidence": 0.94, "probabilities": {"down": 0.03, "up": 0.97}}
+{"from": "10139", "to": "10156", "command": "go opening", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"up": 0, "down": 1}}
+{"from": "10145", "to": "10157", "command": "go trail", "expected": "up", "choice": "down", "confidence": 0.14, "probabilities": {"down": 0.57, "up": 0.43}}
+{"from": "10161", "to": "13130", "command": "go trail", "expected": "up", "choice": "up", "confidence": 0.52, "probabilities": {"up": 0.76, "down": 0.24}}
+{"from": "10331", "to": "10334", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "10539", "to": "10540", "command": "go trail", "expected": "down", "choice": "down", "confidence": 0.27, "probabilities": {"up": 0.36, "down": 0.64}}
+{"from": "10794", "to": "10795", "command": "climb branches", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "10861", "to": "10865", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "10956", "to": "10960", "command": "climb staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "11033", "to": "11034", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.91, "probabilities": {"up": 0.95, "down": 0.05}}
+{"from": "11106", "to": "11105", "command": "climb cask", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "11162", "to": "11201", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "11304", "to": "11312", "command": "go stairway", "expected": "up", "choice": "up", "confidence": 0.68, "probabilities": {"up": 0.84, "down": 0.16}}
+{"from": "11405", "to": "11406", "command": "climb ledge", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "11543", "to": "11593", "command": "climb boulder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "11689", "to": "16214", "command": "climb hill", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "11906", "to": "627", "command": "go hole", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"up": 0, "down": 1}}
+{"from": "11974", "to": "11975", "command": "climb ladder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "12031", "to": "12032", "command": "climb steps", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "12032", "to": "12036", "command": "climb steps", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"down": 0.02, "up": 0.98}}
+{"from": "12033", "to": "12037", "command": "climb steps", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "12034", "to": "12038", "command": "climb steps", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "12035", "to": "12039", "command": "climb steps", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "12549", "to": "14712", "command": "climb trail", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "12561", "to": "14712", "command": "climb trail", "expected": "down", "choice": "down", "confidence": 0.09, "probabilities": {"up": 0.45, "down": 0.55}}
+{"from": "13206", "to": "13209", "command": "go iron door", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "13229", "to": "13308", "command": "go altar", "expected": "up", "choice": "up", "confidence": 0.58, "probabilities": {"down": 0.21, "up": 0.79}}
+{"from": "13229", "to": "13309", "command": "go font", "expected": "up", "choice": "down", "confidence": 0.3, "probabilities": {"up": 0.35, "down": 0.65}}
+{"from": "13307", "to": "18696", "command": "go path", "expected": "down", "choice": "down", "confidence": 0.81, "probabilities": {"down": 0.9, "up": 0.1}}
+{"from": "13320", "to": "13501", "command": "climb bank", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "13532", "to": "13533", "command": "climb staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "13778", "to": "13922", "command": "go dock", "expected": "down", "choice": "down", "confidence": 0.56, "probabilities": {"down": 0.78, "up": 0.22}}
+{"from": "14017", "to": "14021", "command": "climb staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "14150", "to": "14151", "command": "go dais", "expected": "up", "choice": "up", "confidence": 0.76, "probabilities": {"up": 0.88, "down": 0.12}}
+{"from": "14165", "to": "14166", "command": "go staircase", "expected": "down", "choice": "down", "confidence": 0.84, "probabilities": {"up": 0.08, "down": 0.92}}
+{"from": "14234", "to": "14353", "command": "climb stairway", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "14696", "to": "14699", "command": "climb ridge", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "14698", "to": "12386", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.95, "probabilities": {"down": 0.02, "up": 0.98}}
+{"from": "14728", "to": "14731", "command": "climb platform", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "15558", "to": "15557", "command": "climb casks", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "15566", "to": "15569", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "15569", "to": "15571", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "15609", "to": "15610", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "16964", "to": "16963", "command": "go west steps", "expected": "up", "choice": "up", "confidence": 0.79, "probabilities": {"down": 0.1, "up": 0.9}}
+{"from": "16964", "to": "16965", "command": "go east steps", "expected": "up", "choice": "up", "confidence": 0.8, "probabilities": {"up": 0.9, "down": 0.1}}
+{"from": "17248", "to": "17249", "command": "climb stairs", "expected": "down", "choice": "down", "confidence": 0.46, "probabilities": {"up": 0.27, "down": 0.73}}
+{"from": "17249", "to": "17250", "command": "climb ladder", "expected": "down", "choice": "up", "confidence": 0.88, "probabilities": {"down": 0.06, "up": 0.94}}
+{"from": "17328", "to": "17335", "command": "go stairway", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "17722", "to": "19902", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "17976", "to": "17977", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "18108", "to": "18081", "command": "go steps", "expected": "down", "choice": "down", "confidence": 0.99, "probabilities": {"up": 0, "down": 1}}
+{"from": "18183", "to": "18184", "command": "go vines", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "18917", "to": "18918", "command": "go staircase", "expected": "down", "choice": "down", "confidence": 0.94, "probabilities": {"up": 0.03, "down": 0.97}}
+{"from": "19114", "to": "23505", "command": "go frost-covered hatch", "expected": "down", "choice": "down", "confidence": 0.42, "probabilities": {"up": 0.29, "down": 0.71}}
+{"from": "19622", "to": "19625", "command": "go steps", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"up": 0, "down": 1}}
+{"from": "19891", "to": "19895", "command": "go stairs", "expected": "down", "choice": "up", "confidence": 0.46, "probabilities": {"up": 0.73, "down": 0.27}}
+{"from": "20118", "to": "20120", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 0.88, "probabilities": {"up": 0.94, "down": 0.06}}
+{"from": "20170", "to": "20172", "command": "go rope ladder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "20337", "to": "20338", "command": "go door", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "20340", "to": "20341", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "20835", "to": "20841", "command": "climb stair", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "20848", "to": "20849", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "20899", "to": "20900", "command": "go passage", "expected": "up", "choice": "down", "confidence": 0.24, "probabilities": {"down": 0.62, "up": 0.38}}
+{"from": "20905", "to": "20907", "command": "go tree", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "21250", "to": "21225", "command": "go narrow staircase", "expected": "up", "choice": "down", "confidence": 0, "probabilities": {"up": 0.5, "down": 0.5}}
+{"from": "21765", "to": "21766", "command": "go platform", "expected": "up", "choice": "up", "confidence": 0.44, "probabilities": {"down": 0.28, "up": 0.72}}
+{"from": "21956", "to": "21957", "command": "go ledge", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "22105", "to": "22100", "command": "go staircase", "expected": "down", "choice": "up", "confidence": 0.79, "probabilities": {"down": 0.11, "up": 0.89}}
+{"from": "22565", "to": "22669", "command": "go shelves", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "23190", "to": "23191", "command": "go tree", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "23217", "to": "23218", "command": "go stone steps", "expected": "down", "choice": "down", "confidence": 0.33, "probabilities": {"up": 0.33, "down": 0.67}}
+{"from": "23240", "to": "23241", "command": "go narrow opening", "expected": "down", "choice": "down", "confidence": 0.97, "probabilities": {"up": 0.02, "down": 0.98}}
+{"from": "23387", "to": "23388", "command": "go iron ladder", "expected": "down", "choice": "up", "confidence": 0.65, "probabilities": {"up": 0.82, "down": 0.18}}
+{"from": "23390", "to": "23389", "command": "go iron ladder", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "23398", "to": "23397", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.75, "probabilities": {"up": 0.88, "down": 0.12}}
+{"from": "23399", "to": "23398", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.82, "probabilities": {"up": 0.91, "down": 0.09}}
+{"from": "23400", "to": "23401", "command": "go steep staircase", "expected": "up", "choice": "up", "confidence": 0.79, "probabilities": {"down": 0.11, "up": 0.89}}
+{"from": "23480", "to": "23467", "command": "go hatch", "expected": "down", "choice": "down", "confidence": 0.72, "probabilities": {"down": 0.86, "up": 0.14}}
+{"from": "23666", "to": "23665", "command": "go stairs", "expected": "down", "choice": "down", "confidence": 0.92, "probabilities": {"up": 0.04, "down": 0.96}}
+{"from": "23668", "to": "23670", "command": "go steps", "expected": "down", "choice": "down", "confidence": 0.98, "probabilities": {"up": 0.01, "down": 0.99}}
+{"from": "23767", "to": "23785", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.61, "probabilities": {"down": 0.19, "up": 0.81}}
+{"from": "23770", "to": "23788", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.56, "probabilities": {"down": 0.22, "up": 0.78}}
+{"from": "23773", "to": "23791", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.85, "probabilities": {"down": 0.07, "up": 0.93}}
+{"from": "23776", "to": "23794", "command": "go steps", "expected": "up", "choice": "down", "confidence": 0.03, "probabilities": {"down": 0.52, "up": 0.48}}
+{"from": "23835", "to": "28865", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.84, "probabilities": {"up": 0.92, "down": 0.08}}
+{"from": "23836", "to": "28864", "command": "go stairwell", "expected": "down", "choice": "down", "confidence": 0.97, "probabilities": {"down": 0.99, "up": 0.01}}
+{"from": "24077", "to": "24078", "command": "go steep ramp", "expected": "up", "choice": "up", "confidence": 0.93, "probabilities": {"up": 0.97, "down": 0.03}}
+{"from": "24218", "to": "24353", "command": "go grate", "expected": "down", "choice": "down", "confidence": 0.35, "probabilities": {"down": 0.68, "up": 0.32}}
+{"from": "24291", "to": "24292", "command": "go tree", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "24642", "to": "25555", "command": "go tunnel", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "24684", "to": "24685", "command": "go rope", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "24685", "to": "24686", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "24686", "to": "24687", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "25070", "to": "25071", "command": "go dungeon", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "25079", "to": "25080", "command": "go stairway", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "25606", "to": "25605", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.96, "probabilities": {"down": 0.02, "up": 0.98}}
+{"from": "25610", "to": "25606", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "25659", "to": "25656", "command": "go stairway", "expected": "down", "choice": "down", "confidence": 0.84, "probabilities": {"down": 0.92, "up": 0.08}}
+{"from": "25711", "to": "25716", "command": "go stair", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "25904", "to": "25907", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "25907", "to": "25908", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "25908", "to": "25909", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "25909", "to": "25910", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "25910", "to": "25911", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "26064", "to": "26065", "command": "go passageway", "expected": "up", "choice": "down", "confidence": 0.96, "probabilities": {"down": 0.98, "up": 0.02}}
+{"from": "26093", "to": "25555", "command": "go tunnel", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "26156", "to": "26157", "command": "go ramp", "expected": "up", "choice": "up", "confidence": 0.94, "probabilities": {"up": 0.97, "down": 0.03}}
+{"from": "26156", "to": "26159", "command": "go stone", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "26413", "to": "26414", "command": "go aftcastle", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "26416", "to": "26417", "command": "go forecastle", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "26423", "to": "26422", "command": "go steps", "expected": "down", "choice": "down", "confidence": 0.43, "probabilities": {"up": 0.29, "down": 0.71}}
+{"from": "26424", "to": "26423", "command": "go steps", "expected": "down", "choice": "down", "confidence": 0.57, "probabilities": {"down": 0.78, "up": 0.22}}
+{"from": "26503", "to": "26504", "command": "go ledge", "expected": "up", "choice": "up", "confidence": 0.73, "probabilities": {"up": 0.86, "down": 0.14}}
+{"from": "26512", "to": "29316", "command": "go trail", "expected": "down", "choice": "down", "confidence": 0.1, "probabilities": {"down": 0.55, "up": 0.45}}
+{"from": "26523", "to": "26738", "command": "go sandy trail", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "26528", "to": "26529", "command": "go path", "expected": "down", "choice": "down", "confidence": 0.99, "probabilities": {"up": 0, "down": 1}}
+{"from": "26596", "to": "26597", "command": "go decline", "expected": "down", "choice": "down", "confidence": 0.99, "probabilities": {"down": 0.99, "up": 0.01}}
+{"from": "26611", "to": "26724", "command": "go pathway", "expected": "down", "choice": "down", "confidence": 0.96, "probabilities": {"down": 0.98, "up": 0.02}}
+{"from": "26617", "to": "26615", "command": "go ladder", "expected": "up", "choice": "down", "confidence": 0.74, "probabilities": {"up": 0.13, "down": 0.87}}
+{"from": "26867", "to": "35183", "command": "go shack", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "26907", "to": "34803", "command": "go rope", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "26939", "to": "26938", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "26940", "to": "26939", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.78, "probabilities": {"down": 0.11, "up": 0.89}}
+{"from": "26941", "to": "26940", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.94, "probabilities": {"down": 0.03, "up": 0.97}}
+{"from": "26942", "to": "26941", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.76, "probabilities": {"down": 0.12, "up": 0.88}}
+{"from": "26943", "to": "26942", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.75, "probabilities": {"down": 0.12, "up": 0.88}}
+{"from": "26944", "to": "26943", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "27501", "to": "26526", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 0.94, "probabilities": {"down": 0.03, "up": 0.97}}
+{"from": "27648", "to": "27649", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "27702", "to": "27703", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.44, "probabilities": {"up": 0.72, "down": 0.28}}
+{"from": "27709", "to": "27710", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "27716", "to": "27717", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.73, "probabilities": {"down": 0.13, "up": 0.87}}
+{"from": "27723", "to": "27724", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.84, "probabilities": {"up": 0.92, "down": 0.08}}
+{"from": "27730", "to": "27731", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.53, "probabilities": {"down": 0.24, "up": 0.76}}
+{"from": "27737", "to": "27738", "command": "go gate", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"down": 0.02, "up": 0.98}}
+{"from": "27762", "to": "27770", "command": "go icy stairs", "expected": "down", "choice": "down", "confidence": 0.21, "probabilities": {"down": 0.6, "up": 0.4}}
+{"from": "28016", "to": "28017", "command": "go viewing stands", "expected": "up", "choice": "up", "confidence": 0.92, "probabilities": {"up": 0.96, "down": 0.04}}
+{"from": "28021", "to": "28020", "command": "go viewing stands", "expected": "up", "choice": "up", "confidence": 0.93, "probabilities": {"up": 0.96, "down": 0.04}}
+{"from": "28051", "to": "28057", "command": "go viewing stands", "expected": "up", "choice": "up", "confidence": 0.89, "probabilities": {"down": 0.05, "up": 0.95}}
+{"from": "28061", "to": "28060", "command": "go stands", "expected": "up", "choice": "up", "confidence": 0.72, "probabilities": {"up": 0.86, "down": 0.14}}
+{"from": "28219", "to": "28220", "command": "go carved staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "28227", "to": "28228", "command": "go tower", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "28328", "to": "28329", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "28329", "to": "28330", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.49, "probabilities": {"up": 0.75, "down": 0.25}}
+{"from": "28354", "to": "28370", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "28355", "to": "28362", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "28355", "to": "28366", "command": "go stairs", "expected": "down", "choice": "down", "confidence": 0.98, "probabilities": {"up": 0.01, "down": 0.99}}
+{"from": "28356", "to": "28357", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "28357", "to": "28360", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.39, "probabilities": {"down": 0.3, "up": 0.7}}
+{"from": "28362", "to": "28363", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.71, "probabilities": {"up": 0.85, "down": 0.15}}
+{"from": "28370", "to": "28372", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.61, "probabilities": {"down": 0.2, "up": 0.8}}
+{"from": "28550", "to": "28549", "command": "go steps", "expected": "down", "choice": "up", "confidence": 0.17, "probabilities": {"down": 0.42, "up": 0.58}}
+{"from": "28553", "to": "28552", "command": "go steps", "expected": "down", "choice": "down", "confidence": 0.89, "probabilities": {"up": 0.06, "down": 0.94}}
+{"from": "28555", "to": "28554", "command": "go steps", "expected": "down", "choice": "up", "confidence": 0.51, "probabilities": {"up": 0.75, "down": 0.25}}
+{"from": "28621", "to": "28623", "command": "go stairway", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "28908", "to": "28937", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "28931", "to": "28932", "command": "go ladder", "expected": "up", "choice": "up", "confidence": 0.72, "probabilities": {"up": 0.86, "down": 0.14}}
+{"from": "29624", "to": "29627", "command": "go jagged crack", "expected": "down", "choice": "down", "confidence": 0.97, "probabilities": {"down": 0.98, "up": 0.02}}
+{"from": "30053", "to": "30054", "command": "go dais", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "30668", "to": "30667", "command": "go stairway", "expected": "up", "choice": "down", "confidence": 0.04, "probabilities": {"up": 0.48, "down": 0.52}}
+{"from": "30773", "to": "30774", "command": "go narrow stairway", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "30773", "to": "30776", "command": "go flight steps", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "31095", "to": "31096", "command": "go gazebo", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "31210", "to": "31211", "command": "go tail", "expected": "up", "choice": "up", "confidence": 0.8, "probabilities": {"down": 0.1, "up": 0.9}}
+{"from": "31300", "to": "31301", "command": "go tunnel", "expected": "down", "choice": "down", "confidence": 0.99, "probabilities": {"up": 0, "down": 1}}
+{"from": "31380", "to": "31381", "command": "go tree", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "31551", "to": "31552", "command": "go stairs", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "31890", "to": "32108", "command": "go narrow stairway", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "31940", "to": "31941", "command": "go spiraling stairway", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "31969", "to": "32119", "command": "jump crate", "expected": "down", "choice": "down", "confidence": 0.27, "probabilities": {"down": 0.63, "up": 0.37}}
+{"from": "32422", "to": "32423", "command": "go bridge", "expected": "up", "choice": "up", "confidence": 0.96, "probabilities": {"down": 0.02, "up": 0.98}}
+{"from": "32440", "to": "32439", "command": "go stone bridge", "expected": "down", "choice": "down", "confidence": 0.43, "probabilities": {"down": 0.71, "up": 0.29}}
+{"from": "33036", "to": "33037", "command": "go spiral staircase", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"down": 0.02, "up": 0.98}}
+{"from": "33282", "to": "33283", "command": "go cobbled stairs", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "33496", "to": "33501", "command": "go green-painted steps", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "33496", "to": "33505", "command": "go crimson-painted steps", "expected": "up", "choice": "up", "confidence": 0.94, "probabilities": {"down": 0.03, "up": 0.97}}
+{"from": "33497", "to": "33498", "command": "go violet-painted steps", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "33497", "to": "33502", "command": "go vert-painted steps", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "33513", "to": "33514", "command": "go spiraling stairway", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "33631", "to": "33651", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "33712", "to": "33713", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "34008", "to": "34007", "command": "go staircase", "expected": "down", "choice": "up", "confidence": 0.61, "probabilities": {"down": 0.19, "up": 0.81}}
+{"from": "34383", "to": "34384", "command": "go boulder", "expected": "up", "choice": "up", "confidence": 0.81, "probabilities": {"down": 0.09, "up": 0.91}}
+{"from": "34425", "to": "34429", "command": "go steps", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "34429", "to": "34433", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "34827", "to": "34828", "command": "go gash", "expected": "down", "choice": "up", "confidence": 0.77, "probabilities": {"down": 0.11, "up": 0.89}}
+{"from": "34864", "to": "34865", "command": "go steps", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "35283", "to": "35370", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "35291", "to": "35292", "command": "go dais", "expected": "up", "choice": "up", "confidence": 0.93, "probabilities": {"down": 0.03, "up": 0.97}}
+{"from": "35333", "to": "35339", "command": "go oak", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "35338", "to": "35365", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "35370", "to": "35371", "command": "go step", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "35371", "to": "35372", "command": "go step", "expected": "up", "choice": "up", "confidence": 0.8, "probabilities": {"up": 0.9, "down": 0.1}}
+{"from": "35372", "to": "35373", "command": "go step", "expected": "up", "choice": "down", "confidence": 0.69, "probabilities": {"up": 0.16, "down": 0.84}}
+{"from": "35373", "to": "35374", "command": "go planks", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "35374", "to": "35378", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.96, "probabilities": {"up": 0.98, "down": 0.02}}
+{"from": "35378", "to": "35379", "command": "go steps", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "35379", "to": "35380", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.98, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "35380", "to": "35381", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.59, "probabilities": {"up": 0.79, "down": 0.21}}
+{"from": "35430", "to": "35431", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "35790", "to": "35793", "command": "go hatch", "expected": "down", "choice": "down", "confidence": 0.98, "probabilities": {"down": 0.99, "up": 0.01}}
+{"from": "35878", "to": "35879", "command": "go rainbow arch", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "36271", "to": "36272", "command": "go stone tower", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "36449", "to": "36457", "command": "climb tree", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "36452", "to": "36458", "command": "climb hummock", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"up": 1, "down": 0}}
+{"from": "36527", "to": "36529", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 1, "down": 0}}
+{"from": "36529", "to": "36531", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "36531", "to": "36533", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"down": 0, "up": 1}}
+{"from": "36533", "to": "36535", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 0.97, "probabilities": {"down": 0.01, "up": 0.99}}
+{"from": "36769", "to": "36770", "command": "go stairwell", "expected": "down", "choice": "down", "confidence": 1, "probabilities": {"down": 1, "up": 0}}
+{"from": "36787", "to": "36788", "command": "go stair", "expected": "up", "choice": "up", "confidence": 0.99, "probabilities": {"up": 0.99, "down": 0.01}}
+{"from": "36789", "to": "36790", "command": "go staircase", "expected": "up", "choice": "up", "confidence": 1, "probabilities": {"down": 0, "up": 1}}
+{"from": "36795", "to": "36794", "command": "go ramp", "expected": "down", "choice": "down", "confidence": 0.12, "probabilities": {"up": 0.44, "down": 0.56}}

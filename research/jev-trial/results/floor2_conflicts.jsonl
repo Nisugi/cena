@@ -1,0 +1,314 @@
+{"kind": "same floor", "where": "indoor/outdoor", "from": "271", "to": "3809", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 2415}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "292", "to": "7579", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 2415}
+{"kind": "opposite", "where": "both indoors", "from": "387", "to": "395", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": -1, "level_size": 194}
+{"kind": "same floor", "where": "both indoors", "from": "1958", "to": "1959", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "same level", "where": "both indoors", "from": "2240", "to": "2242", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 11}
+{"kind": "same level", "where": "both indoors", "from": "2269", "to": "2270", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 20}
+{"kind": "same level", "where": "both outdoors", "from": "2320", "to": "2332", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 320}
+{"kind": "same level", "where": "both outdoors", "from": "2331", "to": "2332", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 320}
+{"kind": "same level", "where": "both outdoors", "from": "2332", "to": "2356", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 320}
+{"kind": "same floor", "where": "both outdoors", "from": "2359", "to": "3726", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 320}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "2381", "to": "2382", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 320}
+{"kind": "same floor", "where": "both indoors", "from": "2657", "to": "2649", "step": -1, "edge": "rule", "floor_from": -2, "floor_to": -2, "level_size": 1}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "2746", "to": "2747", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "both indoors", "from": "2855", "to": "2862", "step": 1, "edge": "rule", "floor_from": -3, "floor_to": -3, "level_size": 2}
+{"kind": "opposite", "where": "both indoors", "from": "2857", "to": "2868", "step": 1, "edge": "rule", "floor_from": -3, "floor_to": -5, "level_size": 1}
+{"kind": "same floor", "where": "both indoors", "from": "2859", "to": "2860", "step": 1, "edge": "rule", "floor_from": -4, "floor_to": -4, "level_size": 2}
+{"kind": "opposite", "where": "both indoors", "from": "2989", "to": "2990", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 1, "level_size": 3}
+{"kind": "same level", "where": "both indoors", "from": "3016", "to": "3017", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 7}
+{"kind": "same level", "where": "both indoors", "from": "3019", "to": "3024", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 7}
+{"kind": "opposite", "where": "both indoors", "from": "3025", "to": "3026", "step": -1, "edge": "llm", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "both outdoors", "from": "3608", "to": "4196", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 2415}
+{"kind": "same floor", "where": "both indoors", "from": "3619", "to": "14627", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 194}
+{"kind": "same floor", "where": "both outdoors", "from": "3897", "to": "3898", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 438}
+{"kind": "same level", "where": "both indoors", "from": "4312", "to": "4313", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 52}
+{"kind": "opposite", "where": "both indoors", "from": "4444", "to": "4458", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": -1, "level_size": 14}
+{"kind": "same floor", "where": "both outdoors", "from": "4641", "to": "4650", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 73}
+{"kind": "same floor", "where": "both outdoors", "from": "4642", "to": "4643", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 73}
+{"kind": "same level", "where": "both indoors", "from": "4670", "to": "17132", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 101}
+{"kind": "opposite", "where": "both indoors", "from": "4678", "to": "4679", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 1, "level_size": 2}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "5239", "to": "5241", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 10}
+{"kind": "same floor", "where": "both outdoors", "from": "5298", "to": "5323", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 48}
+{"kind": "same level", "where": "both outdoors", "from": "5831", "to": "10659", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 788}
+{"kind": "same floor", "where": "both indoors", "from": "5909", "to": "5910", "step": -1, "edge": "llm", "floor_from": -1, "floor_to": -1, "level_size": 1}
+{"kind": "same level", "where": "both outdoors", "from": "6473", "to": "6474", "step": 1, "edge": "llm", "floor_from": -1, "floor_to": -1, "level_size": 5}
+{"kind": "same level", "where": "both indoors", "from": "6569", "to": "6570", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "7014", "to": "7015", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "7022", "to": "7028", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 10}
+{"kind": "same level", "where": "both indoors", "from": "7083", "to": "7120", "step": 1, "edge": "llm", "floor_from": -1, "floor_to": -1, "level_size": 79}
+{"kind": "same level", "where": "both indoors", "from": "7146", "to": "7085", "step": -1, "edge": "llm", "floor_from": -1, "floor_to": -1, "level_size": 79}
+{"kind": "same floor", "where": "both outdoors", "from": "7157", "to": "36342", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 2415}
+{"kind": "same floor", "where": "both indoors", "from": "7245", "to": "7306", "step": 1, "edge": "llm", "floor_from": -1, "floor_to": -1, "level_size": 9}
+{"kind": "same level", "where": "both indoors", "from": "7301", "to": "7303", "step": -1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 9}
+{"kind": "same floor", "where": "both indoors", "from": "7510", "to": "7521", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 2}
+{"kind": "same floor", "where": "both indoors", "from": "7513", "to": "7514", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 120}
+{"kind": "same floor", "where": "both indoors", "from": "7534", "to": "7537", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 120}
+{"kind": "same floor", "where": "both indoors", "from": "7535", "to": "7537", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 120}
+{"kind": "same level", "where": "both indoors", "from": "7811", "to": "7812", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 12}
+{"kind": "same level", "where": "both outdoors", "from": "8064", "to": "8066", "step": 1, "edge": "llm", "floor_from": -1, "floor_to": -1, "level_size": 22}
+{"kind": "same level", "where": "both indoors", "from": "8163", "to": "8186", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "8182", "to": "8186", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "8183", "to": "8186", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "8184", "to": "8186", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "8185", "to": "8186", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same floor", "where": "both indoors", "from": "8633", "to": "8634", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 2}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "8665", "to": "17793", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 2415}
+{"kind": "opposite", "where": "both indoors", "from": "8671", "to": "8672", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": -1, "level_size": 194}
+{"kind": "same level", "where": "both indoors", "from": "9073", "to": "15697", "step": -1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "9075", "to": "9082", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 9}
+{"kind": "same level", "where": "both indoors", "from": "9078", "to": "9079", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 9}
+{"kind": "same level", "where": "both indoors", "from": "9089", "to": "9090", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 9}
+{"kind": "same level", "where": "both indoors", "from": "9091", "to": "9092", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 9}
+{"kind": "same level", "where": "both indoors", "from": "9516", "to": "9517", "step": 1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both indoors", "from": "9518", "to": "9525", "step": -1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both indoors", "from": "9519", "to": "9522", "step": -1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both indoors", "from": "9520", "to": "9523", "step": 1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both indoors", "from": "9525", "to": "9526", "step": -1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both indoors", "from": "9527", "to": "9543", "step": -1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both indoors", "from": "9543", "to": "9545", "step": -1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both indoors", "from": "9545", "to": "9547", "step": -1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both indoors", "from": "9547", "to": "9548", "step": -1, "edge": "rule", "floor_from": 2, "floor_to": 2, "level_size": 19}
+{"kind": "same level", "where": "both outdoors", "from": "9627", "to": "9626", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 1, "level_size": 8}
+{"kind": "same level", "where": "both outdoors", "from": "9628", "to": "9626", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 1, "level_size": 8}
+{"kind": "same floor", "where": "both outdoors", "from": "9856", "to": "9865", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 305}
+{"kind": "opposite", "where": "both outdoors", "from": "9863", "to": "9864", "step": 1, "edge": "llm", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "same level", "where": "both outdoors", "from": "10147", "to": "10149", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 22}
+{"kind": "opposite", "where": "both indoors", "from": "11066", "to": "11137", "step": 1, "edge": "llm", "floor_from": -2, "floor_to": -3, "level_size": 3}
+{"kind": "same level", "where": "both indoors", "from": "11079", "to": "11080", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 22}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "11090", "to": "11105", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 7}
+{"kind": "same floor", "where": "both indoors", "from": "11117", "to": "11118", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "opposite", "where": "both indoors", "from": "11375", "to": "11376", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": -1, "level_size": 18}
+{"kind": "same floor", "where": "both indoors", "from": "11434", "to": "17657", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 4}
+{"kind": "opposite", "where": "both indoors", "from": "11605", "to": "11606", "step": -1, "edge": "rule", "floor_from": -1, "floor_to": 1, "level_size": 1}
+{"kind": "same level", "where": "both outdoors", "from": "11837", "to": "11838", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 114}
+{"kind": "same level", "where": "both outdoors", "from": "12018", "to": "12023", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 109}
+{"kind": "same level", "where": "both outdoors", "from": "12019", "to": "12025", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 109}
+{"kind": "same level", "where": "both indoors", "from": "12217", "to": "12219", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same level", "where": "both indoors", "from": "12232", "to": "12235", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same level", "where": "both indoors", "from": "12232", "to": "12240", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same level", "where": "both indoors", "from": "12237", "to": "12239", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same level", "where": "both indoors", "from": "12241", "to": "12242", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same level", "where": "both indoors", "from": "12244", "to": "12245", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same level", "where": "both indoors", "from": "12245", "to": "12246", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same level", "where": "both indoors", "from": "12254", "to": "12255", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same floor", "where": "both indoors", "from": "12281", "to": "12282", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "both indoors", "from": "12320", "to": "16411", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both outdoors", "from": "12555", "to": "12563", "step": 1, "edge": "llm", "floor_from": 1, "floor_to": 1, "level_size": 20}
+{"kind": "opposite", "where": "indoor/outdoor", "from": "13196", "to": "14155", "step": 1, "edge": "llm", "floor_from": 2, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "13430", "to": "13433", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 442}
+{"kind": "same level", "where": "both indoors", "from": "14141", "to": "14142", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 12}
+{"kind": "same level", "where": "both indoors", "from": "14541", "to": "14486", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 26}
+{"kind": "same level", "where": "both indoors", "from": "15474", "to": "24749", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 1, "level_size": 22}
+{"kind": "same level", "where": "both indoors", "from": "15791", "to": "15914", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "15917", "to": "15918", "step": -1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "15917", "to": "15919", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "15919", "to": "23256", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "15920", "to": "15921", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "15922", "to": "23257", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "15923", "to": "15924", "step": 1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "15924", "to": "15925", "step": -1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "15927", "to": "15923", "step": -1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both outdoors", "from": "15984", "to": "15990", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 2415}
+{"kind": "same level", "where": "both indoors", "from": "16134", "to": "16135", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 15}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "16147", "to": "11668", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "both indoors", "from": "16431", "to": "16432", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 113}
+{"kind": "same floor", "where": "both indoors", "from": "16443", "to": "16447", "step": -1, "edge": "llm", "floor_from": -1, "floor_to": -1, "level_size": 5}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "16961", "to": "17841", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 893}
+{"kind": "opposite", "where": "indoor/outdoor", "from": "17004", "to": "17005", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 0, "level_size": 24}
+{"kind": "opposite", "where": "indoor/outdoor", "from": "17009", "to": "17010", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 0, "level_size": 24}
+{"kind": "same floor", "where": "both outdoors", "from": "17590", "to": "17591", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 423}
+{"kind": "same floor", "where": "both indoors", "from": "17682", "to": "17684", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 25}
+{"kind": "opposite", "where": "both indoors", "from": "17682", "to": "23208", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": -1, "level_size": 25}
+{"kind": "same floor", "where": "both outdoors", "from": "18314", "to": "18315", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 62}
+{"kind": "same level", "where": "both outdoors", "from": "18831", "to": "18832", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 23}
+{"kind": "same floor", "where": "both indoors", "from": "19212", "to": "33356", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "both indoors", "from": "19213", "to": "17941", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 155}
+{"kind": "same floor", "where": "both indoors", "from": "19225", "to": "19226", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 11}
+{"kind": "opposite", "where": "both indoors", "from": "19936", "to": "19938", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": -1, "level_size": 16}
+{"kind": "same level", "where": "both outdoors", "from": "20509", "to": "20510", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 50}
+{"kind": "same level", "where": "both indoors", "from": "20689", "to": "20690", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 422}
+{"kind": "opposite", "where": "both indoors", "from": "20766", "to": "20767", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": -1, "level_size": 3}
+{"kind": "same level", "where": "both outdoors", "from": "20907", "to": "20909", "step": 1, "edge": "llm", "floor_from": 1, "floor_to": 1, "level_size": 6}
+{"kind": "same level", "where": "both indoors", "from": "20987", "to": "20990", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 10}
+{"kind": "same floor", "where": "both indoors", "from": "21127", "to": "21128", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 4}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "21134", "to": "19347", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "21154", "to": "19359", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same floor", "where": "both indoors", "from": "21163", "to": "21152", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same floor", "where": "both indoors", "from": "21190", "to": "19390", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same floor", "where": "both indoors", "from": "21193", "to": "12282", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same floor", "where": "both indoors", "from": "21194", "to": "3845", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same floor", "where": "both indoors", "from": "21197", "to": "12288", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same floor", "where": "both indoors", "from": "22034", "to": "22035", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 19}
+{"kind": "same floor", "where": "both indoors", "from": "22081", "to": "22082", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 30}
+{"kind": "same floor", "where": "both indoors", "from": "22100", "to": "22105", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 9}
+{"kind": "same floor", "where": "both indoors", "from": "22248", "to": "22249", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 5}
+{"kind": "same floor", "where": "both indoors", "from": "22565", "to": "22669", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 2}
+{"kind": "same level", "where": "both indoors", "from": "23255", "to": "15697", "step": -1, "edge": "rule", "floor_from": -1, "floor_to": -1, "level_size": 24}
+{"kind": "same level", "where": "both indoors", "from": "23365", "to": "23366", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 13}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "23720", "to": "23721", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 71}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "23759", "to": "26851", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 54}
+{"kind": "same level", "where": "both indoors", "from": "23767", "to": "23779", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 54}
+{"kind": "same level", "where": "both indoors", "from": "23767", "to": "23785", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 54}
+{"kind": "same level", "where": "both indoors", "from": "23770", "to": "23788", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 54}
+{"kind": "same level", "where": "both indoors", "from": "23773", "to": "23791", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 54}
+{"kind": "same level", "where": "both indoors", "from": "23776", "to": "23794", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 54}
+{"kind": "same level", "where": "both outdoors", "from": "23846", "to": "23847", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 423}
+{"kind": "same level", "where": "both outdoors", "from": "23861", "to": "23862", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 423}
+{"kind": "same level", "where": "both outdoors", "from": "24383", "to": "24384", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 893}
+{"kind": "same level", "where": "both outdoors", "from": "24385", "to": "24384", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 893}
+{"kind": "same level", "where": "both outdoors", "from": "24386", "to": "24384", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 893}
+{"kind": "same level", "where": "both outdoors", "from": "24387", "to": "24384", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 893}
+{"kind": "same level", "where": "both outdoors", "from": "24389", "to": "24384", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 893}
+{"kind": "same level", "where": "both outdoors", "from": "24392", "to": "24384", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 893}
+{"kind": "opposite", "where": "indoor/outdoor", "from": "24678", "to": "24679", "step": 1, "edge": "llm", "floor_from": 2, "floor_to": -6, "level_size": 1}
+{"kind": "same floor", "where": "both indoors", "from": "25405", "to": "25416", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 10}
+{"kind": "same floor", "where": "both indoors", "from": "25816", "to": "25817", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "opposite", "where": "both indoors", "from": "27703", "to": "27704", "step": 1, "edge": "rule", "floor_from": 2, "floor_to": 1, "level_size": 1}
+{"kind": "opposite", "where": "both indoors", "from": "27717", "to": "27718", "step": 1, "edge": "rule", "floor_from": 2, "floor_to": 1, "level_size": 1}
+{"kind": "same level", "where": "both indoors", "from": "27821", "to": "27822", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 155}
+{"kind": "same level", "where": "both indoors", "from": "28627", "to": "28631", "step": 1, "edge": "rule", "floor_from": 3, "floor_to": 3, "level_size": 9}
+{"kind": "same level", "where": "both outdoors", "from": "28890", "to": "28891", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 117}
+{"kind": "same floor", "where": "both outdoors", "from": "28917", "to": "28918", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 117}
+{"kind": "same floor", "where": "both indoors", "from": "28995", "to": "28996", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "both outdoors", "from": "29026", "to": "29124", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 65}
+{"kind": "same floor", "where": "both indoors", "from": "29093", "to": "29095", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 10}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "29100", "to": "29109", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 10}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "29117", "to": "29118", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 3}
+{"kind": "opposite", "where": "both indoors", "from": "29473", "to": "29474", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 0, "level_size": 40}
+{"kind": "opposite", "where": "both indoors", "from": "29475", "to": "29476", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 0, "level_size": 40}
+{"kind": "opposite", "where": "both indoors", "from": "29478", "to": "29479", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 0, "level_size": 40}
+{"kind": "opposite", "where": "both indoors", "from": "29481", "to": "29482", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 0, "level_size": 40}
+{"kind": "opposite", "where": "both indoors", "from": "29484", "to": "29485", "step": 1, "edge": "rule", "floor_from": 1, "floor_to": 0, "level_size": 40}
+{"kind": "same floor", "where": "both indoors", "from": "29954", "to": "29955", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 9}
+{"kind": "same floor", "where": "both indoors", "from": "29996", "to": "29997", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 36}
+{"kind": "same floor", "where": "both outdoors", "from": "30959", "to": "30960", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 96}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "31209", "to": "31210", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 10}
+{"kind": "same floor", "where": "both indoors", "from": "31366", "to": "31368", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 2}
+{"kind": "same floor", "where": "both indoors", "from": "31368", "to": "31371", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 2}
+{"kind": "same floor", "where": "both outdoors", "from": "33283", "to": "33302", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 442}
+{"kind": "same level", "where": "both outdoors", "from": "33409", "to": "33423", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 26}
+{"kind": "same level", "where": "both outdoors", "from": "33415", "to": "33425", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 26}
+{"kind": "same level", "where": "both outdoors", "from": "33420", "to": "33421", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 26}
+{"kind": "same floor", "where": "both indoors", "from": "33449", "to": "33450", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 2}
+{"kind": "same level", "where": "both indoors", "from": "34102", "to": "34110", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "34102", "to": "34111", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "34103", "to": "34107", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "34104", "to": "34110", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "34108", "to": "34105", "step": -1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "34109", "to": "34105", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same level", "where": "both indoors", "from": "34111", "to": "34106", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 16}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "34281", "to": "34282", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 41}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "34332", "to": "34333", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 3}
+{"kind": "opposite", "where": "indoor/outdoor", "from": "35613", "to": "35614", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 1, "level_size": 1}
+{"kind": "same level", "where": "both outdoors", "from": "36051", "to": "36057", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 25}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "36159", "to": "36162", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 4}
+{"kind": "opposite", "where": "both indoors", "from": "36302", "to": "36321", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": -1, "level_size": 19}
+{"kind": "opposite", "where": "both indoors", "from": "36373", "to": "36374", "step": 1, "edge": "llm", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "same floor", "where": "indoor/outdoor", "from": "36374", "to": "36386", "step": -1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 1}
+{"kind": "same level", "where": "both indoors", "from": "36662", "to": "36678", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same level", "where": "both indoors", "from": "36670", "to": "36688", "step": 1, "edge": "llm", "floor_from": 0, "floor_to": 0, "level_size": 37}
+{"kind": "same floor", "where": "both outdoors", "from": "36794", "to": "36795", "step": 1, "edge": "rule", "floor_from": 0, "floor_to": 0, "level_size": 60}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "784", "to": "785", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "1425", "to": "9396", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "2177", "to": "2178", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "2463", "to": "2464", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "3022", "to": "3023", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "3425", "to": "9006", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "3734", "to": "3735", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "5138", "to": "5139", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6338", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6339", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6340", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6341", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6342", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6343", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6344", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6345", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "6337", "to": "6346", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "8913", "to": "8912", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 4, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "9140", "to": "9141", "step": 0, "edge": "flat", "floor_from": -12, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "9140", "to": "9148", "step": 0, "edge": "flat", "floor_from": -12, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "9141", "to": "9143", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 24}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "9143", "to": "9144", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "9163", "to": "9174", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 1, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "9755", "to": "9756", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": -4, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "10858", "to": "10990", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "11413", "to": "11414", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 6}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "11973", "to": "11974", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 4}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "12314", "to": "12316", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "12316", "to": "12333", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 113}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "12317", "to": "16428", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 113}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "12321", "to": "16420", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 9}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "12330", "to": "12331", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 9}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "12418", "to": "12419", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "12704", "to": "12705", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "14357", "to": "14358", "step": 0, "edge": "flat", "floor_from": 4, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "15298", "to": "16233", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "15556", "to": "15557", "step": 0, "edge": "flat", "floor_from": 3, "floor_to": 2, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "16182", "to": "11010", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 19}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "16197", "to": "18914", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "17424", "to": "19290", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 23}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18118", "to": "18894", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18182", "to": "18183", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18859", "to": "18860", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18861", "to": "18862", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18861", "to": "18865", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18861", "to": "18866", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18861", "to": "18867", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18861", "to": "18868", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18861", "to": "18869", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "18863", "to": "18864", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "19009", "to": "19010", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "20714", "to": "20717", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 205}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "20718", "to": "20719", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "20804", "to": "20810", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21329", "to": "21324", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 4}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21329", "to": "21326", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 4}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21331", "to": "21344", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21331", "to": "21351", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21331", "to": "21352", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21331", "to": "21354", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21353", "to": "21331", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21355", "to": "21356", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21355", "to": "21357", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21355", "to": "21358", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21355", "to": "21359", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21355", "to": "21360", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21366", "to": "21367", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "21718", "to": "21719", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": -1, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "22310", "to": "22311", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": -2, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "23430", "to": "23476", "step": 0, "edge": "flat", "floor_from": -2, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "23743", "to": "23742", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "23834", "to": "23836", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "23835", "to": "23834", "step": 0, "edge": "flat", "floor_from": -2, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "24657", "to": "24662", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "24774", "to": "24784", "step": 0, "edge": "flat", "floor_from": 2, "floor_to": 0, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "24830", "to": "24831", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "24831", "to": "24963", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "25082", "to": "24965", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 5}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "25553", "to": "25569", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "26435", "to": "26632", "step": 0, "edge": "flat", "floor_from": -2, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "26983", "to": "26984", "step": 0, "edge": "flat", "floor_from": 6, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "26989", "to": "26990", "step": 0, "edge": "flat", "floor_from": 6, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "26991", "to": "26992", "step": 0, "edge": "flat", "floor_from": 6, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "26993", "to": "26994", "step": 0, "edge": "flat", "floor_from": 6, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "26999", "to": "27000", "step": 0, "edge": "flat", "floor_from": 6, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "27756", "to": "27757", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "28404", "to": "28438", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "28404", "to": "28448", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "28415", "to": "28416", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "28423", "to": "28430", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "28461", "to": "28462", "step": 0, "edge": "flat", "floor_from": 2, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "28808", "to": "28817", "step": 0, "edge": "flat", "floor_from": -3, "floor_to": 1, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "29793", "to": "29794", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "29793", "to": "29795", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "30155", "to": "30156", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "30558", "to": "30560", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "30710", "to": "9056", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 155}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "30928", "to": "30932", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": -1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "32787", "to": "32788", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 3}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "33439", "to": "33440", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": -1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "33711", "to": "33714", "step": 0, "edge": "flat", "floor_from": 0, "floor_to": 1, "level_size": 2}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "35810", "to": "35811", "step": 0, "edge": "flat", "floor_from": 3, "floor_to": 1, "level_size": 1}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "36228", "to": "36229", "step": 0, "edge": "flat", "floor_from": -1, "floor_to": 0, "level_size": 6}
+{"kind": "doorway", "where": "indoor/outdoor", "from": "36231", "to": "36234", "step": 0, "edge": "flat", "floor_from": 1, "floor_to": 0, "level_size": 1}

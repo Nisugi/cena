@@ -1,0 +1,40 @@
+{"item": "E0601", "direction": "down", "confidence": 72, "reason": "left room sits by an aerial bridge arching over the water; the landing is the dock at river level below the pass"}
+{"item": "E0602", "direction": "up", "confidence": 78, "reason": "climbing a trail out of a deep wet ravine into forest above"}
+{"item": "E0603", "direction": "up", "confidence": 95, "reason": "wide winding stairway climbed to a tower lookout landing with panoramic view"}
+{"item": "E0604", "direction": "same floor", "confidence": 55, "reason": "two adjacent shops on the same level; arrived room shows no change of storey despite the stairs command"}
+{"item": "E0605", "direction": "same floor", "confidence": 90, "reason": "a door off a tunnel into an adjoining meeting room, both subterranean"}
+{"item": "E0606", "direction": "down", "confidence": 82, "reason": "arrived room says wooden steps lead down to the shoreline"}
+{"item": "E0607", "direction": "up", "confidence": 80, "reason": "a stairway climbed from the courtyard into the keep's salon with light streaming down the staircase well"}
+{"item": "E0608", "direction": "down", "confidence": 85, "reason": "the trail continues downhill into the ravine and the arrived room is the ravine bottom"}
+{"item": "E0609", "direction": "up", "confidence": 70, "reason": "climbing a rockslide that blocks the pass onto the far side of the slide"}
+{"item": "E0610", "direction": "up", "confidence": 85, "reason": "split log steps lead up to the brass-bound door of the building"}
+{"item": "E0611", "direction": "up", "confidence": 80, "reason": "arrived room is the tower's lookout floor with a stair winding down from it"}
+{"item": "E0612", "direction": "up", "confidence": 93, "reason": "a steel ladder set into the tunnel wall leading up to a tower high above the countryside"}
+{"item": "E0613", "direction": "up", "confidence": 88, "reason": "spiraling stairs lead up from the landing and the arrived stair has mists far below"}
+{"item": "E0614", "direction": "down", "confidence": 85, "reason": "a trapdoor from a ground-floor office into a tunnel burrow whose ladder leads back up"}
+{"item": "E0615", "direction": "up", "confidence": 92, "reason": "the silver staircase winds upwards from the vaults, and the hallway's railing surrounds its well descending to a lower chamber"}
+{"item": "E0616", "direction": "same floor", "confidence": 78, "reason": "a door off a 2nd-floor corridor into a neighbouring bedroom on the same storey"}
+{"item": "E0617", "direction": "same floor", "confidence": 82, "reason": "entering the tower's ground-level entrance through doors off the street; the staircase upward is a separate exit"}
+{"item": "E0618", "direction": "up", "confidence": 92, "reason": "the winding stairway rises to the hall's highest tower and the office is an aerie overlooking the hall below"}
+{"item": "E0619", "direction": "down", "confidence": 80, "reason": "the frond ladder hangs over the ledge as the only entry to the pit, with floor below"}
+{"item": "E0620", "direction": "same floor", "confidence": 80, "reason": "a hatch leading into the rear of the same wagon"}
+{"item": "E0621", "direction": "down", "confidence": 78, "reason": "the dirt drops off into a steep slope back down to the stone floor of the chasm"}
+{"item": "E0622", "direction": "down", "confidence": 85, "reason": "a trapdoor from the high tower into the burrow tunnel whose ladder stretches up"}
+{"item": "E0623", "direction": "same floor", "confidence": 72, "reason": "walking in through the crypt's entry foyer at ground level; the roof is a separate up exit"}
+{"item": "E0624", "direction": "same floor", "confidence": 80, "reason": "a hole in the wall between two adjoining cavern chambers"}
+{"item": "E0625", "direction": "up", "confidence": 88, "reason": "the stairway with brass handrail runs upward from the entry into the lounge"}
+{"item": "E0626", "direction": "up", "confidence": 85, "reason": "the rickety ladder ascends upward into darkness from the chute"}
+{"item": "E0627", "direction": "same floor", "confidence": 70, "reason": "a short jump over a crevice between clearing and ledge, described as level with each other"}
+{"item": "E0628", "direction": "same floor", "confidence": 65, "reason": "entering a tavern foyer from the beach; steps at a doorway between neighbouring spaces"}
+{"item": "E0629", "direction": "down", "confidence": 70, "reason": "the hole sunders the floorbeams and the beam falls through roof and floor alike, so the hole drops through"}
+{"item": "E0630", "direction": "same floor", "confidence": 75, "reason": "a tunnel corridor leading from the cavern entry to another cavern chamber on one level"}
+{"item": "E0631", "direction": "down", "confidence": 85, "reason": "the anchor chain trails down the ship's side to the rocks and shore below"}
+{"item": "E0632", "direction": "up", "confidence": 78, "reason": "climbing the steeply sloped dune from the beach into jungle that thins along a rocky decline toward the shore"}
+{"item": "E0633", "direction": "up", "confidence": 88, "reason": "the railing continues up the final five steps to the upper gallery, which is the arrived High Gallery"}
+{"item": "E0634", "direction": "up", "confidence": 80, "reason": "climbing the narrow ridge slanting across the cliff face to a shelf path overlooking a dropoff"}
+{"item": "E0635", "direction": "up", "confidence": 82, "reason": "the wrought iron staircase from the third floor leads to a gable room under the ceiling"}
+{"item": "E0636", "direction": "same floor", "confidence": 60, "reason": "climbing over the courtyard wall onto a lane at ground level outside"}
+{"item": "E0637", "direction": "down", "confidence": 85, "reason": "the stone stairwell descends through the north wall of the library to the seawall landing"}
+{"item": "E0638", "direction": "down", "confidence": 72, "reason": "a pair of short stone steps leads down from the park platform to the well"}
+{"item": "E0639", "direction": "same floor", "confidence": 82, "reason": "entering the watchtower's lower story from the street; the spiral steps up are a separate exit"}
+{"item": "E0640", "direction": "same floor", "confidence": 62, "reason": "climbing over the garden's surrounding wall onto the outdoor mire terrain; the burial mounds below are the separate down exit"}

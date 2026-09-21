@@ -1,0 +1,40 @@
+{"item": "E0441", "direction": "up", "confidence": 90, "reason": "room left says high above is a ragged hole with a gnarled rope hanging down, so climbing the rope rises to it"}
+{"item": "E0442", "direction": "down", "confidence": 95, "reason": "command is swim down and arrived room is Underwater whose return exit is swim up"}
+{"item": "E0443", "direction": "up", "confidence": 90, "reason": "steeply angled steps lead to a free-standing altar at the summit, and we arrive at the Altar on a tiered platform"}
+{"item": "E0444", "direction": "same floor", "confidence": 70, "reason": "courtyard to a villa's portico is a short step onto the entrance porch on ground level"}
+{"item": "E0445", "direction": "down", "confidence": 92, "reason": "cliffs describe a wasteland eighty feet below and the arrival is the shoreline at the bottom of the cliff"}
+{"item": "E0446", "direction": "down", "confidence": 95, "reason": "room left says a stairway leads downward and the cavern illuminates the stairway upwards"}
+{"item": "E0447", "direction": "same floor", "confidence": 75, "reason": "a door from the museum into the back yard smithy at ground level"}
+{"item": "E0448", "direction": "same floor", "confidence": 60, "reason": "a ramp from the tavern hall to the main deck, with the quarterdeck and crow's nest described as the levels above"}
+{"item": "E0449", "direction": "up", "confidence": 60, "reason": "climb stairs from the ballroom to a conservatory whose members train on paths below, suggesting a raised level"}
+{"item": "E0450", "direction": "up", "confidence": 70, "reason": "leaving the water of the lake for the bank's promise of solid ground, out of the depths onto the sands"}
+{"item": "E0451", "direction": "down", "confidence": 72, "reason": "the granite edge is the high barrier at the peaks and the slope winds down with lights flickering below in the valley"}
+{"item": "E0452", "direction": "same floor", "confidence": 75, "reason": "a hole burrowed through a wall into an adjoining cavern, both underground and level"}
+{"item": "E0453", "direction": "same floor", "confidence": 55, "reason": "climbing a trunk arrives at a hut at the water's edge, no height described"}
+{"item": "E0454", "direction": "down", "confidence": 95, "reason": "room left says a ladder leads down to the hold and the hold is below the other decks"}
+{"item": "E0455", "direction": "down", "confidence": 88, "reason": "several steps lead down from the main dock to the pier beyond"}
+{"item": "E0456", "direction": "same floor", "confidence": 78, "reason": "a hole dug through between two excavated underground chambers, both level"}
+{"item": "E0457", "direction": "up", "confidence": 80, "reason": "steps lead from the tidal pools up to the canopy shop, whose ground descends towards the beach"}
+{"item": "E0458", "direction": "up", "confidence": 88, "reason": "twin flights of stairs rise to the east and the hallway begins at the end of a short flight of marble stairs"}
+{"item": "E0459", "direction": "down", "confidence": 88, "reason": "stairs from a buttery to an underground cavern"}
+{"item": "E0460", "direction": "same floor", "confidence": 78, "reason": "the hollow is gouged out of the cavern wall, a side alcove at the same level"}
+{"item": "E0461", "direction": "same floor", "confidence": 80, "reason": "the tunnel simply opens into the cavern to the south, both subterranean and level"}
+{"item": "E0462", "direction": "same floor", "confidence": 65, "reason": "a visible tunnel leads off from the basement into a drain passage at the same underground level"}
+{"item": "E0463", "direction": "same floor", "confidence": 60, "reason": "entering the stairway room from the study is a step onto the foot of the stairs, which rise only via the door at the top"}
+{"item": "E0464", "direction": "up", "confidence": 85, "reason": "a ladder climbed to the garden that plugs the large round opening overhead in the loft ceiling"}
+{"item": "E0465", "direction": "down", "confidence": 88, "reason": "arrived room says water flows down through the hole above you and the natural passage is above"}
+{"item": "E0466", "direction": "same floor", "confidence": 55, "reason": "fake urchin-guide hideout room, a guide walk to the bank, no level change described"}
+{"item": "E0467", "direction": "down", "confidence": 60, "reason": "stone steps from a lounge to a workroom with a single stone slab floor, suggesting a lower level"}
+{"item": "E0468", "direction": "same floor", "confidence": 70, "reason": "steps down into the communal bath within the same chamber, a short step between neighbouring spaces"}
+{"item": "E0469", "direction": "down", "confidence": 70, "reason": "entering a narrow hole in the glacier from outdoors into an enclosed hall inside"}
+{"item": "E0470", "direction": "up", "confidence": 92, "reason": "room left says a flight of steps leads up with a dais visible above the course of steps"}
+{"item": "E0471", "direction": "up", "confidence": 65, "reason": "a stairway climbed from the cell corridor to a storage room that has a stairway behind it, implying another level"}
+{"item": "E0472", "direction": "same floor", "confidence": 55, "reason": "fake urchin-guide hideout room, a guided walk to the countinghouse nook, no level change described"}
+{"item": "E0473", "direction": "up", "confidence": 80, "reason": "climbing the cracked walls arrives at a natural ledge with the floor far below"}
+{"item": "E0474", "direction": "up", "confidence": 85, "reason": "the staircase is a curved ascent with doors below it, leading to an observation room above"}
+{"item": "E0475", "direction": "up", "confidence": 90, "reason": "arrived room describes climbing up wooden pegs into darkness and its other exit is up"}
+{"item": "E0476", "direction": "up", "confidence": 88, "reason": "the tower window is accessible only from a difficult height and the tower room looks down upon the wall"}
+{"item": "E0477", "direction": "same floor", "confidence": 65, "reason": "a cavern entrance from one underwater bazaar cavern into an adjoining cavern, both at the sandy floor"}
+{"item": "E0478", "direction": "down", "confidence": 90, "reason": "a rough trail descends a rocky slope, and the grove says the trail winds down from the bridge above"}
+{"item": "E0479", "direction": "up", "confidence": 85, "reason": "the bed chamber's other exit is down to the kitchen and the stairs open to an observatory with a cupola above"}
+{"item": "E0480", "direction": "up", "confidence": 78, "reason": "narrow wooden steps lead down from a trapdoor in the basement ceiling, so taking them goes up to the shop backroom"}

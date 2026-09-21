@@ -1,0 +1,33 @@
+{"item": "E0841", "direction": "same floor", "confidence": 60, "reason": "arrived shop is a ground-level room with rafters overhead and no stairs mentioned"}
+{"item": "E0842", "direction": "up", "confidence": 93, "reason": "room left says a curved iron staircase leads upstairs and the workshop sits under the roof peak"}
+{"item": "E0843", "direction": "same floor", "confidence": 85, "reason": "one of four doors lining a hallway, opening into a room on that hallway"}
+{"item": "E0844", "direction": "up", "confidence": 70, "reason": "the stairway room looks down on the dock below and its other exit continues up the slope"}
+{"item": "E0845", "direction": "same floor", "confidence": 80, "reason": "both rooms subterranean, an entryway hatch opening into the adjoining great room"}
+{"item": "E0846", "direction": "same floor", "confidence": 82, "reason": "entering the tower's ground-floor entrance hall, whose staircase up is a separate exit"}
+{"item": "E0847", "direction": "down", "confidence": 85, "reason": "room left says a staircase leads down"}
+{"item": "E0848", "direction": "up", "confidence": 85, "reason": "climbing stairs to an archers' gallery with narrow windows for shooting down at enemies"}
+{"item": "E0849", "direction": "up", "confidence": 85, "reason": "wide steps lead up to the golden doors and the carpet continues from the steps into the foyer"}
+{"item": "E0850", "direction": "same floor", "confidence": 58, "reason": "a few steps into the open foundation of a ruined farmhouse, level with the yard"}
+{"item": "E0851", "direction": "down", "confidence": 88, "reason": "a pulled trapdoor from the gathering room into a storage area whose exit leads further into darkness below"}
+{"item": "E0852", "direction": "down", "confidence": 62, "reason": "from the gorge rim onto a rock shelf protruding out over the canyon below"}
+{"item": "E0853", "direction": "down", "confidence": 90, "reason": "the lounge contrasts with the dirt and filth above, so it lies beneath the tavern"}
+{"item": "E0854", "direction": "down", "confidence": 95, "reason": "command is swim down and the arrival is underwater in the deep river"}
+{"item": "E0855", "direction": "up", "confidence": 88, "reason": "parlor has a curving staircase leading upward and a separate down exit to the atrium"}
+{"item": "E0856", "direction": "up", "confidence": 80, "reason": "climbing steps onto stairs that grow more pitched with each step"}
+{"item": "E0857", "direction": "up", "confidence": 88, "reason": "arrived room says the wide stairwell leads up to the landing"}
+{"item": "E0858", "direction": "up", "confidence": 68, "reason": "climbing a rubble heap; the arrived room has the rubble pile beneath you with water flowing down it"}
+{"item": "E0859", "direction": "down", "confidence": 55, "reason": "the workroom connects onward to the mansion dungeons, suggesting a lower level"}
+{"item": "E0860", "direction": "same floor", "confidence": 78, "reason": "stepping inside a cave mouth dug into the mountainside beside the path"}
+{"item": "E0861", "direction": "down", "confidence": 90, "reason": "steep stairs lead down to the basement and the arrived room adjoins a Basement Office"}
+{"item": "E0862", "direction": "same floor", "confidence": 78, "reason": "courtyard staircase into the ground-floor foyer, whose own stairway up to the second floor is a separate exit"}
+{"item": "E0863", "direction": "down", "confidence": 92, "reason": "fissure is in the floor and the arrived room says garbage was dumped from the fissure above"}
+{"item": "E0864", "direction": "down", "confidence": 55, "reason": "a slope leading off a deep cavern to a chamber at its end, with no sign of rising"}
+{"item": "E0865", "direction": "down", "confidence": 88, "reason": "room left says carved steps plunge down to the northwest and the street lies below the glacier edge"}
+{"item": "E0866", "direction": "up", "confidence": 85, "reason": "priests wander up the staircase carved from the glacier side to the temple edge above"}
+{"item": "E0867", "direction": "up", "confidence": 52, "reason": "a narrow staircase in the costume hall's west wall links it to the green room, direction unstated"}
+{"item": "E0868", "direction": "up", "confidence": 92, "reason": "the spiral staircase leads higher into the tree and the upper room's stair leads back downstairs"}
+{"item": "E0869", "direction": "up", "confidence": 80, "reason": "corridor is a juncture between floors whose ramp and down exit go below, so the stairs climb"}
+{"item": "E0870", "direction": "up", "confidence": 75, "reason": "a ladder from the third floor into a gable room with a slanted ceiling under the roof"}
+{"item": "E0871", "direction": "up", "confidence": 82, "reason": "the barbican tower is reachable only via an impossibly high window, and the rope hangs from it"}
+{"item": "E0872", "direction": "same floor", "confidence": 70, "reason": "entering the foot of the grand stair, which itself has a separate up exit to the landing"}
+{"item": "E0873", "direction": "down", "confidence": 80, "reason": "the tunnel continues its precipitous decline to the fissure, opening on a subterranean cavern lake"}

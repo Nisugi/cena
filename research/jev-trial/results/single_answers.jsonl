@@ -1,0 +1,696 @@
+{"a": "8", "b": "9", "a_to_b": "go bank", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.66}, "rev": {"choice": "same floor", "p": 0.84}}
+{"a": "27", "b": "188", "a_to_b": "go dais", "b_to_a": "go dais", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "28", "b": "188", "a_to_b": "go dais", "b_to_a": "go dais", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "184", "b": "188", "a_to_b": "go dais", "b_to_a": "go dais", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "185", "b": "188", "a_to_b": "go dais", "b_to_a": "go dais", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "187", "b": "188", "a_to_b": "go dais", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "223", "b": "3807", "a_to_b": "go east tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.79}}
+{"a": "223", "b": "6929", "a_to_b": "go west tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.55}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "271", "b": "3809", "a_to_b": "go stairway", "b_to_a": "go doors", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "same floor", "p": 0.56}}
+{"a": "285", "b": "399", "a_to_b": "go bank", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.95}, "rev": {"choice": "same floor", "p": 0.97}}
+{"a": "292", "b": "7579", "a_to_b": "go wide hole", "b_to_a": "go wall of rubble", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "364", "b": "24808", "a_to_b": "go oak-paneled retreat", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.97}}
+{"a": "381", "b": "1246", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "down", "p": 0.49}}
+{"a": "408", "b": "409", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.66}}
+{"a": "425", "b": "6958", "a_to_b": "go tree", "b_to_a": "go trees", "fwd": {"choice": "up", "p": 0.78}, "rev": {"choice": "same floor", "p": 0.68}}
+{"a": "434", "b": "1256", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.77}, "rev": {"choice": "same floor", "p": 0.72}}
+{"a": "440", "b": "13033", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "449", "b": "21538", "a_to_b": "climb of spidersilk", "b_to_a": "climb of spidersilk", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "506", "b": "7673", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "up", "p": 0.68}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "528", "b": "188", "a_to_b": "go dais", "b_to_a": "go dais", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "529", "b": "188", "a_to_b": "go dais", "b_to_a": "go dais", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "669", "b": "21538", "a_to_b": "climb spidersilk", "b_to_a": "climb spidersilk", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "735", "b": "5693", "a_to_b": "go ivory tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.76}, "rev": {"choice": "same floor", "p": 0.86}}
+{"a": "788", "b": "787", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.56}}
+{"a": "862", "b": "863", "a_to_b": "go crevasse", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "867", "b": "866", "a_to_b": "go crevasse", "b_to_a": "out", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.55}}
+{"a": "911", "b": "912", "a_to_b": "go cavern", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "1013", "b": "1266", "a_to_b": "go crevasse", "b_to_a": "out", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "1137", "b": "1136", "a_to_b": "go eastern bank", "b_to_a": "go plank bridge", "fwd": {"choice": "same floor", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "1199", "b": "7816", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "up", "p": 0.77}, "rev": {"choice": "same floor", "p": 0.92}}
+{"a": "1253", "b": "1255", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.87}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "1443", "b": "30285", "a_to_b": "go oak-planked building", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.94}}
+{"a": "1499", "b": "13349", "a_to_b": "climb tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "1787", "b": "1788", "a_to_b": "climb boulder", "b_to_a": "climb boulder", "fwd": {"choice": "up", "p": 0.6799999999999999}, "rev": {"choice": "same floor", "p": 0.81}}
+{"a": "1789", "b": "1791", "a_to_b": "climb rocks", "b_to_a": "climb rocks", "fwd": {"choice": "same floor", "p": 0.82}, "rev": {"choice": "same floor", "p": 0.52}}
+{"a": "1949", "b": "12514", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.48}}
+{"a": "1975", "b": "14756", "a_to_b": "go grassy burrow", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.66}, "rev": {"choice": "same floor", "p": 0.92}}
+{"a": "2018", "b": "14711", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.55}}
+{"a": "2209", "b": "2208", "a_to_b": "climb fissure", "b_to_a": "climb fissure", "fwd": {"choice": "up", "p": 0.77}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "2287", "b": "2286", "a_to_b": "go hole", "b_to_a": "go coffin", "fwd": {"choice": "up", "p": 0.71}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "2313", "b": "8945", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.52}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "2319", "b": "2328", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.65}, "rev": {"choice": "same floor", "p": 0.9299999999999999}}
+{"a": "2326", "b": "18650", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.57}, "rev": {"choice": "same floor", "p": 0.8099999999999999}}
+{"a": "2355", "b": "3359", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "up", "p": 0.77}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "2375", "b": "8944", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.48}, "rev": {"choice": "same floor", "p": 0.53}}
+{"a": "2384", "b": "2385", "a_to_b": "go burrow", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.5}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "2386", "b": "27730", "a_to_b": "go north tower", "b_to_a": "go out", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "2386", "b": "27737", "a_to_b": "go south tower", "b_to_a": "go out", "fwd": {"choice": "same floor", "p": 0.63}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "2412", "b": "27702", "a_to_b": "go east tower", "b_to_a": "go out", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "2412", "b": "27709", "a_to_b": "go west tower", "b_to_a": "go out", "fwd": {"choice": "same floor", "p": 0.63}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "2413", "b": "15690", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "2455", "b": "27716", "a_to_b": "go north tower", "b_to_a": "go out", "fwd": {"choice": "up", "p": 0.87}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "2455", "b": "27723", "a_to_b": "go south tower", "b_to_a": "go out", "fwd": {"choice": "up", "p": 0.62}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "2480", "b": "8971", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.64}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "2494", "b": "28654", "a_to_b": "go grey tower", "b_to_a": "go double doors", "fwd": {"choice": "same floor", "p": 0.48}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "2501", "b": "3463", "a_to_b": "go tree", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.62}, "rev": {"choice": "same floor", "p": 0.94}}
+{"a": "2639", "b": "2637", "a_to_b": "go bank", "b_to_a": "go bank", "fwd": {"choice": "same floor", "p": 0.48}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "2647", "b": "2658", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 1}}
+{"a": "2659", "b": "2658", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "2660", "b": "2658", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "2661", "b": "2658", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "2674", "b": "2673", "a_to_b": "go stair", "b_to_a": "go #-9293", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "2676", "b": "2673", "a_to_b": "go stair", "b_to_a": "go #-9292", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "2678", "b": "2679", "a_to_b": "go ledge", "b_to_a": "go ledge", "fwd": {"choice": "same floor", "p": 0.55}, "rev": {"choice": "same floor", "p": 0.47}}
+{"a": "2725", "b": "21538", "a_to_b": "climb of spidersilk", "b_to_a": "climb of spidersilk", "fwd": {"choice": "up", "p": 0.68}, "rev": {"choice": "up", "p": 0.74}}
+{"a": "2790", "b": "15601", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.72}}
+{"a": "2823", "b": "2824", "a_to_b": "go slope", "b_to_a": "go incline", "fwd": {"choice": "down", "p": 0.84}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "2904", "b": "2905", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.55}}
+{"a": "2917", "b": "2916", "a_to_b": "climb cliff", "b_to_a": "climb cliff", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 1}}
+{"a": "2921", "b": "2922", "a_to_b": "go gorge", "b_to_a": "go northern wall", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "2923", "b": "2922", "a_to_b": "go gorge", "b_to_a": "go southern wall", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.79}}
+{"a": "2998", "b": "2997", "a_to_b": "climb landslide", "b_to_a": "climb landslide", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "3025", "b": "3026", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.67}}
+{"a": "3263", "b": "3245", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "3282", "b": "3283", "a_to_b": "go tunnel", "b_to_a": "go open", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.63}}
+{"a": "3358", "b": "2357", "a_to_b": "climb ledge", "b_to_a": "go slide", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "3438", "b": "15690", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "3443", "b": "8981", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.72}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "3444", "b": "15623", "a_to_b": "go riverstone tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.84}, "rev": {"choice": "same floor", "p": 0.94}}
+{"a": "3488", "b": "10324", "a_to_b": "go bank", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.79}, "rev": {"choice": "same floor", "p": 0.88}}
+{"a": "3661", "b": "12364", "a_to_b": "go oak wagon", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.9}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "3669", "b": "3670", "a_to_b": "go bank", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.94}}
+{"a": "3686", "b": "7070", "a_to_b": "go tunnel", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 0.7}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "3714", "b": "7071", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.53}}
+{"a": "3793", "b": "3794", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "up", "p": 0.73}, "rev": {"choice": "up", "p": 0.6}}
+{"a": "3881", "b": "17697", "a_to_b": "go tree", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "3891", "b": "3892", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.78}, "rev": {"choice": "same floor", "p": 0.9}}
+{"a": "3992", "b": "9874", "a_to_b": "go cave", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.57}}
+{"a": "4026", "b": "15538", "a_to_b": "go tower", "b_to_a": "go crystals", "fwd": {"choice": "up", "p": 0.61}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "4041", "b": "7523", "a_to_b": "go altar", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "4077", "b": "15519", "a_to_b": "climb platform", "b_to_a": "go floor", "fwd": {"choice": "up", "p": 0.87}, "rev": {"choice": "same floor", "p": 0.66}}
+{"a": "4116", "b": "7803", "a_to_b": "climb path", "b_to_a": "go path", "fwd": {"choice": "up", "p": 0.75}, "rev": {"choice": "same floor", "p": 0.56}}
+{"a": "4141", "b": "4142", "a_to_b": "go crypt", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.73}, "rev": {"choice": "same floor", "p": 0.49}}
+{"a": "4168", "b": "4154", "a_to_b": "go stairway", "b_to_a": "go stairway", "fwd": {"choice": "up", "p": 0.71}, "rev": {"choice": "up", "p": 0.57}}
+{"a": "4373", "b": "4377", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.86}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "4392", "b": "4393", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.69}, "rev": {"choice": "down", "p": 0.49}}
+{"a": "4417", "b": "4423", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "same floor", "p": 0.54}}
+{"a": "4431", "b": "4436", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.65}, "rev": {"choice": "down", "p": 0.42}}
+{"a": "4459", "b": "4460", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.59}, "rev": {"choice": "up", "p": 0.41}}
+{"a": "4473", "b": "4474", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.59}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "4513", "b": "4514", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.53}, "rev": {"choice": "same floor", "p": 0.4}}
+{"a": "4526", "b": "4527", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.59}, "rev": {"choice": "same floor", "p": 0.47}}
+{"a": "4531", "b": "4532", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.86}, "rev": {"choice": "same floor", "p": 0.51}}
+{"a": "4563", "b": "4562", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 0.56}, "rev": {"choice": "down", "p": 0.67}}
+{"a": "4606", "b": "4608", "a_to_b": "go fissure", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "4639", "b": "4686", "a_to_b": "go bank", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.97}}
+{"a": "4653", "b": "4655", "a_to_b": "go ramp", "b_to_a": "go walkway", "fwd": {"choice": "same floor", "p": 0.52}, "rev": {"choice": "same floor", "p": 0.59}}
+{"a": "4680", "b": "4681", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.68}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "4950", "b": "4951", "a_to_b": "go tree", "b_to_a": "go gap", "fwd": {"choice": "same floor", "p": 0.45}, "rev": {"choice": "same floor", "p": 0.9}}
+{"a": "4960", "b": "4969", "a_to_b": "go crevasse", "b_to_a": "out", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "5010", "b": "9986", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.45}}
+{"a": "5128", "b": "5129", "a_to_b": "go cavern", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.78}, "rev": {"choice": "same floor", "p": 0.57}}
+{"a": "5250", "b": "5251", "a_to_b": "climb hole", "b_to_a": "climb hole", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "5547", "b": "14604", "a_to_b": "go stairway", "b_to_a": "go #-7293", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "5644", "b": "5637", "a_to_b": "climb hole", "b_to_a": "climb hole", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 1}}
+{"a": "5751", "b": "5752", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "5952", "b": "5883", "a_to_b": "go turret", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.6}, "rev": {"choice": "same floor", "p": 0.84}}
+{"a": "6119", "b": "6110", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "6121", "b": "8599", "a_to_b": "go cave", "b_to_a": "go entrance", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.61}}
+{"a": "6173", "b": "6175", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.65}}
+{"a": "6190", "b": "6191", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "down", "p": 0.49}}
+{"a": "6228", "b": "9651", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "6326", "b": "6327", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "6384", "b": "6385", "a_to_b": "go cave", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "up", "p": 0.77}}
+{"a": "6457", "b": "6418", "a_to_b": "swim bank", "b_to_a": "swim water", "fwd": {"choice": "same floor", "p": 0.78}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "6582", "b": "6579", "a_to_b": "go tower", "b_to_a": "go door", "fwd": {"choice": "up", "p": 0.75}, "rev": {"choice": "same floor", "p": 0.51}}
+{"a": "6715", "b": "6703", "a_to_b": "go hole", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "6725", "b": "6726", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.89}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "6985", "b": "6986", "a_to_b": "climb ledge", "b_to_a": "go path", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.7}}
+{"a": "7033", "b": "7043", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "7034", "b": "7035", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "7039", "b": "17376", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "7083", "b": "7120", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.55}}
+{"a": "7092", "b": "3707", "a_to_b": "go shaft", "b_to_a": "go shaft", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.49}}
+{"a": "7146", "b": "7085", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "down", "p": 0.75}}
+{"a": "7273", "b": "7200", "a_to_b": "go bank", "b_to_a": "go dam", "fwd": {"choice": "same floor", "p": 0.46}, "rev": {"choice": "same floor", "p": 0.81}}
+{"a": "7288", "b": "7287", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "7289", "b": "7286", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.77}, "rev": {"choice": "same floor", "p": 0.71}}
+{"a": "7290", "b": "7285", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.75}}
+{"a": "7291", "b": "7284", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.86}}
+{"a": "7292", "b": "7283", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.95}, "rev": {"choice": "down", "p": 0.54}}
+{"a": "7293", "b": "7278", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.81}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "7294", "b": "7279", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.54}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "7295", "b": "7280", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.85}, "rev": {"choice": "same floor", "p": 0.88}}
+{"a": "7296", "b": "7281", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.83}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "7297", "b": "7282", "a_to_b": "go bank", "b_to_a": "go creek", "fwd": {"choice": "same floor", "p": 0.9}, "rev": {"choice": "same floor", "p": 0.94}}
+{"a": "7307", "b": "7206", "a_to_b": "climb chimney", "b_to_a": "climb chimney", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "7316", "b": "7315", "a_to_b": "go fissure", "b_to_a": "go fissure", "fwd": {"choice": "up", "p": 0.78}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "7329", "b": "7332", "a_to_b": "climb trail", "b_to_a": "go trail", "fwd": {"choice": "up", "p": 0.61}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "7507", "b": "7513", "a_to_b": "go crypt", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "same floor", "p": 0.52}}
+{"a": "7514", "b": "7513", "a_to_b": "go hole", "b_to_a": "go chute", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.61}}
+{"a": "7634", "b": "7651", "a_to_b": "go boulder", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.75}, "rev": {"choice": "down", "p": 0.5}}
+{"a": "7667", "b": "7668", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.6900000000000001}, "rev": {"choice": "down", "p": 0.51}}
+{"a": "7677", "b": "7678", "a_to_b": "go pit", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "same floor", "p": 0.86}}
+{"a": "7696", "b": "7690", "a_to_b": "climb roots", "b_to_a": "climb roots", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "7704", "b": "7703", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 0.75}, "rev": {"choice": "down", "p": 0.9400000000000001}}
+{"a": "7710", "b": "7711", "a_to_b": "go trapdoor", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "7719", "b": "7733", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.68}, "rev": {"choice": "same floor", "p": 0.54}}
+{"a": "7728", "b": "7730", "a_to_b": "go tunnel", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "same floor", "p": 0.59}}
+{"a": "7803", "b": "7804", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.72}, "rev": {"choice": "same floor", "p": 0.65}}
+{"a": "7991", "b": "8748", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "7999", "b": "8004", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "up", "p": 0.71}}
+{"a": "8020", "b": "8021", "a_to_b": "go shaft", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "8070", "b": "8073", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "8072", "b": "14456", "a_to_b": "climb spire", "b_to_a": "climb spire", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.64}}
+{"a": "8125", "b": "8126", "a_to_b": "go hollow", "b_to_a": "go opening", "fwd": {"choice": "same floor", "p": 0.37}, "rev": {"choice": "up", "p": 0.39999999999999997}}
+{"a": "8192", "b": "8194", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "8193", "b": "8022", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "8215", "b": "8216", "a_to_b": "go fissure", "b_to_a": "go fissure", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "8459", "b": "20847", "a_to_b": "go tower", "b_to_a": "go tower", "fwd": {"choice": "up", "p": 0.46}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "8491", "b": "8499", "a_to_b": "go altar", "b_to_a": "go sanctuary", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "8492", "b": "8499", "a_to_b": "go altar", "b_to_a": "go altar", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "8625", "b": "13894", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.44}}
+{"a": "8627", "b": "8628", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "8662", "b": "8663", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "down", "p": 0.35}}
+{"a": "8665", "b": "17793", "a_to_b": "go dark hollow", "b_to_a": "go dark hollow", "fwd": {"choice": "down", "p": 0.82}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "8678", "b": "8682", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.62}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "8686", "b": "7517", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "down", "p": 0.71}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "8748", "b": "8749", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "8749", "b": "8750", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "up", "p": 0.73}}
+{"a": "8812", "b": "8814", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.95}, "rev": {"choice": "up", "p": 0.63}}
+{"a": "8860", "b": "20622", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "down", "p": 0.71}, "rev": {"choice": "same floor", "p": 0.59}}
+{"a": "8912", "b": "8913", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.58}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "8982", "b": "8984", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.45}}
+{"a": "9247", "b": "9271", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.63}}
+{"a": "9248", "b": "9272", "a_to_b": "go stairs", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "9249", "b": "9273", "a_to_b": "go stairs", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.69}}
+{"a": "9250", "b": "9274", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "same floor", "p": 0.53}}
+{"a": "9251", "b": "9275", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "same floor", "p": 0.77}}
+{"a": "9387", "b": "14613", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "up", "p": 0.88}}
+{"a": "9403", "b": "23423", "a_to_b": "go dark tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "9484", "b": "9488", "a_to_b": "go faux-oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "9609", "b": "9606", "a_to_b": "climb rocks", "b_to_a": "go pool", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "9688", "b": "9689", "a_to_b": "go stairway", "b_to_a": "go walkway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "same floor", "p": 0.59}}
+{"a": "9862", "b": "90", "a_to_b": "climb rock", "b_to_a": "go pool", "fwd": {"choice": "up", "p": 0.8}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "9922", "b": "9923", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.93}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "9993", "b": "9994", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.76}, "rev": {"choice": "up", "p": 0.74}}
+{"a": "10594", "b": "10596", "a_to_b": "go hole", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.54}}
+{"a": "10845", "b": "10844", "a_to_b": "climb bank", "b_to_a": "climb bank", "fwd": {"choice": "up", "p": 0.88}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "10850", "b": "10911", "a_to_b": "go bank", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "10882", "b": "11063", "a_to_b": "go outcropping", "b_to_a": "go brambles", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "down", "p": 0.44}}
+{"a": "10883", "b": "11427", "a_to_b": "go stair", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.92}}
+{"a": "11105", "b": "11090", "a_to_b": "climb grate", "b_to_a": "go grate", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "11115", "b": "11116", "a_to_b": "climb bowsprit", "b_to_a": "go bowsprit", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.53}}
+{"a": "11116", "b": "11117", "a_to_b": "climb chain", "b_to_a": "climb chain", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "11290", "b": "11289", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "same floor", "p": 0.66}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "11314", "b": "11313", "a_to_b": "climb wall", "b_to_a": "climb wall", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "11349", "b": "11403", "a_to_b": "climb rubble", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "up", "p": 0.69}}
+{"a": "11356", "b": "11358", "a_to_b": "go north ledge", "b_to_a": "go bridge", "fwd": {"choice": "same floor", "p": 0.66}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "11687", "b": "11686", "a_to_b": "go bank", "b_to_a": "go stream", "fwd": {"choice": "same floor", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.92}}
+{"a": "11688", "b": "11689", "a_to_b": "go bank", "b_to_a": "go stream", "fwd": {"choice": "up", "p": 0.63}, "rev": {"choice": "same floor", "p": 0.77}}
+{"a": "11707", "b": "11743", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.41}}
+{"a": "11719", "b": "11745", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.47000000000000003}}
+{"a": "11936", "b": "12032", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "12016", "b": "12015", "a_to_b": "climb benches", "b_to_a": "go benches", "fwd": {"choice": "up", "p": 0.45}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "12020", "b": "12026", "a_to_b": "climb benches", "b_to_a": "go benches", "fwd": {"choice": "same floor", "p": 0.51}, "rev": {"choice": "same floor", "p": 0.92}}
+{"a": "12037", "b": "12040", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "12269", "b": "24403", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.79}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "12353", "b": "12359", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "up", "p": 0.52}}
+{"a": "12612", "b": "12613", "a_to_b": "go altar", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.85}, "rev": {"choice": "up", "p": 0.45}}
+{"a": "12682", "b": "12691", "a_to_b": "go stairs", "b_to_a": "go door", "fwd": {"choice": "down", "p": 0.86}, "rev": {"choice": "same floor", "p": 0.63}}
+{"a": "13091", "b": "27833", "a_to_b": "go tree", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.69}, "rev": {"choice": "same floor", "p": 0.89}}
+{"a": "13119", "b": "14681", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "down", "p": 0.41}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "13182", "b": "3748", "a_to_b": "go oak doors", "b_to_a": "go doors", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "13192", "b": "13194", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.54}, "rev": {"choice": "down", "p": 0.74}}
+{"a": "13218", "b": "15667", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "13219", "b": "13220", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "13221", "b": "13222", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "13243", "b": "13492", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.97}, "rev": {"choice": "same floor", "p": 0.69}}
+{"a": "14013", "b": "14014", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "14102", "b": "14103", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "14139", "b": "14140", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.48}, "rev": {"choice": "same floor", "p": 0.82}}
+{"a": "14377", "b": "14378", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.74}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "14379", "b": "14381", "a_to_b": "go balcony", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.51}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "14541", "b": "14486", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "down", "p": 0.79}, "rev": {"choice": "up", "p": 0.5}}
+{"a": "14562", "b": "14564", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.97}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "14595", "b": "14594", "a_to_b": "climb steps", "b_to_a": "go kitchen", "fwd": {"choice": "up", "p": 0.62}, "rev": {"choice": "same floor", "p": 0.65}}
+{"a": "14605", "b": "12258", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "14650", "b": "19967", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "14711", "b": "14718", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 1}}
+{"a": "14802", "b": "14801", "a_to_b": "go ramp", "b_to_a": "go entryway", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "14886", "b": "14885", "a_to_b": "go west bank", "b_to_a": "go rock", "fwd": {"choice": "same floor", "p": 0.86}, "rev": {"choice": "same floor", "p": 0.8}}
+{"a": "14886", "b": "14887", "a_to_b": "go east bank", "b_to_a": "go rock", "fwd": {"choice": "same floor", "p": 0.72}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "14968", "b": "14967", "a_to_b": "go bank", "b_to_a": "go pool", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "14995", "b": "14996", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.54}}
+{"a": "15548", "b": "15549", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "15567", "b": "237", "a_to_b": "climb drainpipe", "b_to_a": "climb drainpipe", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 1}}
+{"a": "15699", "b": "25994", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.56}, "rev": {"choice": "up", "p": 0.51}}
+{"a": "15795", "b": "15794", "a_to_b": "go ledge", "b_to_a": "go bridge", "fwd": {"choice": "same floor", "p": 0.42}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "15984", "b": "15990", "a_to_b": "climb trail", "b_to_a": "climb trail", "fwd": {"choice": "down", "p": 0.71}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "15993", "b": "15996", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.8200000000000001}, "rev": {"choice": "same floor", "p": 0.54}}
+{"a": "15998", "b": "15999", "a_to_b": "go cave", "b_to_a": "go mouth", "fwd": {"choice": "down", "p": 0.95}, "rev": {"choice": "up", "p": 0.8}}
+{"a": "16190", "b": "16191", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.71}}
+{"a": "16192", "b": "16193", "a_to_b": "climb stairway", "b_to_a": "climb stairway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "16458", "b": "16459", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.8099999999999999}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "16621", "b": "409", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "16895", "b": "16896", "a_to_b": "go cavern", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.82}, "rev": {"choice": "same floor", "p": 0.72}}
+{"a": "17029", "b": "17030", "a_to_b": "go stage", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.77}, "rev": {"choice": "same floor", "p": 0.7}}
+{"a": "17077", "b": "14592", "a_to_b": "go oak door", "b_to_a": "go cottage", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.86}}
+{"a": "17079", "b": "14604", "a_to_b": "go stairway", "b_to_a": "go #-7296", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "17094", "b": "17109", "a_to_b": "go steps", "b_to_a": "go doors", "fwd": {"choice": "same floor", "p": 0.63}, "rev": {"choice": "same floor", "p": 0.68}}
+{"a": "17517", "b": "16323", "a_to_b": "climb steps", "b_to_a": "go simple arch", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "17682", "b": "17684", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "17682", "b": "23208", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.75}}
+{"a": "17722", "b": "19880", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "17930", "b": "9490", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "17954", "b": "1462", "a_to_b": "climb gutter", "b_to_a": "climb gutter", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "18004", "b": "19220", "a_to_b": "go step", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.53}}
+{"a": "18080", "b": "18081", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.73}, "rev": {"choice": "up", "p": 0.51}}
+{"a": "18126", "b": "18123", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "same floor", "p": 0.62}, "rev": {"choice": "same floor", "p": 0.56}}
+{"a": "18179", "b": "18178", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.46}, "rev": {"choice": "up", "p": 1}}
+{"a": "18216", "b": "14967", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.71}}
+{"a": "18267", "b": "18268", "a_to_b": "go cave", "b_to_a": "go water", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "same floor", "p": 0.61}}
+{"a": "18294", "b": "18295", "a_to_b": "go hollow", "b_to_a": "go hollow", "fwd": {"choice": "same floor", "p": 0.59}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "18347", "b": "17833", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "18348", "b": "18349", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.48}}
+{"a": "18357", "b": "18358", "a_to_b": "go rope", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.5}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "18364", "b": "18916", "a_to_b": "go boulder", "b_to_a": "go wall", "fwd": {"choice": "up", "p": 0.57}, "rev": {"choice": "same floor", "p": 0.51}}
+{"a": "18612", "b": "18617", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "18697", "b": "18756", "a_to_b": "go tunnel", "b_to_a": "go tunnel", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.79}}
+{"a": "18756", "b": "28252", "a_to_b": "crawl hole", "b_to_a": "crawl hole", "fwd": {"choice": "same floor", "p": 0.63}, "rev": {"choice": "same floor", "p": 0.65}}
+{"a": "18917", "b": "17103", "a_to_b": "go ledge", "b_to_a": "go door", "fwd": {"choice": "down", "p": 0.78}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "18956", "b": "18953", "a_to_b": "go hole", "b_to_a": "go grate", "fwd": {"choice": "down", "p": 0.69}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "19010", "b": "19009", "a_to_b": "go bank", "b_to_a": "go wall", "fwd": {"choice": "down", "p": 0.56}, "rev": {"choice": "same floor", "p": 0.64}}
+{"a": "19031", "b": "10596", "a_to_b": "go cavern", "b_to_a": "go cavern", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "19053", "b": "19052", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "up", "p": 0.55}, "rev": {"choice": "up", "p": 0.5}}
+{"a": "19089", "b": "19144", "a_to_b": "go silver hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.55}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "19089", "b": "23426", "a_to_b": "go glaes hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.64}, "rev": {"choice": "down", "p": 0.47}}
+{"a": "19096", "b": "19095", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "19097", "b": "19095", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "up", "p": 0.76}}
+{"a": "19103", "b": "23473", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.83}, "rev": {"choice": "same floor", "p": 0.62}}
+{"a": "19104", "b": "23466", "a_to_b": "go square hatch", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.54}, "rev": {"choice": "down", "p": 0.5}}
+{"a": "19104", "b": "23467", "a_to_b": "go wooden hatch", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.45}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "19107", "b": "23462", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "same floor", "p": 0.4}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "19109", "b": "19110", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.72}, "rev": {"choice": "same floor", "p": 0.73}}
+{"a": "19114", "b": "23452", "a_to_b": "go driftwood hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.71}, "rev": {"choice": "same floor", "p": 0.69}}
+{"a": "19114", "b": "23454", "a_to_b": "go feather-carved hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.63}, "rev": {"choice": "same floor", "p": 0.73}}
+{"a": "19115", "b": "19114", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "down", "p": 0.52}, "rev": {"choice": "same floor", "p": 0.66}}
+{"a": "19120", "b": "19124", "a_to_b": "go round hatch", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.59}, "rev": {"choice": "same floor", "p": 0.42}}
+{"a": "19120", "b": "23450", "a_to_b": "go triangle-shaped hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.67}, "rev": {"choice": "same floor", "p": 0.72}}
+{"a": "19125", "b": "19120", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "down", "p": 0.72}, "rev": {"choice": "up", "p": 0.49}}
+{"a": "19132", "b": "19126", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "up", "p": 0.61}}
+{"a": "19133", "b": "19126", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "down", "p": 0.7}, "rev": {"choice": "same floor", "p": 0.48}}
+{"a": "19140", "b": "23436", "a_to_b": "go plank hatch", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.41}, "rev": {"choice": "same floor", "p": 0.64}}
+{"a": "19140", "b": "23437", "a_to_b": "go wooden hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.52}, "rev": {"choice": "down", "p": 0.51}}
+{"a": "19140", "b": "23438", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.82}, "rev": {"choice": "down", "p": 0.5}}
+{"a": "19143", "b": "19145", "a_to_b": "go dark hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.63}, "rev": {"choice": "same floor", "p": 0.6}}
+{"a": "19143", "b": "23446", "a_to_b": "go circular hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.86}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "19172", "b": "19173", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.76}}
+{"a": "19173", "b": "19128", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.54}, "rev": {"choice": "up", "p": 1}}
+{"a": "19213", "b": "17941", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.7}}
+{"a": "19371", "b": "19373", "a_to_b": "climb dune", "b_to_a": "go dune", "fwd": {"choice": "same floor", "p": 0.75}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "19603", "b": "19604", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "same floor", "p": 0.77}}
+{"a": "19608", "b": "19609", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "19610", "b": "19607", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "19637", "b": "19614", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "19938", "b": "19942", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "up", "p": 0.71}}
+{"a": "19946", "b": "19945", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.55}}
+{"a": "19967", "b": "19951", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "20054", "b": "14448", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "20060", "b": "19966", "a_to_b": "climb stairs", "b_to_a": "climb stairs", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "up", "p": 0.8}}
+{"a": "20109", "b": "20108", "a_to_b": "go slope", "b_to_a": "go path", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "up", "p": 0.56}}
+{"a": "20115", "b": "20114", "a_to_b": "climb vines", "b_to_a": "go vines", "fwd": {"choice": "down", "p": 0.89}, "rev": {"choice": "up", "p": 1}}
+{"a": "20130", "b": "20131", "a_to_b": "go limb", "b_to_a": "go arch", "fwd": {"choice": "up", "p": 0.48}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "20153", "b": "20151", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "up", "p": 0.74}, "rev": {"choice": "up", "p": 0.64}}
+{"a": "20175", "b": "20177", "a_to_b": "go slope", "b_to_a": "go path", "fwd": {"choice": "down", "p": 0.92}, "rev": {"choice": "up", "p": 0.57}}
+{"a": "20195", "b": "20126", "a_to_b": "climb steps", "b_to_a": "climb steps", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "up", "p": 0.73}}
+{"a": "20263", "b": "18245", "a_to_b": "go slope", "b_to_a": "go path", "fwd": {"choice": "down", "p": 0.79}, "rev": {"choice": "same floor", "p": 0.97}}
+{"a": "20275", "b": "20278", "a_to_b": "go slope", "b_to_a": "go path", "fwd": {"choice": "same floor", "p": 0.84}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "20300", "b": "21520", "a_to_b": "go oak wagon", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.93}, "rev": {"choice": "same floor", "p": 0.9}}
+{"a": "20321", "b": "20344", "a_to_b": "go cave", "b_to_a": "go mouth", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.78}}
+{"a": "20324", "b": "25348", "a_to_b": "go tower", "b_to_a": "go tower", "fwd": {"choice": "up", "p": 0.73}, "rev": {"choice": "same floor", "p": 0.73}}
+{"a": "20326", "b": "20325", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "same floor", "p": 0.53}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "20331", "b": "20140", "a_to_b": "go steps", "b_to_a": "go wooden shack", "fwd": {"choice": "down", "p": 0.85}, "rev": {"choice": "up", "p": 0.72}}
+{"a": "20342", "b": "20177", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "down", "p": 0.5}}
+{"a": "20345", "b": "20368", "a_to_b": "go tunnel", "b_to_a": "go mouth", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "same floor", "p": 0.71}}
+{"a": "20423", "b": "33291", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "down", "p": 0.86}, "rev": {"choice": "up", "p": 0.93}}
+{"a": "20509", "b": "20510", "a_to_b": "climb opening", "b_to_a": "climb opening", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "20568", "b": "20543", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "20577", "b": "20578", "a_to_b": "go tunnel", "b_to_a": "go opening", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "down", "p": 0.5}}
+{"a": "20590", "b": "20588", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "20604", "b": "434", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "20641", "b": "19937", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.51}, "rev": {"choice": "down", "p": 1}}
+{"a": "20645", "b": "460", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "20739", "b": "20741", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.93}, "rev": {"choice": "same floor", "p": 0.93}}
+{"a": "20751", "b": "20756", "a_to_b": "go steps", "b_to_a": "go door", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "same floor", "p": 0.97}}
+{"a": "20757", "b": "20760", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "20855", "b": "20848", "a_to_b": "go stairs", "b_to_a": "go mirror", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.68}}
+{"a": "20907", "b": "20909", "a_to_b": "climb lattice-work", "b_to_a": "go bark", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "up", "p": 0.86}}
+{"a": "20951", "b": "20952", "a_to_b": "climb plateau", "b_to_a": "go descent", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "20980", "b": "20967", "a_to_b": "go bank", "b_to_a": "go rafts", "fwd": {"choice": "same floor", "p": 0.65}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "21101", "b": "21116", "a_to_b": "go cliff", "b_to_a": "go bridge", "fwd": {"choice": "up", "p": 0.64}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "21120", "b": "20927", "a_to_b": "go tree", "b_to_a": "go door", "fwd": {"choice": "up", "p": 0.59}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "21121", "b": "21122", "a_to_b": "go ladder", "b_to_a": "go slab", "fwd": {"choice": "up", "p": 0.72}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "21134", "b": "19347", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "21144", "b": "21143", "a_to_b": "go oak door", "b_to_a": "go right door", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "21144", "b": "21146", "a_to_b": "go stage door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "21147", "b": "21148", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.69}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "21154", "b": "19359", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "21155", "b": "22062", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.89}}
+{"a": "21163", "b": "21152", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "21182", "b": "18261", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "21184", "b": "21185", "a_to_b": "go ladder", "b_to_a": "go chute", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "21190", "b": "19390", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.47}}
+{"a": "21193", "b": "12282", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "21194", "b": "3845", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "21197", "b": "12288", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "21201", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "21203", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "21204", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "21205", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "21206", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "21207", "b": "21202", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "21212", "b": "17591", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "21213", "b": "17600", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "21226", "b": "22043", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.69}, "rev": {"choice": "down", "p": 0.49}}
+{"a": "21331", "b": "21353", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.78}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "21355", "b": "21358", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "down", "p": 0.43}, "rev": {"choice": "same floor", "p": 0.68}}
+{"a": "21366", "b": "23839", "a_to_b": "climb tree", "b_to_a": "climb tree", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "21378", "b": "21462", "a_to_b": "go hatch", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "21688", "b": "279", "a_to_b": "climb walls", "b_to_a": "climb walls", "fwd": {"choice": "same floor", "p": 0.84}, "rev": {"choice": "same floor", "p": 0.84}}
+{"a": "21690", "b": "21691", "a_to_b": "go tower", "b_to_a": "go archway", "fwd": {"choice": "same floor", "p": 0.52}, "rev": {"choice": "same floor", "p": 0.84}}
+{"a": "21693", "b": "21694", "a_to_b": "go tower", "b_to_a": "go doorway", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "same floor", "p": 0.59}}
+{"a": "21695", "b": "21696", "a_to_b": "go tower", "b_to_a": "go arch", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "21697", "b": "21698", "a_to_b": "go tower", "b_to_a": "go doorframe", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "21743", "b": "21744", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "21765", "b": "21770", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "down", "p": 0.5700000000000001}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "21835", "b": "21836", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.92}}
+{"a": "21838", "b": "21839", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9299999999999999}}
+{"a": "21850", "b": "21851", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.5}, "rev": {"choice": "same floor", "p": 0.59}}
+{"a": "21872", "b": "22019", "a_to_b": "go oak wagon", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "22028", "b": "22027", "a_to_b": "go steps", "b_to_a": "go pool", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.94}}
+{"a": "22045", "b": "21226", "a_to_b": "go oak archway", "b_to_a": "go onyx door", "fwd": {"choice": "down", "p": 0.7}, "rev": {"choice": "same floor", "p": 0.88}}
+{"a": "22086", "b": "20866", "a_to_b": "look hole", "b_to_a": "gaze portrait", "fwd": {"choice": "up", "p": 0.53}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "22097", "b": "22098", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 0.63}}
+{"a": "22213", "b": "22212", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "22292", "b": "22291", "a_to_b": "go stairs", "b_to_a": "go demonwall", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "22361", "b": "22360", "a_to_b": "go steps", "b_to_a": "go enclave", "fwd": {"choice": "down", "p": 0.62}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "22465", "b": "20121", "a_to_b": "go ramp", "b_to_a": "go ramp", "fwd": {"choice": "same floor", "p": 0.57}, "rev": {"choice": "same floor", "p": 0.62}}
+{"a": "22543", "b": "20319", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.5}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "23120", "b": "20072", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "23124", "b": "23172", "a_to_b": "go vascillating fissure", "b_to_a": "go archway", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "23151", "b": "20281", "a_to_b": "go modwir trapdoor", "b_to_a": "go modwir trapdoor", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "23155", "b": "22540", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 0.55}, "rev": {"choice": "down", "p": 0.77}}
+{"a": "23366", "b": "23365", "a_to_b": "go narrow staircase", "b_to_a": "go small door", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "23401", "b": "23399", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "same floor", "p": 0.51}, "rev": {"choice": "down", "p": 0.37}}
+{"a": "23422", "b": "23421", "a_to_b": "go dark tunnel", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.51}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "23450", "b": "23451", "a_to_b": "go hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.45}, "rev": {"choice": "same floor", "p": 0.85}}
+{"a": "23452", "b": "23516", "a_to_b": "go cannonball hole", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.86}}
+{"a": "23488", "b": "23489", "a_to_b": "go hatch", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.65}, "rev": {"choice": "same floor", "p": 0.88}}
+{"a": "23527", "b": "30513", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "23528", "b": "30512", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.92}}
+{"a": "23532", "b": "23531", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.95}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "23708", "b": "7045", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "down", "p": 0.88}}
+{"a": "23773", "b": "26907", "a_to_b": "go dimly tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "23834", "b": "23835", "a_to_b": "go tower", "b_to_a": "go doors", "fwd": {"choice": "up", "p": 0.77}, "rev": {"choice": "same floor", "p": 0.88}}
+{"a": "23858", "b": "23860", "a_to_b": "go small hole", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.61}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "23861", "b": "23863", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.73}, "rev": {"choice": "up", "p": 0.95}}
+{"a": "23868", "b": "23899", "a_to_b": "go hollow", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.38}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "23874", "b": "23889", "a_to_b": "go burrow", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.84}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "23874", "b": "34569", "a_to_b": "go shadowy burrow", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "up", "p": 0.94}}
+{"a": "23880", "b": "23842", "a_to_b": "go hollow", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "23904", "b": "23903", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.59}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "23926", "b": "23845", "a_to_b": "go wooden ladder", "b_to_a": "go wooden ladder", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "23976", "b": "384", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "same floor", "p": 0.58}, "rev": {"choice": "down", "p": 0.59}}
+{"a": "23995", "b": "23998", "a_to_b": "go oak wagon", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.97}}
+{"a": "24001", "b": "24002", "a_to_b": "go oak wagon", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "24004", "b": "28671", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "same floor", "p": 0.56}, "rev": {"choice": "same floor", "p": 0.47000000000000003}}
+{"a": "24029", "b": "24038", "a_to_b": "go tunnel", "b_to_a": "go tunnel", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "down", "p": 0.59}}
+{"a": "24032", "b": "24040", "a_to_b": "go brick-lined tunnel", "b_to_a": "go brick-lined tunnel", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "down", "p": 0.44}}
+{"a": "24034", "b": "24039", "a_to_b": "go tunnel", "b_to_a": "go tunnel", "fwd": {"choice": "down", "p": 0.87}, "rev": {"choice": "down", "p": 0.42}}
+{"a": "24042", "b": "33174", "a_to_b": "pull opal statue on pedestal", "b_to_a": "pull mithglin ring", "fwd": {"choice": "down", "p": 0.7}, "rev": {"choice": "same floor", "p": 0.63}}
+{"a": "24045", "b": "23520", "a_to_b": "go fissure", "b_to_a": "go gap", "fwd": {"choice": "up", "p": 0.44}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "24132", "b": "24133", "a_to_b": "go tunnel", "b_to_a": "go tunnel", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.68}}
+{"a": "24160", "b": "24161", "a_to_b": "crawl fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "up", "p": 0.67}}
+{"a": "24189", "b": "24187", "a_to_b": "go dimly tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.76}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "24209", "b": "21394", "a_to_b": "go steep stairs", "b_to_a": "go steep stairs", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "24227", "b": "20353", "a_to_b": "go hole", "b_to_a": "go crimson hovel", "fwd": {"choice": "down", "p": 0.59}, "rev": {"choice": "same floor", "p": 0.77}}
+{"a": "24236", "b": "24234", "a_to_b": "go cavern shore", "b_to_a": "go lake", "fwd": {"choice": "same floor", "p": 0.73}, "rev": {"choice": "same floor", "p": 0.74}}
+{"a": "24238", "b": "24239", "a_to_b": "go gaping hole", "b_to_a": "go rockslide", "fwd": {"choice": "down", "p": 0.65}, "rev": {"choice": "up", "p": 0.68}}
+{"a": "24309", "b": "24362", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.76}}
+{"a": "24366", "b": "16918", "a_to_b": "go tunnel", "b_to_a": "go tunnel", "fwd": {"choice": "down", "p": 0.64}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "24383", "b": "24384", "a_to_b": "go tree", "b_to_a": "go tree", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "24385", "b": "24384", "a_to_b": "go tree", "b_to_a": "go tree", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "24386", "b": "24384", "a_to_b": "go tree", "b_to_a": "go tree", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "24387", "b": "24384", "a_to_b": "go tree", "b_to_a": "go tree", "fwd": {"choice": "up", "p": 0.83}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "24389", "b": "24384", "a_to_b": "go tree", "b_to_a": "go tree", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "24392", "b": "24384", "a_to_b": "go tree", "b_to_a": "go tree", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "24427", "b": "24422", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.53}, "rev": {"choice": "same floor", "p": 0.72}}
+{"a": "24430", "b": "24433", "a_to_b": "go burrow", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.72}, "rev": {"choice": "same floor", "p": 0.71}}
+{"a": "24459", "b": "24455", "a_to_b": "go oak-bound door", "b_to_a": "go mithglin-plated door", "fwd": {"choice": "same floor", "p": 0.61}, "rev": {"choice": "up", "p": 0.75}}
+{"a": "24488", "b": "24484", "a_to_b": "go small staircase", "b_to_a": "go small staircase", "fwd": {"choice": "up", "p": 0.66}, "rev": {"choice": "down", "p": 0.42}}
+{"a": "24493", "b": "23903", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "24561", "b": "24562", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "24570", "b": "24564", "a_to_b": "go ladder", "b_to_a": "go crack", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 0.99}}
+{"a": "24678", "b": "24679", "a_to_b": "go hole", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.82}, "rev": {"choice": "up", "p": 0.79}}
+{"a": "24748", "b": "33291", "a_to_b": "go hatch", "b_to_a": "go hatch", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "up", "p": 0.96}}
+{"a": "24831", "b": "24837", "a_to_b": "go ledge", "b_to_a": "go river", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "24967", "b": "24837", "a_to_b": "go slope", "b_to_a": "go slope", "fwd": {"choice": "up", "p": 0.66}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "24985", "b": "24756", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "down", "p": 0.84}, "rev": {"choice": "up", "p": 0.87}}
+{"a": "25035", "b": "25041", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.92}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "25047", "b": "25046", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "25186", "b": "26898", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "25229", "b": "25228", "a_to_b": "go rocky outcropping", "b_to_a": "go hammer-shaped spire", "fwd": {"choice": "down", "p": 0.42}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "25264", "b": "25265", "a_to_b": "go vault", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "25367", "b": "25366", "a_to_b": "go stairwell", "b_to_a": "pull lever", "fwd": {"choice": "up", "p": 0.48}, "rev": {"choice": "same floor", "p": 0.68}}
+{"a": "25374", "b": "25361", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.91}, "rev": {"choice": "up", "p": 1}}
+{"a": "25411", "b": "25417", "a_to_b": "push rope", "b_to_a": "push rope", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 1}}
+{"a": "25417", "b": "25416", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.68}, "rev": {"choice": "same floor", "p": 0.64}}
+{"a": "25464", "b": "20368", "a_to_b": "go tunnel", "b_to_a": "go tunnel", "fwd": {"choice": "down", "p": 0.8}, "rev": {"choice": "down", "p": 0.49}}
+{"a": "25556", "b": "25560", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "25557", "b": "25558", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.66}}
+{"a": "25596", "b": "25595", "a_to_b": "go staircase", "b_to_a": "go opening", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "25617", "b": "30508", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.74}}
+{"a": "25618", "b": "30507", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "25619", "b": "30506", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.85}}
+{"a": "25621", "b": "30505", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.91}}
+{"a": "25623", "b": "30504", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "25658", "b": "25660", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "25658", "b": "30887", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.41}}
+{"a": "25739", "b": "25738", "a_to_b": "go steps", "b_to_a": "go tub", "fwd": {"choice": "same floor", "p": 0.69}, "rev": {"choice": "down", "p": 0.78}}
+{"a": "25814", "b": "25815", "a_to_b": "go balcony", "b_to_a": "go railing", "fwd": {"choice": "up", "p": 0.8}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "25902", "b": "36527", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.81}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "26091", "b": "36810", "a_to_b": "climb archway", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.78}, "rev": {"choice": "same floor", "p": 0.63}}
+{"a": "26223", "b": "26224", "a_to_b": "go ramp", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "same floor", "p": 0.69}}
+{"a": "26231", "b": "1948", "a_to_b": "go stairs", "b_to_a": "go mahogany wagon", "fwd": {"choice": "down", "p": 0.5}, "rev": {"choice": "same floor", "p": 0.77}}
+{"a": "26256", "b": "26257", "a_to_b": "go tower", "b_to_a": "go tower", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.57}}
+{"a": "26410", "b": "26409", "a_to_b": "go stairway", "b_to_a": "go dock", "fwd": {"choice": "up", "p": 0.67}, "rev": {"choice": "down", "p": 0.45}}
+{"a": "26421", "b": "26422", "a_to_b": "go stairway", "b_to_a": "go pier", "fwd": {"choice": "down", "p": 0.64}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "26425", "b": "29301", "a_to_b": "go oak wagon", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.94}}
+{"a": "26431", "b": "26432", "a_to_b": "go oak wagon", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.85}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "26437", "b": "27508", "a_to_b": "go thatched-roof hut", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.75}, "rev": {"choice": "up", "p": 0.45}}
+{"a": "26442", "b": "26446", "a_to_b": "go oak wagon", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.9}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "26450", "b": "26452", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "down", "p": 0.65}}
+{"a": "26455", "b": "29307", "a_to_b": "go hollow", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.64}, "rev": {"choice": "same floor", "p": 0.51}}
+{"a": "26472", "b": "29335", "a_to_b": "go oak building", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.89}, "rev": {"choice": "up", "p": 0.59}}
+{"a": "26506", "b": "26635", "a_to_b": "go hatch", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.8}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "26535", "b": "29322", "a_to_b": "go canopy", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.48}, "rev": {"choice": "down", "p": 0.44}}
+{"a": "26667", "b": "26674", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 0.77}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "26674", "b": "26692", "a_to_b": "swim down", "b_to_a": "swim down", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "down", "p": 0.44}}
+{"a": "26743", "b": "26733", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "same floor", "p": 0.56}, "rev": {"choice": "down", "p": 0.79}}
+{"a": "26746", "b": "26488", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "down", "p": 1}}
+{"a": "26793", "b": "7502", "a_to_b": "go shaft", "b_to_a": "go shaft", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "down", "p": 0.68}}
+{"a": "26837", "b": "23717", "a_to_b": "go oak-framed shop", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.93}}
+{"a": "26837", "b": "35186", "a_to_b": "go stairs", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.56}}
+{"a": "26847", "b": "29825", "a_to_b": "go dust trapdoor", "b_to_a": "go dust trapdoor", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "26851", "b": "29841", "a_to_b": "go steps", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.59}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "26852", "b": "26853", "a_to_b": "go silver-hued tunnel", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.92}, "rev": {"choice": "same floor", "p": 0.56}}
+{"a": "26852", "b": "26854", "a_to_b": "go green-hued tunnel", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.9400000000000001}, "rev": {"choice": "same floor", "p": 0.77}}
+{"a": "26852", "b": "26855", "a_to_b": "go purple-hued tunnel", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.93}, "rev": {"choice": "same floor", "p": 0.68}}
+{"a": "26862", "b": "23740", "a_to_b": "go rickety stairs", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.72}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "26876", "b": "29858", "a_to_b": "go tower", "b_to_a": "go door", "fwd": {"choice": "up", "p": 0.66}, "rev": {"choice": "same floor", "p": 0.82}}
+{"a": "26894", "b": "23727", "a_to_b": "go canopy-topped enclosure", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "26910", "b": "26909", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 0.76}, "rev": {"choice": "same floor", "p": 0.63}}
+{"a": "26911", "b": "26890", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.79}, "rev": {"choice": "down", "p": 0.72}}
+{"a": "26914", "b": "26913", "a_to_b": "go fissure", "b_to_a": "go fissure", "fwd": {"choice": "same floor", "p": 0.55}, "rev": {"choice": "same floor", "p": 0.55}}
+{"a": "27015", "b": "27016", "a_to_b": "go stairway", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "same floor", "p": 0.63}}
+{"a": "27035", "b": "18295", "a_to_b": "go hollow", "b_to_a": "go hollow", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.85}}
+{"a": "27383", "b": "27373", "a_to_b": "go stairway", "b_to_a": "go ascending passageway", "fwd": {"choice": "down", "p": 0.84}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "27405", "b": "27430", "a_to_b": "go oak wagon", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.95}, "rev": {"choice": "same floor", "p": 0.93}}
+{"a": "27466", "b": "27439", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "same floor", "p": 0.76}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "27552", "b": "27555", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "same floor", "p": 0.44}}
+{"a": "27578", "b": "27556", "a_to_b": "go steps", "b_to_a": "go large jetty", "fwd": {"choice": "same floor", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.97}}
+{"a": "27581", "b": "26516", "a_to_b": "go steps", "b_to_a": "go black pavilion", "fwd": {"choice": "down", "p": 0.83}, "rev": {"choice": "up", "p": 0.5}}
+{"a": "27663", "b": "2429", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.68}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "27673", "b": "27682", "a_to_b": "go oak doors", "b_to_a": "go doors", "fwd": {"choice": "same floor", "p": 0.76}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "27705", "b": "27704", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.52}}
+{"a": "27712", "b": "27711", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 0.93}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "27719", "b": "27718", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "27726", "b": "27725", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "up", "p": 0.71}}
+{"a": "27733", "b": "27732", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "up", "p": 0.67}}
+{"a": "27740", "b": "27739", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "27812", "b": "25676", "a_to_b": "go stair", "b_to_a": "go redwood door", "fwd": {"choice": "up", "p": 0.55}, "rev": {"choice": "down", "p": 0.64}}
+{"a": "27827", "b": "27828", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "28121", "b": "28122", "a_to_b": "climb rock", "b_to_a": "climb rock", "fwd": {"choice": "down", "p": 0.49}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "28163", "b": "28191", "a_to_b": "go canopy", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.47}, "rev": {"choice": "same floor", "p": 0.76}}
+{"a": "28219", "b": "1431", "a_to_b": "go oak door", "b_to_a": "go umber mews", "fwd": {"choice": "same floor", "p": 0.77}, "rev": {"choice": "same floor", "p": 0.5700000000000001}}
+{"a": "28253", "b": "28254", "a_to_b": "crawl up", "b_to_a": "crawl up", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.79}}
+{"a": "28319", "b": "4955", "a_to_b": "go well-worn trail", "b_to_a": "go well-worn trail", "fwd": {"choice": "same floor", "p": 0.9}, "rev": {"choice": "same floor", "p": 0.8}}
+{"a": "28319", "b": "4989", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "same floor", "p": 0.84}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "28403", "b": "28409", "a_to_b": "go fissure", "b_to_a": "go crack", "fwd": {"choice": "down", "p": 0.75}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "28436", "b": "28432", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.66}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "28477", "b": "28435", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.89}, "rev": {"choice": "up", "p": 0.82}}
+{"a": "28497", "b": "3483", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.9}, "rev": {"choice": "up", "p": 1}}
+{"a": "28524", "b": "26427", "a_to_b": "go steps", "b_to_a": "go canvas-draped wagon", "fwd": {"choice": "down", "p": 0.66}, "rev": {"choice": "same floor", "p": 0.64}}
+{"a": "28532", "b": "28546", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.66}, "rev": {"choice": "down", "p": 0.86}}
+{"a": "28587", "b": "28589", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "28627", "b": "28630", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.87}, "rev": {"choice": "down", "p": 0.43}}
+{"a": "28816", "b": "2952", "a_to_b": "go stone stairs", "b_to_a": "go stone stairs", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "up", "p": 0.97}}
+{"a": "28862", "b": "28863", "a_to_b": "go pit", "b_to_a": "go bodies", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "down", "p": 0.47}}
+{"a": "28868", "b": "2968", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "28869", "b": "2967", "a_to_b": "go stair", "b_to_a": "go stair", "fwd": {"choice": "up", "p": 0.6900000000000001}, "rev": {"choice": "up", "p": 1}}
+{"a": "28871", "b": "29096", "a_to_b": "go oak shop", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "28875", "b": "2974", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "down", "p": 0.8}, "rev": {"choice": "up", "p": 0.49}}
+{"a": "28878", "b": "2955", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "up", "p": 0.7}, "rev": {"choice": "down", "p": 0.71}}
+{"a": "28879", "b": "2954", "a_to_b": "go stone stairs", "b_to_a": "go stone stairs", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "up", "p": 0.84}}
+{"a": "28883", "b": "28925", "a_to_b": "go oak building", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.97}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "28892", "b": "29112", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.6799999999999999}}
+{"a": "28919", "b": "28931", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.94}, "rev": {"choice": "down", "p": 0.82}}
+{"a": "28919", "b": "32591", "a_to_b": "go oak barn", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.97}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "29094", "b": "29093", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.83}}
+{"a": "29104", "b": "28891", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.66}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "29105", "b": "28890", "a_to_b": "go stairs", "b_to_a": "go stairs", "fwd": {"choice": "down", "p": 0.37}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "29109", "b": "29100", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "29111", "b": "29112", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.56}, "rev": {"choice": "up", "p": 0.67}}
+{"a": "29114", "b": "29113", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.46}}
+{"a": "29118", "b": "29117", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.65}}
+{"a": "29170", "b": "29169", "a_to_b": "go cliff face", "b_to_a": "go crater rim", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 1}}
+{"a": "29209", "b": "29208", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.38}}
+{"a": "29281", "b": "29300", "a_to_b": "go fissure", "b_to_a": "go fissure", "fwd": {"choice": "same floor", "p": 0.84}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "29359", "b": "29362", "a_to_b": "go cellar door", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.8200000000000001}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "29409", "b": "29410", "a_to_b": "go hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.78}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "29649", "b": "28064", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.78}}
+{"a": "29705", "b": "29719", "a_to_b": "go oak corral", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.91}, "rev": {"choice": "same floor", "p": 0.89}}
+{"a": "29719", "b": "29720", "a_to_b": "go oak gate", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "29825", "b": "23728", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.93}}
+{"a": "29943", "b": "29944", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.93}, "rev": {"choice": "same floor", "p": 0.77}}
+{"a": "29996", "b": "29997", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.98}}
+{"a": "30018", "b": "30019", "a_to_b": "go steps", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.51}}
+{"a": "30148", "b": "30153", "a_to_b": "go staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "same floor", "p": 0.75}}
+{"a": "30163", "b": "30164", "a_to_b": "go angled staircase", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.76}}
+{"a": "30348", "b": "30338", "a_to_b": "go stairway", "b_to_a": "go companionway", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "30348", "b": "30350", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "down", "p": 0.81}}
+{"a": "30425", "b": "30426", "a_to_b": "climb ladder", "b_to_a": "climb ladder", "fwd": {"choice": "up", "p": 0.67}, "rev": {"choice": "up", "p": 0.73}}
+{"a": "30630", "b": "30631", "a_to_b": "climb ladder", "b_to_a": "out", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "30659", "b": "30664", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.95}, "rev": {"choice": "down", "p": 0.8}}
+{"a": "30708", "b": "400", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.91}, "rev": {"choice": "same floor", "p": 0.89}}
+{"a": "30709", "b": "3370", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.87}}
+{"a": "30710", "b": "5710", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.82}}
+{"a": "30711", "b": "10911", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.51}}
+{"a": "30712", "b": "9472", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.66}, "rev": {"choice": "down", "p": 0.87}}
+{"a": "30713", "b": "10325", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.89}}
+{"a": "30714", "b": "11", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "30714", "b": "188", "a_to_b": "urchin guide dais", "b_to_a": "urchin guide dais", "fwd": {"choice": "up", "p": 0.86}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "30715", "b": "1838", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.87}}
+{"a": "30715", "b": "1844", "a_to_b": "urchin guide tower", "b_to_a": "urchin guide tower", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.9}}
+{"a": "30716", "b": "28870", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.86}}
+{"a": "30717", "b": "4686", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.92}}
+{"a": "30718", "b": "3672", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "30882", "b": "8663", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "same floor", "p": 0.86}, "rev": {"choice": "down", "p": 0.45}}
+{"a": "30886", "b": "15800", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "same floor", "p": 0.89}, "rev": {"choice": "up", "p": 0.64}}
+{"a": "30889", "b": "10881", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "same floor", "p": 0.51}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "30899", "b": "10437", "a_to_b": "go step", "b_to_a": "go step", "fwd": {"choice": "same floor", "p": 0.82}, "rev": {"choice": "same floor", "p": 0.65}}
+{"a": "30900", "b": "13484", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "same floor", "p": 0.77}, "rev": {"choice": "same floor", "p": 0.51}}
+{"a": "30909", "b": "30910", "a_to_b": "go pedestal table", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.86}}
+{"a": "30918", "b": "30917", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "same floor", "p": 0.5}, "rev": {"choice": "same floor", "p": 0.66}}
+{"a": "31064", "b": "29876", "a_to_b": "climb sliver", "b_to_a": "climb sliver", "fwd": {"choice": "same floor", "p": 0.45}, "rev": {"choice": "same floor", "p": 0.48}}
+{"a": "31087", "b": "31086", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.86}}
+{"a": "31187", "b": "33526", "a_to_b": "go oak booth", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "31299", "b": "31303", "a_to_b": "go mistwood tree", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.44}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "31352", "b": "3091", "a_to_b": "go oak door", "b_to_a": "go oak door", "fwd": {"choice": "same floor", "p": 1}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "31529", "b": "31527", "a_to_b": "go stone staircase", "b_to_a": "go stone staircase", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "down", "p": 0.62}}
+{"a": "31621", "b": "33965", "a_to_b": "go thatched-roof building", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "31701", "b": "31700", "a_to_b": "go bank", "b_to_a": "go barrels", "fwd": {"choice": "same floor", "p": 0.78}, "rev": {"choice": "same floor", "p": 0.69}}
+{"a": "31712", "b": "31966", "a_to_b": "go black vault", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.8099999999999999}, "rev": {"choice": "same floor", "p": 0.71}}
+{"a": "31712", "b": "31976", "a_to_b": "go blanched vault", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.64}, "rev": {"choice": "same floor", "p": 0.81}}
+{"a": "31727", "b": "31899", "a_to_b": "go jasmine-covered crypt", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.89}, "rev": {"choice": "same floor", "p": 0.5}}
+{"a": "31727", "b": "32111", "a_to_b": "go crumbling crypt", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.7}}
+{"a": "31727", "b": "33939", "a_to_b": "go web-draped crypt", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.6}}
+{"a": "31727", "b": "34857", "a_to_b": "go fresh hole", "b_to_a": "out", "fwd": {"choice": "down", "p": 1}, "rev": {"choice": "up", "p": 0.86}}
+{"a": "31728", "b": "31913", "a_to_b": "go rectangular hole", "b_to_a": "go wall", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.45}}
+{"a": "31768", "b": "35904", "a_to_b": "go oak door", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.6}, "rev": {"choice": "same floor", "p": 0.84}}
+{"a": "31794", "b": "35967", "a_to_b": "go rope", "b_to_a": "go rope", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "down", "p": 0.56}}
+{"a": "31859", "b": "33935", "a_to_b": "go roof cottage", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.45}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "31863", "b": "35818", "a_to_b": "go oak porch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.71}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "31874", "b": "31907", "a_to_b": "go stone tower", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.5}, "rev": {"choice": "same floor", "p": 0.91}}
+{"a": "31912", "b": "31913", "a_to_b": "go hole", "b_to_a": "go hole", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.46}}
+{"a": "31915", "b": "31914", "a_to_b": "go steps", "b_to_a": "go door", "fwd": {"choice": "up", "p": 0.95}, "rev": {"choice": "down", "p": 0.97}}
+{"a": "31942", "b": "31943", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.9}, "rev": {"choice": "up", "p": 0.47}}
+{"a": "31952", "b": "31953", "a_to_b": "go ramp", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.82}, "rev": {"choice": "same floor", "p": 0.45}}
+{"a": "31959", "b": "32207", "a_to_b": "go roof bakery", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.7}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "31967", "b": "31966", "a_to_b": "go steps", "b_to_a": "go steps", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.57}}
+{"a": "32233", "b": "32234", "a_to_b": "go fissure", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.57}, "rev": {"choice": "down", "p": 0.66}}
+{"a": "32362", "b": "32334", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "32384", "b": "32383", "a_to_b": "go ladder", "b_to_a": "go sinkhole", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "down", "p": 1}}
+{"a": "32408", "b": "32409", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.8}, "rev": {"choice": "down", "p": 0.73}}
+{"a": "32446", "b": "32447", "a_to_b": "go dark tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.91}}
+{"a": "32607", "b": "32613", "a_to_b": "go oak building", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.94}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "32714", "b": "33216", "a_to_b": "pull maoral statue on pedestal", "b_to_a": "pull mithglin ring", "fwd": {"choice": "same floor", "p": 0.53}, "rev": {"choice": "same floor", "p": 0.75}}
+{"a": "32944", "b": "32945", "a_to_b": "go altar", "b_to_a": "go altar", "fwd": {"choice": "same floor", "p": 0.93}, "rev": {"choice": "same floor", "p": 0.89}}
+{"a": "33183", "b": "33184", "a_to_b": "pull dhe'nar statue on pedestal", "b_to_a": "pull mithglin ring", "fwd": {"choice": "same floor", "p": 0.63}, "rev": {"choice": "same floor", "p": 0.93}}
+{"a": "33224", "b": "33219", "a_to_b": "go ladder", "b_to_a": "push floats", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.96}}
+{"a": "33292", "b": "20016", "a_to_b": "go ladder", "b_to_a": "go ladder", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.89}}
+{"a": "33336", "b": "33337", "a_to_b": "climb wall", "b_to_a": "go talon", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "33401", "b": "33402", "a_to_b": "go wooden staircase", "b_to_a": "go metal-framed door", "fwd": {"choice": "up", "p": 0.96}, "rev": {"choice": "same floor", "p": 0.45}}
+{"a": "33441", "b": "33442", "a_to_b": "go narrow stair", "b_to_a": "go narrow stair", "fwd": {"choice": "up", "p": 0.73}, "rev": {"choice": "down", "p": 0.83}}
+{"a": "33451", "b": "24962", "a_to_b": "go stairs", "b_to_a": "go right", "fwd": {"choice": "up", "p": 0.57}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "33452", "b": "24962", "a_to_b": "go stairs", "b_to_a": "go left", "fwd": {"choice": "up", "p": 0.43}, "rev": {"choice": "same floor", "p": 0.99}}
+{"a": "33471", "b": "33470", "a_to_b": "go oak door", "b_to_a": "go oak door", "fwd": {"choice": "same floor", "p": 0.71}, "rev": {"choice": "same floor", "p": 0.83}}
+{"a": "33491", "b": "33492", "a_to_b": "go hatch", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.58}, "rev": {"choice": "same floor", "p": 0.76}}
+{"a": "33578", "b": "24673", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.93}, "rev": {"choice": "same floor", "p": 0.68}}
+{"a": "33690", "b": "33656", "a_to_b": "go oak door", "b_to_a": "go shadowed door", "fwd": {"choice": "same floor", "p": 0.47}, "rev": {"choice": "same floor", "p": 0.69}}
+{"a": "33714", "b": "33713", "a_to_b": "climb rope", "b_to_a": "climb rope", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 0.94}}
+{"a": "34281", "b": "34282", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.97}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "34300", "b": "34314", "a_to_b": "jump ledge", "b_to_a": "jump clearing", "fwd": {"choice": "up", "p": 0.55}, "rev": {"choice": "same floor", "p": 0.67}}
+{"a": "34348", "b": "34349", "a_to_b": "go cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.89}, "rev": {"choice": "same floor", "p": 0.82}}
+{"a": "34363", "b": "34362", "a_to_b": "go western ledge", "b_to_a": "go bridge", "fwd": {"choice": "down", "p": 0.44}, "rev": {"choice": "same floor", "p": 0.57}}
+{"a": "34363", "b": "34364", "a_to_b": "go south ledge", "b_to_a": "go west bridge", "fwd": {"choice": "up", "p": 0.43}, "rev": {"choice": "same floor", "p": 0.85}}
+{"a": "34364", "b": "34365", "a_to_b": "go tunnel", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "up", "p": 0.9}}
+{"a": "34375", "b": "34364", "a_to_b": "go south ledge", "b_to_a": "go east bridge", "fwd": {"choice": "same floor", "p": 0.77}, "rev": {"choice": "same floor", "p": 0.89}}
+{"a": "34375", "b": "34376", "a_to_b": "go east ledge", "b_to_a": "go bridge", "fwd": {"choice": "same floor", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "34378", "b": "34377", "a_to_b": "go east ledge", "b_to_a": "go bridge", "fwd": {"choice": "same floor", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.71}}
+{"a": "34378", "b": "34379", "a_to_b": "go north ledge", "b_to_a": "go east bridge", "fwd": {"choice": "up", "p": 0.5}, "rev": {"choice": "same floor", "p": 0.89}}
+{"a": "34381", "b": "34379", "a_to_b": "go north ledge", "b_to_a": "go west bridge", "fwd": {"choice": "same floor", "p": 0.88}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "34381", "b": "34380", "a_to_b": "go west ledge", "b_to_a": "go bridge", "fwd": {"choice": "same floor", "p": 0.72}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "34399", "b": "31059", "a_to_b": "urchin guide bank", "b_to_a": "urchin guide bank", "fwd": {"choice": "same floor", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.87}}
+{"a": "34507", "b": "34517", "a_to_b": "go narrow fissure", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.99}, "rev": {"choice": "up", "p": 0.63}}
+{"a": "34737", "b": "34738", "a_to_b": "go vault", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.98}, "rev": {"choice": "same floor", "p": 0.5}}
+{"a": "34853", "b": "34854", "a_to_b": "go crypt", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.84}, "rev": {"choice": "up", "p": 0.8}}
+{"a": "34940", "b": "34939", "a_to_b": "go staircase", "b_to_a": "go lighthouse", "fwd": {"choice": "down", "p": 0.96}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "35284", "b": "35295", "a_to_b": "go canopy", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.65}, "rev": {"choice": "same floor", "p": 0.74}}
+{"a": "35297", "b": "35298", "a_to_b": "go bank", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.69}, "rev": {"choice": "same floor", "p": 0.8}}
+{"a": "35448", "b": "12981", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.97}, "rev": {"choice": "down", "p": 0.84}}
+{"a": "35473", "b": "35472", "a_to_b": "go narrow tunnel", "b_to_a": "go curtain", "fwd": {"choice": "same floor", "p": 0.83}, "rev": {"choice": "down", "p": 0.53}}
+{"a": "35477", "b": "35478", "a_to_b": "go stairway", "b_to_a": "go railing", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "35477", "b": "35479", "a_to_b": "go oak door", "b_to_a": "go door", "fwd": {"choice": "same floor", "p": 0.86}, "rev": {"choice": "same floor", "p": 0.9}}
+{"a": "35517", "b": "35532", "a_to_b": "go flag cavern", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.79}, "rev": {"choice": "same floor", "p": 0.95}}
+{"a": "35517", "b": "35568", "a_to_b": "go spiraled staircase", "b_to_a": "go driftwood door", "fwd": {"choice": "up", "p": 0.85}, "rev": {"choice": "same floor", "p": 0.8}}
+{"a": "35519", "b": "35551", "a_to_b": "go coral cavern", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.91}, "rev": {"choice": "same floor", "p": 0.96}}
+{"a": "35520", "b": "35556", "a_to_b": "go jewel cavern", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.99}, "rev": {"choice": "same floor", "p": 0.98}}
+{"a": "35521", "b": "35557", "a_to_b": "go cavern entrance", "b_to_a": "out", "fwd": {"choice": "same floor", "p": 0.59}, "rev": {"choice": "same floor", "p": 0.63}}
+{"a": "35543", "b": "35544", "a_to_b": "go ledge", "b_to_a": "go pool", "fwd": {"choice": "down", "p": 0.76}, "rev": {"choice": "same floor", "p": 0.46}}
+{"a": "35712", "b": "35713", "a_to_b": "go tree", "b_to_a": "go tree", "fwd": {"choice": "down", "p": 0.78}, "rev": {"choice": "up", "p": 0.99}}
+{"a": "35740", "b": "35738", "a_to_b": "go steps", "b_to_a": "go entrance", "fwd": {"choice": "up", "p": 1}, "rev": {"choice": "down", "p": 1}}
+{"a": "35875", "b": "35873", "a_to_b": "go grey steps", "b_to_a": "go hot spring", "fwd": {"choice": "same floor", "p": 0.45}, "rev": {"choice": "same floor", "p": 0.77}}
+{"a": "35899", "b": "35900", "a_to_b": "go basalt ledge", "b_to_a": "go soot-stained raft", "fwd": {"choice": "same floor", "p": 0.51}, "rev": {"choice": "same floor", "p": 0.76}}
+{"a": "35900", "b": "35901", "a_to_b": "go dark cave", "b_to_a": "out", "fwd": {"choice": "down", "p": 0.88}, "rev": {"choice": "down", "p": 0.61}}
+{"a": "35967", "b": "35965", "a_to_b": "go staircase", "b_to_a": "go staircase", "fwd": {"choice": "up", "p": 0.98}, "rev": {"choice": "up", "p": 0.89}}
+{"a": "36262", "b": "29867", "a_to_b": "go rope-secured barricade", "b_to_a": "go log-framed encampment", "fwd": {"choice": "same floor", "p": 0.97}, "rev": {"choice": "same floor", "p": 1}}
+{"a": "36272", "b": "36273", "a_to_b": "go trapdoor", "b_to_a": "go trapdoor", "fwd": {"choice": "down", "p": 0.94}, "rev": {"choice": "up", "p": 0.98}}
+{"a": "36352", "b": "36351", "a_to_b": "swim up", "b_to_a": "swim up", "fwd": {"choice": "up", "p": 0.53}, "rev": {"choice": "down", "p": 0.85}}
+{"a": "36356", "b": "36373", "a_to_b": "go tower", "b_to_a": "out", "fwd": {"choice": "up", "p": 0.57}, "rev": {"choice": "down", "p": 0.95}}
+{"a": "36384", "b": "36374", "a_to_b": "go tower", "b_to_a": "go east door", "fwd": {"choice": "up", "p": 0.56}, "rev": {"choice": "same floor", "p": 0.59}}
+{"a": "36386", "b": "36374", "a_to_b": "go tower", "b_to_a": "go north door", "fwd": {"choice": "up", "p": 0.91}, "rev": {"choice": "down", "p": 0.6}}
+{"a": "36762", "b": "33093", "a_to_b": "go ramp", "b_to_a": "go ship", "fwd": {"choice": "same floor", "p": 0.71}, "rev": {"choice": "up", "p": 0.62}}
+{"a": "36767", "b": "33092", "a_to_b": "go ramp", "b_to_a": "go ship", "fwd": {"choice": "same floor", "p": 0.6799999999999999}, "rev": {"choice": "up", "p": 0.63}}

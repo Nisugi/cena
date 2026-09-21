@@ -1,0 +1,40 @@
+{"item": "E0281", "direction": "up", "confidence": 70, "reason": "room left describes tower steps at the entrance and the nave is reached by going up the steps into the temple"}
+{"item": "E0282", "direction": "same floor", "confidence": 65, "reason": "a narrow tunnel off a large subterranean cavern into another small cavern, no rise or drop described"}
+{"item": "E0283", "direction": "down", "confidence": 80, "reason": "the stream disappears into a deep sink hole and the arrival is a depression with the hole gushing a spring"}
+{"item": "E0284", "direction": "same floor", "confidence": 60, "reason": "a hole between two adjoining rock chambers of the same cavern complex, both reached by steps from the foyer level"}
+{"item": "E0285", "direction": "down", "confidence": 60, "reason": "a shaft from a domed chamber whose other exit is 'out' to the summit leads to a natural cave below"}
+{"item": "E0286", "direction": "up", "confidence": 92, "reason": "arrived room's floor is pierced by a staircase winding downward, and the names are Lower and Upper Landing"}
+{"item": "E0287", "direction": "up", "confidence": 95, "reason": "left room says shinny up the air shaft; arrival is the inn rooftop with a narrow air shaft leading down"}
+{"item": "E0288", "direction": "up", "confidence": 75, "reason": "a muddy path rises out of the marsh and climbs a tall hill; arrival describes a difficult ascent"}
+{"item": "E0289", "direction": "same floor", "confidence": 70, "reason": "a makeshift crypt of skulls built in the yard with a packed dirt floor, entered at ground level"}
+{"item": "E0290", "direction": "same floor", "confidence": 60, "reason": "both rooms are subterranean and the shop is through a hole in the wall; the steps to it are a short rise within one level"}
+{"item": "E0291", "direction": "same floor", "confidence": 80, "reason": "the oak door looms before you on the landing, so the workshop is level with the landing"}
+{"item": "E0292", "direction": "down", "confidence": 70, "reason": "climbing the bank down onto the frozen river surface below the tree-lined bank"}
+{"item": "E0293", "direction": "up", "confidence": 78, "reason": "the arrived room's other exit is down to the Nexus, and the rough stone steps lead up from the tower floor"}
+{"item": "E0294", "direction": "same floor", "confidence": 78, "reason": "a canopied shop tent pitched on the slope alongside other tents entered from the same room"}
+{"item": "E0295", "direction": "same floor", "confidence": 60, "reason": "entering the tower's ground-level hall from the courtyard; its stairs lead up to the library"}
+{"item": "E0296", "direction": "up", "confidence": 60, "reason": "the trail climbs the hill and the arrival is nearer the top with a further up exit to Rocky Trail"}
+{"item": "E0297", "direction": "same floor", "confidence": 78, "reason": "a trail snaking across a narrow ledge to a redoubt, a level continuation of the mountain path"}
+{"item": "E0298", "direction": "up", "confidence": 95, "reason": "a slippery ladder leads upward from the sewers into a storage closet with a refuse chute"}
+{"item": "E0299", "direction": "down", "confidence": 88, "reason": "marble steps curve down from the avenue; the promenade sits below steps leading to the avenue above"}
+{"item": "E0300", "direction": "same floor", "confidence": 65, "reason": "climbing a stacked stone wall between an orchard and a neighbouring pond field, both at ground level"}
+{"item": "E0301", "direction": "down", "confidence": 95, "reason": "swim down into the riverbed, and the arrived room's exit is swim up back to the surface room"}
+{"item": "E0302", "direction": "same floor", "confidence": 72, "reason": "a tunnel branching off the main cavern to the west, both subterranean with no drop described at the opening"}
+{"item": "E0303", "direction": "same floor", "confidence": 70, "reason": "both rooms are named Second Floor, so the stairs connect rooms on the same storey"}
+{"item": "E0304", "direction": "up", "confidence": 85, "reason": "a steep flight climbing the bluff; the arrival is higher where the hillside gains altitude above the valley"}
+{"item": "E0305", "direction": "down", "confidence": 88, "reason": "the pole allows easy access into the room beneath"}
+{"item": "E0306", "direction": "same floor", "confidence": 78, "reason": "entering the tower's base from the road, where stairs then ascend the barbican"}
+{"item": "E0307", "direction": "same floor", "confidence": 70, "reason": "entering the tower's guarded entryway at ground level from the path in its shadow"}
+{"item": "E0308", "direction": "same floor", "confidence": 65, "reason": "moving from the creek to its bank, described as difficult to get to but not a climb or drop"}
+{"item": "E0309", "direction": "up", "confidence": 80, "reason": "steps climbed from the inn's ground corridor to a corridor of bedrooms and a bridal suite"}
+{"item": "E0310", "direction": "up", "confidence": 90, "reason": "an ascending spiral steps in the banquet hall, and the lounge is an upper floor with spiral steps leading down"}
+{"item": "E0311", "direction": "down", "confidence": 75, "reason": "a stairway from the mausoleum ingress into a dank vault whose further exit is a ladder to a crypt"}
+{"item": "E0312", "direction": "up", "confidence": 82, "reason": "arrived room says one could climb over the fallen stone to descend to the grassy area to the south"}
+{"item": "E0313", "direction": "up", "confidence": 92, "reason": "a window high above the wall, and the tower top's rope permits access to the eastern wall below"}
+{"item": "E0314", "direction": "down", "confidence": 88, "reason": "the rickety stairs lead into a decrepit basement with a dirt floor"}
+{"item": "E0315", "direction": "up", "confidence": 78, "reason": "a forested slope rises from the drifts and the arrival is the timberline on the mountainous slope"}
+{"item": "E0316", "direction": "same floor", "confidence": 72, "reason": "a darkened recess just off the side of the path, entered level with the trail"}
+{"item": "E0317", "direction": "down", "confidence": 70, "reason": "the path begins at a rocky outcropping near the base and rises upward, so going to the outcropping base is descending"}
+{"item": "E0318", "direction": "up", "confidence": 92, "reason": "the carved staircase leads to the floor above and the arrival water flows down to the depths below"}
+{"item": "E0319", "direction": "same floor", "confidence": 82, "reason": "a door off the upper landing hallway, level with the other bedroom doors there"}
+{"item": "E0320", "direction": "up", "confidence": 88, "reason": "a staircase leading to the facility above"}

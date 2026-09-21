@@ -3,3 +3,8 @@ reference/
 capture/
 target/
 .workflows/
+research/jev-trial/.env
+research/jev-trial/results/cache/
+research/jev-trial/**/*.raw.json
+research/jev-trial/__pycache__/
+target-pr1-review/

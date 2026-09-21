@@ -1,0 +1,40 @@
+{"item": "E0681", "direction": "down", "confidence": 88, "reason": "ladder pokes out of a large hole in the sewer floor, and the dining chamber says its ladder leads to the upper levels"}
+{"item": "E0682", "direction": "same floor", "confidence": 85, "reason": "an oak door off a 3rd floor hallway into a suite on that same floor"}
+{"item": "E0683", "direction": "up", "confidence": 82, "reason": "stairs lead up to the wagon's door from the outdoor row into the tavern inside the wagon"}
+{"item": "E0684", "direction": "up", "confidence": 92, "reason": "hatch is in the tunnel's ceiling and the courtyard says the hatch leads down through its floor"}
+{"item": "E0685", "direction": "down", "confidence": 88, "reason": "trapdoor from a warehouse into a cellar, which itself has a further down exit"}
+{"item": "E0686", "direction": "same floor", "confidence": 78, "reason": "the captain's balcony is described as quite close to the cliff face, stepping across level"}
+{"item": "E0687", "direction": "up", "confidence": 90, "reason": "window is far too high to access without help from above; rope descends from the tower's heights"}
+{"item": "E0688", "direction": "up", "confidence": 85, "reason": "cellar to a mezzanine that is above the bar, so from below ground up past the tavern floor"}
+{"item": "E0689", "direction": "same floor", "confidence": 62, "reason": "embankment top is a catwalk of stones bordering the plateau; broken stones border the plateau at its edge"}
+{"item": "E0690", "direction": "up", "confidence": 60, "reason": "climbing stairs from the member lounge to the library reads as ascending a storey, though text is thin"}
+{"item": "E0691", "direction": "same floor", "confidence": 70, "reason": "steps from the stage out into the auditorium whose seats descend toward that same stage"}
+{"item": "E0692", "direction": "up", "confidence": 92, "reason": "trapdoor is set in the ceiling of the room left and in the floor of the room arrived in"}
+{"item": "E0693", "direction": "up", "confidence": 92, "reason": "spiraling stairs lead up to a shop built mid-level on the massive tree"}
+{"item": "E0694", "direction": "down", "confidence": 80, "reason": "trapdoor from a storage chamber into a room named Lower Level"}
+{"item": "E0695", "direction": "down", "confidence": 92, "reason": "swim down from the bank into an underwater room; the underwater rooms use swim up to return"}
+{"item": "E0696", "direction": "same floor", "confidence": 65, "reason": "a burrow leading from one tunnel to an adjoining glacial cavern, no vertical language"}
+{"item": "E0697", "direction": "down", "confidence": 93, "reason": "a massive hole in the floor leading into a six-foot-deep grave with vertical walls seen from below"}
+{"item": "E0698", "direction": "down", "confidence": 80, "reason": "arrived room says a rocky crevice leads upwards back to where we came from"}
+{"item": "E0699", "direction": "up", "confidence": 85, "reason": "stairs ascend toward the zenith of the mausoleum and the arrival is at the highest reaches"}
+{"item": "E0700", "direction": "same floor", "confidence": 88, "reason": "hatch is the entrance of a cabin set off the same orlop deck walkway"}
+{"item": "E0701", "direction": "up", "confidence": 85, "reason": "the arrived ladder is very tall with the pool looking very very small below, higher up the diving tower"}
+{"item": "E0702", "direction": "same floor", "confidence": 70, "reason": "steps from the stage into the auditorium whose benches descend toward that stage"}
+{"item": "E0703", "direction": "down", "confidence": 93, "reason": "swim down into an underwater room that returns via swim up to the room left"}
+{"item": "E0704", "direction": "up", "confidence": 78, "reason": "climbing the staircase between two Villa landings, the second reached at the top of the spiral"}
+{"item": "E0705", "direction": "down", "confidence": 85, "reason": "arrived pier section is much closer to the water than that above"}
+{"item": "E0706", "direction": "up", "confidence": 88, "reason": "the stairway rises to the upper levels and the arrival offers a bird's eye view of the courtyard"}
+{"item": "E0707", "direction": "same floor", "confidence": 60, "reason": "both rooms are the ravine floor; the slope climbed connects floor sections, with the true up exit listed separately"}
+{"item": "E0708", "direction": "up", "confidence": 82, "reason": "entering the tallest tower's lookout floor, whose stair winds down from there"}
+{"item": "E0709", "direction": "up", "confidence": 70, "reason": "wide fieldstone steps lead up from the garden onto the sheltered veranda"}
+{"item": "E0710", "direction": "same floor", "confidence": 68, "reason": "short steps between a wagon shop and its adjacent back garden at ground level"}
+{"item": "E0711", "direction": "same floor", "confidence": 78, "reason": "a low tunnel burrowing through a wall between two tunnel rooms, no vertical cue"}
+{"item": "E0712", "direction": "same floor", "confidence": 75, "reason": "an entry tunnel from the ravine floor opening into a chamber inside the plateau at that level"}
+{"item": "E0713", "direction": "down", "confidence": 92, "reason": "the pit bores down into the stone and the bodies are heaped into the pit below"}
+{"item": "E0714", "direction": "same floor", "confidence": 55, "reason": "a walkway to a hall in the same guild with no height language either side, though a staircase is used"}
+{"item": "E0715", "direction": "same floor", "confidence": 60, "reason": "both rooms are named Second Floor, so the descending stairs connect levels within one storey"}
+{"item": "E0716", "direction": "up", "confidence": 93, "reason": "steep wooden stairs ascend to the third floor and the landing is at the top of that staircase"}
+{"item": "E0717", "direction": "down", "confidence": 88, "reason": "the ramp descends into the depths of the grotto and the arrival is the Crystalline Depths at its bottom"}
+{"item": "E0718", "direction": "up", "confidence": 80, "reason": "climbing an embankment of boulders on a rise to the crown of boulders atop the granite outcrop"}
+{"item": "E0719", "direction": "up", "confidence": 90, "reason": "ladder from the upper hall to the rooftop, the highest point of the outpost"}
+{"item": "E0720", "direction": "up", "confidence": 72, "reason": "climbing a cleft in the cliff face up to a cliffside passage near the highest point of the cliffs"}

@@ -1,0 +1,40 @@
+{"item": "E0761", "direction": "up", "confidence": 88, "reason": "climb stairs from a ground-floor farmhouse room with an 'out' exit into a room with a steeply angled ceiling, i.e. an upper storey"}
+{"item": "E0762", "direction": "up", "confidence": 62, "reason": "tower chamber with spiral steps going both ways; 'go staircase' from a floor with the outside door likely ascends to the upper bench room"}
+{"item": "E0763", "direction": "up", "confidence": 93, "reason": "the shaft room sees the ramp above it and the outdoor room describes the ramp descending into the ground"}
+{"item": "E0764", "direction": "up", "confidence": 94, "reason": "staircase spirals upward against the tower to a railed landing preventing falls to the ground below"}
+{"item": "E0765", "direction": "down", "confidence": 85, "reason": "fissure in a cliff into an underground cavern whose ground descends sharply"}
+{"item": "E0766", "direction": "down", "confidence": 80, "reason": "stage steps to the auditorium floor whose tiers of seats descend toward the stage; the hall is level with/below the stage apron"}
+{"item": "E0767", "direction": "up", "confidence": 92, "reason": "climbing a giant boulder ends on top of the rock"}
+{"item": "E0768", "direction": "up", "confidence": 93, "reason": "the ramp stretches upwards to the inner ward, which sees it leading down"}
+{"item": "E0769", "direction": "up", "confidence": 90, "reason": "roughly carved stairs leading upwards from the tunnels to the ice room"}
+{"item": "E0770", "direction": "down", "confidence": 90, "reason": "granite staircase leads under the fortification into a cavern"}
+{"item": "E0771", "direction": "up", "confidence": 60, "reason": "submersible hatch from the bar to a control room with a periscope eyepiece, suggesting a level above"}
+{"item": "E0772", "direction": "same floor", "confidence": 62, "reason": "a hole from the tree platform into a hollow in the same beech tree, at platform level"}
+{"item": "E0773", "direction": "same floor", "confidence": 85, "reason": "stepping under the drooping boughs of the pine at ground level beside the path"}
+{"item": "E0774", "direction": "same floor", "confidence": 70, "reason": "fissure gouged in the rock beside the path leads straight into the cavern with light entering through it"}
+{"item": "E0775", "direction": "same floor", "confidence": 82, "reason": "entering the tower from the yard into its ground-level anteroom, which has its own 'up' exit"}
+{"item": "E0776", "direction": "up", "confidence": 93, "reason": "wooden stair leads to an opening in the ceiling, arriving at the observation tower above"}
+{"item": "E0777", "direction": "same floor", "confidence": 80, "reason": "entering a tower shop from the street into its cobblestone-floored ground room"}
+{"item": "E0778", "direction": "down", "confidence": 95, "reason": "swim down from the river surface into an underwater channel room"}
+{"item": "E0779", "direction": "up", "confidence": 78, "reason": "irregular stone steps lead up to an oval hole in the wall, climbed into the next cave"}
+{"item": "E0780", "direction": "up", "confidence": 80, "reason": "wreckage path leads up a forested incline and the arrived room describes a steep incline"}
+{"item": "E0781", "direction": "same floor", "confidence": 78, "reason": "cottage bedroom door out to the courtyard at ground level, sharing exits with the living room"}
+{"item": "E0782", "direction": "same floor", "confidence": 85, "reason": "hatch opposite a door along the same main-deck hallway into crew quarters"}
+{"item": "E0783", "direction": "down", "confidence": 72, "reason": "the stairway's landing lies by a grand descending passage and the arrival slopes downward"}
+{"item": "E0784", "direction": "up", "confidence": 85, "reason": "steps lead up into a merchant wagon"}
+{"item": "E0785", "direction": "down", "confidence": 70, "reason": "the spring's upwelled water splashes down carved granite steps to Stone Mill Road below"}
+{"item": "E0786", "direction": "up", "confidence": 72, "reason": "a spiral ladder from the third floor to a gable room with a low ceiling under the roof"}
+{"item": "E0787", "direction": "same floor", "confidence": 88, "reason": "entering the bakery from the lane through its ground-level street frontage"}
+{"item": "E0788", "direction": "same floor", "confidence": 78, "reason": "boulders form a shallow tunnel between two jungle floor rooms"}
+{"item": "E0789", "direction": "down", "confidence": 88, "reason": "arriving in the foyer, whose wooden staircase rises to the second floor where the landing is"}
+{"item": "E0790", "direction": "up", "confidence": 90, "reason": "iron ladder rises to a trap door in the ceiling out of the sewers into a lockup cell"}
+{"item": "E0791", "direction": "same floor", "confidence": 80, "reason": "walking into one of the graveyard vaults from the ground beside it"}
+{"item": "E0792", "direction": "up", "confidence": 90, "reason": "ladder rises from the sewer floor and disappears into the wooden ceiling into a workshop"}
+{"item": "E0793", "direction": "down", "confidence": 92, "reason": "steps descend from the balcony to the garden, which describes them climbing back up"}
+{"item": "E0794", "direction": "same floor", "confidence": 68, "reason": "a dark tunnel leads out from the landing on the level; the tunnel only continues to rise beyond"}
+{"item": "E0795", "direction": "same floor", "confidence": 78, "reason": "a hatch into the rear of the same wagon"}
+{"item": "E0796", "direction": "same floor", "confidence": 50, "reason": "entering a bank building from the street; the summoning chamber gives no level cue"}
+{"item": "E0797", "direction": "up", "confidence": 68, "reason": "smooth stone steps lead from the garden up to the patio, which looks out over the garden beyond"}
+{"item": "E0798", "direction": "up", "confidence": 90, "reason": "climbing the slope to the top of the rise where the tower stands and slopes descend away"}
+{"item": "E0799", "direction": "down", "confidence": 90, "reason": "narrow stone steps disappear with the waterfall into a fissure in the floor; the landing sees steps arriving from above"}
+{"item": "E0800", "direction": "down", "confidence": 80, "reason": "the entry room describes marble steps curving down and to the east from the promenade above"}

@@ -1,0 +1,40 @@
+{"item": "E0481", "direction": "down", "confidence": 88, "reason": "arrived plaza says a golden stairway marches up a steep incline to the dais we came from"}
+{"item": "E0482", "direction": "up", "confidence": 90, "reason": "climb stairway from a ground-floor shop into an attic space"}
+{"item": "E0483", "direction": "up", "confidence": 72, "reason": "ramp room describes the tunnel opening into the amphitheater at the bottom, so leaving the amphitheater by the ramp rises"}
+{"item": "E0484", "direction": "same floor", "confidence": 80, "reason": "crossing a rickety bridge between ledges in the same cavern, a span level at both ends"}
+{"item": "E0485", "direction": "down", "confidence": 85, "reason": "the showroom is a basement boutique whose spiral staircase descends from the ceiling of the tunnel level"}
+{"item": "E0486", "direction": "same floor", "confidence": 62, "reason": "vestry and cathedral are adjoining rooms on one level, a small staircase to a two-step platform is not a storey"}
+{"item": "E0487", "direction": "up", "confidence": 78, "reason": "climbing a rope from the wall into the tower top at the top of the staircase"}
+{"item": "E0488", "direction": "down", "confidence": 78, "reason": "stairs from a lobby to a dirt-floored storage chamber with mushrooms and mildew, a cellar"}
+{"item": "E0489", "direction": "same floor", "confidence": 55, "reason": "looking through a hole in the wall into an adjacent den, no vertical language"}
+{"item": "E0490", "direction": "down", "confidence": 60, "reason": "a staircase from a hallway into a dark sawdust-floored chamber reads as a cellar below the guild hall"}
+{"item": "E0491", "direction": "up", "confidence": 72, "reason": "the passage's other exit is down to the narthex and footsteps echo up the shale steps, so we climbed"}
+{"item": "E0492", "direction": "up", "confidence": 88, "reason": "climbing a sheer wall out of a ravine onto a hilltop"}
+{"item": "E0493", "direction": "up", "confidence": 75, "reason": "terraced benches rise to the west and we climb them to the plaza above the amphitheater field"}
+{"item": "E0494", "direction": "same floor", "confidence": 90, "reason": "a door off the upstairs hall into a guest room on the same upper floor"}
+{"item": "E0495", "direction": "up", "confidence": 82, "reason": "a ladder rises from the dock to a cave level whose edge drops off to the channel far below"}
+{"item": "E0496", "direction": "down", "confidence": 88, "reason": "the foyer says the slate steps continue downwards"}
+{"item": "E0497", "direction": "up", "confidence": 70, "reason": "leaving a tower cellar through a hole to an outdoor mountain path"}
+{"item": "E0498", "direction": "up", "confidence": 80, "reason": "worn steps lead up to the rear of the wagon, and the shop is inside the wagon"}
+{"item": "E0499", "direction": "up", "confidence": 82, "reason": "arrived room has vast stone steps climbing toward the terraced second story"}
+{"item": "E0500", "direction": "up", "confidence": 68, "reason": "command is climb staircase from a foyer to a study hall, with no downward cue"}
+{"item": "E0501", "direction": "up", "confidence": 90, "reason": "a spiral of steps wreathes the tree to an edifice nested in its branches"}
+{"item": "E0502", "direction": "up", "confidence": 58, "reason": "leaving a lava-river ledge through a fissure into a chamber lit from a fissure above; ambiguous but reads as ascending out"}
+{"item": "E0503", "direction": "same floor", "confidence": 80, "reason": "crossing the rickety bridge to the west ledge platform, a span level at both ends"}
+{"item": "E0504", "direction": "up", "confidence": 85, "reason": "a staircase from a platform over lava to a balcony looking far below at a cone ascending from below"}
+{"item": "E0505", "direction": "down", "confidence": 72, "reason": "a trapdoor normally drops to the level beneath"}
+{"item": "E0506", "direction": "down", "confidence": 88, "reason": "the pantry says the steps traverse downward and the destination is a wine cellar"}
+{"item": "E0507", "direction": "up", "confidence": 85, "reason": "the lane's description says flagstone steps descend toward Bayside Road, the room we left"}
+{"item": "E0508", "direction": "same floor", "confidence": 88, "reason": "a labeled door off the hallway into the practice room, with a separate up exit to the landing"}
+{"item": "E0509", "direction": "up", "confidence": 70, "reason": "a ramp with a precarious incline leads from the cove up to a landing that continues up a trail"}
+{"item": "E0510", "direction": "up", "confidence": 62, "reason": "climbing over a rockslide from above onto the trail beyond; mostly a lateral pass but the climb is over the slide"}
+{"item": "E0511", "direction": "down", "confidence": 75, "reason": "the chamber's ramp stretches upward and away back to the lair, so going down the ramp reaches the pier"}
+{"item": "E0512", "direction": "up", "confidence": 78, "reason": "the dais is a floating platform suspended well above the ground"}
+{"item": "E0513", "direction": "same floor", "confidence": 55, "reason": "two gallery exhibit rooms with no vertical language in either description"}
+{"item": "E0514", "direction": "up", "confidence": 78, "reason": "climbing a crevice out of a valley floor into a mountainous crevice that continues up the mountain"}
+{"item": "E0515", "direction": "same floor", "confidence": 70, "reason": "a tunnel branching off level from the ledge, both rooms overlook the same pit below"}
+{"item": "E0516", "direction": "up", "confidence": 65, "reason": "stepping out of the creek bed onto the gently sloping bank"}
+{"item": "E0517", "direction": "same floor", "confidence": 60, "reason": "a crypt chamber opening off the catacomb tunnel at the same underground level"}
+{"item": "E0518", "direction": "up", "confidence": 80, "reason": "the bridge says steps at its south end lead up to a hill, and we arrive on the hilltop"}
+{"item": "E0519", "direction": "up", "confidence": 85, "reason": "climb stairs from one tower landing to another, with the lower landing's other exit going down"}
+{"item": "E0520", "direction": "same floor", "confidence": 90, "reason": "squeezing past a boulder along the trail between two trail rooms"}

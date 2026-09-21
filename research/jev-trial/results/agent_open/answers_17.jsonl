@@ -1,0 +1,40 @@
+{"item": "E0641", "direction": "down", "confidence": 70, "reason": "arrived room's passage ceiling 'plunges through the layers of bedrock in its descent', while the left room's ceiling 'descends' into the crossing corridor"}
+{"item": "E0642", "direction": "down", "confidence": 78, "reason": "left room is on the raised boardwalk, arrived room is the sand alongside and below it, with linens draping down from the boardwalk and lights 'from above'"}
+{"item": "E0643", "direction": "up", "confidence": 72, "reason": "climbing a winding stone stairway from a corridor into an annex on another level"}
+{"item": "E0644", "direction": "down", "confidence": 80, "reason": "left room has a deep tunnel winding down into the floor; arrived room describes a tunnel winding up out of it"}
+{"item": "E0645", "direction": "down", "confidence": 72, "reason": "stepping stones 'lead down into the water' and arrival is in the pond/spring itself"}
+{"item": "E0646", "direction": "same floor", "confidence": 82, "reason": "crossing a bridge over the ravine to the northern ledge; a span is level with the ground at either end"}
+{"item": "E0647", "direction": "same floor", "confidence": 60, "reason": "climbing the lower rough stone wall into a walled courtyard at ground level, not another storey"}
+{"item": "E0648", "direction": "same floor", "confidence": 70, "reason": "a cave mouth opening off the trail at the same level; the cave floor is 'hardpacked soil and surprisingly flat'"}
+{"item": "E0649", "direction": "same floor", "confidence": 55, "reason": "a ladder onto a ship's foredeck from a trail; text gives no clear level change and it reads as boarding"}
+{"item": "E0650", "direction": "same floor", "confidence": 68, "reason": "a level tunnel continuing into the common crypt within the same Hall of the Dead complex, all hard flat"}
+{"item": "E0651", "direction": "same floor", "confidence": 62, "reason": "the shadowy burrow is a niche off the platform level, not another storey; the grooves exit is the one that goes down to ground level"}
+{"item": "E0652", "direction": "down", "confidence": 85, "reason": "arrived Entry says the mahogany stairs 'ascends to the second floor', so the hallway above is reached by going down to the entry"}
+{"item": "E0653", "direction": "up", "confidence": 90, "reason": "a spiraled staircase from the shop to a room explicitly named Rooftop"}
+{"item": "E0654", "direction": "same floor", "confidence": 78, "reason": "a boarding ramp from a ship's deck onto a dock; boarding a docked vessel is level"}
+{"item": "E0655", "direction": "same floor", "confidence": 58, "reason": "steps between two adjacent outdoor garden/lawn areas in the same complex; short steps on one level"}
+{"item": "E0656", "direction": "up", "confidence": 88, "reason": "the landing says twin spiraling stairs lead up and the arrived Stair says the steps 'continue their climb up the side of the trunk'"}
+{"item": "E0657", "direction": "same floor", "confidence": 68, "reason": "both rooms are subterranean Burrow Way sections connected by a fissure with no described rise or drop"}
+{"item": "E0658", "direction": "same floor", "confidence": 85, "reason": "crossing the rope bridge from the bridge room to the icy ledge at its eastern end; a span is level with both ends"}
+{"item": "E0659", "direction": "same floor", "confidence": 65, "reason": "climbing over a low field wall between two adjacent outdoor grassland rooms, both cultivated ground"}
+{"item": "E0660", "direction": "up", "confidence": 90, "reason": "the channel's ladder 'leads back up' and the inn contrasts itself with 'the tunnels below'"}
+{"item": "E0661", "direction": "up", "confidence": 88, "reason": "stairs cut into the ice 'leading up to the city walls'; arrived room is the North Wall with a vantage point over the gate"}
+{"item": "E0662", "direction": "down", "confidence": 72, "reason": "arrived amphitheater is a 'sunken chamber' with a window near its ceiling looking into the room beyond, and the corridor is off the Lower Nexus"}
+{"item": "E0663", "direction": "up", "confidence": 62, "reason": "a staircase from the ground-floor foyer to a lounge on another storey; the foyer's other exits are all level rooms"}
+{"item": "E0664", "direction": "same floor", "confidence": 58, "reason": "a small tunnel behind the statue leading to an adjoining guild chamber with no stated rise or drop"}
+{"item": "E0665", "direction": "same floor", "confidence": 78, "reason": "stepping from the creek to its adjacent south bank, which is 'solid enough for you to walk into the creek without difficulty'"}
+{"item": "E0666", "direction": "up", "confidence": 85, "reason": "a steep trail climbing the ravine wall east; the arrived room is 'about halfway up a steep slope' with a trail west skirting into the ravine below"}
+{"item": "E0667", "direction": "down", "confidence": 75, "reason": "the flat stones form 'steps that descend into the water' and the arrival is the pool itself"}
+{"item": "E0668", "direction": "up", "confidence": 55, "reason": "a stairway from the larder to the inn room; no explicit direction, but a service larder is usually below the public room"}
+{"item": "E0669", "direction": "same floor", "confidence": 55, "reason": "a trapdoor between a storage room and an adjacent zoo cage that exits 'out' to the cage area at ground level"}
+{"item": "E0670", "direction": "down", "confidence": 95, "reason": "command is 'swim down' from the river surface to an Underwater riverbed room"}
+{"item": "E0671", "direction": "same floor", "confidence": 78, "reason": "the oak door connects the lounge to the foyer/lobby, which describes the door as lying to its southwest on the same level"}
+{"item": "E0672", "direction": "up", "confidence": 68, "reason": "the stairs room describes carpeted steps climbing up to a landing, and the arrived Carpeted Landing leads on to the Seventh Floor stairs"}
+{"item": "E0673", "direction": "down", "confidence": 90, "reason": "the entry's wide stone stairs 'lead downward into a dank darkness' and arrival is a damp sewer chamber"}
+{"item": "E0674", "direction": "same floor", "confidence": 72, "reason": "the oak door is the front door out of the vestibule onto the street; the staircase is the separate exit to the loft"}
+{"item": "E0675", "direction": "same floor", "confidence": 52, "reason": "both lobby and departure annex are carved rock rooms each with a sign by a carved stone stairway; no described level change"}
+{"item": "E0676", "direction": "up", "confidence": 65, "reason": "a spiraled staircase from the bazaar floor into a shop whose domed ceiling and overhead light slats suggest a level above"}
+{"item": "E0677", "direction": "same floor", "confidence": 80, "reason": "the oak-bound door 'leads back out' of the office into the foyer, which has its own separate stairwell for level changes"}
+{"item": "E0678", "direction": "up", "confidence": 85, "reason": "the arrived turret's 'staircase leading down looks exceedingly inviting' and its ceiling is the roof's beams"}
+{"item": "E0679", "direction": "up", "confidence": 70, "reason": "the steep ramp 'reaches upward to the west' to the tower's entrance at the ramp's summit"}
+{"item": "E0680", "direction": "same floor", "confidence": 72, "reason": "entering a hall at the tower's ground level from the forest path; the arrived Rime Hall is a ground floor hall with a level archway exit"}

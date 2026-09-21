@@ -1,0 +1,40 @@
+{"item": "E0161", "direction": "same floor", "confidence": 65, "reason": "cavern's own down exit goes elsewhere; the tunnel is a level passage east toward an opening, entered through a doorway"}
+{"item": "E0162", "direction": "down", "confidence": 75, "reason": "left room's only other exit is up to the Landing, and the arrived section is lower on the stairway with the dock below it"}
+{"item": "E0163", "direction": "up", "confidence": 88, "reason": "climbing a staircase from a gully up to a hillock 'atop a lonely hill'"}
+{"item": "E0164", "direction": "same floor", "confidence": 70, "reason": "arrived room says the gash replaced a door and steps leading south and upward, so the gash itself is a level opening back the other way"}
+{"item": "E0165", "direction": "up", "confidence": 92, "reason": "climbing onto the pedestal gives 'this vantage point' with the disk above"}
+{"item": "E0166", "direction": "same floor", "confidence": 92, "reason": "walking out onto a natural stone bridge spanning the river, level with the cliff at either end"}
+{"item": "E0167", "direction": "up", "confidence": 80, "reason": "instruments stand on a raised platform and the arrived room speaks of a high vantage point"}
+{"item": "E0168", "direction": "same floor", "confidence": 80, "reason": "an alley behind the shop, sheltered between wall and building, on the same slope level"}
+{"item": "E0169", "direction": "up", "confidence": 78, "reason": "the dais is described as raised in the center of the chamber"}
+{"item": "E0170", "direction": "up", "confidence": 70, "reason": "arrived staircase section shows a dull light from the top of the staircase, suggesting we climbed toward it"}
+{"item": "E0171", "direction": "up", "confidence": 88, "reason": "chamber's spiral staircase ascends further up into the tower's reach"}
+{"item": "E0172", "direction": "same floor", "confidence": 60, "reason": "nexus has its own down exit; tunnel connects laterally and the doorway is a level opening"}
+{"item": "E0173", "direction": "up", "confidence": 60, "reason": "cobbled stairs rise toward the gate, though the gate room also describes the avenue below"}
+{"item": "E0174", "direction": "same floor", "confidence": 88, "reason": "both rooms are Cliff Trail walkway sections linked by a trail"}
+{"item": "E0175", "direction": "up", "confidence": 85, "reason": "climbing torch-lit stairs from the courtyard into the temple above"}
+{"item": "E0176", "direction": "down", "confidence": 82, "reason": "arriving room is subterranean corridor surrounded by hill, from a non-subterranean office"}
+{"item": "E0177", "direction": "same floor", "confidence": 72, "reason": "the gate is set at the threshold before the first step; passing it puts you in the stairwell's base, with up still listed onward"}
+{"item": "E0178", "direction": "up", "confidence": 88, "reason": "climbing the cliff face from a path that ascends, arriving at a ledge high above with Ta'Illistim far below"}
+{"item": "E0179", "direction": "same floor", "confidence": 78, "reason": "stepping from the village onto a manor porch, both outdoors and level"}
+{"item": "E0180", "direction": "same floor", "confidence": 85, "reason": "crossing onto a dock, which is a level span from the shore"}
+{"item": "E0181", "direction": "up", "confidence": 85, "reason": "the spiral staircase rises from the great hall and the balcony looks down on the main hall over a railing"}
+{"item": "E0182", "direction": "down", "confidence": 85, "reason": "music drifts upward from the darkened depths of the staircase, and the landing's own exits include down further"}
+{"item": "E0183", "direction": "same floor", "confidence": 85, "reason": "the cloister walkway is separated from the atrium only by a row of pillars, same level"}
+{"item": "E0184", "direction": "down", "confidence": 88, "reason": "arrived room is Below Deck where the winding staircase comes to an end"}
+{"item": "E0185", "direction": "up", "confidence": 78, "reason": "stairway room's steps drop to the refectory floor, so leaving the refectory by the stairway goes up"}
+{"item": "E0186", "direction": "down", "confidence": 62, "reason": "the hidden stair spirals down into darkness with a concealed door at the top, so entering from the hall descends"}
+{"item": "E0187", "direction": "up", "confidence": 85, "reason": "steps wind upward from the Wings, and the Shoulders sit above the Back/Wings on the dragon carving"}
+{"item": "E0188", "direction": "up", "confidence": 70, "reason": "the Elemental chamber's other exit is down to Spiritual, so the staircase continues up to Chaos"}
+{"item": "E0189", "direction": "up", "confidence": 70, "reason": "the foyer says the area is visible up a set of stone steps, with a separate downward passage"}
+{"item": "E0190", "direction": "same floor", "confidence": 72, "reason": "the gate stands before the very first step; passing it leaves you at the stair's base with up still to go"}
+{"item": "E0191", "direction": "up", "confidence": 80, "reason": "a marble staircase leads up to the mithril gates of the gallery"}
+{"item": "E0192", "direction": "up", "confidence": 72, "reason": "an ornate staircase ascends from the Head to the cliff's apex and the avenue above"}
+{"item": "E0193", "direction": "up", "confidence": 90, "reason": "climbing the basalt ridge to a plateau beyond the top of the bluff"}
+{"item": "E0194", "direction": "same floor", "confidence": 78, "reason": "swimming laterally between two connected sewer chambers"}
+{"item": "E0195", "direction": "up", "confidence": 92, "reason": "climbing the fig tree onto a wide branch in the canopy"}
+{"item": "E0196", "direction": "down", "confidence": 65, "reason": "entering the tomb leads to a vault-like chamber whose walls muffle sounds from above"}
+{"item": "E0197", "direction": "same floor", "confidence": 62, "reason": "the dais sits at the end of the Hall of Sacrifice, read as a continuation of the hall rather than a storey change"}
+{"item": "E0198", "direction": "up", "confidence": 80, "reason": "cracked stone steps lead up to the gazebo, which overlooks the water"}
+{"item": "E0199", "direction": "up", "confidence": 72, "reason": "the ledge juts midway between here and the level below, and its own exit is down back to the switchbacks"}
+{"item": "E0200", "direction": "same floor", "confidence": 85, "reason": "both rooms are subterranean tunnels joined through a stone arch at the same level"}

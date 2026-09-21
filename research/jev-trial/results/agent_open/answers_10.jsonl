@@ -1,0 +1,40 @@
+{"item": "E0361", "direction": "down", "confidence": 88, "reason": "left room says the steep trail leads away down across the cliffs, and the arrived room says passage back up the cliff is prevented"}
+{"item": "E0362", "direction": "same floor", "confidence": 72, "reason": "a hole gaping from a wall leads into an adjoining chamber, with a separate 'up' exit to the tunnel above"}
+{"item": "E0363", "direction": "up", "confidence": 78, "reason": "climbing terraced benches that rise to the south onto the tiered benches above the field"}
+{"item": "E0364", "direction": "same floor", "confidence": 50, "reason": "a portal-like ladder from a mountain trail to a ship's foredeck in another town; no level relation stated"}
+{"item": "E0365", "direction": "up", "confidence": 75, "reason": "benches rise to the east and the arrived room is a narrow platform along a retaining wall above the field"}
+{"item": "E0366", "direction": "down", "confidence": 93, "reason": "the ladder leads through a hole in the ground and the arrived subterranean alcove has the ladder reaching up through its ceiling"}
+{"item": "E0367", "direction": "same floor", "confidence": 55, "reason": "a fissure into a small stone storage chamber with no stated rise or drop"}
+{"item": "E0368", "direction": "up", "confidence": 85, "reason": "the marble steps rise up to the Academy entrance and the arrived porch is at the top of those steps"}
+{"item": "E0369", "direction": "up", "confidence": 82, "reason": "the icy incline leads to a forested shelf above, and the arrived room's slope leads up toward the icy ledge left behind"}
+{"item": "E0370", "direction": "up", "confidence": 93, "reason": "the chain ladder leads upwards into the Icewall and the arrived ledge is at the top of that ladder"}
+{"item": "E0371", "direction": "same floor", "confidence": 78, "reason": "entering a tower's ground-level dining room from the road; the ladder to upper levels is a separate 'up' exit"}
+{"item": "E0372", "direction": "same floor", "confidence": 68, "reason": "both rooms are subterranean catacombs and the hole is clawed through a wall, not a floor or ceiling"}
+{"item": "E0373", "direction": "down", "confidence": 72, "reason": "a ladder from an entry vault into a crypt chamber below, in an underground burial complex"}
+{"item": "E0374", "direction": "up", "confidence": 90, "reason": "the stairs lead up to a higher vantage point at the machine's center"}
+{"item": "E0375", "direction": "same floor", "confidence": 80, "reason": "the cavern simply turns sharply and continues on one level"}
+{"item": "E0376", "direction": "up", "confidence": 88, "reason": "rough stairs lead up from the passage into the foyer above"}
+{"item": "E0377", "direction": "down", "confidence": 90, "reason": "the sandstone stairway leads further below the river, arriving where the stairs continue at a landing"}
+{"item": "E0378", "direction": "up", "confidence": 70, "reason": "a fissure from an underground cavern to an outdoor courtyard at surface level"}
+{"item": "E0379", "direction": "same floor", "confidence": 88, "reason": "an oak door between a shop front room and its backroom, no steps mentioned"}
+{"item": "E0380", "direction": "down", "confidence": 90, "reason": "the road enters the ravine as a comfortable descent, and the arrived room has the bridge overhead"}
+{"item": "E0381", "direction": "same floor", "confidence": 70, "reason": "walking into a vault at ground level in the graveyard, tombs set into shallow floor depressions"}
+{"item": "E0382", "direction": "same floor", "confidence": 85, "reason": "a door from the roof-level walkway into one of the bungalows on that same roof"}
+{"item": "E0383", "direction": "same floor", "confidence": 78, "reason": "a hole in the south wall leads to the egg room whose only way out is the hole in its north wall"}
+{"item": "E0384", "direction": "up", "confidence": 78, "reason": "the library's steps ascend and the arrived dining room describes gently descending steps back down"}
+{"item": "E0385", "direction": "down", "confidence": 95, "reason": "swimming down from the island surface to the riverbed underwater"}
+{"item": "E0386", "direction": "up", "confidence": 85, "reason": "the stone stairway leads up into a hall projecting from the wall on corbels"}
+{"item": "E0387", "direction": "down", "confidence": 60, "reason": "a narrow stair from an underground tunnel into a wine cellar under the house foundations"}
+{"item": "E0388", "direction": "down", "confidence": 90, "reason": "the ko'nag stairs in the entryway lead downward to the bedroom"}
+{"item": "E0389", "direction": "down", "confidence": 90, "reason": "sandstone slabs sidestep down the rocks to the beach below, and the tidal pool shows steps climbing back up the cliff"}
+{"item": "E0390", "direction": "up", "confidence": 92, "reason": "the ramp leads steeply upward to a platform rising fifty feet into the air"}
+{"item": "E0391", "direction": "up", "confidence": 85, "reason": "delicate suspended stairs climb from the landing to the observatory chamber above"}
+{"item": "E0392", "direction": "same floor", "confidence": 85, "reason": "a door off the balcony level into a guest room on that same upper storey"}
+{"item": "E0393", "direction": "same floor", "confidence": 60, "reason": "both rooms are the spiral passageway/courtyard at one level; steps here connect neighbouring courtyard spaces"}
+{"item": "E0394", "direction": "same floor", "confidence": 88, "reason": "arched oak doors lead from the porch straight into the great room, which describes the doors leading out to the porch"}
+{"item": "E0395", "direction": "up", "confidence": 85, "reason": "the switchback ascends the steep slope of the hill rising to the north"}
+{"item": "E0396", "direction": "same floor", "confidence": 62, "reason": "a ramp between two gallery exhibit rooms with no stated storey change"}
+{"item": "E0397", "direction": "down", "confidence": 85, "reason": "the gorge slices through the plain and the arrived room is inside it between walls, sheltered from the wind"}
+{"item": "E0398", "direction": "same floor", "confidence": 90, "reason": "the hatch cover serves as a door into the building at beach level"}
+{"item": "E0399", "direction": "same floor", "confidence": 85, "reason": "the guest room opens off the stairway landing, with separate up and down stair exits"}
+{"item": "E0400", "direction": "same floor", "confidence": 82, "reason": "a small hatch leads outside from the wagon into its own yard at ground level"}

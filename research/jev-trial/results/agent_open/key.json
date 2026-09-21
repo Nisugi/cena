@@ -1,0 +1,6986 @@
+{
+"E0001": {
+"from": "17029",
+"to": "17030",
+"command": "go stage",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7409
+},
+"E0002": {
+"from": "11301",
+"to": "11303",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8015
+},
+"E0003": {
+"from": "3025",
+"to": "3026",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9203
+},
+"E0004": {
+"from": "7100",
+"to": "7101",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8615
+},
+"E0005": {
+"from": "34381",
+"to": "34379",
+"command": "go north ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9151
+},
+"E0006": {
+"from": "5166",
+"to": "5167",
+"command": "climb path",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8754
+},
+"E0007": {
+"from": "1789",
+"to": "1791",
+"command": "climb rocks",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8783
+},
+"E0008": {
+"from": "26590",
+"to": "26591",
+"command": "go rope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8041
+},
+"E0009": {
+"from": "10843",
+"to": "29502",
+"command": "go wide ramp",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8945
+},
+"E0010": {
+"from": "20907",
+"to": "20909",
+"command": "climb lattice-work",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7896
+},
+"E0011": {
+"from": "9403",
+"to": "23423",
+"command": "go dark tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8773
+},
+"E0012": {
+"from": "18364",
+"to": "18916",
+"command": "go boulder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6648
+},
+"E0013": {
+"from": "18856",
+"to": "18857",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8769
+},
+"E0014": {
+"from": "19837",
+"to": "19838",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7262
+},
+"E0015": {
+"from": "16914",
+"to": "16915",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.851
+},
+"E0016": {
+"from": "7991",
+"to": "8748",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9161
+},
+"E0017": {
+"from": "26610",
+"to": "26611",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7964
+},
+"E0018": {
+"from": "2998",
+"to": "2997",
+"command": "climb landslide",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7757
+},
+"E0019": {
+"from": "9020",
+"to": "9021",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9073
+},
+"E0020": {
+"from": "21190",
+"to": "19390",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8892
+},
+"E0021": {
+"from": "19607",
+"to": "19608",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7444
+},
+"E0022": {
+"from": "7677",
+"to": "7678",
+"command": "go pit",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7875
+},
+"E0023": {
+"from": "30557",
+"to": "30558",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6715
+},
+"E0024": {
+"from": "27514",
+"to": "27546",
+"command": "go wooden hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8912
+},
+"E0025": {
+"from": "35284",
+"to": "35295",
+"command": "go canopy",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8904
+},
+"E0026": {
+"from": "23858",
+"to": "23860",
+"command": "go small hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8294
+},
+"E0027": {
+"from": "13026",
+"to": "13027",
+"command": "climb stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8074
+},
+"E0028": {
+"from": "11837",
+"to": "11838",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7898
+},
+"E0029": {
+"from": "6119",
+"to": "6110",
+"command": "climb wall",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9128
+},
+"E0030": {
+"from": "32185",
+"to": "32186",
+"command": "go trapdoor",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.908
+},
+"E0031": {
+"from": "2674",
+"to": "2673",
+"command": "go stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9148
+},
+"E0032": {
+"from": "29083",
+"to": "29088",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8422
+},
+"E0033": {
+"from": "2389",
+"to": "3424",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9108
+},
+"E0034": {
+"from": "25631",
+"to": "25633",
+"command": "go rung",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7645
+},
+"E0035": {
+"from": "2278",
+"to": "2279",
+"command": "climb rubble",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6293
+},
+"E0036": {
+"from": "15984",
+"to": "15990",
+"command": "climb trail",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8717
+},
+"E0037": {
+"from": "19993",
+"to": "19994",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9203
+},
+"E0038": {
+"from": "2386",
+"to": "27737",
+"command": "go south tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.5584
+},
+"E0039": {
+"from": "11145",
+"to": "11146",
+"command": "go trapdoor",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8731
+},
+"E0040": {
+"from": "8072",
+"to": "14456",
+"command": "climb spire",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7871
+},
+"E0041": {
+"from": "13207",
+"to": "14219",
+"command": "climb staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8019
+},
+"E0042": {
+"from": "12776",
+"to": "12787",
+"command": "climb slide",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.5008
+},
+"E0043": {
+"from": "9374",
+"to": "9375",
+"command": "climb outcroppings",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9055
+},
+"E0044": {
+"from": "21194",
+"to": "3845",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9148
+},
+"E0045": {
+"from": "28859",
+"to": "28860",
+"command": "go dais",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8761
+},
+"E0046": {
+"from": "31209",
+"to": "31213",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7317
+},
+"E0047": {
+"from": "21186",
+"to": "21187",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8383
+},
+"E0048": {
+"from": "8662",
+"to": "8663",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7501
+},
+"E0049": {
+"from": "189",
+"to": "190",
+"command": "climb root",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7199
+},
+"E0050": {
+"from": "31727",
+"to": "32111",
+"command": "go crumbling crypt",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9239
+},
+"E0051": {
+"from": "31701",
+"to": "31700",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9014
+},
+"E0052": {
+"from": "16282",
+"to": "16283",
+"command": "climb staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9248
+},
+"E0053": {
+"from": "23874",
+"to": "34569",
+"command": "go shadowy burrow",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.899
+},
+"E0054": {
+"from": "4337",
+"to": "8163",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.832
+},
+"E0055": {
+"from": "7514",
+"to": "7513",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9135
+},
+"E0056": {
+"from": "3891",
+"to": "3892",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9254
+},
+"E0057": {
+"from": "21090",
+"to": "21093",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7177
+},
+"E0058": {
+"from": "2096",
+"to": "2099",
+"command": "climb stairs",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8543
+},
+"E0059": {
+"from": "26744",
+"to": "26745",
+"command": "go slope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8503
+},
+"E0060": {
+"from": "8427",
+"to": "8430",
+"command": "climb ledge",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7914
+},
+"E0061": {
+"from": "410",
+"to": "477",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7547
+},
+"E0062": {
+"from": "18294",
+"to": "18295",
+"command": "go hollow",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9055
+},
+"E0063": {
+"from": "16844",
+"to": "32822",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9271
+},
+"E0064": {
+"from": "30711",
+"to": "10911",
+"command": "urchin guide bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8921
+},
+"E0065": {
+"from": "20751",
+"to": "20756",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8121
+},
+"E0066": {
+"from": "250",
+"to": "29631",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9138
+},
+"E0067": {
+"from": "31727",
+"to": "33939",
+"command": "go web-draped crypt",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7562
+},
+"E0068": {
+"from": "7273",
+"to": "7200",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8655
+},
+"E0069": {
+"from": "2921",
+"to": "2922",
+"command": "go gorge",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7772
+},
+"E0070": {
+"from": "31874",
+"to": "31907",
+"command": "go stone tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8866
+},
+"E0071": {
+"from": "21331",
+"to": "21353",
+"command": "go oak door",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6604
+},
+"E0072": {
+"from": "1483",
+"to": "5949",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9101
+},
+"E0073": {
+"from": "7289",
+"to": "7286",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9033
+},
+"E0074": {
+"from": "17517",
+"to": "16323",
+"command": "climb steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8107
+},
+"E0075": {
+"from": "11688",
+"to": "11689",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7329
+},
+"E0076": {
+"from": "2462",
+"to": "2463",
+"command": "go white stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8417
+},
+"E0077": {
+"from": "21764",
+"to": "21765",
+"command": "go stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8961
+},
+"E0078": {
+"from": "14605",
+"to": "12258",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7022
+},
+"E0079": {
+"from": "3488",
+"to": "10324",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9248
+},
+"E0080": {
+"from": "7706",
+"to": "7707",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8152
+},
+"E0081": {
+"from": "28286",
+"to": "28287",
+"command": "go west staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.86
+},
+"E0082": {
+"from": "31064",
+"to": "29876",
+"command": "climb sliver",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8062
+},
+"E0083": {
+"from": "35899",
+"to": "35900",
+"command": "go basalt ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.868
+},
+"E0084": {
+"from": "10882",
+"to": "11063",
+"command": "go outcropping",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7622
+},
+"E0085": {
+"from": "9017",
+"to": "9018",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7568
+},
+"E0086": {
+"from": "18756",
+"to": "28252",
+"command": "crawl hole",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.875
+},
+"E0087": {
+"from": "15568",
+"to": "19949",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9125
+},
+"E0088": {
+"from": "16895",
+"to": "16896",
+"command": "go cavern",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8457
+},
+"E0089": {
+"from": "5585",
+"to": "5588",
+"command": "climb stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8259
+},
+"E0090": {
+"from": "17094",
+"to": "17109",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8791
+},
+"E0091": {
+"from": "2501",
+"to": "3463",
+"command": "go tree",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9087
+},
+"E0092": {
+"from": "31953",
+"to": "31954",
+"command": "go ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7674
+},
+"E0093": {
+"from": "31863",
+"to": "35818",
+"command": "go oak porch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9242
+},
+"E0094": {
+"from": "6457",
+"to": "6418",
+"command": "swim bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9297
+},
+"E0095": {
+"from": "35900",
+"to": "35901",
+"command": "go dark cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7572
+},
+"E0096": {
+"from": "21204",
+"to": "21202",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9239
+},
+"E0097": {
+"from": "23527",
+"to": "30513",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8959
+},
+"E0098": {
+"from": "1787",
+"to": "1788",
+"command": "climb boulder",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7483
+},
+"E0099": {
+"from": "19738",
+"to": "19740",
+"command": "climb stone stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9032
+},
+"E0100": {
+"from": "25619",
+"to": "30506",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8971
+},
+"E0101": {
+"from": "6326",
+"to": "6327",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8022
+},
+"E0102": {
+"from": "27552",
+"to": "27555",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7433
+},
+"E0103": {
+"from": "24547",
+"to": "28346",
+"command": "go fissure",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8394
+},
+"E0104": {
+"from": "12024",
+"to": "12045",
+"command": "climb steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7589
+},
+"E0105": {
+"from": "24792",
+"to": "35985",
+"command": "go boulder",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8822
+},
+"E0106": {
+"from": "16009",
+"to": "16019",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9037
+},
+"E0107": {
+"from": "26851",
+"to": "29841",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9066
+},
+"E0108": {
+"from": "26223",
+"to": "26224",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7518
+},
+"E0109": {
+"from": "31426",
+"to": "31427",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8159
+},
+"E0110": {
+"from": "9232",
+"to": "9237",
+"command": "go stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8839
+},
+"E0111": {
+"from": "33919",
+"to": "33920",
+"command": "climb steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8833
+},
+"E0112": {
+"from": "32465",
+"to": "32466",
+"command": "go bloodwood staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8661
+},
+"E0113": {
+"from": "23272",
+"to": "23273",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7758
+},
+"E0114": {
+"from": "32714",
+"to": "33216",
+"command": "pull maoral statue on pedestal",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8704
+},
+"E0115": {
+"from": "2179",
+"to": "2180",
+"command": "climb gap",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.736
+},
+"E0116": {
+"from": "25605",
+"to": "25607",
+"command": "go stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9283
+},
+"E0117": {
+"from": "25620",
+"to": "30505",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9061
+},
+"E0118": {
+"from": "26438",
+"to": "26439",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.918
+},
+"E0119": {
+"from": "31967",
+"to": "31966",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9059
+},
+"E0120": {
+"from": "2375",
+"to": "8944",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8235
+},
+"E0121": {
+"from": "15826",
+"to": "15827",
+"command": "climb stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7812
+},
+"E0122": {
+"from": "33469",
+"to": "33473",
+"command": "go oak door",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8796
+},
+"E0123": {
+"from": "1253",
+"to": "1255",
+"command": "go cave",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9083
+},
+"E0124": {
+"from": "223",
+"to": "3807",
+"command": "go east tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8726
+},
+"E0125": {
+"from": "2765",
+"to": "2766",
+"command": "climb rocks",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7294
+},
+"E0126": {
+"from": "14541",
+"to": "14486",
+"command": "climb stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8704
+},
+"E0127": {
+"from": "5751",
+"to": "5752",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7779
+},
+"E0128": {
+"from": "2746",
+"to": "2747",
+"command": "go hatch",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6769
+},
+"E0129": {
+"from": "19769",
+"to": "19770",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7649
+},
+"E0130": {
+"from": "10286",
+"to": "10287",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7827
+},
+"E0131": {
+"from": "27157",
+"to": "27158",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7827
+},
+"E0132": {
+"from": "25739",
+"to": "25738",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7422
+},
+"E0133": {
+"from": "30889",
+"to": "10881",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.739
+},
+"E0134": {
+"from": "16458",
+"to": "16459",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7405
+},
+"E0135": {
+"from": "434",
+"to": "1256",
+"command": "go hole",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9047
+},
+"E0136": {
+"from": "6610",
+"to": "6611",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7573
+},
+"E0137": {
+"from": "21742",
+"to": "21744",
+"command": "go bank",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7883
+},
+"E0138": {
+"from": "9989",
+"to": "9990",
+"command": "climb rocks",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7945
+},
+"E0139": {
+"from": "12023",
+"to": "12041",
+"command": "go stairs",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8708
+},
+"E0140": {
+"from": "18265",
+"to": "18266",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7369
+},
+"E0141": {
+"from": "31527",
+"to": "31530",
+"command": "go wood staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7055
+},
+"E0142": {
+"from": "2661",
+"to": "2658",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8196
+},
+"E0143": {
+"from": "2166",
+"to": "2167",
+"command": "climb trail",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9057
+},
+"E0144": {
+"from": "3736",
+"to": "26229",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8836
+},
+"E0145": {
+"from": "26914",
+"to": "26913",
+"command": "go fissure",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8434
+},
+"E0146": {
+"from": "9214",
+"to": "9239",
+"command": "climb rope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7752
+},
+"E0147": {
+"from": "1884",
+"to": "1892",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8575
+},
+"E0148": {
+"from": "3317",
+"to": "3318",
+"command": "go hole",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6433
+},
+"E0149": {
+"from": "36725",
+"to": "36746",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9248
+},
+"E0150": {
+"from": "28400",
+"to": "28401",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.78
+},
+"E0151": {
+"from": "34337",
+"to": "34338",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7899
+},
+"E0152": {
+"from": "3608",
+"to": "4196",
+"command": "climb bank",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.909
+},
+"E0153": {
+"from": "34378",
+"to": "34377",
+"command": "go east ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8589
+},
+"E0154": {
+"from": "34292",
+"to": "34293",
+"command": "climb ledge",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7717
+},
+"E0155": {
+"from": "28403",
+"to": "28443",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.888
+},
+"E0156": {
+"from": "25509",
+"to": "25510",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9121
+},
+"E0157": {
+"from": "2709",
+"to": "2710",
+"command": "climb east steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8629
+},
+"E0158": {
+"from": "6361",
+"to": "15513",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8822
+},
+"E0159": {
+"from": "23234",
+"to": "23236",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6487
+},
+"E0160": {
+"from": "5010",
+"to": "9987",
+"command": "climb ravine",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9107
+},
+"E0161": {
+"from": "20060",
+"to": "19966",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7901
+},
+"E0162": {
+"from": "11115",
+"to": "11116",
+"command": "climb bowsprit",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7649
+},
+"E0163": {
+"from": "1975",
+"to": "14756",
+"command": "go grassy burrow",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7717
+},
+"E0164": {
+"from": "17907",
+"to": "17908",
+"command": "climb stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8721
+},
+"E0165": {
+"from": "9633",
+"to": "9634",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7694
+},
+"E0166": {
+"from": "12771",
+"to": "12774",
+"command": "climb rubble",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.5256
+},
+"E0167": {
+"from": "6980",
+"to": "6981",
+"command": "go narrow ledge",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6939
+},
+"E0168": {
+"from": "11846",
+"to": "11850",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7431
+},
+"E0169": {
+"from": "4659",
+"to": "4684",
+"command": "climb steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8062
+},
+"E0170": {
+"from": "34363",
+"to": "34364",
+"command": "go south ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6878
+},
+"E0171": {
+"from": "26431",
+"to": "26432",
+"command": "go oak wagon",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9062
+},
+"E0172": {
+"from": "21188",
+"to": "21189",
+"command": "go tunnel",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8034
+},
+"E0173": {
+"from": "4116",
+"to": "7803",
+"command": "climb path",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8316
+},
+"E0174": {
+"from": "13228",
+"to": "28092",
+"command": "climb stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7948
+},
+"E0175": {
+"from": "14377",
+"to": "14378",
+"command": "go tower",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7135
+},
+"E0176": {
+"from": "7092",
+"to": "3707",
+"command": "go shaft",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7675
+},
+"E0177": {
+"from": "6322",
+"to": "32368",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9015
+},
+"E0178": {
+"from": "2790",
+"to": "15601",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8736
+},
+"E0179": {
+"from": "23521",
+"to": "24046",
+"command": "climb stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8679
+},
+"E0180": {
+"from": "7803",
+"to": "7804",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7227
+},
+"E0181": {
+"from": "21765",
+"to": "21770",
+"command": "go oak door",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9026
+},
+"E0182": {
+"from": "8064",
+"to": "8066",
+"command": "climb incline",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8968
+},
+"E0183": {
+"from": "25618",
+"to": "30507",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8952
+},
+"E0184": {
+"from": "8180",
+"to": "8181",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5864
+},
+"E0185": {
+"from": "21355",
+"to": "21358",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6851
+},
+"E0186": {
+"from": "6240",
+"to": "6245",
+"command": "go stair",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7776
+},
+"E0187": {
+"from": "2681",
+"to": "2682",
+"command": "climb slope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8547
+},
+"E0188": {
+"from": "18357",
+"to": "18358",
+"command": "go rope",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7523
+},
+"E0189": {
+"from": "20766",
+"to": "20767",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8992
+},
+"E0190": {
+"from": "4321",
+"to": "8178",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8669
+},
+"E0191": {
+"from": "13701",
+"to": "21223",
+"command": "go stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7302
+},
+"E0192": {
+"from": "8440",
+"to": "8443",
+"command": "climb trail",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5714
+},
+"E0193": {
+"from": "9862",
+"to": "90",
+"command": "climb rock",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9242
+},
+"E0194": {
+"from": "18343",
+"to": "18344",
+"command": "climb path",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8457
+},
+"E0195": {
+"from": "11065",
+"to": "11066",
+"command": "climb ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8731
+},
+"E0196": {
+"from": "8812",
+"to": "8814",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6578
+},
+"E0197": {
+"from": "1199",
+"to": "7816",
+"command": "climb trail",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6676
+},
+"E0198": {
+"from": "12612",
+"to": "12613",
+"command": "go altar",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7321
+},
+"E0199": {
+"from": "20793",
+"to": "20811",
+"command": "go mithril staircase",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6265
+},
+"E0200": {
+"from": "32504",
+"to": "32505",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7968
+},
+"E0201": {
+"from": "14379",
+"to": "14380",
+"command": "climb ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8957
+},
+"E0202": {
+"from": "29943",
+"to": "29944",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.785
+},
+"E0203": {
+"from": "2139",
+"to": "2176",
+"command": "climb skylight",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7109
+},
+"E0204": {
+"from": "31728",
+"to": "31913",
+"command": "go rectangular hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8819
+},
+"E0205": {
+"from": "35473",
+"to": "35472",
+"command": "go narrow tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7363
+},
+"E0206": {
+"from": "22045",
+"to": "21226",
+"command": "go oak archway",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6469
+},
+"E0207": {
+"from": "11066",
+"to": "11137",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6286
+},
+"E0208": {
+"from": "16431",
+"to": "16432",
+"command": "climb stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7739
+},
+"E0209": {
+"from": "4602",
+"to": "17008",
+"command": "climb crack",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.896
+},
+"E0210": {
+"from": "8671",
+"to": "8672",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7978
+},
+"E0211": {
+"from": "9255",
+"to": "9265",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.756
+},
+"E0212": {
+"from": "5952",
+"to": "5883",
+"command": "go turret",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8945
+},
+"E0213": {
+"from": "8912",
+"to": "8913",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.833
+},
+"E0214": {
+"from": "23528",
+"to": "30512",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9075
+},
+"E0215": {
+"from": "14650",
+"to": "15567",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.88
+},
+"E0216": {
+"from": "18956",
+"to": "18953",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7161
+},
+"E0217": {
+"from": "1459",
+"to": "9056",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.756
+},
+"E0218": {
+"from": "34363",
+"to": "34362",
+"command": "go western ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.544
+},
+"E0219": {
+"from": "22153",
+"to": "36072",
+"command": "go trapdoor",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8816
+},
+"E0220": {
+"from": "10435",
+"to": "10437",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7052
+},
+"E0221": {
+"from": "24042",
+"to": "33174",
+"command": "pull opal statue on pedestal",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7151
+},
+"E0222": {
+"from": "23211",
+"to": "23213",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9224
+},
+"E0223": {
+"from": "12712",
+"to": "20786",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9218
+},
+"E0224": {
+"from": "23526",
+"to": "30514",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8983
+},
+"E0225": {
+"from": "3264",
+"to": "3280",
+"command": "climb stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9271
+},
+"E0226": {
+"from": "24029",
+"to": "24038",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7551
+},
+"E0227": {
+"from": "16201",
+"to": "16203",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7751
+},
+"E0228": {
+"from": "2963",
+"to": "2964",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8125
+},
+"E0229": {
+"from": "25557",
+"to": "25558",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9161
+},
+"E0230": {
+"from": "18823",
+"to": "30510",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9079
+},
+"E0231": {
+"from": "10166",
+"to": "10167",
+"command": "go crevasse",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7457
+},
+"E0232": {
+"from": "17159",
+"to": "17160",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8805
+},
+"E0233": {
+"from": "4566",
+"to": "9879",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9162
+},
+"E0234": {
+"from": "4684",
+"to": "4685",
+"command": "climb trail",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8569
+},
+"E0235": {
+"from": "26615",
+"to": "26616",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8259
+},
+"E0236": {
+"from": "19938",
+"to": "19942",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6655
+},
+"E0237": {
+"from": "36795",
+"to": "36798",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8116
+},
+"E0238": {
+"from": "16034",
+"to": "16035",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9174
+},
+"E0239": {
+"from": "19920",
+"to": "19921",
+"command": "climb ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7822
+},
+"E0240": {
+"from": "27812",
+"to": "25676",
+"command": "go stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8579
+},
+"E0241": {
+"from": "17141",
+"to": "17142",
+"command": "go stairwell",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6783
+},
+"E0242": {
+"from": "20060",
+"to": "20062",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7968
+},
+"E0243": {
+"from": "1766",
+"to": "9691",
+"command": "jump chasm",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9047
+},
+"E0244": {
+"from": "28163",
+"to": "28191",
+"command": "go canopy",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7115
+},
+"E0245": {
+"from": "19610",
+"to": "19607",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7653
+},
+"E0246": {
+"from": "6348",
+"to": "6351",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8178
+},
+"E0247": {
+"from": "2319",
+"to": "2328",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7729
+},
+"E0248": {
+"from": "7034",
+"to": "7035",
+"command": "go tower",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9254
+},
+"E0249": {
+"from": "14622",
+"to": "14623",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9048
+},
+"E0250": {
+"from": "20857",
+"to": "20858",
+"command": "go dais",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8085
+},
+"E0251": {
+"from": "12447",
+"to": "12448",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8604
+},
+"E0252": {
+"from": "28742",
+"to": "28745",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9232
+},
+"E0253": {
+"from": "9074",
+"to": "9075",
+"command": "go boulder",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8839
+},
+"E0254": {
+"from": "36401",
+"to": "36402",
+"command": "go stairwell",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8505
+},
+"E0255": {
+"from": "4606",
+"to": "4608",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9218
+},
+"E0256": {
+"from": "18114",
+"to": "18117",
+"command": "climb ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.782
+},
+"E0257": {
+"from": "25658",
+"to": "30887",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7613
+},
+"E0258": {
+"from": "35580",
+"to": "35581",
+"command": "go jagged fissure",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9158
+},
+"E0259": {
+"from": "24720",
+"to": "24721",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7568
+},
+"E0260": {
+"from": "35967",
+"to": "35965",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8068
+},
+"E0261": {
+"from": "14886",
+"to": "14887",
+"command": "go east bank",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7504
+},
+"E0262": {
+"from": "12493",
+"to": "12496",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.773
+},
+"E0263": {
+"from": "2689",
+"to": "2690",
+"command": "climb slope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.921
+},
+"E0264": {
+"from": "26091",
+"to": "36810",
+"command": "climb archway",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.892
+},
+"E0265": {
+"from": "5778",
+"to": "9459",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6437
+},
+"E0266": {
+"from": "1246",
+"to": "1247",
+"command": "go stair",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5752
+},
+"E0267": {
+"from": "4563",
+"to": "4562",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8645
+},
+"E0268": {
+"from": "2838",
+"to": "2839",
+"command": "climb incline",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7215
+},
+"E0269": {
+"from": "1778",
+"to": "3980",
+"command": "climb overhang",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8325
+},
+"E0270": {
+"from": "30558",
+"to": "30561",
+"command": "go westwardly tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.92
+},
+"E0271": {
+"from": "35297",
+"to": "35298",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9036
+},
+"E0272": {
+"from": "10594",
+"to": "10596",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9037
+},
+"E0273": {
+"from": "25556",
+"to": "25560",
+"command": "go fissure",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7491
+},
+"E0274": {
+"from": "74",
+"to": "75",
+"command": "climb wall",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8372
+},
+"E0275": {
+"from": "102",
+"to": "103",
+"command": "climb protrusion",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7338
+},
+"E0276": {
+"from": "26440",
+"to": "27533",
+"command": "go craggy fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8695
+},
+"E0277": {
+"from": "21147",
+"to": "21148",
+"command": "go oak door",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8628
+},
+"E0278": {
+"from": "4651",
+"to": "27860",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6357
+},
+"E0279": {
+"from": "26454",
+"to": "26650",
+"command": "go boulder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6036
+},
+"E0280": {
+"from": "29141",
+"to": "29142",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7534
+},
+"E0281": {
+"from": "14139",
+"to": "14140",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8709
+},
+"E0282": {
+"from": "20818",
+"to": "20822",
+"command": "go narrow tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8075
+},
+"E0283": {
+"from": "7157",
+"to": "36342",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6503
+},
+"E0284": {
+"from": "26910",
+"to": "26909",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7304
+},
+"E0285": {
+"from": "18185",
+"to": "18186",
+"command": "go shaft",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7682
+},
+"E0286": {
+"from": "18746",
+"to": "18747",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9192
+},
+"E0287": {
+"from": "17985",
+"to": "17986",
+"command": "climb shaft",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9127
+},
+"E0288": {
+"from": "5045",
+"to": "5046",
+"command": "climb path",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7666
+},
+"E0289": {
+"from": "34853",
+"to": "34854",
+"command": "go crypt",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9224
+},
+"E0290": {
+"from": "4680",
+"to": "4681",
+"command": "go hole",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7403
+},
+"E0291": {
+"from": "15699",
+"to": "25994",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6619
+},
+"E0292": {
+"from": "2509",
+"to": "2510",
+"command": "climb bank",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8204
+},
+"E0293": {
+"from": "29776",
+"to": "29778",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8623
+},
+"E0294": {
+"from": "26535",
+"to": "29322",
+"command": "go canopy",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6293
+},
+"E0295": {
+"from": "23834",
+"to": "23835",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7741
+},
+"E0296": {
+"from": "425",
+"to": "6958",
+"command": "go tree",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7411
+},
+"E0297": {
+"from": "2678",
+"to": "2679",
+"command": "go ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7238
+},
+"E0298": {
+"from": "21184",
+"to": "21185",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9192
+},
+"E0299": {
+"from": "30959",
+"to": "30960",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8841
+},
+"E0300": {
+"from": "10258",
+"to": "10262",
+"command": "climb wall",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6923
+},
+"E0301": {
+"from": "25617",
+"to": "30508",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8786
+},
+"E0302": {
+"from": "7728",
+"to": "7730",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8401
+},
+"E0303": {
+"from": "12682",
+"to": "12691",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7547
+},
+"E0304": {
+"from": "13463",
+"to": "13464",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8124
+},
+"E0305": {
+"from": "9228",
+"to": "9238",
+"command": "climb pole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8435
+},
+"E0306": {
+"from": "2412",
+"to": "27709",
+"command": "go west tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.5599
+},
+"E0307": {
+"from": "8459",
+"to": "20847",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7283
+},
+"E0308": {
+"from": "7294",
+"to": "7279",
+"command": "go bank",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7375
+},
+"E0309": {
+"from": "12504",
+"to": "12507",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8133
+},
+"E0310": {
+"from": "20767",
+"to": "20770",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8733
+},
+"E0311": {
+"from": "31926",
+"to": "31927",
+"command": "go stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8964
+},
+"E0312": {
+"from": "12019",
+"to": "12025",
+"command": "climb blocks",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8862
+},
+"E0313": {
+"from": "27719",
+"to": "27718",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9154
+},
+"E0314": {
+"from": "26862",
+"to": "23740",
+"command": "go rickety stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9121
+},
+"E0315": {
+"from": "2835",
+"to": "2836",
+"command": "climb slope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.779
+},
+"E0316": {
+"from": "6121",
+"to": "8599",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7665
+},
+"E0317": {
+"from": "25229",
+"to": "25228",
+"command": "go rocky outcropping",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8806
+},
+"E0318": {
+"from": "12677",
+"to": "12678",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7652
+},
+"E0319": {
+"from": "9922",
+"to": "9923",
+"command": "go oak door",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7016
+},
+"E0320": {
+"from": "33401",
+"to": "33402",
+"command": "go wooden staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7586
+},
+"E0321": {
+"from": "4077",
+"to": "15519",
+"command": "climb platform",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7603
+},
+"E0322": {
+"from": "3735",
+"to": "21226",
+"command": "go carpeted staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9124
+},
+"E0323": {
+"from": "11375",
+"to": "11376",
+"command": "climb staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7179
+},
+"E0324": {
+"from": "6394",
+"to": "6395",
+"command": "climb crevice",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8286
+},
+"E0325": {
+"from": "23868",
+"to": "23899",
+"command": "go hollow",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5906
+},
+"E0326": {
+"from": "19371",
+"to": "19373",
+"command": "climb dune",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9288
+},
+"E0327": {
+"from": "31485",
+"to": "31486",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9135
+},
+"E0328": {
+"from": "26617",
+"to": "26618",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7978
+},
+"E0329": {
+"from": "26852",
+"to": "26855",
+"command": "go purple-hued tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9158
+},
+"E0330": {
+"from": "22380",
+"to": "22417",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8022
+},
+"E0331": {
+"from": "23401",
+"to": "23399",
+"command": "go stairs",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.5049
+},
+"E0332": {
+"from": "19225",
+"to": "19226",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8089
+},
+"E0333": {
+"from": "25543",
+"to": "30512",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.911
+},
+"E0334": {
+"from": "3746",
+"to": "10382",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7373
+},
+"E0335": {
+"from": "13095",
+"to": "13098",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.793
+},
+"E0336": {
+"from": "35802",
+"to": "35803",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7852
+},
+"E0337": {
+"from": "3263",
+"to": "3245",
+"command": "climb wall",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9158
+},
+"E0338": {
+"from": "13184",
+"to": "13185",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9203
+},
+"E0339": {
+"from": "31768",
+"to": "35904",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7467
+},
+"E0340": {
+"from": "271",
+"to": "3809",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7792
+},
+"E0341": {
+"from": "11230",
+"to": "11231",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7087
+},
+"E0342": {
+"from": "2331",
+"to": "2332",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8967
+},
+"E0343": {
+"from": "18959",
+"to": "18960",
+"command": "climb west staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7877
+},
+"E0344": {
+"from": "5589",
+"to": "5592",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7871
+},
+"E0345": {
+"from": "7329",
+"to": "7332",
+"command": "climb trail",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8489
+},
+"E0346": {
+"from": "11719",
+"to": "11745",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8929
+},
+"E0347": {
+"from": "30331",
+"to": "30346",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9122
+},
+"E0348": {
+"from": "32509",
+"to": "32510",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.786
+},
+"E0349": {
+"from": "17951",
+"to": "17952",
+"command": "climb tree",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8998
+},
+"E0350": {
+"from": "30018",
+"to": "30019",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8992
+},
+"E0351": {
+"from": "24526",
+"to": "24533",
+"command": "climb hillside",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8948
+},
+"E0352": {
+"from": "26421",
+"to": "27487",
+"command": "go ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8655
+},
+"E0353": {
+"from": "7919",
+"to": "7920",
+"command": "climb wall",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9239
+},
+"E0354": {
+"from": "20781",
+"to": "20782",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7759
+},
+"E0355": {
+"from": "18004",
+"to": "19220",
+"command": "go step",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8681
+},
+"E0356": {
+"from": "9012",
+"to": "9013",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.759
+},
+"E0357": {
+"from": "1832",
+"to": "1833",
+"command": "climb tree",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8908
+},
+"E0358": {
+"from": "13013",
+"to": "13015",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9193
+},
+"E0359": {
+"from": "28963",
+"to": "29245",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7596
+},
+"E0360": {
+"from": "30148",
+"to": "30153",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7978
+},
+"E0361": {
+"from": "6228",
+"to": "9651",
+"command": "climb trail",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7832
+},
+"E0362": {
+"from": "6292",
+"to": "6293",
+"command": "go hole",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8197
+},
+"E0363": {
+"from": "12017",
+"to": "12022",
+"command": "climb benches",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7777
+},
+"E0364": {
+"from": "752",
+"to": "26036",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7304
+},
+"E0365": {
+"from": "12021",
+"to": "12024",
+"command": "climb benches",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.634
+},
+"E0366": {
+"from": "28509",
+"to": "28516",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9018
+},
+"E0367": {
+"from": "28403",
+"to": "28409",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8777
+},
+"E0368": {
+"from": "8773",
+"to": "14621",
+"command": "go marble steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9294
+},
+"E0369": {
+"from": "2840",
+"to": "2871",
+"command": "climb slope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.788
+},
+"E0370": {
+"from": "3309",
+"to": "15794",
+"command": "climb ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.92
+},
+"E0371": {
+"from": "223",
+"to": "6929",
+"command": "go west tower",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8272
+},
+"E0372": {
+"from": "3932",
+"to": "3933",
+"command": "go hole",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8084
+},
+"E0373": {
+"from": "31927",
+"to": "32105",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7316
+},
+"E0374": {
+"from": "9764",
+"to": "9766",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8903
+},
+"E0375": {
+"from": "5128",
+"to": "5129",
+"command": "go cavern",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8818
+},
+"E0376": {
+"from": "20855",
+"to": "20848",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7782
+},
+"E0377": {
+"from": "11064",
+"to": "11065",
+"command": "go stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8867
+},
+"E0378": {
+"from": "24045",
+"to": "23520",
+"command": "go fissure",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8841
+},
+"E0379": {
+"from": "408",
+"to": "409",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.919
+},
+"E0380": {
+"from": "3897",
+"to": "3898",
+"command": "go ravine",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9073
+},
+"E0381": {
+"from": "31712",
+"to": "31966",
+"command": "go black vault",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7516
+},
+"E0382": {
+"from": "19325",
+"to": "19329",
+"command": "go oak door",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8773
+},
+"E0383": {
+"from": "5544",
+"to": "5545",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7197
+},
+"E0384": {
+"from": "21112",
+"to": "21113",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8708
+},
+"E0385": {
+"from": "25616",
+"to": "30509",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9068
+},
+"E0386": {
+"from": "27015",
+"to": "27016",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7862
+},
+"E0387": {
+"from": "33441",
+"to": "33442",
+"command": "go narrow stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8531
+},
+"E0388": {
+"from": "24502",
+"to": "24506",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7748
+},
+"E0389": {
+"from": "18286",
+"to": "18287",
+"command": "climb sandstone",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8869
+},
+"E0390": {
+"from": "18932",
+"to": "18933",
+"command": "climb ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9174
+},
+"E0391": {
+"from": "9761",
+"to": "9762",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8741
+},
+"E0392": {
+"from": "13119",
+"to": "14681",
+"command": "go oak door",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7805
+},
+"E0393": {
+"from": "9015",
+"to": "9016",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8626
+},
+"E0394": {
+"from": "35471",
+"to": "35472",
+"command": "go oak doors",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9087
+},
+"E0395": {
+"from": "13102",
+"to": "14974",
+"command": "climb switchback",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7568
+},
+"E0396": {
+"from": "35444",
+"to": "35445",
+"command": "go ramp",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8866
+},
+"E0397": {
+"from": "2923",
+"to": "2922",
+"command": "go gorge",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7849
+},
+"E0398": {
+"from": "7613",
+"to": "7646",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9138
+},
+"E0399": {
+"from": "28627",
+"to": "28630",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6068
+},
+"E0400": {
+"from": "24004",
+"to": "28671",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8265
+},
+"E0401": {
+"from": "24430",
+"to": "24433",
+"command": "go burrow",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8275
+},
+"E0402": {
+"from": "12625",
+"to": "12626",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.881
+},
+"E0403": {
+"from": "36100",
+"to": "36103",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7141
+},
+"E0404": {
+"from": "8",
+"to": "9",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7533
+},
+"E0405": {
+"from": "963",
+"to": "964",
+"command": "climb boulders",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8684
+},
+"E0406": {
+"from": "13975",
+"to": "17378",
+"command": "go spiral stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8703
+},
+"E0407": {
+"from": "7316",
+"to": "7315",
+"command": "go fissure",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.887
+},
+"E0408": {
+"from": "31727",
+"to": "31899",
+"command": "go jasmine-covered crypt",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7476
+},
+"E0409": {
+"from": "24034",
+"to": "24039",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7336
+},
+"E0410": {
+"from": "33452",
+"to": "24962",
+"command": "go stairs",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7634
+},
+"E0411": {
+"from": "6692",
+"to": "6707",
+"command": "climb slope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8941
+},
+"E0412": {
+"from": "883",
+"to": "884",
+"command": "climb boulders",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6864
+},
+"E0413": {
+"from": "9579",
+"to": "9580",
+"command": "climb rocks",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7302
+},
+"E0414": {
+"from": "18042",
+"to": "18043",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8688
+},
+"E0415": {
+"from": "34375",
+"to": "34376",
+"command": "go east ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9054
+},
+"E0416": {
+"from": "11267",
+"to": "11268",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7195
+},
+"E0417": {
+"from": "21331",
+"to": "26066",
+"command": "go secret trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9167
+},
+"E0418": {
+"from": "7667",
+"to": "7668",
+"command": "go fissure",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6979
+},
+"E0419": {
+"from": "12018",
+"to": "12023",
+"command": "climb benches",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8478
+},
+"E0420": {
+"from": "9248",
+"to": "9272",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7888
+},
+"E0421": {
+"from": "16183",
+"to": "16184",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7907
+},
+"E0422": {
+"from": "26455",
+"to": "29307",
+"command": "go hollow",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6843
+},
+"E0423": {
+"from": "9554",
+"to": "9555",
+"command": "climb stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7976
+},
+"E0424": {
+"from": "1029",
+"to": "1030",
+"command": "climb cliff",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7275
+},
+"E0425": {
+"from": "18179",
+"to": "18178",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8913
+},
+"E0426": {
+"from": "3979",
+"to": "24811",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9103
+},
+"E0427": {
+"from": "21098",
+"to": "21099",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7847
+},
+"E0428": {
+"from": "26743",
+"to": "26733",
+"command": "go trapdoor",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7298
+},
+"E0429": {
+"from": "20788",
+"to": "20793",
+"command": "go granite staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7753
+},
+"E0430": {
+"from": "3793",
+"to": "3794",
+"command": "climb trail",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7193
+},
+"E0431": {
+"from": "16497",
+"to": "16498",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8961
+},
+"E0432": {
+"from": "7146",
+"to": "7085",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7936
+},
+"E0433": {
+"from": "1484",
+"to": "30213",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7416
+},
+"E0434": {
+"from": "26464",
+"to": "26465",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8892
+},
+"E0435": {
+"from": "26837",
+"to": "35186",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9044
+},
+"E0436": {
+"from": "1427",
+"to": "1428",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9282
+},
+"E0437": {
+"from": "35533",
+"to": "35534",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8221
+},
+"E0438": {
+"from": "19603",
+"to": "19604",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7605
+},
+"E0439": {
+"from": "21132",
+"to": "21133",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9061
+},
+"E0440": {
+"from": "31952",
+"to": "31953",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7246
+},
+"E0441": {
+"from": "24677",
+"to": "24678",
+"command": "go rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8851
+},
+"E0442": {
+"from": "25621",
+"to": "30505",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9072
+},
+"E0443": {
+"from": "14221",
+"to": "14222",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.808
+},
+"E0444": {
+"from": "4800",
+"to": "4801",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9011
+},
+"E0445": {
+"from": "486",
+"to": "7601",
+"command": "climb path",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9124
+},
+"E0446": {
+"from": "20870",
+"to": "20871",
+"command": "go stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9144
+},
+"E0447": {
+"from": "13975",
+"to": "14580",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9193
+},
+"E0448": {
+"from": "30276",
+"to": "30279",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.865
+},
+"E0449": {
+"from": "17949",
+"to": "17950",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7904
+},
+"E0450": {
+"from": "2639",
+"to": "2637",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8479
+},
+"E0451": {
+"from": "33756",
+"to": "33765",
+"command": "go slope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8422
+},
+"E0452": {
+"from": "36396",
+"to": "36397",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8261
+},
+"E0453": {
+"from": "1826",
+"to": "1827",
+"command": "climb trunk",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7171
+},
+"E0454": {
+"from": "35590",
+"to": "35591",
+"command": "climb ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9221
+},
+"E0455": {
+"from": "17590",
+"to": "17591",
+"command": "climb steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9151
+},
+"E0456": {
+"from": "7694",
+"to": "7734",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8727
+},
+"E0457": {
+"from": "28532",
+"to": "28546",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9058
+},
+"E0458": {
+"from": "28286",
+"to": "28289",
+"command": "go east staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8945
+},
+"E0459": {
+"from": "22034",
+"to": "22035",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9047
+},
+"E0460": {
+"from": "8125",
+"to": "8126",
+"command": "go hollow",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7119
+},
+"E0461": {
+"from": "911",
+"to": "912",
+"command": "go cavern",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8479
+},
+"E0462": {
+"from": "18348",
+"to": "18349",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8896
+},
+"E0463": {
+"from": "6332",
+"to": "6355",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8196
+},
+"E0464": {
+"from": "12984",
+"to": "14824",
+"command": "climb ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7822
+},
+"E0465": {
+"from": "7575",
+"to": "7583",
+"command": "go dark hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8821
+},
+"E0466": {
+"from": "30712",
+"to": "9472",
+"command": "urchin guide bank",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7603
+},
+"E0467": {
+"from": "31533",
+"to": "31536",
+"command": "go stone steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6267
+},
+"E0468": {
+"from": "9638",
+"to": "9639",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9294
+},
+"E0469": {
+"from": "7861",
+"to": "7862",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7518
+},
+"E0470": {
+"from": "2659",
+"to": "2658",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8187
+},
+"E0471": {
+"from": "10421",
+"to": "13993",
+"command": "climb stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8763
+},
+"E0472": {
+"from": "33578",
+"to": "24673",
+"command": "urchin guide bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9158
+},
+"E0473": {
+"from": "9083",
+"to": "9084",
+"command": "climb wall",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8951
+},
+"E0474": {
+"from": "33371",
+"to": "33372",
+"command": "go silver-gilt staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8953
+},
+"E0475": {
+"from": "24678",
+"to": "24679",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9193
+},
+"E0476": {
+"from": "27740",
+"to": "27739",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9013
+},
+"E0477": {
+"from": "35521",
+"to": "35557",
+"command": "go cavern entrance",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8645
+},
+"E0478": {
+"from": "440",
+"to": "13033",
+"command": "climb trail",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7976
+},
+"E0479": {
+"from": "30774",
+"to": "30777",
+"command": "go obsidian-inlaid stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8086
+},
+"E0480": {
+"from": "20641",
+"to": "19937",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8992
+},
+"E0481": {
+"from": "14117",
+"to": "14245",
+"command": "go stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9224
+},
+"E0482": {
+"from": "4610",
+"to": "8619",
+"command": "climb stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9135
+},
+"E0483": {
+"from": "14802",
+"to": "14801",
+"command": "go ramp",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7901
+},
+"E0484": {
+"from": "34375",
+"to": "34364",
+"command": "go south ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8663
+},
+"E0485": {
+"from": "9433",
+"to": "31075",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6207
+},
+"E0486": {
+"from": "24488",
+"to": "24484",
+"command": "go small staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8325
+},
+"E0487": {
+"from": "27726",
+"to": "27725",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6822
+},
+"E0488": {
+"from": "17731",
+"to": "17732",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9178
+},
+"E0489": {
+"from": "22086",
+"to": "20866",
+"command": "look hole",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8569
+},
+"E0490": {
+"from": "17258",
+"to": "17259",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8769
+},
+"E0491": {
+"from": "29106",
+"to": "29108",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7824
+},
+"E0492": {
+"from": "6841",
+"to": "6842",
+"command": "climb wall",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8869
+},
+"E0493": {
+"from": "12016",
+"to": "12015",
+"command": "climb benches",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7563
+},
+"E0494": {
+"from": "13243",
+"to": "13492",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8664
+},
+"E0495": {
+"from": "30425",
+"to": "30426",
+"command": "climb ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7275
+},
+"E0496": {
+"from": "26901",
+"to": "26909",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9044
+},
+"E0497": {
+"from": "6720",
+"to": "6721",
+"command": "go hole",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8505
+},
+"E0498": {
+"from": "9251",
+"to": "9275",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7763
+},
+"E0499": {
+"from": "30070",
+"to": "30071",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.788
+},
+"E0500": {
+"from": "18631",
+"to": "18632",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7997
+},
+"E0501": {
+"from": "13178",
+"to": "13180",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7645
+},
+"E0502": {
+"from": "2229",
+"to": "2230",
+"command": "go fissure",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7997
+},
+"E0503": {
+"from": "34381",
+"to": "34380",
+"command": "go west ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8856
+},
+"E0504": {
+"from": "35448",
+"to": "12981",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8931
+},
+"E0505": {
+"from": "18126",
+"to": "18123",
+"command": "go trapdoor",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8569
+},
+"E0506": {
+"from": "12502",
+"to": "14833",
+"command": "climb steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9288
+},
+"E0507": {
+"from": "150",
+"to": "1432",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8651
+},
+"E0508": {
+"from": "22097",
+"to": "22098",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9162
+},
+"E0509": {
+"from": "34283",
+"to": "34287",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9115
+},
+"E0510": {
+"from": "4208",
+"to": "4209",
+"command": "climb rockslide",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.5275
+},
+"E0511": {
+"from": "26618",
+"to": "26619",
+"command": "go ramp",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7574
+},
+"E0512": {
+"from": "30714",
+"to": "188",
+"command": "urchin guide dais",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8999
+},
+"E0513": {
+"from": "35442",
+"to": "35447",
+"command": "go ramp",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9003
+},
+"E0514": {
+"from": "8044",
+"to": "8045",
+"command": "climb crevice",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7703
+},
+"E0515": {
+"from": "920",
+"to": "921",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6127
+},
+"E0516": {
+"from": "7293",
+"to": "7278",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7516
+},
+"E0517": {
+"from": "7507",
+"to": "7513",
+"command": "go crypt",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5769
+},
+"E0518": {
+"from": "70",
+"to": "71",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7635
+},
+"E0519": {
+"from": "9750",
+"to": "9751",
+"command": "climb stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7511
+},
+"E0520": {
+"from": "4114",
+"to": "4115",
+"command": "go boulder",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9093
+},
+"E0521": {
+"from": "14152",
+"to": "17422",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8921
+},
+"E0522": {
+"from": "28996",
+"to": "29005",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8862
+},
+"E0523": {
+"from": "16190",
+"to": "16191",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9251
+},
+"E0524": {
+"from": "2210",
+"to": "2211",
+"command": "climb glass",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.746
+},
+"E0525": {
+"from": "1343",
+"to": "1344",
+"command": "go ramp",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8134
+},
+"E0526": {
+"from": "27733",
+"to": "27732",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6743
+},
+"E0527": {
+"from": "1017",
+"to": "1018",
+"command": "climb cliff",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7308
+},
+"E0528": {
+"from": "14815",
+"to": "14816",
+"command": "climb stemples",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.927
+},
+"E0529": {
+"from": "20674",
+"to": "20675",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8769
+},
+"E0530": {
+"from": "9609",
+"to": "9606",
+"command": "climb rocks",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8656
+},
+"E0531": {
+"from": "24046",
+"to": "24048",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.883
+},
+"E0532": {
+"from": "18979",
+"to": "18981",
+"command": "climb stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6134
+},
+"E0533": {
+"from": "18983",
+"to": "18984",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5682
+},
+"E0534": {
+"from": "1992",
+"to": "12547",
+"command": "climb trail",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9239
+},
+"E0535": {
+"from": "13243",
+"to": "17931",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5656
+},
+"E0536": {
+"from": "7995",
+"to": "8187",
+"command": "climb pine",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.874
+},
+"E0537": {
+"from": "18679",
+"to": "18685",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7677
+},
+"E0538": {
+"from": "23976",
+"to": "384",
+"command": "go trapdoor",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6794
+},
+"E0539": {
+"from": "5730",
+"to": "9396",
+"command": "climb stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8006
+},
+"E0540": {
+"from": "18267",
+"to": "18268",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7549
+},
+"E0541": {
+"from": "2487",
+"to": "3058",
+"command": "climb snowbank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6535
+},
+"E0542": {
+"from": "2725",
+"to": "21538",
+"command": "climb of spidersilk",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8395
+},
+"E0543": {
+"from": "32460",
+"to": "32461",
+"command": "go stage door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7679
+},
+"E0544": {
+"from": "15998",
+"to": "15999",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8839
+},
+"E0545": {
+"from": "31800",
+"to": "31801",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8077
+},
+"E0546": {
+"from": "9387",
+"to": "14613",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6981
+},
+"E0547": {
+"from": "33451",
+"to": "24962",
+"command": "go stairs",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.778
+},
+"E0548": {
+"from": "8749",
+"to": "8750",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.781
+},
+"E0549": {
+"from": "9689",
+"to": "17153",
+"command": "climb ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8836
+},
+"E0550": {
+"from": "735",
+"to": "5693",
+"command": "go ivory tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9193
+},
+"E0551": {
+"from": "1873",
+"to": "1874",
+"command": "climb fence",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9227
+},
+"E0552": {
+"from": "22081",
+"to": "22082",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8662
+},
+"E0553": {
+"from": "7481",
+"to": "7486",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7995
+},
+"E0554": {
+"from": "6582",
+"to": "6579",
+"command": "go tower",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7137
+},
+"E0555": {
+"from": "10336",
+"to": "10340",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7672
+},
+"E0556": {
+"from": "4644",
+"to": "4645",
+"command": "go rope",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7008
+},
+"E0557": {
+"from": "15995",
+"to": "32599",
+"command": "go black stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8751
+},
+"E0558": {
+"from": "8020",
+"to": "8021",
+"command": "go shaft",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8964
+},
+"E0559": {
+"from": "1970",
+"to": "18081",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8533
+},
+"E0560": {
+"from": "26852",
+"to": "26853",
+"command": "go silver-hued tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8976
+},
+"E0561": {
+"from": "30899",
+"to": "10437",
+"command": "go step",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8999
+},
+"E0562": {
+"from": "7634",
+"to": "7651",
+"command": "go boulder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8266
+},
+"E0563": {
+"from": "3125",
+"to": "3126",
+"command": "go tree",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7097
+},
+"E0564": {
+"from": "12020",
+"to": "12026",
+"command": "climb benches",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8896
+},
+"E0565": {
+"from": "4653",
+"to": "4655",
+"command": "go ramp",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8434
+},
+"E0566": {
+"from": "12707",
+"to": "12717",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6511
+},
+"E0567": {
+"from": "9224",
+"to": "15930",
+"command": "go hole",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6462
+},
+"E0568": {
+"from": "36302",
+"to": "36321",
+"command": "go carved staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7986
+},
+"E0569": {
+"from": "2384",
+"to": "2385",
+"command": "go burrow",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7329
+},
+"E0570": {
+"from": "30900",
+"to": "13484",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8694
+},
+"E0571": {
+"from": "18625",
+"to": "18626",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9048
+},
+"E0572": {
+"from": "28253",
+"to": "28254",
+"command": "crawl up",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7912
+},
+"E0573": {
+"from": "2480",
+"to": "8971",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8995
+},
+"E0574": {
+"from": "33183",
+"to": "33184",
+"command": "pull dhe'nar statue on pedestal",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9091
+},
+"E0575": {
+"from": "20788",
+"to": "20791",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8779
+},
+"E0576": {
+"from": "19737",
+"to": "19742",
+"command": "climb terraced stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7491
+},
+"E0577": {
+"from": "13163",
+"to": "16923",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7161
+},
+"E0578": {
+"from": "23773",
+"to": "26907",
+"command": "go dimly tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.752
+},
+"E0579": {
+"from": "25144",
+"to": "25145",
+"command": "go long ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.804
+},
+"E0580": {
+"from": "10283",
+"to": "10284",
+"command": "climb ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7987
+},
+"E0581": {
+"from": "20734",
+"to": "20739",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9135
+},
+"E0582": {
+"from": "2898",
+"to": "2901",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6829
+},
+"E0583": {
+"from": "23422",
+"to": "23423",
+"command": "go rope ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9257
+},
+"E0584": {
+"from": "33048",
+"to": "33049",
+"command": "go golden stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8059
+},
+"E0585": {
+"from": "25417",
+"to": "25416",
+"command": "go tower",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7111
+},
+"E0586": {
+"from": "21101",
+"to": "21116",
+"command": "go cliff",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8769
+},
+"E0587": {
+"from": "13847",
+"to": "13848",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.615
+},
+"E0588": {
+"from": "6848",
+"to": "6849",
+"command": "climb colossus",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7938
+},
+"E0589": {
+"from": "24407",
+"to": "24472",
+"command": "go stairway",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6573
+},
+"E0590": {
+"from": "10243",
+"to": "10263",
+"command": "climb wall",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6754
+},
+"E0591": {
+"from": "35237",
+"to": "36724",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7854
+},
+"E0592": {
+"from": "8982",
+"to": "8984",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8101
+},
+"E0593": {
+"from": "34378",
+"to": "34379",
+"command": "go north ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6531
+},
+"E0594": {
+"from": "26501",
+"to": "26502",
+"command": "go ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6676
+},
+"E0595": {
+"from": "7296",
+"to": "7281",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7487
+},
+"E0596": {
+"from": "25675",
+"to": "25678",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7628
+},
+"E0597": {
+"from": "23880",
+"to": "23842",
+"command": "go hollow",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8377
+},
+"E0598": {
+"from": "3992",
+"to": "9874",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7529
+},
+"E0599": {
+"from": "9247",
+"to": "9271",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9132
+},
+"E0600": {
+"from": "2326",
+"to": "18650",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.736
+},
+"E0601": {
+"from": "20980",
+"to": "20967",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9178
+},
+"E0602": {
+"from": "506",
+"to": "7673",
+"command": "climb trail",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9187
+},
+"E0603": {
+"from": "3587",
+"to": "3613",
+"command": "climb stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9271
+},
+"E0604": {
+"from": "16454",
+"to": "16455",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7361
+},
+"E0605": {
+"from": "30659",
+"to": "30664",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8556
+},
+"E0606": {
+"from": "18314",
+"to": "18315",
+"command": "climb steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8543
+},
+"E0607": {
+"from": "16961",
+"to": "17841",
+"command": "climb stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9271
+},
+"E0608": {
+"from": "6470",
+"to": "6471",
+"command": "go ravine",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.777
+},
+"E0609": {
+"from": "2523",
+"to": "2524",
+"command": "climb rockslide",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6619
+},
+"E0610": {
+"from": "9244",
+"to": "9267",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6854
+},
+"E0611": {
+"from": "36386",
+"to": "36374",
+"command": "go tower",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8377
+},
+"E0612": {
+"from": "28700",
+"to": "29559",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.918
+},
+"E0613": {
+"from": "9740",
+"to": "9741",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8074
+},
+"E0614": {
+"from": "3807",
+"to": "23335",
+"command": "go wooden trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9167
+},
+"E0615": {
+"from": "18140",
+"to": "18144",
+"command": "climb silver staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8661
+},
+"E0616": {
+"from": "24786",
+"to": "24788",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8694
+},
+"E0617": {
+"from": "3443",
+"to": "8981",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9111
+},
+"E0618": {
+"from": "19538",
+"to": "19539",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9224
+},
+"E0619": {
+"from": "3781",
+"to": "9240",
+"command": "climb ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8611
+},
+"E0620": {
+"from": "26506",
+"to": "26635",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7837
+},
+"E0621": {
+"from": "9996",
+"to": "9997",
+"command": "climb slope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.624
+},
+"E0622": {
+"from": "13245",
+"to": "28699",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.918
+},
+"E0623": {
+"from": "4141",
+"to": "4142",
+"command": "go crypt",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7061
+},
+"E0624": {
+"from": "28434",
+"to": "28435",
+"command": "go hole",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9104
+},
+"E0625": {
+"from": "29012",
+"to": "29014",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8742
+},
+"E0626": {
+"from": "5916",
+"to": "5917",
+"command": "climb ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7452
+},
+"E0627": {
+"from": "34300",
+"to": "34314",
+"command": "jump ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6975
+},
+"E0628": {
+"from": "10883",
+"to": "11427",
+"command": "go stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8056
+},
+"E0629": {
+"from": "11298",
+"to": "11319",
+"command": "go hole",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7356
+},
+"E0630": {
+"from": "4013",
+"to": "28620",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7701
+},
+"E0631": {
+"from": "11117",
+"to": "11122",
+"command": "climb chain",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9257
+},
+"E0632": {
+"from": "18288",
+"to": "18289",
+"command": "climb dune",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9239
+},
+"E0633": {
+"from": "2954",
+"to": "2955",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8764
+},
+"E0634": {
+"from": "9856",
+"to": "9865",
+"command": "climb ridge",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8651
+},
+"E0635": {
+"from": "31805",
+"to": "31807",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8068
+},
+"E0636": {
+"from": "21688",
+"to": "279",
+"command": "climb walls",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9271
+},
+"E0637": {
+"from": "19923",
+"to": "19924",
+"command": "climb stairwell",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9239
+},
+"E0638": {
+"from": "19594",
+"to": "19595",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7727
+},
+"E0639": {
+"from": "32408",
+"to": "32409",
+"command": "go tower",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9094
+},
+"E0640": {
+"from": "26507",
+"to": "26508",
+"command": "climb wall",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7746
+},
+"E0641": {
+"from": "26015",
+"to": "26016",
+"command": "go tunnel",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7905
+},
+"E0642": {
+"from": "34944",
+"to": "35234",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8718
+},
+"E0643": {
+"from": "19759",
+"to": "19760",
+"command": "climb stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8151
+},
+"E0644": {
+"from": "7582",
+"to": "7584",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9103
+},
+"E0645": {
+"from": "4662",
+"to": "4665",
+"command": "climb stones",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8636
+},
+"E0646": {
+"from": "11356",
+"to": "11358",
+"command": "go north ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9161
+},
+"E0647": {
+"from": "1500",
+"to": "4583",
+"command": "climb wall",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7201
+},
+"E0648": {
+"from": "8070",
+"to": "8073",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7772
+},
+"E0649": {
+"from": "1275",
+"to": "36158",
+"command": "go ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7887
+},
+"E0650": {
+"from": "4150",
+"to": "4151",
+"command": "go tunnel",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7386
+},
+"E0651": {
+"from": "23874",
+"to": "23889",
+"command": "go burrow",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.883
+},
+"E0652": {
+"from": "31575",
+"to": "33980",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9041
+},
+"E0653": {
+"from": "33901",
+"to": "33902",
+"command": "go flora-wrought staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9224
+},
+"E0654": {
+"from": "36762",
+"to": "33093",
+"command": "go ramp",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7165
+},
+"E0655": {
+"from": "23673",
+"to": "23674",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7459
+},
+"E0656": {
+"from": "9740",
+"to": "9747",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8168
+},
+"E0657": {
+"from": "20606",
+"to": "20607",
+"command": "go fissure",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8404
+},
+"E0658": {
+"from": "15795",
+"to": "15794",
+"command": "go ledge",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8845
+},
+"E0659": {
+"from": "10242",
+"to": "10262",
+"command": "climb wall",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6691
+},
+"E0660": {
+"from": "18347",
+"to": "17833",
+"command": "climb ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9271
+},
+"E0661": {
+"from": "2359",
+"to": "3726",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8992
+},
+"E0662": {
+"from": "24032",
+"to": "24040",
+"command": "go brick-lined tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7259
+},
+"E0663": {
+"from": "26834",
+"to": "36470",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8832
+},
+"E0664": {
+"from": "20038",
+"to": "20039",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7354
+},
+"E0665": {
+"from": "7292",
+"to": "7283",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7659
+},
+"E0666": {
+"from": "2715",
+"to": "2716",
+"command": "climb trail",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6267
+},
+"E0667": {
+"from": "4956",
+"to": "4989",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7187
+},
+"E0668": {
+"from": "30649",
+"to": "30650",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8062
+},
+"E0669": {
+"from": "11290",
+"to": "11289",
+"command": "go trapdoor",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7187
+},
+"E0670": {
+"from": "18841",
+"to": "30508",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9117
+},
+"E0671": {
+"from": "3735",
+"to": "3736",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.919
+},
+"E0672": {
+"from": "31794",
+"to": "35967",
+"command": "go rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9044
+},
+"E0673": {
+"from": "21127",
+"to": "21128",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7909
+},
+"E0674": {
+"from": "28219",
+"to": "1431",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8805
+},
+"E0675": {
+"from": "12790",
+"to": "12791",
+"command": "climb stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8019
+},
+"E0676": {
+"from": "35517",
+"to": "35568",
+"command": "go spiraled staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7705
+},
+"E0677": {
+"from": "24459",
+"to": "24455",
+"command": "go oak-bound door",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7256
+},
+"E0678": {
+"from": "6572",
+"to": "6573",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8876
+},
+"E0679": {
+"from": "1568",
+"to": "14234",
+"command": "climb ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.849
+},
+"E0680": {
+"from": "2494",
+"to": "28654",
+"command": "go grey tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8921
+},
+"E0681": {
+"from": "21136",
+"to": "21137",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8886
+},
+"E0682": {
+"from": "21226",
+"to": "22043",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.5598
+},
+"E0683": {
+"from": "9249",
+"to": "9273",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9236
+},
+"E0684": {
+"from": "14711",
+"to": "14718",
+"command": "go hatch",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9141
+},
+"E0685": {
+"from": "17824",
+"to": "18345",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9148
+},
+"E0686": {
+"from": "25814",
+"to": "25815",
+"command": "go balcony",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9224
+},
+"E0687": {
+"from": "27705",
+"to": "27704",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8348
+},
+"E0688": {
+"from": "26746",
+"to": "26488",
+"command": "go trapdoor",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.918
+},
+"E0689": {
+"from": "2762",
+"to": "2763",
+"command": "climb stones",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7679
+},
+"E0690": {
+"from": "14650",
+"to": "19967",
+"command": "climb stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8051
+},
+"E0691": {
+"from": "30918",
+"to": "30917",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8506
+},
+"E0692": {
+"from": "7083",
+"to": "7120",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9007
+},
+"E0693": {
+"from": "9688",
+"to": "9689",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7822
+},
+"E0694": {
+"from": "8213",
+"to": "8221",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7089
+},
+"E0695": {
+"from": "25544",
+"to": "30513",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9065
+},
+"E0696": {
+"from": "27055",
+"to": "27394",
+"command": "go long burrow",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6446
+},
+"E0697": {
+"from": "31912",
+"to": "31913",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.89
+},
+"E0698": {
+"from": "1019",
+"to": "1020",
+"command": "climb crevice",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7667
+},
+"E0699": {
+"from": "30050",
+"to": "30051",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8951
+},
+"E0700": {
+"from": "35589",
+"to": "35602",
+"command": "go hatch",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7111
+},
+"E0701": {
+"from": "8748",
+"to": "8749",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9073
+},
+"E0702": {
+"from": "30886",
+"to": "15800",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7628
+},
+"E0703": {
+"from": "25623",
+"to": "30504",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9032
+},
+"E0704": {
+"from": "16425",
+"to": "16426",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7347
+},
+"E0705": {
+"from": "10843",
+"to": "27604",
+"command": "go ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9104
+},
+"E0706": {
+"from": "19518",
+"to": "19519",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7759
+},
+"E0707": {
+"from": "9991",
+"to": "9992",
+"command": "climb slope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8041
+},
+"E0708": {
+"from": "36384",
+"to": "36374",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.5385
+},
+"E0709": {
+"from": "19290",
+"to": "19294",
+"command": "go fieldstone steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9115
+},
+"E0710": {
+"from": "23850",
+"to": "23851",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.814
+},
+"E0711": {
+"from": "7221",
+"to": "7225",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7644
+},
+"E0712": {
+"from": "26450",
+"to": "26452",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.86
+},
+"E0713": {
+"from": "28862",
+"to": "28863",
+"command": "go pit",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8611
+},
+"E0714": {
+"from": "30895",
+"to": "30896",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7691
+},
+"E0715": {
+"from": "12708",
+"to": "12749",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7117
+},
+"E0716": {
+"from": "36100",
+"to": "36104",
+"command": "go wooden stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8913
+},
+"E0717": {
+"from": "34213",
+"to": "34241",
+"command": "g ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7592
+},
+"E0718": {
+"from": "8142",
+"to": "8143",
+"command": "climb boulder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7749
+},
+"E0719": {
+"from": "25408",
+"to": "25411",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8987
+},
+"E0720": {
+"from": "4880",
+"to": "4882",
+"command": "climb cleft",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5987
+},
+"E0721": {
+"from": "20689",
+"to": "20690",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9184
+},
+"E0722": {
+"from": "10123",
+"to": "10126",
+"command": "climb gully",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9184
+},
+"E0723": {
+"from": "4572",
+"to": "9881",
+"command": "climb tree",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6964
+},
+"E0724": {
+"from": "11994",
+"to": "11995",
+"command": "climb steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8799
+},
+"E0725": {
+"from": "2716",
+"to": "2717",
+"command": "climb path",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8721
+},
+"E0726": {
+"from": "2842",
+"to": "2847",
+"command": "climb incline",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7668
+},
+"E0727": {
+"from": "26852",
+"to": "26854",
+"command": "go green-hued tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9277
+},
+"E0728": {
+"from": "27166",
+"to": "27167",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8875
+},
+"E0729": {
+"from": "10384",
+"to": "13312",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8196
+},
+"E0730": {
+"from": "25625",
+"to": "25626",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7006
+},
+"E0731": {
+"from": "2287",
+"to": "2286",
+"command": "go hole",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9087
+},
+"E0732": {
+"from": "13102",
+"to": "15977",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9227
+},
+"E0733": {
+"from": "3282",
+"to": "3283",
+"command": "go tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9152
+},
+"E0734": {
+"from": "19212",
+"to": "33356",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7758
+},
+"E0735": {
+"from": "26472",
+"to": "29335",
+"command": "go oak building",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7574
+},
+"E0736": {
+"from": "34737",
+"to": "34738",
+"command": "go vault",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7685
+},
+"E0737": {
+"from": "7516",
+"to": "7517",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8488
+},
+"E0738": {
+"from": "9010",
+"to": "9011",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9022
+},
+"E0739": {
+"from": "2172",
+"to": "12764",
+"command": "climb slope",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8983
+},
+"E0740": {
+"from": "26839",
+"to": "27162",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9265
+},
+"E0741": {
+"from": "5822",
+"to": "5823",
+"command": "go crevasse",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8773
+},
+"E0742": {
+"from": "19007",
+"to": "19008",
+"command": "climb ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7718
+},
+"E0743": {
+"from": "4168",
+"to": "4154",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7105
+},
+"E0744": {
+"from": "24749",
+"to": "24759",
+"command": "go oak door",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6981
+},
+"E0745": {
+"from": "7508",
+"to": "7515",
+"command": "say well",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8977
+},
+"E0746": {
+"from": "7704",
+"to": "7703",
+"command": "go hole",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8356
+},
+"E0747": {
+"from": "7719",
+"to": "7733",
+"command": "go cave",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8486
+},
+"E0748": {
+"from": "13091",
+"to": "27833",
+"command": "go tree",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9132
+},
+"E0749": {
+"from": "26437",
+"to": "27508",
+"command": "go thatched-roof hut",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8543
+},
+"E0750": {
+"from": "26981",
+"to": "26982",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7572
+},
+"E0751": {
+"from": "28524",
+"to": "26427",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7059
+},
+"E0752": {
+"from": "25615",
+"to": "30511",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.911
+},
+"E0753": {
+"from": "11247",
+"to": "11248",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7218
+},
+"E0754": {
+"from": "7710",
+"to": "7711",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9017
+},
+"E0755": {
+"from": "1013",
+"to": "1266",
+"command": "go crevasse",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7949
+},
+"E0756": {
+"from": "2647",
+"to": "2658",
+"command": "climb steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8161
+},
+"E0757": {
+"from": "3998",
+"to": "3999",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9018
+},
+"E0758": {
+"from": "31941",
+"to": "32106",
+"command": "go trapdoor",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7802
+},
+"E0759": {
+"from": "3686",
+"to": "7070",
+"command": "go tunnel",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7457
+},
+"E0760": {
+"from": "13536",
+"to": "13541",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9037
+},
+"E0761": {
+"from": "1693",
+"to": "1695",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8037
+},
+"E0762": {
+"from": "26795",
+"to": "26796",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5234
+},
+"E0763": {
+"from": "4535",
+"to": "7325",
+"command": "climb ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9193
+},
+"E0764": {
+"from": "3410",
+"to": "15699",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9271
+},
+"E0765": {
+"from": "34507",
+"to": "34517",
+"command": "go narrow fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9152
+},
+"E0766": {
+"from": "30882",
+"to": "8663",
+"command": "go steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7346
+},
+"E0767": {
+"from": "8034",
+"to": "8036",
+"command": "climb boulder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8908
+},
+"E0768": {
+"from": "14036",
+"to": "14037",
+"command": "go ramp",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9107
+},
+"E0769": {
+"from": "7228",
+"to": "7229",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9128
+},
+"E0770": {
+"from": "15993",
+"to": "15996",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8421
+},
+"E0771": {
+"from": "27487",
+"to": "27588",
+"command": "go hatch",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6338
+},
+"E0772": {
+"from": "23861",
+"to": "23863",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8712
+},
+"E0773": {
+"from": "4950",
+"to": "4951",
+"command": "go tree",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8765
+},
+"E0774": {
+"from": "6132",
+"to": "8608",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9165
+},
+"E0775": {
+"from": "13192",
+"to": "13194",
+"command": "go tower",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8708
+},
+"E0776": {
+"from": "8624",
+"to": "8625",
+"command": "climb stair",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8842
+},
+"E0777": {
+"from": "26876",
+"to": "29858",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7485
+},
+"E0778": {
+"from": "18842",
+"to": "30507",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9002
+},
+"E0779": {
+"from": "4680",
+"to": "4682",
+"command": "climb tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.5645
+},
+"E0780": {
+"from": "2843",
+"to": "2844",
+"command": "climb incline",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.778
+},
+"E0781": {
+"from": "18216",
+"to": "14967",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9187
+},
+"E0782": {
+"from": "25506",
+"to": "33323",
+"command": "go carmine hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.836
+},
+"E0783": {
+"from": "17912",
+"to": "17913",
+"command": "climb stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.848
+},
+"E0784": {
+"from": "9250",
+"to": "9274",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7339
+},
+"E0785": {
+"from": "35875",
+"to": "35873",
+"command": "go grey steps",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8575
+},
+"E0786": {
+"from": "31805",
+"to": "31806",
+"command": "go ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.808
+},
+"E0787": {
+"from": "31959",
+"to": "32207",
+"command": "go roof bakery",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9212
+},
+"E0788": {
+"from": "20904",
+"to": "20905",
+"command": "go boulders",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.8984
+},
+"E0789": {
+"from": "16010",
+"to": "16020",
+"command": "climb staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8976
+},
+"E0790": {
+"from": "21207",
+"to": "21202",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9299
+},
+"E0791": {
+"from": "31712",
+"to": "31976",
+"command": "go blanched vault",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7439
+},
+"E0792": {
+"from": "21193",
+"to": "12282",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9271
+},
+"E0793": {
+"from": "22074",
+"to": "22075",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9192
+},
+"E0794": {
+"from": "23422",
+"to": "23421",
+"command": "go dark tunnel",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.852
+},
+"E0795": {
+"from": "33491",
+"to": "33492",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.881
+},
+"E0796": {
+"from": "19010",
+"to": "19009",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6906
+},
+"E0797": {
+"from": "18681",
+"to": "18720",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8478
+},
+"E0798": {
+"from": "6473",
+"to": "6474",
+"command": "climb slope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9142
+},
+"E0799": {
+"from": "20689",
+"to": "20691",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7039
+},
+"E0800": {
+"from": "30972",
+"to": "30973",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7791
+},
+"E0801": {
+"from": "34546",
+"to": "34547",
+"command": "go ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.919
+},
+"E0802": {
+"from": "14379",
+"to": "14381",
+"command": "go balcony",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6059
+},
+"E0803": {
+"from": "11707",
+"to": "11743",
+"command": "go hole",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8815
+},
+"E0804": {
+"from": "16569",
+"to": "30760",
+"command": "go trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7939
+},
+"E0805": {
+"from": "4674",
+"to": "4675",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8945
+},
+"E0806": {
+"from": "36767",
+"to": "33092",
+"command": "go ramp",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7099
+},
+"E0807": {
+"from": "6580",
+"to": "6581",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8755
+},
+"E0808": {
+"from": "7811",
+"to": "7812",
+"command": "climb stones",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8886
+},
+"E0809": {
+"from": "36270",
+"to": "36273",
+"command": "go spiral staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7342
+},
+"E0810": {
+"from": "28204",
+"to": "28205",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9168
+},
+"E0811": {
+"from": "3867",
+"to": "16306",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7822
+},
+"E0812": {
+"from": "9863",
+"to": "9864",
+"command": "climb outcropping",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8433
+},
+"E0813": {
+"from": "14853",
+"to": "14854",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8834
+},
+"E0814": {
+"from": "31967",
+"to": "32085",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7554
+},
+"E0815": {
+"from": "6350",
+"to": "6353",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8125
+},
+"E0816": {
+"from": "6929",
+"to": "23337",
+"command": "go wooden trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9167
+},
+"E0817": {
+"from": "9739",
+"to": "9740",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7526
+},
+"E0818": {
+"from": "34718",
+"to": "34719",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9294
+},
+"E0819": {
+"from": "26055",
+"to": "26059",
+"command": "go oak door",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7984
+},
+"E0820": {
+"from": "31942",
+"to": "31943",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8801
+},
+"E0821": {
+"from": "1906",
+"to": "14798",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7577
+},
+"E0822": {
+"from": "10497",
+"to": "10499",
+"command": "climb bank",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8944
+},
+"E0823": {
+"from": "30348",
+"to": "30350",
+"command": "go oak door",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7911
+},
+"E0824": {
+"from": "19734",
+"to": "19737",
+"command": "climb stairway",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9007
+},
+"E0825": {
+"from": "19031",
+"to": "10596",
+"command": "go cavern",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7724
+},
+"E0826": {
+"from": "6333",
+"to": "6334",
+"command": "go stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8196
+},
+"E0827": {
+"from": "15996",
+"to": "23247",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8726
+},
+"E0828": {
+"from": "26557",
+"to": "26558",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8089
+},
+"E0829": {
+"from": "25367",
+"to": "25366",
+"command": "go stairwell",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.6914
+},
+"E0830": {
+"from": "14886",
+"to": "14885",
+"command": "go west bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9242
+},
+"E0831": {
+"from": "3714",
+"to": "7071",
+"command": "climb ladder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7694
+},
+"E0832": {
+"from": "2402",
+"to": "3425",
+"command": "climb staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8919
+},
+"E0833": {
+"from": "27394",
+"to": "27758",
+"command": "climb odd boulder",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.5392
+},
+"E0834": {
+"from": "19213",
+"to": "17941",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9239
+},
+"E0835": {
+"from": "18917",
+"to": "17103",
+"command": "go ledge",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9199
+},
+"E0836": {
+"from": "29844",
+"to": "31433",
+"command": "pull branch",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9193
+},
+"E0837": {
+"from": "28892",
+"to": "29112",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.789
+},
+"E0838": {
+"from": "7290",
+"to": "7285",
+"command": "go bank",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9271
+},
+"E0839": {
+"from": "4026",
+"to": "15538",
+"command": "go tower",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7642
+},
+"E0840": {
+"from": "19800",
+"to": "19802",
+"command": "go tunnel",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.9065
+},
+"E0841": {
+"from": "31859",
+"to": "33935",
+"command": "go roof cottage",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.7563
+},
+"E0842": {
+"from": "12281",
+"to": "12282",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7656
+},
+"E0843": {
+"from": "31214",
+"to": "31219",
+"command": "go oak door",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7191
+},
+"E0844": {
+"from": "26421",
+"to": "26422",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7558
+},
+"E0845": {
+"from": "28741",
+"to": "28742",
+"command": "go hatch",
+"expected": null,
+"jev": "same floor",
+"jev_estimate": 0.4697
+},
+"E0846": {
+"from": "2313",
+"to": "8945",
+"command": "go tower",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8484
+},
+"E0847": {
+"from": "17818",
+"to": "17819",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.771
+},
+"E0848": {
+"from": "6598",
+"to": "6604",
+"command": "climb stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9227
+},
+"E0849": {
+"from": "13430",
+"to": "13433",
+"command": "go steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7597
+},
+"E0850": {
+"from": "5999",
+"to": "10482",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7396
+},
+"E0851": {
+"from": "17543",
+"to": "17551",
+"command": "pull trapdoor",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.6471
+},
+"E0852": {
+"from": "6985",
+"to": "6986",
+"command": "climb ledge",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7867
+},
+"E0853": {
+"from": "12582",
+"to": "28709",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9161
+},
+"E0854": {
+"from": "25622",
+"to": "30504",
+"command": "swim down",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9093
+},
+"E0855": {
+"from": "31368",
+"to": "31371",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8774
+},
+"E0856": {
+"from": "2660",
+"to": "2658",
+"command": "climb steps",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8168
+},
+"E0857": {
+"from": "20640",
+"to": "33357",
+"command": "go stairwell",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9158
+},
+"E0858": {
+"from": "7536",
+"to": "7543",
+"command": "climb rubble",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9022
+},
+"E0859": {
+"from": "34846",
+"to": "34847",
+"command": "go stairway",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6704
+},
+"E0860": {
+"from": "6725",
+"to": "6726",
+"command": "go cave",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.766
+},
+"E0861": {
+"from": "36096",
+"to": "36122",
+"command": "go steep stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7617
+},
+"E0862": {
+"from": "21155",
+"to": "22062",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8068
+},
+"E0863": {
+"from": "8215",
+"to": "8216",
+"command": "go fissure",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7944
+},
+"E0864": {
+"from": "7704",
+"to": "26060",
+"command": "go slope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6569
+},
+"E0865": {
+"from": "2332",
+"to": "2356",
+"command": "go steps",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.9025
+},
+"E0866": {
+"from": "2320",
+"to": "2332",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.9017
+},
+"E0867": {
+"from": "25678",
+"to": "27817",
+"command": "go staircase",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.7731
+},
+"E0868": {
+"from": "34545",
+"to": "34546",
+"command": "go staircase",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.7953
+},
+"E0869": {
+"from": "19791",
+"to": "19792",
+"command": "climb stairs",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8151
+},
+"E0870": {
+"from": "31800",
+"to": "31802",
+"command": "go ladder",
+"expected": null,
+"jev": "down",
+"jev_estimate": 0.8088
+},
+"E0871": {
+"from": "27712",
+"to": "27711",
+"command": "climb rope",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.6871
+},
+"E0872": {
+"from": "2952",
+"to": "2953",
+"command": "go stairs",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.78
+},
+"E0873": {
+"from": "34858",
+"to": "34859",
+"command": "go fissure",
+"expected": null,
+"jev": "up",
+"jev_estimate": 0.8151
+}
+}

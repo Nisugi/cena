@@ -1,0 +1,161 @@
+n = 553
+accuracy         88.2%  (488/553)
+baseline (always 'same floor')  45.8%
+
+key distribution
+  same floor     253  45.8%
+  up             228  41.2%
+  down            72  13.0%
+
+confusion  expected -> chosen
+  same floor   -> same floor     225
+  up           -> up             209
+  down         -> down            54
+  same floor   -> down            16  <-- wrong
+  same floor   -> up              12  <-- wrong
+  down         -> up              11  <-- wrong
+  up           -> same floor      11  <-- wrong
+  up           -> down             8  <-- wrong
+  down         -> same floor       7  <-- wrong
+
+accuracy by stated probability of the chosen option
+  band               n  correct  accuracy   cumulative >= lo
+  0.00-0.50         10        2     20.0%      88.2% (n=553)
+  0.50-0.70         50       31     62.0%      89.5% (n=543)
+  0.70-0.80         38       29     76.3%      92.3% (n=493)
+  0.80-0.90         43       34     79.1%      93.6% (n=455)
+  0.90-0.95         56       50     89.3%      95.1% (n=412)
+  0.95-0.99        106       95     89.6%      96.1% (n=356)
+  0.99-1.00        250      247     98.8%      98.8% (n=250)
+
+accuracy by stated confidence
+  band               n  correct  accuracy
+  0.00-0.50         56       30     53.6%
+  0.50-0.70         42       32     76.2%
+  0.70-0.80         25       20     80.0%
+  0.80-0.90         55       45     81.8%
+  0.90-0.95         56       47     83.9%
+  0.95-0.99        108      106     98.1%
+  0.99-1.00        211      208     98.6%
+
+mistakes: 65  (first 20 below)
+
+  867 -> 9664  'go promontory'
+    expected down, chose up (p=0.53, conf=0.3)
+    back command: 'up'
+    from: [Whistler's Pass, Mountain Ledge]
+    to: [Whistler's Pass, Overlook]
+
+  1189 -> 1190  'go ironwood bridge'
+    expected up, chose same floor (p=0.85, conf=0.78)
+    back command: 'down'
+    from: [Khohallatain Forest's Edge]
+    to: [Locksmehr River, North Dock]
+
+  1193 -> 1192  'go ironwood bridge'
+    expected up, chose same floor (p=0.96, conf=0.94)
+    back command: 'down'
+    from: [Vipershroud, Ferry Landing]
+    to: [Locksmehr River, South Dock]
+
+  2505 -> 2504  'climb tree'
+    expected up, chose same floor (p=0.62, conf=0.43)
+    back command: 'down'
+    from: [Icemule Trail, Snowy Forest]
+    to: [Icemule Trail, Tree Path]
+
+  4943 -> 4944  'go stairwell'
+    expected down, chose up (p=0.75, conf=0.63)
+    back command: 'up'
+    from: [Gyldemar Forest, Ruined Hall]
+    to: [Gyldemar Forest, Stairwell]
+
+  5794 -> 5793  'climb chimney'
+    expected down, chose up (p=0.50, conf=0.25)
+    back command: 'up'
+    from: [Zaerthu Tunnels, Chimney]
+    to: [Zaerthu Tunnels, Chimney]
+
+  7009 -> 7010  'go steps'
+    expected up, chose down (p=0.45, conf=0.17)
+    back command: 'down'
+    from: [Castle Darkstone, Guardtower]
+    to: [Castle Darkstone, Guardtower]
+
+  7014 -> 7015  'go steps'
+    expected up, chose down (p=0.55, conf=0.32)
+    back command: 'down'
+    from: [Castle Darkstone, Guardtower]
+    to: [Castle Darkstone, Guardtower]
+
+  9099 -> 9098  'go stairs'
+    expected up, chose down (p=0.53, conf=0.3)
+    back command: 'down'
+    from: [Great Cavern, Flue]
+    to: [Great Cavern, Limestone Stairs]
+
+  10145 -> 10157  'go trail'
+    expected up, chose same floor (p=0.97, conf=0.95)
+    back command: 'down'
+    from: [Fethayl Bog, Ivory Pillar]
+    to: [Fethayl Bog, Lone Grave]
+
+  10539 -> 10540  'go trail'
+    expected down, chose same floor (p=1.00, conf=0.99)
+    back command: 'up'
+    from: [The Toadwort, Blackened Morass]
+    to: [Lunule Weald, Slade]
+
+  13229 -> 13308  'go altar'
+    expected up, chose same floor (p=0.96, conf=0.94)
+    back command: 'down'
+    from: [Oleani's Temple, Sanctuary]
+    to: [Oleani's Temple, Altar]
+
+  13229 -> 13309  'go font'
+    expected up, chose same floor (p=0.56, conf=0.35)
+    back command: 'down'
+    from: [Oleani's Temple, Sanctuary]
+    to: [Oleani's Temple, Baptism Font]
+
+  13307 -> 18696  'go path'
+    expected down, chose same floor (p=0.93, conf=0.89)
+    back command: 'up'
+    from: [Warrior Guild, Sentry]
+    to: [Ta'Illistim, Warrior Guild]
+
+  13778 -> 13922  'go dock'
+    expected down, chose same floor (p=0.91, conf=0.87)
+    back command: 'up'
+    from: [Ravelin, River's Edge]
+    to: [Ravelin, Riverside Dock]
+
+  17249 -> 17250  'climb ladder'
+    expected down, chose up (p=0.95, conf=0.93)
+    back command: 'up'
+    from: [Citadel, Icehouse]
+    to: [Citadel, Darkroom]
+
+  19891 -> 19895  'go stairs'
+    expected down, chose up (p=0.60, conf=0.4)
+    back command: 'up'
+    from: [Cleric Guild, Alchemy Lobby]
+    to: [Cleric Guild, Alchemy Storage]
+
+  20899 -> 20900  'go passage'
+    expected up, chose same floor (p=0.88, conf=0.83)
+    back command: 'down'
+    from: [Monsoon Jungle, Hillside Path]
+    to: [Monsoon Jungle, Canopy Approach]
+
+  21765 -> 21766  'go platform'
+    expected up, chose same floor (p=0.61, conf=0.41)
+    back command: 'down'
+    from: [House Phoenix, Observatory]
+    to: [House Phoenix, Platform]
+
+  22105 -> 22100  'go staircase'
+    expected down, chose up (p=0.89, conf=0.84)
+    back command: 'up'
+    from: [Bard Guild, Entry Hall]
+    to: [Bard Guild, Landing]

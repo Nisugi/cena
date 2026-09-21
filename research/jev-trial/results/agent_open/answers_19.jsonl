@@ -1,0 +1,40 @@
+{"item": "E0721", "direction": "up", "confidence": 82, "reason": "landing has a descending staircase down through a hole and a window peering onto the cavern below, so it sits above the waterfall cavern"}
+{"item": "E0722", "direction": "down", "confidence": 88, "reason": "room left says the ledge descends into a deep gully and down to the swamp edge, which is the arrival room"}
+{"item": "E0723", "direction": "down", "confidence": 78, "reason": "the cave is under the snow, insulated from the valley above, and only a treetop stick pokes out of the ground"}
+{"item": "E0724", "direction": "down", "confidence": 88, "reason": "basement room's steps drop down out of sight to another level below, and the pool room's stairs rise to the Observatory above"}
+{"item": "E0725", "direction": "up", "confidence": 85, "reason": "left room says a path winds up the slope to the north; arrival room says the slope levels out and a path winds down to the south"}
+{"item": "E0726", "direction": "up", "confidence": 62, "reason": "climbing a forested incline, arrival mentions trails leading from a slippery incline, but no clear storey change; treated as a slope ascent"}
+{"item": "E0727", "direction": "same floor", "confidence": 88, "reason": "a curtained tunnel to an alcove of the same temple, with a separate 'down' exit to the crypt"}
+{"item": "E0728", "direction": "down", "confidence": 90, "reason": "a trapdoor from a storage room into a root cellar below"}
+{"item": "E0729", "direction": "up", "confidence": 72, "reason": "landing describes a stairway leading up into the inn and separate steps down to the basement, so the entry is below the landing"}
+{"item": "E0730", "direction": "up", "confidence": 60, "reason": "a stairway from a cramped ground space into a passage inside the bridge structure, likely a level up, though the text is not explicit"}
+{"item": "E0731", "direction": "up", "confidence": 72, "reason": "the catacomb room says the gaping hole leading back out is high on one wall"}
+{"item": "E0732", "direction": "same floor", "confidence": 75, "reason": "the tunnel is formed by tightened trees to the east, a level walk into the library"}
+{"item": "E0733", "direction": "same floor", "confidence": 78, "reason": "the tunnel entrance is just underneath the ramp at this same ledge, heading north on the level"}
+{"item": "E0734", "direction": "up", "confidence": 90, "reason": "a spiral staircase leads upstairs from the living room to the hallway"}
+{"item": "E0735", "direction": "same floor", "confidence": 88, "reason": "entering a squat building from the plateau path, like the other shop entrances there"}
+{"item": "E0736", "direction": "down", "confidence": 70, "reason": "going into a stone vault leads into a cave passage below the garden's ground level"}
+{"item": "E0737", "direction": "down", "confidence": 62, "reason": "the cellar's ladder rises into darkness above, suggesting the hole entered it from a higher level"}
+{"item": "E0738", "direction": "same floor", "confidence": 60, "reason": "both rooms are the same outdoor Spiral Passageway shopping row; the steps merely link adjoining courtyard segments"}
+{"item": "E0739", "direction": "down", "confidence": 82, "reason": "the overlook says an offshoot weaves down the incline at a steep embankment, and the arrival trail follows the bottom of that incline"}
+{"item": "E0740", "direction": "down", "confidence": 88, "reason": "a staircase from a surface park into a sewer section below"}
+{"item": "E0741", "direction": "same floor", "confidence": 62, "reason": "a narrow crevasse along the wall connecting two tunnels, both underground, with no stated rise or drop"}
+{"item": "E0742", "direction": "up", "confidence": 88, "reason": "the planetarium platform rises fifty feet into the air, reached by climbing a ramp"}
+{"item": "E0743", "direction": "same floor", "confidence": 55, "reason": "two adjoining crypt chambers in the Hall of the Dead with no stated elevation change"}
+{"item": "E0744", "direction": "same floor", "confidence": 82, "reason": "a door off the 2nd floor corridor into a room, like the other named doors on that corridor"}
+{"item": "E0745", "direction": "same floor", "confidence": 55, "reason": "a spoken-word teleport between two catacomb passages at the same underground level"}
+{"item": "E0746", "direction": "same floor", "confidence": 55, "reason": "a hole from a cavern into an adjacent underground shrine wing with no stated rise or drop"}
+{"item": "E0747", "direction": "same floor", "confidence": 78, "reason": "an arch of rock opens into a small cave in the northern wall, a level step between caverns"}
+{"item": "E0748", "direction": "same floor", "confidence": 72, "reason": "entering the hollowed-out interior of a dead tree through its draped entrance, not climbing into a treetop"}
+{"item": "E0749", "direction": "same floor", "confidence": 88, "reason": "entering a hut from the path, like the other tents and wagons listed there"}
+{"item": "E0750", "direction": "same floor", "confidence": 85, "reason": "the hatch in the wagon's wall leads to the cleared area just behind the wagon, at ground level"}
+{"item": "E0751", "direction": "same floor", "confidence": 78, "reason": "a short set of steps leading out of a wagon onto the surrounding path"}
+{"item": "E0752", "direction": "down", "confidence": 90, "reason": "swimming down from the island to an underwater room with water overhead"}
+{"item": "E0753", "direction": "up", "confidence": 65, "reason": "the stairs are marked Staff Only and the arrival hallway has a window set high on the wall with footprints leading from stairs, suggesting an upper storey"}
+{"item": "E0754", "direction": "down", "confidence": 85, "reason": "arrival pit gets light filtering in through the broken trapdoor above it"}
+{"item": "E0755", "direction": "same floor", "confidence": 60, "reason": "the pass dwindles into the crevasse which travellers hasten into, entering the cavern at the same level"}
+{"item": "E0756", "direction": "down", "confidence": 68, "reason": "the ledge's only other exit is up to the Dais, so the stairs lead back down the flight"}
+{"item": "E0757", "direction": "same floor", "confidence": 72, "reason": "a fissure into a sheltered spot inside Onyx Point, level with the mountainside outside"}
+{"item": "E0758", "direction": "up", "confidence": 90, "reason": "the stairway winds up to a trapdoor in the ceiling overhead, and down leads to the entry"}
+{"item": "E0759", "direction": "up", "confidence": 72, "reason": "arrival room is atop a pile of debris with a 'down' exit, and sounds travel from above"}
+{"item": "E0760", "direction": "up", "confidence": 92, "reason": "the tower room says a wrought iron staircase leads back down to the Collections room"}

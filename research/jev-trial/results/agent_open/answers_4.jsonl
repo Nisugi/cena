@@ -1,0 +1,40 @@
+{"item": "E0121", "direction": "up", "confidence": 60, "reason": "command is climb stairs from a shop dye room to a backroom; stairs imply a different storey, though the backroom text gives no height cue"}
+{"item": "E0122", "direction": "up", "confidence": 88, "reason": "foyer says a grand staircase leads up to the second floor and the arrival is a bedroom, typical upper storey"}
+{"item": "E0123", "direction": "same floor", "confidence": 70, "reason": "both are cavern rooms on the same level; the cavern's own 'up' exit is listed separately as leading elsewhere"}
+{"item": "E0124", "direction": "same floor", "confidence": 90, "reason": "arrival is explicitly 'the ground floor of this guard tower' entered from the street"}
+{"item": "E0125", "direction": "down", "confidence": 72, "reason": "arrived room says the stones descend to the flat tundra, so leaving the plateau by the boulder cascade drops to the track"}
+{"item": "E0126", "direction": "down", "confidence": 88, "reason": "room left describes a stairway spiraling down towards the entrance of the aviary, which is where we arrive"}
+{"item": "E0127", "direction": "same floor", "confidence": 65, "reason": "both rooms are subterranean tunnels; the tunnel entrance is reached horizontally, the descent is further along"}
+{"item": "E0128", "direction": "up", "confidence": 85, "reason": "arrival says the hatch leads down into the snow, so going out through it from the ice cave goes up to the surface"}
+{"item": "E0129", "direction": "same floor", "confidence": 82, "reason": "storeroom says a gazebo can be glimpsed beyond a short tunnel, a level connection"}
+{"item": "E0130", "direction": "down", "confidence": 92, "reason": "trapdoor at the mire leads into a tiny underground room"}
+{"item": "E0131", "direction": "down", "confidence": 90, "reason": "arrival is a root cellar whose staircase disappears into the ceiling toward the store room above"}
+{"item": "E0132", "direction": "up", "confidence": 75, "reason": "leaving a sunken tub by steps up into the bath room that contains it"}
+{"item": "E0133", "direction": "down", "confidence": 70, "reason": "the amphitheater's tiers descend toward the stage; stepping from the stage out into the amphitheater seating area reads as leaving the stage level"}
+{"item": "E0134", "direction": "same floor", "confidence": 72, "reason": "both are offices in the same exteriors complex; the arrival's own stairway down leads elsewhere"}
+{"item": "E0135", "direction": "same floor", "confidence": 88, "reason": "the hole is in a fallen trunk lying on the ground, entered horizontally"}
+{"item": "E0136", "direction": "down", "confidence": 85, "reason": "the recess says stone steps lead down into the guts of the keep and the ledge is an underground tower landing with stairs spiraling further down"}
+{"item": "E0137", "direction": "down", "confidence": 80, "reason": "courtyard describes a grassy bank leading down to the small bubbling spring"}
+{"item": "E0138", "direction": "same floor", "confidence": 72, "reason": "both rooms are the ravine floor on either side of the same rockpile"}
+{"item": "E0139", "direction": "down", "confidence": 70, "reason": "amphitheatre benches slump toward the ground below and the arrival is a dirt path at ground level"}
+{"item": "E0140", "direction": "up", "confidence": 62, "reason": "the coast room's rock steps descend to the beach, so going up the steps reaches the jungle clearing inland"}
+{"item": "E0141", "direction": "up", "confidence": 70, "reason": "observatory's other exit is down to the office, so the wood staircase from it leads up to the chamber"}
+{"item": "E0142", "direction": "up", "confidence": 92, "reason": "room left says a flight of steps leads up and the arrival is the stairs growing more pitched"}
+{"item": "E0143", "direction": "down", "confidence": 88, "reason": "precipice says below is a lower section of the plateau, and the arrival is the second tier mirroring its sister above"}
+{"item": "E0144", "direction": "up", "confidence": 72, "reason": "art studio reached by circular stone steps from the ground-floor lobby, and it has a balcony overlooking a garden"}
+{"item": "E0145", "direction": "same floor", "confidence": 60, "reason": "a fissure between two adjoining cavern rooms of the same complex, no height language"}
+{"item": "E0146", "direction": "up", "confidence": 75, "reason": "the rope leads downward into the pit, so climbing it goes up out of the pit room"}
+{"item": "E0147", "direction": "up", "confidence": 78, "reason": "lobby mentions dwarves heading for the stairs and the corridor of offices is a separate storey above the ground lobby"}
+{"item": "E0148", "direction": "same floor", "confidence": 88, "reason": "a hole in the north wall of an ice tunnel opening into an adjacent ice cavern, level with it"}
+{"item": "E0149", "direction": "up", "confidence": 93, "reason": "foyer says a narrow winding stairway disappears upward into the warehouse's second floor and the arrival is the Landing"}
+{"item": "E0150", "direction": "up", "confidence": 88, "reason": "greatroom has a staircase rising, and the arrival is Windfellow Tower First Floor where the staircase flattens before climbing again"}
+{"item": "E0151", "direction": "up", "confidence": 90, "reason": "room left says crude steps lead the way up until reaching the east bank of the waterfall's crest, which is the arrival"}
+{"item": "E0152", "direction": "up", "confidence": 90, "reason": "left room is below the top bank; arrival says as you top the ridge of the bank"}
+{"item": "E0153", "direction": "same floor", "confidence": 78, "reason": "moving off a bridge onto a ledge; a span is level with its ends, and the drop is far below both"}
+{"item": "E0154", "direction": "same floor", "confidence": 65, "reason": "the ledge clings to the mountain face just beyond a crevice and the trail is reachable with an effortless leap, so it is level with the juncture"}
+{"item": "E0155", "direction": "up", "confidence": 85, "reason": "third floor has a staircase stretching upwards and the arrival is where that staircase terminates"}
+{"item": "E0156", "direction": "same floor", "confidence": 80, "reason": "a hatch in a wall panel between a showroom and an adjoining workroom aboard the same deck"}
+{"item": "E0157", "direction": "up", "confidence": 88, "reason": "left room says steps lead up to the approaches to the summit; arrival is an elevated plateau with steps leading down to the arch"}
+{"item": "E0158", "direction": "up", "confidence": 78, "reason": "stairs connect first and second floors and the arrival warehouse has a ramp leading down and pulleys to move cargo between floors"}
+{"item": "E0159", "direction": "same floor", "confidence": 88, "reason": "a door off the upper landing hallway into a bedroom on that same landing"}
+{"item": "E0160", "direction": "down", "confidence": 92, "reason": "the edge room says the ground falls away and the arrival is the floor of the chasm at the foot of the precipitous wall"}

@@ -1,0 +1,40 @@
+{"item": "E0521", "direction": "up", "confidence": 92, "reason": "arrived Chamber of Prophecy says incense drifts up from the chamber below"}
+{"item": "E0522", "direction": "up", "confidence": 93, "reason": "lobby staircase explicitly leads to the second floor of the inn"}
+{"item": "E0523", "direction": "down", "confidence": 95, "reason": "waterfall empties into the hole below; arrived lagoon says the hole is far, far above"}
+{"item": "E0524", "direction": "down", "confidence": 78, "reason": "arrived crawlway cuts deeper into the volcano through an opening below"}
+{"item": "E0525", "direction": "up", "confidence": 85, "reason": "ramp rises from halfway up the ridge to meet the raised highroad at the battlements"}
+{"item": "E0526", "direction": "same floor", "confidence": 60, "reason": "knotted rope allows access between wall top and tower room whose floor is far above the ground, so both are at wall-walk level"}
+{"item": "E0527", "direction": "down", "confidence": 70, "reason": "climbing off the outpost shelf onto a precipice that has a ledge above it"}
+{"item": "E0528", "direction": "down", "confidence": 93, "reason": "stemples lead down a nearly bottomless hole into the cavern"}
+{"item": "E0529", "direction": "same floor", "confidence": 85, "reason": "a tunnel branching off the courtyard path, no vertical language"}
+{"item": "E0530", "direction": "up", "confidence": 72, "reason": "climbing rocks out of the pool onto the cavern edge above the pool"}
+{"item": "E0531", "direction": "up", "confidence": 72, "reason": "lounge has a low ceiling and separate stairway down to the foyer; the training hall is a vaulted upper level with a ladder further up to the solarium"}
+{"item": "E0532", "direction": "up", "confidence": 88, "reason": "arrived nexus has stairways in alcoves leading to the lower level, and the landing's other exit is down"}
+{"item": "E0533", "direction": "same floor", "confidence": 80, "reason": "a short tunnel off the walkway rise into a storeroom, level with the other workshops"}
+{"item": "E0534", "direction": "up", "confidence": 85, "reason": "arrived stone stairs carved into the canyon lead upwards from the canyon road"}
+{"item": "E0535", "direction": "same floor", "confidence": 62, "reason": "a concealed storage room off the upstairs hall, with the hall's other stair exit handling the descent"}
+{"item": "E0536", "direction": "up", "confidence": 88, "reason": "left room is just below the ridge line; climbing the pine reaches the crest of the ridge"}
+{"item": "E0537", "direction": "down", "confidence": 90, "reason": "arrived lounge says three short steps lead down into the cutout"}
+{"item": "E0538", "direction": "up", "confidence": 60, "reason": "trapdoor from a hidden storage room reached via Pan's Low Room into the cooper's workshop at street level"}
+{"item": "E0539", "direction": "down", "confidence": 90, "reason": "arrived shop has stair treads circling upward to the floor above, which is the dome chamber"}
+{"item": "E0540", "direction": "same floor", "confidence": 75, "reason": "cave is behind the liquid curtain at the lagoon's edge, water level in both rooms"}
+{"item": "E0541", "direction": "same floor", "confidence": 82, "reason": "climbing a snowbank from the gate area onto the adjacent snowfield outside the wall"}
+{"item": "E0542", "direction": "up", "confidence": 95, "reason": "arrived web says the mountain peak is below and the sun unbearable from all the way up here"}
+{"item": "E0543", "direction": "same floor", "confidence": 70, "reason": "a small door beside the stage steps leading into the adjoining backstage dressing space"}
+{"item": "E0544", "direction": "same floor", "confidence": 78, "reason": "cave mouth is set into the cliff at the overhang itself, with separate steps down to the ledges"}
+{"item": "E0545", "direction": "up", "confidence": 78, "reason": "spiral staircase from the third floor into a gable room with a slanted ceiling, i.e. the attic above"}
+{"item": "E0546", "direction": "same floor", "confidence": 85, "reason": "the oak door at the end of the upstairs hallway opens onto an office on the same floor"}
+{"item": "E0547", "direction": "down", "confidence": 60, "reason": "stairs from the wing beside the raised stage down to the stage floor area where a walkway leads up and out"}
+{"item": "E0548", "direction": "up", "confidence": 90, "reason": "arrived platform is far above the pool with the crystal dome just overhead, higher than the ladder room"}
+{"item": "E0549", "direction": "up", "confidence": 70, "reason": "ladder climbs from the open-air canopied platform up into the boutique proper, which has further steps up to the atelier"}
+{"item": "E0550", "direction": "same floor", "confidence": 80, "reason": "entering a shop off the bazaar cobblestones; no vertical cue"}
+{"item": "E0551", "direction": "same floor", "confidence": 85, "reason": "climbing a fence between two adjacent Poor Quarter street rooms"}
+{"item": "E0552", "direction": "up", "confidence": 93, "reason": "the winding staircase leads up and the arrived room is the Upstairs Hall"}
+{"item": "E0553", "direction": "up", "confidence": 80, "reason": "arrived room is the stairway rising from the cavern landing, a level above the cavern floor"}
+{"item": "E0554", "direction": "same floor", "confidence": 75, "reason": "entering the tower's ground chamber from the courtyard; the tower's own up exit leads to the Tower Chamber"}
+{"item": "E0555", "direction": "up", "confidence": 88, "reason": "climbing a staircase from the ground entryway to an upper hallway of the same society building"}
+{"item": "E0556", "direction": "same floor", "confidence": 68, "reason": "both rooms are Treetop Platform sections with ropes tied off leading further up, so the rope here links two platform spots"}
+{"item": "E0557", "direction": "up", "confidence": 62, "reason": "arrived chapel is lit by a clear crystal ceiling above the cylindrical hall and reached by the black onyx staircase"}
+{"item": "E0558", "direction": "down", "confidence": 72, "reason": "a shaft from the pool level to a ledge before a yawning pit deeper in the mines"}
+{"item": "E0559", "direction": "up", "confidence": 80, "reason": "steps climb the chimney-like channel toward the Observatory above, the arrived room's other exit being up"}
+{"item": "E0560", "direction": "same floor", "confidence": 85, "reason": "one of several hued tunnels leading deeper into the temple, with a separate down exit to the crypt"}

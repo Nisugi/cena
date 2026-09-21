@@ -1,0 +1,37 @@
+{"item": "E0201", "direction": "up", "confidence": 78, "reason": "command is 'climb fissure' and the fissure room says bursts of air come from below, so the gas pocket lies beneath it"}
+{"item": "E0202", "direction": "same floor", "confidence": 88, "reason": "walking onto a suspension bridge over a river is level with the ground at either end"}
+{"item": "E0203", "direction": "same floor", "confidence": 72, "reason": "a natural stone arch in the wall leading into the adjacent luminescent pool chamber, no rise or drop mentioned"}
+{"item": "E0204", "direction": "same floor", "confidence": 90, "reason": "a natural rock-slab bridge spanning the ravine from the cliff edge, a span level with both ends"}
+{"item": "E0205", "direction": "same floor", "confidence": 85, "reason": "stepping from grassland onto a cobblestone road across the same island terrain"}
+{"item": "E0206", "direction": "same floor", "confidence": 85, "reason": "a cobblestone arch exit into a short level tunnel, both subterranean with arched openings at either end"}
+{"item": "E0207", "direction": "up", "confidence": 88, "reason": "the aftcastle is described as a raised portion of the upper deck above the aft deck"}
+{"item": "E0208", "direction": "up", "confidence": 88, "reason": "the staircase winds upward along the neck toward the head, and the head room's other exit is 'down -> Shoulders' equivalent"}
+{"item": "E0209", "direction": "up", "confidence": 92, "reason": "the chimney ascends from the chamber and the flue room says ash continues to rise up the narrowing flue"}
+{"item": "E0210", "direction": "same floor", "confidence": 85, "reason": "a log-and-plank bridge spanning a tributary, level with the forest at either end"}
+{"item": "E0211", "direction": "down", "confidence": 76, "reason": "room left says the valley stretches below and the trail wends down into it; arrived room's other exit is 'up -> Valley Ridge'"}
+{"item": "E0212", "direction": "same floor", "confidence": 86, "reason": "the walkway is explicitly 'in truth a bridge' spanning a chasm between two structures at the same height"}
+{"item": "E0213", "direction": "same floor", "confidence": 70, "reason": "entering the stairway room itself; the climb up is the separate trapdoor exit to the Lookout"}
+{"item": "E0214", "direction": "up", "confidence": 82, "reason": "'climb hole' from a cavern into a vertical chimney passage whose other exit continues up"}
+{"item": "E0215", "direction": "down", "confidence": 80, "reason": "arrived room is a steeply sloping passage dug upward from deep underground, with its other exit down to a slimy passage"}
+{"item": "E0216", "direction": "down", "confidence": 88, "reason": "the mountainside shows the top rungs of a ladder and the arrived room is at the top of a shaft with 'down' continuing"}
+{"item": "E0217", "direction": "up", "confidence": 82, "reason": "Planar's other exit is down to the Foyer and the spiral staircase leads both up and down, so Spiritual is the level above"}
+{"item": "E0218", "direction": "down", "confidence": 86, "reason": "the cavern ends in a pit and the arrived chimney room's other exit is down, so entering the shaft drops below the rim"}
+{"item": "E0219", "direction": "down", "confidence": 74, "reason": "arrived room is a root cellar whose staircase disappears up into the ceiling toward the tavern level"}
+{"item": "E0220", "direction": "same floor", "confidence": 86, "reason": "an arch in the inner wall opening onto an enclosed temple courtyard garden at ground level"}
+{"item": "E0221", "direction": "same floor", "confidence": 68, "reason": "a clearing leading to a trail winding along the bottom of low hills, no ascent or descent stated"}
+{"item": "E0222", "direction": "same floor", "confidence": 85, "reason": "a log-and-plank bridge spanning a gully, level with the pineforest at both ends"}
+{"item": "E0223", "direction": "down", "confidence": 84, "reason": "icy stairs from an outdoor footpath into a concealed cavern shop whose snow fell down the hole from the drifts above"}
+{"item": "E0224", "direction": "up", "confidence": 86, "reason": "great steps ascend toward the dais and the arrived room is atop that dais"}
+{"item": "E0225", "direction": "down", "confidence": 78, "reason": "arrived room is an explicitly subterranean tunnel inside the hill, reached from a non-subterranean office"}
+{"item": "E0226", "direction": "same floor", "confidence": 62, "reason": "trail continues from a rocky trail to rock stairs that only begin to wind upward, with the climb itself being the 'up' exit"}
+{"item": "E0227", "direction": "up", "confidence": 92, "reason": "climbing branches used as footholds for ascension into a cabin held in the tree"}
+{"item": "E0228", "direction": "same floor", "confidence": 78, "reason": "planks bridge flooded sections of the stairs, a span across water rather than a change of level"}
+{"item": "E0229", "direction": "same floor", "confidence": 74, "reason": "walking east into the dense forest that stands beside the windy mountainside"}
+{"item": "E0230", "direction": "up", "confidence": 93, "reason": "the ladder leads to the second floor and the arrived room's hatch gives access to a ladder down to the first floor"}
+{"item": "E0231", "direction": "same floor", "confidence": 82, "reason": "north out of a lounge into the second-deck hallway serving the lounges on that same level"}
+{"item": "E0232", "direction": "up", "confidence": 76, "reason": "shallow steps ascend toward the top of the tower through the gate, and the arrived room continues up and down"}
+{"item": "E0233", "direction": "same floor", "confidence": 88, "reason": "a rope and wood suspension bridge across the chasm, level with the chimney top and the mesa"}
+{"item": "E0234", "direction": "same floor", "confidence": 84, "reason": "a pointed archway in the wall leading out into a level tunnel, with the descent being the separate down exit"}
+{"item": "E0235", "direction": "down", "confidence": 76, "reason": "the corridor's other exit is up to the attic, so the staircase down from the bedroom level reaches the kitchen with its backyard 'out'"}
+{"item": "E0236", "direction": "same floor", "confidence": 88, "reason": "swimming west between two adjoining chambers of the same underground temple"}
+{"item": "E0237", "direction": "up", "confidence": 92, "reason": "the foyer's spiral staircase explicitly ascends to the floor above"}

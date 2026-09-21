@@ -1,0 +1,40 @@
+{"item": "E0801", "direction": "up", "confidence": 72, "reason": "showroom is inside the tree lit from a small opening above; the workroom is a platform perched in the canopy branches, reached by ladder"}
+{"item": "E0802", "direction": "same floor", "confidence": 78, "reason": "the balcony is fitted to the back of the same clock tower level, with separate staircase down and ladder up listed as the level changes"}
+{"item": "E0803", "direction": "down", "confidence": 88, "reason": "a gaping hole in the ground with footprints leading in and down, arriving in a dungeon cell"}
+{"item": "E0804", "direction": "down", "confidence": 85, "reason": "a trapdoor from a rooftop into an interior storage cubbyhole below the roof"}
+{"item": "E0805", "direction": "up", "confidence": 88, "reason": "wide steps separate the ground level from the first platform, and the arrival is a circular platform in the tanik tree"}
+{"item": "E0806", "direction": "same floor", "confidence": 80, "reason": "a ramp from a ship's deck out onto the dock it is moored at, both outdoors hard flat, with the staircase below being the separate level change"}
+{"item": "E0807", "direction": "up", "confidence": 92, "reason": "the staircase winds up to the floor above and the turret is the tower's summit"}
+{"item": "E0808", "direction": "down", "confidence": 90, "reason": "the ledge is twenty feet above the floor and the stones provide access to the floor below"}
+{"item": "E0809", "direction": "down", "confidence": 55, "reason": "a spiral staircase from the meeting hall to barracks; the barracks has its own steps further down to a cellar so it may be a basement level, but the text does not say"}
+{"item": "E0810", "direction": "up", "confidence": 90, "reason": "the spiral staircase ascends to the deck above and the foredeck describes a spiral staircase below"}
+{"item": "E0811", "direction": "down", "confidence": 85, "reason": "left the ridge with a view of the hills below and arrived where slate stairs lead up to the ridge above"}
+{"item": "E0812", "direction": "up", "confidence": 85, "reason": "a slight outcropping just above you looks promising, so climbing it gains height on the cliff face"}
+{"item": "E0813", "direction": "down", "confidence": 78, "reason": "steps pursue a curving path down the slope of a bluff from the meadow, but the arrival room is the bluff itself; taking the steps from the meadow's edge descends the slope"}
+{"item": "E0814", "direction": "down", "confidence": 82, "reason": "the tinkering chamber has a set of steep stairs leading downward, so the workshop is below it"}
+{"item": "E0815", "direction": "up", "confidence": 88, "reason": "steep stairs spiral high up into the tower from the first floor study"}
+{"item": "E0816", "direction": "down", "confidence": 88, "reason": "a trapdoor from a ground-floor room into a tunnel, Burrow Way, whose ladder leads up"}
+{"item": "E0817", "direction": "up", "confidence": 88, "reason": "above, a steep staircase climbs to another landing overhead, which the arrival room matches with its steep steps leading down"}
+{"item": "E0818", "direction": "up", "confidence": 92, "reason": "the staircase coils toward the upper story and the hall stretches atop that staircase"}
+{"item": "E0819", "direction": "up", "confidence": 78, "reason": "a wide stone staircase leads up to the door giving entrance to the tower's first floor from the courtyard"}
+{"item": "E0820", "direction": "same floor", "confidence": 70, "reason": "a fissure rends one of the short cliffs at road level, opening into a cave shop entered straight through"}
+{"item": "E0821", "direction": "down", "confidence": 85, "reason": "a set of steps leads down into the therapeutic liquid, arriving in the pool itself"}
+{"item": "E0822", "direction": "down", "confidence": 60, "reason": "the road is raised above the underbrush and banked, so climbing off the bank drops to the muddy path beside it"}
+{"item": "E0823", "direction": "same floor", "confidence": 88, "reason": "a door leading deeper inside on the same below-deck level, the stairway to the deck above being the separate level change"}
+{"item": "E0824", "direction": "down", "confidence": 68, "reason": "the courtyard extends south dropping sharply away to a view of the rest of the Guild, and the Hub is a lower plateau whose short stairway leads back up"}
+{"item": "E0825", "direction": "down", "confidence": 72, "reason": "hordes spew forth from a dark cavern below the aerial combat, arriving in a squat earthen chamber with moonlight through an opening in the ceiling"}
+{"item": "E0826", "direction": "up", "confidence": 85, "reason": "the stairway room's narrow stairs wind up into the dark tower to a door at the top"}
+{"item": "E0827", "direction": "up", "confidence": 85, "reason": "granite steps lead up to the garden from the cavern"}
+{"item": "E0828", "direction": "up", "confidence": 82, "reason": "the hall slopes upward to curved stairs with wan light trickling down them, arriving at the landing at the stairway's mouth"}
+{"item": "E0829", "direction": "up", "confidence": 65, "reason": "the workshop entry is a below-stairs service level with a hole to the basement, and the stairwell leads up to the pantry off the kitchen"}
+{"item": "E0830", "direction": "same floor", "confidence": 88, "reason": "stepping from a midstream rock to the stream bank, both riparian ground level"}
+{"item": "E0831", "direction": "up", "confidence": 90, "reason": "a ladder leads up to a trapdoor, and the arrival room has that trapdoor set into its floor"}
+{"item": "E0832", "direction": "up", "confidence": 92, "reason": "the staircase climbs to a landing just below a second-story window"}
+{"item": "E0833", "direction": "up", "confidence": 70, "reason": "climbing a boulder out of the cavern into an outdoor glade over which the glacier looms"}
+{"item": "E0834", "direction": "up", "confidence": 85, "reason": "stairs climbed from a wine cellar reach the pantry on the main level by the dining hall"}
+{"item": "E0835", "direction": "same floor", "confidence": 55, "reason": "the ledge leads off the tower-top platform level, with the staircase down to storage being the labelled descent; no height change stated"}
+{"item": "E0836", "direction": "down", "confidence": 85, "reason": "the arrival room takes a trickle of water from the upper floor and has a crevice-laden floor above it"}
+{"item": "E0837", "direction": "up", "confidence": 90, "reason": "the spiraling staircase winds from the ground to the second-story entry of a bungalow on stilts"}
+{"item": "E0838", "direction": "same floor", "confidence": 80, "reason": "stepping from standing in the creek onto its bank, both riparian outdoor ground level"}
+{"item": "E0839", "direction": "same floor", "confidence": 78, "reason": "walking in from the courtyard walkway to the tower's entrance hall at ground level"}
+{"item": "E0840", "direction": "same floor", "confidence": 82, "reason": "a short tunnel through a granite archway between two rooms of the same cavern guild level"}

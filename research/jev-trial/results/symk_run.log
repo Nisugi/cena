@@ -1,0 +1,6 @@
+100/553 asked=204
+200/553 asked=401
+300/553 asked=606
+400/553 asked=800
+500/553 asked=1001
+done: 553 pairs, 1106 calls asked, tokens in=1514482 out=43631 cost=$0.063608

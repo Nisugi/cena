@@ -1,0 +1,54 @@
+You are taking part in a blind reading task about a text game's map (GemStone IV). Your
+job is to read room descriptions and judge, for each exit, whether taking it moves a
+character UP a floor, DOWN a floor, or keeps them on the SAME FLOOR.
+
+STRICT RULES ABOUT FILES (breaking these invalidates the work):
+- Read ONLY this INSTRUCTIONS.txt and your one batch file, batch_N.txt, in this folder
+  (about 1,000 lines; read it all, in chunks if needed).
+- Do NOT open, search, grep or list ANY other file or directory. In particular do not open
+  key.json, any .jsonl file, any other batch, any map file, or anything under
+  E:\Cena\reference. Do not use web search. Do not write or run scripts to decide answers.
+  Judge each exit yourself by reading.
+- Write ONLY your one output file, answers_N.jsonl, in this folder.
+
+THE FILE FORMAT
+Each block starts with a line like "=== E0001 ===" and describes one exit: the command the
+character types, then ROOM LEFT and ROOM ARRIVED IN. Each room has its name (in the form
+[Area, Room]), sometimes an area, a setting (indoors/outdoors), sometimes the game's own
+terrain label, one or more descriptions, and the room's OTHER ways out with the room each
+leads to. The exit being judged has been deliberately removed from both rooms' lists.
+
+WHAT "FLOOR" MEANS HERE (the map author's definitions, which matter more than physical
+height):
+- Answer "up" or "down" only when the character ends on a genuinely different LEVEL:
+  another storey of a building, a treetop or platform in a tree, a roof or tower top, a
+  cellar, crypt or tunnel below, the floor of a ravine or pit, a crow's nest, and so on.
+- Answer "same floor" when the two rooms are on one level, side by side. This INCLUDES
+  walking out onto a bridge, footbridge, plank, pier, dock, walkway, catwalk or causeway: a
+  span is level with the ground at either end, so it does not change your floor even though
+  the ground falls away beneath it. It also includes a path, trail, road or alley that
+  merely leads somewhere else on the same level, and short steps between two neighbouring
+  spaces on one level.
+- The game terrain "subterranean" means a room is underground. Going from a
+  non-subterranean room into a subterranean one is normally down; two subterranean rooms can
+  still be on different levels.
+- Use everything: what the room LEFT says about the feature (is it overhead and rising, or
+  a pit, drop or something you peer down into?), what the room ARRIVED IN says (does it
+  describe looking down on where you came from, or up at it?), the room names, and the other
+  exits (a room whose other exit is "down -> Cellar" is above the cellar; a room at the end
+  of a chain of staircases is high). Other exits are hints, not proof: a room can have two
+  ways up.
+- Watch for the common trap of assuming "up" by default. Many exits go down, and many are
+  flat. Decide from the text.
+
+OUTPUT
+Write one JSON object per line to answers_N.jsonl, one line for EVERY block in your batch
+file, in the same order, like:
+{"item": "E0001", "direction": "up", "confidence": 85, "reason": "arrived room says steps descend through the floor back to where we came from"}
+- "direction" must be exactly one of: "up", "down", "same floor".
+- "confidence" is your honest 0-100 estimate that the direction is right. Use the whole
+  range. Use 50-65 when the text genuinely does not say, 90+ only when the text is explicit.
+- "reason" is one short sentence naming the evidence you used.
+
+When you have written the file, reply with just: the number of items answered, and how
+many of each direction you gave.

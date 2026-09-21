@@ -1,0 +1,40 @@
+{"item": "E0081", "direction": "same floor", "confidence": 80, "reason": "walking onto a stone bridge span over a ravine; a span is level with its approach"}
+{"item": "E0082", "direction": "same floor", "confidence": 78, "reason": "a short hallway walkway with arches at either end, and the den's own down exit goes to the greatroom, so the walkway is on the den's level"}
+{"item": "E0083", "direction": "same floor", "confidence": 60, "reason": "greenhouse and hot springs both appear to be ground-level rooms of the same complex; no drop or climb described"}
+{"item": "E0084", "direction": "up", "confidence": 95, "reason": "room left says the staircase spirals further upward to the third level, and the arrived room mentions the fourth level above"}
+{"item": "E0085", "direction": "up", "confidence": 90, "reason": "arrived room is the top of the tower whose stone steps lead down to ground level"}
+{"item": "E0086", "direction": "down", "confidence": 78, "reason": "a hatch propped open in the floor of a ship room leading to a dark bunk space, and its out exit reaches the cargo hold"}
+{"item": "E0087", "direction": "same floor", "confidence": 82, "reason": "passing through a wall of webs at the end of a cave passage into an adjoining chamber"}
+{"item": "E0088", "direction": "up", "confidence": 90, "reason": "room left says stone steps continue the ascent and its other exit down leads to Legs, so the step goes up the spine to Back"}
+{"item": "E0089", "direction": "up", "confidence": 72, "reason": "climbing a branch wedged against an uprooted tree to reach a tree path above the forest floor"}
+{"item": "E0090", "direction": "up", "confidence": 85, "reason": "the courtyard path leads up to a long stone stairway reaching the barbican wall above"}
+{"item": "E0091", "direction": "up", "confidence": 88, "reason": "arrived room says the mound rises twenty feet above the surrounding moor"}
+{"item": "E0092", "direction": "same floor", "confidence": 88, "reason": "passing through a gate passageway under the barbican at ground level into the city"}
+{"item": "E0093", "direction": "up", "confidence": 75, "reason": "a stairway breaching the tunnel wall, and the arrived stairway room's other exit is up, so this first step already climbs off the tunnel level"}
+{"item": "E0094", "direction": "up", "confidence": 92, "reason": "climbing a stack of books leading to a small opening overhead"}
+{"item": "E0095", "direction": "up", "confidence": 92, "reason": "a sturdy iron ladder leads up toward the distant sky opening"}
+{"item": "E0096", "direction": "up", "confidence": 80, "reason": "a faint trail leading up into the foothills, arrived room says the trail leads up toward the mountains"}
+{"item": "E0097", "direction": "up", "confidence": 85, "reason": "arrived room is the smashed top of the tower, above the cracked tower room"}
+{"item": "E0098", "direction": "up", "confidence": 85, "reason": "climbing a dramatic marble staircase from the vestibule to the great hall above"}
+{"item": "E0099", "direction": "same floor", "confidence": 82, "reason": "swimming northeast between adjoining cellar lair chambers, like the other compass exits"}
+{"item": "E0100", "direction": "up", "confidence": 88, "reason": "stone steps rise through terraces and the room left has down to the harbor, so the step climbs to Hips"}
+{"item": "E0101", "direction": "same floor", "confidence": 65, "reason": "arriving at the foot of a flight of steps carved into the cliff, whose own climb steps exit continues upward"}
+{"item": "E0102", "direction": "up", "confidence": 70, "reason": "climbing over a massive fallen tree onto the tree path atop it"}
+{"item": "E0103", "direction": "same floor", "confidence": 88, "reason": "stepping onto a footbridge span, which is level with the shore at either end"}
+{"item": "E0104", "direction": "same floor", "confidence": 88, "reason": "stepping onto a bridge span over the river; a bridge does not change floor"}
+{"item": "E0105", "direction": "same floor", "confidence": 88, "reason": "a doorway from the storage closet into the adjoining kitchen"}
+{"item": "E0106", "direction": "same floor", "confidence": 88, "reason": "passing through the gate passageway under the barbican at ground level"}
+{"item": "E0107", "direction": "same floor", "confidence": 85, "reason": "stepping onto a natural bridge spanning the chasm, level with the room at either end"}
+{"item": "E0108", "direction": "same floor", "confidence": 70, "reason": "a long porch across the front of the building, reached from the street and leading into the store on one level"}
+{"item": "E0109", "direction": "up", "confidence": 85, "reason": "the kitchen describes a narrow stairway with upward ascension leading to the bed chamber above"}
+{"item": "E0110", "direction": "down", "confidence": 93, "reason": "arrived room begins as you drop through the crevice into the cavernous room"}
+{"item": "E0111", "direction": "same floor", "confidence": 78, "reason": "entering a low hollow inside a stump at ground level from the forest path"}
+{"item": "E0112", "direction": "same floor", "confidence": 75, "reason": "a gate between two cave chambers, with a manmade passage leading back north on the same level"}
+{"item": "E0113", "direction": "up", "confidence": 92, "reason": "room left has a staircase to the floor above and down to Chaos; the Apex staircase rises through a hole in its floor"}
+{"item": "E0114", "direction": "up", "confidence": 88, "reason": "spiral stairs climbing the tower to a platform at the halfway point of the stairwell"}
+{"item": "E0115", "direction": "same floor", "confidence": 70, "reason": "a ramp across the main deck to the bow area, both deck-level with an out exit to the flotilla"}
+{"item": "E0116", "direction": "same floor", "confidence": 88, "reason": "stepping onto a rope bridge spanning the river, level with the bank"}
+{"item": "E0117", "direction": "same floor", "confidence": 68, "reason": "the slippery path levels out at the shore, and the quay is a level shoreside stage area"}
+{"item": "E0118", "direction": "up", "confidence": 72, "reason": "steps up onto the cottage's front porch landing from the garden walkway"}
+{"item": "E0119", "direction": "up", "confidence": 85, "reason": "a trail twisting up the mountainside, and the arrived steep trail's other exit continues up"}
+{"item": "E0120", "direction": "up", "confidence": 93, "reason": "climbing onto a stack of casks to be balanced atop them near the grate above"}
