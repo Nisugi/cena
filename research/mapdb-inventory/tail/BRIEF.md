@@ -1,4 +1,8 @@
-# Porting brief: one slice of the long tail
+# Porting brief: one slice of the long tail (round two)
+
+> **Before anything else:** your worktree may have been cut from an older commit. Run
+> `git merge --ff-only main` in it. If `research/mapdb-inventory/tail/slice_<letter>.tsv`
+> and `crates/cena-mapdb-convert/src/recognise/tail_<letter>.rs` exist, you are current.
 
 You are porting upstream Ruby map scripts into data for **Hydra** (working name `cena`), a
 Rust game client with **no scripting language**. An offline converter reads the Lich map
@@ -10,8 +14,11 @@ are writing the converter's *recogniser arms* for one slice of what is still unp
 - `crates/cena-mapdb-convert/src/recognise.rs` — the entry points and the helpers
   (`holes`, `quoted`, `is_plain_argument`, `is_word`, `always`). Read the module docs:
   **an arm is a template, not a parser.**
-- `crates/cena-mapdb-convert/src/recognise/moves.rs`, `costs.rs`, `tests.rs` — every arm so
-  far. Yours should read like these.
+- `crates/cena-mapdb-convert/src/recognise/moves.rs`, `costs.rs`, `facts.rs`,
+  `reactions.rs`, `routines.rs`, `tests.rs`, and round one's `tail_a.rs` … `tail_d.rs` —
+  every arm so far. Yours should read like these. **`reactions.rs` matters most this
+  round**: it shows `TryMove` + `StillHere`, which is how "if that did not work, do this"
+  is said without nesting.
 - `crates/cena-map/src/step.rs`, `cond.rs`, `exit.rs` — the vocabulary you may emit.
 
 ## Your file, and only your file
@@ -48,16 +55,26 @@ trailing `;`) before you write the template. Never commit anything from `referen
 2. **Validate every hole**: `is_plain_argument` for a quoted command, `is_word` for an
    identifier, `parse()` with a range for a number. A hole must not be able to swallow a
    second statement.
-3. **The vocabulary is frozen.** You may emit only what exists today:
-   - `Action::{Move, Put, Await, Cast, Pause, EmptyHands, FillHands, Remember, Forget}`
+3. **The vocabulary is frozen — but you may PROPOSE.** You may emit only what exists today
+   (read `step.rs`, `cond.rs`, `exit.rs`, `routine.rs` for the full, documented list):
+   - `Action::{Move, TryMove, KeepMoving, MoveUntilThere, MoveWhile, MoveByAnyExitBut, Put,
+     Await, AwaitAny, AwaitArrival, Cast, Pause, EmptyHands, FillHands, Remember, Forget,
+     Replan}`
    - `Cond::{All, Any, Not, Otherwise, Setting, SettingIsSet, Flag, Remembered, Profession,
-     Month, EncumbranceOver, SkillUnder, SpellActive, SpellKnown, SpellAffordable}`
-   - `Cost::Gated { when, then, otherwise }` and `Cost::Fixed`
-   If a shape needs anything else — a loop, branching on what the game replied, a random
-   choice, an item or NPC check, a level or race or society test, arithmetic — **do not
-   approximate it and do not add to the vocabulary. Skip it** and list it in your report
-   with exactly what it would need. A skipped shape costs nothing; a wrong one strands a
-   character.
+     Race, Gender, LevelAtLeast, Citizenship, Society, SocietyRankAtLeast, Posture, Exit,
+     StillHere, Month, EncumbranceOver, SkillUnder, SpellActive, SpellKnown,
+     SpellAffordable}`
+   - `Cost::{Fixed, Gated, Table}`
+   What is left this round is mostly **puzzles and item checks**, and **everything gets
+   ported** — the author was explicit: no scripting language means no *user* scripts, not a
+   smaller Hydra. So when a shape needs more than the vocabulary has, **do not approximate
+   and do not add to `cena-map` yourself — propose**. In your report give, for each group of
+   shapes: the exact new `Action` / `Cond` / `Routine` variant you would add (Rust
+   signature and a two-line doc in the house style), the shapes and exit counts it
+   unlocks, and what the arm would emit. A good proposal is small and general (round one's
+   `Replan`, `KeepMoving`, `TryMove` each unlocked dozens of exits); a routine is right when
+   the script is a search or a puzzle with its own state. The main session adds the
+   vocabulary and ports those shapes from your proposal.
 4. **Mean what upstream means.**
    - `Move(cmd)`: a command that **changes rooms** (the exit's destination is another room),
      however upstream sent it — `move`, `fput`, `put`, `dothistimeout`. It already includes
@@ -66,12 +83,18 @@ trailing `;`) before you write the template. Never commit anything from `referen
    - `Put(cmd)`: a command sent where the walker stands, that does not change rooms.
    - `Pause(ms)`: `sleep`/`pause` in whole milliseconds.
    - `echo` / `respond` / `_respond` are dropped: they talk to a Lich user.
+   - **`$go2_restart = true` is `Action::Replan`, and it must be the last step.** Round one
+     dropped it; those exits land somewhere random. Never drop it.
+   - "The same command until the room changes" is `KeepMoving`, not `Move` (a `Move`
+     gives the exit up after a few tries). "Until the walker is at room N" is
+     `MoveUntilThere`, and N must be the exit's own destination.
    - Spells are named, not numbered. Check names in `crates/cena-model/data/spells.tsv`.
 5. **Two kinds of check (the author's rule).** A condition that can make an exit unusable
    belongs in the **cost** and is asked while planning. A step's `when` is asked in the room
    and may only change *how* the exit is crossed — never leave the walker with no move.
    `cena_map::moves_whatever_is_known(steps)` must hold for every step list you emit; use
-   `Cond::Otherwise` for the second of two ways across. If a crossing script *itself*
+   `Cond::Otherwise` for the second of two ways across. **The same goes for a cost whose
+   two prices are both passable**: write it with `Otherwise` so it refuses nobody. If a crossing script *itself*
    refuses the walker (`else; echo 'you need X'; end`), skip it and say so.
 6. **Unknown answers no.** Do not port upstream's `!defined?(X) or` escape hatches as
    "allowed when unknown".

@@ -1,0 +1,17 @@
+edges	shape_id	sample	shape
+1	7451257e6ce113f2	13532->8696	;e $SILVERWOOD_TOWN == :imt ? N : nil
+1	6c6a59f7ffd8ccc5	13532->14659	;e $SILVERWOOD_TOWN == :va ? N : nil
+1	178025c588568d6f	13532->8695	;e $SILVERWOOD_TOWN == :wl ? N : nil
+1	a6e34152348ab0c7	13532->32873	;e $SILVERWOOD_TOWN == :zul ? N : nil
+9	526ef809bb05b851	30708->222	;e (!(defined?(Account) ? Account.subscription.downcase == S: UserVars.mapdb_fwi_trinket.to_s != S) and Map[..].timeto[..].call) ? N : nil
+9	5186e992dbe04d3a	30708->20734	;e ((defined?(Account) ? Account.subscription.downcase == S: UserVars.mapdb_fwi_trinket.to_s != S) and Map[..].timeto[..].call) ? N : nil
+1	894be4de2c56316b	4109->18694	;e (Script.running?(S) or Script.running?(S)) ? nil : N
+5	0427f4bcb3d85282	167->36170	;e (Script.running?(S) || Script.running?(S))? nil : N
+2	1b0caecdd9116543	29865->2487	;e UserVars.mapdb_hinterwilds_location == S and Map.current.location.to_s =~ R ? N : nil;
+2	8fcbfef2ace4ea68	24675->16744	;e if (checkroom.to_s =~ R) and (UserVars.mapdb_redforest_location == S); N; else; nil; end
+2	339864881654e1a1	992->1013	;e if Script.running? S;nil;else;N;end
+1	f12391fa9fa7ea1a	4140->16392	;e if Skills.climbing >= [XMLData.encumbrance_value/N,N].max; N; else; nil; end
+16	734f8597b19d0bf9	7486->24572	;e if Spell[..].active?; (N * [((N - ([Spells.majorelemental,Stats.level].min/N) - (Skills.elair/N)) / N), N].max).floor + N; else; N; end
+1	d22017043caa63b1	4141->4140	;e if [..].any? { |num| Spell[num].known? }; N; elsif (Stats.prof == S) and (Stats.level >= N); N; else N; end
+1	85b8f0406f9d0004	4140->4141	;e if [..].any? { |num| Spell[num].known? }; N; elsif Skills.climbing >= [XMLData.encumbrance_value/N,N].max; N; elsif (Stats.prof == S) and (Stats.level >= N); N; else N; end;
+8	3fa78d37f8896af8	27860->27864	;e key=GameObj.inv.find{|k| k.name==S;};if !key.nil? then N else nil end;

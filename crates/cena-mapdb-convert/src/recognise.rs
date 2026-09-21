@@ -24,6 +24,10 @@ mod tail_a;
 mod tail_b;
 mod tail_c;
 mod tail_d;
+mod tail_e;
+mod tail_f;
+mod tail_g;
+mod tail_h;
 #[cfg(test)]
 mod tests;
 
@@ -68,6 +72,9 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| tail_a::crossing(script, from, to))
         .or_else(|| tail_b::crossing(script, from, to))
         .or_else(|| tail_c::crossing(script, from, to))
+        .or_else(|| tail_e::crossing(script, from, to))
+        .or_else(|| tail_f::crossing(script, from, to))
+        .or_else(|| tail_g::crossing(script, from, to))
 }
 
 pub use costs::priced_for_crossing;
@@ -84,6 +91,7 @@ pub fn cost(script: &str, climate: Option<&str>) -> Option<Cost> {
         .or_else(|| remembered(script))
         .or_else(|| setting_or_month(script))
         .or_else(|| tail_d::cost(script))
+        .or_else(|| tail_h::cost(script))
 }
 
 pub(super) fn always(action: Action) -> Step {
