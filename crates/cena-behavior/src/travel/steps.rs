@@ -35,6 +35,7 @@ use cena_session::MoveFeedback;
 pub(super) use super::mover::is_stunned;
 pub use super::mover::{EXCHANGE_TIMEOUT_MS, MAX_RESENDS, STEP_TIMEOUT_MS};
 use super::mover::{Exchange, Moved, Mover, exchange_of};
+use super::replies;
 
 /// Turns of any loop. Upstream's own bound where it has one is fifty.
 pub const MAX_TURNS: u32 = 50;
@@ -64,6 +65,15 @@ pub enum Deed {
     Forget(String),
     /// Wait for whoever follows the walker to arrive.
     AwaitFollowers,
+    /// Speak this language, remembering the one spoken.
+    Speak(String),
+    /// Go back to the language [`Deed::Speak`] replaced.
+    RestoreSpeech,
+    /// `get my <this>`, remembering what came out of where. A walker with
+    /// none says so with [`super::Trip::could_not`].
+    TakeOut(String),
+    /// Put what [`Deed::TakeOut`] took back where it came from.
+    PutBack,
 }
 
 /// What one tick of a crossing comes to.
@@ -101,6 +111,8 @@ pub(super) struct Tick<'a> {
     pub left_first_room: bool,
     /// A number from the trip's seeded generator.
     pub random: u64,
+    /// The driver could not do the deed it was last handed.
+    pub could_not: bool,
 }
 
 /// When a loop of exchanges stops.
@@ -158,6 +170,10 @@ enum Job {
     Fact(Cond, u64),
     /// A deed was handed to the driver; the step is done when it ticks again.
     Deeded,
+    /// `look trail`, sent: listening for the word that follows `.1`.
+    Asking(Exchange, String),
+    /// `inquire`, sent: listening for the numbered line that names `.1`.
+    Inquiring(Exchange, String),
 }
 
 /// One exit being crossed.
@@ -175,13 +191,19 @@ pub(super) struct Run {
     moved: bool,
     /// Owed back when the crossing ends, however it ends.
     pub owes: Owes,
+    /// The word an [`Action::Ask`] was given, for `{told}`.
+    told: Option<String>,
 }
 
 /// What a crossing has changed and not yet put back.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[allow(clippy::struct_excessive_bools)] // four things owed, each its own yes or no
 pub(super) struct Owes {
     pub hands: bool,
     pub stance: bool,
+    pub speech: bool,
+    /// Something is out of its container ([`Deed::TakeOut`]).
+    pub taken: bool,
 }
 
 impl Run {
@@ -195,6 +217,7 @@ impl Run {
             job: None,
             moved: false,
             owes: Owes::default(),
+            told: None,
         }
     }
 
@@ -280,7 +303,37 @@ impl Run {
             Job::Fact(cond, since) => {
                 (!cond.holds(walker)).then(|| self.wait(Job::Fact(cond, since), since, tick.ms))
             }
-            Job::Deeded => None,
+            // A deed the driver could not do: a walker with no key. The
+            // crossing fails here, before anything is unlocked.
+            Job::Deeded => tick.could_not.then_some(Out::GiveUp {
+                ban: true,
+                wrong: false,
+            }),
+            Job::Asking(mut exchange, after) => {
+                if let Some(word) = replies::word_after(tick.lines, &after) {
+                    self.told = Some(word);
+                    return None;
+                }
+                let out = exchange.tick(tick, false)?;
+                self.job = Some(Job::Asking(exchange, after));
+                Some(out)
+            }
+            Job::Inquiring(mut exchange, named) => {
+                if let Some(number) = replies::numbered(tick.lines, &named) {
+                    let command = format!("order {number}");
+                    self.job = Some(Job::Round(Vec::new(), Some(exchange_of(&command, tick.ms))));
+                    return Some(Out::Send(command));
+                }
+                // Answered, and the list does not name it: no caravan goes there.
+                let Some(out) = exchange.tick(tick, false) else {
+                    return Some(Out::GiveUp {
+                        ban: true,
+                        wrong: false,
+                    });
+                };
+                self.job = Some(Job::Inquiring(exchange, named));
+                Some(out)
+            }
         }
     }
 
@@ -379,14 +432,14 @@ impl Run {
         } else {
             match action {
                 Action::Move(command) => {
-                    let Some(command) = filled(&command, walker) else {
+                    let Some(command) = filled(&command, walker, self.told.as_deref()) else {
                         return Begun::cannot();
                     };
                     self.job = Some(Job::Moving(Mover::new(tick.here, &command, ms)));
                     return Begun::Out(Out::Send(command));
                 }
                 Action::TryMove(command) | Action::Put(command) => {
-                    let Some(command) = filled(&command, walker) else {
+                    let Some(command) = filled(&command, walker, self.told.as_deref()) else {
                         return Begun::cannot();
                     };
                     self.job = Some(Job::Trying(exchange_of(&command, ms)));
@@ -412,6 +465,14 @@ impl Run {
                     let commands = listed.split(',').map(|c| c.trim().to_owned()).collect();
                     Job::Round(commands, None)
                 }
+                Action::Ask(command, after) => {
+                    self.job = Some(Job::Asking(exchange_of(&command, ms), after));
+                    return Begun::Out(Out::Send(command));
+                }
+                Action::OrderByName(named) => {
+                    self.job = Some(Job::Inquiring(exchange_of("inquire", ms), named));
+                    return Begun::Out(Out::Send("inquire".to_owned()));
+                }
                 Action::Pause(length) => Job::Pause(ms + u64::from(length)),
                 Action::Await(line) => Job::Line(vec![line], ms),
                 Action::AwaitAny(lines) => Job::Line(lines, ms),
@@ -430,9 +491,7 @@ impl Run {
                     self.job = Some(Job::Arrival(tick.here, ms));
                     return Begun::Out(Out::Deed(Deed::CastAt(spell, target)));
                 }
-                // Not run yet: `can_run` prices these exits shut, so this is
-                // only reached by a map newer than the walker. (The loops and
-                // the deeds were taken above.)
+                // The loops and the deeds were taken above, so nothing is left.
                 _ => return Begun::cannot(),
             }
         };
@@ -466,6 +525,22 @@ impl Run {
             Action::Remember(name, value) => Deed::Remember(name.clone(), value.clone()),
             Action::Forget(name) => Deed::Forget(name.clone()),
             Action::AwaitFollowers => Deed::AwaitFollowers,
+            Action::Speak(language) => {
+                self.owes.speech = true;
+                Deed::Speak(language.clone())
+            }
+            Action::RestoreSpeech => {
+                self.owes.speech = false;
+                Deed::RestoreSpeech
+            }
+            Action::TakeOut(thing) => {
+                self.owes.taken = true;
+                Deed::TakeOut(thing.clone())
+            }
+            Action::PutBack => {
+                self.owes.taken = false;
+                Deed::PutBack
+            }
             _ => return None,
         })
     }
@@ -539,7 +614,7 @@ fn choose(looped: &Looping, tick: &Tick<'_>, walker: &Walker) -> Option<String> 
     match &looped.pick {
         Pick::InTurn(commands) => {
             let command = commands.get(at(commands.len(), u64::from(looped.turns))?)?;
-            filled(command, walker)
+            filled(command, walker, None)
         }
         Pick::AnyOf(commands) => commands.get(at(commands.len(), tick.random)?).cloned(),
         Pick::AnyExit => {
@@ -574,38 +649,31 @@ fn opposite(way: &str) -> Option<&'static str> {
 }
 
 /// A command with its placeholders filled in (`cena_map::Action`). `None`
-/// when one cannot be: a setting the profile does not carry, or `{item:…}`
-/// and `{told}`, which this stage does not resolve.
-pub(super) fn filled(command: &str, walker: &Walker) -> Option<String> {
+/// when one cannot be: a setting the profile does not carry, or a `{told}`
+/// nothing was told. **`{item:…}` is left as it is**: the game's id for a
+/// thing is the driver's to look up when it sends (`drive`), since the trip
+/// holds no ids.
+pub(super) fn filled(command: &str, walker: &Walker, told: Option<&str>) -> Option<String> {
     let mut out = String::new();
     let mut rest = command;
     while let Some((before, after)) = rest.split_once('{') {
         let (name, tail) = after.split_once('}')?;
-        let value = walker
-            .settings
-            .get(name.strip_prefix("setting:")?)
-            .filter(|value| !value.is_empty())?;
         out.push_str(before);
-        out.push_str(value);
+        if name == "told" {
+            out.push_str(told?);
+        } else if name.starts_with("item:") {
+            out.push('{');
+            out.push_str(name);
+            out.push('}');
+        } else {
+            let value = walker
+                .settings
+                .get(name.strip_prefix("setting:")?)
+                .filter(|value| !value.is_empty())?;
+            out.push_str(value);
+        }
         rest = tail;
     }
     out.push_str(rest);
     Some(out)
-}
-
-/// Whether this stage can run every step of a crossing. What it cannot is
-/// priced shut by the trip, so the pathfinder goes round it.
-pub(super) fn can_run(steps: &[Step]) -> bool {
-    steps.iter().all(|step| match &step.action {
-        Action::Speak(_)
-        | Action::RestoreSpeech
-        | Action::TakeOut(_)
-        | Action::PutBack
-        | Action::Ask(..)
-        | Action::OrderByName(_) => false,
-        Action::Move(command) | Action::Put(command) | Action::TryMove(command) => {
-            !command.contains("{item:") && !command.contains("{told}")
-        }
-        _ => true,
-    })
 }

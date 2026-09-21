@@ -278,12 +278,138 @@ fn a_setting_is_filled_into_the_command() {
     );
 }
 
-/// Steps this build cannot run yet are gone round, not failed at.
+/// The guild door (`singles.rs`, `guild_door`): the tongue is the driver's to
+/// change and the trip's to remember it owes back.
 #[test]
-fn a_crossing_with_a_step_not_yet_written_is_gone_round() {
-    let map = map(r#"[{"speak":"wizard"},{"move":"say ::door wizard"}]"#).unwrap();
+fn a_language_changed_is_owed_back_like_a_stance() {
+    let steps = r#"[{"speak":"wizard"},{"move":"say ::door wizard"},{"restore_speech":null}]"#;
+    let map = map(steps).unwrap();
+    let walker = Walker::default();
     let mut trip = Trip::to(RoomId(2));
-    assert_eq!(trip.tick(&map, &Walker::default(), at(1, 0)), send("east"));
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, 0)),
+        Said::Do(Deed::Speak("wizard".into()))
+    );
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, 10)),
+        send("say ::door wizard")
+    );
+    // Stopped here, the language is still to be put back.
+    assert_eq!(trip.clone().owed(), vec![Deed::RestoreSpeech]);
+    assert_eq!(
+        trip.tick(&map, &walker, at(2, 20)),
+        Said::Do(Deed::RestoreSpeech)
+    );
+    assert_eq!(trip.tick(&map, &walker, at(2, 30)), Said::Arrived);
+    assert_eq!(trip.owed(), vec![]);
+}
+
+const HEAVY_KEY: &str = r#"[{"take_out":"heavy key"},{"put":"unlock gate with my heavy key"},
+    {"put_back":null},{"move":"go gate"}]"#;
+
+/// `heavy_key.rb`: a walker with no key is told so before anything is
+/// unlocked, and the trip goes the long way.
+#[test]
+fn a_walker_with_no_key_goes_round() {
+    let map = map(HEAVY_KEY).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(2));
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, 0)),
+        Said::Do(Deed::TakeOut("heavy key".into()))
+    );
+    trip.could_not();
+    assert_eq!(trip.tick(&map, &walker, at(1, 10)), send("east"));
+}
+
+/// ...and one with the key unlocks, puts it back, and goes through.
+#[test]
+fn a_key_taken_out_is_put_back_before_the_gate_is_gone_through() {
+    let map = map(HEAVY_KEY).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(2));
+    trip.tick(&map, &walker, at(1, 0));
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, 10)),
+        send("unlock gate with my heavy key")
+    );
+    // Stopped with the key out: it is owed back.
+    assert_eq!(trip.clone().owed(), vec![Deed::PutBack]);
+    trip.prompted();
+    assert_eq!(trip.tick(&map, &walker, at(1, 20)), Said::Do(Deed::PutBack));
+    assert_eq!(trip.tick(&map, &walker, at(1, 30)), send("go gate"));
+}
+
+const TRAIL: &str = r#"[{"ask":["look trail","the trail heads off to the "]},{"move":"{told}"}]"#;
+
+/// `trail.rb`: the way on changes, and looking at the trail says which.
+#[test]
+fn what_the_game_told_the_walker_is_the_way_it_goes() {
+    let map = map(TRAIL).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(2));
+    assert_eq!(trip.tick(&map, &walker, at(1, 0)), send("look trail"));
+    trip.heard("You peer into the mist and see that the trail heads off to the northeast.");
+    trip.prompted();
+    assert_eq!(trip.tick(&map, &walker, at(1, 100)), send("northeast"));
+}
+
+/// Told nothing, there is no way to send: the exit is given up.
+#[test]
+fn a_walker_told_nothing_does_not_guess() {
+    let map = map(TRAIL).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(2));
+    trip.tick(&map, &walker, at(1, 0));
+    trip.heard("The mist is too thick.");
+    trip.prompted();
+    assert_eq!(trip.tick(&map, &walker, at(1, 100)), send("east"));
+}
+
+const CARAVAN: &str = r#"[{"order_by_name":"the Sea of Fire"},{"put":"order confirm"},
+    {"await_arrival":null}]"#;
+
+/// `caravan_to_sos.rb`: the list is renumbered between visits.
+#[test]
+fn a_caravan_is_ordered_by_the_number_beside_its_name() {
+    let map = map(CARAVAN).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(2));
+    assert_eq!(trip.tick(&map, &walker, at(1, 0)), send("inquire"));
+    trip.heard("  1) Wehnimer's Landing");
+    trip.heard("  2) the Sea of Fire");
+    trip.prompted();
+    assert_eq!(trip.tick(&map, &walker, at(1, 100)), send("order 2"));
+    assert_eq!(trip.tick(&map, &walker, at(1, 150)), Said::Hold);
+    trip.prompted();
+    assert_eq!(trip.tick(&map, &walker, at(1, 200)), send("order confirm"));
+}
+
+/// No caravan goes there today: nothing is ordered.
+#[test]
+fn a_destination_the_list_does_not_name_is_not_ordered() {
+    let map = map(CARAVAN).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(2));
+    trip.tick(&map, &walker, at(1, 0));
+    trip.heard("  1) Wehnimer's Landing");
+    trip.prompted();
+    assert_eq!(trip.tick(&map, &walker, at(1, 100)), send("east"));
+}
+
+/// The game's id for a thing is the driver's to fill in; with no such thing,
+/// the driver says so and the exit is given up for the trip.
+#[test]
+fn an_item_is_left_for_the_driver_to_name() {
+    let map = map(r#"[{"move":"go {item:ivy-covered building}"}]"#).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(2));
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, 0)),
+        send("go {item:ivy-covered building}")
+    );
+    trip.cannot_send();
+    assert_eq!(trip.tick(&map, &walker, at(1, 10)), send("east"));
 }
 
 /// Upstream's `$go2_restart`: the crossing may land somewhere else.

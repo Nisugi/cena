@@ -52,9 +52,11 @@ mod drive;
 mod facts;
 mod hands;
 mod itinerary;
+mod kept;
 mod knows;
 mod mover;
 mod recovery;
+mod replies;
 mod steps;
 
 use std::collections::HashSet;
@@ -160,6 +162,8 @@ pub struct Trip {
     stands: u32,
     /// What the crossings have changed and not yet put back.
     owes: Owes,
+    /// The driver could not do the deed it was last handed.
+    could_not: bool,
     /// xorshift64. Seeded, so a replay takes the same turns in a maze.
     random: u64,
 }
@@ -193,6 +197,7 @@ impl Trip {
             left_first_room: false,
             stands: 0,
             owes: Owes::default(),
+            could_not: false,
             // xorshift has one bad seed.
             random: seed.max(1),
         }
@@ -236,11 +241,34 @@ impl Trip {
         self.prompted = true;
     }
 
+    /// The deed just handed over could not be done: there is no such key.
+    /// The crossing that asked for it is given up, and the trip goes round.
+    pub fn could_not(&mut self) {
+        self.could_not = true;
+    }
+
+    /// What was last asked to be sent names a thing nobody has (`{item:…}`):
+    /// the exit is given up for this trip.
+    pub fn cannot_send(&mut self) {
+        if let Some(run) = self.run.take() {
+            self.banned.insert((run.leaving, run.expected));
+            self.owes = run.owes;
+        }
+        self.ahead.clear();
+    }
+
     /// What the trip has changed and not yet put back, **for a driver that is
     /// stopping it**: a user's stop asks once for what is stored (`drive`). Taking
     /// it clears it.
     pub fn owed(&mut self) -> Vec<Deed> {
         let mut owed = Vec::new();
+        // The key first: it goes back with the hands as they are.
+        if std::mem::take(&mut self.owes.taken) {
+            owed.push(Deed::PutBack);
+        }
+        if std::mem::take(&mut self.owes.speech) {
+            owed.push(Deed::RestoreSpeech);
+        }
         if std::mem::take(&mut self.owes.stance) {
             owed.push(Deed::RestoreStance);
         }
@@ -281,6 +309,7 @@ impl Trip {
         let feedback = std::mem::take(&mut self.feedback);
         let lines = std::mem::take(&mut self.lines);
         let prompted = std::mem::take(&mut self.prompted);
+        let could_not = std::mem::take(&mut self.could_not);
         // At the goal -- but a crossing under way is finished first: the door
         // behind the walker is still to be closed and locked, the hands still
         // to be filled.
@@ -309,6 +338,7 @@ impl Trip {
             prompted,
             left_first_room: self.left_first_room,
             random: self.next_random(),
+            could_not,
         });
         self.owes = run.owes;
         match out {
@@ -506,9 +536,8 @@ impl Trip {
 /// What the walker can cross so far. The rest is priced shut, so the
 /// pathfinder goes round it rather than the trip failing at it.
 fn can_cross(crossing: &Crossing) -> bool {
-    match crossing {
-        Crossing::Command(_) | Crossing::PassThrough(_) => true,
-        Crossing::Steps(list) => steps::can_run(list),
-        _ => false,
-    }
+    matches!(
+        crossing,
+        Crossing::Command(_) | Crossing::PassThrough(_) | Crossing::Steps(_)
+    )
 }

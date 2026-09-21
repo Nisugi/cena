@@ -600,9 +600,10 @@ async fn first_move_from(last_room: Option<u32>) -> (Ended, Vec<String>) {
     });
     transcript.answer("north", &arrival(1003));
     transcript.answer("south", &arrival(1003));
-    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    // A walk that panicked or a broken fixture ends as no trip does.
+    let ended = walk.await.ok().flatten().map(|travelled| travelled.ended);
     session.cancel();
-    (travelled.ended, transcript.lines())
+    (ended.unwrap_or(Ended::UnknownSpell), transcript.lines())
 }
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
@@ -622,4 +623,60 @@ async fn where_it_was_last_tells_apart_rooms_that_read_alike() {
     // A remembered room that does not fit what the game shows is not believed.
     let (ended, _) = first_move_from(Some(3)).await;
     assert_eq!(ended, Ended::Failed(Why::OffTheMap));
+}
+
+/// `heavy_key.rb`, 1 -> 3 by the spiked gate; and the long way by 2.
+const GATE: &str = r#"[
+  {"id":1,"uid":[1001],"exits":[
+     {"to":3,"kind":"scripted","cost":1,"steps":[{"take_out":"heavy key"},
+        {"put":"unlock spiked gate with my heavy key"},{"put_back":null},
+        {"move":"go spiked gate"}]},
+     {"to":2,"kind":"cardinal","cmd":"east","cost":50}]},
+  {"id":2,"uid":[1002],"exits":[{"to":3,"kind":"cardinal","cmd":"north","cost":50}]},
+  {"id":3,"uid":[1003]}
+]"#;
+
+/// The key goes back into what the game said it came out of, by id: the
+/// answer's two links, which is all upstream reads too.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_key_goes_back_where_the_game_said_it_came_from() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session) = set_out(&stop, GATE);
+    transcript.answer(
+        "get my heavy key",
+        b"You remove <a exist=\"77\" noun=\"key\">a heavy iron key</a> from in your \
+          <a exist=\"88\" noun=\"cloak\">dark cloak</a>.\n<prompt time=\"2\">&gt;</prompt>\n",
+    );
+    transcript.answer("go spiked gate", &arrival(1003));
+
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(
+        transcript.lines(),
+        [
+            "get my heavy key",
+            "unlock spiked gate with my heavy key",
+            "put #77 in #88",
+            "go spiked gate"
+        ]
+    );
+    session.cancel();
+}
+
+/// `Get what?`: nothing is unlocked, and the walker goes the long way.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn with_no_key_nothing_is_unlocked() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session) = set_out(&stop, GATE);
+    transcript.answer(
+        "get my heavy key",
+        b"Get what?\n<prompt time=\"2\">&gt;</prompt>\n",
+    );
+    transcript.answer("east", &arrival(1002));
+    transcript.answer("north", &arrival(1003));
+
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(transcript.lines(), ["get my heavy key", "east", "north"]);
+    session.cancel();
 }

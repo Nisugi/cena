@@ -27,14 +27,15 @@ use std::time::Duration;
 use cena_map::{Located, Map, Origin as Whence, RoomId, Sighting, Uid, title_from_subtitle};
 use cena_session::group::{self, GroupEvent};
 use cena_session::{
-    AuthorityToken, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind, Origin, Outcome,
-    Sent, SessionHandle, Snapshot, State,
+    AuthorityToken, ChunkLine, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind,
+    Origin, Outcome, Sent, SessionHandle, Snapshot, State,
 };
 use tokio::sync::broadcast::{Receiver, error::RecvError, error::TryRecvError};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use super::hands::{Stored, cast_commands, store_commands, take_back};
+use super::kept;
 use super::{Deed, Now, Said, TravelNotes, Trip, Why, walker_from};
 use crate::BehaviorError;
 
@@ -130,6 +131,9 @@ pub async fn travel(
         heard: 0,
         lost_since: None,
         behind: Vec::new(),
+        answer: Vec::new(),
+        speech_before: None,
+        taken: None,
     };
     let ended = driver.walk(&mut trip, map, notes, wrote).await;
     if ended == Ended::Stopped(BehaviorError::Cancelled) {
@@ -137,7 +141,11 @@ pub async fn travel(
     }
     // Released on every exit. A release is not a command.
     handle.release(token);
-    for notice in report(ended, &driver.stored, driver.stance_before.as_deref()) {
+    let changed = [
+        ("stance", driver.stance_before.as_deref()),
+        ("language", driver.speech_before.as_deref()),
+    ];
+    for notice in report(ended, &driver.stored, &changed) {
         handle.say(notice);
     }
     Travelled {
@@ -196,7 +204,7 @@ pub fn room_of(map: &Map, state: &GameState, whence: Whence) -> Option<RoomId> {
 ///
 /// The return value carries the same facts for a caller; this is for the
 /// person, who should not depend on a caller remembering to print them.
-fn report(ended: Ended, stored: &[Stored], stance_before: Option<&str>) -> Vec<Notice> {
+fn report(ended: Ended, stored: &[Stored], changed: &[(&str, Option<&str>)]) -> Vec<Notice> {
     let mut said = Vec::new();
     let why = match ended {
         Ended::Arrived | Ended::Stopped(BehaviorError::Cancelled) => None,
@@ -220,11 +228,13 @@ fn report(ended: Ended, stored: &[Stored], stance_before: Option<&str>) -> Vec<N
             format!("Travel: still put away -- {}.", names.join(", ")),
         ));
     }
-    if let Some(stance) = stance_before {
-        said.push(Notice::line(
-            NoticeKind::Warn,
-            format!("Travel: your stance was {stance}, and I did not put it back."),
-        ));
+    for (what, before) in changed {
+        if let Some(before) = before {
+            said.push(Notice::line(
+                NoticeKind::Warn,
+                format!("Travel: your {what} was {before}, and I did not put it back."),
+            ));
+        }
     }
     said
 }
@@ -284,6 +294,12 @@ struct Driver<'a, N> {
     lost_since: Option<Instant>,
     /// Who a crossing is still waiting for, by id.
     behind: Vec<String>,
+    /// The lines heard since the last deed's command went out: its answer.
+    answer: Vec<ChunkLine>,
+    /// The language spoken before a crossing changed it.
+    speech_before: Option<String>,
+    /// What a crossing took out, and the container it came from, as ids.
+    taken: Option<(String, String)>,
 }
 
 impl<N: FnMut() -> CommandId> Driver<'_, N> {
@@ -319,7 +335,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 Said::Hold => self.hold(trip).await,
                 // A move causes no roundtime, and is verified by the room it
                 // lands in: the trip's own timeout is the deadline.
-                Said::Send(line) => self.send(&line).await,
+                Said::Send(line) => self.send_for(trip, &line).await,
                 Said::Do(Deed::Remember(name, value)) => {
                     notes.memories.insert(name, value);
                     wrote(notes);
@@ -415,6 +431,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         let fresh = total.saturating_sub(self.heard).min(lines.len());
         for line in &lines[lines.len() - fresh..] {
             trip.heard(&line.text());
+            self.answer.push(line.clone());
             // Whoever rejoins is no longer behind (`await_followers`). The
             // model's classifier reads the line; this only keeps the count.
             if let Some(GroupEvent::Joined(member) | GroupEvent::Added(member)) =
@@ -441,6 +458,16 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         }
     }
 
+    /// Send a line of the trip's, with the game's id for anything it names
+    /// (`{item:…}`). A thing nobody has is a crossing that cannot be made.
+    async fn send_for(&mut self, trip: &mut Trip, line: &str) -> Result<(), Ended> {
+        let Some(line) = kept::with_items(line, &self.state) else {
+            trip.cannot_send();
+            return Ok(());
+        };
+        self.send(&line).await
+    }
+
     async fn send(&mut self, line: &str) -> Result<(), Ended> {
         let sent = tokio::select! {
             biased;
@@ -457,6 +484,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
 
     /// Send one command of a deed and wait for the prompt that answers it.
     async fn exchange(&mut self, trip: &mut Trip, line: &str) -> Result<(), Ended> {
+        self.answer.clear();
         let outcome = tokio::select! {
             biased;
             () = self.cancel.cancelled() => return Err(Ended::Stopped(BehaviorError::Cancelled)),
@@ -514,6 +542,38 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 }
             }
             Deed::AwaitFollowers => self.await_followers(trip).await?,
+            Deed::Speak(language) => {
+                self.exchange(trip, "speak").await?;
+                let speaking = kept::language_in(&self.answer);
+                if !speaking
+                    .as_deref()
+                    .is_some_and(|is| kept::is_spoken(&language, is))
+                {
+                    // The first one replaced is the one to go back to.
+                    if self.speech_before.is_none() {
+                        self.speech_before = speaking;
+                    }
+                    self.exchange(trip, &format!("speak {language}")).await?;
+                }
+            }
+            Deed::RestoreSpeech => {
+                if let Some(before) = self.speech_before.take() {
+                    self.exchange(trip, &format!("speak {before}")).await?;
+                }
+            }
+            Deed::TakeOut(thing) => {
+                self.exchange(trip, &format!("get my {thing}")).await?;
+                self.taken = kept::taken_from(&self.answer);
+                if self.taken.is_none() {
+                    trip.could_not();
+                }
+            }
+            Deed::PutBack => {
+                if let Some((thing, container)) = self.taken.take() {
+                    self.exchange(trip, &format!("put #{thing} in #{container}"))
+                        .await?;
+                }
+            }
             // Handled where the notes are: `walk`.
             Deed::Remember(..) | Deed::Forget(_) => {}
         }
