@@ -48,6 +48,13 @@ pub const DEED_DEADLINE: Duration = Duration::from_secs(3);
 /// How long the walker waits for its group before going on without it.
 pub const FOLLOW_WAIT: Duration = Duration::from_secs(30);
 
+/// How long the walker may not know where it is before the trip ends. A room's
+/// title arrives a moment after its number, so *some* of this is ordinary; a
+/// room the map cannot name at all is not, and `plan/12` section 5.5 gives every
+/// wait a deadline. Found by a mutation that hung the suite instead of failing
+/// it.
+pub const LOST_WAIT: Duration = Duration::from_secs(10);
+
 /// How a trip ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ended {
@@ -111,6 +118,7 @@ pub async fn travel(
         stored: Vec::new(),
         stance_before: None,
         heard: 0,
+        lost_since: None,
     };
     let ended = driver.walk(&mut trip, map, notes, wrote).await;
     if ended == Ended::Stopped(BehaviorError::Cancelled) {
@@ -140,6 +148,8 @@ struct Driver<'a, N> {
     stance_before: Option<String>,
     /// How many lines of the model's open chunk the trip has heard.
     heard: usize,
+    /// When the walker last stopped knowing where it is.
+    lost_since: Option<Instant>,
 }
 
 impl<N: FnMut() -> CommandId> Driver<'_, N> {
@@ -157,8 +167,14 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             if let Err(gone) = self.drain(trip) {
                 return Ended::Stopped(gone);
             }
+            let here = self.locate(map);
+            if here.is_some() {
+                self.lost_since = None;
+            } else if self.lost_since.get_or_insert_with(Instant::now).elapsed() >= LOST_WAIT {
+                return Ended::Failed(Why::OffTheMap);
+            }
             let now = Now {
-                here: self.locate(map),
+                here,
                 ms: u64::try_from(self.began.elapsed().as_millis()).unwrap_or(u64::MAX),
             };
             let server = self.state.game_time_now().unwrap_or(0);
@@ -198,10 +214,17 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             None => Whence::Nowhere,
         };
         let title = room.title.as_deref().map(title_from_subtitle);
+        // What tells apart rooms that share a number, or have none the map
+        // knows. Safe to offer: a text that fits no candidate is ignored by
+        // `locate`, not obeyed, because it is the map's text that goes stale.
+        let description = room.description.as_ref().map(cena_session::Runs::plain);
+        let paths = room.component("room exits").map(cena_session::Runs::plain);
         let sighting = Sighting {
             uid: raw.parse().ok().filter(|uid| *uid != 0).map(Uid),
             title: title.as_deref(),
-            ..Sighting::default()
+            description: description.as_deref(),
+            paths: paths.as_deref(),
+            location: None,
         };
         let Located::Here { room: here, .. } = map.locate(&sighting, whence) else {
             return None;

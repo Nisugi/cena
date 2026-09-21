@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use cena_behavior::BehaviorError;
-use cena_behavior::travel::{Ended, TravelNotes, Travelled, Why, travel};
+use cena_behavior::travel::{Ended, LOST_WAIT, TravelNotes, Travelled, Why, travel};
 use cena_map::{Map, Room, RoomId};
 use cena_platform::{AnsweringSource, TranscriptHandle};
 use cena_session::hands::Hand;
@@ -48,6 +48,7 @@ const SWORD_BACK: &[u8] =
 /// A character in room 1 with a broadsword, walking to room 3.
 fn set_out(
     stop: &CancellationToken,
+    rooms: &'static str,
 ) -> (
     JoinHandle<Option<Travelled>>,
     TranscriptHandle,
@@ -70,7 +71,7 @@ fn set_out(
     let stop = stop.clone();
     let walk = tokio::spawn(async move {
         // `None` is a broken fixture, which every test unwraps into a failure.
-        let rooms: Vec<Room> = serde_json::from_str(ROOMS).ok()?;
+        let rooms: Vec<Room> = serde_json::from_str(rooms).ok()?;
         let map = Map::from_rooms(rooms).ok()?;
         let next = Arc::new(AtomicU64::new(0));
         let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
@@ -107,7 +108,7 @@ async fn until_written(transcript: &TranscriptHandle, line: &str) -> bool {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn it_walks_there_storing_and_taking_back_on_the_way() {
     let stop = CancellationToken::new();
-    let (walk, transcript, session) = set_out(&stop);
+    let (walk, transcript, session) = set_out(&stop, ROOMS);
     transcript.answer("north", &arrival(1002));
     transcript.answer("store right", SWORD_GONE);
     transcript.answer("climb rope", &arrival(1003));
@@ -129,7 +130,7 @@ async fn it_walks_there_storing_and_taking_back_on_the_way() {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_stop_takes_back_what_is_stored_once_and_stops() {
     let stop = CancellationToken::new();
-    let (walk, transcript, session) = set_out(&stop);
+    let (walk, transcript, session) = set_out(&stop, ROOMS);
     transcript.answer("north", &arrival(1002));
     transcript.answer("store right", SWORD_GONE);
     let climbing = until_written(&transcript, "climb rope").await;
@@ -168,7 +169,7 @@ async fn a_stop_takes_back_what_is_stored_once_and_stops() {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_stop_with_nothing_stored_sends_nothing() {
     let stop = CancellationToken::new();
-    let (walk, transcript, session) = set_out(&stop);
+    let (walk, transcript, session) = set_out(&stop, ROOMS);
     // `north` is answered with a bare prompt: the walker is still in room 1.
     let walking = until_written(&transcript, "north").await;
     assert!(walking, "never set out: {:?}", transcript.lines());
@@ -190,7 +191,7 @@ async fn a_stop_with_nothing_stored_sends_nothing() {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn what_the_game_says_reaches_the_trip() {
     let stop = CancellationToken::new();
-    let (walk, transcript, session) = set_out(&stop);
+    let (walk, transcript, session) = set_out(&stop, ROOMS);
     transcript.answer(
         "north",
         b"You can't go there.\n<prompt time=\"2\">&gt;</prompt>\n",
@@ -204,5 +205,56 @@ async fn what_the_game_says_reaches_the_trip() {
         ["north"],
         "told once, it does not insist"
     );
+    session.cancel();
+}
+
+/// Two rooms with one number -- a room that changes form keeps its number
+/// (`cena_map::locate`, 42 of them measured) -- and exits from room 1 to
+/// both, so where the walker came from does not settle it. Only the text does.
+const TWINS: &str = r#"[
+  {"id":1,"uid":[1001],"exits":[{"to":2,"kind":"cardinal","cmd":"north","cost":1},
+                                {"to":5,"kind":"cardinal","cmd":"south","cost":9}]},
+  {"id":2,"uid":[1002],"description":["The east bank."],
+     "exits":[{"to":3,"kind":"cardinal","cmd":"climb rope","cost":1}]},
+  {"id":5,"uid":[1002],"description":["The west bank."],
+     "exits":[{"to":3,"kind":"cardinal","cmd":"east","cost":1}]},
+  {"id":3,"uid":[1003]}
+]"#;
+
+/// The walker goes north for room 2 and the game puts it on the west bank.
+/// Told apart by the description, it goes `east` from there; not told apart,
+/// it would not know where it was and would never move again.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn rooms_that_share_a_number_are_told_apart_by_what_they_say() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session) = set_out(&stop, TWINS);
+    transcript.answer(
+        "north",
+        b"<nav rm='1002'/><compDef id='room desc'>The west bank.</compDef>
+          <prompt time=\"2\">&gt;</prompt>
+",
+    );
+    transcript.answer("east", &arrival(1003));
+
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(transcript.lines(), ["north", "east"]);
+    session.cancel();
+}
+
+/// A room the map cannot name ends the trip; it does not hold it for ever
+/// (`plan/12` section 5.5: every wait has a deadline).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_room_the_map_does_not_have_ends_the_trip() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session) = set_out(&stop, ROOMS);
+    transcript.answer("north", &arrival(4040));
+
+    let began = Instant::now();
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Failed(Why::OffTheMap));
+    assert!(began.elapsed() >= LOST_WAIT, "it waits for the title first");
+    assert!(began.elapsed() < LOST_WAIT * 2, "and not much longer");
+    assert_eq!(transcript.lines(), ["north"], "lost, it sends nothing");
     session.cancel();
 }

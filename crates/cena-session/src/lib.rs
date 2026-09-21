@@ -37,10 +37,12 @@ pub use actor::{EndReason, Event, Session, SessionActor, Snapshot};
 pub use cena_model::crit::CritTables;
 pub use cena_model::movement::{self, MoveFeedback};
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
-pub use cena_model::spell_named;
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::{containers, gameobj, hands};
 pub use cena_model::{GameState, Room, UnknownTag};
+pub use cena_model::{SkillKind, SkillLine, Society, Vital, VitalsExt, spell_named, spells};
+pub use cena_protocol::InventoryItem;
+pub use cena_protocol::runs::Runs;
 pub use character_store::MAX_STALE;
 pub use command::{
     CommandId, Envelope, Farewell, Gate, Origin, Outcome, Refusal, Sent, SessionHandle,

@@ -220,11 +220,42 @@ how Hydra gets `hydra.map` (`plan/21` §6, open). First live walk, author presen
 > crosses no timer at all, so the test now asserts the stop took **zero**. The other
 > mutation (the stop asks twice) was caught as written.
 >
-> **Not yet, and the first live walk will want them:** `AwaitFollowers` waits until every
-> group member is in `room players` or 30s, which is a reading of upstream's "joins your
-> group" loop and not a port of it; locating uses the game's number and the title only
-> (description and paths are in the model as runs, not text); `Trip::seeded` is not yet fed
-> a recorded seed. The walker's "not yet" facts (`travel/facts.rs`) are unchanged.
+> **4c's tail, BUILT 2026-09-21.** The walker's "not yet" facts are filled
+> (`travel/facts.rs`, `travel/knows.rs`), each from a source and none guessed:
+>
+> | fact | from |
+> |---|---|
+> | `skills` | `character.skills`: the 46 by display name, lowercased, and the circles by the names `skills` prints (Lich's `SPELL_CIRCLE_INDEX_TO_NAME`, `armaments.rb:54-72`) |
+> | `known_spells` | Lich's `Spell#known?` (`spell.rb:464-522`): circle ranks **capped at level**; 97/98/99 by rank in *that* society; 1700 to the five pures |
+> | `affordable_spells` | `Spell#affordable?` (`:591-611`): mana, stamina, and spirit **with one to spare** |
+> | `society`, `society_rank`, `citizenship` | `character.standing` -- which the model already held; `facts.rs` said it did not, and was wrong |
+> | `worn`, `worn_nouns` | the inventory snapshot: `worn` on the `player`, named without the article, as `GameObj` does |
+>
+> Not ported from `affordable?`, and written down in `knows.rs` rather than guessed: the
+> Council of Light signs that raise the spirit to spare, Mental Acuity, and `Overexerted`.
+> Each makes a spell *less* affordable than this says, so the cost is a cast the game
+> refuses, which the trip already recovers from.
+>
+> **Locating now offers the description and the exits line** as well as the number and the
+> title (`Runs::plain`), so rooms that share a number are told apart.
+>
+> **A MUTATION THAT HUNG THE SUITE FOUND A REAL DEFECT.** Withholding the description left
+> the walker unable to name its room, and the trip then held **for ever**: `Trip::tick`
+> answers `Hold` to an unknown room and nothing bounded it. `plan/12` section 5.5 gives
+> every wait a deadline, so the driver now ends the trip as `OffTheMap` after `LOST_WAIT`
+> (10s -- a title arrives a moment after its number, so some of that wait is ordinary).
+>
+> **THREE OF FOUR MUTATIONS SURVIVED FIRST TIME, ALL THE SAME WAY** -- the input never
+> reached the distinction (`CLAUDE.md`, "a test can pass a mutation because the input never
+> reaches the code"; now eight). The other society's power was *above* the rank as well, so
+> rank refused it first. The carried key was inside the cloak, so `on_person()` dropped it
+> before the `worn` filter was asked. And no test cast anything that costs spirit. All four
+> are caught now, each by the test meant for it.
+>
+> **Still not yet:** `AwaitFollowers` waits until every group member is in `room players`
+> or 30s, which is a reading of upstream's "joins your group" loop and not a port of it;
+> `Trip::seeded` is not fed a recorded seed, because the session does not record one yet;
+> and the planner's own flags (`urchin_access`, `day_pass:...`) are stage 5.
 
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,

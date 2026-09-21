@@ -26,19 +26,22 @@
 //! | `encumbrance` | `character.encumbrance_percent` | filled |
 //! | `active_spells` | `effects` still running at the game's clock | filled |
 //! | `room`, `still_here` | the trip lends these each tick | not here |
-//! | `skills`, `known_spells`, `affordable_spells` | need the skill and spell tables joined | **not yet** |
-//! | `society`, `society_rank`, `citizenship` | the model does not hold them yet | **not yet** |
-//! | `worn`, `worn_nouns` | the inventory model, top level only | **not yet** |
+//! | `skills` | `character.skills`: the 46 by name, and the circles by theirs | filled |
+//! | `known_spells`, `affordable_spells` | [`knows`](super::knows): Lich's `known?` and `affordable?` | filled |
+//! | `society`, `society_rank`, `citizenship` | `character.standing` | filled |
+//! | `worn`, `worn_nouns` | the inventory snapshot: `worn` on the `player` | filled |
 //! | flags the planner works out (`urchin_access`, `day_pass:…`, `hunting`, …) | pre-flight, stage 5 | **not yet** |
 //!
 //! "Not yet" is safe and is not free: an exit priced on a fact that is still
 //! unknown is impassable, so the walker goes round it. Each row filled in
 //! opens exits; none of them can send the walker somewhere it cannot go.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use cena_map::Walker;
-use cena_session::GameState;
+use cena_session::{GameState, InventoryItem, SkillKind};
+
+use super::knows::{affordable_spells, circle_ranks, known_spells, skills_listed};
 
 /// What the character's travel file holds (`plan/24` §5): the profile's
 /// settings, and what earlier crossings wrote down.
@@ -81,6 +84,34 @@ pub fn walker_from(state: &GameState, notes: &TravelNotes, now_server: u32) -> W
             .map(|(_, effect)| effect.text.clone())
             .collect()
     });
+    let level = state
+        .character
+        .experience
+        .level
+        .as_deref()
+        .and_then(level_in);
+    let listed = &state.character.skills;
+    // No skill ever listed is "not told", so an untrained one cannot be zero.
+    let skills = skills_listed(state).then(|| {
+        SkillKind::ALL
+            .into_iter()
+            .map(|kind| {
+                let ranks = listed.get(kind).and_then(|skill| skill.ranks).unwrap_or(0);
+                (kind.display_name().to_lowercase(), u32::from(ranks))
+            })
+            .chain(circle_ranks(state))
+            .collect()
+    });
+    let known = known_spells(state, level);
+    let standing = &state.character.standing;
+    // An inventory never sent is not an empty one.
+    let inventory = &state.inventory_snapshot;
+    let worn: Option<Vec<&InventoryItem>> = (!inventory.is_empty()).then(|| {
+        inventory
+            .on_person()
+            .filter(|item| item.relation == "worn")
+            .collect()
+    });
     let room = &state.room;
     let sees = room
         .objects
@@ -95,12 +126,7 @@ pub fn walker_from(state: &GameState, notes: &TravelNotes, now_server: u32) -> W
         profession: identity.profession.clone(),
         race: identity.race.clone(),
         gender: identity.gender.clone(),
-        level: state
-            .character
-            .experience
-            .level
-            .as_deref()
-            .and_then(level_in),
+        level,
         posture,
         exits: room.exits.clone(),
         // The room's things are known once the room is: an empty list is a
@@ -108,8 +134,34 @@ pub fn walker_from(state: &GameState, notes: &TravelNotes, now_server: u32) -> W
         sees: room.id.is_some().then_some(sees),
         encumbrance: state.character.encumbrance_percent,
         active_spells,
+        skills,
+        affordable_spells: known
+            .as_ref()
+            .and_then(|known| affordable_spells(state, known)),
+        known_spells: known,
+        // Told, and in none: the empty name, which no question asks for.
+        society: standing
+            .society
+            .map(|is| is.map_or_else(String::new, |society| society.as_str().to_owned())),
+        society_rank: standing.society_rank.map(u32::from),
+        citizenship: standing.citizenship.clone().map(Option::unwrap_or_default),
+        worn: worn.as_ref().map(|worn| names_of(worn)),
+        worn_nouns: worn
+            .as_ref()
+            .map(|worn| worn.iter().map(|item| item.noun.clone()).collect()),
         ..Walker::default()
     }
+}
+
+/// Names as Lich's `GameObj` has them, which is how the map asks: no article.
+fn names_of(worn: &[&InventoryItem]) -> HashSet<String> {
+    worn.iter()
+        .map(|item| {
+            format!("{} {}", item.adjective, item.noun)
+                .trim()
+                .to_owned()
+        })
+        .collect()
 }
 
 /// The number in `Level 100`, which the model keeps verbatim.
@@ -120,6 +172,8 @@ fn level_in(label: &str) -> Option<u32> {
 #[cfg(test)]
 mod tests {
     use cena_map::Cond;
+    use cena_session::spells::spell;
+    use cena_session::{SkillLine, Society, Vital};
 
     use super::*;
 
@@ -164,5 +218,157 @@ mod tests {
         let walker = walker_from(&GameState::default(), &notes, 0);
         assert!(Cond::Setting("ice_mode".into(), "wait".into()).holds(&walker));
         assert!(Cond::Remembered("duskruin_origin".into(), "228".into()).holds(&walker));
+    }
+
+    #[test]
+    fn skills_and_circles_are_asked_for_by_the_names_the_map_uses() {
+        let mut state = GameState::default();
+        let nothing = walker_from(&state, &TravelNotes::default(), 0);
+        assert_eq!(Cond::SkillUnder("climbing".into(), 10).ask(&nothing), None);
+
+        for line in [
+            "  Climbing...........................|     120      30",
+            "  Major Elemental....................|              25",
+        ] {
+            let line = SkillLine::classify(line).unwrap();
+            state.character.skills.apply(&line, false);
+        }
+        let walker = walker_from(&state, &TravelNotes::default(), 0);
+        let skills = walker.skills.as_ref().unwrap();
+        assert_eq!(skills.get("climbing"), Some(&30));
+        assert_eq!(skills.get("major elemental"), Some(&25));
+        // Listed, and not in the list: untrained, which is an answer.
+        assert_eq!(skills.get("swimming"), Some(&0));
+    }
+
+    #[test]
+    fn a_spell_is_known_by_ranks_capped_at_level_and_a_sigil_by_society() {
+        let mut state = GameState::default();
+        state.character.experience.level = Some("Level 10".into());
+        let line = SkillLine::classify("  Major Elemental....................|              25");
+        state.character.skills.apply(&line.unwrap(), false);
+        state.character.standing.society = Some(Some(Society::GuardiansOfSunfist));
+        state.character.standing.society_rank = Some(4);
+
+        let known = walker_from(&state, &TravelNotes::default(), 0)
+            .known_spells
+            .unwrap();
+        // 504 and 511: 25 ranks, but level 10 caps them at ten.
+        assert!(known.contains(&spell(504).unwrap().name));
+        assert!(!known.contains(&spell(511).unwrap().name));
+        // 9704 at rank 4, and 9705 is a rank away. 9802 is WITHIN rank 4 and
+        // is another society's: a 9805 here would be refused on rank alone,
+        // and never reach the question of whose it is.
+        assert!(known.contains("Sigil of Resolve"));
+        assert!(!known.contains(&spell(9705).unwrap().name));
+        assert!(!known.contains(&spell(9802).unwrap().name));
+    }
+
+    #[test]
+    fn a_known_spell_is_affordable_only_with_the_mana() {
+        let mut state = GameState::default();
+        state.character.experience.level = Some("Level 50".into());
+        let line = SkillLine::classify("  Major Elemental....................|              25");
+        state.character.skills.apply(&line.unwrap(), false);
+        let disk = spell(511).unwrap();
+        let unpaid = walker_from(&state, &TravelNotes::default(), 0);
+        assert!(unpaid.known_spells.unwrap().contains(&disk.name));
+        assert_eq!(unpaid.affordable_spells, None, "no gauge seen yet");
+
+        let gauge = |current| Vital {
+            percent: 0,
+            current: Some(current),
+            max: Some(100),
+        };
+        for id in ["stamina", "spirit"] {
+            state.vitals.insert(id.into(), gauge(100));
+        }
+        state.vitals.insert("mana".into(), gauge(1));
+        let poor = walker_from(&state, &TravelNotes::default(), 0);
+        assert!(!poor.affordable_spells.unwrap().contains(&disk.name));
+        state.vitals.insert("mana".into(), gauge(100));
+        let rich = walker_from(&state, &TravelNotes::default(), 0);
+        assert!(rich.affordable_spells.unwrap().contains(&disk.name));
+    }
+
+    #[test]
+    fn in_no_society_is_an_answer_and_not_told_is_not() {
+        let mut state = GameState::default();
+        let asked = Cond::Society("Order of Voln".into());
+        assert_eq!(
+            asked.ask(&walker_from(&state, &TravelNotes::default(), 0)),
+            None
+        );
+        state.character.standing.society = Some(None);
+        state.character.standing.citizenship = Some(Some("Wehnimer's Landing".into()));
+        let walker = walker_from(&state, &TravelNotes::default(), 0);
+        assert_eq!(asked.ask(&walker), Some(false));
+        assert!(Cond::Citizenship("Wehnimer's Landing".into()).holds(&walker));
+    }
+
+    #[test]
+    fn worn_is_what_is_worn_on_the_player_and_nothing_else() {
+        let mut state = GameState::default();
+        let asked = Cond::WearingNoun("keyring".into());
+        let unseen = walker_from(&state, &TravelNotes::default(), 0);
+        assert_eq!(asked.ask(&unseen), None, "no inventory yet");
+
+        let item =
+            |id: &str, relation: &str, parent: &str, adjective: &str, noun: &str| InventoryItem {
+                id: id.into(),
+                relation: relation.into(),
+                parent: parent.into(),
+                article: "a".into(),
+                adjective: adjective.into(),
+                noun: noun.into(),
+                ..InventoryItem::default()
+            };
+        let items = [
+            item("1", "worn", "player", "brass", "keyring"),
+            item("2", "worn", "player", "dark", "cloak"),
+            // A key in the cloak is carried, and is not worn...
+            item("3", "in", "2", "iron", "key"),
+            // ...and neither is what is on the player some other way. The
+            // author's logs show only `worn` there (`payload.rs`: 1,152 of
+            // them), so this row is the rule's, not the wire's.
+            item("4", "in", "player", "plain", "gift"),
+        ];
+        state
+            .inventory_snapshot
+            .apply_snapshot("7", &items, &[], None);
+        let walker = walker_from(&state, &TravelNotes::default(), 0);
+        assert!(asked.holds(&walker));
+        assert!(Cond::Wearing("brass keyring".into()).holds(&walker));
+        assert_eq!(Cond::WearingNoun("key".into()).ask(&walker), Some(false));
+        assert_eq!(Cond::WearingNoun("gift".into()).ask(&walker), Some(false));
+    }
+
+    /// `spell.rb:597`: spirit must be left with one to spare.
+    #[test]
+    fn the_last_spirit_is_not_spent() {
+        let mut state = GameState::default();
+        state.character.experience.level = Some("Level 50".into());
+        let line = SkillLine::classify("  Climbing...........................|     120      30");
+        state.character.skills.apply(&line.unwrap(), false);
+        state.character.standing.society = Some(Some(Society::CouncilOfLight));
+        state.character.standing.society_rank = Some(20);
+        let healing = spell(9915).unwrap();
+        assert_eq!(healing.spirit, Some(2), "the fixture: Sign of Healing");
+
+        let gauge = |current| Vital {
+            percent: 0,
+            current: Some(current),
+            max: Some(100),
+        };
+        for id in ["mana", "stamina"] {
+            state.vitals.insert(id.into(), gauge(100));
+        }
+        state.vitals.insert("spirit".into(), gauge(2));
+        let spent = walker_from(&state, &TravelNotes::default(), 0);
+        assert!(spent.known_spells.unwrap().contains(&healing.name));
+        assert!(!spent.affordable_spells.unwrap().contains(&healing.name));
+        state.vitals.insert("spirit".into(), gauge(3));
+        let spare = walker_from(&state, &TravelNotes::default(), 0);
+        assert!(spare.affordable_spells.unwrap().contains(&healing.name));
     }
 }

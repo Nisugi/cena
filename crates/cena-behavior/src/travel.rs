@@ -51,6 +51,7 @@
 mod drive;
 mod facts;
 mod hands;
+mod knows;
 mod mover;
 mod recovery;
 mod steps;
@@ -60,7 +61,7 @@ use std::collections::HashSet;
 use cena_map::{Action, Crossing, Exit, Map, Room, RoomId, Step, Target, Walker, priced_for};
 use cena_session::{MoveFeedback, movement};
 
-pub use drive::{BEAT, DEED_DEADLINE, Ended, FOLLOW_WAIT, Travelled, travel};
+pub use drive::{BEAT, DEED_DEADLINE, Ended, FOLLOW_WAIT, LOST_WAIT, Travelled, travel};
 pub use facts::{TravelNotes, walker_from};
 pub use hands::{Stored, cast_commands, store_commands, take_back};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
