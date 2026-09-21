@@ -37,8 +37,16 @@ If anything else contradicts it, it wins.
 | `research/` | **rationale and evidence only. Never instructions.** Contains superseded designs. |
 | `inventory/` | what the reference codebases contain, measured |
 
-`research/` holds designs that were **reversed** — most importantly an embedded Lua runtime.
-Do not implement from it. It exists so decisions can be audited, not repeated.
+`research/` holds designs that were **reversed or deferred**. Do not implement from it. It
+exists so decisions can be audited, not repeated — and, for the deferred ones, so the work
+is not redone from scratch when they come back.
+
+> **CORRECTED 2026-09-21.** This named an embedded Lua runtime as the chief *reversed*
+> design. It is **deferred, not reversed** (author): *"Lua is on the table, just not now."*
+> The distinction is not pedantic — it changes what a contributor may design toward. The
+> error was live: a team proposing to build M4's frontend wrote that "optional Lua remains
+> supported in the design", and this file would have had me tell them it was settled
+> against. See the scripting entry under **Settled decisions**.
 
 **One exception:** `reference/wiki_clean/Wrayth protocol.txt` is a copy of the official protocol wiki
 (<https://gswiki.play.net/Wrayth_protocol>). It is a **primary source we implement from**, not a
@@ -58,9 +66,22 @@ which cites it by line and records what it settles, what it contradicts, and wha
 
 - **One binary.** Not a proxy plus a frontend. (Mobile OSes suspend background processes; also
   over-determined by multi-session.)
-- **No embedded scripting language.** No Lua, no Luau, no Rhai, no DSL. Automation is
-  **curated Rust behaviors** (Hunt, Loot, Heal, Bounty, Travel) configured by **data profiles**.
-  Users do not author scripts.
+- **No embedded scripting language _for now_.** Automation is **curated Rust behaviors**
+  (Hunt, Loot, Heal, Bounty, Travel) configured by **data profiles**. Users do not author
+  scripts in any milestone currently planned.
+
+  > **CORRECTED 2026-09-21.** This read *"No Lua, no Luau, no Rhai, no DSL"* and sat under
+  > a heading saying **do not reopen**, which made a deferral look like a closed door. The
+  > author: *"Lua is on the table, just not now."*
+  >
+  > So the rule that binds is about **sequencing**, not prohibition: nothing being built
+  > now may assume a scripting runtime, and no design should be shaped around one. But a
+  > contributor proposing Lua later is raising a live question, not reopening a settled
+  > one, and should not be told otherwise.
+  >
+  > What this does NOT license: adding a runtime, a `#[cfg]` for one, or an abstraction
+  > whose only purpose is to host one. Rule −1's rule of three still applies, and `12` §9d
+  > already refuses a `GameAdapter` built for a deferred DragonRealms on the same grounds.
 - **Multi-session**, 3–25 characters in one process, session-as-actor.
 - **Parse first.** Nothing above the protocol layer sees raw bytes or unparsed text.
 - **One parser, N classifiers** (`plan/12` §3a). Exactly one thing turns bytes into
