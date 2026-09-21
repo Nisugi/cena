@@ -9,11 +9,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use cena_behavior::BehaviorError;
-use cena_behavior::travel::{Ended, LOST_WAIT, TravelNotes, Travelled, Why, travel};
+use cena_behavior::travel::{Ended, FOLLOW_WAIT, LOST_WAIT, TravelNotes, Travelled, Why, travel};
 use cena_map::{Map, Room, RoomId};
 use cena_platform::{AnsweringSource, TranscriptHandle};
+use cena_session::group::{GroupEvent, Member};
 use cena_session::hands::Hand;
-use cena_session::{AuthorityToken, CommandId, Session};
+use cena_session::{AuthorityToken, CommandId, Gate, Origin, Session, SessionHandle};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -54,6 +55,23 @@ fn set_out(
     TranscriptHandle,
     CancellationToken,
 ) {
+    let (walk, transcript, session, _) = set_out_with(stop, rooms, &[]);
+    (walk, transcript, session)
+}
+
+/// [`set_out`], grouped with `company`, and with the handle a player would
+/// type into: the only way a test can make the game say something the walker
+/// did not ask for.
+fn set_out_with(
+    stop: &CancellationToken,
+    rooms: &'static str,
+    company: &[Member],
+) -> (
+    JoinHandle<Option<Travelled>>,
+    TranscriptHandle,
+    CancellationToken,
+    SessionHandle,
+) {
     let (source, transcript) = AnsweringSource::new(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
@@ -66,6 +84,13 @@ fn set_out(
         name: "broadsword".into(),
     };
     snapshot.state.left_hand = Hand::Empty;
+    for member in company {
+        snapshot
+            .state
+            .group
+            .apply(&GroupEvent::Joined(member.clone()));
+    }
+    let typed = handle.clone();
     tokio::spawn(session.into_actor().run());
 
     let stop = stop.clone();
@@ -90,7 +115,7 @@ fn set_out(
         .await;
         Some(travelled)
     });
-    (walk, transcript, session_cancel)
+    (walk, transcript, session_cancel, typed)
 }
 
 /// Let virtual time run until `line` has been written. `false` if it never is.
@@ -256,5 +281,111 @@ async fn a_room_the_map_does_not_have_ends_the_trip() {
     assert!(began.elapsed() >= LOST_WAIT, "it waits for the title first");
     assert!(began.elapsed() < LOST_WAIT * 2, "and not much longer");
     assert_eq!(transcript.lines(), ["north"], "lost, it sends nothing");
+    session.cancel();
+}
+
+/// A ladder does not carry a group: the walker climbs, and waits at the top.
+const LADDER: &str = r#"[
+  {"id":1,"uid":[1001],"exits":[{"to":2,"kind":"scripted","cost":1,
+     "steps":[{"move":"climb ladder"},{"await_followers":null}]}]},
+  {"id":2,"uid":[1002],"exits":[{"to":3,"kind":"cardinal","cmd":"north","cost":1}]},
+  {"id":3,"uid":[1003]}
+]"#;
+
+fn oreh() -> Member {
+    Member {
+        id: "-10467645".into(),
+        noun: "Oreh".into(),
+        text: "Oreh".into(),
+    }
+}
+
+/// `group.rb:420`'s example.
+const OREH_JOINS: &[u8] = b"<a exist=\"-10467645\" noun=\"Oreh\">Oreh</a> joins your group.
+    <prompt time=\"3\">&gt;</prompt>
+";
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_walker_waits_at_the_top_until_its_company_rejoins() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, typed) = set_out_with(&stop, LADDER, &[oreh()]);
+    transcript.answer("climb ladder", &arrival(1002));
+    transcript.answer("north", &arrival(1003));
+    assert!(until_written(&transcript, "climb ladder").await);
+
+    // Up the ladder, and Oreh is not: it does not go on without them.
+    tokio::time::advance(FOLLOW_WAIT / 3).await;
+    tokio::task::yield_now().await;
+    assert_eq!(transcript.lines(), ["climb ladder"], "it went on alone");
+
+    // Someone else joining is not Oreh rejoining.
+    transcript.answer(
+        "nod",
+        b"<a exist=\"-5\" noun=\"Szan\">Szan</a> joins your group.
+<prompt time=\"3\">&gt;</prompt>
+",
+    );
+    let _ = typed.send_now("nod", Origin::Manual, Gate::None).await;
+    tokio::time::advance(FOLLOW_WAIT / 3).await;
+    tokio::task::yield_now().await;
+    assert_eq!(
+        transcript.lines(),
+        ["climb ladder", "nod"],
+        "the wrong one counted"
+    );
+
+    // Oreh reaches the top. The game says so in answer to nothing the walker
+    // sent, which a player's own command stands in for.
+    transcript.answer("smile", OREH_JOINS);
+    let _ = typed.send_now("smile", Origin::Manual, Gate::None).await;
+
+    let began = Instant::now();
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(
+        transcript.lines(),
+        ["climb ladder", "nod", "smile", "north"]
+    );
+    assert!(
+        began.elapsed() < FOLLOW_WAIT / 3,
+        "it waited out the clock anyway"
+    );
+    session.cancel();
+}
+
+/// A follower who never comes does not strand the walker: upstream's way out
+/// is typing `go`, and this one's is the clock.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_follower_who_never_comes_is_not_waited_for_for_ever() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, _typed) = set_out_with(&stop, LADDER, &[oreh()]);
+    transcript.answer("climb ladder", &arrival(1002));
+    transcript.answer("north", &arrival(1003));
+
+    let began = Instant::now();
+    // Bounded here too: with the deadline gone this test would hang, and a
+    // hang reports nothing. Found by the mutation that removed it.
+    let walked = tokio::time::timeout(FOLLOW_WAIT * 4, walk).await;
+    let travelled = walked
+        .expect("the wait for a follower has no deadline")
+        .expect("the walk must not panic")
+        .unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert!(began.elapsed() >= FOLLOW_WAIT, "it did not wait at all");
+    session.cancel();
+}
+
+/// Alone, there is nobody to wait for.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn alone_the_walker_does_not_wait() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session) = set_out(&stop, LADDER);
+    transcript.answer("climb ladder", &arrival(1002));
+    transcript.answer("north", &arrival(1003));
+
+    let began = Instant::now();
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert!(began.elapsed() < FOLLOW_WAIT, "it waited for nobody");
     session.cancel();
 }

@@ -99,6 +99,20 @@ pub enum GroupEvent {
     Disbanded,
 }
 
+/// `HOLD_*_FIRST` (`group.rb:468-479`): you take someone's hand, as the prose
+/// either side of their name. Reserved, neutral, friendly, warm.
+///
+/// **Not ported: the eight `HOLD_*_SECOND` and `_THIRD`.** Someone taking
+/// *your* hand also makes them the leader (`group.rb:648-651`), and someone
+/// taking a third person's hand is `LeaderAdded` by another route; both want
+/// their own captures before they are written.
+const YOU_HOLD: [(&str, &str); 4] = [
+    ("You grab ", " hand."),
+    ("You reach out and hold ", " hand."),
+    ("You gently take hold of ", " hand."),
+    ("You clasp ", " hand tenderly."),
+];
+
 /// Read a line as a group event, or `None` if it is not one.
 ///
 /// The text is matched with the links **removed**, so a pattern here is the
@@ -136,6 +150,21 @@ pub fn classify(line: &ChunkLine) -> Option<GroupEvent> {
     }
     if trimmed.starts_with("You add ") && trimmed.ends_with(" to your group.") {
         return Some(GroupEvent::Added(first.clone()));
+    }
+    // Taking someone's hand adds them, as `You add` does: Lich answers both
+    // with `Group.push` (`group.rb:642`, `:646`). One line in four demeanors.
+    if members.len() == 1
+        && YOU_HOLD
+            .iter()
+            .any(|(start, end)| trimmed.starts_with(start) && trimmed.ends_with(end))
+    {
+        // The link's text is possessive here -- `Dicate's` -- and a member's
+        // name is not.
+        let mut held = first.clone();
+        if let Some(name) = held.text.strip_suffix("'s") {
+            held.text = name.to_owned();
+        }
+        return Some(GroupEvent::Added(held));
     }
     if trimmed.starts_with("You remove ") && trimmed.ends_with(" from the group.") {
         return Some(GroupEvent::Removed(first.clone()));

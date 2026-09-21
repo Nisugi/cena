@@ -252,10 +252,35 @@ how Hydra gets `hydra.map` (`plan/21` §6, open). First live walk, author presen
 > before the `worn` filter was asked. And no test cast anything that costs spirit. All four
 > are caught now, each by the test meant for it.
 >
-> **Still not yet:** `AwaitFollowers` waits until every group member is in `room players`
-> or 30s, which is a reading of upstream's "joins your group" loop and not a port of it;
-> `Trip::seeded` is not fed a recorded seed, because the session does not record one yet;
-> and the planner's own flags (`urchin_access`, `day_pass:...`) are stage 5.
+> **`AwaitFollowers`, PORTED 2026-09-21** -- it was a reading, and the reading was wrong.
+> It asked whether every group member was in `room players`. Upstream asks something else:
+> a ladder or a bridge does not carry a group, so each follower crosses alone and the
+> leader waits for **`X joins your group.`** or **`You reach out and hold X's hand.`**,
+> striking each name as it comes. Being in the room is not rejoining. The driver now keeps
+> who set out with the walker, and at the top waits for the model's `GroupEvent::Joined` /
+> `Added` naming each of them.
+>
+> Two findings on the way:
+>
+> - **`$group_members` is set by nothing.** `grep -rn '$group_members' reference/` finds the
+>   three map scripts that *read* it and no writer -- not go2, not Lich, not either script
+>   repository. Upstream the wait runs only for a player whose own script fills that global.
+>   Here the list is the group the model had when the trip began, which is what the global
+>   was for.
+> - **The model could not hear a hand being taken.** Lich's group tracker has twelve `HOLD_*`
+>   patterns (`group.rb:468-505`) and answers the first-person four with `Group.push`, as it
+>   does `You add`; the port had none of them. The four `HOLD_*_FIRST` are now
+>   `GroupEvent::Added` in `cena-model`'s classifier -- where a line is recognised, not in
+>   the behavior (`12` section 3a). **The other eight are not ported**: someone taking *your*
+>   hand also makes them leader, and wants its own captures first.
+>
+> Upstream's only way out of a follower who never comes is typing `go`; this one's is
+> `FOLLOW_WAIT` (30s) and a stop. Five mutations, all caught -- one of them by hanging the
+> suite, so that test is now bounded too and a missing deadline fails instead.
+>
+> **Still not yet:** `Trip::seeded` is not fed a recorded seed, because the session does not
+> record one yet (the fixed seed it has is at least the same every replay); and the
+> planner's own flags (`urchin_access`, `day_pass:...`) are stage 5.
 
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,

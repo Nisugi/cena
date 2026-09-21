@@ -25,6 +25,7 @@
 use std::time::Duration;
 
 use cena_map::{Located, Map, Origin as Whence, RoomId, Sighting, Uid, title_from_subtitle};
+use cena_session::group::{self, GroupEvent};
 use cena_session::{
     AuthorityToken, CommandId, Event, Frame, GameState, Gate, Origin, Outcome, Sent, SessionHandle,
     Snapshot, State,
@@ -106,6 +107,8 @@ pub async fn travel(
         };
     }
     let (snapshot, events) = joined;
+    let company = snapshot.state.group.members();
+    let company = company.iter().map(|member| member.id.clone()).collect();
     let mut driver = Driver {
         handle,
         cancel,
@@ -119,6 +122,8 @@ pub async fn travel(
         stance_before: None,
         heard: 0,
         lost_since: None,
+        company,
+        behind: Vec::new(),
     };
     let ended = driver.walk(&mut trip, map, notes, wrote).await;
     if ended == Ended::Stopped(BehaviorError::Cancelled) {
@@ -150,6 +155,10 @@ struct Driver<'a, N> {
     heard: usize,
     /// When the walker last stopped knowing where it is.
     lost_since: Option<Instant>,
+    /// Who was grouped with the walker when it set out, by id.
+    company: Vec<String>,
+    /// Of those, who a crossing is still waiting for.
+    behind: Vec<String>,
 }
 
 impl<N: FnMut() -> CommandId> Driver<'_, N> {
@@ -289,6 +298,13 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         let fresh = total.saturating_sub(self.heard).min(lines.len());
         for line in &lines[lines.len() - fresh..] {
             trip.heard(&line.text());
+            // Whoever rejoins is no longer behind (`await_followers`). The
+            // model's classifier reads the line; this only keeps the count.
+            if let Some(GroupEvent::Joined(member) | GroupEvent::Added(member)) =
+                group::classify(line)
+            {
+                self.behind.retain(|id| *id != member.id);
+            }
         }
         self.heard = total;
     }
@@ -397,22 +413,32 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         Ok(())
     }
 
-    /// Until everyone in the group is in the room, or [`FOLLOW_WAIT`].
+    /// Until everyone who set out with the walker has rejoined it, or
+    /// [`FOLLOW_WAIT`].
+    ///
+    /// Upstream's loop, from the six crossings that have it (`keys.rs`,
+    /// `with_company`): a ladder or a bridge does not carry a group, so each
+    /// follower crosses alone and the leader waits for
+    /// `X joins your group.` or `You reach out and hold X's hand.`, striking
+    /// each name as it comes, until none is left.
+    ///
+    /// Two things differ, and both are upstream's gaps rather than choices.
+    /// Its list is `$group_members`, which **nothing in any reference sets**
+    /// (`grep -rn '\$group_members' reference/` finds only the three map
+    /// scripts that read it), so there it is the player's own script's job;
+    /// here it is the group the model had when the trip began. And its only
+    /// way out of a follower who never comes is typing `go`; here it is the
+    /// clock, and a stop.
+    ///
+    /// Listening starts now, as upstream's `clear` has it: a rejoining heard
+    /// before the crossing is not one after it.
     async fn await_followers(&mut self, trip: &mut Trip) -> Result<(), Ended> {
+        self.behind.clone_from(&self.company);
         let until = Instant::now() + FOLLOW_WAIT;
-        while Instant::now() < until {
-            let here = &self.state.room.players;
-            let all_here = self
-                .state
-                .group
-                .members()
-                .iter()
-                .all(|member| here.iter().any(|player| player.id == member.id));
-            if all_here {
-                break;
-            }
+        while !self.behind.is_empty() && Instant::now() < until {
             self.hold(trip).await?;
         }
+        self.behind.clear();
         Ok(())
     }
 

@@ -66,6 +66,31 @@ fn you_adding_and_removing_are_read() {
     assert!(group.is_empty());
 }
 
+/// `group.rb:469`'s example, and the other three demeanors of the same line.
+#[test]
+fn taking_a_hand_adds_them_whatever_the_demeanor() {
+    const DICATE: &str = r#"<a exist="-10070682" noun="Dicate">Dicate's</a>"#;
+    for (start, end) in [
+        ("You grab ", " hand."),
+        ("You reach out and hold ", " hand."),
+        ("You gently take hold of ", " hand."),
+        ("You clasp ", " hand tenderly."),
+    ] {
+        let group = state_after(&[&format!("{start}{DICATE}{end}")]).group;
+        assert_eq!(group.members().len(), 1, "{start}");
+        assert_eq!(group.members()[0].id, "-10070682");
+        assert_eq!(
+            group.members()[0].text,
+            "Dicate",
+            "a name, not a possessive"
+        );
+    }
+    // Someone else's hand being taken is not yours: two people, not one.
+    let watched =
+        r#"<a exist="-1" noun="Oreh">Oreh</a> grabs <a exist="-2" noun="Szan">Szan's</a> hand."#;
+    assert!(state_after(&[watched]).group.is_empty());
+}
+
 #[test]
 fn disbanding_empties_the_group() {
     let group = state_after(&[OREH_JOINS, "You disband your group."]).group;
