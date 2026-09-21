@@ -12,3 +12,10 @@ crates/cena-protocol/tests/fixtures/*.xml -text
 # The crit tables are data the loader parses line by line, and a golden digest
 # is taken over the parsed result. Keep them byte-stable across platforms.
 crates/cena-model/data/*.tsv -text
+
+# Upstream map scripts kept VERBATIM: the converter matches them byte for byte
+# (`recognise/routines.rs`), and upstream writes them with bare LF. A checkout
+# that turned those into CRLF would silently un-port every exit that uses one.
+# The same for the converter's fixture, which is a cut of the upstream file.
+crates/cena-mapdb-convert/src/upstream_scripts/* -text
+crates/cena-mapdb-convert/tests/fixtures/*.json -text
