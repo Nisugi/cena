@@ -447,11 +447,32 @@ them on its next save, losing the player's targets silently. Now it refuses the 
 
 **The travel file is ONE file, version 3** (author, 2026-09-21: *"travel file should be a
 global file with character spots within it"*). `<CENA_DATA_DIR>/travel.json` holds a spot
-per character -- settings, memories, last room -- and **targets shared by every character
-of an instance**, as go2's `GameSettings['custom targets']` are. This supersedes the
-file-per-character of versions 1 and 2, above and in §5: a character with no spot yet and
-an old `<instance>_<character>.travel.json` is read from it (its targets into the
-instance's, a name already shared kept as it is), and the old file is left where it is.
+per character -- settings, memories, last room, **and its own targets** -- and, at the top,
+**targets that are everyone's**. This supersedes the file-per-character of versions 1 and
+2, above and in §5: a character with no spot yet and an old
+`<instance>_<character>.travel.json` is read from it, whole, and the old file is left
+where it is.
+
+**Targets are at two levels, and global means global** (author, same day). `--save-target
+<name>` names the room for this character; with **`--global`** it is every character's, **on
+every instance** -- *"A person running one session or twenty five sessions are going to
+want the same travel shortcuts for all their guys."* go2 keeps all of its per game
+(`GameSettings`); I had first made the shared ones per instance on that model, and that was
+wrong for the reason the author gave. A character's own name is looked for before
+everyone's, so forgetting one's own uncovers the shared one. Saving is go2's
+(`go2.lic:1149-1157`): a name that means several rooms gains the new one, a name that means
+one is replaced. *A trap found while building it:* a target saved before any trip would
+have made an empty spot, and since an old file is never read once a spot exists, its
+memories would have been stranded. Any write that makes a spot moves the old file in first.
+
+**The places the map names are targets already, with nothing saved** (author: *"go2 ...
+autopopulates targets based on tags"*): `bank` is the nearest room tagged `bank`, which
+`destination` has done since 4c. What was missing is the listing, go2's `;go2 targets`
+(`go2.lic:1010-1046`), now `places()` and `--targets`: town by town, each of go2's 45
+interesting tags that has a room nearest that town, then the names the player chose.
+MEASURED over the real map: 542 lines in 109 ms (`CENA_MAP=… cargo test --release -p
+cena-behavior --test travel_itinerary real_maps -- --nocapture`); go2 says `generating
+list...` of the same.
 
 With 3-25 characters in one process, **a save changes one spot and never writes back what it
 read**: it reads the file afresh, changes that character's spot or that one target, and

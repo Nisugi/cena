@@ -34,10 +34,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use cena_behavior::travel::{
-    self, Ended, Map, RoomId, TravelNotes, Whence, described, destination, itinerary, read_map,
-    room_of, table, walker_from,
+    self, Ended, Map, RoomId, TravelNotes, Whence, described, destination, itinerary, places,
+    read_map, room_of, table, walker_from,
 };
-use cena_session::travel_store::{self, TravelFile};
+use cena_session::travel_store::{self, TravelFile, Whose};
 use cena_session::{AuthorityToken, CommandId, Event, Notice, NoticeKind, SessionHandle, Snapshot};
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 use tokio_util::sync::CancellationToken;
@@ -58,8 +58,14 @@ pub(crate) enum Errand {
     /// Walk there.
     Go(String),
     /// Name the room the character stands in, for `--go` later: go2's
-    /// `;go2 save`. Sends nothing.
-    Save(String),
+    /// `;go2 save`. Sends nothing. The character's own, unless `--global`
+    /// is there too: then every character's, on every instance.
+    Save {
+        name: String,
+        global: bool,
+    },
+    /// List the places there are to go: go2's `;go2 targets`. Sends nothing.
+    Places,
 }
 
 /// `--first south`: a command to send, as the player, before the errand --
@@ -84,24 +90,31 @@ where
 }
 
 impl Errand {
-    /// `--route bank`, `--go 228`, `--go=u7120`. The first one wins.
+    /// `--route bank`, `--go 228`, `--go=u7120`, `--save-target den --global`,
+    /// `--targets`. The first one wins.
     pub(crate) fn from_args<I, S>(args: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let mut args = args.into_iter();
+        let args: Vec<String> = args
+            .into_iter()
+            .map(|arg| arg.as_ref().to_owned())
+            .collect();
+        let global = args.iter().any(|arg| arg == "--global");
+        let save = |name: String| Errand::Save { name, global };
+        let mut args = args.iter();
         while let Some(arg) = args.next() {
-            let arg = arg.as_ref();
+            if arg == "--targets" {
+                return Errand::Places;
+            }
             for (flag, make) in [
-                ("--route", Errand::Route as fn(String) -> Errand),
-                ("--go", Errand::Go as fn(String) -> Errand),
-                ("--save-target", Errand::Save as fn(String) -> Errand),
+                ("--route", &Errand::Route as &dyn Fn(String) -> Errand),
+                ("--go", &Errand::Go),
+                ("--save-target", &save),
             ] {
                 if arg == flag {
-                    return args
-                        .next()
-                        .map_or(Errand::None, |to| make(to.as_ref().to_owned()));
+                    return args.next().map_or(Errand::None, |to| make(to.clone()));
                 }
                 if let Some(to) = arg
                     .strip_prefix(flag)
@@ -241,7 +254,8 @@ pub(crate) async fn run(
 ) {
     let (to, walk) = match &errand {
         Errand::None => return,
-        Errand::Route(to) | Errand::Save(to) => (to.as_str(), false),
+        Errand::Route(to) | Errand::Save { name: to, .. } => (to.as_str(), false),
+        Errand::Places => ("", false),
         Errand::Go(to) => (to.as_str(), true),
     };
     let say = |kind, text: String| handle.say(Notice::line(kind, text));
@@ -251,6 +265,15 @@ pub(crate) async fn run(
     let here = settle(&map, &mut joined).await;
     let state = &joined.0.state;
     let (mut file, mut notes) = load_notes(handle, state);
+    let walker = walker_from(state, &notes, state.game_time().unwrap_or(0));
+    // Asked before the room is: a list of places needs no place to stand.
+    if errand == Errand::Places {
+        handle.say(Notice::table(
+            NoticeKind::Info,
+            places(&map, &walker, &notes.targets),
+        ));
+        return;
+    }
     // Rooms that read alike: where the character was last known to be says
     // which, as a hint that it has not moved (`TravelFile::last_room`).
     let here = here.or_else(|| {
@@ -267,17 +290,21 @@ pub(crate) async fn run(
         );
         return;
     };
-    let walker = walker_from(state, &notes, state.game_time().unwrap_or(0));
     remember_room(&mut file, &mut notes, here);
-    if matches!(errand, Errand::Save(_)) {
+    if let Errand::Save { global, .. } = errand {
         // Said only of a save that happened: this announced a target it had
         // failed to write.
-        match save_target(file.as_ref(), to, here) {
+        match save_target(file.as_ref(), to, here, global) {
             Ok(()) => say(
                 NoticeKind::Info,
                 format!(
-                    "Travel: {to:?} is room {} from now on, for every character here.",
-                    here.0
+                    "Travel: {to:?} is room {} from now on, for {}.",
+                    here.0,
+                    if global {
+                        "every character"
+                    } else {
+                        "this character"
+                    }
                 ),
             ),
             Err(why) => say(
@@ -430,16 +457,25 @@ fn load_map(handle: &SessionHandle) -> Option<Map> {
 /// How many rooms a destination that fits several is listed with.
 const MAX_LISTED: usize = 40;
 
-/// `;go2 save <name>`: the name means this room from now on, **for every
-/// character of this instance**, as go2's custom targets are. One room, as
-/// go2 saves it; a name that meant several is replaced.
+/// `;go2 save <name>`: the name means this room from now on -- or this one as
+/// well, if it already means several. This character's own, or with `--global`
+/// every character's on every instance (author, 2026-09-21).
 fn save_target(
     file: Option<&(PathBuf, TravelFile)>,
     name: &str,
     here: RoomId,
+    global: bool,
 ) -> Result<(), String> {
     let (dir, file) = file.ok_or("the travel file could not be read, so it was left alone")?;
-    travel_store::save_target(dir, &file.instance, name, &[here.0])
+    let whose = if global {
+        Whose::Everyone
+    } else {
+        Whose::Character {
+            instance: &file.instance,
+            character: &file.character,
+        }
+    };
+    travel_store::save_target(dir, whose, name, &[here.0])
         .map(|_| ())
         .map_err(|why| why.to_string())
 }
@@ -511,10 +547,15 @@ mod tests {
             read(&["--hold", "60", "--go", "228"]),
             Errand::Go("228".into())
         );
-        assert_eq!(
-            read(&["--save-target", "my shop"]),
-            Errand::Save("my shop".into())
-        );
+        let saved = |global| Errand::Save {
+            name: "my shop".into(),
+            global,
+        };
+        assert_eq!(read(&["--save-target", "my shop"]), saved(false));
+        // Wherever it stands among the arguments.
+        assert_eq!(read(&["--save-target", "my shop", "--global"]), saved(true));
+        assert_eq!(read(&["--global", "--save-target=my shop"]), saved(true));
+        assert_eq!(read(&["--targets"]), Errand::Places);
         // A flag with nothing after it is not a walk to nowhere.
         assert_eq!(read(&["--go"]), Errand::None);
         assert_eq!(

@@ -369,3 +369,115 @@ pub fn table(map: &Map, from: RoomId, legs: &[Leg]) -> Vec<String> {
     }
     lines
 }
+
+/// The tags go2 lists as places to go (`go2.lic:1013`, `gs_interesting_tags`),
+/// in its order.
+pub const PLACES: [&str; 45] = [
+    "advguard",
+    "advguard2",
+    "advguild",
+    "advpickup",
+    "alchemist",
+    "armorshop",
+    "bakery",
+    "bank",
+    "bardguild",
+    "boutique",
+    "chronomage",
+    "clericguild",
+    "clericshop",
+    "cobbling",
+    "collectibles",
+    "consignment",
+    "empathguild",
+    "exchange",
+    "fletcher",
+    "forge",
+    "furrier",
+    "gemshop",
+    "general store",
+    "grocer",
+    "herbalist",
+    "inn",
+    "locksmith pool",
+    "locksmith",
+    "mail",
+    "movers",
+    "npccleric",
+    "npchealer",
+    "pawnshop",
+    "portmaster",
+    "postoffice",
+    "rangerguild",
+    "smokeshop",
+    "sorcererguild",
+    "sunfist",
+    "treasuremaster",
+    "town",
+    "voln",
+    "warriorguild",
+    "weaponshop",
+    "wizardguild",
+];
+
+/// go2's `;go2 targets` (`go2.lic:1010-1046`): town by town, the places the
+/// map names near each -- **which are targets already**, with nothing saved:
+/// `bank` means the nearest room tagged `bank` ([`destination`]). Under each
+/// town, one line for each of [`PLACES`] that has a room whose nearest town
+/// it is: the tag, the room's title, its id. Then the names the player chose
+/// (`named`), which the map does not know.
+///
+/// "Nearest" is by what this walker would pay, as everywhere here. A town
+/// tagged `closed` is not listed, as upstream has it.
+#[must_use]
+pub fn places(map: &Map, walker: &Walker, named: &BTreeMap<String, Vec<u32>>) -> Vec<String> {
+    let has = |room: &Room, tag: &str| room.tags.iter().any(|is| is == tag);
+    let towns: Vec<&Room> = map
+        .rooms()
+        .iter()
+        .filter(|room| has(room, "town") && !has(room, "closed"))
+        .collect();
+    let town_ids: Vec<RoomId> = towns.iter().map(|town| town.id).collect();
+    let trip = Trip::to(RoomId(0));
+    let mut near: BTreeMap<RoomId, BTreeMap<&str, String>> = BTreeMap::new();
+    for tag in PLACES {
+        for room in map.rooms().iter().filter(|room| has(room, tag)) {
+            let nearest = map
+                .routes(room.id, Target::Nearest(&town_ids), trip.pricing(walker))
+                .reached();
+            let Some(town) = nearest else { continue };
+            // The first room of a kind stands for it, as upstream has it.
+            near.entry(town).or_default().entry(tag).or_insert_with(|| {
+                let title = room.title.first().map_or("", String::as_str);
+                let title = title.trim_start_matches('[').trim_end_matches(']');
+                format!(" - {tag:<17} {title:<34} - {:>5}", room.id.0)
+            });
+        }
+    }
+    let rule = "-".repeat(63);
+    let mut lines = Vec::new();
+    for town in towns {
+        // `the free port of Solhaven` is Solhaven: upstream's
+        // `sub(/^.*?([A-Z].*?)$/, '')`.
+        let at = town.location.as_deref().unwrap_or("");
+        let at = at.find(char::is_uppercase).map_or(at, |from| &at[from..]);
+        lines.push(rule.clone());
+        lines.push(format!(" - {:<17} {at:<34} - {:>5}", "town", town.id.0));
+        lines.push(rule.clone());
+        lines.extend(
+            near.remove(&town.id)
+                .into_iter()
+                .flat_map(BTreeMap::into_values),
+        );
+        lines.push(String::new());
+    }
+    if !named.is_empty() {
+        lines.push("names you chose:".to_owned());
+        lines.extend(
+            named
+                .iter()
+                .map(|(name, rooms)| format!("   {name:<15} = {rooms:?}")),
+        );
+    }
+    lines
+}

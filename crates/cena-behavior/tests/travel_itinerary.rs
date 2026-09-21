@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use cena_behavior::travel::{ShutWhy, described, destination, itinerary, table};
+use cena_behavior::travel::{ShutWhy, described, destination, itinerary, places, table};
 use cena_map::{Map, Room, RoomId, Walker};
 
 /// `travel_trip.rs`'s map, less what this does not need:
@@ -234,4 +234,65 @@ fn a_room_is_found_by_words_from_its_title_or_description() {
     assert_eq!(go("town"), None);
     assert_eq!(described(&map, "town").len(), 3);
     assert_eq!(go("dragon"), None);
+}
+
+/// `;go2 targets`: the places the map already names, under the town each is
+/// nearest, and then the names the player chose.
+#[test]
+fn the_places_the_map_names_are_listed_under_their_nearest_town() {
+    let rooms = r#"[
+      {"id":1,"title":["[Landing, Square]"],"location":"Wehnimer's Landing","tags":["town"],
+       "exits":[{"to":2,"kind":"cardinal","cmd":"east","cost":1}]},
+      {"id":2,"title":["[First Elanith Bank]"],"tags":["bank"],
+       "exits":[{"to":1,"kind":"cardinal","cmd":"west","cost":1},
+                {"to":3,"kind":"cardinal","cmd":"east","cost":90}]},
+      {"id":3,"title":["[Icemule Bank]"],"tags":["bank","gemshop"],
+       "exits":[{"to":4,"kind":"cardinal","cmd":"east","cost":1},
+                {"to":2,"kind":"cardinal","cmd":"west","cost":90}]},
+      {"id":4,"title":["[Icemule, Centre]"],"location":"the town of Icemule Trace","tags":["town"],
+       "exits":[{"to":3,"kind":"cardinal","cmd":"west","cost":1}]},
+      {"id":5,"title":["[Ruins]"],"location":"nowhere","tags":["town","closed"]}
+    ]"#;
+    let map = map_of(rooms).unwrap();
+    let mut named = BTreeMap::new();
+    named.insert("hideout".to_owned(), vec![9]);
+    let lines = places(&map, &Walker::default(), &named);
+    let said = lines.join("\n");
+    let at = |text: &str| {
+        said.find(text)
+            .unwrap_or_else(|| panic!("no {text:?} in:\n{said}"))
+    };
+    // Each bank under its own town, and the gemshop under Icemule alone.
+    assert!(at("Wehnimer's Landing") < at("First Elanith Bank"));
+    assert!(at("First Elanith Bank") < at("Icemule Trace"));
+    assert!(at("Icemule Trace") < at("Icemule Bank"));
+    assert!(!said.contains("the town of"), "{said}");
+    assert_eq!(said.matches("gemshop").count(), 1, "{said}");
+    assert!(
+        said.contains(" - bank              First Elanith Bank"),
+        "{said}"
+    );
+    // A closed town is not listed; a chosen name is, last.
+    assert!(!said.contains("Ruins"), "{said}");
+    assert!(lines.last().unwrap().contains("hideout"), "{said}");
+}
+
+/// Over the real map, when `CENA_MAP` names one: go2 says `generating
+/// list...` of this, so how long it takes is worth knowing.
+#[test]
+fn the_real_maps_places_are_listed_in_reasonable_time() {
+    let Ok(path) = std::env::var("CENA_MAP") else {
+        return;
+    };
+    let map = cena_behavior::travel::read_map(&std::fs::read(path).unwrap()).unwrap();
+    let began = std::time::Instant::now();
+    let lines = places(&map, &Walker::default(), &BTreeMap::new());
+    let took = began.elapsed();
+    println!(
+        "{} lines in {took:?}\n{}",
+        lines.len(),
+        lines[..lines.len().min(14)].join("\n")
+    );
+    assert!(lines.iter().any(|line| line.contains(" - bank ")));
+    assert!(took < std::time::Duration::from_secs(30), "{took:?}");
 }

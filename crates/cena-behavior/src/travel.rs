@@ -77,7 +77,7 @@ pub use drive::{
 };
 pub use facts::{TravelNotes, walker_from};
 pub use hands::{Stored, cast_commands, store_commands, take_back};
-pub use itinerary::{Leg, Shut, ShutWhy, described, destination, itinerary, table};
+pub use itinerary::{Leg, PLACES, Shut, ShutWhy, described, destination, itinerary, places, table};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
 pub use steps::{Deed, EXCHANGE_TIMEOUT_MS, MAX_RESENDS, MAX_TURNS, MAX_WAIT_MS, STEP_TIMEOUT_MS};
 use steps::{Out, Owes, Run, Tick};

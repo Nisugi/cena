@@ -9,17 +9,27 @@
 //!
 //! ```text
 //! { "schema_version": 3,
-//!   "targets":    { "GS3": { "my shop": [7120] } },
-//!   "characters": { "GS3_Nerten": { "settings": {…}, "memories": {…}, "last_room": 228 } } }
+//!   "targets":    { "bank alley": [7120] },
+//!   "characters": { "GS3_Nerten": { "settings": {…}, "memories": {…},
+//!                                   "targets": { "my shop": [228] }, "last_room": 228 } } }
 //! ```
 //!
-//! - **`targets` are shared by every character of an instance**, as go2's are
-//!   (`GameSettings['custom targets']`): a name the player chose means the
-//!   same room whoever is walking. Per instance, because a room's id is a
-//!   fact about one game's map.
 //! - **A character's spot** is what is that character's alone: the travel
 //!   profile (`settings`), what earlier crossings wrote down (`memories`),
-//!   and where it was last known to be (`last_room`).
+//!   where it was last known to be (`last_room`), and **its own `targets`**
+//!   -- where a saved name goes unless told otherwise.
+//! - **The top-level `targets` are everyone's, on every instance**: `--global`
+//!   (author, 2026-09-21: *"A person running one session or twenty five
+//!   sessions are going to want the same travel shortcuts for all their
+//!   guys"*). go2 keeps all of its per game (`GameSettings`); the instances
+//!   share one map, so a name means the same room on each. **A character's
+//!   own name is looked for first**, so one character may mean its own shop
+//!   by a name everyone uses.
+//!
+//! Places the map already names -- `bank`, `gemshop`, `town` -- are not kept
+//! here at all: they are the map's tags, and `go2 bank` finds the nearest
+//! (`cena_behavior::travel::destination`). These are for what the map does
+//! not name.
 //!
 //! # Why it is not in the character's snapshot
 //!
@@ -40,8 +50,8 @@
 //! ([`save_target`]) -- by reading the file afresh, changing that, and
 //! writing it back, all under [`WRITING`]. A character that holds a stale
 //! copy of someone else's spot cannot write it back, because it never writes
-//! any spot but its own; and a [`TravelFile`]'s `targets` are a copy to read,
-//! which [`save`] does not write.
+//! any spot but its own; and a [`TravelFile`]'s `targets` are a copy to read
+//! -- everyone's and its own together -- which [`save`] does not write.
 //!
 //! The lock is this process's. Two Hydras sharing one data directory can
 //! still lose an update between them; the rename keeps the file whole
@@ -51,9 +61,8 @@
 //!
 //! **3** is this shape. **1 and 2** were a file per character,
 //! `<instance>_<character>.travel.json`: a character with no spot yet and
-//! such a file beside the snapshot is **read from it** -- its settings,
-//! memories and last room into the spot, its targets into the instance's
-//! (a name already shared is kept as it is). The old file is left where it
+//! such a file beside the snapshot is **read from it**, whole, into the
+//! spot: its targets were that character's, and stay so. The old file is left where it
 //! is: it is never read again once the spot exists, and deleting what a
 //! player may have edited by hand is not this module's to do.
 
@@ -92,8 +101,8 @@ pub struct TravelFile {
     /// What an earlier crossing wrote down -- *entered Duskruin from the
     /// Landing*. They outlive the session and the login.
     pub memories: BTreeMap<String, String>,
-    /// go2's **custom targets** (`go2.lic:1149-1160`), as they stood when
-    /// this was loaded. Several rooms mean *the nearest*. Map ids, as go2
+    /// go2's **custom targets** (`go2.lic:1149-1160`): everyone's, and this
+    /// character's own over them, as they stood when this was loaded. Several rooms mean *the nearest*. Map ids, as go2
     /// keeps them. **A copy to read**: [`save`] does not write it, since
     /// another character may have named a room since. [`save_target`] does.
     pub targets: Targets,
@@ -122,9 +131,9 @@ impl TravelFile {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 struct Shared {
     schema_version: u32,
-    /// By instance, then by name.
+    /// Everyone's, by name.
     #[serde(default)]
-    targets: BTreeMap<String, Targets>,
+    targets: Targets,
     /// By `<instance>_<character>`, as the snapshot's file is named.
     #[serde(default)]
     characters: BTreeMap<String, Spot>,
@@ -137,6 +146,9 @@ struct Spot {
     settings: BTreeMap<String, String>,
     #[serde(default)]
     memories: BTreeMap<String, String>,
+    /// The character's own targets, looked for before everyone's.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    targets: Targets,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     last_room: Option<u32>,
 }
@@ -301,25 +313,13 @@ pub fn load(dir: &Path, instance: &str, character: &str) -> Result<TravelFile, T
         TravelLoadError::Unreadable("character or instance has no usable name".to_owned())
     })?;
     let shared = read(dir)?;
-    let mut targets = key_in(&shared.targets, &safe_component(instance))
-        .and_then(|key| shared.targets.get(&key).cloned())
-        .unwrap_or_default();
     let spot = match key_in(&shared.characters, &name) {
         Some(key) => shared.characters.get(&key).cloned().unwrap_or_default(),
-        None => match read_legacy(dir, instance, character)? {
-            Some(legacy) => {
-                for (named, rooms) in legacy.targets {
-                    targets.entry(named).or_insert(rooms);
-                }
-                Spot {
-                    settings: legacy.settings,
-                    memories: legacy.memories,
-                    last_room: legacy.last_room,
-                }
-            }
-            None => Spot::default(),
-        },
+        None => read_legacy(dir, instance, character)?.map_or_else(Spot::default, Spot::from),
     };
+    // Everyone's, and then the character's own over them.
+    let mut targets = shared.targets;
+    targets.extend(spot.targets);
     Ok(TravelFile {
         instance: instance.to_owned(),
         character: character.to_owned(),
@@ -330,12 +330,20 @@ pub fn load(dir: &Path, instance: &str, character: &str) -> Result<TravelFile, T
     })
 }
 
+impl From<Legacy> for Spot {
+    fn from(legacy: Legacy) -> Spot {
+        Spot {
+            settings: legacy.settings,
+            memories: legacy.memories,
+            targets: legacy.targets,
+            last_room: legacy.last_room,
+        }
+    }
+}
+
 /// Read the file afresh, change it, and write it back, with nobody else in
 /// this process doing the same in between.
-fn change(
-    dir: &Path,
-    with: impl FnOnce(&mut Shared) -> io::Result<()>,
-) -> io::Result<PathBuf> {
+fn change(dir: &Path, with: impl FnOnce(&mut Shared) -> io::Result<()>) -> io::Result<PathBuf> {
     // A panic elsewhere while holding it left the file whole: the rename is
     // the only write, and it is atomic.
     let _held = WRITING.lock().unwrap_or_else(PoisonError::into_inner);
@@ -345,69 +353,106 @@ fn change(
     write(dir, &shared)
 }
 
-/// Write this character's spot -- **and no one else's, and not the targets**
-/// (module docs). A character whose spot was read from its old file brings
-/// that file's targets with it, the first time only, and never over a name
-/// the instance already has.
+/// This character's spot, to change. **One that does not exist yet is moved
+/// in from the character's old file first**, whoever is asking: a target
+/// saved before any trip would otherwise make an empty spot, and the old
+/// file's memories -- never read again once a spot exists -- would be lost.
+/// The old file is asked only while there is no spot: once moved in, whatever
+/// becomes of it is no reason to refuse a save.
+fn spot_in<'a>(
+    shared: &'a mut Shared,
+    dir: &Path,
+    instance: &str,
+    character: &str,
+) -> io::Result<&'a mut Spot> {
+    let name = spot_name(instance, character).ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "character or instance has no usable name",
+        )
+    })?;
+    let key = if let Some(key) = key_in(&shared.characters, &name) {
+        key
+    } else {
+        let moved_in =
+            read_legacy(dir, instance, character)?.map_or_else(Spot::default, Spot::from);
+        shared.characters.insert(name.clone(), moved_in);
+        name
+    };
+    Ok(shared.characters.entry(key).or_default())
+}
+
+/// Write this character's settings, memories and last room -- **and no one
+/// else's, and no targets** (module docs): [`TravelFile::targets`] is
+/// everyone's and the character's own read together, so writing it back
+/// would make everyone's the character's. [`save_target`] writes those.
 ///
 /// # Errors
 ///
 /// An [`io::Error`] if the file cannot be written, or **if it cannot be
 /// read**: a file this build cannot trust is left exactly as it is.
 pub fn save(dir: &Path, file: &TravelFile) -> io::Result<PathBuf> {
-    let name = spot_name(&file.instance, &file.character).ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "character or instance has no usable name",
-        )
-    })?;
     change(dir, |shared| {
-        let key = key_in(&shared.characters, &name);
-        // The old file is asked only while there is no spot: once moved in,
-        // whatever becomes of it is no reason to refuse a save.
-        if key.is_none()
-            && let Some(legacy) = read_legacy(dir, &file.instance, &file.character)?
-        {
-            let instance = safe_component(&file.instance);
-            let at = key_in(&shared.targets, &instance).unwrap_or(instance);
-            let targets = shared.targets.entry(at).or_default();
-            for (named, rooms) in legacy.targets {
-                targets.entry(named).or_insert(rooms);
-            }
-        }
-        shared.characters.insert(
-            key.unwrap_or(name),
-            Spot {
-                settings: file.settings.clone(),
-                memories: file.memories.clone(),
-                last_room: file.last_room,
-            },
-        );
+        let spot = spot_in(shared, dir, &file.instance, &file.character)?;
+        spot.settings.clone_from(&file.settings);
+        spot.memories.clone_from(&file.memories);
+        spot.last_room = file.last_room;
         Ok(())
     })
 }
 
-/// go2's `;go2 save`: from now on `name` means these rooms, for every
-/// character of the instance. No rooms at all forgets the name.
+/// Whose a target is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Whose<'a> {
+    /// This character's alone. What `--save-target` means unless told
+    /// otherwise.
+    Character {
+        instance: &'a str,
+        character: &'a str,
+    },
+    /// Every character's, on every instance. `--global`.
+    Everyone,
+}
+
+/// go2's `;go2 save`: from now on `name` means these rooms -- or these as
+/// well, if it already means several. No rooms at all forgets the name. **A character's own name is looked for before
+/// everyone's** ([`load`]), so forgetting one's own uncovers the shared one.
 ///
 /// # Errors
 ///
 /// As [`save`].
-pub fn save_target(dir: &Path, instance: &str, name: &str, rooms: &[u32]) -> io::Result<PathBuf> {
-    let instance = safe_component(instance);
-    if instance.is_empty() || name.trim().is_empty() {
+pub fn save_target(dir: &Path, whose: Whose<'_>, name: &str, rooms: &[u32]) -> io::Result<PathBuf> {
+    let name = name.trim();
+    if name.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "a target needs an instance and a name",
+            "a target needs a name",
         ));
     }
     change(dir, |shared| {
-        let at = key_in(&shared.targets, &instance).unwrap_or(instance);
-        let targets = shared.targets.entry(at).or_default();
-        if rooms.is_empty() {
-            targets.remove(name.trim());
-        } else {
-            targets.insert(name.trim().to_owned(), rooms.to_vec());
+        let targets = match whose {
+            Whose::Character {
+                instance,
+                character,
+            } => &mut spot_in(shared, dir, instance, character)?.targets,
+            Whose::Everyone => &mut shared.targets,
+        };
+        match targets.get_mut(name) {
+            _ if rooms.is_empty() => {
+                targets.remove(name);
+            }
+            // go2's rule (`go2.lic:1149-1157`): a name that means several
+            // rooms gains these; one that means a single room is replaced.
+            Some(several) if several.len() > 1 => {
+                for room in rooms {
+                    if !several.contains(room) {
+                        several.push(*room);
+                    }
+                }
+            }
+            _ => {
+                targets.insert(name.to_owned(), rooms.to_vec());
+            }
         }
         Ok(())
     })
