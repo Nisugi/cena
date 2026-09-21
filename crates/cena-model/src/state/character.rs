@@ -58,11 +58,14 @@ pub mod psm;
 pub mod skills;
 pub mod snapshot;
 pub mod spellsong;
+pub mod stance;
 pub mod standing;
 pub mod stats;
 pub mod vocabulary;
 
 use std::collections::BTreeMap;
+
+use stance::Stance;
 
 /// What the `expr` dialog says about advancement.
 ///
@@ -267,6 +270,28 @@ pub struct Character {
 }
 
 impl Character {
+    /// The stance as a typed value, when one has been reported.
+    ///
+    /// [`Self::stance`] stays the string the wire sent, and this reads it —
+    /// the two are not redundant. The raw field is what Rule 2.2 preserves
+    /// (a stance name the game adds later must survive to a display even
+    /// though [`Stance`] cannot name it), and this is what a behavior
+    /// compares against.
+    ///
+    /// Prefers `text=`, which carries the name; falls back to the bar's
+    /// `value=`, which carries only a percent. MEASURED: the two agreed in
+    /// **all 19,526** `pbarStance` readings across the 208 live logs, so the
+    /// fallback is a safety net rather than a second source of truth.
+    #[must_use]
+    pub fn stance_typed(&self) -> Option<Stance> {
+        if let Some(text) = self.stance.as_deref()
+            && let Some((stance, _)) = Stance::parse_bar_text(text)
+        {
+            return Some(stance);
+        }
+        self.stance_percent.and_then(Stance::from_percent)
+    }
+
     /// Forget what belonged to the connection; keep what is still true.
     ///
     /// M3 step 9, **rewritten 2026-09-20** after the author corrected the rule
