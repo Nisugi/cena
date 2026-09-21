@@ -179,6 +179,9 @@ pub struct SessionHandle {
     events: tokio::sync::broadcast::Sender<crate::Event>,
     /// The player log, once one is attached. Shared with every clone.
     log: crate::player_log::tap::Slot,
+    /// Who runs the player's own commands, once anything does. Shared
+    /// with every clone, as the log is.
+    desk: super::claimant::Slot,
 }
 
 impl SessionHandle {
@@ -194,12 +197,40 @@ impl SessionHandle {
             generation,
             events,
             log: crate::player_log::tap::Slot::default(),
+            desk: super::claimant::Slot::default(),
         }
     }
 
     /// The slot this handle and all its clones read the player log from.
     pub(crate) fn log_slot(&self) -> crate::player_log::tap::Slot {
         std::sync::Arc::clone(&self.log)
+    }
+
+    /// Register who runs the player's typed commands, and with what
+    /// symbol (`super::claimant`). Once per session: a second call is
+    /// ignored and answers `false`.
+    #[must_use]
+    pub fn set_desk(&self, desk: super::claimant::Desk) -> bool {
+        self.desk.set(desk).is_ok()
+    }
+
+    /// What this session marks a command with, if anything runs them.
+    #[must_use]
+    pub fn command_symbol(&self) -> Option<char> {
+        self.desk.get().map(super::claimant::Desk::symbol)
+    }
+
+    /// Give a typed line to whoever runs commands (`super::claimant`).
+    /// `None`: it is the
+    /// game's, and the caller sends it as it always has.
+    ///
+    /// **Every manual path asks this first** ([`Self::send_manual_at`]),
+    /// so a frontend gets the player's commands without knowing what any
+    /// of them are -- and one that sends by another route does not
+    /// silently lose them.
+    #[must_use]
+    pub fn typed(&self, line: &str) -> Option<super::Claimed> {
+        self.desk.get()?.claim(line)
     }
 
     /// Say something to the player (`crate::notice`).
@@ -289,6 +320,27 @@ impl SessionHandle {
         line: &str,
         deadline: std::time::Duration,
     ) -> Outcome {
+        // The player's own commands never reach the game, known or not
+        // (`super::claimant`). Answered as though they were sent and
+        // answered, which is what they are: a frontend awaiting a receipt
+        // gets one either way.
+        if let Some(claimed) = self.typed(line) {
+            if claimed == super::Claimed::Unknown {
+                let symbol = self.command_symbol().unwrap_or(super::COMMAND_SYMBOL);
+                self.say(crate::notice::Notice::line(
+                    crate::notice::NoticeKind::Error,
+                    format!(
+                        "I do not know {}{}.",
+                        symbol,
+                        line.trim_start().trim_start_matches(symbol).trim()
+                    ),
+                ));
+            }
+            return Outcome::Confirmed(Box::new(crate::Frame::Prompt {
+                text: String::new(),
+                time: String::new(),
+            }));
+        }
         let (reply, answer) = oneshot::channel();
         let envelope = Envelope {
             // Browser input has no behavior command correlation id. The

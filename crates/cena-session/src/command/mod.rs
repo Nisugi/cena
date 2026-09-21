@@ -11,8 +11,10 @@
 //! one: a behavior imports the vocabulary and reasons in it; only the session
 //! touches the transport.
 
+pub mod claimant;
 mod handle;
 mod verdict;
 
+pub use claimant::{Claimed, DEFAULT_SYMBOL as COMMAND_SYMBOL};
 pub use handle::{Envelope, Farewell, Inbox, SessionHandle};
 pub use verdict::{CommandId, Gate, Origin, Outcome, Refusal, Sent};

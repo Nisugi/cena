@@ -118,7 +118,7 @@ impl Playing {
 async fn go2_bank_typed_while_playing_walks_there_and_remembers_where_it_stopped() {
     let mut playing = Playing::at_the_gate("go").await.unwrap();
     playing.transcript.answer("north", &arrival(1002));
-    let walk = playing.types(";go2 bank").await.unwrap();
+    let walk = playing.types("go2 bank").await.unwrap();
     assert_eq!(walk.await.unwrap().ended, Ended::Arrived);
     assert_eq!(playing.sent(), ["north"]);
     let said = playing.told();
@@ -133,7 +133,7 @@ async fn go2_bank_typed_while_playing_walks_there_and_remembers_where_it_stopped
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn route2_shows_the_way_and_sends_nothing() {
     let mut playing = Playing::at_the_gate("route").await.unwrap();
-    assert!(playing.types(";route2 gemshop").await.is_none());
+    assert!(playing.types("route2 gemshop").await.is_none());
     assert_eq!(playing.sent(), [] as [&str; 0]);
     let said = playing.told();
     assert!(
@@ -147,13 +147,13 @@ async fn route2_shows_the_way_and_sends_nothing() {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_walk_is_stopped_by_typing_so() {
     let mut playing = Playing::at_the_gate("stop").await.unwrap();
-    let walk = playing.types(";go2 gemshop").await.unwrap();
+    let walk = playing.types("go2 gemshop").await.unwrap();
     tokio::time::advance(Duration::from_millis(500)).await;
-    assert!(playing.types(";k go2").await.is_none());
+    assert!(playing.types("k go2").await.is_none());
     let travelled = walk.await.unwrap();
     assert_eq!(travelled.ended, Ended::Stopped(BehaviorError::Cancelled));
     // ...and there is nothing left to stop.
-    assert!(playing.types(";go2 stop").await.is_none());
+    assert!(playing.types("go2 stop").await.is_none());
     assert!(playing.told().contains("not walking"));
 }
 
@@ -186,7 +186,7 @@ async fn a_second_go2_replaces_the_first() {
 ",
     );
     // Up the rope with empty hands; the climb is never answered.
-    let first = playing.types(";go2 loft").await.unwrap();
+    let first = playing.types("go2 loft").await.unwrap();
     for _ in 0..40 {
         tokio::time::advance(Duration::from_millis(50)).await;
         tokio::task::yield_now().await;
@@ -201,7 +201,7 @@ async fn a_second_go2_replaces_the_first() {
         playing.transcript.lines()
     );
     playing.transcript.answer("north", &arrival(1002));
-    let second = playing.types(";go2 bank").await.unwrap();
+    let second = playing.types("go2 bank").await.unwrap();
     assert_eq!(
         first.await.unwrap().ended,
         Ended::Stopped(BehaviorError::Cancelled)
@@ -214,9 +214,9 @@ async fn a_second_go2_replaces_the_first() {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_name_is_saved_listed_walked_to_and_forgotten() {
     let mut playing = Playing::at_the_gate("names").await.unwrap();
-    assert!(playing.types(";go2 save stash=3 --global").await.is_none());
-    assert!(playing.types(";go2 save here").await.is_none());
-    assert!(playing.types(";go2 list").await.is_none());
+    assert!(playing.types("go2 save stash=3 --global").await.is_none());
+    assert!(playing.types("go2 save here").await.is_none());
+    assert!(playing.types("go2 list").await.is_none());
     let said = playing.told();
     assert!(
         said.contains("every character") && said.contains("this character"),
@@ -229,16 +229,16 @@ async fn a_name_is_saved_listed_walked_to_and_forgotten() {
 
     playing.transcript.answer("north", &arrival(1002));
     playing.transcript.answer("north", &arrival(1003));
-    let walk = playing.types(";go2 stash").await.unwrap();
+    let walk = playing.types("go2 stash").await.unwrap();
     assert_eq!(walk.await.unwrap().ended, Ended::Arrived);
     assert_eq!(playing.sent(), ["north", "north"]);
 
     // Forgotten, it is no place at all -- no room is called that either.
-    assert!(playing.types(";go2 delete stash --global").await.is_none());
-    assert!(playing.types(";route2 stash").await.is_none());
+    assert!(playing.types("go2 delete stash --global").await.is_none());
+    assert!(playing.types("route2 stash").await.is_none());
     assert!(playing.told().contains("do not know a room called"));
     // A room the map does not have stops the save, as go2 has it.
-    assert!(playing.types(";go2 save nowhere=99999").await.is_none());
+    assert!(playing.types("go2 save nowhere=99999").await.is_none());
     assert!(playing.told().contains("not in the map"));
 }
 
@@ -247,11 +247,11 @@ async fn a_name_is_saved_listed_walked_to_and_forgotten() {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn only_travels_own_lines_are_taken() {
     let playing = Playing::at_the_gate("others").await.unwrap();
-    for line in ["north", "say ;go2 bank", ";hunt"] {
+    for line in ["north", "hunt", "go22 bank"] {
         assert!(parse_command(line).is_none(), "{line}");
     }
-    assert!(matches!(parse_command(";go2"), Some(Err(_))));
-    assert!(playing.types(";go2 targets").await.is_none());
+    assert!(matches!(parse_command("go2"), Some(Err(_))));
+    assert!(playing.types("go2 targets").await.is_none());
     assert_eq!(playing.sent(), [] as [&str; 0]);
     let _ = NoticeKind::Info;
 }

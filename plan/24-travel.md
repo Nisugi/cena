@@ -510,22 +510,31 @@ sends its one `get` before releasing. The first test of this passed without the 
 on a single-threaded test runtime the cancelled walk happens to release first -- and only
 failed, as `Stopped(AuthorityHeld)`, once the first walk had a sword to take back.
 
-> **NOT BUILT, AND THE AUTHOR'S TO DECIDE: where a typed line is looked at.** Today every
-> frontend sends every line straight to the game (`cena-web/src/socket.rs:106`,
-> `send_manual_at`), and the terminal binary has no typed input at all. Nothing offers a
-> line to `parse_command` yet, so none of the above can be typed in a live game. Two places
-> it could go:
->
-> 1. **In `SessionHandle`**, where every frontend's manual input already passes: the binary
->    installs a claimant (a plain `Fn(&str) -> bool`, so `cena-session` learns nothing about
->    behaviors) and a claimed line is never queued. Every frontend, present and future, gets
->    it for nothing. Recommended.
-> 2. **In each frontend.** `cena-web` may depend only on `cena-session` and `cena-ui`
->    (`layering.rs`), so it cannot call the desk; it would be handed the same closure.
->
-> Either way it is a dozen lines. It is not done because (1) is in
-> `cena-session/src/command/handle.rs`, which another session has uncommitted work in, and
-> (2) is the M4 team's socket.
+**The symbol decides, not the word** (author, 2026-09-21: *"there should be a command
+symbol that indicates it's a command and don't send it to the game. I wouldn't want
+`;go22 bank` to be sent through"*). A line beginning with the symbol is **Hydra's, known or
+not**: an unrecognised one is answered *"I do not know `;go22 bank`"* and the game never
+hears it. My first version let each command decide for itself and anything unclaimed fall
+through, which would have said `;go22 bank` aloud in the room.
+
+That lives in `cena-session` (`command/claimant.rs`), because **every frontend's typed
+input already passes `SessionHandle::send_manual_at`**: the check goes there, so the web
+client, the terminal and anything later get it without knowing what a command is. The
+crate holds the symbol and the split and nothing else; the binary joins it to the travel
+desk, which is the same layering as §3a's one parser, N classifiers. A session with
+nothing registered behaves exactly as before -- tested.
+
+The symbol is **configurable**, `;` by default (Lich's `$lich_char`, and everyone's
+fingers): the `commands` section of the character's settings (`settings_store`, the file
+the other session built the same day), `{"commands": {"symbol": "/"}}`. A symbol that is
+not one character keeps the default rather than leaving the player with no commands at
+all, and a settings file that cannot be read says so and keeps it too.
+
+**The launch flags are gone** (author: *"We don't need a book of launch commands that are
+useless"*). `--go`, `--route`, `--targets` and `--save-target` were a restart per trip.
+`--first` stays: it is the login-then-move-then-travel test flow. The binary's travel file
+is now the wiring and nothing else -- the map, the desk, the symbol -- and `run`, `go`,
+`settle`, `Errand` and the flag parser went with them.
 
 **Still open from that list:** command links and target windows in Messaging, which wait
 for their first caller (likely the route table: click a room to go there).

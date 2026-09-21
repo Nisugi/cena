@@ -15,10 +15,11 @@
 //! ;route2 bank              show the way, and send nothing
 //! ```
 //!
-//! **This only reads the line.** Which lines are offered to it -- where a
-//! frontend's typed input is looked at before it goes to the game -- is the
-//! frontend's seam, not this module's; a line that is not one of these
-//! answers `None` and is the game's.
+//! **The symbol is not this module's.** A line reaches here having already
+//! been marked as Hydra's and stripped of its symbol
+//! (`cena_session::command::claimant`, the author's rule: the symbol decides,
+//! so `;go22 bank` is never spoken in the room). A line this module does not
+//! know answers `None`, which means *not travel's* -- **not** *the game's*.
 
 /// One thing asked of the travel desk.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,14 +45,19 @@ pub enum Command {
     },
     /// Stop the walk under way.
     Stop,
+    /// Travel's, and already answered -- a command said wrongly. The desk
+    /// does nothing with it; it exists so a caller can say "mine" without
+    /// asking for anything.
+    Nothing,
 }
 
-/// The travel command a typed line is. `None`: it is not one, and is the
-/// game's. `Some(Err(_))`: it is one, said wrongly -- **not the game's
-/// either**, so a slip of the fingers is never spoken aloud in a town square.
+/// The travel command a line is, **the command symbol already gone**
+/// (`cena_session::command::claimant` takes it off). `None`: travel does not
+/// know this one -- the caller says so, and the game still never sees it.
+/// `Some(Err(_))`: travel's, said wrongly.
 #[must_use]
 pub fn parse(line: &str) -> Option<Result<Command, String>> {
-    let mut words = line.trim().strip_prefix(';')?.split_whitespace();
+    let mut words = line.split_whitespace();
     let (script, rest): (_, Vec<&str>) = (words.next()?.to_lowercase(), words.collect());
     let global = rest.contains(&"--global");
     let rest: Vec<&str> = rest
@@ -114,40 +120,32 @@ mod tests {
     }
 
     #[test]
-    fn what_is_not_a_travel_command_is_the_games() {
-        for line in [
-            "north",
-            "say ;go2 bank",
-            ";",
-            ";hunt",
-            ";kill hunt",
-            "go2 bank",
-        ] {
+    fn what_travel_does_not_know_is_not_travels() {
+        // Not travel's: the session tells the player, and the game is not
+        // sent any of them either (`claimant`).
+        for line in ["hunt", "kill hunt", "go22 bank", "", "  "] {
             assert_eq!(parse(line), None, "{line:?}");
         }
     }
 
     #[test]
     fn a_place_is_everything_after_the_word() {
-        assert_eq!(ok(";go2 bank"), Command::Go("bank".into()));
+        assert_eq!(ok("go2 bank"), Command::Go("bank".into()));
         assert_eq!(
-            ok("  ;GO2  general store "),
+            ok("  GO2  general store "),
             Command::Go("general store".into())
         );
-        assert_eq!(ok(";go2 u7120"), Command::Go("u7120".into()));
-        assert_eq!(ok(";route2 town"), Command::Route("town".into()));
+        assert_eq!(ok("go2 u7120"), Command::Go("u7120".into()));
+        assert_eq!(ok("route2 town"), Command::Route("town".into()));
         // A place may be called what a word of go2's is, if it has more to it.
-        assert_eq!(
-            ok(";go2 list of kings"),
-            Command::Go("list of kings".into())
-        );
+        assert_eq!(ok("go2 list of kings"), Command::Go("list of kings".into()));
     }
 
     #[test]
     fn go2s_own_words_are_its_own() {
-        assert_eq!(ok(";go2 targets"), Command::Places);
-        assert_eq!(ok(";go2 list"), Command::List);
-        for line in [";go2 stop", ";kill go2", ";k go2", ";k route2"] {
+        assert_eq!(ok("go2 targets"), Command::Places);
+        assert_eq!(ok("go2 list"), Command::List);
+        for line in ["go2 stop", "kill go2", "k go2", "k route2"] {
             assert_eq!(ok(line), Command::Stop, "{line}");
         }
     }
@@ -159,15 +157,15 @@ mod tests {
             rooms: rooms.iter().map(|room| (*room).to_owned()).collect(),
             global,
         };
-        assert_eq!(ok(";go2 save my den"), saved(&[], false));
-        assert_eq!(ok(";go2 save my den --global"), saved(&[], true));
-        assert_eq!(ok(";go2 save --global my den"), saved(&[], true));
+        assert_eq!(ok("go2 save my den"), saved(&[], false));
+        assert_eq!(ok("go2 save my den --global"), saved(&[], true));
+        assert_eq!(ok("go2 save --global my den"), saved(&[], true));
         assert_eq!(
-            ok(";go2 save my den=228, Current,u7120"),
+            ok("go2 save my den=228, Current,u7120"),
             saved(&["228", "current", "u7120"], false)
         );
         assert_eq!(
-            ok(";go2 delete my den --global"),
+            ok("go2 delete my den --global"),
             Command::Forget {
                 name: "my den".into(),
                 global: true
@@ -176,8 +174,8 @@ mod tests {
     }
 
     #[test]
-    fn a_command_said_wrongly_is_still_not_the_games() {
-        for line in [";go2", ";route2", ";go2 save", ";go2 delete --global"] {
+    fn a_command_said_wrongly_is_travels_to_answer() {
+        for line in ["go2", "route2", "go2 save", "go2 delete --global"] {
             assert!(matches!(parse(line), Some(Err(_))), "{line}");
         }
     }

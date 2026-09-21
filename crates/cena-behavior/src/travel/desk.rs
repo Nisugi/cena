@@ -140,6 +140,7 @@ impl Desk {
                 }
                 return None;
             }
+            Command::Nothing => return None,
             _ => {}
         }
         let hint = traveller.notes.last_room.map(RoomId);

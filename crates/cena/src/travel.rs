@@ -1,5 +1,10 @@
-//! `-- --route <target>` and `-- --go <target>`: the route shown, and the
-//! route walked (`plan/24`).
+//! Travel, wired to this binary: load the map, build the desk, and give it
+//! the lines the player types that begin with the command symbol.
+//!
+//! **Nothing here decides what a command means.** The symbol and the claiming
+//! are `cena_session::command::claimant`; the commands and what they do are
+//! `cena_behavior::travel` (`command.rs`, `desk.rs`). This file is the join,
+//! which is the binary's job and no crate's.
 //!
 //! # BUILT, NOT RUN
 //!
@@ -8,17 +13,6 @@
 //! binary (`CLAUDE.md`, Credentials). Everything it calls is tested against a
 //! scripted game in `cena-behavior`; what is untested is the wiring here.
 //!
-//! # Two modes, and the first sends nothing
-//!
-//! `--route` logs in, works out where the character is, and **says** the
-//! route (`cena_session::notice`). It sends no command at all, so it is the
-//! one to run first: it proves the map loads, the room is found and the
-//! walker's facts are read, with nothing at stake.
-//!
-//! `--go` does the same and then walks. **Ctrl-C stops the walk, not the
-//! process**: the trip gets its one `get` per stored item (`plan/24`, the
-//! author's ruling) and the session then quits cleanly as it always does.
-//!
 //! # Why a mirror
 //!
 //! A behavior has no live read of the model: it is handed a snapshot and a
@@ -26,14 +20,22 @@
 //! snapshot taken before login is empty, and the login burst overflows the
 //! event ring if nobody is reading it -- MEASURED on the first live session,
 //! 99 events dropped (`CLAUDE.md`). So a task reads from the first moment and
-//! folds every frame, and hands its state and its subscription to the trip
-//! together, with no gap between the two for an event to fall into.
+//! folds every frame, and hands its state and its subscription over together,
+//! with no gap between the two for an event to fall into.
+//!
+//! The desk subscribes afresh for every command after that
+//! (`SessionObserver::subscribe`), which needs no mirror. The mirror is for
+//! the **first** command after a login, whose state would otherwise be a
+//! snapshot of a character the game has not described yet.
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use cena_behavior::travel::{self, Command, Desk, Map, RoomId, Whence, read_map, room_of};
-use cena_session::{AuthorityToken, Event, Notice, NoticeKind, SessionHandle, Snapshot};
+use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command, read_map};
+use cena_session::command::claimant::{self, Claimed, Runner};
+use cena_session::{
+    AuthorityToken, Event, Notice, NoticeKind, SessionHandle, SessionObserver, Snapshot,
+};
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 use tokio_util::sync::CancellationToken;
 
@@ -44,26 +46,7 @@ use tokio_util::sync::CancellationToken;
 /// ```
 pub(crate) const MAP_ENV: &str = "CENA_MAP";
 
-/// What the operator asked for.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Errand {
-    None,
-    /// Say the route there. Sends nothing.
-    Route(String),
-    /// Walk there.
-    Go(String),
-    /// Name the room the character stands in, for `--go` later: go2's
-    /// `;go2 save`. Sends nothing. The character's own, unless `--global`
-    /// is there too: then every character's, on every instance.
-    Save {
-        name: String,
-        global: bool,
-    },
-    /// List the places there are to go: go2's `;go2 targets`. Sends nothing.
-    Places,
-}
-
-/// `--first south`: a command to send, as the player, before the errand --
+/// `--first south`: a command to send, as the player, before anything else --
 /// so one run can be "log in, move south, then walk to the bank" (author,
 /// 2026-09-21). The first one wins.
 pub(crate) fn first_command<I, S>(args: I) -> Option<String>
@@ -82,45 +65,6 @@ where
         }
     }
     None
-}
-
-impl Errand {
-    /// `--route bank`, `--go 228`, `--go=u7120`, `--save-target den --global`,
-    /// `--targets`. The first one wins.
-    pub(crate) fn from_args<I, S>(args: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<str>,
-    {
-        let args: Vec<String> = args
-            .into_iter()
-            .map(|arg| arg.as_ref().to_owned())
-            .collect();
-        let global = args.iter().any(|arg| arg == "--global");
-        let save = |name: String| Errand::Save { name, global };
-        let mut args = args.iter();
-        while let Some(arg) = args.next() {
-            if arg == "--targets" {
-                return Errand::Places;
-            }
-            for (flag, make) in [
-                ("--route", &Errand::Route as &dyn Fn(String) -> Errand),
-                ("--go", &Errand::Go),
-                ("--save-target", &save),
-            ] {
-                if arg == flag {
-                    return args.next().map_or(Errand::None, |to| make(to.clone()));
-                }
-                if let Some(to) = arg
-                    .strip_prefix(flag)
-                    .and_then(|rest| rest.strip_prefix('='))
-                {
-                    return make(to.to_owned());
-                }
-            }
-        }
-        Errand::None
-    }
 }
 
 /// Keep a `GameState` current from `joined` until `hand_over` is cancelled,
@@ -178,16 +122,16 @@ fn restore_stored(state: &mut cena_session::GameState) -> bool {
 }
 
 /// What `main` does once the session is up: send `--first`, take the state
-/// back from the mirror, and run the errand. Here and not in `main` because
-/// `main` is at clippy's line limit, and the rule is to move code down.
+/// back from the mirror, and open the travel desk so `;go2` works.
+///
+/// Here and not in `main` because `main` is at clippy's line limit, and the
+/// rule is to move code down.
 pub(crate) async fn after_login(
-    mirror: Option<tokio::task::JoinHandle<(Snapshot, Receiver<Event>)>>,
+    mirror: tokio::task::JoinHandle<(Snapshot, Receiver<Event>)>,
     hand_over: &CancellationToken,
     handle: &SessionHandle,
+    observer: SessionObserver,
 ) {
-    let Some(mirror) = mirror else {
-        return;
-    };
     // Sent while the mirror is still reading, so it sees where this lands.
     if let Some(first) = first_command(std::env::args().skip(1)) {
         eprintln!("[travel] first: {first}");
@@ -196,99 +140,127 @@ pub(crate) async fn after_login(
     }
     hand_over.cancel();
     match mirror.await {
-        Ok(joined) => {
-            let errand = Errand::from_args(std::env::args().skip(1));
-            Box::pin(run(errand, handle, joined)).await;
-        }
+        Ok(joined) => open_desk(handle, observer, joined),
         Err(e) => eprintln!("[travel] the mirror task failed: {e}"),
     }
 }
 
-/// How long [`run`] waits for the login burst to finish before it asks where
-/// the character is. The same ten seconds a walk allows itself when lost.
-const SETTLE: std::time::Duration = travel::LOST_WAIT;
-
-/// Fold events until the room can be placed **and the game has prompted**,
-/// or [`SETTLE`] runs out. The room it was placed as, if it was.
-///
-/// # The race this closes
-///
-/// The binary calls the session ready at the first room description, and the
-/// errand used to ask "where am I" at once. The first live run answered "I
-/// cannot tell which room this is (the game said None)" -- of Erebor Square.
-/// MEASURED on that session's log: the burst names the room at frame 11 and
-/// numbers it at frame 378. The question was asked in between.
-///
-/// A prompt is waited for as well as a room, because the number is not the
-/// only thing still on its way: whatever else the burst teaches (hands,
-/// status, effects) prices the route, and a prompt is what ends a burst.
-async fn settle(map: &Map, joined: &mut (Snapshot, Receiver<Event>)) -> Option<RoomId> {
-    let (snapshot, events) = joined;
-    let until = tokio::time::Instant::now() + SETTLE;
-    loop {
-        let here = room_of(map, &snapshot.state, Whence::Nowhere);
-        if here.is_some() && snapshot.state.prompt.is_some() {
-            return here;
-        }
-        match tokio::time::timeout_at(until, events.recv()).await {
-            Ok(Ok(Event::Frame(frame))) => {
-                snapshot.state.apply(&frame);
-            }
-            Ok(Ok(_) | Err(RecvError::Lagged(_))) => {}
-            // Out of time, or the session is gone: whatever is known now.
-            Ok(Err(RecvError::Closed)) | Err(_) => return here,
-        }
-    }
-}
-
-/// Run the errand. Returns when it is over, however it ended.
-///
-/// **The launch flags are the typed commands, asked at login**: each becomes
-/// the `Command` a player would type (`;go2 bank`, `;route2 bank`,
-/// `;go2 targets`, `;go2 save den --global`) and is done by the same `Desk`,
-/// so there is one way to travel and the flags are only a way to ask early.
-/// What is this function's alone is the wait for the login to settle.
-pub(crate) async fn run(
-    errand: Errand,
+/// Load the map and take the player's travel commands from now on.
+fn open_desk(
     handle: &SessionHandle,
-    mut joined: (Snapshot, Receiver<Event>),
+    observer: SessionObserver,
+    joined: (Snapshot, Receiver<Event>),
 ) {
-    let command = match errand {
-        Errand::None => return,
-        Errand::Route(to) => Command::Route(to),
-        Errand::Go(to) => Command::Go(to),
-        Errand::Places => Command::Places,
-        Errand::Save { name, global } => Command::Save {
-            name,
-            rooms: Vec::new(),
-            global,
-        },
-    };
     let Some(map) = load_map(handle) else {
         return;
     };
-    // A list of places needs no place to stand; everything else does.
-    if command != Command::Places {
-        settle(&map, &mut joined).await;
-    }
-    let desk = Desk::new(
+    let state = joined.0.state.clone();
+    let travel = Desk::new(
         Arc::new(map),
         cena_session::character_store::data_dir(),
         AuthorityToken(2),
     );
-    let Some(walk) = desk.run(handle, joined, command) else {
-        return;
+    // The login's own subscription, for the first command only.
+    let first = Mutex::new(Some(joined));
+    let runner: Runner = {
+        let handle = handle.clone();
+        Arc::new(move |line: &str| {
+            let Some(command) = travel_command(&handle, line) else {
+                return Claimed::Unknown;
+            };
+            let (travel, handle) = (Arc::clone(&travel), handle.clone());
+            let joined = first.lock().ok().and_then(|mut first| first.take());
+            let observer = observer.clone();
+            tokio::spawn(async move {
+                match joined {
+                    Some(joined) => run(&travel, &handle, joined, command).await,
+                    None => run_fresh(&travel, &handle, &observer, command).await,
+                }
+            });
+            Claimed::Done
+        })
     };
-    eprintln!("[travel] walking -- Ctrl-C stops the walk");
-    tokio::pin!(walk);
-    let travelled = tokio::select! {
-        travelled = &mut walk => travelled,
-        _ = tokio::signal::ctrl_c() => {
-            eprintln!("\n[travel] stopping the walk");
-            desk.stop();
-            walk.await
+    let desk = cena_session::command::claimant::Desk::new(symbol(handle, &state), runner);
+    let symbol = desk.symbol();
+    eprintln!("[travel] ready: {symbol}go2 bank, {symbol}go2 targets, {symbol}route2 bank");
+    if !handle.set_desk(desk) {
+        eprintln!("  !! [travel] something already runs this session's commands");
+    }
+}
+
+/// What this character marks a command with: the `commands` section of their
+/// settings, or `;` (`claimant::Settings`). A settings file that cannot be
+/// read is said to the player and leaves the default in force -- a session
+/// must not stop over a preference, and must not quietly ignore one.
+fn symbol(handle: &SessionHandle, state: &cena_session::GameState) -> Option<char> {
+    let character = &state.character;
+    let (instance, name) = (character.instance.as_deref()?, character.name.as_deref()?);
+    let dir = cena_session::character_store::data_dir();
+    let read = cena_session::settings_store::load(&dir, instance, name)
+        .map_err(|e| e.to_string())
+        .and_then(|file| {
+            file.section::<claimant::Settings>(claimant::SECTION)
+                .map_err(|e| format!("the {} section is malformed: {e}", claimant::SECTION))
+        });
+    match read {
+        Ok(settings) => Some(settings.symbol()),
+        Err(why) => {
+            handle.say(Notice::line(
+                NoticeKind::Warn,
+                format!("Commands: {why} -- using the usual symbol."),
+            ));
+            None
         }
-    };
+    }
+}
+
+/// The travel command a line is, the symbol already gone. `None`: travel does
+/// not know it -- **and the game still never sees it** (`claimant`), which is
+/// the author's rule: `;go22 bank` is a mistyped `;go2`, not speech.
+fn travel_command(handle: &SessionHandle, line: &str) -> Option<Command> {
+    match parse_command(line)? {
+        Ok(command) => Some(command),
+        // Travel's, and answered here: not another system's to try.
+        Err(why) => {
+            handle.say(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
+            Some(Command::Nothing)
+        }
+    }
+}
+
+async fn run(
+    travel: &Arc<Desk>,
+    handle: &SessionHandle,
+    joined: (Snapshot, Receiver<Event>),
+    command: Command,
+) {
+    if let Some(walk) = travel.run(handle, joined, command) {
+        walked(walk.await);
+    }
+}
+
+async fn run_fresh(
+    travel: &Arc<Desk>,
+    handle: &SessionHandle,
+    observer: &SessionObserver,
+    command: Command,
+) {
+    match observer.subscribe().await {
+        Ok(joined) => {
+            if let Some(walk) = travel.run(handle, joined, command) {
+                walked(walk.await);
+            }
+        }
+        Err(e) => handle.say(Notice::line(
+            NoticeKind::Error,
+            format!("Travel: I could not read the session -- {e:?}."),
+        )),
+    }
+}
+
+/// What a finished walk leaves in the terminal log. The player has been told
+/// by the walk itself (`Notice`); this is for whoever reads stderr.
+fn walked(travelled: Result<Travelled, tokio::task::JoinError>) {
     let Ok(travelled) = travelled else {
         eprintln!("  !! [travel] the walk ended badly");
         return;
@@ -304,11 +276,13 @@ pub(crate) async fn run(
     }
 }
 
+/// The map, or why there is none. Said to the player, not only to stderr: a
+/// walk that cannot happen should say so where the player is looking.
 fn load_map(handle: &SessionHandle) -> Option<Map> {
     let say = |text: String| handle.say(Notice::line(NoticeKind::Error, text));
     let Some(path) = std::env::var_os(MAP_ENV) else {
         say(format!(
-            "Travel: set {MAP_ENV} to the combined map file first."
+            "Travel: no map. Set {MAP_ENV} to a combined map file."
         ));
         return None;
     };
@@ -316,7 +290,7 @@ fn load_map(handle: &SessionHandle) -> Option<Map> {
         Ok(bytes) => bytes,
         Err(e) => {
             say(format!(
-                "Travel: could not read {}: {e}",
+                "Travel: cannot read the map at {}: {e}",
                 PathBuf::from(&path).display()
             ));
             return None;
@@ -324,14 +298,15 @@ fn load_map(handle: &SessionHandle) -> Option<Map> {
     };
     match read_map(&bytes) {
         Ok(map) => {
-            eprintln!("[travel] map: {} rooms", map.len());
+            eprintln!(
+                "[travel] map: {} rooms from {}",
+                map.rooms().len(),
+                PathBuf::from(&path).display()
+            );
             Some(map)
         }
         Err(e) => {
-            say(format!(
-                "Travel: {} is not a map this build reads: {e}",
-                PathBuf::from(&path).display()
-            ));
+            say(format!("Travel: the map file cannot be used: {e}"));
             None
         }
     }
@@ -342,37 +317,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_errand_is_read_from_the_arguments() {
-        let read = |args: &[&str]| Errand::from_args(args.iter().copied());
-        assert_eq!(read(&[]), Errand::None);
-        assert_eq!(read(&["--demo"]), Errand::None);
-        assert_eq!(read(&["--route", "bank"]), Errand::Route("bank".into()));
-        assert_eq!(read(&["--go=u7120"]), Errand::Go("u7120".into()));
+    fn the_first_command_is_read_from_the_arguments() {
         assert_eq!(
-            read(&["--hold", "60", "--go", "228"]),
-            Errand::Go("228".into())
-        );
-        let saved = |global| Errand::Save {
-            name: "my shop".into(),
-            global,
-        };
-        assert_eq!(read(&["--save-target", "my shop"]), saved(false));
-        // Wherever it stands among the arguments.
-        assert_eq!(read(&["--save-target", "my shop", "--global"]), saved(true));
-        assert_eq!(read(&["--global", "--save-target=my shop"]), saved(true));
-        assert_eq!(read(&["--targets"]), Errand::Places);
-        // A flag with nothing after it is not a walk to nowhere.
-        assert_eq!(read(&["--go"]), Errand::None);
-        assert_eq!(
-            first_command(["--first", "south", "--go", "bank"]),
+            first_command(["--first", "south", "--demo"]),
             Some("south".to_owned())
         );
         assert_eq!(
             first_command(["--first=go gate"]),
             Some("go gate".to_owned())
         );
-        assert_eq!(first_command(["--go", "bank"]), None);
-        // Not a prefix match: `--gone` is someone else's flag.
-        assert_eq!(read(&["--gone=1"]), Errand::None);
+        assert_eq!(first_command(["--demo"]), None);
+        // A flag with nothing after it is not a command.
+        assert_eq!(first_command(["--first"]), None);
     }
 }

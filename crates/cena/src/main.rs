@@ -295,12 +295,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // below happens against whichever generation is current.
     // The walker's own view of the character, read from the first moment so
     // the login burst is not lost to it (`travel.rs`, "Why a mirror").
-    let errand = travel::Errand::from_args(std::env::args().skip(1));
+    // Always: the travel desk is open for every run, and its first command
+    // needs the login's own state (`travel.rs`, "Why a mirror").
     let hand_over = CancellationToken::new();
-    let mirror = (errand != travel::Errand::None)
-        .then(|| tokio::spawn(travel::mirror(session.subscribe(), hand_over.clone())));
+    let mirror = tokio::spawn(travel::mirror(session.subscribe(), hand_over.clone()));
     let supervisor = tokio::spawn(session.run());
-    let frontend = frontend::Frontend::start(observer, handle.clone()).await;
+    let frontend = frontend::Frontend::start(observer.clone(), handle.clone()).await;
 
     // --- Criterion 2: the room, from TYPED FRAMES --------------------------
     eprintln!("[waiting] for the first room description frame...");
@@ -337,7 +337,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     run_or_probe(&handle, &mut probe_events, &stop).await;
 
-    travel::after_login(mirror, &hand_over, &handle).await;
+    travel::after_login(mirror, &hand_over, &handle, observer.clone()).await;
 
     // **Ctrl-C ends the hold early and then falls through to the SAME orderly
     // shutdown below.** There was no signal handling at all, so interrupting a
