@@ -20,6 +20,17 @@ pub enum Action {
     /// Send a movement command and wait to arrive, with everything a plain
     /// exit's crossing does: retries, standing, doors, roundtime.
     Move(String),
+    /// Send a movement command **until the room changes**, however many times
+    /// that takes: rowing a boat, or the Red Forest's fog, which turns the
+    /// walker round and sets it back where it started. Being sent back is not
+    /// a failure here, which is the difference from [`Action::Move`] -- that
+    /// gives an exit up after a few tries. The walker bounds it.
+    KeepMoving(String),
+    /// Find out where the walker is and plan again from there. Always last.
+    /// Upstream's `$go2_restart = true`, on crossings that may land somewhere
+    /// other than the exit's destination (`plan/21` §4.3). Skipped when the
+    /// walker is where it meant to be.
+    Replan,
     /// Send a command that does not change rooms, and wait for the game to
     /// answer it: `open door`, `pull lever`, the first `event transport` that
     /// only asks for confirmation.
@@ -92,7 +103,9 @@ pub struct Step {
 pub fn moves_whatever_is_known(steps: &[Step]) -> bool {
     let nobody = crate::cond::Walker::default();
     steps.iter().any(|step| {
-        matches!(step.action, Action::Move(_) | Action::Await(_))
-            && step.when.as_ref().is_none_or(|when| when.holds(&nobody))
+        matches!(
+            step.action,
+            Action::Move(_) | Action::KeepMoving(_) | Action::Await(_)
+        ) && step.when.as_ref().is_none_or(|when| when.holds(&nobody))
     })
 }
