@@ -22,6 +22,7 @@ mod ladder;
 mod looking;
 mod moves;
 mod proposed;
+mod puzzles;
 mod reactions;
 mod routines;
 mod tail_a;
@@ -69,6 +70,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| looking::crossing(script, to))
         .or_else(|| until_told::crossing(script, from, to))
         .or_else(|| keys::crossing(script, from))
+        .or_else(|| puzzles::crossing(script, to))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
         .or_else(|| arctic_waters(script))

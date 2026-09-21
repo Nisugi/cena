@@ -46,7 +46,7 @@ fn plain(command: &str) -> Option<String> {
 
 /// `move 'a'; fput 'b'; waitrt?` as the commands it sends. Upstream's pauses
 /// for roundtime are the walker's to take, so they are read and dropped.
-fn commands(body: &str) -> Option<Vec<String>> {
+pub(super) fn commands(body: &str) -> Option<Vec<String>> {
     let mut found = Vec::new();
     for statement in body.split([';', '\n']).map(str::trim) {
         if matches!(statement, "" | "waitrt?" | "sleep 1") {

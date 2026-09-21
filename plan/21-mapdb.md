@@ -1381,9 +1381,19 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    What is left of the costs is the Haste formula (16, waiting on what those rooms are) and
    the day pass (6, a pre-flight).
 
+   **Puzzles that needed no routine (2026-09-21, `recognise/puzzles.rs`).** 15 exits: the
+   spike trap (7046), Maaghara's roots, the cell doors. Their state is *the room the walker
+   is in*, which `Cond::At` can ask, so they are flat steps. The spike trap drops the walker
+   at random and upstream hard-codes a walk from each landing; **`Replan` does the same with
+   the map it already has**, so the walks are read (to know the shape) and dropped. The
+   roots are one try, one room's walk, and `Replan`, which comes back to the exit from
+   wherever the walk ended. The cell doors' four callers name room 18700's script and get
+   its steps. Upstream refuses a cell door to an empty right hand; not gated here -- what
+   is in a hand when a walk is planned says little about when it arrives.
+
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **67** |
+   | unported crossings | 7,923 | **52** |
    | unported costs | 1,860 | **22** |
    | reachable from Wehnimer's, knowing nothing | 6,969 | **11,735** |
    | reachable with paid services on | — | **21,516** |
