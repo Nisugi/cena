@@ -135,6 +135,18 @@ impl std::fmt::Display for PlayerStatus {
 pub struct Room {
     /// `<nav rm=>`. The game's own id, not a guess from the title.
     pub id: Option<String>,
+    /// The room's name, from `<streamWindow id='room' subtitle=>`.
+    ///
+    /// As the wire states it, less the ` - ` every subtitle leads with:
+    /// `Rawknuckle's, Watering Hole`, and `... - 7503251` after it when the
+    /// player has room numbers shown. **Not** the map's bracketed spelling and
+    /// not stripped of that number -- both are the map's business
+    /// (`cena_map::title_from_subtitle`), and this crate does not know a map
+    /// exists. Kept because identifying a room the map has no number for
+    /// starts from its name (`plan/21` §5 step 4); it was parsed and dropped.
+    ///
+    /// Arrives *after* `<nav>`, so it is `None` for a moment on every arrival.
+    pub title: Option<String>,
     /// `<compDef id='room desc'>`, body parsed.
     ///
     /// Kept as its own field because criterion 2 reads it; it is **also** in
@@ -237,7 +249,7 @@ impl Room {
     /// Forget who and what is standing here, keeping the place itself.
     ///
     /// **The split a reconnect needs** (`reconnect.rs`, 2026-09-20). `id`,
-    /// `description` and `exits` describe somewhere that cannot have changed
+    /// `title`, `description` and `exits` describe somewhere that cannot have changed
     /// while the character was out of the world. The roster is the opposite:
     /// **other people are still online**, so creatures wander and players come
     /// and go whether or not we are watching.
@@ -253,6 +265,7 @@ impl Room {
     pub(super) fn forget_contents(&mut self) {
         let Self {
             id,
+            title,
             description,
             exits,
             creatures,
@@ -263,7 +276,7 @@ impl Room {
         } = self;
 
         // Kept: the place.
-        let _ = (id, description, exits);
+        let _ = (id, title, description, exits);
         // Kept: the environment is a fact about the ROOM, not about who is
         // standing in it. A room does not stop being a sanctuary because
         // the roster went stale, and the next `<roommeta>` restates it.
@@ -450,6 +463,20 @@ impl super::GameState {
             attrs.iter().map(|(k, v)| (k.as_str(), v.as_str())),
         );
         self.creatures.note_status(status, now);
+    }
+
+    /// A `<streamWindow>`: the `room` window's subtitle names the room.
+    ///
+    /// Only `id='room'`. The `main` window carries the same subtitle, but it
+    /// is the story window's caption, and every other window's subtitle is
+    /// about that window (`percWindow`'s is ` - [Active]`).
+    pub(super) fn name_room(&mut self, window: &str, subtitle: Option<&str>) {
+        if window == "room"
+            && let Some(subtitle) = subtitle
+        {
+            let name = subtitle.strip_prefix(" - ").unwrap_or(subtitle);
+            self.room.title = Some(name.to_owned());
+        }
     }
 
     /// Handle `<nav>`: an arrival, or a re-declaration of the room we are in.

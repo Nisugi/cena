@@ -145,6 +145,35 @@ fn the_room_id_and_description_come_from_the_wire() {
     );
 }
 
+/// The name is what a room the map has no number for is found by
+/// (`plan/21` §5 step 4). It rides a `<streamWindow>`, after the `<nav>`.
+#[test]
+fn the_room_is_named_by_its_own_window_and_by_no_other() {
+    let state = golden();
+    assert_eq!(
+        state.room.title.as_deref(),
+        Some("Rawknuckle's, Watering Hole")
+    );
+
+    // Another window's subtitle is about that window, and a new room starts
+    // unnamed rather than wearing the last room's name.
+    let mut state = state;
+    state.apply(&cena_protocol::Frame::StreamWindow {
+        id: "percWindow".into(),
+        title: Some("Spells".into()),
+        subtitle: Some(" - [Active]".into()),
+        attrs: cena_protocol::frame::Attrs::default(),
+    });
+    assert_eq!(
+        state.room.title.as_deref(),
+        Some("Rawknuckle's, Watering Hole")
+    );
+    state.apply(&cena_protocol::Frame::RoomId {
+        id: Some("1".into()),
+    });
+    assert_eq!(state.room.title, None);
+}
+
 #[test]
 fn the_creature_is_separated_from_the_room_by_its_boldness() {
     // One bold entry in `room objs`. There is no separate creature feed -- the

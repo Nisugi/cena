@@ -320,6 +320,7 @@ impl GameState {
     pub fn apply(&mut self, frame: &Frame) -> bool {
         match frame {
             Frame::RoomId { id } => self.arrive(id.as_deref()),
+            Frame::StreamWindow { id, subtitle, .. } => self.name_room(id, subtitle.as_deref()),
             // See `apply_room_component` for why the styled form is refused.
             Frame::Component { id, body } => self.apply_room_component(id, body),
             Frame::CreatureStatus { id, attrs } => self.apply_creature_status(id, attrs),
