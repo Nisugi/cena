@@ -138,6 +138,8 @@ impl GameState {
             cooldowns,
             messages,
             overwatch,
+            known_spells,
+            bounty,
             prompt,
             left_hand,
             right_hand,
@@ -269,6 +271,14 @@ impl GameState {
         // exists precisely so the tracker can be reset when it may be stale
         // (`overwatch.rb:24`).
         overwatch.clear();
+
+        // The spell list. The login burst re-sends it whole, and until it
+        // does "is 101 known" must answer "not told", not the last answer.
+        known_spells.clear();
+
+        // The bounty. The guild re-states it on `bounty`, and nothing sends it
+        // unasked -- so a stored answer could only ever be staler than asking.
+        bounty.clear();
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,

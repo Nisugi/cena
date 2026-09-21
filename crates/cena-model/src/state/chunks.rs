@@ -246,6 +246,10 @@ impl super::GameState {
             }
         } else {
             self.character.consume_chunk(&chunk);
+            // The bounty task and the guild's answers (`bounty_status.rs`).
+            for line in chunk.lines() {
+                self.bounty.read_line(&line.text());
+            }
             // Group events are prose with links, one per line -- see
             // `state/group.rs` for why the links do the work here.
             for line in chunk.lines() {

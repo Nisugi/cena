@@ -1,0 +1,65 @@
+<clearStream id="Spells"/>
+<stream id="Spells"><a exist="-10966483" coord="2524,1885" noun="">Minor Spiritual</a></stream>
+<stream id="Spells"><a exist="-10966483" coord="2524,1873" noun="">Major Spiritual</a></stream>
+<stream id="Spells"><a exist="-10966483" coord="2524,1870" noun="">Major Elemental</a></stream>
+<stream id="Spells"><a exist="-10966483" coord="2524,1877" noun="">Ranger Base</a></stream>
+<stream id="Spells"><a exist="-10966483" coord="2524,1869" noun="">Empath Base</a></stream>
+<stream id="Spells"> </stream>
+<stream id="Spells">Minor Spiritual:</stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="101">Spirit Warding I</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="102">Spirit Barrier</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="103">Spirit Defense</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="104">Disease Resistance</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="105">Poison Resistance</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="106">Spirit Fog</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="107">Spirit Warding II</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="108">Stun Relief</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="109">Dispel Invisibility</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="110">Unbalance</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="111">Fire Spirit</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="112">Water Walking</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="113">UnDisease</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="114">UnPoison</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="115">Fasthr's Reward</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="116">Locate Person</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="117">Spirit Strike</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="118">Web</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="119">Spirit Dispel</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="120">Lesser Shroud</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="125">Call Lightning</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="130">Spirit Guide</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="135">Searing Light</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="140">Wall of Force</a></stream>
+<stream id="Spells">Major Spiritual:</stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="215">Heroism</a></stream>
+<stream id="Spells">Major Elemental:</stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="506">Celerity</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="515">Rapid Fire</a></stream>
+<stream id="Spells">Ranger Base:</stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="601">Natural Colors</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="602">Resist Elements</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="603">Wild Entropy</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="604">Nature's Bounty</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="605">Barkskin</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="606">Phoen's Strength</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="607">Sounds</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="608">Camouflage</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="609">Sunburst</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="610">Tangleweed</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="611">Moonbeam</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="612">Breeze</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="613">Self Control</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="614">Imbue</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="615">Call Swarm</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="616">Spike Thorn</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="617">Sneaking</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="618">Mobility</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="619">Mass Calm</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="620">Resist Nature</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="625">Nature's Touch</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="630">Animal Companion</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="635">Nature's Fury</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="640">Wall of Thorns</a></stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="650">Assume Aspect</a></stream>
+<stream id="Spells">Empath Base:</stream>
+<stream id="Spells">  <a exist="-10966483" coord="2524,1865" noun="1109">Empathic Focus</a></stream>

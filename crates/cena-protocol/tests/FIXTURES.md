@@ -242,3 +242,44 @@ Deliberately absent, per the corpus findings: `<dialogData id='combat'>` as a
 family (31,543 corpus hits, the noisiest tag), `Buffs`/`Debuffs`/`Cooldowns`,
 `Active Spells`, `mapViewMain`, `<inv>`, `<openDialog>`/`<link>`/`<menuLink>`
 quickbar, `<container>`. These are the bulk of the bytes and none of the slice.
+
+---
+
+## `spells_known.xml` and `character_profile.xml` — cut 2026-09-21
+
+Both from `E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi\2026\09\xml\2026-09-06_13-23-16.xml`, a live session.
+Timestamps stripped; bytes otherwise verbatim.
+
+| Fixture | Lines | What it is | Read by |
+|---|---|---|---|
+| `spells_known.xml` | 65 | one login's `Spells` stream: 5 circle links, 5 headers, **53** spells | `cena-model/tests/known_spells.rs` |
+| `character_profile.xml` | 48 | one `profile` run: four bold sections | `cena-model/tests/character_profile.rs` |
+
+MEASURED, not asserted from memory:
+
+```sh
+grep -c 'noun="[0-9]' spells_known.xml                 -> 53
+grep -c 'pushStream id=.charprofile' <the live log>    -> 0
+grep -c 'exposeStream id=.charprofile' <the live log>  -> 1
+```
+
+### What these cuts found
+
+**The spell NUMBER is on the wire.** Each spell row is a link whose `noun` is
+the number (`noun="101"`), and a circle link carries `noun=""`. So the list is
+typed without looking a name up in the 514-spell table, and the empty noun is
+the only thing separating a menu entry from a spell.
+
+**`profile` does not use its own stream, and the fixture is what proved it.**
+The reader was first built to read a `charprofile` stream buffer, on the
+strength of `stream_routing.rs`'s census listing that id among the pushed
+streams. Every one of its eleven tests failed on an empty buffer. The profile
+prints into the MAIN window and is an ordinary chunk reader beside
+`blocks::InfoReport`.
+
+**`profile` words its affiliations differently from the reports**, so
+`society_line` and `citizenship_line` could not read them
+(`Master of the Guardians of Sunfist` against
+`   You are a Master of the Guardians of Sunfist.`). Found by a test that
+asserted the society reached `Standing` and got `None` — the first version
+assumed the existing readers would take these, on no evidence.

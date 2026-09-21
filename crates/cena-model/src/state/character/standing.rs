@@ -314,6 +314,58 @@ pub fn citizenship_line(line: &str) -> Option<Option<String>> {
     Some(Some(town.to_owned()))
 }
 
+/// Read one `AFFILIATIONS` line from `profile`.
+///
+/// **`profile` words these differently from the reports**, which is why
+/// [`society_line`] and [`citizenship_line`] cannot read them and this exists:
+///
+/// | report | `profile` |
+/// |---|---|
+/// | `   You are a Master of the Guardians of Sunfist.` | `Master of the Guardians of Sunfist` |
+/// | `You currently have full citizenship in Kraken's Fall.` | `Full citizen of Kraken's Fall` |
+///
+/// MEASURED against `fixtures/character_profile.xml`. Found by a test that
+/// asserted the profile's society reached `Standing` and got `None`: the first
+/// version of the profile reader assumed the report readers would take these,
+/// on no evidence.
+///
+/// Returns nothing for the lines `Standing` has no field for -- `Follower of
+/// Zelia`, `Attuned to the Element of Earth`, `Member of House of Paupers`.
+/// Those stay in [`Profile::affiliations`](super::profile::Profile).
+#[must_use]
+pub fn profile_affiliation(line: &str) -> Option<Affiliation> {
+    let text = line.trim();
+    // A society, `Master of` or `Member of`. The rank is never on this line,
+    // so a Master's is `max_rank` and a member's is unknown -- NOT 1, which is
+    // the mistake `apply_society` already records as `plan/dazzling` bug 3.
+    for (prefix, master) in [("Master of the ", true), ("Member of the ", false)] {
+        if let Some(name) = text.strip_prefix(prefix)
+            && let Some(society) = Society::parse(name)
+        {
+            return Some(Affiliation::Society(SocietyEvent::Report {
+                society: Some(society),
+                rank: master.then(|| society.max_rank()),
+                master,
+            }));
+        }
+    }
+    // Citizenship. `Full citizen of X`, and the game's other wordings for a
+    // partial one are unmeasured -- so only the form in the capture is read,
+    // and an unfamiliar one falls through to the kept lines rather than being
+    // guessed at.
+    if let Some(town) = text.strip_prefix("Full citizen of ") {
+        return Some(Affiliation::Citizenship(town.to_owned()));
+    }
+    None
+}
+
+/// What one `profile` affiliation line states.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Affiliation {
+    Society(SocietyEvent),
+    Citizenship(String),
+}
+
 /// Read a warcry line from the `warcry` report.
 ///
 /// `parser.rb:43-44`. `Some(None)` is the "you are not a Warrior Guild member"

@@ -42,6 +42,7 @@ use std::time::Instant;
 pub mod armaments;
 pub mod bank;
 pub mod bounty;
+pub mod bounty_status;
 pub mod character;
 pub mod chunks;
 pub mod claim;
@@ -60,6 +61,7 @@ pub mod hands;
 mod idle;
 mod inventory;
 pub mod inventory_snapshot;
+pub mod known_spells;
 pub mod menu;
 pub mod message;
 pub mod movement;
@@ -137,6 +139,10 @@ pub struct GameState {
     pub vitals: Vitals,
     /// The quest and bounty list (`<objectives>`).
     pub objectives: Objectives,
+    /// The bounty task itself: what the guild asked for, and what it will do
+    /// next (`bounty_status.rs`). Distinct from [`Self::objectives`], which is
+    /// the dialog's row -- this is the task's own description, parsed.
+    pub bounty: bounty_status::BountyStatus,
     /// Who is grouped with you, by `exist` id.
     pub group: Group,
     /// The stow and ready lists: which container holds what, and which
@@ -150,6 +156,8 @@ pub struct GameState {
     pub messages: message::Messages,
     /// Where something was last seen hiding.
     pub overwatch: overwatch::Overwatch,
+    /// The spells the game lists for this character (the `Spells` stream).
+    pub known_spells: known_spells::KnownSpells,
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,
@@ -459,6 +467,9 @@ impl GameState {
             Frame::ClearStream { id } => {
                 self.clear_stream(id);
                 self.pending.remove(id);
+                if id == known_spells::STREAM {
+                    self.known_spells.begin();
+                }
             }
             Frame::UnknownTag { name, raw } => self.record_unknown_tag(name, raw),
             // Every other frame is published to observers without changing

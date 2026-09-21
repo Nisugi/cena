@@ -1,0 +1,48 @@
+<streamWindow id="charprofile" title="Ashryn's Profile" ifClosed="" scroll="manual" location="force-center" resident="false" save=""/><clearStream id="charprofile"/><exposeStream id="charprofile"/>
+<output class="mono"/>
+<pushBold/>PERSONAL INFORMATION
+
+<popBold/>Name: Ashryn
+Profession: Ranger   Level: 100
+Title: Hero
+Race: Half-Elf   Gender: Male
+Age: a tender age (36)
+Date of Birth: 8/28/5090
+He is taller than average.  He appears to be of a tender age.
+He has mismatched vivid electric blue and moonlight silver eyes and flawless evenly tanned skin.
+He has short, untamed white blonde hair up-swept into a riotous mass of spikes atop his head.
+He has a jagged scar across his left eye.
+He has a small emerald green spider on his face.
+<pushBold/>
+AFFILIATIONS
+
+<popBold/>Full citizen of Kraken's Fall
+Member of The Kraken Collective
+Master of the Guardians of Sunfist
+No Guild affiliation
+Follower of Zelia
+Attuned to the Element of Earth
+Member of House of Paupers
+<resource picture="1504"/>
+
+
+
+
+
+
+
+
+<pushBold/>
+ACHIEVEMENTS
+
+<popBold/>Strongest foe vanquished: a leopard ogre (level 140)
+Most difficult lock picked: None
+Most difficult trap disarmed: None
+Number of warcamps destroyed: 1021
+<pushBold/>
+HISTORY
+
+<popBold/>Formerly known as Ibbo.
+
+<output class=""/>
+<prompt time="1788720950">&gt;</prompt>

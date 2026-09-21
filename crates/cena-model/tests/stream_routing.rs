@@ -51,6 +51,20 @@
 //! | `streamWindow` ids | 16 | 6,344 |
 //! | `clearStream` ids | 6 | 4,583 |
 //!
+//! > **A CORRECTION TO THIS CENSUS, 2026-09-21.** `charprofile` is listed
+//! > above among the pushed ids, and `profile`'s own output does **not** arrive
+//! > that way. MEASURED over the two `profile` runs in
+//! > `E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi`: `exposeStream id="charprofile"` twice,
+//! > `pushStream id="charprofile"` **zero times**. The text prints into the
+//! > MAIN window; the stream is declared, cleared and exposed, which is a
+//! > display instruction about a window.
+//! >
+//! > The census counted tag ids and was right about what it counted. What was
+//! > wrong was reading "this id appears on a pushStream somewhere" as "this
+//! > feature's text arrives in that stream" -- and it cost a reader built on an
+//! > empty buffer (`character/profile.rs`). Whatever pushes `charprofile` in
+//! > the census files, it is not the profile those logs show.
+//!
 //! **Windows are declared far more widely than they are pushed to** -- 16 against
 //! 6 -- so a router must not assume a push for every declared window, and must
 //! not create a buffer just because a window was announced.

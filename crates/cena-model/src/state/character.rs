@@ -54,6 +54,7 @@ pub mod currency;
 pub mod enhancive;
 pub mod experience_report;
 pub mod injured;
+pub mod profile;
 pub mod psm;
 pub mod skills;
 pub mod snapshot;
@@ -222,6 +223,9 @@ pub struct Character {
     /// is absent rather than zero -- the same "unknown is not a default" rule
     /// `roundtime_ends` follows (`plan/12` §5.2).
     pub stats: BTreeMap<stats::StatKind, stats::Stat>,
+    /// What `profile` shows that nothing else does: title, description,
+    /// achievements, history (`profile.rs`).
+    pub profile: profile::Profile,
     /// Race, profession, gender and age, from `info`.
     pub identity: stats::Identity,
     /// Groups taught since a caller last asked, for one that persists them.
@@ -380,10 +384,16 @@ impl Character {
             enhancives,
             standing,
             shrouded,
+            profile,
         } = self;
 
         // --- Cleared: a suppression flag whose evidence is gone ------------
         *shrouded = false;
+
+        // `profile` must be run again to be true again: a title or an
+        // achievement can change while a character is logged out, and nothing
+        // re-sends this unasked.
+        profile.clear();
 
         // --- Kept: a logged-off character is out of the world --------------
         let _ = (
@@ -576,6 +586,12 @@ impl Character {
             if !self.shrouded {
                 self.taught.insert(snapshot::Group::Identity);
             }
+        }
+        // `profile`'s own output, which arrives in the main window like every
+        // other report (`profile.rs` records the capture that corrected this).
+        let lines: Vec<String> = chunk.lines().iter().map(|l| l.runs.plain()).collect();
+        if self.profile.read_lines(&lines) {
+            self.absorb_profile();
         }
         if self.consume_standing(chunk) {
             self.taught.insert(snapshot::Group::Standing);
