@@ -452,3 +452,67 @@ Both are now guarded, and the mutation is caught.
 The lesson is not "mutation testing works" — it is that a test can pass a
 mutation because the *input* never reaches the code, not because the assertion
 is wrong. A green mutation run says look at the input, not just the assertion.
+
+---
+
+### Step 8a: spellsong, and what `spells.rb` turned out to be (2026-09-20)
+
+**`spells.rb` is mostly already done.** Its 76 lines are Infomon accessors for
+spell-circle ranks, which Cena reads as circle rows of the `skill` table
+(`SkillSet::circle`, from `plan/18`), plus `Spell.active` which is `Effects`.
+What genuinely remains is the circle-number vocabulary (`1` → `Minor Spirit`)
+and `require_cooldown`, both of which want the spell table
+(`common/spell.rb`, 954 lines) that is not ported. Not scheduled here.
+
+**`spellranks.rb` is not a classifier at all** — it is a `Marshal` cache of
+*other characters'* ranks on disk, superseded by this project's own
+persistence. Not ported.
+
+**`spellsong.rb` is 190 lines of arithmetic and one `nil` guard**, exactly as
+the audit said. Every input already exists in the model. Built as
+`character/spellsong.rs`.
+
+Two curves are involved and **both were verified exhaustively against a
+transcription of Lich's own code** rather than spot-checked, because the
+rewrite folds each band's running total into its constant — the transformation
+that goes wrong at a boundary:
+
+| Curve | Range checked | Disagreements |
+|---|---|---:|
+| `base_duration` | levels 0–100 | 0 |
+| `to_bonus` | ranks 0–400 | 0 |
+
+`to_bonus` is `attributes/skills.rb:9`, not spellsong's own, and is placed here
+because spellsong is its first caller (Rule −1; it moves when a second appears).
+
+#### Four differences, each deliberate
+
+1. **Above level 100 Lich returns 120.** `duration_base_level` has no band past
+   100, logs *"unhandled case"* and falls through to the bare base
+   (`spellsong.rb:54`) — so a level 101 bard gets a level 0 bard's song. The
+   bands are cumulative and the last continues cleanly, so it is extended.
+2. **The skill table's own bonus beats the reconstruction.** Lich calls
+   `Skills.to_bonus(Skills.elair)` unconditionally (`:76`), discarding the
+   figure the game stated. The two disagree whenever an enhancive is on: the
+   table's bonus includes it and the curve cannot.
+3. **`mirrors_dodge_bonus` saturates.** Lich's `20 + ((bard - 19) / 2)` goes
+   *negative* below 19 ranks. Unreachable in play, but a number that means
+   nothing should not propagate.
+4. **`luck_cost`'s second term keeps Lich's arithmetic.**
+   `(6 + ((bard - 6) / 4) / 2).round` applies `/ 2` to the inner quotient only,
+   so the renew cost is `6 + over/8`, not `(6 + over/4) / 2` as the parallel
+   with every other `*_cost` implies. **Ported as written** — "fixing" it would
+   be a guess at the game's real number. Pinned by a test so the choice is
+   deliberate and a later measurement has something to change.
+
+`holding_targets` is a fifth case worth recording as *not* a difference: Lich's
+`1 + ((bard - 1) / 7).truncate` is correct at zero ranks only because Ruby
+truncates toward zero. The same expression in a flooring language gives `0` — a
+holding song that holds nobody.
+
+#### Deferred to M6 with the rest of the behavior half
+
+`timeleft` reads a process-global `@@renewed` timestamp a *script* sets when it
+renews — bookkeeping owned by the renewer, not a fact about the character.
+`renew_cost` sums `song.renew_cost` over nine spell numbers, which needs the
+unported spell table. The per-song constant costs are here; the summing is not.

@@ -31,6 +31,7 @@ pub use state::character::enhancive::{Bonus, EnhanciveLine, EnhanciveTotals, Res
 pub use state::character::injured::{Able, Injuries};
 pub use state::character::psm::{AscensionTable, PsmLine, PsmRanks, PsmSet};
 pub use state::character::skills::{Skill, SkillKind, SkillLine, SkillSet};
+pub use state::character::spellsong::{Spellsong, base_duration, to_bonus};
 pub use state::character::stats::{Identity, Stat, StatKind, StatLine, StatValue};
 pub use state::character::vocabulary::{
     AccountType, Che, DeathsSting, PsmCategory, ResourceType, Society, Warcry,

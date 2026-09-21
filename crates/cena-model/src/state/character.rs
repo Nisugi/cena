@@ -57,6 +57,7 @@ pub mod injured;
 pub mod psm;
 pub mod skills;
 pub mod snapshot;
+pub mod spellsong;
 pub mod standing;
 pub mod stats;
 pub mod vocabulary;
