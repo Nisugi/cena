@@ -79,7 +79,7 @@ fn set_out_with(
     CancellationToken,
     SessionHandle,
 ) {
-    let (walk, transcript, session, typed, _) = set_out_as(stop, rooms, |state| {
+    let (walk, transcript, session, typed, _) = set_out_as(stop, rooms, None, |state| {
         for member in company {
             state.group.apply(&GroupEvent::Joined(member.clone()));
         }
@@ -91,6 +91,7 @@ fn set_out_with(
 fn set_out_as(
     stop: &CancellationToken,
     rooms: &'static str,
+    last_room: Option<u32>,
     knows: impl FnOnce(&mut GameState),
 ) -> (
     JoinHandle<Option<Travelled>>,
@@ -124,7 +125,10 @@ fn set_out_as(
         let map = Map::from_rooms(rooms).ok()?;
         let next = Arc::new(AtomicU64::new(0));
         let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
-        let mut notes = TravelNotes::default();
+        let mut notes = TravelNotes {
+            last_room,
+            ..TravelNotes::default()
+        };
         let travelled = travel(
             &handle,
             &stop,
@@ -466,7 +470,7 @@ const MAZE: &str = r#"[
 /// the game's clock. The game never lets it out, so every turn is a choice.
 async fn turns_at(second: &'static str) -> Vec<String> {
     let stop = CancellationToken::new();
-    let (walk, transcript, session, _, _) = set_out_as(&stop, MAZE, |state| {
+    let (walk, transcript, session, _, _) = set_out_as(&stop, MAZE, None, |state| {
         state.apply(&Frame::Prompt {
             time: second.into(),
             text: ">".into(),
@@ -518,7 +522,7 @@ fn told_so_far(told: &mut Receiver<Event>) -> Vec<(NoticeKind, String)> {
 async fn the_trip_says_how_it_ended() {
     // No way there: room 3 cannot be reached once `north` is refused.
     let stop = CancellationToken::new();
-    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, |_| {});
+    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, None, |_| {});
     transcript.answer("north", REFUSED);
     let _ = walk.await;
     let said = told_so_far(&mut told);
@@ -529,7 +533,7 @@ async fn the_trip_says_how_it_ended() {
 
     // Stopped with the sword put away: a stop is not news, the sword is.
     let stop = CancellationToken::new();
-    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, |_| {});
+    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, None, |_| {});
     transcript.answer("north", &arrival(1002));
     transcript.answer("store right", SWORD_GONE);
     assert!(until_written(&transcript, "climb rope").await);
@@ -543,7 +547,7 @@ async fn the_trip_says_how_it_ended() {
 
     // Arrived, with everything back: nothing to say.
     let stop = CancellationToken::new();
-    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, |_| {});
+    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, None, |_| {});
     transcript.answer("north", &arrival(1002));
     transcript.answer("store right", SWORD_GONE);
     transcript.answer("climb rope", &arrival(1003));
@@ -568,7 +572,7 @@ const NAMED: &str = r#"[
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_room_the_game_has_not_numbered_yet_is_found_by_its_name() {
     let stop = CancellationToken::new();
-    let (walk, transcript, session, _, _) = set_out_as(&stop, NAMED, |state| {
+    let (walk, transcript, session, _, _) = set_out_as(&stop, NAMED, None, |state| {
         state.room.id = None;
         state.room.title = Some("Wehnimer's, Erebor Square".into());
     });
@@ -578,4 +582,44 @@ async fn a_room_the_game_has_not_numbered_yet_is_found_by_its_name() {
     assert_eq!(travelled.ended, Ended::Failed(Why::NoRoute));
     assert_eq!(transcript.lines(), Vec::<String>::new());
     session.cancel();
+}
+
+/// Two rooms the game does not number and that read the same: only where the
+/// character was last known to be says which (author, 2026-09-21).
+const ALIKE: &str = r#"[
+  {"id":1,"title":["[Dark Tunnel]"],"exits":[{"to":3,"kind":"cardinal","cmd":"north","cost":1}]},
+  {"id":5,"title":["[Dark Tunnel]"],"exits":[{"to":3,"kind":"cardinal","cmd":"south","cost":1}]},
+  {"id":3,"uid":[1003]}
+]"#;
+
+async fn first_move_from(last_room: Option<u32>) -> (Ended, Vec<String>) {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, _, _) = set_out_as(&stop, ALIKE, last_room, |state| {
+        state.room.id = None;
+        state.room.title = Some("Dark Tunnel".into());
+    });
+    transcript.answer("north", &arrival(1003));
+    transcript.answer("south", &arrival(1003));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    session.cancel();
+    (travelled.ended, transcript.lines())
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn where_it_was_last_tells_apart_rooms_that_read_alike() {
+    assert_eq!(
+        first_move_from(Some(1)).await,
+        (Ended::Arrived, vec!["north".to_owned()])
+    );
+    assert_eq!(
+        first_move_from(Some(5)).await,
+        (Ended::Arrived, vec!["south".to_owned()])
+    );
+    // With nothing remembered it does not guess: it cannot say where it is.
+    let (ended, sent) = first_move_from(None).await;
+    assert_eq!(ended, Ended::Failed(Why::OffTheMap));
+    assert_eq!(sent, Vec::<String>::new());
+    // A remembered room that does not fit what the game shows is not believed.
+    let (ended, _) = first_move_from(Some(3)).await;
+    assert_eq!(ended, Ended::Failed(Why::OffTheMap));
 }

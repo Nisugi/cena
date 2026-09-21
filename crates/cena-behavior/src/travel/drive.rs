@@ -80,6 +80,9 @@ pub struct Travelled {
     pub wrong_for_the_map: Vec<(RoomId, RoomId)>,
     /// What the trip's choices were seeded with ([`seed_for`]), for a log.
     pub seed: u64,
+    /// The last room the walk knew itself to be in: what a caller writes
+    /// down as `TravelNotes::last_room`. `None` if it never knew.
+    pub last_room: Option<RoomId>,
 }
 
 /// Walk to `goal`.
@@ -106,6 +109,7 @@ pub async fn travel(
             stance_before: None,
             wrong_for_the_map: Vec::new(),
             seed: 0,
+            last_room: None,
         };
     }
     let (snapshot, events) = joined;
@@ -120,6 +124,7 @@ pub async fn travel(
         events,
         began: Instant::now(),
         was: None,
+        hint: notes.last_room.map(RoomId),
         stored: Vec::new(),
         stance_before: None,
         heard: 0,
@@ -141,6 +146,7 @@ pub async fn travel(
         stance_before: driver.stance_before,
         wrong_for_the_map: trip.wrong_for_the_map().to_vec(),
         seed,
+        last_room: driver.was.map(|(_, room)| room),
     }
 }
 
@@ -267,6 +273,9 @@ struct Driver<'a, N> {
     began: Instant,
     /// The model's arrival count and the room it was located as, last tick.
     was: Option<(u32, RoomId)>,
+    /// Where the character was last known to be, from an earlier session:
+    /// what breaks a tie before this walk has placed itself once.
+    hint: Option<RoomId>,
     stored: Vec<Stored>,
     stance_before: Option<String>,
     /// How many lines of the model's open chunk the trip has heard.
@@ -341,7 +350,9 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         let whence = match self.was {
             Some((then, at)) if then == arrivals => Whence::Still(at),
             Some((_, at)) => Whence::Left(at),
-            None => Whence::Nowhere,
+            // Not placed yet this walk: an earlier session's word is a hint
+            // that it has not moved, which only ever breaks a tie.
+            None => self.hint.map_or(Whence::Nowhere, Whence::Still),
         };
         let here = room_of(map, &self.state, whence)?;
         self.was = Some((arrivals, here));

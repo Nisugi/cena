@@ -246,6 +246,13 @@ pub(crate) async fn run(
     };
     let here = settle(&map, &mut joined).await;
     let state = &joined.0.state;
+    let (mut file, mut notes) = load_notes(handle, state);
+    // Rooms that read alike: where the character was last known to be says
+    // which, as a hint that it has not moved (`TravelFile::last_room`).
+    let here = here.or_else(|| {
+        let last = RoomId(notes.last_room?);
+        room_of(&map, state, Whence::Still(last))
+    });
     let Some(here) = here else {
         say(
             NoticeKind::Error,
@@ -256,9 +263,9 @@ pub(crate) async fn run(
         );
         return;
     };
-    let (file, mut notes) = load_notes(handle, state);
     let walker = walker_from(state, &notes, state.game_time().unwrap_or(0));
-    let Some(goal) = destination(&map, &walker, here, to) else {
+    remember_room(&mut file, &mut notes, here);
+    let Some(goal) = destination(&map, &walker, here, to, &notes.targets) else {
         say(
             NoticeKind::Error,
             format!("Travel: I do not know a room called {to:?}."),
@@ -278,7 +285,7 @@ pub(crate) async fn run(
     handle.say(Notice::table(NoticeKind::Info, table(&map, here, &legs)));
     if walk {
         // Boxed: a trip's future holds a whole `GameState`.
-        Box::pin(go(handle, joined, &map, goal, &mut notes, file)).await;
+        Box::pin(go(handle, joined, &map, goal, &mut notes, &mut file)).await;
     }
 }
 
@@ -288,40 +295,44 @@ async fn go(
     map: &Map,
     goal: RoomId,
     notes: &mut TravelNotes,
-    mut file: Option<(PathBuf, TravelFile)>,
+    file: &mut Option<(PathBuf, TravelFile)>,
 ) {
     let stop = CancellationToken::new();
     let next = Arc::new(AtomicU64::new(100_000));
     let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
-    // A memory is saved when it is made: losing one strands the character.
-    let wrote = |notes: &TravelNotes| {
-        let Some((dir, file)) = file.as_mut() else {
-            return;
+    // In a block of its own: the walk borrows the notes and the file, and
+    // both are wanted again once it is over.
+    let travelled = {
+        // A memory is saved when it is made: losing one strands the character.
+        let wrote = |notes: &TravelNotes| {
+            let Some((dir, file)) = file.as_mut() else {
+                return;
+            };
+            file.memories = notes.memories.clone().into_iter().collect();
+            if let Err(e) = travel_store::save(dir, file) {
+                eprintln!("  !! [travel] could not save the travel file: {e}");
+            }
         };
-        file.memories = notes.memories.clone().into_iter().collect();
-        if let Err(e) = travel_store::save(dir, file) {
-            eprintln!("  !! [travel] could not save the travel file: {e}");
-        }
-    };
-    eprintln!("[travel] walking to {} -- Ctrl-C stops the walk", goal.0);
-    let walking = travel::travel(
-        handle,
-        &stop,
-        ids,
-        AuthorityToken(2),
-        joined,
-        map,
-        goal,
-        notes,
-        wrote,
-    );
-    tokio::pin!(walking);
-    let travelled = tokio::select! {
-        travelled = &mut walking => travelled,
-        _ = tokio::signal::ctrl_c() => {
-            eprintln!("\n[travel] stopping the walk");
-            stop.cancel();
-            walking.await
+        eprintln!("[travel] walking to {} -- Ctrl-C stops the walk", goal.0);
+        let walking = travel::travel(
+            handle,
+            &stop,
+            ids,
+            AuthorityToken(2),
+            joined,
+            map,
+            goal,
+            notes,
+            wrote,
+        );
+        tokio::pin!(walking);
+        tokio::select! {
+            travelled = &mut walking => travelled,
+            _ = tokio::signal::ctrl_c() => {
+                eprintln!("\n[travel] stopping the walk");
+                stop.cancel();
+                walking.await
+            }
         }
     };
     eprintln!(
@@ -335,6 +346,10 @@ async fn go(
     }
     if travelled.ended == Ended::Arrived {
         eprintln!("[travel] arrived");
+    }
+    // Where the walk ended, for the next login to break a tie with.
+    if let Some(ended_in) = travelled.last_room {
+        remember_room(file, notes, ended_in);
     }
 }
 
@@ -371,6 +386,21 @@ fn load_map(handle: &SessionHandle) -> Option<Map> {
     }
 }
 
+/// Write down where the character is, for the next login to break a tie with.
+fn remember_room(file: &mut Option<(PathBuf, TravelFile)>, notes: &mut TravelNotes, here: RoomId) {
+    notes.last_room = Some(here.0);
+    let Some((dir, file)) = file.as_mut() else {
+        return;
+    };
+    if file.last_room == Some(here.0) {
+        return;
+    }
+    file.last_room = Some(here.0);
+    if let Err(e) = travel_store::save(dir, file) {
+        eprintln!("  !! [travel] could not save the travel file: {e}");
+    }
+}
+
 /// The character's travel file, as the walker's notes. A file that cannot be
 /// trusted is **not** replaced: the walk goes on without memories and saves
 /// nothing (`travel_store`'s rule).
@@ -393,6 +423,8 @@ fn load_notes(
             let notes = TravelNotes {
                 settings: file.settings.clone().into_iter().collect(),
                 memories: file.memories.clone().into_iter().collect(),
+                targets: file.targets.clone(),
+                last_room: file.last_room,
             };
             (Some((dir, file)), notes)
         }

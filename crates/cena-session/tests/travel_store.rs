@@ -87,9 +87,35 @@ fn a_file_without_memories_yet_is_one_with_none() {
     std::fs::create_dir_all(&dir).unwrap();
     let path = travel_path(&dir, "GSIV", "Ashryn").unwrap();
     let text = r#"{"schema_version":1,"instance":"GSIV","character":"Ashryn"}"#;
+    // A version-1 file, which is also one from before `targets` existed.
     std::fs::write(&path, text).unwrap();
     assert_eq!(
         load(&dir, "GSIV", "Ashryn").unwrap(),
         TravelFile::new("GSIV", "Ashryn")
     );
+}
+
+/// Version 1 to 2 is a migration, not a refusal: what was remembered is kept,
+/// what is new starts empty, and the file says 2 from then on.
+#[test]
+fn a_version_one_file_is_migrated_and_keeps_what_it_held() {
+    let dir = temp_dir("migrate");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = travel_path(&dir, "GSIV", "Ashryn").unwrap();
+    let text = r#"{"schema_version":1,"instance":"GSIV","character":"Ashryn",
+                   "memories":{"duskruin_origin":"228"}}"#;
+    std::fs::write(&path, text).unwrap();
+
+    let mut file = load(&dir, "GSIV", "Ashryn").unwrap();
+    assert_eq!(file.schema_version, TRAVEL_SCHEMA_VERSION);
+    assert_eq!(
+        file.memories.get("duskruin_origin").map(String::as_str),
+        Some("228")
+    );
+    assert!(file.targets.is_empty() && file.last_room.is_none());
+
+    file.targets.insert("home".into(), vec![228, 3668]);
+    file.last_room = Some(228);
+    save(&dir, &file).unwrap();
+    assert_eq!(load(&dir, "GSIV", "Ashryn").unwrap(), file);
 }

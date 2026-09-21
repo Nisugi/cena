@@ -1,5 +1,7 @@
 //! The route, shown and not walked: `cena_behavior::travel::itinerary`.
 
+use std::collections::BTreeMap;
+
 use cena_behavior::travel::{ShutWhy, destination, itinerary, table};
 use cena_map::{Map, Room, RoomId, Walker};
 
@@ -122,7 +124,8 @@ const BANKS: &str = r#"[
 #[test]
 fn what_the_player_typed_is_a_room() {
     let map = map_of(BANKS).unwrap();
-    let to = |walker: &Walker, what: &str| destination(&map, walker, RoomId(1), what);
+    let none = BTreeMap::new();
+    let to = |walker: &Walker, what: &str| destination(&map, walker, RoomId(1), what, &none);
 
     assert_eq!(to(&a("Bard"), "5"), Some(RoomId(5)));
     assert_eq!(to(&a("Bard"), "77"), None, "no such room");
@@ -142,4 +145,46 @@ fn what_the_player_typed_is_a_room() {
     assert_eq!(to(&a("Warrior"), "bank"), Some(RoomId(5)));
     assert_eq!(to(&a("Warrior"), "TOWN"), Some(RoomId(5)));
     assert_eq!(to(&a("Warrior"), "forge"), None, "nothing is tagged that");
+}
+
+/// go2's custom targets, in go2's order: before tags, the exact name before a
+/// name it begins, neither minding case, and several rooms meaning the nearest.
+#[test]
+fn a_name_the_player_chose_comes_before_a_tag() {
+    let map = map_of(BANKS).unwrap();
+    let mut targets = BTreeMap::new();
+    targets.insert("Bank".to_owned(), vec![4]);
+    targets.insert("homestead".to_owned(), vec![5, 3]);
+    targets.insert("home".to_owned(), vec![4]);
+    targets.insert("nowhere".to_owned(), vec![999]);
+    let to = |what: &str| destination(&map, &a("Warrior"), RoomId(1), what, &targets);
+
+    // The player's `Bank` is room 4, and it wins over the tag, which is 5.
+    assert_eq!(to("bank"), Some(RoomId(4)));
+    // Exactly `home`, though `homestead` begins with it and sorts after.
+    assert_eq!(to("HOME"), Some(RoomId(4)));
+    // `homes` is nobody's name, and begins one: the nearest of its rooms.
+    assert_eq!(to("homes"), Some(RoomId(3)));
+    // A target whose rooms the map does not have is nowhere to go.
+    assert_eq!(to("nowhere"), None);
+    // A number is still a number.
+    assert_eq!(to("5"), Some(RoomId(5)));
+}
+
+#[test]
+fn the_guild_is_this_characters_guild() {
+    let rooms = r#"[
+      {"id":1,"exits":[{"to":2,"kind":"cardinal","cmd":"east","cost":1},
+                       {"to":3,"kind":"cardinal","cmd":"west","cost":9}]},
+      {"id":2,"tags":["warrior guild"]},
+      {"id":3,"tags":["wizard guild","wizard guild shop"]}
+    ]"#;
+    let map = map_of(rooms).unwrap();
+    let none = BTreeMap::new();
+    let to = |who: &str, what: &str| destination(&map, &a(who), RoomId(1), what, &none);
+    assert_eq!(to("Warrior", "guild"), Some(RoomId(2)));
+    // The nearer guild is not the wizard's.
+    assert_eq!(to("Wizard", "guild"), Some(RoomId(3)));
+    assert_eq!(to("Wizard", "Guild Shop"), Some(RoomId(3)));
+    assert_eq!(to("Warrior", "guild shop"), None, "warriors have none here");
 }

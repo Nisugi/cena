@@ -418,6 +418,32 @@ cargo run -p cena -- --go bank         # says it, then walks. Ctrl-C stops the w
 full of "not known yet" (a fact the mirror did not get); then, only on `--go`, the first
 crossing that is more than a plain move.
 
+### The small gaps, closed 2026-09-21 (author's list)
+
+**go2's custom targets** -- `TravelFile::targets`, a name to the room or rooms it means.
+`destination` now follows go2's own order (`go2.lic:1855-1880`): a number; **a custom
+target**, the name exactly and else the first name it begins, neither minding case, several
+rooms meaning the nearest; **`guild` and `guild shop`** as this character's (`wizard
+guild`, from the profession); then a tag. A target whose rooms the map lacks is nowhere.
+*Not built:* a way to **set** one from inside Hydra (go2's `;go2 save`); until then the
+file is edited by hand. Also not built: `Room[]`'s match on title and description.
+
+**The last room, across logons** -- `TravelFile::last_room`, written when a route is shown
+and when a walk ends. **A hint, never a fact**: the character may have been moved by
+another client since, so it is only ever offered to `locate` as `Origin::Still`, which
+breaks a tie between rooms that *already fit* what the game shows. Tested with two
+unnumbered rooms that read alike: the hint picks the walk, a different hint picks the
+other, none at all is "off the map", and a hint that does not fit is not believed.
+
+**The travel file is version 2, by migration.** A version-1 file loads with no targets and
+no last room -- that *is* the migration -- and is stamped 2. The number still had to move:
+a version-1 **build** reading a version-2 file would not know the new fields and would drop
+them on its next save, losing the player's targets silently. Now it refuses the file as
+`Newer` and leaves it alone.
+
+**Still open from that list:** command links and target windows in Messaging, which wait
+for their first caller (likely the route table: click a room to go there).
+
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,
 the day-pass sack scan. And trips that start trips: the silver detour, the five errands.

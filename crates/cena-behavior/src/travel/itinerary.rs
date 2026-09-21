@@ -25,6 +25,8 @@
 //! **Pure**: a map and a walker in, rows out. [`table`] lays the rows out as
 //! text for a `Notice`; a frontend that wants to draw them takes the rows.
 
+use std::collections::BTreeMap;
+
 use cena_map::{Cond, Cost, Crossing, Exit, Map, Room, RoomId, Target, Uid, Walker};
 
 use super::{Trip, can_cross};
@@ -69,20 +71,31 @@ pub enum ShutWhy {
     NoCost,
 }
 
-/// The room a player means by `what`, standing in `from`. go2's order, as
-/// `route2.lic:33-76` has it, for the two kinds built:
+/// The room a player means by `what`, standing in `from`. **go2's order**
+/// (`go2.lic:1855-1880`, `route2.lic:33-76`):
 ///
 /// 1. **A number**: the map's own id, or the game's with a `u` before it
 ///    (`u7120`), when it names one room.
-/// 2. **A tag** (`bank`, `town`): the *nearest* room that has it, by what
-///    this walker would pay to get there -- so a bard's nearest bank may not
-///    be a warrior's.
+/// 2. **A custom target** the player named (`targets`): the name exactly,
+///    else the first name it begins -- both without regard to case, as go2's
+///    two regexes have it. Several rooms mean the nearest.
+/// 3. **`guild` and `guild shop`** mean this character's: the tag
+///    `wizard guild`, from the profession.
+/// 4. **A tag** (`bank`, `town`): the nearest room that has it.
 ///
-/// **Not built:** go2's custom targets, which want a home in the travel file
-/// first, and its match on a room's title or description, whose rules in
-/// `Room[]` are their own port.
+/// "Nearest" is by what *this walker* would pay to get there, so a bard's
+/// nearest bank may not be a warrior's.
+///
+/// **Not built:** go2's match on a room's title or description, whose rules
+/// in `Room[]` are their own port.
 #[must_use]
-pub fn destination(map: &Map, walker: &Walker, from: RoomId, what: &str) -> Option<RoomId> {
+pub fn destination(
+    map: &Map,
+    walker: &Walker,
+    from: RoomId,
+    what: &str,
+    targets: &BTreeMap<String, Vec<u32>>,
+) -> Option<RoomId> {
     let what = what.trim();
     if let Some(uid) = what
         .strip_prefix('u')
@@ -96,15 +109,41 @@ pub fn destination(map: &Map, walker: &Walker, from: RoomId, what: &str) -> Opti
     if let Ok(id) = what.parse() {
         return map.room(RoomId(id)).map(|room| room.id);
     }
+    let nearest = |rooms: &[RoomId]| {
+        let trip = Trip::to(from);
+        map.routes(from, Target::Nearest(rooms), trip.pricing(walker))
+            .reached()
+    };
+    let lower = what.to_lowercase();
+    let named = targets
+        .iter()
+        .find(|(name, _)| name.to_lowercase() == lower)
+        .or_else(|| {
+            targets
+                .iter()
+                .find(|(name, _)| name.to_lowercase().starts_with(&lower))
+        });
+    if let Some((_, rooms)) = named {
+        // Rooms the map does not have are not somewhere to go.
+        let rooms: Vec<RoomId> = rooms
+            .iter()
+            .filter_map(|id| map.room(RoomId(*id)).map(|room| room.id))
+            .collect();
+        return nearest(&rooms);
+    }
+    let tag = match (lower.as_str(), walker.profession.as_deref()) {
+        ("guild" | "guild shop", Some(profession)) => {
+            format!("{} {lower}", profession.to_lowercase())
+        }
+        _ => lower,
+    };
     let tagged: Vec<RoomId> = map
         .rooms()
         .iter()
-        .filter(|room| room.tags.iter().any(|tag| tag.eq_ignore_ascii_case(what)))
+        .filter(|room| room.tags.iter().any(|has| has.eq_ignore_ascii_case(&tag)))
         .map(|room| room.id)
         .collect();
-    let trip = Trip::to(from);
-    map.routes(from, Target::Nearest(&tagged), trip.pricing(walker))
-        .reached()
+    nearest(&tagged)
 }
 
 /// The route from `from` to `goal` as this walker would walk it now, or

@@ -36,7 +36,7 @@
 //! unknown is impassable, so the walker goes round it. Each row filled in
 //! opens exits; none of them can send the walker somewhere it cannot go.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use cena_map::Walker;
 use cena_session::{GameState, InventoryItem, SkillKind};
@@ -51,6 +51,12 @@ pub struct TravelNotes {
     pub settings: HashMap<String, String>,
     /// `duskruin_origin` -> `228`.
     pub memories: HashMap<String, String>,
+    /// go2's custom targets: `home` -> `[228]`. Ordered, because a prefix may
+    /// fit several and the one chosen must be the same every time.
+    pub targets: BTreeMap<String, Vec<u32>>,
+    /// Where the character was last known to be: a tie-breaker, not a fact
+    /// (`travel_store::TravelFile::last_room`).
+    pub last_room: Option<u32>,
 }
 
 /// The walker's facts, as the model and the travel file have them now.

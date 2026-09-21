@@ -38,7 +38,14 @@ use crate::character_store::safe_component;
 
 /// The version this build writes. Bump it **with a migration**: see the
 /// module docs for why this file is never simply refused.
-pub const TRAVEL_SCHEMA_VERSION: u32 = 1;
+///
+/// **2** (2026-09-21) added `targets` and `last_room`. A version-1 file has
+/// neither and loads as one with none: that *is* the migration, and [`load`]
+/// stamps it 2 so the next save says what it holds. The number still had to
+/// move, because a version-1 **build** would read a version-2 file, not know
+/// those fields, and drop them on its next save -- losing the player's
+/// targets silently. Now it refuses the file as [`TravelLoadError::Newer`].
+pub const TRAVEL_SCHEMA_VERSION: u32 = 2;
 
 /// One character's travel profile and memories.
 ///
@@ -53,6 +60,19 @@ pub struct TravelFile {
     pub settings: BTreeMap<String, String>,
     #[serde(default)]
     pub memories: BTreeMap<String, String>,
+    /// go2's **custom targets**: a name the player chose, and the room or
+    /// rooms it means (`go2.lic:1149-1160`). Several rooms mean *the nearest*.
+    /// Map ids, as go2 keeps them.
+    #[serde(default)]
+    pub targets: BTreeMap<String, Vec<u32>>,
+    /// The map room the character was last known to be in, to tell apart
+    /// rooms that read alike when a login gives too little to (author,
+    /// 2026-09-21). **A hint, never a fact**: the character may have been
+    /// moved by another client since, so it only ever breaks a tie between
+    /// rooms that already fit what the game shows (`cena_map::locate`'s
+    /// `Origin::Still`).
+    #[serde(default)]
+    pub last_room: Option<u32>,
 }
 
 impl TravelFile {
@@ -66,6 +86,8 @@ impl TravelFile {
             character: character.to_owned(),
             settings: BTreeMap::new(),
             memories: BTreeMap::new(),
+            targets: BTreeMap::new(),
+            last_room: None,
         }
     }
 }
@@ -131,7 +153,7 @@ pub fn load(dir: &Path, instance: &str, character: &str) -> Result<TravelFile, T
         }
         Err(err) => return Err(TravelLoadError::Unreadable(err.to_string())),
     };
-    let file: TravelFile =
+    let mut file: TravelFile =
         serde_json::from_str(&text).map_err(|err| TravelLoadError::Unreadable(err.to_string()))?;
     if file.schema_version > TRAVEL_SCHEMA_VERSION {
         return Err(TravelLoadError::Newer {
@@ -144,6 +166,8 @@ pub fn load(dir: &Path, instance: &str, character: &str) -> Result<TravelFile, T
             found: format!("{}/{}", file.instance, file.character),
         });
     }
+    // Migrated by having been read: see [`TRAVEL_SCHEMA_VERSION`].
+    file.schema_version = TRAVEL_SCHEMA_VERSION;
     Ok(file)
 }
 
