@@ -86,6 +86,7 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
             (kind_of(command), Crossing::Command(command.clone()))
         };
         let cost = crate::recognise::priced_for_crossing(&crossing, cost);
+        let cost = crate::go2::as_go2_prices_it(id, to, cost);
         exits.push(Exit {
             to: RoomId(to),
             kind,

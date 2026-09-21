@@ -16,6 +16,7 @@
 
 pub mod convert;
 pub mod delegate;
+pub mod go2;
 pub mod output;
 pub mod recognise;
 pub mod report;

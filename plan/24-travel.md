@@ -96,11 +96,48 @@ nothing) and is recorded in `cena-arch-tests/tests/layering.rs` when it is added
 `plan/05` §0. The pure layer uses `cena-map` and `cena-model`'s frame types through
 `cena-session`'s re-exports, as `look` does; it does not touch `SessionHandle`.
 
-## 5. Open — the author's
+## 5. Decided — author, 2026-09-21
 
-- The travel profile: where it lives, its defaults (`ice_mode`, `use_urchins`,
-  `use_portmasters`, `use_day_pass`, `buy_day_pass`, key and sack names).
-- Where memories persist.
-- What a walker does about hostiles in the room (a waylaid caravan; any hunting ground on
-  the way): stop and say so, or something more.
-- Whether Stage 2's lines may be cut from the log archive.
+- **Stage 2's lines come from Lich's `move`** (`reference/lich-5/lib/.../move.rb`), not from
+  the log archive. They are the game's own text, collected over years. (`CLAUDE.md` already
+  says the protocol facts are in Lich; asking to cut them from the corpus was the wrong
+  question.)
+- **Hostiles.** A Travel across rooms **ignores creatures**. A *hunt* moving to its next room
+  hunts them -- which is the hunting behaviour's business, not the walker's. So the walker
+  never stops for a creature, and a waylaid caravan just plans again.
+- **Memories go with the character** -- see §6 for the one open detail.
+
+## 6. The travel profile — audited against go2, 2026-09-21
+
+Every setting `go2.lic` reads (`grep UserVars\.|CharSettings\[`), against every setting,
+flag and memory the converted map asks about (a census of the converter's output).
+
+**One was missing, and it mattered: the Vaalor shortcut.** The map file prices the rocky
+trail 16745<->16746 at a flat 15 s, but `go2.lic:952` *rewrites those two `timeto` values in
+memory at startup* -- to `nil`, impassable, unless `vaalor shortcut` is on, and off is the
+default (`:854`). The converted map left it open to everyone. Fixed in the converter
+(`src/go2.rs`): both directions are gated on `vaalor_shortcut`.
+
+| kind | names | who owns it |
+|---|---|---|
+| **asked by the map** (a `Cond::Setting`) | `use_urchins`, `use_portmasters`, `use_seeking`, `ice_mode` (`run`/`wait`/`auto`), `use_day_pass`, `buy_day_pass`, `car_to_sos`, `car_from_sos`, **`vaalor_shortcut`**, `premium`, `allow_vornavis`, `annoy_ylandra` | the travel profile |
+| **named things** the map's commands fill in | `fwi_trinket`, `rogue_password`, `day_pass_sack`, `key`, `key_sack` / `keysack` (upstream spells it both ways), and one per private property: `mularos_lover`, `peregrine`, `prestidigitorium`, `black_swan`, `sunset_cabin`, `journeys_end`, `safe_harbor`, `spindrift` | the travel profile |
+| **go2's own**, the walker's to implement | `get silvers`, `get return trip silvers` (stage 5, the silver detour); `use_gigas_hwtravel` + `gigas_min_number` (Hinterwilds travel by fragments -- go2 checks `wealth gigas`); `stop for dead`; `delay`, `typeahead` (pacing) | the travel profile, read by the walker |
+| **not settings at all** | `urchins_expire` (a fact the planner probes: the flag `urchin_access`), `go2_start_room`, `hinterwilds_location` (a memory) | model / memories |
+| **not needed** | `hide_room_titles`, `hide_room_descriptions`, `echo_input`, `confirm_distance`, `disable_confirm` (Lich UI); `use_portals`, `use_old_portals`, `have_portal_pass` (Platinum/Shattered; **0** uses in this mapdb) | -- |
+
+Flags the map asks of the planner: `urchin_access`, `hidden`, `invisible`, `mounted`,
+`stunned`, `premium_account`, `platinum`, `hunting`, `own_disk_here`, `leading_group`,
+`day_pass:<towns>`. Memories: `duskruin_origin`, `talondown_origin`, `ebon_gate_origin`,
+`marksofthebeast_origin`, `fwi_return_room`, `silverwood_town`, `redforest_location`,
+`hinterwilds_location`, and the walker's own scratch note `key_was_worn`.
+
+## 7. Open — the author's
+
+- **Memories: in the character file, or beside it?** The character file
+  (`cena-session/src/character_store.rs`, `<instance>_<character>.json`) is a *snapshot of
+  what the game said* -- it is rewritten whole after a sync. Memories are different: they
+  are what *Hydra did* (entered Duskruin from the Landing), the game never re-teaches them,
+  and losing one strands the character at an event. Recommendation: **a second file beside
+  it**, `<instance>_<character>.travel.json`, holding memories and the travel profile, so a
+  snapshot rewrite can never clobber them. Same directory, same naming, same crate.
