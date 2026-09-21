@@ -1,64 +1,90 @@
 # 20 — Milestone 3, continued: the remaining attribute surface
 
-**Status: DRAFT, unapproved.** The feature list is the author's, given 2026-09-20. The
-ordering, the dependency edges and the per-feature counts below are proposals and
-measurements; the order is a recommendation until the author says otherwise.
+**Status: COMPLETE as of 2026-09-21.** Every feature the author named on
+2026-09-20 is built, or is deferred to M6 with a recorded reason and a table of
+what remains. The divergence log in §5 is the history: what each step found,
+what was corrected, and by whom.
 
-This is **not a new milestone.** `plan/12` §8 puts the character model at M3, and every
-feature here is part of it. `plan/18` §3 deferred exactly this surface out of M2:
-*"stats, skills, PSMs, society, bounty — text-scraped; needs the Infomon sync"*. Most of
-that list is now built; this document covers what the author named on top of it.
+> **This document was written as a plan and is now a record.** §0's table said
+> ABSENT for eight features that are built; §3 read as future work that is
+> done; §1 asked a question the author has since answered; and two sections
+> contradicted each other because a correction was appended rather than
+> applied. Fixed here. The log below is deliberately NOT rewritten — it is
+> dated evidence, and editing it would erase the corrections it exists to
+> record.
+
+This is **not a new milestone.** `plan/12` §8 puts the character model at M3,
+and every feature here is part of it. `plan/18` §3 deferred exactly this
+surface out of M2: *"stats, skills, PSMs, society, bounty — text-scraped;
+needs the Infomon sync"*.
 
 ---
 
-## 0. The list, and where each item actually stands
+## 0. The list, and where each item stands
 
-The author named nineteen: resources, spells, spellsong, messaging, stash, stowlist,
-readylist, stance, spellranks, overwatch, mana, group, gift, fog, experience, disk,
-currency, bank.
+The author named nineteen: resources, spells, spellsong, messaging, stash,
+stowlist, readylist, stance, spellranks, overwatch, mana, group, gift, fog,
+experience, disk, currency, bank.
 
-Two audits established the state of each — one over `crates/`, one over
-`reference/lich-5`. Every claim below carries a file:line from one of them.
+| Feature | Where it lives | Note |
+|---|---|---|
+| mana | `state/vitals.rs` | |
+| stance | `state/vitals.rs`, as a string | typed enum deferred — see below |
+| experience | `character/experience_report.rs` | |
+| spells | `spells.rs` + `Effects` | the 514-spell table; see §5 |
+| spellranks | `SkillLine::SpellCircle` | a Marshal cache in Lich, not ported |
+| resources | `character/standing.rs` | |
+| society, citizenship, warcries | `character/standing.rs` | |
+| currency | `character/currency.rs` | |
+| gift | `character/experience_report.rs` | pulses only |
+| disk | `state/disk.rs` | |
+| group | `state/group.rs` | |
+| stowlist, readylist | `state/containers.rs` | |
+| stash | `state/resolve.rs` | **reading half only** — 12 functions to M6 |
+| bank | `state/bank.rs` | **reading half only** — 10 verbs to M6 |
+| fog | `state/fog.rs` | **reading half only** — 8 senders to M6 |
+| spellsong | `character/spellsong.rs` | `timeleft`/`renew_cost` to M6 |
+| overwatch | `state/overwatch.rs` | one inference incomplete — see below |
+| messaging | `state/message.rs` | **not** `messaging.rb`; see §1 |
 
-| Feature | Cena today | Lich source | Lines | Parse rules |
-|---|---|---|---:|---|
-| mana | **DONE** (`state/vitals.rs`) | `gemstone/mana.rb` + `common/xmlparser.rb:706` | 43 | 4 (the PULSE verb only) |
-| stance | **DONE**, as a string | `gemstone/stance.rb` + `common/xmlparser.rb:703` | 172 | 4 (setting it) |
-| experience | **DONE** (`character/experience_report.rs`) | `gemstone/experience.rb` | 109 | ~6 (`parser.rb:16-21`) |
-| spells | PARTIAL — `Effects`, no spell list | `attributes/spells.rb` + `common/spell.rb` | 76 + 954 | 2 + hundreds of up/down msgs |
-| spellranks | PARTIAL — `SkillLine::SpellCircle` | `gemstone/spellranks.rb` | 80 | 1 (`parser.rb:24`) |
-| resources | **DONE** (`character/standing.rs`) | `attributes/resources.rb` | 36 | 7 (`parser.rb:51-58`) |
-| stow (container) | PARTIAL — the container, not the list | — | — | — |
-| society, citizenship, warcries | **DONE** (`character/standing.rs`) | `infomon/parser.rb:36-44` | — | 11 |
-| currency | **DONE** (`character/currency.rs`) | `gemstone/currency.rb` | 110 | ~15 (`parser.rb:63-77`) |
-| bank | ABSENT | `gemstone/bank.rb` | 389 | ~20 (`bank.rb:22-75`) |
-| disk | ABSENT | `gemstone/disk.rb` | 60 | 1 (a noun list) |
-| group | ABSENT | `gemstone/group.rb` | 665 | ~10 (`group.rb:418-450`) |
-| stowlist | ABSENT | `gemstone/stowlist.rb` | 78 | 4 (`infomon/xmlparser.rb:515`) |
-| readylist | ABSENT | `gemstone/readylist.rb` | 96 | 8 (`infomon/xmlparser.rb:521`) |
-| stash | ABSENT | `stash.rb` | 642 | ~24 inline |
-| gift | **DONE**, pulses only — see step 3 | `gemstone/gift.rb` | 54 | **0** — ticks off the exp bar |
-| fog | ABSENT | `gemstone/fog.rb` | 269 | 1 — watches `room_id` |
-| spellsong | ABSENT | `attributes/spellsong.rb` | 190 | 1 — the rest is arithmetic |
-| overwatch | ABSENT | `gemstone/overwatch.rb` | 256 | **~30** (`overwatch.rb:132-179`) |
-| messaging | **N/A — see §1** | `messaging.rb` | 148 | 0 — it is output-side |
+### 0a. Added to the list while building
 
-### 0a. Two corrections this audit forced
+Neither was in the original nineteen.
 
-**`mana` and `experience` were reported DONE in conversation and were not.** Vitals held
-a bare percent under a string key, so "can I afford this spell" was unanswerable from
-`GameState`. Fixed in `e0e5949`: `Vital { percent, current, max }` plus named accessors.
-The lesson is `plan/05` §−2's, in its usual form — the claim came from a script-count
-grep rather than from reading the type.
+| | Why |
+|---|---|
+| **the spell table** (`spells.rs`) | `common/spell.rb` is the READER for `data/effect-list.xml`, not the table. 514 spells, and four other items were deferred behind the misreading. |
+| **third-party cooldowns** (`state/cooldowns.rs`) | Lich PR #1597, merged and present in the clone. Five spells lock a character out. |
 
-`experience` is still partial and the entry above says so: the `expr` dialog bars only,
-with `level` stored as a verbatim string. Field exp, fame, deeds and ascension are not
-modelled.
+### 0b. Deferred to M6, with what remains
 
-**`gift`, `fog` and `overwatch` were called evidence-free and are not.** Gift is driven
-structurally off the experience progress bar (`common/xmlparser.rb:751`), fog watches
-`room_id` change, overwatch is ~30 regexes over creature links. Only the `resource`
-command still wants a fresh capture before porting.
+Three ports split the same way: a **reading** half that answers questions about
+the character, and a **sending** half that issues commands and waits. The
+second needs the authority token and roundtime, and would put `fput` in a crate
+with no socket.
+
+| Source | Reading (built) | Sending (M6) |
+|---|---|---|
+| `stash.rb` | 13 functions, ~140 lines | 12 functions, ~460 lines |
+| `bank.rb` | 8 entry points | 10 verbs |
+| `fog.rb` | 13 entry points | 8 senders |
+| `spellsong.rb` | the arithmetic | `timeleft`, `renew_cost` |
+
+### 0c. Known gaps, stated rather than hidden
+
+- **The flee/arrival classifier.** `creature_messages.tsv` holds **1,067 flee
+  and 991 arrival** lines and `MessageKind::Flee` is in the bestiary, but
+  nothing matches a line against them; **802 carry `{direction}`/`{pronoun}`
+  placeholders**. Without it, overwatch cannot complete the author's
+  "disappeared without being seen to leave" inference — so it records nothing
+  from a disappearance. See §5's overwatch entry.
+- **40 of 338 spell durations are real Ruby**, five of them scraping the
+  scrollback. They read as `Duration::Unknown` with the source kept.
+- **`stance` as an enum.** A verbatim string today; the five stances are a
+  closed vocabulary, so the typed version is half an hour. Nothing needs it
+  until a behavior SETS stance, which is M6.
+- **The `resource` command capture.** Everything else here has wire evidence.
+  This one wants a real sample first.
 
 ---
 
@@ -71,11 +97,15 @@ command still wants a fresh capture before porting.
 That job belongs to Cena's frontend, and `plan/12` §2 puts it in `cena-ui`. There is no
 model work here and this document does not schedule any.
 
-**What the author may have meant is a different, real gap.** Speech, thoughts and whispers
-arrive as untyped `Runs` in an untyped stream-id map (`state/streams.rs:69` `LineTally`), with
-`thoughts` special-cased at `:35-44` and `:147`. There is no `Message` type carrying sender, channel
-and body, and nothing handles `espMasterData`. That is **§3 step 8**, and it is worth
-confirming with the author which of the two was meant.
+**What the author meant is a different, real gap — CONFIRMED 2026-09-20.**
+Asked which of the two, the author chose *"a typed Message in the model"*. So
+`state/message.rs` carries channel, speaker and body, classified off the
+`<preset id=>` the wire already sends.
+
+> One claim in the earlier draft of this paragraph was wrong: *"nothing handles
+> `espMasterData`"* implied a missing feed. It is a `<dialogData>` panel of ESP
+> toggle **buttons** — UI chrome, not messages. I had trusted a grep count of
+> 190 without reading what matched.
 
 ---
 
@@ -103,7 +133,13 @@ rather than seven separate ports.
 
 ## 3. Build order, and why
 
-The dependency edges are the constraint, not the demand numbers. From the Lich audit:
+**This is the order that was followed**, and the reasoning held up: every edge
+below turned out to be real, and the one place the order was wrong is recorded
+in §5 (the spell table, which four items were deferred behind because
+`common/spell.rb` was misread as the table rather than its reader).
+
+The dependency edges were the constraint, not the demand numbers. From the Lich
+audit:
 
 ```text
 stash   -> readylist, stowlist
@@ -129,88 +165,22 @@ players care about, not of what to build. It breaks ties; it does not set the or
 
 ### The steps
 
-> **STEP 1 WAS SKIPPED, AND STEPS 2-4 ARE DONE WITHOUT IT** (2026-09-20, author's call
-> after the divergence was raised). Read step 1 as **not the entry point**; what follows
-> records why, so this document does not say "start here" beside code that started
-> elsewhere.
->
-> **What was built instead.** Each feature owns its own matchers, as `strip_prefix` chains
-> over a reassembled line: `state/character/standing.rs` (society, citizenship, warcries,
-> resources, PSM changes, covert arts), `state/character/currency.rs` (sixteen balances),
-> and `state/character/experience_report.rs` (the `experience` block). MEASURED:
->
-> ```sh
-> grep -c "strip_prefix\|strip_suffix" crates/cena-model/src/state/character/{standing,currency,experience_report}.rs
-> # 19, 17, 1
-> ```
->
-> **Why that is not the duplication this step feared.** The shape step 1 points at is
-> `state/combat/defs.rs`, and reading it settles the question: it is a **regex table with
-> a `RegexSet` gate**, and the gate exists because that table is 957 regexes over three
-> TSVs, where it MEASURED `105 us/line -> 3.6 us/line` and the `attack` family alone went
-> `42.6 -> 0.9` (`defs.rs` module docs). Thirty-seven prefix tests inherit none of that
-> pressure.
->
-> (957 measured: `wc -l crates/cena-model/data/combat_{attacks,results,effects}.tsv`. An
-> earlier draft of this note said ~2,400, which is `CritTables`' pattern count from
-> `combat/tracker.rs:85` -- a different table, restated from memory. §-2 again.) `strip_prefix` is faster than a regex, and each call
-> reads as the literal line it matches -- which is what let every rule here be
-> mutation-tested individually: the silver word forms, the singular suffixes, the `Fame:`
-> opener, the indent requirement on society reports.
->
-> **What the prediction got right and wrong.** Right: these features *are* one shape, and
-> the fourth through seventh (bank ~20 rules, stash ~24, stowlist 4, readylist 8) should
-> follow the same one rather than inventing a third. Wrong: the shape is not a shared
-> table. A table would have moved each rule one indirection away from the line it matches,
-> for a saving that is real only at combat's scale.
->
-> **The upgrade trigger, stated so this is a decision and not a drift.** If a feature
-> arrives whose rules need *captures* rather than a prefix and a suffix -- overwatch's ~30
-> regexes over creature links are the candidate (step 9) -- that feature builds the table,
-> and it builds it for itself first. Retrofitting the three done features onto it needs a
-> reason beyond symmetry.
+Each is marked with where it landed. The divergence log in §5 records what each
+one found.
 
-1. ~~**The line scanner.**~~ **SKIPPED — see the note above.** Extend
-   `state/character/blocks.rs` with a first-match pattern table in `defs.rs`'s shape.
-   Unlocks 2, 4, and the rest of 3.
-2. ~~**Resources.**~~ **DONE**, in `state/character/standing.rs` — the `resource` and
-   `Suffused` lines, plus Covert Arts charges, which Lich reads (`parser.rb:54`) and
-   `plan/20` did not list. 7 rules. `ResourceType` already existed
-   (`state/character/vocabulary.rs:176-233`) with no parser and no consumer.
-3. ~~**Experience, completed.**~~ **DONE**, in
-   `state/character/experience_report.rs`. ~6 rules for fame, LTE, deeds, ascension, plus
-   the two numbers Lich matches and discards (`Experience:`, `Recent Deaths:` --
-   `parser.rb:17-18`). Then **gift**, which is 54 lines of timer with zero regexes once
-   experience ticks — **ported as the pulse count only.** MEASURED: `Gift.pulse` has one
-   live caller and `started`/`ended`/`serialize` are called only from Lich's own specs, so
-   its `remaining()` is right only for someone who launched Lich the instant their gift
-   began. The arithmetic (360 minutes, restarting 594,000s later) is recorded against the
-   day the wire is found to state a start time.
-4. **Currency**, ~~then bank.~~ Currency is **DONE**, in
-   `state/character/currency.rs`: sixteen balances, ~15 rules. **Bank is still open** and
-   still needs step 6's stow default (`bank.rb:238`), so it is sequenced after 6 rather
-   than stubbing that field.
-5. **Disk, then group.** Disk is one noun list (`disk.rb:4`). Group is ~10 patterns over
-   creature links and calls `Disk.find_by_name` (`group.rb:95`). Both are what an
-   eohunter port will want first.
-6. **Stowlist and readylist, then stash.** 4 + 8 patterns, then stash's ~24. All three
-   are XML-in-text scraping, which in Cena reads off runs rather than re-matching tags —
-   the §3a bargain, as with the combat defs.
-7. **Spells: the prepared spell and the spell table.** `Frame::Spell` is parsed and
-   `GameState` has no arm for it (VERIFIED: `grep -n 'Frame::Spell' crates/cena-model/src/state.rs` is empty). Then **spellsong** (190 lines,
-   almost all arithmetic) and **fog** (269 lines, almost all logic).
-8. **Typed speech and thoughts.** See §1. Independent of everything above.
-9. **Overwatch.** ~30 regexes, 2 scripts of demand. Last of the real work.
-
-### Deliberately not scheduled
-
-- **`stance` as an enum.** It is a verbatim string today and the five stances are a closed
-  vocabulary, so the typed version is half an hour — but nothing needs it until a
-  behavior sets stance, which is M6.
-- **The `resource` command capture.** Everything else here has wire evidence in the
-  corpus or in Lich's regexes. This one wants a real sample first.
-
----
+| | Step | Built as |
+|---|---|---|
+| 1 | the line scanner | **skipped** — see §5's note; `957` regexes in `defs.rs`, not a shared substrate |
+| 2 | resources, society, citizenship, warcries, PSM changes | `character/standing.rs` |
+| 3 | experience report, gift pulses | `character/experience_report.rs` |
+| 4 | currency | `character/currency.rs` |
+| 5 | disk, group | `state/disk.rs`, `state/group.rs` |
+| 6 | stowlist, readylist, stash | `state/containers.rs`, `state/resolve.rs` |
+| 7 | the spell table, spellsong, fog | `spells.rs`, `character/spellsong.rs`, `state/fog.rs` |
+| 8 | typed speech | `state/message.rs` |
+| 9 | overwatch | `state/overwatch.rs` |
+| — | bank | `state/bank.rs` — needed step 6's stow default |
+| — | third-party cooldowns | `state/cooldowns.rs` — needed step 7's table |
 
 ## 4. Verification
 
@@ -632,6 +602,14 @@ the five consumers above.
 ---
 
 ### The `type=` tag is free text, and does not say what a spell does (2026-09-20)
+
+> **SUPERSEDED by the entry below, the same day.** The second half of this note
+> — that `offense` and `attack` are different axes — stands and is measured.
+> The first half, that the tag is an open set and `kind` should stay a
+> `String`, is **wrong**, and the author said why: this is a one-time port of a
+> near-static list, so the defensive argument for keeping it untyped does not
+> apply. Kept rather than deleted, because the reasoning that was wrong is the
+> part worth seeing.
 
 I asserted Heroism's `type=offense` in a test as though the label settled what
 the spell is. It does not.

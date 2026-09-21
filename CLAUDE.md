@@ -143,9 +143,23 @@ From `plan/05-engineering-rules.md`:
 - Reference clones are in `reference/` (gitignored): `lich-5`, `VellumFE`, `scripts`,
   `dr-scripts`, plus the Saga Discord thread. eohunter is at `C:\Gemstone\eohunter`.
 
-## Next step
+## Where the build stands
 
-**Milestone 1**, narrowed (`12` §9c):
+**M1 and M3 are complete; M2 has one item open** (PR-10's proptest coverage, below).
+`12` §8's table has **M4 — a real frontend (web first)** next, with M5 multi-session
+and M6 the first real behavior.
+
+> This section is headed by what is DONE rather than what is next, because that is
+> what it has become: three milestones of record with the next one named in a line.
+> It was called "Next step" while it held one.
+>
+> **M6 is where the deferred work lands**, and it is tabled rather than remembered:
+> `plan/20` §0b lists the sending halves of stash, bank, fog and spellsong; §0c lists
+> the known gaps, of which the **flee/arrival classifier** is the one that blocks a
+> feature — overwatch cannot complete the author's "disappeared without being seen to
+> leave" inference without it.
+
+### Milestone 1, narrowed (`12` §9c)
 
 1. ~~**Step 0 — capture a Lich login with tcpdump.**~~ **DONE 2026-09-18.** S1/S2/S4 VERIFIED,
    S3 recorded unobservable-by-design (`plan/10` §12.1).
@@ -212,14 +226,72 @@ frame vocabulary breadth, a golden corpus, and full room/combat/vitals rendering
 > and the prompt is `HR>`. A golden cut from real traffic does not accept a claim about
 > what the wire "should" contain.
 
-**Remaining before M2 is closed:** `plan/15` §2b-style recording of why `crtrStatus` is
-absent from the sampled archive months (answered: it is a newer Lich build — worth writing
-down), and **PR-10**, whose proptest strategies never reach `parse_runs`, `inner_text` or
-`directions`.
+**Remaining before M2 is closed — one of the two, as of 2026-09-21.** The
+`crtrStatus` recording is **done**: `plan/15` §2b documents the feed gaining health and
+two new flags, with the author's own words on it. **PR-10 is still open**: the proptest
+strategies never reach `parse_runs`, `inner_text` or `directions`, so three functions
+carry no property coverage.
+
+> Checked rather than assumed while marking M3 complete. Claiming three milestones
+> complete while this section listed two open items would have been the drift §−2 exists
+> to stop — so one is struck because it is done, and the other stands because it is not.
 
 **Deferred, each needing an author decision:** SE-4 (authority across generations),
 SE-6 (`Lagged` recovery unreachable). **MO-3 is FIXED** (M3 step 10): `Effects::active_in`
 distinguishes "the game stated this list and your id is not in it" from "nobody has said".
+
+**Milestone 3 — the typed character model — is COMPLETE as of 2026-09-21.**
+`plan/20` is its record: the feature list is the author's, and every item is built or
+deferred to M6 with a table of what remains. Eleven new modules
+(`containers`, `resolve`, `hands`, `bank`, `fog`, `cooldowns`, `message`, `overwatch`,
+`spells`, `spellsong`, `equality`), plus the 514-spell table cut from
+`data/effect-list.xml`. MEASURED: **137 test suites green**, `state.rs` at **472 of 550**.
+
+> **THREE PORTS SPLIT THE SAME WAY, AND THE SPLIT IS THE FINDING.** `stash.rb`,
+> `bank.rb` and `fog.rb` each turn out to be two files wearing one name: a **reading**
+> half that answers questions about the character, and a **sending** half that issues
+> commands and waits. MEASURED for stash: 13 pure functions against 12 with 45
+> send/wait/retry calls between them. The reading half is model work and is built; the
+> sending half needs the authority token and roundtime, would put `fput` in a crate with
+> no socket, and is M6. `plan/20` §0b tables what remains so it is recorded rather than
+> forgotten.
+>
+> **Two Rule 2.2a losses were found by building on top, not by audit.** The hands
+> dropped the `exist` id the wire sends (`Frame::LeftHand` preserved it;
+> `GameState::apply` matched `{ item, .. }`), found only when `hand_holding(id)` could
+> not be written. And a link nested inside a clickable `<d>` reached no consumer at all
+> — MEASURED **322 occurrences across 62 of 208 live logs**, and **zero** in the
+> committed fixtures, which is why the golden corpus did not catch it.
+>
+> **The author corrected four things no amount of testing would have caught**, each
+> recorded at the point it bit: `Spell.active` is not `Effects` and still carries what
+> never migrated; the spell `type=` tag is a closed vocabulary after all, because a
+> one-time port of a near-static list does not need the defensive reading; cooldown kinds
+> are two *cast mechanics* rather than two data sources; and "gone" does not mean "hid" —
+> an inference I had implemented with two of its three conditions, and tested with a test
+> that shared the same mistake.
+
+> **A TEST CAN PASS A MUTATION BECAUSE THE INPUT NEVER REACHES THE CODE.** This happened
+> four times in one session and is worth naming as its own failure mode, distinct from a
+> weak assertion. The bank's indentation guard, the `effect-list` cooldown tests, the
+> speech speaker rule, and the overwatch hiding inference each had a test that looked
+> right, asserted the right thing, and **never exercised the distinction it claimed to
+> test**. A green mutation run says *look at the input*, not just the assertion.
+>
+> The `effect-list` one is the sharpest: two copies of that file exist on this machine,
+> differing by **exactly** the five `<cooldown>` elements under test. Cut from the older
+> one, `with_cooldowns()` is empty and the invariant test passes over zero rows — a green
+> suite reporting a feature that is not there. The right file was picked by luck; the
+> extractor now records its source path and mtime, and a test asserts the five exist.
+
+> **SOURCE AND DATA FILES AGE INDEPENDENTLY** (author, 2026-09-20): *"reference/lich-5
+> should be pulled from upstream so it should be about the same as
+> c:\gemstone\dev\lich-5, doesn't mean the data files are the newest."* A clone can be
+> perfectly current and still hand you a stale table, because data ships with a release
+> and source ships with a commit. MEASURED: the clone has **no `data/` directory at
+> all**, so every data file in this port came from a live install. An extractor reading
+> one records its source path and mtime in the output header; one reading the clone does
+> not need to, because `git log` already says.
 
 The first live session that printed game text (2026-09-18) is evidence for exactly that
 milestone: worn inventory arrived as `a` + `pebbled grey leather doublet` split at a link
