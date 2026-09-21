@@ -457,12 +457,67 @@ is wrong. A green mutation run says look at the input, not just the assertion.
 
 ### Step 8a: spellsong, and what `spells.rb` turned out to be (2026-09-20)
 
-**`spells.rb` is mostly already done.** Its 76 lines are Infomon accessors for
-spell-circle ranks, which Cena reads as circle rows of the `skill` table
-(`SkillSet::circle`, from `plan/18`), plus `Spell.active` which is `Effects`.
-What genuinely remains is the circle-number vocabulary (`1` → `Minor Spirit`)
-and `require_cooldown`, both of which want the spell table
-(`common/spell.rb`, 954 lines) that is not ported. Not scheduled here.
+**`spells.rb`'s circle ranks are already done.** Its 76 lines are Infomon
+accessors for spell-circle ranks, which Cena reads as circle rows of the
+`skill` table (`SkillSet::circle`, from `plan/18`).
+
+> **CORRECTED 2026-09-20, by the author.** An earlier version of this note said
+> *"plus `Spell.active` which is `Effects`"*, as though the two were the same
+> thing and the item were therefore closed. They are not.
+>
+> *"Spell.active came before Effects, Lich still uses it for some things that
+> haven't made their way into Effects yet such as briar betrayer. There's also
+> tracking of third party cooldowns."* — the author
+>
+> VERIFIED. `ActiveSpell.update_spell_durations` (`infomon/activespell.rb:131`)
+> reconciles the dialog feed against `Spell.active` and carries an explicit
+> exemption list:
+>
+> ```ruby
+> ignore_spells = ["Berserk", "Council Task", "Council Punishment",
+>                  "Briar Betrayer", "Rapid Fire Penalty"]
+> ```
+>
+> Those five are held in `Spell` and **never reported by the dialog feed**, so
+> without the exemption every sync would tear them down. MEASURED over the 208
+> live XML logs: `Briar Betrayer`, `Council Task`, `Council Punishment` and
+> `Rapid Fire Penalty` appear **zero** times; `Berserk` appears 90 times and
+> **zero** of those are inside a dialog. `Effects` is therefore a *subset* of
+> what `Spell` tracks, not a replacement for it.
+
+**`Spell` is the reader for a data file, and the data file is on disk.**
+`common/spell.rb`'s 954 lines parse `data/effect-list.xml` — **515 spells, 633
+messages** (MEASURED at `C:/Gemstone/lich-5/data/effect-list.xml`). That makes
+it the same shape as the crit tables and the bestiary: static game knowledge
+that `plan/13` §4a says ships as a data file. It is a port worth doing, not a
+blocker to route around.
+
+**Third-party cooldowns** (PR #1597, merged and present in this clone) track
+which *other characters* a spell has locked out. Five spells declare one:
+>
+> | Spell | Kind | Seconds |
+> |---|---|---:|
+> | 140 Wall of Force | target | 270 |
+> | 211 Bravery | group | 180 |
+> | 215 Heroism | group | 180 |
+> | 219 Spell Shield | group | 360 |
+> | 506 Celerity | target | 240 |
+
+`target` cooldowns pair with a `target-start` message naming the character
+(`A wall of force surrounds (?<noun>[A-Z][a-z]+)\.`); `group` cooldowns are
+stamped optimistically across everyone grouped at the time of an EVOKE, because
+the game tells the caster nothing about who it landed on. `Group.spell_cooldowns`
+keys by spell number then member **noun**.
+
+Two things in that port are worth carrying over verbatim, both recorded in
+Lich's own comments: a member still locked out is **skipped rather than
+re-stamped** (`group.rb:201`), so their own cooldown keeps running; and the
+recorder uses `_members` rather than `members` because it runs on the parser
+thread and `members` would send `GROUP` and block waiting for a reply only that
+thread can parse (`group.rb:198`).
+
+Not scheduled here — it needs the spell table first — but it is a real feature
+with a live consumer, not a leftover.
 
 **`spellranks.rb` is not a classifier at all** — it is a `Marshal` cache of
 *other characters'* ranks on disk, superseded by this project's own
@@ -516,3 +571,33 @@ holding song that holds nobody.
 renews — bookkeeping owned by the renewer, not a fact about the character.
 `renew_cost` sums `song.renew_cost` over nine spell numbers, which needs the
 unported spell table. The per-song constant costs are here; the summing is not.
+
+---
+
+### The spell table, added to the list (2026-09-20)
+
+Not in this document's original nineteen, and it should have been. Added
+because the `Spell.active` correction above showed it is a real port with live
+consumers rather than a dependency to route around.
+
+**`data/effect-list.xml` → a TSV, the way `plan/13` §4a specifies.** MEASURED
+at `C:/Gemstone/lich-5/data/effect-list.xml`: **515 spells, 633 messages**, and
+per spell a number, name, circle, type, availability, mana cost, durations by
+cast type, up/down messages, and — for five of them — cooldowns.
+
+| Depends on it | Why |
+|---|---|
+| `Spells.get_circle_name` | the 1→`Minor Spirit` vocabulary |
+| `Spells.require_cooldown` | reads `Spell[num + 1]` for Aspect cooldowns |
+| `Spellsong.renew_cost` | sums `song.renew_cost` over nine spell numbers |
+| third-party cooldowns | the `<cooldown>` and `target-start` elements |
+| the five `ignore_spells` | things `Effects` does not carry at all |
+
+The shape is the same as the crit tables, the bestiary and the armament
+aliases: static game knowledge extracted once by a tool under
+`crates/cena-model/tools/`, shipped as data, read by a typed lookup. The
+extractor is the work; the table is not hand-transcribed.
+
+**Sequencing:** it wants doing before `fog` only if fog turns out to need it
+(`fog.rb` watches `room_id`, so probably not), and definitely before any of
+the five consumers above.
