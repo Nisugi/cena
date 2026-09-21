@@ -68,6 +68,7 @@ mod ask;
 mod connector;
 mod probe;
 mod run;
+mod travel;
 
 use ask::ask;
 use cena_behavior::look;
@@ -289,6 +290,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The supervisor's `run` IS the login: it connects, runs one actor over
     // the connection, and opens another if the reason warrants it. Everything
     // below happens against whichever generation is current.
+    // The walker's own view of the character, read from the first moment so
+    // the login burst is not lost to it (`travel.rs`, "Why a mirror").
+    let errand = travel::Errand::from_args(std::env::args().skip(1));
+    let hand_over = CancellationToken::new();
+    let mirror = (errand != travel::Errand::None)
+        .then(|| tokio::spawn(travel::mirror(session.subscribe(), hand_over.clone())));
     let supervisor = tokio::spawn(session.run());
 
     // --- Criterion 2: the room, from TYPED FRAMES --------------------------
@@ -325,6 +332,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let behavior = run_demo(&handle, demo, &stop).await;
 
     run_or_probe(&handle, &mut probe_events, &stop).await;
+
+    if let Some(mirror) = mirror {
+        hand_over.cancel();
+        match mirror.await {
+            Ok(joined) => Box::pin(travel::run(errand, &handle, joined)).await,
+            Err(e) => eprintln!("[travel] the mirror task failed: {e}"),
+        }
+    }
 
     // **Ctrl-C ends the hold early and then falls through to the SAME orderly
     // shutdown below.** There was no signal handling at all, so interrupting a

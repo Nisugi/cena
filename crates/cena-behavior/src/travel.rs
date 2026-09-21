@@ -59,10 +59,17 @@ mod steps;
 
 use std::collections::HashSet;
 
-use cena_map::{Action, Crossing, Exit, Map, Room, RoomId, Step, Target, Walker, priced_for};
+use cena_map::{Action, Crossing, Exit, Room, Step, Target, Walker, priced_for};
 use cena_session::{MoveFeedback, movement};
 
-pub use drive::{BEAT, DEED_DEADLINE, Ended, FOLLOW_WAIT, LOST_WAIT, Travelled, seed_for, travel};
+// What a caller needs to start a trip or show a route, so that it does not
+// reach past this crate for them: the binary has no edge to `cena-map`
+// (`layering.rs`), and should not need one to say "walk to the bank".
+pub use cena_map::binary::{LoadError, decode as read_map};
+pub use cena_map::{Map, Origin as Whence, RoomId};
+pub use drive::{
+    BEAT, DEED_DEADLINE, Ended, FOLLOW_WAIT, LOST_WAIT, Travelled, room_of, seed_for, travel,
+};
 pub use facts::{TravelNotes, walker_from};
 pub use hands::{Stored, cast_commands, store_commands, take_back};
 pub use itinerary::{Leg, Shut, ShutWhy, destination, itinerary, table};

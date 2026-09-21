@@ -144,6 +144,35 @@ pub async fn travel(
     }
 }
 
+/// Which room of the map the model's room is, by the game's number first
+/// (`cena_map::locate`). `None` when the game has not said, or the map cannot
+/// name it unambiguously.
+///
+/// Public because the walker is not the only one who asks: showing a route
+/// starts from the same question, and must get the same answer.
+#[must_use]
+pub fn room_of(map: &Map, state: &GameState, whence: Whence) -> Option<RoomId> {
+    let room = &state.room;
+    let raw = room.id.as_deref()?;
+    let title = room.title.as_deref().map(title_from_subtitle);
+    // What tells apart rooms that share a number, or have none the map
+    // knows. Safe to offer: a text that fits no candidate is ignored by
+    // `locate`, not obeyed, because it is the map's text that goes stale.
+    let description = room.description.as_ref().map(cena_session::Runs::plain);
+    let paths = room.component("room exits").map(cena_session::Runs::plain);
+    let sighting = Sighting {
+        uid: raw.parse().ok().filter(|uid| *uid != 0).map(Uid),
+        title: title.as_deref(),
+        description: description.as_deref(),
+        paths: paths.as_deref(),
+        location: None,
+    };
+    match map.locate(&sighting, whence) {
+        Located::Here { room, .. } => Some(room),
+        _ => None,
+    }
+}
+
 /// What a trip that did not simply arrive tells the player (`Notice`): why it
 /// ended, and what it changed and could not put back. Arriving with nothing
 /// owed says nothing -- the room is the news.
@@ -289,31 +318,16 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         }
     }
 
-    /// Which room of the map the model's room is, by the game's number first.
+    /// Which room of the map the model's room is, remembering the last one
+    /// so that two rooms alike in everything are told apart by the way in.
     fn locate(&mut self, map: &Map) -> Option<RoomId> {
-        let room = &self.state.room;
-        let raw = room.id.clone()?;
+        let raw = self.state.room.id.clone()?;
         let whence = match &self.was {
             Some((id, at)) if *id == raw => Whence::Still(*at),
             Some((_, at)) => Whence::Left(*at),
             None => Whence::Nowhere,
         };
-        let title = room.title.as_deref().map(title_from_subtitle);
-        // What tells apart rooms that share a number, or have none the map
-        // knows. Safe to offer: a text that fits no candidate is ignored by
-        // `locate`, not obeyed, because it is the map's text that goes stale.
-        let description = room.description.as_ref().map(cena_session::Runs::plain);
-        let paths = room.component("room exits").map(cena_session::Runs::plain);
-        let sighting = Sighting {
-            uid: raw.parse().ok().filter(|uid| *uid != 0).map(Uid),
-            title: title.as_deref(),
-            description: description.as_deref(),
-            paths: paths.as_deref(),
-            location: None,
-        };
-        let Located::Here { room: here, .. } = map.locate(&sighting, whence) else {
-            return None;
-        };
+        let here = room_of(map, &self.state, whence)?;
         self.was = Some((raw, here));
         Some(here)
     }

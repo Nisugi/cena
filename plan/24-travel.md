@@ -346,10 +346,37 @@ in, rows out, and `table` lays them out as mono lines.
 stance it did not restore. Arriving with nothing owed says nothing. The return value
 carries the same facts for a caller; the notice is for the person.
 
-**NOT WIRED, and only the author can:** a local command in the binary's run loop
-(`;route bank`) that calls `destination`, `itinerary`, `table` and `say`. Only the author
-runs the binary (`CLAUDE.md`, Credentials), so it is left as the next thing to do *with*
-them rather than written blind.
+**WIRED 2026-09-21, BUILT NOT RUN** -- `crates/cena/src/travel.rs`. The author asked
+whether there was a login to test with. There was a login (M1's) and nothing that called
+travel from it. Two run modes now, and the binary has no interactive prompt, so they are
+flags like the ones it already has (`--capture`, `--psm`):
+
+```powershell
+$env:CENA_MAP = "E:\Gemstone\data\cena_data\gs.map"
+cargo run -p cena -- --route bank      # says the route. SENDS NOTHING. Run this first.
+cargo run -p cena -- --go bank         # says it, then walks. Ctrl-C stops the walk.
+```
+
+- **`--route` sends no command at all**, so it is the first live test: it proves the map
+  loads, the room is found and the walker's facts are read, with nothing at stake.
+- **Ctrl-C during `--go` stops the walk, not the process**: the trip gets its one `get`
+  per stored item, and the session then quits cleanly as it always does.
+- **A mirror, because a behavior has no live read of the model** (4a's finding). The
+  snapshot taken before login is empty and the login burst overflows an unread event ring
+  (MEASURED, 99 dropped on the first live session), so a task folds every frame from the
+  first moment and hands its state and its **same** subscription to the trip together.
+- **The mirror restores the character store when the session does** -- the moment the game
+  says who this is. The session restores into its own state and publishes no frame for
+  it, so a mirror that only folded frames would never learn a skill and every exit priced
+  on one would read "not known yet". Found by reading `load_character`, before any run.
+- **No new crate edge.** The binary may not depend on `cena-map` (`layering.rs`), so
+  `cena_behavior::travel` re-exports the five names a caller needs, as `cena-session`
+  does the model's for behaviors.
+
+**What the first run is most likely to show wrong**, in the order to look: the map path;
+`room_of` returning nothing (the game's room number not in the map's `uid`s); a route
+full of "not known yet" (a fact the mirror did not get); then, only on `--go`, the first
+crossing that is more than a plain move.
 
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,
