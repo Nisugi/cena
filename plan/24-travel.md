@@ -108,10 +108,14 @@ sack. Seeded randomness for `MoveAnyWhile`/`WanderWhile`. `Replan`.
 > Stage 2's two deferred remedies are in: full hands are emptied for the move and given
 > back when it lands; Sigil of Resolve is cast for a walker too injured to climb, if known.
 >
-> **Not run yet, and priced shut so the pathfinder goes round them** (18 of 2,915 steps
-> exits): `speak`/`restore_speech` (2), `take_out`/`put_back` (2), `ask` (1),
-> `order_by_name` (4), and commands carrying `{item:…}` (9). They need the game's replies
-> parsed or an item looked up by name -- stage 4 facts.
+> ~~**Not run yet, and priced shut**~~ **BUILT 2026-09-21**, all 18 exits (census over the
+> converted map: `{item:…}` 9, `order_by_name` 4, `speak` 2, `take_out` 2, `ask` 1). The
+> trip reads the word and the number out of the game's answer itself (`travel/replies.rs`).
+> The driver keeps what needs ids (`travel/kept.rs`): the key and its container are the two
+> links in `You remove …`, as upstream reads them, and `{item:…}` is looked up on the walker
+> and then in the room when the line is sent. **A walker with no key says so before anything
+> is unlocked** (`Trip::could_not`) and the trip goes round. A language left changed is
+> reported at the end, as a stance is.
 
 ### Stage 4 — the driver, and filling `Walker` from the model
 The `async fn`, the authority, cancellation, and `Walker::from(&GameState, &profile)`.
@@ -444,11 +448,47 @@ them on its next save, losing the player's targets silently. Now it refuses the 
 **Still open from that list:** command links and target windows in Messaging, which wait
 for their first caller (likely the route table: click a room to go there).
 
+**Closed since:** a target is set from inside Hydra with `--save-target <name>` (go2's
+`;go2 save`), and `destination` ends as go2 does, with words from a room's title or
+description when they fit one room; fitting several, the binary lists them by number.
+
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,
 the day-pass sack scan. And trips that start trips: the silver detour, the five errands.
 A trip must be able to **stop and say why** (the vaalorn door's gem, the bridge wheel's
 helper) and to say what it met (a waylaid caravan's bandits).
+
+> **BUILT 2026-09-21** (`travel/preflight.rs` pure, `travel/drive/preflight.rs` the asking).
+> Before the first plan, and only of a profile that asks for it:
+>
+> | asked | becomes | upstream |
+> |---|---|---|
+> | `urchin status` | flag `urchin_access` | `go2.lic:975-987` |
+> | `look in` the day-pass sack, `look` at each pass | flag `day_pass:imt,wl` per pass still good | `day_pass_cost_head.rb` |
+> | `wealth gigas` | the Hinterwilds detour by teleporter, if there are enough fragments | `go2.lic:2191`, `:337-371` |
+> | `wealth quiet` | the silver detour | `go2.lic:2217-2299` |
+>
+> **The silver a route asks for is already in the map**: the 88 `silver-cost:<to>:<n>` tags
+> survived conversion as plain room tags, every one a plain number (MEASURED over
+> `map-1789942730.json`: 88 tags, 0 scripted), so the detour needed no map change. Short of
+> the fare and allowed the bank (`get_silvers`), the trip walks to the nearest bank its
+> silver can reach, prices again from there, withdraws the difference, and looks again.
+>
+> **A trip inside a trip is the same driver walking another `Trip`** (`Driver::walk_to`):
+> same hands, same stop, same notes. The detours and every errand use it.
+>
+> **Stop and say why is `Ended::Halted`**, with the words in `Travelled::halted` and said as
+> a notice. Where upstream `exit`s or `pause_script`s for the player -- too poor to reach a
+> bank, the bank has not enough, a gem to hold, a helper to find -- the trip halts and is
+> started again. A walker that waits for a person cannot be stopped cleanly.
+>
+> **go2's own settings:** `delay` is waited in every room walked into; `stop_for_dead` halts
+> beside a body (upstream pauses), and is not asked of the room a trip starts in, so starting
+> again beside the body walks on. **`typeahead` is not ported, on purpose**: every move here
+> is verified by the room it lands in before the next is sent, which is the rule Vellum's
+> recorded bugs argue for. *Not built:* what a waylaid caravan met (the trip just plans
+> again, per §5's ruling on hostiles), and go2's `locker` target, which needs the
+> character's CHE and the model does not know it.
 
 ### Stage 6 — the routines, one at a time
 27 named, each written from the script it is pinned to in
@@ -456,6 +496,41 @@ helper) and to say what it met (a waylaid caravan's bandits).
 (`research/mapdb-inventory/chokepoints.py` over the routine exits): expected first are
 `Trinket`, `Confluence`, `Seeking`, `MinotaurMaze`, `Patrol`, `Signposts`; the one-room
 puzzles last.
+
+> **BUILT 2026-09-21: every routine the map names has a solver** (`travel/routines/`, one
+> file each). MEASURED over the converted map, 4,485 routine exits in 31 kinds: `confluence`
+> 3,234, `patrol` 570, `minotaur_maze` 497, `signposts` 75, `seeking` 37, `trinket` 28,
+> `guild_password` 9, `day_pass` 6, `flight_of_steps` 4, and 22 kinds of one or two exits.
+>
+> **A routine is a pure solver, like the trip** (`routines.rs`): shown what the walker sees
+> -- the room, what is in it, the game's answer to the last thing sent -- it says what is
+> next. No socket and no clock, so each is tested by table (**223** tests: `cargo test -p cena-behavior --lib
+> travel::routines -- --list | grep -c ": test$"`) and replays the
+> same way. **One loop in the driver runs them all** (`drive/solve.rs`). A routine's `move`
+> goes back through the trip (`Trip::aside`), so it has the whole ladder of remedies a plain
+> exit has and what its steps change is owed back like any crossing's; `Script.run('go2')`
+> is a trip inside the trip. When a routine ends, **where the walker landed is the trip's to
+> look at**: at the exit's destination it walks on, elsewhere it plans again, and if nobody
+> moved the exit is given up rather than tried twenty times.
+>
+> What upstream keeps in Lich-session globals -- the Confluence's learned exits, the maze's
+> -- is `routines::Kept`: the driver holds it for the trip and lends it to each crossing,
+> since one walk through the plane is many of these exits.
+>
+> **How it was written:** the framework, signposts, patrol, the guild door and the
+> Confluence by hand; the other 27 by seven agents in isolated worktrees, each from its
+> pinned script, each killing its own mutants, merged and reviewed here. The review changed
+> three things: the Vaalorn door asked a guessed noun list whether a thing is a gem where
+> the model has Lich's type table; the maze forgot what it learned each crossing; and an
+> `Await` after a `Put` dropped what was heard in between (the mural's first verses).
+>
+> **UNVERIFIED, all of it, against the live game.** Every solver's game text is upstream's
+> regexes turned into `contains` checks, and the lines in the tests beyond those fragments
+> are invented. Each file's module doc lists its own guesses and where it leaves upstream.
+> The ones most worth a live look, because a wrong guess fails silently rather than loudly:
+> whether the flights of steps are in the room description or the objects; whether a
+> container's contents are in the model once it is opened (the cutter's ticket); and the
+> crown door's `incant <n> crown`.
 
 ## 4. Crate graph
 

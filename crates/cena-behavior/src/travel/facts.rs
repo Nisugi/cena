@@ -30,7 +30,8 @@
 //! | `known_spells`, `affordable_spells` | [`knows`](super::knows): Lich's `known?` and `affordable?` | filled |
 //! | `society`, `society_rank`, `citizenship` | `character.standing` | filled |
 //! | `worn`, `worn_nouns` | the inventory snapshot: `worn` on the `player` | filled |
-//! | flags the planner works out (`urchin_access`, `day_pass:…`, `hunting`, …) | pre-flight, stage 5 | **not yet** |
+//! | `urchin_access`, `day_pass:…` | pre-flight asks the game (`drive::preflight`), and the driver adds them | filled, by the driver |
+//! | `premium_account`, `platinum`, `hunting`, `mounted`, `own_disk_here`, `leading_group` | nothing says yet | **not yet** |
 //!
 //! "Not yet" is safe and is not free: an exit priced on a fact that is still
 //! unknown is impassable, so the walker goes round it. Each row filled in

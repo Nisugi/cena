@@ -7,13 +7,14 @@
 //! frames and sends what it asks for is a later stage (`plan/24` §3, stage 4),
 //! and is thin by design.
 //!
-//! # What it crosses so far
+//! # What it crosses
 //!
-//! [`Crossing::Command`] and [`Crossing::PassThrough`] -- 83,270 of the map's
-//! 84,867 exits -- and it **routes around everything else**: an exit this
-//! build of the walker cannot cross yet is priced shut by the trip's own
-//! pricing, exactly as a banned one is, so the pathfinder never offers it.
-//! Steps and routines arrive with the stages that can run them.
+//! Everything this build can name: a plain command, a list of steps
+//! ([`steps`]), a named routine ([`routines`], handed to the driver as
+//! [`Said::Routine`]), and a pass through a room only the map has. It
+//! **routes around everything else** -- a script nothing has ported, a kind
+//! of crossing a newer map names -- which the trip's own pricing shuts,
+//! exactly as it does a banned exit, so the pathfinder never offers it.
 //!
 //! # Arrival is where the walker *is*, not what the game said
 //!
