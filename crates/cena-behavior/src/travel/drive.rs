@@ -78,6 +78,8 @@ pub struct Travelled {
     pub stance_before: Option<String>,
     /// Exits the game said do not exist, as `(from, to)`.
     pub wrong_for_the_map: Vec<(RoomId, RoomId)>,
+    /// What the trip's choices were seeded with ([`seed_for`]), for a log.
+    pub seed: u64,
 }
 
 /// Walk to `goal`.
@@ -97,18 +99,18 @@ pub async fn travel(
     notes: &mut TravelNotes,
     wrote: impl FnMut(&TravelNotes),
 ) -> Travelled {
-    let mut trip = Trip::to(goal);
     if handle.claim(token).await.is_err() {
         return Travelled {
             ended: Ended::Stopped(BehaviorError::AuthorityHeld),
             still_stored: Vec::new(),
             stance_before: None,
             wrong_for_the_map: Vec::new(),
+            seed: 0,
         };
     }
     let (snapshot, events) = joined;
-    let company = snapshot.state.group.members();
-    let company = company.iter().map(|member| member.id.clone()).collect();
+    let seed = seed_for(&snapshot.state, goal);
+    let mut trip = Trip::seeded(goal, seed);
     let mut driver = Driver {
         handle,
         cancel,
@@ -122,7 +124,6 @@ pub async fn travel(
         stance_before: None,
         heard: 0,
         lost_since: None,
-        company,
         behind: Vec::new(),
     };
     let ended = driver.walk(&mut trip, map, notes, wrote).await;
@@ -136,7 +137,42 @@ pub async fn travel(
         still_stored: driver.stored,
         stance_before: driver.stance_before,
         wrong_for_the_map: trip.wrong_for_the_map().to_vec(),
+        seed,
     }
+}
+
+/// The seed for the choices a maze asks of this trip.
+///
+/// # From the wire, so a replay needs nothing new
+///
+/// The recorder keeps the bytes that crossed the wire and nothing else
+/// (`cena_platform::record`), so a seed drawn from the machine would be lost
+/// and a replay would wander differently. This one is made of three things
+/// the wire already said: **the game's clock at the last prompt**, the room
+/// the character is in, and where it is going. Two trips through the same
+/// maze differ, because the clock has moved; a replay of either does not,
+/// because its prompts say the same second.
+///
+/// `game_time`, never `game_time_now`: the second adds the machine's own
+/// elapsed time, which is exactly what a replay cannot reproduce.
+#[must_use]
+pub fn seed_for(state: &GameState, goal: RoomId) -> u64 {
+    let room = state.room.id.as_deref().unwrap_or("");
+    let mut seed = u64::from(state.game_time().unwrap_or(0));
+    seed = mix(seed ^ u64::from(goal.0).rotate_left(32));
+    for byte in room.bytes() {
+        seed = mix(seed ^ u64::from(byte));
+    }
+    seed
+}
+
+/// `splitmix64`'s finaliser: every input bit reaches every output bit, so
+/// clocks a second apart do not make seeds a bit apart.
+const fn mix(mut x: u64) -> u64 {
+    x = x.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    x = (x ^ (x >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    x ^ (x >> 31)
 }
 
 struct Driver<'a, N> {
@@ -155,9 +191,7 @@ struct Driver<'a, N> {
     heard: usize,
     /// When the walker last stopped knowing where it is.
     lost_since: Option<Instant>,
-    /// Who was grouped with the walker when it set out, by id.
-    company: Vec<String>,
-    /// Of those, who a crossing is still waiting for.
+    /// Who a crossing is still waiting for, by id.
     behind: Vec<String>,
 }
 
@@ -422,18 +456,21 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
     /// `X joins your group.` or `You reach out and hold X's hand.`, striking
     /// each name as it comes, until none is left.
     ///
-    /// Two things differ, and both are upstream's gaps rather than choices.
-    /// Its list is `$group_members`, which **nothing in any reference sets**
-    /// (`grep -rn '\$group_members' reference/` finds only the three map
-    /// scripts that read it), so there it is the player's own script's job;
-    /// here it is the group the model had when the trip began. And its only
-    /// way out of a follower who never comes is typing `go`; here it is the
-    /// clock, and a stop.
+    /// Who is waited for is **the group, as the model has it now** -- the
+    /// port of Lich's `Group` (author, 2026-09-21: *"we don't use
+    /// `$group_members` ... we use what we ported from the Group module"*).
+    /// Upstream's list is a global nothing in any reference sets; the group
+    /// is what it stood for. Asked here and not when the trip set out, so
+    /// someone who joined on the road is waited for too.
+    ///
+    /// Upstream's only way out of a follower who never comes is typing `go`;
+    /// here it is the clock, and a stop.
     ///
     /// Listening starts now, as upstream's `clear` has it: a rejoining heard
     /// before the crossing is not one after it.
     async fn await_followers(&mut self, trip: &mut Trip) -> Result<(), Ended> {
-        self.behind.clone_from(&self.company);
+        let group = self.state.group.members();
+        self.behind = group.iter().map(|member| member.id.clone()).collect();
         let until = Instant::now() + FOLLOW_WAIT;
         while !self.behind.is_empty() && Instant::now() < until {
             self.hold(trip).await?;

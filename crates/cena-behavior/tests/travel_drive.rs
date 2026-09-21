@@ -9,12 +9,16 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use cena_behavior::BehaviorError;
-use cena_behavior::travel::{Ended, FOLLOW_WAIT, LOST_WAIT, TravelNotes, Travelled, Why, travel};
+use cena_behavior::travel::{
+    Ended, FOLLOW_WAIT, LOST_WAIT, TravelNotes, Travelled, Why, seed_for, travel,
+};
 use cena_map::{Map, Room, RoomId};
 use cena_platform::{AnsweringSource, TranscriptHandle};
 use cena_session::group::{GroupEvent, Member};
 use cena_session::hands::Hand;
-use cena_session::{AuthorityToken, CommandId, Gate, Origin, Session, SessionHandle};
+use cena_session::{
+    AuthorityToken, CommandId, Frame, GameState, Gate, Origin, Session, SessionHandle,
+};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -72,6 +76,24 @@ fn set_out_with(
     CancellationToken,
     SessionHandle,
 ) {
+    set_out_as(stop, rooms, |state| {
+        for member in company {
+            state.group.apply(&GroupEvent::Joined(member.clone()));
+        }
+    })
+}
+
+/// [`set_out`], with whatever else the character knows as it sets out.
+fn set_out_as(
+    stop: &CancellationToken,
+    rooms: &'static str,
+    knows: impl FnOnce(&mut GameState),
+) -> (
+    JoinHandle<Option<Travelled>>,
+    TranscriptHandle,
+    CancellationToken,
+    SessionHandle,
+) {
     let (source, transcript) = AnsweringSource::new(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
@@ -84,12 +106,7 @@ fn set_out_with(
         name: "broadsword".into(),
     };
     snapshot.state.left_hand = Hand::Empty;
-    for member in company {
-        snapshot
-            .state
-            .group
-            .apply(&GroupEvent::Joined(member.clone()));
-    }
+    knows(&mut snapshot.state);
     let typed = handle.clone();
     tokio::spawn(session.into_actor().run());
 
@@ -388,4 +405,91 @@ async fn alone_the_walker_does_not_wait() {
     assert_eq!(travelled.ended, Ended::Arrived);
     assert!(began.elapsed() < FOLLOW_WAIT, "it waited for nobody");
     session.cancel();
+}
+
+/// The seed is made of what the wire said, so a replay has it for nothing:
+/// the same prompt second, room and goal give the same seed, and any one of
+/// them changing gives another.
+#[test]
+fn the_seed_is_the_wires_and_not_the_machines() {
+    let at = |second: &str, room: &str| {
+        let mut state = GameState::default();
+        state.apply(&Frame::Prompt {
+            time: second.into(),
+            text: ">".into(),
+        });
+        state.room.id = Some(room.into());
+        state
+    };
+    let seed = seed_for(&at("1700000000", "1001"), RoomId(3));
+    assert_eq!(
+        seed,
+        seed_for(&at("1700000000", "1001"), RoomId(3)),
+        "a replay"
+    );
+    assert_ne!(
+        seed,
+        seed_for(&at("1700000001", "1001"), RoomId(3)),
+        "a second on"
+    );
+    assert_ne!(
+        seed,
+        seed_for(&at("1700000000", "1002"), RoomId(3)),
+        "another room"
+    );
+    assert_ne!(
+        seed,
+        seed_for(&at("1700000000", "1001"), RoomId(4)),
+        "another goal"
+    );
+    // A second apart is not a bit apart: the maze's first turn must differ.
+    let next = seed_for(&at("1700000001", "1001"), RoomId(3));
+    assert!((seed ^ next).count_ones() > 8, "{seed:x} against {next:x}");
+}
+
+/// A maze: every way out is tried at random until the exits change.
+const MAZE: &str = r#"[
+  {"id":1,"uid":[1001],"exits":[{"to":3,"kind":"scripted","cost":1,
+     "steps":[{"move_any_while":[["northwest","southwest","northeast","southeast"],
+                                 {"exits_are":["ne","se","sw","nw"]}]}]}]},
+  {"id":3,"uid":[1003]}
+]"#;
+
+/// The first turns a walker takes in the maze, setting out at this second of
+/// the game's clock. The game never lets it out, so every turn is a choice.
+async fn turns_at(second: &'static str) -> Vec<String> {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, _) = set_out_as(&stop, MAZE, |state| {
+        state.apply(&Frame::Prompt {
+            time: second.into(),
+            text: ">".into(),
+        });
+        state.room.exits = Some(["ne", "se", "sw", "nw"].map(str::to_owned).to_vec());
+    });
+    for _ in 0..400 {
+        if transcript.written_count() >= 8 {
+            break;
+        }
+        tokio::time::advance(Duration::from_millis(50)).await;
+        tokio::task::yield_now().await;
+    }
+    stop.cancel();
+    let _ = walk.await;
+    session.cancel();
+    transcript.lines().into_iter().take(8).collect()
+}
+
+/// The driver gives the trip the wire's seed: the same second walks the maze
+/// the same way, and another second walks it another. With the seed fixed
+/// (`Trip::to`) the last assertion fails -- every trip would take one walk.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_maze_is_walked_by_the_wires_seed() {
+    let first = turns_at("1700000000").await;
+    assert_eq!(first.len(), 8, "the walker never wandered: {first:?}");
+    assert_eq!(first, turns_at("1700000000").await, "a replay");
+    assert_ne!(
+        first,
+        turns_at("1700000777").await,
+        "another day, another walk"
+    );
 }

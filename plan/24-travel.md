@@ -278,9 +278,23 @@ how Hydra gets `hydra.map` (`plan/21` §6, open). First live walk, author presen
 > `FOLLOW_WAIT` (30s) and a stop. Five mutations, all caught -- one of them by hanging the
 > suite, so that test is now bounded too and a missing deadline fails instead.
 >
-> **Still not yet:** `Trip::seeded` is not fed a recorded seed, because the session does not
-> record one yet (the fixed seed it has is at least the same every replay); and the
-> planner's own flags (`urchin_access`, `day_pass:...`) are stage 5.
+> **CORRECTED by the author the same day:** *"we don't use $group_members ... we use what we
+> ported from the Group module."* The driver had copied the group when the trip set out.
+> It now asks the model's group **at the moment of the wait**, so someone who joined on the
+> road is waited for too, and there is no second list to disagree with the first.
+>
+> **The seed, BUILT 2026-09-21** (`drive::seed_for`). A maze is walked by choosing at
+> random, and the choices have to come out the same on a replay. The recorder keeps the
+> bytes that crossed the wire and nothing else, so a seed drawn from the machine would be
+> lost. This one is **made of what the wire already said**: the game's clock at the last
+> prompt (`game_time`, never `game_time_now`, which adds the machine's own elapsed time),
+> the room, and the goal, mixed with `splitmix64`'s finaliser so that a second apart is
+> not a bit apart. Two trips through the same maze differ; a replay of either does not;
+> nothing new is recorded. `Travelled::seed` reports it for a log. Four mutations, all
+> caught -- including the driver ignoring the seed, which only a walk through a maze over
+> a real session could see.
+>
+> **Still not yet:** the planner's own flags (`urchin_access`, `day_pass:...`) are stage 5.
 
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,
