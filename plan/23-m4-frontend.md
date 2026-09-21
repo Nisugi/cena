@@ -1,0 +1,400 @@
+# Milestone 4 — a real frontend, web first
+
+> **STATUS: a plan, not a record.** Nothing here is built. `plan/20` is what a
+> finished milestone's document looks like; this is the other kind, and it will
+> be wrong in places that only building will find.
+>
+> Written 2026-09-21, because an outside team offered to implement M4 and asked
+> six questions — and **five of the six had never been decided.** Answering them
+> in a chat reply would have made the decisions real without making them
+> findable. This file is where they go.
+
+---
+
+## 0. Why this document exists now
+
+`plan/12` §8's table says M4 is *"a real frontend (web first — it is also
+mobile)"*. That one line was the entire specification until today.
+
+It was enough while M2 and M3 were the work. It stopped being enough the moment
+someone outside this repo proposed to build against it, because the questions
+they asked — what does the frontend connect to, who owns which crate, what does
+the first slice contain — are answerable only from decisions scattered across
+`plan/12`, `CLAUDE.md`, and one disabled CI job.
+
+**The cost of not having written this down was measured in the asking.** The
+team's proposal included *"optional Lua remains supported in the design"*, and
+`CLAUDE.md` — under a heading reading **do not reopen** — said *"No Lua, no
+Luau, no Rhai, no DSL."* That was wrong. Lua is **deferred, not reversed**
+(author, 2026-09-21: *"Lua is on the table, just not now."*), and the file has
+been corrected. A contributor reading it would have been told a live question
+was closed.
+
+---
+
+## 1. What is already decided, and where it is written
+
+These are not M4 decisions. They are existing constraints M4 inherits, gathered
+here so nobody has to find them again.
+
+| Constraint | Source | What it forbids |
+|---|---|---|
+| **One binary** | `12` §1a, marked **Binding** | *"no design that assumes a second cooperating process"* |
+| **Parse first** | `CLAUDE.md`, `12` §3 | a frontend that sees raw bytes or unparsed text |
+| **One parser, N classifiers** | `12` §3a | a frontend that re-tokenizes markup |
+| **Dependencies point down** | `05` §1, `12` §2 | `cena-ui` depending on `cena-session` |
+| **No scripting runtime *yet*** | `CLAUDE.md`, corrected 2026-09-21 | designing *around* one now — not proposing one later |
+| **Desktop-first** | `12` §1a | treating mobile UX as M4 scope |
+
+### 1a. The one-binary rule, stated precisely, because it decides the transport
+
+The temptation is to read "one binary" as forbidding a web server. It does not.
+The rule's own words are *"no design that assumes a second **cooperating
+process**"*, and its reason is mechanical (`12` §1a):
+
+> Mobile OSes suspend background processes, so Lich's proxy-process-plus-
+> frontend-process architecture cannot work there. **One process survives
+> backgrounding; two cooperating ones do not.**
+
+So the test is not "is there a socket" but **"does game state or session
+lifetime live in a second process?"**
+
+| Shape | Allowed | Why |
+|---|---|---|
+| HTTP/WebSocket server **inside** the `cena` binary, browser connects | **yes** | the browser is a *viewer*; suspend it and the session survives |
+| A separate server process the binary talks to | **no** | two cooperating processes — the exact Lich shape §1a rejects |
+| Browser holding authoritative state the binary lacks | **no** | state would not survive the viewer closing |
+
+**This settles the question the Despana team asked.** A local authenticated
+WebSocket serving assets and state from the Cena binary is consistent with §1a.
+A separate server is not.
+
+---
+
+## 2. The decisions this document makes
+
+Each is a real choice with an alternative that was considered.
+
+### D1. The frontend is a server inside the binary, and the browser is a viewer
+
+Per §1a. The binary gains an optional HTTP + WebSocket listener, bound to
+loopback by default.
+
+**What the server is for — three jobs with different lifetimes**, worth
+separating because only two of them are per-session:
+
+| Job | Per session? | Shape |
+|---|---|---|
+| Serve the frontend's assets (HTML/JS/CSS) | **no** — the same bytes for everyone | plain HTTP GET |
+| Carry state to the browser | **yes** | snapshot on connect, then a delta stream |
+| Carry commands back | **yes** | into the existing command queue |
+
+Nothing else. It is **not** a remote-control API, not a plugin host, and not a
+second way into the game that bypasses the command queue.
+
+A command from the browser is `Origin::Manual` (`command/verdict.rs:39`) and
+takes the identical path to one typed locally — which, note, means it
+**deliberately does not touch the authority token**:
+
+> *"Manual input is not a claimant (`plan/12` §4.1, CORRECTED 2026-09-18). It
+> jumps the queue and it never touches the authority token. An earlier draft
+> made it priority 1 and preemptive, which meant typing `say hi` mid-hunt would
+> abort Hunt."*
+
+So typing into the browser mid-behavior behaves exactly as typing into a
+terminal mid-behavior does, and neither cancels the behavior. This is a case
+where "the same path" is load-bearing: a frontend that invented its own
+submission route would have to re-derive that rule and would probably get it
+wrong in the direction the 2026-09-18 correction already rejected.
+
+**Alternative considered:** Tauri, which `cena-gui-is-primary` records as not
+ruled out. Deferred rather than rejected — Tauri is a *packaging* decision that
+can wrap the same served UI later, and making it now would couple M4 to a
+toolchain before there is anything to package.
+
+### D1a. One listener on one port, with the session as a parameter
+
+**Not a server per session, and not a port per session.** The question was asked
+directly (author, 2026-09-21: *"each session gets its own server or its own
+port?"*) and it has three answers pointing the same way.
+
+**§1a forbids the strongest form.** A server per session that outlived the
+binary would be a second cooperating process. Even inside one process, N
+listeners is N things to bind, authenticate and tear down on a crash.
+
+**Ports are a shared, hostile namespace.** With `12`'s 3–25 characters that is
+up to 25 allocations, a user who must know which port is which character, and a
+startup failure whenever one is already taken — a failure with nothing to do
+with the game.
+
+**The session layer already answers it.** `SupervisedSession::subscribe()`
+(`supervisor.rs:200`) returns `(Snapshot, broadcast::Receiver<Event>)` —
+snapshot-then-stream, per session, over a `tokio::broadcast` channel that
+**already supports many independent subscribers**. One server calling
+`subscribe()` once per session is what that API is shaped for; N servers would
+each hold a private copy of something built to be shared.
+
+> That `subscribe` already returns snapshot-then-stream is not a coincidence —
+> it is the same shape D3 arrived at independently, which is evidence the seam
+> is where it belongs rather than where this plan wants it.
+
+So: **one listener, one port**, and a session id selects which session a
+connection or a message concerns.
+
+#### The problem this surfaces: there is no session id
+
+MEASURED: `grep -rn "SessionId\|session_id" crates/cena-session/src/` returns
+**nothing**. `SupervisedSession` has no identity, because `main.rs` builds
+exactly one and never needs to name it.
+
+That is correct for today and **blocks M4's wire format**, since every message
+must say which character it is about.
+
+**Decision: add `SessionId` in M4, not M5.** It is a newtype and a field. The
+cost of deferring is a wire-format migration in the very next milestone, which
+is the change §3's "session-aware from the start" exists to avoid.
+
+### D2. `cena-ui` stays frontend-agnostic; the web frontend is a new crate
+
+`plan/12` §2 already fixes this:
+
+```
+cena-ui          frontend-agnostic snapshot + input types     (cena-model)
+cena-tui/gui/web frontends                                    (cena-ui, cena-session)
+```
+
+`cena-ui` may depend on **`cena-model` only**. It holds the view types and the
+input vocabulary — what a frontend needs to *render* and *submit*, with no
+transport, no HTML and no framework. The web frontend is `cena-web`, depending
+on `cena-ui` and `cena-session`.
+
+**Why not put it all in `cena-web`:** because the second frontend is what proves
+`cena-ui` earned its existence, and `12` §8 puts TUI/GUI at M10. Until then
+`cena-ui` is a trait with one implementor in all but name — so **it must stay
+small**, and the rule of three (`05` §−1) applies to anything added to it.
+`cena-ui` is one line today; it should gain types M4 actually needs and nothing
+speculative.
+
+### D3. The wire is a snapshot plus a delta stream, both serde
+
+`cena-model` **already depends on serde** (`crates/cena-model/Cargo.toml:8`) and
+the character store established the precedent — `snapshot.rs:26`'s header is
+literally *"Why serde and not a database"*.
+
+> **But the view types live in `cena-ui`, which may depend on `cena-model`
+> ONLY** (`layering.rs:260`). Adding serde there is a deliberate allowlist edit,
+> not a manifest line — and the allowlist covers dev-dependencies too. That edit
+> is part of M4 and should be made knowingly, with the reason recorded beside
+> the entry the way the existing one is.
+
+- On connect, the frontend receives **one whole snapshot**.
+- Thereafter it receives **events**, and `cena-session`'s `Event`
+  (`actor.rs:196`) is already close to the right vocabulary: `Frame`, `Combat`,
+  `SyncNeeded`, `Sent`, `StateChanged`, `ConnectFailed`.
+
+**`Event` is not shipped to the browser as-is.** It carries `Box<Frame>` and
+`Arc<ChunkFacts>` — protocol and model internals whose shape is a private
+matter. `cena-ui` defines the *view* types, and the mapping from `Event` to them
+is the contract. A frontend coupled to `Frame` would make every parser change a
+breaking frontend change, which is precisely the coupling `12` §3a exists to
+prevent.
+
+> **`Event` already anticipates a frontend**, and that is evidence the seam is
+> in the right place. `Event::ConnectFailed`'s doc says the retry ladder is
+> published rather than only logged because *"a log file is not where someone
+> watching a client find its way back looks"*, and that `cena-session` does not
+> print because **"a library must not own a terminal"**. M4 is the thing that
+> was being left room for.
+
+### D4. Authentication is required, on loopback, from the first commit
+
+The listener is authenticated even bound to loopback. Any process on the machine
+can reach loopback, and this socket can **send commands to a live game
+character**. An unauthenticated local socket is a local privilege escalation
+into someone's account.
+
+**Not deferred to "later hardening."** A socket that ships unauthenticated gets
+used unauthenticated.
+
+### D5. Login stays where it is for the first slice
+
+The session is started and logged in by the existing mechanism (`plan/10`,
+live-verified); the frontend attaches to a running session.
+
+**Reason beyond scope control:** `CLAUDE.md`'s credential rule — *"do not log
+into a live game service without the author present"* — means the login path
+cannot be exercised by whoever is writing the frontend. Account selection in the
+browser is a later slice, and it needs its own thinking about where credentials
+live.
+
+---
+
+## 3. The first slice
+
+Deliberately shaped like `12` §7.1's M1 slice: a list of what is in, a list of
+what is out, and demonstrable at the end.
+
+| In | Out |
+|---|---|
+| Story output (text, styled by the runs the parser already produces) | full markup fidelity, themes |
+| Command input, through the existing queue | macros, history, aliases |
+| Room: title, description, exits, contents | the map, routing, travel |
+| Hands, vitals, roundtime | stats, skills, PSMs, inventory panels |
+| Connection status, including the retry ladder | account selection, login UI |
+| One session | multi-session switching (**M5**) |
+| Reconnect handled correctly | — |
+
+**Reconnect is in the first slice and is not new work.** It exists and is
+live-verified: the backoff ladder, the two stop conditions, and §5.2's rule that
+invalidated facts become `Unknown` rather than stale. The frontend's job is to
+*render* that correctly — an `Unknown` vital must not display as zero — and to
+consume `ConnectFailed`. Rebuilding any of it would be a regression.
+
+**Session-aware from the start, multi-session deferred.** Every message carries
+a session id even while there is exactly one. Retrofitting an id into a wire
+format is the kind of change that touches every message, and M5 is the *next*
+milestone.
+
+---
+
+## 4. What must not be assumed
+
+- **No scripting runtime.** Nothing in M4 may assume Lua exists, and no
+  abstraction may be added whose only purpose is to host one. This is
+  sequencing, not prohibition — see `CLAUDE.md`'s corrected entry. `12` §9d
+  already refuses a `GameAdapter` built for a deferred DragonRealms on the same
+  grounds, and the reasoning transfers exactly.
+- **No Vellum wire compatibility**, and no import of its saved settings.
+  `plan/13` says why this is a new codebase rather than a fork.
+- **No second process.** §1a.
+- **No `GameState` on the wire.** D3.
+
+---
+
+## 4a. What is missing, measured
+
+A survey of the frontend-facing surface (2026-09-21) found six gaps. None is
+large; all are load-bearing, and naming them here is cheaper than finding them
+at implementation time.
+
+| # | Gap | Evidence |
+|---|---|---|
+| 1 | **No serializable view of `GameState`.** It has no serde derives and holds `Instant`, `Runs` and ten private fields | `state.rs:110`, `equality.rs:9-13` |
+| 2 | **`cena-ui` cannot depend on serde** without editing the allowlist | `layering.rs:260` — `CENA_UI_MAY_DEPEND_ON = ["cena-model"]` |
+| 3 | **Line assembly lives in the binary**, not a shared crate | `run.rs:506-566` |
+| 4 | **`SupervisedSession::subscribe` hardcodes `lifecycle: State::Connecting`** | `supervisor.rs:204` |
+| 5 | **No input vocabulary**, though Rule 1.3 specifies one | `05` §1.3 (`:258-264`) |
+| 6 | **`Event` has no serde** and carries `Box<Frame>`/`Arc<ChunkFacts>` | `actor.rs:195-247` |
+
+**Gap 4 is a bug, not just a gap.** A frontend attaching to a running session is
+handed a snapshot claiming the session is `Connecting`. Today nothing subscribes
+mid-session so nothing notices; M4's first act is exactly that subscribe. Fix it
+when M4 starts, with a test that a mid-session subscriber sees `Ready`.
+
+**Gap 3 deserves a decision rather than a default.** `run.rs` reimplements
+"a frame boundary is not a line boundary" — the same rule `GameState::pending`
+(`state.rs:230`) exists for. A second frontend makes that a third copy. Rule −1's
+rule of three says the moment to lift it into `cena-ui` is when `cena-web`
+needs it, which is M4.
+
+### The arch tests will stop a wrong crate immediately, and that is useful
+
+`ALLOWED_EDGES` (`layering.rs:76-162`) is asserted as a **set equality**, not a
+subset — a workspace member with no row fails at once. `cena-web`'s row is
+already written down, commented out, at `layering.rs:70-75`:
+
+```text
+cena-tui/gui/web     (cena-ui, cena-session)   -- and never each other
+```
+
+So **`cena-web` gets exactly `["cena-ui", "cena-session"]`**. Naming
+`cena-model`, `cena-protocol` or `cena-platform` directly goes red — and does
+not need to, because `cena-session` already re-exports `GameState`, `Room`,
+`UnknownTag`, `Frame`, `CharacterSnapshot` and `Group` (`lib.rs:36-58`) for
+precisely this purpose. **That re-export set is what a frontend may name.**
+
+Two further constraints that will bite:
+
+- The `cena` binary's row (`layering.rs:157-160`) is *also* a set equality, so
+  adding `cena-web` to the binary means editing it in the same commit.
+- Edges are read from `cargo tree --target all`, **including dev-dependencies**
+  (`layering.rs:186-190`). A `serde_json` dev-dependency in `cena-ui` would go
+  red.
+
+---
+
+## 5. The open question this plan does not settle
+
+**Does a web server dependency foreclose mobile?**
+
+`12` §1a marks the mobile compile check **Binding**. It is not enforced: the
+`aarch64-linux-android` job in `.github/workflows/ci.yml:60-105` is **commented
+out**, with a long and honest note recording that the stated OpenSSL blocker is
+stale, that VellumFE ships the answer, and that nobody has run the two lines
+that would prove it.
+
+That is `plan/05` §0 in its purest form — *a rule that is not enforced is a
+wish* — and the note says so itself.
+
+**A first draft of this section overstated the risk**, and the correction
+matters. §1a's binding set is `cena-platform..cena-behavior`, and the same table
+lists **"mobile frontends"** under *Not binding*. So a web framework in
+`cena-web` **cannot** foreclose mobile by itself — `cena-web` is not in the set,
+and a frontend is expected to differ per platform.
+
+What remains true, and is the actual risk:
+
+- The gate protecting the crates that *are* binding **is off**. M4 is the first
+  milestone that adds a crate near that boundary, so it is a natural moment to
+  turn it on — not because `cena-web` needs it, but because nothing has checked
+  since `cena-platform` gained the vendored-TLS target block.
+- If the server needs anything from `cena-session` or below — a runtime feature,
+  a TLS stack, an async executor assumption — **that** lands in the binding set,
+  and the gate is what would catch it.
+
+So the action is smaller than the first draft claimed: **run the two lines the
+CI comment proposes, and turn the job on if they pass.** If they fail, record it
+and downgrade `12` §1a's "Binding" honestly rather than leaving a wish. Neither
+blocks drafting the frontend contract.
+
+---
+
+## 6. Build order
+
+0. **Fix gap 4** (`supervisor.rs:204`'s hardcoded `Connecting`) and **turn the
+   mobile CI job on or record why not** (§5). Both are small, both are
+   pre-existing, and both are cheaper before a frontend depends on them.
+1. **This document, reviewed.** The contract is drafted *from* it, not before it.
+2. **`cena-ui`'s view types** — snapshot and input vocabulary, derived from what
+   §3's slice actually renders. Small, and justified field by field. Needs the
+   `CENA_UI_MAY_DEPEND_ON` edit (§4a gap 2), made knowingly.
+3. **The `Event` → view mapping**, with tests that a frontend never sees a
+   `Frame`.
+4. **`cena-web`**: listener, auth, snapshot-on-connect, delta stream.
+5. **The frontend itself.**
+6. **A replay test**: a recorded session, played through the mapping, producing
+   a deterministic sequence of view updates. `12` §7.2's criterion 7 already
+   requires deterministic replay; this extends it to the frontend seam.
+
+Steps 2–4 are offline and testable without a live login. Step 5 needs a running
+session, which means the author.
+
+---
+
+## 7. For whoever implements this
+
+Read in this order: `plan/12` §1a (one binary), §2 (crate layout), §3a (one
+parser), `plan/05` §1 (dependency direction) and §−1 (KISS/DRY), then
+`CLAUDE.md`'s settled decisions.
+
+Three things that will not be obvious:
+
+- **`Option` means unknown, not zero** (`12` §5.2). A vital that has never been
+  reported is not full and not empty. Rendering `None` as `0` invents a fact,
+  and after a reconnect that is the difference between "we do not know your
+  health" and "you are dying".
+- **The parser preserves everything on purpose** (Rule 2.2/2.2a). If a frontend
+  needs something the view types lack, the fix is to widen the view types, not
+  to re-parse text.
+- **Line caps are enforced** (`05` §4.1, `cena-arch-tests`). The default is 800
+  lines. *Move code down; do not raise the cap.*
