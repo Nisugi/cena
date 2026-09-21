@@ -1383,7 +1383,7 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
 
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **69** |
+   | unported crossings | 7,923 | **67** |
    | unported costs | 1,860 | **22** |
    | reachable from Wehnimer's, knowing nothing | 6,969 | **11,735** |
    | reachable with paid services on | — | **21,516** |

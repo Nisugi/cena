@@ -33,9 +33,9 @@ fn search(until: String, tries: Option<u32>) -> Step {
     })
 }
 
-/// Phase (704) cast at a thing in the room carries the walker through it. 10
-/// exits. Upstream waits for the mana and recasts on `Spell Hindrance`, both
-/// of which are what `Action::CastAt` means.
+/// Phase (704) cast at a thing in the room carries the walker through it. 12
+/// exits in two spellings. Upstream waits for the mana and, in one of them,
+/// recasts on `Spell Hindrance`; both are what `Action::CastAt` means.
 fn phase_through(script: &str) -> Option<Crossing> {
     let [target] = holes(
         script,
@@ -43,10 +43,21 @@ fn phase_through(script: &str) -> Option<Crossing> {
             ";e loop { wait_until { Spell[704].affordable? }; result = cast(704, '",
             "'); break unless result =~ /Spell Hindrance/ } ",
         ],
-    )?[..] else {
+    )
+    .or_else(|| {
+        holes(
+            script,
+            &[
+                ";e phase = Spell[704]; unless phase.affordable?; echo 'waiting for mana...'; \
+                 wait_until { phase.affordable? }; end; phase.cast('",
+                "')",
+            ],
+        )
+    })?[..] else {
         return None;
     };
-    is_word(target).then_some(())?;
+    // A noun, or a name: `oil painting`.
+    target.split(' ').all(is_word).then_some(())?;
     Some(Crossing::Steps(vec![always(Action::CastAt(
         "Phase".to_owned(),
         target.to_owned(),
