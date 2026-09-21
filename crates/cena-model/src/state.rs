@@ -62,6 +62,7 @@ mod inventory;
 pub mod inventory_snapshot;
 pub mod menu;
 pub mod message;
+pub mod movement;
 mod nouns;
 pub mod objectives;
 pub mod overwatch;
