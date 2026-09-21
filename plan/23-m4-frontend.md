@@ -1,13 +1,21 @@
 # Milestone 4 — a real frontend, web first
 
-> **STATUS: a plan, not a record.** Nothing here is built. `plan/20` is what a
-> finished milestone's document looks like; this is the other kind, and it will
-> be wrong in places that only building will find.
+> **STATUS: a plan, not a record** — `plan/20` is what a finished milestone's
+> document looks like; this is the other kind, and it will be wrong in places
+> that only building will find.
+>
+> **One piece is built**: `SessionId` (§D1a), shipped 2026-09-21 in `7707107`
+> because the wire format needs it and retrofitting an id is the expensive
+> version. Everything else here is unbuilt.
 >
 > Written 2026-09-21, because an outside team offered to implement M4 and asked
 > six questions — and **five of the six had never been decided.** Answering them
 > in a chat reply would have made the decisions real without making them
 > findable. This file is where they go.
+>
+> **Decisions settled since**, each in place below rather than appended: the
+> server crate is **axum** (§D1b, with the measured dependency diff), and §D2
+> now carries the argument for the crate boundary rather than just asserting it.
 
 ---
 
@@ -128,7 +136,7 @@ startup failure whenever one is already taken — a failure with nothing to do
 with the game.
 
 **The session layer already answers it.** `SupervisedSession::subscribe()`
-(`supervisor.rs:200`) returns `(Snapshot, broadcast::Receiver<Event>)` —
+(`supervisor.rs:225`) returns `(Snapshot, broadcast::Receiver<Event>)` —
 snapshot-then-stream, per session, over a `tokio::broadcast` channel that
 **already supports many independent subscribers**. One server calling
 `subscribe()` once per session is what that API is shaped for; N servers would
@@ -168,7 +176,7 @@ The reasoning, kept because it is the argument for doing this kind of thing
 early: it is a newtype and a field, and the cost of deferring is a wire-format
 migration in the very next milestone — the change §3's "session-aware from the
 start" exists to avoid. `Generation` was kept a milestone early on the same
-argument (`lifecycle.rs:45-53`).
+argument (`lifecycle.rs:94-102`).
 
 ### D1b. The server crate is **axum**, and the lock file decided it
 
@@ -422,7 +430,7 @@ at implementation time.
 | 1 | **No serializable view of `GameState`.** It has no serde derives and holds `Instant`, `Runs` and ten private fields | `state.rs:110`, `equality.rs:9-13` |
 | 2 | **`cena-ui` cannot depend on serde** without editing the allowlist | `layering.rs:260` — `CENA_UI_MAY_DEPEND_ON = ["cena-model"]` |
 | 3 | **Line assembly lives in the binary**, not a shared crate | `run.rs:506-566` |
-| 4 | **`SupervisedSession::subscribe` hardcodes `lifecycle: State::Connecting`** | `supervisor.rs:204` |
+| 4 | **`SupervisedSession::subscribe` hardcodes `lifecycle: State::Connecting`** | `supervisor.rs:230` |
 | 5 | **No input vocabulary**, though Rule 1.3 specifies one | `05` §1.3 (`:258-264`) |
 | 6 | **`Event` has no serde** and carries `Box<Frame>`/`Arc<ChunkFacts>` | `actor.rs:195-247` |
 
