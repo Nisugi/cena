@@ -170,12 +170,10 @@ migration in the very next milestone — the change §3's "session-aware from th
 start" exists to avoid. `Generation` was kept a milestone early on the same
 argument (`lifecycle.rs:45-53`).
 
-### D1b. Which server crate — NOT decided here, and the criteria are why
+### D1b. The server crate is **axum**, and the lock file decided it
 
-This plan deliberately **does not name a framework.** That is not indecision;
-it is that the constraints already narrow it further than a preference would,
-and the person who writes `cena-web` should pick against them with a lock file
-in front of them rather than inherit a name from a document.
+Picked 2026-09-21 on the author's instruction, against the criteria below and
+with a measured dependency diff rather than a preference.
 
 What is already fixed, and what it rules out:
 
@@ -186,10 +184,59 @@ What is already fixed, and what it rules out:
 | **One `hyper` major** | `cena-platform/Cargo.toml:57-62` | a server on a different `hyper` major compiles two stacks |
 | **`cena-web` may depend on `cena-ui` and `cena-session` only** | `layering.rs:70-75` | the framework and its transitive tree live entirely in `cena-web` |
 
-Those four together point hard at a tokio-native, hyper-1.x server, which in
-practice means a very short list. **The decision is the implementer's**, to be
-recorded here when made, with the lock-file diff as the evidence — the same way
-the `rusqlite` and `serde` choices were argued in `Cargo.toml:38-53`.
+Those four together point hard at a tokio-native, hyper-1.x server, and the
+lock file turns that from a preference into a measurement.
+
+#### What axum costs, measured
+
+MEASURED 2026-09-21 by resolving `axum = { version = "0.8", features = ["ws"] }`
+plus tokio in an empty crate and diffing the crate names against Cena's
+`Cargo.lock` (202 crates):
+
+| | |
+|---|---|
+| **New crates** | **16** |
+| **`hyper` version** | **1.11.1 — identical to Cena's** |
+| **`rustls` pulled in** | **0 occurrences** |
+| **Second async runtime** | **none** |
+
+`hyper`, `tower`, **`tower-http`**, `http`, `http-body`, `bytes`,
+`futures-util` and `pin-project-lite` are **already in the lock file**, pulled
+in by `reqwest` for the web-login fallback — VERIFIED with `cargo tree -p
+cena-platform -i hyper` and `-i tower`, both of which resolve to
+`reqwest v0.12.28 -> cena-platform`. Axum is built on exactly those, so most of
+its tree is already paid for, and `tower-http` means static-file serving costs
+nothing further.
+
+Of the 16 new crates, **7 are the SHA-1 chain** (`sha1`, `digest`,
+`block-buffer`, `crypto-common`, `generic-array`, `typenum`, `cpufeatures`)
+that the WebSocket handshake requires **by specification** — RFC 6455 hashes
+the client key. Any WebSocket implementation pays that. The rest are axum
+itself, `axum-core`, `matchit` (routing), `mime`, `httpdate`,
+`serde_path_to_error`, and `tokio-tungstenite`/`tungstenite`.
+
+#### Why this satisfies every constraint, including the one with teeth
+
+- **Same `hyper` major**, so no second stack — and critically, **Tauri's door
+  stays open.** That was the constraint most likely to be spent by accident.
+- **tokio-native.** Axum *is* a tokio/tower server; there is no second runtime
+  and no bridging layer.
+- **No `rustls`.** The listener is plaintext on loopback (D4 authenticates it),
+  so it needs no TLS at all and pulls none — `native-tls` remains the only TLS
+  in the workspace.
+- **Contained in `cena-web`.** Nothing above needs to know it exists, which is
+  what `layering.rs`'s allowlist enforces.
+
+**The honest cost:** 16 crates and a `tower`/`tower-http` idiom to learn. The
+alternative — hyper 1.x directly — would save perhaps 6 of those and cost
+hand-rolled routing and the entire WebSocket upgrade dance. That is the wrong
+trade for a first frontend.
+
+> **If this turns out wrong, the exit is cheap and should stay that way.** Axum
+> lives behind `cena-web`'s boundary, and a listener is a small surface. The
+> thing that would make it expensive is letting axum's types — `State`,
+> extractors, `Router` — leak into the view types in `cena-ui`. **They must
+> not**, which is D2's rule and `layering.rs:260`'s allowlist enforcing it.
 
 > **The `hyper` constraint is not hypothetical, and it ties back to D1.**
 > `reqwest` is pinned to 0.12 rather than 0.13 because *"`tauri-plugin-http` v2
@@ -231,6 +278,42 @@ on `cena-ui` and `cena-session`.
 small**, and the rule of three (`05` §−1) applies to anything added to it.
 `cena-ui` is one line today; it should gain types M4 actually needs and nothing
 speculative.
+
+#### Vellum reached this same split, and that is the argument
+
+Not theory. MEASURED in `reference/VellumFE/src/frontend/`:
+
+```
+common/   color.rs  command_input_model.rs  rect.rs  text_input.rs
+gui/      headless/   tui/   web/
+```
+
+**Four frontends and a shared `common`** — and `common` holds precisely what
+`plan/12` §2 specifies for `cena-ui`: an input model, a text-input widget, and
+the colour and rectangle types. The same author, solving the same problem,
+converged on the same seam.
+
+Two things Cena takes from that, and one it does not:
+
+- **The seam is real**, not a speculative abstraction. It was found by need in
+  a shipping client, which is the rule-of-three evidence `05` §−1 asks for
+  before abstracting.
+- **The sizes justify the boundary.** MEASURED: `frontend/tui` is **58,167
+  lines** against `frontend/web`'s **5,497**. A frontend is where the bulk
+  lands, so anything shared that drifts into one of them is work the next
+  frontend repeats.
+- **But Vellum's is directories in one crate, and Cena's is the crate graph.**
+  `core/state.rs` is **2,831 lines**, and nothing at the language level stops a
+  frontend reaching into it. `CLAUDE.md` records the cost of that in general
+  terms — *"VellumFE had to retrofit it at ~250K lines"* — and it is why
+  `cena-ui`'s single allowed dependency is a **compiler-enforced allowlist**
+  (`layering.rs:260`) rather than a convention. A directory boundary asks; a
+  crate boundary refuses.
+
+**So the separation is the point, and it is enforced rather than encouraged.**
+A `cena-web` that wants something from `cena-model` either goes through
+`cena-ui`'s view types or through `cena-session`'s re-exports — and if neither
+has it, the answer is to widen the view types deliberately, not to add an edge.
 
 ### D3. The wire is a snapshot plus a delta stream, both serde
 
@@ -422,8 +505,8 @@ blocks drafting the frontend contract.
 1. **Fix gap 4** (`supervisor.rs`'s hardcoded `Connecting`) and **turn the
    mobile CI job on or record why not** (§5). Both are small, both are
    pre-existing, and both are cheaper before a frontend depends on them.
-2. **This document, reviewed**, and **the server crate chosen** against §D1b's
-   criteria. The contract is drafted *from* both, not before them.
+2. **This document, reviewed.** The server crate is chosen (§D1b: **axum**);
+   the contract is drafted *from* this document, not before it.
 3. **`cena-ui`'s view types** — snapshot and input vocabulary, derived from what
    §3's slice actually renders. Small, and justified field by field. Needs the
    `CENA_UI_MAY_DEPEND_ON` edit (§4a gap 2), made knowingly.
