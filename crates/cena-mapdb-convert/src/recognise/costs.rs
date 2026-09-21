@@ -205,15 +205,36 @@ fn setting_needed(crossing: &Crossing) -> Option<Cond> {
     if names.is_empty() {
         return None;
     }
-    let mut set: Vec<Cond> = names
-        .into_iter()
-        .map(|name| Cond::SettingIsSet(name.to_owned()))
-        .collect();
-    let set = if set.len() == 1 {
-        set.remove(0)
-    } else {
-        Cond::All(set)
+    let all_set = |names: Vec<&str>| {
+        let mut set: Vec<Cond> = names
+            .into_iter()
+            .map(|name| Cond::SettingIsSet(name.to_owned()))
+            .collect();
+        if set.len() == 1 {
+            set.remove(0)
+        } else {
+            Cond::All(set)
+        }
     };
+    // A key the profile names (`Cond::WearingNamedBy`) is needed either way,
+    // to know which key is meant. Every *other* setting is only used on the
+    // branch that fetches the key, so a walker wearing it needs none of them:
+    // key set AND (key worn OR the rest set).
+    let named_key = steps.iter().find_map(|step| match &step.when {
+        Some(Cond::WearingNamedBy(key)) => Some(key.as_str()),
+        _ => None,
+    });
+    if let Some(key) = named_key {
+        let rest: Vec<&str> = names.into_iter().filter(|name| *name != key).collect();
+        let worn = Cond::WearingNamedBy(key.to_owned());
+        let key_set = Cond::SettingIsSet(key.to_owned());
+        return Some(if rest.is_empty() {
+            key_set
+        } else {
+            Cond::All(vec![key_set, Cond::Any(vec![worn, all_set(rest)])])
+        });
+    }
+    let set = all_set(names);
     // A first move under a guard is the way across that needs no settings:
     // the key already worn. Whoever that guard holds for may pass without.
     Some(match steps.first() {

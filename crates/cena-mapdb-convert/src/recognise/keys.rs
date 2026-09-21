@@ -198,19 +198,26 @@ fn with_own_disk(script: &str) -> Option<Vec<Step>> {
         return None;
     };
     let here = || Cond::Flag("own_disk_here".to_owned());
+    // Someone who can conjure a disk, and whose disk is not in the room.
+    let lost = || {
+        Cond::All(vec![
+            Cond::SpellKnown(DISK.to_owned()),
+            Cond::Not(Box::new(here())),
+        ])
+    };
     Some(vec![
         when(
             Action::WaitUntil(here()),
             Cond::SpellActive(DISK.to_owned()),
         ),
+        // Upstream **waits for the mana** and then casts; it does not go on
+        // without a disk because the walker is short just now. So being able
+        // to pay is waited for, not asked as a guard that skips the cast.
         when(
-            Action::Cast(DISK.to_owned()),
-            Cond::All(vec![
-                Cond::SpellKnown(DISK.to_owned()),
-                Cond::SpellAffordable(DISK.to_owned()),
-                Cond::Not(Box::new(here())),
-            ]),
+            Action::WaitUntil(Cond::SpellAffordable(DISK.to_owned())),
+            lost(),
         ),
+        when(Action::Cast(DISK.to_owned()), lost()),
         always(Action::Move(plain(go)?)),
     ])
 }
@@ -368,9 +375,65 @@ mod tests {
                       /#{Char.name} disk$/ }; disk = Spell[511]; wait_until { disk.affordable? \
                       }; disk.cast; end; move 'up'";
         let found = steps(script, 1);
-        assert_eq!(found.len(), 3);
-        assert_eq!(found[2].action, Action::Move("up".into()));
-        assert_eq!(found[2].when, None);
+        assert_eq!(found.len(), 4);
+        assert_eq!(found[3].action, Action::Move("up".into()));
+        assert_eq!(found[3].when, None);
+
+        // Short of mana with the disk gone: the mana is waited for and the
+        // disk cast, as upstream does. It is not skipped for the move.
+        let short = cena_map::Walker {
+            flags: [("own_disk_here".to_owned(), false)].into(),
+            known_spells: Some(["Floating Disk".to_owned()].into()),
+            active_spells: Some(std::collections::HashSet::new()),
+            affordable_spells: Some(std::collections::HashSet::new()),
+            ..cena_map::Walker::default()
+        };
+        let eligible: Vec<&Action> = found
+            .iter()
+            .filter(|step| step.when.as_ref().is_none_or(|when| when.holds(&short)))
+            .map(|step| &step.action)
+            .collect();
+        assert_eq!(
+            eligible,
+            [
+                &Action::WaitUntil(Cond::SpellAffordable("Floating Disk".into())),
+                &Action::Cast("Floating Disk".into()),
+                &Action::Move("up".into()),
+            ]
+        );
+    }
+
+    /// Priced: the key must be named, and then either it is worn or there is
+    /// a sack to fetch it from. A worn key needs no sack.
+    #[test]
+    fn a_worn_key_needs_no_sack_to_be_priced() {
+        let script = ";e refill_hand = false;key_worn = false;\n  (refill_hand = \
+                      true;empty_hand) if !checkleft.nil? and !checkright.nil?;\n  key_worn = \
+                      true if GameObj.inv.find {|obj| obj.name =~ /#{UserVars.key.split(' \
+                      ').join('.*?')}/};\n  fput \"remove my #{UserVars.key}\" if key_worn;\n  \
+                      fput \"get my #{UserVars.key} from my #{UserVars.key_sack}\" if \
+                      !key_worn;\n  door = 'bright door';\n  multifput \"unlock #{door}\",\"open \
+                      #{door}\",\"go #{door}\",\"close #{door}\",\"lock #{door}\";\n  fput \"wear \
+                      my #{UserVars.key}\" if key_worn;\n  fput \"put my #{UserVars.key} in my \
+                      #{UserVars.key_sack}\" if !key_worn;\n  fill_hand if refill_hand;";
+        let door = crossing(script, 1).unwrap();
+        let cost =
+            crate::recognise::priced_for_crossing(&door, Some(cena_map::Cost::Fixed(0.2))).unwrap();
+        let mut walker = cena_map::Walker {
+            worn: Some(["a small brass key".to_owned()].into()),
+            ..cena_map::Walker::default()
+        };
+        assert_eq!(cost.price(&walker), None, "which key is not said");
+        walker.settings.insert("key".into(), "brass key".into());
+        assert_eq!(cost.price(&walker), Some(0.2), "worn, so no sack is needed");
+        walker.worn = Some(std::collections::HashSet::new());
+        assert_eq!(
+            cost.price(&walker),
+            None,
+            "not worn, and no sack to look in"
+        );
+        walker.settings.insert("key_sack".into(), "cloak".into());
+        assert_eq!(cost.price(&walker), Some(0.2));
     }
 
     #[test]
