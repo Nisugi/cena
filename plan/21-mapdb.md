@@ -1254,6 +1254,22 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    Unported crossings **583**, costs **544** (477 of them the instability table);
    reachable 10,763 / **18,012**.
 
+   **The instability table (2026-09-21).** 477 costs, `$mapdb_instability_timeto[188]`:
+   nine towns from each of the Confluence's 53 rooms. READ in `go2.lic:1623-1680`: when the
+   walker enters the plane, go2 records the instability it came in by
+   (`$mapdb_last_instability`) and fills that global with `Map.estimate_time` of the walk
+   from it to each of nine towns — because **leaving by the point of tranquility puts the
+   walker back at that instability**, so that walk is what the way out really costs.
+   **`Cost::Table { table, key }`** reads `Walker::tables`, which the planner fills the same
+   way: one search from the instability room (~1.6 ms, §5 step 5). A missing table or town
+   is impassable, as upstream's `nil` is. **Unported costs 544 → 67.**
+
+   On the game's numeric terrain and climate codes (`<roommeta>`), which the author raised:
+   not worth using. The one climate test upstream makes is resolved by the converter from
+   Lich's string and never reaches the client; and the code-to-name table is not known.
+   The model keeps the codes undecoded, so a table can be had for free later — every mapped
+   room a character enters pairs a code with the mapdb's word for it.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

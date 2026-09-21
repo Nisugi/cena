@@ -187,6 +187,10 @@ fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadErro
                 Ok(gated @ Cost::Gated { .. }) => gated,
                 _ => Cost::Unknown(name.to_owned()),
             },
+            Cost::TABLE => match serde_json::from_slice(blob) {
+                Ok(table @ Cost::Table { .. }) => table,
+                _ => Cost::Unknown(name.to_owned()),
+            },
             other => Cost::Unknown(other.to_owned()),
         })
     };

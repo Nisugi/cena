@@ -136,3 +136,25 @@ fn otherwise_is_never_unknown() {
     assert!(walking().holds(&up));
     assert!(!Cond::Otherwise(Box::new(walking())).holds(&up));
 }
+
+/// A price the planner looked up: present, or the exit is shut.
+#[test]
+fn a_table_cost_is_what_the_planner_put_there() {
+    let cost: cena_map::Cost =
+        serde_json::from_str(r#"{"table":"instability","key":188}"#).unwrap();
+    assert_eq!(cost.price(&Walker::default()), None, "no table yet");
+    let entered = Walker {
+        tables: [("instability".to_owned(), [(188, 42.5), (228, -1.0)].into())].into(),
+        ..Walker::default()
+    };
+    assert_eq!(cost.price(&entered), Some(42.5));
+    let other: cena_map::Cost =
+        serde_json::from_str(r#"{"table":"instability","key":1005}"#).unwrap();
+    assert_eq!(
+        other.price(&entered),
+        None,
+        "a town the planner found no way to"
+    );
+    let bad: cena_map::Cost = serde_json::from_str(r#"{"table":"instability","key":228}"#).unwrap();
+    assert_eq!(bad.price(&entered), None, "a negative price is no price");
+}

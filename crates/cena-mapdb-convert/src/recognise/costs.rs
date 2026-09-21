@@ -4,6 +4,21 @@ use cena_map::{Cond, Cost};
 
 use super::{holes, is_word, quoted};
 
+/// `$mapdb_instability_timeto[188]`: 477 costs, nine towns from each of the
+/// Confluence's 53 rooms. go2 fills that global when the walker enters the
+/// plane -- the walk from the instability it came in by to each town --
+/// because leaving puts it back at that instability. Here the planner does
+/// the same into `Walker::tables`, and the map says only which entry.
+pub(super) fn instability(script: &str) -> Option<Cost> {
+    let [town] = holes(script, &[";e $mapdb_instability_timeto[", "]"])?[..] else {
+        return None;
+    };
+    Some(Cost::Table {
+        table: "instability".to_owned(),
+        key: cena_map::RoomId(town.parse().ok()?),
+    })
+}
+
 pub(super) fn gated(when: Cond, then: &str) -> Option<Cost> {
     let then: f64 = then
         .parse()

@@ -68,6 +68,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
 #[must_use]
 pub fn cost(script: &str, climate: Option<&str>) -> Option<Cost> {
     profession(script)
+        .or_else(|| costs::instability(script))
         .or_else(|| facts::cost(script, climate))
         .or_else(|| urchins(script))
         .or_else(|| only_when_travelling(script))

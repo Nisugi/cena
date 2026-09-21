@@ -110,6 +110,9 @@ pub enum Cost {
         #[serde(default, rename = "else", skip_serializing_if = "Option::is_none")]
         otherwise: Option<f64>,
     },
+    /// A price the planner worked out and put in `Walker::tables`: table
+    /// `table`, room `key`. Impassable when either is missing.
+    Table { table: String, key: RoomId },
     /// A kind of cost this build does not know. **Impassable**; produced only
     /// by the binary loader, for the same reason as [`Crossing::Unknown`].
     #[serde(skip)]
@@ -121,6 +124,8 @@ impl Cost {
     pub const FIXED: &'static str = "fixed";
     /// Wire name of [`Cost::Unported`].
     pub const UNPORTED: &'static str = "unported";
+    /// Wire name of [`Cost::Table`].
+    pub const TABLE: &'static str = "table";
     /// Wire name of [`Cost::Gated`].
     pub const GATED: &'static str = "gated";
 
@@ -140,6 +145,12 @@ impl Cost {
                     *otherwise
                 }
             }
+            Cost::Table { table, key } => walker
+                .tables
+                .get(table)?
+                .get(&key.0)
+                .copied()
+                .filter(|seconds| seconds.is_finite() && *seconds >= 0.0),
             Cost::Unported { .. } | Cost::Unknown(_) => None,
         }
     }

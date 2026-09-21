@@ -105,6 +105,10 @@ fn write_exit(w: &mut Writer, exit: &Exit) -> Result<(), EncodeError> {
                     let json = serde_json::to_vec(gated).map_err(|_| EncodeError)?;
                     w.named(Cost::GATED, &json)?;
                 }
+                table @ Cost::Table { .. } => {
+                    let json = serde_json::to_vec(table).map_err(|_| EncodeError)?;
+                    w.named(Cost::TABLE, &json)?;
+                }
                 Cost::Unknown(_) => return Err(EncodeError),
             }
         }

@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 /// What pricing and guards may ask about the walker. `None` and a missing key
 /// both mean *the model has not been told*.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Walker {
     /// The travel profile: `ice_mode` → `auto`. A setting the profile does not
     /// carry is unknown; its default belongs to the profile, not to the map.
@@ -33,6 +33,13 @@ pub struct Walker {
     /// Duskruin on Friday and leaves on Sunday. A name never written is
     /// unknown, which prices the way back impassable -- correctly.
     pub memories: HashMap<String, String>,
+    /// Prices the planner works out, by table and then by room
+    /// (`Cost::Table`). `instability`: seconds from the instability the walker
+    /// entered the Confluence by to each town -- leaving the plane puts it
+    /// back there, so that walk is what the way out really costs. Filled when
+    /// the walker enters, by one search from that room. A table or a room
+    /// that is absent is unknown, and the exit is impassable.
+    pub tables: HashMap<String, HashMap<u32, f64>>,
     /// Yes-or-no facts the planner works out, by name: `urchin_access` (the
     /// guides are paid for and have not expired -- a comparison against the
     /// clock, which this crate never reads), `hidden`, `invisible`,

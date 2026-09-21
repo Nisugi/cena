@@ -105,7 +105,7 @@ impl Report {
                 Some(Cost::Unported { .. }) => self.unported_costs += 1,
                 // `Unknown` is made only by the binary loader; the converter
                 // writes costs, it never reads a map file.
-                Some(Cost::Gated { .. }) => self.ported_costs += 1,
+                Some(Cost::Gated { .. } | Cost::Table { .. }) => self.ported_costs += 1,
                 Some(Cost::Fixed(_) | Cost::Unknown(_)) => {}
                 None => self.without_cost += 1,
             }
