@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Hydra</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#command-input">Skip to command</a>
+  <div class="desktop-shell">
+    <header class="application-header">
+      <h1>Hydra <span>Despana</span></h1>
+      <output id="connection-status" role="status">Connecting viewer…</output>
+    </header>
+    <section class="hands-strip" aria-label="Hands and session">
+      <div><span class="slot-label">Left hand</span><output id="hands-left">Unknown</output></div>
+      <div><span class="slot-label">Right hand</span><output id="hands-right">Unknown</output></div>
+      <output id="session-identity" class="session-identity">Waiting for session</output>
+    </section>
+    <main class="workspace">
+      <section class="pane room-pane" aria-labelledby="room-heading">
+        <header class="pane-header"><h2 id="room-heading">Room</h2><output id="room-id"></output></header>
+        <div class="room-content">
+          <h3 id="room-title">Room unknown</h3>
+          <div id="room-description" class="room-description">Description unknown</div>
+          <dl class="room-details">
+            <dt>Exits</dt><dd id="room-exits">Unknown</dd>
+            <dt>Creatures</dt><dd id="room-creatures">Unknown</dd>
+            <dt>Objects</dt><dd id="room-objects">Unknown</dd>
+            <dt>Players</dt><dd id="room-players">Unknown</dd>
+          </dl>
+          <details id="diagnostics"><summary id="diagnostics-label">Protocol diagnostics (0)</summary><div id="unknown-tags"></div></details>
+        </div>
+      </section>
+      <section class="pane story-pane" aria-labelledby="story-heading">
+        <header class="pane-header"><h2 id="story-heading">Story</h2><button id="story-bottom" type="button">Latest text</button></header>
+        <p id="history-gap" class="output-gap" role="status" hidden>Some Story history is unavailable. This view has been resynchronized.</p>
+        <div id="story-output" class="text-output" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="Story output"><p class="empty-state">Waiting for game text…</p></div>
+        <div class="story-command">
+          <form id="command-form" autocomplete="off">
+            <label for="command-input" class="visually-hidden">Game command</label>
+            <span id="prompt" aria-hidden="true">&gt;</span>
+            <input id="command-input" name="command" type="text" placeholder="Enter command" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="4096" disabled aria-describedby="command-status">
+            <button id="command-send" type="submit" disabled>Send</button>
+          </form>
+          <output id="command-status" role="status">Waiting for connection.</output>
+        </div>
+      </section>
+    </main>
+    <footer class="vitals-strip" aria-label="Vitals and roundtime">
+      <div class="vital health"><span>Health</span><output id="health-value">Unknown</output><meter id="health-meter" min="0" max="100" value="0" hidden aria-label="Health percent"></meter></div>
+      <div class="vital mana"><span>Mana</span><output id="mana-value">Unknown</output><meter id="mana-meter" min="0" max="100" value="0" hidden aria-label="Mana percent"></meter></div>
+      <div class="vital stamina"><span>Stamina</span><output id="stamina-value">Unknown</output><meter id="stamina-meter" min="0" max="100" value="0" hidden aria-label="Stamina percent"></meter></div>
+      <div class="vital spirit"><span>Spirit</span><output id="spirit-value">Unknown</output><meter id="spirit-meter" min="0" max="100" value="0" hidden aria-label="Spirit percent"></meter></div>
+      <div class="roundtime"><span>Roundtime</span><output id="roundtime">Unknown</output></div>
+    </footer>
+  </div>
+</body>
+</html>
