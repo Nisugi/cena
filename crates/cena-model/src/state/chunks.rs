@@ -234,6 +234,13 @@ impl super::GameState {
             }
         } else {
             self.character.consume_chunk(&chunk);
+            // Group events are prose with links, one per line -- see
+            // `state/group.rs` for why the links do the work here.
+            for line in chunk.lines() {
+                if let Some(event) = super::group::classify(line) {
+                    self.group.apply(&event);
+                }
+            }
             self.combat.parse_chunk(&chunk, at)
         };
         // Lich's `process`: parse, persist to the registry, then emit -- and

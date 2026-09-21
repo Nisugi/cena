@@ -101,6 +101,7 @@
 //! survives" (`reference/lich-5/lib/common/inventory.rb:1014-1045`).
 
 use super::GameState;
+use super::Group;
 
 impl GameState {
     /// Forget everything a new connection has not yet been told.
@@ -155,6 +156,7 @@ impl GameState {
             character,
             inventory,
             inventory_snapshot,
+            group,
             learned_commands,
         } = self;
 
@@ -181,6 +183,19 @@ impl GameState {
         // there. Found by `noun_resolution.rs`, which failed when this kept
         // the room whole.
         room.forget_contents();
+
+        // **The group is cleared, for the same reason `room.players` is.** Its
+        // members are other people, each held by an `exist` id a behavior can
+        // target, and they leave while we are gone. A stale member is a live
+        // handle to someone who is not there.
+        //
+        // Lich reaches the same answer from the other direction: `Group.check`
+        // CLEARS and re-runs the `group` command (`gemstone/group.rb:152-157`)
+        // rather than trusting what it held, and `<indicator id='IconJOINED'>`
+        // -- which `GameState::apply` already stores -- says whether you are
+        // grouped at all. So the burst answers "are you in a group" and only a
+        // command answers "with whom".
+        *group = Group::default();
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,

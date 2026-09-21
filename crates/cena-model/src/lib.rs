@@ -61,7 +61,7 @@ pub use state::societies::{Ability, AbilityKind, AlternateCost, Cost, CostTiming
 pub use state::streams::{LineTally, MAX_STREAM_LINES};
 pub use state::vitals::{Vital, Vitals, VitalsExt};
 pub use state::{
-    Character, Container, Experience, Found, GameState, Injury, Inventory, MAX_UNKNOWN_TAGS,
-    PlayerStatus, Room, RoomItem, UnknownTag, Where,
+    Character, Container, DISK_NOUNS, Disk, Experience, Found, GameState, Injury, Inventory,
+    MAX_UNKNOWN_TAGS, PlayerStatus, Room, RoomItem, UnknownTag, Where,
 };
 pub use status::StatusInfo;

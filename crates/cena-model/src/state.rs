@@ -48,7 +48,9 @@ mod clock;
 pub mod combat;
 pub mod creature;
 pub mod creatures;
+pub mod disk;
 pub mod gameobj;
+pub mod group;
 mod idle;
 mod inventory;
 pub mod inventory_snapshot;
@@ -63,6 +65,8 @@ mod unknown;
 pub mod vitals;
 
 pub use character::{Character, Experience, Injury};
+pub use disk::{DISK_NOUNS, Disk};
+pub use group::{Group, GroupEvent, Member};
 pub use inventory::{Container, Inventory};
 pub use inventory_snapshot::InventorySnapshot;
 pub use menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem};
@@ -114,6 +118,8 @@ pub struct GameState {
     pub vitals: Vitals,
     /// The quest and bounty list (`<objectives>`).
     pub objectives: Objectives,
+    /// Who is grouped with you, by `exist` id.
+    pub group: Group,
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,
@@ -247,6 +253,7 @@ impl PartialEq for GameState {
             inventory,
             inventory_snapshot,
             learned_commands,
+            group,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -263,6 +270,7 @@ impl PartialEq for GameState {
             && vitals == &other.vitals
             && objectives == &other.objectives
             && inventory_snapshot == &other.inventory_snapshot
+            && group == &other.group
             && learned_commands == &other.learned_commands
             && status == &other.status
             && effects == &other.effects
