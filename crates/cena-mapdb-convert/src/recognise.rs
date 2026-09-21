@@ -18,6 +18,7 @@ use cena_map::{Action, Cost, Crossing, Pass, Step};
 mod costs;
 mod facts;
 mod keys;
+mod ladder;
 mod looking;
 mod moves;
 mod proposed;
@@ -113,6 +114,7 @@ pub fn cost(script: &str, room: &RoomFacts<'_>) -> Option<Cost> {
         .or_else(|| setting_or_month(script))
         .or_else(|| tail_d::cost(script))
         .or_else(|| tail_h::cost(script))
+        .or_else(|| ladder::cost(script))
 }
 
 pub(super) fn always(action: Action) -> Step {

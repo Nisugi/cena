@@ -161,6 +161,11 @@ pub enum Cond {
     EncumbranceOver(u32),
     /// Ranks in skill `.0` are below `.1`.
     SkillUnder(String, u32),
+    /// Skill `.0` is enough for the load carried: `.2 × ranks >= .1 ×
+    /// encumbrance percent`. `("climbing", 4, 5)` is upstream's `climbing >=
+    /// encumbrance / 1.25`, kept in whole numbers so a question can be
+    /// compared for equality.
+    SkillCarriesLoad(String, u32, u32),
     SpellActive(String),
     SpellKnown(String),
     SpellAffordable(String),
@@ -225,6 +230,11 @@ impl Cond {
                 .skills
                 .as_ref()
                 .map(|skills| skills.get(skill).copied().unwrap_or(0) < *ranks),
+            Cond::SkillCarriesLoad(skill, load, ranks) => {
+                let has = walker.skills.as_ref()?.get(skill).copied().unwrap_or(0);
+                let carried = walker.encumbrance?;
+                Some(u64::from(*ranks) * u64::from(has) >= u64::from(*load) * u64::from(carried))
+            }
             Cond::SpellActive(spell) => has(walker.active_spells.as_ref(), spell),
             Cond::SpellKnown(spell) => has(walker.known_spells.as_ref(), spell),
             Cond::SpellAffordable(spell) => has(walker.affordable_spells.as_ref(), spell),

@@ -113,13 +113,34 @@ pub enum Cost {
     /// A price the planner worked out and put in `Walker::tables`: table
     /// `table`, room `key`. Impassable when either is missing.
     Table { table: String, key: RoomId },
+    /// Several prices, the first whose question holds being the one paid: a
+    /// wall that costs little to a walker who can unlock its gate, more to
+    /// one who climbs it, and most to one who waits. **A rung that cannot be
+    /// answered is passed over**, not fatal as it is in [`Cost::Gated`] --
+    /// every rung here is a way across, so not knowing about one only costs
+    /// the walker its discount. `else` is the price when none holds;
+    /// without one the exit is then impassable.
+    Ladder {
+        ladder: Vec<Rung>,
+        #[serde(default, rename = "else", skip_serializing_if = "Option::is_none")]
+        otherwise: Option<f64>,
+    },
     /// A kind of cost this build does not know. **Impassable**; produced only
     /// by the binary loader, for the same reason as [`Crossing::Unknown`].
     #[serde(skip)]
     Unknown(String),
 }
 
+/// One price of a [`Cost::Ladder`], and the question that earns it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Rung {
+    pub when: Cond,
+    pub then: f64,
+}
+
 impl Cost {
+    /// Wire name of [`Cost::Ladder`].
+    pub const LADDER: &'static str = "ladder";
     /// Wire name of [`Cost::Fixed`].
     pub const FIXED: &'static str = "fixed";
     /// Wire name of [`Cost::Unported`].
@@ -145,6 +166,11 @@ impl Cost {
                     *otherwise
                 }
             }
+            Cost::Ladder { ladder, otherwise } => ladder
+                .iter()
+                .find(|rung| rung.when.holds(walker))
+                .map(|rung| rung.then)
+                .or(*otherwise),
             Cost::Table { table, key } => walker
                 .tables
                 .get(table)?

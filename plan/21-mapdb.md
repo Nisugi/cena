@@ -1371,10 +1371,20 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    One of the four tower scripts names `unique_map_movements.txt` in its error where its
    siblings do not; the template allows for it.
 
+   **A price with rungs (2026-09-21, `recognise/ladder.rs`).** `Cost::Ladder`: several
+   prices, the first whose question holds being the one paid. The Graveyard wall
+   (4140<->4141) costs 0.6 s to whoever knows a spell that opens its gate, 5.2 s to a Warrior
+   of 15, 30 s to anyone -- and going in, 120 s to a good climber, which upstream asks
+   *before* the Warrior; ported as written. Unlike `Gated`, **a rung that cannot be answered
+   is passed over**: every rung is a way across, so not knowing only costs the discount.
+   `Cond::SkillCarriesLoad(skill, 4, 5)` is `ranks >= encumbrance / 1.25` in whole numbers.
+   What is left of the costs is the Haste formula (16, waiting on what those rooms are) and
+   the day pass (6, a pre-flight).
+
    | | start of step 7 | now |
    |---|---|---|
    | unported crossings | 7,923 | **69** |
-   | unported costs | 1,860 | **25** |
+   | unported costs | 1,860 | **22** |
    | reachable from Wehnimer's, knowing nothing | 6,969 | **11,735** |
    | reachable with paid services on | — | **21,516** |
 

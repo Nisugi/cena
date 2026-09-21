@@ -202,3 +202,13 @@ fn a_key_is_found_by_its_noun_or_by_the_profiles_words() {
     walker.settings.insert("key".into(), "key brass".into());
     assert_eq!(named.ask(&walker), Some(false), "the words come in order");
 }
+
+/// A ladder reads back as a ladder, not as the gate it resembles.
+#[test]
+fn a_ladder_survives_its_json() {
+    let json = r#"{"ladder":[{"when":{"level_at_least":15},"then":5.2}],"else":30.0}"#;
+    let cost: cena_map::Cost = serde_json::from_str(json).unwrap();
+    assert!(matches!(cost, cena_map::Cost::Ladder { .. }));
+    assert_eq!(serde_json::to_string(&cost).unwrap(), json);
+    assert_eq!(cost.price(&Walker::default()), Some(30.0));
+}
