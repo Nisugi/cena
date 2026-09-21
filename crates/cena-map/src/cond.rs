@@ -66,6 +66,8 @@ pub struct Walker {
     /// Full names of what the walker wears or carries loose -- the top level
     /// of its inventory, not what is inside containers. `None` until listed.
     pub worn: Option<HashSet<String>>,
+    /// The nouns of the same things: `key`. Known when `worn` is.
+    pub worn_nouns: Option<HashSet<String>>,
     /// The obvious exits of the room the walker is in, as the game lists them
     /// short: `ne`, `nw`, `up`, `out`.
     pub exits: Option<Vec<String>>,
@@ -132,6 +134,12 @@ pub enum Cond {
     /// The walker wears or carries loose a thing with exactly this name: a
     /// key on a cord.
     Wearing(String),
+    /// The walker wears or carries loose a thing with this noun: any `key`.
+    WearingNoun(String),
+    /// The walker wears or carries loose the thing the profile names under
+    /// this setting: a worn name that holds the setting's words, in order.
+    /// Unknown when the setting is not set.
+    WearingNamedBy(String),
     /// The room the walker is in lists this obvious exit.
     Exit(String),
     /// The obvious exits are exactly these, in this order, as the game lists
@@ -204,6 +212,12 @@ impl Cond {
                 .map(|names| names.iter().any(|name| name.contains(text.as_str()))),
             Cond::StillHere => walker.still_here,
             Cond::Wearing(name) => has(walker.worn.as_ref(), name),
+            Cond::WearingNoun(noun) => has(walker.worn_nouns.as_ref(), noun),
+            Cond::WearingNamedBy(setting) => {
+                let words = walker.settings.get(setting).filter(|is| !is.is_empty())?;
+                let worn = walker.worn.as_ref()?;
+                Some(worn.iter().any(|name| holds_in_order(name, words)))
+            }
             Cond::Posture(name) => walker.posture.as_ref().map(|is| is == name),
             Cond::Month(month) => walker.month.map(|is| is == *month),
             Cond::EncumbranceOver(percent) => walker.encumbrance.map(|is| is > *percent),
@@ -222,6 +236,17 @@ impl Cond {
     pub fn holds(&self, walker: &Walker) -> bool {
         self.ask(walker) == Some(true)
     }
+}
+
+/// Whether `name` holds every word of `words`, in that order.
+fn holds_in_order(name: &str, words: &str) -> bool {
+    let mut rest = name;
+    words.split_whitespace().all(|word| {
+        rest.split_once(word).is_some_and(|(_, after)| {
+            rest = after;
+            true
+        })
+    })
 }
 
 fn has(names: Option<&HashSet<String>>, name: &str) -> Option<bool> {

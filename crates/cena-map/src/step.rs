@@ -14,6 +14,18 @@ use serde::{Deserialize, Serialize};
 use crate::cond::Cond;
 
 /// One thing the walker does.
+///
+/// # What a command may leave for the walker to fill in
+///
+/// A command is sent as written, but for two placeholders:
+///
+/// - `{setting:key_sack}` -- the travel profile's value for that setting.
+///   The key to a private house and the sack it is kept in are the
+///   owner's to name. An exit whose steps use one is priced only when the
+///   setting is set (the converter's `priced_for_crossing`).
+/// - `{item:cord-strung delicate brass key}` -- the game's `#id` for the
+///   thing the walker has with exactly this name. Upstream addresses such
+///   a thing by id because the game's parser will not take a full name.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Action {

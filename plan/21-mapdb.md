@@ -1358,12 +1358,25 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    `break if res !~ /low opening/` (22666->24233) reads inverted; "search until the opening
    is found" is right under either reading, and is what was ported.
 
+   **Keys and company (2026-09-21, `recognise/keys.rs`).** 32 exits in 9 shapes: doors
+   that want a key, the walker's own floating disk, the last of the group waits, and the
+   first puzzle routine (`FlightOfSteps { wall }`). **Commands may now carry two
+   placeholders** for the walker to fill in: `{setting:key_sack}`, a name only the owner of
+   a house can supply, and `{item:full name}`, the game's `#id` for a thing the walker has
+   -- upstream addresses a key by id because the game's parser will not take a full name.
+   An exit whose steps use a setting is priced only when it is set, unless the walker
+   already wears the key (`costs::setting_needed`). Where a key goes back to -- worn, or the
+   sack -- is asked of a note written before it moved, since a key in the hand is worn by
+   nobody. `Cond::WearingNoun`, `WearingNamedBy`; the disk is a flag, `own_disk_here`.
+   One of the four tower scripts names `unique_map_movements.txt` in its error where its
+   siblings do not; the template allows for it.
+
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **101** |
+   | unported crossings | 7,923 | **69** |
    | unported costs | 1,860 | **25** |
-   | reachable from Wehnimer's, knowing nothing | 6,969 | **11,702** |
-   | reachable with paid services on | — | **21,513** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **11,735** |
+   | reachable with paid services on | — | **21,516** |
 
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth

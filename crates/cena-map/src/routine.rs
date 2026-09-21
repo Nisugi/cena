@@ -82,6 +82,11 @@ pub enum Routine {
     /// is priced impassable when the profile has no password, so the walker
     /// is never sent to a door it cannot open.
     GuildPassword,
+    /// A round tower room with four flights of steps, listed in an order
+    /// that changes: `look`, read which flight is on this `wall`
+    /// (`northern`), and climb that one -- `climb steps`, `climb second
+    /// steps`, and so on. Upstream gives up when no flight is on the wall.
+    FlightOfSteps { wall: String },
     Patrol {
         /// `None` keeps a gap upstream left: positions matter.
         starts: Vec<Option<RoomId>>,

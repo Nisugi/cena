@@ -185,3 +185,20 @@ fn the_look_of_the_room_is_asked_about_and_may_be_unknown() {
         "the order is the game's, and is part of it"
     );
 }
+
+/// A key is asked about by noun, or by the words the profile names it with.
+#[test]
+fn a_key_is_found_by_its_noun_or_by_the_profiles_words() {
+    let named = Cond::WearingNamedBy("key".into());
+    let mut walker = Walker {
+        worn: Some(["a small brass key".to_owned()].into()),
+        worn_nouns: Some(["key".to_owned()].into()),
+        ..Walker::default()
+    };
+    assert!(Cond::WearingNoun("key".into()).holds(&walker));
+    assert_eq!(named.ask(&walker), None, "the profile has not named one");
+    walker.settings.insert("key".into(), "brass key".into());
+    assert_eq!(named.ask(&walker), Some(true));
+    walker.settings.insert("key".into(), "key brass".into());
+    assert_eq!(named.ask(&walker), Some(false), "the words come in order");
+}

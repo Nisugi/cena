@@ -1,6 +1,6 @@
 //! Arms for upstream cost scripts: who may use an exit, and at what price.
 
-use cena_map::{Action, Cond, Cost, Crossing, Routine};
+use cena_map::{Action, Cond, Cost, Crossing, Routine, Step};
 
 use super::{holes, is_word, quoted};
 
@@ -174,15 +174,52 @@ pub(super) fn setting_or_month(script: &str) -> Option<Cost> {
 /// the cost: such an exit is priced only when the password is set. The same
 /// goes for a way in that the profile must spell out (`MovesFromSetting`).
 fn setting_needed(crossing: &Crossing) -> Option<Cond> {
-    let name = match crossing {
-        Crossing::Routine(Routine::GuildPassword) => "rogue_password",
-        Crossing::Steps(steps) => steps.iter().find_map(|step| match &step.action {
-            Action::MovesFromSetting(name) => Some(name.as_str()),
-            _ => None,
-        })?,
+    let steps = match crossing {
+        Crossing::Routine(Routine::GuildPassword) => {
+            return Some(Cond::SettingIsSet("rogue_password".to_owned()));
+        }
+        Crossing::Steps(steps) => steps,
         _ => return None,
     };
-    Some(Cond::SettingIsSet(name.to_owned()))
+    let mut names: Vec<&str> = Vec::new();
+    for step in steps {
+        let found: Vec<&str> = match &step.action {
+            Action::MovesFromSetting(name) => vec![name.as_str()],
+            Action::Put(command) | Action::Move(command) | Action::TryMove(command) => command
+                .split("{setting:")
+                .skip(1)
+                .filter_map(|rest| rest.split_once('}'))
+                .map(|(name, _)| name)
+                .collect(),
+            _ => Vec::new(),
+        };
+        for name in found {
+            if !names.contains(&name) {
+                names.push(name);
+            }
+        }
+    }
+    if names.is_empty() {
+        return None;
+    }
+    let mut set: Vec<Cond> = names
+        .into_iter()
+        .map(|name| Cond::SettingIsSet(name.to_owned()))
+        .collect();
+    let set = if set.len() == 1 {
+        set.remove(0)
+    } else {
+        Cond::All(set)
+    };
+    // A first move under a guard is the way across that needs no settings:
+    // the key already worn. Whoever that guard holds for may pass without.
+    Some(match steps.first() {
+        Some(Step {
+            action: Action::Move(_),
+            when: Some(worn),
+        }) => Cond::Any(vec![worn.clone(), set]),
+        _ => set,
+    })
 }
 
 /// `cost`, with whatever [`setting_needed`] adds.
