@@ -1391,12 +1391,21 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    its steps. Upstream refuses a cell door to an empty right hand; not gated here -- what
    is in a hand when a walk is planned says little about when it arrives.
 
+   **Scripts written once (2026-09-21, `recognise/singles.rs`).** 14 exits. A script that
+   exists for one place is matched **verbatim** against a copy under
+   `src/upstream_scripts/` and ported by hand beside it; an upstream edit un-ports it and
+   the ratchet says so. New steps: `Speak`/`RestoreSpeech` (the wizard guild's doors),
+   `TakeOut`/`PutBack` (a key or lockpick, put back in the container it came from),
+   `Ask` with `{told}` (look at the trail, go the way it heads). New routines:
+   `SearchRooms { rooms, by_uid, sees, enter }`, `Mirror`, `RingWedges`. **One of these was
+   a chokepoint**: reach knowing nothing went 11,735 -> 18,003.
+
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **52** |
+   | unported crossings | 7,923 | **38** |
    | unported costs | 1,860 | **22** |
-   | reachable from Wehnimer's, knowing nothing | 6,969 | **11,735** |
-   | reachable with paid services on | — | **21,516** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **18,003** |
+   | reachable with paid services on | — | **21,782** |
 
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth

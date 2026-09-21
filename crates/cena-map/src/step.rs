@@ -26,6 +26,8 @@ use crate::cond::Cond;
 /// - `{item:cord-strung delicate brass key}` -- the game's `#id` for the
 ///   thing the walker has with exactly this name. Upstream addresses such
 ///   a thing by id because the game's parser will not take a full name.
+///   The thing may be in the room instead: a building with a long name.
+/// - `{told}` -- the word an earlier [`Action::Ask`] was given.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Action {
@@ -133,6 +135,25 @@ pub enum Action {
     /// last of which moves the walker: the way into private property, which
     /// only its owner knows. The exit's cost asks that the setting is set.
     MovesFromSetting(String),
+    /// Speak this language, remembering the one spoken, as
+    /// [`Action::Stance`] remembers the stance: a guild door hears its
+    /// password only in the guild's tongue. Nothing to send if it is spoken
+    /// already.
+    Speak(String),
+    /// Go back to the language [`Action::Speak`] replaced. The walk restores
+    /// it before it ends whether or not this step is reached.
+    RestoreSpeech,
+    /// `get my <this>`, remembering the container it came out of: a key or a
+    /// lockpick kept wherever its owner keeps it. If the walker has none the
+    /// crossing fails here, before anything is unlocked.
+    TakeOut(String),
+    /// Put what [`Action::TakeOut`] took back where it came from. The walk
+    /// does it before it ends whether or not this step is reached.
+    PutBack,
+    /// Send `.0` and keep the word that follows `.1` in the game's answer,
+    /// for `{told}` in the commands that come after it in this crossing:
+    /// `look trail`, and the way the trail heads.
+    Ask(String, String),
     /// Find out where the walker is and plan again from there. Always last.
     /// Upstream's `$go2_restart = true`, on crossings that may land somewhere
     /// other than the exit's destination (`plan/21` §4.3). Skipped when the

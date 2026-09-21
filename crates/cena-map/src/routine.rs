@@ -87,6 +87,24 @@ pub enum Routine {
     /// (`northern`), and climb that one -- `climb steps`, `climb second
     /// steps`, and so on. Upstream gives up when no flight is on the wall.
     FlightOfSteps { wall: String },
+    /// Go to each of `rooms` in turn, by the map, until one shows a thing
+    /// whose name holds `sees`; then `enter` it. A portal or a doorframe
+    /// that wanders. `by_uid`: the rooms are the game's numbers, not the
+    /// map's. Where it leads is not promised, so it ends by planning again.
+    SearchRooms {
+        rooms: Vec<u32>,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        by_uid: bool,
+        sees: String,
+        enter: String,
+    },
+    /// Room 16165: turn the mirror right to its stop, then tilt it until the
+    /// light falls on the centre of the statue -- starting the turn again
+    /// from the left if it flips over -- and `go shadow`.
+    Mirror,
+    /// Room 8373: look at each of the stone ring's four wedges and turn the
+    /// ring until it points at its sigil, pushing each wedge as it is set.
+    RingWedges,
     Patrol {
         /// `None` keeps a gap upstream left: positions matter.
         starts: Vec<Option<RoomId>>,
