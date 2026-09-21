@@ -17,9 +17,10 @@ pub struct TextFrame {
     pub link: Option<Link>,
     /// The innermost open `<a exist=>`, when it is not already [`Self::link`].
     ///
-    /// See [`Run::inner_link`](crate::runs::Run::inner_link) for why: a `<d>`
-    /// wrapping an `<a exist=>` is what `ready list` sends, and without this
-    /// the object's identity reached no consumer.
+    /// See [`Run::inner_link`](crate::runs::Run::inner_link) for why: one
+    /// clickable region can both NAME an object and SEND a command --
+    /// clicking the katar in `ready list` sends `store WEAPON clear` -- and
+    /// without this field only the command survived.
     pub inner_link: Option<Link>,
     /// Whether this run ended a **physical wire line**.
     ///

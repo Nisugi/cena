@@ -59,11 +59,11 @@ pub struct ItemRef {
 impl ItemRef {
     /// Read the first game object named on a line, if there is one.
     ///
-    /// [`ChunkLine::objects`], not `links`: `ready list` wraps each item in a
-    /// clickable `<d cmd="store WEAPON clear">`, so the OUTERMOST link is the
-    /// command and the object is the `<a exist=>` nested inside it. Asking
-    /// for links here found the `<d>` and reported no item at all -- which is
-    /// how the nesting was found.
+    /// [`ChunkLine::objects`], not `links`: in `ready list` the item's own
+    /// text is clickable and clicking it sends `store WEAPON clear`, so the
+    /// markup states both what the text NAMES and what a click SENDS. `links`
+    /// gives the command; `objects` gives the thing. Asking for links here
+    /// reported no item at all -- which is how the parser's loss was found.
     fn first_on(line: &ChunkLine) -> Option<Self> {
         line.objects().find_map(|link| match &link.kind {
             LinkKind::Exist { id, noun } => Some(Self {

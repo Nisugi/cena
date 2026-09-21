@@ -384,13 +384,19 @@ fn a_stream_window_keeps_the_attributes_beyond_id_title_and_subtitle() {
 
 #[test]
 fn an_object_nested_inside_a_clickable_command_survives() {
-    // **The outermost link is what a CLICK acts on; it is not always what the
-    // text REFERS to.** `ready list` sends its items wrapped in the command
-    // that would clear them:
+    // **One clickable region can carry two facts, and the parser kept only
+    // one.** `ready list` sends its items wrapped in the command that would
+    // clear them:
     //
     // ```text
     // weapon: <d cmd="store WEAPON clear">a <a exist="208924336" noun="katar">...</a></d>
     // ```
+    //
+    // Clicking the katar's own text sends `store WEAPON clear` (author,
+    // 2026-09-20) -- there is ONE clickable region, and the `<d>` is the
+    // command attached to that object's link rather than a separate widget
+    // around it. The markup states two facts about the same span: what the
+    // text NAMES, and what clicking it SENDS.
     //
     // The parser kept a stack of open links and surfaced `first()` -- the
     // outermost, per Vellum's rule at `src/parser/text.rs:97-106`, which is
@@ -423,8 +429,8 @@ fn an_object_nested_inside_a_clickable_command_survives() {
         },
     );
 
-    // And the click is still the `<d>`, unchanged -- the fix ADDS a fact
-    // rather than replacing one.
+    // And what a click SENDS is unchanged -- the fix ADDS the second fact
+    // rather than replacing the first.
     let clickable = frames.iter().find_map(|f| match f {
         Frame::Text(t) => t.link.as_ref().map(|l| l.kind.clone()),
         _ => None,

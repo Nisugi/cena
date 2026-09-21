@@ -247,9 +247,19 @@ would clear it:
   weapon: <d cmd="store WEAPON clear">a <a exist="208924336" noun="katar">...</a></d>
 ```
 
-so the outermost link is the `<d>` and the **object** is the `<a>` inside it. The
-inner link's `exist` and `noun` reached no consumer at all -- the model losing
-what the parser preserved.
+**There is one clickable region here, not two.** The katar's own text is what
+the player clicks, and clicking it sends `store WEAPON clear` (author,
+2026-09-20). The `<d>` is not a separate widget wrapping an object; it is the
+command attached to that object's link.
+
+So the markup states two facts about the same span -- what the text **names**,
+and what clicking it **sends** -- and the parser kept only the second. The inner
+link's `exist` and `noun` reached no consumer at all: the model losing what the
+parser preserved.
+
+An earlier draft of this note described the `<d>` and the `<a>` as two different
+targets. They are not, and the distinction matters for what `links` means to a
+consumer: it is not "the outer thing" but "what a click does".
 
 MEASURED in `E:/Gemstone/dev/lich-5/logs` (208 live XML files): **322 nested
 `<d>...<a exist>` occurrences across 62 files.** Not an edge case. Zero occur in

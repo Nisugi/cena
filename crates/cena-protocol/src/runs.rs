@@ -99,10 +99,16 @@ pub struct Run {
     /// weapon: <d cmd="store WEAPON clear">a <a exist="208924336" noun="katar">...</a></d>
     /// ```
     ///
-    /// so the clickable thing is the `<d>` and the *object* is the `<a>`
-    /// inside it. `link` keeps the `<d>`, because that is what a click sends;
-    /// without this field the `exist` id and noun reached no consumer at all,
-    /// which is Rule 2.2a -- the model dropping what the parser preserved.
+    /// **There is ONE clickable region here, not two.** The katar's own text
+    /// is what the player clicks, and clicking it sends `store WEAPON clear`
+    /// (author, 2026-09-20). The `<d>` is not a separate widget wrapping an
+    /// object; it is the command attached to that object's link.
+    ///
+    /// So the markup states two facts about the same span: *this text names
+    /// object 208924336*, and *clicking it sends this command*. `link` keeps
+    /// the command, because that is what a click does. Without this field the
+    /// other fact -- the `exist` id and noun -- reached no consumer at all,
+    /// which is Rule 2.2a: the model dropping what the parser preserved.
     ///
     /// MEASURED over the 208 live Lich XML logs: **322 nested
     /// `<d>...<a exist>` occurrences across 62 files**, so this is a shape the
