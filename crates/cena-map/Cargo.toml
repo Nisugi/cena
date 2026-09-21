@@ -13,10 +13,11 @@ publish.workspace = true
 # No workspace dependency yet. `plan/21` places this crate at the model level;
 # the edge to whatever consumes it is added when that consumer exists
 # (`plan/05` §-1: no edge ahead of its use).
+# `serde_json`: a ported crossing's step list travels inside the binary as
+# JSON (`binary.rs`, "Steps"), so a step a build does not know fails to parse
+# and the exit loads as impassable instead of failing the file.
 [dependencies]
 serde.workspace = true
-
-[dev-dependencies]
 serde_json.workspace = true
 
 [lints]

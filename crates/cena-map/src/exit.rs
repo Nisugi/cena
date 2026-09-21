@@ -7,6 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::room::RoomId;
+use crate::step::Step;
 
 /// The stable hash of a scripted edge's *shape*: its upstream Ruby with string
 /// literals, regex literals and numbers normalised away.
@@ -20,14 +21,16 @@ pub struct ShapeId(pub String);
 
 /// How an exit is crossed.
 ///
-/// `plan/21` §5 step 2 lands only the two ends of this: a plain command, and
-/// "scripted, not ported yet". The primitive step list between them arrives
-/// with step 7, as a third variant serialised under `steps`.
+/// A plain command, a ported script, or a script nothing has ported yet.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Crossing {
     /// A plain command: `north`, `go door`, `climb rope`.
     #[serde(rename = "cmd")]
     Command(String),
+    /// Scripted upstream, and ported: a flat list of guarded steps
+    /// (`crate::step`).
+    #[serde(rename = "steps")]
+    Steps(Vec<Step>),
     /// Scripted upstream and not yet ported. **Impassable**, and counted by the
     /// converter's report -- nothing is dropped silently (`plan/21` §3a).
     #[serde(rename = "unported")]
@@ -45,6 +48,14 @@ impl Crossing {
     pub const COMMAND: &'static str = "cmd";
     /// Wire name of [`Crossing::Unported`].
     pub const UNPORTED: &'static str = "unported";
+    /// Wire name of [`Crossing::Steps`].
+    pub const STEPS: &'static str = "steps";
+
+    /// Whether this build knows how to cross it.
+    #[must_use]
+    pub fn is_crossable(&self) -> bool {
+        matches!(self, Crossing::Command(_) | Crossing::Steps(_))
+    }
 }
 
 /// What an exit costs the pathfinder, in seconds.
@@ -154,11 +165,11 @@ pub struct Exit {
 }
 
 impl Exit {
-    /// Whether a pathfinder may route through this exit *as converted*: it has
-    /// a plain command and a constant cost.
+    /// Whether a pathfinder may route through this exit knowing nothing about
+    /// the walker: this build can cross it, and its cost is a constant.
     #[must_use]
     pub fn is_routable(&self) -> bool {
-        matches!(self.crossing, Crossing::Command(_)) && matches!(self.cost, Some(Cost::Fixed(_)))
+        self.crossing.is_crossable() && matches!(self.cost, Some(Cost::Fixed(_)))
     }
 }
 

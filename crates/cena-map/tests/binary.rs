@@ -109,6 +109,37 @@ fn a_crossing_this_build_does_not_know_loads_as_impassable() {
     assert_eq!(map.len(), 3);
 }
 
+/// RULE 1, inside a crossing. The step list is JSON in the file, so a step a
+/// later build added fails to parse here -- and that must cost one exit, not
+/// the map.
+#[test]
+fn ported_steps_round_trip_and_a_step_this_build_does_not_know_is_impassable() {
+    let rooms: Vec<Room> = serde_json::from_str(
+        r#"[{"id":1,"exits":[{"to":1,"kind":"scripted","cost":0.2,
+             "steps":[{"pause":4200,"when":{"spell_active":"Haste"}},{"move":"west"}]}]}]"#,
+    )
+    .unwrap();
+    let map = Map::from_rooms(rooms).unwrap();
+    let file = encode(&map).unwrap();
+    let loaded = decode(&file).unwrap();
+    assert_eq!(loaded, map);
+    assert!(loaded.room(RoomId(1)).unwrap().exits[0].is_routable());
+
+    // `pause` -> `yodel`, the same length: a step from the future.
+    let at = file.windows(7).position(|w| w == b"\"pause\"").unwrap();
+    let mut newer = file.clone();
+    newer[at + 1..at + 6].copy_from_slice(b"yodel");
+    let loaded = decode(&newer).expect("one unreadable crossing is not a load error");
+    let exit = &loaded.room(RoomId(1)).unwrap().exits[0];
+    assert_eq!(exit.crossing, Crossing::Unknown("steps".into()));
+    assert_eq!(
+        exit.cost,
+        Some(Cost::Fixed(0.2)),
+        "the rest of the exit loaded"
+    );
+    assert!(!exit.is_routable());
+}
+
 /// RULE 1, for costs.
 #[test]
 fn a_cost_this_build_does_not_know_loads_as_impassable() {

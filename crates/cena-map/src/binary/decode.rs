@@ -157,6 +157,10 @@ fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadErro
     let crossing = match name {
         Crossing::COMMAND => Crossing::Command(strings.string_in(blob, at)?.to_owned()),
         Crossing::UNPORTED => Crossing::Unported(ShapeId(strings.string_in(blob, at)?.to_owned())),
+        // A step list this build cannot read -- a step or a condition added
+        // since -- is an unknown crossing, not a bad file (rule 1).
+        Crossing::STEPS => serde_json::from_slice(blob)
+            .map_or_else(|_| Crossing::Unknown(name.to_owned()), Crossing::Steps),
         other => Crossing::Unknown(other.to_owned()),
     };
 

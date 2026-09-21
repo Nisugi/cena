@@ -97,7 +97,9 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
             Some(None) | None => None,
         };
         let (kind, crossing) = if is_script(command) {
-            (ExitKind::Scripted, Crossing::Unported(shape_id(command)))
+            let crossing = crate::recognise::crossing(command)
+                .unwrap_or_else(|| Crossing::Unported(shape_id(command)));
+            (ExitKind::Scripted, crossing)
         } else {
             (kind_of(command), Crossing::Command(command.clone()))
         };

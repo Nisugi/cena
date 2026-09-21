@@ -43,6 +43,14 @@
 //!   extensions         u32 count, then each: u32 name ref, u32 length, blob
 //! ```
 //!
+//! Blobs by name: `cmd` and `unported` are one string ref; `fixed` is an f64;
+//! **`steps` is the step list as JSON**, the same text the per-room file
+//! holds. JSON inside a binary is deliberate: a step or a condition added by a
+//! later build fails to parse here, which makes the exit an unknown crossing
+//! -- rule 1 -- with no second versioning scheme to maintain. Scripted exits
+//! are under a tenth of the map, so the size is not the consideration it
+//! would be for plain commands.
+//!
 //! Strings are interned in one table because they repeat enormously: a command
 //! like `north`, a climate, a location name, a tag.
 //!

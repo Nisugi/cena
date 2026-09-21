@@ -80,6 +80,10 @@ fn write_exit(w: &mut Writer, exit: &Exit) -> Result<(), EncodeError> {
             let reference = w.intern(&shape.0)?;
             w.named(Crossing::UNPORTED, &reference.to_le_bytes())?;
         }
+        Crossing::Steps(steps) => {
+            let json = serde_json::to_vec(steps).map_err(|_| EncodeError)?;
+            w.named(Crossing::STEPS, &json)?;
+        }
         Crossing::Unknown(_) => return Err(EncodeError),
     }
     match &exit.cost {

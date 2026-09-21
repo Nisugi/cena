@@ -1,10 +1,10 @@
 //! The converter over a cut of the real upstream map.
 //!
-//! `fixtures/mapdb_cut.json` is 22 rooms cut from `map-1789942730.json` by
+//! `fixtures/mapdb_cut.json` is 24 rooms cut from `map-1789942730.json` by
 //! `research/mapdb-inventory/cut_fixture.py`, each chosen for what it
 //! exercises; their exits are trimmed to one another so nothing dangles.
 
-use cena_map::{Cost, Crossing, ExitKind, Room, RoomId, Uid};
+use cena_map::{Action, Cond, Cost, Crossing, ExitKind, Room, RoomId, Uid, Walker};
 use cena_mapdb_convert::run::{Conversion, convert};
 use cena_mapdb_convert::shape::shape_id;
 use cena_mapdb_convert::{output, run};
@@ -24,7 +24,7 @@ fn room(conversion: &Conversion, id: u32) -> Option<&Room> {
 #[test]
 fn the_cut_converts_cleanly() {
     let conversion = converted().unwrap();
-    assert_eq!(conversion.rooms.len(), 22);
+    assert_eq!(conversion.rooms.len(), 24);
     assert_eq!(conversion.report.dangling, 0);
     assert!(
         conversion.report.problems.is_empty(),
@@ -51,7 +51,7 @@ fn scripted_crossings_that_differ_only_in_a_parameter_share_a_shape() {
         .iter()
         .filter_map(|exit| match &exit.crossing {
             Crossing::Unported(shape) => Some((exit.to, exit.kind, shape.clone())),
-            Crossing::Command(_) | Crossing::Unknown(_) => None,
+            Crossing::Command(_) | Crossing::Steps(_) | Crossing::Unknown(_) => None,
         })
         .collect();
     assert_eq!(shapes.len(), 2);
@@ -73,6 +73,90 @@ fn scripted_crossings_that_differ_only_in_a_parameter_share_a_shape() {
         .unwrap();
     assert!(matches!(table.cost, Some(Cost::Fixed(_))));
     assert!(!table.is_routable());
+}
+
+/// The first ported script (`plan/21` §4.8): upstream's Ruby in, guarded steps
+/// out, and the exit is an exit again.
+#[test]
+fn the_icy_path_is_ported_to_a_guarded_pause_and_a_move() {
+    let conversion = converted().unwrap();
+    let exit = room(&conversion, 2497)
+        .unwrap()
+        .exits
+        .iter()
+        .find(|exit| exit.to == RoomId(2496))
+        .unwrap();
+    let Crossing::Steps(steps) = &exit.crossing else {
+        panic!("not ported: {:?}", exit.crossing);
+    };
+    assert!(
+        exit.is_routable(),
+        "a ported crossing with a plain cost routes"
+    );
+    assert_eq!(steps.len(), 3);
+    assert_eq!(steps[0].action, Action::Cast("Sigil of Resolve".into()));
+    assert_eq!(steps[1].action, Action::Pause(4200));
+    assert_eq!(steps[2].action, Action::Move("west".into()));
+    assert_eq!(steps[2].when, None);
+    assert_eq!(conversion.report.ported_crossings, 1);
+
+    // The guard says what the Ruby said.
+    let slippery = steps[1].when.as_ref().unwrap();
+    let walker = |ice: &str, load: u32, survival: u32, haste: bool| Walker {
+        settings: [("ice_mode".to_owned(), ice.to_owned())].into(),
+        encumbrance: Some(load),
+        skills: Some([("survival".to_owned(), survival)].into()),
+        active_spells: Some(haste.then(|| "Haste".to_owned()).into_iter().collect()),
+        ..Walker::default()
+    };
+    assert!(
+        slippery.holds(&walker("wait", 0, 300, true)),
+        "wait: always"
+    );
+    assert!(
+        !slippery.holds(&walker("run", 99, 0, false)),
+        "run: never wait"
+    );
+    assert!(slippery.holds(&walker("auto", 51, 300, true)), "heavy");
+    assert!(slippery.holds(&walker("auto", 10, 49, false)), "unskilled");
+    assert!(
+        !slippery.holds(&walker("auto", 10, 49, true)),
+        "unskilled but hasted"
+    );
+    assert!(!slippery.holds(&walker("auto", 10, 50, false)), "skilled");
+
+    // The author's rule: cast Resolve when it is known, affordable and not up.
+    let can_cast = steps[0].when.as_ref().unwrap();
+    let sigil = || Some(["Sigil of Resolve".to_owned()].into());
+    let member = Walker {
+        settings: [("ice_mode".to_owned(), "auto".to_owned())].into(),
+        active_spells: Some([].into()),
+        known_spells: sigil(),
+        affordable_spells: sigil(),
+        ..Walker::default()
+    };
+    assert!(can_cast.holds(&member));
+    let broke = Walker {
+        affordable_spells: Some([].into()),
+        ..member.clone()
+    };
+    assert!(!can_cast.holds(&broke));
+    let already_up = Walker {
+        active_spells: sigil(),
+        ..member.clone()
+    };
+    assert!(!can_cast.holds(&already_up));
+    let running = Walker {
+        settings: [("ice_mode".to_owned(), "run".to_owned())].into(),
+        ..member.clone()
+    };
+    assert!(!can_cast.holds(&running), "run means run: no sigil either");
+    assert!(!can_cast.holds(&Walker::default()), "nobody has looked: no");
+
+    assert!(
+        matches!(slippery, Cond::Any(_)),
+        "and it is data, not code: {slippery:?}"
+    );
 }
 
 /// Urchins (`plan/21` §2b): a `;e true` crossing into a virtual hub, gated by a
@@ -134,7 +218,7 @@ fn plain_exits_are_routable_and_typed() {
     let exits = &room(&conversion, 87).unwrap().exits;
     assert!(exits.iter().all(cena_map::Exit::is_routable));
     assert!(exits.iter().any(|exit| exit.kind == ExitKind::Vertical));
-    assert_eq!(conversion.report.exits, 30);
+    assert_eq!(conversion.report.exits, 32);
     assert_eq!(
         conversion.report.routable
             + conversion.report.unported_crossings
@@ -181,11 +265,11 @@ fn writing_is_deterministic_and_quiet() {
     let _ = std::fs::remove_dir_all(&out);
 
     let first = output::write(&out, &converted().unwrap()).unwrap();
-    assert_eq!((first.created, first.updated, first.unchanged), (22, 0, 0));
+    assert_eq!((first.created, first.updated, first.unchanged), (24, 0, 0));
     let second = output::write(&out, &run::convert(CUT).unwrap()).unwrap();
     assert_eq!(
         (second.created, second.updated, second.unchanged),
-        (0, 0, 22)
+        (0, 0, 24)
     );
 
     // What was written reads back as the same room.
@@ -197,7 +281,7 @@ fn writing_is_deterministic_and_quiet() {
     }
     let index: Vec<RoomId> =
         serde_json::from_str(&std::fs::read_to_string(out.join("index.json")).unwrap()).unwrap();
-    assert_eq!(index.len(), 22);
+    assert_eq!(index.len(), 24);
     assert!(out.join("report").join("unported_crossings.tsv").is_file());
 
     std::fs::remove_dir_all(&out).unwrap();

@@ -32,6 +32,8 @@ pub struct Report {
     pub exits: usize,
     /// Exits a pathfinder could use as converted: plain command, constant cost.
     pub routable: usize,
+    /// Scripted upstream, and crossed by steps an arm produced.
+    pub ported_crossings: usize,
     pub unported_crossings: usize,
     pub unported_costs: usize,
     /// Exits with no cost at all, which are impassable (`cena_map::Cost`).
@@ -49,7 +51,9 @@ impl Report {
     /// only the source has it.
     pub fn see_scripts(&mut self, upstream: &UpstreamRoom) {
         for (to, command) in &upstream.wayto {
-            if is_script(command) {
+            // The table is the worklist, so a script an arm already knows is
+            // not on it.
+            if is_script(command) && crate::recognise::crossing(command).is_none() {
                 note(&mut self.crossing_shapes, command, upstream.id, to);
             }
         }
@@ -79,8 +83,10 @@ impl Report {
             if exit.is_routable() {
                 self.routable += 1;
             }
-            if matches!(exit.crossing, Crossing::Unported(_)) {
-                self.unported_crossings += 1;
+            match exit.crossing {
+                Crossing::Unported(_) => self.unported_crossings += 1,
+                Crossing::Steps(_) => self.ported_crossings += 1,
+                Crossing::Command(_) | Crossing::Unknown(_) => {}
             }
             match exit.cost {
                 Some(Cost::Unported { .. }) => self.unported_costs += 1,
@@ -113,6 +119,7 @@ impl Report {
         let _ = writeln!(text, "  without a uid       {}", self.rooms_without_uid);
         let _ = writeln!(text, "exits                 {}", self.exits);
         let _ = writeln!(text, "  routable as is      {}", self.routable);
+        let _ = writeln!(text, "  ported crossings    {}", self.ported_crossings);
         let _ = writeln!(
             text,
             "  unported crossings  {} in {} shapes",

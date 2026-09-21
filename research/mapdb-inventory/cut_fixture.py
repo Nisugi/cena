@@ -22,6 +22,7 @@ picks = [
     first(lambda r: r.get('check_location') and r['wayto']),
     first(lambda r: r.get('unique_loot')),
     first(lambda r: r.get('image') and any(v in ('up', 'down') for v in r['wayto'].values())),
+    2497,     # the icy path: the first PORTED script, a guarded pause and a move
 ]
 # pull in a few plain neighbours so exits have somewhere to go
 keep = set(picks)
@@ -30,6 +31,7 @@ for i in picks:
     keep.update(plain)
     # the vertical pick must keep its vertical exit, or it exercises nothing
     keep.update(int(k) for k, v in d[i]['wayto'].items() if v in ('up', 'down'))
+keep.update([2496])  # where the icy path leads, so that exit survives the trim
 keep.update([1, 2])  # two of room 0's table rooms, so its scripted exits survive the trim
 
 out = []

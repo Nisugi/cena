@@ -16,6 +16,7 @@
 
 pub mod convert;
 pub mod output;
+pub mod recognise;
 pub mod report;
 pub mod run;
 pub mod shape;

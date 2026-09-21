@@ -7,6 +7,14 @@
 //! shape. Port a shape, the count falls, and the test fails until the baseline
 //! is turned down to match -- so the gain is recorded and cannot be given back.
 //!
+//! # The second number: rooms a walker can reach
+//!
+//! Unported *exits* is the wrong thing to watch alone. MEASURED (`plan/21` §5
+//! step 5): plain exits are 90% of the map and reach a quarter of it, because
+//! a few scripted exits are the bridges. So `reachable` pins how many rooms a
+//! walk from Wehnimer's Town Square reaches knowing nothing about the walker,
+//! and it may only **rise**.
+//!
 //! Env-gated, like `cena-protocol`'s corpus replay: the upstream map is 43 MB
 //! and lives under the gitignored `reference/`.
 //!
@@ -17,6 +25,7 @@
 
 use std::path::PathBuf;
 
+use cena_map::{Map, RoomId, Target, as_converted};
 use cena_mapdb_convert::report::{Report, ShapeRow};
 use cena_mapdb_convert::run::convert;
 
@@ -78,6 +87,17 @@ fn check(what: &str, now: usize, pinned: usize) {
     );
 }
 
+/// Town Square Central, Wehnimer's Landing.
+const START: RoomId = RoomId(228);
+
+fn reachable(map: &Map) -> usize {
+    let routes = map.routes(START, Target::Everything, as_converted);
+    map.rooms()
+        .iter()
+        .filter(|room| routes.seconds_to(room.id).is_some())
+        .count()
+}
+
 #[test]
 fn unported_edges_only_fall() {
     let Some(path) = mapdb_of(std::env::var_os(MAPDB_VAR).as_deref()) else {
@@ -104,6 +124,25 @@ fn unported_edges_only_fall() {
         baseline("crossings").unwrap(),
     );
     check("costs", report.unported_costs, baseline("costs").unwrap());
+
+    let map = Map::from_rooms(conversion.rooms).unwrap();
+    let (now, pinned) = (reachable(&map), baseline("reachable").unwrap());
+    println!();
+    println!(
+        "REACHABLE from room {}: {now} of {} rooms",
+        START.0,
+        map.len()
+    );
+    assert!(
+        now >= pinned,
+        "reachable: {now} rooms, baseline {pinned}. The map got SMALLER for a walker: an arm \
+         stopped matching, or upstream cut a bridge. The residue above names what is unported."
+    );
+    assert!(
+        now <= pinned,
+        "reachable: {now} rooms, baseline {pinned}. That is progress -- turn \
+         `tests/unported.baseline` up to {now} so it cannot be given back."
+    );
 }
 
 #[test]
@@ -122,4 +161,5 @@ fn the_gate_skips_when_unset_and_is_loud_when_wrong() {
 fn the_baseline_parses() {
     assert!(baseline("crossings").unwrap() > 0);
     assert!(baseline("costs").unwrap() > 0);
+    assert!(baseline("reachable").unwrap() > 0);
 }

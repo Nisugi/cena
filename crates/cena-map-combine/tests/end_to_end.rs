@@ -35,7 +35,7 @@ fn the_converters_output_combines_into_the_map_it_described() {
 
     let out = dir.join("hydra.map");
     let written = write(&map, &out).unwrap();
-    assert_eq!(written.rooms, 22);
+    assert_eq!(written.rooms, 24);
 
     // What a client does: read the file, decode it, ask it questions.
     let loaded = binary::decode(&std::fs::read(&out).unwrap()).unwrap();
@@ -66,7 +66,7 @@ fn a_stale_room_file_the_index_does_not_name_is_ignored() {
     std::fs::write(&stale, r#"{"id":99999}"#).unwrap();
 
     let map = combine(&dir).unwrap();
-    assert_eq!(map.len(), 22);
+    assert_eq!(map.len(), 24);
     assert!(map.room(RoomId(99_999)).is_none());
     std::fs::remove_dir_all(&dir).unwrap();
 }

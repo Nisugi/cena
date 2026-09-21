@@ -16,15 +16,19 @@
 //! [`Crossing::Unported`], already reduced to the hash of its shape.
 
 pub mod binary;
+pub mod cond;
 pub mod exit;
 pub mod files;
 pub mod locate;
 pub mod map;
 pub mod room;
 pub mod route;
+pub mod step;
 
+pub use cond::{Cond, Walker};
 pub use exit::{Cost, Crossing, Exit, ExitKind, ShapeId};
 pub use locate::{By, Located, Origin, Sighting, title_from_subtitle};
 pub use map::{DuplicateRoom, Map};
 pub use room::{Image, Room, RoomId, Uid};
 pub use route::{Routes, Target, as_converted};
+pub use step::{Action, Step};

@@ -564,6 +564,88 @@
   ]
  },
  {
+  "id": 2496,
+  "title": [
+   "[Icemule Trace, Forest]"
+  ],
+  "description": [
+   "The lowest branches of the trees have been cut away, allowing visibility further into the woods.  Beyond the first row of pines you can see the dark boles of another row of trees."
+  ],
+  "paths": [
+   "Obvious paths: northeast, east"
+  ],
+  "location": "the southern snowfields",
+  "climate": "snowy, arctic",
+  "terrain": "coniferous forest",
+  "wayto": {
+   "2497": "east"
+  },
+  "timeto": {
+   "2497": 0.2
+  },
+  "image": "imt-south_gate-1647231707.png",
+  "image_coords": [
+   289,
+   708,
+   299,
+   718
+  ],
+  "tags": [
+   "angelica root",
+   "bolmara lichen",
+   "bright red teaberry",
+   "broken twig",
+   "crowberry",
+   "frostflower",
+   "frostweed",
+   "handful of pinenuts"
+  ],
+  "uid": [
+   4128013
+  ]
+ },
+ {
+  "id": 2497,
+  "title": [
+   "[Icemule Trace, Forest]"
+  ],
+  "description": [
+   "A solitary wooden signpost stands at the head of a road leading southwest.  It marks the intersection with a smaller trail leading east and west.  Straw has been scattered on the snowy road, helping you maintain your footing as you continue on your way."
+  ],
+  "paths": [
+   "Obvious paths: east, southwest, west"
+  ],
+  "location": "the southern snowfields",
+  "climate": "snowy, arctic",
+  "terrain": "coniferous forest",
+  "wayto": {
+   "2496": ";e if (UserVars.mapdb_ice_mode == 'wait') or ((UserVars.mapdb_ice_mode != 'run') and ((XMLData.encumbrance_value > 50) or ((Skills.survival < 50) and not Spell['Haste'].active?))); sleep 0.2; echo 'trying not to slip...'; sleep 4; end; move 'west'"
+  },
+  "timeto": {
+   "2496": 0.2
+  },
+  "image": "imt-south_gate-1647231707.png",
+  "image_coords": [
+   317,
+   707,
+   327,
+   717
+  ],
+  "tags": [
+   "angelica root",
+   "bolmara lichen",
+   "bright red teaberry",
+   "broken twig",
+   "crowberry",
+   "frostflower",
+   "frostweed",
+   "handful of pinenuts"
+  ],
+  "uid": [
+   4128014
+  ]
+ },
+ {
   "id": 2640,
   "title": [
    "[Lake of Tears]"

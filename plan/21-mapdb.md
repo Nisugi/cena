@@ -776,24 +776,35 @@ trips as failures (`executor.rs:2486`). Bounded (Vellum: 10 restarts; go2: unbou
 Banned exits are **per trip**, live in `Walker`, and therefore reach the pathfinder through
 `price` with no special mechanism.
 
-### 4.4 What upstream calls per-trip variables are not per trip
+### 4.4 Memories — what upstream calls per-trip variables are not per trip
 
 `UserVars.mapdb_duskruin_origin = 7` is written by the exit *into* an event ground; every
 exit back is priced `origin == 7 ? 0.2 : nil`, so only the way you came is open. `UserVars`
 persist across logins — rightly: a character enters Duskruin on Friday and leaves on Sunday.
 
-MEASURED (`origin.py`, this session): of 58 writes, **32 are the literal id of the room being
-left, the rest are `Map.current.id` or `nil`** (clearing it on return); and **all 50 reads
-compare against the exit's own destination**. So the five variables are one fact with no
-name: ***which room did I enter this place from?***
+**DECIDED (author, 2026-09-20): named memories, Lich's list.** I proposed collapsing them
+into one unnamed fact ("which room did I enter this place from"), on the measurement that
+every `*_origin` write is the room being left and every read compares against the exit's
+own destination (`origin.py`). The author declined, for two good reasons: these are **not
+all the same fact**, and new ones are rare, so a list costs nothing.
 
-- Step **`RememberOrigin`**: on crossing `A → hub`, record `origin[hub] = A`.
-- **`Cond::CameFrom`**: on an exit `hub → B`, true when `origin[hub] == B`.
-- Stored per character, **persisted** (it must survive a logout), carried into `Walker`.
+| memory | written when | read by | the author's account |
+|---|---|---|---|
+| `duskruin_origin`, `ebon_gate_origin`, `talondown_origin`, `marksofthebeast_origin` | `event transport <event>` from a town | each way back: open only to the town you came from | an event returns you where you left |
+| `fwi_return_room` | turning the FWI trinket — **usable only from inside a town** | the way back from Mist Harbor | returns you to *the same room in the town you came from*. **Arrival is a random room, or a preset one** if a GM has set the device — so this crossing ends in `Replan` (4.3) |
+| `redforest_location` | entering the Red Forest | its exits | entered from the Landing side or the Nations side, **and it cannot be used to cross realms**: you leave by the side you came in |
+| `hinterwilds_location` | the Hinterwilds sliver (`EN` / `IM`) | its way back | go2's own detour, digest §6 |
 
-A new event ground upstream then needs no new variable, no new primitive, and no Hydra
-release. `mapdb_fwi_return_room` stores a *location* rather than a room and is the one
-variant; `$minotaur_maze_dirs` and `$mapdb_confluence_target` are routine-internal (4.6).
+- Step **`Remember(name, value)`**, run only after the steps before it succeeded — a
+  transport that failed must not leave a false memory.
+- **`Cond::Remembered(name, value)`** prices the way back. A name never written is unknown,
+  so every way back is impassable — correct for a character Hydra did not watch arrive, and
+  the reason the memory is **persisted per character**, across logins.
+- Names are upstream's, less the `mapdb_` prefix. A new one upstream is a converter arm, not
+  a new primitive: the vocabulary is already general.
+
+`$minotaur_maze_dirs` and `$mapdb_confluence_target` are routine-internal (4.6), and the
+day-pass variables are a pre-flight (4.0), not memories.
 
 ### 4.5 Hands
 
@@ -1002,7 +1013,46 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    shapes are ported together (a crossing and its cost gate, or a chain of ferries). So the
    ratchet needs a second number beside "unported exits": **rooms reachable from a town**.
 6. ~~§4's design notes.~~ **WRITTEN 2026-09-20**, as proposals awaiting the author.
-7. Primitives, then recogniser arms, in edge-count order. A new arm that needs no new
+7. **STARTED 2026-09-20 — the first script is ported.** The machinery, all in place and all
+   small: `cena_map::cond` (`Cond`, three-valued so *not unknown* is never *yes*, and
+   `Walker`, the plain facts it is asked of); `cena_map::step` (`Action::{Move, Pause}` and
+   a `Step` = action + optional `when`); `Crossing::Steps`; and in the converter
+   `recognise.rs`, where **an arm is the upstream script verbatim with holes** — no Ruby
+   grammar, no partial understanding. One changed character upstream and the arm stops
+   matching, the exit returns to `unported`, and the ratchet fails: loud, and offline.
+   In the binary a step list is JSON inside the crossing's blob, so a step a build has
+   never heard of fails to parse and costs one exit, not the map (test:
+   `ported_steps_round_trip_and_a_step_this_build_does_not_know_is_impassable`).
+
+   **The icy paths** — all 171 exits, two upstream shapes (150 on the trails, 21 on the
+   glacier). **DECIDED (author, 2026-09-20): every one casts Sigil of Resolve when it is
+   known and affordable** — upstream does that only on the glacier — **and the whole
+   behaviour is one profile setting, `ice_mode`: `run` (just move: no cast, no wait), `wait`
+   (always wait) or `auto`** — go2's own values, kept because they say what happens. So both shapes become
+   the same three steps, *cast, wait, move*, each keeping its own wait and test. That added
+   `Action::Cast` and `Cond::{SpellKnown, SpellAffordable}`; *affordable* is a fact the
+   planner supplies, since working it out needs the spell table and the vitals. Dropped:
+   the glacier's reaction to a fall (cast Haste, stand, replan) — recovering from a fall
+   is the `move` step's job on every exit. MEASURED on the real map:
+
+   | | before | after |
+   |---|---|---|
+   | unported crossings | 7,923 | **7,752** |
+   | rooms reachable from Wehnimer's, knowing nothing of the walker | 6,969 | **9,247** |
+   | room files the first port rewrote (the 150; before the glacier's 21) | | **85** of 36,838 |
+
+   9,247 is exactly what `chokepoints.py` predicted, which validates it as the way to pick
+   what is next. **The ratchet now pins `reachable` as well as the unported counts**, and
+   it may only rise. One honest gap: a guard that cannot be answered does not fire, so a
+   walker whose skills are unknown *runs the ice* — it errs toward a fall (recoverable)
+   rather than refusing a route.
+
+   Still to come, in rooms-opened order (§5 step 5's table): `move S` and its kin, the
+   profession cost gates (the first `Cost` arm — `Gated`), inn tables (`Await`), then the
+   pairs that only open a region together. Nothing *walks* these yet: the Travel behavior
+   (§4.0) is its own piece of work in `cena-behavior`.
+
+   Primitives, then recogniser arms, in **rooms-opened** order (was: edge-count order). A new arm that needs no new
    primitive is converter-only work.
    Vellum's port is read first for each.
 8. Map images — GUI only, last. Community assets: fetched, not committed.
