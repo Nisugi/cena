@@ -51,7 +51,7 @@ fn scripted_crossings_that_differ_only_in_a_parameter_share_a_shape() {
         .iter()
         .filter_map(|exit| match &exit.crossing {
             Crossing::Unported(shape) => Some((exit.to, exit.kind, shape.clone())),
-            Crossing::Command(_) => None,
+            Crossing::Command(_) | Crossing::Unknown(_) => None,
         })
         .collect();
     assert_eq!(shapes.len(), 2);

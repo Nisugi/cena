@@ -131,6 +131,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cena-map-combine"
+version = "0.1.0"
+dependencies = [
+ "cena-map",
+ "cena-mapdb-convert",
+ "serde_json",
+]
+
+[[package]]
 name = "cena-mapdb-convert"
 version = "0.1.0"
 dependencies = [

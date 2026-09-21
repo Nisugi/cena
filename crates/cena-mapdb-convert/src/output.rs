@@ -28,12 +28,11 @@ pub struct Written {
     pub unchanged: usize,
 }
 
-/// Where a room's file lives under `out`.
+/// Where a room's file lives under `out`. The layout is `cena_map::files`'s,
+/// shared with the combiner that reads it.
 #[must_use]
 pub fn room_path(out: &Path, id: RoomId) -> PathBuf {
-    out.join("rooms")
-        .join(format!("{:03}", id.0 / 1000))
-        .join(format!("{}.json", id.0))
+    out.join(cena_map::files::room_file(id))
 }
 
 /// Write every room, the index, and the report.
@@ -58,7 +57,7 @@ pub fn write(out: &Path, conversion: &Conversion) -> io::Result<Written> {
     }
     let ids: Vec<RoomId> = conversion.rooms.iter().map(|room| room.id).collect();
     let index = serde_json::to_string(&ids).map_err(io::Error::other)?;
-    write_if_changed(&out.join("index.json"), &format!("{index}\n"))?;
+    write_if_changed(&out.join(cena_map::files::INDEX), &format!("{index}\n"))?;
     write_report(out, &conversion.report)?;
     Ok(written)
 }

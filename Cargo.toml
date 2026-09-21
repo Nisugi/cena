@@ -6,6 +6,7 @@ members = [
     "crates/cena-model",
     "crates/cena-map",
     "crates/cena-mapdb-convert",
+    "crates/cena-map-combine",
     "crates/cena-session",
     "crates/cena-behavior",
     "crates/cena-ui",

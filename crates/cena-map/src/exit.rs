@@ -32,6 +32,19 @@ pub enum Crossing {
     /// converter's report -- nothing is dropped silently (`plan/21` §3a).
     #[serde(rename = "unported")]
     Unported(ShapeId),
+    /// A kind of crossing this build does not know, by the name the map file
+    /// gave it. **Impassable.** Only the binary loader produces this: it is how
+    /// a map built after a primitive was added still loads in a client built
+    /// before (`plan/21` §3a, format rule 1). Never written.
+    #[serde(skip)]
+    Unknown(String),
+}
+
+impl Crossing {
+    /// Wire name of [`Crossing::Command`].
+    pub const COMMAND: &'static str = "cmd";
+    /// Wire name of [`Crossing::Unported`].
+    pub const UNPORTED: &'static str = "unported";
 }
 
 /// What an exit costs the pathfinder, in seconds.
@@ -49,6 +62,17 @@ pub enum Cost {
         /// The shape of the upstream cost script.
         unported: ShapeId,
     },
+    /// A kind of cost this build does not know. **Impassable**; produced only
+    /// by the binary loader, for the same reason as [`Crossing::Unknown`].
+    #[serde(skip)]
+    Unknown(String),
+}
+
+impl Cost {
+    /// Wire name of [`Cost::Fixed`].
+    pub const FIXED: &'static str = "fixed";
+    /// Wire name of [`Cost::Unported`].
+    pub const UNPORTED: &'static str = "unported";
 }
 
 /// What kind of exit this is, for drawing: line colour, and whether an exit
@@ -73,6 +97,44 @@ pub enum ExitKind {
     Other,
     /// Scripted upstream, so no single command describes it.
     Scripted,
+}
+
+impl ExitKind {
+    /// Every kind, for the wire-name round trip.
+    pub const ALL: [ExitKind; 7] = [
+        ExitKind::Cardinal,
+        ExitKind::Vertical,
+        ExitKind::Out,
+        ExitKind::Go,
+        ExitKind::Climb,
+        ExitKind::Other,
+        ExitKind::Scripted,
+    ];
+
+    /// The kind's wire name. The same spelling the JSON uses.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            ExitKind::Cardinal => "cardinal",
+            ExitKind::Vertical => "vertical",
+            ExitKind::Out => "out",
+            ExitKind::Go => "go",
+            ExitKind::Climb => "climb",
+            ExitKind::Other => "other",
+            ExitKind::Scripted => "scripted",
+        }
+    }
+
+    /// The kind a wire name means. A name this build does not know is
+    /// [`ExitKind::Other`]: kind only chooses how an exit is *drawn*, so a new
+    /// kind degrades to a plain line rather than refusing the map.
+    #[must_use]
+    pub fn from_name(name: &str) -> ExitKind {
+        ExitKind::ALL
+            .into_iter()
+            .find(|kind| kind.name() == name)
+            .unwrap_or(ExitKind::Other)
+    }
 }
 
 /// One directed exit.
@@ -134,6 +196,19 @@ mod tests {
         let json = serde_json::to_string(&e).unwrap();
         assert_eq!(serde_json::from_str::<Exit>(&json).unwrap(), e);
         assert!(!e.is_routable());
+    }
+
+    /// The JSON spelling and the wire name are one vocabulary, not two.
+    #[test]
+    fn a_kinds_wire_name_is_its_json_spelling() {
+        for kind in ExitKind::ALL {
+            assert_eq!(
+                serde_json::to_string(&kind).unwrap(),
+                format!("\"{}\"", kind.name())
+            );
+            assert_eq!(ExitKind::from_name(kind.name()), kind);
+        }
+        assert_eq!(ExitKind::from_name("teleport"), ExitKind::Other);
     }
 
     /// Lich's rule, not a convenience default: `map_base.rb:829`.

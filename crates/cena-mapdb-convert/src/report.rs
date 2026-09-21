@@ -84,7 +84,9 @@ impl Report {
             }
             match exit.cost {
                 Some(Cost::Unported { .. }) => self.unported_costs += 1,
-                Some(Cost::Fixed(_)) => {}
+                // `Unknown` is made only by the binary loader; the converter
+                // writes costs, it never reads a map file.
+                Some(Cost::Fixed(_) | Cost::Unknown(_)) => {}
                 None => self.without_cost += 1,
             }
         }

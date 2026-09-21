@@ -635,6 +635,46 @@ of shared rooms, so a few are stale; ~310 rooms have no description. What does n
 is *mapping* (2,029 playershops, 2,406 adjacent unmapped rooms), a separate job. It is distinct from the
 LLM-controller goal (an agent playing a character) — this one never touches a live session.
 
+**The model is Jev** (author, 2026-09-20). READ 2026-09-20, from TypeSafe's announcement
+(<https://typesafe.ai/blog/introducing-system-one-models-and-jev>) and the OpenRouter listing
+(`typesafe/jev-1.13`), both through a summarising fetcher — so the numbers below are
+**UNVERIFIED until a real call is made**. Jev is a *decision* model, not a chat model: the
+request names the allowed answers, the reply is one of them as a typed value **with a
+probability**, and it generates no strings, so it cannot answer outside the choices. A choice
+field holds at most 255 options; context is 32,000 tokens; input is $0.042 per million tokens
+and output is free; claimed latency 70–500 ms. It is hosted only — no weights, nothing to
+train — and is called at `POST https://openrouter.ai/api/alpha/decisions`, not the chat
+endpoint. It is in early access, so the request shape may move: the stage talks to it through
+one small module, and its work package is plain JSON in, JSON out, so another model can stand in.
+
+That shape fits, because every job here is pick-from-a-list:
+
+| job | choices | answer key to score it on first |
+|---|---|---|
+| ambiguous vertical exit (2,451) | up / down / same floor | the 2,302 explicit `up`/`down` exits, command hidden |
+| side a non-compass exit is drawn on | 8 compass sides / none | exits between two rooms the official layout places (14,277 rooms) |
+| room category, for the legend | the legend list | rooms whose tags already settle it |
+
+**Score before trusting.** Each job is first run on its answer key; a job whose score is poor
+is dropped or handed to a different model, for pennies. The probability is the review queue:
+above a threshold (set from the scored run, not guessed) a proposal is written to the
+corrections file; below it, it goes on the author's list. INFERRED cost of the whole map,
+~10M tokens: under a dollar.
+
+**Not Jev's job: `terrain` and `climate`.** Author, 2026-09-20: rooms without them *are set up
+without them* in the game. An empty field is the truth, not a gap; the converter keeps it
+empty and nothing fills it. For the same reason those two fields are not labels for
+indoors/outdoors.
+
+**Placement is mostly not a model's job.** Compass exits are arithmetic — walk the graph, one
+cell per move, resolve collisions — which is all Genie's automapper does; its maps look good
+because people tidy them. Order: (1) official positions where they exist; (2) a deterministic
+placer for the rest, **scored against the official areas**; (3) Jev for door sides only;
+(4) a hand-tidy pass through the corrections file.
+
+**Needed before the stage can run:** the corrections file's format, and the rule passes
+(floors derivation steps 1–3 above). Neither depends on §5's steps 4–7.
+
 **Kept out of the room files:** forage data (`meta:forage-sensed`, 44,781 tag entries) —
 a side file keyed by id; creatures — already ported, joined by uid.
 
@@ -690,8 +730,43 @@ Each gets a short design note in this document before its code exists.
    a rise fails (new upstream shapes; the residue it prints names them) and so does a fall
    (turn the baseline down to bank it).
    `$env:CENA_MAPDB = "E:\Cena\reference\mapdb\map-1789942730.json"; cargo test --release -p cena-mapdb-convert --test ratchet -- --nocapture`
-3. The binary build and `cena-map`'s loader, honouring §3a's three format rules. Golden
-   fixture is a **~50-room cut**, never the full map.
+3. ~~**The combiner, the binary format and the loader.**~~ **DONE 2026-09-20.** Three tools
+   now, each knowing as little as it can: `cena-mapdb-convert` breaks upstream into one JSON
+   file per room and is the only place Ruby is seen; **`cena-map-combine`** reads those files
+   and writes the single binary (the author's word for it: *"that's the combiner!"*); the
+   client loads it. The format lives in `cena_map::binary`, so the combiner writes and the
+   client reads one definition, and the on-disk layout the two tools share is
+   `cena_map::files`. `Map` indexes rooms by id and by uid — `ids_for_uid` returns a *slice*,
+   because §3d's relation is many-to-many.
+
+   The format is hand-rolled (no new dependency), little-endian, versioned, with every string
+   interned in one table. The three rules, each held by a test in
+   `crates/cena-map/tests/binary.rs`:
+   1. **An older client loads a newer map.** A crossing and a cost are a *name and a
+      length-prefixed blob*; a name this build does not know loads as `Crossing::Unknown` /
+      `Cost::Unknown` — impassable — and its blob is skipped by length. Each room also ends in
+      a list of named **extensions**, skipped the same way: that is how layout and floors
+      (§3e) arrive later without a version bump. An unknown exit *kind* draws as a plain
+      line and does not affect routing. A tool never writes an `Unknown` back.
+   2. **Another version is refused**, as `LoadError::UnsupportedVersion`, never misread.
+   3. **One vocabulary**: the wire names are constants on the types, used by both sides.
+
+   The loader never panics and never trusts a count: every prefix of a valid file is an
+   error, and a count larger than the bytes that remain is refused before anything is
+   allocated. The combiner reads back what it wrote and compares before reporting success;
+   only `index.json` says which room files are current, and a room it names that is
+   missing, invalid, or holds another id is an error.
+
+   MEASURED on the full map, release build: **21,738,800 bytes** (upstream JSON:
+   43,303,215), **loads in ~79 ms** including both indexes; reading the 36,838 JSON files
+   takes 2.0 s; a second converter run rewrites none of them. 45 tests across the three
+   crates; the architecture suite's dev-only-edge rule now covers
+   `cena-map-combine -> cena-mapdb-convert`.
+
+   ```powershell
+   cargo run --release -p cena-mapdb-convert -- <upstream-map.json> <dir>
+   cargo run --release -p cena-map-combine  -- <dir> <dir>\hydra.map
+   ```
 4. Room identification from live frames.
 5. Dijkstra with per-character costs. Answer key: `Map.dijkstra` results captured from the
    author's live Lich.
