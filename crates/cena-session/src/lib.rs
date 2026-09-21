@@ -40,7 +40,7 @@ pub use character_store::MAX_STALE;
 pub use command::{
     CommandId, Envelope, Farewell, Gate, Origin, Outcome, Refusal, Sent, SessionHandle,
 };
-pub use lifecycle::{Generation, GenerationCell, State};
+pub use lifecycle::{Generation, GenerationCell, SessionId, State};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
 pub use supervisor::{
     ConnectError, Connector, MAX_UNATTENDED_LOSSES, Retryability, SessionCore, StoppedBecause,

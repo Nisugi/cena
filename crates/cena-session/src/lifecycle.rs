@@ -42,6 +42,55 @@
 //! entered-and-never-left**. `Syncing` and `Reconnecting` are both passed
 //! through; `Degraded` would be a trap.
 
+/// Which **session** a fact belongs to.
+///
+/// **Added in Milestone 4 even though multi-session is Milestone 5**, on
+/// exactly the argument [`Generation`] below makes for itself: *retrofitting an
+/// id onto every event and snapshot after they exist is the expensive version
+/// of this decision.* `Generation` was kept a milestone early for that reason
+/// and the reasoning transfers whole.
+///
+/// The immediate need is M4's, not M5's. A frontend serves **one listener on
+/// one port** (`plan/23` §D1a) — not a port per character, which for `plan/12`'s
+/// 3-25 sessions would mean 25 allocations and a user who must know which port
+/// is which character. One listener means every message must say which session
+/// it concerns, and that is true with one session open as much as with twenty.
+///
+/// MEASURED before adding it: `grep -rn "SessionId|session_id"
+/// crates/cena-session/src/` returned **nothing**. There was no session
+/// identity at all, because `main.rs` builds exactly one and never needs to
+/// name it.
+///
+/// Deterministic by construction, like `Generation`: seeded at 0 and counted
+/// up, never from a clock or a random source, so criterion 7's replay produces
+/// the same ids on every run.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SessionId(pub u32);
+
+impl SessionId {
+    /// The first session.
+    ///
+    /// A single-session process uses this and nothing else, which is why M4
+    /// can add the id without M5's session manager existing.
+    pub const FIRST: Self = Self(0);
+
+    /// The next session's id.
+    ///
+    /// **Unused until Milestone 5** — nothing allocates a second session yet —
+    /// but it is the one line that makes this a counter rather than a
+    /// constant, which is the same justification `Generation::next` carries.
+    #[must_use]
+    pub const fn next(self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
+impl std::fmt::Display for SessionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// Which connection a fact belongs to.
 ///
 /// **Kept even though reconnect is Milestone 2.** It costs one `u32`; `plan/12`
@@ -51,6 +100,11 @@
 /// counter is seeded at 0 rather than from a clock. Retrofitting an id onto
 /// every `CommandId`, event and snapshot after they exist is the expensive
 /// version of this decision.
+///
+/// **Distinct from [`SessionId`], and the pair is not redundant**: a session
+/// keeps its id across every reconnect while its generation advances. `(id,
+/// generation)` names one connection of one character — which is what a late
+/// frame must be checked against.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Generation(pub u32);
 

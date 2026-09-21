@@ -49,6 +49,12 @@ pub struct SessionCore {
     /// (`reference/VellumFE/src/frontend/tui/runtime.rs:546-600`). Cena keeps
     /// both, because Cena's handle is durable where Vellum's is not.
     pub(super) events: broadcast::Sender<Event>,
+    /// Which session this is.
+    ///
+    /// The most durable thing here: a session keeps its id for its whole life,
+    /// where `generation` advances on every reconnect. `(id, generation)` names
+    /// one connection of one character.
+    pub(super) id: crate::lifecycle::SessionId,
     /// What the session knows.
     ///
     /// Carried across and then **invalidated** between generations

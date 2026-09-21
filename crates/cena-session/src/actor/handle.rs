@@ -30,6 +30,12 @@ use tokio_util::sync::CancellationToken;
 /// which is the only writer, so there is no window to be atomic *across*.
 #[derive(Clone, Debug)]
 pub struct Snapshot {
+    /// Which session this is.
+    ///
+    /// Constant across every reconnect, where [`Self::generation`] advances.
+    /// A frontend serving many sessions over one listener (`plan/23` §D1a)
+    /// routes on this.
+    pub session: crate::lifecycle::SessionId,
     /// What the session knew.
     pub state: GameState,
     /// Where it was in its life.
@@ -208,6 +214,13 @@ impl<S: ByteSource> Session<S> {
         let receiver = self.events.subscribe();
         (
             Snapshot {
+                // An unsupervised `Session` is a single connection with no
+                // supervisor to allocate ids, so it is always the first. The
+                // id lives on `SessionCore` (`supervisor/core.rs`), which is
+                // the thing that outlives connections -- threading one through
+                // the actor as well would mean two places could disagree about
+                // a value the actor never reads.
+                session: crate::lifecycle::SessionId::FIRST,
                 state: self.actor.state.clone(),
                 lifecycle: self.actor.lifecycle,
                 generation: self.actor.generation,

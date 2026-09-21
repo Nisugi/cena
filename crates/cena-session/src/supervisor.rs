@@ -102,6 +102,13 @@ pub enum StoppedBecause {
 /// What a supervised session left behind.
 #[derive(Debug)]
 pub struct SupervisedEnd {
+    /// Which session ended.
+    ///
+    /// Carried here because `run` consumes the session, so this is the only
+    /// way to correlate an ending with the session that produced it — which a
+    /// frontend holding several must do. It is also what lets a test assert
+    /// the id survived the reconnects the same value counts.
+    pub session: crate::lifecycle::SessionId,
     /// Why there was no further connection.
     pub stopped_because: StoppedBecause,
     /// Everything that crossed the wire, **across every generation**.
@@ -146,6 +153,7 @@ impl<C: Connector> SupervisedSession<C> {
         let handle = SessionHandle::new(tx, generation.clone());
         let session = Self {
             core: SessionCore {
+                id: crate::lifecycle::SessionId::FIRST,
                 commands: rx,
                 events,
                 state: GameState::default(),
@@ -196,10 +204,28 @@ impl<C: Connector> SupervisedSession<C> {
     /// The snapshot comes from the **durable** state, so a subscriber joining
     /// mid-session sees what the session knows rather than what one connection
     /// has learned.
+    ///
+    /// # KNOWN DEFECT: `lifecycle` is always `Connecting`
+    ///
+    /// It is hardcoded below, and that is wrong for any subscriber who joins a
+    /// session already running — they are told it is connecting when it is
+    /// `Ready`. **Nothing notices today**: the only caller subscribes before
+    /// `run`, when `Connecting` happens to be true.
+    ///
+    /// M4's first act is a frontend subscribing mid-session, so this is a real
+    /// bug on that path and is recorded in `plan/23` §4a as gap 4.
+    ///
+    /// **Not fixed here**, deliberately: the supervisor does not track its
+    /// current lifecycle at all — it publishes `StateChanged` transitions
+    /// (`:552`) and keeps no field. Fixing it means adding that field and
+    /// deciding who owns it across the actor boundary, which is a change to
+    /// lifecycle ownership rather than a corrected literal. Doing it inside a
+    /// commit that adds a session id would bury it.
     #[must_use]
     pub fn subscribe(&self) -> (Snapshot, broadcast::Receiver<Event>) {
         (
             Snapshot {
+                session: self.core.id,
                 state: self.core.state.clone(),
                 lifecycle: State::Connecting,
                 generation: self.core.generation.get(),
@@ -408,6 +434,7 @@ impl<C: Connector> SupervisedSession<C> {
         }
 
         SupervisedEnd {
+            session: self.core.id,
             stopped_because,
             recorder: self.core.recorder,
             state: self.core.state,
