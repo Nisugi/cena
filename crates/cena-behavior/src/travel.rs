@@ -57,11 +57,12 @@ mod knows;
 mod mover;
 mod recovery;
 mod replies;
+mod routines;
 mod steps;
 
 use std::collections::HashSet;
 
-use cena_map::{Action, Crossing, Exit, Room, Step, Target, Walker, priced_for};
+use cena_map::{Action, Crossing, Exit, Room, Routine, Step, Target, Walker, priced_for};
 use cena_session::{MoveFeedback, movement};
 
 // What a caller needs to start a trip or show a route, so that it does not
@@ -100,6 +101,13 @@ pub enum Said {
     Send(String),
     /// Do this to completion, and tick again.
     Do(Deed),
+    /// The next exit is crossed by a named routine (`cena_map::Routine`):
+    /// run it to its end, say [`Trip::could_not`] if it failed, and tick
+    /// again. Where it landed is then looked at like any other arrival.
+    Routine(Routine),
+    /// The steps handed to [`Trip::aside`] are over, and whether they
+    /// worked.
+    Aside(bool),
     /// Nothing to do yet: the room is not known, a move is under way, or a
     /// wait has not run out. Tick again on the next line, or the next beat
     /// of the clock.
@@ -133,6 +141,7 @@ pub struct Now {
 
 /// One journey to one room.
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)] // each is its own fact about the walk
 pub struct Trip {
     goal: RoomId,
     /// The rooms still to pass through, the next first and the goal last.
@@ -164,6 +173,13 @@ pub struct Trip {
     owes: Owes,
     /// The driver could not do the deed it was last handed.
     could_not: bool,
+    /// A routine was handed over: the exit it crosses, as `(leaving,
+    /// expected)`, and the room the walker was then in.
+    routine: Option<(RoomId, RoomId, RoomId)>,
+    /// Steps to run beside the plan, not yet begun ([`Self::aside`]).
+    aside: Option<(Vec<Step>, Option<RoomId>)>,
+    /// The crossing under way is those steps.
+    in_aside: bool,
     /// xorshift64. Seeded, so a replay takes the same turns in a maze.
     random: u64,
 }
@@ -198,6 +214,9 @@ impl Trip {
             stands: 0,
             owes: Owes::default(),
             could_not: false,
+            routine: None,
+            aside: None,
+            in_aside: false,
             // xorshift has one bad seed.
             random: seed.max(1),
         }
@@ -245,6 +264,25 @@ impl Trip {
     /// The crossing that asked for it is given up, and the trip goes round.
     pub fn could_not(&mut self) {
         self.could_not = true;
+    }
+
+    /// Run these steps from wherever the walker is, **beside the plan**: a
+    /// routine's `go door` gets the whole ladder a plain exit has, and its
+    /// deeds are owed back like any crossing's. `to` is where they should
+    /// land, when that is known. The answer is [`Said::Aside`].
+    pub fn aside(&mut self, steps: Vec<Step>, to: Option<RoomId>) {
+        self.aside = Some((steps, to));
+    }
+
+    /// Where the routine just handed over is meant to land.
+    #[must_use]
+    pub fn routine_to(&self) -> Option<RoomId> {
+        self.routine.map(|(_, expected, _)| expected)
+    }
+
+    /// A number from the trip's seed, for a routine's own choices.
+    pub fn draw(&mut self) -> u64 {
+        self.next_random()
     }
 
     /// What was last asked to be sent names a thing nobody has (`{item:…}`):
@@ -310,6 +348,24 @@ impl Trip {
         let lines = std::mem::take(&mut self.lines);
         let prompted = std::mem::take(&mut self.prompted);
         let could_not = std::mem::take(&mut self.could_not);
+        if let Some((steps, to)) = self.aside.take() {
+            // Nowhere the map has, when where it lands is not known.
+            let to = to.unwrap_or(RoomId(u32::MAX));
+            self.run = Some(Run::new(here, here, to, steps));
+            self.in_aside = true;
+        }
+        // A routine's own moves are asides: it is over when none is under way.
+        if !self.in_aside
+            && let Some((leaving, expected, from)) = self.routine.take()
+            && here != expected
+        {
+            // It said it could not, or it ran and the walker never moved:
+            // trying it again would do the same again.
+            if could_not || here == from {
+                self.banned.insert((leaving, expected));
+            }
+            return self.replan(map, walker, here, now.ms);
+        }
         // At the goal -- but a crossing under way is finished first: the door
         // behind the walker is still to be closed and locked, the hands still
         // to be filled.
@@ -341,6 +397,9 @@ impl Trip {
             could_not,
         });
         self.owes = run.owes;
+        if self.in_aside {
+            return self.aside_said(run, out, now.ms);
+        }
         match out {
             Out::Send(command) => {
                 self.run = Some(run);
@@ -387,6 +446,33 @@ impl Trip {
         }
     }
 
+    /// What a tick of steps run beside the plan comes to ([`Self::aside`]).
+    fn aside_said(&mut self, run: Run, out: Out, ms: u64) -> Said {
+        match out {
+            Out::Send(command) => {
+                self.run = Some(run);
+                Said::Send(command)
+            }
+            Out::Deed(deed) => {
+                self.run = Some(run);
+                Said::Do(deed)
+            }
+            Out::Hold => {
+                self.run = Some(run);
+                Said::Hold
+            }
+            Out::Done | Out::Believed(_) => {
+                self.in_aside = false;
+                Said::Aside(true)
+            }
+            Out::GiveUp { .. } | Out::Replan => {
+                self.in_aside = false;
+                self.deaf_until = ms + ORPHAN_MS;
+                Said::Aside(false)
+            }
+        }
+    }
+
     fn step_from(&mut self, map: &Map, walker: &Walker, here: RoomId, ms: u64) -> Said {
         if here == self.goal {
             self.ahead.clear();
@@ -423,6 +509,11 @@ impl Trip {
                     when: None,
                 }],
                 Crossing::Steps(steps) => steps.clone(),
+                Crossing::Routine(routine) => {
+                    self.ahead.remove(0);
+                    self.routine = Some((leaving, next, here));
+                    return Said::Routine(routine.clone());
+                }
                 _ => return self.replan(map, walker, here, ms),
             };
             if steps::is_stunned(walker) {
@@ -536,8 +627,9 @@ impl Trip {
 /// What the walker can cross so far. The rest is priced shut, so the
 /// pathfinder goes round it rather than the trip failing at it.
 fn can_cross(crossing: &Crossing) -> bool {
-    matches!(
-        crossing,
-        Crossing::Command(_) | Crossing::PassThrough(_) | Crossing::Steps(_)
-    )
+    match crossing {
+        Crossing::Command(_) | Crossing::PassThrough(_) | Crossing::Steps(_) => true,
+        Crossing::Routine(routine) => routines::is_built(routine),
+        _ => false,
+    }
 }

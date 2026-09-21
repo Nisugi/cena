@@ -36,6 +36,8 @@ use tokio_util::sync::CancellationToken;
 
 use super::hands::{Stored, cast_commands, store_commands, take_back};
 use super::kept;
+
+mod solve;
 use super::{Deed, Now, Said, TravelNotes, Trip, Why, walker_from};
 use crate::BehaviorError;
 
@@ -101,7 +103,7 @@ pub async fn travel(
     map: &Map,
     goal: RoomId,
     notes: &mut TravelNotes,
-    wrote: impl FnMut(&TravelNotes),
+    wrote: impl FnMut(&TravelNotes) + Send,
 ) -> Travelled {
     if handle.claim(token).await.is_err() {
         return Travelled {
@@ -135,7 +137,14 @@ pub async fn travel(
         speech_before: None,
         taken: None,
     };
-    let ended = driver.walk(&mut trip, map, notes, wrote).await;
+    let mut wrote = wrote;
+    let mut cx = Cx {
+        trip: &mut trip,
+        map,
+        notes,
+        wrote: &mut wrote,
+    };
+    let ended = driver.walk(&mut cx).await;
     if ended == Ended::Stopped(BehaviorError::Cancelled) {
         driver.take_back_once().await;
     }
@@ -302,26 +311,51 @@ struct Driver<'a, N> {
     taken: Option<(String, String)>,
 }
 
+/// What a walk is over: the trip, and what it reads and writes.
+struct Cx<'a> {
+    trip: &'a mut Trip,
+    map: &'a Map,
+    notes: &'a mut TravelNotes,
+    wrote: &'a mut (dyn FnMut(&TravelNotes) + Send),
+}
+
+/// What one [`Driver::turn`] came to.
+enum Turn {
+    On,
+    Arrived,
+    /// The steps handed to `Trip::aside` are over, and whether they worked.
+    Aside(bool),
+}
+
 impl<N: FnMut() -> CommandId> Driver<'_, N> {
-    async fn walk(
-        &mut self,
-        trip: &mut Trip,
-        map: &Map,
-        notes: &mut TravelNotes,
-        mut wrote: impl FnMut(&TravelNotes),
-    ) -> Ended {
+    async fn walk(&mut self, cx: &mut Cx<'_>) -> Ended {
         loop {
+            match self.turn(cx).await {
+                Ok(Turn::Arrived) => return Ended::Arrived,
+                Ok(_) => {}
+                Err(ended) => return ended,
+            }
+        }
+    }
+
+    /// One tick of the trip, and what it asked for done.
+    async fn turn(&mut self, cx: &mut Cx<'_>) -> Result<Turn, Ended> {
+        let Cx {
+            trip,
+            map,
+            notes,
+            wrote,
+        } = cx;
+        {
             if self.cancel.is_cancelled() {
-                return Ended::Stopped(BehaviorError::Cancelled);
+                return Err(Ended::Stopped(BehaviorError::Cancelled));
             }
-            if let Err(gone) = self.drain(trip) {
-                return Ended::Stopped(gone);
-            }
+            self.drain(trip).map_err(Ended::Stopped)?;
             let here = self.locate(map);
             if here.is_some() {
                 self.lost_since = None;
             } else if self.lost_since.get_or_insert_with(Instant::now).elapsed() >= LOST_WAIT {
-                return Ended::Failed(Why::OffTheMap);
+                return Err(Ended::Failed(Why::OffTheMap));
             }
             let now = Now {
                 here,
@@ -329,9 +363,18 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             };
             let server = self.state.game_time_now().unwrap_or(0);
             let walker = walker_from(&self.state, notes, server);
-            let done = match trip.tick(map, &walker, now) {
-                Said::Arrived => return Ended::Arrived,
-                Said::Failed(why) => return Ended::Failed(why),
+            match trip.tick(map, &walker, now) {
+                Said::Arrived => return Ok(Turn::Arrived),
+                Said::Failed(why) => return Err(Ended::Failed(why)),
+                Said::Aside(worked) => return Ok(Turn::Aside(worked)),
+                Said::Routine(routine) => {
+                    // A routine moves by asking the trip to (`solve`), which
+                    // comes back through here: boxed, as recursion must be.
+                    if !Box::pin(self.solve(cx, &routine)).await? {
+                        cx.trip.could_not();
+                    }
+                    Ok(())
+                }
                 Said::Hold => self.hold(trip).await,
                 // A move causes no roundtime, and is verified by the room it
                 // lands in: the trip's own timeout is the deadline.
@@ -347,11 +390,9 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                     Ok(())
                 }
                 Said::Do(deed) => self.deed(trip, deed).await,
-            };
-            if let Err(ended) = done {
-                return ended;
-            }
+            }?;
         }
+        Ok(Turn::On)
     }
 
     /// Which room of the map the model's room is, remembering the last one
