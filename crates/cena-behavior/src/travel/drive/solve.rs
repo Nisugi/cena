@@ -14,7 +14,7 @@ use cena_session::{ChunkLine, CommandId, MoveFeedback, movement};
 use tokio::time::Instant;
 
 use super::super::mover::wait_ms;
-use super::super::routines::{Next, Seen, solver_for};
+use super::super::routines::{Next, Seen, Solver, solver_for};
 use super::super::{Trip, walker_from};
 use super::{Cx, Driver, Ended, Turn};
 
@@ -31,9 +31,23 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         cx: &mut Cx<'_>,
         routine: &Routine,
     ) -> Result<bool, Ended> {
-        let (Some(mut solver), Some(goal)) = (solver_for(routine), cx.trip.routine_to()) else {
+        let (Some(mut solver), Some(goal)) =
+            (solver_for(routine, &mut self.kept), cx.trip.routine_to())
+        else {
             return Ok(false);
         };
+        let crossed = self.ask(cx, solver.as_mut(), goal).await;
+        solver.keep(&mut self.kept);
+        crossed
+    }
+
+    /// Show the solver what is seen and do what it asks, until it is done.
+    async fn ask(
+        &mut self,
+        cx: &mut Cx<'_>,
+        solver: &mut (dyn Solver + Send),
+        goal: RoomId,
+    ) -> Result<bool, Ended> {
         let mut ok = true;
         let mut answer: Vec<ChunkLine> = Vec::new();
         for _ in 0..MAX_ASKS {

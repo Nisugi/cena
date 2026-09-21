@@ -30,6 +30,7 @@
 //! (`cena-mapdb-convert/src/upstream_scripts/`), which is the reference for
 //! what it must do.
 
+mod confluence;
 mod guild_password;
 mod patrol;
 mod signposts;
@@ -107,6 +108,16 @@ pub(super) enum Next {
 /// One routine, part-way through.
 pub(super) trait Solver {
     fn next(&mut self, seen: &Seen<'_>) -> Next;
+
+    /// Hand back whatever should outlive this crossing ([`Kept`]).
+    fn keep(self: Box<Self>, _kept: &mut Kept) {}
+}
+
+/// What routines learn that the next crossing should start with. The driver
+/// keeps it for the trip and lends it to each solver in turn.
+#[derive(Debug, Default)]
+pub(super) struct Kept {
+    confluence: confluence::Learned,
 }
 
 /// Whether this build runs the routine. What it does not is priced shut, so
@@ -114,13 +125,20 @@ pub(super) trait Solver {
 pub(super) fn is_built(routine: &Routine) -> bool {
     matches!(
         routine,
-        Routine::Signposts { .. } | Routine::GuildPassword | Routine::Patrol { .. }
+        Routine::Signposts { .. }
+            | Routine::GuildPassword
+            | Routine::Patrol { .. }
+            | Routine::Confluence { .. }
     )
 }
 
 /// The solver for a routine; `None` for one this build does not run.
-pub(super) fn solver_for(routine: &Routine) -> Option<Box<dyn Solver + Send>> {
+pub(super) fn solver_for(routine: &Routine, kept: &mut Kept) -> Option<Box<dyn Solver + Send>> {
     Some(match routine.clone() {
+        Routine::Confluence { leave } => Box::new(confluence::Confluence::new(
+            leave,
+            std::mem::take(&mut kept.confluence),
+        )),
         Routine::Signposts {
             verb,
             dirs,

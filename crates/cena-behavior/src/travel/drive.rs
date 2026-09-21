@@ -143,6 +143,7 @@ pub async fn travel(
         speech_before: None,
         taken: None,
         halted: None,
+        kept: super::routines::Kept::default(),
     };
     let mut wrote = wrote;
     let mut cx = Cx {
@@ -323,6 +324,8 @@ struct Driver<'a, N> {
     taken: Option<(String, String)>,
     /// Why a routine stopped the trip, in its own words.
     halted: Option<String>,
+    /// What routines have learned on this trip (`routines::Kept`).
+    kept: super::routines::Kept,
 }
 
 /// What a walk is over: the trip, and what it reads and writes.
