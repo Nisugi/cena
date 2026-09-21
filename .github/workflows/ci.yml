@@ -28,12 +28,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - name: Frontend wire and reconnect contract
-        run: node crates/cena-web/assets/tests/session.test.mjs
-
       # plan/06 section 4 lists these as 1. test, 2. clippy, 3. fmt. Reordered
       # cheapest-first so a formatting slip does not wait on a full build; the
       # set of required checks is unchanged.

@@ -102,9 +102,17 @@ native prerequisites. This source review found no additional concrete missing
 dependency in the proposed jobs. The local probes stop too early to establish
 that these native builds succeed; only actual mobile CI builds settle that.
 
-**UNVERIFIED:** neither new CI job has run in this work session. Enabling these
-jobs makes failures visible on the next CI run; it does not prove either target
-passes. Android needs its NDK and target libraries; iOS needs target libraries
-and a macOS host with the Apple SDK. A successful run of each new job is the
-remaining acceptance evidence. Library builds do not establish mobile app
-linking, packaging, runtime behavior, or device support.
+## CI evidence and independent split
+
+**VERIFIED 2026-09-21:** both jobs passed on the original combined M4 branch at
+`153b25c1796db610b03bd607aba32a24c50296f5`:
+
+- [Android core build](https://github.com/Nisugi/cena/actions/runs/35581947042/job/106276606119)
+- [iOS core build](https://github.com/Nisugi/cena/actions/runs/35581947042/job/106276606523)
+
+This branch extracts those mobile jobs independently, based on
+`804068238c91a4a4377b3ed7996dac9188ca88b7`. Frontend Node/browser checks stay in
+the frontend PR; neither mobile job depends on those crates. The extracted
+revision still needs its own CI run. Library builds do not establish mobile app
+linking, packaging, runtime behavior, or device support. Existing desktop checks
+are unchanged; their failures must not be confused with mobile build failures.
