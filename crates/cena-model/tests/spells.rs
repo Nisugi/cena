@@ -42,11 +42,12 @@ fn a_spell_carries_what_the_table_said() {
     //    it does not damage on it's own so it's not an attack spell, which
     //    may be different than offense/defense."
     //
-    // Quite so, and the data agrees -- see `the_type_tag_is_free_text` for
-    // the vocabulary and `an_offense_spell_is_not_an_attack_spell` for the
-    // measurement. What a behavior should read is the BONUSES column, which
-    // says what the spell actually confers.
-    assert_eq!(heroism.kind.as_deref(), Some("offense"));
+    // Quite so. The tag is now PARSED rather than asserted as a string --
+    // see the `roles` module -- and what a behavior reads is `Role::Offense`
+    // plus the bonuses, not the label.
+    assert_eq!(heroism.kind.as_deref(), Some("offense"), "as written");
+    assert!(heroism.is(cena_model::Role::Offense));
+    assert!(!heroism.is(cena_model::Role::Attack), "it does no damage");
     assert_eq!(heroism.availability.as_deref(), Some("group"));
     assert_eq!(heroism.mana, Some(15));
     let bonuses: Vec<&str> = heroism.bonuses.iter().map(|(k, _)| k.as_str()).collect();
@@ -222,6 +223,23 @@ mod cooldowns {
     }
 
     #[test]
+    fn the_table_was_cut_from_a_copy_that_has_cooldowns() {
+        // **The guard against a vacuous pass.** Two effect-list.xml files
+        // exist on the author's machine and differ by exactly this feature:
+        // the Sep 11 copy predates PR #1597 and declares ZERO cooldowns.
+        //
+        // Cut from that one, `with_cooldowns()` is empty and every test below
+        // passes over nothing -- a green suite reporting a feature that is
+        // not there. The right file was picked by luck; this makes luck
+        // unnecessary.
+        assert_eq!(
+            spells::with_cooldowns().count(),
+            5,
+            "cut from a copy with no cooldowns -- re-run tools/extract_spells.rb              against a current effect-list.xml"
+        );
+    }
+
+    #[test]
     fn the_two_cooldown_kinds_split_on_cast_mechanics() {
         // **THE INVARIANT**, and it is about how a spell is CAST rather than
         // about where the data comes from (author, 2026-09-20):
@@ -237,8 +255,10 @@ mod cooldowns {
         // Checked across the WHOLE table, not the five rows, because five
         // samples agreeing is a coincidence and 515 disagreeing nowhere is a
         // rule.
+        let mut checked = 0;
         for spell in spells::all() {
             let has_target_cooldown = spell.cooldown(CooldownKind::Target).is_some();
+            checked += usize::from(has_target_cooldown || spell.target_start.is_some());
             let has_group_cooldown = spell.cooldown(CooldownKind::Group).is_some();
             assert_eq!(
                 has_target_cooldown,
@@ -254,6 +274,10 @@ mod cooldowns {
                 spell.name
             );
         }
+        assert_eq!(
+            checked, 2,
+            "the invariant held over nothing -- see              the_table_was_cut_from_a_copy_that_has_cooldowns"
+        );
     }
 
     #[test]
@@ -338,65 +362,49 @@ fn an_absent_field_is_none_rather_than_empty() {
     assert_eq!(calm.mana, Some(1), "but it does declare a cost");
 }
 
-mod the_type_tag {
+mod roles {
     use super::spells;
+    use cena_model::Role;
     use std::collections::BTreeSet;
 
     #[test]
-    fn the_type_tag_is_free_text_not_a_vocabulary() {
-        // **It looks like an enum and is not one.** MEASURED over the 514
-        // spells: 19 distinct values, slash-separated, with the same idea
-        // spelled more than one way --
+    fn the_four_roles_are_the_authors() {
+        // (author, 2026-09-20):
         //
-        //   `offense` (26) and `offensive` (2)
-        //   `offense/utility` (1) and `offensive/utility` (1)
-        //   `attack/utility` (12) and `utility/attack` (1)
-        //   `defense/utility` (5) and `utility/defense` (1)
-        //
-        // so order varies too. That is why `Spell::kind` is a `String` and
-        // not a typed enum: C21 reserves typed fields for CLOSED
-        // vocabularies, and this is an open, inconsistent tag list.
-        //
-        // A test that pinned the 19 values would go red on a Lich data
-        // update for no reason. What is worth pinning is the SHAPE: the
-        // underlying tags are few, and a new one is worth noticing.
-        let tags: BTreeSet<&str> = spells::all()
-            .filter_map(|s| s.kind.as_deref())
-            .flat_map(|kind| kind.split('/'))
-            .collect();
-        assert_eq!(
-            tags,
-            [
-                "area",
-                "attack",
-                "bonus",
-                "defense",
-                "offense",
-                "offensive",
-                "timer",
-                "utility"
-            ]
-            .into_iter()
-            .collect::<BTreeSet<_>>(),
-            "a tag outside this set is a data change worth reading"
+        //   "we have attack, utility, offense, defense. attack would be like
+        //    a bolt spell or warding spell, utility would be like floating
+        //    disk, water walking, offense would be like heroism, defense
+        //    would be like 618."
+        assert!(spells::spell(215).expect("Heroism").is(Role::Offense));
+        assert!(spells::spell(618).expect("618").is(Role::Defense));
+        assert!(
+            spells::spell(901)
+                .expect("901 Minor Shock")
+                .is(Role::Attack),
+            "a bolt spell"
+        );
+        assert!(
+            spells::spell(130)
+                .expect("130 Floating Disk")
+                .is(Role::Utility),
+            "a floating disk"
         );
     }
 
     #[test]
     fn an_offense_spell_is_not_an_attack_spell() {
-        // The author's distinction, measured. An `offense` spell improves
-        // your offence; an `attack` spell does damage. They are different
-        // axes, and the separation in the data is stark:
+        // The distinction that matters to a behavior: one does damage, the
+        // other makes you better at doing it. MEASURED --
         //
         //   offense spells carrying an AS/CS bonus:  23 of 34
         //   attack  spells carrying an AS/CS bonus:   2 of 136
-        //
-        // So a behavior asking "will this spell hurt something" must not
-        // read `offense` as yes, and one asking "will this make me hit
-        // harder" must not read `attack` as yes.
-        let confers_a_bonus = |kind: &str| {
+        let heroism = spells::spell(215).expect("Heroism");
+        assert!(heroism.is(Role::Offense));
+        assert!(!heroism.is(Role::Attack), "it does no damage itself");
+
+        let confers = |role| {
             spells::all()
-                .filter(|s| s.kind.as_deref().is_some_and(|k| k.contains(kind)))
+                .filter(|s| s.is(role))
                 .filter(|s| {
                     s.bonuses
                         .iter()
@@ -404,7 +412,104 @@ mod the_type_tag {
                 })
                 .count()
         };
-        assert_eq!(confers_a_bonus("offens"), 23);
-        assert_eq!(confers_a_bonus("attack"), 2);
+        assert_eq!(confers(Role::Offense), 23);
+        assert_eq!(confers(Role::Attack), 2);
+    }
+
+    #[test]
+    fn both_spellings_of_offense_read_the_same() {
+        // The table writes it `offense` 26 times and `offensive` twice. Same
+        // word, and 9816 is one of the two.
+        let odd = spells::spell(9816).expect("9816 Symbol of Supremacy");
+        assert_eq!(odd.kind.as_deref(), Some("offensive"), "guard: as written");
+        assert!(odd.is(Role::Offense), "and read as the same role");
+    }
+
+    #[test]
+    fn order_does_not_change_the_roles() {
+        // `attack/utility` (12) and `utility/attack` (1) are the same set.
+        // Lich's only consumer is `@type =~ /attack/i` (`spell.rb:700`), a
+        // substring test, so order has never carried anything.
+        let both: BTreeSet<Role> = [Role::Attack, Role::Utility].into_iter().collect();
+        let forward = spells::all().find(|s| s.kind.as_deref() == Some("attack/utility"));
+        let reversed = spells::all().find(|s| s.kind.as_deref() == Some("utility/attack"));
+        assert_eq!(forward.expect("one exists").roles(), both);
+        assert_eq!(reversed.expect("one exists").roles(), both);
+    }
+
+    #[test]
+    fn area_is_a_modifier_and_not_a_role() {
+        // MEASURED: five spells carry `area`, and every one also carries
+        // `attack`. It qualifies how an attack lands rather than naming what
+        // the spell is for, so it is its own question.
+        let area: Vec<_> = spells::all().filter(|s| s.is_area()).collect();
+        assert_eq!(area.len(), 5);
+        for spell in &area {
+            assert!(
+                spell.is(Role::Attack),
+                "{} {} is an area spell that is not an attack",
+                spell.number,
+                spell.name
+            );
+        }
+        assert!(
+            !spells::spell(215).expect("Heroism").is_area(),
+            "and an ordinary spell is not"
+        );
+
+        // **`area` must not leak into `roles()`.** A mutation folding it into
+        // `Role::Bonus` survived the first version of this test: it checked
+        // `is_area` and `Role::Bonus` separately and never asserted that an
+        // area spell is not a Bonus. `Elemental Wave` is `attack/area` and
+        // that is exactly two facts, not three.
+        let wave = spells::spell(410).expect("410 Elemental Wave");
+        assert_eq!(
+            wave.kind.as_deref(),
+            Some("attack/area"),
+            "guard: as written"
+        );
+        assert_eq!(
+            wave.roles(),
+            [Role::Attack].into_iter().collect::<BTreeSet<_>>(),
+            "one role, and `area` is not one of them"
+        );
+    }
+
+    #[test]
+    fn a_spell_with_no_type_has_no_roles() {
+        // Twelve state none. Section 5.2: that is not the same as "does
+        // nothing", and twelve of them are plainly timers -- `Celerity
+        // Recovery`, `Shadow Mastery Cooldown`. They are left untagged
+        // rather than reclassified, because guessing which is invention.
+        let untyped: Vec<_> = spells::all().filter(|s| s.kind.is_none()).collect();
+        assert_eq!(untyped.len(), 12);
+        for spell in &untyped {
+            assert!(spell.roles().is_empty());
+        }
+    }
+
+    #[test]
+    fn every_tag_in_the_table_is_read() {
+        // Rule 2.2 at the data boundary. A tag neither `Role` nor `area`
+        // accounts for is REPORTED, not dropped -- so a regeneration that
+        // adds a seventh category goes red here instead of silently losing
+        // it.
+        let unread: Vec<(u16, Vec<&str>)> = spells::all()
+            .map(|s| (s.number, s.unreadable_roles()))
+            .filter(|(_, tags)| !tags.is_empty())
+            .collect();
+        assert!(unread.is_empty(), "unreadable type tags: {unread:?}");
+    }
+
+    #[test]
+    fn every_role_is_used_by_the_table() {
+        // The other direction: a variant nothing in the data produces is a
+        // category invented rather than observed.
+        for role in Role::ALL {
+            assert!(
+                spells::all().any(|s| s.is(role)),
+                "{role:?} is in the enum and not in the table"
+            );
+        }
     }
 }

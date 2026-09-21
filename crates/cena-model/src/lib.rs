@@ -23,7 +23,7 @@ pub mod state;
 pub mod status;
 
 pub use effects::{Effect, Effects};
-pub use spells::{CastType, CooldownKind, Duration, Spell, circle_name, spell, spell_named};
+pub use spells::{CastType, CooldownKind, Duration, Role, Spell, circle_name, spell, spell_named};
 pub use state::armaments::{ArmamentKind, Armor, Coverage, Shield, Weapon};
 pub use state::bank::{Account, BankBalance, NOTE_NOUNS, Note, note_line};
 pub use state::bounty::{Task, TaskKind};

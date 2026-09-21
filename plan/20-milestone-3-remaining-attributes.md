@@ -671,3 +671,64 @@ and one asking *"will this make me hit harder"* must not read `attack` as yes.
 
 **What to read instead is the `bonuses` column**, which states what is actually
 conferred. The tag is a curator's note; the bonuses are the fact.
+
+---
+
+### The `type=` tag IS a closed vocabulary (2026-09-20)
+
+Reversing the note above. I wrote that 19 distinct values meant an open set and
+`kind` should stay a `String`. The author:
+
+> *"nothing upstream will be affected... this is a new thing remember! We are
+> only porting it once, this list doesn't change often at all ... so we have
+> attack, utility, offense, defense. attack would be like a bolt spell or
+> warding spell, utility would be like floating disk, water walking, offense
+> would be like heroism, defense would be like 618."*
+
+Two errors in what I wrote. **I was treating a one-time port of a near-static
+list as though it were a live feed needing defensive handling** — the "a future
+regeneration might add a tag and my rewrite would eat it" argument is real for
+a streaming source and close to irrelevant here. And the 19 values are not 19
+categories; they are **six tags** joined with `/`, spelled two ways and ordered
+two ways.
+
+So `Role` is typed, per C21. `attack` / `offense` / `defense` / `utility` are
+the author's four, plus:
+
+- **`timer`** (76) — cooldowns, penalties, recoveries. Not a spell you cast.
+- **`bonus`** (11) — kept as its own variant rather than folded into offense or
+  defense, because it is genuinely mixed: `REIM Attack Boost` confers
+  `bolt-as`, `REIM Defense Boost` confers `bolt-ds`, and seven of eleven confer
+  nothing the table records.
+
+**`area` is a modifier, not a role.** All five occurrences pair with `attack`,
+so it qualifies how an attack lands rather than naming what a spell is for.
+`Spell::is_area()` asks it separately.
+
+Order is discarded because Lich's only consumer is `@type =~ /attack/i`
+(`spell.rb:700`), a substring test deciding whether to append `target` to a
+cast command. `Spell::unreadable_roles()` reports any tag the enum cannot read,
+so a seventh category is a red test rather than a silent loss.
+
+### Two copies of effect-list.xml, differing by exactly the feature under test
+
+The author asked which file I had been reading. MEASURED:
+
+| Copy | Date | Bytes | Cooldowns |
+|---|---|---:|---:|
+| `C:/Gemstone/lich-5/data` | Sep 13 | 230,659 | **5** |
+| `E:/Gemstone/dev/lich-5/data` | Sep 11 | 230,225 | **0** |
+
+`diff` shows the two files differ **only** by the five `<cooldown>` elements
+and the two `target-start` messages. The older one predates PR #1597.
+
+I used the newer copy, and picked it without comparing — by luck. Cut from the
+older one, `with_cooldowns()` returns empty, and
+`the_two_cooldown_kinds_split_on_cast_mechanics` **passes vacuously over zero
+rows**: a green suite reporting a feature that is not there.
+
+Fixed in three places: the TSV header now records the absolute source path, its
+mtime and a cooldown count; `the_table_was_cut_from_a_copy_that_has_cooldowns`
+asserts the five exist; and the invariant test counts what it checked and fails
+if that is not 2. VERIFIED by regenerating from the Sep 11 copy — **six tests
+go red**, where previously the suite would have stayed green.

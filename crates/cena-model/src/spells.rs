@@ -49,7 +49,7 @@
 //! because no name appears in the line. Pinned by
 //! `tests/spells.rs::the_two_cooldown_kinds_split_on_cast_mechanics`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 
 const SPELLS_TSV: &str = include_str!("../data/spells.tsv");
@@ -118,6 +118,89 @@ pub enum CastType {
     Target,
 }
 
+/// What a spell is for.
+///
+/// The table's `type=` tag, parsed. The four that matter are the author's
+/// (2026-09-20):
+///
+/// > *"we have attack, utility, offense, defense. attack would be like a bolt
+/// > spell or warding spell, utility would be like floating disk, water
+/// > walking, offense would be like heroism, defense would be like 618."*
+///
+/// **This is a closed vocabulary, so it is typed** (C21). An earlier version
+/// left `kind` a bare `String` on the reasoning that 19 distinct values meant
+/// an open set. They are not 19 categories — they are these six, joined with
+/// `/`, spelled two ways and ordered two ways:
+///
+/// | Written | Times |
+/// |---|---:|
+/// | `offense` / `offensive` | 26 / 2 |
+/// | `attack/utility` / `utility/attack` | 12 / 1 |
+/// | `defense/utility` / `utility/defense` | 5 / 1 |
+///
+/// Order carries nothing: Lich's only consumer is `@type =~ /attack/i`
+/// (`spell.rb:700`), a substring test that decides whether to append `target`
+/// to a cast command. So [`Spell::roles`] answers a **set**.
+///
+/// The distinction that matters to a behavior is [`Self::Attack`] against
+/// [`Self::Offense`]: one does damage, the other makes you better at doing it.
+/// MEASURED — **23 of 34** `offense` spells carry an attack-strength bonus
+/// against **2 of 136** `attack` spells.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Role {
+    /// Does damage: a bolt, a warding spell.
+    Attack,
+    /// Improves your offence without damaging: Heroism.
+    Offense,
+    /// Improves your defence: 618.
+    Defense,
+    /// Does something else: floating disk, water walking.
+    Utility,
+    /// A cooldown, penalty or recovery the game shows as a spell.
+    ///
+    /// **Not a spell you cast.** 76 of them, and 12 more carry no tag at all
+    /// while plainly belonging here — `Celerity Recovery`, `Rapid Fire
+    /// Recovery`, `Shadow Mastery Cooldown`. Those are left untagged rather
+    /// than reclassified, because guessing which of the 12 are timers is
+    /// exactly the invention this project avoids.
+    Timer,
+    /// A bonus the game grants outside the four above.
+    ///
+    /// Kept as its own role rather than folded into [`Self::Offense`] or
+    /// [`Self::Defense`], because it is genuinely mixed: `REIM Attack Boost`
+    /// confers `bolt-as`/`physical-as`, `REIM Defense Boost` confers
+    /// `bolt-ds`/`physical-ds`, and seven of the eleven confer nothing the
+    /// table records. Mapping them would be a guess.
+    Bonus,
+}
+
+impl Role {
+    /// Every role.
+    pub const ALL: [Self; 6] = [
+        Self::Attack,
+        Self::Offense,
+        Self::Defense,
+        Self::Utility,
+        Self::Timer,
+        Self::Bonus,
+    ];
+
+    /// Read one tag, accepting both spellings of `offense`.
+    #[must_use]
+    pub fn parse(tag: &str) -> Option<Self> {
+        Some(match tag.trim() {
+            "attack" => Self::Attack,
+            // The table writes it both ways, 26 and 2. Same word.
+            "offense" | "offensive" => Self::Offense,
+            "defense" => Self::Defense,
+            "utility" => Self::Utility,
+            "timer" => Self::Timer,
+            "bonus" => Self::Bonus,
+            _ => return None,
+        })
+    }
+}
+
 /// Why a character is locked out of a spell.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CooldownKind {
@@ -137,26 +220,11 @@ pub struct Spell {
     pub number: u16,
     /// Its name, e.g. `"Heroism"`.
     pub name: String,
-    /// The table's `type=` tag, verbatim. **Free text, not a vocabulary.**
+    /// The table's `type=` tag, verbatim, e.g. `"attack/area"`.
     ///
-    /// MEASURED over the 514: **19 distinct values**, slash-separated, with
-    /// the same idea spelled more than one way — `offense` (26) and
-    /// `offensive` (2), `attack/utility` (12) and `utility/attack` (1). So it
-    /// is a `String`: C21 reserves typed fields for *closed* vocabularies and
-    /// this is an open, inconsistent tag list. Absent on 12.
-    ///
-    /// **It does not say what the spell does.** `offense` means it improves
-    /// your offence, not that it deals damage — that is `attack`:
-    ///
-    /// > *"heroism provides an offensive bonus, so probably a utility spell,
-    /// > it does not damage on it's own so it's not an attack spell, which may
-    /// > be different than offense/defense."* — the author, 2026-09-20
-    ///
-    /// MEASURED, and the split is stark: **23 of 34** `offense` spells carry
-    /// an attack-strength bonus (`bolt-as`, `physical-as`, `*-cs`), against
-    /// **2 of 136** `attack` spells. A behavior asking "will this hurt
-    /// something" must not read `offense` as yes. What to read instead is
-    /// [`Self::bonuses`], which states what is actually conferred.
+    /// Kept so nothing the table said is lost (Rule 2.2a). **Read
+    /// [`Self::roles`] instead** — this string spells the same idea more than
+    /// one way and in more than one order.
     pub kind: Option<String>,
     /// `all`, `self-cast`, `group`… Absent on one.
     pub availability: Option<String>,
@@ -199,6 +267,64 @@ impl Spell {
             &text[..2]
         };
         head.parse().unwrap_or(0)
+    }
+
+    /// What this spell is for, as a set.
+    ///
+    /// The `type=` tag parsed: spelling normalised, order discarded. Empty
+    /// when the table states no type, which 12 spells do — §5.2, and not the
+    /// same as "this spell does nothing".
+    ///
+    /// A tag this cannot read is **skipped rather than guessed at**, and
+    /// [`Self::unreadable_roles`] reports it, so a table update that adds a
+    /// seventh category is visible instead of silently absent.
+    #[must_use]
+    pub fn roles(&self) -> BTreeSet<Role> {
+        self.kind
+            .iter()
+            .flat_map(|kind| kind.split('/'))
+            .filter_map(Role::parse)
+            .collect()
+    }
+
+    /// Whether this spell has a role.
+    ///
+    /// What Lich asks as `@type =~ /attack/i` (`spell.rb:700`), except that a
+    /// substring test would also match a role named `counterattack`, and this
+    /// does not.
+    #[must_use]
+    pub fn is(&self, role: Role) -> bool {
+        self.roles().contains(&role)
+    }
+
+    /// Whether the spell hits an area rather than one target.
+    ///
+    /// **A modifier, not a role.** MEASURED: five spells carry `area`, and
+    /// every one of them carries `attack` too — `attack/area`,
+    /// `attack/area/utility`. It qualifies how an attack lands rather than
+    /// naming what the spell is for, so it is a question of its own instead
+    /// of a sixth peer in [`Role`].
+    #[must_use]
+    pub fn is_area(&self) -> bool {
+        self.kind
+            .iter()
+            .flat_map(|kind| kind.split('/'))
+            .any(|tag| tag.trim() == "area")
+    }
+
+    /// Tags in `type=` that neither [`Role`] nor `area` accounts for.
+    ///
+    /// Empty across the whole shipped table. It exists so a future
+    /// regeneration that introduces a tag reports it rather than dropping it
+    /// — Rule 2.2's rule at the data boundary.
+    #[must_use]
+    pub fn unreadable_roles(&self) -> Vec<&str> {
+        self.kind
+            .iter()
+            .flat_map(|kind| kind.split('/'))
+            .map(str::trim)
+            .filter(|tag| !tag.is_empty() && *tag != "area" && Role::parse(tag).is_none())
+            .collect()
     }
 
     /// The duration for a cast form, if the table states one.
