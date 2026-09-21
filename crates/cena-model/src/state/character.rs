@@ -51,6 +51,7 @@
 pub mod blocks;
 pub mod body;
 pub mod enhancive;
+pub mod experience_report;
 pub mod injured;
 pub mod psm;
 pub mod skills;
@@ -82,6 +83,86 @@ pub struct Experience {
     pub next_level: Option<String>,
     /// `nextLvlPB`'s `value=`, 0-100.
     pub next_level_percent: Option<u32>,
+    /// `Fame: 1,453,539,090`, from the `experience` command.
+    ///
+    /// Signed: Lich captures `-?[\d,]+` (`parser.rb:16`), so the wire can send
+    /// a negative. `i64` because the author's own character reads 1,453,539,090
+    /// -- past `i32` -- and fame only grows.
+    pub fame: Option<i64>,
+    /// `Field Exp: 1,234/1,403` -- earned and the cap.
+    ///
+    /// Two fields from one line, and BOTH are read. Lich reads both
+    /// (`parser.rb:278`) but `;infomon show` displays only the max, which is
+    /// how a reader of that output would conclude the current value is not
+    /// tracked.
+    pub field_experience: Option<u32>,
+    /// `Field Exp: 1,234/1,403` -- the cap.
+    pub field_experience_max: Option<u32>,
+    /// `Ascension Exp: 24,865,590`.
+    pub ascension_experience: Option<u64>,
+    /// `Total Exp: 68,770,511`.
+    pub total_experience: Option<u64>,
+    /// `Long-Term Exp: 493`.
+    pub long_term_experience: Option<u32>,
+    /// `Deeds: 11`.
+    pub deeds: Option<u32>,
+    /// `Death's Sting: None`.
+    pub deaths_sting: Option<vocabulary::DeathsSting>,
+    /// `Experience: 43,904,921` -- the experience total the line leads with.
+    ///
+    /// **Lich reads this line and throws this number away** (`parser.rb:17`:
+    /// `Experience: [\d,]+` is matched and not captured, while the field-exp
+    /// pair beside it is). Rule 2.2 says nothing the wire states is dropped
+    /// silently, and `;infomon show` confirms the loss: it has
+    /// `experience.total_experience` and no plain experience key.
+    pub experience: Option<u64>,
+    /// `Recent Deaths: 0`.
+    ///
+    /// Also matched-and-discarded by Lich (`parser.rb:18`).
+    pub recent_deaths: Option<u32>,
+    /// The gift of Lumnis, as far as it can be known. See [`Gift`].
+    pub gift: Gift,
+}
+
+/// The gift of Lumnis: 360 minutes of doubled experience, once a week.
+///
+/// # What Lich does, and why this does not copy it
+///
+/// Lich counts **pulses** -- one per `nextLvlPB` text change -- and reports
+/// `(360 - count)` minutes remaining (`gemstone/gift.rb:25`). MEASURED, that
+/// counter has exactly one live caller:
+///
+/// ```text
+/// $ grep -rn "Gift\." reference/lich-5/ --include=*.rb \
+///     | grep -v spec/ | grep -v lib/gemstone/gift.rb
+/// lib/common/xmlparser.rb:751:  Gift.pulse unless @next_level_text == attributes['text']
+/// ```
+///
+/// `started`, `ended`, `restarts_on` and the serialization are called **only
+/// from Lich's own specs**. Nothing in production resets the counter or saves
+/// it, so it begins at zero on every launch and `remaining` is only right for
+/// someone who started Lich at the instant their gift began.
+///
+/// # So this counts pulses and does not claim to know the rest
+///
+/// [`Self::pulses`] is the fact: the experience bar changed this many times
+/// since the session began. Turning that into "minutes remaining" needs a
+/// start time nothing on the wire has yet been shown to send, so there is no
+/// `remaining()` here -- an `Option` that is always `None` would be worse than
+/// the absence, and a number derived from an unreset counter would be worse
+/// still.
+///
+/// The upgrade trigger is explicit: **if the wire is found to state when a gift
+/// starts or ends**, this gains a start time and the arithmetic
+/// (`360` minutes, restarting `594_000` seconds later) is already written down
+/// above to port.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Gift {
+    /// How many times the experience bar's text has changed this session.
+    ///
+    /// Lich's pulse count, under a name that says what it measures rather than
+    /// what it is used for.
+    pub pulses: u32,
 }
 
 /// How badly one body part is hurt.
@@ -328,6 +409,14 @@ impl Character {
                 self.experience.mind_percent = Some(percent);
             }
             ("expr", "nextLvlPB") => {
+                // Lich's gift pulse: counted only when the TEXT CHANGES, not
+                // on every refresh of the bar (`common/xmlparser.rb:751`'s
+                // `unless @next_level_text == attributes['text']`). The dialog
+                // is re-sent constantly, so counting every arrival would tick
+                // several times a second.
+                if self.experience.next_level != text {
+                    self.pulse_experience_bar();
+                }
                 self.experience.next_level = text;
                 self.experience.next_level_percent = Some(percent);
             }
@@ -457,6 +546,59 @@ impl Character {
         if self.consume_standing(chunk) {
             self.taught.insert(snapshot::Group::Standing);
         }
+        // NOT MARKED TAUGHT, and there is no `Group::Experience`.
+        // `reconnect_invalidation.rs` records why: experience changes
+        // continuously and `<dialogData id='expr'>` is the live authority, so
+        // the snapshot has no experience field and a stored copy would be
+        // stale the moment it was written. The report still fills the model --
+        // it carries fame, deeds and field exp that the dialog does not.
+        if let Some(report) = experience_report::ExperienceReport::read(chunk) {
+            self.apply_experience(&report);
+        }
+    }
+
+    /// Fold an `experience` report.
+    ///
+    /// Nothing is persisted, so nothing is marked -- see the caller.
+    fn apply_experience(&mut self, report: &experience_report::ExperienceReport) {
+        let exp = &mut self.experience;
+        if let Some(fame) = report.fame {
+            exp.fame = Some(fame);
+        }
+        if let Some(value) = report.experience {
+            exp.experience = Some(value);
+        }
+        if let Some((current, max)) = report.field_experience {
+            exp.field_experience = Some(current);
+            exp.field_experience_max = Some(max);
+        }
+        if let Some(value) = report.ascension_experience {
+            exp.ascension_experience = Some(value);
+        }
+        if let Some(value) = report.recent_deaths {
+            exp.recent_deaths = Some(value);
+        }
+        if let Some(value) = report.total_experience {
+            exp.total_experience = Some(value);
+        }
+        if let Some(sting) = report.deaths_sting {
+            exp.deaths_sting = Some(sting);
+        }
+        if let Some(value) = report.long_term_experience {
+            exp.long_term_experience = Some(value);
+        }
+        if let Some(value) = report.deeds {
+            exp.deeds = Some(value);
+        }
+    }
+
+    /// Count one change of the experience bar's text.
+    ///
+    /// Lich's `Gift.pulse` (`common/xmlparser.rb:751`), under a name that says
+    /// what it counts. See [`Gift`] for why this is the only part of Lich's
+    /// gift tracker that is ported.
+    pub(crate) fn pulse_experience_bar(&mut self) {
+        self.experience.gift.pulses = self.experience.gift.pulses.saturating_add(1);
     }
 
     /// Take the groups taught since this was last called.
