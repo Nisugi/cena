@@ -90,3 +90,18 @@ jobs:
           cargo build --locked --lib --target aarch64-apple-ios \
             -p cena-platform -p cena-protocol -p cena-model \
             -p cena-session -p cena-behavior
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned browser test tools
+        working-directory: crates/cena-web/browser-tests
+        run: |
+          npm install --no-save --package-lock=false playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Despana rendering and same-tab pairing regression
+        run: node crates/cena-web/browser-tests/smoke.mjs
