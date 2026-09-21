@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use cena_behavior::BehaviorError;
-use cena_behavior::travel::{Ended, TravelNotes, Travelled, travel};
+use cena_behavior::travel::{Ended, TravelNotes, Travelled, Why, travel};
 use cena_map::{Map, Room, RoomId};
 use cena_platform::{AnsweringSource, TranscriptHandle};
 use cena_session::hands::Hand;
@@ -181,5 +181,28 @@ async fn a_stop_with_nothing_stored_sends_nothing() {
     assert_eq!(travelled.ended, Ended::Stopped(BehaviorError::Cancelled));
     assert!(travelled.still_stored.is_empty());
     assert_eq!(transcript.lines().len(), sent, "a stop is not a send");
+    session.cancel();
+}
+
+/// The trip hears the game through the model's own lines. `north` is refused
+/// in words, with no room change to go by, so the only way the trip can know
+/// is by hearing the line -- and it is the only way to room 3.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn what_the_game_says_reaches_the_trip() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session) = set_out(&stop);
+    transcript.answer(
+        "north",
+        b"You can't go there.\n<prompt time=\"2\">&gt;</prompt>\n",
+    );
+
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Failed(Why::NoRoute));
+    assert_eq!(travelled.wrong_for_the_map, [(RoomId(1), RoomId(2))]);
+    assert_eq!(
+        transcript.lines(),
+        ["north"],
+        "told once, it does not insist"
+    );
     session.cancel();
 }

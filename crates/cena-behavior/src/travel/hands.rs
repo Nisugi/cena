@@ -10,6 +10,9 @@
 //! cloak that its owner wears on the shoulder. Both verbs are in use upstream
 //! (`grep -rhoE "(stow|store) (right|left)" reference/scripts`).
 //!
+//! **And only an armament can be stored** (author, same day): a weapon, a
+//! runestaff, a shield. Whatever else is in a hand is stowed.
+//!
 //! # Taking back is one command
 //!
 //! Lich's `stash.rb:173-193` takes a worn thing back with `remove #id` and
@@ -20,6 +23,7 @@
 
 use cena_session::GameState;
 use cena_session::containers::{ReadySlot, StoreMode};
+use cena_session::gameobj;
 use cena_session::hands::Hand;
 use cena_session::spell_named;
 
@@ -37,29 +41,57 @@ pub struct Stored {
 /// `sigil of resolve`), where a spell is `incant`ed by number.
 const FIRST_SOCIETY_POWER: u16 = 9700;
 
-/// The commands that store what the hands hold, right first, and what each
-/// stores. A hand holding something the wire gave no id for is left alone:
-/// nothing could take it back.
+/// The nouns Lich takes for a shield (`stash.rb:173`), less the bows it lists
+/// beside them: those are weapons, and the type table says so.
+const SHIELD_NOUNS: [&str; 10] = [
+    "shield",
+    "buckler",
+    "targe",
+    "heater",
+    "parma",
+    "aegis",
+    "scutum",
+    "greatshield",
+    "mantlet",
+    "pavis",
+];
+
+/// Whether the game will `store` this: a weapon (a runestaff is one, in the
+/// type table) or a shield. **Only armaments can be stored** (author,
+/// 2026-09-21); anything else -- a gem, a gift, a lockpick -- is refused by
+/// `store` and has to be stowed.
 #[must_use]
-pub fn store_commands(state: &GameState) -> Vec<(Stored, &'static str)> {
-    [
-        (&state.right_hand, "store right"),
-        (&state.left_hand, "store left"),
-    ]
-    .into_iter()
-    .filter_map(|(hand, command)| match hand {
-        Hand::Holding {
-            id: Some(id), name, ..
-        } => Some((
-            Stored {
-                id: id.clone(),
-                name: name.clone(),
-            },
-            command,
-        )),
-        _ => None,
-    })
-    .collect()
+pub fn is_armament(noun: &str, name: &str) -> bool {
+    SHIELD_NOUNS.contains(&noun) || gameobj::classify(noun, name).is("weapon")
+}
+
+/// The commands that put away what the hands hold, right first, and what each
+/// puts away: `store` for an armament, which sends it where the player set it
+/// to go, and `stow` for anything else. A hand holding something the wire gave
+/// no id for is left alone: nothing could take it back.
+#[must_use]
+pub fn store_commands(state: &GameState) -> Vec<(Stored, String)> {
+    [(&state.right_hand, "right"), (&state.left_hand, "left")]
+        .into_iter()
+        .filter_map(|(hand, side)| match hand {
+            Hand::Holding {
+                id: Some(id),
+                noun,
+                name,
+            } => {
+                let armament = noun.as_deref().is_some_and(|noun| is_armament(noun, name));
+                let verb = if armament { "store" } else { "stow" };
+                Some((
+                    Stored {
+                        id: id.clone(),
+                        name: name.clone(),
+                    },
+                    format!("{verb} {side}"),
+                ))
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 /// The one command that takes a stored thing back: `remove` when the ready
@@ -105,10 +137,10 @@ mod tests {
 
     use super::*;
 
-    fn holding(id: &str, name: &str) -> Hand {
+    fn holding(id: &str, noun: &str, name: &str) -> Hand {
         Hand::Holding {
             id: Some(id.into()),
-            noun: None,
+            noun: Some(noun.into()),
             name: name.into(),
         }
     }
@@ -117,7 +149,7 @@ mod tests {
     fn only_what_can_be_taken_back_is_stored() {
         let mut state = GameState::default();
         assert!(store_commands(&state).is_empty(), "unknown hands: nothing");
-        state.right_hand = holding("11", "a broadsword");
+        state.right_hand = holding("11", "broadsword", "a broadsword");
         state.left_hand = Hand::Holding {
             id: None,
             noun: None,
@@ -127,6 +159,20 @@ mod tests {
         assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].1, "store right");
         assert_eq!(stored[0].0.id, "11");
+    }
+
+    #[test]
+    fn an_armament_is_stored_and_anything_else_is_stowed() {
+        let mut state = GameState::default();
+        state.right_hand = holding("1", "runestaff", "an oak runestaff");
+        state.left_hand = holding("2", "shield", "a steel shield");
+        let commands: Vec<String> = store_commands(&state).into_iter().map(|c| c.1).collect();
+        assert_eq!(commands, ["store right", "store left"]);
+
+        state.right_hand = holding("3", "gift", "a plain gift");
+        state.left_hand = holding("4", "lockpick", "a copper lockpick");
+        let commands: Vec<String> = store_commands(&state).into_iter().map(|c| c.1).collect();
+        assert_eq!(commands, ["stow right", "stow left"]);
     }
 
     #[test]

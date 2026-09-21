@@ -192,9 +192,25 @@ how Hydra gets `hydra.map` (`plan/21` §6, open). First live walk, author presen
 > `ByteSource`: a reply that answers one named command, once. Everything written before it
 > reads as it did.
 >
+> **CORRECTED the same day, twice, by the author.**
+>
+> *Only an armament can be stored* -- a weapon, a runestaff, a shield. So `store` is for
+> those (it sends each where `store set` says) and **`stow` is for anything else** in a
+> hand: a gem, a gift, a lockpick. `hands::is_armament` asks the type table for `weapon`
+> (which has `runestaff`) and takes Lich's shield nouns from `stash.rb:173`.
+>
+> *"is the driver supposed to be rebuilding lines or is that someone else's job? ... the
+> lines have to be rebuilt for other folks too, like the frontend display."* **It is the
+> model's job, and the model already does it**: `route_text` reassembles once, and both the
+> frontend's stream buffers and every classifier's chunk come from that one reassembly. The
+> first driver joined `ends_line` pieces itself -- a second reader waiting to disagree with
+> the first. It now reads `GameState::open_chunk()`. No test depended on a heard line until
+> this was asked, so one was added (`what_the_game_says_reaches_the_trip`) and a mutation
+> that deafens the trip turns it, and only it, red.
+>
 > **Two things the build found.** A line of game text arrives in pieces, one per link
-> boundary (`TextFrame::ends_line`), and Lich's ladder is over whole lines, so the driver
-> joins the main window's pieces before `Trip::heard`. And a session on its way up
+> boundary (`TextFrame::ends_line`), and Lich's ladder is over whole lines -- see the
+> correction above for whose job joining them is. And a session on its way up
 > announces `Connecting`, `Authenticating`, `Syncing`: only `Reconnecting` and `Closed`
 > mean the transport is gone -- the first version stopped every walk before it began.
 >

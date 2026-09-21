@@ -110,7 +110,7 @@ pub async fn travel(
         was: None,
         stored: Vec::new(),
         stance_before: None,
-        line: String::new(),
+        heard: 0,
     };
     let ended = driver.walk(&mut trip, map, notes, wrote).await;
     if ended == Ended::Stopped(BehaviorError::Cancelled) {
@@ -138,8 +138,8 @@ struct Driver<'a, N> {
     was: Option<(String, RoomId)>,
     stored: Vec<Stored>,
     stance_before: Option<String>,
-    /// The main window's line so far.
-    line: String,
+    /// How many lines of the model's open chunk the trip has heard.
+    heard: usize,
 }
 
 impl<N: FnMut() -> CommandId> Driver<'_, N> {
@@ -229,15 +229,12 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             Event::Frame(frame) => {
                 self.state.apply(frame);
                 match &**frame {
-                    // A line arrives in pieces, one per link boundary, and
-                    // Lich's patterns are over whole lines of the main window.
-                    Frame::Text(text) if text.stream.is_empty() => {
-                        self.line.push_str(&text.content);
-                        if text.ends_line {
-                            trip.heard(&std::mem::take(&mut self.line));
-                        }
+                    // The chunk closed, and took its lines with it.
+                    Frame::Prompt { .. } => {
+                        self.heard = 0;
+                        trip.prompted();
                     }
-                    Frame::Prompt { .. } => trip.prompted(),
+                    Frame::Text(_) => self.hear(trip),
                     _ => {}
                 }
                 Ok(())
@@ -249,6 +246,28 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             Event::StateChanged(State::Closed) => Err(BehaviorError::Dead),
             _ => Ok(()),
         }
+    }
+
+    /// Tell the trip the whole lines the model has finished since it last
+    /// heard any.
+    ///
+    /// **The model rebuilds lines, once, for everyone** (`route_text`): the
+    /// frontend's stream buffers and every classifier's chunk come from the
+    /// same reassembly. A first version joined the pieces again here, which
+    /// is a second reader of `ends_line` waiting to disagree with the first
+    /// (author, 2026-09-21: *"the lines have to be rebuilt for other folks
+    /// too"*). The open chunk is the main window's lines since the prompt.
+    fn hear(&mut self, trip: &mut Trip) {
+        let chunk = self.state.open_chunk();
+        let lines = chunk.lines();
+        // Counted with what a long chunk dropped from its front, so a line
+        // is heard once however the buffer slides.
+        let total = chunk.dropped() + lines.len();
+        let fresh = total.saturating_sub(self.heard).min(lines.len());
+        for line in &lines[lines.len() - fresh..] {
+            trip.heard(&line.text());
+        }
+        self.heard = total;
     }
 
     /// Wait for the game's next word, or a beat, whichever is first.
@@ -310,7 +329,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                     // Written down before it is sent: a stop between the two
                     // must still know what to take back.
                     self.stored.push(stored);
-                    self.exchange(trip, command).await?;
+                    self.exchange(trip, &command).await?;
                 }
             }
             Deed::FillHands => {
