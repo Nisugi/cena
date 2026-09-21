@@ -175,6 +175,40 @@ test("auth rejection stops retries; closing viewer sends no game command", () =>
   assert.equal(second.timers.length, 0);
 });
 
+test("explicit re-pair revives a refused viewer and fences the old socket", () => {
+  const { session, socket } = setup();
+  socket.message(readySnapshot());
+  session.command("look");
+  socket.close(1008);
+  session.pair("replacement-token");
+  const replacement = session.socket;
+  assert.equal(session.ready, false);
+  assert.equal(session.state.view, null);
+  replacement.open();
+  assert.deepEqual(replacement.sent, [{ kind: "authenticate", version: 1, token: "replacement-token" }]);
+  socket.message(readySnapshot());
+  assert.equal(session.ready, false);
+  replacement.message(readySnapshot());
+  assert.equal(session.ready, true);
+  assert.equal(session.pending.size, 0);
+  assert.match(session.state.commandStatus, /uncertain/);
+  assert.equal(replacement.sent.length, 1);
+});
+
+test("re-pair cancels the old reconnect timer and empty fragments do not disconnect", () => {
+  const cancelled = [];
+  const { session, socket } = setup();
+  session.cancel = (id) => cancelled.push(id);
+  socket.close(1006);
+  const timer = session.timer;
+  session.pair("replacement-token");
+  assert.deepEqual(cancelled, [timer]);
+  assert.equal(session.timer, null);
+  const replacement = session.socket;
+  session.pair("");
+  assert.equal(session.socket, replacement);
+});
+
 test("unknown retry attempt is not fabricated and scheduled backoff is not a countdown", () => {
   const { session, socket } = setup();
   const snapshot = fixture();

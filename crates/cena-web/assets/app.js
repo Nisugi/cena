@@ -150,6 +150,15 @@ export function mount(document, environment) {
   const protocol = environment.location.protocol === "https:" ? "wss:" : "ws:";
   const session = new HydraSession({ url: `${protocol}//${environment.location.host}/ws`, token,
     onChange: render, WebSocketImpl: environment.WebSocket });
+  const pairFromFragment = () => {
+    // A pairing URL opened in this same tab changes only the fragment: mount
+    // does not run again. Strip it before rendering or opening another socket.
+    const nextToken = takeLaunchToken(environment.location, environment.history);
+    if (!nextToken) return;
+    input.value = "";
+    session.pair(nextToken);
+  };
+  environment.addEventListener("hashchange", pairFromFragment);
   element("command-form").addEventListener("submit", (event) => {
     event.preventDefault();
     if (session.command(input.value)) input.value = "";
@@ -158,6 +167,7 @@ export function mount(document, environment) {
   element("story-bottom").addEventListener("click", () => { story.scrollTop = story.scrollHeight; });
   const timer = environment.setInterval(renderRoundtime, 250);
   environment.addEventListener("pagehide", () => {
+    environment.removeEventListener("hashchange", pairFromFragment);
     environment.clearInterval(timer);
     session.close();
   }, { once: true });

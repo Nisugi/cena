@@ -131,8 +131,39 @@ try {
   await page.waitForFunction(() => window.__sockets.length === 2);
   await page.locator("#connection-status").filter({ hasText: "attempt 2" }).waitFor();
   assert.deepEqual(await page.evaluate(() => window.__sent.map((m) => m.kind)), ["authenticate", "command", "command", "authenticate"]);
+
+  // A reload loses the memory-only token. Opening the pairing URL in this
+  // existing tab is a fragment navigation, not another mount/document load.
+  await page.reload();
+  await page.locator("#connection-status").filter({ hasText: "Pairing required" }).waitFor();
+  assert.equal(await page.evaluate(() => window.__sockets.length), 0);
+  await page.evaluate(() => { window.__sameDocument = true; });
+  await page.goto(`http://127.0.0.1:${server.address().port}/#token=synthetic-repair-only`);
+  await page.waitForFunction(() => location.hash === "", null, { timeout: 2000 });
+  assert.equal(await page.evaluate(() => window.__sameDocument), true);
+  await page.locator("#connection-status").filter({ hasText: "attempt 2" }).waitFor();
+  assert.deepEqual(await page.evaluate(() => window.__sent), [
+    { kind: "authenticate", version: 1, token: "synthetic-repair-only" },
+  ]);
+  await page.evaluate((value) => window.__message(value), ready);
+  await page.locator("#command-input").fill("look");
+  await page.locator("#command-input").press("Enter");
+  assert.deepEqual(await page.evaluate(() => window.__sent.map((m) => m.kind)), ["authenticate", "command"]);
+
+  // Re-pair while a command receipt is outstanding: close the old socket,
+  // keep the input empty and delivery uncertain, and never resend that command.
+  await page.goto(`http://127.0.0.1:${server.address().port}/#token=synthetic-second-pair`);
+  await page.waitForFunction(() => window.__sent.length === 3 && location.hash === "", null, { timeout: 2000 });
+  assert.equal(await page.evaluate(() => window.__sockets[0].readyState), 3);
+  assert.equal(await page.locator("#command-input").inputValue(), "");
+  assert.match(await page.locator("#command-status").textContent(), /uncertain/);
+  assert.deepEqual(await page.evaluate(() => window.__sent.map((m) => m.kind)), ["authenticate", "command", "authenticate"]);
+  await page.evaluate((value) => window.__message(value), ready);
+  await page.locator("#command-input").fill("inventory");
+  await page.locator("#command-input").press("Enter");
+  assert.deepEqual(await page.evaluate(() => window.__sent.filter((m) => m.kind === "command").map((m) => m.line)), ["look", "inventory"]);
   assert.deepEqual(errors, []);
-  console.log(`PASS: shared fixture rendering, text safety, keyboard command, delivery receipt, reconnect/no replay, desktop/mobile overflow. Screenshots: ${output}`);
+  console.log(`PASS: shared fixture rendering, text safety, keyboard command, delivery receipt, reconnect/no replay, refresh/same-tab re-pair, desktop/mobile overflow. Screenshots: ${output}`);
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));

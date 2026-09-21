@@ -23,6 +23,13 @@ whose path is printed by the runner.
 
 Coverage includes desktop/narrow-screen layout, unknown versus empty panels,
 plain-text rendering of HTML-looking game text, supported styles, Enter input,
-focus retention while a receipt is pending, and reconnect without command replay.
+focus retention while a receipt is pending, reconnect without command replay,
+and refresh followed by reopening a pairing link in the same document. Re-pairing
+an outstanding command preserves uncertainty and does not replay it or duplicate
+the command handler. The browser regression failed before the hashchange fix.
 It requires local sockets and browser process launch permissions. No package or
 browser download is performed by the runner.
+
+The `browser-smoke` CI job installs Playwright 1.63.0 and its Chromium before
+running this same fixture test. The dependency-free contract suite remains a
+separate check on both desktop platforms.

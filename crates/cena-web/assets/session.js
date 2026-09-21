@@ -79,6 +79,21 @@ export class HydraSession {
 
   emit() { this.onChange(this.state, this.ready); }
 
+  // Explicit operator re-pair, including after refresh or an auth refusal.
+  // close() abandons pending receipts honestly and detaches old socket callbacks;
+  // connect() requires a new snapshot before any command can be submitted.
+  pair(token) {
+    if (!token) return;
+    if (["idle", "unpaired"].includes(this.state.connection)) {
+      this.state.commandStatus = "Waiting for connection.";
+    }
+    this.close();
+    this.token = token;
+    this.stopped = false;
+    this.retryMs = 1000;
+    this.connect();
+  }
+
   connect() {
     if (this.stopped || this.socket) return;
     if (!this.token) {
@@ -210,6 +225,7 @@ export class HydraSession {
   close(connection = "closed") {
     this.stopped = true;
     if (this.timer !== null) this.cancel(this.timer);
+    this.timer = null;
     this.uncertain();
     const socket = this.socket;
     this.socket = null;
