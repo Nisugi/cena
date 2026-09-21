@@ -1169,6 +1169,32 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    primitive is skipped and reported, never approximated. Every arm is read against the
    upstream Ruby before it is merged.
 
+   **Slice D (costs), merged 2026-09-21.** 38 exits in 7 arms: premium, Water Walking,
+   settings compared with a value, settings merely named (private property: `Shivergale`,
+   `sunset_cabin`), a known spell, skill floors. Reviewed against the Ruby; **one
+   correction**: `checkspell(112) ? 0.2 : 2.0` was ported as "when Water Walking is up",
+   which prices a walker of unknown spells *impassable* though both branches are passable.
+   It is a how-long, not a whether, so it is now `Otherwise` and never refuses.
+   **Unported costs 739 → 701**, and the rest is a vocabulary list, not a porting list:
+
+   | exits | needs |
+   |---|---|
+   | 477 | the instability table (`$mapdb_instability_timeto`) — a lookup in `Walker` |
+   | 103 | the walker *sitting* **and the room's climate** — the first room-fact a cost has asked for |
+   | 39 | society and rank (Voln seeking) |
+   | 19 | arithmetic over ranks, level, skill and encumbrance — the formulas |
+   | 8 | an inventory item check (a key) |
+   | 8 | "is hunting/wandering automation running" — a planner flag, not yet named |
+   | 7 | citizenship · 4 race · 2 gender · 2 level |
+   | 4 | `$SILVERWOOD_TOWN`, a global some other script writes — origin unknown |
+   | 4 | the *current room's* title or location, beside a memory (Red Forest, Hinterwilds) |
+   | 2 | a three-way price (`if … elsif … else`) |
+
+   OPEN, from the agent's own doubts: `X.nil?` is ported as *is set*, which also treats an
+   empty string as unset; several names (`car_to_sos`, `Mularos_Lover`…) are ported as
+   settings because upstream only ever reads them; skill names are upstream's lowercase
+   and the planner must map the model's to them.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.
