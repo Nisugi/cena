@@ -32,6 +32,22 @@ pub enum Action {
     /// Where [`Action::KeepMoving`] stops at the first change of room, this
     /// stops at the right one. The walker bounds it; upstream tries fifty.
     MoveUntilThere(String),
+    /// Try a movement command that may well not work, and carry on either
+    /// way: a curtain that opens only once the locker is shut, a door that
+    /// opens on its own schedule. Not moving is an answer, not a failure;
+    /// the steps after it ask `Cond::StillHere` and do what is left to do.
+    TryMove(String),
+    /// Send a movement command again for as long as the question holds in
+    /// the room the walker is then in: `northeast` while there is a `nw`.
+    MoveWhile(String, Cond),
+    /// Take the first obvious exit that is not this one: a room with two
+    /// ways out, entered by one of them.
+    MoveByAnyExitBut(String),
+    /// Wait for the room to change with nothing sent: the walker is being
+    /// carried.
+    AwaitArrival,
+    /// [`Action::Await`], for any one of several lines.
+    AwaitAny(Vec<String>),
     /// Find out where the walker is and plan again from there. Always last.
     /// Upstream's `$go2_restart = true`, on crossings that may land somewhere
     /// other than the exit's destination (`plan/21` §4.3). Skipped when the
@@ -111,7 +127,15 @@ pub fn moves_whatever_is_known(steps: &[Step]) -> bool {
     steps.iter().any(|step| {
         matches!(
             step.action,
-            Action::Move(_) | Action::KeepMoving(_) | Action::MoveUntilThere(_) | Action::Await(_)
+            Action::Move(_)
+                | Action::KeepMoving(_)
+                | Action::MoveUntilThere(_)
+                | Action::TryMove(_)
+                | Action::MoveWhile(..)
+                | Action::MoveByAnyExitBut(_)
+                | Action::AwaitArrival
+                | Action::AwaitAny(_)
+                | Action::Await(_)
         ) && step.when.as_ref().is_none_or(|when| when.holds(&nobody))
     })
 }

@@ -1291,6 +1291,30 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    Unported crossings **367**, costs **67**. Reachability did not move: every one of these
    is behind a setting or a society the ratchet's two walkers do not have.
 
+   **CORRECTED 2026-09-21 — everything is ported.** I suggested the puzzle rooms might be
+   left unported because "a client without scripting should not be solving a one-off
+   puzzle room". The author: *"a client without scripting just means without external
+   scripts ... we're programming primitives and behaviors here."* The settled decision
+   (`CLAUDE.md`) is that **users** do not author scripts; it puts no ceiling on what Hydra
+   itself does. A puzzle is a routine like any other: named in the map, written in Rust.
+   The target for unported crossings is **zero**, and what remains is a list of routines
+   and primitives to write, not a list of things to give up on.
+
+   **Reactions (2026-09-21).** Crossings that depend on what the game does next
+   (`recognise/reactions.rs`), and the vocabulary for them:
+   - **`Action::TryMove` + `Cond::StillHere`** — a move that may well not work, and what is
+     left to do if it did not. Locker alcoves (30 exits: try the curtain; if still here,
+     `close locker` and go) and doors that open on their own schedule (13: try; if still
+     here, do what opens it, `Await` the line, go). Not moving is an answer, not a failure,
+     which is what separates it from `Move`. Flat steps hold: the "if" is a guard.
+   - **`Cond::Exit`**, the room's obvious exits, asked in the room; **`Action::MoveWhile`**
+     (`northeast` while there is a `nw`) and **`MoveByAnyExitBut`** (a room with two ways
+     out, entered by one).
+   - **`Action::AwaitArrival`** — nothing to send, the walker is being carried; and
+     **`AwaitAny`**, for the Hinterwilds caravans, whose halt comes in three wordings.
+
+   Unported crossings **284**; reachable **11,077** / **18,871**.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

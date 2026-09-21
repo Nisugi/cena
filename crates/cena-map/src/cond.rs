@@ -59,6 +59,13 @@ pub struct Walker {
     pub society_rank: Option<u32>,
     /// `standing`, `sitting`, `kneeling`, `prone`.
     pub posture: Option<String>,
+    /// The obvious exits of the room the walker is in, as the game lists them
+    /// short: `ne`, `nw`, `up`, `out`.
+    pub exits: Option<Vec<String>>,
+    /// Whether the walker is still in the room this crossing began in. Only
+    /// the walk knows, and only part-way through a crossing; while planning
+    /// it is `None`.
+    pub still_here: Option<bool>,
     /// The month of the game's calendar day, 1-12. A fact passed in, never
     /// read from a clock here, so a replay plans the same route.
     pub month: Option<u32>,
@@ -110,6 +117,11 @@ pub enum Cond {
     Society(String),
     SocietyRankAtLeast(u32),
     Posture(String),
+    /// The room the walker is in lists this obvious exit.
+    Exit(String),
+    /// The crossing has not moved the walker yet: what an earlier
+    /// `Action::TryMove` left to be done.
+    StillHere,
     Month(u32),
     EncumbranceOver(u32),
     /// Ranks in skill `.0` are below `.1`.
@@ -149,6 +161,11 @@ impl Cond {
             Cond::Citizenship(town) => walker.citizenship.as_ref().map(|is| is == town),
             Cond::Society(name) => walker.society.as_ref().map(|is| is == name),
             Cond::SocietyRankAtLeast(rank) => walker.society_rank.map(|is| is >= *rank),
+            Cond::Exit(exit) => walker
+                .exits
+                .as_ref()
+                .map(|exits| exits.iter().any(|is| is == exit)),
+            Cond::StillHere => walker.still_here,
             Cond::Posture(name) => walker.posture.as_ref().map(|is| is == name),
             Cond::Month(month) => walker.month.map(|is| is == *month),
             Cond::EncumbranceOver(percent) => walker.encumbrance.map(|is| is > *percent),

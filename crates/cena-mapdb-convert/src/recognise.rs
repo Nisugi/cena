@@ -18,6 +18,7 @@ use cena_map::{Action, Cost, Crossing, Pass, Step};
 mod costs;
 mod facts;
 mod moves;
+mod reactions;
 mod routines;
 mod tail_a;
 mod tail_b;
@@ -54,6 +55,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| moves::pedal_boat(script))
         .or_else(|| moves::until_there(script, to))
         .or_else(|| facts::crossing(script, from))
+        .or_else(|| reactions::crossing(script, from))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
         .or_else(|| arctic_waters(script))
