@@ -158,3 +158,30 @@ fn a_table_cost_is_what_the_planner_put_there() {
     let bad: cena_map::Cost = serde_json::from_str(r#"{"table":"instability","key":228}"#).unwrap();
     assert_eq!(bad.price(&entered), None, "a negative price is no price");
 }
+
+/// What the room looks like: unknown until it has been read, and then exact.
+#[test]
+fn the_look_of_the_room_is_asked_about_and_may_be_unknown() {
+    let maze = Cond::ExitsAre(vec!["ne".into(), "se".into()]);
+    let door = Cond::Sees("door".into());
+    let nobody = Walker::default();
+    for cond in [&maze, &door, &Cond::At(7), &Cond::ExitsOver(1)] {
+        assert_eq!(cond.ask(&nobody), None, "{cond:?}");
+    }
+    let here = Walker {
+        room: Some(7),
+        exits: Some(vec!["ne".into(), "se".into()]),
+        sees: Some(vec!["a heavy iron door".into()]),
+        ..Walker::default()
+    };
+    assert!(maze.holds(&here) && door.holds(&here) && Cond::At(7).holds(&here));
+    assert!(Cond::ExitsOver(1).holds(&here) && !Cond::ExitsOver(2).holds(&here));
+    let turned = Walker {
+        exits: Some(vec!["se".into(), "ne".into()]),
+        ..here
+    };
+    assert!(
+        !maze.holds(&turned),
+        "the order is the game's, and is part of it"
+    );
+}

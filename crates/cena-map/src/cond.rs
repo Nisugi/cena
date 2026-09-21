@@ -69,6 +69,11 @@ pub struct Walker {
     /// The obvious exits of the room the walker is in, as the game lists them
     /// short: `ne`, `nw`, `up`, `out`.
     pub exits: Option<Vec<String>>,
+    /// The Lich id of the room the walker is in, when the walk knows it.
+    pub room: Option<u32>,
+    /// Full names of the things the room shows: its objects, and the
+    /// features its description links. `None` until the room has been read.
+    pub sees: Option<Vec<String>>,
     /// Whether the walker is still in the room this crossing began in. Only
     /// the walk knows, and only part-way through a crossing; while planning
     /// it is `None`.
@@ -129,6 +134,18 @@ pub enum Cond {
     Wearing(String),
     /// The room the walker is in lists this obvious exit.
     Exit(String),
+    /// The obvious exits are exactly these, in this order, as the game lists
+    /// them short: how a maze's look-alike rooms are told from the way out.
+    ExitsAre(Vec<String>),
+    /// There are more obvious exits than this.
+    ExitsOver(u32),
+    /// The walker is in this room. For a step that only happens when an
+    /// earlier one landed somewhere else.
+    At(u32),
+    /// The room shows a thing whose name holds this text: a `door`, an
+    /// `opening`. Upstream asks by noun, by full name and by pattern; a name
+    /// holds its noun, so one question covers the three.
+    Sees(String),
     /// The crossing has not moved the walker yet: what an earlier
     /// `Action::TryMove` left to be done.
     StillHere,
@@ -175,6 +192,16 @@ impl Cond {
                 .exits
                 .as_ref()
                 .map(|exits| exits.iter().any(|is| is == exit)),
+            Cond::ExitsAre(exits) => walker.exits.as_ref().map(|is| is == exits),
+            Cond::ExitsOver(count) => walker
+                .exits
+                .as_ref()
+                .map(|is| u32::try_from(is.len()).unwrap_or(u32::MAX) > *count),
+            Cond::At(room) => walker.room.map(|is| is == *room),
+            Cond::Sees(text) => walker
+                .sees
+                .as_ref()
+                .map(|names| names.iter().any(|name| name.contains(text.as_str()))),
             Cond::StillHere => walker.still_here,
             Cond::Wearing(name) => has(walker.worn.as_ref(), name),
             Cond::Posture(name) => walker.posture.as_ref().map(|is| is == name),

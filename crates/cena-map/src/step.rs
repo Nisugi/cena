@@ -82,6 +82,31 @@ pub enum Action {
     /// for a walker nobody follows. One step for both of upstream's waits:
     /// who is following is the walker's knowledge, not the map's.
     AwaitFollowers,
+    /// [`Action::MoveWhile`], choosing **at random** among several commands
+    /// each time: a maze of look-alike rooms that lets the walker out when
+    /// it pleases. The walk's randomness is seeded (`plan/21` §4.0), so a
+    /// replay takes the same turns.
+    MoveAnyWhile(Vec<String>, Cond),
+    /// Take an obvious exit at random -- not the way just come, when there
+    /// is another -- for as long as the question holds. Upstream's `walk`.
+    /// Seeded, as [`Action::MoveAnyWhile`] is.
+    WanderWhile(Cond),
+    /// Send a command that does not change rooms for as long as the
+    /// question holds: `search` while no gap is to be seen.
+    /// [`Action::PutUntil`] listens for a line; this looks at the room.
+    PutWhile(String, Cond),
+    /// Wait, sending nothing, until the question holds: an island drifting
+    /// into reach. The walker bounds it.
+    WaitUntil(Cond),
+    /// Several commands as **one** step, each sent and answered whether or
+    /// not it moves the walker: `south`, `search`, `go stair`. What
+    /// [`Action::Moves`] is to a guarded run of moves, this is to a run that
+    /// has a `search` or a `pull` in the middle of it.
+    Round(Vec<String>),
+    /// [`Action::Round`], again and again while the question holds in the
+    /// room the walker is then in: `search`, `go fissure` while there is
+    /// still an exit east. It holds commands, not steps, so steps stay flat.
+    RoundWhile(Vec<String>, Cond),
     /// Find out where the walker is and plan again from there. Always last.
     /// Upstream's `$go2_restart = true`, on crossings that may land somewhere
     /// other than the exit's destination (`plan/21` §4.3). Skipped when the
@@ -169,6 +194,9 @@ pub fn moves_whatever_is_known(steps: &[Step]) -> bool {
                 | Action::KeepMovingAny(_)
                 | Action::CastAt(..)
                 | Action::MoveWhile(..)
+                | Action::MoveAnyWhile(..)
+                | Action::WanderWhile(_)
+                | Action::RoundWhile(..)
                 | Action::MoveByAnyExitBut(_)
                 | Action::AwaitArrival
                 | Action::AwaitAny(_)
