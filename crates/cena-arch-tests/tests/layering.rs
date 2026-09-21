@@ -129,7 +129,13 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // be recorded here to be legal. It is downward under `plan/12:72-86`
     // (behavior -> session -> platform) and it is absent from the shipped
     // graph: `cargo tree -p cena-behavior -e normal` does not contain it.
-    ("cena-behavior", &["cena-platform", "cena-session"]),
+    // AMENDED for `plan/24`, the Travel behavior. `cena-map` is the walker's
+    // vocabulary and its pathfinder; it depends on nothing (its own row
+    // above), so the edge is downward.
+    (
+        "cena-behavior",
+        &["cena-map", "cena-platform", "cena-session"],
+    ),
     ("cena-ui", &["cena-model"]),
     // AMENDED for Milestone 1 Step 2, the live run (author's call,
     // 2026-09-18). The row was `&["cena-behavior", "cena-session",

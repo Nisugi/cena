@@ -11,6 +11,7 @@
 //! exactly the abstraction that rule forbids.
 pub mod look;
 pub mod sync;
+pub mod travel;
 
 pub use look::{BehaviorError, LOOK_INTERVAL, ROUND_TRIP_DEADLINE, is_room_description, look};
 pub use sync::{MAX_AGE, SYNC_DEADLINE, plan, sync};

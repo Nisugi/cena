@@ -5,6 +5,9 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+# The walker's vocabulary and its pathfinder (`plan/24` section 4). Pure, and
+# depends on nothing, so the edge points downward.
+cena-map.workspace = true
 cena-session.workspace = true
 tokio = { version = "1", features = ["macros", "rt", "time"] }
 # CancellationToken: plan/12 section 4.3's PREEMPT_GRACE is measured against
@@ -14,6 +17,7 @@ tokio-util = "0.7"
 
 [dev-dependencies]
 cena-platform.workspace = true
+serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
 
 [lints]

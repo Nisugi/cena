@@ -116,8 +116,10 @@ version = "0.1.0"
 name = "cena-behavior"
 version = "0.1.0"
 dependencies = [
+ "cena-map",
  "cena-platform",
  "cena-session",
+ "serde_json",
  "tokio",
  "tokio-util",
 ]
