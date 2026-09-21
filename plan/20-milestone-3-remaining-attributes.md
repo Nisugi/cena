@@ -24,19 +24,20 @@ Two audits established the state of each — one over `crates/`, one over
 |---|---|---|---:|---|
 | mana | **DONE** (`state/vitals.rs`) | `gemstone/mana.rb` + `common/xmlparser.rb:706` | 43 | 4 (the PULSE verb only) |
 | stance | **DONE**, as a string | `gemstone/stance.rb` + `common/xmlparser.rb:703` | 172 | 4 (setting it) |
-| experience | PARTIAL — the `expr` bars only | `gemstone/experience.rb` | 109 | ~6 (`parser.rb:16-21`) |
+| experience | **DONE** (`character/experience_report.rs`) | `gemstone/experience.rb` | 109 | ~6 (`parser.rb:16-21`) |
 | spells | PARTIAL — `Effects`, no spell list | `attributes/spells.rb` + `common/spell.rb` | 76 + 954 | 2 + hundreds of up/down msgs |
 | spellranks | PARTIAL — `SkillLine::SpellCircle` | `gemstone/spellranks.rb` | 80 | 1 (`parser.rb:24`) |
-| resources | PARTIAL — vocabulary, no parser | `attributes/resources.rb` | 36 | 7 (`parser.rb:51-58`) |
+| resources | **DONE** (`character/standing.rs`) | `attributes/resources.rb` | 36 | 7 (`parser.rb:51-58`) |
 | stow (container) | PARTIAL — the container, not the list | — | — | — |
-| currency | ABSENT | `gemstone/currency.rb` | 110 | ~15 (`parser.rb:63-77`) |
+| society, citizenship, warcries | **DONE** (`character/standing.rs`) | `infomon/parser.rb:36-44` | — | 11 |
+| currency | **DONE** (`character/currency.rs`) | `gemstone/currency.rb` | 110 | ~15 (`parser.rb:63-77`) |
 | bank | ABSENT | `gemstone/bank.rb` | 389 | ~20 (`bank.rb:22-75`) |
 | disk | ABSENT | `gemstone/disk.rb` | 60 | 1 (a noun list) |
 | group | ABSENT | `gemstone/group.rb` | 665 | ~10 (`group.rb:418-450`) |
 | stowlist | ABSENT | `gemstone/stowlist.rb` | 78 | 4 (`infomon/xmlparser.rb:515`) |
 | readylist | ABSENT | `gemstone/readylist.rb` | 96 | 8 (`infomon/xmlparser.rb:521`) |
 | stash | ABSENT | `stash.rb` | 642 | ~24 inline |
-| gift | ABSENT | `gemstone/gift.rb` | 54 | **0** — ticks off the exp bar |
+| gift | **DONE**, pulses only — see step 3 | `gemstone/gift.rb` | 54 | **0** — ticks off the exp bar |
 | fog | ABSENT | `gemstone/fog.rb` | 269 | 1 — watches `room_id` |
 | spellsong | ABSENT | `attributes/spellsong.rb` | 190 | 1 — the rest is arithmetic |
 | overwatch | ABSENT | `gemstone/overwatch.rb` | 256 | **~30** (`overwatch.rb:132-179`) |
@@ -128,15 +129,67 @@ players care about, not of what to build. It breaks ties; it does not set the or
 
 ### The steps
 
-1. **The line scanner.** Extend `state/character/blocks.rs` with a first-match pattern
-   table in `defs.rs`'s shape. Unlocks 2, 4, and the rest of 3.
-2. **Resources.** 7 rules. `ResourceType` already exists
-   (`state/character/vocabulary.rs:176-233`) with no parser and no consumer — this is the
-   smallest possible proof the scanner works.
-3. **Experience, completed.** ~6 rules for fame, LTE, deeds, ascension. Then **gift**,
-   which is 54 lines of timer with zero regexes once experience ticks.
-4. **Currency, then bank.** ~15 rules then ~20. Bank also needs step 6's stow default
-   (`bank.rb:238`), so either sequence it after 6 or stub that one field.
+> **STEP 1 WAS SKIPPED, AND STEPS 2-4 ARE DONE WITHOUT IT** (2026-09-20, author's call
+> after the divergence was raised). Read step 1 as **not the entry point**; what follows
+> records why, so this document does not say "start here" beside code that started
+> elsewhere.
+>
+> **What was built instead.** Each feature owns its own matchers, as `strip_prefix` chains
+> over a reassembled line: `state/character/standing.rs` (society, citizenship, warcries,
+> resources, PSM changes, covert arts), `state/character/currency.rs` (sixteen balances),
+> and `state/character/experience_report.rs` (the `experience` block). MEASURED:
+>
+> ```sh
+> grep -c "strip_prefix\|strip_suffix" crates/cena-model/src/state/character/{standing,currency,experience_report}.rs
+> # 19, 17, 1
+> ```
+>
+> **Why that is not the duplication this step feared.** The shape step 1 points at is
+> `state/combat/defs.rs`, and reading it settles the question: it is a **regex table with
+> a `RegexSet` gate**, and the gate exists because that table is 957 regexes over three
+> TSVs, where it MEASURED `105 us/line -> 3.6 us/line` and the `attack` family alone went
+> `42.6 -> 0.9` (`defs.rs` module docs). Thirty-seven prefix tests inherit none of that
+> pressure.
+>
+> (957 measured: `wc -l crates/cena-model/data/combat_{attacks,results,effects}.tsv`. An
+> earlier draft of this note said ~2,400, which is `CritTables`' pattern count from
+> `combat/tracker.rs:85` -- a different table, restated from memory. §-2 again.) `strip_prefix` is faster than a regex, and each call
+> reads as the literal line it matches -- which is what let every rule here be
+> mutation-tested individually: the silver word forms, the singular suffixes, the `Fame:`
+> opener, the indent requirement on society reports.
+>
+> **What the prediction got right and wrong.** Right: these features *are* one shape, and
+> the fourth through seventh (bank ~20 rules, stash ~24, stowlist 4, readylist 8) should
+> follow the same one rather than inventing a third. Wrong: the shape is not a shared
+> table. A table would have moved each rule one indirection away from the line it matches,
+> for a saving that is real only at combat's scale.
+>
+> **The upgrade trigger, stated so this is a decision and not a drift.** If a feature
+> arrives whose rules need *captures* rather than a prefix and a suffix -- overwatch's ~30
+> regexes over creature links are the candidate (step 9) -- that feature builds the table,
+> and it builds it for itself first. Retrofitting the three done features onto it needs a
+> reason beyond symmetry.
+
+1. ~~**The line scanner.**~~ **SKIPPED — see the note above.** Extend
+   `state/character/blocks.rs` with a first-match pattern table in `defs.rs`'s shape.
+   Unlocks 2, 4, and the rest of 3.
+2. ~~**Resources.**~~ **DONE**, in `state/character/standing.rs` — the `resource` and
+   `Suffused` lines, plus Covert Arts charges, which Lich reads (`parser.rb:54`) and
+   `plan/20` did not list. 7 rules. `ResourceType` already existed
+   (`state/character/vocabulary.rs:176-233`) with no parser and no consumer.
+3. ~~**Experience, completed.**~~ **DONE**, in
+   `state/character/experience_report.rs`. ~6 rules for fame, LTE, deeds, ascension, plus
+   the two numbers Lich matches and discards (`Experience:`, `Recent Deaths:` --
+   `parser.rb:17-18`). Then **gift**, which is 54 lines of timer with zero regexes once
+   experience ticks — **ported as the pulse count only.** MEASURED: `Gift.pulse` has one
+   live caller and `started`/`ended`/`serialize` are called only from Lich's own specs, so
+   its `remaining()` is right only for someone who launched Lich the instant their gift
+   began. The arithmetic (360 minutes, restarting 594,000s later) is recorded against the
+   day the wire is found to state a start time.
+4. **Currency**, ~~then bank.~~ Currency is **DONE**, in
+   `state/character/currency.rs`: sixteen balances, ~15 rules. **Bank is still open** and
+   still needs step 6's stow default (`bank.rb:238`), so it is sequenced after 6 rather
+   than stubbing that field.
 5. **Disk, then group.** Disk is one noun list (`disk.rb:4`). Group is ~10 patterns over
    creature links and calls `Disk.find_by_name` (`group.rb:95`). Both are what an
    eohunter port will want first.
