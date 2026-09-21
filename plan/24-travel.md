@@ -60,8 +60,8 @@ one of its rules is a recorded live bug in Vellum: stamp each send; retry what w
 never the map's text; attribute outcomes FIFO; an orphan window after abandoning a send;
 a `<nav>` beats a failure line that raced it; **never ban on lag** (only if the walker
 never left the first room); cap every loop.
-*Tests: each reaction, from real lines cut from the corpus — **ask the author first**
-(`CLAUDE.md`: the archive is 49.55 GB).*
+*Tests: each reaction, from the lines Lich's `move` already matches (§5): they are the
+game's own text.*
 
 ### Stage 3 — the step interpreter (pure)
 `Crossing::Steps`: guards asked **when the step is reached**, against a `Walker` refreshed
@@ -105,7 +105,7 @@ nothing) and is recorded in `cena-arch-tests/tests/layering.rs` when it is added
 - **Hostiles.** A Travel across rooms **ignores creatures**. A *hunt* moving to its next room
   hunts them -- which is the hunting behaviour's business, not the walker's. So the walker
   never stops for a creature, and a waylaid caravan just plans again.
-- **Memories go with the character** -- see §6 for the one open detail.
+- **Memories go with the character** -- see §7 for the one open detail.
 
 ## 6. The travel profile — audited against go2, 2026-09-21
 
