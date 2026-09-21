@@ -32,6 +32,15 @@ pub enum Action {
     /// How -- `incant`, `sigil of …`, `symbol of …` -- is the walker's
     /// business; the map says what, not how.
     Cast(String),
+    /// Put away whatever is in the walker's hands, remembering what went
+    /// where (`plan/21` §4.5). The walk never ends with anything still stowed,
+    /// whether or not a matching [`Action::FillHands`] follows.
+    EmptyHands,
+    /// Take back what [`Action::EmptyHands`] put away, last first.
+    FillHands,
+    /// Forget a memory ([`Action::Remember`]): the way back out of an event
+    /// ground clears where the walker came in from.
+    Forget(String),
     /// Write down `.0 = .1` for a later crossing to ask about
     /// (`Cond::Remembered`): a room id, a realm, a location name. Done once the
     /// steps before it have succeeded, so a transport that failed leaves no
@@ -43,6 +52,20 @@ pub enum Action {
 }
 
 /// An [`Action`], and the question that decides whether it happens.
+///
+/// # Two kinds of check, in two places (author, 2026-09-21)
+///
+/// - **Can this exit be used at all?** That is the exit's *cost*
+///   (`Cost::Gated`), asked **while planning**. If the answer is no, the
+///   pathfinder never routes through it.
+/// - **How is it crossed?** That is a step's `when`, asked **in the room**.
+///   It may change the way across; it must never take the way across away.
+///
+/// So a crossing's steps always include something that moves the walker,
+/// **whatever its guards answer and even if none can be answered** -- see
+/// [`moves_whatever_is_known`], which the converter's ratchet holds every
+/// ported crossing to. A guard that could strand the walker belongs in the
+/// cost instead.
 ///
 /// **The question is asked when the step is reached, not when the walk is
 /// planned.** `cast Water Walking` followed by `go north` *when Water Walking is
@@ -57,4 +80,19 @@ pub struct Step {
     /// Absent: always. Present and unanswerable: skipped (`Cond::holds`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub when: Option<Cond>,
+}
+
+/// Whether these steps move the walker when **nothing** is known about it:
+/// the weakest walker there is, so a list that passes moves everyone.
+///
+/// A step counts when it changes rooms -- [`Action::Move`], or an
+/// [`Action::Await`], which is how a voyage ends -- and has no guard, or a
+/// guard that holds for a walker with no facts at all.
+#[must_use]
+pub fn moves_whatever_is_known(steps: &[Step]) -> bool {
+    let nobody = crate::cond::Walker::default();
+    steps.iter().any(|step| {
+        matches!(step.action, Action::Move(_) | Action::Await(_))
+            && step.when.as_ref().is_none_or(|when| when.holds(&nobody))
+    })
 }

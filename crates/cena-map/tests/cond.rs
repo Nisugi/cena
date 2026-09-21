@@ -118,3 +118,21 @@ fn a_gated_cost_is_impassable_when_it_cannot_be_answered() {
     assert_eq!(members_only.price(&walker(Some("Rogue"))), None);
     assert_eq!(cena_map::Cost::Fixed(1.5).price(&walker(None)), Some(1.5));
 }
+
+/// Two ways across, and a walker nobody has looked at: `not` leaves it with
+/// neither, `otherwise` gives it the second.
+#[test]
+fn otherwise_is_never_unknown() {
+    let walking = || Cond::SpellActive("Water Walking".into());
+    let nobody = Walker::default();
+    assert!(!walking().holds(&nobody));
+    assert!(!Cond::Not(Box::new(walking())).holds(&nobody));
+    assert!(Cond::Otherwise(Box::new(walking())).holds(&nobody));
+
+    let up = Walker {
+        active_spells: Some(["Water Walking".to_owned()].into()),
+        ..Walker::default()
+    };
+    assert!(walking().holds(&up));
+    assert!(!Cond::Otherwise(Box::new(walking())).holds(&up));
+}

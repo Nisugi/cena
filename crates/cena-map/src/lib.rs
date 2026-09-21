@@ -33,4 +33,4 @@ pub use map::{DuplicateRoom, Map};
 pub use room::{Image, Room, RoomId, Uid};
 pub use route::{Routes, Target, as_converted, priced_for};
 pub use routine::Routine;
-pub use step::{Action, Step};
+pub use step::{Action, Step, moves_whatever_is_known};

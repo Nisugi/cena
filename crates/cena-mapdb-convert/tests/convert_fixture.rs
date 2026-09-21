@@ -39,39 +39,35 @@ fn the_cut_converts_cleanly() {
     );
 }
 
-/// The inn tables: upstream's most repeated hand-written script. Two table
-/// names, one shape -- which is the whole premise of porting by shape.
+/// The inn tables: upstream's most repeated hand-written script, 478 exits.
+/// Two table names, one arm -- which is the whole premise of porting by shape.
 #[test]
-fn scripted_crossings_that_differ_only_in_a_parameter_share_a_shape() {
+fn scripted_crossings_that_differ_only_in_a_parameter_share_an_arm() {
     let conversion = converted().unwrap();
     let atrium = room(&conversion, 0).unwrap();
-    let shapes: Vec<_> = atrium
+    let tables: Vec<_> = atrium
         .exits
         .iter()
         .filter_map(|exit| match &exit.crossing {
-            Crossing::Unported(shape) => Some((exit.to, exit.kind, shape.clone())),
+            Crossing::Steps(steps) => Some((exit, steps)),
             _ => None,
         })
         .collect();
-    assert_eq!(shapes.len(), 2);
-    assert_eq!(
-        shapes[0].2, shapes[1].2,
-        "Cat's Paw and hammer are one shape"
-    );
-    assert!(
-        shapes
-            .iter()
-            .all(|(_, kind, _)| *kind == ExitKind::Scripted)
-    );
-    // A scripted crossing with a plain numeric cost keeps that cost, and is
-    // still not routable: the crossing is what is missing.
-    let table = atrium
-        .exits
-        .iter()
-        .find(|exit| exit.to == RoomId(1))
-        .unwrap();
-    assert!(matches!(table.cost, Some(Cost::Fixed(_))));
-    assert!(!table.is_routable());
+    assert_eq!(tables.len(), 2);
+    for (exit, steps) in &tables {
+        let [step] = &steps[..] else {
+            panic!("one move: {steps:?}");
+        };
+        let Action::Move(command) = &step.action else {
+            panic!("a move: {step:?}");
+        };
+        assert!(
+            command.starts_with("go ") && command.ends_with(" table"),
+            "{command}"
+        );
+        assert_eq!(exit.kind, ExitKind::Scripted);
+        assert!(exit.is_routable(), "ported, at a plain cost: an exit again");
+    }
 }
 
 /// The first ported script (`plan/21` §4.8): upstream's Ruby in, guarded steps
@@ -97,8 +93,8 @@ fn the_icy_path_is_ported_to_a_guarded_pause_and_a_move() {
     assert_eq!(steps[1].action, Action::Pause(4200));
     assert_eq!(steps[2].action, Action::Move("west".into()));
     assert_eq!(steps[2].when, None);
-    // This one, and the two `;e true` exits into the urchin hub.
-    assert_eq!(conversion.report.ported_crossings, 3);
+    // This one, two inn tables, and the two `;e true` exits into the urchin hub.
+    assert_eq!(conversion.report.ported_crossings, 5);
 
     // The guard says what the Ruby said.
     let slippery = steps[1].when.as_ref().unwrap();

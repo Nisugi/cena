@@ -66,6 +66,11 @@ pub enum Cond {
     All(Vec<Cond>),
     Any(Vec<Cond>),
     Not(Box<Cond>),
+    /// True unless the inner question is *known* to hold -- so it is never
+    /// unknown. For the second of two ways to cross: `go` when Water Walking
+    /// is up, `swim` **otherwise**, and a walker nobody has looked at swims.
+    /// `not` would leave that walker with no way across at all.
+    Otherwise(Box<Cond>),
     /// The profile setting `.0` is exactly `.1`.
     Setting(String, String),
     /// The profile carries the setting `.0`, with any value that is not empty:
@@ -99,6 +104,7 @@ impl Cond {
             Cond::All(parts) => settle(parts, walker, false),
             Cond::Any(parts) => settle(parts, walker, true),
             Cond::Not(inner) => inner.ask(walker).map(|answer| !answer),
+            Cond::Otherwise(inner) => Some(!inner.holds(walker)),
             Cond::Setting(name, value) => walker.settings.get(name).map(|is| is == value),
             Cond::SettingIsSet(name) => Some(
                 walker

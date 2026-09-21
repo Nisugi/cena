@@ -157,6 +157,25 @@ fn unported_edges_only_fall() {
     );
     check("costs", report.unported_costs, baseline("costs").unwrap());
 
+    // `cena_map::step`: a guard may change how an exit is crossed, never
+    // whether. Anything that decides *whether* belongs in the cost.
+    let stranding: Vec<(u32, u32)> = conversion
+        .rooms
+        .iter()
+        .flat_map(|room| room.exits.iter().map(move |exit| (room.id.0, exit)))
+        .filter_map(|(from, exit)| match &exit.crossing {
+            cena_map::Crossing::Steps(steps) if !cena_map::moves_whatever_is_known(steps) => {
+                Some((from, exit.to.0))
+            }
+            _ => None,
+        })
+        .collect();
+    assert!(
+        stranding.is_empty(),
+        "ported crossings whose guards can leave a walker with no move: {:?}",
+        &stranding[..stranding.len().min(10)]
+    );
+
     let map = Map::from_rooms(conversion.rooms).unwrap();
     let plain = count(&map, &map.routes(START, Target::Everything, as_converted));
     let walker = equipped();

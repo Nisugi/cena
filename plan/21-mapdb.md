@@ -1121,6 +1121,36 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    Unported crossings **2,666**. Next by rooms opened: the FWI trinket (a routine, §4.4),
    inn tables (`Await` with a follow-up), the rogue guild password, hands.
 
+   **THE TWO KINDS OF CHECK — DECIDED (author, 2026-09-21).** *"If the answer makes the
+   room unpassable then it needs to be during planning; if the answer just changes the way
+   of traversal then it can be checked at the room."* That is the line between the two
+   places a `Cond` can sit, now written down and enforced:
+   - **the exit's cost** (`Cost::Gated`) is asked **while planning** and decides *whether*;
+   - **a step's `when`** is asked **in the room** and decides *how* — and may never take the
+     way across away. `cena_map::moves_whatever_is_known(steps)` checks a step list against
+     a walker about whom *nothing* is known, and the ratchet fails any ported crossing that
+     does not pass it. It found one at once: the arctic waters' `swim` was guarded by
+     `not water_walking`, which is unknown for an unknown walker, leaving no move at all.
+     Hence **`Cond::Otherwise`** — true unless the inner question is *known* to hold — for
+     the second of two ways across.
+
+   **Sixth batch, 2026-09-21.** `Action::{EmptyHands, FillHands, Forget}`. Arms: the inn
+   tables (478); `empty_hands; move; fill_hands` six ways; `multifput 'a', 'b'` (send all
+   but the last, move on the last); `move('X')`; the way out of an event ground, which
+   forgets the way in; `pause; waitrt?; fput 'climb rock'` and `dothistimeout 'push south'`,
+   both of which are just moves. **One requirement handed to the walker:** an inn table
+   answers either "you head over" or an *invitation*, and upstream sends the command again
+   on an invitation. That is a reaction of the move itself, like opening a door that turned
+   out to be closed, so it is one entry in the walker's reaction table — not 478 copies.
+   `recognise.rs` passed the 800-line cap and is now a facade over `recognise/{moves,
+   routines, costs, tests}.rs`.
+
+   | | knowing nothing | with paid services on |
+   |---|---|---|
+   | rooms reachable from Wehnimer's | **10,491** | **17,451** |
+
+   Unported crossings **1,903** in 325 shapes; unported costs 739 in 48.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.
