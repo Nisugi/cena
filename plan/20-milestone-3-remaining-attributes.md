@@ -383,3 +383,72 @@ fix — every one of those asserted the id and none asserted the text. It was a
 `guard:` assertion in an unrelated ordering test, added only because a previous
 draft of that test had conflated two rules. The guard-before-assert habit found
 a bug in code that had already shipped green.
+
+---
+
+### Step 7: bank, and a real balance the port cannot see (2026-09-20)
+
+Same split as stash, but bank genuinely has a `Pattern` module. MEASURED over
+its 18 entry points: **10 send/wait, 8 pure.** The verbs — `deposit`,
+`withdraw`, `deposit_f2p`, the Pinefar banker dance — go to `cena-behavior` at
+M6. What is built is `state/bank.rs`: the account listing, the note value, and
+`local_bank`.
+
+**`ACCOUNT_LINE` (`bank.rb:69`) cannot read one of the author's own banks.**
+
+```text
+/^\s+(?<bank>.+?) Bank: (?<silver>[\d,]+)$/
+```
+
+requires the name to **end** in `Bank`. VERIFIED against
+`2026-09-01_15-12-27`, run through Lich's actual pattern:
+
+```text
+     First Elanith Secured Bank: 586,836,811     matches
+             Icemule Trace Bank: 3,800,267       matches
+      Vornavis Bank of Solhaven: 10,627,060      NO MATCH
+                Four Winds Bank: 425,802,149     matches
+             Kraken's Fall Bank: 26,743,838      matches
+                          Total: 1,053,810,125
+```
+
+`Vornavis Bank of Solhaven` has `Bank` in the middle. **10,627,060 silver is
+invisible**, and the consequence is worse than a missing row: `balance` falls
+back to `banks[local_bank(...)] || 0` (`:125`), so a character standing in
+Solhaven reads **zero** while holding 10.6 million.
+
+Two design consequences here:
+
+- The separator is the **last** `": "`, which is what the fixed-width layout
+  guarantees. No bank name has to be any shape.
+- The `Total:` line is **read, not summed.** Lich sums the rows it parsed
+  (`:126`), which is exactly why its dropped row goes unnoticed — the sum is
+  self-consistent and wrong. Keeping the game's figure makes the disagreement
+  expressible, which is what `Account::agrees()` reports.
+
+Keeping the whole name costs one thing: `local_bank` matches against the room's
+location, and the room says `Four Winds Isle` where the row says
+`Four Winds Bank`. Lich gets the stripping for free because its capture stops
+before ` Bank`. Here it moves into `town_of`, the one place that needs it,
+rather than being baked into the stored fact.
+
+**UNVERIFIED, and marked so:** the free-to-play lines (`ACCOUNT_BALANCE`,
+`ACCOUNT_MAX`, the single-account opener) do not appear in the corpus — the
+author's account is not free-to-play. Ported from the regex rather than left
+out, because a capped account reading its balance as unknown would be worse.
+
+#### A guard that was decoration, and the test that was too
+
+Mutating the indentation guard away left the suite **green**. The test meant to
+pin it asserted only that the real listing yields 5 rows — and none of the real
+prose lines happen to contain `": "`, so the guard was never reached. That is
+`plan/05` §0 exactly: a written justification with nothing asserting it.
+
+Writing a test that *did* reach it (a teller quoting `Your limit is: 50,000`)
+found a **second hole the guard did not cover**: the `Total:` arm ran before the
+indentation check, so an unindented `Total: 9` was read as the listing's total.
+Both are now guarded, and the mutation is caught.
+
+The lesson is not "mutation testing works" — it is that a test can pass a
+mutation because the *input* never reaches the code, not because the assertion
+is wrong. A green mutation run says look at the input, not just the assertion.

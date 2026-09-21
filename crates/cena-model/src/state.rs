@@ -40,6 +40,7 @@ use idle::{IDLE_WARNING, IdleWarning};
 use std::time::Instant;
 
 pub mod armaments;
+pub mod bank;
 pub mod bounty;
 pub mod character;
 pub mod chunks;
@@ -126,6 +127,8 @@ pub struct GameState {
     /// The stow and ready lists: which container holds what, and which
     /// weapon comes to hand.
     pub containers: containers::Containers,
+    /// What `bank account` last reported.
+    pub bank: bank::Account,
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,
@@ -261,6 +264,7 @@ impl PartialEq for GameState {
             learned_commands,
             group,
             containers,
+            bank,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -279,6 +283,7 @@ impl PartialEq for GameState {
             && inventory_snapshot == &other.inventory_snapshot
             && group == &other.group
             && containers == &other.containers
+            && bank == &other.bank
             && learned_commands == &other.learned_commands
             && status == &other.status
             && effects == &other.effects

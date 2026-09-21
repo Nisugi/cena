@@ -23,6 +23,7 @@ pub mod status;
 
 pub use effects::{Effect, Effects};
 pub use state::armaments::{ArmamentKind, Armor, Coverage, Shield, Weapon};
+pub use state::bank::{Account, BankBalance, NOTE_NOUNS, Note, note_line};
 pub use state::bounty::{Task, TaskKind};
 pub use state::character::blocks::InfoReport;
 pub use state::character::body::{Body, Track};

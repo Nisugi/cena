@@ -158,6 +158,7 @@ impl GameState {
             inventory_snapshot,
             group,
             containers,
+            bank,
             learned_commands,
         } = self;
 
@@ -213,6 +214,14 @@ impl GameState {
         // clearing here would leave a behavior with no stow container and no
         // event ever coming to restore one.
         let _ = containers;
+
+        // **The bank balance is KEPT.** Silver on deposit is not connection
+        // state: nobody spends it while we are logged off, and the figure is
+        // re-read only by a `bank account` command, never by the burst. The
+        // same reasoning as the two lists above, and the same failure avoided
+        // -- clearing would leave a behavior believing the account empty with
+        // no event coming to correct it.
+        let _ = bank;
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,

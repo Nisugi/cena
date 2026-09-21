@@ -258,6 +258,9 @@ impl super::GameState {
                     self.containers.apply(&event);
                 }
             }
+            // `bank account` is a whole-chunk answer: its rows mean nothing
+            // without the opener above them.
+            self.bank.read_chunk(&chunk);
             self.combat.parse_chunk(&chunk, at)
         };
         // Lich's `process`: parse, persist to the registry, then emit -- and
