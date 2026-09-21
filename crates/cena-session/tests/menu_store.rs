@@ -269,3 +269,49 @@ mod staleness_chain {
         assert!(!menu_store::store_path(&scratch.0).exists());
     }
 }
+
+#[test]
+fn a_restored_baseline_removes_the_file_rather_than_leaving_it() {
+    // **A TRANSITION, NOT A SHAPE.** Every test above checks one state:
+    // novel rows present, or none present from the start. This checks the
+    // move BETWEEN them, which is where the defect was.
+    //
+    // The server can restore an overridden command to its shipped value. When
+    // that was the only override, the merged set becomes non-novel and
+    // `merge_and_save` used to return early -- leaving the old file on disk,
+    // so the next `load` resurrected a command the server had already
+    // withdrawn.
+    let scratch = Scratch::new("restored");
+    let shipped = MenuCommands::get()
+        .entry("2524,1543")
+        .expect("attack")
+        .clone();
+    assert_eq!(shipped.label, "attack @", "guard: the baseline row");
+
+    // The server overrides it, and the override is written.
+    let overridden = MenuCommand {
+        label: "ambush @".to_owned(),
+        ..shipped.clone()
+    };
+    let written = menu_store::merge_and_save(&scratch.0, &learned(&[overridden], "1"))
+        .expect("merge")
+        .expect("an override is novel, so it is written");
+    assert!(written.exists(), "guard: the override reached disk");
+
+    // The server restores the shipped value. Nothing is novel any more.
+    let after = menu_store::merge_and_save(&scratch.0, &learned(&[shipped], "2")).expect("merge");
+    assert!(after.is_none(), "nothing novel, so nothing is written");
+    assert!(
+        !menu_store::store_path(&scratch.0).exists(),
+        "the stale file must be REMOVED, not merely left unwritten -- \
+         otherwise the next load returns the withdrawn override"
+    );
+
+    // And the proof that matters: a reload does not resurrect it.
+    let reloaded = menu_store::load(&scratch.0).expect("load");
+    assert!(
+        reloaded.entry("2524,1543").is_none(),
+        "the withdrawn override came back: {:?}",
+        reloaded.entry("2524,1543")
+    );
+}

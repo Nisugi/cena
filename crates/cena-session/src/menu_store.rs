@@ -217,9 +217,34 @@ pub fn merge_and_save(dir: &Path, session: &LearnedCommands) -> io::Result<Optio
         merged.set_version(version);
     }
     if merged.novel().next().is_none() {
-        return Ok(None);
+        // **Remove, do not merely skip.** The server can restore an overridden
+        // command to its shipped value; when that was the only override the
+        // merged set stops being novel, and an early return here left the old
+        // file on disk for the next `load` to resurrect -- a command the
+        // server had already withdrawn, coming back after a restart.
+        //
+        // Same reasoning as `prune`: an empty supplemental file states "there
+        // are learned rows" and there are not.
+        return remove(dir).map(|()| None);
     }
     save(dir, &merged).map(Some)
+}
+
+/// Delete the supplemental file, tolerating its absence.
+///
+/// Shared by [`merge_and_save`] and [`prune`], which both reach the same
+/// conclusion by different routes: nothing survives, so the file must not.
+///
+/// # Errors
+///
+/// Propagates the removal's I/O error, except `NotFound` -- there being no
+/// file is the state this function exists to reach.
+fn remove(dir: &Path) -> io::Result<()> {
+    match fs::remove_file(store_path(dir)) {
+        Ok(()) => Ok(()),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(err) => Err(err),
+    }
 }
 
 /// Drop rows a newer shipped table has since absorbed.
@@ -248,13 +273,7 @@ pub fn prune(dir: &Path) -> io::Result<Option<PathBuf>> {
         kept.set_version(version);
     }
     if kept.is_empty() {
-        let path = store_path(dir);
-        match fs::remove_file(&path) {
-            Ok(()) => {}
-            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
-            Err(err) => return Err(err),
-        }
-        return Ok(None);
+        return remove(dir).map(|()| None);
     }
     save(dir, &kept).map(Some)
 }
