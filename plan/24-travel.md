@@ -85,6 +85,34 @@ from the model; the actions, in the order the converter's census says they are u
 promises: never end with hands stowed, a stance or language changed, or a key out of its
 sack. Seeded randomness for `MoveAnyWhile`/`WanderWhile`. `Replan`.
 
+> **BUILT 2026-09-21** (`travel/steps.rs`, `travel/mover.rs`). **A plain exit is the
+> one-step list `[move]`**, so there is one way across and move recovery lives inside it.
+> Two ways of sending: a *move*, which must change the room and has Lich's ladder behind it;
+> and an *exchange*, a command and the game's answer (the next prompt, a room change, or
+> three seconds), which waits out `...wait N` and is otherwise not second-guessed. **Every
+> loop in the vocabulary is exchanges with a question between them** -- until the room
+> changes, until there, while a fact holds, until the game says so -- so ten actions are
+> one mechanism. Loops stop at 50 turns (upstream's own bound where it has one).
+>
+> What the trip cannot spell without facts it should not hold is a **`Deed`** for the
+> driver: hands, stance, casting, memories, waiting for followers.
+>
+> Three things found by building it, each now a test:
+> - **What one crossing owes, the next inherits.** Upstream climbs a ledge with empty hands
+>   and fills them at the top of the *next* climb.
+> - **A crossing is finished before the trip says it has arrived.** Otherwise the door at
+>   the journey's end is never closed and locked behind the walker.
+> - **Whatever ends the trip, what it changed is put back first**, and `Trip::owed()` gives
+>   a driver the same list for a user's stop -- the case Vellum skipped.
+>
+> Stage 2's two deferred remedies are in: full hands are emptied for the move and given
+> back when it lands; Sigil of Resolve is cast for a walker too injured to climb, if known.
+>
+> **Not run yet, and priced shut so the pathfinder goes round them** (18 of 2,915 steps
+> exits): `speak`/`restore_speech` (2), `take_out`/`put_back` (2), `ask` (1),
+> `order_by_name` (4), and commands carrying `{item:…}` (9). They need the game's replies
+> parsed or an item looked up by name -- stage 4 facts.
+
 ### Stage 4 — the driver, and filling `Walker` from the model
 The `async fn`, the authority, cancellation, and `Walker::from(&GameState, &profile)`.
 Needs decisions that are the author's: **where the travel profile lives** and what its

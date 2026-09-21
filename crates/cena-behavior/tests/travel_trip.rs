@@ -9,7 +9,7 @@ use cena_map::{Map, Room, RoomId, Walker};
 /// ```text
 ///   1 --east-- 2 --east-- 3 --east-- 4      plain, 1s each
 ///   1 --go shortcut, bards only, 0.5s-- 4   and the same two rooms, 10s, for anyone
-///   2 --steps-- 4                           scripted: not this stage's to cross
+///   2 --a routine-- 4                       named, and not yet written: gone round
 ///   3 --(pass)-- 50 --go alley-- 5          an urchin hub, which is nowhere
 ///   4 --north-- 6 --north-- 7               6 is slippery: see the tests
 ///   9                                       an island
@@ -20,7 +20,7 @@ const ROOMS: &str = r#"[
                    {"to":4,"kind":"go","cmd":"go long way","cost":10}]},
   {"id":2,"exits":[{"to":3,"kind":"cardinal","cmd":"east","cost":1},
                    {"to":1,"kind":"cardinal","cmd":"west","cost":1},
-                   {"to":4,"kind":"scripted","steps":[{"move":"go hole"}],"cost":0.1}]},
+                   {"to":4,"kind":"scripted","routine":{"name":"mirror"},"cost":0.1}]},
   {"id":3,"exits":[{"to":4,"kind":"cardinal","cmd":"east","cost":1},
                    {"to":50,"kind":"scripted","pass":null,"cost":0}]},
   {"id":50,"exits":[{"to":5,"kind":"go","cmd":"go alley","cost":1}]},
@@ -68,7 +68,7 @@ fn walk(
                 sent.push(command);
             }
             ended @ (Said::Arrived | Said::Failed(_)) => return Some((sent, ended)),
-            Said::Hold => return None,
+            Said::Hold | Said::Do(_) => return None,
         }
     }
     None
@@ -81,8 +81,8 @@ fn a_plain_path_is_walked_one_exit_at_a_time() {
     assert_eq!((sent.len(), ended), (3, Said::Arrived));
 }
 
-/// The scripted exit 2 -> 4 costs a tenth of the plain way, and the
-/// pathfinder would take it; the trip prices it shut until it can cross it.
+/// The routine exit 2 -> 4 costs a tenth of the plain way, and the pathfinder
+/// would take it; the trip prices it shut until the routine is written.
 #[test]
 fn what_this_stage_cannot_cross_is_gone_round_not_failed_at() {
     let lands = [("east", 3), ("east", 4)];

@@ -36,13 +36,14 @@ fn send(command: &str) -> Said {
     Said::Send(command.to_owned())
 }
 
-/// Tell the trip what the game said, as the driver will.
+/// Tell the trip what the game said, as the driver will -- having checked
+/// that Lich's ladder names the line, or the test would prove nothing.
 fn hear(trip: &mut Trip, line: &str) {
-    let named = classify(line);
-    assert!(named.is_some(), "Lich's ladder does not name: {line}");
-    if let Some(feedback) = named {
-        trip.heard(feedback);
-    }
+    assert!(
+        classify(line).is_some(),
+        "Lich's ladder does not name: {line}"
+    );
+    trip.heard(line);
 }
 
 #[test]

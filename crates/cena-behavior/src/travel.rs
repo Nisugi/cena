@@ -38,30 +38,34 @@
 //! - **silence is not failure**: a move that gets no answer is sent again a
 //!   couple of times, and the exit is banned only if the trip has never left
 //!   its first room. Lag further along must never cost the map an exit.
+//!
+//! # Crossings that are lists of steps (stage 3)
+//!
+//! [`steps`] runs them, and a plain exit is the one-step list `[move]`, so
+//! there is one way across. What the trip cannot spell as a command it hands
+//! to the driver as a [`Deed`]. **Whatever a crossing changed is owed back
+//! before the trip says it is over** -- hands, stance -- on arrival, on
+//! failure, and on a user's stop ([`Trip::owed`]), which is the one Vellum
+//! skipped (`plan/21` §4.0).
 
+mod mover;
 mod recovery;
+mod steps;
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 
-use cena_map::{Cond, Crossing, Exit, Map, Room, RoomId, Target, Walker, priced_for};
-use cena_session::MoveFeedback;
+use cena_map::{Action, Crossing, Exit, Map, Room, RoomId, Step, Target, Walker, priced_for};
+use cena_session::{MoveFeedback, movement};
 
-use recovery::{Attempt, Reaction};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
+pub use steps::{Deed, EXCHANGE_TIMEOUT_MS, MAX_RESENDS, MAX_TURNS, MAX_WAIT_MS, STEP_TIMEOUT_MS};
+use steps::{Out, Owes, Run, Tick};
 
 /// How many times one trip may plan again before it gives up. A walker that
 /// is carried somewhere unexpected replans; one that is carried somewhere
 /// unexpected *forever* has met something this machine does not understand,
 /// and says so rather than walking in circles.
 pub const MAX_REPLANS: u32 = 20;
-
-/// How long a move may go unanswered before it is sent again. Vellum's
-/// `STEP_TIMEOUT_MS`; Lich gives up after ten seconds.
-pub const STEP_TIMEOUT_MS: u64 = 8000;
-
-/// How many times an unanswered move is sent again. Vellum's
-/// `MAX_EDGE_RETRIES`.
-pub const MAX_RESENDS: u32 = 2;
 
 /// After giving an exit up, how long lines are ignored: they are about the
 /// move just abandoned. Vellum's orphan window.
@@ -71,14 +75,13 @@ pub const ORPHAN_MS: u64 = 1500;
 /// `MAX_STAND_ATTEMPTS`.
 pub const MAX_STANDS: u32 = 5;
 
-/// How often a stunned walker is looked at again.
-const STUN_POLL_MS: u64 = 500;
-
 /// What the trip asks of whoever drives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Said {
     /// Send this, and tick again.
     Send(String),
+    /// Do this to completion, and tick again.
+    Do(Deed),
     /// Nothing to do yet: the room is not known, a move is under way, or a
     /// wait has not run out. Tick again on the next line, or the next beat
     /// of the clock.
@@ -110,27 +113,6 @@ pub struct Now {
     pub ms: u64,
 }
 
-/// A move that has been sent and not yet seen to land.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Pending {
-    /// Where the walker stood when it was sent.
-    from: RoomId,
-    /// The room the exit leaves in the map: `from`, unless the path passed
-    /// through a room only the map has. It is what a ban names.
-    leaving: RoomId,
-    /// Where it should land.
-    expected: RoomId,
-    attempt: Attempt,
-    sent_at: u64,
-    resends: u32,
-    /// Nothing is sent before this.
-    hold_until: u64,
-    /// The move is to be sent again once the hold runs out.
-    again: bool,
-    /// ...and not while the walker is stunned.
-    unstunned: bool,
-}
-
 /// One journey to one room.
 #[derive(Debug, Clone)]
 pub struct Trip {
@@ -138,7 +120,8 @@ pub struct Trip {
     /// The rooms still to pass through, the next first and the goal last.
     /// Empty until planned, and again once there.
     ahead: Vec<RoomId>,
-    pending: Option<Pending>,
+    /// The exit being crossed.
+    run: Option<Run>,
     /// Exits this trip will not try again, as `(from, to)`.
     banned: HashSet<(RoomId, RoomId)>,
     /// Of those, the ones the game said do not exist: facts about the map.
@@ -147,10 +130,10 @@ pub struct Trip {
     plans: u32,
     /// Set once the trip has ended short; the answer it goes on giving.
     ended: Option<Why>,
-    /// Lines heard since the last tick.
-    inbox: Vec<MoveFeedback>,
-    /// Remedies to send before anything else.
-    outbox: VecDeque<String>,
+    /// Lines heard since the last tick: named, and as text.
+    feedback: Vec<MoveFeedback>,
+    lines: Vec<String>,
+    prompted: bool,
     deaf_until: u64,
     /// The game said a move landed where no room change could show it (pitch
     /// dark, a long swim): while the walker still seems to be in `.0` it is
@@ -159,6 +142,10 @@ pub struct Trip {
     first_room: Option<RoomId>,
     left_first_room: bool,
     stands: u32,
+    /// What the crossings have changed and not yet put back.
+    owes: Owes,
+    /// xorshift64. Seeded, so a replay takes the same turns in a maze.
+    random: u64,
 }
 
 impl Trip {
@@ -166,21 +153,32 @@ impl Trip {
     /// because where it starts is not known until then.
     #[must_use]
     pub fn to(goal: RoomId) -> Trip {
+        Trip::seeded(goal, 0x9E37_79B9_7F4A_7C15)
+    }
+
+    /// [`Self::to`], with the seed for the choices a maze asks for. The
+    /// session records it, so a replay walks the same way.
+    #[must_use]
+    pub fn seeded(goal: RoomId, seed: u64) -> Trip {
         Trip {
             goal,
             ahead: Vec::new(),
-            pending: None,
+            run: None,
             banned: HashSet::new(),
             wrong: Vec::new(),
             plans: 0,
             ended: None,
-            inbox: Vec::new(),
-            outbox: VecDeque::new(),
+            feedback: Vec::new(),
+            lines: Vec::new(),
+            prompted: false,
             deaf_until: 0,
             believed: None,
             first_room: None,
             left_first_room: false,
             stands: 0,
+            owes: Owes::default(),
+            // xorshift has one bad seed.
+            random: seed.max(1),
         }
     }
 
@@ -210,10 +208,30 @@ impl Trip {
         &self.wrong
     }
 
-    /// A line the game sent that says something about a move. Kept for the
-    /// next [`Self::tick`]; see the module docs for why nothing happens here.
-    pub fn heard(&mut self, feedback: MoveFeedback) {
-        self.inbox.push(feedback);
+    /// A line of text from the game. Kept for the next [`Self::tick`]: see
+    /// the module docs for why nothing happens here.
+    pub fn heard(&mut self, line: &str) {
+        self.feedback.extend(movement::classify(line));
+        self.lines.push(line.to_owned());
+    }
+
+    /// The game has prompted: whatever was sent has been answered.
+    pub fn prompted(&mut self) {
+        self.prompted = true;
+    }
+
+    /// What the trip has changed and not yet put back, **for a driver that is
+    /// stopping it**: a user's stop must not leave the hands stowed. Taking
+    /// it clears it.
+    pub fn owed(&mut self) -> Vec<Deed> {
+        let mut owed = Vec::new();
+        if std::mem::take(&mut self.owes.stance) {
+            owed.push(Deed::RestoreStance);
+        }
+        if std::mem::take(&mut self.owes.hands) {
+            owed.push(Deed::FillHands);
+        }
+        owed
     }
 
     /// Where the walker is, what time it is, and what it knows of itself.
@@ -223,6 +241,17 @@ impl Trip {
     /// [`Said::Hold`] and is not sent twice, and a finished trip goes on
     /// giving the answer it finished with.
     pub fn tick(&mut self, map: &Map, walker: &Walker, now: Now) -> Said {
+        let said = self.tick_inner(map, walker, now);
+        // Whatever ends the trip, what it changed is put back first.
+        if matches!(said, Said::Arrived | Said::Failed(_))
+            && let Some(deed) = self.owed().into_iter().next()
+        {
+            return Said::Do(deed);
+        }
+        said
+    }
+
+    fn tick_inner(&mut self, map: &Map, walker: &Walker, now: Now) -> Said {
         let Some(seen) = now.here else {
             return Said::Hold;
         };
@@ -233,8 +262,13 @@ impl Trip {
                 seen
             }
         };
-        if here == self.goal {
-            self.pending = None;
+        let feedback = std::mem::take(&mut self.feedback);
+        let lines = std::mem::take(&mut self.lines);
+        let prompted = std::mem::take(&mut self.prompted);
+        // At the goal -- but a crossing under way is finished first: the door
+        // behind the walker is still to be closed and locked, the hands still
+        // to be filled.
+        if here == self.goal && self.run.is_none() {
             self.ahead.clear();
             return Said::Arrived;
         }
@@ -245,107 +279,73 @@ impl Trip {
         if *self.first_room.get_or_insert(here) != here {
             self.left_first_room = true;
         }
-        if let Some(pending) = &self.pending {
-            if here == pending.from {
-                return self.still_there(map, walker, now.ms);
+        let Some(mut run) = self.run.take() else {
+            return self.step_from(map, walker, here, now.ms);
+        };
+        // Inside the orphan window, what is heard is about a move given up.
+        let deaf = now.ms < self.deaf_until;
+        let out = run.tick(&Tick {
+            walker,
+            here,
+            ms: now.ms,
+            feedback: if deaf { &[] } else { &feedback },
+            lines: if deaf { &[] } else { &lines },
+            prompted,
+            left_first_room: self.left_first_room,
+            random: self.next_random(),
+        });
+        self.owes = run.owes;
+        match out {
+            Out::Send(command) => {
+                self.run = Some(run);
+                Said::Send(command)
             }
-            // The room changed: whatever was heard was about a move that
-            // worked, or about nothing.
-            if here != pending.expected {
-                self.ahead.clear();
+            Out::Deed(deed) => {
+                self.run = Some(run);
+                Said::Do(deed)
             }
-            self.pending = None;
-            self.outbox.clear();
-        }
-        self.inbox.clear();
-        self.step_from(map, walker, here, now.ms)
-    }
-
-    /// A move is under way and the walker has not left.
-    fn still_there(&mut self, map: &Map, walker: &Walker, ms: u64) -> Said {
-        let standing = walker.posture.as_deref().is_none_or(|is| is == "standing");
-        let heard = std::mem::take(&mut self.inbox);
-        if ms >= self.deaf_until {
-            for feedback in heard {
-                let Some(pending) = self.pending.as_mut() else {
-                    break;
-                };
-                match pending.attempt.react(feedback, standing) {
-                    Reaction::Again {
-                        first,
-                        after_ms,
-                        unstunned,
-                    } => {
-                        self.outbox.extend(first);
-                        pending.hold_until = ms + after_ms;
-                        pending.again = true;
-                        pending.unstunned = unstunned;
-                    }
-                    Reaction::GiveUp { wrong_for_map } => {
-                        return self.give_up(map, walker, ms, true, wrong_for_map);
-                    }
-                    Reaction::Landed => {
-                        let (from, landed) = (pending.from, pending.expected);
-                        self.believed = Some((from, landed));
-                        self.pending = None;
-                        self.outbox.clear();
-                        if landed == self.goal {
-                            return Said::Arrived;
-                        }
-                        return self.step_from(map, walker, landed, ms);
-                    }
+            Out::Hold => {
+                self.run = Some(run);
+                Said::Hold
+            }
+            Out::Believed(landed) => {
+                self.believed = Some((seen, landed));
+                if landed == self.goal {
+                    return Said::Arrived;
                 }
+                self.step_from(map, walker, landed, now.ms)
+            }
+            Out::GiveUp { ban, wrong } => {
+                self.deaf_until = now.ms + ORPHAN_MS;
+                if ban {
+                    self.banned.insert((run.leaving, run.expected));
+                }
+                if wrong {
+                    self.wrong.push((run.leaving, run.expected));
+                }
+                self.replan(map, walker, here, now.ms)
+            }
+            Out::Replan => self.replan(map, walker, here, now.ms),
+            Out::Done => {
+                if here == run.expected {
+                    return self.step_from(map, walker, here, now.ms);
+                }
+                // Every step ran and the walker is not where the exit leads.
+                // If it never moved at all, this exit did nothing and trying
+                // it again would do nothing again.
+                if here == run.from {
+                    self.banned.insert((run.leaving, run.expected));
+                }
+                self.replan(map, walker, here, now.ms)
             }
         }
-        if let Some(remedy) = self.outbox.pop_front() {
-            return Said::Send(remedy);
-        }
-        let Some(pending) = self.pending.as_mut() else {
-            return Said::Hold;
-        };
-        if ms < pending.hold_until {
-            return Said::Hold;
-        }
-        if pending.again {
-            if pending.unstunned && is_stunned(walker) {
-                pending.hold_until = ms + STUN_POLL_MS;
-                return Said::Hold;
-            }
-            pending.again = false;
-            pending.sent_at = ms;
-            return Said::Send(pending.attempt.sent.clone());
-        }
-        if ms.saturating_sub(pending.sent_at) < STEP_TIMEOUT_MS {
-            return Said::Hold;
-        }
-        // Silence. Not a failure: the game may only be slow.
-        if pending.resends < MAX_RESENDS {
-            pending.resends += 1;
-            pending.sent_at = ms;
-            return Said::Send(pending.attempt.sent.clone());
-        }
-        let ban = !self.left_first_room;
-        self.give_up(map, walker, ms, ban, false)
-    }
-
-    /// Stop trying the exit under way, and plan again from here.
-    fn give_up(&mut self, map: &Map, walker: &Walker, ms: u64, ban: bool, wrong: bool) -> Said {
-        let Some(pending) = self.pending.take() else {
-            return Said::Hold;
-        };
-        self.outbox.clear();
-        self.inbox.clear();
-        self.deaf_until = ms + ORPHAN_MS;
-        if ban {
-            self.banned.insert((pending.leaving, pending.expected));
-        }
-        if wrong {
-            self.wrong.push((pending.leaving, pending.expected));
-        }
-        self.replan(map, walker, pending.from, ms)
     }
 
     fn step_from(&mut self, map: &Map, walker: &Walker, here: RoomId, ms: u64) -> Said {
+        if here == self.goal {
+            self.ahead.clear();
+            return Said::Arrived;
+        }
         if map.room(here).is_none() {
             return self.fail(Why::OffTheMap);
         }
@@ -366,35 +366,41 @@ impl Trip {
                 // The plan names an exit the map no longer has.
                 return self.replan(map, walker, here, ms);
             };
-            match &exit.crossing {
+            let steps = match &exit.crossing {
                 Crossing::PassThrough(_) => {
                     self.ahead.remove(0);
                     leaving = next;
+                    continue;
                 }
-                Crossing::Command(command) => {
-                    if is_stunned(walker) {
-                        return Said::Hold;
-                    }
-                    if self.must_stand_first(walker, command) {
-                        return Said::Send("stand".to_owned());
-                    }
-                    self.ahead.remove(0);
-                    self.stands = 0;
-                    self.pending = Some(Pending {
-                        from: here,
-                        leaving,
-                        expected: next,
-                        attempt: Attempt::new(command),
-                        sent_at: ms,
-                        resends: 0,
-                        hold_until: 0,
-                        again: false,
-                        unstunned: false,
-                    });
-                    return Said::Send(command.clone());
-                }
+                Crossing::Command(command) => vec![Step {
+                    action: Action::Move(command.clone()),
+                    when: None,
+                }],
+                Crossing::Steps(steps) => steps.clone(),
                 _ => return self.replan(map, walker, here, ms),
+            };
+            if steps::is_stunned(walker) {
+                return Said::Hold;
             }
+            if self.must_stand_first(walker, &steps) {
+                return Said::Send("stand".to_owned());
+            }
+            self.ahead.remove(0);
+            self.stands = 0;
+            // What an earlier crossing changed is still owed: upstream climbs
+            // a ledge with empty hands and fills them at the top of the next.
+            let mut run = Run::new(here, leaving, next, steps);
+            run.owes = self.owes;
+            self.run = Some(run);
+            // The crossing's first step happens on this same tick.
+            return self.tick_inner(
+                map,
+                walker,
+                Now {
+                    here: Some(self.believed.map_or(here, |(seen, _)| seen)),
+                    ms,
+                },
+            );
         }
     }
 
@@ -402,9 +408,12 @@ impl Trip {
     /// (`tick_prepare`). A walker whose posture is not known is left alone:
     /// the game will say "you must be standing" if it matters, and that has
     /// its own remedy.
-    fn must_stand_first(&mut self, walker: &Walker, command: &str) -> bool {
+    fn must_stand_first(&mut self, walker: &Walker, steps: &[Step]) -> bool {
         let down = walker.posture.as_deref().is_some_and(|is| is != "standing");
-        let afloat = command.contains("swim") || command.contains("pedal");
+        let afloat = steps.iter().any(|step| match &step.action {
+            Action::Move(command) => command.contains("swim") || command.contains("pedal"),
+            _ => false,
+        });
         if down && !afloat && self.stands < MAX_STANDS {
             self.stands += 1;
             return true;
@@ -414,6 +423,7 @@ impl Trip {
 
     fn replan(&mut self, map: &Map, walker: &Walker, here: RoomId, ms: u64) -> Said {
         self.ahead.clear();
+        self.run = None;
         match self.plan(map, walker, here) {
             Ok(()) => self.step_from(map, walker, here, ms),
             Err(why) => self.fail(why),
@@ -464,18 +474,25 @@ impl Trip {
 
     fn fail(&mut self, why: Why) -> Said {
         self.ended = Some(why);
-        self.pending = None;
+        self.run = None;
         self.ahead.clear();
         Said::Failed(why)
     }
+
+    fn next_random(&mut self) -> u64 {
+        self.random ^= self.random << 13;
+        self.random ^= self.random >> 7;
+        self.random ^= self.random << 17;
+        self.random
+    }
 }
 
-fn is_stunned(walker: &Walker) -> bool {
-    Cond::Flag("stunned".to_owned()).holds(walker)
-}
-
-/// What this stage of the walker can cross. The rest is priced shut, so the
+/// What the walker can cross so far. The rest is priced shut, so the
 /// pathfinder goes round it rather than the trip failing at it.
 fn can_cross(crossing: &Crossing) -> bool {
-    matches!(crossing, Crossing::Command(_) | Crossing::PassThrough(_))
+    match crossing {
+        Crossing::Command(_) | Crossing::PassThrough(_) => true,
+        Crossing::Steps(list) => steps::can_run(list),
+        _ => false,
+    }
 }

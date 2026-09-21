@@ -48,15 +48,27 @@ enum Remedy {
     Feet,
     Trap,
     Held,
+    Hands,
+    Resolve,
+}
+
+/// Something to do before a move is sent again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum First {
+    Send(String),
+    /// Put away what is in the hands; they are given back when the move
+    /// lands (Lich: `fill_hands if need_full_hands`, on every way out).
+    EmptyHands,
+    Cast(String),
 }
 
 /// What the trip should do about a line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Reaction {
-    /// Send `first` if there is one, wait `after_ms`, then send the move
+    /// Do `first`, in order, wait `after_ms`, then send the move
     /// again -- once the walker is no longer stunned, if `unstunned`.
     Again {
-        first: Option<String>,
+        first: Vec<First>,
         after_ms: u64,
         unstunned: bool,
     },
@@ -84,16 +96,10 @@ impl Attempt {
         *tried <= budget
     }
 
-    fn again(
-        &mut self,
-        remedy: Remedy,
-        budget: u32,
-        first: Option<&str>,
-        after_ms: u64,
-    ) -> Reaction {
+    fn again(&mut self, remedy: Remedy, budget: u32, first: Vec<First>, after_ms: u64) -> Reaction {
         if self.may(remedy, budget) {
             Reaction::Again {
-                first: first.map(str::to_owned),
+                first,
                 after_ms,
                 unstunned: false,
             }
@@ -107,106 +113,109 @@ impl Attempt {
     }
 
     /// Lich's remedy for `feedback`, given what has been tried already.
-    /// `standing` is whether the walker is known to be on its feet.
-    pub fn react(&mut self, feedback: MoveFeedback, standing: bool) -> Reaction {
-        let stand = (!standing).then_some("stand");
+    /// `standing`: the walker is known to be on its feet. `resolve`: it knows
+    /// Sigil of Resolve, Lich's answer to being too injured to climb.
+    pub fn react(&mut self, feedback: MoveFeedback, standing: bool, resolve: bool) -> Reaction {
+        let send = |command: &str| First::Send(command.to_owned());
+        let stand: Vec<First> = (!standing).then(|| send("stand")).into_iter().collect();
+        let now = |first: Vec<First>| Reaction::Again {
+            first,
+            after_ms: 0,
+            unstunned: false,
+        };
+        let kept = Reaction::GiveUp {
+            wrong_for_map: false,
+        };
+        let wrong = Reaction::GiveUp {
+            wrong_for_map: true,
+        };
         match feedback {
-            MoveFeedback::MustUnhide => self.again(Remedy::Unhide, MAX_REMEDIES, Some("unhide"), 0),
+            MoveFeedback::MustUnhide => {
+                self.again(Remedy::Unhide, MAX_REMEDIES, vec![send("unhide")], 0)
+            }
             MoveFeedback::WrongDoor => {
                 let budget = u32::try_from(ORDINALS.len()).unwrap_or(MAX_REMEDIES);
                 if self.may(Remedy::Door, budget) && self.next_door() {
-                    Reaction::Again {
-                        first: None,
-                        after_ms: 0,
-                        unstunned: false,
-                    }
+                    now(Vec::new())
                 } else {
-                    Reaction::GiveUp {
-                        wrong_for_map: true,
-                    }
+                    wrong
                 }
             }
-            MoveFeedback::NoSuchWay => Reaction::GiveUp {
-                wrong_for_map: true,
-            },
-            // Refused, injured past climbing, or dragging someone who will
-            // not come: real exits, closed to this walker for now. (Lich
-            // casts Sigil of Resolve for the injured; casting is stage 3's.)
-            MoveFeedback::Denied | MoveFeedback::TooInjured | MoveFeedback::CannotDrag => {
-                Reaction::GiveUp {
-                    wrong_for_map: false,
+            MoveFeedback::NoSuchWay => wrong,
+            // Refused, or dragging someone who will not come: real exits,
+            // closed to this walker for now.
+            MoveFeedback::Denied | MoveFeedback::CannotDrag => kept,
+            MoveFeedback::TooInjured => {
+                if resolve {
+                    let cast = vec![First::Cast("Sigil of Resolve".to_owned())];
+                    self.again(Remedy::Resolve, MAX_REMEDIES, cast, 0)
+                } else {
+                    kept
                 }
             }
             MoveFeedback::FailedRoll { fell } => {
-                let first = if fell { stand } else { None };
+                let first = if fell { stand } else { Vec::new() };
                 self.again(Remedy::Roll, MAX_ROLLS, first, 1000)
             }
-            // Lich empties the hands here as well; hands are stage 3's, and
-            // until then the climb is simply tried again.
-            MoveFeedback::FailedRollHandsFull => self.again(Remedy::Roll, MAX_ROLLS, stand, 500),
-            // The hands must be emptied and given back, which is stage 3's
-            // (`plan/21` §4.5). Until then the exit is left for this trip.
-            MoveFeedback::HandsFull => Reaction::GiveUp {
-                wrong_for_map: false,
-            },
+            // The silvery thread: down on the ground, and the hands in the way.
+            MoveFeedback::FailedRollHandsFull => {
+                let mut first = stand;
+                first.push(First::EmptyHands);
+                self.again(Remedy::Roll, MAX_ROLLS, first, 500)
+            }
+            MoveFeedback::HandsFull => {
+                self.again(Remedy::Hands, MAX_REMEDIES, vec![First::EmptyHands], 0)
+            }
             MoveFeedback::Swam | MoveFeedback::PitchDark => Reaction::Landed,
             MoveFeedback::NeedsClimb => self.swap_verb("go", "climb"),
             MoveFeedback::NeedsGo => self.swap_verb("climb", "go"),
             MoveFeedback::Closed => {
                 if std::mem::replace(&mut self.opened, true) {
                     // Opened once already and still shut: locked.
-                    return Reaction::GiveUp {
-                        wrong_for_map: true,
-                    };
+                    return wrong;
                 }
                 let open = self
                     .sent
                     .replacen("go", "open", 1)
                     .replacen("climb", "open", 1);
-                Reaction::Again {
-                    first: Some(open),
-                    after_ms: 0,
-                    unstunned: false,
-                }
+                now(vec![First::Send(open)])
             }
             // Roundtime always ends, so waiting is not a remedy that can
-            // fail and is not counted. Lich sleeps N - 0.2, or 0.3 for one.
+            // fail and is not counted.
             MoveFeedback::Wait(seconds) => Reaction::Again {
-                first: None,
-                after_ms: if seconds > 1 {
-                    u64::from(seconds) * 1000 - 200
-                } else {
-                    300
-                },
+                first: Vec::new(),
+                after_ms: super::mover::wait_ms(seconds),
                 unstunned: false,
             },
-            MoveFeedback::MustStand => self.again(Remedy::Stand, MAX_REMEDIES, Some("stand"), 0),
-            MoveFeedback::StillRecovering => self.again(Remedy::Recover, MAX_ROLLS, None, 2000),
-            MoveFeedback::TypeAhead => self.again(Remedy::TypeAhead, MAX_ROLLS, None, 1000),
+            MoveFeedback::MustStand => {
+                self.again(Remedy::Stand, MAX_REMEDIES, vec![send("stand")], 0)
+            }
+            MoveFeedback::StillRecovering => {
+                self.again(Remedy::Recover, MAX_ROLLS, Vec::new(), 2000)
+            }
+            MoveFeedback::TypeAhead => self.again(Remedy::TypeAhead, MAX_ROLLS, Vec::new(), 1000),
             MoveFeedback::Stunned => Reaction::Again {
-                first: None,
+                first: Vec::new(),
                 after_ms: 0,
                 unstunned: true,
             },
-            MoveFeedback::DiskWobbled => self.again(Remedy::Disk, MAX_REMEDIES, None, 0),
+            MoveFeedback::DiskWobbled => self.again(Remedy::Disk, MAX_REMEDIES, Vec::new(), 0),
             MoveFeedback::ItemAtFeet => {
-                self.again(Remedy::Feet, MAX_REMEDIES, Some("stow feet"), 1000)
+                self.again(Remedy::Feet, MAX_REMEDIES, vec![send("stow feet")], 1000)
             }
             MoveFeedback::Trapped => {
                 if self.may(Remedy::Trap, MAX_REMEDIES) {
                     Reaction::Again {
-                        first: stand.map(str::to_owned),
+                        first: stand,
                         after_ms: 500,
                         unstunned: true,
                     }
                 } else {
-                    Reaction::GiveUp {
-                        wrong_for_map: false,
-                    }
+                    kept
                 }
             }
             // Lich polls three seconds for "You regain control".
-            MoveFeedback::Held => self.again(Remedy::Held, MAX_REMEDIES, None, 3000),
+            MoveFeedback::Held => self.again(Remedy::Held, MAX_REMEDIES, Vec::new(), 3000),
         }
     }
 
@@ -214,7 +223,7 @@ impl Attempt {
         if self.may(Remedy::Verb, MAX_REMEDIES) {
             self.sent = self.sent.replace(from, to);
             Reaction::Again {
-                first: None,
+                first: Vec::new(),
                 after_ms: 0,
                 unstunned: false,
             }
@@ -261,7 +270,10 @@ mod tests {
 
     fn again(first: Option<&str>, after_ms: u64) -> Reaction {
         Reaction::Again {
-            first: first.map(str::to_owned),
+            first: first
+                .map(|command| First::Send(command.to_owned()))
+                .into_iter()
+                .collect(),
             after_ms,
             unstunned: false,
         }
@@ -271,11 +283,11 @@ mod tests {
     fn a_closed_door_is_opened_once_and_then_called_locked() {
         let mut attempt = Attempt::new("go gate");
         assert_eq!(
-            attempt.react(MoveFeedback::Closed, true),
+            attempt.react(MoveFeedback::Closed, true, false),
             again(Some("open gate"), 0)
         );
         assert_eq!(
-            attempt.react(MoveFeedback::Closed, true),
+            attempt.react(MoveFeedback::Closed, true, false),
             Reaction::GiveUp {
                 wrong_for_map: true
             }
@@ -286,15 +298,15 @@ mod tests {
     fn a_rewritten_command_is_what_gets_sent_again() {
         let mut attempt = Attempt::new("go wall");
         assert_eq!(
-            attempt.react(MoveFeedback::NeedsClimb, true),
+            attempt.react(MoveFeedback::NeedsClimb, true, false),
             again(None, 0)
         );
         assert_eq!(attempt.sent, "climb wall");
 
         let mut doors = Attempt::new("go door");
-        doors.react(MoveFeedback::WrongDoor, true);
+        doors.react(MoveFeedback::WrongDoor, true, false);
         assert_eq!(doors.sent, "go second door");
-        doors.react(MoveFeedback::WrongDoor, true);
+        doors.react(MoveFeedback::WrongDoor, true, false);
         assert_eq!(doors.sent, "go third door");
     }
 
@@ -303,13 +315,13 @@ mod tests {
         let mut attempt = Attempt::new("north");
         for _ in 0..MAX_REMEDIES {
             assert_eq!(
-                attempt.react(MoveFeedback::MustStand, false),
+                attempt.react(MoveFeedback::MustStand, false, false),
                 again(Some("stand"), 0)
             );
         }
         // The exit is real; it is the walker that cannot stand.
         assert_eq!(
-            attempt.react(MoveFeedback::MustStand, false),
+            attempt.react(MoveFeedback::MustStand, false, false),
             Reaction::GiveUp {
                 wrong_for_map: false
             }
@@ -321,38 +333,44 @@ mod tests {
         let mut attempt = Attempt::new("north");
         for _ in 0..100 {
             assert_eq!(
-                attempt.react(MoveFeedback::Wait(3), true),
+                attempt.react(MoveFeedback::Wait(3), true, false),
                 again(None, 2800)
             );
         }
-        assert_eq!(attempt.react(MoveFeedback::Wait(1), true), again(None, 300));
+        assert_eq!(
+            attempt.react(MoveFeedback::Wait(1), true, false),
+            again(None, 300)
+        );
     }
 
     #[test]
     fn a_fall_stands_up_only_when_the_walker_is_down() {
         let mut attempt = Attempt::new("climb wall");
         let fell = MoveFeedback::FailedRoll { fell: true };
-        assert_eq!(attempt.react(fell, false), again(Some("stand"), 1000));
-        assert_eq!(attempt.react(fell, true), again(None, 1000));
+        assert_eq!(
+            attempt.react(fell, false, false),
+            again(Some("stand"), 1000)
+        );
+        assert_eq!(attempt.react(fell, true, false), again(None, 1000));
     }
 
     #[test]
     fn what_the_game_calls_no_way_is_a_fact_about_the_map() {
         let mut attempt = Attempt::new("north");
         assert_eq!(
-            attempt.react(MoveFeedback::NoSuchWay, true),
+            attempt.react(MoveFeedback::NoSuchWay, true, false),
             Reaction::GiveUp {
                 wrong_for_map: true
             }
         );
         assert_eq!(
-            attempt.react(MoveFeedback::Denied, true),
+            attempt.react(MoveFeedback::Denied, true, false),
             Reaction::GiveUp {
                 wrong_for_map: false
             }
         );
         assert_eq!(
-            attempt.react(MoveFeedback::PitchDark, true),
+            attempt.react(MoveFeedback::PitchDark, true, false),
             Reaction::Landed
         );
     }
