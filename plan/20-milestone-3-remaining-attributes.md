@@ -766,3 +766,57 @@ feature under test. An extractor reading `reference/lich-5/lib/` does not need
 this — the clone's version is the one `git log` already records.
 
 **Data files are done.** No further table ports are scheduled for M3.
+
+---
+
+### Steps 9–10: fog, and the third-party cooldowns (2026-09-20)
+
+**fog.** MEASURED over `fog.rb`'s 21 entry points: **13 pure, 8 sending** — the
+third file in a row to split this way. Lich's own header draws the same line:
+*"Policy stays with the caller: which method a profile picks, whether to fog at
+all, and any custom command list are the script's."* `state/fog.rs` is the
+reading half; `return`, `cast_and_settle`, `pulse_mana` and `wait_for_move` go
+to M6.
+
+**`GameState::arrivals`, a new counter.** `moved_from` cannot work on room id
+alone: `XMLData.room_id` is an **MD5 of the room's text** when the room has no
+UID (`fog.rb:230`), so two unmapped rooms that read the same share an id and a
+fog between them looks like standing still. Lich breaks the tie with a count of
+room *streams* (`xmlparser.rb:579`), which also ticks when the room you are
+standing in refreshes. Cena counts **arrivals**, incremented in `Room::arrive`,
+which already distinguishes a re-declaration from a move — the same tie-break
+with one fewer false positive.
+
+#### `knows_spell` got three things wrong before the source was read
+
+The rule is `(num % 100) <= ranks` (`spell.rb:517`), and an earlier draft
+stopped at that line:
+
+1. **Ranks are capped by level** — `[Spells.wizard, XMLData.level].min`
+   (`:474`). 30 circle ranks at level 10 knows the 10th spell, not the 30th.
+2. **Circles 97/98/99 use SOCIETY rank** (`:504`), and only while a member.
+   Those are Sunfist, Voln and the Council — two of the five ways home.
+3. **Circle 17 is profession-gated, circle 96 always false** (`:497`, `:510`).
+
+Both mutations against these went red. Two *test* errors surfaced the same way:
+Spirit Guide is circle 1 (Minor Spirit), not 4; and Symbol of Return is rank
+**25**, not 20. In both cases the code was right and my test data was wrong —
+worth recording, because a test written to match a wrong assumption would have
+been "fixed" in the code instead.
+
+**cooldowns.** Ports PR #1597's tracking (`group.rb:168-250`). Two rules carried
+over verbatim because getting either wrong is a live bug:
+
+- **A member still locked out is skipped, not re-stamped** (`:201`). Their own
+  cooldown keeps running; re-stamping would extend it every time someone else
+  got a buff — a groupmate who never becomes castable.
+- **The group case is optimistic and bounded.** Lich's comment: *"the next
+  casting corrects it, so the error is bounded by one cooldown and does not
+  accumulate."*
+
+**Cooldowns CLEAR on reconnect**, and the contrast with the stow list and the
+bank balance is the point. Those are facts about *you* that nothing changes
+while you are gone. These are stamps on **other people**, taken against a clock
+this session was keeping, and both assumptions break at once.
+
+`plan/20`'s list is now down to **typed speech and thoughts** and **overwatch**.

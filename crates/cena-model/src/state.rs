@@ -48,9 +48,11 @@ pub mod claim;
 mod clock;
 pub mod combat;
 pub mod containers;
+pub mod cooldowns;
 pub mod creature;
 pub mod creatures;
 pub mod disk;
+pub mod fog;
 pub mod gameobj;
 pub mod group;
 pub mod hands;
@@ -105,6 +107,15 @@ pub use vitals::{Vital, Vitals};
 pub struct GameState {
     /// The current room.
     pub room: Room,
+    /// How many rooms the character has arrived in this session.
+    ///
+    /// **Not a room id.** It exists so a consumer can tell a move between two
+    /// rooms that read identically from standing still -- see
+    /// `Room::arrive` for why their ids can collide, and `fog::moved_from`
+    /// for the consumer. Wraps rather than saturating: what matters is
+    /// whether it CHANGED, and a saturated counter would silently stop
+    /// answering that after 4 billion rooms.
+    pub arrivals: u32,
     /// The last `<prompt>` text, e.g. `">"`.
     pub prompt: Option<String>,
     /// `<left>` hand contents, with the `exist` id the wire sends.
@@ -129,6 +140,8 @@ pub struct GameState {
     pub containers: containers::Containers,
     /// What `bank account` last reported.
     pub bank: bank::Account,
+    /// Which characters a spell has locked out (PR #1597).
+    pub cooldowns: cooldowns::Cooldowns,
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,
@@ -230,6 +243,7 @@ impl PartialEq for GameState {
         // here, and whoever adds it has to decide which side it belongs on.
         let Self {
             room,
+            arrivals: _,
             prompt,
             left_hand,
             right_hand,
@@ -265,6 +279,7 @@ impl PartialEq for GameState {
             group,
             containers,
             bank,
+            cooldowns,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -284,6 +299,13 @@ impl PartialEq for GameState {
             && group == &other.group
             && containers == &other.containers
             && bank == &other.bank
+            && cooldowns == &other.cooldowns
+            // `arrivals` is NOT compared: it counts how many rooms this
+            // session has entered, which is bookkeeping about the session
+            // rather than a fact about the world. Two states that have been
+            // told the same things are equal even if one reached its room by
+            // a longer walk -- and criterion 7's replay determinism is about
+            // the facts, not the route.
             && learned_commands == &other.learned_commands
             && status == &other.status
             && effects == &other.effects

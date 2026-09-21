@@ -509,6 +509,18 @@ impl super::GameState {
             self.room = Room::entering(id.map(str::to_owned));
             // The creature roster is room contents too (`xmlparser.rb:410`).
             self.creatures.on_nav();
+            // **The arrival counter**, which is how a consumer tells two
+            // same-text rooms apart. `XMLData.room_id` is an MD5 of the
+            // title, description and exits for a room with no UID
+            // (`xmlparser.rb`, the `<compass>` branch), so two unmapped rooms
+            // that read the same SHARE an id -- and a move between them looks
+            // like standing still. See `Fog::moved_from`.
+            //
+            // Lich counts room STREAMS (`xmlparser.rb:579`), which ticks on a
+            // refresh of the room you are standing in as well as on an
+            // arrival. This counts arrivals, because the `same_room` guard
+            // above already tells the two apart.
+            self.arrivals = self.arrivals.wrapping_add(1);
         }
     }
 }

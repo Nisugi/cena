@@ -134,6 +134,8 @@ impl GameState {
     pub fn invalidate_for_reconnect(&mut self) {
         let Self {
             room,
+            arrivals,
+            cooldowns,
             prompt,
             left_hand,
             right_hand,
@@ -222,6 +224,26 @@ impl GameState {
         // -- clearing would leave a behavior believing the account empty with
         // no event coming to correct it.
         let _ = bank;
+
+        // **The arrival counter is KEPT, and it is not a game fact.** It
+        // counts rooms this SESSION has entered, so resetting it would make
+        // the first arrival after a reconnect compare equal to a count taken
+        // before -- exactly the false "did not move" it exists to prevent.
+        //
+        // It wraps, so growing across generations costs nothing.
+        let _ = arrivals;
+
+        // **Spell cooldowns are CLEARED**, and the contrast with the two
+        // lists and the bank balance above is the point. Those are facts
+        // about you that nothing changes while you are gone. These are stamps
+        // on OTHER PEOPLE, taken against a clock this session was keeping --
+        // and both assumptions break at once: the members wander off, and
+        // `game_time_now` restarts from whatever the new connection reports.
+        //
+        // Keeping them would have a behavior skip a groupmate who is long
+        // since castable, which is the quiet failure: nothing looks wrong, a
+        // buff just never lands.
+        cooldowns.clear();
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,
