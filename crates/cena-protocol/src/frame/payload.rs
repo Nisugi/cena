@@ -13,8 +13,14 @@ pub struct TextFrame {
     pub stream: String,
     /// Structural markup, not resolved colour. See the module docs.
     pub style: Style,
-    /// The link this text sits inside, if any.
+    /// The link this text sits inside, if any. The **outermost** one open.
     pub link: Option<Link>,
+    /// The innermost open `<a exist=>`, when it is not already [`Self::link`].
+    ///
+    /// See [`Run::inner_link`](crate::runs::Run::inner_link) for why: a `<d>`
+    /// wrapping an `<a exist=>` is what `ready list` sends, and without this
+    /// the object's identity reached no consumer.
+    pub inner_link: Option<Link>,
     /// Whether this run ended a **physical wire line**.
     ///
     /// # Why a frame has to say this at all
@@ -62,7 +68,22 @@ impl TextFrame {
             text: self.content.clone(),
             style: self.style.clone(),
             link: self.link.clone(),
+            inner_link: self.inner_link.clone(),
         }
+    }
+
+    /// The game object this text refers to, whether or not it is nested.
+    #[must_use]
+    pub fn object(&self) -> Option<&Link> {
+        for link in [self.inner_link.as_ref(), self.link.as_ref()]
+            .into_iter()
+            .flatten()
+        {
+            if matches!(link.kind, LinkKind::Exist { .. }) {
+                return Some(link);
+            }
+        }
+        None
     }
 }
 

@@ -157,6 +157,7 @@ impl GameState {
             inventory,
             inventory_snapshot,
             group,
+            containers,
             learned_commands,
         } = self;
 
@@ -196,6 +197,22 @@ impl GameState {
         // grouped at all. So the burst answers "are you in a group" and only a
         // command answers "with whom".
         *group = Group::default();
+
+        // **The stow and ready lists are KEPT**, and the contrast with the
+        // group above is the point. Both hold `exist` ids, so the shallow
+        // rule -- "an id is a live handle, clear it" -- would clear these too.
+        //
+        // What differs is whose the ids are. A group member is another player
+        // who leaves while we are gone. A stow container is YOUR backpack, and
+        // it is still on your back; the list itself is a per-character setting
+        // the SERVER holds, which is why `stow list` restates it rather than
+        // rebuilding it. Nothing about a dropped socket changes either.
+        //
+        // The failure this avoids is silent: neither list is re-sent by the
+        // login burst -- only `stow list` and `ready list` teach them -- so
+        // clearing here would leave a behavior with no stow container and no
+        // event ever coming to restore one.
+        let _ = containers;
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,

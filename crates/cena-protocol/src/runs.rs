@@ -64,8 +64,18 @@ impl Runs {
     }
 
     /// Every link in the body, in order. The room's players and objects.
+    ///
+    /// The outermost link per run -- what a click acts on. For the object a
+    /// run refers to, which may be nested inside it, see [`Self::objects`].
     pub fn links(&self) -> impl Iterator<Item = &Link> {
         self.runs.iter().filter_map(|r| r.link.as_ref())
+    }
+
+    /// Every game object named in the body, in order, nested or not.
+    ///
+    /// What a consumer asks when it wants `exist` ids rather than clicks.
+    pub fn objects(&self) -> impl Iterator<Item = &Link> {
+        self.runs.iter().filter_map(Run::object)
     }
 }
 
@@ -77,5 +87,48 @@ pub struct Run {
     /// Markup open around it.
     pub style: Style,
     /// The link it sits inside, if any.
+    ///
+    /// The **outermost** open link, which is the one a click acts on.
     pub link: Option<Link>,
+    /// The innermost open `<a exist=>`, when it is not already [`Self::link`].
+    ///
+    /// **Nesting is real, and dropping the inner link lost object identity.**
+    /// `ready list` sends
+    ///
+    /// ```text
+    /// weapon: <d cmd="store WEAPON clear">a <a exist="208924336" noun="katar">...</a></d>
+    /// ```
+    ///
+    /// so the clickable thing is the `<d>` and the *object* is the `<a>`
+    /// inside it. `link` keeps the `<d>`, because that is what a click sends;
+    /// without this field the `exist` id and noun reached no consumer at all,
+    /// which is Rule 2.2a -- the model dropping what the parser preserved.
+    ///
+    /// MEASURED over the 208 live Lich XML logs: **322 nested
+    /// `<d>...<a exist>` occurrences across 62 files**, so this is a shape the
+    /// wire uses routinely, not an edge case.
+    ///
+    /// `None` when nothing is nested, and **also** when the outermost link is
+    /// itself the `exist` -- the common case -- so a consumer reads
+    /// [`Run::object`] rather than testing both.
+    pub inner_link: Option<Link>,
+}
+
+impl Run {
+    /// The game object this run refers to, whether or not it is nested.
+    ///
+    /// The one place the two spellings are resolved, as [`Link::command`] is
+    /// for the two spellings of a direct link.
+    #[must_use]
+    pub fn object(&self) -> Option<&Link> {
+        for link in [self.inner_link.as_ref(), self.link.as_ref()]
+            .into_iter()
+            .flatten()
+        {
+            if matches!(link.kind, crate::frame::LinkKind::Exist { .. }) {
+                return Some(link);
+            }
+        }
+        None
+    }
 }

@@ -78,6 +78,7 @@ impl ChunkLine {
                     text: text.to_owned(),
                     style: Style::default(),
                     link: None,
+                    inner_link: None,
                 }],
             },
         }
@@ -113,6 +114,17 @@ impl ChunkLine {
     /// rather than only by the pipeline.
     pub fn links(&self) -> impl Iterator<Item = &cena_protocol::frame::Link> {
         self.runs.links()
+    }
+
+    /// Every game object named on the line, in order, nested or not.
+    ///
+    /// Where [`Self::links`] gives what a CLICK acts on, this gives what the
+    /// text REFERS to. They differ whenever the game wraps an object in a
+    /// clickable command -- `ready list`'s
+    /// `<d cmd="store WEAPON clear">a <a exist=...>katar</a></d>` -- and a
+    /// consumer that wants an `exist` id wants this one.
+    pub fn objects(&self) -> impl Iterator<Item = &cena_protocol::frame::Link> {
+        self.runs.objects()
     }
 }
 
@@ -239,6 +251,11 @@ impl super::GameState {
             for line in chunk.lines() {
                 if let Some(event) = super::group::classify(line) {
                     self.group.apply(&event);
+                }
+                // The stow and ready lists, taught by their commands and by
+                // the one-line confirmations that follow a `stow set`.
+                if let Some(event) = super::containers::classify(line) {
+                    self.containers.apply(&event);
                 }
             }
             self.combat.parse_chunk(&chunk, at)

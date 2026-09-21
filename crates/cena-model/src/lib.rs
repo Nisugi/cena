@@ -46,6 +46,7 @@ pub use state::combat::resolution::{Resolution, ResolutionKind};
 pub use state::combat::spell_loss::SpellLoss;
 pub use state::combat::status::{StatusAction, StatusLine, StatusName};
 pub use state::combat::ucs::{PositionTier, UcsAttack, UcsLine};
+pub use state::containers::{ContainerEvent, Containers, ItemRef, ReadySlot, StoreMode, StowSlot};
 // NOTE: `creature::Stat` and `creature::status::Classification` are NOT
 // re-exported here: `character::stats::Stat` and `gameobj::Classification`
 // already hold those names at the facade, and three types called `Stat` in

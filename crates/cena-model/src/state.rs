@@ -46,6 +46,7 @@ pub mod chunks;
 pub mod claim;
 mod clock;
 pub mod combat;
+pub mod containers;
 pub mod creature;
 pub mod creatures;
 pub mod disk;
@@ -120,6 +121,9 @@ pub struct GameState {
     pub objectives: Objectives,
     /// Who is grouped with you, by `exist` id.
     pub group: Group,
+    /// The stow and ready lists: which container holds what, and which
+    /// weapon comes to hand.
+    pub containers: containers::Containers,
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,
@@ -254,6 +258,7 @@ impl PartialEq for GameState {
             inventory_snapshot,
             learned_commands,
             group,
+            containers,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -271,6 +276,7 @@ impl PartialEq for GameState {
             && objectives == &other.objectives
             && inventory_snapshot == &other.inventory_snapshot
             && group == &other.group
+            && containers == &other.containers
             && learned_commands == &other.learned_commands
             && status == &other.status
             && effects == &other.effects

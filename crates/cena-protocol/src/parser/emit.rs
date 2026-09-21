@@ -56,6 +56,7 @@ impl Parser {
             stream: self.current_stream(),
             style: self.style(),
             link: self.links.first().cloned(),
+            inner_link: self.nested_object(),
             // Set by `mark_line_end` once the line is fully parsed: a run
             // cannot know here whether another follows it.
             ends_line: false,
@@ -174,6 +175,26 @@ impl Parser {
             text: content,
             style: self.style(),
             link: self.links.first().cloned(),
+            inner_link: self.nested_object(),
         });
+    }
+
+    /// The innermost open `<a exist=>`, when the outermost link is not it.
+    ///
+    /// `<d cmd=...>a <a exist=...>katar</a></d>` -- the click is the `<d>`
+    /// and the object is the `<a>`. Returning `None` when the outermost link
+    /// IS the `exist` keeps the common case from carrying a duplicate.
+    fn nested_object(&self) -> Option<crate::frame::Link> {
+        if matches!(
+            self.links.first().map(|l| &l.kind),
+            Some(crate::frame::LinkKind::Exist { .. })
+        ) {
+            return None;
+        }
+        self.links
+            .iter()
+            .rev()
+            .find(|l| matches!(l.kind, crate::frame::LinkKind::Exist { .. }))
+            .cloned()
     }
 }

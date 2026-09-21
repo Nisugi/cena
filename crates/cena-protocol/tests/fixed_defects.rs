@@ -381,3 +381,77 @@ fn a_stream_window_keeps_the_attributes_beyond_id_title_and_subtitle() {
         "wiki-documented, and live on the wire"
     );
 }
+
+#[test]
+fn an_object_nested_inside_a_clickable_command_survives() {
+    // **The outermost link is what a CLICK acts on; it is not always what the
+    // text REFERS to.** `ready list` sends its items wrapped in the command
+    // that would clear them:
+    //
+    // ```text
+    // weapon: <d cmd="store WEAPON clear">a <a exist="208924336" noun="katar">...</a></d>
+    // ```
+    //
+    // The parser kept a stack of open links and surfaced `first()` -- the
+    // outermost, per Vellum's rule at `src/parser/text.rs:97-106`, which is
+    // right for what a click sends. But the `<a exist=>` inside reached NO
+    // consumer at all, so the object's id and noun were dropped: Rule 2.2a,
+    // the model losing what the parser preserved.
+    //
+    // MEASURED over the 208 live Lich XML logs: **322 nested
+    // `<d>...<a exist>` occurrences across 62 files.** This is a shape the
+    // wire uses routinely. Found because the `ready list` classifier reported
+    // no item for a row that plainly had one.
+    let mut parser = Parser::new();
+    let frames = parser.parse_line(concat!(
+        r#"  weapon: <d cmd="store WEAPON clear">a "#,
+        r#"<a exist="208924336" noun="katar">mithril katar</a></d>"#,
+    ));
+
+    let object = frames
+        .iter()
+        .find_map(|f| match f {
+            Frame::Text(t) => t.object(),
+            _ => None,
+        })
+        .expect("the nested object must survive");
+    assert_eq!(
+        object.kind,
+        cena_protocol::frame::LinkKind::Exist {
+            id: "208924336".to_owned(),
+            noun: "katar".to_owned(),
+        },
+    );
+
+    // And the click is still the `<d>`, unchanged -- the fix ADDS a fact
+    // rather than replacing one.
+    let clickable = frames.iter().find_map(|f| match f {
+        Frame::Text(t) => t.link.as_ref().map(|l| l.kind.clone()),
+        _ => None,
+    });
+    assert_eq!(
+        clickable,
+        Some(cena_protocol::frame::LinkKind::Direct {
+            cmd: "store WEAPON clear".to_owned()
+        }),
+        "the outermost link still surfaces as the link"
+    );
+}
+
+#[test]
+fn an_unnested_object_is_not_duplicated() {
+    // `inner_link` is `None` when the outermost link IS the `exist`, which is
+    // the common case -- a room's objects and players. Carrying a duplicate
+    // would make every consumer test both fields.
+    let mut parser = Parser::new();
+    let frames = parser.parse_line(r#"<a exist="-1" noun="disk">Ryeka's disk</a>"#);
+    let text = frames
+        .iter()
+        .find_map(|f| match f {
+            Frame::Text(t) => Some(t),
+            _ => None,
+        })
+        .expect("a text frame");
+    assert!(text.inner_link.is_none(), "nothing is nested");
+    assert!(text.object().is_some(), "and the object still reads");
+}

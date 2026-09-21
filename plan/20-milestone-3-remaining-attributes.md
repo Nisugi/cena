@@ -228,3 +228,67 @@ Unchanged from M3's existing bar, and it is the bar these steps are judged again
   the arch tests clean. The caps are enforced on every run, so **move code down** rather
   than raising one — `Vital` moved to `state/vitals.rs` for exactly this reason,
   taking `state.rs` from 582 back to 512 (`e0e5949`).
+
+---
+
+## 5. Divergence log
+
+### Step 6 found a parser defect, not just a port (2026-09-20)
+
+Porting `stow list` and `ready list` turned up a **Rule 2.2a violation in the
+parser**, which is why step 6's commit touches `cena-protocol`.
+
+`Parser` keeps a stack of open `<a>`/`<d>` links and surfaced `links.first()` --
+the **outermost**, ported from Vellum (`src/parser/text.rs:97-106`). That is right
+for what a *click* sends. But `ready list` wraps each item in the command that
+would clear it:
+
+```text
+  weapon: <d cmd="store WEAPON clear">a <a exist="208924336" noun="katar">...</a></d>
+```
+
+so the outermost link is the `<d>` and the **object** is the `<a>` inside it. The
+inner link's `exist` and `noun` reached no consumer at all -- the model losing
+what the parser preserved.
+
+MEASURED in `E:/Gemstone/dev/lich-5/logs` (208 live XML files): **322 nested
+`<d>...<a exist>` occurrences across 62 files.** Not an edge case. Zero occur in
+the 12 committed fixtures, which is why the golden corpus did not catch it.
+
+The fix ADDS a fact rather than replacing one: `TextFrame::inner_link` and
+`Run::inner_link` carry the innermost `exist` when the outermost link is not it,
+`link` still carries the click, and `object()` / `Runs::objects()` /
+`ChunkLine::objects()` resolve the two. Pinned by
+`fixed_defects.rs::an_object_nested_inside_a_clickable_command_survives`, which
+goes red on the pre-fix behaviour.
+
+**How it was found:** the classifier reported no item for a row that plainly had
+one. A test written from Lich's regex rather than from the wire would have
+reproduced the same blindness -- the regex re-tokenizes the raw XML, so Lich
+never depended on the parser surfacing the inner link.
+
+### Two test forms were corrected by real wire
+
+`ReadyListNormal`'s optional `\(?` hides that a **set** row and an **unset** row
+differ:
+
+```text
+  weapon: <d cmd="store WEAPON clear">a <a exist=...>...</a></d> (<d cmd='store set'>put in sheath</d>)
+  shield: (<d cmd='ready SHIELD'>none</d>) (<d cmd='store set'>put in sheath</d>)
+```
+
+The first draft of `tests/containers.rs` parenthesised both, a shape the wire
+never sends. Corrected against `2026-09-01_10-04-51`, which also shows
+`ammo2 bundle` and `secondary sheath` carrying no store-mode at all.
+
+### Lich defects found, and what was done about each
+
+| Defect | Source | Ported? |
+|---|---|---|
+| `store_*` holds a raw string, and `ready list` and `store set` spell the same three states differently (`worn if possible, stowed otherwise` vs `worn if possible and stowed if not`) | `xmlparser.rb:522` vs `:526`, both writing the same key at `:605`/`:617` | **No** -- `StoreMode` is an enum reading both vocabularies |
+| Clearing a ready slot leaves its store-mode behind, so an empty slot still reports where its item would go | `xmlparser.rb:611-613` writes only the item | **No** -- fixed |
+| `StowList.checked` is set by any list ROW, so a list cut off mid-way reads as whole | `xmlparser.rb:594` | Kept for stow (a row IS the list's evidence); `ReadyList`'s better rule -- set only by the closing line (`:609`) -- is what `ready_checked` follows |
+
+`valid?` (`stowlist.rb:45`, `readylist.rb:59`) is **deliberately not ported**: it
+re-checks held ids against `GameObj.inv`, which is cache coherence and belongs to
+whoever owns inventory, not to a record of what the game said.
