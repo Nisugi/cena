@@ -1400,12 +1400,19 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    `SearchRooms { rooms, by_uid, sees, enter }`, `Mirror`, `RingWedges`. **One of these was
    a chokepoint**: reach knowing nothing went 11,735 -> 18,003.
 
+   **More scripts written once (2026-09-21, `recognise/singles_b.rs`).** 11 exits: the last
+   five group crossings, the four Sea of Fire caravans (`OrderByName` -- the list is
+   renumbered between visits and the name is what stays), and two routines, `BronzeGate
+   { batter }` and `ColourBarrier`. **A caravan can be waylaid**: upstream shouts BANDITS and
+   stops; what a walker does about hostiles is the walker's, so the steps only plan again.
+   That is a requirement on the Travel behaviour, not on the map.
+
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **38** |
+   | unported crossings | 7,923 | **27** |
    | unported costs | 1,860 | **22** |
-   | reachable from Wehnimer's, knowing nothing | 6,969 | **18,003** |
-   | reachable with paid services on | — | **21,782** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **18,133** |
+   | reachable with paid services on | — | **22,303** |
 
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth

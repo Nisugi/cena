@@ -105,6 +105,15 @@ pub enum Routine {
     /// Room 8373: look at each of the stone ring's four wedges and turn the
     /// ring until it points at its sigil, pushing each wedge as it is set.
     RingWedges,
+    /// The Graveyard's bronze gate, 4140 and 4141: `go gate` until through.
+    /// Between tries, cast the first known of Unlock, Consecrate, Bless Item
+    /// and Force Projection at it, waiting for the mana and casting again
+    /// when armour hinders; failing that a Warrior of 15 batters it, where
+    /// `batter` allows; failing that, push it with empty hands.
+    BronzeGate { batter: bool },
+    /// Room 30850: the barrier's colour says which walk leads to its
+    /// grotto. Walk it, `touch crystal`, walk back, and `go barrier`.
+    ColourBarrier,
     Patrol {
         /// `None` keeps a gap upstream left: positions matter.
         starts: Vec<Option<RoomId>>,

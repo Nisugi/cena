@@ -154,6 +154,10 @@ pub enum Action {
     /// for `{told}` in the commands that come after it in this crossing:
     /// `look trail`, and the way the trail heads.
     Ask(String, String),
+    /// `inquire`, find the numbered line that names this destination, and
+    /// `order` that number: a caravan's list is renumbered between visits,
+    /// and the name is what stays.
+    OrderByName(String),
     /// Find out where the walker is and plan again from there. Always last.
     /// Upstream's `$go2_restart = true`, on crossings that may land somewhere
     /// other than the exit's destination (`plan/21` §4.3). Skipped when the
