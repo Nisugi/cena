@@ -49,9 +49,12 @@
 //! failure, and on a user's stop ([`Trip::owed`]), which is the one Vellum
 //! skipped (`plan/21` §4.0).
 
+mod command;
+mod desk;
 mod drive;
 mod facts;
 mod hands;
+mod heard;
 mod itinerary;
 mod kept;
 mod knows;
@@ -72,11 +75,14 @@ use cena_session::{MoveFeedback, movement};
 // (`layering.rs`), and should not need one to say "walk to the bank".
 pub use cena_map::binary::{LoadError, decode as read_map};
 pub use cena_map::{Map, Origin as Whence, RoomId};
+pub use command::{Command, parse as parse_command};
+pub use desk::Desk;
 pub use drive::{
     BEAT, DEED_DEADLINE, Ended, FOLLOW_WAIT, LOST_WAIT, Travelled, room_of, seed_for, travel,
 };
 pub use facts::{TravelNotes, walker_from};
 pub use hands::{Stored, cast_commands, store_commands, take_back};
+pub use heard::Heard;
 pub use itinerary::{Leg, PLACES, Shut, ShutWhy, described, destination, itinerary, places, table};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
 pub use steps::{Deed, EXCHANGE_TIMEOUT_MS, MAX_RESENDS, MAX_TURNS, MAX_WAIT_MS, STEP_TIMEOUT_MS};

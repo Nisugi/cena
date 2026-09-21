@@ -31,14 +31,9 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
-use cena_behavior::travel::{
-    self, Ended, Map, RoomId, TravelNotes, Whence, described, destination, itinerary, places,
-    read_map, room_of, table, walker_from,
-};
-use cena_session::travel_store::{self, TravelFile, Whose};
-use cena_session::{AuthorityToken, CommandId, Event, Notice, NoticeKind, SessionHandle, Snapshot};
+use cena_behavior::travel::{self, Command, Desk, Map, RoomId, Whence, read_map, room_of};
+use cena_session::{AuthorityToken, Event, Notice, NoticeKind, SessionHandle, Snapshot};
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 use tokio_util::sync::CancellationToken;
 
@@ -247,161 +242,56 @@ async fn settle(map: &Map, joined: &mut (Snapshot, Receiver<Event>)) -> Option<R
 }
 
 /// Run the errand. Returns when it is over, however it ended.
+///
+/// **The launch flags are the typed commands, asked at login**: each becomes
+/// the `Command` a player would type (`;go2 bank`, `;route2 bank`,
+/// `;go2 targets`, `;go2 save den --global`) and is done by the same `Desk`,
+/// so there is one way to travel and the flags are only a way to ask early.
+/// What is this function's alone is the wait for the login to settle.
 pub(crate) async fn run(
     errand: Errand,
     handle: &SessionHandle,
     mut joined: (Snapshot, Receiver<Event>),
 ) {
-    let (to, walk) = match &errand {
+    let command = match errand {
         Errand::None => return,
-        Errand::Route(to) | Errand::Save { name: to, .. } => (to.as_str(), false),
-        Errand::Places => ("", false),
-        Errand::Go(to) => (to.as_str(), true),
+        Errand::Route(to) => Command::Route(to),
+        Errand::Go(to) => Command::Go(to),
+        Errand::Places => Command::Places,
+        Errand::Save { name, global } => Command::Save {
+            name,
+            rooms: Vec::new(),
+            global,
+        },
     };
-    let say = |kind, text: String| handle.say(Notice::line(kind, text));
     let Some(map) = load_map(handle) else {
         return;
     };
-    let here = settle(&map, &mut joined).await;
-    let state = &joined.0.state;
-    let (mut file, mut notes) = load_notes(handle, state);
-    let walker = walker_from(state, &notes, state.game_time().unwrap_or(0));
-    // Asked before the room is: a list of places needs no place to stand.
-    if errand == Errand::Places {
-        handle.say(Notice::table(
-            NoticeKind::Info,
-            places(&map, &walker, &notes.targets),
-        ));
-        return;
+    // A list of places needs no place to stand; everything else does.
+    if command != Command::Places {
+        settle(&map, &mut joined).await;
     }
-    // Rooms that read alike: where the character was last known to be says
-    // which, as a hint that it has not moved (`TravelFile::last_room`).
-    let here = here.or_else(|| {
-        let last = RoomId(notes.last_room?);
-        room_of(&map, state, Whence::Still(last))
-    });
-    let Some(here) = here else {
-        say(
-            NoticeKind::Error,
-            format!(
-                "Travel: I cannot tell which room this is (number {:?}, name {:?}).",
-                state.room.id, state.room.title
-            ),
-        );
+    let desk = Desk::new(
+        Arc::new(map),
+        cena_session::character_store::data_dir(),
+        AuthorityToken(2),
+    );
+    let Some(walk) = desk.run(handle, joined, command) else {
         return;
     };
-    remember_room(&mut file, &mut notes, here);
-    if let Errand::Save { global, .. } = errand {
-        // Said only of a save that happened: this announced a target it had
-        // failed to write.
-        match save_target(file.as_ref(), to, here, global) {
-            Ok(()) => say(
-                NoticeKind::Info,
-                format!(
-                    "Travel: {to:?} is room {} from now on, for {}.",
-                    here.0,
-                    if global {
-                        "every character"
-                    } else {
-                        "this character"
-                    }
-                ),
-            ),
-            Err(why) => say(
-                NoticeKind::Error,
-                format!("Travel: {to:?} was not saved -- {why}."),
-            ),
+    eprintln!("[travel] walking -- Ctrl-C stops the walk");
+    tokio::pin!(walk);
+    let travelled = tokio::select! {
+        travelled = &mut walk => travelled,
+        _ = tokio::signal::ctrl_c() => {
+            eprintln!("\n[travel] stopping the walk");
+            desk.stop();
+            walk.await
         }
-        return;
-    }
-    let Some(goal) = destination(&map, &walker, here, to, &notes.targets) else {
-        // go2 lists what the words fit and asks which; say which to ask for.
-        let fits = described(&map, to);
-        if fits.is_empty() {
-            say(
-                NoticeKind::Error,
-                format!("Travel: I do not know a room called {to:?}."),
-            );
-        } else {
-            let mut lines = vec![format!(
-                "Travel: {to:?} fits {} rooms. Ask for one by number:",
-                fits.len()
-            )];
-            lines.extend(fits.iter().take(MAX_LISTED).filter_map(|id| {
-                let room = map.room(*id)?;
-                let title = room.title.first().map_or("", String::as_str);
-                Some(format!(
-                    "{:>7}  {title}  {}",
-                    id.0,
-                    room.location.as_deref().unwrap_or("")
-                ))
-            }));
-            handle.say(Notice::table(NoticeKind::Warn, lines));
-        }
-        return;
     };
-    let Some(legs) = itinerary(&map, &walker, here, goal) else {
-        say(
-            NoticeKind::Error,
-            format!(
-                "Travel: no way from {} to {} for this character.",
-                here.0, goal.0
-            ),
-        );
+    let Ok(travelled) = travelled else {
+        eprintln!("  !! [travel] the walk ended badly");
         return;
-    };
-    handle.say(Notice::table(NoticeKind::Info, table(&map, here, &legs)));
-    if walk {
-        // Boxed: a trip's future holds a whole `GameState`.
-        Box::pin(go(handle, joined, &map, goal, &mut notes, &mut file)).await;
-    }
-}
-
-async fn go(
-    handle: &SessionHandle,
-    joined: (Snapshot, Receiver<Event>),
-    map: &Map,
-    goal: RoomId,
-    notes: &mut TravelNotes,
-    file: &mut Option<(PathBuf, TravelFile)>,
-) {
-    let stop = CancellationToken::new();
-    let next = Arc::new(AtomicU64::new(100_000));
-    let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
-    // In a block of its own: the walk borrows the notes and the file, and
-    // both are wanted again once it is over.
-    let travelled = {
-        // A memory is saved when it is made: losing one strands the character.
-        let wrote = |notes: &TravelNotes| {
-            let Some((dir, file)) = file.as_mut() else {
-                return;
-            };
-            file.memories = notes.memories.clone().into_iter().collect();
-            if let Err(e) = travel_store::save(dir, file) {
-                eprintln!("  !! [travel] could not save the travel file: {e}");
-            }
-        };
-        eprintln!("[travel] walking to {} -- Ctrl-C stops the walk", goal.0);
-        let walking = travel::travel(
-            handle,
-            &stop,
-            ids,
-            AuthorityToken(2),
-            joined,
-            map,
-            goal,
-            notes,
-            wrote,
-        );
-        tokio::pin!(walking);
-        tokio::select! {
-            travelled = &mut walking => travelled,
-            _ = tokio::signal::ctrl_c() => {
-                eprintln!("\n[travel] stopping the walk");
-                stop.cancel();
-                walking.await
-            }
-        }
     };
     eprintln!(
         "[travel] {:?} -- seed {:#x}, {} exit(s) the game said do not exist",
@@ -411,13 +301,6 @@ async fn go(
     );
     for (from, to) in &travelled.wrong_for_the_map {
         eprintln!("[travel]   wrong for the map: {} -> {}", from.0, to.0);
-    }
-    if travelled.ended == Ended::Arrived {
-        eprintln!("[travel] arrived");
-    }
-    // Where the walk ended, for the next login to break a tie with.
-    if let Some(ended_in) = travelled.last_room {
-        remember_room(file, notes, ended_in);
     }
 }
 
@@ -450,84 +333,6 @@ fn load_map(handle: &SessionHandle) -> Option<Map> {
                 PathBuf::from(&path).display()
             ));
             None
-        }
-    }
-}
-
-/// How many rooms a destination that fits several is listed with.
-const MAX_LISTED: usize = 40;
-
-/// `;go2 save <name>`: the name means this room from now on -- or this one as
-/// well, if it already means several. This character's own, or with `--global`
-/// every character's on every instance (author, 2026-09-21).
-fn save_target(
-    file: Option<&(PathBuf, TravelFile)>,
-    name: &str,
-    here: RoomId,
-    global: bool,
-) -> Result<(), String> {
-    let (dir, file) = file.ok_or("the travel file could not be read, so it was left alone")?;
-    let whose = if global {
-        Whose::Everyone
-    } else {
-        Whose::Character {
-            instance: &file.instance,
-            character: &file.character,
-        }
-    };
-    travel_store::save_target(dir, whose, name, &[here.0])
-        .map(|_| ())
-        .map_err(|why| why.to_string())
-}
-
-/// Write down where the character is, for the next login to break a tie with.
-fn remember_room(file: &mut Option<(PathBuf, TravelFile)>, notes: &mut TravelNotes, here: RoomId) {
-    notes.last_room = Some(here.0);
-    let Some((dir, file)) = file.as_mut() else {
-        return;
-    };
-    if file.last_room == Some(here.0) {
-        return;
-    }
-    file.last_room = Some(here.0);
-    if let Err(e) = travel_store::save(dir, file) {
-        eprintln!("  !! [travel] could not save the travel file: {e}");
-    }
-}
-
-/// The character's travel file, as the walker's notes. A file that cannot be
-/// trusted is **not** replaced: the walk goes on without memories and saves
-/// nothing (`travel_store`'s rule).
-fn load_notes(
-    handle: &SessionHandle,
-    state: &cena_session::GameState,
-) -> (Option<(PathBuf, TravelFile)>, TravelNotes) {
-    let character = &state.character;
-    let (Some(instance), Some(name)) = (character.instance.as_deref(), character.name.as_deref())
-    else {
-        handle.say(Notice::line(
-            NoticeKind::Warn,
-            "Travel: the game has not said who this is, so nothing will be remembered.",
-        ));
-        return (None, TravelNotes::default());
-    };
-    let dir = cena_session::character_store::data_dir();
-    match travel_store::load(&dir, instance, name) {
-        Ok(file) => {
-            let notes = TravelNotes {
-                settings: file.settings.clone().into_iter().collect(),
-                memories: file.memories.clone().into_iter().collect(),
-                targets: file.targets.clone(),
-                last_room: file.last_room,
-            };
-            (Some((dir, file)), notes)
-        }
-        Err(e) => {
-            handle.say(Notice::line(
-                NoticeKind::Warn,
-                format!("Travel: {e} -- left alone, and nothing will be remembered."),
-            ));
-            (None, TravelNotes::default())
         }
     }
 }

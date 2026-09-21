@@ -482,6 +482,51 @@ refuses saves as well as loads, since one character's save would otherwise erase
 *Found by mutation:* the test for "one spot however the name is spelt" counted `shryn`,
 which `ASHRYN` does not contain -- green over a duplicated spot until the count ignored case.
 
+### How it is called while playing (author, 2026-09-21: *"how is it actually called from in game?"*)
+
+**It was not.** `--go`, `--route`, `--targets` and `--save-target` are launch arguments: a
+second trip meant restarting Hydra. They were the quickest way to a first live walk and
+were never the way to play.
+
+**The words are go2's**, because they are the ones in the player's fingers
+(`travel/command.rs`): `;go2 bank`, `;go2 u7120`, `;go2 targets`, `;go2 list`,
+`;go2 save den [--global]`, `;go2 save den=228,current`, `;go2 delete den`, `;go2 stop` /
+`;kill go2` / `;k go2`, and `;route2 bank`. A line that is none of these is the game's. One
+that *is*, said wrongly (`;go2` alone), is **not the game's either**, so a slip of the
+fingers is never spoken aloud in a town square.
+
+**The `Desk` does them** (`travel/desk.rs`), one per session, the map shared between all
+(`Arc`). Each command starts from a fresh snapshot -- `SessionObserver::subscribe`, which
+answers at any moment -- so nothing here needs the login-time mirror. A walk is started and
+left walking; `;go2` again **stops it and starts the new one**, where Lich refuses the
+second as already running. The launch flags are now the same commands asked at login,
+through the same desk: one implementation.
+
+*Two things found building it.* The observer's stream is `ObservedEvent`, not `Event`, so
+the driver listens to either (`travel/heard.rs`) rather than a forwarding task per walk.
+And **a second walk must wait for the first to let the authority go**: `CommandQueue::claim`
+refuses while anyone holds it, the same token too, and a stopped walk with something stored
+sends its one `get` before releasing. The first test of this passed without the wait --
+on a single-threaded test runtime the cancelled walk happens to release first -- and only
+failed, as `Stopped(AuthorityHeld)`, once the first walk had a sword to take back.
+
+> **NOT BUILT, AND THE AUTHOR'S TO DECIDE: where a typed line is looked at.** Today every
+> frontend sends every line straight to the game (`cena-web/src/socket.rs:106`,
+> `send_manual_at`), and the terminal binary has no typed input at all. Nothing offers a
+> line to `parse_command` yet, so none of the above can be typed in a live game. Two places
+> it could go:
+>
+> 1. **In `SessionHandle`**, where every frontend's manual input already passes: the binary
+>    installs a claimant (a plain `Fn(&str) -> bool`, so `cena-session` learns nothing about
+>    behaviors) and a claimed line is never queued. Every frontend, present and future, gets
+>    it for nothing. Recommended.
+> 2. **In each frontend.** `cena-web` may depend only on `cena-session` and `cena-ui`
+>    (`layering.rs`), so it cannot call the desk; it would be handed the same closure.
+>
+> Either way it is a dozen lines. It is not done because (1) is in
+> `cena-session/src/command/handle.rs`, which another session has uncommitted work in, and
+> (2) is the M4 team's socket.
+
 **Still open from that list:** command links and target windows in Messaging, which wait
 for their first caller (likely the route table: click a room to go there).
 

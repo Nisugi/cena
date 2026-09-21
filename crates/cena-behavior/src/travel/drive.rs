@@ -33,11 +33,12 @@ use cena_session::{
     AuthorityToken, ChunkLine, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind,
     Origin, Outcome, Sent, SessionHandle, Snapshot, State,
 };
-use tokio::sync::broadcast::{Receiver, error::RecvError, error::TryRecvError};
+use tokio::sync::broadcast::{error::RecvError, error::TryRecvError};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
 use super::hands::{Stored, cast_commands, store_commands, take_back};
+use super::heard::Heard;
 use super::kept;
 
 mod preflight;
@@ -108,7 +109,7 @@ pub async fn travel(
     cancel: &CancellationToken,
     next_id: impl FnMut() -> CommandId,
     token: AuthorityToken,
-    joined: (Snapshot, Receiver<Event>),
+    joined: (Snapshot, impl Into<Heard>),
     map: &Map,
     goal: RoomId,
     notes: &mut TravelNotes,
@@ -134,7 +135,7 @@ pub async fn travel(
         token,
         next_id,
         state: snapshot.state,
-        events,
+        events: events.into(),
         began: Instant::now(),
         was: None,
         hint: notes.last_room.map(RoomId),
@@ -309,7 +310,7 @@ struct Driver<'a, N> {
     token: AuthorityToken,
     next_id: N,
     state: GameState,
-    events: Receiver<Event>,
+    events: Heard,
     began: Instant,
     /// The model's arrival count and the room it was located as, last tick.
     was: Option<(u32, RoomId)>,
