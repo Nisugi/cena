@@ -119,6 +119,31 @@ Needs decisions that are the author's: **where the travel profile lives** and wh
 defaults are; **where memories persist** (per character, across logins — `plan/21` §4.4);
 how Hydra gets `hydra.map` (`plan/21` §6, open). First live walk, author present.
 
+> **IN PROGRESS 2026-09-21. Three pieces; the first is built.**
+>
+> **4a, built -- `travel/facts.rs`: `walker_from(state, notes, now_server)`.** Pure, so it is
+> tested without a game. **Unknown stays unknown**: a status the game never reported is not
+> `false`, and no effect ever listed is "not told", not "nothing is up". Filled: settings
+> and memories (the travel file), profession, race, gender, level (the number in the
+> model's verbatim `Level 100`), posture and the `stunned`/`hidden`/`invisible` flags,
+> exits, what the room shows, encumbrance, and active spells at the game's clock.
+> **Not yet**, tabled in the file: skills and known/affordable spells (need the skill and
+> spell tables joined), society and citizenship (the model does not hold them), worn items,
+> and the flags pre-flight works out. Not-yet is safe and not free: an exit priced on an
+> unknown fact is impassable, so the walker goes round it.
+>
+> **A FINDING FOR 4c: a behavior has no live read of `GameState`.** `look` and `sync` never
+> needed one. What a subscriber gets is `(Snapshot, Receiver<Event>)` -- the state once,
+> then frames. So the driver keeps its **own** `GameState`, folds each `Event::Frame` into
+> it with `GameState::apply`, and hands frame text to `Trip::heard` and prompts to
+> `Trip::prompted`. That is the same thing a frontend does, and needs no new session API.
+>
+> **4b, next -- the travel file**, `<instance>_<character>.travel.json`, in `cena-session`
+> beside `character_store.rs` (the only crate that may hold model types and touch the
+> filesystem, `layering.rs`). **4c -- the `async fn`**: claim the authority, locate the
+> room (`cena_map::locate` from the model's room), tick, send, do the deeds, and give back
+> what is `owed()` on every way out including a stop.
+
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,
 the day-pass sack scan. And trips that start trips: the silver detour, the five errands.

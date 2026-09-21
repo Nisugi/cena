@@ -48,6 +48,7 @@
 //! failure, and on a user's stop ([`Trip::owed`]), which is the one Vellum
 //! skipped (`plan/21` §4.0).
 
+mod facts;
 mod mover;
 mod recovery;
 mod steps;
@@ -57,6 +58,7 @@ use std::collections::HashSet;
 use cena_map::{Action, Crossing, Exit, Map, Room, RoomId, Step, Target, Walker, priced_for};
 use cena_session::{MoveFeedback, movement};
 
+pub use facts::{TravelNotes, walker_from};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
 pub use steps::{Deed, EXCHANGE_TIMEOUT_MS, MAX_RESENDS, MAX_TURNS, MAX_WAIT_MS, STEP_TIMEOUT_MS};
 use steps::{Out, Owes, Run, Tick};
