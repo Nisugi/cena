@@ -17,8 +17,10 @@ use cena_platform::{AnsweringSource, TranscriptHandle};
 use cena_session::group::{GroupEvent, Member};
 use cena_session::hands::Hand;
 use cena_session::{
-    AuthorityToken, CommandId, Frame, GameState, Gate, Origin, Session, SessionHandle,
+    AuthorityToken, CommandId, Event, Frame, GameState, Gate, NoticeKind, Origin, Session,
+    SessionHandle,
 };
+use tokio::sync::broadcast::Receiver;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -46,6 +48,7 @@ fn arrival(uid: u32) -> Vec<u8> {
     format!("<nav rm='{uid}'/>\n<prompt time=\"2\">&gt;</prompt>\n").into_bytes()
 }
 
+const REFUSED: &[u8] = b"You can't go there.\n<prompt time=\"2\">&gt;</prompt>\n";
 const SWORD_GONE: &[u8] = b"<right>Empty</right>\n<prompt time=\"2\">&gt;</prompt>\n";
 const SWORD_BACK: &[u8] =
     b"<right exist=\"11\" noun=\"sword\">broadsword</right>\n<prompt time=\"3\">&gt;</prompt>\n";
@@ -76,11 +79,12 @@ fn set_out_with(
     CancellationToken,
     SessionHandle,
 ) {
-    set_out_as(stop, rooms, |state| {
+    let (walk, transcript, session, typed, _) = set_out_as(stop, rooms, |state| {
         for member in company {
             state.group.apply(&GroupEvent::Joined(member.clone()));
         }
-    })
+    });
+    (walk, transcript, session, typed)
 }
 
 /// [`set_out`], with whatever else the character knows as it sets out.
@@ -93,12 +97,15 @@ fn set_out_as(
     TranscriptHandle,
     CancellationToken,
     SessionHandle,
+    Receiver<Event>,
 ) {
     let (source, transcript) = AnsweringSource::new(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
     let session_cancel = session.cancel_token();
     let (mut snapshot, events) = session.subscribe();
+    // A second listener, as a frontend would be: what the player is told.
+    let (_, told) = session.subscribe();
     snapshot.state.room.id = Some("1001".into());
     snapshot.state.right_hand = Hand::Holding {
         id: Some("11".into()),
@@ -132,7 +139,7 @@ fn set_out_as(
         .await;
         Some(travelled)
     });
-    (walk, transcript, session_cancel, typed)
+    (walk, transcript, session_cancel, typed, told)
 }
 
 /// Let virtual time run until `line` has been written. `false` if it never is.
@@ -459,7 +466,7 @@ const MAZE: &str = r#"[
 /// the game's clock. The game never lets it out, so every turn is a choice.
 async fn turns_at(second: &'static str) -> Vec<String> {
     let stop = CancellationToken::new();
-    let (walk, transcript, session, _) = set_out_as(&stop, MAZE, |state| {
+    let (walk, transcript, session, _, _) = set_out_as(&stop, MAZE, |state| {
         state.apply(&Frame::Prompt {
             time: second.into(),
             text: ">".into(),
@@ -492,4 +499,56 @@ async fn the_maze_is_walked_by_the_wires_seed() {
         turns_at("1700000777").await,
         "another day, another walk"
     );
+}
+
+/// Every notice published so far, as `(kind, text)`.
+fn told_so_far(told: &mut Receiver<Event>) -> Vec<(NoticeKind, String)> {
+    let mut said = Vec::new();
+    while let Ok(event) = told.try_recv() {
+        if let Event::Notice(notice) = event {
+            said.push((notice.kind, notice.lines().join(" ")));
+        }
+    }
+    said
+}
+
+/// The player is told, in words, by the trip itself: why it failed, and what
+/// it could not put back. Nobody has to remember to print a return value.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_trip_says_how_it_ended() {
+    // No way there: room 3 cannot be reached once `north` is refused.
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, |_| {});
+    transcript.answer("north", REFUSED);
+    let _ = walk.await;
+    let said = told_so_far(&mut told);
+    assert_eq!(said.len(), 1, "{said:?}");
+    assert_eq!(said[0].0, NoticeKind::Error);
+    assert!(said[0].1.contains("no way there"), "{said:?}");
+    session.cancel();
+
+    // Stopped with the sword put away: a stop is not news, the sword is.
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, |_| {});
+    transcript.answer("north", &arrival(1002));
+    transcript.answer("store right", SWORD_GONE);
+    assert!(until_written(&transcript, "climb rope").await);
+    stop.cancel();
+    let _ = walk.await;
+    let said = told_so_far(&mut told);
+    assert_eq!(said.len(), 1, "{said:?}");
+    assert_eq!(said[0].0, NoticeKind::Warn);
+    assert!(said[0].1.contains("broadsword"), "{said:?}");
+    session.cancel();
+
+    // Arrived, with everything back: nothing to say.
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, _, mut told) = set_out_as(&stop, ROOMS, |_| {});
+    transcript.answer("north", &arrival(1002));
+    transcript.answer("store right", SWORD_GONE);
+    transcript.answer("climb rope", &arrival(1003));
+    transcript.answer("get #11", SWORD_BACK);
+    let _ = walk.await;
+    assert_eq!(told_so_far(&mut told), [], "arriving is not news");
+    session.cancel();
 }

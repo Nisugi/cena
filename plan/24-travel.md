@@ -296,6 +296,61 @@ how Hydra gets `hydra.map` (`plan/21` §6, open). First live walk, author presen
 >
 > **Still not yet:** the planner's own flags (`urchin_access`, `day_pass:...`) are stage 5.
 
+### Messaging, and the route shown (author, 2026-09-21)
+
+> *"Can you take a look at route2.lic? It's like go2 but instead of sending you on the
+> route, it displays the route to you."* -- then, of where its table should go: *"That
+> could be part of Messaging!"*
+
+**Messaging is Hydra's own voice** -- `cena-session/src/notice.rs`, the port of
+`Lich::Messaging` without its mechanism. Lich forges game markup (`<preset>`, `<output
+class="mono"/>`) because it sits in front of someone else's client. Hydra is one binary, so
+a notice is **typed** and travels as `Event::Notice` beside the frames, never among them:
+a kind (`Error`, `Warn`, `Info`, `Debug`) and a body that is prose or a **mono** block for
+tables. The terminal prints it today; a frontend draws the same value its own way.
+
+- `SessionHandle::say` publishes **straight to the event stream, not through the command
+  inbox**: a behavior saying why it stopped must get through when the queue it was filling
+  is full, and must not take the slot a `release` is owed. Both are tested.
+- **Not built, and named in the file:** command links and target windows. Nothing would
+  send one yet.
+- **`plan/20` section 1 is CORRECTED by this.** It read `messaging.rb`, saw it parses no
+  speech, and filed it as "only emits markup, belongs to `cena-ui`". Right about speech,
+  wrong to stop: the emitting half is a feature every behavior needs, and its type has to
+  sit where `Event` sits.
+- **A NOTE FOR M4's FRONTEND** (`plan/23`, not mine to edit): `Event` has one new variant.
+  It only adds; a frontend needs one new arm, to draw or to ignore.
+- **The ratchet earned its keep.** `Event::Notice` took `actor.rs` to 652 lines against a
+  cap of 650, and `split_parents_stay_facades` refused it. Rule 4.4 says move code down, so
+  `Event` moved to `actor/event.rs` (re-exported; no path changed) and `actor.rs` is 589.
+  The Messaging commit before this one fails that ratchet alone; this one mends it.
+
+**The route, shown** -- `cena-behavior/src/travel/itinerary.rs`. Pure: a map and a walker
+in, rows out, and `table` lays them out as mono lines.
+
+- **The same pricing as the trip** (`Trip::pricing`), so the route shown is the route
+  walked, including what this build cannot cross yet.
+- **Where it sees and route2 cannot:** route2 prints `(StringProc)` for a scripted exit and
+  `(proc)` for a scripted cost, left out of the total with a `+P`. Here the steps are
+  listed and the price is this walker's, in the total.
+- **It says what it did not take.** Under each room, every exit shut to this walker, and
+  which of four reasons: a fact **not known yet** (with the question, so it can be
+  answered), a fact that **says no**, a crossing **Hydra cannot run yet**, or **no cost**
+  in the map. A long way round explains itself.
+- **`destination`**: what the player typed, as a room -- a number, the game's number with
+  a `u`, or a **tag**, which is the *nearest* room so tagged *for this walker* (a bard's
+  nearest bank is not a warrior's; tested). **Not built:** go2's custom targets, which
+  want a home in the travel file, and `Room[]`'s match on title and description.
+
+**The trip reports its own end** through `say`: why it failed, what is still put away, a
+stance it did not restore. Arriving with nothing owed says nothing. The return value
+carries the same facts for a caller; the notice is for the person.
+
+**NOT WIRED, and only the author can:** a local command in the binary's run loop
+(`;route bank`) that calls `destination`, `itinerary`, `table` and `say`. Only the author
+runs the binary (`CLAUDE.md`, Credentials), so it is left as the next thing to do *with*
+them rather than written blind.
+
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,
 the day-pass sack scan. And trips that start trips: the silver detour, the five errands.

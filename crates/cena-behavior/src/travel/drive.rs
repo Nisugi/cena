@@ -27,8 +27,8 @@ use std::time::Duration;
 use cena_map::{Located, Map, Origin as Whence, RoomId, Sighting, Uid, title_from_subtitle};
 use cena_session::group::{self, GroupEvent};
 use cena_session::{
-    AuthorityToken, CommandId, Event, Frame, GameState, Gate, Origin, Outcome, Sent, SessionHandle,
-    Snapshot, State,
+    AuthorityToken, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind, Origin, Outcome,
+    Sent, SessionHandle, Snapshot, State,
 };
 use tokio::sync::broadcast::{Receiver, error::RecvError, error::TryRecvError};
 use tokio::time::Instant;
@@ -132,6 +132,9 @@ pub async fn travel(
     }
     // Released on every exit. A release is not a command.
     handle.release(token);
+    for notice in report(ended, &driver.stored, driver.stance_before.as_deref()) {
+        handle.say(notice);
+    }
     Travelled {
         ended,
         still_stored: driver.stored,
@@ -139,6 +142,45 @@ pub async fn travel(
         wrong_for_the_map: trip.wrong_for_the_map().to_vec(),
         seed,
     }
+}
+
+/// What a trip that did not simply arrive tells the player (`Notice`): why it
+/// ended, and what it changed and could not put back. Arriving with nothing
+/// owed says nothing -- the room is the news.
+///
+/// The return value carries the same facts for a caller; this is for the
+/// person, who should not depend on a caller remembering to print them.
+fn report(ended: Ended, stored: &[Stored], stance_before: Option<&str>) -> Vec<Notice> {
+    let mut said = Vec::new();
+    let why = match ended {
+        Ended::Arrived | Ended::Stopped(BehaviorError::Cancelled) => None,
+        Ended::Failed(Why::NoRoute) => Some("there is no way there that this character can take."),
+        Ended::Failed(Why::OffTheMap) => {
+            Some("I do not know what room this is, so I have stopped.")
+        }
+        Ended::Failed(Why::TooManyReplans) => {
+            Some("I keep being carried off the route, so I have stopped.")
+        }
+        Ended::UnknownSpell => Some("the map names a spell that is not in the spell table."),
+        Ended::Stopped(_) => Some("stopped, because the session went away."),
+    };
+    if let Some(why) = why {
+        said.push(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
+    }
+    if !stored.is_empty() {
+        let names: Vec<&str> = stored.iter().map(|stored| stored.name.as_str()).collect();
+        said.push(Notice::line(
+            NoticeKind::Warn,
+            format!("Travel: still put away -- {}.", names.join(", ")),
+        ));
+    }
+    if let Some(stance) = stance_before {
+        said.push(Notice::line(
+            NoticeKind::Warn,
+            format!("Travel: your stance was {stance}, and I did not put it back."),
+        ));
+    }
+    said
 }
 
 /// The seed for the choices a maze asks of this trip.

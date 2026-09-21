@@ -51,6 +51,7 @@
 mod drive;
 mod facts;
 mod hands;
+mod itinerary;
 mod knows;
 mod mover;
 mod recovery;
@@ -64,6 +65,7 @@ use cena_session::{MoveFeedback, movement};
 pub use drive::{BEAT, DEED_DEADLINE, Ended, FOLLOW_WAIT, LOST_WAIT, Travelled, seed_for, travel};
 pub use facts::{TravelNotes, walker_from};
 pub use hands::{Stored, cast_commands, store_commands, take_back};
+pub use itinerary::{Leg, Shut, ShutWhy, destination, itinerary, table};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
 pub use steps::{Deed, EXCHANGE_TIMEOUT_MS, MAX_RESENDS, MAX_TURNS, MAX_WAIT_MS, STEP_TIMEOUT_MS};
 use steps::{Out, Owes, Run, Tick};
