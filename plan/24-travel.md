@@ -144,6 +144,32 @@ how Hydra gets `hydra.map` (`plan/21` §6, open). First live walk, author presen
 > room (`cena_map::locate` from the model's room), tick, send, do the deeds, and give back
 > what is `owed()` on every way out including a stop.
 
+> **4b, BUILT 2026-09-21** -- `cena-session/src/travel_store.rs`. The snapshot's rule is
+> refuse-and-resync; this file's is the opposite, for the opposite reason: a missing file is
+> an empty one, and a file that cannot be read is refused **and left alone**, because a
+> person can mend a file and cannot mend a lost memory.
+>
+> **4c IS BLOCKED ON ONE RULING -- two rules contradict, and `plan/12` is authoritative.**
+>
+> - `plan/12` §4.3: a stopped behavior "may run cleanup, but **cleanup cannot send
+>   commands** -- it releases resources only. Otherwise 'stop' becomes 'send more'."
+> - `plan/21` §4.0 (a proposal, and mine): never end a trip with items still stowed,
+>   "**including on a user stop**, which Vellum skips."
+>
+> Giving a shield back *is* sending commands (`get #id`). Both cannot hold. Until ruled,
+> the driver follows `plan/12`: on a stop it sends nothing, and **returns what is owed**
+> (`Trip::owed()`) so whoever stopped it can say "your shield is in your cloak" -- and the
+> player, or a follow-up action they choose, gives it back. On arrival and on failure the
+> trip still puts things back itself, since those are not preemption.
+>
+> Also settled by reading, not asked: a move is sent with `send_now` -- "fire and verify
+> later" (`verdict.rs`, author 2026-09-18) -- which is exactly the trip's shape, since it
+> verifies by the room changing. Casting follows Lich (`spell.rb:686-780`): untargeted is
+> `incant N`; at a target it is `prepare N` then `cast <target>`; a society power is its
+> own name as a verb (`sigil of resolve`). And the integration test needs a **scripted
+> source** -- one whose reply depends on the command -- which `cena-platform`'s
+> `AnsweringSource` (one fixed reply) is not.
+
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,
 the day-pass sack scan. And trips that start trips: the silver detour, the five errands.
