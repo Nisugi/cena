@@ -732,3 +732,37 @@ mtime and a cooldown count; `the_table_was_cut_from_a_copy_that_has_cooldowns`
 asserts the five exist; and the invariant test counts what it checked and fails
 if that is not 2. VERIFIED by regenerating from the Sep 11 copy — **six tests
 go red**, where previously the suite would have stayed green.
+
+---
+
+### Source and data files age independently (2026-09-20)
+
+The rule behind the `effect-list.xml` near-miss, stated by the author:
+
+> *"reference/lich-5 should be pulled from upstream so it should be about the
+> same as c:\gemstone\dev\lich-5, doesn't mean the data files are the newest."*
+
+`reference/lich-5` tracks upstream, so its `.rb` is current. **A data file
+sitting beside that source can be any vintage**, because it ships with a
+release rather than with a commit. That is precisely how the Sep 11 checkout
+had current-looking code and an `effect-list.xml` predating PR #1597.
+
+MEASURED — the clone has **no `data/` directory at all**, so every data file in
+this port came from a live install:
+
+| Extractor reads | Files | Ages with |
+|---|---|---|
+| `reference/lich-5/lib/` | armaments, creatures, crit tables | the upstream clone |
+| `C:/Gemstone/lich-5/` | combat defs, gameobj-data, spells | **a live install** |
+
+Checked for the same two-copies hazard: `gameobj-data.xml` is **byte-identical**
+across both installs (138,156 bytes, unchanged since July), so only
+`effect-list.xml` diverged. No other cut is affected.
+
+**The practice this leaves:** an extractor reading from a live install records
+its source path and mtime in the output's header, as `extract_spells.rb` now
+does, and ships a test that fails if the cut came from a copy missing the
+feature under test. An extractor reading `reference/lich-5/lib/` does not need
+this — the clone's version is the one `git log` already records.
+
+**Data files are done.** No further table ports are scheduled for M3.
