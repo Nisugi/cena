@@ -140,6 +140,8 @@ impl GameState {
             overwatch,
             known_spells,
             bounty,
+            targeting,
+            cast_time_ends,
             prompt,
             left_hand,
             right_hand,
@@ -279,6 +281,15 @@ impl GameState {
         // The bounty. The guild re-states it on `bounty`, and nothing sends it
         // unasked -- so a stored answer could only ever be staler than asking.
         bounty.clear();
+
+        // What you can attack, and any cast in flight. Both are about a world
+        // this character has left: the login burst re-sends the `combat`
+        // dialog, and a cast cannot survive the disconnect. `roundtime_ends`
+        // is KEPT beside them for the reason recorded above -- the server
+        // enforces it across the gap -- and a cast time is not that: it is one
+        // spell's preparation, and the spell is gone.
+        targeting.clear();
+        *cast_time_ends = None;
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,

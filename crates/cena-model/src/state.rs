@@ -73,6 +73,7 @@ pub mod resolve;
 mod room;
 pub mod societies;
 pub mod streams;
+pub mod targeting;
 mod unknown;
 pub mod vitals;
 
@@ -143,6 +144,18 @@ pub struct GameState {
     /// next (`bounty_status.rs`). Distinct from [`Self::objectives`], which is
     /// the dialog's row -- this is the task's own description, parsed.
     pub bounty: bounty_status::BountyStatus,
+    /// What the game says you can attack (`targeting.rs`): the `combat`
+    /// dialog's `dDBTarget` list. Evidence of hostility, and the input to
+    /// "something is here that I cannot see".
+    pub targeting: targeting::Targeting,
+    /// `<castTime value=>`: the epoch second a cast's hard roundtime ends.
+    ///
+    /// **Separate from [`Self::roundtime_ends`]**, as it is in Lich
+    /// (`xmlparser.rb:770` keeps `@cast_roundtime_end` beside
+    /// `@roundtime_end`): a cast time and an action roundtime run at once and
+    /// expire independently, so one field could not answer either. `Option`,
+    /// never `0`, for the reason `roundtime_ends` gives.
+    pub cast_time_ends: Option<u32>,
     /// Who is grouped with you, by `exist` id.
     pub group: Group,
     /// The stow and ready lists: which container holds what, and which
@@ -253,6 +266,29 @@ pub struct GameState {
 }
 
 impl GameState {
+    /// Read the widgets of one `<dialogData>`.
+    ///
+    /// Only `dDBTarget` today. A `match` on the widget id rather than a
+    /// growing chain, because the next one that matters (the ammo dropdown,
+    /// the stance bar) lands the same way.
+    fn read_widgets(&mut self, widgets: &cena_protocol::frame::DialogWidgets) {
+        if widgets.kind != "dropDownBox" {
+            return;
+        }
+        for attrs in &widgets.widgets {
+            let get = |name: &str| {
+                attrs
+                    .iter()
+                    .find(|(k, _)| k == name)
+                    .map(|(_, v)| v.as_str())
+            };
+            if get("id") == Some("dDBTarget") {
+                self.targeting
+                    .read(get("content_value").unwrap_or_default(), get("value"));
+            }
+        }
+    }
+
     /// The combat state machine, to read its facts.
     #[must_use]
     pub const fn combat(&self) -> &combat::CombatTracker {
@@ -450,6 +486,12 @@ impl GameState {
             }
             // The room's environment. Part of the room, so it is invalidated
             // with the rest of it on a reconnect.
+            // A cast's hard roundtime, which is not the action roundtime.
+            Frame::CastTime { value } => self.cast_time_ends = Some(*value),
+            // The `combat` dialog's target dropdown. MEASURED the noisiest
+            // widget on the wire and read by nothing until 2026-09-21; see
+            // `targeting.rs` for why a display widget is a model fact.
+            Frame::DialogWidgets(widgets) => self.read_widgets(widgets),
             Frame::RoomMeta(meta) => self.room.meta = Some(*meta),
             Frame::ObjectivesUpdate { action, entries } => {
                 self.objectives.apply(*action, entries);
@@ -480,5 +522,23 @@ impl GameState {
             _ => {}
         }
         false
+    }
+}
+
+impl GameState {
+    /// Targetable ids that are in no room list: **something is here that you
+    /// cannot see.**
+    ///
+    /// Lich's `GameObj.hidden_targets` (`gameobj.rb:1171`), and the author's
+    /// point about `dDBTarget`: the server decides what goes in that dropdown,
+    /// so an id it offers while the room shows nothing is the game contradicting
+    /// what you can see. `overwatch.rb:117-120` pushes onto the same list from
+    /// the other direction.
+    ///
+    /// Empty is the ordinary answer. `Targeting::is_stated` is what separates
+    /// "nothing hidden" from "never told".
+    pub fn hidden_targets(&self) -> Vec<i64> {
+        let known: Vec<i64> = self.creatures.in_room().map(|c| c.id).collect();
+        self.targeting.hidden(&known).collect()
     }
 }
