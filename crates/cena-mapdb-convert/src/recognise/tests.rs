@@ -402,3 +402,21 @@ fn a_fissure_is_worked_open_first() {
     );
     assert_eq!(landmarks[0].enter, "go fissure");
 }
+
+#[test]
+fn a_pedal_boat_keeps_pedalling_until_it_is_somewhere_else() {
+    for spacing in ["; ", ";"] {
+        let script = format!(
+            ";e direction=\"west\";start=Room.current.id{spacing}dothistimeout \
+             \"pedal #{{direction}}\", 2, /pedal/ while Room.current.id == start"
+        );
+        assert_eq!(
+            steps(&script, 1),
+            vec![Action::KeepMoving("pedal west".into())]
+        );
+    }
+    assert_eq!(
+        steps(";e direction=\"west\";start=Room.current.id", 1),
+        vec![]
+    );
+}

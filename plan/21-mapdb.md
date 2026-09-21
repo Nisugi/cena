@@ -1195,6 +1195,46 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    settings because upstream only ever reads them; skill names are upstream's lowercase
    and the planner must map the model's to them.
 
+   **The long tail, ported in parallel and merged 2026-09-21.** Four agents, one slice and
+   one file each, in separate worktrees; every arm read against the Ruby before merging.
+   **What review found was gaps in the vocabulary, not mistakes in the ports** — the agents
+   named them as doubts, which is what the brief asked for:
+   - **`Action::Replan`** did not exist, so slices B and C had *dropped* `$go2_restart =
+     true` — on exits that really do land at random (`go ring` reaches eight rooms). Now a
+     step, which must end the crossing.
+   - **`Action::KeepMoving`** did not exist, so rowing, the Red Forest's fog and the pedal
+     boats were one `Move` — which gives an exit up after a few tries, where these are
+     written to be tried until they work. With it the pedal boats (173 exits) ported at once.
+   - A Water Walking *cost* refused a walker of unknown spells though both prices are
+     passable; it is now `Otherwise`. The two-kinds-of-check rule applies to costs too:
+     a gate whose branches are both passable must never be unanswerable.
+   - Slice B's largest arm is a **statement-list matcher** (`fput`/`move`/`sleep`/hands,
+     each spelled exactly, separated exactly) rather than one template per shape. Accepted:
+     it is closed — anything not listed does not match — and three dozen near-identical
+     templates would say the same thing worse.
+
+   | | start of step 7 | now |
+   |---|---|---|
+   | unported crossings | 7,923 | **702** |
+   | unported costs | 1,860 | **701** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **10,763** |
+   | reachable with paid services on | — | **17,994** |
+
+   **What is left is a vocabulary list.** From the four reports, by exits unlocked:
+   | needs | exits |
+   |---|---|
+   | the instability table (cost) | 477 |
+   | the walker's **posture** (sitting/kneeling) — rowboats, crawls; with the room's climate for 103 costs | ~230 |
+   | loop until a **named** room is reached (random landings: `go forest` × 50) | ~75 |
+   | "the move failed → do this, then retry" (lockers, levers) | 43 |
+   | obvious-exits checks / a random exit (`checkpaths`) | ~60 |
+   | race · citizenship · level · society rank · gender | ~95 |
+   | item in inventory or among the room's objects | ~35 |
+   | `Await` any of several lines; wait for the room to change by itself | ~20 |
+   | a group-member wait — trivial if the author rules group waits are dropped | 10 |
+   | `$SILVERWOOD_TOWN`, a memory upstream keeps in a global — proposed name `silverwood_town` | 12 |
+   | puzzles that branch on what the game said | ~60 |
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

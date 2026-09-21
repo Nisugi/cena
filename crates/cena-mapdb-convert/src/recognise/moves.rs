@@ -348,3 +348,26 @@ pub(super) fn icy_path(script: &str) -> Option<Crossing> {
         step(Action::Move(direction.to_owned()), None),
     ]))
 }
+
+/// The pedal boats: `pedal west` until the boat is somewhere else. 173 exits,
+/// two spacings. It takes several pedals to cross one room and none of them
+/// fails, which is why this is `KeepMoving` and not `Move`.
+pub(super) fn pedal_boat(script: &str) -> Option<Crossing> {
+    const FORMS: [[&str; 2]; 2] = [
+        [
+            ";e direction=\"",
+            "\";start=Room.current.id; dothistimeout \"pedal #{direction}\", 2, /pedal/ \
+             while Room.current.id == start",
+        ],
+        [
+            ";e direction=\"",
+            "\";start=Room.current.id;dothistimeout \"pedal #{direction}\", 2, /pedal/ \
+             while Room.current.id == start",
+        ],
+    ];
+    let found = FORMS.iter().find_map(|form| holes(script, form))?;
+    let direction = found.first().copied().filter(|hole| is_word(hole))?;
+    Some(Crossing::Steps(vec![always(Action::KeepMoving(format!(
+        "pedal {direction}"
+    )))]))
+}

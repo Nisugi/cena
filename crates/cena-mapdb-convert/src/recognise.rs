@@ -50,6 +50,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| hands_free_move(script))
         .or_else(|| puts_then_move(script))
         .or_else(|| inn_table(script))
+        .or_else(|| moves::pedal_boat(script))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
         .or_else(|| arctic_waters(script))
