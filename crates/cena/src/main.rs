@@ -279,7 +279,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // `SupervisedSession::new` mints it: it must be obtainable before `run`
     // consumes the session, and there is no `handle()` accessor to call
     // afterwards.
-    let (session, handle, combat_flush) = open_session(connector);
+    let (session, handle, combat_flush, player_flush) = open_session(connector);
     let observer = session.observer();
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
@@ -385,6 +385,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let joined = supervisor.await;
     watcher.abort();
     flush_combat(combat_flush);
+    flush_player_log(player_flush).await;
 
     match joined {
         Ok(end) => {
@@ -529,6 +530,7 @@ fn open_session(
     SupervisedSession<LiveConnector>,
     cena_session::SessionHandle,
     Option<std::thread::JoinHandle<()>>,
+    tokio::task::JoinHandle<u64>,
 ) {
     let character = connector.character().to_owned();
     let game = connector.game_code().to_owned();
@@ -556,8 +558,63 @@ fn open_session(
             session
         }
     };
+    // **What the character learns, and what the game teaches about its
+    // menus, kept across logins.** Missing until 2026-09-21: the supervised
+    // session could not be given either store, so no live run ever wrote one.
+    // One directory for both, beside the settings and travel files.
+    let data = cena_session::character_store::data_dir();
+    eprintln!("[data] {}", data.display());
+    let session = session
+        .with_character_store(data.clone())
+        .with_menu_store(data);
     let (session, combat_flush) = attach_combat(session, &game, &character);
-    (session, handle, combat_flush)
+    let (session, player_flush) = attach_player_log(session, &character);
+    (session, handle, combat_flush, player_flush)
+}
+
+/// Give the session its player log (`plan/25`): what the player saw and sent,
+/// per character per day, under `<log_dir>/player/`.
+///
+/// Nothing here can fail up front -- the writer creates its directory on the
+/// first line, and a failure then is counted rather than fatal. The count
+/// comes back through the handle, so the exit can say the history has a hole.
+///
+/// **No account redaction, unlike the wire log, and deliberately.** An account
+/// name is often the character's name, and this log is display text: redacting
+/// it would replace the character's own name on every line that mentions it.
+/// The credentials that reach the WIRE (password hash, launch key) are never
+/// display text and never pass through the command queue.
+fn attach_player_log(
+    session: SupervisedSession<LiveConnector>,
+    character: &str,
+) -> (
+    SupervisedSession<LiveConnector>,
+    tokio::task::JoinHandle<u64>,
+) {
+    let (log, sink) = cena_session::PlayerLog::new();
+    let writer =
+        cena_session::PlayerWriter::new(cena_session::player_log::writer::root(), character);
+    eprintln!("[player log] {}", writer.dir().display());
+    (
+        session.with_player_log(
+            log,
+            cena_session::player_log::Capture::default(),
+            Some(cena_session::character_store::data_dir()),
+        ),
+        tokio::spawn(writer.run_reporting(sink)),
+    )
+}
+
+/// Wait for the player log's last flush, and say so if lines were lost.
+///
+/// The writer ends when the last `PlayerLog` drops, which the supervisor's
+/// return just did.
+async fn flush_player_log(flush: tokio::task::JoinHandle<u64>) {
+    match flush.await {
+        Ok(0) => {}
+        Ok(lost) => eprintln!("[player log] {lost} lines were NOT recorded; the log has holes"),
+        Err(_) => eprintln!("[player log] the writer task panicked; the log's tail may be missing"),
+    }
 }
 
 /// Give the session its crit tables and its combat database.

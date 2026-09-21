@@ -45,6 +45,7 @@
 //! forever, on a ladder that caps at 30 seconds -- see `Supervisor::run` for why
 //! that is deliberate rather than a missing third bound.
 
+mod attach;
 mod connect;
 mod core;
 mod observation;
@@ -63,7 +64,7 @@ use crate::command::SessionHandle;
 use crate::lifecycle::{Generation, GenerationCell, State};
 use crate::observation::{EventPublisher, ObservationRequests};
 use cena_model::GameState;
-use cena_platform::{Recorder, SessionSink};
+use cena_platform::Recorder;
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
 
@@ -164,43 +165,15 @@ impl<C: Connector> SupervisedSession<C> {
                 recorder: Recorder::new(),
                 sink: None,
                 combat: None,
+                player_log: handle.log_slot(),
+                character_dir: None,
+                menu_dir: None,
                 generation,
                 cancel: CancellationToken::new(),
             },
             connector,
         };
         (session, handle)
-    }
-
-    /// Attach a log sink. It spans every generation, so one file records the
-    /// whole session including its reconnects.
-    #[must_use]
-    pub fn with_sink(mut self, sink: SessionSink) -> Self {
-        self.core.sink = Some(sink);
-        self
-    }
-
-    /// Give the combat tracker its crit tables. See
-    /// [`Session::with_crit_tables`](crate::Session::with_crit_tables); the
-    /// state is carried across connections, so once is enough.
-    #[must_use]
-    pub fn with_crit_tables(
-        mut self,
-        tables: std::sync::Arc<cena_model::crit::CritTables>,
-    ) -> Self {
-        self.core.state.combat_mut().set_crit_tables(tables);
-        self
-    }
-
-    /// Offer every closed chunk's combat facts to this recorder, on every
-    /// connection this session makes.
-    #[must_use]
-    pub fn with_combat_recorder(
-        mut self,
-        recorder: crate::combat_recorder::worker::RecorderHandle,
-    ) -> Self {
-        self.core.combat = Some(recorder);
-        self
     }
 
     /// Read-only access obtained before `run` consumes the owner, supporting
@@ -339,7 +312,11 @@ impl<C: Connector> SupervisedSession<C> {
             // **Before the new actor sees the channel.** See `sweep_inbox`.
             attended_while_disconnected |= self.sweep_inbox();
 
-            let actor = SessionActor::supervised(
+            // The name arrives with the `<app>` that triggers the load, and the
+            // state is carried across connections: a known name means an
+            // earlier connection already read the store.
+            let stored_facts_read = self.core.state.character.name.is_some();
+            let mut actor = SessionActor::supervised(
                 source,
                 std::mem::take(&mut self.core.state),
                 self.core.commands,
@@ -354,6 +331,19 @@ impl<C: Connector> SupervisedSession<C> {
                 self.core.cancel.child_token(),
                 generation,
             );
+            actor.menu_dir.clone_from(&self.core.menu_dir);
+            actor.persistence.dir.clone_from(&self.core.character_dir);
+            // **Read the stored facts once per SESSION, not once per
+            // connection.** `<app>` is re-sent on every reconnect, and
+            // `load_character` refuses a second load because it would put the
+            // disk's older values over what the session has learned since --
+            // but it remembers that on the actor, and this is a new actor.
+            actor.persistence.loaded = stored_facts_read;
+            actor.player_log = self
+                .core
+                .player_log
+                .get()
+                .map(|tap| crate::player_log::Feed::new(tap.clone(), generation));
             // One allocation per connection keeps the supervisor future from
             // embedding the actor's large parser/model/select-loop storage.
             // Basis: observation::actor_future_storage_justifies_heap_pinning

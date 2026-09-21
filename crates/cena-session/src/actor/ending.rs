@@ -269,6 +269,21 @@ impl<S: ByteSource> SessionActor<S> {
         let _ = self.events.send(Event::SyncNeeded(stale));
     }
 
+    /// The game has named the character, so the player log can read which
+    /// feeds they chose (`settings_store`, `player_log/tap.rs`).
+    pub(super) fn choose_log_feeds(&mut self) {
+        let (Some(log), Some(name), Some(instance)) = (
+            &self.player_log,
+            self.state.character.name.as_deref(),
+            self.state.character.instance.as_deref(),
+        ) else {
+            return;
+        };
+        if let Err(why) = log.choose(instance, name) {
+            self.log(&format!("settings: player log using defaults -- {why}"));
+        }
+    }
+
     /// # Its own `select!` arm, not folded into the quit timer
     ///
     /// Merging them saves one `Sleep` in `run`'s future. That was tried and

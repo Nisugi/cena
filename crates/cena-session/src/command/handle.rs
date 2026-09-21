@@ -177,6 +177,8 @@ pub struct SessionHandle {
     /// Where [`Self::say`] publishes. The session's own event channel, which
     /// lives as long as the session does, reconnects included.
     events: tokio::sync::broadcast::Sender<crate::Event>,
+    /// The player log, once one is attached. Shared with every clone.
+    log: crate::player_log::tap::Slot,
 }
 
 impl SessionHandle {
@@ -191,7 +193,13 @@ impl SessionHandle {
             sender,
             generation,
             events,
+            log: crate::player_log::tap::Slot::default(),
         }
+    }
+
+    /// The slot this handle and all its clones read the player log from.
+    pub(crate) fn log_slot(&self) -> crate::player_log::tap::Slot {
+        std::sync::Arc::clone(&self.log)
     }
 
     /// Say something to the player (`crate::notice`).
@@ -205,6 +213,11 @@ impl SessionHandle {
     /// It cannot fail in a way the caller could act on: with nobody
     /// listening there is nobody to tell.
     pub fn say(&self, notice: crate::notice::Notice) {
+        // Logged HERE because a notice never passes through the actor. Before
+        // the send, which takes the notice by value.
+        if let Some(log) = self.log.get() {
+            log.notice(self.generation(), &notice);
+        }
         let _ = self.events.send(crate::Event::Notice(notice));
     }
 

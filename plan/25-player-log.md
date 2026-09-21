@@ -1,7 +1,7 @@
 # 25 — The player log
 
-**Status: proposal.** Nothing here is built. Author decisions recorded below are
-marked **AUTHOR**; everything else is a proposal awaiting one.
+**Status: steps 1, 2 and 2b BUILT (2026-09-21); 3-7 proposed.** Author decisions
+recorded below are marked **AUTHOR**; everything else is a proposal awaiting one.
 
 The **second** of the two logs `sink/mod.rs` named in 2026-09-18, and the one it
 said would come later:
@@ -182,7 +182,9 @@ difference between a few hundred MB and a few GB per year.
 ### D5. Retention defaults — **PROPOSED**
 
 Two dials, per §1: `retention_days` (default 30, deletes by age) and a cap on
-uncompressed bytes only. Lichborne disables the size cap by default; I would too —
+uncompressed bytes only. (**CORRECTED 2026-09-21:** this said Lichborne disables the size cap by default.
+It does not -- `sessionLogSettings.ts` defaults `maxRawMB: 500`.) I would still
+default to no cap —
 a surprise deletion on first launch is the failure mode, and §7 makes deletion
 always previewable.
 
@@ -242,7 +244,121 @@ Each step leaves the tree green and is independently reviewable.
    `[HH:MM:SS.mmm][stream] text` line format, buffered per §1, flush on drop.
    Reuses `sink/`'s redaction: a player log is exactly as capable of containing
    a launch key as the wire log is.
-3. **The reader.** Day listing, tail, window read, literal and regex search with
+   > **CORRECTED 2026-09-21, by review before anything was wired to it.** The
+   > writer as first built had no flush timer: its doc said the timer *"belongs
+   > to whoever drives `run`"*, and `run` consumes the writer, so nobody could.
+   > An idle character's last lines (up to 99) sat in memory until the session
+   > ended. The 1s timer is now inside `run`, with a test that a mutation
+   > removing it fails. Their forced-flush-at-5000 is not taken: `write` flushes
+   > at 100, so the count can never get there.
+
+2b. **The feed** -- *missing from this list as first written, which is how steps
+   1 and 2 came to be finished with nothing calling them.* `player_log/tap.rs`,
+   one call per event from `actor/io.rs`:
+   - **Game text**, taken from the model's own completed line
+     (`GameState::route_text`; `lines_seen` moving is the signal). §2 said this
+     would consume `LineAssembler`; it cannot -- that is `cena-ui`, which
+     `cena-session` may not depend on -- and does not need to, because the
+     model already assembles lines and a second assembly could disagree.
+   - **Sent commands**, as `[cmd]`, at `write_bounded` -- the one chokepoint
+     every send passes. Lichborne captures them too (`captureCommands`); §1
+     missed it.
+   - **Every feed is available; which are written is configurable; the viewer
+     filters by tag** (AUTHOR, 2026-09-21). This REPLACES a first rule, built
+     the same day, that dropped the readout streams outright. Walking a line
+     from the wire to the file is what changed it: the wire log churns, so in
+     a year this is the only record, and *"what was I wearing when I died"* is
+     answerable only if the readout was captured. Configurable as well as
+     filterable because (author) *"they may not want all the bloat that comes
+     with the inventory feed, ect. eats a lot of space."*
+     `feed::Capture` decides what is WRITTEN; text feeds default on, and
+     `tap::READOUTS` (`room`, `inv`, `bounty`, `society`, `charprofile`,
+     `Spells` -- the six cleared-and-rewritten ids in
+     `cena-model/tests/stream_routing.rs`'s census) default off. An unfamiliar
+     stream is on: a reader can filter noise and cannot fill a hole.
+   - **A readout that is on is written only when it changes** (AUTHOR agreed).
+     Lichborne measured 1,173 `spells` + 2,574 `inv` lines in one 11-minute
+     window, nearly all the same table again. A readout arrives whole with no
+     prompt inside it, so a chunk's lines for one readout are its snapshot.
+   - **The combat feed** (AUTHOR: *"One of my biggest goals for this program is
+     to be able to separate a combat feed out from the main feed ... a
+     classifier that classifies a blob as combat if it contains one of our
+     defs"*). The blob is the model's prompt-to-prompt chunk and the combat
+     tracker already classifies it at the prompt. **So a line's class is not
+     known when the line ends**: `player_log/feed.rs` holds a chunk's lines
+     and writes them at the prompt, main-window lines tagged `main/combat`
+     when the chunk produced combat facts. One bracket group, so the line
+     format is unchanged; a viewer splits on `/`. The class never replaces the
+     source -- `main` is where the game sent it, `combat` is what our
+     definitions made of it. A chunk the definitions miss stays `main`, in
+     order, so coverage can grow without old logs having lied. Each line keeps
+     the stamp of when it ARRIVED; only the write waits.
+   - **Not text, so not yet feeds:** room components (`Also here:` arrives as
+     `<component id='room players'>`, never as a line) and the dialogs
+     (vitals, the combat dialog, effects). Each is a feed the model already
+     holds typed; adding one needs a renderer to lines and no redesign
+     (AUTHOR: *"we can add those later without a redesign that's fine"*).
+   - **The settings file** (AUTHOR, 2026-09-21: *"We have a file that saves
+     characters infomon data. We now need a file to save settings/
+     preferences. They should probably go next to each other."* And: *"Can all
+     these settings/preferences from different systems share a file?"*). Yes:
+     `settings_store.rs`, `<instance>_<character>.settings.json` beside the
+     snapshot, **one file with a section per system**. Sections are kept as
+     JSON until a system asks for its own, so a build saving ITS section never
+     drops one it has not heard of -- that is what makes sharing safe. The
+     log's section:
+     `"player_log": { "feeds": { "inv": true, "thoughts": false } }` --
+     overrides over the defaults, so a file written today does not switch off
+     a feed added tomorrow. A malformed section is reported and the defaults
+     stay in force; it is never silently defaulted.
+     **The file is named by what `<app>` says (`Prime`), not the login code
+     (`GS3`)** -- MEASURED on the fixtures -- so it cannot be read at startup.
+     It is read when `<app>` arrives, and capture is therefore judged when a
+     chunk CLOSES, not when a line arrives.
+     **The log carries its own settings directory.** It was first loaded from
+     a hook on the snapshot's load, which passed every test and would never
+     have run: MEASURED, `SupervisedSession` -- what the binary runs -- has no
+     `with_character_store` and no `with_menu_store`.
+     > **THAT GAP, FIXED THE SAME DAY.** In a real session the actor neither
+     > loaded nor saved the snapshot, nor persisted a `<cmdlist>` push; only
+     > the plain `Session` the tests drive did. MEASURED: no data directory
+     > existed on the author's machine after several live runs, and
+     > `cena/src/travel.rs`'s own comment says the session *"itself does it"*.
+     > `supervisor/attach.rs` now has both builders, the binary calls them,
+     > and `tests/supervised_stores.rs` covers the supervised path -- including
+     > that the snapshot is read once per SESSION, since the actor's
+     > load-once flag dies with each connection's actor.
+     > **The lesson is `plan/19`'s, in a new place:** every store test was
+     > thorough and every one drove a type the binary does not run.
+     Nothing writes the file yet: there is no settings UI, so today it is
+     edited by hand. `travel_store`'s own `settings` map stays where it is.
+   - Blank lines are not recorded.
+   - The binary attaches it (`main.rs: attach_player_log`) and reports lost
+     lines at exit. **No account redaction**, deliberately: an account name is
+     often the character's name, and this is display text.
+
+   - **Hydra's own notices**, as `[hydra]`. They are published from
+     `SessionHandle::say` straight to the broadcast and never pass through the
+     actor, so the handle logs them itself. The tap lives in a set-once slot
+     (`tap::Slot`) shared by the actor's owner and every handle clone, because
+     handles are built and cloned BEFORE `with_player_log` is called.
+
+   **Not run live.** Every test drives a replayed or answering source.
+
+   > **FOR THE FRONTEND, written down now so it is not lost** (AUTHOR,
+   > 2026-09-21). The screen should get the same "chunk closed, here is its
+   > class" signal the log does, so the two cannot disagree. But: *"when we
+   > feed it to the screen we need to feed it one line at a time and not an
+   > instant blob. Not like a slow feed, but just to mimick it coming in one
+   > line at a time versus bam here's a blob of text all at the same instant."*
+   > Holding a chunk to classify it must not change how the text FEELS. Each
+   > held line already carries its arrival stamp, which is what a frontend
+   > needs to replay a released chunk in its original cadence.
+
+3. **The reader.** A TIME window is filtered by timestamp, never approximated
+   by a line count -- Lichborne's pitfall #92: an 8,000-line tail reached back
+   6.2 minutes of a requested 11, because a busy character logs ~820 lines a
+   minute. Day listing, tail, window read, literal and regex search with
    the §5 caps. Both line formats accepted from the first commit (§1) — the
    second format does not exist yet, and that is the point.
 4. **Compression on close** (D4). Closed days gzip; today untouched.

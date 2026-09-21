@@ -75,6 +75,14 @@ pub struct SessionCore {
     pub(super) sink: Option<SessionSink>,
     /// Cloned into each connection's actor, so one hunt spans a reconnect.
     pub(super) combat: Option<crate::combat_recorder::worker::RecorderHandle>,
+    /// Cloned into each connection's actor, so one log spans a reconnect.
+    /// The handle's own slot, so `say` and the actor write to one log.
+    pub(super) player_log: crate::player_log::tap::Slot,
+    /// Where the character's facts are stored, if anywhere. Given to each
+    /// connection's actor, which does the reading and writing.
+    pub(super) character_dir: Option<std::path::PathBuf>,
+    /// Where `<cmdlist>` pushes are stored, if anywhere.
+    pub(super) menu_dir: Option<std::path::PathBuf>,
     /// The shared generation every handle reads.
     pub(super) generation: GenerationCell,
     /// Stops the **session**, not one connection.

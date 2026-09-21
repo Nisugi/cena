@@ -31,6 +31,10 @@ fn line(stream: &str, text: &str) -> LogLine {
 }
 
 /// The one file a writer has created, and its contents.
+#[allow(
+    clippy::expect_used,
+    reason = "a test helper: clippy.toml exempts `#[test]` fns, and this is one in all but attribute"
+)]
 fn only_file(dir: &PathBuf, character: &str) -> (PathBuf, String) {
     let days = writer::days(dir, character).expect("read the log directory");
     assert_eq!(days.len(), 1, "expected exactly one day-file, got {days:?}");
@@ -225,6 +229,28 @@ async fn the_writer_drains_a_sink_and_flushes_at_the_end() {
     assert!(text.contains("[main] first"));
     assert!(text.contains("[thoughts] second"));
     assert_eq!(text.lines().count(), 2, "the tail was not flushed");
+}
+
+#[tokio::test(start_paused = true)]
+async fn an_idle_writer_flushes_on_the_timer_while_the_session_lives() {
+    // The log is NOT dropped: the session is alive and has gone quiet. One
+    // line is far below the count threshold, so only the timer can put it on
+    // disk. Before the timer existed this file stayed empty until the end.
+    let dir = temp_dir("idle-flush");
+    let (log, sink) = PlayerLog::new();
+    let task = tokio::spawn(PlayerWriter::new(&dir, "Nisugi").run(sink));
+
+    log.record(line("main", "the last thing before going quiet"));
+    tokio::time::sleep(writer::FLUSH_EVERY * 3).await;
+
+    let (_, text) = only_file(&dir, "Nisugi");
+    assert!(
+        text.contains("the last thing before going quiet"),
+        "an idle session's tail never reached the disk: {text:?}"
+    );
+    drop(log);
+    task.await
+        .expect("the writer task ends once the log is dropped");
 }
 
 #[tokio::test]

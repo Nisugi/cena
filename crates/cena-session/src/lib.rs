@@ -41,6 +41,7 @@ pub mod notice;
 mod observation;
 pub mod player_log;
 pub mod queue;
+pub mod settings_store;
 pub mod supervisor;
 pub mod travel_store;
 

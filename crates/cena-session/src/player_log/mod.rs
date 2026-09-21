@@ -44,6 +44,10 @@
 //! what a reader in 2030 needs, and no styling at all.
 
 pub mod channel;
+pub mod feed;
+pub mod tap;
 pub mod writer;
 
 pub use channel::{CAPACITY, LogLine, LogSink, PlayerLog};
+pub use feed::{Capture, Feed, LogSettings};
+pub use tap::Tap;

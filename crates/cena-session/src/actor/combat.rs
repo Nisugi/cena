@@ -23,7 +23,7 @@ use super::{Event, SessionActor};
 impl<S: ByteSource> SessionActor<S> {
     /// Drain the tracker after a prompt. Never blocks and never fails: a
     /// recorder that cannot keep up costs its own rows, not the session.
-    pub(super) fn publish_combat(&mut self) {
+    pub(super) fn publish_combat(&mut self) -> bool {
         let chunks = self.state.combat_mut().take_facts();
         if chunks.is_empty() {
             // A quiet prompt still tells the recorder the time, so a hunt
@@ -31,7 +31,7 @@ impl<S: ByteSource> SessionActor<S> {
             if let (Some(recorder), Some(at)) = (&self.combat, self.state.game_time()) {
                 recorder.tick(at);
             }
-            return;
+            return false;
         }
         for facts in chunks {
             let facts = Arc::new(facts);
@@ -42,6 +42,7 @@ impl<S: ByteSource> SessionActor<S> {
             let _ = self.events.send(Event::Combat(facts));
         }
         self.report_recorder_refusals();
+        true
     }
 
     /// Say so in the session log when the recorder's refusal count moves.

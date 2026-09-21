@@ -241,7 +241,11 @@ fn an_item_with_no_trailing_run_has_no_after_text() {
     let items = &state.inventory.container("stow").expect("declared").items;
 
     assert_eq!(items[2].text, "slender wooden rod");
-    assert_eq!(items[2].before.as_deref(), Some("a"), "guard: before is read");
+    assert_eq!(
+        items[2].before.as_deref(),
+        Some("a"),
+        "guard: before is read"
+    );
     assert_eq!(items[2].after, None);
 }
 

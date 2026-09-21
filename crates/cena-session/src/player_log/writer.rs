@@ -11,7 +11,7 @@
 //! ```
 //!
 //! Both halves are Lichborne's (`src/main/sessionLog.ts`, BSD-3), which ships
-//! this feature for DragonRealms and had to answer these questions first:
+//! this feature for `DragonRealms` and had to answer these questions first:
 //!
 //! - **A file per character per day.** A day is the unit a person searches in,
 //!   and it makes rotation implicit rather than a size heuristic that cuts a
@@ -26,10 +26,10 @@
 //! # Buffered, and why the thresholds are theirs
 //!
 //! A line per `write` syscall would be one syscall per game line. Lichborne
-//! flushes on a 1s timer, at 100 records, and forces at 5000; those numbers are
-//! from a client in daily use, so they are taken rather than invented. Here the
-//! timer belongs to whoever drives [`PlayerWriter::run`] -- the count
-//! thresholds are this type's.
+//! flushes on a 1s timer and at 100 records; those numbers are from a client in
+//! daily use, so they are taken rather than invented. Both live in
+//! [`PlayerWriter::run`], which owns the writer and so is the only thing that
+//! can flush it.
 //!
 //! # What this does NOT do
 //!
@@ -54,12 +54,15 @@ use super::{LogLine, LogSink};
 /// caller's timer is for.
 pub const FLUSH_AFTER_LINES: usize = 100;
 
-/// Flush unconditionally at this many, whatever else is happening.
+/// Flush at least this often while anything is buffered.
 ///
-/// Lichborne's `MAX_BUFFER`, and their comment's framing is right: this is the
-/// flood guard, not the normal path. Reaching it means the login burst or a
-/// wall of combat text arrived faster than the timer fires.
-pub const FORCE_FLUSH_AT: usize = 5000;
+/// Lichborne's `FLUSH_INTERVAL_MS`. It bounds how stale today's file can be to
+/// a reader, and how much an abrupt exit can lose.
+///
+/// Their third threshold (`MAX_BUFFER`, forced at 5000) is NOT taken: their
+/// buffer is an array a flood can grow, ours is flushed inside [`PlayerWriter::write`]
+/// at [`FLUSH_AFTER_LINES`], so the count can never get there.
+pub const FLUSH_EVERY: std::time::Duration = std::time::Duration::from_secs(1);
 
 /// The subdirectory under the log directory that player logs live in.
 ///
@@ -247,12 +250,26 @@ impl PlayerWriter {
     /// is exactly how this method came to exist, after a test did that and hung
     /// the suite. The count comes back from here instead.
     pub async fn run_reporting(mut self, mut sink: LogSink) -> u64 {
-        while let Some(line) = sink.recv().await {
-            if self.write(&line).is_err() {
-                sink.note_dropped();
-            }
-            if self.buffered >= FORCE_FLUSH_AT && self.flush().is_err() {
-                sink.note_dropped();
+        // The timer is HERE because `run` owns the writer: nobody outside can
+        // flush it. Without this an idle character's last lines -- up to
+        // `FLUSH_AFTER_LINES - 1` of them -- sat in the buffer until the
+        // session ended, so today's file could not be tailed and a crash lost
+        // them. Found by review before anything was wired to this.
+        let mut tick = tokio::time::interval(FLUSH_EVERY);
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            tokio::select! {
+                line = sink.recv() => {
+                    let Some(line) = line else { break };
+                    if self.write(&line).is_err() {
+                        sink.note_dropped();
+                    }
+                }
+                _ = tick.tick() => {
+                    if self.buffered > 0 && self.flush().is_err() {
+                        sink.note_dropped();
+                    }
+                }
             }
         }
         // The senders are gone, so the session has ended. Anything buffered is

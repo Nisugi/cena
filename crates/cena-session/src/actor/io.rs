@@ -76,6 +76,10 @@ impl<S: ByteSource> SessionActor<S> {
         // tried, and the session is attended either way. The supervisor's
         // question is "is anyone here", not "did the packet land".
         self.state.answer_idle_warning();
+        // Logged at the same chokepoint, for the same reason.
+        if let Some(log) = &mut self.player_log {
+            log.command(message);
+        }
         matches!(
             tokio::time::timeout(WRITE_DEADLINE, self.source.write_all(message)).await,
             Ok(Ok(()))
@@ -644,11 +648,23 @@ impl<S: ByteSource> SessionActor<S> {
             // saying "you are up to date", and re-writing then is a no-op on
             // a file whose rows have not changed.
             let is_push = matches!(frame, Frame::CmdListUpdate(_) | Frame::CmdTimestamp { .. });
+            let lines_before = self.state.lines_seen();
             let terminator = self.state.apply(&frame);
+            // A completed line goes to the player log. **The model's line, not
+            // a second assembly of it**: `route_text` is the one place a frame
+            // boundary is turned into a line boundary, and `lines_seen` moving
+            // is how it says it just did.
+            if let (Some(log), Frame::Text(text)) = (&mut self.player_log, &frame)
+                && self.state.lines_seen() > lines_before
+                && let Some(line) = self.state.stream(&text.stream).last()
+            {
+                log.line(&text.stream, &line.plain());
+            }
             // The frame that teaches the character's name is the first moment
             // there is a file to read. Cheap after the first: one bool.
             if matches!(frame, Frame::AppInfo { .. }) {
                 self.load_character();
+                self.choose_log_feeds();
             }
             // Whatever that frame taught the character. Taken every frame
             // rather than only on a prompt, because the mailbox is emptied by
@@ -667,7 +683,12 @@ impl<S: ByteSource> SessionActor<S> {
             if terminator {
                 // before the `send_now` early-out below: a chunk closed
                 // whoever the prompt was owed to
-                self.publish_combat();
+                let combat = self.publish_combat();
+                // The chunk is classified, so its lines can be tagged and
+                // written (`player_log/feed.rs`).
+                if let Some(log) = &mut self.player_log {
+                    log.close(combat);
+                }
                 // A prompt owed to an earlier `send_now` is NOT this window's
                 // terminator. Spend one and leave the window open; the
                 // in-flight command's own prompt is still coming (SE-5).

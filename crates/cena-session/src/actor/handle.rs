@@ -88,6 +88,7 @@ impl<S: ByteSource> Session<S> {
                 sink: None,
                 combat: None,
                 menu_dir: None,
+                player_log: None,
                 persistence: Box::default(),
                 combat_refusals_logged: 0,
                 cancel: cancel.clone(),
@@ -178,6 +179,26 @@ impl<S: ByteSource> Session<S> {
         recorder: crate::combat_recorder::worker::RecorderHandle,
     ) -> Self {
         self.actor.combat = Some(recorder);
+        self
+    }
+
+    /// Record what the player saw and sent in this log (`plan/25`).
+    #[must_use]
+    pub fn with_player_log(
+        mut self,
+        log: crate::PlayerLog,
+        capture: crate::player_log::Capture,
+        settings_dir: Option<std::path::PathBuf>,
+    ) -> Self {
+        let tap = crate::player_log::Tap::new(
+            log,
+            crate::lifecycle::SessionId::FIRST,
+            capture,
+            settings_dir,
+        );
+        // First attachment wins; the actor and the handle must agree.
+        let tap = self.handle.log_slot().get_or_init(|| tap).clone();
+        self.actor.player_log = Some(crate::player_log::Feed::new(tap, self.actor.generation));
         self
     }
 
