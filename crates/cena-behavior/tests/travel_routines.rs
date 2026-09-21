@@ -292,3 +292,99 @@ async fn seeking_reads_the_visions_room_name_off_the_wire() {
     );
     session.cancel();
 }
+
+/// 1 -> 2 -> 3, plainly.
+const ROAD: &str = r#"[
+  {"id":1,"uid":[1001],"exits":[{"to":2,"kind":"cardinal","cmd":"north","cost":1}]},
+  {"id":2,"uid":[1002],"exits":[{"to":3,"kind":"cardinal","cmd":"north","cost":1}]},
+  {"id":3,"uid":[1003]}
+]"#;
+
+/// `go2.lic:2406`: upstream pauses beside the dead; this stops and says why.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_body_on_the_road_stops_a_trip_that_was_asked_to() {
+    let beside_the_dead = b"<nav rm='1002'/>\n<component id='room players'>Also here: \
+        <a exist=\"-1\" noun=\"Demandred\">Demandred</a> who appears dead.</component>\n\
+        <prompt time=\"2\">&gt;</prompt>\n";
+    for (settings, ended, sent) in [
+        (with(&["stop_for_dead"]), Ended::Halted, vec!["north"]),
+        (
+            TravelNotes::default(),
+            Ended::Arrived,
+            vec!["north", "north"],
+        ),
+    ] {
+        let (walk, transcript, session) = set_out(ROAD, 3, settings);
+        transcript.answer("north", beside_the_dead);
+        transcript.answer("north", &arrival(1003));
+        let travelled = walk.await.expect("the walk must not panic").unwrap();
+        assert_eq!(travelled.ended, ended);
+        assert_eq!(transcript.lines(), sent);
+        session.cancel();
+    }
+}
+
+/// `go2.lic:2405`: `sleep setting_delay` after each move.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn delay_is_waited_in_every_room_walked_into() {
+    let mut notes = TravelNotes::default();
+    notes.settings.insert("delay".into(), "7".into());
+    let began = tokio::time::Instant::now();
+    let (walk, transcript, session) = set_out(ROAD, 3, notes);
+    transcript.answer("north", &arrival(1002));
+    transcript.answer("north", &arrival(1003));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    // Two rooms walked into, seven seconds each, in virtual time.
+    let took = began.elapsed();
+    assert!(
+        took >= std::time::Duration::from_secs(14) && took < std::time::Duration::from_secs(20),
+        "{took:?}"
+    );
+    session.cancel();
+}
+
+/// The long way to the Hinterwilds passes the encampment (29860); the Abbey's
+/// teleporter is a step from the start.
+const HINTERWILDS: &str = r#"[
+  {"id":1,"uid":[1001],"location":"Icemule Trace","exits":[
+     {"to":29860,"kind":"cardinal","cmd":"north","cost":500},
+     {"to":31064,"kind":"cardinal","cmd":"east","cost":1}]},
+  {"id":31064,"uid":[4132054],"location":"the Abbey","title":["[Abbey, Teleportation Chamber]"]},
+  {"id":29860,"uid":[7503001],"location":"the Hinterwilds","exits":[
+     {"to":29876,"kind":"cardinal","cmd":"south","cost":1}]},
+  {"id":29876,"uid":[7503253],"location":"the Hinterwilds","exits":[
+     {"to":29860,"kind":"cardinal","cmd":"out","cost":1}]}
+]"#;
+
+fn fragments(count: u32) -> Vec<u8> {
+    format!(
+        "You are carrying {count} gigas artifact fragments.\n<prompt time=\"2\">&gt;</prompt>\n"
+    )
+    .into_bytes()
+}
+
+/// `go2.lic:2191-2200`: with the fragments, the teleporter; without, the walk.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_hinterwilds_are_reached_by_fragments_when_there_are_enough() {
+    let (walk, transcript, session) = set_out(HINTERWILDS, 29860, with(&["use_gigas_hwtravel"]));
+    transcript.answer("wealth gigas", &fragments(6));
+    transcript.answer("east", &arrival(4_132_054));
+    transcript.answer("go sliver", &arrival(7_503_253));
+    transcript.answer("out", &arrival(7_503_001));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(
+        transcript.lines(),
+        ["wealth gigas", "east", "go sliver", "go sliver", "out"]
+    );
+    session.cancel();
+
+    let (walk, transcript, session) = set_out(HINTERWILDS, 29860, with(&["use_gigas_hwtravel"]));
+    transcript.answer("wealth gigas", &fragments(3));
+    transcript.answer("north", &arrival(7_503_001));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(transcript.lines(), ["wealth gigas", "north"]);
+    session.cancel();
+}

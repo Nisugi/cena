@@ -378,7 +378,11 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 return Err(Ended::Stopped(BehaviorError::Cancelled));
             }
             self.drain(trip).map_err(Ended::Stopped)?;
+            let before = self.was;
             let here = self.locate(map);
+            if before.is_some() && before != self.was {
+                self.arrived(notes).await?;
+            }
             if here.is_some() {
                 self.lost_since = None;
             } else if self.lost_since.get_or_insert_with(Instant::now).elapsed() >= LOST_WAIT {
@@ -419,6 +423,41 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             }?;
         }
         Ok(Turn::On)
+    }
+
+    /// go2's two rules for a room just walked into (`go2.lic:2405-2406`):
+    /// `delay` seconds are waited, and `stop_for_dead` halts the trip where
+    /// someone lies dead -- upstream pauses; this stops, and is started
+    /// again. Not asked of the room the trip began in, so starting again
+    /// beside the body walks on.
+    async fn arrived(&mut self, notes: &TravelNotes) -> Result<(), Ended> {
+        let dead = |player: &cena_session::RoomItem| {
+            player
+                .status
+                .as_ref()
+                .is_some_and(|status| status.as_str().contains("dead"))
+        };
+        let stops = notes
+            .settings
+            .get("stop_for_dead")
+            .is_some_and(|is| is == "true");
+        if stops && self.state.room.players.iter().any(dead) {
+            self.halted = Some("someone here is dead, and `stop_for_dead` is on.".to_owned());
+            return Err(Ended::Halted);
+        }
+        let delay = notes
+            .settings
+            .get("delay")
+            .and_then(|delay| delay.parse::<f64>().ok());
+        if let Some(delay) = delay.filter(|delay| delay.is_finite() && *delay > 0.0) {
+            let pause = tokio::time::sleep(Duration::from_secs_f64(delay.min(600.0)));
+            tokio::select! {
+                biased;
+                () = self.cancel.cancelled() => return Err(Ended::Stopped(BehaviorError::Cancelled)),
+                () = pause => {}
+            }
+        }
+        Ok(())
     }
 
     /// The walker's facts now: the model's, and what pre-flight found out.

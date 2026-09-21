@@ -15,11 +15,15 @@
 //! **Upstream `exit`s where this halts**: too poor to reach a bank, or the
 //! bank has not enough. Both are for the player to settle.
 
-use cena_map::{RoomId, Target};
+use cena_map::{RoomId, Target, Uid};
 use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::super::preflight::{silver_for, urchin_access, withdraw_command};
 use super::{Cx, Driver, Ended};
+
+/// The Long Snow's encampment and Cairnfang Manor's attic: the two ends of
+/// the long way to the Hinterwilds (`go2.lic:2192`).
+const HINTERWILDS_WAYS: [u32; 2] = [29860, 22154];
 
 fn is_on(cx: &Cx<'_>, setting: &str) -> bool {
     cx.notes
@@ -42,6 +46,10 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         let Some(here) = self.locate(cx.map) else {
             return Ok(());
         };
+        self.by_gigas(cx, here, goal).await?;
+        let Some(here) = self.locate(cx.map) else {
+            return Ok(());
+        };
         let needed = self.silver_needed(cx, here, goal);
         if needed == 0 {
             return Ok(());
@@ -61,6 +69,80 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             return Ok(());
         }
         self.by_way_of_the_bank(cx, here, goal, have).await
+    }
+
+    /// To or from the Hinterwilds by gigas fragments (`go2.lic:2191-2200`,
+    /// `:337-371`): when the route passes the Long Snow's encampment or the
+    /// manor's attic, the profile says `use_gigas_hwtravel`, and `wealth
+    /// gigas` counts at least `gigas_min_number` (four, unless said), walk to
+    /// the teleporter instead -- Ta'Illistim's if the route passes Seethe
+    /// Naedal, the Abbey's otherwise -- and `go sliver`; or, leaving, to
+    /// Sparkfinger's workroom and `order 3`. Which side was entered by is
+    /// remembered (`hinterwilds_location`) while the walker is there. The
+    /// trip then plans from wherever that landed.
+    async fn by_gigas(&mut self, cx: &mut Cx<'_>, here: RoomId, goal: RoomId) -> Result<(), Ended> {
+        const WORKROOM: i64 = 7_503_253;
+        if !is_on(cx, "use_gigas_hwtravel") {
+            return Ok(());
+        }
+        let walker = self.walker(cx.notes);
+        let Some(path) = cx.trip.path_from(cx.map, &walker, here, goal) else {
+            return Ok(());
+        };
+        if !path.iter().any(|room| HINTERWILDS_WAYS.contains(&room.0)) {
+            return Ok(());
+        }
+        let wild = |room: RoomId| {
+            cx.map.room(room).and_then(|room| room.location.as_deref()) == Some("the Hinterwilds")
+        };
+        let (leaving, arriving) = (wild(here), wild(goal));
+        if leaving == arriving {
+            return Ok(());
+        }
+        self.put(cx.trip, "wealth gigas").await?;
+        let fragments = self
+            .state
+            .character
+            .currency
+            .gigas_artifact_fragments
+            .unwrap_or(0);
+        let least = cx.notes.settings.get("gigas_min_number");
+        if fragments < least.and_then(|least| least.parse().ok()).unwrap_or(4) {
+            return Ok(());
+        }
+        let elven = path.iter().any(|room| {
+            cx.map.room(*room).is_some_and(|room| {
+                room.title
+                    .first()
+                    .is_some_and(|title| title.contains("Seethe Naedal"))
+            })
+        });
+        let (uid, side, commands): (i64, _, &[&str]) = match (arriving, elven) {
+            (true, true) => (13_205_202, Some("EN"), &["go sliver", "go sliver"]),
+            (true, false) => (4_132_054, Some("IM"), &["go sliver", "go sliver"]),
+            (false, _) => (WORKROOM, None, &["order 3", "order confirm"]),
+        };
+        let Some(teleporter) = cx.map.ids_for_uid(Uid(uid)).first().copied() else {
+            return Ok(());
+        };
+        if !self.walk_to(cx, teleporter).await? {
+            return Ok(());
+        }
+        for command in commands {
+            self.put(cx.trip, command).await?;
+        }
+        // Upstream's own rule: remembered only while standing in the workroom.
+        let landed = self.locate(cx.map);
+        let there = landed.is_some_and(|room| cx.map.ids_for_uid(Uid(WORKROOM)).contains(&room));
+        match side.filter(|_| there) {
+            Some(side) => cx
+                .notes
+                .memories
+                .insert("hinterwilds_location".to_owned(), side.to_owned()),
+            None => cx.notes.memories.remove("hinterwilds_location"),
+        };
+        (cx.wrote)(cx.notes);
+        Ok(())
     }
 
     /// What the route there -- and back, if the profile asks -- charges.
