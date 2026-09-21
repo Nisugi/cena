@@ -69,6 +69,9 @@ pub enum Ended {
     UnknownSpell,
     /// Stopped, or the session went away.
     Stopped(BehaviorError),
+    /// A routine met something only the player can settle, and stopped the
+    /// trip to say so: [`Travelled::halted`] has its words.
+    Halted,
 }
 
 /// What a finished trip leaves for whoever started it.
@@ -83,6 +86,8 @@ pub struct Travelled {
     pub wrong_for_the_map: Vec<(RoomId, RoomId)>,
     /// What the trip's choices were seeded with ([`seed_for`]), for a log.
     pub seed: u64,
+    /// Why a routine stopped the trip ([`Ended::Halted`]), as it told the player.
+    pub halted: Option<String>,
     /// The last room the walk knew itself to be in: what a caller writes
     /// down as `TravelNotes::last_room`. `None` if it never knew.
     pub last_room: Option<RoomId>,
@@ -112,6 +117,7 @@ pub async fn travel(
             stance_before: None,
             wrong_for_the_map: Vec::new(),
             seed: 0,
+            halted: None,
             last_room: None,
         };
     }
@@ -136,6 +142,7 @@ pub async fn travel(
         answer: Vec::new(),
         speech_before: None,
         taken: None,
+        halted: None,
     };
     let mut wrote = wrote;
     let mut cx = Cx {
@@ -154,6 +161,9 @@ pub async fn travel(
         ("stance", driver.stance_before.as_deref()),
         ("language", driver.speech_before.as_deref()),
     ];
+    if let Some(why) = &driver.halted {
+        handle.say(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
+    }
     for notice in report(ended, &driver.stored, &changed) {
         handle.say(notice);
     }
@@ -163,6 +173,7 @@ pub async fn travel(
         stance_before: driver.stance_before,
         wrong_for_the_map: trip.wrong_for_the_map().to_vec(),
         seed,
+        halted: driver.halted,
         last_room: driver.was.map(|(_, room)| room),
     }
 }
@@ -216,7 +227,8 @@ pub fn room_of(map: &Map, state: &GameState, whence: Whence) -> Option<RoomId> {
 fn report(ended: Ended, stored: &[Stored], changed: &[(&str, Option<&str>)]) -> Vec<Notice> {
     let mut said = Vec::new();
     let why = match ended {
-        Ended::Arrived | Ended::Stopped(BehaviorError::Cancelled) => None,
+        // A halt has said why already, in the routine's own words.
+        Ended::Arrived | Ended::Halted | Ended::Stopped(BehaviorError::Cancelled) => None,
         Ended::Failed(Why::NoRoute) => Some("there is no way there that this character can take."),
         Ended::Failed(Why::OffTheMap) => {
             Some("I do not know what room this is, so I have stopped.")
@@ -309,6 +321,8 @@ struct Driver<'a, N> {
     speech_before: Option<String>,
     /// What a crossing took out, and the container it came from, as ids.
     taken: Option<(String, String)>,
+    /// Why a routine stopped the trip, in its own words.
+    halted: Option<String>,
 }
 
 /// What a walk is over: the trip, and what it reads and writes.

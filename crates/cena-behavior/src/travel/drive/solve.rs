@@ -73,6 +73,10 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                         self.hold(cx.trip).await?;
                     }
                 }
+                Next::Stop(why) => {
+                    self.halted = Some(why);
+                    return Err(Ended::Halted);
+                }
                 Next::Done => return Ok(true),
                 Next::Failed => return Ok(false),
             }

@@ -93,6 +93,11 @@ pub(super) enum Next {
     Await(Vec<String>, u64),
     /// Wait this many milliseconds.
     Pause(u64),
+    /// Only the player can settle this -- a gem to hold, a helper to find.
+    /// **The whole trip stops**, and tells them this. Upstream pauses the
+    /// script and waits; a walker that waits for a person is a walker nobody
+    /// can stop cleanly, so this one stops and is started again.
+    Stop(String),
     /// Nothing more to do. See the module docs.
     Done,
     /// This exit cannot be crossed by this walker today.
