@@ -141,18 +141,75 @@ each hold a private copy of something built to be shared.
 So: **one listener, one port**, and a session id selects which session a
 connection or a message concerns.
 
-#### The problem this surfaces: there is no session id
+#### The problem this surfaced: there was no session id — **now DONE**
 
-MEASURED: `grep -rn "SessionId\|session_id" crates/cena-session/src/` returns
-**nothing**. `SupervisedSession` has no identity, because `main.rs` builds
-exactly one and never needs to name it.
+MEASURED when this was written: `grep -rn "SessionId\|session_id"
+crates/cena-session/src/` returned **nothing**. `SupervisedSession` had no
+identity, because `main.rs` builds exactly one and never needs to name it.
 
-That is correct for today and **blocks M4's wire format**, since every message
-must say which character it is about.
+That was correct for a single-session binary and **blocked M4's wire format**,
+since every message must say which character it is about.
 
-**Decision: add `SessionId` in M4, not M5.** It is a newtype and a field. The
-cost of deferring is a wire-format migration in the very next milestone, which
-is the change §3's "session-aware from the start" exists to avoid.
+> **BUILT 2026-09-21** (commit `7707107`), on the author's call — the first
+> piece of M4 to exist. `SessionId` is a newtype beside `Generation` in
+> `lifecycle.rs`, seeded at 0 and counted up so criterion 7's replay produces
+> the same ids every run. It is on `SessionCore` (the part that outlives
+> connections), on `Snapshot`, on `SupervisedEnd`, and exported from
+> `cena-session`.
+>
+> **`SupervisedEnd` gained it for a reason worth recording.** The test asserting
+> the id survives a reconnect first checked a *copy* taken before the run, which
+> proves nothing — `run` consumes the session, so there was no way to read the
+> real id afterwards, and the test's name was a claim nothing checked. A
+> mutation now confirms the field is load-bearing: breaking only the ending's id
+> fails exactly that one test.
+
+The reasoning, kept because it is the argument for doing this kind of thing
+early: it is a newtype and a field, and the cost of deferring is a wire-format
+migration in the very next milestone — the change §3's "session-aware from the
+start" exists to avoid. `Generation` was kept a milestone early on the same
+argument (`lifecycle.rs:45-53`).
+
+### D1b. Which server crate — NOT decided here, and the criteria are why
+
+This plan deliberately **does not name a framework.** That is not indecision;
+it is that the constraints already narrow it further than a preference would,
+and the person who writes `cena-web` should pick against them with a lock file
+in front of them rather than inherit a name from a document.
+
+What is already fixed, and what it rules out:
+
+| Constraint | Evidence | Consequence |
+|---|---|---|
+| **tokio is the runtime** | `cena-session/Cargo.toml:28`, `cena-platform:18` | a server on a different executor would run two runtimes in one process |
+| **`native-tls` is the TLS stack** | `cena-platform/Cargo.toml:27`, `CLAUDE.md` "one TLS stack" | anything pulling `rustls` compiles both |
+| **One `hyper` major** | `cena-platform/Cargo.toml:57-62` | a server on a different `hyper` major compiles two stacks |
+| **`cena-web` may depend on `cena-ui` and `cena-session` only** | `layering.rs:70-75` | the framework and its transitive tree live entirely in `cena-web` |
+
+Those four together point hard at a tokio-native, hyper-1.x server, which in
+practice means a very short list. **The decision is the implementer's**, to be
+recorded here when made, with the lock-file diff as the evidence — the same way
+the `rusqlite` and `serde` choices were argued in `Cargo.toml:38-53`.
+
+> **The `hyper` constraint is not hypothetical, and it ties back to D1.**
+> `reqwest` is pinned to 0.12 rather than 0.13 because *"`tauri-plugin-http` v2
+> pins reqwest 0.12, and mixing majors compiles two clients and two hyper
+> stacks"* — a pin taken **to keep Tauri viable**. So a server crate that forces
+> a different `hyper` major would not merely bloat the build; it would quietly
+> spend the option D1 deferred rather than rejected. Whoever picks should know
+> they are being asked about Tauri too.
+
+Two things that would make a choice wrong regardless of merit:
+
+- **A second async runtime.** `plan/12` §5.5's supervision model assumes one.
+- **A framework that wants to own `main`.** The binary already owns its
+  lifecycle: `main.rs` spawns the supervisor, and §1a's one-binary rule means
+  the server is a guest in that process, not its host.
+
+> **This is a real gap in the plan and is named as one**, because the question
+> was asked directly (author, 2026-09-21: *"does the plan say what web server
+> crate to use and all that stuff?"*) and the honest answer was no. It now says
+> what would make an answer right, which is the part a document can supply.
 
 ### D2. `cena-ui` stays frontend-agnostic; the web frontend is a new crate
 
@@ -361,18 +418,20 @@ blocks drafting the frontend contract.
 
 ## 6. Build order
 
-0. **Fix gap 4** (`supervisor.rs:204`'s hardcoded `Connecting`) and **turn the
+0. ~~**`SessionId`**~~ — **DONE 2026-09-21**, `7707107`. See §D1a.
+1. **Fix gap 4** (`supervisor.rs`'s hardcoded `Connecting`) and **turn the
    mobile CI job on or record why not** (§5). Both are small, both are
    pre-existing, and both are cheaper before a frontend depends on them.
-1. **This document, reviewed.** The contract is drafted *from* it, not before it.
-2. **`cena-ui`'s view types** — snapshot and input vocabulary, derived from what
+2. **This document, reviewed**, and **the server crate chosen** against §D1b's
+   criteria. The contract is drafted *from* both, not before them.
+3. **`cena-ui`'s view types** — snapshot and input vocabulary, derived from what
    §3's slice actually renders. Small, and justified field by field. Needs the
    `CENA_UI_MAY_DEPEND_ON` edit (§4a gap 2), made knowingly.
-3. **The `Event` → view mapping**, with tests that a frontend never sees a
+4. **The `Event` → view mapping**, with tests that a frontend never sees a
    `Frame`.
-4. **`cena-web`**: listener, auth, snapshot-on-connect, delta stream.
-5. **The frontend itself.**
-6. **A replay test**: a recorded session, played through the mapping, producing
+5. **`cena-web`**: listener, auth, snapshot-on-connect, delta stream.
+6. **The frontend itself.**
+7. **A replay test**: a recorded session, played through the mapping, producing
    a deterministic sequence of view updates. `12` §7.2's criterion 7 already
    requires deterministic replay; this extends it to the frontend seam.
 
