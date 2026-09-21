@@ -140,6 +140,31 @@ fn ported_steps_round_trip_and_a_step_this_build_does_not_know_is_impassable() {
     assert!(!exit.is_routable());
 }
 
+/// A gated cost and a pass-through crossing survive the file, and a condition
+/// from the future costs one exit its price, not the map.
+#[test]
+fn gated_costs_and_pass_through_round_trip() {
+    let rooms: Vec<Room> = serde_json::from_str(
+        r#"[{"id":1,"exits":[{"to":1,"kind":"scripted","pass":null,
+             "cost":{"when":{"profession":"Bard"},"then":0.2}}]}]"#,
+    )
+    .unwrap();
+    let map = Map::from_rooms(rooms).unwrap();
+    let file = encode(&map).unwrap();
+    assert_eq!(decode(&file).unwrap(), map);
+
+    let at = file
+        .windows(12)
+        .position(|w| w == b"\"profession\"")
+        .unwrap();
+    let mut newer = file.clone();
+    newer[at + 1..at + 11].copy_from_slice(b"profezzion");
+    let loaded = decode(&newer).unwrap();
+    let exit = &loaded.room(RoomId(1)).unwrap().exits[0];
+    assert_eq!(exit.cost, Some(Cost::Unknown("gated".into())));
+    assert_eq!(exit.crossing, Crossing::PassThrough(cena_map::Pass));
+}
+
 /// RULE 1, for costs.
 #[test]
 fn a_cost_this_build_does_not_know_loads_as_impassable() {

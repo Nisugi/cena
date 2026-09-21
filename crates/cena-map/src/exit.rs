@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::cond::{Cond, Walker};
 use crate::room::RoomId;
 use crate::step::Step;
 
@@ -31,6 +32,12 @@ pub enum Crossing {
     /// (`crate::step`).
     #[serde(rename = "steps")]
     Steps(Vec<Step>),
+    /// Nothing is sent and nothing is awaited: the destination is a room that
+    /// exists only in the map (an urchin hub), and the walker crosses
+    /// `A -> hub -> B` as one hop, sending the hub's command from A
+    /// (`plan/21` §4.1). Upstream spells it `;e true`.
+    #[serde(rename = "pass")]
+    PassThrough(Pass),
     /// Scripted upstream and not yet ported. **Impassable**, and counted by the
     /// converter's report -- nothing is dropped silently (`plan/21` §3a).
     #[serde(rename = "unported")]
@@ -43,7 +50,15 @@ pub enum Crossing {
     Unknown(String),
 }
 
+/// The content of [`Crossing::PassThrough`], which has none. A unit struct
+/// rather than a unit variant so the flattened JSON is `"pass": null` beside
+/// the exit's other keys, like every other crossing.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Pass;
+
 impl Crossing {
+    /// Wire name of [`Crossing::PassThrough`].
+    pub const PASS: &'static str = "pass";
     /// Wire name of [`Crossing::Command`].
     pub const COMMAND: &'static str = "cmd";
     /// Wire name of [`Crossing::Unported`].
@@ -54,7 +69,10 @@ impl Crossing {
     /// Whether this build knows how to cross it.
     #[must_use]
     pub fn is_crossable(&self) -> bool {
-        matches!(self, Crossing::Command(_) | Crossing::Steps(_))
+        matches!(
+            self,
+            Crossing::Command(_) | Crossing::Steps(_) | Crossing::PassThrough(_)
+        )
     }
 }
 
@@ -73,6 +91,15 @@ pub enum Cost {
         /// The shape of the upstream cost script.
         unported: ShapeId,
     },
+    /// A cost that depends on who is walking: `then` when the question holds,
+    /// `else` when it does not -- and **impassable when it cannot be answered**
+    /// (`crate::cond`), which is not the same as "does not hold".
+    Gated {
+        when: Cond,
+        then: f64,
+        #[serde(default, rename = "else", skip_serializing_if = "Option::is_none")]
+        otherwise: Option<f64>,
+    },
     /// A kind of cost this build does not know. **Impassable**; produced only
     /// by the binary loader, for the same reason as [`Crossing::Unknown`].
     #[serde(skip)]
@@ -84,6 +111,28 @@ impl Cost {
     pub const FIXED: &'static str = "fixed";
     /// Wire name of [`Cost::Unported`].
     pub const UNPORTED: &'static str = "unported";
+    /// Wire name of [`Cost::Gated`].
+    pub const GATED: &'static str = "gated";
+
+    /// Seconds for this walker; `None` is impassable.
+    #[must_use]
+    pub fn price(&self, walker: &Walker) -> Option<f64> {
+        match self {
+            Cost::Fixed(seconds) => Some(*seconds),
+            Cost::Gated {
+                when,
+                then,
+                otherwise,
+            } => {
+                if when.ask(walker)? {
+                    Some(*then)
+                } else {
+                    *otherwise
+                }
+            }
+            Cost::Unported { .. } | Cost::Unknown(_) => None,
+        }
+    }
 }
 
 /// What kind of exit this is, for drawing: line colour, and whether an exit

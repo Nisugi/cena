@@ -35,6 +35,8 @@ pub struct Report {
     /// Scripted upstream, and crossed by steps an arm produced.
     pub ported_crossings: usize,
     pub unported_crossings: usize,
+    /// Scripted upstream, and priced by a gate an arm produced.
+    pub ported_costs: usize,
     pub unported_costs: usize,
     /// Exits with no cost at all, which are impassable (`cena_map::Cost`).
     pub without_cost: usize,
@@ -53,7 +55,7 @@ impl Report {
         for (to, command) in &upstream.wayto {
             // The table is the worklist, so a script an arm already knows is
             // not on it.
-            if is_script(command) && crate::recognise::crossing(command).is_none() {
+            if is_script(command) && crate::recognise::crossing(command, upstream.id).is_none() {
                 note(&mut self.crossing_shapes, command, upstream.id, to);
             }
         }
@@ -66,6 +68,7 @@ impl Report {
             if let Some(UpstreamCost::Script(script)) = cost
                 && upstream.wayto.contains_key(to)
                 && is_script(script)
+                && crate::recognise::cost(script).is_none()
             {
                 note(&mut self.cost_shapes, script, upstream.id, to);
             }
@@ -85,13 +88,14 @@ impl Report {
             }
             match exit.crossing {
                 Crossing::Unported(_) => self.unported_crossings += 1,
-                Crossing::Steps(_) => self.ported_crossings += 1,
+                Crossing::Steps(_) | Crossing::PassThrough(_) => self.ported_crossings += 1,
                 Crossing::Command(_) | Crossing::Unknown(_) => {}
             }
             match exit.cost {
                 Some(Cost::Unported { .. }) => self.unported_costs += 1,
                 // `Unknown` is made only by the binary loader; the converter
                 // writes costs, it never reads a map file.
+                Some(Cost::Gated { .. }) => self.ported_costs += 1,
                 Some(Cost::Fixed(_) | Cost::Unknown(_)) => {}
                 None => self.without_cost += 1,
             }
@@ -126,6 +130,7 @@ impl Report {
             self.unported_crossings,
             self.crossing_shapes.len()
         );
+        let _ = writeln!(text, "  ported costs        {}", self.ported_costs);
         let _ = writeln!(
             text,
             "  unported costs      {} in {} shapes",

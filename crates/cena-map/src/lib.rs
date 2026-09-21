@@ -26,9 +26,9 @@ pub mod route;
 pub mod step;
 
 pub use cond::{Cond, Walker};
-pub use exit::{Cost, Crossing, Exit, ExitKind, ShapeId};
+pub use exit::{Cost, Crossing, Exit, ExitKind, Pass, ShapeId};
 pub use locate::{By, Located, Origin, Sighting, title_from_subtitle};
 pub use map::{DuplicateRoom, Map};
 pub use room::{Image, Room, RoomId, Uid};
-pub use route::{Routes, Target, as_converted};
+pub use route::{Routes, Target, as_converted, priced_for};
 pub use step::{Action, Step};

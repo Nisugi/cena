@@ -6,7 +6,6 @@
 
 use cena_map::{Action, Cond, Cost, Crossing, ExitKind, Room, RoomId, Uid, Walker};
 use cena_mapdb_convert::run::{Conversion, convert};
-use cena_mapdb_convert::shape::shape_id;
 use cena_mapdb_convert::{output, run};
 
 const CUT: &str = include_str!("fixtures/mapdb_cut.json");
@@ -51,7 +50,10 @@ fn scripted_crossings_that_differ_only_in_a_parameter_share_a_shape() {
         .iter()
         .filter_map(|exit| match &exit.crossing {
             Crossing::Unported(shape) => Some((exit.to, exit.kind, shape.clone())),
-            Crossing::Command(_) | Crossing::Steps(_) | Crossing::Unknown(_) => None,
+            Crossing::Command(_)
+            | Crossing::Steps(_)
+            | Crossing::PassThrough(_)
+            | Crossing::Unknown(_) => None,
         })
         .collect();
     assert_eq!(shapes.len(), 2);
@@ -98,7 +100,8 @@ fn the_icy_path_is_ported_to_a_guarded_pause_and_a_move() {
     assert_eq!(steps[1].action, Action::Pause(4200));
     assert_eq!(steps[2].action, Action::Move("west".into()));
     assert_eq!(steps[2].when, None);
-    assert_eq!(conversion.report.ported_crossings, 1);
+    // This one, and the two `;e true` exits into the urchin hub.
+    assert_eq!(conversion.report.ported_crossings, 3);
 
     // The guard says what the Ruby said.
     let slippery = steps[1].when.as_ref().unwrap();
@@ -170,7 +173,11 @@ fn the_urchin_hub_is_data_on_both_sides() {
         .iter()
         .find(|exit| exit.to == RoomId(30714))
         .expect("BriarStone Court enters the hub");
-    assert_eq!(into_hub.crossing, Crossing::Unported(shape_id(";e true")));
+    assert_eq!(
+        into_hub.crossing,
+        Crossing::PassThrough(cena_map::Pass),
+        "nothing is sent: the hub exists only in the map"
+    );
     assert!(matches!(into_hub.cost, Some(Cost::Unported { .. })));
 
     let hub = room(&conversion, 30714).unwrap();
@@ -227,12 +234,11 @@ fn plain_exits_are_routable_and_typed() {
                 .iter()
                 .flat_map(|room| &room.exits)
                 .filter(|exit| {
-                    matches!(exit.crossing, Crossing::Command(_))
-                        && !matches!(exit.cost, Some(Cost::Fixed(_)))
+                    exit.crossing.is_crossable() && !matches!(exit.cost, Some(Cost::Fixed(_)))
                 })
                 .count(),
         conversion.report.exits,
-        "every exit is routable, an unported crossing, or a plain command without a usable cost",
+        "every exit is routable, an unported crossing, or crossable without a constant cost",
     );
 }
 

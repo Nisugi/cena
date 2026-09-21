@@ -30,6 +30,7 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
+use crate::cond::Walker;
 use crate::exit::{Cost, Exit};
 use crate::map::Map;
 use crate::room::{Room, RoomId};
@@ -50,6 +51,18 @@ pub fn as_converted(_from: &Room, exit: &Exit) -> Option<f64> {
     match (&exit.cost, exit.is_routable()) {
         (Some(Cost::Fixed(seconds)), true) => Some(*seconds),
         _ => None,
+    }
+}
+
+/// The pricing for one walker: every exit this build can cross, at what it
+/// costs *them*. The starting point for a trip's own pricing, which adds what
+/// only the trip knows -- the exits it has banned.
+pub fn priced_for(walker: &Walker) -> impl Fn(&Room, &Exit) -> Option<f64> + '_ {
+    |_from, exit| {
+        exit.crossing
+            .is_crossable()
+            .then(|| exit.cost.as_ref()?.price(walker))
+            .flatten()
     }
 }
 

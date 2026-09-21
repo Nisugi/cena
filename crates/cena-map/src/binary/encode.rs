@@ -84,6 +84,7 @@ fn write_exit(w: &mut Writer, exit: &Exit) -> Result<(), EncodeError> {
             let json = serde_json::to_vec(steps).map_err(|_| EncodeError)?;
             w.named(Crossing::STEPS, &json)?;
         }
+        Crossing::PassThrough(_) => w.named(Crossing::PASS, &[])?,
         Crossing::Unknown(_) => return Err(EncodeError),
     }
     match &exit.cost {
@@ -95,6 +96,10 @@ fn write_exit(w: &mut Writer, exit: &Exit) -> Result<(), EncodeError> {
                 Cost::Unported { unported } => {
                     let reference = w.intern(&unported.0)?;
                     w.named(Cost::UNPORTED, &reference.to_le_bytes())?;
+                }
+                gated @ Cost::Gated { .. } => {
+                    let json = serde_json::to_vec(gated).map_err(|_| EncodeError)?;
+                    w.named(Cost::GATED, &json)?;
                 }
                 Cost::Unknown(_) => return Err(EncodeError),
             }

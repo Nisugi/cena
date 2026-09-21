@@ -33,6 +33,11 @@ pub struct Walker {
     /// Duskruin on Friday and leaves on Sunday. A name never written is
     /// unknown, which prices the way back impassable -- correctly.
     pub memories: HashMap<String, String>,
+    /// As the game spells it: `Bard`.
+    pub profession: Option<String>,
+    /// The month of the game's calendar day, 1-12. A fact passed in, never
+    /// read from a clock here, so a replay plans the same route.
+    pub month: Option<u32>,
     /// Percent of capacity carried.
     pub encumbrance: Option<u32>,
     /// Ranks by skill name, lowercase. `None` until the skills are known at
@@ -60,6 +65,8 @@ pub enum Cond {
     Setting(String, String),
     /// The memory `.0` is exactly `.1`. See [`Walker::memories`].
     Remembered(String, String),
+    Profession(String),
+    Month(u32),
     EncumbranceOver(u32),
     /// Ranks in skill `.0` are below `.1`.
     SkillUnder(String, u32),
@@ -83,6 +90,8 @@ impl Cond {
             Cond::Not(inner) => inner.ask(walker).map(|answer| !answer),
             Cond::Setting(name, value) => walker.settings.get(name).map(|is| is == value),
             Cond::Remembered(name, value) => walker.memories.get(name).map(|is| is == value),
+            Cond::Profession(name) => walker.profession.as_ref().map(|is| is == name),
+            Cond::Month(month) => walker.month.map(|is| is == *month),
             Cond::EncumbranceOver(percent) => walker.encumbrance.map(|is| is > *percent),
             Cond::SkillUnder(skill, ranks) => walker
                 .skills

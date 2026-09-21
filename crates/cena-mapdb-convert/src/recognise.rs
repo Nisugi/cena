@@ -13,12 +13,190 @@
 //! Arms are added in the order that opens the most rooms
 //! (`research/mapdb-inventory/chokepoints.py`), not the order of most edges.
 
-use cena_map::{Action, Cond, Crossing, Step};
+use cena_map::{Action, Cond, Cost, Crossing, Pass, Step};
 
-/// The steps for an upstream crossing script, if an arm knows it.
+/// The steps for an upstream crossing script, if an arm knows it. `from` is
+/// the room the exit leaves, which some scripts name and some only imply.
 #[must_use]
-pub fn crossing(script: &str) -> Option<Crossing> {
+pub fn crossing(script: &str, from: u32) -> Option<Crossing> {
+    if script == ";e true" {
+        return Some(Crossing::PassThrough(Pass));
+    }
     icy_path(script)
+        .or_else(|| plain_move(script))
+        .or_else(|| put_then_move(script))
+        .or_else(|| event_transport(script, from))
+}
+
+/// The gate for an upstream cost script, if an arm knows it.
+#[must_use]
+pub fn cost(script: &str) -> Option<Cost> {
+    profession(script)
+        .or_else(|| remembered(script))
+        .or_else(|| setting_or_month(script))
+}
+
+fn always(action: Action) -> Step {
+    Step { action, when: None }
+}
+
+fn gated(when: Cond, then: &str) -> Option<Cost> {
+    let then: f64 = then
+        .parse()
+        .ok()
+        .filter(|then: &f64| then.is_finite() && *then >= 0.0)?;
+    Some(Cost::Gated {
+        when,
+        then,
+        otherwise: None,
+    })
+}
+
+/// `holes`, trying the template as written and then with `"` for `'`:
+/// upstream quotes both ways and means nothing by it.
+fn quoted<'s>(script: &'s str, parts: &[&str]) -> Option<Vec<&'s str>> {
+    holes(script, parts).or_else(|| {
+        let doubled: Vec<String> = parts.iter().map(|part| part.replace('\'', "\"")).collect();
+        let doubled: Vec<&str> = doubled.iter().map(String::as_str).collect();
+        holes(script, &doubled)
+    })
+}
+
+/// `move 'X'`, written as a script where a plain command would have done, and
+/// the same with a trailing `waitrt?` -- waiting out roundtime is part of what
+/// `Action::Move` means, so it adds nothing.
+fn plain_move(script: &str) -> Option<Crossing> {
+    const ENDINGS: [&str; 5] = ["'", "';", "'; waitrt?", "';waitrt", "'; waitrt"];
+    let found = ENDINGS
+        .iter()
+        .find_map(|ending| quoted(script, &[";e move '", ending]))?;
+    let command = found
+        .first()
+        .copied()
+        .filter(|hole| is_plain_argument(hole))?;
+    Some(Crossing::Steps(vec![always(Action::Move(
+        command.to_owned(),
+    ))]))
+}
+
+/// `fput 'open gate'; move 'go gate'`.
+fn put_then_move(script: &str) -> Option<Crossing> {
+    const FORMS: [[&str; 3]; 4] = [
+        [";e fput '", "'; move '", "'"],
+        [";e fput '", "';move '", "'"],
+        [";e fput '", "'\nmove '", "'"],
+        [";e fput '", "';move('", "')"],
+    ];
+    let found = FORMS.iter().find_map(|form| quoted(script, form))?;
+    let [first, then] = found[..] else {
+        return None;
+    };
+    if !is_plain_argument(first) || !is_plain_argument(then) {
+        return None;
+    }
+    Some(Crossing::Steps(vec![
+        always(Action::Put(first.to_owned())),
+        always(Action::Move(then.to_owned())),
+    ]))
+}
+
+/// `2.times{fput "event transport duskruin"};UserVars.mapdb_duskruin_origin = 7;`
+///
+/// The game asks once and goes on the second asking, so the last send is the
+/// move. What is remembered is always the room being left: upstream writes
+/// its id, or `Map.current.id`, and an arm that saw anything else refuses.
+fn event_transport(script: &str, from: u32) -> Option<Crossing> {
+    let found = holes(
+        script,
+        &[";e ", ".times{fput \"", "\"};UserVars.mapdb_", " = ", ";"],
+    )?;
+    let [times, command, name, value] = found[..] else {
+        return None;
+    };
+    let times: usize = times.parse().ok().filter(|times| (1..=3).contains(times))?;
+    if !is_plain_argument(command) || !is_word(name) {
+        return None;
+    }
+    if value != "Map.current.id" && value.parse() != Ok(from) {
+        return None;
+    }
+    let mut steps = vec![always(Action::Put(command.to_owned())); times - 1];
+    steps.push(always(Action::Move(command.to_owned())));
+    steps.push(always(Action::Remember(name.to_owned(), from.to_string())));
+    Some(Crossing::Steps(steps))
+}
+
+/// `Stats.prof == 'Bard' ? 0.2 : nil`, four ways. Two of them add
+/// `!defined?(Stats.prof) or`, which lets a walker of unknown profession
+/// through; here unknown is impassable like every other unknown.
+fn profession(script: &str) -> Option<Cost> {
+    const FORMS: [[&str; 3]; 4] = [
+        [";e Stats.prof == '", "' ? ", " : nil"],
+        [
+            ";e ((!defined?(Stats.prof) or Stats.prof == '",
+            "') ? ",
+            " : nil);",
+        ],
+        [
+            ";e (!defined?(Stats.prof) or Stats.prof == '",
+            "') ? ",
+            " : nil",
+        ],
+        [";e if Stats.prof == '", "'; ", "; else; nil; end"],
+    ];
+    let found = FORMS.iter().find_map(|form| quoted(script, form))?;
+    let [name, seconds] = found[..] else {
+        return None;
+    };
+    is_word(name).then_some(())?;
+    gated(Cond::Profession(name.to_owned()), seconds)
+}
+
+/// The way back from an event ground or Mist Harbor: open only to where the
+/// walker came in from (`plan/21` §4.4).
+fn remembered(script: &str) -> Option<Cost> {
+    const GUARDED: [&str; 5] = [
+        ";e (!UserVars.mapdb_",
+        ".nil? and UserVars.mapdb_",
+        " == ",
+        ") ? ",
+        " : nil;",
+    ];
+    const BARE: [&str; 4] = [";e (UserVars.mapdb_", " == ", " ? ", " : nil);"];
+    let (name, value, seconds) = if let Some(found) = holes(script, &GUARDED) {
+        let [name, again, value, seconds] = found[..] else {
+            return None;
+        };
+        (name == again).then_some((name, value, seconds))?
+    } else {
+        let [name, value, seconds] = holes(script, &BARE)?[..] else {
+            return None;
+        };
+        (name, value, seconds)
+    };
+    if !is_word(name) || value.parse::<u32>().is_err() {
+        return None;
+    }
+    gated(Cond::Remembered(name.to_owned(), value.to_owned()), seconds)
+}
+
+fn setting_or_month(script: &str) -> Option<Cost> {
+    if let Some(found) = holes(script, &[";e UserVars.mapdb_", " == true ? ", " : nil"]) {
+        let [name, seconds] = found[..] else {
+            return None;
+        };
+        is_word(name).then_some(())?;
+        return gated(Cond::Setting(name.to_owned(), "true".to_owned()), seconds);
+    }
+    let found = holes(script, &[";e Time.now.month == ", " ? ", " : nil"])?;
+    let [month, seconds] = found[..] else {
+        return None;
+    };
+    let month: u32 = month
+        .parse()
+        .ok()
+        .filter(|month| (1..=12).contains(month))?;
+    gated(Cond::Month(month), seconds)
 }
 
 /// Match `script` against literal parts with a hole between each pair, and
@@ -40,6 +218,11 @@ fn holes<'s>(script: &'s str, parts: &[&str]) -> Option<Vec<&'s str>> {
         remaining = after.strip_prefix(part)?;
     }
     remaining.is_empty().then_some(found)
+}
+
+/// A hole that is an identifier: a variable's name, a profession.
+fn is_word(hole: &str) -> bool {
+    !hole.is_empty() && hole.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
 /// A hole that is one quoted word: no quote, no statement separator.
@@ -150,5 +333,120 @@ mod tests {
         assert!(is_plain_argument("go bridge"));
         assert!(!is_plain_argument("west'; fput 'quit"));
         assert!(!is_plain_argument(""));
+    }
+
+    fn steps(script: &str, from: u32) -> Vec<Action> {
+        match crossing(script, from) {
+            Some(Crossing::Steps(steps)) => steps.into_iter().map(|step| step.action).collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_scripted_plain_move_is_a_move_however_it_is_quoted_or_ended() {
+        let go = vec![Action::Move("go thinness".into())];
+        assert_eq!(steps(";e move 'go thinness'", 1), go);
+        assert_eq!(steps(";e move \"go thinness\"; waitrt?", 1), go);
+        assert_eq!(steps(";e move 'go thinness';waitrt", 1), go);
+        // Anything after it that is not a known ending is not this shape.
+        assert_eq!(steps(";e move 'go thinness'; fput 'quit'", 1), vec![]);
+    }
+
+    #[test]
+    fn a_put_then_a_move() {
+        assert_eq!(
+            steps(";e fput 'open gate'\nmove 'go gate'", 1),
+            vec![
+                Action::Put("open gate".into()),
+                Action::Move("go gate".into())
+            ]
+        );
+    }
+
+    /// The transport asks once and goes on the second asking; what is
+    /// remembered is the room left, whichever way upstream wrote it.
+    #[test]
+    fn an_event_transport_remembers_the_room_it_left() {
+        let expected = vec![
+            Action::Put("event transport duskruin".into()),
+            Action::Move("event transport duskruin".into()),
+            Action::Remember("duskruin_origin".into(), "7".into()),
+        ];
+        let literal = ";e 2.times{fput \"event transport duskruin\"};\
+                       UserVars.mapdb_duskruin_origin = 7;";
+        let current = ";e 2.times{fput \"event transport duskruin\"};\
+                       UserVars.mapdb_duskruin_origin = Map.current.id;";
+        assert_eq!(steps(literal, 7), expected);
+        assert_eq!(steps(current, 7), expected);
+        assert_eq!(steps(literal, 8), vec![], "it names another room");
+    }
+
+    fn gate(script: &str) -> Option<(Cond, f64)> {
+        match cost(script) {
+            Some(Cost::Gated {
+                when,
+                then,
+                otherwise: None,
+            }) => Some((when, then)),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn a_profession_gate_is_one_gate_however_upstream_wrote_it() {
+        for script in [
+            ";e Stats.prof == 'Bard' ? 0.2 : nil",
+            ";e ((!defined?(Stats.prof) or Stats.prof == 'Bard') ? 0.2 : nil);",
+            ";e if Stats.prof == \"Bard\"; 0.2; else; nil; end",
+        ] {
+            assert_eq!(
+                gate(script),
+                Some((Cond::Profession("Bard".into()), 0.2)),
+                "{script}"
+            );
+        }
+        assert_eq!(gate(";e Stats.prof == 'Bard' ? -1 : nil"), None);
+    }
+
+    #[test]
+    fn the_way_back_is_gated_on_the_memory_the_way_in_wrote() {
+        assert_eq!(
+            gate(
+                ";e (!UserVars.mapdb_duskruin_origin.nil? and \
+                 UserVars.mapdb_duskruin_origin == 7) ? 0.2 : nil;"
+            ),
+            Some((Cond::Remembered("duskruin_origin".into(), "7".into()), 0.2))
+        );
+        assert_eq!(
+            gate(
+                ";e (!UserVars.mapdb_duskruin_origin.nil? and \
+                 UserVars.mapdb_talondown_origin == 7) ? 0.2 : nil;"
+            ),
+            None,
+            "two different variables is not this shape"
+        );
+        assert_eq!(
+            gate(";e (UserVars.mapdb_fwi_return_room == 3668 ? 5 : nil);"),
+            Some((
+                Cond::Remembered("fwi_return_room".into(), "3668".into()),
+                5.0
+            ))
+        );
+    }
+
+    #[test]
+    fn settings_and_months() {
+        assert_eq!(
+            gate(";e UserVars.mapdb_use_portmasters == true ? 1200 : nil"),
+            Some((
+                Cond::Setting("use_portmasters".into(), "true".into()),
+                1200.0
+            ))
+        );
+        assert_eq!(
+            gate(";e Time.now.month == 10 ? 0.2 : nil"),
+            Some((Cond::Month(10), 0.2))
+        );
+        assert_eq!(gate(";e Time.now.month == 13 ? 0.2 : nil"), None);
     }
 }

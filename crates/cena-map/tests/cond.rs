@@ -98,3 +98,23 @@ fn a_memory_opens_only_the_way_back() {
     assert_eq!(to_illistim.ask(&Walker::default()), None);
     assert!(!to_illistim.holds(&Walker::default()));
 }
+
+/// A gated cost has three outcomes, and the third is the one a `bool` loses:
+/// a walker nobody has looked at is refused, not charged the `else` price.
+#[test]
+fn a_gated_cost_is_impassable_when_it_cannot_be_answered() {
+    let cost: cena_map::Cost =
+        serde_json::from_str(r#"{"when":{"profession":"Bard"},"then":0.2,"else":30}"#).unwrap();
+    let walker = |profession: Option<&str>| Walker {
+        profession: profession.map(str::to_owned),
+        ..Walker::default()
+    };
+    assert_eq!(cost.price(&walker(Some("Bard"))), Some(0.2));
+    assert_eq!(cost.price(&walker(Some("Rogue"))), Some(30.0));
+    assert_eq!(cost.price(&walker(None)), None);
+
+    let members_only: cena_map::Cost =
+        serde_json::from_str(r#"{"when":{"profession":"Bard"},"then":0.2}"#).unwrap();
+    assert_eq!(members_only.price(&walker(Some("Rogue"))), None);
+    assert_eq!(cena_map::Cost::Fixed(1.5).price(&walker(None)), Some(1.5));
+}

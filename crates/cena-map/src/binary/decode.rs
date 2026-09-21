@@ -161,6 +161,7 @@ fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadErro
         // since -- is an unknown crossing, not a bad file (rule 1).
         Crossing::STEPS => serde_json::from_slice(blob)
             .map_or_else(|_| Crossing::Unknown(name.to_owned()), Crossing::Steps),
+        Crossing::PASS => Crossing::PassThrough(crate::exit::Pass),
         other => Crossing::Unknown(other.to_owned()),
     };
 
@@ -177,6 +178,12 @@ fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadErro
             }
             Cost::UNPORTED => Cost::Unported {
                 unported: ShapeId(strings.string_in(blob, at)?.to_owned()),
+            },
+            // JSON, for the reason `steps` is: a condition added later fails to
+            // parse and the cost is unknown -- impassable -- not a bad file.
+            Cost::GATED => match serde_json::from_slice(blob) {
+                Ok(gated @ Cost::Gated { .. }) => gated,
+                _ => Cost::Unknown(name.to_owned()),
             },
             other => Cost::Unknown(other.to_owned()),
         })

@@ -1047,6 +1047,28 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    walker whose skills are unknown *runs the ice* — it errs toward a fall (recoverable)
    rather than refusing a route.
 
+   **Second batch, 2026-09-20.** New vocabulary: `Action::Put` (a command that does not
+   change rooms), `Crossing::PassThrough` (upstream's `;e true`, §4.1),
+   **`Cost::Gated { when, then, else }`** — the first ported costs — with
+   `Cond::{Profession, Month}`, and `route::priced_for(walker)`, the pricing for one
+   walker. A gated cost has **three** outcomes: holds, does not hold, and *cannot be
+   answered*, which is impassable rather than the `else` price. Arms: `move 'X'` with or
+   without `waitrt?` (roundtime is part of what `Move` means); `fput 'X'; move 'Y'`;
+   `event transport` with its `Remember`; the profession gates in all four spellings;
+   the way-back gates on a memory; `mapdb_use_*` settings; months. One deliberate
+   difference: two profession spellings add `!defined?(Stats.prof) or`, which lets a
+   walker of *unknown* profession through. Here unknown is impassable, like every unknown.
+
+   | | start | icy paths | this batch |
+   |---|---|---|---|
+   | unported crossings | 7,923 | 7,752 | **6,507** (348 shapes) |
+   | unported costs | 1,860 | 1,860 | **1,683** (52 shapes) |
+   | reachable from Wehnimer's, knowing nothing of the walker | 6,969 | 9,247 | **10,118** |
+
+   `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
+   is larger than this number, and a second figure for a *described* walker is worth
+   adding once the urchin and portmaster gates are in.
+
    Still to come, in rooms-opened order (§5 step 5's table): `move S` and its kin, the
    profession cost gates (the first `Cost` arm — `Gated`), inn tables (`Await`), then the
    pairs that only open a region together. Nothing *walks* these yet: the Travel behavior

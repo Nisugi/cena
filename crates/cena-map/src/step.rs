@@ -20,6 +20,10 @@ pub enum Action {
     /// Send a movement command and wait to arrive, with everything a plain
     /// exit's crossing does: retries, standing, doors, roundtime.
     Move(String),
+    /// Send a command that does not change rooms, and wait for the game to
+    /// answer it: `open door`, `pull lever`, the first `event transport` that
+    /// only asks for confirmation.
+    Put(String),
     /// Cast a spell or use a society power, by name, and wait for it to land.
     /// How -- `incant`, `sigil of …`, `symbol of …` -- is the walker's
     /// business; the map says what, not how.

@@ -85,9 +85,11 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
         };
         let cost = match upstream.timeto.get(destination) {
             Some(Some(UpstreamCost::Seconds(seconds))) => Some(Cost::Fixed(*seconds)),
-            Some(Some(UpstreamCost::Script(script))) if is_script(script) => Some(Cost::Unported {
-                unported: shape_id(script),
-            }),
+            Some(Some(UpstreamCost::Script(script))) if is_script(script) => Some(
+                crate::recognise::cost(script).unwrap_or_else(|| Cost::Unported {
+                    unported: shape_id(script),
+                }),
+            ),
             Some(Some(UpstreamCost::Script(other))) => {
                 problem(format!(
                     "timeto for {to} is a string but not a script: {other:?}"
@@ -97,7 +99,7 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
             Some(None) | None => None,
         };
         let (kind, crossing) = if is_script(command) {
-            let crossing = crate::recognise::crossing(command)
+            let crossing = crate::recognise::crossing(command, id)
                 .unwrap_or_else(|| Crossing::Unported(shape_id(command)));
             (ExitKind::Scripted, crossing)
         } else {
