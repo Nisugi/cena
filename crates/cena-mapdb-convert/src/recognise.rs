@@ -18,6 +18,10 @@ use cena_map::{Action, Cost, Crossing, Pass, Step};
 mod costs;
 mod moves;
 mod routines;
+mod tail_a;
+mod tail_b;
+mod tail_c;
+mod tail_d;
 #[cfg(test)]
 mod tests;
 
@@ -51,6 +55,9 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| arctic_waters(script))
         .or_else(|| confluence(script, to))
         .or_else(|| minotaur_maze(script, to))
+        .or_else(|| tail_a::crossing(script, from, to))
+        .or_else(|| tail_b::crossing(script, from, to))
+        .or_else(|| tail_c::crossing(script, from, to))
 }
 
 /// The gate for an upstream cost script, if an arm knows it.
@@ -62,15 +69,16 @@ pub fn cost(script: &str) -> Option<Cost> {
         .or_else(|| trinket_named(script))
         .or_else(|| remembered(script))
         .or_else(|| setting_or_month(script))
+        .or_else(|| tail_d::cost(script))
 }
 
-fn always(action: Action) -> Step {
+pub(super) fn always(action: Action) -> Step {
     Step { action, when: None }
 }
 
 /// `holes`, trying the template as written and then with `"` for `'`:
 /// upstream quotes both ways and means nothing by it.
-fn quoted<'s>(script: &'s str, parts: &[&str]) -> Option<Vec<&'s str>> {
+pub(super) fn quoted<'s>(script: &'s str, parts: &[&str]) -> Option<Vec<&'s str>> {
     holes(script, parts).or_else(|| {
         let doubled: Vec<String> = parts.iter().map(|part| part.replace('\'', "\"")).collect();
         let doubled: Vec<&str> = doubled.iter().map(String::as_str).collect();
@@ -80,7 +88,7 @@ fn quoted<'s>(script: &'s str, parts: &[&str]) -> Option<Vec<&'s str>> {
 
 /// Match `script` against literal parts with a hole between each pair, and
 /// return what filled the holes. `["a", "b"]` has one hole.
-fn holes<'s>(script: &'s str, parts: &[&str]) -> Option<Vec<&'s str>> {
+pub(super) fn holes<'s>(script: &'s str, parts: &[&str]) -> Option<Vec<&'s str>> {
     let (first, rest) = parts.split_first()?;
     let mut remaining = script.strip_prefix(first)?;
     let mut found = Vec::with_capacity(rest.len());
@@ -100,11 +108,11 @@ fn holes<'s>(script: &'s str, parts: &[&str]) -> Option<Vec<&'s str>> {
 }
 
 /// A hole that is an identifier: a variable's name, a profession.
-fn is_word(hole: &str) -> bool {
+pub(super) fn is_word(hole: &str) -> bool {
     !hole.is_empty() && hole.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
 /// A hole that is one quoted word: no quote, no statement separator.
-fn is_plain_argument(hole: &str) -> bool {
+pub(super) fn is_plain_argument(hole: &str) -> bool {
     !hole.is_empty() && !hole.contains(['\'', '"', ';', '\n', '#'])
 }

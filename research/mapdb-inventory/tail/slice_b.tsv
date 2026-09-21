@@ -1,0 +1,103 @@
+edges	shape_id	sample	shape
+2	1292819011253714	17684->17682	;e fput S; waitrt?; fput S; move S
+1	26cb0c9db8099bc1	34292->34313	;e fput S; waitrt?; move S
+1	f4a269ffb85409ce	16353->16714	;e fput S; waitrt?; move S;
+1	40ec2782140689ed	30115->29867	;e fput S; while Room.current.id == N; fput S; waitrt; end; if Room.current.id != N; $go2_restart = true; end;
+1	79e8fd6f4ff9885d	24976->24979	;e fput S;dothistimeout S, N, R;wait_until{stunned?};echo S;wait_until{!stunned?};fput S until standing?
+15	9d8bd22be12d4f40	7489->19261	;e fput S;fput S
+1	67b1d2ec0189c652	24842->24876	;e fput S;fput S;$go2_restart = true
+1	39e9569bd980b994	24895->24876	;e fput S;fput S;$go2_restart=true
+1	d23d4f41db3d745b	25687->21323	;e fput S;fput S;fput S
+1	6273ef33154518ed	24238->21557	;e fput S;fput S;fput S;echo S;line = get until Room.current.id != N
+1	1712d7ac92a56742	21323->25687	;e fput S;fput S;fput S;fput S
+6	a69f04103ea31bc9	23470->23471	;e fput S;fput S;move S
+1	5ec47f45c00b5300	18249->25463	;e fput S;move (S);
+3	bd5107956e8dbab4	11622->11653	;e fput S;move S;move S;move S
+4	7729a2e425a70fd5	11617->22218	;e fput S;move S;move S;move S;move S
+3	37b6a17552d21682	11612->11630	;e fput S;move S;move S;move S;move S;move S
+2	6c21b2b1b6f9000f	11620->11653	;e fput S;move S;move S;move S;move S;move S;move S
+2	15a8ae6575771a18	22571->22666	;e fput S;move S;waitrt
+1	d4bee82956ae9392	25826->33232	;e fput S;move(S);
+1	d61b4e62dd117e92	36413->36422	;e fput S;sleep N;waitrt?; fput S; move S
+1	3abbd060159aa7a3	36417->36348	;e fput S;sleep N;waitrt?; move S
+3	9597a5ed83cac7f2	31797->32187	;e fput S;waitrt?;move (S)
+2	6547a6cc91e53cfb	5832->25637	;e fput S;waitrt?;move S
+1	b9f7f79bc25c1ace	31966->31967	;e fput S;waitrt?;move(S)
+1	48c6b889441df5ac	20012->19657	;e fput S;while line = get;if [..].include?(line);fput S;break;elsif line == S;empty_hand;fput S;fput S;fput S;fill_hand;break;end;end;
+1	4752dc87e18e45b7	19657->20012	;e fput S;while line = get;if [..].include?(line);fput S;break;elsif line == S;empty_hands;fput S;fput S;fput S;fill_hands;fput S;fput S;break;end;end
+1	86c2214196b28523	19992->19728	;e fput S;while line = get;if line == S;empty_hand;fput S;fput S;fput S;fill_hand;break;else;fput S;break;end;end
+1	7a27bffc0db33c6c	35902->35901	;e fput(S); fput(S)
+1	8830c72ad6011498	7318->7319	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; empty_hands; move S; waitrt?; fill_hands; if (group_members.to_a.length > N); echo S; while (line = get) and (group_members.length > N); if line =~ R; put S + $N.to_s; elsif line =~ R; group_members.delete $N; elsif line == S; break; end; end; end
+1	6c2d85917b2ae6e7	7331->7315	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; fput S unless standing?; fput S; wait_until { stunned? }; wait_while { stunned? }; fput S; if (group_members.to_a.length > N); echo S; wait_until { (group_members.to_a - GameObj.pcs.to_a.delete_if { |pc| not pc.status.nil? }.collect { |pc| pc.name }).empty? or clear.find { |line| line == S } }; end
+1	82c1bf69645fc27e	7324->4541	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; fput S; sleep N; result = nil; success = R; failures = R; matches = R; until result =~ success; fput S until standing?; result = dothistimeout S, N, matches; waitrt?; end; until checkpaths(S); fput S; sleep N; end; fput S until standing?; if (group_members.to_a.length > N); echo S; wait_until { (group_members.to_a - GameObj.pcs.to_a.delete_if { |pc| not pc.status.nil? }.collect { |pc| pc.name }).empty? or clear.find { |line| line == S } }; end
+1	efbd4240e05e3b45	4344->7298	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; move S; if (group_members.to_a.length > N); echo S; wait_until { (group_members.to_a - checkpcs.to_a).empty? or clear.find { |line| line == S } }; end
+6	5bf0696e089a2e20	3565->3566	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; move S; if group_members; echo S; begin; if get =~ R; group_members.delete $N; end; end while group_members.length > N; end; waitrt?
+1	3bbaf7870dc5c003	6135->6136	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; result = nil; while !result; if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; fput S; result = matchtimeout(N,R); waitrt?; if !result then multimove S,S; end; end; fput S if group_members; move S; if group_members; echo S; while (group_members.length > N) and (line = get); if line =~ R; group_members.delete $N; elsif line == S; break; end; end; end
+5	9b4789132bde6555	25149->25145	;e id=Room.current.id;move S until Room.current.id != id;$go2_restart=true
+1	6f7ebf4864d3eb2a	36440->36419	;e if !GameObj.loot.any?{|i| i.name =~ R};fput S;sleep N until GameObj.loot.any?{|i| i.name =~ R};end;move(S)
+1	b3a3bc6770dca75f	36419->36440	;e if !GameObj.loot.any?{|i| i.name =~ R};move(S);move(S);fput S;fput S;move(S);move(S);end;sleep N until GameObj.loot.any?{|i| i.name =~ R};move(S)
+1	ab77e1877b958a9e	18700->18250	;e if !GameObj.loot.find{|o| o.name =~ R}.nil?; move (S); elsif GameObj.right_hand.id.nil?; echo S; else echo S; batter_result = nil; until batter_result =~ R; batter_result = dothistimeout S, N, R; break if batter_result =~ R; end; move (S) if batter_result =~ R; echo S if batter_result =~ R; end;
+2	3a8561606fcb785a	3492->10329	;e if $platinum; move S; else; move S; end
+6	b1cdbf1596e9a7bf	11630->11617	;e if ((bounty? =~ R)||(Society.task =~ R)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ R }; else; mynpc = nil; end; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc;
+3	2689b144a93ba0a0	11630->11612	;e if ((bounty? =~ R)||(Society.task =~ R)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ R }; else; mynpc = nil; end; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc;
+2	ade23b8dadfe0885	7313->22426	;e if (bounty? =~ R); child = GameObj.npcs.find { |npc| npc.noun == S }; else; child = nil; end; move S; if Room.current == Room[..]; N.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep N } if child; move S; end
+4	0b3226f88672e0e3	3091->31352	;e if GameObj.inv.find {|obj| obj.noun == S};fput S;else;empty_hand;multifput S,S,S;fill_hand;end
+2	63239dc812be3d79	31427->31428	;e if GameObj.inv.find {|obj| obj.noun =~ R};fput S;else;empty_hand;multifput S,S,S;fill_hand;end
+1	8031ab15c2620516	19728->19992	;e if GameObj.loot.find{|item| item.noun == S};fput S;else;fput S;fput S until standing?;fput S;end
+28	01c64f22001baafd	23483->23490	;e if Spell[..].active?; move S;else; move S;end
+2	5da50495c180494e	1834->27470	;e if UserVars.Mularos_Lover; UserVars.Mularos_Lover.each{|c| fput S } end
+2	826f9800fb9109b6	27638->27639	;e if UserVars.Peregrine; UserVars.Peregrine.each{|c| fput S } end
+1	23012791a0737d46	21386->23157	;e if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; fput S; move S
+1	51dcc3b64b1726ef	23845->23926	;e if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; fput S; waitrt?; fput S
+3	5c40fd36420170ce	7458->7459	;e if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; fput S; waitrt?; move S; waitrt?
+3	e6e97c4ba9ec6463	6630->6631	;e if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; until dothistimeout(S, N, R) =~ R do end; move S
+1	87ab1c8c2ac90e79	2675->2677	;e if checkleft and checkright; empty_hands; need_fill_hands = true; else; need_fill_hands = false; end; result = dothistimeout S, N, R until result =~ R; waitrt?; fill_hands if need_fill_hands; move S
+80	a4a291b58897118f	13966->18842	;e if checksitting;while Room.current.id == N;fput(S);waitrt?;end;else;move(S);end;
+3	715956cb2832741b	13966->13923	;e if checksitting;while Room.current.id == N;fput(S);waitrt?;end;else;move(S);end;fill_hand;
+113	86fc530ed6735be9	11433->11435	;e if checkspell(N) then move S else move S end; waitrt?
+2	f9e70fa7cdab7862	11687->11688	;e if checkspell(N); move S; else; empty_hands; move S; fill_hands; end; waitrt?
+1	f7f60c999f9e57eb	6486->6487	;e if dothistimeout(S, N, R) !~ R; s = Spell[..]; if s.known?; if s.active?; r = dothistimeout S, N, R; if f = R.match(r).captures.first; N.times { sleep N; break if GameObj.npcs.any? { |n| n.name =~ R } }; end; else; unless s.affordable?; echo S; wait_until { s.affordable? }; end; s.cast; end; r = dothistimeout S, N, R; stop_watching = (r =~ R); which_ring = { S => S, S => S, S => S, S => S }; fail = false; g = proc { |l| l.split(S).each { |d| r = dothistimeout((S + d), N, R); if r.nil? or (r =~ R); fail = true; next; elsif r =~ R; dothistimeout((S + which_ring[$N] + S), N, R); dothistimeout((S + d), N, R); end } }; N.times { |i| i.zero? ? g.call(S) : g.call(S); break if fail; g.call(S); break if fail; fput S; g.call(S); break if fail; fput S }; fput S if stop_watching; if UserVars.mapdb_hate_familiar; sleep N; put S; put S; end; end; move S; end
+1	be73afa37b26e26d	7477->7476	;e if not kneeling?; fput S if Stats.race !~ R;end;fput S
+2	2d65df457910e94c	10815->10821	;e if resolve = Spell[..] and resolve.known? and resolve.affordable? and not resolve.active?; resolve.cast; end; empty_hands; move S; waitrt?
+1	84bd895dd9e1fb6c	24837->24967	;e line = fput S until line =~ R;move S
+1	f5d00520040da2f9	7046->7047	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end
+1	90633a1eb07650a1	7046->3705	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end
+1	9d22068e52600017	7046->7144	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; end
+1	caa6c2e3df351da9	7046->7099	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; end
+1	99a0d83d636413be	7046->7083	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; end
+2	b6525374c9a80b4a	10821->10815	;e loop { fput S; sleep N; waitrt?; break if (checkpaths(S) || checkpaths(S)); }; fill_hands
+4	206005f6d2206571	4136->4135	;e loop { move S; break if Room.current.id != N; move S; break if Room.current.id != N; }
+1	d4e2f24fe0c0205b	6998->6997	;e loop { result = dothistimeout S, N, R; break if result =~ R }; waitrt?; move S
+1	c73daf81f30f784b	6998->6999	;e loop { result = dothistimeout S, N, R; waitrt?; break if result =~ R }; move S
+10	ac92141146b4fb02	18112->18926	;e loop { wait_until { Spell[..].affordable? }; result = cast(N, S); break unless result =~ R }
+2	0156b58b54ca6f81	11068->11069	;e loop{fput S;pause N;if Room.current.id == N;break;end}
+3	304bc52328a4b87e	6201->6202	;e move (XMLData.room_exits - [..]).first
+2	15254de1ec4121e5	11433->11432	;e move S fill_hands
+1	da3442b773e4aaf6	1042->1041	;e move S fput S dir = matchfindword S move S sleep N if running?(S) move dir
+1	a469381e816021c6	8225->8226	;e move S fput S unless standing?
+2	af83995435824050	10117->10119	;e move S if Room.current.id == N echo S waitfor S move S end waitfor S move S
+3	d7c8d3ed27cfafa8	5868->5867	;e move S until Room.current.id == N
+4	a488e95ad8665aaf	1071->1072	;e move S waitrt?
+2	16d4cb4bcd90771a	1071->1070	;e move S waitrt? fill_hands if $group_members clear echo S begin line = get if line =~ R $group_members.delete $N elsif line == S break end end while $group_members.length > N end
+1	421c41897c0b1c5f	3035->3034	;e move S while Room.current.id == N
+7	9e1135bd70b5af8f	1809->1808	;e move S while checkpaths.include?(S)
+8	99bde0a9b2e13a89	16550->12269	;e move S; $go2_restart = true
+13	5565fed68f657a8f	26453->26454	;e move S; $go2_restart=true
+2	8bc2a3ef241ef684	2831->2832	;e move S; fill_hands
+2	2c5cab0232eba7e2	3030->16034	;e move S; fput S
+1	27d6b881ab3c0fd6	17680->17679	;e move S; fput S unless standing?; waitrt?
+2	4c8e3d2ebdebe60f	11906->12259	;e move S; fput S; waitrt?
+1	41f352b6711c803c	23496->19109	;e move S; fputS
+1	761bcdcf523accd8	11667->11675	;e move S; if checkpaths.include?(S); move S; move S; end
+2	b1ef4bc5fbb1ebb9	6634->6633	;e move S; if checkpaths.include?(S); move S; move S; move S; end
+5	7d66404f6dd3016c	17104->18602	;e move S; move S
+6	ab3e96c000a8924c	1809->13224	;e move S; move S if checkpaths.include?(S)
+6	432f01e65f62104f	1809->13481	;e move S; move S unless checkpaths.include?(S)
+2	d8b4559a28f3f36a	16806->4160	;e move S; move S while checkpaths.include?(S)
+1	3e5854eeb8e97fd6	11668->11675	;e move S; move S; if checkpaths.include?(S); move S; move S; elsif !checkpaths.include?(S); move S; end
+2	08540d3f971dd873	19544->1084	;e move S; move S; move S
+1	dc1b21c66b688f13	19543->1102	;e move S; move S; move checkpaths[rand(checkpaths.length)] while checkpaths.length > N
+9	bd75f950cb99ef5e	2216->2229	;e move S; sleep N; waitrt?
+2	e874075ebe0eaa42	5868->5869	;e move S; unless Room.current.id == N then move S; move S; move S; end
+2	c0fd2e7b93cd33dd	8227->8245	;e move S; unless Room.current.id == N; move S; move S; end
+1	7d9e471ee3871c3d	16806->4162	;e move S; unless checkpaths.include?(S); move S; move S; end
