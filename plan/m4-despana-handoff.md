@@ -34,8 +34,14 @@ cargo run -p cena -- --web
 
 Open the private loopback pairing URL printed by the executable. Its fragment
 contains a process-local capability; do not share or capture it in screenshots.
+It is printed to **stderr**: redirecting stderr, recording terminal scrollback,
+or collecting supervisor logs can disclose the pairing token. Treat that output
+as a secret while the process lives. This explicit operator handoff is retained
+for M4; it is not a credential-safe logging channel.
 The browser removes the fragment immediately and retains the capability only in
-memory. A page reload therefore needs the pairing URL again. The server binds
+memory. A page reload therefore needs the pairing URL again; reopening it in the
+same tab consumes and strips the new fragment, then reconnects without replaying
+commands. The server binds
 IPv4 loopback only; this is not a remote-phone access endpoint.
 
 Web mode stays open until Ctrl-C or native session completion. An explicit
@@ -59,19 +65,32 @@ never a live account. The browser visual smoke is separately documented in
 [browser smoke instructions](../crates/cena-web/browser-tests/README.md); its fixture is not a live game.
 
 Current results and known failures: [working status](m4-despana-status.md).
-Android/iOS prerequisites and unrun CI: [mobile verification](m4-mobile-verification.md).
+Android/iOS gates are [separate PR #3](https://github.com/Nisugi/cena/pull/3); its
+[verification record](https://github.com/Nisugi/cena/blob/ci/mobile-core-builds/plan/m4-mobile-verification.md)
+records both successful jobs on the original combined revision and the split's limits.
 Wire schema and its cross-language fixture: [frontend contract](../crates/cena-ui/WIRE.md).
 
 ## Deliberately not claimed
 
-- No live login, installed-app replacement or upstream merge. Publication as a draft PR
-  was authorized after the initial local handoff; it does not establish acceptance.
+- A subsequent coauthor/operator-present Calvix smoke exercised manual input,
+  hands, roundtime, viewer reattachment and clean quit. It was not a game-network
+  reconnect or full M4 acceptance. No upstream merge or installed-app replacement.
 - No map renderer, travel, account picker, macros/history, inventory/skills UI,
   Lua runtime, multi-session manager, or per-session panic recovery.
-- No mobile device/backgrounding acceptance. Added compile jobs are not executed CI results.
+- No mobile device/backgrounding acceptance. Passing library builds do not prove those.
 - No sandbox against hostile code running as the same OS user. Pairing plus
   Host/Origin checks protect the browser access path, not a compromised host.
 - No guarantee that a write receipt means the game performed the requested action.
+
+## Observation failure policy
+
+The native API documents `ObserveError::Busy` and `Timeout` as retryable reads,
+not evidence of a dead session. `Closed` is terminal for that observer. The M4
+presentation pump currently exits on any subscription error, making the failure
+visible rather than serving stale state. Before multiple concurrent consumers
+ship in M5, add bounded resubscription/backoff; do not treat transient saturation
+as a reason to restart the game session. Legacy native `subscribe` receivers are
+pre-run and unnumbered, not substitutes for `SessionObserver`'s fenced stream.
 
 ## Knowledge and continuation
 
