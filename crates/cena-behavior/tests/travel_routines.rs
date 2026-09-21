@@ -143,3 +143,113 @@ async fn a_patrol_goes_round_until_it_sees_the_way_out_and_then_plans_again() {
     );
     session.cancel();
 }
+
+/// 1 --north, fifty silver--> 2, and a bank east of 1.
+const FERRY: &str = r#"[
+  {"id":1,"uid":[1001],"tags":["silver-cost:2:50"],"exits":[
+     {"to":2,"kind":"cardinal","cmd":"north","cost":5},
+     {"to":3,"kind":"cardinal","cmd":"east","cost":1}]},
+  {"id":3,"uid":[1003],"tags":["bank"],"exits":[{"to":1,"kind":"cardinal","cmd":"west","cost":1}]},
+  {"id":2,"uid":[1002]}
+]"#;
+
+fn wealth(silver: u32) -> Vec<u8> {
+    format!("You have {silver} silver with you.\n<prompt time=\"2\">&gt;</prompt>\n").into_bytes()
+}
+
+fn with(settings: &[&str]) -> TravelNotes {
+    let mut notes = TravelNotes::default();
+    for setting in settings {
+        notes.settings.insert((*setting).into(), "true".into());
+    }
+    notes
+}
+
+/// `go2.lic:2217-2299`: short of the fare and allowed the bank, the trip
+/// goes there first, withdraws the difference, and then sets out.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_walker_short_of_the_fare_goes_by_the_bank() {
+    let (walk, transcript, session) = set_out(FERRY, 2, with(&["get_silvers"]));
+    transcript.answer("wealth quiet", &wealth(10));
+    transcript.answer("east", &arrival(1003));
+    transcript.answer("wealth quiet", &wealth(10));
+    transcript.answer("wealth quiet", &wealth(50));
+    transcript.answer("west", &arrival(1001));
+    transcript.answer("north", &arrival(1002));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(
+        transcript.lines(),
+        [
+            "wealth quiet",
+            "east",
+            "wealth quiet",
+            "withdraw 40 silvers",
+            "wealth quiet",
+            "west",
+            "north"
+        ]
+    );
+    session.cancel();
+}
+
+/// The bank has not enough: upstream exits, and so does this, saying why.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_bank_that_cannot_cover_the_fare_stops_the_trip() {
+    let (walk, transcript, session) = set_out(FERRY, 2, with(&["get_silvers"]));
+    transcript.answer("wealth quiet", &wealth(10));
+    transcript.answer("east", &arrival(1003));
+    transcript.answer("wealth quiet", &wealth(10));
+    transcript.answer("wealth quiet", &wealth(10));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Halted);
+    assert!(
+        travelled
+            .halted
+            .as_deref()
+            .is_some_and(|why| why.contains("not enough silver")),
+        "{:?}",
+        travelled.halted
+    );
+    assert_eq!(
+        transcript.lines().last().map(String::as_str),
+        Some("wealth quiet")
+    );
+    session.cancel();
+}
+
+/// Enough in hand: the bank is never visited and nothing is withdrawn.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_walker_with_the_fare_just_goes() {
+    let (walk, transcript, session) = set_out(FERRY, 2, with(&["get_silvers"]));
+    transcript.answer("wealth quiet", &wealth(50));
+    transcript.answer("north", &arrival(1002));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(transcript.lines(), ["wealth quiet", "north"]);
+    session.cancel();
+}
+
+/// North is five seconds; the urchins' way is one, for a walker who has them.
+const URCHINS: &str = r#"[
+  {"id":1,"uid":[1001],"exits":[
+     {"to":2,"kind":"cardinal","cmd":"north","cost":5},
+     {"to":2,"kind":"other","cmd":"urchin guide 2","cost":{"when":{"flag":"urchin_access"},"then":1}}]},
+  {"id":2,"uid":[1002]}
+]"#;
+
+/// `urchin_access` is a fact the map asks for and only the game can give:
+/// asked once, before the first plan, and only of a profile that uses them.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn urchin_access_is_asked_before_the_plan_and_prices_it() {
+    let (walk, transcript, session) = set_out(URCHINS, 2, with(&["use_urchins"]));
+    transcript.answer(
+        "urchin status",
+        b"You have permanent access to the urchin guides.\n<prompt time=\"2\">&gt;</prompt>\n",
+    );
+    transcript.answer("urchin guide 2", &arrival(1002));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(transcript.lines(), ["urchin status", "urchin guide 2"]);
+    session.cancel();
+}

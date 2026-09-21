@@ -1,0 +1,140 @@
+//! Asking what a trip must know before it is priced, and fetching the silver
+//! it will be asked for (`plan/24` stage 5). The reading is pure
+//! (`super::super::preflight`); this sends, walks and stops.
+//!
+//! # The silver detour (`go2.lic:2217-2299`)
+//!
+//! Add up what the route's exits charge -- and the way back, if the profile
+//! says `get_return_trip_silvers` -- and compare it with `wealth`. Short, and
+//! allowed the bank (`get_silvers`): walk to the nearest bank the silver in
+//! hand can reach, price the walk again from there, withdraw the difference,
+//! and look again. Short and not allowed, upstream warns, waits ten seconds
+//! and goes anyway; this warns and goes, since the ferryman will say no soon
+//! enough and the trip plans round him.
+//!
+//! **Upstream `exit`s where this halts**: too poor to reach a bank, or the
+//! bank has not enough. Both are for the player to settle.
+
+use cena_map::{RoomId, Target};
+use cena_session::{CommandId, Notice, NoticeKind};
+
+use super::super::preflight::{silver_for, urchin_access, withdraw_command};
+use super::{Cx, Driver, Ended};
+
+fn is_on(cx: &Cx<'_>, setting: &str) -> bool {
+    cx.notes
+        .settings
+        .get(setting)
+        .is_some_and(|is| is == "true")
+}
+
+impl<N: FnMut() -> CommandId> Driver<'_, N> {
+    /// Before the first plan. `goal` is where the trip is going.
+    pub(super) async fn preflight(&mut self, cx: &mut Cx<'_>, goal: RoomId) -> Result<(), Ended> {
+        if is_on(cx, "use_urchins") {
+            let answer = self.put(cx.trip, "urchin status").await?;
+            if let Some(access) = urchin_access(&answer) {
+                self.found.insert("urchin_access".to_owned(), access);
+            }
+        }
+        // Silver is priced from a room; an unplaced walker is the walk's to
+        // wait for, and the ferryman's to refuse.
+        let Some(here) = self.locate(cx.map) else {
+            return Ok(());
+        };
+        let needed = self.silver_needed(cx, here, goal);
+        if needed == 0 {
+            return Ok(());
+        }
+        let have = self.silver(cx).await?;
+        if have >= needed {
+            return Ok(());
+        }
+        if !is_on(cx, "get_silvers") {
+            self.handle.say(Notice::line(
+                NoticeKind::Warn,
+                format!(
+                    "Travel: this route asks for {needed} silver and you carry {have}. \
+                     `get_silvers` is off, so I am going anyway."
+                ),
+            ));
+            return Ok(());
+        }
+        self.to_the_bank(cx, here, goal, have).await
+    }
+
+    /// What the route there -- and back, if the profile asks -- charges.
+    fn silver_needed(&self, cx: &Cx<'_>, from: RoomId, goal: RoomId) -> u64 {
+        let walker = self.walker(cx.notes);
+        let leg = |from, to| {
+            cx.trip
+                .path_from(cx.map, &walker, from, to)
+                .map_or(0, |path| silver_for(cx.map, &path))
+        };
+        let back = if is_on(cx, "get_return_trip_silvers") {
+            leg(goal, from)
+        } else {
+            0
+        };
+        leg(from, goal) + back
+    }
+
+    /// `wealth`, as the model read it. Nothing said is nothing carried.
+    async fn silver(&mut self, cx: &mut Cx<'_>) -> Result<u64, Ended> {
+        self.put(cx.trip, "wealth quiet").await?;
+        Ok(self.state.character.currency.silver.unwrap_or(0))
+    }
+
+    async fn to_the_bank(
+        &mut self,
+        cx: &mut Cx<'_>,
+        here: RoomId,
+        goal: RoomId,
+        have: u64,
+    ) -> Result<(), Ended> {
+        let walker = self.walker(cx.notes);
+        let mut banks: Vec<(f64, RoomId)> = cx
+            .map
+            .rooms()
+            .iter()
+            .filter(|room| room.tags.iter().any(|tag| tag == "bank"))
+            .filter_map(|room| {
+                let path = cx.trip.path_from(cx.map, &walker, here, room.id)?;
+                (silver_for(cx.map, &path) <= have).then_some(())?;
+                let routes = cx
+                    .map
+                    .routes(here, Target::Room(room.id), cx.trip.pricing(&walker));
+                Some((routes.seconds_to(room.id)?, room.id))
+            })
+            .collect();
+        banks.sort_by(|(a, _), (b, _)| a.total_cmp(b));
+        let Some((_, bank)) = banks.first().copied() else {
+            return self.halt("you are too poor to reach a bank.");
+        };
+        if !self.walk_to(cx, bank).await? {
+            return self.halt("I could not get to the bank.");
+        }
+        let needed = self.silver_needed(cx, bank, goal);
+        let have = self.silver(cx).await?;
+        if needed > have {
+            let walker = self.walker(cx.notes);
+            let unseen = ["hidden", "invisible"]
+                .iter()
+                .any(|flag| walker.flags.get(*flag) == Some(&true));
+            if unseen {
+                self.put(cx.trip, "unhide").await?;
+            }
+            let command = withdraw_command(self.state.room.title.as_deref(), needed - have);
+            self.put(cx.trip, &command).await?;
+            if self.silver(cx).await? < needed {
+                return self.halt("there is not enough silver in this bank for the trip.");
+            }
+        }
+        Ok(())
+    }
+
+    fn halt(&mut self, why: &str) -> Result<(), Ended> {
+        self.halted = Some(why.to_owned());
+        Err(Ended::Halted)
+    }
+}

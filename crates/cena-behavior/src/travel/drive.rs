@@ -22,9 +22,12 @@
 //!
 //! A dead or disconnected session sends nothing at all.
 
+use std::collections::HashMap;
 use std::time::Duration;
 
-use cena_map::{Located, Map, Origin as Whence, RoomId, Sighting, Uid, title_from_subtitle};
+use cena_map::{
+    Located, Map, Origin as Whence, RoomId, Sighting, Uid, Walker, title_from_subtitle,
+};
 use cena_session::group::{self, GroupEvent};
 use cena_session::{
     AuthorityToken, ChunkLine, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind,
@@ -37,6 +40,7 @@ use tokio_util::sync::CancellationToken;
 use super::hands::{Stored, cast_commands, store_commands, take_back};
 use super::kept;
 
+mod preflight;
 mod solve;
 use super::{Deed, Now, Said, TravelNotes, Trip, Why, walker_from};
 use crate::BehaviorError;
@@ -143,6 +147,7 @@ pub async fn travel(
         speech_before: None,
         taken: None,
         halted: None,
+        found: HashMap::new(),
         kept: super::routines::Kept::default(),
     };
     let mut wrote = wrote;
@@ -152,7 +157,10 @@ pub async fn travel(
         notes,
         wrote: &mut wrote,
     };
-    let ended = driver.walk(&mut cx).await;
+    let ended = match driver.preflight(&mut cx, goal).await {
+        Ok(()) => driver.walk(&mut cx).await,
+        Err(ended) => ended,
+    };
     if ended == Ended::Stopped(BehaviorError::Cancelled) {
         driver.take_back_once().await;
     }
@@ -324,6 +332,8 @@ struct Driver<'a, N> {
     taken: Option<(String, String)>,
     /// Why a routine stopped the trip, in its own words.
     halted: Option<String>,
+    /// Facts asked for before the first plan (`preflight`): `urchin_access`.
+    found: HashMap<String, bool>,
     /// What routines have learned on this trip (`routines::Kept`).
     kept: super::routines::Kept,
 }
@@ -378,8 +388,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 here,
                 ms: u64::try_from(self.began.elapsed().as_millis()).unwrap_or(u64::MAX),
             };
-            let server = self.state.game_time_now().unwrap_or(0);
-            let walker = walker_from(&self.state, notes, server);
+            let walker = self.walker(notes);
             match trip.tick(map, &walker, now) {
                 Said::Arrived => return Ok(Turn::Arrived),
                 Said::Failed(why) => return Err(Ended::Failed(why)),
@@ -410,6 +419,14 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             }?;
         }
         Ok(Turn::On)
+    }
+
+    /// The walker's facts now: the model's, and what pre-flight found out.
+    fn walker(&self, notes: &TravelNotes) -> Walker {
+        let server = self.state.game_time_now().unwrap_or(0);
+        let mut walker = walker_from(&self.state, notes, server);
+        walker.flags.extend(self.found.clone());
+        walker
     }
 
     /// Which room of the map the model's room is, remembering the last one

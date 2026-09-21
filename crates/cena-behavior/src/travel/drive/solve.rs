@@ -13,9 +13,9 @@ use cena_map::{Action, RoomId, Routine, Step};
 use cena_session::{ChunkLine, CommandId, MoveFeedback, movement};
 use tokio::time::Instant;
 
+use super::super::Trip;
 use super::super::mover::wait_ms;
 use super::super::routines::{Next, Seen, Solver, solver_for};
-use super::super::{Trip, walker_from};
 use super::{Cx, Driver, Ended, Turn};
 
 /// How many things one routine may ask for: the driver's stop, above any
@@ -53,8 +53,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         for _ in 0..MAX_ASKS {
             self.drain(cx.trip).map_err(Ended::Stopped)?;
             let here = self.locate(cx.map);
-            let server = self.state.game_time_now().unwrap_or(0);
-            let walker = walker_from(&self.state, cx.notes, server);
+            let walker = self.walker(cx.notes);
             let next = solver.next(&Seen {
                 here,
                 goal,
@@ -99,7 +98,11 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
     }
 
     /// `fput`: send, take the answer, and send again if it was roundtime.
-    async fn put(&mut self, trip: &mut Trip, command: &str) -> Result<Vec<ChunkLine>, Ended> {
+    pub(super) async fn put(
+        &mut self,
+        trip: &mut Trip,
+        command: &str,
+    ) -> Result<Vec<ChunkLine>, Ended> {
         for _ in 0..MAX_WAITS {
             self.exchange(trip, command).await?;
             let wait = self
@@ -131,7 +134,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
     }
 
     /// A trip inside the trip. `false`: there is no way there.
-    async fn walk_to(&mut self, cx: &mut Cx<'_>, room: RoomId) -> Result<bool, Ended> {
+    pub(super) async fn walk_to(&mut self, cx: &mut Cx<'_>, room: RoomId) -> Result<bool, Ended> {
         let mut trip = Trip::seeded(room, cx.trip.draw());
         let mut inner = Cx {
             trip: &mut trip,

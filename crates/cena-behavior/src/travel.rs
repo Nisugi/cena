@@ -55,6 +55,7 @@ mod itinerary;
 mod kept;
 mod knows;
 mod mover;
+mod preflight;
 mod recovery;
 mod replies;
 mod routines;
@@ -272,6 +273,22 @@ impl Trip {
     /// land, when that is known. The answer is [`Said::Aside`].
     pub fn aside(&mut self, steps: Vec<Step>, to: Option<RoomId>) {
         self.aside = Some((steps, to));
+    }
+
+    /// The rooms this trip would walk from `from` to `to`, **both included**,
+    /// by its own pricing. For pre-flight, which prices a walk in silver.
+    #[must_use]
+    pub fn path_from(
+        &self,
+        map: &Map,
+        walker: &Walker,
+        from: RoomId,
+        to: RoomId,
+    ) -> Option<Vec<RoomId>> {
+        let routes = map.routes(from, Target::Room(to), self.pricing(walker));
+        let mut path = vec![from];
+        path.extend(routes.path_to(to)?);
+        Some(path)
     }
 
     /// Where the routine just handed over is meant to land.
@@ -579,7 +596,10 @@ impl Trip {
 
     /// The trip's own pricing: what the walker can pay, less what this stage
     /// cannot cross and what the trip has banned.
-    fn pricing<'a>(&'a self, walker: &'a Walker) -> impl Fn(&Room, &Exit) -> Option<f64> + 'a {
+    pub(crate) fn pricing<'a>(
+        &'a self,
+        walker: &'a Walker,
+    ) -> impl Fn(&Room, &Exit) -> Option<f64> + 'a {
         let theirs = priced_for(walker);
         move |room, exit| {
             (can_cross(&exit.crossing) && !self.banned.contains(&(room.id, exit.to)))
