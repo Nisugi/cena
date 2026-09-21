@@ -34,8 +34,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use cena_behavior::travel::{
-    self, Ended, Map, RoomId, TravelNotes, Whence, destination, itinerary, read_map, room_of,
-    table, walker_from,
+    self, Ended, Map, RoomId, TravelNotes, Whence, described, destination, itinerary, read_map,
+    room_of, table, walker_from,
 };
 use cena_session::travel_store::{self, TravelFile};
 use cena_session::{AuthorityToken, CommandId, Event, Notice, NoticeKind, SessionHandle, Snapshot};
@@ -57,6 +57,9 @@ pub(crate) enum Errand {
     Route(String),
     /// Walk there.
     Go(String),
+    /// Name the room the character stands in, for `--go` later: go2's
+    /// `;go2 save`. Sends nothing.
+    Save(String),
 }
 
 /// `--first south`: a command to send, as the player, before the errand --
@@ -93,6 +96,7 @@ impl Errand {
             for (flag, make) in [
                 ("--route", Errand::Route as fn(String) -> Errand),
                 ("--go", Errand::Go as fn(String) -> Errand),
+                ("--save-target", Errand::Save as fn(String) -> Errand),
             ] {
                 if arg == flag {
                     return args
@@ -237,7 +241,7 @@ pub(crate) async fn run(
 ) {
     let (to, walk) = match &errand {
         Errand::None => return,
-        Errand::Route(to) => (to.as_str(), false),
+        Errand::Route(to) | Errand::Save(to) => (to.as_str(), false),
         Errand::Go(to) => (to.as_str(), true),
     };
     let say = |kind, text: String| handle.say(Notice::line(kind, text));
@@ -265,11 +269,38 @@ pub(crate) async fn run(
     };
     let walker = walker_from(state, &notes, state.game_time().unwrap_or(0));
     remember_room(&mut file, &mut notes, here);
-    let Some(goal) = destination(&map, &walker, here, to, &notes.targets) else {
+    if matches!(errand, Errand::Save(_)) {
+        save_target(&mut file, to, here);
         say(
-            NoticeKind::Error,
-            format!("Travel: I do not know a room called {to:?}."),
+            NoticeKind::Info,
+            format!("Travel: {to:?} is room {} from now on.", here.0),
         );
+        return;
+    }
+    let Some(goal) = destination(&map, &walker, here, to, &notes.targets) else {
+        // go2 lists what the words fit and asks which; say which to ask for.
+        let fits = described(&map, to);
+        if fits.is_empty() {
+            say(
+                NoticeKind::Error,
+                format!("Travel: I do not know a room called {to:?}."),
+            );
+        } else {
+            let mut lines = vec![format!(
+                "Travel: {to:?} fits {} rooms. Ask for one by number:",
+                fits.len()
+            )];
+            lines.extend(fits.iter().take(MAX_LISTED).filter_map(|id| {
+                let room = map.room(*id)?;
+                let title = room.title.first().map_or("", String::as_str);
+                Some(format!(
+                    "{:>7}  {title}  {}",
+                    id.0,
+                    room.location.as_deref().unwrap_or("")
+                ))
+            }));
+            handle.say(Notice::table(NoticeKind::Warn, lines));
+        }
         return;
     };
     let Some(legs) = itinerary(&map, &walker, here, goal) else {
@@ -386,6 +417,22 @@ fn load_map(handle: &SessionHandle) -> Option<Map> {
     }
 }
 
+/// How many rooms a destination that fits several is listed with.
+const MAX_LISTED: usize = 40;
+
+/// `;go2 save <name>`: the name means this room from now on. One room, as
+/// go2 saves it; a name that meant several is replaced.
+fn save_target(file: &mut Option<(PathBuf, TravelFile)>, name: &str, here: RoomId) {
+    let Some((dir, file)) = file.as_mut() else {
+        eprintln!("  !! [travel] no travel file to save the target in");
+        return;
+    };
+    file.targets.insert(name.to_owned(), vec![here.0]);
+    if let Err(e) = travel_store::save(dir, file) {
+        eprintln!("  !! [travel] could not save the travel file: {e}");
+    }
+}
+
 /// Write down where the character is, for the next login to break a tie with.
 fn remember_room(file: &mut Option<(PathBuf, TravelFile)>, notes: &mut TravelNotes, here: RoomId) {
     notes.last_room = Some(here.0);
@@ -452,6 +499,10 @@ mod tests {
         assert_eq!(
             read(&["--hold", "60", "--go", "228"]),
             Errand::Go("228".into())
+        );
+        assert_eq!(
+            read(&["--save-target", "my shop"]),
+            Errand::Save("my shop".into())
         );
         // A flag with nothing after it is not a walk to nowhere.
         assert_eq!(read(&["--go"]), Errand::None);

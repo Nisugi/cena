@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use cena_behavior::travel::{ShutWhy, destination, itinerary, table};
+use cena_behavior::travel::{ShutWhy, described, destination, itinerary, table};
 use cena_map::{Map, Room, RoomId, Walker};
 
 /// `travel_trip.rs`'s map, less what this does not need:
@@ -210,4 +210,28 @@ fn a_routine_is_named_in_words() {
     };
     assert!(said(2).contains("(minotaur maze)"), "{}", said(2));
     assert!(said(3).contains("(rolaren gate)"), "{}", said(3));
+}
+
+/// go2's last resort: words from a title or a description, when they fit
+/// one room. Fitting several is the caller's to list, not this one's to pick.
+#[test]
+fn a_room_is_found_by_words_from_its_title_or_description() {
+    let rooms = r#"[
+      {"id":1,"title":["[Town, Gate]"],"description":["A gate stands open. Guards watch the road."]},
+      {"id":2,"title":["[Town, Well]"],"description":["An old well. Moss covers the stones."]},
+      {"id":3,"title":["[Town, Wall]"],"description":["The wall runs north."]}
+    ]"#;
+    let map = map_of(rooms).unwrap();
+    let go = |what| destination(&map, &Walker::default(), RoomId(3), what, &BTreeMap::new());
+    assert_eq!(go("town, well"), Some(RoomId(2)));
+    assert_eq!(go("guards watch"), Some(RoomId(1)));
+    // Pasted with its dots: either piece finds it.
+    assert_eq!(
+        go("nothing like this...Moss covers the stones."),
+        Some(RoomId(2))
+    );
+    // Three rooms are in town: none is chosen, and all are listed.
+    assert_eq!(go("town"), None);
+    assert_eq!(described(&map, "town").len(), 3);
+    assert_eq!(go("dragon"), None);
 }

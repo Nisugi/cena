@@ -86,8 +86,9 @@ pub enum ShutWhy {
 /// "Nearest" is by what *this walker* would pay to get there, so a bard's
 /// nearest bank may not be a warrior's.
 ///
-/// **Not built:** go2's match on a room's title or description, whose rules
-/// in `Room[]` are their own port.
+/// 5. **Words from a room's title or description** ([`described`]), when
+///    they fit exactly one room. Fitting several, go2 lists them and asks;
+///    this answers `None`, and the caller has [`described`] to list.
 #[must_use]
 pub fn destination(
     map: &Map,
@@ -143,7 +144,43 @@ pub fn destination(
         .filter(|room| room.tags.iter().any(|has| has.eq_ignore_ascii_case(&tag)))
         .map(|room| room.id)
         .collect();
-    nearest(&tagged)
+    nearest(&tagged).or_else(|| match described(map, what)[..] {
+        [only] => Some(only),
+        _ => None,
+    })
+}
+
+/// The rooms a player may mean by words from a title or a description
+/// (`go2.lic:2062-2065`): any title or description that holds the text,
+/// without regard to case -- or, of a description, any one of the pieces the
+/// text's full stops divide it into, which is how a description pasted with
+/// its `...` still finds its room.
+#[must_use]
+pub fn described(map: &Map, what: &str) -> Vec<RoomId> {
+    let whole = what.trim().to_lowercase();
+    if whole.is_empty() {
+        return Vec::new();
+    }
+    let pieces: Vec<&str> = whole
+        .trim_end_matches('.')
+        .split('.')
+        .map(str::trim)
+        .filter(|piece| !piece.is_empty())
+        .collect();
+    let holds = |texts: &[String], wanted: &str| {
+        texts
+            .iter()
+            .any(|text| text.to_lowercase().contains(wanted))
+    };
+    map.rooms()
+        .iter()
+        .filter(|room| {
+            holds(&room.title, &whole)
+                || holds(&room.description, &whole)
+                || pieces.iter().any(|piece| holds(&room.description, piece))
+        })
+        .map(|room| room.id)
+        .collect()
 }
 
 /// The route from `from` to `goal` as this walker would walk it now, or
