@@ -25,7 +25,7 @@ fn a_character_nobody_has_synced_is_asked_everything() {
 }
 
 #[test]
-fn a_full_sync_is_fourteen_commands() {
+fn a_full_sync_is_sixteen_commands() {
     // Pinned so a group gaining a command is a visible change to the cost of
     // a login rather than a silent one.
     //
@@ -37,11 +37,20 @@ fn a_full_sync_is_fourteen_commands() {
     // 15
     // ```
     //
-    // Fourteen here, and the difference is accounted for rather than assumed:
-    // three of Lich's belong to groups this model does not read yet (`spell`,
-    // `experience`, `profile full`), and `info full` is planned twice because
-    // `Stats` and `Identity` are separately staleable. 15 - 3 + 2 = 14.
-    assert_eq!(plan(&snapshot(), SystemTime::now(), MAX_AGE).len(), 14);
+    // Sixteen here, and every difference is accounted for rather than assumed:
+    //
+    //   15  Lich's list
+    //   -3  groups this model does not read yet: `spell`, `experience` (the
+    //       report is read but not persisted -- see `Group`, which has no
+    //       `Experience`), `profile full`
+    //   +2  `info full` is planned twice, because `Stats` and `Identity` are
+    //       separately staleable and either alone can be the stale one
+    //   +2  `wealth` and `tickets`, which Lich does not sync at all: its
+    //       currency keys are filled only from ordinary play, so a character
+    //       who never ran them reads as unknown
+    //   ==
+    //   16
+    assert_eq!(plan(&snapshot(), SystemTime::now(), MAX_AGE).len(), 16);
 }
 
 #[test]
@@ -135,7 +144,7 @@ fn a_clock_that_went_backwards_does_not_make_data_fresh() {
     for group in Group::ALL {
         snapshot.touch(group, future);
     }
-    assert_eq!(plan(&snapshot, now, MAX_AGE).len(), 14, "all of it");
+    assert_eq!(plan(&snapshot, now, MAX_AGE).len(), 16, "all of it");
 }
 
 #[test]

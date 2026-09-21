@@ -48,6 +48,7 @@ use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
+use super::currency::Currency;
 use super::enhancive::EnhanciveTotals;
 use super::psm::PsmSet;
 use super::skills::SkillSet;
@@ -89,6 +90,11 @@ pub enum Group {
     Psms,
     /// Enhancive totals, from `inventory enhancive totals`.
     Enhancives,
+    /// Silver, notes and the event currencies.
+    ///
+    /// Its own group because it goes stale on its own schedule: silver changes
+    /// with every purchase while skills change when you train.
+    Currency,
     /// Society, citizenship, warcries and resources.
     ///
     /// **The one group ordinary play keeps current.** The others are only
@@ -99,14 +105,15 @@ pub enum Group {
 }
 
 impl Group {
-    /// All six.
-    pub const ALL: [Self; 6] = [
+    /// All seven.
+    pub const ALL: [Self; 7] = [
         Self::Stats,
         Self::Identity,
         Self::Skills,
         Self::Psms,
         Self::Enhancives,
         Self::Standing,
+        Self::Currency,
     ];
 
     /// Every command that teaches this group, in send order.
@@ -139,6 +146,12 @@ impl Group {
             ],
             Self::Enhancives => &["inventory enhancive totals"],
             Self::Standing => &["society", "citizenship", "warcry", "resource"],
+            // `wealth` states silver; `tickets` states every event balance in
+            // one report. Lich has no sync command for either -- its currency
+            // keys are filled only from ordinary play -- so a character who
+            // has never run them reads as unknown, which is honest and is what
+            // a sync is for.
+            Self::Currency => &["wealth", "tickets"],
         }
     }
 
@@ -162,6 +175,7 @@ impl Group {
             // `resource` each teach a different part. `society` is the one a
             // caller refreshing a single group most likely means.
             Self::Standing => "society",
+            Self::Currency => "wealth",
         }
     }
 }
@@ -194,6 +208,8 @@ pub struct CharacterSnapshot {
     pub psms: PsmSet,
     /// Enhancive totals.
     pub enhancives: EnhanciveTotals,
+    /// Silver, notes and the event currencies.
+    pub currency: Currency,
     /// Society, citizenship, warcries and resources.
     pub standing: Standing,
     /// When each group was last taught.
@@ -241,6 +257,7 @@ impl CharacterSnapshot {
             skills: character.skills.clone(),
             psms: character.psms.clone(),
             enhancives: character.enhancives.clone(),
+            currency: character.currency,
             standing: character.standing.clone(),
             updated_at,
         }
@@ -266,6 +283,7 @@ impl CharacterSnapshot {
         character.skills.clone_from(&self.skills);
         character.psms.clone_from(&self.psms);
         character.enhancives.clone_from(&self.enhancives);
+        character.currency = self.currency;
         character.standing.clone_from(&self.standing);
         true
     }

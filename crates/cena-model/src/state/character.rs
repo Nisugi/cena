@@ -50,6 +50,7 @@
 
 pub mod blocks;
 pub mod body;
+pub mod currency;
 pub mod enhancive;
 pub mod experience_report;
 pub mod injured;
@@ -247,6 +248,8 @@ pub struct Character {
     pub psms: psm::PsmSet,
     /// Enhancive totals, from `inventory enhancive totals`.
     pub enhancives: enhancive::EnhanciveTotals,
+    /// Silver, notes and the event currencies.
+    pub currency: currency::Currency,
     /// Society, citizenship, warcries and resources.
     ///
     /// Filled from single lines rather than from a block: most of these
@@ -345,6 +348,7 @@ impl Character {
             name,
             instance,
             taught,
+            currency,
             skills,
             psms,
             enhancives,
@@ -366,6 +370,10 @@ impl Character {
             encumbrance_detail,
             stats,
             identity,
+            // KEPT. A balance is a fact about the character, and nothing in
+            // the login burst re-states it -- clearing would leave a display
+            // blank until the player happened to run `wealth`.
+            currency,
             // KEPT. A fact taught just before the transport dropped is
             // still a fact, and dropping the mark would lose the only record
             // that it needs writing.
@@ -545,6 +553,9 @@ impl Character {
         }
         if self.consume_standing(chunk) {
             self.taught.insert(snapshot::Group::Standing);
+        }
+        if self.currency.absorb_chunk(chunk) {
+            self.taught.insert(snapshot::Group::Currency);
         }
         // NOT MARKED TAUGHT, and there is no `Group::Experience`.
         // `reconnect_invalidation.rs` records why: experience changes

@@ -480,9 +480,9 @@ mod groups {
 
     #[test]
     fn the_group_count_is_stated_and_checked() {
-        // `Group::ALL`'s doc says "All six". A doc comment is a copy of a
+        // `Group::ALL`'s doc says "All seven". A doc comment is a copy of a
         // number like any other; this is the command that proves it.
-        assert_eq!(Group::ALL.len(), 6);
+        assert_eq!(Group::ALL.len(), 7);
     }
 }
 /// Through the real parser, from the author's live wire bytes.
