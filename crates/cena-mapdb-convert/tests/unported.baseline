@@ -11,4 +11,4 @@ costs 701
 # Rooms reached from room 228 knowing nothing about the walker. Only rises.
 reachable 10491
 # The same, for a walker with urchin guides and portmasters on and no profession.
-reachable_equipped 17451
+reachable_equipped 17563
