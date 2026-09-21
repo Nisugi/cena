@@ -52,6 +52,7 @@ pub use state::combat::status::{StatusAction, StatusLine, StatusName};
 pub use state::combat::ucs::{PositionTier, UcsAttack, UcsLine};
 pub use state::containers::{ContainerEvent, Containers, ItemRef, ReadySlot, StoreMode, StowSlot};
 pub use state::hands::Hand;
+pub use state::message::{Channel, Message, Messages};
 pub use state::resolve::{Held, Location, Match, Specificity, match_of};
 // NOTE: `creature::Stat` and `creature::status::Classification` are NOT
 // re-exported here: `character::stats::Stat` and `gameobj::Classification`

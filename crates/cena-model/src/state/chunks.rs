@@ -257,6 +257,11 @@ impl super::GameState {
                 if let Some(event) = super::containers::classify(line) {
                     self.containers.apply(&event);
                 }
+                // Speech and whispers, which the markup already types -- the
+                // preset names the channel and the link names the speaker.
+                if let Some(message) = super::message::classify(line) {
+                    self.messages.push(message);
+                }
             }
             // `bank account` is a whole-chunk answer: its rows mean nothing
             // without the opener above them.

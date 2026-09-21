@@ -820,3 +820,64 @@ while you are gone. These are stamps on **other people**, taken against a clock
 this session was keeping, and both assumptions break at once.
 
 `plan/20`'s list is now down to **typed speech and thoughts** and **overwatch**.
+
+---
+
+### Step 8: typed speech — and §1's ambiguity, resolved (2026-09-20)
+
+§1 above flagged this item as ambiguous and said to confirm with the author
+before building. Confirmed: a **typed `Message` in the model**, not
+`messaging.rb` (which only emits markup and belongs to `cena-ui`).
+
+**Not a port.** MEASURED: Lich has no speech classifier — nothing in `lib/`
+matches `says` or `whispers` outside `move.rb`'s movement-blocked messages and
+the combat tables. So the wire is the only authority.
+
+**The markup already carries everything.** MEASURED over the 208 live logs:
+
+```text
+<preset id='speech'><a exist="-10007833" noun="Pukk">Pukk</a> says</preset>, "Have fun!"
+<preset id="whisper"><a exist="-10807620" noun="Calvix">Calvix</a> whispers,</preset> "Vellum is cool"
+```
+
+| Fact | Where |
+|---|---|
+| the channel | the `<preset id=>` |
+| the speaker | the `exist` link **inside** it |
+| the body | the run **after** the preset closes |
+
+So the classifier re-tokenizes nothing — §3a again — and is twenty lines.
+
+**The false positive this avoids is real.** MEASURED: **523 lines** pair a
+player link with `whispers` outside any preset, and they are *spell-casting
+emotes* — `<X> whispers a quiet invocation`, `<X> whispers arcane
+incantations`. A text classifier matching the verb would report every cast in
+the room as a private message. The preset decides, so none of them are.
+
+#### Two measurement errors, both mine, both caught by looking again
+
+1. **"192 presets, all `speech`."** Wrong: the pattern accepted only single
+   quotes and the whisper lines use double. Correct figure: **203 `speech` and
+   3 `whisper`**, and those are the only two preset ids in the corpus.
+2. **"`espMasterData` appears 190 times and nothing handles it."** It is a
+   `<dialogData>` panel of ESP toggle *buttons* — UI chrome, not a message
+   feed. Reading the matched text rather than trusting the count corrected it.
+
+#### A mutation that survived, and the test that did not test what it claimed
+
+`a_link_in_the_body_is_not_the_speaker` passed a mutation taking the first link
+*anywhere* on the line — because in that sample the speaker **is** the first
+link. The rule and the shortcut agree there, so the test separated nothing.
+
+Fixed by a line where they disagree: a bystander named before the speaker
+opens their mouth. Same shape as the bank indentation guard and the
+`effect-list` vacuous pass — **the test never reached the distinction.**
+
+#### `state.rs` split rather than its cap raised
+
+Adding `messages` took `state.rs` to **549 of 550**, which is the situation
+`caps.baseline` records as the cap ceasing to mean anything. `impl PartialEq`
+(80 lines, self-contained, one job) moved to `state/equality.rs`, taking the
+file to **470**. Rule 4.1: *move code down, do not raise the cap.*
+
+**`plan/20` is down to one item: overwatch.**

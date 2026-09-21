@@ -136,6 +136,7 @@ impl GameState {
             room,
             arrivals,
             cooldowns,
+            messages,
             prompt,
             left_hand,
             right_hand,
@@ -244,6 +245,18 @@ impl GameState {
         // since castable, which is the quiet failure: nothing looks wrong, a
         // buff just never lands.
         cooldowns.clear();
+
+        // **Messages are KEPT**, and the contrast with the cooldowns
+        // immediately above is worth stating. A cooldown is a CLAIM ABOUT NOW
+        // -- "this person cannot receive that spell yet" -- and it stops being
+        // true while we are gone. A message is a record that someone said
+        // something at a time when we were listening, and that stays true
+        // forever.
+        //
+        // Nothing re-sends them, either: the burst carries no history. So
+        // clearing would lose the only copy of something already observed,
+        // which is the opposite of what invalidation is for.
+        let _ = messages;
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,
