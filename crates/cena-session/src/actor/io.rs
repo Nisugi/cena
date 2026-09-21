@@ -107,6 +107,17 @@ impl<S: ByteSource> SessionActor<S> {
     ) -> Option<super::EndReason> {
         match message {
             crate::command::Inbox::Command(envelope) => {
+                // The queued path already discards abandoned commands. The
+                // typed-quit shortcut must honor that cancellation too.
+                if envelope.reply.is_closed() {
+                    return None;
+                }
+                // A browser may still be displaying a prior connection. Check
+                // before the typed-quit path, which bypasses the queue's fence.
+                if envelope.generation != self.generation {
+                    let _ = envelope.reply.send(Outcome::Disconnected);
+                    return None;
+                }
                 // **A typed `quit` means what it says.**
                 //
                 // Sent as an ordinary command, `quit` reaches the game, the

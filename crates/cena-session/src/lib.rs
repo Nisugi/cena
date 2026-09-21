@@ -27,6 +27,7 @@ pub mod command;
 pub mod dirty_groups;
 pub mod lifecycle;
 pub mod menu_store;
+mod observation;
 pub mod queue;
 pub mod supervisor;
 
@@ -41,6 +42,7 @@ pub use command::{
     CommandId, Envelope, Farewell, Gate, Origin, Outcome, Refusal, Sent, SessionHandle,
 };
 pub use lifecycle::{Generation, GenerationCell, SessionId, State};
+pub use observation::{ObserveError, ObservedEvent, RetryStatus, SessionObserver};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
 pub use supervisor::{
     ConnectError, Connector, MAX_UNATTENDED_LOSSES, Retryability, SessionCore, StoppedBecause,

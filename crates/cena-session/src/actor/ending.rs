@@ -23,7 +23,7 @@
 //! Recorded because it is the cost the cap change was meant to stop paying: a
 //! seam chosen to shed five lines is a seam nobody can explain later.
 
-use super::{Event, SessionActor, State};
+use super::{Event, SessionActor, SessionEnd, State};
 use cena_platform::ByteSource;
 
 /// Why one connection ended.
@@ -88,6 +88,26 @@ impl EndReason {
 }
 
 impl<S: ByteSource> SessionActor<S> {
+    /// Hand the closed connection's resources back to its owner. A plain
+    /// session publishes its terminal snapshot here; a supervisor carries
+    /// observation requests forward until the whole session ends.
+    pub(super) fn into_end(mut self, reason: EndReason) -> SessionEnd<S> {
+        if self.on_disconnect == crate::Outcome::Dead {
+            self.observations
+                .finish(self.events.snapshot(&self.state, self.lifecycle));
+        }
+        SessionEnd {
+            recorder: self.recorder,
+            state: self.state,
+            lifecycle: self.lifecycle,
+            source: self.source,
+            reason,
+            commands: self.commands,
+            sink: self.sink,
+            observations: self.observations,
+        }
+    }
+
     /// Close the source and answer everyone still waiting.
     ///
     /// Everyone is answered [`Self::on_disconnect`] -- `Dead` for a plain

@@ -22,12 +22,12 @@
 //!
 //! # What it does between connections, in order
 //!
-//! 1. Publish [`State::Reconnecting`] -- §5.1's "No automation runs" begins
-//!    here, enforced by the readiness gate that already existed.
-//! 2. [`GameState::invalidate_for_reconnect`] -- what the login burst will not
+//! 1. [`GameState::invalidate_for_reconnect`] -- what the login burst will not
 //!    re-send becomes `Unknown`.
-//! 3. Advance the generation -- every handle now stamps the new one, and
+//! 2. Advance the generation -- every handle now stamps the new one, and
 //!    anything already in flight is correctly stale.
+//! 3. Publish [`State::Reconnecting`] with that generation. These three steps
+//!    happen in one synchronous turn, before observation requests are served.
 //! 4. Wait one rung of the backoff ladder ([`backoff`]), racing the cancel
 //!    token so a stop is never delayed by a sleep.
 //! 5. Ask the connector for a transport.
@@ -47,6 +47,7 @@
 
 mod connect;
 mod core;
+mod observation;
 mod retry;
 
 pub use connect::{ConnectError, Connector};
@@ -60,6 +61,7 @@ use retry::jitter;
 use crate::actor::{EndReason, Event, SessionActor, Snapshot};
 use crate::command::SessionHandle;
 use crate::lifecycle::{Generation, GenerationCell, State};
+use crate::observation::{EventPublisher, ObservationRequests};
 use cena_model::GameState;
 use cena_platform::{Recorder, SessionSink};
 use tokio::sync::{broadcast, mpsc};
@@ -148,14 +150,16 @@ impl<C: Connector> SupervisedSession<C> {
     #[must_use]
     pub fn new(connector: C) -> (Self, SessionHandle) {
         let (tx, rx) = mpsc::channel(COMMAND_CHANNEL_BOUND);
-        let (events, _) = broadcast::channel(EVENT_CHANNEL_BOUND);
         let generation = GenerationCell::first();
+        let events = EventPublisher::new(EVENT_CHANNEL_BOUND, generation.clone());
         let handle = SessionHandle::new(tx, generation.clone());
         let session = Self {
             core: SessionCore {
                 id: crate::lifecycle::SessionId::FIRST,
                 commands: rx,
                 events,
+                observations: ObservationRequests::new(),
+                lifecycle: State::Connecting,
                 state: GameState::default(),
                 recorder: Recorder::new(),
                 sink: None,
@@ -199,37 +203,21 @@ impl<C: Connector> SupervisedSession<C> {
         self
     }
 
-    /// An event stream that survives every reconnect.
-    ///
-    /// The snapshot comes from the **durable** state, so a subscriber joining
-    /// mid-session sees what the session knows rather than what one connection
-    /// has learned.
-    ///
-    /// # KNOWN DEFECT: `lifecycle` is always `Connecting`
-    ///
-    /// It is hardcoded below, and that is wrong for any subscriber who joins a
-    /// session already running — they are told it is connecting when it is
-    /// `Ready`. **Nothing notices today**: the only caller subscribes before
-    /// `run`, when `Connecting` happens to be true.
-    ///
-    /// M4's first act is a frontend subscribing mid-session, so this is a real
-    /// bug on that path and is recorded in `plan/23` §4a as gap 4.
-    ///
-    /// **Not fixed here**, deliberately: the supervisor does not track its
-    /// current lifecycle at all — it publishes `StateChanged` transitions
-    /// (`:552`) and keeps no field. Fixing it means adding that field and
-    /// deciding who owns it across the actor boundary, which is a change to
-    /// lifecycle ownership rather than a corrected literal. Doing it inside a
-    /// commit that adds a session id would bury it.
+    /// Read-only access obtained before `run` consumes the owner, supporting
+    /// fresh subscriptions during the actor, connect attempts and backoff.
+    #[must_use]
+    pub fn observer(&self) -> crate::SessionObserver {
+        self.core.observations.observer()
+    }
+
+    /// An event stream taken before running. For mid-session attachment use
+    /// `observer().subscribe()` on a previously obtained detached observer.
     #[must_use]
     pub fn subscribe(&self) -> (Snapshot, broadcast::Receiver<Event>) {
         (
-            Snapshot {
-                session: self.core.id,
-                state: self.core.state.clone(),
-                lifecycle: State::Connecting,
-                generation: self.core.generation.get(),
-            },
+            self.core
+                .events
+                .snapshot(&self.core.state, self.core.lifecycle),
             self.core.events.subscribe(),
         )
     }
@@ -293,14 +281,11 @@ impl<C: Connector> SupervisedSession<C> {
             // A cancel here abandons the attempt rather than the result: if the
             // login has already completed, the source is closed on the way out
             // rather than leaked.
-            let connected = tokio::select! {
-                () = self.core.cancel.cancelled() => {
-                    self.log("cancelled while connecting");
-                    stopped_because = StoppedBecause::Cancelled;
-                    reason = EndReason::Cancelled;
-                    break;
-                }
-                connected = self.connector.connect(generation) => connected,
+            let Some(connected) = self.connect_observed(generation).await else {
+                self.log("cancelled while connecting");
+                stopped_because = StoppedBecause::Cancelled;
+                reason = EndReason::Cancelled;
+                break;
             };
             // BEFORE anything is logged about this connection, and before a
             // single byte of it is written: a secret minted by the connect --
@@ -359,6 +344,7 @@ impl<C: Connector> SupervisedSession<C> {
                 std::mem::take(&mut self.core.state),
                 self.core.commands,
                 self.core.events.clone(),
+                self.core.observations,
                 std::mem::take(&mut self.core.recorder),
                 self.core.sink.take(),
                 self.core.combat.clone(),
@@ -368,7 +354,10 @@ impl<C: Connector> SupervisedSession<C> {
                 self.core.cancel.child_token(),
                 generation,
             );
-            let end = actor.run().await;
+            // One allocation per connection keeps the supervisor future from
+            // embedding the actor's large parser/model/select-loop storage.
+            // This remains the same task and ownership handoff, not a spawn.
+            let end = Box::pin(actor.run()).await;
 
             // Take the durable parts back BEFORE deciding anything. They must
             // return even on the path that stops, or `SupervisedEnd` would be
@@ -377,6 +366,8 @@ impl<C: Connector> SupervisedSession<C> {
             self.core.recorder = end.recorder;
             self.core.sink = end.sink;
             self.core.state = end.state;
+            self.core.lifecycle = end.lifecycle;
+            self.core.observations = end.observations;
             reason = end.reason;
 
             if !reason.warrants_reconnect() {
@@ -419,6 +410,11 @@ impl<C: Connector> SupervisedSession<C> {
             }
         }
 
+        self.finish(reason, stopped_because)
+    }
+
+    /// Publish the terminal snapshot and flush on every supervisor exit path.
+    fn finish(mut self, reason: EndReason, stopped_because: StoppedBecause) -> SupervisedEnd {
         // **Flush, on every exit path.** The actor flushes when it shuts down,
         // but a session that never got an actor -- a login refused at the first
         // attempt -- would otherwise drop its buffered lines unwritten and
@@ -428,6 +424,15 @@ impl<C: Connector> SupervisedSession<C> {
         // `nisugi-...-000.bytes` and `nisugi-....log` at 0 bytes each, with the
         // "connect failed" line sitting in a `BufWriter` that was dropped. The
         // one run that most needed a log was the one that had none.
+        if self.core.lifecycle != State::Closed {
+            self.core.lifecycle = State::Closed;
+            let _ = self.core.events.send(Event::StateChanged(State::Closed));
+        }
+        self.core.observations.finish(
+            self.core
+                .events
+                .snapshot(&self.core.state, self.core.lifecycle),
+        );
         self.log(&format!("session stopped: {stopped_because:?}"));
         if let Some(sink) = self.core.sink.as_mut() {
             let _ = sink.flush();
@@ -547,6 +552,15 @@ impl<C: Connector> SupervisedSession<C> {
     /// stopping a 250ms budget. The wait races the cancel token rather than
     /// checking it afterwards.
     async fn wait_before_retry(&mut self, attempt: &mut u32, detail: &str) -> bool {
+        // An initial failed login also enters the retry ladder, although it
+        // has not established a connection whose generation must advance.
+        if self.core.lifecycle != State::Reconnecting {
+            self.core.lifecycle = State::Reconnecting;
+            let _ = self
+                .core
+                .events
+                .send(Event::StateChanged(State::Reconnecting));
+        }
         let delay = backoff(*attempt, jitter());
         *attempt = attempt.saturating_add(1);
         self.log(&format!(
@@ -560,31 +574,22 @@ impl<C: Connector> SupervisedSession<C> {
             delay,
             detail: detail.to_owned(),
         });
-        tokio::select! {
-            () = self.core.cancel.cancelled() => false,
-            () = tokio::time::sleep(delay) => true,
-        }
+        self.wait_observed(delay).await
     }
 
     /// Between one connection and the next. The order is the contract; see this
     /// module's header.
     fn reconnect(&mut self) {
-        // 1. Announce it. From here until the next `Ready`, §5.1's "No
-        //    automation runs" holds -- through the readiness gate that already
-        //    existed, not a new check.
+        // No await in this transition: invalidate and advance before publishing
+        // so the reconnect event and every snapshot name the new generation.
+        self.core.state.invalidate_for_reconnect();
+        self.core.generation.advance();
+        self.core.lifecycle = State::Reconnecting;
         let _ = self
             .core
             .events
             .send(Event::StateChanged(State::Reconnecting));
         self.log("lifecycle Reconnecting");
-
-        // 2. Forget what the next login will not re-send, BEFORE the new
-        //    connection exists.
-        self.core.state.invalidate_for_reconnect();
-
-        // 3. Advance. Every handle now stamps the new generation; anything
-        //    already in flight was stamped before this and stays stale.
-        self.core.generation.advance();
     }
 
     /// Write one line to the session log, if there is one.
