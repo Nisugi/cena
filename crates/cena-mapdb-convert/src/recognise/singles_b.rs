@@ -119,6 +119,11 @@ fn caravan(script: &str) -> Option<Crossing> {
         include_str!("../upstream_scripts/caravan_from_sos.rb"),
         "Wehnimer's Landing",
     );
+    // The same, but for how it marks its shout bold.
+    const FROM_B: (&str, &str) = (
+        include_str!("../upstream_scripts/caravan_from_sos_b.rb"),
+        "Vornavis",
+    );
     const TO: (&str, &str) = (
         include_str!("../upstream_scripts/caravan_to_sos.rb"),
         "the Sea of Fire",
@@ -129,7 +134,7 @@ fn caravan(script: &str) -> Option<Crossing> {
         .chars()
         .all(|c| c.is_ascii_alphabetic() || matches!(c, ' ' | '\''))
         .then_some(())?;
-    [FROM, TO]
+    [FROM, FROM_B, TO]
         .iter()
         .any(|(template, town)| template.replace(town, named) == script)
         .then_some(())?;

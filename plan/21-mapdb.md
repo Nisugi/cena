@@ -1407,12 +1407,22 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    stops; what a walker does about hostiles is the walker's, so the steps only plan again.
    That is a requirement on the Travel behaviour, not on the map.
 
+   **The puzzles, named (2026-09-21, `recognise/named.rs`, `cena_map::Puzzle`).** 16 exits.
+   Twelve puzzles that belong to one place become `Routine::Puzzle { puzzle }`: the map names
+   them, the Travel behaviour will run them, and **each is pinned verbatim to upstream's
+   script**, which is the reference for what the routine must do. Two of them *pause for
+   the user* upstream (`VaalornDoor` wants a gem held, `BridgeWheel` wants help turning it):
+   the Travel behaviour needs a way to stop and say why. `WorkshopPillars` is priced only
+   for a walker who knows all three spells of one element, since upstream's script refuses
+   anyone else. The Confluence's and the seeking's engines -- scripts on an exit from a
+   room to itself, which nothing walks -- are pinned too, so a change to either is noticed.
+
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **27** |
+   | unported crossings | 7,923 | **11** |
    | unported costs | 1,860 | **22** |
-   | reachable from Wehnimer's, knowing nothing | 6,969 | **18,133** |
-   | reachable with paid services on | — | **22,303** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **18,538** |
+   | reachable with paid services on | — | **22,708** |
 
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth

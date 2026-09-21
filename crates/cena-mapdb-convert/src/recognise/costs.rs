@@ -1,6 +1,6 @@
 //! Arms for upstream cost scripts: who may use an exit, and at what price.
 
-use cena_map::{Action, Cond, Cost, Crossing, Routine, Step};
+use cena_map::{Action, Cond, Cost, Crossing, Puzzle, Routine, Step};
 
 use super::{holes, is_word, quoted};
 
@@ -178,6 +178,9 @@ fn setting_needed(crossing: &Crossing) -> Option<Cond> {
         Crossing::Routine(Routine::GuildPassword) => {
             return Some(Cond::SettingIsSet("rogue_password".to_owned()));
         }
+        Crossing::Routine(Routine::Puzzle {
+            puzzle: Puzzle::WorkshopPillars,
+        }) => return Some(one_full_set()),
         Crossing::Steps(steps) => steps,
         _ => return None,
     };
@@ -220,6 +223,23 @@ fn setting_needed(crossing: &Crossing) -> Option<Cond> {
         }) => Cond::Any(vec![worn.clone(), set]),
         _ => set,
     })
+}
+
+/// The wizards' workshop lets in whoever knows all three spells of one
+/// element; upstream's script tells anyone else so and stops.
+fn one_full_set() -> Cond {
+    let set = |spells: [&str; 3]| {
+        Cond::All(
+            spells
+                .map(|spell| Cond::SpellKnown(spell.to_owned()))
+                .to_vec(),
+        )
+    };
+    Cond::Any(vec![
+        set(["Hand of Tonis", "Sandstorm", "Call Wind"]), // 505, 914, 912
+        set(["Major Fire", "Immolation", "Minor Fire"]),  // 908, 519, 906
+        set(["Mage Armor", "Hurl Boulder", "Tremors"]),   // 520, 510, 909
+    ])
 }
 
 /// `cost`, with whatever [`setting_needed`] adds.

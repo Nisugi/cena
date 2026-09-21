@@ -32,5 +32,5 @@ pub use locate::{By, Located, Origin, Sighting, title_from_subtitle};
 pub use map::{DuplicateRoom, Map};
 pub use room::{Image, Room, RoomId, Uid};
 pub use route::{Routes, Target, as_converted, priced_for};
-pub use routine::{Landmark, Opening, Routine};
+pub use routine::{Landmark, Opening, Puzzle, Routine};
 pub use step::{Action, Step, moves_whatever_is_known};

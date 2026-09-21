@@ -21,6 +21,7 @@ mod keys;
 mod ladder;
 mod looking;
 mod moves;
+mod named;
 mod proposed;
 mod puzzles;
 mod reactions;
@@ -75,6 +76,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| puzzles::crossing(script, to))
         .or_else(|| singles::crossing(script))
         .or_else(|| singles_b::crossing(script))
+        .or_else(|| named::crossing(script))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
         .or_else(|| arctic_waters(script))

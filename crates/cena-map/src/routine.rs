@@ -114,6 +114,10 @@ pub enum Routine {
     /// Room 30850: the barrier's colour says which walk leads to its
     /// grotto. Walk it, `touch crystal`, walk back, and `go barrier`.
     ColourBarrier,
+    /// A puzzle that belongs to one place and takes no arguments: the map
+    /// names it, and the Travel behaviour knows how it goes. What each one
+    /// does is written on [`Puzzle`].
+    Puzzle { puzzle: Puzzle },
     Patrol {
         /// `None` keeps a gap upstream left: positions matter.
         starts: Vec<Option<RoomId>>,
@@ -125,6 +129,57 @@ pub enum Routine {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         after: Vec<String>,
     },
+}
+
+/// The puzzles of [`Routine::Puzzle`]. Each is pinned to upstream's script,
+/// verbatim, in the converter (`src/upstream_scripts/`), which is the
+/// reference for what it must do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Puzzle {
+    /// Rooms 3239 and 3264: open the gate; if it is locked, climb it (a good climber
+    /// lightly loaded, with Sigil of Resolve if known), or Phase through
+    /// it, or cast Unlock or Force Projection at it until it gives. Upstream
+    /// gives up on a walker who can do none, **but only when the gate is
+    /// locked**, which no plan can know. Lands elsewhere if it was neither.
+    RolarenGate,
+    /// Room 18178: Read the five runes and what each protrusion is set to, and
+    /// push protrusions until the staircase forms.
+    RuneStaircase,
+    /// Room 10781: Look at each of three pillars and cast the sorcerer spell its
+    /// symbol names at it. Sorcerers only, which the exit's cost says.
+    ThreePillars,
+    /// Room 14060: `open door`; if it will not, it wants a gem: put the one in
+    /// the right hand into it. **Upstream pauses for the user to hold a
+    /// cheap gem** when there is none.
+    VaalornDoor,
+    /// Room 6897: Touch the mural, match each verse it recites to its deity, and
+    /// answer them in order.
+    MuralOfDeities,
+    /// Room 18893: Read the grid on the altar, then pull each coloured lever
+    /// until it stands at the position the grid gives it.
+    AltarLevers,
+    /// Room 15571: The wizards' workshop: go to the side whose element the walker
+    /// knows all three spells of, and cast each at its pillar. The exit is
+    /// priced only for a walker who knows one full set.
+    WorkshopPillars,
+    /// Room 18748: Cast Eye Spy, send the eye along a fixed walk to read which
+    /// rune glows on the basalt, and touch that rune.
+    EyeSpyRunes,
+    /// Room 2677: `go door`, or else push the tine until a stone is aligned,
+    /// spend mana at the crown, touch it, and say the word the stone
+    /// stands for.
+    CrownDoor,
+    /// Room 14726: `go bridge`; if it is pulled open, go under, climb the
+    /// platform and turn the wheel, with strength spells if it will not
+    /// budge. **Upstream pauses for help** when it still will not.
+    BridgeWheel,
+    /// Room 6486: The stone doors a familiar opens: send it to watch, read which
+    /// ring it sees, pull that ring. The exit's cost asks for Call Familiar.
+    FamiliarDoors,
+    /// Room 9767: Touch the leaves in order, waiting while someone else is at
+    /// them and starting again when they fade, then the outstretched hand.
+    LabyrinthEntry,
 }
 
 /// One way out a [`Routine::Patrol`] looks for.
