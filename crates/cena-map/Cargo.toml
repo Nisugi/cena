@@ -1,0 +1,23 @@
+[package]
+name = "cena-map"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# `plan/21` §3c. The map's vocabulary: the room record, the exit record, and
+# what an exit's crossing and cost can be. Pure -- no file I/O, enforced by
+# `layering.rs::map_does_no_file_io` -- so the converter that writes these
+# records and the loader that will read them share one definition, and neither
+# can drift from the other without a compile error.
+#
+# No workspace dependency yet. `plan/21` places this crate at the model level;
+# the edge to whatever consumes it is added when that consumer exists
+# (`plan/05` §-1: no edge ahead of its use).
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

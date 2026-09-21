@@ -1,0 +1,367 @@
+2756	68	23282->23283	;e $mapdb_confluence_target = N; Room[..].wayto[..].call
+523	7	7->30714	;e true
+497	1362	6191->6192	;e target_room_id = N; maze_rooms = [..]; $minotaur_maze_dirs ||= Hash.new; loop { if (bounty? =~ R); child = GameObj.npcs.find { |npc| npc.noun == S }; else; child = nil; end; start_room = Room.current; $minotaur_maze_dirs[start_room.id] ||= Hash.new; dir = $minotaur_maze_dirs[start_room.id].keys.find { |d| $minotaur_maze_dirs[start_room.id][d] == target_room_id } || XMLData.room_exits.find { |d| $minotaur_maze_dirs[start_room.id][d].nil? } || $minotaur_maze_dirs[start_room.id].keys.find { |d| $minotaur_maze_dirs[$minotaur_maze_dirs[start_room.id][d]].values.include?(target_room_id) } || XMLData.room_exits[rand(XMLData.room_exits.length)]; move dir.dup; N.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep N } if child; end_room = Room.current; $minotaur_maze_dirs[start_room.id][dir] = end_room.id; if end_room.id == target_room_id; break; elsif not maze_rooms.include?(end_room.id); dir = end_room.wayto[start_room.id.to_s]; if dir.class == Proc; dir.call; N.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep N } if child; elsif dir.class == String; move dir.dup; N.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep N } if child; end; end }
+478	241	0->1	;e table = S; fput S if dothistimeout(S, N, R) =~ R
+477	76	23282->188	;e $mapdb_confluence_target = S; Room[..].wayto[..].call
+457	30	902->901	;e move S; waitrt?
+311	1595	2579->12101	;e start_room = [..]; dirs = [..]; if index = start_room.index(Room.current.id); until checkloot.include?(S); move dirs[index]; index += N; index = N if index >= dirs.length; end; move S; waitrt?; fput S; else; echo S; end; $goN_restart = true
+161	120	25692->25691	;e direction=S;start=Room.current.id; dothistimeout S, N, R while Room.current.id == start
+150	247	2497->2496	;e if (UserVars.mapdb_ice_mode == S) or ((UserVars.mapdb_ice_mode != S) and ((XMLData.encumbrance_value > N) or ((Skills.survival < N) and not Spell[..].active?))); sleep N; echo S; sleep N; end; move S
+113	73	11433->11435	;e if checkspell(N) then move S else move S end; waitrt?
+110	1688	2579->2635	;e start_room = [..]; dirs = [..]; if index = start_room.index(Room.current.id); until checkloot.include?(S) or checkloot.include?(S); move dirs[index]; index += N; index = N if index >= dirs.length; end; if checkloot.include?(S); move S; elsif checkloot.include?(S); move S; end;; else; echo S; end; $goN_restart = true
+102	21	665->26000	;e move S
+82	66	31589->32077	;e dothistimeout S,N,R;waitrt?
+80	116	13966->18842	;e if checksitting;while Room.current.id == N;fput(S);waitrt?;end;else;move(S);end;
+63	40	117->16751	;e fput S; move S
+62	126	250->1870	;e multifput S,S;waitfor S
+60	67	9884->13183	;e N.times { move S; break if Room.current.id == N }
+55	1563	2579->12208	;e start_room = [..]; dirs = [..]; if index = start_room.index(Room.current.id); until checkloot.include?(S); move dirs[index]; index += N; index = N if index >= dirs.length; end; move S; else; echo S; end; $goN_restart = true
+55	1804	12091->2635	;e start_room = [..]; dirs = [..]; if index = start_room.index(Room.current.id); until checkloot.include?(S) or checkloot.include?(S); move dirs[index]; index += N; index = N if index >= dirs.length; end; if checkloot.include?(S); move S; elsif checkloot.include?(S); move S; end; else; echo S; end; $goN_restart = true
+50	782	12662->12677	;e empty_hand if [..].include?(Room.current.id); swim_dir = { N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S }; while Room.current.id != N; if swim_dir[Room.current.id]; put S; else; echo S; put S; end; sleep N; waitrt?; end; fill_hand
+50	40	20946->20945	;e pause N; waitrt?; fput S
+39	1233	12095->12235	;e start_room = [..]; dirs = [..]; if index = start_room.index(Room.current.id); until checkloot.include?(S); move dirs[index]; index += N; index = N if index >= dirs.length; end; N.times { waitrt?; fput S unless standing?; waitrt?; result = dothistimeout S, N, R; waitrt?; fput S unless standing?; waitrt?; break if result =~ R }; move S; else; echo S; end; $goN_restart = true
+38	38	2209->2210	;e fput S move S
+37	92	7459->7460	;e fput S unless kneeling? or (Stats.race =~ R); move S
+36	67	1983->12603	;e $mapdb_seeking_destination = N;Map[..].wayto[..].call;
+31	23	5411->5413	;e move(S)
+30	29	284->3668	;e Map[..].wayto[..].call;
+29	14	8750->15995	;e fput S
+28	66	23483->23490	;e if Spell[..].active?; move S;else; move S;end
+27	49	234->19949	;e multifput S, S
+26	51	1697->1698	;e empty_hands move S waitrt? fill_hands
+26	35	3523->25626	;e fput S;move S
+26	141	16719->16720	;e if resolve = Spell[..] and resolve.known? and resolve.affordable? and not resolve.active?; resolve.cast; end; move S; waitrt?
+25	1016	12663->12662	;e empty_hand if [..].include?(Room.current.id); swim_dir = { N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S, N => S }; child = (bounty? =~ R) && GameObj.npcs.find { |npc| npc.noun == S }; while (Room.current.id != N); if swim_dir[Room.current.id]; put S; else; echo S; put S; end; sleep N; waitrt?; N.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep N } if child; end; fill_hand
+23	300	20470->20467	;e if resolve = Spell[..] and resolve.known? and resolve.affordable? and not resolve.active?; resolve.cast; end; if waterwalking = Spell[..] and waterwalking.known? and waterwalking.affordable? and not waterwalking.active?; waterwalking.cast; end; fput (Spell[..].active? ? S : S)
+21	465	2877->2878	;e resolve=Spell[..] haste=Spell[..] if UserVars.mapdb_ice_mode == S || Skills.survival < N || XMLData.encumbrance_value >= N echo S; sleep N elsif resolve.known? && resolve.affordable? && !resolve.active? resolve.cast end result = fput S if result =~ R haste.cast if haste.known? && haste.affordable? && !haste.active? fput S $goN_restart = true end
+20	45	1698->1697	;e empty_hands; move S; fill_hands
+16	206	7486->24572	;e waitrt?; N.times { if standing?; break; else; fput S; sleep N; waitrt?; end }; move S; sleep N; waitrt?; N.times { if standing?; break; else; fput S; sleep N; waitrt?; end }; waitrt?
+15	54	7489->19261	;e fput S;fput S
+14	140	2485->2440	;e room = Room.current.id;fput S; if ( room == Room.current.id ); fput S;move S; end; $goN_restart = true
+14	119	15948->7987	;e room = Room.current.id;fput S; if ( room == Room.current.id ); fput S;move S; end
+13	38	26453->26454	;e move S; $goN_restart=true
+12	119	25698->25811	;e direction=S;start=Room.current.id;dothistimeout S, N, R while Room.current.id == start
+12	57	26905->7	;e move(S);UserVars.mapdb_duskruin_origin = nil;
+11	79	7->26905	;e N.times{fput S};UserVars.mapdb_duskruin_origin = N;
+11	81	7->31558	;e N.times{fput S};UserVars.mapdb_ebon_gate_origin = N;
+10	124	18112->18926	;e loop { wait_until { Spell[..].affordable? }; result = cast(N, S); break unless result =~ R }
+9	62	417->23281	;e move(S);UserVars.mapdb_talondown_origin = N;
+9	82	1902->28704	;e fput S; fput S; move S
+9	37	2216->2229	;e move S; sleep N; waitrt?
+9	23	21961->22009	;e waitrt?; move S
+9	65	23281->417	;e move(S);UserVars.mapdb_talondown_origin = nil;
+8	163	3582->17747	;e unless (move S); echo S; waitfor S; move S; end
+8	53	15694->17964	;e Map[..].wayto[..].call; # rogue guild proc
+8	34	16550->12269	;e move S; $goN_restart = true
+8	241	27860->27864	;e door=S;key=GameObj.inv.find{|k| k.name==S;};if !key.nil? then multifput S, S, S, S, S, S, S; end;
+7	51	1809->1808	;e move S while checkpaths.include?(S)
+7	65	24151->24152	;e x=XMLData.room_count;fput S until XMLData.room_count > x
+7	45	29887->29898	;e fput S;move(S)
+6	56	992->993	;e fput S waitfor S
+6	66	1809->13224	;e move S; move S if checkpaths.include?(S)
+6	70	1809->13481	;e move S; move S unless checkpaths.include?(S)
+6	47	2236->2237	;e empty_hands move S fill_hands
+6	525	3565->3566	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; move S; if group_members; echo S; begin; if get =~ R; group_members.delete $N; end; end while group_members.length > N; end; waitrt?
+6	53	3839->8429	;e empty_hands; move S; waitrt?; fill_hands
+6	33	7151->23708	;e move S;$goN_restart=true
+6	765	11630->11617	;e if ((bounty? =~ R)||(Society.task =~ R)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ R }; else; mynpc = nil; end; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc;
+6	214	12580->29048	;e cur_stance = XMLData.stance_text;empty_hands;fput(S) if cur_stance != S;move(S);fill_hands;fput(S + cur_stance) if cur_stance != S;$goN_restart = true
+6	244	18043->18052	;e N.times { sleep N; break if GameObj.loot.any? { |obj| obj.name =~ R } }; unless GameObj.loot.any? { |obj| obj.name =~ R }; disk = Spell[..]; wait_until { disk.affordable? }; disk.cast; end; move S
+6	51	23470->23471	;e fput S;fput S;move S
+5	207	1219->1220	;e begin; fput S; search_result = waitfor S, S, S, S; waitrt?; end until search_result =~ R; move S
+5	668	9784->9734	;e next_exit = { N => [..], N => [..], N => [..], N => [..], N => [..] }; loop { if move S; sleep(N) until XMLData.room_title == S; fput S unless standing?; waitrt?; break; else; if dir_list = next_exit[Room.current.id]; dir_list.each { |dir| move dir }; else; echo S; break; end; end }
+5	31	17104->18602	;e move S; move S
+5	51	22014->14674	;e multifput S, S, S
+5	435	24695->24696	;e result = nil;until result =~ R;fput S until standing?;result = dothistimeout S, N, R;if result =~ R;sleep N;waitrt?;end;end
+5	79	25149->25145	;e id=Room.current.id;move S until Room.current.id != id;$goN_restart=true
+4	26	1071->1072	;e move S waitrt?
+4	840	2658->2647	;e clear put S loop { line = get if line =~ R if $N == S move S elsif $N == S move S elsif $N == S move S elsif $N == S move S else echo S exit end break end }
+4	207	3091->31352	;e if GameObj.inv.find {|obj| obj.noun == S};fput S;else;empty_hand;multifput S,S,S;fill_hand;end
+4	46	3727->3483	;e fput S if invisible?;move(S)
+4	111	4136->4135	;e loop { move S; break if Room.current.id != N; move S; break if Room.current.id != N; }
+4	82	11617->22218	;e fput S;move S;move S;move S;move S
+4	36	11630->22218	;e move S;move S
+4	56	13532->8695	;e move S;$goN_restart=true;$SILVERWOOD_TOWN=nil
+4	137	16124->11620	;e while checkpaths == [..]; move [..][rand(N)]; end; move S while checkpaths.include?(S)
+4	94	16124->11653	;e while checkpaths == [..]; move [..][rand(N)]; end;
+4	20	23165->23173	;e move S;waitrt
+4	156	30581->30582	;e fput S until checkprone; result = dothistimeout S,N, R until result;waitrt?;fput S until standing?;waitrt?;fput S
+4	38	30812->30813	;e wait_until{Map.current.id != N}
+4	42	30947->30948	;e wait_while { Room.current.id == N }
+4	44	31383->31384	;e multifput S,S; waitrt?;
+4	88	36434->36435	;e waitfor S move S
+4	106	36435->36436	;e waitfor S, S move S
+3	49	989->988	;e move S; waitrt?; fill_hands
+3	527	2636->2579	;e fput S loop do result = dothistimeout(S, N, R) break if result =~ R break unless XMLData.room_description.empty? end sleep(N) while XMLData.room_description.empty? fput S unless standing?
+3	45	5868->5867	;e move S until Room.current.id == N
+3	52	6201->6202	;e move (XMLData.room_exits - [..]).first
+3	225	6630->6631	;e if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; until dothistimeout(S, N, R) =~ R do end; move S
+3	167	7458->7459	;e if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; fput S; waitrt?; move S; waitrt?
+3	59	7905->8141	;e fput S waitrt? fput S unless standing?
+3	3828	8635->8916	;e open_regex = R put_regex = R sack_name = UserVars.day_pass_sack sack = ( GameObj.inv.find { |obj| obj.noun == sack_name} || GameObj.inv.find { |obj| obj.name == sack_name } || GameObj.inv.find { |obj| obj.name =~ R } || GameObj.inv.find { |obj| obj.name =~ R } ) close_sack = false if sack.contents.nil? open_result = dothistimeout S, N, open_regex if open_result =~ R close_sack = true else dothistimeout S, N, R end end empty_hand $mapdb_day_passes.keys.each { |id| if $mapdb_day_passes[id][:expires] < (Time.now - N) dothistimeout S, N, R $mapdb_day_passes.delete(id) end } pass_route = [..]; pass_id = $mapdb_day_passes.find{|k,v| v[:towns].sort == pass_route.sort and v[:expires] > (Time.now + N)}.first if pass_id dothistimeout S, N, get_regex elsif UserVars.mapdb_buy_day_pass.to_s =~ R move S fput S if hidden? or invisible? dothistimeout S, N, R result = dothistimeout S, N, R) and $goN_get_silvers [..].each { |dir| move dir } dothistimeout S, N, R [..].each { |dir| move dir } fput S if hidden? or invisible? result = dothistimeout S, N, R end end if result =~ R if GameObj.right_hand.noun == S pass_id = GameObj.right_hand.id elsif GameObj.left_hand.noun == S pass_id = GameObj.left_hand.id end fput S move S elsif result =~ R^You close/ end
+3	100	11612->11630	;e fput S;move S;move S;move S;move S;move S
+3	65	11622->11653	;e fput S;move S;move S;move S
+3	873	11630->11612	;e if ((bounty? =~ R)||(Society.task =~ R)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ R }; else; mynpc = nil; end; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc; move S; N.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep N } if mynpc;
+3	126	13966->13923	;e if checksitting;while Room.current.id == N;fput(S);waitrt?;end;else;move(S);end;fill_hand;
+3	4151	14359->8634	;e open_regex = R put_regex = R sack_name = UserVars.day_pass_sack sack = ( GameObj.inv.find { |obj| obj.noun == sack_name} || GameObj.inv.find { |obj| obj.name == sack_name } || GameObj.inv.find { |obj| obj.name =~ R } || GameObj.inv.find { |obj| obj.name =~ R } ) close_sack = false if sack.contents.nil? open_result = dothistimeout S, N, open_regex if open_result =~ R close_sack = true else dothistimeout S, N, R end end empty_hand $mapdb_day_passes.keys.each { |id| if $mapdb_day_passes[id][:expires] < (Time.now - N) dothistimeout S, N, R $mapdb_day_passes.delete(id) end } pass_id = $mapdb_day_passes.keys.find { |id| $mapdb_day_passes[id][:towns].include?(S) and $mapdb_day_passes[id][:towns].include?(S) and $mapdb_day_passes[id][:expires] > (Time.now + N) } if pass_id dothistimeout S, N, get_regex elsif UserVars.mapdb_buy_day_pass.to_s =~ R move S fput S if hidden? or invisible? dothistimeout S, N, R result = dothistimeout S, N, R) and $goN_get_silvers [..].each { |dir| move dir } dothistimeout S, N, R [..].each { |dir| move dir } fput S if hidden? or invisible? result = dothistimeout S, N, R end end if result =~ R if GameObj.right_hand.noun == S pass_id = GameObj.right_hand.id elsif GameObj.left_hand.noun == S pass_id = GameObj.left_hand.id end fput S move S elsif result =~ R^You close/ end
+3	66	18843->18823	;e while Room.current.id == N;fput S;waitrt?;end
+3	32	20376->20377	;e put S;put S
+3	49	31797->32187	;e fput S;waitrt?;move (S)
+2	47	627->628	;e fput S; move S; fput S
+2	65	785->784	;e while checkpaths.include?(S); move S; move S; end
+2	29	899->900	;e move S; waitrt
+2	50	988->989	;e empty_hands; move S; waitrt?
+2	348	1070->1071	;e $group_members = nil;clear.reverse.each { |line|; if line =~ R; break; elsif line =~ R; $group_members = $N.split(R); $group_members.delete_if { |m| m =~ R }; $group_members = nil if $group_members.empty?; break; end;};empty_hands;move S;waitrt?
+2	316	1071->1070	;e move S waitrt? fill_hands if $group_members clear echo S begin line = get if line =~ /^(You reach out and hold )?([A-z][a-z]+)(Sgo' break end end while $group_members.length > N end
+2	224	1223->1224	;e Spell[..].cast if Spell[..].known? and !Spell[..].active? and Spell[..].affordable?; empty_hands; fput S if Skills.climbing < N; move S; waitrt?; fput S; fill_hands
+2	178	1230->30523	;e begin; search_result = dothistimeout S, N, /donSgo crack')
+2	79	1834->27470	;e if UserVars.Mularos_Lover; UserVars.Mularos_Lover.each{|c| fput S } end
+2	185	1965->2260	;e unless move S; echo S; waitfor S; move S; end
+2	72	2260->1965	;e waitfor S; move S
+2	99	2642->2640	;e until checkpaths.include?(S); fput S + [..][rand(N)]; waitrt?; end
+2	34	2830->2831	;e empty_hands; move S
+2	35	2831->2832	;e move S; fill_hands
+2	59	2925->2924	;e fput S; move S while Room.current.id == N
+2	36	3030->16034	;e move S; fput S
+2	1485	3239->3264	;e r = dothistimeout S, N, R; if r =~ R; move S; elsif r =~ R; spell = Spell[..]; bonus = spell.known? ? Society.rankRN)) * Skills.to_bonus(Skills.climbing)) >= N; if spell.known? && !spell.active? && !Spell[..].active?; echo S unless stamina(spell.stamina_cost); wait_until{stamina(spell.stamina_cost)}; spell.cast; end; move S; elsif Spell[..].known?; unless Spell[..].affordable?; echo S; wait_until { Spell[..].affordable? }; end; Spell[..].cast(S); elsif (num = [..].find { |n| Spell[n].known? }); N.times { unless Spell[num].affordable?; echo S; wait_until { Spell[num].affordable? }; end; r = Spell[num].cast(S, R); redo if r =~ R }; move S; else; echo S; sleep N; exit; end; else; $goN_restart = true; end
+2	66	3492->10329	;e if $platinum; move S; else; move S; end
+2	291	3495->18041	;e fput S; language = R.match(get).captures.first until language;; fput(S) unless language == S; fput(S) if hidden? or invisible?; move S; fput(S + language.to_s) unless language == S
+2	55	4029->4027	;e begin move S end until Room.current.id == N
+2	188	4172->4171	;e unless checkloot.include?(S); move S; fput S; move S; move S; move S; move S; move S; move S; end; move S
+2	196	5830->23525	;e N.times { result = dothistimeout S, N, /donSgo rocky trail')
+2	43	5832->25637	;e fput S;waitrt?;move S
+2	98	5868->5869	;e move S; unless Room.current.id == N then move S; move S; move S; end
+2	103	6481->6484	;e empty_hands; while Room.current == Room[..]; put S; sleep N; waitrt?; end; fill_hands
+2	96	6634->6633	;e move S; if checkpaths.include?(S); move S; move S; move S; end
+2	72	6999->7000	;e fput S fput S fput S unless standing?
+2	136	7036->7154	;e unless move S; fput S; fput S; waitfor S; fput S; move S; end
+2	301	7313->7312	;e if (bounty? =~ R); child = GameObj.npcs.find { |npc| npc.noun == S }; else; child = nil; end; move S; if Room.current == Room[..]; N.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep N } if child; move S; end
+2	70	7873->1213	;e move S; waitrt?; fput S unless standing?; waitrt?
+2	484	7892->24675	;e UserVars.mapdb_redforest_location = S;result = nil;until result =~ R;fput S until standing?;result = dothistimeout S, N, R;if result =~ R;sleep N;waitrt?;end;end
+2	114	8227->8245	;e move S; unless Room.current.id == N; move S; move S; end
+2	284	10117->10119	;e move S if Room.current.id == N echo S waitfor S move S end waitfor S move S
+2	152	10815->10821	;e if resolve = Spell[..] and resolve.known? and resolve.affordable? and not resolve.active?; resolve.cast; end; empty_hands; move S; waitrt?
+2	69	10816->10815	;e begin fput S waitrt? end until Room.current.id == N
+2	107	10821->10815	;e loop { fput S; sleep N; waitrt?; break if (checkpaths(S) || checkpaths(S)); }; fill_hands
+2	75	11068->11069	;e loop{fput S;pause N;if Room.current.id == N;break;end}
+2	198	11357->11355	;e save_stance = XMLData.stance_text;fput S if save_stance != S;move(S);fput S if save_stance != XMLData.stance_text;;$goN_restart = true;
+2	31	11433->11432	;e move S fill_hands
+2	35	11485->11442	;e empty_hands move S
+2	117	11620->11653	;e fput S;move S;move S;move S;move S;move S;move S
+2	70	11653->11622	;e move S;move S;move S;move S
+2	99	11687->11688	;e if checkspell(N); move S; else; empty_hands; move S; fill_hands; end; waitrt?
+2	129	11749->10838	;e while line = get;if line=~ R;fput S;break;end;end
+2	43	11906->12259	;e move S; fput S; waitrt?
+2	65	13429->13404	;e while Room.current.id == N; fput S; waitrt?; end
+2	76	14614->9377	;e move checkpaths[rand(checkpaths.length)] until checkpaths.include?(S)
+2	141	15950->7989	;e room = Room.current.id;fput S; if ( room == Room.current.id ); fput S;move S; end ; $goN_restart = true
+2	56	16011->16256	;e walk until checkloot.include?(S); move S
+2	177	16122->11612	;e move [..][rand(N)] while checkpaths == [..]; move S if checkpaths.include?(S); move S if checkpaths.include?(S)
+2	89	16122->11630	;e move [..][rand(N)] while checkpaths == [..]
+2	63	16806->4160	;e move S; move S while checkpaths.include?(S)
+2	60	17684->17682	;e fput S; waitrt?; fput S; move S
+2	47	18822->18823	;e empty_hand;fput(S);move(S)
+2	50	19544->1084	;e move S; move S; move S
+2	51	20348->23146	;e move S;fput S until standing?
+2	104	21960->21961	;e waitrt?; fput S; waitrt?; fput S unless kneeling?; move S; fput S; waitrt?
+2	57	21964->21967	;e empty_hands; N.times { move S }; fill_hands
+2	60	22571->22666	;e fput S;move S;waitrt
+2	42	22667->20347	;e fput S until standing?;move S
+2	35	23606->5924	;e fput S; fput S
+2	151	23830->221	;e multifput S,S,S;waitfor S,S,S;
+2	33	24149->24151	;e empty_hands;move S
+2	480	24675->7892	;e result = nil;until result =~ R;fput S until standing?;result = dothistimeout S, N, R;if result =~ R;sleep N;waitrt?;end;end;UserVars.mapdb_redforest_location = nil; $goN_restart=true
+2	904	25183->25145	;e res = choice = nil;res = dothistimeout S, N, R;if res =~ R;choice = $N;end;dothistimeout S, N, R>BANDITS!!! BANDITS!!! BANDITS!!!<popBold/>";end;exit;end;$goN_restart=true
+2	69	25509->25508	;e move(S);UserVars.mapdb_marksofthebeast_origin = nil;
+2	40	26595->26610	;e fput S; pause N; waitrt?
+2	71	27638->27639	;e if UserVars.Peregrine; UserVars.Peregrine.each{|c| fput S } end
+2	33	28122->28124	;e move(S); fput S
+2	193	29865->2487	;e multifput S,S,S;waitfor S,S,S;UserVars.mapdb_hinterwilds_location = nil;
+2	216	31427->31428	;e if GameObj.inv.find {|obj| obj.noun =~ R};fput S;else;empty_hand;multifput S,S,S;fill_hand;end
+2	598	34434->34435	;e refill_hand = false;key_worn = false; (refill_hand = true;empty_hand) if !checkleft.nil? and !checkright.nil?; key_worn = true if GameObj.inv.find {|obj| obj.name =~ R}; fput S if key_worn; fput S if !key_worn; door = S; multifput S,S,S,S,S; fput S if key_worn; fput S if !key_worn; fill_hand if refill_hand;
+2	44	36402->36403	;e N.times{fput S};fput S
+1	1502	7->3668	;e worn = !GameObj[UserVars.mapdb_fwi_trinket].nil?; return_to_container_id = nil; flip_tags = !Script.current.want_downstream_xml; status_tags if flip_tags; unless worn then; refill_hands = (!GameObj.left_hand.id.nil? and !GameObj.right_hand.id.nil?); empty_hand if refill_hands; trinket_pattern = R; trinket_get_pattern = R; link_pattern = /<a exist=S noun=S]+)Sget my #{UserVars.mapdb_fwi_trinket}Scould not find your fwi trinket: #{UserVars.mapdb_fwi_trinket.inspect}Sturn ##{GameObj[UserVars.mapdb_fwi_trinket].id}Sstow ##{GameObj[UserVars.mapdb_fwi_trinket].id}Sput ##{GameObj[UserVars.mapdb_fwi_trinket].id} in ##{return_to_container_id}"; end; fill_hands if refill_hands; end; $goN_restart=true;
+1	127	109->110	;e multifput S, S, S, S, S waitrt? fput S
+1	192	339->24768	;e query = S;shop = GameObj.loot.find { |i| i.name.eql?(query) };shop or fail S;fput S
+1	178	1042->1041	;e move S fput S dir = matchfindword S move S sleep N if running?(S) move dir
+1	188	1216->1217	;e N.times { result = dothistimeout S, N, /donSgo footpath'
+1	182	1231->1230	;e begin; search_result = dothistimeout S, N, /donSgo opening')
+1	145	1242->1241	;e attempts = N;moved = false;loop do;waitrt?;moved = move(S);break if moved;fput S;attempts += N;break if attempts >= N;end;moved
+1	162	2208->2209	;e empty_hands begin result = dothistimeout S, N, R waitrt? end until result.to_s !~ R fill_hands
+1	60	2645->2642	;e fput S; move S; sleep N; waitrt?
+1	1236	2675->2677	;e if checkleft and checkright; empty_hands; need_fill_hands = true; else; need_fill_hands = false; end; result = dothistimeout S, N, R until result =~ R; waitrt?; fill_hands if need_fill_hands; move S
+1	1886	2677->2675	;e unless (move S); push_result = dothistimeout S, N, R; unless push_result.nil? or push_result == S; unless mana < N; castables = [..].sort { |a,b| a.to_s[-N..-N] <=> b.to_s[-N..-N] }.reverse.collect { |n| Spell[n] }; castables.delete_if { |spell| spell.nil? or !spell.known? }; manaNspells = [..].collect { |n| Spell[n] }; manaNspells.delete_if { |spell| spell.nil? or !spell.known? }; mana_needed = N; while (mana_needed > N) and ((Spell[..].active? and (spell = manaNspells.find { |s| s.known? })) or (spell = castables.find { |s| s.mana_cost <= mana_needed }) or (spell = castables.reverse.find { |s| s.mana_cost >= mana_needed })); loop { cast_result = spell.cast(S); break unless cast_result =~ R }; mana_needed -= spell.mana_cost; sleep N; end; end; fput S if Spell[..].active? and (checkprep != S); fput S; fput S; sleep N; end; move S; end
+1	298	2679->2678	;e N.times { if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout S, N, /You make a careful search of the area and discover a narrow icy ledge!|You donSgo ledge' }
+1	45	3035->3034	;e move S while Room.current.id == N
+1	364	3509->17805	;e status_tags; get_result = dothis S, R; status_tags; lockpick, container = R.match(get_result).captures[N..N]; fput S; fput S; fput S; move S
+1	2097	3600->3600	;e need_set_roomname_off = false if last_roomdesc = $_SERVERBUFFER_.reverse.find { |line| line =~ R || line =~ R } if last_roomdesc =~ R fput S need_set_roomname_off = true end end save_want_downstream = Script.current.want_downstream save_want_downstream_xml = Script.current.want_downstream_xml Script.current.want_downstream = false Script.current.want_downstream_xml = true destination = Map[$mapdb_seeking_destination] roomname_pattern = R failed_to_find_destination = false first_roomname = nil seeking_destination = nil N.times do waitcastrt? put S matchtimeout(N, S) result = matchtimeout(N, roomname_pattern) next unless result seeking_destination = result.match(roomname_pattern)&.captures&.first next unless seeking_destination if seeking_destination[..] == S need_set_roomname_off = true fput S next end # Remove trailing numeric room ID in parentheses, if any if seeking_destination =~ R seeking_destination.slice!($N) end if first_roomname == seeking_destination failed_to_find_destination = true break end first_roomname ||= seeking_destination break if destination.title.include?(seeking_destination) end Script.current.want_downstream_xml = save_want_downstream_xml Script.current.want_downstream = save_want_downstream fput S if need_set_roomname_off if failed_to_find_destination echo S $restart_goN = false Script.current.kill end if $mapdb_seeking_destination == N UserVars.mapdb_redforest_location = S if Map.current.id == N UserVars.mapdb_redforest_location = S if Map.current.id == N end dothistimeout(S, N, R)
+1	28	3669->35593	;e Map[..].wayto[..].call
+1	92	3727->26905	;e N.times{fput S};UserVars.mapdb_duskruin_origin = Map.current.id;
+1	94	3727->31558	;e N.times{fput S};UserVars.mapdb_ebon_gate_origin = Map.current.id;
+1	72	3837->3831	;e while checkpaths.include?(S); fput S; move S; end
+1	967	4140->4141	;e spell_list = [..];until dothistimeout(S, N, R) =~ R; if spell_num = spell_list.find { |num| Spell[num].known? }; spell = Spell[spell_num]; loop {; unless spell.affordable?; echo S; wait_until { spell.affordable? }; end; break unless spell.cast(S) =~ R; }; else; empty_hands; dothistimeout(S, N, R); fill_hands; end;end
+1	1086	4141->4140	;e spell_list = [..];until dothistimeout(S, N, R) =~ R ; if spell_num = spell_list.find { |num| Spell[num].known? }; spell = Spell[spell_num]; loop {; unless spell.affordable?; echo S; wait_until { spell.affordable? }; end; break unless spell.cast(S) =~ R; }; elsif (Stats.prof == S) and (Stats.level >= N); empty_hands; fput S; sleep N; waitrt?; fill_hands; else; empty_hands; dothistimeout(S, N, R); fill_hands; end;end
+1	78	4154->4168	;e fput S unless checkloot.include?(S); move S
+1	514	4344->7298	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; move S; if (group_members.to_a.length > N); echo S; wait_until { (group_members.to_a - checkpcs.to_a).empty? or clear.find { |line| line == S } }; end
+1	139	4537->7389	;e %w(circular triangular square rectangular).each{|d| dothistimeout S, N, R};fput S until standing?
+1	170	4583->4584	;e fput S; fput S; fput S; fput S; fput S; fput S; fput S; move S
+1	193	5922->10476	;e move S;while Room.current.id == N;line = get?;if line.nil?;sleep N;elsif line == S;move S;break;end;end;
+1	136	6016->18748	;e phase = Spell[..]; unless phase.affordable?; echo S; wait_until { phase.affordable? }; end; phase.cast(S)
+1	895	6135->6136	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; result = nil; while !result; if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; fput S; result = matchtimeout(N,R); waitrt?; if !result then multimove S,S; end; end; fput S if group_members; move S; if group_members; echo S; while (group_members.length > N) and (line = get); if line =~ /^(You reach out and hold )?([A-z][a-z]+)(Sgo'; break; end; end; end
+1	5002	6274->11032	;e force_goN = proc { |room_num| goN_count = Script.running.find_all { |s| s.name == S }.length force_start_script S, [ room_num.to_s ] wait_while { Script.running.find_all { |s| s.name == S }.length > goN_count } } script = Script.self rrcitizen = nil if Char.citizenship == S rrcitizen = true end amulet = nil driftwood = nil close_containers = [] if UserVars.lootsack.nil? or UserVars.lootsack.empty? lootsack = GameObj.inv.find { |obj| obj.noun =~ R } else lootsack = GameObj.inv.find { |obj| obj.name =~ R } || GameObj.inv.find { |obj| obj.name =~ R } end find_all_containers_var = nil find_all_containers = proc { if find_all_containers_var.nil? hp = proc { |ss| if ss =~ R; DownstreamHook.remove(S); nil; else; ss; end } DownstreamHook.add(S, hp) restore_silent = script.silent restore_want_downstream = script.want_downstream restore_want_downstream_xml = script.want_downstream_xml script.silent = true script.want_downstream = false script.want_downstream_xml = true clear put S script.silent = restore_silent timeout = Time.now + N container_ids = [] while (Time.now < timeout) and (line = get) if line =~ R container_ids = line.scan(/<a exist=S]+)Sopen ##{lootsack.id}Slook in ##{lootsack.id}Sopen ##{container.id}Slook in ##{container.id}S_drag ##{driftwood.id} rightS_drag ##{amulet.id} rightSwithdraw N silversSToo poor to go to RiverSalchemist --disable-confirmSunhideSorder NSs RestSclose ##{c.id}" } fill_hands exit end end if (rrcitizen && driftwood) fput S else fput S end move S fill_hands
+1	1813	6486->6487	;e if dothistimeout(S, N, R) !~ R; s = Spell[..]; if s.known?; if s.active?; r = dothistimeout S, N, R; if f = R.match(r).captures.first; N.times { sleep N; break if GameObj.npcs.any? { |n| n.name =~ R } }; end; else; unless s.affordable?; echo S; wait_until { s.affordable? }; end; s.cast; end; r = dothistimeout S, N, R; stop_watching = (r =~ R); which_ring = { S => S, S => S, S => S, S => S }; fail = false; g = proc { |l| l.split(S).each { |d| r = dothistimeout((S + d), N, R); if r.nil? or (r =~ R); fail = true; next; elsif r =~ R; dothistimeout((S + which_ring[$N] + S), N, R); dothistimeout((S + d), N, R); end } }; N.times { |i| i.zero? ? g.call(S) : g.call(S); break if fail; g.call(S); break if fail; fput S; g.call(S); break if fail; fput S }; fput S if stop_watching; if UserVars.mapdb_hate_familiar; sleep N; put S; put S; end; end; move S; end
+1	131	6487->6486	;e unless move S; dothistimeout S, N, R; move S; end
+1	223	6626->7436	;e unless checkloot.include? S fput S fput S fput S fput S fput S fput S fput S fput S end move S
+1	64	6880->6882	;e fput S waitrt? fput S move S
+1	5667	6897->6928	;e result = Array.new put S while line = get if line =~ R result.push(S) elsif line =~ R result.push(S) elsif line =~ R result.push(S) elsif line =~ R result.push(S) elsif line =~ R result.push(S) elsif line =~ R result.push(S) elsif line =~ R result.push(S) elsif line =~ R result.push (S) elsif line =~ R break end end result.each{ |deity| if Char.name == S put S else fput S end }
+1	5632	6955->6985	;e script = Script.self hand = sword = sword_container = nil; close_containers = []; find_all_containers_var = nil; find_all_containers = proc { if find_all_containers_var.nil? restore_want_downstream = script.want_downstream restore_want_downstream_xml = script.want_downstream_xml script.want_downstream = false script.want_downstream_xml = true clear put S timeout = Time.now + N container_ids = [] while (Time.now < timeout and line = get) if (line =~ R) container_ids = line.scan(/<a exist=S]+)S_drag ##{item_id} ##{container_id}S_drag ##{item_id} #{hand}S#{item_id}Sopen ##{container.id}Slook in ##{container.id}Sclose ##{c.id}Sclose ##{c.id}" } fill_hands Script.start(S) if killed_disarm undo_before_dying $goN_restart = true;
+1	411	6997->6998	;e bridgedown = false; until bridgedown; if [..].include?(Stats.race); fput S; else; fput S; end; bridgedown = matchtimeout(N, R); unless standing?; fput S; waitrt?; end; waitrt?; end; move S; $goN_restart = true if Room.current.id != N
+1	631	6998->6997	;e loop { result = dothistimeout S, N, /Ok, you push a heavy steel lever protruding from a slit in one wall. Now what?|Summoning all your strength, you manage to push a heavy steel lever protruding from a slit in one wall forward just enough to lower a wooden drawbridge.|You try to push the heavy steel lever, but it wonSgo drawbridge'
+1	628	6998->6999	;e loop { result = dothistimeout S, N, /Ok, you pull a heavy steel lever protruding from a slit in one wall. Now what|Summoning all your strength, you manage to pull a heavy steel lever protruding from a slit in one wall back just enough to raise a wooden drawbridge|You try to pull the heavy steel lever, but it wonSgo white portcullis'
+1	854	7046->3705	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end
+1	821	7046->7047	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end
+1	888	7046->7083	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; end
+1	890	7046->7099	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; end
+1	931	7046->7144	;e loop { fput S; fput S; sleep N; break unless checkpaths == [..] }; wait_while { standing? }; fput S; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; end; if Room.current == Room[..]; move S; move S; move S; move S; move S; move S; move S; move S; move S; end
+1	720	7318->7319	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; empty_hands; move S; waitrt?; fill_hands; if (group_members.to_a.length > N); echo S; while (line = get) and (group_members.length > N); if line =~ R; put S + $N.to_s; elsif line =~ /^(You reach out and hold )?([A-z][a-z]+)(Sgo'; break; end; end; end
+1	1305	7324->4541	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; fput S; sleep N; result = nil; success = R; failures = R; matches = R; until result =~ success; fput S until standing?; result = dothistimeout S, N, matches; waitrt?; end; until checkpaths(S); fput S; sleep N; end; fput S until standing?; if (group_members.to_a.length > N); echo S; wait_until { (group_members.to_a - GameObj.pcs.to_a.delete_if { |pc| not pc.status.nil? }.collect { |pc| pc.name }).empty? or clear.find { |line| line == S } }; end
+1	662	7331->7315	;e group_members = nil; clear.reverse.each { |line| if line =~ R; break; elsif line =~ R; group_members = $N.split(R); group_members.delete_if { |m| m =~ R }; group_members = nil if group_members.empty?; break; end }; fput S unless standing?; fput S; wait_until { stunned? }; wait_while { stunned? }; fput S; if (group_members.to_a.length > N); echo S; wait_until { (group_members.to_a - GameObj.pcs.to_a.delete_if { |pc| not pc.status.nil? }.collect { |pc| pc.name }).empty? or clear.find { |line| line == S } }; end
+1	188	7393->7328	;e result = nil;while result.nil? && Room.current.id == N;result = dothistimeout S,N,R;end;wait_while{stunned?};fput S until standing?
+1	107	7436->6626	;e unless checkloot.include? S; fput S; fput S; end; move S
+1	95	7477->7476	;e if not kneeling?; fput S if Stats.race !~ R;end;fput S
+1	357	7517->8686	;e begin clear fput S climb_result = waitfor S, S fput S unless climb_result == S end until climb_result == S
+1	80	7626->30581	;e multifput S,S,S
+1	362	7664->7669	;e N.times do; waitrt?; fput S unless standing?; waitrt?; climb_result = dothistimeout S, N, R; break if climb_result =~ R;end
+1	49	7927->34489	;e move(S);$goN_restart = true
+1	44	7965->7964	;e waitrt?; fput S; move S
+1	51	7983->7984	;e fput S if checkspell(N); move S
+1	58	7993->7997	;e empty_hand; fput S; move S; fill_hand
+1	87	8141->7905	;e fput S until kneeling?;fput S waitrt? fput S until standing?
+1	52	8225->8226	;e move S fput S unless standing?
+1	809	8373->8374	;e wedge_list = { S => S, S => S, S => S, S => S } wedge_list.each_pair { |direction,position| loop { wedge_look = dothis S, /^The stone ringSturn ring' } fput S }
+1	91	8544->8546	;e while checkpaths.include?(S); fput S; sleep N; waitrt?; move S; end
+1	158	8574->19651	;e fput S; sleep N; waitrt?; empty_hands; fput S; fput S; sleep N; waitrt?; fput S; fill_hands; move S
+1	38	8695->13532	;e $SILVERWOOD_TOWN=:wl;move S
+1	39	8696->13532	;e $SILVERWOOD_TOWN=:imt;move S
+1	94	9651->6135	;e move S; waitrt?; wait_while { stunned? }; fput S unless standing?; waitrt?
+1	1053	9767->9804	;e touch = [..]; fail_pattern = R; success_pattern = R; retry_pattern = R; patterns = Regexp.union(success_pattern,fail_pattern); result = nil; until success_pattern.match(result); result = dothistimeout S, N, patterns; if fail_pattern.match(result); waitforpc = $N; echo S; timeout = Time.now + N; until (!retry_pattern.match(get) or Time.now > timeout);end; else; echo S; break; end; end; touch.each {|t| fput S}; fput S; timeout = Time.now + N; wait_while { Room.current.id == N and Time.now < timeout}
+1	157	10440->12415	;e N.times { fput S; sleep N; wait_while { stunned? } }; fput S; fput S; wait_until { Room.current.id == N }
+1	193	10476->23601	;e fput S; fput S; fput S; fput S; fput S; fput S; fput S; fput S
+1	3344	10781->18150	;e result = dothistimeout S, N, R;if result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };end;result = dothistimeout S, N, R;if result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };end;result = dothistimeout S, N, R;if result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };elsif result =~ R; loop{; wait_until{(XMLData.mana > (N * N))}; result = cast(N, S); if result =~ R; break; end; };end
+1	60	10844->10845	;e fput S if checkspell S move S
+1	5621	11032->6274	;e force_goN = proc { |room_num| goN_count = Script.running.find_all { |s| s.name == S }.length force_start_script S, [ room_num.to_s ] wait_while { Script.running.find_all { |s| s.name == S }.length > goN_count } } script = Script.self rrcitizen = nil if Char.citizenship == S rrcitizen = true end amulet = nil driftwood = nil close_containers = [] if UserVars.lootsack.nil? or UserVars.lootsack.empty? lootsack = GameObj.inv.find { |obj| obj.noun =~ R } else lootsack = GameObj.inv.find { |obj| obj.name =~ R } || GameObj.inv.find { |obj| obj.name =~ R } end find_all_containers_var = nil find_all_containers = proc { if find_all_containers_var.nil? hp = proc { |ss| if ss =~ R; DownstreamHook.remove(S); nil; else; ss; end } DownstreamHook.add(S, hp) restore_silent = script.silent restore_want_downstream = script.want_downstream restore_want_downstream_xml = script.want_downstream_xml script.silent = true script.want_downstream = false script.want_downstream_xml = true clear put S script.silent = restore_silent timeout = Time.now + N container_ids = [] while (Time.now < timeout) and (line = get) if line =~ R container_ids = line.scan(/<a exist=S]+)Sopen ##{lootsack.id}Slook in ##{lootsack.id}Sopen ##{container.id}Slook in ##{container.id}S_drag ##{driftwood.id} rightS_drag ##{amulet.id} rightSwithdraw N silversSToo poor to go to WehnimerSgeneral store --disable-confirmSunhideSorder NSs LandingSwithdraw N silversSToo poor to go to WehnimerSalchemist --disable-confirmSunhideSorder NSs LandingSclose ##{c.id}" } fill_hands exit end end if (rrcitizen && driftwood) fput S else fput S end move S fill_hands
+1	254	11355->11357	;e empty_hands old_stance = XMLData.stance_text fput S unless old_stance == S until !checkpaths fput S unless standing? fput S sleep N waitrt? end fput S + old_stance unless old_stance == S
+1	113	11357->11358	;e while XMLData.room_title == S; fput S; move S; waitrt?; end; fill_hands
+1	73	11432->11433	;e empty_hands fput S if checkspell S move S
+1	79	11667->11675	;e move S; if checkpaths.include?(S); move S; move S; end
+1	138	11668->11675	;e move S; move S; if checkpaths.include?(S); move S; move S; elsif !checkpaths.include?(S); move S; end
+1	64	11722->17692	;e fput S; fput S;move S
+1	3763	11753->11749	;e ;ticket_nouns = [..];check_ticket = proc { |test_id|;look_result = dothistimeout S, N, R;test_id;else;nil;end;};if ticket_nouns.include?(GameObj.right_hand.noun);ticket_id = check_ticket.call(GameObj.right_hand.id);else;ticket_id = nil;end;unless ticket_id;if ticket_nouns.include?(GameObj.left_hand.noun);if ticket_id = check_ticket.call(GameObj.left_hand.id);fput S;end;end;end;unless ticket_id;empty_hands;checked_containers = Array.new;for container in GameObj.inv;unless container.contents.nil? or container.contents.empty?;checked_containers.push(container.id);for item in container.contents;if ticket_nouns.include?(item.noun);break if ticket_id = check_ticket.call(item.id);end;end;end;break if ticket_id;end;if ticket_id;fput S;end;end;unless ticket_id;status_tags;inv_result = dothis S, R;status_tags;container_list = inv_result.scan(R).flatten;for container_id in (container_list - checked_containers);container = GameObj.inv.find { |obj| obj.id == container_id };next unless container;open_result = dothis S, R;if open_result == S;fput S;end;for item in container.contents;if ticket_nouns.include?(item.noun);break if ticket_id = check_ticket.call(item.id);end;end;if ticket_id;fput S;if open_result =~ R;fput S;end;break;else;if open_result =~ R;fput S;end;end;end;end;unless ticket_id;echo S;if $goN_get_silvers.nil?;echo S;exit;elsif $goN_get_silvers;echo S;sleep N;move S;move S;move S;move S;move S;move S;move S;fput S if hidden? or checkspell(N);ask_result = dothis S, R;cost = $N;move S;move S;move S;move S;move S;move S;move S;move S;move S;move S;move S;move S;move S;move S;move S;move S;move S;fput S if hidden? or checkspell(N);withdraw_result = dothis S, R;fput S if hidden? or checkspell(N);move S;end
+1	314	12421->14089	;e if UserVars.rogue_password.nil? or UserVars.rogue_password.empty?; echo S; echo S; exit; end; fput S; UserVars.rogue_password.split(R).each { |verb| fput S }; fput S
+1	164	12589->12593	;e fput S waitfor S sleep N fput S unless standing? move S until Room.current.id == N
+1	409	12604->12605	;e N.times { if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout S, N, /^You (?:carefully )?search|^You donSget rockSclimb wall'; waitrt?; fill_hands
+1	413	12605->12606	;e N.times { if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout S, N, /^You (?:carefully )?search|^You donSget handholdSclimb face'; waitrt?; fill_hands
+1	410	12606->12607	;e N.times { if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout S, N, /^You (?:carefully )?search|^You donSget crackSclimb face'; waitrt?; fill_hands
+1	409	12607->12608	;e N.times { if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout S, N, /^You (?:carefully )?search|^You donSget rootSclimb face'; waitrt?; fill_hands
+1	90	12613->12614	;e empty_hands fput S move S waitrt? fill_hands fput S unless standing?
+1	35	13960->30500	;e empty_hand;move(S)
+1	588	14060->20430	;e fput S while line = get if line =~ R break elsif line =~ R if GameObj.right_hand.type == S fput S break else echo S pause_script wait_until{GameObj.right_hand.name !~ R} fput S break end end end fput S
+1	38	14659->13532	;e $SILVERWOOD_TOWN=:va;move S
+1	1618	14726->18172	;e flip_tags = !Script.current.want_downstream_xml; status_tags if flip_tags; go_result = dothistimeout S,N,R; status_tags if flip_tags; if go_result =~ R; climb_platform = false; refill_hands = false; move(S); while climb_platform == false; waitrt?; result = dothistimeout S, N, R; climb_platform = true if result =~ R; (refill_hands = true;empty_hands) if result =~ R; end; fill_hands if refill_hands == true; buffed = false; N.times{ turn_result = dothistimeout S,N,/The wheel begins to move|you just donSt have the strength to turn the wheel on your own. Pausing here until you can get some help!S`;u goN` to unpause the script once the wheel has been turned." pause_script end } end
+1	861	15571->17721	;e elements = { S => { S => N, S => N, S => N }, S => { S => N, S => N, S => N }, S => { S => N, S => N, S => N } } direction = { S => S, S => S, S => S } result = nil [..].each { |element| truth_table = elements[element].values.find_all { |spellnum| Spell[spellnum].known? } if truth_table.size == N result = element break end } if result.nil? echo S exit end N.times{ move direction[result] } elements[result].each{ |pillar, spellnum| if !Spell[spellnum].affordable? echo S wait_until{ Spell[spellnum].affordable? } end Spell[spellnum].cast(pillar) }
+1	83	16011->11022	;e walk until GameObj.room_desc.find { |obj| obj.noun == S }; move S
+1	891	16165->16064	;e result = String.new; until result =~ R; N.times{fput S}; end; end; end; move S
+1	53	16193->16192	;e multifput(S,S);move S
+1	71	16196->22225	;e multifput(S,S,S)
+1	43	16353->16714	;e fput S; waitrt?; move S;
+1	83	16806->4162	;e move S; unless checkpaths.include?(S); move S; move S; end
+1	60	17493->3235	;e move S; wait_until { checkpaths.include?(S) }
+1	57	17665->11433	;e wait_while{Map.current.id == N};$goN_restart=true;
+1	44	17680->10888	;e fput S unless standing?; move S
+1	63	17680->17679	;e move S; fput S unless standing?; waitrt?
+1	129	17805->18348	;e fput S; sleep N; fput S; waitrt?; fput S; waitrt?; fput S; waitrt?; move S
+1	39	17825->10434	;e fput S ; move S
+1	41	18175->18176	;e empty_hands;move S;fill_hands
+1	2026	18178->18179	;e refill_hands = false; done = false; stairs_look = dothistimeout S,N,R if stairs_look =~ R done = true; end; runes = {S=>S, S=>S, S=>S, S=>S, S=>S}; result = stairs = under = rune = nil; look = true; refill_hands = false; while done == false; (refill_hands = true;empty_hands;) if GameObj.right_hand.id and GameObj.left_hand.id; if look == true; result = dothistimeout S, N, R; if result =~ R; rune = $N; under = $N; look = false; else; under = S; end; end; result = dothistimeout S#{under}S, N, R; if result =~ R; stairs = $N; rune = $N; under = $N; elsif result =~ R; under = S; look = false; elsif result =~ R; look = true; end; done = true if stairs =~ R; if under.nil? and done == false; echo S; pause_script; end; end; fill_hands if refill_hands; move(S);
+1	618	18180->18181	;e sleep(N); refill_hands=false;(refill_hands = true;empty_hands;) if GameObj.right_hand.id or GameObj.left_hand.id; if !GameObj.loot.find{|o| o.name==S}; dothistimeout S,N,R; _respond S; waitfor S; end; fput S; sleep(N); waitrt?; fill_hands if refill_hands; move(S);
+1	242	18181->18182	;e sleep(N); _respond S; waitfor S; move(S);
+1	1133	18186->451	;e ; start_time = Time.now.to_i; refill_hands=false;(refill_hands = true;empty_hands;) if GameObj.right_hand.id or GameObj.left_hand.id; fput S; fput S; _respond S; waitfor S; fput S; _respond S; waitfor S; fput S; _respond S; waitfor S; _respond S; waitfor S; fput S; _respond S; waitfor S; _respond S; fill_hands if refill_hands;
+1	82	18186->18187	;e empty_hands if GameObj.right_hand.id or GameObj.left_hand.id;move(S)
+1	994	18187->451	;e ; start_time = Time.now.to_i; fput S; _respond S; waitfor S; fput S; _respond S; waitfor S; fput S; _respond S; waitfor S; _respond S; waitfor S; fput S; _respond S; waitfor S; _respond S; fill_hands;
+1	690	18243->22550	;e %w(N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N N).each{|id| force_start_script(S, [id]);wait_while{Script.running.count{|s| s.name == S} == N};break if GameObj.loot.collect{|i| i.noun}.include?(S)};move S
+1	55	18249->25463	;e fput S;move (S);
+1	3451	18677->11749	;e ticket_nouns = [..]; check_ticket = proc { |test_id| look_result = dothistimeout S, N, R; test_id; else; nil; end }; force_goN = proc { |room_num| goN_count = Script.running.find_all { |s| s.name == S }.length; force_start_script S, [ room_num.to_s ]; wait_while { Script.running.find_all { |s| s.name == S }.length > goN_count } }; ticket_id = nil; if ticket_nouns.include?(GameObj.right_hand.noun); ticket_id = check_ticket.call(GameObj.right_hand.id); end; unless ticket_id; if ticket_nouns.include?(GameObj.left_hand.noun); if ticket_id = check_ticket.call(GameObj.left_hand.id); fput S; end; end; end; unless ticket_id; empty_hands; checked_containers = Array.new; for container in GameObj.inv; unless container.contents.nil? or container.contents.empty?; checked_containers.push(container.id); container.contents.find_all { |obj| ticket_nouns.include?(obj.noun) }.each { |obj| break if ticket_id = check_ticket.call(obj.id) }; end; break if ticket_id; end; if ticket_id; fput S; end; end; unless ticket_id; status_tags; inv_result = dothis S, R; status_tags; container_list = inv_result.scan(R).flatten; for container_id in (container_list - checked_containers); if container = GameObj.inv.find { |obj| obj.id == container_id }; open_result = dothis S, R; if open_result == S; fput S; end; container.contents.find_all { |obj| ticket_nouns.include?(obj.noun) }.each { |obj| break if ticket_id = check_ticket.call(obj.id) }; if ticket_id; fput S; if open_result =~ R; fput S; end; break; else; if open_result =~ R; fput S; end; end; end; end; end; unless ticket_id; echo S; if $goN_get_silvers; echo S; sleep N; force_goN.call(N); fput S if hidden? or invisible?; ask_result = dothis S, R; cost = $N; force_goN.call(N); fput S if hidden? or invisible?; withdraw_result = dothis S, /hands you [N-N]+ silvers|donSunhideSask percy about ticketSfor automatic ticket buying, use ;goN getsilvers=onSunhideSgangplankSgangplankSgo gangplankSwaiting for the cutter...SunhideSgo gangplank'; end
+1	770	18700->18250	;e if !GameObj.loot.find{|o| o.name =~ R}.nil?; move (S); elsif GameObj.right_hand.id.nil?; echo S; else echo S; batter_result = nil; until batter_result =~ R; batter_result = dothistimeout S, N, R; break if batter_result =~ R; end; move (S) if batter_result =~ R; echo S if batter_result =~ R; end;
+1	1344	18748->18747	;e eyespy = Spell[..]; unless eyespy.affordable?; echo S; wait_until { eyespy.affordable? }; end; eyespy.cast; for dir in [..]; fput S + dir; end; result = dothistimeout S, N, R; if rune = R.match(result).captures.first; fput S + rune + S; end; result = dothistimeout S, N, R; if rune = R.match(result).captures.first; fput S + rune + S; end; fput S
+1	873	18893->13441	;e number = { S => S, S => S, S => S, S => S, S => S }; result = dothistimeout S, N, R; lever_hash = Hash.new; lever_hash[..] = number[result.slice(R).slice(R)]; lever_hash[..] = number[result.slice(R).slice(R)]; lever_hash[..] = number[result.slice(R).slice(R)]; lever_hash[..] = number[result.slice(R).slice(R)]; lever_hash[..] = number[result.slice(R).slice(R)]; for lever,position in lever_hash; loop { result = dothistimeout S + lever + S, N, R; break if result =~ R }; end; move S; move S; move S
+1	63	19058->19075	;e empty_hands;fput S;move S
+1	41	19377->25691	;e N.times{fput S;}
+1	107	19543->1102	;e move S; move S; move checkpaths[rand(checkpaths.length)] while checkpaths.length > N
+1	314	19657->20012	;e fput S;while line = get;if [..].include?(line);fput S;break;elsif line == S;empty_hands;fput S;fput S;fput S;fill_hands;fput S;fput S;break;end;end
+1	79	19727->19990	;e wait_until{GameObj.loot.find{|item| item.noun == S}};fput S
+1	137	19728->19992	;e if GameObj.loot.find{|item| item.noun == S};fput S;else;fput S;fput S until standing?;fput S;end
+1	180	19992->19728	;e fput S;while line = get;if line == S;empty_hand;fput S;fput S;fput S;fill_hand;break;else;fput S;break;end;end
+1	153	20008->20011	;e empty_hand;fput S;fill_hand;fput S;fput S;echo S
+1	259	20012->19657	;e fput S;while line = get;if [..].include?(line);fput S;break;elsif line == S;empty_hand;fput S;fput S;fput S;fill_hand;break;end;end;
+1	33	20124->22619	;e put S; put S
+1	51	21120->21121	;e pause N;fput S;waitrt;fput S
+1	18	21302->21303	;e put S
+1	73	21323->25687	;e fput S;fput S;fput S;fput S
+1	163	21386->23157	;e if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; fput S; move S
+1	54	22007->21964	;e waitrt?; empty_hands; move S; fill_hands
+1	66	22007->21967	;e waitrt?; empty_hands; N.times { move S }; fill_hands
+1	192	22349->22444	;e put S;while line=get;if line=~ R;put S;elsif line=~R;put S;break;end;end
+1	342	22666->24233	;e N.times { fput S unless standing?; waitrt? }; fput S; if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; N.times { res = dothistimeout S, N, R; break if res !~ R}; move S
+1	4192	23282->23282	;e hot_rooms = [..]; cold_rooms = [..]; $mapdb_confluence_wayto ||= Hash.new; $mapdb_confluence_wander ||= Array.new; loop { start_room = Room.current; break if start_room.id == $mapdb_confluence_target; if hot_rooms.include?(start_room.id); hot = true; elsif cold_rooms.include?(start_room.id); hot = false; else; $goN_restart = true; break; end; if GameObj.loot.any? { |o| o.name == S }; if hot; $mapdb_confluence_hot_tranquility = start_room.id; else; $mapdb_confluence_cold_tranquility = start_room.id; end; elsif $mapdb_confluence_hot_tranquility == start_room.id; $mapdb_confluence_hot_tranquility = nil; elsif $mapdb_confluence_cold_tranquility == start_room.id; $mapdb_confluence_cold_tranquility = nil; end; if GameObj.loot.any? { |o| o.name == S }; if hot; $mapdb_confluence_hot_pit = start_room.id; else; $mapdb_confluence_cold_pit = start_room.id; end; elsif $mapdb_confluence_hot_pit == start_room.id; $mapdb_confluence_hot_pit = nil; elsif $mapdb_confluence_cold_pit == start_room.id; $mapdb_confluence_cold_pit = nil; end; if $mapdb_confluence_wayto[start_room.id].nil?; wayto = Hash.new; XMLData.room_exits.each { |d| wayto[d] = nil }; redo if Room.current != start_room; $mapdb_confluence_wayto[start_room.id] = wayto; end; if ($mapdb_confluence_wayto[start_room.id].keys != XMLData.room_exits); redo if Room.current != start_room; $mapdb_confluence_wayto = Hash.new; redo; end; child = ((bounty? =~ R) ? GameObj.npcs.find { |npc| npc.noun == S } : nil); dir_to = proc { |targets| dir = nil; tried = Array.new; N.times { break if dir = $mapdb_confluence_wayto[start_room.id].keys.find { |d| targets.include?($mapdb_confluence_wayto[start_room.id][d]) }; targets.each { |i| tried.push(i) unless tried.include?(i) }; ot = targets; targets = $mapdb_confluence_wayto.keys.find_all { |k| $mapdb_confluence_wayto[k].values.any? { |i| ot.include?(i) } and not tried.include?(k) }; break if targets.empty? }; dir }; dir = nil; if $mapdb_confluence_target == S; if GameObj.loot.any? { |o| o.name == S }; move S; $goN_restart = true; break; end; if hot and $mapdb_confluence_hot_tranquility; dir = dir_to.call([$mapdb_confluence_hot_tranquility]); elsif not hot and $mapdb_confluence_cold_tranquility; dir = dir_to.call([$mapdb_confluence_cold_tranquility]); end; else; if hot and cold_rooms.include?($mapdb_confluence_target); if GameObj.loot.any? { |o| o.name == S }; move S; redo; end; dir = dir_to.call([$mapdb_confluence_hot_pit]) if $mapdb_confluence_hot_pit; elsif not hot and hot_rooms.include?($mapdb_confluence_target); if GameObj.loot.any? { |o| o.name == S }; move S; redo; end; dir = dir_to.call([$mapdb_confluence_cold_pit]) if $mapdb_confluence_cold_pit; else; dir = dir_to.call([$mapdb_confluence_target]); end; end; dir ||= dir_to.call([..]); dir ||= $mapdb_confluence_wayto[start_room.id].keys.find { |d| not $mapdb_confluence_wander.include?($mapdb_confluence_wayto[start_room.id][d]) }; if dir.nil?; next_id = $mapdb_confluence_wander.find { |i| $mapdb_confluence_wayto[start_room.id].values.include?(i) }; dir = $mapdb_confluence_wayto[start_room.id].keys.find { |d| $mapdb_confluence_wayto[start_room.id][d] == next_id }; end; r = move(dir.dup); N.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep N } if child; if r == false; status_tags; result = dothistimeout S, N, R; status_tags; options = result.scan(R).flatten; move options[rand(options.length)]; else; end_room = Room.current; redo if end_room.id == start_room.id; $mapdb_confluence_wayto[start_room.id][dir] = end_room.id; $mapdb_confluence_wander.delete(end_room.id); $mapdb_confluence_wander.push(end_room.id); end }
+1	465	23338->23339	;e status_tags put S while line = get if line =~ R container = $N break elsif line =~ R container = nil break end end status_tags if container fput S fput S move S else echo S echo S exit end
+1	33	23496->19109	;e move S; fputS
+1	194	23830->29860	;e UserVars.mapdb_hinterwilds_location = S;multifput S,S,S;waitfor S,S,S;
+1	168	23845->23926	;e if celerity = Spell[..] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; fput S; waitrt?; fput S
+1	64	24158->24159	;e x=XMLData.room_count+N;fput S until XMLData.room_count == x
+1	28	24159->24160	;e move S;fill_hands
+1	167	24238->21557	;e fput S;fput S;fput S;echo S;line = get until Room.current.id != N
+1	102	24239->24240	;e echo S;line = get until line =~ R
+1	117	24241->313	;e (fput S until standing?;fput S) until Room.current.id != N;wait_until{Room.current.id == N}
+1	51	24241->20233	;e fput S until Room.current.id != N
+1	40	24507->4709	;e move S;$goN_restart = true;
+1	50	24516->15651	;e fput S until kneeling?; move S
+1	248	24730->24729	;e while Room.current.id == N do;fput S until standing?;success = R;fail = R;result = dothistimeout S, N, Regexp.union(success, fail);if result =~ fail;sleep N;waitrt?;end;end
+1	146	24752->20423	;e [..].each{|d| move(d)};fput S;[..].each{|d| move(d)};fput S;move(S);
+1	114	24837->24967	;e line = fput S until line =~ R;move S
+1	52	24842->24876	;e fput S;fput S;$goN_restart = true
+1	54	24895->24876	;e fput S;fput S;$goN_restart=true
+1	55	24963->7602	;e fput S until Room.current.id == N
+1	212	24976->24979	;e fput S;dothistimeout S, N, R;wait_until{stunned?};echo S;wait_until{!stunned?};fput S until standing?
+1	436	24980->24804	;e echo S;line=get until line =~ R;fput S;fput S if standing?;line = fput S until line =~ R;dothistimeout S, N, R;line = fput S until line =~ R;dothistimeout S, N, R;fput S until standing?
+1	548	25148->221	;e res = choice = nil;res = dothistimeout S, N, R;choice = $N;end;dothistimeout S, N, R;put S;wait_until { XMLData.room_title =~ R };sleep N;wait_until{ XMLData.room_title !~ R };if GameObj.npcs.any? { |npc| npc.name =~ R };N.times do;_respond S;end;exit;end;$goN_restart=true
+1	549	25148->3904	;e res = choice = nil;res = dothistimeout S, N, R;if res =~ R;choice = $N;end;dothistimeout S, N, R;put S;wait_until { XMLData.room_title =~ R };sleep N;wait_until{ XMLData.room_title !~ R };if GameObj.npcs.any? { |npc| npc.name =~ R };N.times do;_respond S;end;exit;end;$goN_restart=true
+1	229	25172->25231	;e save_stance = XMLData.stance_text;fput S if save_stance != S;put S;move(S);fput S if save_stance != XMLData.stance_text;;$goN_restart = true;
+1	56	25687->21323	;e fput S;fput S;fput S
+1	33	25826->33232	;e fput S;move(S);
+1	102	26765->27623	;e fput S until GameObj.loot.find{|x| x.name == S}; fput S
+1	37	27614->3166	;e move S;$goN_restart = true
+1	71	28802->25509	;e move(S);UserVars.mapdb_marksofthebeast_origin = N;
+1	61	30115->29861	;e while Room.current.id == N; fput S; waitrt; end;
+1	129	30115->29867	;e fput S; while Room.current.id == N; fput S; waitrt; end; if Room.current.id != N; $goN_restart = true; end;
+1	37	30500->13960	;e move S;fill_hand;
+1	64	30815->30816	;e fput S unless standing?;move(S); $goN_restart=true
+1	409	30850->30851	;e color_moves = {S => S, S => S, S => S, S => S};GameObj.room_desc.find { |o| o.name =~ R };color = $N;move_order = color_moves[color].split(S);move_order.each { |w| move(w) };move(S);fput S;move(S);move_order.reverse.each { |w| move(reverse_direction(w)) };move(S)
+1	156	31073->29860	;e UserVars.mapdb_hinterwilds_location = S;multifput S,S,S;waitfor S
+1	87	31286->31345	;e until GameObj.loot.find {|o| o.noun==S};fput S;waitrt?;end;move S;
+1	91	31527->31529	;e fput S waitrt? fput S waitrt? fput S move S
+1	41	31966->31967	;e fput S;waitrt?;move(S)
+1	55	32612->32617	;e N.times { fput S };move S
+1	39	32873->13532	;e $SILVERWOOD_TOWN=:zul;move S
+1	40	34292->34313	;e fput S; waitrt?; move S
+1	548	34509->7927	;e bleak_rooms = [..] ;bleak_rooms.map! { |r| Room[..].id } ;bleak_rooms.each { |r| ; options = {S: true} ; Script.run(S, S, options) unless Room.current.id == r ; if GameObj.loot.any? { |o| o.name == S } ; break ; end ;} ;move(S) ;$goN_restart = true
+1	41	35614->35727	;e fput S; waitrt?; fput S
+1	40	35902->35901	;e fput(S); fput(S)
+1	75	36166->36167	;e multifput(S, S); waitrt?; fput(S); waitrt?
+1	57	36351->36352	;e waitfor S
+1	53	36396->36401	;e fput S; sleep N;waitrt?; move(S)
+1	48	36399->36414	;e N.times{fput S};move S
+1	70	36413->36422	;e fput S;sleep N;waitrt?; fput S; move S
+1	44	36416->36412	;e move S; wait_while{checkstunned}
+1	51	36417->36348	;e fput S;sleep N;waitrt?; move S
+1	223	36419->36440	;e if !GameObj.loot.any?{|i| i.name =~ R};move(S);move(S);fput S;fput S;move(S);move(S);end;sleep N until GameObj.loot.any?{|i| i.name =~ R};move(S)
+1	149	36440->36419	;e if !GameObj.loot.any?{|i| i.name =~ R};fput S;sleep N until GameObj.loot.any?{|i| i.name =~ R};end;move(S)

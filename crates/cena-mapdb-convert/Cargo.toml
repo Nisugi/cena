@@ -1,0 +1,19 @@
+[package]
+name = "cena-mapdb-convert"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# `plan/21` §3a: the offline half of the map pipeline. Reads the upstream map
+# JSON -- the only place upstream Ruby is ever seen -- and writes one
+# `cena_map::Room` per file, plus a report of what it could not convert.
+#
+# A build tool, not part of the client: nothing depends on it, and it is the
+# one crate here whose whole job is file I/O.
+[dependencies]
+cena-map.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

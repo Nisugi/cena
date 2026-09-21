@@ -1,0 +1,708 @@
+34509	7927	;e bleak_rooms = [474204, 474205, 474206, 474207, 474208, 474209, 474210, 474211, 474212, 474213, 474214, 474215, 474216, 474218, 474219, 474220, 474221, 474222, 474224, 474225, 474226, 474227, 474228, 474229, 474200, 474201, 474202, 474203]
+;bleak_rooms.map! { |r| Room["u#{r}"].id }
+;bleak_rooms.each { |r|
+;  options = {'force': true}
+;  Script.run('go2', "#{r}", options) unless Room.current.id == r
+;  if GameObj.loot.any? { |o| o.name == 'rippling ethereal green portal' }
+;    break
+;  end
+;}
+;move("go ethereal portal")
+;$go2_restart = true
+34434	34435	;e refill_hand = false;key_worn = false;
+  (refill_hand = true;empty_hand) if !checkleft.nil? and !checkright.nil?;
+  key_worn = true if GameObj.inv.find {|obj| obj.name =~ /#{UserVars.key.split(' ').join('.*?')}/};
+  fput "remove my #{UserVars.key}" if key_worn;
+  fput "get my #{UserVars.key} from my #{UserVars.key_sack}" if !key_worn;
+  door = 'bright door';
+  multifput "unlock #{door}","open #{door}","go #{door}","close #{door}","lock #{door}";
+  fput "wear my #{UserVars.key}" if key_worn;
+  fput "put my #{UserVars.key} in my #{UserVars.key_sack}" if !key_worn;
+  fill_hand if refill_hand;
+34435	34434	;e refill_hand = false;key_worn = false;
+  (refill_hand = true;empty_hand) if !checkleft.nil? and !checkright.nil?;
+  key_worn = true if GameObj.inv.find {|obj| obj.name =~ /#{UserVars.key.split(' ').join('.*?')}/};
+  fput "remove my #{UserVars.key}" if key_worn;
+  fput "get my #{UserVars.key} from my #{UserVars.key_sack}" if !key_worn;
+  door = 'bright door';
+  multifput "unlock #{door}","open #{door}","go #{door}","close #{door}","lock #{door}";
+  fput "wear my #{UserVars.key}" if key_worn;
+  fput "put my #{UserVars.key} in my #{UserVars.key_sack}" if !key_worn;
+  fill_hand if refill_hand;
+6955	6985	;e script = Script.self
+hand = sword = sword_container = nil;
+close_containers = [];
+find_all_containers_var = nil;
+find_all_containers = proc {
+	if find_all_containers_var.nil?
+		restore_want_downstream = script.want_downstream
+		restore_want_downstream_xml = script.want_downstream_xml
+		script.want_downstream = false
+		script.want_downstream_xml = true
+		clear
+		put 'inventory containers'
+		timeout = Time.now + 10
+		container_ids = []
+		while (Time.now < timeout and line = get)
+			if (line =~ /^You are wearing/)
+				container_ids = line.scan(/<a exist="([^"]+)"/).flatten
+				break
+			end
+		end
+		script.want_downstream = restore_want_downstream
+		script.want_downstream_xml = restore_want_downstream_xml
+		clear
+		find_all_containers_var = container_ids.collect { |id| GameObj[id] }
+	end
+	find_all_containers_var
+}
+ds_to_bag = proc { |item_id, container_id|
+	restore_want_downstream = script.want_downstream
+	restore_want_downstream_xml = script.want_downstream_xml
+	script.want_downstream = false
+	script.want_downstream_xml = true
+	result = dothistimeout "_drag ##{item_id} ##{container_id}", 3, /<(?:right|left)>Empty<|^You can't .+ It's closed!|I could not find what you were referring to|Your .*? won't fit in/
+	script.want_downstream = restore_want_downstream
+	script.want_downstream_xml = restore_want_downstream_xml
+	result
+}
+ds_to_hand = proc { |item_id,hand|
+	if hand.nil?;
+		hand = 'left' if GameObj.left_hand.id.nil?;
+		hand = 'right' if GameObj.right_hand.id.nil?;
+	end
+	restore_want_downstream = script.want_downstream
+	restore_want_downstream_xml = script.want_downstream_xml
+	script.want_downstream = false
+	script.want_downstream_xml = true
+	result = dothistimeout "_drag ##{item_id} #{hand}", 3, /<(?:right|left) exist="#{item_id}"/
+	script.want_downstream = restore_want_downstream
+	script.want_downstream_xml = restore_want_downstream_xml
+	result
+}
+
+stow_sword = proc {
+	if sword.nil?
+		if (GameObj.right_hand.noun == 'sword')
+			sword = GameObj.right_hand
+		elsif (GameObj.left_hand.noun == 'sword')
+			sword = GameObj.left_hand
+		end
+	end
+	if sword
+		if sword_container
+			ds_to_bag.call(sword.id, sword_container.id)
+		else
+  		ds_to_bag.call(sword.id, XMLData.stow_container_id)
+			if (GameObj.right_hand.id == sword.id or GameObj.left_hand.id == sword.id)
+				for container in find_all_containers.call
+					next if (container.noun == 'locket')
+					ds_to_bag.call(sword.id, container.id)
+					break unless (GameObj.right_hand.id == sword.id or GameObj.left_hand.id == sword.id)
+				end
+			end
+		end
+	end
+}
+empty_hands
+GameObj.containers.each{|k,v| if sword = v.find {|i| i.name == 'short sword'};sword_container = GameObj[k];break;end};
+if sword.nil?
+	for container in find_all_containers.call
+		if container.contents.nil?
+			result = dothistimeout "open ##{container.id}", 3, /^You open|^That is already open|^There doesn't seem to be any way to do that|^What were you referring to|^I could not find what you were referring to/
+			if (container.contents.nil? and result =~ /^That is already open/)
+				dothistimeout "look in ##{container.id}", 3, /^In the|^There is nothing|^That is closed|^What were you referring to|^I could not find what you were referring to/
+			elsif result =~ /^You open/
+				close_containers.push(container)
+			end
+		end
+		if (sword = container.contents.find { |obj| obj.name == 'short sword' })
+			sword_container = container
+			break
+		end
+	end
+end
+if sword
+	ds_to_hand.call(sword.id, 'right')
+else
+	if $go2_get_silvers
+		this_room = Room.current
+		if (Script.running.find_all { |s| s.name == 'go2' }.length > 1)
+			echo 'Too many instances of go2 running. Killing other instances.'
+			for s in Script.running
+				s.kill if s.name == 'go2' and s != Script.self
+			end
+			exit
+		end
+		force_start_script 'go2', [ 'bank', '--disable-confirm' ]
+		wait_while { Script.running.find_all { |s| s.name == 'go2' }.length > 1 }
+		fput 'unhide' if hidden? or invisible?
+		fput 'withdraw 200'
+		force_start_script 'go2', [ 'weaponshop', '--disable-confirm' ]
+		wait_while { Script.running.find_all { |s| s.name == 'go2' }.length > 1 }
+		fput 'unhide' if hidden? or invisible?
+		fput 'order 3'
+		fput 'buy'
+		force_start_script 'go2', [ 'bank', '--disable-confirm' ]
+		wait_while { Script.running.find_all { |s| s.name == 'go2' }.length > 1 }
+		fput 'unhide' if hidden? or invisible?
+		fput 'deposit all'
+		force_start_script 'go2', [ this_room.id.to_s ]
+		wait_while { Script.running.find_all { |s| s.name == 'go2' }.length > 1 }
+	else
+		echo 'You have no short sword! Use	 ;go2 getsilvers=on	 if you want this script to buy one for you.'
+		close_containers.each { |c| fput "close ##{c.id}" }
+		fill_hands
+		exit
+	end
+end
+if (resolve = Spell[9704] and resolve.known? and resolve.affordable? and !resolve.active?)
+	resolve.cast
+end
+killed_disarm = Script.kill('disarmed')
+before_dying { Script.start('disarm') if killed_disarm }
+recovering_item = false
+loop do
+	move 'go pool'
+	fput 'swim down'
+	fput 'kneel'
+	sleep 0.5
+	unless recovering_item
+		line = dothistimeout 'pry gap', 3, /you are spit out|tumbles out of your hand|good enough leverage/
+		if line =~ /tumbles out of your hand/
+			recovering_item = true
+			sword = nil
+		end
+		waitrt?
+		break if Room.current.id != 22229
+	end
+	if recovering_item
+		line = dothistimeout 'recover item', 3, /nothing recoverable|and recover it/
+		recovering_item = false if line =~ /and recover it/
+		waitrt?
+	end
+	fput 'swim up'
+	fput 'go shore'
+end
+fput 'stand' until standing?
+waitrt?
+stow_sword.call
+close_containers.each { |c| fput "close ##{c.id}" }
+fill_hands
+Script.start('disarm') if killed_disarm
+undo_before_dying
+$go2_restart = true;
+
+6998	6997	;e loop { result = dothistimeout 'push lever', 3, /Ok, you push a heavy steel lever protruding from a slit in one wall.  Now what?|Summoning all your strength, you manage to push a heavy steel lever protruding from a slit in one wall forward just enough to lower a wooden drawbridge.|You try to push the heavy steel lever, but it won't budge!/; break if result =~ /Ok, you push a heavy steel lever protruding from a slit in one wall.  Now what?|Summoning all your strength, you manage to push a heavy steel lever protruding from a slit in one wall forward just enough to lower a wooden drawbridge./ }; waitrt?; move 'go drawbridge'
+10816	10815	;e begin
+fput 'swim north'
+waitrt?
+end until Room.current.id == 10815
+10816	10817	;e begin
+fput 'swim east'
+waitrt?
+end until Room.current.id == 10817
+17493	3235	;e move 'go arches'; wait_until { checkpaths.include?('e') }
+19007	19029	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'oil painting'); break unless result =~ /Spell Hindrance/ } 
+19029	19007	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'banner'); break unless result =~ /Spell Hindrance/ } 
+2658	2659	;e clear
+put 'look'
+loop {
+line = get
+if line =~ /a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall and a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall\./
+if $3 == 'eastern'
+move 'climb steps'
+elsif $6 == 'eastern'
+move 'climb second steps'
+elsif $9 == 'eastern'
+move 'climb third steps'
+elsif $12 == 'eastern'
+move 'climb fourth steps'
+else
+echo "error: unique_map_movements can't find the right steps"
+exit
+end
+break
+end
+}
+2658	2660	;e clear
+put 'look'
+loop {
+line = get
+if line =~ /a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall and a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall\./
+if $3 == 'southern'
+move 'climb steps'
+elsif $6 == 'southern'
+move 'climb second steps'
+elsif $9 == 'southern'
+move 'climb third steps'
+elsif $12 == 'southern'
+move 'climb fourth steps'
+else
+echo "error: unique_map_movements can't find the right steps"
+exit
+end
+break
+end
+}
+2658	2661	;e clear
+put 'look'
+loop {
+line = get
+if line =~ /a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall and a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall\./
+if $3 == 'western'
+move 'climb steps'
+elsif $6 == 'western'
+move 'climb second steps'
+elsif $9 == 'western'
+move 'climb third steps'
+elsif $12 == 'western'
+move 'climb fourth steps'
+else
+echo "error: unique_map_movements.txt can't find the right steps"
+exit
+end
+break
+end
+}
+2675	2677	;e if checkleft and checkright; empty_hands; need_fill_hands = true; else; need_fill_hands = false; end; result = dothistimeout 'pull ring', 8, /^A deep grinding sound echoes through the sepulchral halls of the shrine.  Slowly, the stone door begins to rise, drawing upwards into the top of its frame.  Inch by inch it crawls, steadily ascending to reveal light beyond.  Within a short time, it has withdrawn completely, leaving an open doorway that beckons you outside\.|^Gathering your strength, you give the brass ring a mighty tug, but it will not budge an inch\.|^Gathering your strength, you give the brass ring a mighty tug\.  Creaking, it gives a little, and you manage to pull it downward some before fatigue forces you to stop\./ until result =~ /^A deep grinding sound echoes through the sepulchral halls of the shrine.  Slowly, the stone door begins to rise, drawing upwards into the top of its frame.  Inch by inch it crawls, steadily ascending to reveal light beyond.  Within a short time, it has withdrawn completely, leaving an open doorway that beckons you outside\.|^Gathering your strength, you give the brass ring a mighty tug, but it will not budge an inch\./; waitrt?; fill_hands if need_fill_hands; move 'go door'
+28885	29773	;e fput 'speak'; language = /You are currently speaking (.*?)\./.match(get).captures.first until language;; fput('speak wizard') unless language == 'Guildspeak'; fput('unhide') if hidden? or invisible?; move 'say ::portal wizard'; fput('speak ' + language.to_s) unless language == 'Guildspeak'
+18178	18179	;e refill_hands = false;
+done = false;
+stairs_look = dothistimeout "look staircase",3,/you could easily scramble up them to the ledge above.|It really doesn't make much sense./
+if stairs_look =~ /you could easily scramble up them to the ledge above/
+  done = true;
+end;
+runes = {"O"=>"R", "R"=>"S", "Z"=>"Z", "S"=>"O", "E"=>"E"};
+result = stairs = under = rune = nil;
+look = true;
+refill_hands = false;
+while done == false;
+  (refill_hands = true;empty_hands;) if GameObj.right_hand.id and GameObj.left_hand.id;
+  if look == true;
+    result = dothistimeout "look runes", 3, /There are five protrusions with rune markings. .*? Four of the runes are lined up in a row, labeled: R, S, Z and O, in dwarven.  The last one, labeled (\w), is directly under the (\w) rune./;
+    if result =~ /There are five protrusions with rune markings. .*? Four of the runes are lined up in a row, labeled: R, S, Z and O, in dwarven.  The last one, labeled (\w), is directly under the (\w) rune./;
+      rune = $1;
+      under = $2;
+      look = false;
+    else;
+      under = "e";
+    end;
+  end;
+  result = dothistimeout "press #{runes["#{under}"]} rune", 5, /You touch the \w rune.  With a loud grinding sound, .*?.  (.*?)  Curiously the (\w) rune seems to have shifted position.  It is now lined up under the (\w) rune.|.*?Nothing happens||You touch the E rune.  With a loud grinding sound, the entire staircase lowers into the ledge./;
+  if result =~ /You touch the \w rune.  With a loud grinding sound, .*?.  (.*?)  Curiously the (\w) rune seems to have shifted position.  It is now lined up under the (\w) rune./;
+    stairs = $1;
+    rune = $2;
+    under = $3;
+  elsif result =~ /.*?Nothing happens/;
+    under = "E";
+    look = false;
+  elsif result =~ /You touch the E rune./;
+    look = true;
+  end;
+  done = true if stairs =~ /complete staircase/;
+  if under.nil? and done == false;
+    echo "something went wrong working with the runes.  Pausing go2.";
+    pause_script;
+  end;
+end;
+fill_hands if refill_hands;
+move("go staircase");
+
+18186	451	;e ;
+start_time = Time.now.to_i;
+refill_hands=false;(refill_hands = true;empty_hands;) if GameObj.right_hand.id or GameObj.left_hand.id;
+fput 'go opening';
+fput 'lay';
+_respond "#{monsterbold_start}Waiting for 'one on the left and one on the right'.#{monsterbold_end}";
+waitfor "one on the left and one on the right";
+fput "lean left";
+_respond "#{monsterbold_start}Waiting for 'branches off to the left just ahead'.#{monsterbold_end}";
+waitfor "branches off to the left just ahead";
+fput "lean left";
+_respond "#{monsterbold_start}Waiting for 'Another tunnel branches off to the left just ahead'.#{monsterbold_end}";
+waitfor "Another tunnel branches off to the left just ahead";
+_respond "#{monsterbold_start}Waiting for 'Suddenly the tunnel turns into a nearly vertical drop'.#{monsterbold_end}";
+waitfor "Suddenly the tunnel turns into a nearly vertical drop";
+fput "lean left";
+_respond "#{monsterbold_start}Waiting to exit the tunnels.#{monsterbold_end}";
+waitfor "Obvious paths: southwest";
+_respond "#{monsterbold_start}water tunnel time: #{Time.now.to_i - start_time} seconds.#{monsterbold_end}";
+fill_hands if refill_hands;
+
+18187	451	;e ;
+start_time = Time.now.to_i;
+fput 'lay';
+_respond "#{monsterbold_start}Waiting for 'one on the left and one on the right'.#{monsterbold_end}";
+waitfor "one on the left and one on the right";
+fput "lean left";
+_respond "#{monsterbold_start}Waiting for 'branches off to the left just ahead'.#{monsterbold_end}";
+waitfor "branches off to the left just ahead";
+fput "lean left";
+_respond "#{monsterbold_start}Waiting for 'Another tunnel branches off to the left just ahead'.#{monsterbold_end}";
+waitfor "Another tunnel branches off to the left just ahead";
+_respond "#{monsterbold_start}Waiting for 'Suddenly the tunnel turns into a nearly vertical drop'.#{monsterbold_end}";
+waitfor "Suddenly the tunnel turns into a nearly vertical drop";
+fput "lean left";
+_respond "#{monsterbold_start}Waiting to exit the tunnels.#{monsterbold_end}";
+waitfor "Obvious paths: southwest";
+_respond "#{monsterbold_start}water tunnel time: #{Time.now.to_i - start_time} seconds.#{monsterbold_end}";
+fill_hands;
+
+27638	27639	;e if UserVars.Peregrine; UserVars.Peregrine.each{|c| fput "#{c}" } end
+27639	27638	;e if UserVars.Peregrine; UserVars.Peregrine.each{|c| fput "#{c}" } end
+16165	16064	;e result = String.new; until result =~ /The mirror won't turn any farther to the right/; fput 'turn mirror right'; result = matchwait("The mirror won't turn any farther to the right","You turn the oak-framed mirror slightly to the right"); end; until result =~ /from the base of the statue onto the center of the statue/; fput 'tilt mirror'; result = matchwait('from the base of the statue onto the center of the statue','You tilt the oak-framed mirror up until it flips around','You tilt the oak-framed mirror up slightly'); if result =~ /flips around/; fput 'turn mirror left'; result = matchwait("from the base of the statue onto the center of the statue","You turn the oak-framed mirror slightly to the left","The mirror won't turn any farther to the left");if result =~ /The mirror won't turn any farther to the left/; 4.times{fput 'turn mirror right'}; end; end; end; move 'go shadow'
+17665	11433	;e wait_while{Map.current.id == 17665};$go2_restart=true;
+14614	9377	;e move checkpaths[rand(checkpaths.length)] until checkpaths.include?('out')
+8373	8374	;e 
+wedge_list = { 'northern' => 'a large thick torus surrounded by nine tiny circles', 'eastern' => 'two crossed upside-down hammers circumscribed by a rounded arc', 'western' => 'a jagged triangular arch bisected by a vertical line', 'southern' => 'three pairs of obliquely intersecting parallel lines' }
+
+ wedge_list.each_pair { |direction,position|
+	 loop {
+		wedge_look = dothis "look #{direction} wedge", /^The stone ring's #{direction} wedge is currently pointed at a sigil of (three pairs of obliquely intersecting parallel lines|two crossed upside-down hammers circumscribed by a rounded arc|a jagged triangular arch bisected by a vertical line|a large thick torus surrounded by nine tiny circles)\./
+		break if wedge_look =~ /#{position}/
+		fput 'turn ring'
+	 }
+	 fput "push #{direction} wedge"
+ }
+ 
+4029	4027	;e begin
+move 'north'
+end until Room.current.id == 4027
+4029	4030	;e begin
+move 'south'
+end until Room.current.id == 4030
+9767	9804	;e 
+touch = ["gold leaf","red leaf","blighted leaf","outstretched hand"];
+fail_pattern = /^You shouldn't mess with that while (\w+) is working on it./;
+success_pattern = /^You touch the/;
+retry_pattern = /^The shimmering leaves on the wall begin to fade, blending once again into the mural.|form is quickly lost in a bright shroud of light as/;
+patterns = Regexp.union(success_pattern,fail_pattern);
+result = nil;
+until success_pattern.match(result);
+  result = dothistimeout "touch green leaf", 3, patterns;
+  if fail_pattern.match(result);
+    waitforpc = $1;
+    echo "waiting for #{waitforpc} to finish";
+    timeout = Time.now + 15;
+    until (!retry_pattern.match(get) or Time.now > timeout);end;
+  else;
+    echo "unknown result trying to enter the Labyrinth";
+    break;
+  end;
+end;
+touch.each {|t| fput "touch #{t}"};
+fput "recite Listen to the wind in the forest,;That which whispers the words of the lady of the tower.;She of old who is called Maaghara.";
+timeout = Time.now + 20;
+wait_while { Room.current.id == 9767 and Time.now < timeout}
+
+10781	18150	;e result = dothistimeout 'look deep pillar', 5, /dark cloud|dark eye|hazy black|slate grey|blood-drop|dark cloud|radiating circle|consist of/;if result =~ /dark eye/;	loop{;		wait_until{(XMLData.mana > (17 * 3))};		result = cast(717, 'deep pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /hazy black/;	loop{;		wait_until{(XMLData.mana > (4 * 3))};		result = cast(704, 'deep pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /slate grey/;	loop{;		wait_until{(XMLData.mana > (5 * 3))};		result = cast(705, 'deep pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /blood-drop/;	loop{;		wait_until{(XMLData.mana > (1 * 3))};		result = cast(701, 'deep pillar');		if result =~ /Cast Roundtime/;			break		end;	};elsif result =~ /radiating circle/;	loop{;		wait_until{(XMLData.mana > (2 * 3))};		result = cast(702, 'deep pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /dark cloud/;	loop{;		wait_until{(XMLData.mana > (3 * 3))};		result = cast(703, 'deep pillar');		if result =~ /Cast Roundtime/;			break;		end;	};end;result = dothistimeout 'look black pillar', 5, /dark cloud|dark eye|hazy black|slate grey|blood-drop|dark cloud|radiating circle|consist of/;if result =~ /dark eye/;	loop{;		wait_until{(XMLData.mana > (17 * 3))};		result = cast(717, 'black pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /hazy black/;	loop{;		wait_until{(XMLData.mana > (4 * 3))};		result = cast(704, 'black pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /slate grey/;	loop{;		wait_until{(XMLData.mana > (5 * 3))};		result = cast(705, 'black pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /blood-drop/;	loop{;		wait_until{(XMLData.mana > (1 * 3))};		result = cast(701, 'black pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /radiating circle/;	loop{;		wait_until{(XMLData.mana > (2 * 3))};		result = cast(702, 'black pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /dark cloud/;	loop{;		wait_until{(XMLData.mana > (3 * 3))};		result = cast(703, 'black pillar');		if result =~ /Cast Roundtime/;			break;		end;	};end;result = dothistimeout 'look dark pillar', 5, /dark cloud|dark eye|hazy black|slate grey|blood-drop|dark cloud|radiating circle|consist of/;if result =~ /dark eye/;	loop{;		wait_until{(XMLData.mana > (17 * 3))};		result = cast(717, 'dark pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /hazy black/;	loop{;		wait_until{(XMLData.mana > (4 * 3))};		result = cast(704, 'dark pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /slate grey/;	loop{;		wait_until{(XMLData.mana > (5 * 3))};		result = cast(705, 'dark pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /blood-drop/;	loop{;		wait_until{(XMLData.mana > (1 * 3))};		result = cast(701, 'dark pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /radiating circle/;	loop{;		wait_until{(XMLData.mana > (2 * 3))};		result = cast(702, 'dark pillar');		if result =~ /Cast Roundtime/;			break;		end;	};elsif result =~ /dark cloud/;	loop{;		wait_until{(XMLData.mana > (3 * 3))};		result = cast(703, 'dark pillar');		if result =~ /Cast Roundtime/;			break;		end;	};end
+15571	17721	;e 
+elements = {
+	'air' => {	'grey orb' => 505,
+			'blue orb' => 914,
+			'white orb' => 912 },
+	'fire' => {	'blue flame' => 908,
+			'scarlet flame' => 519,
+			'white flame' => 906 },
+	'earth' => {	'blue crystal' => 520,
+			'black crystal' => 510,
+			'violet crystal' => 909 }
+}
+
+direction = {
+	'air' => 'north',
+	'fire' => 'west',
+	'earth' => 'south'
+}
+
+result = nil
+['air','fire','earth'].each { |element|
+	truth_table = elements[element].values.find_all { |spellnum| Spell[spellnum].known? }
+	if truth_table.size == 3
+		result = element
+		break
+	end
+}
+
+if result.nil?
+	echo 'You do not know enough spells to get into the workshop.'
+	exit
+end
+
+2.times{ move direction[result] }
+elements[result].each{ |pillar, spellnum|
+	if !Spell[spellnum].affordable?
+		echo 'Waiting for mana'
+		wait_until{ Spell[spellnum].affordable? }
+	end
+	Spell[spellnum].cast(pillar)
+}
+
+18893	13441	;e number = { '1' => 'first', '2' => 'second', '3' => 'third', '4' => 'fourth', '5' => 'fifth' }; result = dothistimeout 'look altar', 10, /^There is a strange grid on the altar.  Five rows are labeled with numbers and five columns are labeled with colors.  A red glow illuminates/; lever_hash = Hash.new; lever_hash['yellow'] = number[result.slice(/Yellow [0-9]/).slice(/[0-9]/)]; lever_hash['blue'] = number[result.slice(/Blue [0-9]/).slice(/[0-9]/)]; lever_hash['brown'] = number[result.slice(/Brown [0-9]/).slice(/[0-9]/)]; lever_hash['red'] = number[result.slice(/Red [0-9]/).slice(/[0-9]/)]; lever_hash['green'] = number[result.slice(/Green [0-9]/).slice(/[0-9]/)]; for lever,position in lever_hash; loop { result = dothistimeout 'pull ' + lever + ' lever', 3, /^You pull/; break if result =~ /#{position}/ }; end; move 'go step'; move 'go passage'; move 'go opening'
+18043	18052	;e 40.times { sleep 0.1; break if GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ } }; unless GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ }; disk = Spell[511]; wait_until { disk.affordable? }; disk.cast; end; move 'up'
+18052	18043	;e 40.times { sleep 0.1; break if GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ } }; unless GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ }; disk = Spell[511]; wait_until { disk.affordable? }; disk.cast; end; move 'down'
+18052	18054	;e 40.times { sleep 0.1; break if GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ } }; unless GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ }; disk = Spell[511]; wait_until { disk.affordable? }; disk.cast; end; move 'up'
+18054	18052	;e 40.times { sleep 0.1; break if GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ } }; unless GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ }; disk = Spell[511]; wait_until { disk.affordable? }; disk.cast; end; move 'down'
+18054	18068	;e 40.times { sleep 0.1; break if GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ } }; unless GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ }; disk = Spell[511]; wait_until { disk.affordable? }; disk.cast; end; move 'up'
+18068	18054	;e 40.times { sleep 0.1; break if GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ } }; unless GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ }; disk = Spell[511]; wait_until { disk.affordable? }; disk.cast; end; move 'down'
+18744	19032	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'rock'); break unless result =~ /Spell Hindrance/ } 
+18748	18747	;e eyespy = Spell[707]; unless eyespy.affordable?; echo 'waiting for mana...'; wait_until { eyespy.affordable? }; end; eyespy.cast; for dir in [ 'out', 'south', 'door', 'northwest', 'northeast', 'west', 'water', 'grate', 'southeast', 'southeast', 'open', 'stair' ]; fput 'tell eye to go ' + dir; end; result = dothistimeout 'tell eye to read basalt', 10, /The (?:wy'zio|ag'loenar|odeir'cos|beiron'fyn|ikar'fyn|quiss'fyn|erikar'fyn|lorae'tyr|shien'tyr|vakra|grk'tyr) rune glows with a pallid light on the surface of the panel of basalt/; if rune = /The (wy'zio|ag'loenar|odeir'cos|beiron'fyn|ikar'fyn|quiss'fyn|erikar'fyn|lorae'tyr|shien'tyr|vakra|grk'tyr) rune glows with a pallid light on the surface of the panel of basalt/.match(result).captures.first; fput 'draw ' + rune + ' rune on basalt'; end; result = dothistimeout 'tell eye to read chalcedony', 10, /The (?:wy'zio|ag'loenar|odeir'cos|beiron'fyn|ikar'fyn|quiss'fyn|erikar'fyn|lorae'tyr|shien'tyr|vakra|grk'tyr) rune glows with a pallid light on the surface of the panel of chalcedony/; if rune = /The (wy'zio|ag'loenar|odeir'cos|beiron'fyn|ikar'fyn|quiss'fyn|erikar'fyn|lorae'tyr|shien'tyr|vakra|grk'tyr) rune glows with a pallid light on the surface of the panel of chalcedony/.match(result).captures.first; fput 'draw ' + rune + ' rune on chalcedony'; end; fput 'tell eye to return'
+19032	18744	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'rock'); break unless result =~ /Spell Hindrance/ } 
+27470	1834	;e if UserVars.Mularos_Lover; UserVars.Mularos_Lover.each{|c| fput "#{c}" } end
+9651	6135	;e move 'jump ledge'; waitrt?; wait_while { stunned? }; fput 'stand' unless standing?; waitrt?
+339	24768	;e query = "ivy-covered grey stone building with a sturdy cross-gabled roof";shop = GameObj.loot.find { |i| i.name.eql?(query) };shop or fail "could not locate: #{query}";fput "go ##{shop.id}"
+15950	7989	;e room = Room.current.id;fput 'go opening'; if ( room == Room.current.id ); fput 'close locker';move 'go opening'; end ; $go2_restart = true
+24837	24967	;e line = fput "search" until line =~ /You discover a shallow crevice while searching the area!/;move 'go crevice'
+24976	24979	;e fput 'lie tomb';dothistimeout 'sleep', 3, /^As you start to drift into unconsciousness/;wait_until{stunned?};echo '** Waiting for stunned status to end... **';wait_until{!stunned?};fput 'stand' until standing?
+24980	24804	;e echo '** Please wait.  Waiting for the stain to show up **';line=get until line =~ /dark stains/;fput "get stain";fput "lie" if standing?;line = fput "search" until line =~ /descending slope/;dothistimeout 'go slope', 3, /You gradually make your way down the descending slope/;line = fput "search" until line =~ /opening/;dothistimeout 'go opening', 3, /You duck down low and half-crawl into the opening/;fput "stand" until standing?
+26919	24055	;e room = Room.current.id;fput 'go opening'; if ( room == Room.current.id ); fput 'close locker';move 'go opening'; end ; $go2_restart = true
+1834	27470	;e if UserVars.Mularos_Lover; UserVars.Mularos_Lover.each{|c| fput "#{c}" } end
+18995	19001	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'mosaic'); break unless result =~ /Spell Hindrance/ } 
+19001	18995	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'scroll'); break unless result =~ /Spell Hindrance/ } 
+18249	18262	;e Map[18700].wayto['18250'].call;
+18249	25463	;e fput "say lalk gno'ap renqua to!'";move ('go arch');
+18700	18250	;e if !GameObj.loot.find{|o| o.name =~ /ruined cell door/}.nil?;
+  move ('go door');
+elsif GameObj.right_hand.id.nil?;
+  echo 'You need a weapon to BATTER the DOOR';
+else
+  echo 'BATTERing the DOOR with a valid weapon (even if not a warrior) until it is destroyed and becomes a ruined cell door';
+  batter_result = nil;
+  until batter_result =~ /ineffective|destroyed/;
+    batter_result = dothistimeout 'batter door', 3, /You bash at the|The cell door has already been destroyed.|Your .*? is ineffective against the door|going to do much good/;
+    break if batter_result =~ /ineffective/;
+  end;
+  move ('go door') if batter_result =~ /destroyed/;
+  echo '  You need a different weapon to BATTER the DOOR' if batter_result =~ /ineffective|going to do much good/;
+end;
+
+18706	18256	;e Map[18700].wayto['18250'].call;
+18707	18702	;e Map[18700].wayto['18250'].call;
+24752	20423	;e ['west','west','northwest'].each{|d| move(d)};fput 'rub blood';['southeast','east','east'].each{|d| move(d)};fput 'rub hatch';move('go hatch');
+24853	18703	;e Map[18700].wayto['18250'].call;
+30850	30851	;e color_moves = {'blue' => 'n,sw,sw', 'black' => 'n,sw,sw,sw,s,se', 'red' => 'n,se,se', 'yellow' => 'n,se,se,se,s,sw'};GameObj.room_desc.find { |o| o.name =~ /(blue|black|yellow|red) barrier/ };color = $1;move_order = color_moves[color].split(',');move_order.each { |w| move(w) };move('go grotto');fput 'touch crystal';move('out');move_order.reverse.each { |w| move(reverse_direction(w)) };move('go barrier')
+6630	6631	;e if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; until dothistimeout('search', 3, /anything of interest|rough hole/) =~ /rough hole/ do end; move 'go hole'
+6631	6632	;e if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; until dothistimeout('search', 3, /anything of interest|concealed door/) =~ /concealed door/ do end; move 'go door'
+6632	6631	;e if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; until dothistimeout('search', 3, /anything of interest|concealed door/) =~ /concealed door/ do end; move 'go door'
+7477	7476	;e if not kneeling?;	fput 'kneel' if Stats.race !~ /dwarf|halfling|gnome/i;end;fput 'southeast'
+11357	11355	;e save_stance = XMLData.stance_text;fput 'stance offensive' if save_stance != 'offensive';move('climb wall');fput "stance #{save_stance}" if save_stance != XMLData.stance_text;;$go2_restart = true;
+18112	18926	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'insignia'); break unless result =~ /Spell Hindrance/ } 
+18926	18112	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'banner'); break unless result =~ /Spell Hindrance/ } 
+12604	12605	;e 10.times { if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout 'search', 3, /^You (?:carefully )?search|^You don't find anything|^You find nothing else/; waitrt?; r = dothistimeout 'get rock', 3, /^I could not find|^You reach out|^Get what?/; break if r =~ /^You reach out/ }; empty_hands; move 'climb wall'; waitrt?; fill_hands
+12605	12606	;e 10.times { if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout 'search', 3, /^You (?:carefully )?search|^You don't find anything|^You find nothing else/; waitrt?; r = dothistimeout 'get handhold', 3, /^I could not find|^You reach out|^Get what?/; break if r =~ /^You reach out/ }; empty_hands; move 'climb face'; waitrt?; fill_hands
+12606	12607	;e 10.times { if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout 'search', 3, /^You (?:carefully )?search|^You don't find anything|^You find nothing else/; waitrt?; r = dothistimeout 'get crack', 3, /^I could not find|^You reach out|^Get what?/; break if r =~ /^You reach out/ }; empty_hands; move 'climb face'; waitrt?; fill_hands
+12607	12608	;e 10.times { if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout 'search', 3, /^You (?:carefully )?search|^You don't find anything|^You find nothing else/; waitrt?; r = dothistimeout 'get root', 3, /^I could not find|^You reach out|^Get what?/; break if r =~ /^You reach out/ }; empty_hands; move 'climb face'; waitrt?; fill_hands
+2208	2209	;e empty_hands
+begin
+result = dothistimeout 'climb fissure', 2, /Round time|Roundtime|find yourself|Crawlway/
+waitrt?
+end until result.to_s !~ /round/i
+fill_hands
+18243	22550	;e %w(18245 20321 20319 20318 20317 20316 20315 20278 20279 20327 20328 20325 20329 20330 20333 20336 20339 20177 20347 20348 20350 20352 20353 20122 20108 20107 20085 20106 20111 20117 20121 20324 20323 20322 20263 20264 20266 20269 20126 20125 20123 20109 20140 20192 20190 20189 20184 20178 20175 20307 20305 20304 20303 20300 20298 20275 20288 20291 20292 20295 20297 20272 20165 20256 20260 20143 20141 20128 20145 20151 20156 20160 20164 20170 20193 20196 20198 20167 20208 20210 20213 20255 21386).each{|id| force_start_script('go2', [id]);wait_while{Script.running.count{|s| s.name == 'go2'} == 2};break if GameObj.loot.collect{|i| i.noun}.include?('doorframe')};move 'go doorframe'
+24158	24159	;e x=XMLData.room_count+2;fput "n" until XMLData.room_count == x
+24238	21557	;e fput "get pile";fput "push raft";fput "go raft";echo "Waiting possibly up to 5 minutes or more for the geyser to shoot...";line = get until Room.current.id != 24238
+24241	313	;e (fput 'stand' until standing?;fput 'climb root') until Room.current.id != 24241;wait_until{Room.current.id == 313}
+5868	5869	;e move 'north'; unless Room.current.id == 5869 then move 'south'; move 'south'; move 'south'; end
+5868	5893	;e move 'south'; unless Room.current.id == 5893 then move 'north'; move 'north'; move 'north'; end
+3600	3600	;e need_set_roomname_off = false
+
+if last_roomdesc = $_SERVERBUFFER_.reverse.find { |line| line =~ /<resource picture="\d+"\/><style id="roomName" ?\/\>\[[^\]]+\]/ || line =~ /You will no longer see room names./ }
+  if last_roomdesc =~ /You will no longer see room names./
+    fput "set roomname on"
+    need_set_roomname_off = true
+  end
+end
+
+save_want_downstream = Script.current.want_downstream
+save_want_downstream_xml = Script.current.want_downstream_xml
+Script.current.want_downstream = false
+Script.current.want_downstream_xml = true
+
+destination = Map[$mapdb_seeking_destination]
+roomname_pattern = /<style id="roomName" \/>(.*?)$/
+failed_to_find_destination = false
+first_roomname = nil
+seeking_destination = nil
+
+20.times do
+  waitcastrt?
+  put "symbol of seeking"
+  matchtimeout(6, "Your vision is pulled away from you...")
+
+  result = matchtimeout(6, roomname_pattern)
+  next unless result
+
+  seeking_destination = result.match(roomname_pattern)&.captures&.first
+  next unless seeking_destination
+
+  if seeking_destination[0] == "<"
+    need_set_roomname_off = true
+    fput "flag roomname on"
+    next
+  end
+
+  # Remove trailing numeric room ID in parentheses, if any
+  if seeking_destination =~ /( \(\d+\))$/
+    seeking_destination.slice!($1)
+  end
+  
+  if first_roomname == seeking_destination
+    failed_to_find_destination = true
+    break
+  end
+
+  first_roomname ||= seeking_destination
+  break if destination.title.include?(seeking_destination)
+end
+
+Script.current.want_downstream_xml = save_want_downstream_xml
+Script.current.want_downstream = save_want_downstream
+fput "set roomname off" if need_set_roomname_off
+
+if failed_to_find_destination
+  echo "** seeking destination #{$mapdb_seeking_destination} #{destination.title.first.inspect} not found."
+  $restart_go2 = false
+  Script.current.kill
+end
+
+if $mapdb_seeking_destination == 24715
+  UserVars.mapdb_redforest_location = "WL" if Map.current.id == 3600
+  UserVars.mapdb_redforest_location = "EN" if Map.current.id == 10125
+end
+
+dothistimeout("symbol of seeking confirm", 6, /^Your surroundings blur into a white fog/)
+
+4140	4141	;e spell_list = [407, 1604, 304, 1207];until dothistimeout('go gate', 5, /^The bronze gate appears to be closed\.$|^Obvious (?:paths|exits)\: northeast, northwest, up$/) =~ /^Obvious/;  if spell_num = spell_list.find { |num| Spell[num].known? };    spell = Spell[spell_num];    loop {;      unless spell.affordable?;        echo 'waiting for mana...';        wait_until { spell.affordable? };      end;      break unless spell.cast('gate') =~ /^\[Spell Hindrance/;    };  else;    empty_hands;    dothistimeout('push bronze gate', 16, /^(?:With a shocking lack of resistance, t|T)he (?:huge )?(?:bronze )?gate .* open|^The ancient hinges of the gate creak loudly as they give way|^Summoning the power .*? gate opens|the gate slowly opens wide enough to allow passage|The bronze gate pops open|^It's opened wide enough to slip through now\.  That thick chain won't let it open any farther\.$|just (came|went) through a massive bronze gate\.$/);    fill_hands;  end;end
+4141	4140	;e spell_list = [407, 1604, 304, 1207];until dothistimeout('go gate', 5, /^The bronze gate appears to be closed\.$|^Obvious (?:paths|exits)\: none$/) =~ /^Obvious/ ;  if spell_num = spell_list.find { |num| Spell[num].known? };    spell = Spell[spell_num];    loop {;      unless spell.affordable?;        echo 'waiting for mana...';        wait_until { spell.affordable? };      end;      break unless spell.cast('gate') =~ /^\[Spell Hindrance/;    };  elsif (Stats.prof == 'Warrior') and (Stats.level >= 15);    empty_hands;    fput 'batter gate';    sleep 0.5;    waitrt?;    fill_hands;  else;    empty_hands;    dothistimeout('push bronze gate', 16, /^(?:With a shocking lack of resistance, t|T)he (?:huge )?(?:bronze )?gate .* open|^The ancient hinges of the gate creak loudly as they give way|^Summoning the power .*? gate opens|the gate slowly opens wide enough to allow passage|The bronze gate pops open|^It's opened wide enough to slip through now\.  That thick chain won't let it open any farther\.$|just (came|went) through a massive bronze gate\.$/);    fill_hands;  end;end
+4344	7298	;e group_members = nil; clear.reverse.each { |line| if line =~ /^Obvious (paths|exits)/; break; elsif line =~ /^([A-Za-z ,]+) followed\.$/; group_members = $1.split(/, | and /); group_members.delete_if { |m| m =~ /^[Yy]our / }; group_members = nil if group_members.empty?; break; end }; move 'say shadow bind my soul'; if (group_members.to_a.length > 0); echo 'Waiting for your group... To ditch them, ;send go'; wait_until { (group_members.to_a - checkpcs.to_a).empty? or clear.find { |line| line == 'go' } }; end
+7313	7312	;e if (bounty? =~ /^You have made contact with the child/); child = GameObj.npcs.find { |npc| npc.noun == 'child' }; else; child = nil; end; move 'southwest'; if Room.current == Room[7313]; 50.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep 0.1 } if child; move 'southwest'; end
+7313	22426	;e if (bounty? =~ /^You have made contact with the child/); child = GameObj.npcs.find { |npc| npc.noun == 'child' }; else; child = nil; end; move 'northeast'; if Room.current == Room[7313]; 50.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep 0.1 } if child; move 'northeast'; end
+7318	7319	;e group_members = nil; clear.reverse.each { |line| if line =~ /^Obvious (paths|exits)/; break; elsif line =~ /^([A-Za-z ,]+) followed\.$/; group_members = $1.split(/, | and /); group_members.delete_if { |m| m =~ /^[Yy]our / }; group_members = nil if group_members.empty?; break; end }; empty_hands; move 'climb opening'; waitrt?; fill_hands; if (group_members.to_a.length > 0); echo 'Waiting for your group... To ditch them, ;send go'; while (line = get) and (group_members.length > 0); if line =~ /(#{group_members.join('|')}) just arrived/; put 'hold ' + $1.to_s; elsif line =~ /^(You reach out and hold )?([A-z][a-z]+)('s hand| joins your group)\.$/; group_members.delete $2; elsif line == 'go'; break; end; end; end
+7324	4541	;e group_members = nil; clear.reverse.each { |line| if line =~ /^Obvious (paths|exits)/; break; elsif line =~ /^([A-Za-z ,]+) followed\.$/; group_members = $1.split(/, | and /); group_members.delete_if { |m| m =~ /^[Yy]our / }; group_members = nil if group_members.empty?; break; end }; fput 'yell jaron galarn'; sleep 1; result = nil; success = /Feeling around in the darkness, you stumble upon a low opening in the wall near the ground./; failures = /As you blindly search the area, you find something rooted to the ground|You feel around in the darkness as best you can, but find nothing./; matches = /Feeling around in the darkness, you stumble upon a low opening in the wall near the ground.|As you blindly search the area, you find something rooted to the ground|You feel around in the darkness as best you can, but find nothing./; until result =~ success; fput "stand" until standing?; result = dothistimeout "search", 5, matches; waitrt?; end; until checkpaths("south"); fput 'go opening'; sleep 0.2; end; fput 'stand' until standing?; if (group_members.to_a.length > 0); echo 'Waiting for your group... To ditch them, ;send go'; wait_until { (group_members.to_a - GameObj.pcs.to_a.delete_if { |pc| not pc.status.nil? }.collect { |pc| pc.name }).empty? or clear.find { |line| line == 'go' } }; end
+16011	11022	;e walk until GameObj.room_desc.find { |obj| obj.noun == 'ferns' }; move 'go ferns'
+19543	1102	;e move 'southeast'; move 'northeast'; move checkpaths[rand(checkpaths.length)] while checkpaths.length > 2
+6486	6487	;e if dothistimeout('go stone doors', 3, /^Obvious exits: west$|^You cannot/) !~ /^Obvious/; s = Spell[920]; if s.known?; if s.active?; r = dothistimeout 'tell familiar to return', 15, /^You sense understanding from your .+/; if f = /You sense understanding from your (.+)\./.match(r).captures.first; 150.times { sleep 0.1; break if GameObj.npcs.any? { |n| n.name =~ /#{f}/ } }; end; else; unless s.affordable?; echo 'Waiting for mana...'; wait_until { s.affordable? }; end; s.cast; end; r = dothistimeout 'tell familiar to watch', 15, /^You sense understanding|is already watching/; stop_watching = (r =~ /^You sense understanding/); which_ring = { 'iron' => 'iron', 'steel' => 'steel', 'bronze' => 'copper', 'copper' => 'bronze' }; fail = false; g = proc { |l| l.split(',').each { |d| r = dothistimeout(('tell familiar to go ' + d), 15, /^You sense|just squeezed between the stone doors|^Obvious (?:exits|paths)/); if r.nil? or (r =~ /^You sense confusion/); fail = true; next; elsif r =~ /^You sense that your .* is not able to enter the (.+) door/; dothistimeout(('tell familiar to get ' + which_ring[$1] + ' ring'), 15, /^Your familiar reacts with mild confusion|^You sense/); dothistimeout(('tell familiar to go ' + d), 15, /^You sense|^Obvious (?:exits|paths)/); end } }; 4.times { |i| i.zero? ? g.call('doors,w,s,arch,ne,e,privy,hole,w') : g.call('nw,w,w,n,'); break if fail; g.call('w,w,sw,iron door,steel door,bronze door,copper door'); break if fail; fput 'tell familiar to get rocks'; g.call('copper door,bronze door,steel door,iron door,ne,e,e,s,e,e,se'); break if fail; fput 'tell familiar to drop basket' }; fput 'tell familiar to stop watching' if stop_watching; if UserVars.mapdb_hate_familiar; sleep 0.3; put 'tell familiar to return'; put 'tell familiar to stay'; end; end; move 'go doors'; end
+9784	9734	;e next_exit = { 9823 => [ 'southeast', 'southwest', 'southwest', 'east', 'southwest', 'southeast', 'south' ], 9818 => [ 'east', 'southwest', 'west', 'west', 'northeast', 'northeast', 'northwest' ], 9808 => [ 'east', 'east', 'east', 'northeast', 'west' ], 9788 => [ 'southwest', 'southeast', 'southwest' ], 9784 => [ 'southeast', 'south', 'northeast', 'north', 'west', 'west', 'west' ] }; loop { if move 'go root'; sleep(0.5) until XMLData.room_title == '[Maaghara Tower, Refuse Heap]'; fput 'stand' unless standing?; waitrt?; break; else; if dir_list = next_exit[Room.current.id]; dir_list.each { |dir| move dir }; else; echo 'error: out of cheese'; break; end; end }
+9788	9734	;e next_exit = { 9823 => [ 'southeast', 'southwest', 'southwest', 'east', 'southwest', 'southeast', 'south' ], 9818 => [ 'east', 'southwest', 'west', 'west', 'northeast', 'northeast', 'northwest' ], 9808 => [ 'east', 'east', 'east', 'northeast', 'west' ], 9788 => [ 'southwest', 'southeast', 'southwest' ], 9784 => [ 'southeast', 'south', 'northeast', 'north', 'west', 'west', 'west' ] }; loop { if move 'go root'; sleep(0.5) until XMLData.room_title == '[Maaghara Tower, Refuse Heap]'; fput 'stand' unless standing?; waitrt?; break; else; if dir_list = next_exit[Room.current.id]; dir_list.each { |dir| move dir }; else; echo 'error: out of cheese'; break; end; end }
+9808	9734	;e next_exit = { 9823 => [ 'southeast', 'southwest', 'southwest', 'east', 'southwest', 'southeast', 'south' ], 9818 => [ 'east', 'southwest', 'west', 'west', 'northeast', 'northeast', 'northwest' ], 9808 => [ 'east', 'east', 'east', 'northeast', 'west' ], 9788 => [ 'southwest', 'southeast', 'southwest' ], 9784 => [ 'southeast', 'south', 'northeast', 'north', 'west', 'west', 'west' ] }; loop { if move 'go root'; sleep(0.5) until XMLData.room_title == '[Maaghara Tower, Refuse Heap]'; fput 'stand' unless standing?; waitrt?; break; else; if dir_list = next_exit[Room.current.id]; dir_list.each { |dir| move dir }; else; echo 'error: out of cheese'; break; end; end }
+9818	9734	;e next_exit = { 9823 => [ 'southeast', 'southwest', 'southwest', 'east', 'southwest', 'southeast', 'south' ], 9818 => [ 'east', 'southwest', 'west', 'west', 'northeast', 'northeast', 'northwest' ], 9808 => [ 'east', 'east', 'east', 'northeast', 'west' ], 9788 => [ 'southwest', 'southeast', 'southwest' ], 9784 => [ 'southeast', 'south', 'northeast', 'north', 'west', 'west', 'west' ] }; loop { if move 'go root'; sleep(0.5) until XMLData.room_title == '[Maaghara Tower, Refuse Heap]'; fput 'stand' unless standing?; waitrt?; break; else; if dir_list = next_exit[Room.current.id]; dir_list.each { |dir| move dir }; else; echo 'error: out of cheese'; break; end; end }
+9823	9734	;e next_exit = { 9823 => [ 'southeast', 'southwest', 'southwest', 'east', 'southwest', 'southeast', 'south' ], 9818 => [ 'east', 'southwest', 'west', 'west', 'northeast', 'northeast', 'northwest' ], 9808 => [ 'east', 'east', 'east', 'northeast', 'west' ], 9788 => [ 'southwest', 'southeast', 'southwest' ], 9784 => [ 'southeast', 'south', 'northeast', 'north', 'west', 'west', 'west' ] }; loop { if move 'go root'; sleep(0.5) until XMLData.room_title == '[Maaghara Tower, Refuse Heap]'; fput 'stand' unless standing?; waitrt?; break; else; if dir_list = next_exit[Room.current.id]; dir_list.each { |dir| move dir }; else; echo 'error: out of cheese'; break; end; end }
+11630	11612	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+11630	11617	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+11630	11618	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+11653	11620	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+11668	11675	;e move 'down'; move 'out'; if checkpaths.include?('ne'); move 'northeast'; move 'east'; elsif !checkpaths.include?('e'); move 'west'; end
+16122	11612	;e move ['northwest','southwest'][rand(2)] while checkpaths == [ 'ne', 'se', 'sw', 'nw' ]; move 'northwest' if checkpaths.include?('nw'); move 'west' if checkpaths.include?('w')
+16122	11618	;e move ['northwest','southwest'][rand(2)] while checkpaths == [ 'ne', 'se', 'sw', 'nw' ]; move 'east' if checkpaths.include?('e'); move 'southeast' if checkpaths.include?('se')
+16122	11630	;e move ['northeast','southeast'][rand(2)] while checkpaths == [ 'ne', 'se', 'sw', 'nw' ]
+16122	22218	;e move ['northeast','southeast'][rand(2)] while checkpaths == [ 'ne', 'se', 'sw', 'nw' ]
+16124	11620	;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northwest','southwest'][rand(2)]; end; move 'west' while checkpaths.include?('w')
+16124	11623	;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northwest','southwest'][rand(2)]; end; move 'east' while checkpaths.include?('e')
+16124	11653	;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northeast','southeast'][rand(2)]; end;
+16124	22219	;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northeast','southeast'][rand(2)]; end;
+16127	11620	;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northwest','southwest'][rand(2)]; end; move 'west' while checkpaths.include?('w')
+16127	11623	;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northwest','southwest'][rand(2)]; end; move 'east' while checkpaths.include?('e')
+16127	11653	;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northeast','southeast'][rand(2)]; end;
+16127	22219	;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northeast','southeast'][rand(2)]; end;
+22218	11612	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+22218	11617	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+22218	11618	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+22219	11622	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+22219	11653	;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southeast'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+24730	24729	;e while Room.current.id == 24730 do;fput "stand" until standing?;success = /^Rows upon rows of oak trees/;fail = /^You attempt to navigate/;result = dothistimeout "go fog", 5, Regexp.union(success, fail);if result =~ fail;sleep 0.5;waitrt?;end;end
+30947	30948	;e wait_while { Room.current.id == 30947 }
+30948	30949	;e wait_while { Room.current.id == 30948 }
+30949	30950	;e wait_while { Room.current.id == 30949 }
+30950	24876	;e wait_while { Room.current.id == 30950 }
+4537	7389	;e %w(circular triangular square rectangular).each{|d| dothistimeout "push #{d} depression", 3, /\*[A-Z]+\*$/};fput "stand" until standing?
+7331	7315	;e group_members = nil; clear.reverse.each { |line| if line =~ /^Obvious (paths|exits)/; break; elsif line =~ /^([A-Za-z ,]+) followed\.$/; group_members = $1.split(/, | and /); group_members.delete_if { |m| m =~ /^[Yy]our / }; group_members = nil if group_members.empty?; break; end }; fput 'stand' unless standing?; fput 'jump abyss'; wait_until { stunned? }; wait_while { stunned? }; fput 'stand'; if (group_members.to_a.length > 0); echo 'Waiting for your group... To ditch them, ;send go'; wait_until { (group_members.to_a - GameObj.pcs.to_a.delete_if { |pc| not pc.status.nil? }.collect { |pc| pc.name }).empty? or clear.find { |line| line == 'go' } }; end
+7393	7328	;e result = nil;while result.nil? && Room.current.id == 7393;result = dothistimeout "crawl hole",3,/^You crawl under the low overhang/;end;wait_while{stunned?};fput "stand" until standing?
+11749	10838	;e while line = get;if line=~ /The crew hurriedly puts out the gangplank\.|River's Rest\.\.\..+ ashore!/;fput "out";break;end;end
+11749	11753	;e while line = get;if line=~ /The crew hurriedly puts out the gangplank\.|Solhaven\.\.\..+ ashore!/;fput "out";break;end;end
+14618	8431	;e move checkpaths[rand(checkpaths.length)] until checkpaths.include?('out')
+36416	36412	;e move 'jump pit'; wait_while{checkstunned}
+36419	36440	;e if !GameObj.loot.any?{|i| i.name =~ /opening/};move('west');move('north');fput 'pull statue';fput 'turn statue';move('south');move('east');end;sleep 0.2 until GameObj.loot.any?{|i| i.name =~ /opening/};move('go opening')
+36440	36419	;e if !GameObj.loot.any?{|i| i.name =~ /opening/};fput 'pull lever';sleep 0.2 until GameObj.loot.any?{|i| i.name =~ /opening/};end;move('go opening')
+1242	1241	;e attempts = 0;moved = false;loop do;waitrt?;moved = move('go path');break if moved;fput 'search';attempts += 1;break if attempts >= 5;end;moved
+7517	8686	;e begin
+clear
+fput 'climb ladder'
+climb_result = waitfor "As you try to climb the ladder, a rung breaks under your weight", "You carefully make your way up the dilapidated ladder."
+fput 'stand' unless climb_result == "You carefully make your way up the dilapidated ladder."
+end until climb_result == "You carefully make your way up the dilapidated ladder."
+3495	18041	;e fput 'speak'; language = /You are currently speaking (.*?)\./.match(get).captures.first until language;; fput('speak wizard') unless language == 'Guildspeak'; fput('unhide') if hidden? or invisible?; move 'say ::door wizard'; fput('speak ' + language.to_s) unless language == 'Guildspeak'
+3509	17805	;e status_tags; get_result = dothis 'get my lockpick', /You remove|detach .*?<a exist="(?:[0-9]+)".*?from.*?<a exist="(?:[0-9]+)"/; status_tags; lockpick, container = /You remove|detach .*?<a exist="([0-9]+)".*?from.*?<a exist="([0-9]+)"/.match(get_result).captures[0..1]; fput 'pick shed'; fput "_drag ##{lockpick} ##{container}"; fput 'open shed'; move 'go shed'
+19727	19990	;e wait_until{GameObj.loot.find{|item| item.noun == "island"}};fput "go island"
+19992	19728	;e fput 'open door';while line = get;if line == "It's locked, Blazyn!";empty_hand;fput 'turn lock';fput 'open door';fput 'go door';fill_hand;break;else;fput 'go door';break;end;end
+20012	19657	;e fput 'open door';while line = get;if ['You open a large stone door.', 'That is already open.'].include?(line);fput 'go door';break;elsif line == 'It appears to be locked.';empty_hand;fput 'turn lock';fput 'open door';fput 'go door';fill_hand;break;end;end;
+11753	11749	;e 
+;ticket_nouns = [ 'scrip', 'scroll', 'document', 'parchment', 'paper', 'note' ];check_ticket = proc { |test_id|;look_result = dothistimeout "look ##{test_id}", 3, /reads, ".*#{checkname}|^You see nothing unusual\.|^It takes you a moment to focus|[0-9]+ silver/;if look_result =~ /reads, ".*#{checkname}/;test_id;else;nil;end;};if ticket_nouns.include?(GameObj.right_hand.noun);ticket_id = check_ticket.call(GameObj.right_hand.id);else;ticket_id = nil;end;unless ticket_id;if ticket_nouns.include?(GameObj.left_hand.noun);if ticket_id = check_ticket.call(GameObj.left_hand.id);fput 'swap';end;end;end;unless ticket_id;empty_hands;checked_containers = Array.new;for container in GameObj.inv;unless container.contents.nil? or container.contents.empty?;checked_containers.push(container.id);for item in container.contents;if ticket_nouns.include?(item.noun);break if ticket_id = check_ticket.call(item.id);end;end;end;break if ticket_id;end;if ticket_id;fput "get ##{ticket_id}";end;end;unless ticket_id;status_tags;inv_result = dothis 'inventory containers', /^You are wearing/;status_tags;container_list = inv_result.scan(/exist="([0-9]+)"/).flatten;for container_id in (container_list - checked_containers);container = GameObj.inv.find { |obj| obj.id == container_id };next unless container;open_result = dothis "open ##{container.id}", /^You open|^That is already open\.$/;if open_result == 'That is already open.';fput "look in ##{container.id}";end;for item in container.contents;if ticket_nouns.include?(item.noun);break if ticket_id = check_ticket.call(item.id);end;end;if ticket_id;fput "get ##{ticket_id}";if open_result =~ /^You open/;fput "close ##{container.id}";end;break;else;if open_result =~ /^You open/;fput "close ##{container.id}";end;end;end;end;unless ticket_id;echo 'failed to find your ticket';if $go2_get_silvers.nil?;echo 'update go2 for automatic ticket buying';exit;elsif $go2_get_silvers;echo 'going to buy one...';sleep 3;move 'north';move 'east';move 'north';move 'northwest';move 'west';move 'west';move 'go storefront';fput 'unhide' if hidden? or checkspell(916);ask_result = dothis 'ask jyhm about ticket', /^Jyhm whispers, "Look -- I need [0-9]+ coins for something like that\.|^Jyhm quietly takes your money/;if ask_result =~ /^Jyhm whispers, "Look -- I need ([0-9]+) coins for something like that\./;cost = $1;move 'out';move 'east';move 'east';move 'southeast';move 'south';move 'east';move 'go bridge';move 'up';move 'southeast';move 'southeast';move 'down';move 'southeast';move 'east';move 'south';move 'south';move 'east';move 'go doors';fput 'unhide' if hidden? or checkspell(916);withdraw_result = dothis "withdraw #{cost} silvers", /hands you [0-9]+ silvers|don't seem to have that much/;unless withdraw_result =~ /hands you [0-9]+ silvers/;echo "you are too poor to go to River's Rest";exit;end;move 'out';move 'west';move 'north';move 'north';move 'west';move 'northwest';move 'up';move 'northwest';move 'northwest';move 'down';move 'northwest';move 'west';move 'north';move 'northwest';move 'west';move 'west';move 'go storefront';fput 'unhide' if hidden? or checkspell(916);ask_result = dothis 'ask jyhm about ticket', /^Jyhm quietly takes your money/;end;move 'out';move 'east';move 'east';move 'southeast';move 'south';move 'west';move 'go pier';else;echo 'for automatic ticket buying, use ;go2 getsilvers=on';exit;end;end;fput 'unhide' if (hidden? or checkspell(916)) and checkloot.include?('gangplank');unless checkloot.include?('gangplank') and move('go gangplank');echo 'waiting for the cutter...'
+;line = get until line =~ /The crew swiftly extends a gangplank\.|^You hear a voice on the cutter shouting, "Are the passengers all aboard\?"/;fput 'unhide' if hidden? or checkspell(916);move 'go gangplank';end
+25148	221	;e res = choice = nil;res = dothistimeout "inquire", 5, /(\d)\) Wehnimer's Landing/;if res =~ /(\d)\) Wehnimer's Landing/;choice = $1;end;dothistimeout "order #{choice}", 5, /The cost has already been covered/;put "order confirm";wait_until { XMLData.room_title =~ /Caravan, Wagon/ };sleep 1;wait_until{ XMLData.room_title !~ /Caravan, Wagon/ };if GameObj.npcs.any? { |npc| npc.name =~ /thief|rogue|bandit|mugger|outlaw|highwayman|marauder|brigand|thug|robber/ };3.times do;_respond "BANDITS!!! BANDITS!!! BANDITS!!!";end;exit;end;$go2_restart=true
+25148	3904	;e res = choice = nil;res = dothistimeout "inquire", 5, /(\d)\) Vornavis/;if res =~ /(\d)\) Vornavis/;choice = $1;end;dothistimeout "order #{choice}", 5, /The cost has already been covered/;put "order confirm";wait_until { XMLData.room_title =~ /Caravan, Wagon/ };sleep 1;wait_until{ XMLData.room_title !~ /Caravan, Wagon/ };if GameObj.npcs.any? { |npc| npc.name =~ /thief|rogue|bandit|mugger|outlaw|highwayman|marauder|brigand|thug|robber/ };3.times do;_respond "<pushBold/>BANDITS!!! BANDITS!!! BANDITS!!!<popBold/>";end;exit;end;$go2_restart=true
+25172	25231	;e save_stance = XMLData.stance_text;fput 'stance offensive' if save_stance != 'offensive';put 'climb latrine pit';move('climb latrine pit');fput "stance #{save_stance}" if save_stance != XMLData.stance_text;;$go2_restart = true;
+25183	25145	;e res = choice = nil;res = dothistimeout "inquire", 5, /(\d)\) the Sea of Fire/;if res =~ /(\d)\) the Sea of Fire/;choice = $1;end;dothistimeout "order #{choice}", 5, /You inquire with a caravan conductor about the price of a trip to the Sea of Fire\.  S?[Hh]e says, "That will be [,\d]+ silvers/;res = dothistimeout "order confirm", 5, /It doesn't look like you have enough silver to ride\.|We'll be taking that payment in silver, then\./;if res =~ /It doesn't look like you have enough silver to ride\./;5.times do;echo "Didn't have enough silver!";exit;end;end;wait_until { XMLData.room_title =~ /Caravan, Wagon/ };sleep 1;wait_until{ XMLData.room_title !~ /Caravan, Wagon/ };if GameObj.npcs.any? { |npc| npc.name =~ /thief|rogue|bandit|mugger|outlaw|highwayman|marauder|brigand|thug|robber/ };3.times do;_respond "<pushBold/>BANDITS!!! BANDITS!!! BANDITS!!!<popBold/>";end;exit;end;$go2_restart=true
+25185	25145	;e res = choice = nil;res = dothistimeout "inquire", 5, /(\d)\) the Sea of Fire/;if res =~ /(\d)\) the Sea of Fire/;choice = $1;end;dothistimeout "order #{choice}", 5, /You inquire with a caravan conductor about the price of a trip to the Sea of Fire\.  S?[Hh]e says, "That will be [,\d]+ silvers/;res = dothistimeout "order confirm", 5, /It doesn't look like you have enough silver to ride\.|We'll be taking that payment in silver, then\./;if res =~ /It doesn't look like you have enough silver to ride\./;5.times do;echo "Didn't have enough silver!";exit;end;end;wait_until { XMLData.room_title =~ /Caravan, Wagon/ };sleep 1;wait_until{ XMLData.room_title !~ /Caravan, Wagon/ };if GameObj.npcs.any? { |npc| npc.name =~ /thief|rogue|bandit|mugger|outlaw|highwayman|marauder|brigand|thug|robber/ };3.times do;_respond "<pushBold/>BANDITS!!! BANDITS!!! BANDITS!!!<popBold/>";end;exit;end;$go2_restart=true
+25231	25172	;e save_stance = XMLData.stance_text;fput 'stance offensive' if save_stance != 'offensive';move('climb wide hole');fput "stance #{save_stance}" if save_stance != XMLData.stance_text;;$go2_restart = true;
+6897	6928	;e 
+result = Array.new
+put "touch mural"
+while line = get
+	if line =~ /A black cat crosses o'er a path of blood|The crimson claw, the fang, the chase, the play|The mice will play until the hunger bites|There welcome lies, midst claws that spread with glee|Yet one may smile, and be a predator/
+		result.push("Andelas")
+	elsif line =~ /No mercy lies in sea's tempestuous rage|One ship is saved, one lost in tempest's din|Still waters gather, 'ware the eye of storms|The blood of tyrants feeds the hurricane|The sailor lives to praise the storm-wild sea/
+		result.push("Charl")
+	elsif line =~ /Cold stone be given life by fiery forge|Creation's soul, love's labor, earth and fire|Let hammer strike the stone, the stone create|The craftsman works, the iron becomes his hand|The forger draws hard beauty from the ore/
+		result.push("Eonak")
+	elsif line =~ /Cold yellow eye draws magic from a rune|Dark flame of knowledge burns the midnight lamp|The face of wisdom in the mirror crack'd|The old one, so 'tis said, is he who seeks|Thou feed'st the hearth of knowledge with a fire/
+		result.push("Fash'lo'nae")
+	elsif line =~ /In cold grey stone waits pale all-seeing eye|No mortal knows the veil beyond the gate|On silent wings, and peace beyond the dark|Silence is silver, grey eternity|The sickle falls and reaps the cycle's pause/
+		result.push("Gosaena")
+	elsif line =~ /Dance on the wild green, child of the wood|In autumn's chill the harvest golden reap'd|The healing herb, the oak, the barley grow|The silent doe reclines in dappled glade|To nature's sylvan bounty raise a toast/
+		result.push("Imaera")
+	elsif line =~ /Beauty belies corruption to the core|Behold temptation, bright deceiving lie|Fine silk and velvet drape the dark decay|The butterfly may twist into a wyrm|Ye soft and bitter, sharp and demon-sweet/
+		result.push("Ivas")
+	elsif line =~ /Carry the weight of ages before time|Death will yet come, still beauty lies in store|Preserve the beauty of the dark and light|Preserve the past for those who come anon|Seer of sad shadows, painter of Mystery|Sing prophecy of poets in the night|Speak into silence, silence answers back|The artist weeps, old tears becoming paint/
+		result.push("Jastev")
+	elsif line =~ /A snow-white feather dances on the air|A sylvan zephyr rides the winds of light|Above the green, white wings may soar afar|Fly on the mistral wind, bright bird of song|O love, bright spirit, rise on feathered wings/
+		result.push("Jaston")
+	elsif line =~ /A golden crown shines bright in moonlight grey|All wisdom at thy side, rule o'er the moon|Great mountain rises, crowned in sunlight gold|Keep alert watch unquieted by sleep|O King, keep watch from far beyond the ice|The bringer of tense peace to light and dark|The wisdom of the Law the balance keep|Thy word is law, great majesty of old/
+		result.push("Koar")
+	elsif line =~ /A pang of sorrow calls a long-lost love|Compassion doth within great sorrow lie|Return, O love, and mend a longing heart|The black rose grows among the purple graves|Young love reflected in a pool of tears/
+		result.push("Laethe")
+	elsif line =~ /Give all to life, that ye may death defy|Hold fast the golden key that binds the gate|In winter's cold doth life begin anew|The key, the gate, to be or not to be|The touch of death melts like the winter snow/
+		result.push("Lorminstra")
+	elsif line =~ /Death's minions scream and wail in twisted dark|Fear ye the serpent, mockery of death|In promises of life twists falsehood black|Serpent slithers among the fallen horde|Unending torment feeds on souls of lies/
+		result.push("Luukos")
+	elsif line =~ /A demon's wings beat time in shadow vile|Ancient destroyer, lord of what was not|Black shadow moves in timeless pit of ruin|Guard ye the veil, lest demons darkness free|Still-living ichor drips from blackened stone/
+		result.push("Marlu")
+	elsif line =~ /A dark blade's hiss disturbs the still night air|All life has price, and death does not come cheap|Cold death so swift, a whisper in the dark|O sudden darkness, death a silent strike|The white skull grins, the dark shape on the floor/
+		result.push("Onar")
+	elsif line =~ /I shroud my prayers in darkest cloak of night|In dreams may darkness find a peaceful sleep|O silver blade, flash brightly in the night|Protector of the night, keep safe the dark|Walk brave in endless shadow, guard the door|Watch o'er the night, so we might keep the day/
+		result.push("Ronan")
+	elsif line =~ /A nightmare drips black blood upon the stone|Behold dark dreams of nightmare gallery|False gold in dreams of blackness, crimson blood|In moon-dark shadows howls the jackal wild|Stark scream of terror pleads for break of day/
+		result.push("Sheru")
+	elsif line =~ /A breath of life, a trinket to a thief|Across the sky, a streak of flaming gold|Be swift of foot and mind, and quickly fly|On golden wings, a blur of wind and haste|On wings begat of freedom prayers take flight|The hand so quick, the surest eye is lost/
+		result.push("Tonis")
+	elsif line =~ /A golden rose lies soft on sanguine field|A king mayst not deny love pure and true|Hold fast thy hands, and love shall find its way|The love forbidden, fate shall not deny|Young love is golden to the true of heart/
+		result.push("Voaris")
+	elsif line =~ /A pixie's laugh, a dark demented soul|A silver crescent flickers in thine eye|Beyond the moons, mad laughter calls to thee|The gift of madness touches whom it may|Wild freedom lies beneath chaotic moon/
+		result.push ("Zelia")
+	elsif line =~ /The face falls quiet and goes still./
+		break
+	end
+end
+
+result.each{ |deity|
+	if Char.name == "Drafix"
+		put "touch #{deity}"
+	else
+		fput "touch #{deity}"
+	end
+}	
+
+18959	18976	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'banner'); break unless result =~ /Spell Hindrance/ } 
+18976	18959	;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'paneling'); break unless result =~ /Spell Hindrance/ } 
+10440	12415	;e 2.times { fput 'touch teeth'; sleep 1; wait_while { stunned? } }; fput 'touch left wing'; fput 'touch right wing'; wait_until { Room.current.id == 12415 }
+18677	11749	;e ticket_nouns = [ 'scrip', 'scroll', 'document', 'parchment', 'paper', 'note' ]; check_ticket = proc { |test_id| look_result = dothistimeout "look ##{test_id}", 3, /reads, ".*#{checkname}|^You see nothing unusual\.|^It takes you a moment to focus|[0-9]+ silver/; if look_result =~ /reads, ".*#{checkname}/; test_id; else; nil; end }; force_go2 = proc { |room_num| go2_count = Script.running.find_all { |s| s.name == 'go2' }.length; force_start_script 'go2', [ room_num.to_s ]; wait_while { Script.running.find_all { |s| s.name == 'go2' }.length > go2_count } }; ticket_id = nil; if ticket_nouns.include?(GameObj.right_hand.noun); ticket_id = check_ticket.call(GameObj.right_hand.id); end; unless ticket_id; if ticket_nouns.include?(GameObj.left_hand.noun); if ticket_id = check_ticket.call(GameObj.left_hand.id); fput 'swap'; end; end; end; unless ticket_id; empty_hands; checked_containers = Array.new; for container in GameObj.inv; unless container.contents.nil? or container.contents.empty?; checked_containers.push(container.id); container.contents.find_all { |obj| ticket_nouns.include?(obj.noun) }.each { |obj| break if ticket_id = check_ticket.call(obj.id) }; end; break if ticket_id; end; if ticket_id; fput "get ##{ticket_id}"; end; end; unless ticket_id; status_tags; inv_result = dothis 'inventory containers', /^You are wearing/; status_tags; container_list = inv_result.scan(/exist="([0-9]+)"/).flatten; for container_id in (container_list - checked_containers); if container = GameObj.inv.find { |obj| obj.id == container_id }; open_result = dothis "open ##{container.id}", /^You open|^That is already open\.$/; if open_result == 'That is already open.'; fput "look in ##{container.id}"; end; container.contents.find_all { |obj| ticket_nouns.include?(obj.noun) }.each { |obj| break if ticket_id = check_ticket.call(obj.id) }; if ticket_id; fput "get ##{ticket_id}"; if open_result =~ /^You open/; fput "close ##{container.id}"; end; break; else; if open_result =~ /^You open/; fput "close ##{container.id}"; end; end; end; end; end; unless ticket_id; echo 'failed to find your ticket'; if $go2_get_silvers; echo 'going to buy one...'; sleep 2; force_go2.call(11748); fput 'unhide' if hidden? or invisible?; ask_result = dothis 'ask percy about ticket', /^Percy whispers, "Look \-\- I need [0-9]+ coins for something like that\.|^Percy quietly takes your money/; if ask_result =~ /^Percy whispers, "Look -- I need ([0-9]+) coins for something like that\./; cost = $1; force_go2.call(10911); fput 'unhide' if hidden? or invisible?; withdraw_result = dothis "withdraw #{cost} silvers", /hands you [0-9]+ silvers|don't seem to have that much/; unless withdraw_result =~ /hands you [0-9]+ silvers/; echo "you are too poor to go to Solhaven"; exit; end; force_go2.call(11748); fput 'unhide' if hidden? or invisible?; ask_result = dothis 'ask percy about ticket', /^Percy quietly takes your money/; end; force_go2.call(18677); else; echo 'for automatic ticket buying, use   ;go2 getsilvers=on'; exit; end; end; fput 'unhide' if (hidden? or invisible?) and checkloot.include?('gangplank'); unless checkloot.include?('gangplank') and move('go gangplank'); echo 'waiting for the cutter...'; line = get until line =~ /^A small cutter glides up beneath the bridge.  The crew swiftly extends a gangplank\.|^You hear a voice on the cutter shouting, "Are the passengers all aboard\?"/; fput 'unhide' if hidden? or invisible?; move 'go gangplank'; end

@@ -1,0 +1,108 @@
+TAG meta:forage-sensed	tags.n=44781
+$minotaur_maze_dirs	wayto.read=3976	wayto.write=497
+$mapdb_confluence_target	wayto.read=5	wayto.write=3233
+TAG meta:playershop	tags.n=2401
+TAG meta:che	tags.n=1233
+$go2_restart	wayto.write=674
+TAG meta:nomagic	tags.n=667
+TAG meta:fest	tags.n=590
+$mapdb_instability_timeto	timeto.read=477
+TAG meta:mapcategory	tags.n=389
+UserVars.mapdb_ice_mode	wayto.read=321
+TAG meta:map	tags.n=265
+TAG meta:teleport	tags.n=247
+TAG meta:splashy	tags.n=235
+TAG meta:mapname	tags.n=234
+TAG meta:locker annex	tags.n=208
+TAG meta:mapshortname	tags.n=203
+TAG meta:locker	tags.n=165
+TAG meta:mho	tags.n=140
+TAG meta:society	tags.n=136
+TAG meta:trap	tags.n=128
+TAG meta:premium	tags.n=123
+TAG silver-cost	tags.n=88
+$mapdb_day_passes	timeto.read=42	timeto.write=6	wayto.read=39
+TAG meta:underwater	tags.n=66
+TAG meta:maze	tags.n=65
+TAG meta:taskroom	tags.n=63
+UserVars.mapdb_use_portmasters	timeto.read=62
+TAG meta:storyline	tags.n=62
+$mapdb_last_day_pass_message	timeto.read=36	timeto.write=18
+UserVars.mapdb_duskruin_origin	timeto.read=24	wayto.write=24
+TAG meta:pay-to-play	tags.n=44
+TAG meta:citizenship	tags.n=43
+TAG meta:trashcan	tags.n=42
+$mapdb_seeking_destination	wayto.read=3	wayto.write=36
+UserVars.mapdb_ebon_gate_origin	timeto.read=26	wayto.write=12
+UserVars.mapdb_talondown_origin	timeto.read=18	wayto.write=18
+$go2_use_seeking	timeto.read=36
+TAG meta:noteleport	tags.n=35
+TAG meta:mentor	tags.n=34
+TAG meta:morphing	tags.n=34
+UserVars.mapdb_find_day_pass	timeto.read=6	timeto.write=18	wayto.write=6
+TAG meta:Crimson Legion	tags.n=30
+TAG meta:game	tags.n=29
+TAG meta:boxpool	tags.n=26
+TAG meta:latched	tags.n=21
+UserVars.mapdb_buy_day_pass	timeto.read=6	wayto.read=6	wayto.write=6
+$group_members	wayto.read=10	wayto.write=6
+UserVars.mapdb_fwi_return_room	timeto.read=14	wayto.write=1
+$mapdb_confluence_wayto	wayto.read=13	wayto.write=2
+UserVars.mapdb_fwi_trinket	timeto.read=4	wayto.read=9
+TAG meta:fwi	tags.n=13
+TAG meta:transport	tags.n=12
+$go2_get_silvers	wayto.read=12
+UserVars.day_pass_sack	timeto.read=6	wayto.read=6
+TAG meta:exit	tags.n=12
+TAG meta:sign of darkness	tags.n=11
+TAG meta:jail cell	tags.n=11
+UserVars.key_sack	wayto.read=10
+UserVars.key	wayto.read=10
+UserVars.mapdb_premium	timeto.read=9
+TAG meta:prof	tags.n=9
+TAG meta:seeking	tags.n=8
+UserVars.mapdb_redforest_location	timeto.read=2	wayto.write=6
+UserVars.lootsack	wayto.read=8
+$restart_go2	wayto.write=7
+UserVars.mapdb_marksofthebeast_origin	timeto.read=4	wayto.write=3
+UserVars.Mularos_Lover	timeto.read=2	wayto.read=4
+UserVars.mapdb_use_day_pass	timeto.read=6
+$clean_lich_char	timeto.read=6
+UserVars.mapdb_hinterwilds_location	timeto.read=2	wayto.write=4
+UserVars.keysack	wayto.read=6
+TAG meta:town	tags.n=5
+$mapdb_confluence_wander	wayto.read=4	wayto.write=1
+$mapdb_confluence_hot_tranquility	wayto.read=3	wayto.write=2
+$mapdb_confluence_cold_tranquility	wayto.read=3	wayto.write=2
+$mapdb_confluence_hot_pit	wayto.read=3	wayto.write=2
+$mapdb_confluence_cold_pit	wayto.read=3	wayto.write=2
+TAG meta:quest	tags.n=5
+UserVars.mapdb_allow_vornavis	timeto.read=4
+UserVars.Peregrine	wayto.read=4
+TAG meta:samepath	tags.n=3
+UserVars.rogue_password	wayto.read=3
+TAG meta:private home	tags.n=3
+TAG meta:mobile	tags.n=3
+UserVars.mapdb_urchins_expire	timeto.read=2
+UserVars.mapdb_prestidigitorium	timeto.read=2
+$platinum	wayto.read=2
+UserVars.mapdb_black_swan	timeto.read=2
+TAG meta:transition	tags.n=2
+TAG meta:gender	tags.n=2
+TAG meta:pending restoration	tags.n=2
+UserVars.mapdb_car_from_sos	timeto.read=2
+UserVars.mapdb_car_to_sos	timeto.read=2
+UserVars.Cuddfan_Hollow	timeto.read=2
+UserVars.mapdb_use_urchins	timeto.read=1
+TAG meta:symbol of return	tags.n=1
+UserVars.mapdb_annoy_ylandra	timeto.read=1
+UserVars.sunset_cabin	timeto.read=1
+UserVars.mapdb_hate_familiar	wayto.read=1
+UserVars.Elaienaran_Haven	timeto.read=1
+TAG meta:workroom	tags.n=1
+UserVars.journeys_end	wayto.read=1
+UserVars.Shivergale	timeto.read=1
+UserVars.Oleander_House	timeto.read=1
+UserVars.safe_harbor	wayto.read=1
+UserVars.spindrift	wayto.read=1
+TAG meta:event	tags.n=1

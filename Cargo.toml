@@ -4,6 +4,8 @@ members = [
     "crates/cena-platform",
     "crates/cena-protocol",
     "crates/cena-model",
+    "crates/cena-map",
+    "crates/cena-mapdb-convert",
     "crates/cena-session",
     "crates/cena-behavior",
     "crates/cena-ui",
@@ -27,6 +29,7 @@ publish = false
 cena-platform = { path = "crates/cena-platform" }
 cena-protocol = { path = "crates/cena-protocol" }
 cena-model = { path = "crates/cena-model" }
+cena-map = { path = "crates/cena-map" }
 cena-session = { path = "crates/cena-session" }
 cena-behavior = { path = "crates/cena-behavior" }
 cena-ui = { path = "crates/cena-ui" }

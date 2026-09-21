@@ -1,0 +1,68 @@
+957	31	11->30714	;e Map[..].timeto[..].call;
+477	33	23282->188	;e $mapdb_instability_timeto[..]
+83	66	13966->13923	;e checksitting && Room.current.climate == S ? N : N
+62	54	250->1870	;e UserVars.mapdb_use_portmasters == true ? N : nil
+36	104	1983->12603	;e if Society.status == S and Society.rank == N and $goN_use_seeking; N; else; nil; end
+30	65	23->27795	;e ((!defined?(Stats.prof) or Stats.prof == S) ? N : nil);
+24	37	179->19507	;e Stats.prof == S ? N : nil
+20	67	13966->30506	;e checksitting && Room.current.climate == S ? nil : N
+16	156	7486->24572	;e if Spell[..].active?; (N * [((N - ([Spells.majorelemental,Stats.level].minRN)) / N), N].max).floor + N; else; N; end
+14	54	3669->7	;e (UserVars.mapdb_fwi_return_room == N ? N : nil);
+13	99	31558->7	;e (!UserVars.mapdb_ebon_gate_origin.nil? and UserVars.mapdb_ebon_gate_origin == N) ? N : nil;
+12	36	7->31558	;e Time.now.month == N ? N : nil
+12	94	26905->7	;e (!UserVars.mapdb_duskruin_origin.nil? and UserVars.mapdb_duskruin_origin == N) ? N : nil;
+9	42	21->17193	;e UserVars.mapdb_premium.nil? ? N : N;
+9	49	10376->19809	;e if Stats.prof == S; N; else; nil; end
+9	98	23281->417	;e (!UserVars.mapdb_talondown_origin.nil? and UserVars.mapdb_talondown_origin == N) ? N : nil;
+8	30	11438->11437	;e checkspell(N) ? N : N
+8	104	27860->27864	;e key=GameObj.inv.find{|k| k.name==S;};if !key.nil? then N else nil end;
+5	71	167->36170	;e (Script.running?(S) || Script.running?(S))? nil : N
+4	90	1457->33283	;e ((Char.citizenship == S or !UserVars.mapdb_allow_vornavis.nil?) ? N : nil);
+4	39	22359->22419	;e Stats.race == S ? N : nil
+3	62	13485->25676	;e (!defined?(Stats.prof) or Stats.prof == S) ? N : nil
+2	47	992->1013	;e if Script.running? S;nil;else;N;end
+2	42	1834->27470	;e UserVars.Mularos_Lover.nil? ? nil : N
+2	33	3684->3685	;e Society.rank == N ? N : nil
+2	49	5830->23525	;e if Skills.perception >= N; N; else nil; end
+2	35	6955->6985	;e XMLData.level > N ? N : nil
+2	69	13728->13729	;e ((!defined?(Stats.gender) or Stats.gender == S) ? N : nil);
+2	110	24675->7892	;e if (checkroom.to_s =~ R) and (UserVars.mapdb_redforest_location == S); N; else; nil; end
+2	42	25148->221	;e UserVars.mapdb_car_from_sos ? N : nil
+2	56	25183->25145	;e if UserVars.mapdb_car_to_sos == true;N;else;nil;end
+2	112	25509->25508	;e (!UserVars.mapdb_marksofthebeast_origin.nil? and UserVars.mapdb_marksofthebeast_origin == N) ? N : nil;
+2	110	29865->2487	;e UserVars.mapdb_hinterwilds_location == S and Map.current.location.to_s =~ R ? N : nil;
+2	55	34434->34435	;e (UserVars.Cuddfan_Hollow.to_s != S ? nil : N)
+1	90	7->3668	;e (!UserVars.mapdb_fwi_trinket.nil? and !UserVars.mapdb_fwi_trinket.empty?) ? N : nil;
+1	169	7->30714	;e UserVars.mapdb_use_urchins == true and !UserVars.mapdb_urchins_expire.nil? and Time.now.to_i < UserVars.mapdb_urchins_expire and !hidden? and !invisible? ? N : nil;
+1	114	314->3890	;e if (UserVars.mapdb_prestidigitorium == true) or (UserVars.mapdb_prestidigitorium == S); N; else; nil; end
+1	55	420->291	;e Char.citizenship == S ? N : nil
+1	52	3030->16034	;e UserVars.mapdb_annoy_ylandra == S ? N : nil
+1	42	3091->31352	;e UserVars.sunset_cabin.nil? ? nil : N;
+1	48	3369->3561	;e Society.status == S ? N : nil
+1	72	4109->18694	;e (Script.running?(S) or Script.running?(S)) ? nil : N
+1	218	4140->4141	;e if [..].any? { |num| Spell[num].known? }; N; elsif Skills.climbing >= [XMLData.encumbrance_value/N,N].max; N; elsif (Stats.prof == S) and (Stats.level >= N); N; else N; end;
+1	85	4140->16392	;e if Skills.climbing >= [XMLData.encumbrance_value/N,N].max; N; else; nil; end
+1	144	4141->4140	;e if [..].any? { |num| Spell[num].known? }; N; elsif (Stats.prof == S) and (Stats.level >= N); N; else N; end
+1	31	6486->6487	;e Spell[..].known? ? N : nil
+1	102	7157->36342	;e if (UserVars.mapdb_black_swan == true) or (UserVars.mapdb_black_swan == S); N; else; nil; end
+1	69	7917->7918	;e ((defined?(Skills.climbing) and Skills.climbing > N) ? N : nil)
+1	4685	8635->8916	;e open_regex = R^(yes|true)$|\bwl,imt\b/i N else nil end else nil end
+1	4680	8635->14360	;e open_regex = R^(yes|true)$|\bwl,sol\b/i N else nil end else nil end
+1	76	11006->10840	;e if Char.citizenship == S || invisible? ; N; else; nil; end
+1	143	11442->11485	;e ((!defined?(Skills) or !defined?(Skills.climbing) or (defined?(Skills) and defined?(Skills.climbing) and Skills.climbing > N)) ? N : nil)
+1	48	12582->28709	;e Char.citizenship == S ? N : nil;
+1	38	13532->8695	;e $SILVERWOOD_TOWN == :wl ? N : nil
+1	39	13532->8696	;e $SILVERWOOD_TOWN == :imt ? N : nil
+1	38	13532->14659	;e $SILVERWOOD_TOWN == :va ? N : nil
+1	39	13532->32873	;e $SILVERWOOD_TOWN == :zul ? N : nil
+1	4680	14359->8634	;e open_regex = R^(yes|true)$|\bsol,wl\b/i N else nil end else nil end
+1	4675	14359->8916	;e open_regex = R^(yes|true)$|\bsol,imt\b/i N else nil end else nil end
+1	4685	15619->8634	;e open_regex = R^(yes|true)$|\bimt,wl\b/i N else nil end else nil end
+1	4676	15619->14360	;e open_regex = R^(yes|true)$|\bimt,sol\b/i N else nil end else nil end
+1	57	15626->33715	;e (UserVars.Elaienaran_Haven.to_s != S ? nil : N)
+1	47	23525->23526	;e if Skills.swimming >= N; N; else nil; end
+1	66	30714->7	;e !(Script.list.map(&:name) & %w{goN routeN}).empty? ? N : nil;
+1	153	30714->21	;e (!(defined?(Account) ? Account.subscription.downcase == S: UserVars.mapdb_fwi_trinket.to_s != S) and Map[..].timeto[..].call) ? N : nil
+1	152	30714->20707	;e ((defined?(Account) ? Account.subscription.downcase == S: UserVars.mapdb_fwi_trinket.to_s != S) and Map[..].timeto[..].call) ? N : nil
+1	40	31427->31428	;e UserVars.Shivergale.nil? ? nil : N;
+1	55	33277->34440	;e (UserVars.Oleander_House.to_s != S ? nil : N)

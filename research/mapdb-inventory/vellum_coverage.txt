@@ -1,0 +1,126 @@
+running 1 test
+wayto edges: 74100 plain, 7865 scripted (7718 transpiled = 98.1%)
+GRAPH coverage (routable by timeto): 80620/81965 (98.4%)
+EXECUTION coverage (proc edges we can walk): 7718/7865 (98.1%)
+  by mechanism:
+    Transpiled: 4476 (56.9%)
+    Confluence: 3234 (41.1%)
+    Untranspiled: 147 (1.9%)
+    DayPass: 6 (0.1%)
+    Override: 2 (0.0%)
+
+RESIDUE: 147 untranspiled edges in 85 idiom families; the top 25 families are 86 edges (58.5% of residue)
+
+  1. 10x  ;e loop { wait_until { Spell[N].affordable? }; result = cast(N, 'S'); break unless result =~ /Spell Hindrance/ } 
+     e.g. 19007:19029 ;e loop { wait_until { Spell[704].affordable? }; result = cast(704, 'oil painting'); break unless result =~ /Spell Hindrance/ } 
+
+  2. 9x  ;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = 
+     e.g. 11630:11612 ;e if ((bounty? =~ /^You have made contact with the child/)||(Society.task =~ /You have been tasked to find and rescue an official who was captured/)); mynpc = GameObj.npcs.find { |npc| npc.noun =~ /child|official/ }; else;  mynpc = nil; end;  50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'southwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc; move 'northwest'; 50.times { break if GameObj.npcs.any? { |npc| npc.id == mynpc.id }; sleep 0.1 } if mynpc;
+
+  3. 6x  ;e Ntimes { sleep N; break if GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ } }; unless GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ 
+     e.g. 18043:18052 ;e 40.times { sleep 0.1; break if GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ } }; unless GameObj.loot.any? { |obj| obj.name =~ /#{Char.name} disk$/ }; disk = Spell[511]; wait_until { disk.affordable? }; disk.cast; end; move 'up'
+
+  4. 5x  ;e next_exit = { N => [ 'S', 'S', 'S', 'S', 'S', 'S', 'S' ], N => [ 'S', 'S', 'S', 'S', 'S', 'S', 'S' ], N => [ 'S', 'S', 'S', 'S', 'S' ], N => [ 'S', 'S', 'S' 
+     e.g. 9784:9734 ;e next_exit = { 9823 => [ 'southeast', 'southwest', 'southwest', 'east', 'southwest', 'southeast', 'south' ], 9818 => [ 'east', 'southwest', 'west', 'west', 'northeast', 'northeast', 'northwest' ], 9808 => [ 'east', 'east', 'east', 'northeast', 'west' ], 9788 => [ 'southwest', 'southeast', 'southwest' ], 9784 => [ 'southeast', 'south', 'northeast', 'north', 'west', 'west', 'west' ] }; loop { if move 'go root'; sleep(0.5) until XMLData.room_title == '[Maaghara Tower, Refuse Heap]'; fput 'stand' unless standing?; waitrt?; break; else; if dir_list = next_exit[Room.current.id]; dir_list.each { |dir| move dir }; else; echo 'error: out of cheese'; break; end; end }
+
+  5. 4x  ;e Map[N].wayto['S'].call;
+     e.g. 18249:18262 ;e Map[18700].wayto['18250'].call;
+
+  6. 4x  ;e Ntimes { if celerity = Spell[N] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout 'S', N, /^You (?:car
+     e.g. 12604:12605 ;e 10.times { if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout 'search', 3, /^You (?:carefully )?search|^You don't find anything|^You find nothing else/; waitrt?; r = dothistimeout 'get rock', 3, /^I could not find|^You reach out|^Get what?/; break if r =~ /^You reach out/ }; empty_hands; move 'climb wall'; waitrt?; fill_hands
+
+  7. 4x  ;e group_members = nil; clear.reverse.each { |line| if line =~ /^Obvious (paths|exits)/; break; elsif line =~ /^([A-Za-z ,]+) followed\.$/; group_members = $Nsp
+     e.g. 4344:7298 ;e group_members = nil; clear.reverse.each { |line| if line =~ /^Obvious (paths|exits)/; break; elsif line =~ /^([A-Za-z ,]+) followed\.$/; group_members = $1.split(/, | and /); group_members.delete_if { |m| m =~ /^[Yy]our / }; group_members = nil if group_members.empty?; break; end }; move 'say shadow bind my soul'; if (group_members.to_a.length > 0); echo 'Waiting for your group... To ditch them, ;send go'; wait_until { (group_members.to_a - checkpcs.to_a).empty? or clear.find { |line| line == 'go' } }; end
+
+  8. 4x  ;e wait_while { Room.current.id == N }
+     e.g. 30947:30948 ;e wait_while { Room.current.id == 30947 }
+
+  9. 4x  ;e while checkpaths == ['S', 'S', 'S', 'S']; move ['S','S'][rand(N)]; end;
+     e.g. 16124:11653 ;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northeast','southeast'][rand(2)]; end;
+
+ 10. 4x  ;e while checkpaths == ['S', 'S', 'S', 'S']; move ['S','S'][rand(N)]; end; move 'S' while checkpaths.include?('S')
+     e.g. 16124:11620 ;e while checkpaths == ['ne', 'se', 'sw', 'nw']; move ['northwest','southwest'][rand(2)]; end; move 'west' while checkpaths.include?('w')
+
+ 11. 3x  ;e clear put 'S' loop { line = get if line =~ /a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|
+     e.g. 2658:2659 ;e clear
+put 'look'
+loop {
+line = get
+if line =~ /a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall and a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall\./
+if $3 == 'eastern'
+move 'climb steps'
+elsif $6 == 'eastern'
+move 'climb second steps'
+elsif $9 == 'eastern'
+move 'climb third steps'
+elsif $12 == 'eastern'
+move 'climb fourth steps'
+else
+echo "error: unique_map_movements can't find the right steps"
+exit
+end
+break
+end
+}
+
+ 12. 3x  ;e if celerity = Spell[N] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; until dothistimeout('S', N, /anything of in
+     e.g. 6630:6631 ;e if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; until dothistimeout('search', 3, /anything of interest|rough hole/) =~ /rough hole/ do end; move 'go hole'
+
+ 13. 2x  ;e begin fput 'S' waitrt? end until Room.current.id == N
+     e.g. 10816:10815 ;e begin
+fput 'swim north'
+waitrt?
+end until Room.current.id == 10815
+
+ 14. 2x  ;e begin move 'S' end until Room.current.id == N
+     e.g. 4029:4027 ;e begin
+move 'north'
+end until Room.current.id == 4027
+
+ 15. 2x  ;e fput 'S'; language = /You are currently speaking (.*?)\./.match(get).captures.first until language;; fput('S') unless language == 'S'; fput('S') if hidden? o
+     e.g. 28885:29773 ;e fput 'speak'; language = /You are currently speaking (.*?)\./.match(get).captures.first until language;; fput('speak wizard') unless language == 'Guildspeak'; fput('unhide') if hidden? or invisible?; move 'say ::portal wizard'; fput('speak ' + language.to_s) unless language == 'Guildspeak'
+
+ 16. 2x  ;e if (bounty? =~ /^You have made contact with the child/); child = GameObj.npcs.find { |npc| npc.noun == 'S' }; else; child = nil; end; move 'S'; if Room.curre
+     e.g. 7313:7312 ;e if (bounty? =~ /^You have made contact with the child/); child = GameObj.npcs.find { |npc| npc.noun == 'child' }; else; child = nil; end; move 'southwest'; if Room.current == Room[7313]; 50.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep 0.1 } if child; move 'southwest'; end
+
+ 17. 2x  ;e if UserVars.Mularos_Lover; UserVars.Mularos_Lover.each{|c| fput 'S' } end
+     e.g. 27470:1834 ;e if UserVars.Mularos_Lover; UserVars.Mularos_Lover.each{|c| fput "#{c}" } end
+
+ 18. 2x  ;e if UserVars.Peregrine; UserVars.Peregrine.each{|c| fput 'S' } end
+     e.g. 27638:27639 ;e if UserVars.Peregrine; UserVars.Peregrine.each{|c| fput "#{c}" } end
+
+ 19. 2x  ;e move 'S'; unless Room.current.id == N then move 'S'; move 'S'; move 'S'; end
+     e.g. 5868:5869 ;e move 'north'; unless Room.current.id == 5869 then move 'south'; move 'south'; move 'south'; end
+
+ 20. 2x  ;e move ['S','S'][rand(N)] while checkpaths == [ 'S', 'S', 'S', 'S' ]
+     e.g. 16122:11630 ;e move ['northeast','southeast'][rand(2)] while checkpaths == [ 'ne', 'se', 'sw', 'nw' ]
+
+ 21. 2x  ;e move ['S','S'][rand(N)] while checkpaths == [ 'S', 'S', 'S', 'S' ]; move 'S' if checkpaths.include?('S'); move 'S' if checkpaths.include?('S')
+     e.g. 16122:11612 ;e move ['northwest','southwest'][rand(2)] while checkpaths == [ 'ne', 'se', 'sw', 'nw' ]; move 'northwest' if checkpaths.include?('nw'); move 'west' if checkpaths.include?('w')
+
+ 22. 2x  ;e move checkpaths[rand(checkpaths.length)] until checkpaths.include?('S')
+     e.g. 14614:9377 ;e move checkpaths[rand(checkpaths.length)] until checkpaths.include?('out')
+
+ 23. 2x  ;e refill_hand = false;key_worn = false; (refill_hand = true;empty_hand) if !checkleft.nil? and !checkright.nil?; key_worn = true if GameObj.inv.find {|obj| obj
+     e.g. 34434:34435 ;e refill_hand = false;key_worn = false;
+  (refill_hand = true;empty_hand) if !checkleft.nil? and !checkright.nil?;
+  key_worn = true if GameObj.inv.find {|obj| obj.name =~ /#{UserVars.key.split(' ').join('.*?')}/};
+  fput "remove my #{UserVars.key}" if key_worn;
+  fput "get my #{UserVars.key} from my #{UserVars.key_sack}" if !key_worn;
+  door = 'bright door';
+  multifput "unlock #{door}","open #{door}","go #{door}","close #{door}","lock #{door}";
+  fput "wear my #{UserVars.key}" if key_worn;
+  fput "put my #{UserVars.key} in my #{UserVars.key_sack}" if !key_worn;
+  fill_hand if refill_hand;
+
+ 24. 2x  ;e res = choice = nil;res = dothistimeout 'S', N, /(\d)\) the Sea of Fire/;if res =~ /(\d)\) the Sea of Fire/;choice = $N;end;dothistimeout 'S', N, /You inquire
+     e.g. 25183:25145 ;e res = choice = nil;res = dothistimeout "inquire", 5, /(\d)\) the Sea of Fire/;if res =~ /(\d)\) the Sea of Fire/;choice = $1;end;dothistimeout "order #{choice}", 5, /You inquire with a caravan conductor about the price of a trip to the Sea of Fire\.  S?[Hh]e says, "That will be [,\d]+ silvers/;res = dothistimeout "order confirm", 5, /It doesn't look like you have enough silver to ride\.|We'll be taking that payment in silver, then\./;if res =~ /It doesn't look like you have enough silver to ride\./;5.times do;echo "Didn't have enough silver!";exit;end;end;wait_until { XMLData.room_title =~ /Caravan, Wagon/ };sleep 1;wait_until{ XMLData.room_title !~ /Caravan, Wagon/ };if GameObj.npcs.any? { |npc| npc.name =~ /thief|rogue|bandit|mugger|outlaw|highwayman|marauder|brigand|thug|robber/ };3.times do;_respond "<pushBold/>BANDITS!!! BANDITS!!! BANDITS!!!<popBold/>";end;exit;end;$go2_restart=true
+
+ 25. 2x  ;e room = Room.current.id;fput 'S'; if ( room == Room.current.id ); fput 'S';move 'S'; end ; $goN_restart = true
+     e.g. 15950:7989 ;e room = Room.current.id;fput 'go opening'; if ( room == Room.current.id ); fput 'close locker';move 'go opening'; end ; $go2_restart = true
+
+wrote 147 residue edges to C:/Users/shawn/AppData/Local/Temp/claude/e--Cena/ba48fd8a-33a1-4569-9d66-72a8b5e00656/scratchpad/vellum_residue.txt
+test real_mapdb_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 1.55s
+

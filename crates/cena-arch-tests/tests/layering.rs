@@ -77,6 +77,17 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     ("cena-platform", &[]),
     ("cena-protocol", &["cena-platform"]),
     ("cena-model", &["cena-protocol"]),
+    // ADDED for `plan/21` §5 step 2, the map. `cena-map` is the map's
+    // vocabulary -- the room and exit records -- and depends on nothing in the
+    // workspace: `plan/21` §3c places it at the model level, and the edge to
+    // whatever consumes it is added when that consumer exists, not before
+    // (`plan/05` §-1).
+    ("cena-map", &[]),
+    // The offline converter (`plan/21` §3a). A build tool: it reads the
+    // upstream map file and writes `cena_map::Room` records. Nothing may depend
+    // on it -- the set equality below enforces that by its absence from every
+    // other row -- because it is the one place upstream Ruby is ever seen.
+    ("cena-mapdb-convert", &["cena-map"]),
     // AMENDED for Milestone 1 Step 2, the session actor slice. The row was
     // `&["cena-model"]`. Two edges added, both downward under `plan/12:72-86`:
     //
@@ -358,6 +369,38 @@ fn model_does_no_file_io() {
          The snapshot TYPE lives here; loading and saving it lives in \
          `cena-session/src/character_store.rs`, the only crate the layering \
          table lets hold both (layering.rs:98-101).\n{}",
+        hits.join("\n")
+    );
+}
+
+/// `plan/21` §3c: `cena-map` is the map's vocabulary and is pure. Reading the
+/// upstream file and writing room files is `cena-mapdb-convert`'s job; loading
+/// the built map belongs to whichever crate owns that file handle.
+///
+/// Written with the crate, not after it (`plan/05` §0). Same needles and the
+/// same lexical limits as [`model_does_no_file_io`].
+#[test]
+fn map_does_no_file_io() {
+    let needles = &[
+        "std::fs",
+        "File::open",
+        "File::create",
+        "fs::read",
+        "fs::write",
+        "OpenOptions",
+    ];
+    let sources: Vec<(std::path::PathBuf, String)> = scannable_sources()
+        .into_iter()
+        .filter(|(path, _)| relative(path).starts_with("crates/cena-map/src/"))
+        .collect();
+    assert!(
+        !sources.is_empty(),
+        "the scan found no cena-map sources, so this test is vacuous"
+    );
+    let hits = scan_lines(&sources, needles);
+    assert!(
+        hits.is_empty(),
+        "cena-map must not touch the filesystem (`plan/21` §3c).\n{}",
         hits.join("\n")
     );
 }
