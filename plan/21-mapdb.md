@@ -687,19 +687,173 @@ puzzle exits.
 (`source_layout_version = 61`, the same version as the official `layouts.json`) and
 `map_overrides.json` show Vellum already joins the official layout. NOT YET READ.
 
-## 4. The special cases — to be designed BEFORE porting crossings
+## 4. The special cases — design notes (PROPOSED 2026-09-20, step 6)
 
-Each gets a short design note in this document before its code exists.
+Written before any crossing is ported, so the primitives are shaped by the hard cases and not
+by the easy ones. Evidence: `research/mapdb-inventory/vellum-executor-semantics.md` (Vellum's
+executor, read in full), `go2-and-lich-map-semantics-part2.md` (go2 and Lich's `move`), and
+the scripts themselves. Everything here is a proposal until the author rules.
 
-1. **Urchins.** Per-character validity from `urchin status` (enabled ∧ not expired ∧ not
-   hidden ∧ not invisible ∧ not mounted), held in the model. Pre-flight when unknown.
-2. **Cost gates.** Portmasters, Voln seeking, profession/race, FWI trinket, day pass, silver.
-3. **Replan.** `$go2_restart`: some crossings land somewhere unpredictable; the trip re-plans.
-4. **Per-trip scratch state.** Event-area return edges send the same command and are
-   distinguished only by a variable their entry edge set.
-5. **Hands.** `empty_hands` / `fill_hands` need a stash service over inventory.
-6. **Shifting areas.** Confluence, minotaur maze, Hidden Plateau, Karazja, pathcode mazes.
-7. **Errands.** River's Rest boot and its kind: `from`/`to` override with `require_item`.
+### 4.0 Three pieces, and where each lives
+
+| piece | crate | what it is |
+|---|---|---|
+| **the vocabulary** | `cena-map` | `Crossing`, `Cost`, and one shared `Cond`; plain data with wire names |
+| **the walker's facts** | `cena-map` | `Walker`: a plain struct of what pricing and guards may ask — profession, settings, active spells, encumbrance, remembered origins, banned exits, *the time*. No model types, so `cena-map` stays dependency-free |
+| **the walk** | `cena-behavior` | the Travel behavior: a pure state machine, `tick(facts, frames) -> commands`, as Vellum's (`executor.rs:787`); fills `Walker` from the model each plan |
+
+Rules that hold across every case:
+
+- **One `Cond` for costs and for step guards.** `Stats.prof == S ? N : nil` (a cost) and
+  `if Skills.survival < 50` (a guard) ask the same kind of question. One enum, one evaluator.
+- **Unknown answers "no".** A fact the model has not been told prices the exit impassable and
+  fails the guard. Vellum's lesson (`executor.rs:197`): refusing a route is recoverable,
+  walking one you cannot take strands you. The walk then *asks* (a pre-flight probe) rather
+  than guessing.
+- **A cost never acts.** Upstream's day-pass cost opens containers and reads passes *inside
+  the pathfinder*. Here pricing is a pure function of `Walker`; anything that must be looked
+  up is a pre-flight step that runs before planning and lands in the model.
+- **The clock is a fact.** `Walker.now` is passed in. Pricing never reads the wall clock, so
+  a replay plans the same route (`12` §7.2 criterion 7).
+- **Randomness is seeded** from the session and recorded, for the same reason. Vellum's
+  `MoveAnyExit` uses `rand::rng()` (`executor.rs:3947`); that is not copied.
+
+**How a plain exit is crossed** is Lich's `move` (`move.rb:167-447`) and Vellum's reaction
+table, which agree and are both digested. In Hydra the line matching is a **stateless
+classifier over frames** (`12` §3a), not a substring scanner, and the lessons Vellum paid for
+are requirements, not options: stamp every send and attribute failures FIFO; retry what was
+*sent*, never the map's text; never ban an exit on lag — only when the walker never left the
+first room; a `<nav>` beats a failure line that raced it; cap every loop (its uncapped
+`open` was "the only outright hang in the walker"); never end a trip with items still stowed
+— **including on a user stop**, which Vellum skips.
+
+### 4.1 Urchins — and pass-through rooms
+
+MEASURED: one virtual room per town (16 tagged `map:virtual room`; Ta'Illistim's is 30714).
+**523** exits enter one with the crossing `;e true` — nothing is sent — priced by one gate;
+the exits *out* are plain `urchin guide <place>`. **930** further costs are the delegation
+`Map[7].timeto['30714'].call`: "whatever that exit costs".
+
+- **`Crossing::PassThrough`.** Nothing is sent and no arrival is awaited; the walker treats
+  `A → hub → B` as one hop, sending the hub's command from A. Vellum learned this the hard
+  way ("3637 -> 30718 keeps failing" from arrival-watching a room that does not exist).
+  `locate` never answers a virtual room: it has no number and no text.
+- **Delegation is resolved by the converter**, not at run time: `Map[N].timeto['M'].call`
+  becomes a copy of that exit's cost. 959 scripted costs disappear into whatever they point
+  at, and no primitive is spent on them.
+- **The gate**: `Cond::All[Setting(urchins), Before(urchins_expire), Not(Hidden),
+  Not(Invisible), Not(Mounted)]` → 0.1 s. Every part is a `Walker` fact.
+- **The expiry** comes from `urchin status` (three reply forms, `go2:975-996`; "permanent"
+  means no expiry). A classifier keeps it in the model *whenever the game says it*. The walk
+  probes only when the setting is on and the expiry is unknown or past, **before** planning
+  — Lich asks after the trip, so its first trip of the day plans without them.
+- **Mounted** is learned from a rejection line mid-trip: set the fact, replan.
+
+### 4.2 Cost gates
+
+§2d classified all 1,860: 21 kinds, none unclassified. After delegation (4.1) they reduce to:
+
+| form | covers | shape |
+|---|---|---|
+| `Gated { when: Cond, then, otherwise }` | settings (portmasters, premium, Vaalor shortcut…), profession, race, society, month, remembered origin (4.4), posture + climate | `cond ? N : nil`, `cond ? N : M` |
+| `Table { by: room-of-last-instability, seconds }` | the 477 instability costs | a lookup in `Walker` |
+| `Formula` | 27 arithmetic costs | INFERRED: a handful of named formulas, not an expression language — to be confirmed when they are read |
+
+Settings are one **per-character travel profile** (a data profile, `CLAUDE.md`): urchins,
+portmasters, seeking, ice mode, may-withdraw-silver, day pass, FWI trinket, caravans. go2's
+list is in the digest, §5. **Silver is not a cost gate:** `silver-cost:` tags sum along the
+planned path (no dynamic values exist upstream — Vellum checked), and being short is a
+*funding detour* before departure — one multi-target search for the nearest affordable bank
+(Vellum's 72 separate searches froze its UI) — recomputed on every replan.
+
+### 4.3 Replan
+
+MEASURED: **673** crossings end with `$go2_restart = true`: the crossing may land anywhere
+(a trinket, a locker curtain, a ferry). **`Replan` is a step**, legal only last: locate
+again, and if that is not where the plan expected, route again from there. Skipped when the
+walker is already where it meant to be — an unguarded trailing replan reported finished
+trips as failures (`executor.rs:2486`). Bounded (Vellum: 10 restarts; go2: unbounded).
+Banned exits are **per trip**, live in `Walker`, and therefore reach the pathfinder through
+`price` with no special mechanism.
+
+### 4.4 What upstream calls per-trip variables are not per trip
+
+`UserVars.mapdb_duskruin_origin = 7` is written by the exit *into* an event ground; every
+exit back is priced `origin == 7 ? 0.2 : nil`, so only the way you came is open. `UserVars`
+persist across logins — rightly: a character enters Duskruin on Friday and leaves on Sunday.
+
+MEASURED (`origin.py`, this session): of 58 writes, **32 are the literal id of the room being
+left, the rest are `Map.current.id` or `nil`** (clearing it on return); and **all 50 reads
+compare against the exit's own destination**. So the five variables are one fact with no
+name: ***which room did I enter this place from?***
+
+- Step **`RememberOrigin`**: on crossing `A → hub`, record `origin[hub] = A`.
+- **`Cond::CameFrom`**: on an exit `hub → B`, true when `origin[hub] == B`.
+- Stored per character, **persisted** (it must survive a logout), carried into `Walker`.
+
+A new event ground upstream then needs no new variable, no new primitive, and no Hydra
+release. `mapdb_fwi_return_room` stores a *location* rather than a room and is the one
+variant; `$minotaur_maze_dirs` and `$mapdb_confluence_target` are routine-internal (4.6).
+
+### 4.5 Hands
+
+`empty_hands; move X; waitrt?; fill_hands` and its kin, and also `move`'s own reaction to a
+hands-full line (`move.rb:350`). Steps `EmptyHands` / `FillHands` drive a **stash routine in
+`cena-behavior`** — not in Travel, because Loot and Heal need the same thing (rule of three
+is one short). It keeps a LIFO stack of what it put where, stows by id (`_drag #id #bag`, as
+Vellum), and the walk may not finish, fail or be stopped with the stack non-empty. Needs
+from the model: both hands and the containers, which it has. Which container is **the game's own stow list** (DECIDED, author, 2026-09-20): the model already reads it
+(`cena-model/src/state/containers.rs`, a port of `stowlist.rb`), so nothing is configured
+and nothing is guessed from nouns as upstream does (`/cloak|longcoat|backpack|pack/`).
+
+### 4.6 Shifting areas — named routines
+
+The Confluence (3,233 exits, one shape), the minotaur maze (497), Hidden Plateau, Karazja,
+pathcode mazes, and the ~16 `WanderUntil` cases. No step list describes these: the area
+rearranges itself and the script *searches*. Each is **`Crossing::Routine { name, args }`**:
+a Rust function in `cena-behavior` that takes over the walk until it arrives or gives up.
+
+- The converter recognises a routine by its shape and emits the name. The map file format
+  already handles the rest (§5 step 3, rule 1): an older Hydra that lacks the routine loads
+  the exit as `Unknown` — impassable — and routes around it.
+- A routine sees only what a behavior sees (frames and the model) and is bounded.
+- The set is **open but tiny** (§2d). This is the one place a new upstream
+  area can require a Hydra release, and the ratchet is what says so.
+- **Read Vellum's first** (`confluence.rs`, `minotaur.rs` — NOT YET READ): both are native
+  ports that work against the live game.
+
+### 4.7 Errands
+
+MEASURED: the River's Rest crossing is **3 exits and opens 868 rooms** — second on §5's
+list. Its script starts a *second go2* to fetch an amulet, finds containers, buys, and
+returns. So an errand is a routine (4.6) with one more need: **a sub-trip** — the walk must
+be able to run another walk and resume. That is a stack of trips in the Travel behavior, not
+recursion in map data, and it is the same mechanism the funding detour (4.2) needs. ~15
+exits, each hand-written, in the authored-corrections file (§3f) so regeneration keeps them.
+
+### 4.8 The flat-steps rule — DECIDED yes (author, 2026-09-20)
+
+Every case above fits: a crossing is a **flat list of steps, each optionally guarded by a
+`Cond`**; loops and searches are single steps or routines; nothing nests in map data. The
+first port should be the **icy-path shape** — 171 exits, **+2,278 rooms**, the largest gain
+on §5's list — because it is small and exercises every part once:
+
+```ruby
+if (ice_mode == 'wait') or ((ice_mode != 'run') and
+   ((encumbrance > 50) or ((Skills.survival < 50) and not Spell['Haste'].active?)));
+  sleep 0.2; echo 'trying not to slip...'; sleep 4; end; move 'west'
+```
+```json
+"steps": [ {"pause": 4.2, "when": {"any": [ {"setting": ["ice_mode","wait"]},
+             {"all": [ {"not": {"setting": ["ice_mode","run"]}},
+                       {"any": [ {"encumbrance_over": 50},
+                                 {"all": [ {"skill_under": ["survival",50]},
+                                           {"not": {"spell_active": "Haste"}} ]} ]} ]} ]}},
+           {"move": "west"} ]
+```
+
+One guard, one pause, one move, four kinds of fact — and the `echo` is dropped, as it will be in all
+**890** scripted crossings that `echo` or `respond` (MEASURED): they talk to a Lich user.
 
 ## 5. Order of work
 
@@ -801,12 +955,11 @@ Each gets a short design note in this document before its code exists.
 
    **Not built, on purpose:** asking the game. `location` would settle 122 of the ambiguous
    rooms and `peer` 22; both are *actions*, belong to a behavior, and `Sighting.location`
-   is already the slot the answer goes in. **Not wired:** the model keeps the number,
-   description, compass and the `room exits` component but **not the room title** — the
-   parser emits it (`Frame::StreamWindow.subtitle`) and the model drops it.
-   `title_from_subtitle` turns the wire's form into the map's. Adding the field is a
-   `cena-model` change, left until the other session is out of that crate; joining model
-   to map belongs in `cena-session`, the first crate allowed to see both.
+   is already the slot the answer goes in. **The model now keeps the room's name** (2026-09-20, author: *"tell model to
+   stop throwing stuff away"*): `Room::title`, from the `room` window's subtitle, which the
+   parser produced and the model dropped. `title_from_subtitle` turns it into the map's
+   spelling. **Still not wired:** joining model to map belongs in `cena-session`, the
+   first crate allowed to see both.
 5. ~~**The pathfinder.**~~ **BUILT 2026-09-20.** `cena_map::route`: `Map::routes(from,
    target, price)` is Dijkstra over the exits, and **the pricing is a function the caller
    passes in** — `None` is impassable. That is the whole of "per-character costs": a day
@@ -848,7 +1001,7 @@ Each gets a short design note in this document before its code exists.
    One shape at a time stalls near 12,000: past that, a region opens only when *several*
    shapes are ported together (a crossing and its cost gate, or a chain of ferries). So the
    ratchet needs a second number beside "unported exits": **rooms reachable from a town**.
-6. §4's design notes.
+6. ~~§4's design notes.~~ **WRITTEN 2026-09-20**, as proposals awaiting the author.
 7. Primitives, then recogniser arms, in edge-count order. A new arm that needs no new
    primitive is converter-only work.
    Vellum's port is read first for each.
