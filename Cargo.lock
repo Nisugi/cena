@@ -187,6 +187,7 @@ dependencies = [
  "cena-platform",
  "cena-protocol",
  "rusqlite",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-util",

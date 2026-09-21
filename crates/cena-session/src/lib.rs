@@ -29,6 +29,7 @@ pub mod lifecycle;
 pub mod menu_store;
 pub mod queue;
 pub mod supervisor;
+pub mod travel_store;
 
 pub use actor::{EndReason, Event, Session, SessionActor, Snapshot};
 // `CritTables` is this crate's own vocabulary, not a relay: `with_crit_tables`

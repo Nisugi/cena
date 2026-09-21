@@ -5,6 +5,9 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+# `derive`, for the travel file (`travel_store.rs`): the one type this crate
+# persists that is its own rather than `cena-model`'s.
+serde.workspace = true
 serde_json.workspace = true
 cena-model.workspace = true
 # The session drives the parser directly. `Parser` is stateful and explicitly
