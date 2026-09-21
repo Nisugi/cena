@@ -7,7 +7,9 @@ use super::costs::gated;
 use super::holes;
 
 pub(super) fn cost(script: &str) -> Option<Cost> {
-    graveyard_wall(script).or_else(|| climb_under_load(script))
+    graveyard_wall(script)
+        .or_else(|| climb_under_load(script))
+        .or_else(|| giant_stairway(script))
 }
 
 /// `Skills.climbing >= [XMLData.encumbrance_value/1.25,12].max`: at least
@@ -75,6 +77,26 @@ fn graveyard_wall(script: &str) -> Option<Cost> {
         ladder,
         otherwise: Some(seconds(waited)?),
     })
+}
+
+/// The giant stairway of the Dark Grotto: a roundtime a step, which Haste
+/// shortens. 16 exits. The price without Haste must be the two parts' sum.
+fn giant_stairway(script: &str) -> Option<Cost> {
+    let found = holes(
+        script,
+        &[
+            ";e if Spell['Haste'].active?; (",
+            " * [((80 - ([Spells.majorelemental,Stats.level].min/5) - (Skills.elair/5)) / \
+             100.0), 0.4].max).floor + ",
+            "; else; ",
+            "; end",
+        ],
+    )?;
+    let [hasted, step, full] = found[..] else {
+        return None;
+    };
+    let (hasted, step, full) = (seconds(hasted)?, seconds(step)?, seconds(full)?);
+    ((hasted + step - full).abs() < 1e-9).then_some(Cost::Hasted { hasted, step })
 }
 
 /// A climb only a good enough climber may plan on. 1 exit.
@@ -150,5 +172,34 @@ mod tests {
             ..Walker::default()
         };
         assert_eq!(gate.price(&climber), Some(3.0));
+    }
+
+    #[test]
+    fn haste_shortens_the_stairs_and_nobody_is_refused() {
+        let script = ";e if Spell['Haste'].active?; (15 * [((80 - \
+                      ([Spells.majorelemental,Stats.level].min/5) - (Skills.elair/5)) / 100.0), \
+                      0.4].max).floor + 0.2; else; 15.2; end";
+        let stairs = cost(script).unwrap();
+        assert_eq!(stairs.price(&Walker::default()), Some(15.2));
+        let hasted = Walker {
+            active_spells: Some(["Haste".to_owned()].into()),
+            ..Walker::default()
+        };
+        assert_eq!(stairs.price(&hasted), Some(15.2), "the ranks are not known");
+        let wizard = Walker {
+            level: Some(50),
+            skills: Some(
+                [
+                    ("major elemental".to_owned(), 60),
+                    ("elemental lore, air".to_owned(), 25),
+                ]
+                .into(),
+            ),
+            ..hasted
+        };
+        // 80 - 50/5 - 25/5 = 65 percent of 15 is 9.75, rounded down.
+        assert_eq!(stairs.price(&wizard), Some(9.2));
+        // A full price that is not the sum of its parts is another script.
+        assert_eq!(cost(&script.replace("15.2", "16.2")), None);
     }
 }

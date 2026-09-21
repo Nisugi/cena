@@ -125,10 +125,31 @@ pub enum Cost {
         #[serde(default, rename = "else", skip_serializing_if = "Option::is_none")]
         otherwise: Option<f64>,
     },
+    /// A roundtime Haste shortens: the giant stairway of the Dark Grotto,
+    /// fifteen seconds a step. `hasted` is the roundtime and `step` what the
+    /// move costs besides. Under Haste the roundtime is scaled by
+    /// `(80 - min(major elemental ranks, level) / 5 - air lore ranks / 5) /
+    /// 100`, never below 0.4, and rounded down -- the divisions by five
+    /// whole, as upstream's are. **Everyone passes**: without Haste, or
+    /// without the ranks to work it out, the price is the full roundtime.
+    Hasted { hasted: f64, step: f64 },
     /// A kind of cost this build does not know. **Impassable**; produced only
     /// by the binary loader, for the same reason as [`Crossing::Unknown`].
     #[serde(skip)]
     Unknown(String),
+}
+
+/// [`Cost::Hasted`]'s roundtime under Haste, or `None` when Haste is not
+/// known to be up or a rank it needs is not known.
+fn shortened(roundtime: f64, walker: &Walker) -> Option<f64> {
+    Cond::SpellActive("Haste".to_owned())
+        .holds(walker)
+        .then_some(())?;
+    let skills = walker.skills.as_ref()?;
+    let ranks = |skill: &str| skills.get(skill).copied().unwrap_or(0);
+    let circle = ranks("major elemental").min(walker.level?);
+    let percent = 80_u32.saturating_sub(circle / 5 + ranks("elemental lore, air") / 5);
+    Some((roundtime * (f64::from(percent) / 100.0).max(0.4)).floor())
 }
 
 /// One price of a [`Cost::Ladder`], and the question that earns it.
@@ -139,6 +160,8 @@ pub struct Rung {
 }
 
 impl Cost {
+    /// Wire name of [`Cost::Hasted`].
+    pub const HASTED: &'static str = "hasted";
     /// Wire name of [`Cost::Ladder`].
     pub const LADDER: &'static str = "ladder";
     /// Wire name of [`Cost::Fixed`].
@@ -165,6 +188,9 @@ impl Cost {
                 } else {
                     *otherwise
                 }
+            }
+            Cost::Hasted { hasted, step } => {
+                Some(shortened(*hasted, walker).unwrap_or(*hasted) + step)
             }
             Cost::Ladder { ladder, otherwise } => ladder
                 .iter()

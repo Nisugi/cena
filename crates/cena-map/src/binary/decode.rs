@@ -187,6 +187,10 @@ fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadErro
                 Ok(gated @ Cost::Gated { .. }) => gated,
                 _ => Cost::Unknown(name.to_owned()),
             },
+            Cost::HASTED => match serde_json::from_slice(blob) {
+                Ok(hasted @ Cost::Hasted { .. }) => hasted,
+                _ => Cost::Unknown(name.to_owned()),
+            },
             Cost::LADDER => match serde_json::from_slice(blob) {
                 Ok(ladder @ Cost::Ladder { .. }) => ladder,
                 _ => Cost::Unknown(name.to_owned()),

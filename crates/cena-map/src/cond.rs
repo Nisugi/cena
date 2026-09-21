@@ -87,6 +87,7 @@ pub struct Walker {
     pub encumbrance: Option<u32>,
     /// Ranks by skill name, lowercase. `None` until the skills are known at
     /// all, so an untrained skill (absent from a known table) is zero.
+    /// Spell circles are here too, by their names: `major elemental`.
     pub skills: Option<HashMap<String, u32>>,
     /// Names of spells in effect. `None` until the game has listed them.
     pub active_spells: Option<HashSet<String>>,

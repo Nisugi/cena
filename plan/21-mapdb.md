@@ -1417,10 +1417,18 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    anyone else. The Confluence's and the seeking's engines -- scripts on an exit from a
    room to itself, which nothing walks -- are pinned too, so a change to either is noticed.
 
+   **The Haste rooms, found (2026-09-21).** The 16 exits priced by the Haste formula are the
+   **giant stairway of the Dark Grotto** in the Broken Lands (7486-7488, 19542, 24560,
+   24571-24574, every title `[Dark Grotto, Long Stairway]`): fifteen seconds of roundtime
+   a step, which Haste shortens. `Cost::Hasted { hasted, step }`; everyone passes, and a
+   walker whose ranks are not known pays the full roundtime. The arm requires upstream's
+   un-hasted price to be the sum of the two parts. What is left of the costs is the day
+   pass (6).
+
    | | start of step 7 | now |
    |---|---|---|
    | unported crossings | 7,923 | **11** |
-   | unported costs | 1,860 | **22** |
+   | unported costs | 1,860 | **6** |
    | reachable from Wehnimer's, knowing nothing | 6,969 | **18,538** |
    | reachable with paid services on | — | **22,708** |
 
