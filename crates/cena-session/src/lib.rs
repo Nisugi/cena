@@ -28,6 +28,7 @@ pub mod dirty_groups;
 pub mod lifecycle;
 pub mod menu_store;
 pub mod notice;
+pub mod player_log;
 pub mod queue;
 pub mod supervisor;
 pub mod travel_store;
@@ -50,6 +51,8 @@ pub use command::{
 };
 pub use lifecycle::{Generation, GenerationCell, SessionId, State};
 pub use notice::{Body, Notice, NoticeKind};
+pub use player_log::writer::PlayerWriter;
+pub use player_log::{LogLine, LogSink, PlayerLog};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
 pub use supervisor::{
     ConnectError, Connector, MAX_UNATTENDED_LOSSES, Retryability, SessionCore, StoppedBecause,
