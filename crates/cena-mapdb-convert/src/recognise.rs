@@ -33,7 +33,7 @@ use moves::{
     arctic_waters, event_transport, hands_free_move, icy_path, inn_table, move_and_forget,
     plain_move, portmaster, put_then_move, puts_then_move, resolve_then_move,
 };
-use routines::{confluence, minotaur_maze, patrol};
+use routines::{confluence, minotaur_maze, patrol, signposts};
 
 /// The steps for an upstream crossing script, if an arm knows it. `from` is
 /// the room the exit leaves and `to` the room it reaches, which some scripts
@@ -52,6 +52,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| puts_then_move(script))
         .or_else(|| inn_table(script))
         .or_else(|| moves::pedal_boat(script))
+        .or_else(|| moves::until_there(script, to))
         .or_else(|| facts::crossing(script, from))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
@@ -59,6 +60,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| confluence(script, to))
         .or_else(|| minotaur_maze(script, to))
         .or_else(|| patrol(script))
+        .or_else(|| signposts(script, to))
         .or_else(|| tail_a::crossing(script, from, to))
         .or_else(|| tail_b::crossing(script, from, to))
         .or_else(|| tail_c::crossing(script, from, to))

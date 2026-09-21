@@ -420,3 +420,49 @@ fn a_pedal_boat_keeps_pedalling_until_it_is_somewhere_else() {
         vec![]
     );
 }
+
+#[test]
+fn signposts_keep_the_table_and_take_the_exit_as_the_goal() {
+    let script = ";e empty_hand if [ 12662, 20786 ].include?(Room.current.id); swim_dir = \
+        { 20786 => 'down', 12662 => 'whirlpool' }; while Room.current.id != 12677; if \
+        swim_dir[Room.current.id]; put \"swim #{swim_dir[Room.current.id]}\"; else; echo \
+        \"Oh crap.. I'm lost..\"; put \"swim #{checkpaths[rand(checkpaths.length)]}\"; end; \
+        sleep 1; waitrt?; end; fill_hand";
+    assert_eq!(
+        crossing(script, 12662, 12677),
+        Some(Crossing::Routine(Routine::Signposts {
+            verb: "swim".into(),
+            dirs: vec![
+                (RoomId(20786), "down".into()),
+                (RoomId(12662), "whirlpool".into())
+            ],
+            hands_free_in: vec![RoomId(12662), RoomId(20786)],
+        }))
+    );
+    assert_eq!(
+        crossing(script, 12662, 12678),
+        None,
+        "the goal is not this exit"
+    );
+}
+
+#[test]
+fn a_command_sent_until_the_walker_is_there_names_the_exits_own_room() {
+    let there = |script: &str, to| match crossing(script, 1, to) {
+        Some(Crossing::Steps(steps)) => steps.into_iter().map(|step| step.action).collect(),
+        _ => Vec::new(),
+    };
+    let forest = ";e 50.times { move 'go forest'; break if Room.current.id == 13183 }";
+    assert_eq!(
+        there(forest, 13183),
+        vec![Action::MoveUntilThere("go forest".into())]
+    );
+    assert_eq!(there(forest, 13184), vec![], "it waits for another room");
+    assert_eq!(
+        there(
+            ";e begin\nfput 'swim north'\nwaitrt?\nend until Room.current.id == 10815",
+            10815
+        ),
+        vec![Action::MoveUntilThere("swim north".into())]
+    );
+}

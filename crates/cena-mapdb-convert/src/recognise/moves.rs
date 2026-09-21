@@ -371,3 +371,32 @@ pub(super) fn pedal_boat(script: &str) -> Option<Crossing> {
         "pedal {direction}"
     )))]))
 }
+
+/// One command, sent until the walker is at the exit's own destination: 68
+/// exits, five spellings. 60 are one forest, `go forest` up to fifty times.
+/// The room upstream names must be the room the exit reaches.
+pub(super) fn until_there(script: &str, to: u32) -> Option<Crossing> {
+    const FORMS: [[&str; 3]; 5] = [
+        [
+            ";e 50.times { move '",
+            "'; break if Room.current.id == ",
+            " }",
+        ],
+        [";e move '", "' until Room.current.id == ", ""],
+        [";e fput '", "' until Room.current.id == ", ""],
+        [";e begin\nmove '", "'\nend until Room.current.id == ", ""],
+        [
+            ";e begin\nfput '",
+            "'\nwaitrt?\nend until Room.current.id == ",
+            "",
+        ],
+    ];
+    let found = FORMS.iter().find_map(|form| quoted(script, form))?;
+    let [command, room] = found[..] else {
+        return None;
+    };
+    (is_plain_argument(command) && room.parse() == Ok(to)).then_some(())?;
+    Some(Crossing::Steps(vec![always(Action::MoveUntilThere(
+        command.to_owned(),
+    ))]))
+}

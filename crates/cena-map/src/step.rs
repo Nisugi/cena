@@ -26,6 +26,12 @@ pub enum Action {
     /// a failure here, which is the difference from [`Action::Move`] -- that
     /// gives an exit up after a few tries. The walker bounds it.
     KeepMoving(String),
+    /// Send a movement command **until the walker is at the exit's
+    /// destination**. A forest whose one way in lands somewhere different each
+    /// time: every send moves the walker, and only one landing is the goal.
+    /// Where [`Action::KeepMoving`] stops at the first change of room, this
+    /// stops at the right one. The walker bounds it; upstream tries fifty.
+    MoveUntilThere(String),
     /// Find out where the walker is and plan again from there. Always last.
     /// Upstream's `$go2_restart = true`, on crossings that may land somewhere
     /// other than the exit's destination (`plan/21` §4.3). Skipped when the
@@ -105,7 +111,7 @@ pub fn moves_whatever_is_known(steps: &[Step]) -> bool {
     steps.iter().any(|step| {
         matches!(
             step.action,
-            Action::Move(_) | Action::KeepMoving(_) | Action::Await(_)
+            Action::Move(_) | Action::KeepMoving(_) | Action::MoveUntilThere(_) | Action::Await(_)
         ) && step.when.as_ref().is_none_or(|when| when.holds(&nobody))
     })
 }

@@ -143,3 +143,57 @@ pub(super) fn patrol(script: &str) -> Option<Crossing> {
         after,
     }))
 }
+
+/// The underwater route: 75 exits, three tables, two spellings. The longer
+/// spelling also waits for an escorted child to catch up after each stroke;
+/// the walk's own pacing covers that, and the child is not an argument.
+pub(super) fn signposts(script: &str, to: u32) -> Option<Crossing> {
+    const HANDS: &str = ";e empty_hand if [";
+    const TABLE: &str = "].include?(Room.current.id); swim_dir = {";
+    const SWIM: &str = "; if swim_dir[Room.current.id]; put \"swim #{swim_dir[Room.current.id]}\"; \
+        else; echo \"Oh crap.. I'm lost..\"; put \"swim #{checkpaths[rand(checkpaths.length)]}\"; \
+        end; sleep 1; waitrt?; ";
+    const ALONE: [&str; 5] = [
+        HANDS,
+        TABLE,
+        "}; while Room.current.id != ",
+        SWIM,
+        "end; fill_hand",
+    ];
+    const ESCORTING: [&str; 5] = [
+        HANDS,
+        TABLE,
+        "}; child = (bounty? =~ /^You have made contact with the child/) && \
+         GameObj.npcs.find { |npc| npc.noun == 'child' }; while (Room.current.id != ",
+        SWIM,
+        "50.times { break if GameObj.npcs.any? { |npc| npc.id == child.id }; sleep 0.1 } \
+         if child; end; fill_hand",
+    ];
+    let found = holes(script, &ALONE).or_else(|| holes(script, &ESCORTING))?;
+    let [hands, table, target, between] = found[..] else {
+        return None;
+    };
+    // The escorting spelling brackets its test: `!= 12662)`.
+    let target = target.strip_suffix(')').unwrap_or(target);
+    (target.parse() == Ok(to) && between.is_empty()).then_some(())?;
+
+    let rooms = |list: &str| {
+        list.split(',')
+            .map(|room| room.trim().parse().ok().map(RoomId))
+            .collect::<Option<Vec<_>>>()
+    };
+    let dirs = table
+        .split(',')
+        .map(|entry| {
+            let (room, dir) = entry.split_once("=>")?;
+            let dir = dir.trim().strip_prefix('\'')?.strip_suffix('\'')?;
+            is_word(dir).then_some((RoomId(room.trim().parse().ok()?), dir.to_owned()))
+        })
+        .collect::<Option<Vec<_>>>()?;
+    (!dirs.is_empty()).then_some(())?;
+    Some(Crossing::Routine(Routine::Signposts {
+        verb: "swim".to_owned(),
+        dirs,
+        hands_free_in: rooms(hands)?,
+    }))
+}

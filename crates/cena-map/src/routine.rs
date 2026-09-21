@@ -43,6 +43,23 @@ pub enum Routine {
     /// and need not be. A walker whose room is not in `starts` is lost, and
     /// replans. **Where the way out lands is not known in advance**, so this
     /// routine always ends by finding out where it is and planning again.
+    /// Follow signposts: each room on the way says which way to go from it,
+    /// until the walker is at the exit's destination. The underwater route off
+    /// River's Rest, where a current can carry the walker somewhere else on the
+    /// route and the right direction depends on where it ends up.
+    ///
+    /// A room that is not in `dirs` means the walker is lost, and it replans;
+    /// upstream swims in a random direction instead, which is not copied. The
+    /// hands are emptied first when the walk starts in one of `hands_free_in`,
+    /// and refilled at the end either way.
+    Signposts {
+        /// Put before each direction: `swim`.
+        verb: String,
+        /// `(room, direction)`, in upstream's order.
+        dirs: Vec<(RoomId, String)>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        hands_free_in: Vec<RoomId>,
+    },
     Patrol {
         /// `None` keeps a gap upstream left: positions matter.
         starts: Vec<Option<RoomId>>,
