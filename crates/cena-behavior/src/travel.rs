@@ -48,7 +48,9 @@
 //! failure, and on a user's stop ([`Trip::owed`]), which is the one Vellum
 //! skipped (`plan/21` §4.0).
 
+mod drive;
 mod facts;
+mod hands;
 mod mover;
 mod recovery;
 mod steps;
@@ -58,7 +60,9 @@ use std::collections::HashSet;
 use cena_map::{Action, Crossing, Exit, Map, Room, RoomId, Step, Target, Walker, priced_for};
 use cena_session::{MoveFeedback, movement};
 
+pub use drive::{BEAT, DEED_DEADLINE, Ended, FOLLOW_WAIT, Travelled, travel};
 pub use facts::{TravelNotes, walker_from};
+pub use hands::{Stored, cast_commands, store_commands, take_back};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
 pub use steps::{Deed, EXCHANGE_TIMEOUT_MS, MAX_RESENDS, MAX_TURNS, MAX_WAIT_MS, STEP_TIMEOUT_MS};
 use steps::{Out, Owes, Run, Tick};
@@ -223,7 +227,7 @@ impl Trip {
     }
 
     /// What the trip has changed and not yet put back, **for a driver that is
-    /// stopping it**: a user's stop must not leave the hands stowed. Taking
+    /// stopping it**: a user's stop asks once for what is stored (`drive`). Taking
     /// it clears it.
     pub fn owed(&mut self) -> Vec<Deed> {
         let mut owed = Vec::new();

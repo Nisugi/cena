@@ -87,6 +87,14 @@ pub struct Transcript {
     /// sees. Note the ordering: pending bytes drain FIRST, so a server's
     /// goodbye text is still delivered before the close.
     hung_up: bool,
+    /// Replies that answer one named command, once each, in the order given.
+    ///
+    /// A walk needs the game to say something different to `north` than to
+    /// `go door`: a new room, a closed door. One fixed reply cannot stand in
+    /// for that, and a behavior that moves cannot be tested without it. A
+    /// command with nothing scripted for it still gets the source's one
+    /// reply, so every test written before this reads as it did.
+    scripted: Vec<(String, Vec<u8>)>,
 }
 
 /// A handle to one [`AnsweringSource`]'s transcript and its hold switch.
@@ -165,6 +173,12 @@ impl TranscriptHandle {
     pub fn release_one(&self) {
         self.with(|t| t.release_budget = t.release_budget.saturating_add(1));
         self.wake.notify_waiters();
+    }
+
+    /// Answer the next `command` written with `reply` instead of the source's
+    /// own. Used once; script the same command twice to answer it twice.
+    pub fn answer(&self, command: &str, reply: &[u8]) {
+        self.with(|t| t.scripted.push((command.to_owned(), reply.to_vec())));
     }
 
     /// Hang up: the next read that runs out of bytes returns `Ok(0)`.
@@ -271,22 +285,25 @@ impl ByteSource for AnsweringSource {
                 "write to a shut-down answering source",
             ));
         }
-        let reply = self.reply.clone();
-        let held = self.transcript.with(|t| {
+        let command = String::from_utf8_lossy(message).trim_end().to_owned();
+        let default = self.reply.clone();
+        let (reply, held) = self.transcript.with(|t| {
             t.written.push(message.to_vec());
+            let scripted = t.scripted.iter().position(|(c, _)| *c == command);
+            let reply = scripted.map_or(default, |at| t.scripted.remove(at).1);
             if t.hold_replies {
                 // The window stays open: the command is on the wire and its
                 // terminator has not arrived.
-                t.owed.push(reply);
-                true
+                t.owed.push(reply.clone());
+                (reply, true)
             } else {
-                false
+                (reply, false)
             }
         });
         if held {
             return Ok(());
         }
-        self.pending.extend_from_slice(&self.reply);
+        self.pending.extend_from_slice(&reply);
         self.transcript.wake.notify_waiters();
         Ok(())
     }

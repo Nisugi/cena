@@ -36,7 +36,10 @@ pub use actor::{EndReason, Event, Session, SessionActor, Snapshot};
 // takes one, and the binary that calls it has no edge to `cena-model`.
 pub use cena_model::crit::CritTables;
 pub use cena_model::movement::{self, MoveFeedback};
+// What the travel driver reads to store the hands and cast (`plan/24` 4c).
+pub use cena_model::spell_named;
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
+pub use cena_model::state::{containers, hands};
 pub use cena_model::{GameState, Room, UnknownTag};
 pub use character_store::MAX_STALE;
 pub use command::{

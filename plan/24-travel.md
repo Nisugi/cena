@@ -170,6 +170,46 @@ how Hydra gets `hydra.map` (`plan/21` §6, open). First live walk, author presen
 > source** -- one whose reply depends on the command -- which `cena-platform`'s
 > `AnsweringSource` (one fixed reply) is not.
 
+> **4c, BUILT 2026-09-21** -- `travel/drive.rs` (the `async fn`), `travel/hands.rs` (the
+> commands for the deeds, pure), `tests/travel_drive.rs`.
+>
+> **THE RULING** (author, 2026-09-21), which settles the contradiction above: *"yeah cleanup
+> cannot send commands, I like don't stop with items stowed ... I would say one get and then
+> stops, because you may not even be able to hold a shield with where you are."* So a stop
+> sends **one command per stored item and nothing else**: no retry, no waiting to see, no
+> stance. What was not seen to come back is returned (`Travelled::still_stored`) for a
+> frontend to say. A dead or disconnected session sends nothing.
+>
+> **The word is *stored*, not *stowed*** (author): it is the opposite of *ready*, and the
+> game already knows where a readied thing goes -- sheath, container, or **worn**. So the
+> hands are emptied with `store right` / `store left`, which honours `store set`, and a
+> thing is taken back with `remove #id` when the ready list says its slot is worn when
+> stored and `get #id` otherwise -- Lich's own split (`stash.rb:173-193`), without its
+> polling. Both verbs are in upstream scripts:
+> `grep -rhoE "(stow|store) (right|left)" reference/scripts`.
+>
+> **The scripted source is `AnsweringSource::answer(command, reply)`**, not a fourth
+> `ByteSource`: a reply that answers one named command, once. Everything written before it
+> reads as it did.
+>
+> **Two things the build found.** A line of game text arrives in pieces, one per link
+> boundary (`TextFrame::ends_line`), and Lich's ladder is over whole lines, so the driver
+> joins the main window's pieces before `Trip::heard`. And a session on its way up
+> announces `Connecting`, `Authenticating`, `Syncing`: only `Reconnecting` and `Closed`
+> mean the transport is gone -- the first version stopped every walk before it began.
+>
+> **A mutation that survived, and why.** Removing the stop race from the hold passed the
+> 250ms assertion, because an un-raced hold still ends at its next beat and `BEAT` *is*
+> `PREEMPT_GRACE`. The budget could not see the defect. In virtual time a raced stop
+> crosses no timer at all, so the test now asserts the stop took **zero**. The other
+> mutation (the stop asks twice) was caught as written.
+>
+> **Not yet, and the first live walk will want them:** `AwaitFollowers` waits until every
+> group member is in `room players` or 30s, which is a reading of upstream's "joins your
+> group" loop and not a port of it; locating uses the game's number and the title only
+> (description and paths are in the model as runs, not text); `Trip::seeded` is not yet fed
+> a recorded seed. The walker's "not yet" facts (`travel/facts.rs`) are unchanged.
+
 ### Stage 5 — pre-flight, and the stack of trips
 What must be known before pricing (`plan/21` §4.0: *a cost never acts*): urchin status,
 the day-pass sack scan. And trips that start trips: the silver detour, the five errands.
