@@ -44,7 +44,9 @@ pub enum Action {
     /// ways out, entered by one of them.
     MoveByAnyExitBut(String),
     /// Wait for the room to change with nothing sent: the walker is being
-    /// carried.
+    /// carried. Skipped, as [`Action::Replan`] is, by a walker already at the
+    /// exit's destination -- a climb that lands there directly has nothing
+    /// left to wait for.
     AwaitArrival,
     /// [`Action::Await`], for any one of several lines.
     AwaitAny(Vec<String>),
@@ -107,6 +109,18 @@ pub enum Action {
     /// room the walker is then in: `search`, `go fissure` while there is
     /// still an exit east. It holds commands, not steps, so steps stay flat.
     RoundWhile(Vec<String>, Cond),
+    /// [`Action::PutUntil`] for a round of commands: `search`, `get rock`,
+    /// until the game answers the **last** of them with one of `until`.
+    RoundUntil {
+        commands: Vec<String>,
+        until: Vec<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tries: Option<u32>,
+    },
+    /// Send the commands the travel profile lists under this setting, the
+    /// last of which moves the walker: the way into private property, which
+    /// only its owner knows. The exit's cost asks that the setting is set.
+    MovesFromSetting(String),
     /// Find out where the walker is and plan again from there. Always last.
     /// Upstream's `$go2_restart = true`, on crossings that may land somewhere
     /// other than the exit's destination (`plan/21` §4.3). Skipped when the
@@ -193,6 +207,7 @@ pub fn moves_whatever_is_known(steps: &[Step]) -> bool {
                 | Action::Moves(_)
                 | Action::KeepMovingAny(_)
                 | Action::CastAt(..)
+                | Action::MovesFromSetting(_)
                 | Action::MoveWhile(..)
                 | Action::MoveAnyWhile(..)
                 | Action::WanderWhile(_)

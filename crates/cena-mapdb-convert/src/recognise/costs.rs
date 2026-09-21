@@ -1,6 +1,6 @@
 //! Arms for upstream cost scripts: who may use an exit, and at what price.
 
-use cena_map::{Cond, Cost, Crossing, Routine};
+use cena_map::{Action, Cond, Cost, Crossing, Routine};
 
 use super::{holes, is_word, quoted};
 
@@ -171,13 +171,26 @@ pub(super) fn setting_or_month(script: &str) -> Option<Cost> {
 /// Upstream's rogue guild script *refuses* a walker whose profile has no
 /// password -- `echo …; exit` -- halfway through the crossing. A check that
 /// can refuse is asked while planning (`cena_map::step`), so it moves into
-/// the cost: such an exit is priced only when the password is set.
+/// the cost: such an exit is priced only when the password is set. The same
+/// goes for a way in that the profile must spell out (`MovesFromSetting`).
+fn setting_needed(crossing: &Crossing) -> Option<Cond> {
+    let name = match crossing {
+        Crossing::Routine(Routine::GuildPassword) => "rogue_password",
+        Crossing::Steps(steps) => steps.iter().find_map(|step| match &step.action {
+            Action::MovesFromSetting(name) => Some(name.as_str()),
+            _ => None,
+        })?,
+        _ => return None,
+    };
+    Some(Cond::SettingIsSet(name.to_owned()))
+}
+
+/// `cost`, with whatever [`setting_needed`] adds.
 #[must_use]
 pub fn priced_for_crossing(crossing: &Crossing, cost: Option<Cost>) -> Option<Cost> {
-    if !matches!(crossing, Crossing::Routine(Routine::GuildPassword)) {
+    let Some(password) = setting_needed(crossing) else {
         return cost;
-    }
-    let password = Cond::SettingIsSet("rogue_password".to_owned());
+    };
     Some(match cost? {
         Cost::Fixed(seconds) => Cost::Gated {
             when: password,

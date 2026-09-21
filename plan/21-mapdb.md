@@ -1347,12 +1347,23 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    *after the first answer's moves*. Those moves end at the destination, so the second
    guard adds `not at(destination)`.
 
+   **Until the game says so (2026-09-21, `recognise/until_told.rs`).** 33 exits in 21
+   shapes: searches and levers repeated until a line ends them, climbs in a stance or under
+   Celerity, the ferry, and two crossings that end with the walker being carried. Two steps:
+   `RoundUntil` (`search`, `get rock`, until the last is answered) and `MovesFromSetting`
+   (the way into private property, spelt out in the profile -- and **the cost then asks
+   that the setting is set**, as the rogue password's does). A pattern is ported only when
+   it is plain alternatives (`lines()`); anything a regex can do beyond that is refused.
+   `AwaitArrival` is now skipped by a walker already at the destination. Upstream's
+   `break if res !~ /low opening/` (22666->24233) reads inverted; "search until the opening
+   is found" is right under either reading, and is what was ported.
+
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **134** |
+   | unported crossings | 7,923 | **101** |
    | unported costs | 1,860 | **25** |
-   | reachable from Wehnimer's, knowing nothing | 6,969 | **11,505** |
-   | reachable with paid services on | — | **20,862** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **11,702** |
+   | reachable with paid services on | — | **21,513** |
 
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth

@@ -97,14 +97,16 @@ fn search_until_found(script: &str) -> Option<Crossing> {
         script,
         &[
             ";e \nbegin; \n  search_result = dothistimeout 'search', 5, /don't find \
-             anything|discover.*?crack|Round ?tim/; \n  waitrt?; \nend until search_result =~ \
-             /discover/; \nmove('",
+             anything|discover.*?",
+            "|Round ?tim/; \n  waitrt?; \nend until search_result =~ /discover/; \nmove('",
             "')\n",
         ],
     ) {
-        let [go] = found[..] else {
+        // What is discovered: a `crack`, an `opening`.
+        let [thing, go] = found[..] else {
             return None;
         };
+        is_word(thing).then_some(())?;
         return Some(Crossing::Steps(vec![
             search("discover".to_owned(), None),
             always(Action::Move(plain(go)?)),

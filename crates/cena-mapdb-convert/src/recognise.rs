@@ -32,6 +32,7 @@ mod tail_g;
 mod tail_h;
 #[cfg(test)]
 mod tests;
+mod until_told;
 
 use costs::{
     only_when_travelling, profession, remembered, setting_or_month, trinket_named, urchins,
@@ -64,6 +65,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| reactions::crossing(script, from))
         .or_else(|| proposed::crossing(script, from))
         .or_else(|| looking::crossing(script, to))
+        .or_else(|| until_told::crossing(script, from, to))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
         .or_else(|| arctic_waters(script))
