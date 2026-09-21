@@ -11,8 +11,9 @@
 //! sleep 0.1 }`) after each move for the child to catch up.
 //!
 //! **Deviations.** Upstream loops for ever; this stops at `MAX_TURNS` moves.
-//! Upstream remembers in a global for the whole session; a solver has no
-//! globals, so this remembers for one crossing. Upstream goes back by the one
+//! Upstream remembers in a global for the whole session; what this learns
+//! is kept by the driver for the trip and lent to the next crossing
+//! (`super::Kept`), as the Confluence's is. Upstream goes back by the one
 //! `wayto` of the room it fell into; a solver is not shown the map, so this
 //! asks for `Next::WalkTo` the room it left, and if that fails it ends and
 //! the trip plans again. Upstream tells an escort by the bounty's text; this
@@ -28,10 +29,13 @@ use super::{MAX_TURNS, Next, Seen, Solver};
 const CHILD_WAITS: u32 = 50;
 const CHILD_WAIT_MS: u64 = 100;
 
+/// Per room, where each direction led, in the order learned. Upstream's
+/// `$minotaur_maze_dirs`, kept between crossings (`super::Kept`).
+pub(in crate::travel) type Learned = Vec<(RoomId, Vec<(String, RoomId)>)>;
+
 pub(super) struct MinotaurMaze {
     rooms: Vec<RoomId>,
-    /// Per room, where each direction led, in the order learned.
-    learned: Vec<(RoomId, Vec<(String, RoomId)>)>,
+    learned: Learned,
     turns: u32,
     at: At,
 }
@@ -54,10 +58,10 @@ enum At {
 }
 
 impl MinotaurMaze {
-    pub fn new(rooms: Vec<RoomId>) -> Self {
+    pub fn new(rooms: Vec<RoomId>, learned: Learned) -> Self {
         MinotaurMaze {
             rooms,
-            learned: Vec::new(),
+            learned,
             turns: 0,
             at: At::Choosing,
         }
@@ -153,6 +157,10 @@ fn waits_for(child: Option<&String>, waits: u32, seen: &Seen<'_>) -> bool {
 }
 
 impl Solver for MinotaurMaze {
+    fn keep(self: Box<Self>, kept: &mut super::Kept) {
+        kept.maze = self.learned;
+    }
+
     fn next(&mut self, seen: &Seen<'_>) -> Next {
         match std::mem::replace(&mut self.at, At::Choosing) {
             At::Choosing => self.choosing(seen),
@@ -211,7 +219,10 @@ mod tests {
     const GOAL: u32 = 9;
 
     fn maze() -> MinotaurMaze {
-        MinotaurMaze::new(vec![RoomId(1), RoomId(2), RoomId(3), RoomId(GOAL)])
+        MinotaurMaze::new(
+            vec![RoomId(1), RoomId(2), RoomId(3), RoomId(GOAL)],
+            Learned::new(),
+        )
     }
 
     fn room(here: u32, exits: &[&str]) -> Scene {

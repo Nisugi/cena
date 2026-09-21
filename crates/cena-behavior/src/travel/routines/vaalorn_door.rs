@@ -10,39 +10,15 @@
 //!
 //! - **The pause is [`Next::Stop`]**: the trip ends, says what to hold, and is
 //!   started again, which comes back here with the gem in hand.
-//! - **The model has no item types**, so "is a gem" is asked of the noun
-//!   against [`GEM_NOUNS`], a short list of the common ones. A gem by another
-//!   noun stops the trip rather than being sacrificed; anything not on the
-//!   list is never put in the door. Upstream, once unpaused, puts in whatever
-//!   the right hand then holds; this does not.
+//! - "Is a gem" is Lich's own type table (`cena_session::gameobj`), as
+//!   `GameObj#type` is. Upstream, once unpaused, puts in whatever the right
+//!   hand then holds; this puts in only a gem, either time.
 //! - Upstream reads lines for ever until one of the two comes. Here an answer
 //!   with neither goes on to `go door`, and the trip looks at where it landed.
 
-use super::{Next, Seen, Solver};
+use cena_session::gameobj;
 
-/// Nouns taken for a gem. A guess at the common ones, erring small.
-const GEM_NOUNS: [&str; 20] = [
-    "gem",
-    "quartz",
-    "agate",
-    "turquoise",
-    "garnet",
-    "amethyst",
-    "topaz",
-    "pearl",
-    "coral",
-    "jade",
-    "opal",
-    "diamond",
-    "emerald",
-    "ruby",
-    "sapphire",
-    "peridot",
-    "zircon",
-    "spinel",
-    "tourmaline",
-    "moonstone",
-];
+use super::{Next, Seen, Solver};
 
 const NEEDS_A_GEM: &str = "The Vaalorn door opens only for a gem, and you are not holding one. \
     Hold a cheap gem in your right hand and start the trip again.";
@@ -70,10 +46,11 @@ impl Solver for VaalornDoor {
             }
             At::Opened if seen.answered("There doesn't seem to be any way to do that.") => {
                 let hand = &seen.state.right_hand;
-                let gem = hand
+                let is_gem = hand
                     .noun()
-                    .filter(|noun| GEM_NOUNS.contains(noun))
-                    .and(hand.id());
+                    .zip(hand.name())
+                    .is_some_and(|(noun, name)| gameobj::classify(noun, name).is("gem"));
+                let gem = hand.id().filter(|_| is_gem);
                 let Some(gem) = gem else {
                     return Next::Stop(NEEDS_A_GEM.to_owned());
                 };
@@ -102,7 +79,7 @@ mod tests {
         Hand::Holding {
             id: Some("77".into()),
             noun: Some(noun.into()),
-            name: format!("a {noun}"),
+            name: format!("blue {noun}"),
         }
     }
 

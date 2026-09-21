@@ -149,6 +149,7 @@ pub(super) trait Solver {
 #[derive(Debug, Default)]
 pub(super) struct Kept {
     confluence: confluence::Learned,
+    maze: minotaur_maze::Learned,
 }
 
 /// The solver for a routine. **Every routine the map can name has one**: a
@@ -179,7 +180,10 @@ pub(super) fn solver_for(
             goal.and_then(|room| room.location.as_deref())
                 .is_some_and(|at| at.contains("Isle of Four Winds") || at.contains("Mist Harbor")),
         )),
-        Routine::MinotaurMaze { rooms } => Box::new(minotaur_maze::MinotaurMaze::new(rooms)),
+        Routine::MinotaurMaze { rooms } => Box::new(minotaur_maze::MinotaurMaze::new(
+            rooms,
+            std::mem::take(&mut kept.maze),
+        )),
         Routine::SearchRooms {
             rooms,
             by_uid,
