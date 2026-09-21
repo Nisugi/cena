@@ -552,3 +552,30 @@ async fn the_trip_says_how_it_ended() {
     assert_eq!(told_so_far(&mut told), [], "arriving is not news");
     session.cancel();
 }
+
+/// Rooms told apart by name alone, as a login leaves them for a moment.
+const NAMED: &str = r#"[
+  {"id":1,"uid":[7086],"title":["[Wehnimer's, Erebor Square]"],
+   "exits":[{"to":2,"kind":"cardinal","cmd":"south","cost":1}]},
+  {"id":2,"uid":[7087],"title":["[Wehnimer's, Land's End Rd.]"]},
+  {"id":3,"uid":[1003]}
+]"#;
+
+/// The first live login, 2026-09-21: the burst names the room at frame 11 and
+/// numbers it at frame 378. A walker asked in between had the title, the
+/// description and the exits, and said it could not tell where it was,
+/// because it would not look without a number. It looks now.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_room_the_game_has_not_numbered_yet_is_found_by_its_name() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, _, _) = set_out_as(&stop, NAMED, |state| {
+        state.room.id = None;
+        state.room.title = Some("Wehnimer's, Erebor Square".into());
+    });
+    // Room 3 cannot be reached; what matters is that the walker knows it is
+    // in room 1, which is the only way it can say so and not "off the map".
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Failed(Why::NoRoute));
+    assert_eq!(transcript.lines(), Vec::<String>::new());
+    session.cancel();
+}

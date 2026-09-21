@@ -373,6 +373,46 @@ cargo run -p cena -- --go bank         # says it, then walks. Ctrl-C stops the w
   `cena_behavior::travel` re-exports the five names a caller needs, as `cena-session`
   does the model's for behaviors.
 
+> **THE FIRST LIVE RUN, 2026-09-21 -- and the prediction below was wrong about which.**
+> `--route bank` in Erebor Square answered *"I cannot tell which room this is (the game said
+> None)."* The author's reading was that the game does not number a room until the
+> character moves. **The session's own log says otherwise**, and it was read before
+> anything was changed:
+>
+> ```
+> frame  11: title = "Wehnimer's, Erebor Square"      the burst's first room block
+> frame 378: <nav rm='7086'/>                          the number, with the second
+> ```
+>
+> The burst describes the room **twice** and numbers it only the second time. The binary
+> calls the session ready at the *first* room description, and the errand asked "where am
+> I" at once -- in the gap. Replaying that log through the parser and model ends with
+> `id=Some("7086")`: the model was right and the wiring was early. Three fixes, the first
+> two of them real defects the race merely exposed:
+>
+> 1. **`room_of` refused to look without a number**, though `cena_map::locate` places a
+>    room by title, description and exits, and all three were in hand at frame 11. It
+>    looks now. Regression test cut from this run; reintroducing the early return turns
+>    it, and only it, red.
+> 2. **The driver told "have I moved" by comparing room numbers**, which cannot answer for
+>    a room that has none. It now uses `GameState::arrivals`, which exists for exactly
+>    that.
+> 3. **The errand waits for the burst to end**: until the room can be placed *and* the
+>    game has prompted, or `LOST_WAIT`. The number is not the only thing still arriving;
+>    hands and status price the route too.
+>
+> **Not built: persisting the last room across logons.** The author proposed it on the
+> premise that a login carries no number. It does, so the case it was for does not arise;
+> `locate`'s `Whence::Still` slot is where it would go if an unnumbered, look-alike room
+> at login ever shows the need (Rule -1: not before).
+>
+> **`--first <command>`** sends one command as the player before the errand, so a single
+> run can be the test the author asked for: *log in, move south, then travel to the bank.*
+>
+> ```powershell
+> cargo run -p cena -- --first south --go bank
+> ```
+
 **What the first run is most likely to show wrong**, in the order to look: the map path;
 `room_of` returning nothing (the game's room number not in the map's `uid`s); a route
 full of "not known yet" (a fact the mirror did not get); then, only on `--go`, the first

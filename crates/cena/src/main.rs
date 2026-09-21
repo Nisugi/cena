@@ -333,13 +333,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     run_or_probe(&handle, &mut probe_events, &stop).await;
 
-    if let Some(mirror) = mirror {
-        hand_over.cancel();
-        match mirror.await {
-            Ok(joined) => Box::pin(travel::run(errand, &handle, joined)).await,
-            Err(e) => eprintln!("[travel] the mirror task failed: {e}"),
-        }
-    }
+    travel::after_login(mirror, &hand_over, &handle).await;
 
     // **Ctrl-C ends the hold early and then falls through to the SAME orderly
     // shutdown below.** There was no signal handling at all, so interrupting a

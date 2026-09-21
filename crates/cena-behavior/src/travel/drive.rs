@@ -145,15 +145,21 @@ pub async fn travel(
 }
 
 /// Which room of the map the model's room is, by the game's number first
-/// (`cena_map::locate`). `None` when the game has not said, or the map cannot
-/// name it unambiguously.
+/// (`cena_map::locate`). `None` when the map cannot name it unambiguously.
+///
+/// **A room with no number yet is still looked for**, by its title,
+/// description and exits. This returned `None` without a number, and the
+/// first live login showed why that is wrong: the burst describes the room
+/// twice, and the number comes only with the second -- MEASURED on that
+/// session's log, the title at frame 11 and `<nav rm='7086'/>` at frame 378.
+/// Asked in between, this said "I cannot tell which room this is" of a room
+/// whose name, description and exits it had been holding for 367 frames.
 ///
 /// Public because the walker is not the only one who asks: showing a route
 /// starts from the same question, and must get the same answer.
 #[must_use]
 pub fn room_of(map: &Map, state: &GameState, whence: Whence) -> Option<RoomId> {
     let room = &state.room;
-    let raw = room.id.as_deref()?;
     let title = room.title.as_deref().map(title_from_subtitle);
     // What tells apart rooms that share a number, or have none the map
     // knows. Safe to offer: a text that fits no candidate is ignored by
@@ -161,7 +167,12 @@ pub fn room_of(map: &Map, state: &GameState, whence: Whence) -> Option<RoomId> {
     let description = room.description.as_ref().map(cena_session::Runs::plain);
     let paths = room.component("room exits").map(cena_session::Runs::plain);
     let sighting = Sighting {
-        uid: raw.parse().ok().filter(|uid| *uid != 0).map(Uid),
+        uid: room
+            .id
+            .as_deref()
+            .and_then(|raw| raw.parse().ok())
+            .filter(|uid| *uid != 0)
+            .map(Uid),
         title: title.as_deref(),
         description: description.as_deref(),
         paths: paths.as_deref(),
@@ -254,8 +265,8 @@ struct Driver<'a, N> {
     state: GameState,
     events: Receiver<Event>,
     began: Instant,
-    /// The game's room id and the room it was located as, last tick.
-    was: Option<(String, RoomId)>,
+    /// The model's arrival count and the room it was located as, last tick.
+    was: Option<(u32, RoomId)>,
     stored: Vec<Stored>,
     stance_before: Option<String>,
     /// How many lines of the model's open chunk the trip has heard.
@@ -320,15 +331,20 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
 
     /// Which room of the map the model's room is, remembering the last one
     /// so that two rooms alike in everything are told apart by the way in.
+    ///
+    /// **"Has it moved" is the model's arrival count, not the room number.**
+    /// This compared numbers, which cannot answer for a room that has none --
+    /// and two unnumbered rooms that read alike are exactly the pair the way
+    /// in has to tell apart (`GameState::arrivals` exists for this).
     fn locate(&mut self, map: &Map) -> Option<RoomId> {
-        let raw = self.state.room.id.clone()?;
-        let whence = match &self.was {
-            Some((id, at)) if *id == raw => Whence::Still(*at),
-            Some((_, at)) => Whence::Left(*at),
+        let arrivals = self.state.arrivals;
+        let whence = match self.was {
+            Some((then, at)) if then == arrivals => Whence::Still(at),
+            Some((_, at)) => Whence::Left(at),
             None => Whence::Nowhere,
         };
         let here = room_of(map, &self.state, whence)?;
-        self.was = Some((raw, here));
+        self.was = Some((arrivals, here));
         Some(here)
     }
 

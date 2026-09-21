@@ -59,6 +59,27 @@ pub(crate) enum Errand {
     Go(String),
 }
 
+/// `--first south`: a command to send, as the player, before the errand --
+/// so one run can be "log in, move south, then walk to the bank" (author,
+/// 2026-09-21). The first one wins.
+pub(crate) fn first_command<I, S>(args: I) -> Option<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut args = args.into_iter();
+    while let Some(arg) = args.next() {
+        let arg = arg.as_ref();
+        if arg == "--first" {
+            return args.next().map(|command| command.as_ref().to_owned());
+        }
+        if let Some(command) = arg.strip_prefix("--first=") {
+            return Some(command.to_owned());
+        }
+    }
+    None
+}
+
 impl Errand {
     /// `--route bank`, `--go 228`, `--go=u7120`. The first one wins.
     pub(crate) fn from_args<I, S>(args: I) -> Self
@@ -144,11 +165,75 @@ fn restore_stored(state: &mut cena_session::GameState) -> bool {
     true
 }
 
+/// What `main` does once the session is up: send `--first`, take the state
+/// back from the mirror, and run the errand. Here and not in `main` because
+/// `main` is at clippy's line limit, and the rule is to move code down.
+pub(crate) async fn after_login(
+    mirror: Option<tokio::task::JoinHandle<(Snapshot, Receiver<Event>)>>,
+    hand_over: &CancellationToken,
+    handle: &SessionHandle,
+) {
+    let Some(mirror) = mirror else {
+        return;
+    };
+    // Sent while the mirror is still reading, so it sees where this lands.
+    if let Some(first) = first_command(std::env::args().skip(1)) {
+        eprintln!("[travel] first: {first}");
+        let outcome = crate::run::send_manual(handle, &first).await;
+        eprintln!("[travel] first: {outcome:?}");
+    }
+    hand_over.cancel();
+    match mirror.await {
+        Ok(joined) => {
+            let errand = Errand::from_args(std::env::args().skip(1));
+            Box::pin(run(errand, handle, joined)).await;
+        }
+        Err(e) => eprintln!("[travel] the mirror task failed: {e}"),
+    }
+}
+
+/// How long [`run`] waits for the login burst to finish before it asks where
+/// the character is. The same ten seconds a walk allows itself when lost.
+const SETTLE: std::time::Duration = travel::LOST_WAIT;
+
+/// Fold events until the room can be placed **and the game has prompted**,
+/// or [`SETTLE`] runs out. The room it was placed as, if it was.
+///
+/// # The race this closes
+///
+/// The binary calls the session ready at the first room description, and the
+/// errand used to ask "where am I" at once. The first live run answered "I
+/// cannot tell which room this is (the game said None)" -- of Erebor Square.
+/// MEASURED on that session's log: the burst names the room at frame 11 and
+/// numbers it at frame 378. The question was asked in between.
+///
+/// A prompt is waited for as well as a room, because the number is not the
+/// only thing still on its way: whatever else the burst teaches (hands,
+/// status, effects) prices the route, and a prompt is what ends a burst.
+async fn settle(map: &Map, joined: &mut (Snapshot, Receiver<Event>)) -> Option<RoomId> {
+    let (snapshot, events) = joined;
+    let until = tokio::time::Instant::now() + SETTLE;
+    loop {
+        let here = room_of(map, &snapshot.state, Whence::Nowhere);
+        if here.is_some() && snapshot.state.prompt.is_some() {
+            return here;
+        }
+        match tokio::time::timeout_at(until, events.recv()).await {
+            Ok(Ok(Event::Frame(frame))) => {
+                snapshot.state.apply(&frame);
+            }
+            Ok(Ok(_) | Err(RecvError::Lagged(_))) => {}
+            // Out of time, or the session is gone: whatever is known now.
+            Ok(Err(RecvError::Closed)) | Err(_) => return here,
+        }
+    }
+}
+
 /// Run the errand. Returns when it is over, however it ended.
 pub(crate) async fn run(
     errand: Errand,
     handle: &SessionHandle,
-    joined: (Snapshot, Receiver<Event>),
+    mut joined: (Snapshot, Receiver<Event>),
 ) {
     let (to, walk) = match &errand {
         Errand::None => return,
@@ -159,13 +244,14 @@ pub(crate) async fn run(
     let Some(map) = load_map(handle) else {
         return;
     };
+    let here = settle(&map, &mut joined).await;
     let state = &joined.0.state;
-    let Some(here) = room_of(&map, state, Whence::Nowhere) else {
+    let Some(here) = here else {
         say(
             NoticeKind::Error,
             format!(
-                "Travel: I cannot tell which room this is (the game said {:?}).",
-                state.room.id
+                "Travel: I cannot tell which room this is (number {:?}, name {:?}).",
+                state.room.id, state.room.title
             ),
         );
         return;
@@ -337,6 +423,15 @@ mod tests {
         );
         // A flag with nothing after it is not a walk to nowhere.
         assert_eq!(read(&["--go"]), Errand::None);
+        assert_eq!(
+            first_command(["--first", "south", "--go", "bank"]),
+            Some("south".to_owned())
+        );
+        assert_eq!(
+            first_command(["--first=go gate"]),
+            Some("go gate".to_owned())
+        );
+        assert_eq!(first_command(["--go", "bank"]), None);
         // Not a prefix match: `--gone` is someone else's flag.
         assert_eq!(read(&["--gone=1"]), Errand::None);
     }
