@@ -4,7 +4,8 @@
 //! is what leaving it costs and how it is done. [`map`] is the loaded whole --
 //! every room, indexed by id and by uid -- [`binary`] is the one file format
 //! it travels in, [`files`] is where the per-room JSON lives before that, and
-//! [`locate`] answers which room the character is standing in.
+//! [`locate`] answers which room the character is standing in and [`route`]
+//! how to get from there to anywhere else.
 //!
 //! This crate is the **one definition** every part of the pipeline compiles
 //! against: `cena-mapdb-convert` writes these records as JSON,
@@ -20,8 +21,10 @@ pub mod files;
 pub mod locate;
 pub mod map;
 pub mod room;
+pub mod route;
 
 pub use exit::{Cost, Crossing, Exit, ExitKind, ShapeId};
 pub use locate::{By, Located, Origin, Sighting, title_from_subtitle};
 pub use map::{DuplicateRoom, Map};
 pub use room::{Image, Room, RoomId, Uid};
+pub use route::{Routes, Target, as_converted};

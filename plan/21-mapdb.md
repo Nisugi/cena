@@ -807,8 +807,47 @@ Each gets a short design note in this document before its code exists.
    `title_from_subtitle` turns the wire's form into the map's. Adding the field is a
    `cena-model` change, left until the other session is out of that crate; joining model
    to map belongs in `cena-session`, the first crate allowed to see both.
-5. Dijkstra with per-character costs. Answer key: `Map.dijkstra` results captured from the
-   author's live Lich.
+5. ~~**The pathfinder.**~~ **BUILT 2026-09-20.** `cena_map::route`: `Map::routes(from,
+   target, price)` is Dijkstra over the exits, and **the pricing is a function the caller
+   passes in** — `None` is impassable. That is the whole of "per-character costs": a day
+   pass, a profession gate, an exit that failed twice this trip are all just a different
+   closure, the map stays shared and immutable, and two characters planning at once share
+   nothing. (Vellum read first, `pathing/dijkstra.rs`: its gates are process globals,
+   `transpile::urchins_valid()`.) `as_converted` is the pricing that needs no character —
+   a plain command at a constant cost. One search answers many questions: `Routes` keeps
+   the distances and `path_to` reads a path out without searching again. No default cost,
+   as upstream; a negative or non-finite price is a wall. Ties break by room id.
+
+   **One upstream quirk deliberately not ported:** the nearest-of-several search that accepts
+   a target only under 20 s and otherwise explores everything. Dijkstra settles rooms in
+   distance order, so the first target settled is the nearest at any distance.
+
+   **Answer key.** Not Lich's — its routes cross scripted exits, which arrive in step 7. The
+   key is an independent Python Dijkstra over the *upstream* file, restricted to the same
+   exits (`research/mapdb-inventory/route_key.py`); the Rust search over the *converted
+   binary* must agree. MEASURED: **3,800 of 3,800 distances agree**, 10 sources; the
+   slowest whole-map search took **1.6 ms** (`tests/route_real_map.rs`, env-gated).
+
+   **THE FINDING: 90% of exits is not 90% of the map.** Only 248 of those 3,800 pairs are
+   reachable. MEASURED (`chokepoints.py`): from Wehnimer's Town Square plain exits reach
+   **6,969 rooms**; every exit open reaches **27,959**. From Ta'Illistim 1,308; River's
+   Rest 868; Zul Logoth 936. A handful of scripted exits are the bridges between regions,
+   so **step 7's order is rooms opened, not edges counted.** Greedy, from room 228:
+
+   | rooms | gained | shape ported |
+   |---|---|---|
+   | 6,969 | | plain exits only |
+   | 9,247 | +2,278 | crossing: the `mapdb_ice_mode` icy-path shape |
+   | 10,115 | +868 | crossing: the `force_go2` sub-trip shape |
+   | 10,556 | +441 | crossing: `N.times{fput S}; mapdb_duskruin_origin = N` |
+   | 10,863 | +307 | crossing: `move S` |
+   | 11,147 | +284 | cost: `Stats.prof == S ? N : nil` (guarded form) |
+   | 11,372 | +225 | crossing: the inn-table shape |
+   | 11,597 | +225 | cost: `Stats.prof == S ? N : nil` |
+
+   One shape at a time stalls near 12,000: past that, a region opens only when *several*
+   shapes are ported together (a crossing and its cost gate, or a chain of ferries). So the
+   ratchet needs a second number beside "unported exits": **rooms reachable from a town**.
 6. §4's design notes.
 7. Primitives, then recogniser arms, in edge-count order. A new arm that needs no new
    primitive is converter-only work.

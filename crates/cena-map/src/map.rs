@@ -62,6 +62,12 @@ impl Map {
             .and_then(|index| self.rooms.get(*index))
     }
 
+    /// Where a room sits in [`Self::rooms`], for searches that keep their
+    /// working state in arrays beside it.
+    pub(crate) fn position(&self, id: RoomId) -> Option<usize> {
+        self.index_of.get(&id).copied()
+    }
+
     /// Every room the game might mean by this number, in id order.
     ///
     /// **A slice, not an `Option`**, because the relation is many-to-many
