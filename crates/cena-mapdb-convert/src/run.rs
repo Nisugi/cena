@@ -26,8 +26,10 @@ pub struct Conversion {
 /// the run -- it becomes problems in the report -- but a file that is not a map
 /// at all has nothing to report on.
 pub fn convert(upstream_json: &str) -> Result<Conversion, serde_json::Error> {
-    let upstream: Vec<UpstreamRoom> = serde_json::from_str(upstream_json)?;
+    let mut upstream: Vec<UpstreamRoom> = serde_json::from_str(upstream_json)?;
     let mut report = Report::default();
+    // Before anything reads a cost: see `delegate`.
+    report.delegations_resolved = crate::delegate::resolve(&mut upstream);
     let mut rooms = Vec::with_capacity(upstream.len());
     for room in upstream {
         report.see_scripts(&room);

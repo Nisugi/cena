@@ -7,6 +7,8 @@
 # `costs` counts scripted costs on exits that exist: upstream has 1,873 scripted
 # `timeto` values, but 13 price a destination with no `wayto`.
 crossings 6507
-costs 1683
+costs 739
 # Rooms reached from room 228 knowing nothing about the walker. Only rises.
 reachable 10118
+# The same, for a walker with urchin guides and portmasters on and no profession.
+reachable_equipped 10123

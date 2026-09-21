@@ -35,6 +35,8 @@ pub struct Report {
     /// Scripted upstream, and crossed by steps an arm produced.
     pub ported_crossings: usize,
     pub unported_crossings: usize,
+    /// Costs that deferred to another exit's, replaced by it before conversion.
+    pub delegations_resolved: usize,
     /// Scripted upstream, and priced by a gate an arm produced.
     pub ported_costs: usize,
     pub unported_costs: usize,
@@ -129,6 +131,11 @@ impl Report {
             "  unported crossings  {} in {} shapes",
             self.unported_crossings,
             self.crossing_shapes.len()
+        );
+        let _ = writeln!(
+            text,
+            "  delegated costs     {} resolved",
+            self.delegations_resolved
         );
         let _ = writeln!(text, "  ported costs        {}", self.ported_costs);
         let _ = writeln!(

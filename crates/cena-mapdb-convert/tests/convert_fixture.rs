@@ -178,7 +178,27 @@ fn the_urchin_hub_is_data_on_both_sides() {
         Crossing::PassThrough(cena_map::Pass),
         "nothing is sent: the hub exists only in the map"
     );
-    assert!(matches!(into_hub.cost, Some(Cost::Unported { .. })));
+    // The way in is priced for a walker whose guides are paid up and who can
+    // be seen and is on foot -- and for nobody Hydra has not looked at.
+    let cost = into_hub.cost.as_ref().unwrap();
+    let flags = |hidden: bool| Walker {
+        settings: [("use_urchins".to_owned(), "true".to_owned())].into(),
+        flags: [
+            ("urchin_access".to_owned(), true),
+            ("hidden".to_owned(), hidden),
+            ("invisible".to_owned(), false),
+            ("mounted".to_owned(), false),
+        ]
+        .into(),
+        ..Walker::default()
+    };
+    assert_eq!(cost.price(&flags(false)), Some(0.1));
+    assert_eq!(
+        cost.price(&flags(true)),
+        None,
+        "the urchins will not guide someone hiding"
+    );
+    assert_eq!(cost.price(&Walker::default()), None);
 
     let hub = room(&conversion, 30714).unwrap();
     assert!(hub.uid.is_empty(), "a virtual room has no game room number");
@@ -189,8 +209,8 @@ fn the_urchin_hub_is_data_on_both_sides() {
         assert!(command.starts_with("urchin guide "), "{command}");
         assert_eq!(exit.kind, ExitKind::Other);
         assert!(
-            !exit.is_routable(),
-            "gated by a scripted cost until that cost is ported"
+            exit.is_routable(),
+            "upstream's `only while go2 runs` is always true for a planned walk"
         );
     }
 }

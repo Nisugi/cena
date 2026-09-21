@@ -1065,6 +1065,19 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    | unported costs | 1,860 | 1,860 | **1,683** (52 shapes) |
    | reachable from Wehnimer's, knowing nothing of the walker | 6,969 | 9,247 | **10,118** |
 
+   **Third batch, 2026-09-20: urchins and delegation.** `delegate.rs` resolves
+   `Map[N].timeto['M'].call` **before conversion**, by replacing the deferring cost with the
+   one it points at: **957 resolved**, no primitive spent. Their targets were the urchin
+   gate (`Cond::Flag` — `urchin_access`, `hidden`, `invisible`, `mounted` are yes-or-no
+   facts the planner works out, since nothing in the vocabulary reads a clock), the FWI
+   trinket (`Cond::SettingIsSet`), and *"only while go2 is running"* (406) — which keeps a
+   person stepping by hand out of a hub's exits, is always true for a planned walk, and so
+   becomes a constant. **Unported costs 1,683 → 739.** The ratchet gained
+   `reachable_equipped`, a walker with urchins and portmasters on and no profession:
+   **10,123** — five more rooms than knowing nothing, because urchins only hop inside towns
+   already reached and the portmasters' *crossings* are still unported. That figure is
+   where the next ports will show.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

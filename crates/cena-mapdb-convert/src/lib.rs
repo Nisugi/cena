@@ -15,6 +15,7 @@
 //! `tests/ratchet.rs` pins how many there are so the number can only fall.
 
 pub mod convert;
+pub mod delegate;
 pub mod output;
 pub mod recognise;
 pub mod report;

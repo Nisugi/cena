@@ -33,6 +33,11 @@ pub struct Walker {
     /// Duskruin on Friday and leaves on Sunday. A name never written is
     /// unknown, which prices the way back impassable -- correctly.
     pub memories: HashMap<String, String>,
+    /// Yes-or-no facts the planner works out, by name: `urchin_access` (the
+    /// guides are paid for and have not expired -- a comparison against the
+    /// clock, which this crate never reads), `hidden`, `invisible`,
+    /// `mounted`. A name that is absent is unknown.
+    pub flags: HashMap<String, bool>,
     /// As the game spells it: `Bard`.
     pub profession: Option<String>,
     /// The month of the game's calendar day, 1-12. A fact passed in, never
@@ -63,6 +68,12 @@ pub enum Cond {
     Not(Box<Cond>),
     /// The profile setting `.0` is exactly `.1`.
     Setting(String, String),
+    /// The profile carries the setting `.0`, with any value that is not empty:
+    /// "a trinket has been named". A profile always answers this, so it is
+    /// never unknown.
+    SettingIsSet(String),
+    /// See [`Walker::flags`].
+    Flag(String),
     /// The memory `.0` is exactly `.1`. See [`Walker::memories`].
     Remembered(String, String),
     Profession(String),
@@ -89,6 +100,13 @@ impl Cond {
             Cond::Any(parts) => settle(parts, walker, true),
             Cond::Not(inner) => inner.ask(walker).map(|answer| !answer),
             Cond::Setting(name, value) => walker.settings.get(name).map(|is| is == value),
+            Cond::SettingIsSet(name) => Some(
+                walker
+                    .settings
+                    .get(name)
+                    .is_some_and(|value| !value.is_empty()),
+            ),
+            Cond::Flag(name) => walker.flags.get(name).copied(),
             Cond::Remembered(name, value) => walker.memories.get(name).map(|is| is == value),
             Cond::Profession(name) => walker.profession.as_ref().map(|is| is == name),
             Cond::Month(month) => walker.month.map(|is| is == *month),

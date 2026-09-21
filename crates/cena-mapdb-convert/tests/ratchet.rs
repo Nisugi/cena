@@ -25,7 +25,7 @@
 
 use std::path::PathBuf;
 
-use cena_map::{Map, RoomId, Target, as_converted};
+use cena_map::{Map, RoomId, Target, Walker, as_converted, priced_for};
 use cena_mapdb_convert::report::{Report, ShapeRow};
 use cena_mapdb_convert::run::convert;
 
@@ -90,12 +90,44 @@ fn check(what: &str, now: usize, pinned: usize) {
 /// Town Square Central, Wehnimer's Landing.
 const START: RoomId = RoomId(228);
 
-fn reachable(map: &Map) -> usize {
-    let routes = map.routes(START, Target::Everything, as_converted);
+/// A walker with the paid services switched on and nothing in the way of
+/// them: urchin guides and portmasters, seen and on foot. **No profession**,
+/// so every guild-only exit stays shut -- this is "what money opens", and it
+/// is the second reachability figure because the first counts no gate at all.
+fn equipped() -> Walker {
+    let on = |name: &str| (name.to_owned(), "true".to_owned());
+    let flag = |name: &str, value: bool| (name.to_owned(), value);
+    Walker {
+        settings: [on("use_urchins"), on("use_portmasters")].into(),
+        flags: [
+            flag("urchin_access", true),
+            flag("hidden", false),
+            flag("invisible", false),
+            flag("mounted", false),
+        ]
+        .into(),
+        ..Walker::default()
+    }
+}
+
+fn count(map: &Map, routes: &cena_map::Routes<'_>) -> usize {
     map.rooms()
         .iter()
         .filter(|room| routes.seconds_to(room.id).is_some())
         .count()
+}
+
+fn rises(what: &str, now: usize, pinned: usize) {
+    assert!(
+        now >= pinned,
+        "{what}: {now} rooms, baseline {pinned}. The map got SMALLER for a walker: an arm \
+         stopped matching, or upstream cut a bridge. The residue above names what is unported."
+    );
+    assert!(
+        now <= pinned,
+        "{what}: {now} rooms, baseline {pinned}. That is progress -- turn \
+         `tests/unported.baseline` up to {now} so it cannot be given back."
+    );
 }
 
 #[test]
@@ -126,22 +158,23 @@ fn unported_edges_only_fall() {
     check("costs", report.unported_costs, baseline("costs").unwrap());
 
     let map = Map::from_rooms(conversion.rooms).unwrap();
-    let (now, pinned) = (reachable(&map), baseline("reachable").unwrap());
+    let plain = count(&map, &map.routes(START, Target::Everything, as_converted));
+    let walker = equipped();
+    let paid = count(
+        &map,
+        &map.routes(START, Target::Everything, priced_for(&walker)),
+    );
     println!();
     println!(
-        "REACHABLE from room {}: {now} of {} rooms",
+        "REACHABLE from room {} of {} rooms: {plain} knowing nothing, {paid} with paid services on",
         START.0,
         map.len()
     );
-    assert!(
-        now >= pinned,
-        "reachable: {now} rooms, baseline {pinned}. The map got SMALLER for a walker: an arm \
-         stopped matching, or upstream cut a bridge. The residue above names what is unported."
-    );
-    assert!(
-        now <= pinned,
-        "reachable: {now} rooms, baseline {pinned}. That is progress -- turn \
-         `tests/unported.baseline` up to {now} so it cannot be given back."
+    rises("reachable", plain, baseline("reachable").unwrap());
+    rises(
+        "reachable_equipped",
+        paid,
+        baseline("reachable_equipped").unwrap(),
     );
 }
 
@@ -162,4 +195,5 @@ fn the_baseline_parses() {
     assert!(baseline("crossings").unwrap() > 0);
     assert!(baseline("costs").unwrap() > 0);
     assert!(baseline("reachable").unwrap() > 0);
+    assert!(baseline("reachable_equipped").unwrap() > 0);
 }

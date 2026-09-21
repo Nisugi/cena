@@ -58,7 +58,7 @@ pub enum UpstreamLocation {
 }
 
 /// A `timeto` value.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum UpstreamCost {
     Seconds(f64),

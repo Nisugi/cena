@@ -32,6 +32,9 @@ pub fn crossing(script: &str, from: u32) -> Option<Crossing> {
 #[must_use]
 pub fn cost(script: &str) -> Option<Cost> {
     profession(script)
+        .or_else(|| urchins(script))
+        .or_else(|| only_when_travelling(script))
+        .or_else(|| trinket_named(script))
         .or_else(|| remembered(script))
         .or_else(|| setting_or_month(script))
 }
@@ -124,6 +127,68 @@ fn event_transport(script: &str, from: u32) -> Option<Crossing> {
     steps.push(always(Action::Move(command.to_owned())));
     steps.push(always(Action::Remember(name.to_owned(), from.to_string())));
     Some(Crossing::Steps(steps))
+}
+
+/// The urchin guides (`plan/21` §4.1). Upstream compares an expiry against
+/// `Time.now`; here "paid for and not expired" is one flag the planner works
+/// out, because nothing in the map's vocabulary reads a clock. `mounted` is
+/// added: upstream switches the whole setting off when it learns the walker
+/// is mounted, which comes to the same thing.
+fn urchins(script: &str) -> Option<Cost> {
+    let [seconds] = holes(
+        script,
+        &[
+            ";e UserVars.mapdb_use_urchins == true and !UserVars.mapdb_urchins_expire.nil? and \
+             Time.now.to_i < UserVars.mapdb_urchins_expire and !hidden? and !invisible? ? ",
+            " : nil;",
+        ],
+    )?[..] else {
+        return None;
+    };
+    let flag = |name: &str| Cond::Flag(name.to_owned());
+    let not = |cond| Cond::Not(Box::new(cond));
+    gated(
+        Cond::All(vec![
+            Cond::Setting("use_urchins".to_owned(), "true".to_owned()),
+            flag("urchin_access"),
+            not(flag("hidden")),
+            not(flag("invisible")),
+            not(flag("mounted")),
+        ]),
+        seconds,
+    )
+}
+
+/// `!(Script.list.map(&:name) & %w{go2 route2}).empty? ? 0.1 : nil` -- "only
+/// while go2 is running", which keeps a person stepping through the map by
+/// hand out of an urchin hub's exits. A cost is only ever priced *for* a
+/// planned walk here, so the test is always true and the cost is constant.
+fn only_when_travelling(script: &str) -> Option<Cost> {
+    let [seconds] = holes(
+        script,
+        &[
+            ";e !(Script.list.map(&:name) & %w{go2 route2}).empty? ? ",
+            " : nil;",
+        ],
+    )?[..] else {
+        return None;
+    };
+    let seconds: f64 = seconds.parse().ok()?;
+    (seconds.is_finite() && seconds >= 0.0).then_some(Cost::Fixed(seconds))
+}
+
+/// The Mist Harbor trinket: usable once the profile names one.
+fn trinket_named(script: &str) -> Option<Cost> {
+    let [seconds] = holes(
+        script,
+        &[
+            ";e (!UserVars.mapdb_fwi_trinket.nil? and !UserVars.mapdb_fwi_trinket.empty?) ? ",
+            " : nil;",
+        ],
+    )?[..] else {
+        return None;
+    };
+    gated(Cond::SettingIsSet("fwi_trinket".to_owned()), seconds)
 }
 
 /// `Stats.prof == 'Bard' ? 0.2 : nil`, four ways. Two of them add
