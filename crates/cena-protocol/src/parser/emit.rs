@@ -206,3 +206,218 @@ impl Parser {
             .cloned()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    /// A component body: text interleaved with markup and non-markup tags.
+    ///
+    /// **The shape the existing suite reached only twice, both unclosed.**
+    /// MEASURED before writing this: `tests/parser_never_panics.rs` reaches
+    /// `parse_runs_reporting` solely through two literal `<component>`
+    /// fragments in `HOSTILE_FRAGMENTS`, neither of which closes. So the
+    /// nesting, the bold-depth save/restore and the `unmodelled` collection
+    /// were never exercised by a property at all.
+    fn body() -> impl Strategy<Value = String> {
+        let part = prop::sample::select(vec![
+            "plain text",
+            " ",
+            "&amp;",
+            "&gt;&lt;",
+            "<pushBold/>",
+            "<popBold/>",
+            "<a exist=\"123\" noun=\"rock\">a rock</a>",
+            "<d cmd=\"store weapon\">a <a exist=\"9\" noun=\"katar\">katar</a></d>",
+            "<preset id=\"speech\">",
+            "</preset>",
+            // NOT markup -- these must be collected, never swallowed.
+            "<newThing id=\"1\"/>",
+            "<futureTag attr=\"v\">",
+            "<unknownFutureTag/>",
+        ]);
+        prop::collection::vec(part, 0..12).prop_map(|parts| parts.concat())
+    }
+
+    /// The body's text with every tag removed, then decoded and stripped --
+    /// the same two transforms `push_run` applies, in the same order.
+    fn expected_text(body: &str) -> String {
+        let mut out = String::new();
+        let mut rest = body;
+        while let Some(start) = text::find_tag_start(rest) {
+            out.push_str(&rest[..start]);
+            let tail = &rest[start..];
+            let Some(close) = tail.find('>') else {
+                // An unterminated tag becomes text, which is what the
+                // function does with it too.
+                out.push_str(tail);
+                rest = "";
+                break;
+            };
+            rest = &tail[close + 1..];
+        }
+        out.push_str(rest);
+        text::strip_control_chars(&text::decode_entities(&out))
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(1024))]
+
+        /// **RULE 2.2a: the body's text is conserved exactly.**
+        ///
+        /// This is the property that earns the file. Concatenating every run's
+        /// text must reproduce the body's non-markup text, decoded and
+        /// control-stripped -- nothing dropped, duplicated or invented.
+        ///
+        /// It is a standing check on the invariant this crate exists to
+        /// uphold, and it is the exact shape of this session's nested-link
+        /// defect: `<d cmd=><a exist=>katar</a></d>` reached consumers with
+        /// the inner link's `text` always empty, because `push_run` appended
+        /// to `links.first_mut()` rather than to every open link. That was
+        /// found by a `guard:` assertion in an unrelated ordering test, after
+        /// four hand-written tests for the fix missed it. **A property does
+        /// not depend on having thought of the case.**
+        #[test]
+        fn the_bodys_text_is_conserved(body in body()) {
+            let mut parser = Parser::new();
+            let mut unmodelled = Vec::new();
+            let runs = parser.parse_runs_reporting(&body, &mut unmodelled);
+            let joined: String = runs.runs.iter().map(|r| r.text.as_str()).collect();
+            prop_assert_eq!(
+                joined,
+                expected_text(&body),
+                "text was not conserved from {:?}",
+                body
+            );
+        }
+
+        /// **Every non-markup tag is reported, never swallowed.**
+        ///
+        /// The other half of Rule 2.2a, and the defect review PR-1 found:
+        /// `Component { body: Runs }` carries no raw bytes, so a tag dropped
+        /// here reaches nobody at all. The whole tag is kept rather than its
+        /// name -- a name alone cannot be shown to a user.
+        /// A first draft asserted only that REPORTED tags are well-formed,
+        /// and a mutation that swallowed every unmodelled tag -- the PR-1
+        /// defect itself -- passed it green. Over an empty vector the claim
+        /// is vacuously true. **The property never required anything to be
+        /// reported**, which is the failure mode `CLAUDE.md` names: the input
+        /// reached the code, but the assertion faced the wrong way.
+        ///
+        /// So the count is pinned to the input: every non-markup tag in the
+        /// body must appear, and only those.
+        #[test]
+        fn unmodelled_tags_are_reported_whole(body in body()) {
+            let mut parser = Parser::new();
+            let mut unmodelled = Vec::new();
+            let _ = parser.parse_runs_reporting(&body, &mut unmodelled);
+
+            // Counted from the input, independently of the parser.
+            let expected = ["<newThing id=\"1\"/>", "<futureTag attr=\"v\">", "<unknownFutureTag/>"]
+                .iter()
+                .map(|t| body.matches(t).count())
+                .sum::<usize>();
+            prop_assert_eq!(
+                unmodelled.len(),
+                expected,
+                "expected {} unmodelled tags from {:?}, got {:?}",
+                expected,
+                body,
+                unmodelled
+            );
+
+            for tag in &unmodelled {
+                prop_assert!(
+                    body.contains(tag.as_str()),
+                    "reported {tag:?}, which is not in {body:?}"
+                );
+                prop_assert!(
+                    tag.starts_with('<') && tag.ends_with('>'),
+                    "reported a fragment rather than a whole tag: {tag:?}"
+                );
+            }
+        }
+
+        /// A body **never leaks a whole tag into a run's text**.
+        ///
+        /// A first draft asserted no run text contains `<` at all, and
+        /// proptest refuted it in four cases with `&gt;&lt;`, which decodes
+        /// to `><`. **That `<` is text the game sent**, not markup: entities
+        /// are decoded AFTER tags are removed, so a decoded `<` is a literal
+        /// the user must see. Asserting otherwise would have demanded the
+        /// parser corrupt legitimate output.
+        ///
+        /// The real claim is that no tag from the input survives whole into
+        /// a run -- which is Rule 2.1 without forbidding a character the wire
+        /// legitimately carries.
+        #[test]
+        fn no_run_carries_a_whole_tag(body in body()) {
+            let mut parser = Parser::new();
+            let mut unmodelled = Vec::new();
+            let runs = parser.parse_runs_reporting(&body, &mut unmodelled);
+            for run in &runs.runs {
+                for tag in ["<pushBold/>", "<popBold/>", "<unknownFutureTag/>"] {
+                    prop_assert!(
+                        !run.text.contains(tag),
+                        "the tag {tag} survived into run text: {:?}",
+                        run.text
+                    );
+                }
+            }
+        }
+
+        /// **Parser state is restored**, whatever the body did to it.
+        ///
+        /// The function saves and restores bold depth, presets and links
+        /// because a component body is a nested context: an unbalanced
+        /// `<pushBold/>` inside one must not bleed into the line after it.
+        /// Without this, one malformed component emboldens the rest of the
+        /// session.
+        #[test]
+        fn a_body_never_leaks_style_into_the_parser(body in body()) {
+            let mut parser = Parser::new();
+            let before = parser.bold_depth;
+            let mut unmodelled = Vec::new();
+            let _ = parser.parse_runs_reporting(&body, &mut unmodelled);
+            prop_assert_eq!(parser.bold_depth, before, "bold depth leaked");
+        }
+
+        /// Arbitrary text never panics and conserves just the same.
+        ///
+        /// `body()` emits plausible parts; this covers what it cannot express.
+        #[test]
+        fn arbitrary_bodies_are_conserved(body in ".*") {
+            let mut parser = Parser::new();
+            let mut unmodelled = Vec::new();
+            let runs = parser.parse_runs_reporting(&body, &mut unmodelled);
+            let joined: String = runs.runs.iter().map(|r| r.text.as_str()).collect();
+            prop_assert_eq!(joined, expected_text(&body));
+        }
+    }
+
+    #[test]
+    fn the_nested_link_keeps_its_text() {
+        // This session's own defect, pinned as a case rather than left to the
+        // property alone: the property WOULD catch it, but a named test says
+        // what was wrong. MEASURED at the time: 322 occurrences across 62 of
+        // 208 live logs, and ZERO in the committed fixtures -- which is why
+        // the golden corpus did not catch it.
+        let mut parser = Parser::new();
+        let mut unmodelled = Vec::new();
+        let runs = parser.parse_runs_reporting(
+            "<d cmd=\"store weapon\">a <a exist=\"9\" noun=\"katar\">katar</a></d>",
+            &mut unmodelled,
+        );
+        let inner: Vec<_> = runs
+            .runs
+            .iter()
+            .filter_map(|r| r.inner_link.as_ref())
+            .collect();
+        assert!(!inner.is_empty(), "the nested exist link reached no run");
+        assert!(
+            inner.iter().any(|l| l.text.contains("katar")),
+            "the inner link's text was empty: {inner:#?}"
+        );
+    }
+}

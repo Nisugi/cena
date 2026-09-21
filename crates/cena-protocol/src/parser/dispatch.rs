@@ -88,6 +88,7 @@
 //! silently.
 
 use super::Parser;
+use super::compass::directions;
 use super::inner::inner_text;
 use super::markup::is_markup;
 use super::thin::thin_frame;
@@ -502,21 +503,6 @@ impl Parser {
             });
         }
     }
-}
-
-/// The `<dir value=>` tokens inside a `<compass>`.
-fn directions(tag: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut rest = tag;
-    while let Some(at) = rest.find("<dir ") {
-        rest = &rest[at..];
-        let Some(end) = rest.find('>') else { break };
-        if let Some(value) = text::attribute(&rest[..=end], "value") {
-            out.push(value);
-        }
-        rest = &rest[end + 1..];
-    }
-    out
 }
 
 /// `<progressBar>` -- the M1 vitals handler.

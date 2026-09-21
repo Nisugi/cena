@@ -62,3 +62,107 @@ pub(super) fn inner_display_text(tag: &str) -> String {
     out.push_str(rest);
     text::strip_control_chars(&text::decode_entities(&out))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    /// A tag with a body, which is the shape `tagish()` in
+    /// `tests/parser_never_panics.rs` cannot produce.
+    ///
+    /// **That is the gap PR-10 names.** That generator emits one tag at a
+    /// time -- `<x/>`, `<x>`, `</x` -- and never a body BETWEEN two tags. So
+    /// `inner_text`'s whole job, the `rfind("</")` arm, was never reached: the
+    /// suite exercised only the early return and the `None => body` arm. A
+    /// property that never reaches the code under test passes for the same
+    /// reason an empty test does.
+    fn tag_with_body() -> impl Strategy<Value = String> {
+        let name = prop::sample::select(vec!["a", "d", "component", "preset", "b"]);
+        let body = prop::sample::select(vec![
+            "",
+            "plain",
+            "with <b>nested</b> markup",
+            "entity &amp; more",
+            "unterminated <b",
+            "</early>",
+            ">bare gt",
+            "a > b",
+        ]);
+        let close = prop::sample::select(vec![true, false]);
+        (name, body, close).prop_map(|(n, b, closed)| {
+            if closed {
+                format!("<{n}>{b}</{n}>")
+            } else {
+                format!("<{n}>{b}")
+            }
+        })
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(1024))]
+
+        /// The result is always a **substring of the input**.
+        ///
+        /// `inner_text` slices; it never synthesises. This is what makes it
+        /// safe for `parse_runs` to re-scan the result as markup -- a function
+        /// that invented bytes could invent a tag.
+        #[test]
+        fn inner_text_only_ever_returns_a_slice_of_its_input(tag in tag_with_body()) {
+            let inner = inner_text(&tag);
+            prop_assert!(
+                inner.is_empty() || tag.contains(inner.as_str()),
+                "inner_text({tag:?}) = {inner:?}, which is not a substring"
+            );
+        }
+
+        /// The body starts strictly **after** the opening tag closes.
+        ///
+        /// A first draft of this asserted the opening tag appears nowhere in
+        /// the result, and proptest refuted it in eight cases with
+        /// `<b>with <b>nested</b> markup</b>`: the body legitimately CONTAINS
+        /// `<b>`, because the body is nested markup. `inner_text` returns
+        /// markup by contract -- [`inner_display_text`] is the flattening one.
+        ///
+        /// So the real invariant is positional, not lexical: whatever is
+        /// returned begins past the first `>`. That is what stops the opening
+        /// tag being re-scanned as part of the body.
+        #[test]
+        fn inner_text_starts_after_the_opening_tag(tag in tag_with_body()) {
+            let inner = inner_text(&tag);
+            if let (Some(open_end), false) = (tag.find('>'), inner.is_empty())
+                && let Some(at) = tag.find(inner.as_str())
+            {
+                prop_assert!(
+                    at > open_end,
+                    "body {inner:?} starts at {at}, inside the opening tag of {tag:?}"
+                );
+            }
+        }
+
+        /// Arbitrary input never panics and never grows.
+        ///
+        /// The length bound is the substring property's cheap corollary, and
+        /// it holds for inputs `tag_with_body` cannot express.
+        #[test]
+        fn inner_text_never_grows_its_input(tag in ".*") {
+            let inner = inner_text(&tag);
+            prop_assert!(inner.len() <= tag.len());
+        }
+
+        /// `inner_display_text` yields **no markup at all**.
+        ///
+        /// Rule 2.1: nothing above this crate sees an unparsed string. The
+        /// five thin-tier fields named in this module's doc broke exactly
+        /// this, and a property is the right shape for it because the claim
+        /// is universal rather than about five known cases.
+        #[test]
+        fn inner_display_text_never_leaks_a_tag(tag in tag_with_body()) {
+            let shown = inner_display_text(&tag);
+            prop_assert!(
+                !shown.contains('<'),
+                "markup reached the display text: {shown:?} from {tag:?}"
+            );
+        }
+    }
+}

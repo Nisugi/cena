@@ -94,6 +94,7 @@
 use crate::frame::Frame;
 use crate::text;
 
+mod compass;
 mod dispatch;
 mod emit;
 mod inner;

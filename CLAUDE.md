@@ -145,9 +145,9 @@ From `plan/05-engineering-rules.md`:
 
 ## Where the build stands
 
-**M1 and M3 are complete; M2 has one item open** (PR-10's proptest coverage, below).
-`12` §8's table has **M4 — a real frontend (web first)** next, with M5 multi-session
-and M6 the first real behavior.
+**M1, M2 and M3 are all complete** as of 2026-09-21. `12` §8's table has
+**M4 — a real frontend (web first)** next, with M5 multi-session and M6 the first
+real behavior.
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: three milestones of record with the next one named in a line.
@@ -226,15 +226,44 @@ frame vocabulary breadth, a golden corpus, and full room/combat/vitals rendering
 > and the prompt is `HR>`. A golden cut from real traffic does not accept a claim about
 > what the wire "should" contain.
 
-**Remaining before M2 is closed — one of the two, as of 2026-09-21.** The
-`crtrStatus` recording is **done**: `plan/15` §2b documents the feed gaining health and
-two new flags, with the author's own words on it. **PR-10 is still open**: the proptest
-strategies never reach `parse_runs`, `inner_text` or `directions`, so three functions
-carry no property coverage.
+~~**Remaining before M2 is closed.**~~ **M2 IS CLOSED as of 2026-09-21.** Both items
+are done: `plan/15` §2b records the `crtrStatus` feed gaining health and two new flags,
+and **PR-10's property coverage is built** — `parse_runs_reporting`, `inner_text` and
+`directions` now carry properties in three `#[cfg(test)]` modules, verified by eight
+mutations.
 
-> Checked rather than assumed while marking M3 complete. Claiming three milestones
-> complete while this section listed two open items would have been the drift §−2 exists
-> to stop — so one is struck because it is done, and the other stands because it is not.
+> **THE GAP WAS NOT "NO TESTS" — IT WAS TESTS THAT COULD NOT REACH THE CODE.**
+> `tests/parser_never_panics.rs` was already thorough about panics, and that is
+> why the hole was invisible: its `tagish()` generator emits **one tag at a time**
+> and never a body between two tags. MEASURED before writing anything: the string
+> `<dir` appears **zero times** in that file, so `directions` ran zero iterations
+> under every one of its 2,048 cases; `inner_text`'s `rfind("</")` arm — the whole
+> function — was never reached; and `parse_runs_reporting` was entered only through
+> two unclosed `<component>` literals.
+>
+> The properties that earn this are the **Rule 2.2a conservation** pair on
+> `parse_runs_reporting`: concatenated run text must equal the body's non-markup
+> text, and every non-markup tag must be reported. That is a standing check on the
+> invariant this crate exists to uphold, and it is the exact shape of the
+> nested-link defect found by hand during M3.
+>
+> **Three of my own assertions were refuted by the tools, not by review**, which is
+> the argument for both techniques in one session:
+>
+> | Claimed | Refuted by | The truth |
+> |---|---|---|
+> | `inner_text` never returns the opening tag | proptest, 8 cases | nested `<b>` bodies legitimately contain it; the invariant is positional |
+> | no run's text contains `<` | proptest, 4 cases | `&gt;&lt;` decodes to `><` — text the game sent |
+> | unmodelled tags are reported | **mutation MUT3** | the property only checked *reported* tags were well-formed, so swallowing all of them passed green |
+>
+> MUT3 is the important one: it is the **PR-1 defect itself**, and a property
+> written to catch it passed the mutant. A claim about what is reported says
+> nothing until the count is pinned to the input.
+>
+> A fourth landed in the same place from the other direction: a named test for
+> `<dir/>` having no `value` **never reached the branch**, because the scan looks
+> for `"<dir "` *with a trailing space*. The assertion was right and the input
+> never arrived — the same failure as the four in M3, now five.
 
 **Deferred, each needing an author decision:** SE-4 (authority across generations),
 SE-6 (`Lagged` recovery unreachable). **MO-3 is FIXED** (M3 step 10): `Effects::active_in`
