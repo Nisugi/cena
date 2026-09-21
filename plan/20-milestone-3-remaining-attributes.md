@@ -627,3 +627,47 @@ extractor is the work; the table is not hand-transcribed.
 **Sequencing:** it wants doing before `fog` only if fog turns out to need it
 (`fog.rb` watches `room_id`, so probably not), and definitely before any of
 the five consumers above.
+
+
+---
+
+### The `type=` tag is free text, and does not say what a spell does (2026-09-20)
+
+I asserted Heroism's `type=offense` in a test as though the label settled what
+the spell is. It does not.
+
+> *"heroism provides an offensive bonus, so probably a utility spell, it does
+> not damage on it's own so it's not an attack spell, which may be different
+> than offense/defense."* — the author
+
+MEASURED over the 514 spells, and the data agrees on both counts.
+
+**It is not a vocabulary.** 19 distinct values, slash-separated, with the same
+idea spelled more than one way and in more than one order:
+
+| | |
+|---|---|
+| `offense` (26) | `offensive` (2) |
+| `offense/utility` (1) | `offensive/utility` (1) |
+| `attack/utility` (12) | `utility/attack` (1) |
+| `defense/utility` (5) | `utility/defense` (1) |
+
+That is why `Spell::kind` is a `String`. C21 reserves typed fields for **closed**
+vocabularies; this is an open, inconsistent tag list, and a typed enum over it
+would either lose values or go red on a Lich data update.
+
+**`offense` and `attack` are different axes.** An `offense` spell improves your
+offence; an `attack` spell does damage:
+
+```text
+offense spells carrying an AS/CS bonus:  23 of 34
+attack  spells carrying an AS/CS bonus:   2 of 136
+```
+
+Every `offense` spell that carries bonuses carries attack-*strength* modifiers
+— `bolt-as`, `physical-as`, `*-cs` — and none deals damage on its own. So a
+behavior asking *"will this hurt something"* must not read `offense` as yes,
+and one asking *"will this make me hit harder"* must not read `attack` as yes.
+
+**What to read instead is the `bonuses` column**, which states what is actually
+conferred. The tag is a curator's note; the bonuses are the fact.

@@ -34,13 +34,26 @@ fn a_spell_carries_what_the_table_said() {
     let heroism = spells::spell(215).expect("215 Heroism");
     assert_eq!(heroism.name, "Heroism");
     assert_eq!(heroism.circle(), 2, "a three-digit number's first digit");
-    // `offense`, not `defense` -- I assumed the latter and the table said
-    // otherwise. Its availability is `group`, which is the same fact the
-    // cooldown kind encodes: a self-cast spell that lands on everyone
-    // grouped.
+    // The table says `offense`, and an earlier version of this test asserted
+    // that as though the label settled what the spell does. It does not
+    // (author, 2026-09-20):
+    //
+    //   "heroism provides an offensive bonus, so probably a utility spell,
+    //    it does not damage on it's own so it's not an attack spell, which
+    //    may be different than offense/defense."
+    //
+    // Quite so, and the data agrees -- see `the_type_tag_is_free_text` for
+    // the vocabulary and `an_offense_spell_is_not_an_attack_spell` for the
+    // measurement. What a behavior should read is the BONUSES column, which
+    // says what the spell actually confers.
     assert_eq!(heroism.kind.as_deref(), Some("offense"));
     assert_eq!(heroism.availability.as_deref(), Some("group"));
     assert_eq!(heroism.mana, Some(15));
+    let bonuses: Vec<&str> = heroism.bonuses.iter().map(|(k, _)| k.as_str()).collect();
+    assert!(
+        bonuses.contains(&"bolt-as") && bonuses.contains(&"physical-as"),
+        "attack-strength bonuses, not damage: {bonuses:?}"
+    );
 }
 
 #[test]
@@ -323,4 +336,75 @@ fn an_absent_field_is_none_rather_than_empty() {
     assert_eq!(calm.message_up, None, "Calm declares no start message");
     assert!(calm.durations.is_empty(), "nor a duration");
     assert_eq!(calm.mana, Some(1), "but it does declare a cost");
+}
+
+mod the_type_tag {
+    use super::spells;
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn the_type_tag_is_free_text_not_a_vocabulary() {
+        // **It looks like an enum and is not one.** MEASURED over the 514
+        // spells: 19 distinct values, slash-separated, with the same idea
+        // spelled more than one way --
+        //
+        //   `offense` (26) and `offensive` (2)
+        //   `offense/utility` (1) and `offensive/utility` (1)
+        //   `attack/utility` (12) and `utility/attack` (1)
+        //   `defense/utility` (5) and `utility/defense` (1)
+        //
+        // so order varies too. That is why `Spell::kind` is a `String` and
+        // not a typed enum: C21 reserves typed fields for CLOSED
+        // vocabularies, and this is an open, inconsistent tag list.
+        //
+        // A test that pinned the 19 values would go red on a Lich data
+        // update for no reason. What is worth pinning is the SHAPE: the
+        // underlying tags are few, and a new one is worth noticing.
+        let tags: BTreeSet<&str> = spells::all()
+            .filter_map(|s| s.kind.as_deref())
+            .flat_map(|kind| kind.split('/'))
+            .collect();
+        assert_eq!(
+            tags,
+            [
+                "area",
+                "attack",
+                "bonus",
+                "defense",
+                "offense",
+                "offensive",
+                "timer",
+                "utility"
+            ]
+            .into_iter()
+            .collect::<BTreeSet<_>>(),
+            "a tag outside this set is a data change worth reading"
+        );
+    }
+
+    #[test]
+    fn an_offense_spell_is_not_an_attack_spell() {
+        // The author's distinction, measured. An `offense` spell improves
+        // your offence; an `attack` spell does damage. They are different
+        // axes, and the separation in the data is stark:
+        //
+        //   offense spells carrying an AS/CS bonus:  23 of 34
+        //   attack  spells carrying an AS/CS bonus:   2 of 136
+        //
+        // So a behavior asking "will this spell hurt something" must not
+        // read `offense` as yes, and one asking "will this make me hit
+        // harder" must not read `attack` as yes.
+        let confers_a_bonus = |kind: &str| {
+            spells::all()
+                .filter(|s| s.kind.as_deref().is_some_and(|k| k.contains(kind)))
+                .filter(|s| {
+                    s.bonuses
+                        .iter()
+                        .any(|(t, _)| t.ends_with("-as") || t.ends_with("-cs"))
+                })
+                .count()
+        };
+        assert_eq!(confers_a_bonus("offens"), 23);
+        assert_eq!(confers_a_bonus("attack"), 2);
+    }
 }

@@ -137,7 +137,26 @@ pub struct Spell {
     pub number: u16,
     /// Its name, e.g. `"Heroism"`.
     pub name: String,
-    /// `attack`, `defense`, `utility`… Absent on 12 of the 515.
+    /// The table's `type=` tag, verbatim. **Free text, not a vocabulary.**
+    ///
+    /// MEASURED over the 514: **19 distinct values**, slash-separated, with
+    /// the same idea spelled more than one way — `offense` (26) and
+    /// `offensive` (2), `attack/utility` (12) and `utility/attack` (1). So it
+    /// is a `String`: C21 reserves typed fields for *closed* vocabularies and
+    /// this is an open, inconsistent tag list. Absent on 12.
+    ///
+    /// **It does not say what the spell does.** `offense` means it improves
+    /// your offence, not that it deals damage — that is `attack`:
+    ///
+    /// > *"heroism provides an offensive bonus, so probably a utility spell,
+    /// > it does not damage on it's own so it's not an attack spell, which may
+    /// > be different than offense/defense."* — the author, 2026-09-20
+    ///
+    /// MEASURED, and the split is stark: **23 of 34** `offense` spells carry
+    /// an attack-strength bonus (`bolt-as`, `physical-as`, `*-cs`), against
+    /// **2 of 136** `attack` spells. A behavior asking "will this hurt
+    /// something" must not read `offense` as yes. What to read instead is
+    /// [`Self::bonuses`], which states what is actually conferred.
     pub kind: Option<String>,
     /// `all`, `self-cast`, `group`… Absent on one.
     pub availability: Option<String>,
