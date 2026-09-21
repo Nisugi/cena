@@ -30,12 +30,39 @@
 //! (`cena-mapdb-convert/src/upstream_scripts/`), which is the reference for
 //! what it must do.
 
+mod altar_levers;
+mod bridge_wheel;
+mod bronze_gate;
+mod casting;
+mod colour_barrier;
 mod confluence;
+mod crown_door;
+mod cutter;
+mod day_pass;
+mod eye_spy_runes;
+mod familiar_doors;
+mod flight_of_steps;
+mod giant;
 mod guild_password;
+mod labyrinth_entry;
+mod minotaur_maze;
+mod mirror;
+mod mural_of_deities;
 mod patrol;
+mod ring_wedges;
+mod rolaren_gate;
+mod rune_staircase;
+mod search_rooms;
+mod seeking;
+mod shopping;
 mod signposts;
+mod sword_gorge;
+mod three_pillars;
+mod trinket;
+mod vaalorn_door;
+mod workshop_pillars;
 
-use cena_map::{RoomId, Routine, Step, Walker};
+use cena_map::{Errand, Map, Puzzle, RoomId, Routine, Step, Walker};
 use cena_session::{ChunkLine, GameState};
 
 /// Turns of any routine's own loop: the walker's stop, not an estimate.
@@ -90,6 +117,10 @@ pub(super) enum Next {
     Steps(Vec<Step>),
     /// Walk there by the map, and come back to me.
     WalkTo(RoomId),
+    /// Walk to the nearest room with this tag -- `bank`, `alchemist` -- as
+    /// `go2 bank` does, and come back to me. "Nearest" needs the walker's
+    /// place and the map, which only the driver has.
+    WalkToTag(String),
     /// Wait until the game says one of these, or this many milliseconds.
     Await(Vec<String>, u64),
     /// Wait this many milliseconds.
@@ -120,25 +151,72 @@ pub(super) struct Kept {
     confluence: confluence::Learned,
 }
 
-/// Whether this build runs the routine. What it does not is priced shut, so
-/// the pathfinder goes round it rather than the trip failing at it.
-pub(super) fn is_built(routine: &Routine) -> bool {
-    matches!(
-        routine,
-        Routine::Signposts { .. }
-            | Routine::GuildPassword
-            | Routine::Patrol { .. }
-            | Routine::Confluence { .. }
-    )
-}
-
-/// The solver for a routine; `None` for one this build does not run.
-pub(super) fn solver_for(routine: &Routine, kept: &mut Kept) -> Option<Box<dyn Solver + Send>> {
-    Some(match routine.clone() {
+/// The solver for a routine. **Every routine the map can name has one**: a
+/// new one upstream is a name this build cannot parse, which loads as
+/// `Crossing::Unknown` and is gone round (`cena_map::routine`).
+///
+/// The map and the goal are for what a routine must know before it starts --
+/// its destination's titles, rooms it names by the game's numbers -- resolved
+/// here once, since a solver is not shown the map afterwards.
+pub(super) fn solver_for(
+    routine: &Routine,
+    map: &Map,
+    goal: RoomId,
+    kept: &mut Kept,
+) -> Box<dyn Solver + Send> {
+    let goal = map.room(goal);
+    match routine.clone() {
         Routine::Confluence { leave } => Box::new(confluence::Confluence::new(
             leave,
             std::mem::take(&mut kept.confluence),
         )),
+        Routine::Seeking { remember } => Box::new(seeking::Seeking::new(
+            goal.map(|room| room.title.clone()).unwrap_or_default(),
+            remember,
+        )),
+        // Upstream's `/Isle of Four Winds|Mist Harbor/`.
+        Routine::Trinket => Box::new(trinket::Trinket::new(
+            goal.and_then(|room| room.location.as_deref())
+                .is_some_and(|at| at.contains("Isle of Four Winds") || at.contains("Mist Harbor")),
+        )),
+        Routine::MinotaurMaze { rooms } => Box::new(minotaur_maze::MinotaurMaze::new(rooms)),
+        Routine::SearchRooms {
+            rooms,
+            by_uid,
+            sees,
+            enter,
+        } => Box::new(search_rooms::SearchRooms::new(
+            search_rooms::resolve(&rooms, by_uid, map),
+            sees,
+            enter,
+        )),
+        Routine::FlightOfSteps { wall } => Box::new(flight_of_steps::FlightOfSteps::new(wall)),
+        Routine::DayPass { route } => Box::new(day_pass::DayPass::new(&route)),
+        Routine::BronzeGate { batter } => Box::new(bronze_gate::BronzeGate::new(batter)),
+        Routine::Mirror => Box::new(mirror::Mirror::default()),
+        Routine::RingWedges => Box::new(ring_wedges::RingWedges::default()),
+        Routine::ColourBarrier => Box::new(colour_barrier::ColourBarrier::default()),
+        Routine::Errand { errand } => match errand {
+            Errand::GiantToRiversRest => Box::new(giant::Giant::new(giant::Way::ToRiversRest)),
+            Errand::GiantFromRiversRest => Box::new(giant::Giant::new(giant::Way::FromRiversRest)),
+            Errand::SwordInTheGorge => Box::new(sword_gorge::SwordGorge::new()),
+            Errand::CutterFromMarshtown => Box::new(cutter::Cutter::marshtown()),
+            Errand::CutterFromRiversRest => Box::new(cutter::Cutter::rivers_rest()),
+        },
+        Routine::Puzzle { puzzle } => match puzzle {
+            Puzzle::RolarenGate => Box::new(rolaren_gate::RolarenGate::default()),
+            Puzzle::ThreePillars => Box::new(three_pillars::ThreePillars::default()),
+            Puzzle::WorkshopPillars => Box::new(workshop_pillars::WorkshopPillars::default()),
+            Puzzle::EyeSpyRunes => Box::new(eye_spy_runes::EyeSpyRunes::default()),
+            Puzzle::FamiliarDoors => Box::new(familiar_doors::FamiliarDoors::default()),
+            Puzzle::CrownDoor => Box::new(crown_door::CrownDoor::default()),
+            Puzzle::LabyrinthEntry => Box::new(labyrinth_entry::LabyrinthEntry::default()),
+            Puzzle::VaalornDoor => Box::new(vaalorn_door::VaalornDoor::default()),
+            Puzzle::BridgeWheel => Box::new(bridge_wheel::BridgeWheel::default()),
+            Puzzle::RuneStaircase => Box::new(rune_staircase::RuneStaircase::default()),
+            Puzzle::AltarLevers => Box::new(altar_levers::AltarLevers::default()),
+            Puzzle::MuralOfDeities => Box::new(mural_of_deities::MuralOfDeities::default()),
+        },
         Routine::Signposts {
             verb,
             dirs,
@@ -151,8 +229,7 @@ pub(super) fn solver_for(routine: &Routine, kept: &mut Kept) -> Option<Box<dyn S
             landmarks,
             after,
         } => Box::new(patrol::Patrol::new(starts, dirs, landmarks, after)),
-        _ => return None,
-    })
+    }
 }
 
 #[cfg(test)]

@@ -18,7 +18,7 @@ const ROOMS: &str = r#"[
             {"to":4,"kind":"go","cmd":"go shortcut","cost":{"when":{"profession":"Bard"},"then":0.5}},
             {"to":4,"kind":"go","cmd":"go nowhere"}]},
   {"id":2,"exits":[{"to":3,"kind":"cardinal","cmd":"east","cost":1},
-                   {"to":4,"kind":"scripted","routine":{"name":"mirror"},"cost":0.1}]},
+                   {"to":4,"kind":"scripted","unported":"00000000deadbeef","cost":0.1}]},
   {"id":3,"exits":[{"to":4,"kind":"cardinal","cmd":"east","cost":1}]},
   {"id":4,"title":["[Town, Square]"]}
 ]"#;
@@ -69,8 +69,11 @@ fn what_it_did_not_take_is_named_with_the_reason() {
         "{unknown:?}"
     );
     assert_eq!(why(&a("Warrior"), 0, "nowhere"), Some(ShutWhy::NoCost));
-    // Payable by anyone, and a routine nobody has written.
-    assert_eq!(why(&a("Warrior"), 1, "Mirror"), Some(ShutWhy::NotBuiltYet));
+    // Payable by anyone, and a script nothing has ported.
+    assert_eq!(
+        why(&a("Warrior"), 1, "Unported"),
+        Some(ShutWhy::NotBuiltYet)
+    );
     // What the bard could take is not listed as shut to the bard.
     assert_eq!(why(&a("Bard"), 0, "shortcut"), None);
 }
@@ -187,4 +190,24 @@ fn the_guild_is_this_characters_guild() {
     assert_eq!(to("Wizard", "guild"), Some(RoomId(3)));
     assert_eq!(to("Wizard", "Guild Shop"), Some(RoomId(3)));
     assert_eq!(to("Warrior", "guild shop"), None, "warriors have none here");
+}
+
+/// A routine has no command to show: the table says which it is, in words.
+#[test]
+fn a_routine_is_named_in_words() {
+    let rooms = r#"[
+      {"id":1,"exits":[{"to":2,"kind":"scripted","cost":1,
+         "routine":{"name":"minotaur_maze","rooms":[1,2]}},
+        {"to":3,"kind":"scripted","cost":1,
+         "routine":{"name":"puzzle","puzzle":"rolaren_gate"}}]},
+      {"id":2},{"id":3}
+    ]"#;
+    let map = map_of(rooms).unwrap();
+    let walker = Walker::default();
+    let said = |to| {
+        let legs = itinerary(&map, &walker, RoomId(1), RoomId(to)).unwrap();
+        table(&map, RoomId(1), &legs).join("\n")
+    };
+    assert!(said(2).contains("(minotaur maze)"), "{}", said(2));
+    assert!(said(3).contains("(rolaren gate)"), "{}", said(3));
 }

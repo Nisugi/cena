@@ -27,7 +27,7 @@
 
 use std::collections::BTreeMap;
 
-use cena_map::{Cond, Cost, Crossing, Exit, Map, Room, RoomId, Target, Uid, Walker};
+use cena_map::{Cond, Cost, Crossing, Exit, Map, Room, RoomId, Routine, Target, Uid, Walker};
 
 use super::{Trip, can_cross};
 
@@ -236,8 +236,26 @@ fn how(crossing: &Crossing) -> String {
             .map(|step| format!("{:?}", step.action))
             .collect::<Vec<_>>()
             .join("; "),
+        Crossing::Routine(routine) => format!("({})", named(routine)),
         other => format!("{other:?}"),
     }
+}
+
+/// A routine, as a person would say it: `MinotaurMaze` is "minotaur maze".
+fn named(routine: &Routine) -> String {
+    let name = match routine {
+        Routine::Puzzle { puzzle } => format!("{puzzle:?}"),
+        Routine::Errand { errand } => format!("{errand:?}"),
+        other => format!("{other:?}"),
+    };
+    let mut said = String::new();
+    for letter in name.chars().take_while(char::is_ascii_alphabetic) {
+        if letter.is_ascii_uppercase() && !said.is_empty() {
+            said.push(' ');
+        }
+        said.push(letter.to_ascii_lowercase());
+    }
+    said
 }
 
 /// The rows as a table of text, route2's columns: step, trip time, this

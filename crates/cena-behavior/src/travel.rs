@@ -647,9 +647,8 @@ impl Trip {
 /// What the walker can cross so far. The rest is priced shut, so the
 /// pathfinder goes round it rather than the trip failing at it.
 fn can_cross(crossing: &Crossing) -> bool {
-    match crossing {
-        Crossing::Command(_) | Crossing::PassThrough(_) | Crossing::Steps(_) => true,
-        Crossing::Routine(routine) => routines::is_built(routine),
-        _ => false,
-    }
+    matches!(
+        crossing,
+        Crossing::Command(_) | Crossing::PassThrough(_) | Crossing::Steps(_) | Crossing::Routine(_)
+    )
 }

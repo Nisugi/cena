@@ -129,7 +129,8 @@ fn set_out_as(
             last_room,
             ..TravelNotes::default()
         };
-        let travelled = travel(
+        // Boxed: the driver's future is large now that routines recurse.
+        let travelled = Box::pin(travel(
             &handle,
             &stop,
             ids,
@@ -139,7 +140,7 @@ fn set_out_as(
             RoomId(3),
             &mut notes,
             |_| {},
-        )
+        ))
         .await;
         Some(travelled)
     });

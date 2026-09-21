@@ -14,6 +14,7 @@ use cena_session::{ChunkLine, CommandId, MoveFeedback, movement};
 use tokio::time::Instant;
 
 use super::super::Trip;
+use super::super::itinerary::destination;
 use super::super::mover::wait_ms;
 use super::super::routines::{Next, Seen, Solver, solver_for};
 use super::{Cx, Driver, Ended, Turn};
@@ -31,11 +32,10 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         cx: &mut Cx<'_>,
         routine: &Routine,
     ) -> Result<bool, Ended> {
-        let (Some(mut solver), Some(goal)) =
-            (solver_for(routine, &mut self.kept), cx.trip.routine_to())
-        else {
+        let Some(goal) = cx.trip.routine_to() else {
             return Ok(false);
         };
+        let mut solver = solver_for(routine, cx.map, goal, &mut self.kept);
         let crossed = self.ask(cx, solver.as_mut(), goal).await;
         solver.keep(&mut self.kept);
         crossed
@@ -50,6 +50,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
     ) -> Result<bool, Ended> {
         let mut ok = true;
         let mut answer: Vec<ChunkLine> = Vec::new();
+        let mut shown_after_put: Option<usize> = None;
         for _ in 0..MAX_ASKS {
             self.drain(cx.trip).map_err(Ended::Stopped)?;
             let here = self.locate(cx.map);
@@ -64,9 +65,18 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 random: cx.trip.draw(),
             });
             answer.clear();
+            // What the solver has been shown: an `Await` starts after it, not
+            // after whatever came since. A recital outlasts the prompt that
+            // answers `touch mural`, and its first verses arrive in between.
+            let shown = shown_after_put
+                .take()
+                .filter(|_| matches!(next, Next::Await(..)));
             ok = true;
             match next {
-                Next::Put(command) => answer = self.put(cx.trip, &command).await?,
+                Next::Put(command) => {
+                    answer = self.put(cx.trip, &command).await?;
+                    shown_after_put = Some(answer.len());
+                }
                 Next::Go(command) => {
                     let step = Step {
                         action: Action::Move(command),
@@ -76,8 +86,17 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 }
                 Next::Steps(steps) => ok = self.aside(cx, steps).await?,
                 Next::WalkTo(room) => ok = self.walk_to(cx, room).await?,
+                Next::WalkToTag(tag) => {
+                    let room = here.and_then(|from| {
+                        destination(cx.map, &walker, from, &tag, &cx.notes.targets)
+                    });
+                    ok = match room {
+                        Some(room) => self.walk_to(cx, room).await?,
+                        None => false,
+                    };
+                }
                 Next::Await(lines, ms) => {
-                    ok = self.await_line(cx.trip, &lines, ms).await?;
+                    ok = self.await_line(cx.trip, &lines, ms, shown).await?;
                     answer.clone_from(&self.answer);
                 }
                 Next::Pause(ms) => {
@@ -155,8 +174,13 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         trip: &mut Trip,
         lines: &[String],
         ms: u64,
+        shown: Option<usize>,
     ) -> Result<bool, Ended> {
-        self.answer.clear();
+        // After a `Put`, only its answer is old news; otherwise all of it is.
+        match shown {
+            Some(shown) => drop(self.answer.drain(..shown.min(self.answer.len()))),
+            None => self.answer.clear(),
+        }
         let until = Instant::now() + Duration::from_millis(ms);
         loop {
             let said = self.answer.iter().any(|line| {

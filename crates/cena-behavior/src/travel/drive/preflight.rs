@@ -60,7 +60,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             ));
             return Ok(());
         }
-        self.to_the_bank(cx, here, goal, have).await
+        self.by_way_of_the_bank(cx, here, goal, have).await
     }
 
     /// What the route there -- and back, if the profile asks -- charges.
@@ -85,7 +85,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         Ok(self.state.character.currency.silver.unwrap_or(0))
     }
 
-    async fn to_the_bank(
+    async fn by_way_of_the_bank(
         &mut self,
         cx: &mut Cx<'_>,
         here: RoomId,
