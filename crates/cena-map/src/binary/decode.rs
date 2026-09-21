@@ -161,6 +161,8 @@ fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadErro
         // since -- is an unknown crossing, not a bad file (rule 1).
         Crossing::STEPS => serde_json::from_slice(blob)
             .map_or_else(|_| Crossing::Unknown(name.to_owned()), Crossing::Steps),
+        Crossing::ROUTINE => serde_json::from_slice(blob)
+            .map_or_else(|_| Crossing::Unknown(name.to_owned()), Crossing::Routine),
         Crossing::PASS => Crossing::PassThrough(crate::exit::Pass),
         other => Crossing::Unknown(other.to_owned()),
     };

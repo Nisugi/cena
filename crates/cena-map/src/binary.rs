@@ -44,7 +44,7 @@
 //! ```
 //!
 //! Blobs by name: `cmd` and `unported` are one string ref; `fixed` is an f64;
-//! `pass` is empty; **`steps` and `gated` are JSON**, the same text the per-room file
+//! `pass` is empty; **`steps`, `routine` and `gated` are JSON**, the same text the per-room file
 //! holds. JSON inside a binary is deliberate: a step or a condition added by a
 //! later build fails to parse here, which makes the exit an unknown crossing
 //! -- rule 1 -- with no second versioning scheme to maintain. Scripted exits

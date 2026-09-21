@@ -13,12 +13,13 @@
 //! Arms are added in the order that opens the most rooms
 //! (`research/mapdb-inventory/chokepoints.py`), not the order of most edges.
 
-use cena_map::{Action, Cond, Cost, Crossing, Pass, Step};
+use cena_map::{Action, Cond, Cost, Crossing, Pass, RoomId, Routine, Step};
 
 /// The steps for an upstream crossing script, if an arm knows it. `from` is
-/// the room the exit leaves, which some scripts name and some only imply.
+/// the room the exit leaves and `to` the room it reaches, which some scripts
+/// name and some only imply.
 #[must_use]
-pub fn crossing(script: &str, from: u32) -> Option<Crossing> {
+pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
     if script == ";e true" {
         return Some(Crossing::PassThrough(Pass));
     }
@@ -26,6 +27,8 @@ pub fn crossing(script: &str, from: u32) -> Option<Crossing> {
         .or_else(|| plain_move(script))
         .or_else(|| put_then_move(script))
         .or_else(|| event_transport(script, from))
+        .or_else(|| confluence(script, to))
+        .or_else(|| minotaur_maze(script, to))
 }
 
 /// The gate for an upstream cost script, if an arm knows it.
@@ -37,6 +40,55 @@ pub fn cost(script: &str) -> Option<Cost> {
         .or_else(|| trinket_named(script))
         .or_else(|| remembered(script))
         .or_else(|| setting_or_month(script))
+}
+
+/// Every exit of the Confluence, 3,233 of them, is two statements: name a
+/// goal, then call the one script that holds the search
+/// (`Room[23282].wayto['23282']`, 4 KB, itself an exit from a room to itself
+/// and never routed). The goal is the exit's own destination, or the word
+/// `tranquility` for the exits that lead out of the plane.
+fn confluence(script: &str, to: u32) -> Option<Crossing> {
+    let [goal] = holes(
+        script,
+        &[
+            ";e $mapdb_confluence_target = ",
+            "; Room[23282].wayto['23282'].call",
+        ],
+    )?[..] else {
+        return None;
+    };
+    let leave = match goal {
+        "'tranquility'" => true,
+        room if room.parse() == Ok(to) => false,
+        _ => return None,
+    };
+    Some(Crossing::Routine(Routine::Confluence { leave }))
+}
+
+/// The minotaur maze: 497 exits whose whole configuration is a goal and a set
+/// of rooms, followed by 1.2 KB of search that is **the same text on every
+/// one** -- kept verbatim beside this file, so a change to it upstream stops
+/// the arm matching like any other.
+fn minotaur_maze(script: &str, to: u32) -> Option<Crossing> {
+    const SEARCH: &str = include_str!("upstream_scripts/minotaur_maze.rb");
+    let [target, rooms] = holes(
+        script,
+        &[
+            ";e target_room_id = ",
+            "; maze_rooms = [",
+            &format!("]; {SEARCH}"),
+        ],
+    )?[..] else {
+        return None;
+    };
+    (target.parse() == Ok(to)).then_some(())?;
+    let rooms: Vec<RoomId> = rooms
+        .split(',')
+        .map(|room| room.trim().parse().map(RoomId))
+        .collect::<Result<_, _>>()
+        .ok()?;
+    (!rooms.is_empty()).then_some(())?;
+    Some(Crossing::Routine(Routine::MinotaurMaze { rooms }))
 }
 
 fn always(action: Action) -> Step {
@@ -401,7 +453,7 @@ mod tests {
     }
 
     fn steps(script: &str, from: u32) -> Vec<Action> {
-        match crossing(script, from) {
+        match crossing(script, from, 0) {
             Some(Crossing::Steps(steps)) => steps.into_iter().map(|step| step.action).collect(),
             _ => Vec::new(),
         }
@@ -513,5 +565,47 @@ mod tests {
             Some((Cond::Month(10), 0.2))
         );
         assert_eq!(gate(";e Time.now.month == 13 ? 0.2 : nil"), None);
+    }
+
+    #[test]
+    fn the_confluence_is_a_routine_whose_goal_is_the_exit() {
+        let inside = ";e $mapdb_confluence_target = 23290; Room[23282].wayto['23282'].call";
+        let out = ";e $mapdb_confluence_target = 'tranquility'; Room[23282].wayto['23282'].call";
+        assert_eq!(
+            crossing(inside, 23282, 23290),
+            Some(Crossing::Routine(Routine::Confluence { leave: false }))
+        );
+        assert_eq!(
+            crossing(out, 23282, 188),
+            Some(Crossing::Routine(Routine::Confluence { leave: true }))
+        );
+        assert_eq!(
+            crossing(inside, 23282, 23291),
+            None,
+            "a goal that is not this exit"
+        );
+    }
+
+    #[test]
+    fn the_minotaur_maze_is_a_routine_only_with_upstreams_exact_search() {
+        let search = include_str!("upstream_scripts/minotaur_maze.rb");
+        let script = format!(";e target_room_id = 6192; maze_rooms = [6191, 6254, 6192]; {search}");
+        assert_eq!(
+            crossing(&script, 6191, 6192),
+            Some(Crossing::Routine(Routine::MinotaurMaze {
+                rooms: vec![RoomId(6191), RoomId(6254), RoomId(6192)]
+            }))
+        );
+        assert_eq!(
+            crossing(&script, 6191, 6254),
+            None,
+            "the goal is not this exit"
+        );
+        let edited = script.replace("sleep 0.1", "sleep 0.2");
+        assert_eq!(
+            crossing(&edited, 6191, 6192),
+            None,
+            "upstream changed the search"
+        );
     }
 }

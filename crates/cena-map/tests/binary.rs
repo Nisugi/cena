@@ -140,6 +140,31 @@ fn ported_steps_round_trip_and_a_step_this_build_does_not_know_is_impassable() {
     assert!(!exit.is_routable());
 }
 
+/// A routine is a name and its arguments; one this build has never heard of is
+/// an exit it cannot cross, and nothing worse.
+#[test]
+fn a_routine_round_trips_and_an_unheard_of_one_is_impassable() {
+    let rooms: Vec<Room> = serde_json::from_str(
+        r#"[{"id":1,"exits":[
+             {"to":1,"kind":"scripted","cost":0.2,
+              "routine":{"name":"minotaur_maze","rooms":[6191,6254,6192]}},
+             {"to":1,"kind":"scripted","cost":0.2,"routine":{"name":"confluence","leave":true}}]}]"#,
+    )
+    .unwrap();
+    let map = Map::from_rooms(rooms).unwrap();
+    let file = encode(&map).unwrap();
+    assert_eq!(decode(&file).unwrap(), map);
+
+    let at = file.windows(10).position(|w| w == b"confluence").unwrap();
+    let mut newer = file.clone();
+    newer[at..at + 10].copy_from_slice(b"wormhole__");
+    let loaded = decode(&newer).unwrap();
+    let exits = &loaded.room(RoomId(1)).unwrap().exits;
+    assert!(exits[0].is_routable(), "the maze beside it is untouched");
+    assert_eq!(exits[1].crossing, Crossing::Unknown("routine".into()));
+    assert!(!exits[1].is_routable());
+}
+
 /// A gated cost and a pass-through crossing survive the file, and a condition
 /// from the future costs one exit its price, not the map.
 #[test]

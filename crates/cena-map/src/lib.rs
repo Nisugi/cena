@@ -23,6 +23,7 @@ pub mod locate;
 pub mod map;
 pub mod room;
 pub mod route;
+pub mod routine;
 pub mod step;
 
 pub use cond::{Cond, Walker};
@@ -31,4 +32,5 @@ pub use locate::{By, Located, Origin, Sighting, title_from_subtitle};
 pub use map::{DuplicateRoom, Map};
 pub use room::{Image, Room, RoomId, Uid};
 pub use route::{Routes, Target, as_converted, priced_for};
+pub use routine::Routine;
 pub use step::{Action, Step};

@@ -1078,6 +1078,27 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    already reached and the portmasters' *crossings* are still unported. That figure is
    where the next ports will show.
 
+   **Fourth batch, 2026-09-20: the first routines.** `cena_map::routine::Routine` — a name
+   and its arguments, typed; the algorithm is the Travel behavior's. Vellum's native ports
+   were read first (`confluence.rs`, `minotaur.rs`) and they fix what the arguments are:
+   - **`Confluence { leave }`**, 3,233 exits, all `$mapdb_confluence_target = T; Room[23282]
+     .wayto['23282'].call`. MEASURED: T is the exit's own destination on 2,756 and the word
+     `tranquility` on 477 — so the goal is never an argument, only whether the walk leaves
+     the plane. Vellum hardcodes the zone's 53 rooms and never implemented the pit crossing
+     between the hot and cold halves (`ConfluenceMove::CrossPit` is a dead arm).
+   - **`MinotaurMaze { rooms }`**, 497 exits. The 1.2 KB search after the two arguments is
+     **byte-identical on all 497**, so it is kept verbatim in
+     `upstream_scripts/minotaur_maze.rb` and matched exactly: an upstream edit to the search
+     un-ports all 497 at once, which is the right alarm. Two Vellum decisions to keep: no
+     learning carried between trips (upstream's `$minotaur_maze_dirs` is a process global,
+     and stale learning in a maze that re-scrambles is worse than none), and
+     least-recently-visited instead of `rand` when nothing is known — deterministic, so a
+     replay walks the same way.
+
+   **Unported crossings 6,507 → 2,777.** Reachability did not move (10,118 / 10,123): what
+   is left between a town and these areas is still unported, so the next ports are chosen
+   by `chokepoints.py`, not by size.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

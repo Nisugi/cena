@@ -57,7 +57,13 @@ impl Report {
         for (to, command) in &upstream.wayto {
             // The table is the worklist, so a script an arm already knows is
             // not on it.
-            if is_script(command) && crate::recognise::crossing(command, upstream.id).is_none() {
+            if is_script(command)
+                && to
+                    .parse()
+                    .ok()
+                    .and_then(|to| crate::recognise::crossing(command, upstream.id, to))
+                    .is_none()
+            {
                 note(&mut self.crossing_shapes, command, upstream.id, to);
             }
         }
@@ -90,7 +96,9 @@ impl Report {
             }
             match exit.crossing {
                 Crossing::Unported(_) => self.unported_crossings += 1,
-                Crossing::Steps(_) | Crossing::PassThrough(_) => self.ported_crossings += 1,
+                Crossing::Steps(_) | Crossing::Routine(_) | Crossing::PassThrough(_) => {
+                    self.ported_crossings += 1;
+                }
                 Crossing::Command(_) | Crossing::Unknown(_) => {}
             }
             match exit.cost {

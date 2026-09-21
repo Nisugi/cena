@@ -84,6 +84,10 @@ fn write_exit(w: &mut Writer, exit: &Exit) -> Result<(), EncodeError> {
             let json = serde_json::to_vec(steps).map_err(|_| EncodeError)?;
             w.named(Crossing::STEPS, &json)?;
         }
+        Crossing::Routine(routine) => {
+            let json = serde_json::to_vec(routine).map_err(|_| EncodeError)?;
+            w.named(Crossing::ROUTINE, &json)?;
+        }
         Crossing::PassThrough(_) => w.named(Crossing::PASS, &[])?,
         Crossing::Unknown(_) => return Err(EncodeError),
     }

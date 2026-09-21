@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cond::{Cond, Walker};
 use crate::room::RoomId;
+use crate::routine::Routine;
 use crate::step::Step;
 
 /// The stable hash of a scripted edge's *shape*: its upstream Ruby with string
@@ -32,6 +33,10 @@ pub enum Crossing {
     /// (`crate::step`).
     #[serde(rename = "steps")]
     Steps(Vec<Step>),
+    /// Scripted upstream as a search, and ported as a named routine
+    /// (`crate::routine`).
+    #[serde(rename = "routine")]
+    Routine(Routine),
     /// Nothing is sent and nothing is awaited: the destination is a room that
     /// exists only in the map (an urchin hub), and the walker crosses
     /// `A -> hub -> B` as one hop, sending the hub's command from A
@@ -57,6 +62,8 @@ pub enum Crossing {
 pub struct Pass;
 
 impl Crossing {
+    /// Wire name of [`Crossing::Routine`].
+    pub const ROUTINE: &'static str = "routine";
     /// Wire name of [`Crossing::PassThrough`].
     pub const PASS: &'static str = "pass";
     /// Wire name of [`Crossing::Command`].
@@ -71,7 +78,10 @@ impl Crossing {
     pub fn is_crossable(&self) -> bool {
         matches!(
             self,
-            Crossing::Command(_) | Crossing::Steps(_) | Crossing::PassThrough(_)
+            Crossing::Command(_)
+                | Crossing::Steps(_)
+                | Crossing::Routine(_)
+                | Crossing::PassThrough(_)
         )
     }
 }
