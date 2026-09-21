@@ -261,6 +261,27 @@ An earlier draft of this note described the `<d>` and the `<a>` as two different
 targets. They are not, and the distinction matters for what `links` means to a
 consumer: it is not "the outer thing" but "what a click does".
 
+**`cmd` -> `exist` is the only nesting the wire uses.** The obvious worry about
+the fix is the mirror case -- a `<d cmd=>` inside an `<a exist=>` would lose the
+command the same way. MEASURED by walking a tag stack over every `<a>`/`<d>` in
+all 208 files:
+
+```text
+       outer -> inner        count
+         cmd -> exist          322
+```
+
+That is the whole table, at any depth. So one `Option` is enough and the mirror
+case is pinned by a test rather than designed for.
+
+**How NOT to measure this.** Two `grep -P` passes with `(?:(?!</a>).)*?`
+lookaheads returned **0** for *both* directions, including the one that occurs
+322 times -- the regex was failing, not the data. A zero from it would have read
+as "this shape does not occur", which is the same false-negative hazard
+`CLAUDE.md` records for the `styleIfClosed` citation: a query that resolves to
+nothing does not fail loudly, it manufactures evidence of absence. The count
+above comes from a tag-stack walk, which cannot fail that way.
+
 MEASURED in `E:/Gemstone/dev/lich-5/logs` (208 live XML files): **322 nested
 `<d>...<a exist>` occurrences across 62 files.** Not an edge case. Zero occur in
 the 12 committed fixtures, which is why the golden corpus did not catch it.

@@ -461,3 +461,38 @@ fn an_unnested_object_is_not_duplicated() {
     assert!(text.inner_link.is_none(), "nothing is nested");
     assert!(text.object().is_some(), "and the object still reads");
 }
+
+#[test]
+fn a_command_nested_inside_an_object_keeps_both_facts_too() {
+    // **The mirror of the case above, which the corpus does NOT contain.**
+    //
+    // MEASURED by walking a tag stack over every `<a>`/`<d>` in all 208 live
+    // Lich XML logs: the only nesting the wire uses is `cmd` -> `exist`, 322
+    // times. No `exist` inside `cmd`, no `<a>` in `<a>`, no `<d>` in `<d>`.
+    //
+    // So this test is not evidence about the wire. It pins that the RESOLVER
+    // does not depend on the order -- `object()` answers the object and
+    // `link` answers the click whichever way round they nest -- so if the
+    // game ever does send this, the failure is a missing measurement rather
+    // than a silently dropped fact.
+    let mut parser = Parser::new();
+    let frames = parser.parse_line(concat!(
+        r#"<a exist="123" noun="katar">a katar "#,
+        r#"<d cmd="store WEAPON clear">(clear)</d></a>"#,
+    ));
+
+    let object = frames
+        .iter()
+        .find_map(|f| match f {
+            Frame::Text(t) => t.object(),
+            _ => None,
+        })
+        .expect("the object is found whichever way the nesting runs");
+    assert_eq!(
+        object.kind,
+        cena_protocol::frame::LinkKind::Exist {
+            id: "123".to_owned(),
+            noun: "katar".to_owned(),
+        },
+    );
+}

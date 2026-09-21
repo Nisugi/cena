@@ -114,6 +114,31 @@ pub struct Run {
     /// `<d>...<a exist>` occurrences across 62 files**, so this is a shape the
     /// wire uses routinely, not an edge case.
     ///
+    /// # It is the only nesting the wire uses
+    ///
+    /// The obvious worry about this field is the mirror case: a `<d cmd=>`
+    /// nested inside an `<a exist=>` would put the COMMAND somewhere nothing
+    /// looks for it, the same loss in the other direction. MEASURED by
+    /// walking a tag stack over every `<a>`/`<d>` in all 208 files:
+    ///
+    /// ```text
+    ///        outer -> inner        count
+    ///          cmd -> exist          322
+    /// ```
+    ///
+    /// That is the whole table. No `exist` inside `cmd`, no `<a>` in `<a>`,
+    /// no `<d>` in `<d>`, nothing else at any depth. So one `Option` is
+    /// enough, and a second nesting shape appearing later is a thing to
+    /// measure again rather than to design for now (Rule -1: no abstraction
+    /// without a second case).
+    ///
+    /// **A caution about how this was measured.** Two `grep -P` passes with
+    /// `(?:(?!</a>).)*?` lookaheads returned **0** for both directions --
+    /// including the direction that occurs 322 times. The regex was failing,
+    /// not the data, and a zero from it would have read as "this shape does
+    /// not occur". The count above comes from a tag-stack walk
+    /// (`scratchpad/nest.py`), which cannot fail silently that way.
+    ///
     /// `None` when nothing is nested, and **also** when the outermost link is
     /// itself the `exist` -- the common case -- so a consumer reads
     /// [`Run::object`] rather than testing both.
