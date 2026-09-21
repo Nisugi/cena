@@ -33,4 +33,46 @@ pub enum Routine {
     /// The minotaur maze beneath the Landing: the same search over a fixed
     /// set of rooms. Leaving the set means the walker fell out and replans.
     MinotaurMaze { rooms: Vec<RoomId> },
+    /// Walk a fixed circuit until something appears, then go through it. The
+    /// Rift: its ways out -- a thread, a maw, a door, a mirror, a fissure --
+    /// drift from room to room, so the walker goes round until it sees one.
+    ///
+    /// The walk starts at the walker's place on the circuit: its room's
+    /// position in `starts` is the position in `dirs` to begin from, and
+    /// `dirs` then repeats. The two lists are not the same length upstream
+    /// and need not be. A walker whose room is not in `starts` is lost, and
+    /// replans. **Where the way out lands is not known in advance**, so this
+    /// routine always ends by finding out where it is and planning again.
+    Patrol {
+        /// `None` keeps a gap upstream left: positions matter.
+        starts: Vec<Option<RoomId>>,
+        dirs: Vec<String>,
+        /// What to look for among the room's objects. The first listed that is
+        /// present wins.
+        landmarks: Vec<Landmark>,
+        /// Commands sent once through: `stand`, after climbing a thread.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        after: Vec<String>,
+    },
+}
+
+/// One way out a [`Routine::Patrol`] looks for.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Landmark {
+    /// The object's noun: `thread`.
+    pub noun: String,
+    /// The command that goes through it: `climb thread`.
+    pub enter: String,
+    /// Some must be worked open first.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub open: Option<Opening>,
+}
+
+/// Work a landmark open: send `command` until the game says `until`, at most
+/// `tries` times, standing up again between tries if knocked down.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Opening {
+    pub command: String,
+    pub until: String,
+    pub tries: u32,
 }

@@ -1151,6 +1151,24 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
 
    Unported crossings **1,903** in 325 shapes; unported costs 739 in 48.
 
+   **Seventh batch, 2026-09-21: the Rift.** `Routine::Patrol { starts, dirs, landmarks,
+   after }` — walk a fixed circuit until a way out appears among the room's objects, then go
+   through it. **570 exits, five spellings of one script, one arm.** The two tables are
+   different lengths upstream and are kept as they are, `nil` gaps included, because
+   position is the meaning. A fissure must be worked open first (`Opening`: `push fissure`
+   until the game says it cannot open any farther, five tries). Upstream's `else; echo
+   'error…'` and its closing `$go2_restart = true` are what *Patrol* means — lost, or landed
+   somewhere unknown, so replan — and are not arguments. Vellum lowers this shape into
+   nested repeats of steps (`GuidedRoute`); here it is a routine, because §4.8 keeps loops
+   out of map data. **Unported crossings 1,903 → 1,333.**
+
+   **The long tail is being ported in parallel** (2026-09-21): the remaining shapes were cut
+   into four disjoint slices (`research/mapdb-inventory/tail/`, `slice_tail.py`), each with
+   its own empty arms file already wired in (`recognise/tail_{a,b,c,d}.rs`), and a written
+   brief (`tail/BRIEF.md`). The vocabulary is frozen for that work: a shape that needs a new
+   primitive is skipped and reported, never approximated. Every arm is read against the
+   upstream Ruby before it is merged.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

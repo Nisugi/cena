@@ -1,6 +1,6 @@
 //! The arms, one shape at a time.
 
-use cena_map::{Action, Cond, Cost, Crossing, RoomId, Routine};
+use cena_map::{Action, Cond, Cost, Crossing, Landmark, Opening, RoomId, Routine};
 
 use super::moves::{cast_clause, quoted_list};
 use super::{cost, crossing, holes, is_plain_argument};
@@ -305,4 +305,100 @@ fn an_inn_table_is_one_move_with_the_apostrophe_intact() {
         steps(script, 0),
         vec![Action::Move("go Cat's Paw table".into())]
     );
+}
+
+const ROUND: &str = "; move dirs[index]; index += 1; index = 0 if index >= dirs.length; end; ";
+const LOST: &str =
+    "else; echo 'error: mini-script expected a different room'; end; $go2_restart = true";
+
+fn rift(seen: &str, through: &str) -> String {
+    format!(
+        ";e start_room = [ 12095, nil, 12097 ]; dirs = [ 'southwest', 'west', 'east', 'north' ]; \
+         if index = start_room.index(Room.current.id); until {seen}{ROUND}{through}{LOST}"
+    )
+}
+
+/// A patrol's arguments: starts, dirs, landmarks, after.
+type Patrol = (Vec<Option<RoomId>>, Vec<String>, Vec<Landmark>, Vec<String>);
+
+fn patrol_of(script: &str) -> Option<Patrol> {
+    match crossing(script, 1, 2)? {
+        Crossing::Routine(Routine::Patrol {
+            starts,
+            dirs,
+            landmarks,
+            after,
+        }) => Some((starts, dirs, landmarks, after)),
+        _ => None,
+    }
+}
+
+/// The two tables need not be the same length, and a `nil` keeps its place.
+#[test]
+fn a_patrol_keeps_upstreams_tables_as_they_are() {
+    let script = rift(
+        "checkloot.include?('thread')",
+        "move 'climb thread'; waitrt?; fput 'stand'; ",
+    );
+    let (starts, dirs, landmarks, after) = patrol_of(&script).unwrap();
+    assert_eq!(starts, [Some(RoomId(12095)), None, Some(RoomId(12097))]);
+    assert_eq!(dirs, ["southwest", "west", "east", "north"]);
+    assert_eq!(
+        landmarks,
+        [Landmark {
+            noun: "thread".into(),
+            enter: "climb thread".into(),
+            open: None
+        }]
+    );
+    assert_eq!(after, ["stand"]);
+}
+
+#[test]
+fn a_patrol_may_look_for_either_of_two_ways_out() {
+    for end in ["end;; ", "end; "] {
+        let script = rift(
+            "checkloot.include?('door') or checkloot.include?('mirror')",
+            &format!(
+                "if checkloot.include?('door'); move 'go door'; \
+                 elsif checkloot.include?('mirror'); move 'go mirror'; {end}"
+            ),
+        );
+        let (_, _, landmarks, after) = patrol_of(&script).unwrap();
+        let ways: Vec<_> = landmarks
+            .iter()
+            .map(|way| (way.noun.as_str(), way.enter.as_str()))
+            .collect();
+        assert_eq!(ways, [("door", "go door"), ("mirror", "go mirror")]);
+        assert!(after.is_empty());
+    }
+    // The nouns looked for and the nouns entered must be the same two.
+    let crossed = rift(
+        "checkloot.include?('door') or checkloot.include?('mirror')",
+        "if checkloot.include?('door'); move 'go door'; \
+         elsif checkloot.include?('maw'); move 'go maw'; end; ",
+    );
+    assert_eq!(patrol_of(&crossed), None);
+}
+
+#[test]
+fn a_fissure_is_worked_open_first() {
+    let script = rift(
+        "checkloot.include?('fissure')",
+        "5.times { waitrt?; fput 'stand' unless standing?; waitrt?; result = dothistimeout \
+         'push fissure', 3, /^Grasping the distorted edges|^A wide fissure cannot be opened any \
+         farther\\.|^As you move to touch a sealed fissure|^What were you referring to\\?/; \
+         waitrt?; fput 'stand' unless standing?; waitrt?; break if result =~ /^A wide fissure \
+         cannot be opened any farther\\./ }; move 'go fissure'; ",
+    );
+    let (_, _, landmarks, _) = patrol_of(&script).unwrap();
+    assert_eq!(
+        landmarks[0].open,
+        Some(Opening {
+            command: "push fissure".into(),
+            until: "A wide fissure cannot be opened any farther.".into(),
+            tries: 5
+        })
+    );
+    assert_eq!(landmarks[0].enter, "go fissure");
 }
