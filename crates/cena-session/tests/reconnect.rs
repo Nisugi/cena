@@ -218,11 +218,11 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
     // burst re-declares all of it anyway -- including every `visible="n"` --
     // so keeping is both true and immediately corrected.
     assert_eq!(
-        end.state.left_hand.as_deref(),
+        end.state.left_hand.name(),
         Some("a brass lantern"),
         "nothing empties a logged-off character's hands"
     );
-    assert!(end.state.right_hand.is_some());
+    assert!(end.state.right_hand.is_known());
     assert!(
         end.state.room.id.is_some(),
         "a logged-off character does not walk anywhere"

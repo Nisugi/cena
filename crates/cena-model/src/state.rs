@@ -52,6 +52,7 @@ pub mod creatures;
 pub mod disk;
 pub mod gameobj;
 pub mod group;
+pub mod hands;
 mod idle;
 mod inventory;
 pub mod inventory_snapshot;
@@ -59,6 +60,7 @@ pub mod menu;
 mod nouns;
 pub mod objectives;
 mod reconnect;
+pub mod resolve;
 mod room;
 pub mod societies;
 pub mod streams;
@@ -104,10 +106,10 @@ pub struct GameState {
     pub room: Room,
     /// The last `<prompt>` text, e.g. `">"`.
     pub prompt: Option<String>,
-    /// `<left>` hand contents.
-    pub left_hand: Option<String>,
-    /// `<right>` hand contents.
-    pub right_hand: Option<String>,
+    /// `<left>` hand contents, with the `exist` id the wire sends.
+    pub left_hand: hands::Hand,
+    /// `<right>` hand contents, with the `exist` id the wire sends.
+    pub right_hand: hands::Hand,
     /// `<roundTime value=>`: the absolute epoch second the roundtime ends.
     ///
     /// **`Option`, not `0`.** `plan/12` §5.2: "`Unknown` is a first-class
@@ -372,8 +374,12 @@ impl GameState {
                 }
             }
             Frame::AppInfo { .. } => self.character.identify(frame),
-            Frame::LeftHand { item, .. } => self.left_hand = Some(item.clone()),
-            Frame::RightHand { item, .. } => self.right_hand = Some(item.clone()),
+            Frame::LeftHand { item, link } => {
+                self.left_hand = hands::Hand::read(item, link.as_ref());
+            }
+            Frame::RightHand { item, link } => {
+                self.right_hand = hands::Hand::read(item, link.as_ref());
+            }
             Frame::RoundTime { value } => self.roundtime_ends = Some(*value),
             // `plan/18` step 4, all four in `state/inventory.rs`.
             Frame::Container { .. }

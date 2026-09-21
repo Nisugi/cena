@@ -88,7 +88,7 @@ fn facts_the_burst_omits_return_to_unknown() {
         "exits were observed"
     );
     assert!(state.prompt.is_some(), "a prompt was observed");
-    assert!(state.left_hand.is_some() && state.right_hand.is_some());
+    assert!(state.left_hand.is_known() && state.right_hand.is_known());
     assert_eq!(state.roundtime_ends, Some(1_789_775_824));
     assert!(state.status.standing(), "IconSTANDING was reported y");
     assert!(
@@ -116,8 +116,8 @@ fn facts_the_burst_omits_return_to_unknown() {
         Some("7503251"),
         "a logged-off character does not walk anywhere"
     );
-    assert!(state.left_hand.is_some(), "nothing empties the hands");
-    assert!(state.right_hand.is_some());
+    assert!(state.left_hand.is_known(), "nothing empties the hands");
+    assert!(state.right_hand.is_known());
     assert!(
         state.status.is_known("standing"),
         "indicators do not change while out of the world"
@@ -510,10 +510,10 @@ fn the_login_burst_carries_the_hands() {
     }
 
     assert!(
-        state.left_hand.is_some(),
+        state.left_hand.is_known(),
         "the burst carries the left hand -- the old table said it did not"
     );
-    assert!(state.right_hand.is_some(), "and the right");
+    assert!(state.right_hand.is_known(), "and the right");
     assert!(
         state.status.is_known("standing"),
         "and all ten indicators, in one bulk declaration"

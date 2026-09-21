@@ -323,3 +323,63 @@ never sends. Corrected against `2026-09-01_10-04-51`, which also shows
 `valid?` (`stowlist.rb:45`, `readylist.rb:59`) is **deliberately not ported**: it
 re-checks held ids against `GameObj.inv`, which is cache coherence and belongs to
 whoever owns inventory, not to a record of what the game said.
+
+---
+
+### Step 6b: stash is two files wearing one name (2026-09-20)
+
+`plan/20`'s audit above budgeted stash as **"~24 inline"** patterns. That count
+is real and the word *inline* was the warning. MEASURED over `stash.rb`'s 642
+lines and 27 entry points: **45 send/wait/retry calls**, and **not one
+classifier**. Every regex in the file is either a terminator for an
+`issue_command` wait (`:28`, `:98`, `:165`) or a guard inside a retry loop
+(`:46`, `:55`, `:68`). There is no line the game sends that stash reads for a
+fact — it sends commands and watches for the reply to stop.
+
+Splitting by whether a function sends anything:
+
+| | Functions | Lines | Where it belongs |
+|---|---:|---:|---|
+| **Resolution** — "which item does this name mean?" | 13 | ~140 | `cena-model`, **built** |
+| **Manipulation** — get it, wear it, swap hands, retry | 12 | ~460 | `cena-behavior`, **M6** |
+
+The manipulation half needs the authority token and roundtime, and would put
+`fput` in a crate with no socket — which the crate graph forbids anyway. It is
+deferred to M6 rather than skipped, and this table is the record of what is
+outstanding.
+
+The resolution half is `state/resolve.rs`: `find_items` / `find_item` /
+`hand_holding`, ordered by `Specificity` then `Location`, which `stash.rb:309`
+records as *"the order the game itself resolves a bare noun in"*.
+
+**A Lich bug not ported.** `find_container` (`stash.rb:13`) interpolates the
+caller's string straight into a regex, so a bag named `pack (old)` raises
+`RegexpError`. Lich fixed exactly this for items — `name_matches?` (`:605`)
+escapes, and its comment says why — and never gave `find_container` the same
+treatment. Here matching is over words, so nothing is ever compiled.
+
+### Two more Rule 2.2a losses, both found by building on top
+
+Neither was in any plan; both were found because a consumer needed a fact and
+could not get it.
+
+**1. The hands dropped their `exist` id.** `<left>`/`<right>` carry
+`exist=`/`noun=` exactly as an object link does, `Frame::LeftHand` preserved
+them as a `link`, and `GameState::apply` matched `{ item, .. }` — keeping the
+display text and discarding the id. Found when `hand_holding(id)` could not be
+written. Fixed by `state/hands.rs`'s `Hand` enum, which also makes
+`Empty` (MEASURED: 2,806 `<right>Empty`, 2,048 `<left>Empty`) distinct from
+"the game has not said", per §5.2.
+
+**2. A nested link's own text was always empty.** The `inner_link` fix from
+step 6a surfaced the inner `<a exist=>`, but display text accumulated only onto
+`links.first_mut()` — the outermost — so the inner link carried an id with an
+empty `text`. `ready list` resolved to `ItemRef { id: "333", text: "" }`, and an
+id with no name is useless for the one case the field exists for: telling two
+katars apart.
+
+**How it was caught matters.** Not by the four tests written for the nesting
+fix — every one of those asserted the id and none asserted the text. It was a
+`guard:` assertion in an unrelated ordering test, added only because a previous
+draft of that test had conflated two rules. The guard-before-assert habit found
+a bug in code that had already shipped green.

@@ -496,3 +496,50 @@ fn a_command_nested_inside_an_object_keeps_both_facts_too() {
         },
     );
 }
+
+#[test]
+fn a_nested_object_carries_its_own_text_not_an_empty_string() {
+    // **The other half of the nesting fix, and it shipped broken first.**
+    //
+    // Surfacing the inner `<a exist=>` gave a consumer the id and noun, but
+    // its `text` was empty: display text accumulated only onto
+    // `links.first_mut()`, the outermost. Vellum does that
+    // (`src/parser/text.rs:97-106`) because only one link surfaces there.
+    //
+    // An id with no name is useless for the case this exists for. `ready
+    // list` resolved to `ItemRef { id: "333", text: "" }`, so a caller could
+    // not tell two katars apart -- which is the whole reason for reading the
+    // object rather than the command.
+    //
+    // Found by a GUARD assertion in an unrelated ordering test, not by the
+    // tests written for the nesting fix: every one of those checked the id
+    // and none checked the text.
+    let mut parser = Parser::new();
+    let frames = parser.parse_line(concat!(
+        r#"<d cmd="store WEAPON clear">a "#,
+        r#"<a exist="333" noun="katar">mithril katar</a></d>"#,
+    ));
+    let object = frames
+        .iter()
+        .find_map(|f| match f {
+            Frame::Text(t) => t.object(),
+            _ => None,
+        })
+        .expect("the object survives");
+    assert_eq!(
+        object.text, "mithril katar",
+        "the inner link's own text, not the whole run and not empty"
+    );
+
+    // The outermost still accumulates everything, so nothing that reads
+    // `link` changed.
+    let outer = frames
+        .iter()
+        .filter_map(|f| match f {
+            Frame::Text(t) => t.link.as_ref(),
+            _ => None,
+        })
+        .next_back()
+        .expect("the command link");
+    assert_eq!(outer.text, "a mithril katar", "the whole run, as before");
+}

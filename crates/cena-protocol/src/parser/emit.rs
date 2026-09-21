@@ -46,9 +46,17 @@ impl Parser {
     /// Wrap display text in the markup state currently open.
     pub(super) fn text_frame(&mut self, content: &str) -> Frame {
         let content = text::strip_control_chars(&text::decode_entities(content));
-        // Link text accumulates on the outermost open link, which is the one
-        // that surfaces -- Vellum's rule at src/parser/text.rs:97-106.
-        if let Some(link) = self.links.first_mut() {
+        // Text accumulates on EVERY open link, not only the outermost.
+        //
+        // Vellum accumulates onto one (`src/parser/text.rs:97-106`) because
+        // only one surfaces there. Here the innermost `<a exist=>` surfaces
+        // too, and giving it an empty `text` made it useless for exactly the
+        // case it exists for: `ready list`'s item resolved to an id with no
+        // name, so a caller could not tell two katars apart.
+        //
+        // The outermost still gets the whole run, so nothing that reads
+        // `link` changes.
+        for link in &mut self.links {
             link.text.push_str(&content);
         }
         Frame::Text(TextFrame {
@@ -168,7 +176,7 @@ impl Parser {
         }
         let content = text::strip_control_chars(&text::decode_entities(buffer));
         buffer.clear();
-        if let Some(link) = self.links.first_mut() {
+        for link in &mut self.links {
             link.text.push_str(&content);
         }
         runs.push(Run {
