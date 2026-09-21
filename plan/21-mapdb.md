@@ -1099,6 +1099,28 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    is left between a town and these areas is still unported, so the next ports are chosen
    by `chokepoints.py`, not by size.
 
+   **Fifth batch, 2026-09-21: the bridges.** `chokepoints.py` now reads the converter's
+   **output**, so it ranks only what is still unported — and it no longer counts a way back
+   gated on a memory as open. It had: that made Mist Harbor a hub between every town and
+   ranked the FWI trinket at +9,843 rooms, which is exactly what the author said the
+   trinket does *not* do (it returns you to the town you came from). Corrected, the top
+   bridge was the portmasters.
+   - **Portmasters**, 62 exits: ask, ask again, then `Action::Await` the landing line. A
+     step's patience is scaled from the exit's cost (1,200 s here).
+   - **Resolve, then a hard climb**, 26 exits on the roads to the Nations; and the **arctic
+     waters**, 16: cast Resolve and Water Walking if able, then `go` if Water Walking is up
+     and `swim` if not. That second question is asked *after* the cast, so the rule is now
+     written down: **a step's guard is asked when the step is reached**, not at planning.
+     Upstream names these spells by number (9704, 112); the map names them, checked against
+     `cena-model/data/spells.tsv`.
+
+   | | knowing nothing | with paid services on |
+   |---|---|---|
+   | rooms reachable from Wehnimer's | 10,118 | **16,859** (was 10,123) |
+
+   Unported crossings **2,666**. Next by rooms opened: the FWI trinket (a routine, §4.4),
+   inn tables (`Await` with a follow-up), the rogue guild password, hands.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

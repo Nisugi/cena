@@ -27,6 +27,9 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| plain_move(script))
         .or_else(|| put_then_move(script))
         .or_else(|| event_transport(script, from))
+        .or_else(|| portmaster(script))
+        .or_else(|| resolve_then_move(script))
+        .or_else(|| arctic_waters(script))
         .or_else(|| confluence(script, to))
         .or_else(|| minotaur_maze(script, to))
 }
@@ -89,6 +92,93 @@ fn minotaur_maze(script: &str, to: u32) -> Option<Crossing> {
         .ok()?;
     (!rooms.is_empty()).then_some(())?;
     Some(Crossing::Routine(Routine::MinotaurMaze { rooms }))
+}
+
+/// A portmaster's ship: ask, ask again to confirm, and wait out the voyage.
+fn portmaster(script: &str) -> Option<Crossing> {
+    const LANDED: &str = "A crew member escorts you off the ship.";
+    let [ask, again] = holes(
+        script,
+        &[";e multifput '", "','", &format!("';waitfor '{LANDED}'")],
+    )?[..] else {
+        return None;
+    };
+    (ask == again && is_plain_argument(ask) && ask.starts_with("ask portmaster about travel "))
+        .then_some(())?;
+    Some(Crossing::Steps(vec![
+        always(Action::Put(ask.to_owned())),
+        always(Action::Put(ask.to_owned())),
+        always(Action::Await(LANDED.to_owned())),
+    ]))
+}
+
+/// Upstream names spells by number here; the map names them, as the icy paths
+/// do. The numbers are checked against `cena-model/data/spells.tsv`.
+const RESOLVE: &str = "Sigil of Resolve"; // 9704
+const WATER_WALKING: &str = "Water Walking"; // 112
+
+/// Cast `spell` if the walker knows it, can pay for it, and has not got it up.
+fn cast_if_able(spell: &str) -> Step {
+    let named = || spell.to_owned();
+    Step {
+        action: Action::Cast(named()),
+        when: Some(Cond::All(vec![
+            Cond::SpellKnown(named()),
+            Cond::SpellAffordable(named()),
+            Cond::Not(Box::new(Cond::SpellActive(named()))),
+        ])),
+    }
+}
+
+/// `upstream's name for a spell, tested and cast` -- the text of one
+/// `if x = Spell[n] and x.known? and x.affordable? and not x.active?; x.cast; end`.
+fn cast_clause(variable: &str, number: u32) -> String {
+    format!(
+        "if {variable} = Spell[{number}] and {variable}.known? and {variable}.affordable? \
+         and not {variable}.active?; {variable}.cast; end; "
+    )
+}
+
+/// A hard climb: Resolve if able, then the move. 26 exits, on the roads to the
+/// Nations.
+fn resolve_then_move(script: &str) -> Option<Crossing> {
+    let before = format!(";e {}move '", cast_clause("resolve", 9704));
+    let [command] = holes(script, &[&before, "'; waitrt?"])?[..] else {
+        return None;
+    };
+    is_plain_argument(command).then_some(())?;
+    Some(Crossing::Steps(vec![
+        cast_if_able(RESOLVE),
+        always(Action::Move(command.to_owned())),
+    ]))
+}
+
+/// The arctic waters: Resolve and Water Walking if able, then walk across if
+/// Water Walking is up and swim if it is not -- a question asked *after* the
+/// cast, which is why a step's guard is asked when the step is reached.
+fn arctic_waters(script: &str) -> Option<Crossing> {
+    let before = format!(
+        ";e {}{}fput (Spell[112].active? ? 'go ",
+        cast_clause("resolve", 9704),
+        cast_clause("waterwalking", 112)
+    );
+    let [walk, swim] = holes(script, &[&before, "' : 'swim ", "')"])?[..] else {
+        return None;
+    };
+    (walk == swim && is_word(walk)).then_some(())?;
+    let walking = || Cond::SpellActive(WATER_WALKING.to_owned());
+    Some(Crossing::Steps(vec![
+        cast_if_able(RESOLVE),
+        cast_if_able(WATER_WALKING),
+        Step {
+            action: Action::Move(format!("go {walk}")),
+            when: Some(walking()),
+        },
+        Step {
+            action: Action::Move(format!("swim {swim}")),
+            when: Some(Cond::Not(Box::new(walking()))),
+        },
+    ]))
 }
 
 fn always(action: Action) -> Step {
@@ -607,5 +697,59 @@ mod tests {
             None,
             "upstream changed the search"
         );
+    }
+
+    #[test]
+    fn a_portmaster_asks_twice_and_waits_out_the_voyage() {
+        let script = ";e multifput 'ask portmaster about travel 4','ask portmaster about travel 4';\
+                      waitfor 'A crew member escorts you off the ship.'";
+        assert_eq!(
+            steps(script, 250),
+            vec![
+                Action::Put("ask portmaster about travel 4".into()),
+                Action::Put("ask portmaster about travel 4".into()),
+                Action::Await("A crew member escorts you off the ship.".into()),
+            ]
+        );
+        let mismatched = script.replacen("travel 4", "travel 5", 1);
+        assert_eq!(steps(&mismatched, 250), vec![], "two different asks");
+    }
+
+    #[test]
+    fn the_arctic_waters_walk_if_they_can_and_swim_if_they_cannot() {
+        let script = format!(
+            ";e {}{}fput (Spell[112].active? ? 'go north' : 'swim north')",
+            cast_clause("resolve", 9704),
+            cast_clause("waterwalking", 112)
+        );
+        let Some(Crossing::Steps(steps)) = crossing(&script, 1, 2) else {
+            panic!("not recognised");
+        };
+        let actions: Vec<_> = steps.iter().map(|step| step.action.clone()).collect();
+        assert_eq!(
+            actions,
+            vec![
+                Action::Cast("Sigil of Resolve".into()),
+                Action::Cast("Water Walking".into()),
+                Action::Move("go north".into()),
+                Action::Move("swim north".into()),
+            ]
+        );
+        // Exactly one of the two moves happens, whatever the walker can cast.
+        let up = cena_map::Walker {
+            active_spells: Some(["Water Walking".to_owned()].into()),
+            ..cena_map::Walker::default()
+        };
+        let down = cena_map::Walker {
+            active_spells: Some([].into()),
+            ..cena_map::Walker::default()
+        };
+        let moves = |walker| {
+            steps[2..]
+                .iter()
+                .filter(|step| step.when.as_ref().is_some_and(|when| when.holds(walker)))
+                .count()
+        };
+        assert_eq!((moves(&up), moves(&down)), (1, 1));
     }
 }

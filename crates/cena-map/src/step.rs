@@ -24,6 +24,10 @@ pub enum Action {
     /// answer it: `open door`, `pull lever`, the first `event transport` that
     /// only asks for confirmation.
     Put(String),
+    /// Wait for the game to say this, however long it takes: a ship's
+    /// `A crew member escorts you off the ship.` The exit's cost says how
+    /// long that usually is, and the walker's patience is scaled from it.
+    Await(String),
     /// Cast a spell or use a society power, by name, and wait for it to land.
     /// How -- `incant`, `sigil of …`, `symbol of …` -- is the walker's
     /// business; the map says what, not how.
@@ -39,6 +43,11 @@ pub enum Action {
 }
 
 /// An [`Action`], and the question that decides whether it happens.
+///
+/// **The question is asked when the step is reached, not when the walk is
+/// planned.** `cast Water Walking` followed by `go north` *when Water Walking is
+/// up* only means anything if the second question sees the first step's
+/// result.
 ///
 /// In JSON the action's tag sits beside `when`: `{"pause": 4200, "when": {…}}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
