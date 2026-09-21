@@ -34,6 +34,7 @@ pub use actor::{EndReason, Event, Session, SessionActor, Snapshot};
 // `CritTables` is this crate's own vocabulary, not a relay: `with_crit_tables`
 // takes one, and the binary that calls it has no edge to `cena-model`.
 pub use cena_model::crit::CritTables;
+pub use cena_model::movement::{self, MoveFeedback};
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::{GameState, Room, UnknownTag};
 pub use character_store::MAX_STALE;

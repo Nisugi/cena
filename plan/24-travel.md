@@ -63,6 +63,21 @@ never left the first room); cap every loop.
 *Tests: each reaction, from the lines Lich's `move` already matches (§5): they are the
 game's own text.*
 
+> **BUILT 2026-09-21.** The lines are named in `cena-model/src/movement.rs`: Lich's ladder,
+> 27 patterns, **in Lich's order** -- which decides ("appears to be closed, perhaps you
+> should try again later?" is a shut shop, not a door to open, and only the order says so).
+> Ruby's one lookahead is kept by hand. The remedies and budgets are Lich's too
+> (`travel/recovery.rs`: `MAX_REMEDIES` 3, `MAX_ROLLS` 20). Vellum's lessons are tests:
+> arrival beats a failure line that raced it (lines wait for the tick, so a room change is
+> always looked at first); what is sent again is what was *sent*; an orphan window after an
+> exit is given up; silence resends, and **bans only from the trip's first room**.
+> "You can't go there" is kept as `Trip::wrong_for_the_map()` -- the trip only goes round
+> it; whether the map changes is someone else's call.
+>
+> **Left for stage 3, and said so in the code:** `HandsFull` and the thread-climb's hands
+> (emptying and giving back is `plan/21` §4.5), and Sigil of Resolve for `TooInjured`.
+> Until then those exits are given up for the trip, not retried blind.
+
 ### Stage 3 — the step interpreter (pure)
 `Crossing::Steps`: guards asked **when the step is reached**, against a `Walker` refreshed
 from the model; the actions, in the order the converter's census says they are used
@@ -105,7 +120,9 @@ nothing) and is recorded in `cena-arch-tests/tests/layering.rs` when it is added
 - **Hostiles.** A Travel across rooms **ignores creatures**. A *hunt* moving to its next room
   hunts them -- which is the hunting behaviour's business, not the walker's. So the walker
   never stops for a creature, and a waylaid caravan just plans again.
-- **Memories go with the character** -- see §7 for the one open detail.
+- **Memories go with the character, in a file of their own** (author): 
+  `<instance>_<character>.travel.json`, beside the snapshot, holding memories and the travel
+  profile, so a snapshot rewrite can never clobber them.
 
 ## 6. The travel profile — audited against go2, 2026-09-21
 
@@ -131,13 +148,3 @@ Flags the map asks of the planner: `urchin_access`, `hidden`, `invisible`, `moun
 `day_pass:<towns>`. Memories: `duskruin_origin`, `talondown_origin`, `ebon_gate_origin`,
 `marksofthebeast_origin`, `fwi_return_room`, `silverwood_town`, `redforest_location`,
 `hinterwilds_location`, and the walker's own scratch note `key_was_worn`.
-
-## 7. Open — the author's
-
-- **Memories: in the character file, or beside it?** The character file
-  (`cena-session/src/character_store.rs`, `<instance>_<character>.json`) is a *snapshot of
-  what the game said* -- it is rewritten whole after a sync. Memories are different: they
-  are what *Hydra did* (entered Duskruin from the Landing), the game never re-teaches them,
-  and losing one strands the character at an event. Recommendation: **a second file beside
-  it**, `<instance>_<character>.travel.json`, holding memories and the travel profile, so a
-  snapshot rewrite can never clobber them. Same directory, same naming, same crate.
