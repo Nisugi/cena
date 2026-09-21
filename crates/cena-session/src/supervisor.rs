@@ -356,6 +356,10 @@ impl<C: Connector> SupervisedSession<C> {
             );
             // One allocation per connection keeps the supervisor future from
             // embedding the actor's large parser/model/select-loop storage.
+            // Basis: observation::actor_future_storage_justifies_heap_pinning
+            // measures the future against its boxed handle (9,520 vs 8 bytes
+            // on x86_64 Linux, Rust 1.96.1, test transport, 2026-09-21).
+            // This is storage evidence, not a runtime performance guarantee.
             // This remains the same task and ownership handoff, not a spawn.
             let end = Box::pin(actor.run()).await;
 

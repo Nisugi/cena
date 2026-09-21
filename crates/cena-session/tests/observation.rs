@@ -253,15 +253,31 @@ async fn unresponsive_and_dropped_owners_never_fabricate_a_terminal_snapshot() {
     let (source, _) = AnsweringSource::new(b"");
     let session = Session::new(source);
     let observer = session.observer();
+    let started = tokio::time::Instant::now();
     assert!(matches!(
         observer.subscribe().await,
         Err(ObserveError::Timeout)
     ));
+    assert_eq!(started.elapsed(), Duration::from_secs(5));
     drop(session);
     assert!(matches!(
         observer.subscribe().await,
         Err(ObserveError::Closed)
     ));
+}
+
+#[test]
+fn actor_future_storage_justifies_heap_pinning() {
+    let (source, _) = AnsweringSource::new(b"");
+    let actor = Session::new(source).into_actor();
+    let future = actor.run();
+    let inline_bytes = std::mem::size_of_val(&future);
+    let pinned = Box::pin(future);
+    let pinned_bytes = std::mem::size_of_val(&pinned);
+    eprintln!("actor future: inline={inline_bytes} bytes; boxed={pinned_bytes} bytes");
+    // Measure this target/layout, not a universal ABI size. The supervisor
+    // retains this handle across await instead of embedding the whole future.
+    assert!(inline_bytes > pinned_bytes);
 }
 
 #[tokio::test(start_paused = true)]

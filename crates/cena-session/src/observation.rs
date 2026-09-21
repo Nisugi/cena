@@ -34,18 +34,28 @@ pub struct RetryStatus {
 }
 
 /// Why a fresh observation could not be obtained.
+/// `Busy` and `Timeout` are retryable read failures, not proof the owner died.
+/// Retry with bounded backoff; never spin or substitute a stale snapshot.
+/// `Closed` is terminal for this observer: reacquire one from a new owner.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ObserveError {
-    /// The bounded observation inbox is full.
+    /// The bounded observation inbox is full; retry after yielding/backoff.
     Busy,
     /// The owner vanished without completing shutdown.
     Closed,
-    /// The owner did not answer within the five-second deadline.
+    /// The owner did not answer within the request budget; retry with backoff.
     Timeout,
 }
 
 type Subscription = (Snapshot, broadcast::Receiver<ObservedEvent>);
 type Request = oneshot::Sender<Subscription>;
+
+// A caller wait budget, not a measured game/network deadline or failure detector.
+// The owner answers in a synchronous select-loop arm (no game round trip), so
+// five seconds deliberately tolerates scheduling/load while bounding a hung
+// owner's effect on a viewer. Expiry abandons only this read; it cannot stop the
+// owner or prove death. The paused-clock unresponsive-owner test pins this policy.
+const SUBSCRIBE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Cloneable read-only access that survives consuming the session in `run`.
 /// It has no command sender and cannot mutate the character.
@@ -63,10 +73,11 @@ impl SessionObserver {
     /// Reports inbox saturation, an unresponsive owner, or an owner that
     /// disappeared without clean shutdown. After normal shutdown, returns
     /// the final `Closed` snapshot with an already closed event receiver.
+    /// `Busy` and `Timeout` may be retried with bounded backoff; `Closed` cannot.
     pub async fn subscribe(&self) -> Result<Subscription, ObserveError> {
         let (reply, answer) = oneshot::channel();
         match self.requests.try_send(reply) {
-            Ok(()) => match tokio::time::timeout(Duration::from_secs(5), answer).await {
+            Ok(()) => match tokio::time::timeout(SUBSCRIBE_TIMEOUT, answer).await {
                 Ok(Ok(subscription)) => Ok(subscription),
                 Ok(Err(_)) => self.closed_snapshot(),
                 Err(_) => Err(ObserveError::Timeout),
