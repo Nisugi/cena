@@ -56,7 +56,9 @@ fn traffic_stops_one_slot_short_and_a_release_fits_in_it() {
     // A bare channel at the real bound, and the handle over it. No actor: the
     // point is what the PRODUCER side does, and an actor would drain it.
     let (tx, _rx) = tokio::sync::mpsc::channel(32);
-    let handle = cena_session::SessionHandle::new(tx, cena_session::GenerationCell::first());
+    let (events, _) = tokio::sync::broadcast::channel(8);
+    let handle =
+        cena_session::SessionHandle::new(tx, cena_session::GenerationCell::first(), events);
 
     // Fill with ordinary traffic. `try_send_traffic_for_test` is the same gate
     // `send_and_await`, `send_now` and `claim` all go through.

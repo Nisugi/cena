@@ -174,6 +174,9 @@ pub struct SessionHandle {
     /// working afterwards; see [`GenerationCell`] for why that does not weaken
     /// `plan/12` §4.4's discard rule.
     generation: crate::lifecycle::GenerationCell,
+    /// Where [`Self::say`] publishes. The session's own event channel, which
+    /// lives as long as the session does, reconnects included.
+    events: tokio::sync::broadcast::Sender<crate::Event>,
 }
 
 impl SessionHandle {
@@ -182,8 +185,27 @@ impl SessionHandle {
     pub fn new(
         sender: tokio::sync::mpsc::Sender<Inbox>,
         generation: crate::lifecycle::GenerationCell,
+        events: tokio::sync::broadcast::Sender<crate::Event>,
     ) -> Self {
-        Self { sender, generation }
+        Self {
+            sender,
+            generation,
+            events,
+        }
+    }
+
+    /// Say something to the player (`crate::notice`).
+    ///
+    /// **Not a command, and not through the command inbox.** That channel is
+    /// bounded and is the game's: a behavior reporting why it stopped must
+    /// not be refused because the queue it was filling is full, and must not
+    /// take a slot a `release` needs. It is published straight to the event
+    /// stream every frontend already reads.
+    ///
+    /// It cannot fail in a way the caller could act on: with nobody
+    /// listening there is nobody to tell.
+    pub fn say(&self, notice: crate::notice::Notice) {
+        let _ = self.events.send(crate::Event::Notice(notice));
     }
 
     /// The generation this handle stamps **right now**.

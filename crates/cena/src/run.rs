@@ -408,6 +408,20 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
                 eprintln!("  -> [{tag}] {line}");
             }
             Ok(Event::StateChanged(state)) => eprintln!("  .. lifecycle: {state:?}"),
+            // Hydra's own voice (`cena_session::notice`). A terminal is
+            // already fixed-width, so a table and prose print the same way;
+            // the mark says which kind, since there is no colour to.
+            Ok(Event::Notice(notice)) => {
+                let mark = match notice.kind {
+                    cena_session::NoticeKind::Error => "!!",
+                    cena_session::NoticeKind::Warn => " !",
+                    cena_session::NoticeKind::Info => "::",
+                    cena_session::NoticeKind::Debug => "..",
+                };
+                for line in notice.lines() {
+                    eprintln!("  {mark} {line}");
+                }
+            }
             // The ladder, made visible. These used to go only to the session
             // log, so a run that retried three times looked like one that
             // retried instantly.

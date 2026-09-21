@@ -93,7 +93,7 @@ impl<S: ByteSource> Session<S> {
                 quitting: None,
                 write_broke_the_stream: false,
             },
-            handle: SessionHandle::new(tx, generation),
+            handle: SessionHandle::new(tx, generation, events.clone()),
             events,
             cancel,
         }

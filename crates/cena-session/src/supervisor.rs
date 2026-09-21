@@ -150,7 +150,7 @@ impl<C: Connector> SupervisedSession<C> {
         let (tx, rx) = mpsc::channel(COMMAND_CHANNEL_BOUND);
         let (events, _) = broadcast::channel(EVENT_CHANNEL_BOUND);
         let generation = GenerationCell::first();
-        let handle = SessionHandle::new(tx, generation.clone());
+        let handle = SessionHandle::new(tx, generation.clone(), events.clone());
         let session = Self {
             core: SessionCore {
                 id: crate::lifecycle::SessionId::FIRST,

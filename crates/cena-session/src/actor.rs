@@ -222,6 +222,10 @@ pub enum Event {
         /// Manual or behavior.
         origin: crate::command::Origin,
     },
+    /// Hydra said something to the player: a route table, why a trip
+    /// stopped, what is still stored (`crate::notice`). **Not from the
+    /// game**, which is why it is its own event and not a frame.
+    Notice(crate::notice::Notice),
     /// The session changed lifecycle state.
     StateChanged(State),
     /// A connection attempt failed, and another is coming after `delay`.
