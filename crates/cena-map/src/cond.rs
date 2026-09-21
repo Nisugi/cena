@@ -40,6 +40,18 @@ pub struct Walker {
     pub flags: HashMap<String, bool>,
     /// As the game spells it: `Bard`.
     pub profession: Option<String>,
+    /// As the game spells it: `Forest Gnome`. Asked about by a word of it.
+    pub race: Option<String>,
+    pub gender: Option<String>,
+    pub level: Option<u32>,
+    /// The town, as the game spells it: `Wehnimer's Landing`. `Some("")` is a
+    /// walker known to be a citizen of nowhere; `None` is not known.
+    pub citizenship: Option<String>,
+    /// `Order of Voln`. `Some("")` is known to belong to none.
+    pub society: Option<String>,
+    pub society_rank: Option<u32>,
+    /// `standing`, `sitting`, `kneeling`, `prone`.
+    pub posture: Option<String>,
     /// The month of the game's calendar day, 1-12. A fact passed in, never
     /// read from a clock here, so a replay plans the same route.
     pub month: Option<u32>,
@@ -82,6 +94,15 @@ pub enum Cond {
     /// The memory `.0` is exactly `.1`. See [`Walker::memories`].
     Remembered(String, String),
     Profession(String),
+    /// The walker's race **contains** this word: `Gnome` is true of a Forest
+    /// Gnome and a Burghal Gnome, as upstream's `=~ /Gnome/` is.
+    Race(String),
+    Gender(String),
+    LevelAtLeast(u32),
+    Citizenship(String),
+    Society(String),
+    SocietyRankAtLeast(u32),
+    Posture(String),
     Month(u32),
     EncumbranceOver(u32),
     /// Ranks in skill `.0` are below `.1`.
@@ -115,6 +136,13 @@ impl Cond {
             Cond::Flag(name) => walker.flags.get(name).copied(),
             Cond::Remembered(name, value) => walker.memories.get(name).map(|is| is == value),
             Cond::Profession(name) => walker.profession.as_ref().map(|is| is == name),
+            Cond::Race(word) => walker.race.as_ref().map(|is| is.contains(word.as_str())),
+            Cond::Gender(name) => walker.gender.as_ref().map(|is| is == name),
+            Cond::LevelAtLeast(level) => walker.level.map(|is| is >= *level),
+            Cond::Citizenship(town) => walker.citizenship.as_ref().map(|is| is == town),
+            Cond::Society(name) => walker.society.as_ref().map(|is| is == name),
+            Cond::SocietyRankAtLeast(rank) => walker.society_rank.map(|is| is >= *rank),
+            Cond::Posture(name) => walker.posture.as_ref().map(|is| is == name),
             Cond::Month(month) => walker.month.map(|is| is == *month),
             Cond::EncumbranceOver(percent) => walker.encumbrance.map(|is| is > *percent),
             Cond::SkillUnder(skill, ranks) => walker

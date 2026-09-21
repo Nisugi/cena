@@ -16,6 +16,7 @@
 use cena_map::{Action, Cost, Crossing, Pass, Step};
 
 mod costs;
+mod facts;
 mod moves;
 mod routines;
 mod tail_a;
@@ -51,6 +52,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| puts_then_move(script))
         .or_else(|| inn_table(script))
         .or_else(|| moves::pedal_boat(script))
+        .or_else(|| facts::crossing(script, from))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
         .or_else(|| arctic_waters(script))
@@ -64,8 +66,9 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
 
 /// The gate for an upstream cost script, if an arm knows it.
 #[must_use]
-pub fn cost(script: &str) -> Option<Cost> {
+pub fn cost(script: &str, climate: Option<&str>) -> Option<Cost> {
     profession(script)
+        .or_else(|| facts::cost(script, climate))
         .or_else(|| urchins(script))
         .or_else(|| only_when_travelling(script))
         .or_else(|| trinket_named(script))

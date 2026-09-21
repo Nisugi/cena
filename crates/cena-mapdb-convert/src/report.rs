@@ -76,7 +76,7 @@ impl Report {
             if let Some(UpstreamCost::Script(script)) = cost
                 && upstream.wayto.contains_key(to)
                 && is_script(script)
-                && crate::recognise::cost(script).is_none()
+                && crate::recognise::cost(script, upstream.climate.as_deref()).is_none()
             {
                 note(&mut self.cost_shapes, script, upstream.id, to);
             }

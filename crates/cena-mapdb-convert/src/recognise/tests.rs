@@ -72,7 +72,7 @@ fn an_event_transport_remembers_the_room_it_left() {
 }
 
 fn gate(script: &str) -> Option<(Cond, f64)> {
-    match cost(script) {
+    match cost(script, None) {
         Some(Cost::Gated {
             when,
             then,

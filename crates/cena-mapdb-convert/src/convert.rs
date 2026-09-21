@@ -86,8 +86,10 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
         let cost = match upstream.timeto.get(destination) {
             Some(Some(UpstreamCost::Seconds(seconds))) => Some(Cost::Fixed(*seconds)),
             Some(Some(UpstreamCost::Script(script))) if is_script(script) => Some(
-                crate::recognise::cost(script).unwrap_or_else(|| Cost::Unported {
-                    unported: shape_id(script),
+                crate::recognise::cost(script, upstream.climate.as_deref()).unwrap_or_else(|| {
+                    Cost::Unported {
+                        unported: shape_id(script),
+                    }
                 }),
             ),
             Some(Some(UpstreamCost::Script(other))) => {

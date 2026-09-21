@@ -1235,6 +1235,25 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    | `$SILVERWOOD_TOWN`, a memory upstream keeps in a global — proposed name `silverwood_town` | 12 |
    | puzzles that branch on what the game said | ~60 |
 
+   **Who the walker is (2026-09-21, author: "your recommendation is fine").**
+   `Walker` gains `race`, `gender`, `level`, `citizenship`, `society`, `society_rank` and
+   `posture`; `Cond` gains a question for each. `Race` asks for a *word* of the race, as
+   upstream's `=~ /Gnome/` does, so a Forest Gnome is a Gnome. Arms (`recognise/facts.rs`):
+   the lake's rowboats (row if seated — `KeepMoving` — swim `Otherwise`); low crawls (kneel
+   unless kneeling or short — `Otherwise`, so an unknown walker kneels, which always works);
+   citizens-only, race, gender, level and the Order of Voln's gates.
+   - **A room fact in a cost is settled by the converter.** `checksitting &&
+     Room.current.climate == 'freshwater'` (103 costs) asks about the *room*, which the
+     converter is holding: off fresh water the test is false and the cost is a constant; on
+     it, only the walker's half survives into the map. No room facts in `Cond`.
+   - Of the two boat costs, the one whose branches are both passable is `Otherwise` and
+     refuses nobody; the one that can refuse (`? nil : 0.2`) refuses an unknown walker too.
+   - **A requirement on the walker:** `Move` stands a walker up first. After a `kneel` step
+     it must not — a crossing that sets a posture keeps it for its own moves.
+
+   Unported crossings **583**, costs **544** (477 of them the instability table);
+   reachable 10,763 / **18,012**.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.
