@@ -35,12 +35,12 @@ const FORAGE_META: &str = "forage-sensed";
 /// An exit's cost, or the string upstream had there that is not a script.
 fn cost_of<'u>(
     upstream: Option<&'u Option<UpstreamCost>>,
-    climate: Option<&str>,
+    room: &crate::recognise::RoomFacts<'_>,
 ) -> Result<Option<Cost>, &'u str> {
     match upstream {
         Some(Some(UpstreamCost::Seconds(seconds))) => Ok(Some(Cost::Fixed(*seconds))),
         Some(Some(UpstreamCost::Script(script))) if is_script(script) => Ok(Some(
-            crate::recognise::cost(script, climate).unwrap_or_else(|| Cost::Unported {
+            crate::recognise::cost(script, room).unwrap_or_else(|| Cost::Unported {
                 unported: shape_id(script),
             }),
         )),
@@ -59,6 +59,46 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
     for field in upstream.unknown.keys() {
         problem(format!("unknown upstream field `{field}`"));
     }
+
+    // Exits first, while the room is still whole: their costs may ask about
+    // it (`RoomFacts`), and what follows takes it apart.
+    let facts = upstream.room_facts();
+    let mut exits = Vec::with_capacity(upstream.wayto.len());
+    for (destination, command) in &upstream.wayto {
+        let Ok(to) = destination.parse::<u32>() else {
+            problem(format!("wayto key `{destination}` is not a room id"));
+            continue;
+        };
+        let cost = match cost_of(upstream.timeto.get(destination), &facts) {
+            Ok(cost) => cost,
+            Err(other) => {
+                problem(format!(
+                    "timeto for {to} is a string but not a script: {other:?}"
+                ));
+                None
+            }
+        };
+        let (kind, crossing) = if is_script(command) {
+            let crossing = crate::recognise::crossing(command, id, to)
+                .unwrap_or_else(|| Crossing::Unported(shape_id(command)));
+            (ExitKind::Scripted, crossing)
+        } else {
+            (kind_of(command), Crossing::Command(command.clone()))
+        };
+        let cost = crate::recognise::priced_for_crossing(&crossing, cost);
+        exits.push(Exit {
+            to: RoomId(to),
+            kind,
+            crossing,
+            cost,
+        });
+    }
+    for destination in upstream.timeto.keys() {
+        if !upstream.wayto.contains_key(destination) {
+            problem(format!("timeto for `{destination}` has no matching wayto"));
+        }
+    }
+    exits.sort_by_key(|exit| exit.to);
 
     let (location, location_unknowable) = match upstream.location {
         Some(UpstreamLocation::Named(name)) => (Some(name), false),
@@ -93,46 +133,6 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
     };
 
     let (tags, meta) = split_tags(upstream.tags.unwrap_or_default());
-
-    let mut exits = Vec::with_capacity(upstream.wayto.len());
-    for (destination, command) in &upstream.wayto {
-        let Ok(to) = destination.parse::<u32>() else {
-            problem(format!("wayto key `{destination}` is not a room id"));
-            continue;
-        };
-        let cost = match cost_of(
-            upstream.timeto.get(destination),
-            upstream.climate.as_deref(),
-        ) {
-            Ok(cost) => cost,
-            Err(other) => {
-                problem(format!(
-                    "timeto for {to} is a string but not a script: {other:?}"
-                ));
-                None
-            }
-        };
-        let (kind, crossing) = if is_script(command) {
-            let crossing = crate::recognise::crossing(command, id, to)
-                .unwrap_or_else(|| Crossing::Unported(shape_id(command)));
-            (ExitKind::Scripted, crossing)
-        } else {
-            (kind_of(command), Crossing::Command(command.clone()))
-        };
-        let cost = crate::recognise::priced_for_crossing(&crossing, cost);
-        exits.push(Exit {
-            to: RoomId(to),
-            kind,
-            crossing,
-            cost,
-        });
-    }
-    for destination in upstream.timeto.keys() {
-        if !upstream.wayto.contains_key(destination) {
-            problem(format!("timeto for `{destination}` has no matching wayto"));
-        }
-    }
-    exits.sort_by_key(|exit| exit.to);
 
     let room = Room {
         id: RoomId(id),

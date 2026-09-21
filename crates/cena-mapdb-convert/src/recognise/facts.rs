@@ -4,6 +4,7 @@
 
 use cena_map::{Action, Cond, Cost, Crossing, Step};
 
+use super::RoomFacts;
 use super::costs::gated;
 use super::{always, holes, is_plain_argument, is_word, quoted};
 
@@ -34,8 +35,10 @@ pub(super) fn crossing(script: &str, from: u32) -> Option<Crossing> {
     rowboat(script, from).or_else(|| low_crawl(script))
 }
 
-pub(super) fn cost(script: &str, climate: Option<&str>) -> Option<Cost> {
-    in_a_boat(script, climate)
+pub(super) fn cost(script: &str, room: &RoomFacts<'_>) -> Option<Cost> {
+    in_a_boat(script, room.climate)
+        .or_else(|| only_from_here(script, room))
+        .or_else(|| with_the_key(script))
         .or_else(|| race_or_gender(script))
         .or_else(|| citizenship(script))
         .or_else(|| level(script))
@@ -164,6 +167,62 @@ fn in_a_boat(script: &str, climate: Option<&str>) -> Option<Cost> {
             otherwise: Some(seconds(seated)?),
         }
     })
+}
+
+/// The ways back out of the Hinterwilds and the Red Forest: open to the side
+/// the walker came in by, *and only in the right place*. 4 exits. The place
+/// is the room's, so it is tested here; were it ever false the script would
+/// never open, and the exit is left unported rather than priced shut.
+fn only_from_here(script: &str, room: &RoomFacts<'_>) -> Option<Cost> {
+    if let Some(found) = holes(
+        script,
+        &[
+            ";e UserVars.mapdb_hinterwilds_location == '",
+            "' and Map.current.location.to_s =~ /the Hinterwilds/ ? ",
+            " : nil;",
+        ],
+    ) {
+        let [end, then] = found[..] else {
+            return None;
+        };
+        (is_word(end) && room.location?.contains("the Hinterwilds")).then_some(())?;
+        let came_by = Cond::Remembered("hinterwilds_location".to_owned(), end.to_owned());
+        return gated(came_by, then);
+    }
+    let found = holes(
+        script,
+        &[
+            ";e if (checkroom.to_s =~ /^\\[Red Forest/) and (UserVars.mapdb_redforest_location \
+             == '",
+            "'); ",
+            "; else; nil; end",
+        ],
+    )?;
+    let [side, then] = found[..] else {
+        return None;
+    };
+    (is_word(side) && room.title?.starts_with("[Red Forest")).then_some(())?;
+    gated(
+        Cond::Remembered("redforest_location".to_owned(), side.to_owned()),
+        then,
+    )
+}
+
+/// A door that opens to whoever wears its key: 8 exits.
+fn with_the_key(script: &str) -> Option<Cost> {
+    let found = holes(
+        script,
+        &[
+            ";e key=GameObj.inv.find{|k| k.name=='",
+            "';};if !key.nil? then ",
+            " else nil end;",
+        ],
+    )?;
+    let [key, then] = found[..] else {
+        return None;
+    };
+    is_name(key).then_some(())?;
+    gated(Cond::Wearing(key.to_owned()), then)
 }
 
 fn race_or_gender(script: &str) -> Option<Cost> {
@@ -341,8 +400,17 @@ mod tests {
     fn a_boat_cost_depends_on_the_water_the_room_is_on() {
         let slower = ";e checksitting && Room.current.climate == 'freshwater' ? 10 : 0.2";
         let barred = ";e checksitting && Room.current.climate == 'freshwater' ? nil : 0.2";
-        assert_eq!(cost(slower, Some("temperate")), Some(Cost::Fixed(0.2)));
-        assert_eq!(cost(barred, None), Some(Cost::Fixed(0.2)));
+        assert_eq!(
+            cost(
+                slower,
+                &RoomFacts {
+                    climate: Some("temperate"),
+                    ..RoomFacts::default()
+                }
+            ),
+            Some(Cost::Fixed(0.2))
+        );
+        assert_eq!(cost(barred, &RoomFacts::default()), Some(Cost::Fixed(0.2)));
 
         let seated = Walker {
             posture: Some("sitting".into()),
@@ -353,7 +421,14 @@ mod tests {
             ..Walker::default()
         };
         let nobody = Walker::default();
-        let slower = cost(slower, Some("freshwater")).unwrap();
+        let slower = cost(
+            slower,
+            &RoomFacts {
+                climate: Some("freshwater"),
+                ..RoomFacts::default()
+            },
+        )
+        .unwrap();
         assert_eq!(slower.price(&seated), Some(10.0));
         assert_eq!(slower.price(&afoot), Some(0.2));
         assert_eq!(
@@ -361,7 +436,14 @@ mod tests {
             Some(0.2),
             "both pass, so nobody is refused"
         );
-        let barred = cost(barred, Some("freshwater")).unwrap();
+        let barred = cost(
+            barred,
+            &RoomFacts {
+                climate: Some("freshwater"),
+                ..RoomFacts::default()
+            },
+        )
+        .unwrap();
         assert_eq!(barred.price(&seated), None);
         assert_eq!(barred.price(&afoot), Some(0.2));
         assert_eq!(
@@ -373,7 +455,7 @@ mod tests {
 
     #[test]
     fn who_the_walker_is() {
-        let gate = |script| match cost(script, None) {
+        let gate = |script| match cost(script, &RoomFacts::default()) {
             Some(Cost::Gated {
                 when,
                 then,

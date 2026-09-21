@@ -57,6 +57,25 @@ pub enum UpstreamLocation {
     Flag(bool),
 }
 
+impl UpstreamRoom {
+    /// What this room's own cost scripts may ask about it.
+    #[must_use]
+    pub fn room_facts(&self) -> crate::recognise::RoomFacts<'_> {
+        crate::recognise::RoomFacts {
+            climate: self.climate.as_deref(),
+            title: self
+                .title
+                .as_ref()
+                .and_then(|titles| titles.first())
+                .map(String::as_str),
+            location: match &self.location {
+                Some(UpstreamLocation::Named(name)) => Some(name),
+                _ => None,
+            },
+        }
+    }
+}
+
 /// A `timeto` value.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]

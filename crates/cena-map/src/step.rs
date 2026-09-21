@@ -48,6 +48,40 @@ pub enum Action {
     AwaitArrival,
     /// [`Action::Await`], for any one of several lines.
     AwaitAny(Vec<String>),
+    /// Send a command that does not change rooms, again and again, until the
+    /// game answers with a line holding one of `until`: a search that finds
+    /// the path, a lever that finally gives. Three agents porting different
+    /// slices proposed this same step independently. `tries` is upstream's
+    /// bound where it has one; the walker bounds it regardless.
+    PutUntil {
+        command: String,
+        until: Vec<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tries: Option<u32>,
+    },
+    /// Several movement commands as **one** step. A guard is asked when its
+    /// step is reached, so `if there is a ne exit: northeast, then east`
+    /// cannot be two guarded moves -- the second would be asked in another
+    /// room. Here the question is asked once, before the first.
+    Moves(Vec<String>),
+    /// [`Action::KeepMoving`], taking turns through several commands:
+    /// `south`, `southwest`, `south`… until the room changes.
+    KeepMovingAny(Vec<String>),
+    /// Cast `.0` at `.1`, a thing in the room, **and be carried by it**: Phase
+    /// at an insignia. Waits for the mana, and casts again when armour
+    /// hinders it. It changes rooms.
+    CastAt(String, String),
+    /// Take this stance, remembering the one held, as [`Action::EmptyHands`]
+    /// remembers the hands. Nothing to send if it is held already.
+    Stance(String),
+    /// Go back to the stance [`Action::Stance`] replaced. Like the hands, the
+    /// walk restores it before it ends whether or not this step is reached.
+    RestoreStance,
+    /// Wait for whoever is following the walker to arrive -- group members
+    /// holding hands, a child or an official being escorted. Nothing, at once,
+    /// for a walker nobody follows. One step for both of upstream's waits:
+    /// who is following is the walker's knowledge, not the map's.
+    AwaitFollowers,
     /// Find out where the walker is and plan again from there. Always last.
     /// Upstream's `$go2_restart = true`, on crossings that may land somewhere
     /// other than the exit's destination (`plan/21` §4.3). Skipped when the
@@ -131,6 +165,9 @@ pub fn moves_whatever_is_known(steps: &[Step]) -> bool {
                 | Action::KeepMoving(_)
                 | Action::MoveUntilThere(_)
                 | Action::TryMove(_)
+                | Action::Moves(_)
+                | Action::KeepMovingAny(_)
+                | Action::CastAt(..)
                 | Action::MoveWhile(..)
                 | Action::MoveByAnyExitBut(_)
                 | Action::AwaitArrival

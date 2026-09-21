@@ -1315,6 +1315,35 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
 
    Unported crossings **284**; reachable **11,077** / **18,871**.
 
+   **Round two of the long tail, and what it proposed (2026-09-21).** Four more agents,
+   same brief with one change: where a shape needs vocabulary that does not exist, **propose,
+   do not skip** — everything is to be ported. Their proposals are kept in
+   `research/mapdb-inventory/tail/PROPOSALS.md`. Merged after review: 110 exits across
+   slices E–H. Three agents working apart proposed the same repeat-until-a-line step, and
+   two chose the same name for the Silverwood memory; the one that did not was reconciled
+   on merge (`silverwood_town`).
+
+   **An agent found a real gap in flat steps:** a guard is asked when its step is reached,
+   so `if there is a ne exit: northeast, then east` cannot be two guarded moves — the second
+   guard would be asked in another room. Hence **`Action::Moves`**, several moves as one
+   step under one guard. Flat steps survive; the gap was real.
+
+   Built from the proposals that needed no ruling (`recognise/proposed.rs`):
+   `PutUntil { command, until, tries }`, `CastAt(spell, target)` (Phase at a thing, and be
+   carried by it), `Stance` / `RestoreStance` (kept like the hands: the walk restores it
+   before it ends), `KeepMovingAny`, `Cond::Wearing`, and **`AwaitFollowers`** — one step for
+   both of upstream's waits, group members and an escorted child: *who* is following is the
+   walker's to know, not the map's. And **`RoomFacts`**: a cost that asks about the room it
+   is on (its title, its location, its climate) is settled by the converter, which is
+   holding the room — so the map's vocabulary asks only about the walker.
+
+   | | start of step 7 | now |
+   |---|---|---|
+   | unported crossings | 7,923 | **178** |
+   | unported costs | 1,860 | **25** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **11,354** |
+   | reachable with paid services on | — | **19,272** |
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

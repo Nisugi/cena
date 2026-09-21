@@ -3,7 +3,7 @@
 use cena_map::{Action, Cond, Cost, Crossing, Landmark, Opening, RoomId, Routine};
 
 use super::moves::{cast_clause, quoted_list};
-use super::{cost, crossing, holes, is_plain_argument};
+use super::{RoomFacts, cost, crossing, holes, is_plain_argument};
 
 #[test]
 fn holes_are_exact_at_both_ends() {
@@ -72,7 +72,7 @@ fn an_event_transport_remembers_the_room_it_left() {
 }
 
 fn gate(script: &str) -> Option<(Cond, f64)> {
-    match cost(script, None) {
+    match cost(script, &RoomFacts::default()) {
         Some(Cost::Gated {
             when,
             then,
@@ -517,7 +517,10 @@ fn a_guild_door_is_priced_only_when_the_profile_has_the_password() {
     )
     .unwrap();
     assert_eq!(door, Crossing::Routine(Routine::GuildPassword));
-    let rogues_only = cost(";e if Stats.prof == 'Rogue'; 1.6; else; nil; end", None);
+    let rogues_only = cost(
+        ";e if Stats.prof == 'Rogue'; 1.6; else; nil; end",
+        &RoomFacts::default(),
+    );
     let priced = super::priced_for_crossing(&door, rogues_only.clone()).unwrap();
     let rogue = |password: &str| cena_map::Walker {
         profession: Some("Rogue".into()),

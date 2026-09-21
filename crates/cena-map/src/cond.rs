@@ -63,6 +63,9 @@ pub struct Walker {
     pub society_rank: Option<u32>,
     /// `standing`, `sitting`, `kneeling`, `prone`.
     pub posture: Option<String>,
+    /// Full names of what the walker wears or carries loose -- the top level
+    /// of its inventory, not what is inside containers. `None` until listed.
+    pub worn: Option<HashSet<String>>,
     /// The obvious exits of the room the walker is in, as the game lists them
     /// short: `ne`, `nw`, `up`, `out`.
     pub exits: Option<Vec<String>>,
@@ -121,6 +124,9 @@ pub enum Cond {
     Society(String),
     SocietyRankAtLeast(u32),
     Posture(String),
+    /// The walker wears or carries loose a thing with exactly this name: a
+    /// key on a cord.
+    Wearing(String),
     /// The room the walker is in lists this obvious exit.
     Exit(String),
     /// The crossing has not moved the walker yet: what an earlier
@@ -170,6 +176,7 @@ impl Cond {
                 .as_ref()
                 .map(|exits| exits.iter().any(|is| is == exit)),
             Cond::StillHere => walker.still_here,
+            Cond::Wearing(name) => has(walker.worn.as_ref(), name),
             Cond::Posture(name) => walker.posture.as_ref().map(|is| is == name),
             Cond::Month(month) => walker.month.map(|is| is == *month),
             Cond::EncumbranceOver(percent) => walker.encumbrance.map(|is| is > *percent),

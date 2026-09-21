@@ -18,6 +18,7 @@ use cena_map::{Action, Cost, Crossing, Pass, Step};
 mod costs;
 mod facts;
 mod moves;
+mod proposed;
 mod reactions;
 mod routines;
 mod tail_a;
@@ -60,6 +61,7 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| moves::until_there(script, to))
         .or_else(|| facts::crossing(script, from))
         .or_else(|| reactions::crossing(script, from))
+        .or_else(|| proposed::crossing(script, from))
         .or_else(|| portmaster(script))
         .or_else(|| resolve_then_move(script))
         .or_else(|| arctic_waters(script))
@@ -79,12 +81,25 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
 
 pub use costs::priced_for_crossing;
 
+/// What a cost script may ask about **the room its exit leaves**.
+///
+/// A cost is only ever priced from that room, and the converter is holding
+/// it, so a test on the room is settled here and never reaches the map: the
+/// map's vocabulary asks about the walker, not about rooms.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RoomFacts<'a> {
+    pub climate: Option<&'a str>,
+    /// The room's first title, as upstream's `checkroom` reads it.
+    pub title: Option<&'a str>,
+    pub location: Option<&'a str>,
+}
+
 /// The gate for an upstream cost script, if an arm knows it.
 #[must_use]
-pub fn cost(script: &str, climate: Option<&str>) -> Option<Cost> {
+pub fn cost(script: &str, room: &RoomFacts<'_>) -> Option<Cost> {
     profession(script)
         .or_else(|| costs::instability(script))
-        .or_else(|| facts::cost(script, climate))
+        .or_else(|| facts::cost(script, room))
         .or_else(|| urchins(script))
         .or_else(|| only_when_travelling(script))
         .or_else(|| trinket_named(script))
