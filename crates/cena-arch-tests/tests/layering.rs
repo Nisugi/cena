@@ -137,6 +137,9 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
         &["cena-map", "cena-platform", "cena-session"],
     ),
     ("cena-ui", &["cena-model"]),
+    // M4 author decision D2: the embedded frontend projects native session
+    // observations through toolkit-free UI vocabulary. No frontend owns parsing.
+    ("cena-web", &["cena-session", "cena-ui"]),
     // AMENDED for Milestone 1 Step 2, the live run (author's call,
     // 2026-09-18). The row was `&["cena-behavior", "cena-session",
     // "cena-ui"]`.
@@ -162,7 +165,13 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // and the set equality below is what keeps that true.
     (
         "cena",
-        &["cena-behavior", "cena-platform", "cena-session", "cena-ui"],
+        &[
+            "cena-behavior",
+            "cena-platform",
+            "cena-session",
+            "cena-ui",
+            "cena-web",
+        ],
     ),
     ("cena-arch-tests", &[]),
 ];
@@ -263,7 +272,9 @@ fn crate_dependency_edges_match_the_plan() {
 /// cannot go stale by omission. Adding a dependency now means saying so here,
 /// which is the point -- Rule 1.3 is about what `cena-ui` may name, and a list
 /// of what it may name states that rule directly.
-const CENA_UI_MAY_DEPEND_ON: &[&str] = &["cena-model"];
+// M4 D2 explicitly permits serde for presentation DTOs. serde_json exercises
+// their actual wire representation in tests; neither dependency is a toolkit.
+const CENA_UI_MAY_DEPEND_ON: &[&str] = &["cena-model", "serde", "serde_json"];
 
 #[test]
 fn cena_ui_depends_on_no_ui_toolkit() {

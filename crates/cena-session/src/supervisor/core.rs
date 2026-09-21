@@ -24,12 +24,13 @@
 //! connection, and they are answered by `shutdown` before the actor returns.
 //! Carrying them forward would deliver a previous connection's answers.
 
-use crate::actor::Event;
+use crate::State;
 use crate::command::{Farewell, Inbox, Outcome, Sent};
 use crate::lifecycle::GenerationCell;
+use crate::observation::{EventPublisher, ObservationRequests};
 use cena_model::GameState;
 use cena_platform::{Recorder, SessionSink};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 /// The parts of a session that outlive any one connection.
@@ -48,7 +49,9 @@ pub struct SessionCore {
     /// command channel and **keeps the existing `server_rx`**
     /// (`reference/VellumFE/src/frontend/tui/runtime.rs:546-600`). Cena keeps
     /// both, because Cena's handle is durable where Vellum's is not.
-    pub(super) events: broadcast::Sender<Event>,
+    pub(super) events: EventPublisher,
+    pub(super) observations: ObservationRequests,
+    pub(super) lifecycle: State,
     /// Which session this is.
     ///
     /// The most durable thing here: a session keeps its id for its whole life,

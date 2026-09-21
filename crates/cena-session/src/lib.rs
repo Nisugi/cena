@@ -19,6 +19,16 @@
 //! deliberately not built, [`command`] for the typed [`Outcome`] and why
 //! `send_and_await` is one call, `cena_model::state` for what is known and how criteria
 //! 2 and 8 land in it, and [`actor`] for the select loop.
+//!
+//! # Choosing an observation API
+//!
+//! [`Session::subscribe`] and [`SupervisedSession::subscribe`] are legacy,
+//! pre-run subscriptions only. Their receiver carries unnumbered [`Event`]s:
+//! it cannot be fenced using [`Snapshot::cursor`]. Do not combine that receiver
+//! with snapshots from another subscription. For late attachment or lag recovery,
+//! obtain a [`SessionObserver`] before consuming the owner in `run`, then call
+//! [`SessionObserver::subscribe`] for a fresh snapshot and its matching numbered
+//! [`ObservedEvent`] stream. Observing does not confer command authority.
 
 pub mod actor;
 pub mod character_store;
@@ -28,6 +38,7 @@ pub mod dirty_groups;
 pub mod lifecycle;
 pub mod menu_store;
 pub mod notice;
+mod observation;
 pub mod player_log;
 pub mod queue;
 pub mod supervisor;
@@ -51,6 +62,7 @@ pub use command::{
 };
 pub use lifecycle::{Generation, GenerationCell, SessionId, State};
 pub use notice::{Body, Notice, NoticeKind};
+pub use observation::{ObserveError, ObservedEvent, RetryStatus, SessionObserver};
 pub use player_log::writer::PlayerWriter;
 pub use player_log::{LogLine, LogSink, PlayerLog};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};

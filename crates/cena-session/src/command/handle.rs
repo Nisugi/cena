@@ -263,6 +263,39 @@ impl SessionHandle {
             generation: self.generation.get(),
             matcher,
         };
+        self.submit_and_await(envelope, answer, deadline).await
+    }
+
+    /// Queue manual input for the connection the frontend actually observed.
+    /// The generation is checked by the actor before any command, including
+    /// a typed quit, can act. This uses the ordinary manual queue and never
+    /// claims or cancels behavior authority.
+    pub async fn send_manual_at(
+        &self,
+        generation: Generation,
+        line: &str,
+        deadline: std::time::Duration,
+    ) -> Outcome {
+        let (reply, answer) = oneshot::channel();
+        let envelope = Envelope {
+            // Browser input has no behavior command correlation id. The
+            // generation, not this diagnostic id, is the authority fence.
+            id: CommandId(0),
+            line: line.to_owned(),
+            origin: Origin::Manual,
+            reply,
+            generation,
+            matcher: crate::queue::any_frame,
+        };
+        self.submit_and_await(envelope, answer, deadline).await
+    }
+
+    async fn submit_and_await(
+        &self,
+        envelope: Envelope,
+        answer: oneshot::Receiver<Outcome>,
+        deadline: std::time::Duration,
+    ) -> Outcome {
         if !self.has_room_for_traffic() {
             // One slot short of full: refused so a `release` can still get
             // through. `Transient` is already "ask again", which is what a

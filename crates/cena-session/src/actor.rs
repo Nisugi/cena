@@ -84,18 +84,18 @@
 //! seam: `ingest` and `pump` use them on every turn, so they belong with the
 //! loop. When the author raised the default cap from 400 to 800 they returned.
 //!
-//! **The next split, named in advance and not yet needed:** [`SessionEnd`] and
-//! `SessionActor::supervised` to `actor/parts.rs` -- what a connection is
-//! handed and what it hands back -- leaving `run` and the select loop alone.
+//! Next split: [`SessionEnd`] and `SessionActor::supervised` to `actor/parts.rs`,
+//! leaving the loop here. Terminal resource handoff now lives in `ending`.
 
 use crate::command::Envelope;
 use crate::lifecycle::{Generation, State};
+use crate::observation::{EventPublisher, ObservationRequests};
 use crate::queue::CommandQueue;
 use cena_model::GameState;
 use cena_platform::{ByteSource, Recorder, SessionSink};
 use cena_protocol::Parser;
 use std::time::Duration;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 mod combat;
@@ -226,6 +226,7 @@ pub struct SessionEnd<S: ByteSource> {
     /// This session's log sink, handed back so the next generation writes to
     /// the same file rather than starting a new one.
     pub sink: Option<SessionSink>,
+    pub(crate) observations: ObservationRequests,
 }
 
 /// The task. One per session.
@@ -245,7 +246,8 @@ pub struct SessionActor<S: ByteSource> {
     /// command it was sent to modify (review SE-5).
     send_now_prompts_owed: usize,
     commands: mpsc::Receiver<crate::command::Inbox>,
-    events: broadcast::Sender<Event>,
+    events: EventPublisher,
+    observations: ObservationRequests,
     recorder: Recorder,
     /// Where this session's wire traffic is written, if anywhere.
     ///
@@ -361,7 +363,8 @@ impl<S: ByteSource> SessionActor<S> {
         source: S,
         state: GameState,
         commands: mpsc::Receiver<crate::command::Inbox>,
-        events: broadcast::Sender<Event>,
+        events: EventPublisher,
+        observations: ObservationRequests,
         recorder: Recorder,
         sink: Option<SessionSink>,
         combat: Option<crate::combat_recorder::worker::RecorderHandle>,
@@ -377,6 +380,7 @@ impl<S: ByteSource> SessionActor<S> {
             send_now_prompts_owed: 0,
             commands,
             events,
+            observations,
             recorder,
             sink,
             combat,
@@ -481,6 +485,12 @@ impl<S: ByteSource> SessionActor<S> {
                     None => senders_gone = true,
                 },
 
+                request = self.observations.requests.recv() => {
+                    if let Some(request) = request {
+                        self.events.answer(request, &self.state, self.lifecycle);
+                    }
+                }
+
                 read = tokio::time::timeout(READ_DEADLINE, self.source.read(&mut buf)) => {
                     match read {
                         // SPLIT IN MILESTONE 2, as this arm's M1 comment said
@@ -521,15 +531,7 @@ impl<S: ByteSource> SessionActor<S> {
             }
         }
         self.shutdown(reason).await;
-        SessionEnd {
-            recorder: self.recorder,
-            state: self.state,
-            lifecycle: self.lifecycle,
-            source: self.source,
-            reason,
-            commands: self.commands,
-            sink: self.sink,
-        }
+        self.into_end(reason)
     }
 
     /// Take everything already queued on the command channel, applying the

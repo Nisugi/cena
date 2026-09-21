@@ -52,57 +52,56 @@ jobs:
       # them out separately only because they gate merges.
       - run: cargo test --workspace
 
-      # plan/06 section 4 item 4 and plan/05 Rule 9.4 (:519-520) require an
-      # Android and iOS build check from the first commit, and plan/12:63 --
-      # the authoritative document -- lists it as Binding. It is NOT here, and
-      # that is a deviation the author must rule on, not a thing to discover
-      # later.
-      #
-      # Measured reason: native-tls, the one dependency Cena has already
-      # committed to (spike/eaccess-spike/Cargo.toml:8-11 -- eaccess negotiates
-      # TLS 1.2 static-RSA, which rustls refuses), fails
-      # `cargo check --target aarch64-linux-android` with "Could not find
-      # directory of OpenSSL installation", and still fails with the vendored
-      # workaround absent aarch64-linux-android-clang and perl. Meanwhile the
-      # realistic cena-platform dependency set cross-checks clean in ~10s over
-      # crates that contain nothing. So the job today is vacuous, and red for
-      # an accepted reason the moment transport lands. Neither state enforces
-      # anything (plan/05 Rule 0.5, :161-165).
-      #
-      # UPDATED 2026-09-19: the OpenSSL blocker has an answer, from VellumFE,
-      # which ships on Windows/macOS/Linux/Android/iOS on ONE TLS stack.
-      # `Cargo.toml:155-156` scopes the vendored build to where it is needed:
-      #
-      #   [target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
-      #   native-tls = { version = "0.2", features = ["vendored"] }
-      #
-      # so Windows keeps SChannel and macOS keeps Security.framework, and
-      # neither pays for it. Vellum's note adds that the vendored-build pain
-      # "was Windows-only" and Perl is "universal on Linux and present on CI
-      # runners" -- which is the opposite of what the paragraph above assumed.
-      #
-      # cena-platform now carries that target block (added with the web-login
-      # fallback, which needed an HTTP client on the same stack).
-      #
-      # WHAT IS AND IS NOT VERIFIED. Verified: Vellum ships this exact
-      # arrangement on all five platforms, and the target block is present here.
-      # NOT verified: that `cargo check --target aarch64-linux-android` now
-      # passes for cena-platform. `rustup target list --installed` on the
-      # author's machine has only x86_64-pc-windows-msvc, so it could not be
-      # run when this was written -- and an unrun check is exactly what
-      # plan/05 Rule 0.5 says enforces nothing.
-      #
-      # So: the stated BLOCKER is stale, the deviation from plan/12:63 stands,
-      # and the next person to touch this should run the two lines below rather
-      # than trust this comment.
-      #
-      # Proposed for the commit that creates cena-protocol's transport -- the
-      # first moment it can tell passing from failing:
-      #
-      #   - run: rustup target add aarch64-linux-android
-      #   - run: cargo check -p cena-platform -p cena-model --target aarch64-linux-android
-      #
-      # Note it excludes cena-protocol while TLS lives there, and omits iOS,
-      # which plan/12:63 also binds. If either exclusion is unacceptable then
-      # plan/12:63 is not implementable without NDK/perl/clang machinery, and
-      # the document should change rather than the check being faked.
+  # plan/12 section 1a binds platform through behavior on both mobile targets.
+  # Build libraries, including TLS and SQLite's native code; no device or game
+  # login is required. Frontend crates are outside that binding set.
+  # Vellum's android-check.yml / ios-check.yml supply the toolchain pattern.
+  # Local evidence and remaining verification: plan/m4-mobile-verification.md.
+  android-core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Add to the toolchain selected by rust-toolchain.toml, not merely to
+      # the action's installed stable default (which can be a newer version).
+      - run: rustup target add aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install cargo-ndk --version 4.1.2 --locked
+      - name: Build Android core
+        shell: bash
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME:?Runner Android NDK is required}"
+          test -d "$ANDROID_NDK_HOME/toolchains/llvm"
+          command -v perl
+          cargo ndk -t arm64-v8a build --locked --lib \
+            -p cena-platform -p cena-protocol -p cena-model \
+            -p cena-session -p cena-behavior
+
+  ios-core:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add aarch64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+      - name: Build iOS core
+        run: |
+          xcrun --sdk iphoneos --show-sdk-path
+          cargo build --locked --lib --target aarch64-apple-ios \
+            -p cena-platform -p cena-protocol -p cena-model \
+            -p cena-session -p cena-behavior
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned browser test tools
+        working-directory: crates/cena-web/browser-tests
+        run: |
+          npm install --no-save --package-lock=false playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Despana rendering and same-tab pairing regression
+        run: node crates/cena-web/browser-tests/smoke.mjs
