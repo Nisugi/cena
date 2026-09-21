@@ -137,6 +137,7 @@ impl GameState {
             arrivals,
             cooldowns,
             messages,
+            overwatch,
             prompt,
             left_hand,
             right_hand,
@@ -257,6 +258,17 @@ impl GameState {
         // clearing would lose the only copy of something already observed,
         // which is the opposite of what invalidation is for.
         let _ = messages;
+
+        // **The hidden-creature room is CLEARED**, with the cooldowns and for
+        // the same reason: it is a claim about NOW -- "something is hiding in
+        // room 7503251" -- and a creature does not wait there while we are
+        // logged off. `Room::forget_contents` above already drops the
+        // creatures we could see; this drops the one we could not.
+        //
+        // Lich reaches the same answer from the other side: `Overwatch.clear`
+        // exists precisely so the tracker can be reset when it may be stale
+        // (`overwatch.rb:24`).
+        overwatch.clear();
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,

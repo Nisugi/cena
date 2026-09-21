@@ -881,3 +881,66 @@ Adding `messages` took `state.rs` to **549 of 550**, which is the situation
 file to **470**. Rule 4.1: *move code down, do not raise the cap.*
 
 **`plan/20` is down to one item: overwatch.**
+
+---
+
+### Step 9: overwatch — and what it is actually for (2026-09-20)
+
+`plan/20` budgeted "~30 regexes". MEASURED: **29 named pattern constants, 39
+regex literals**, and inside them **53 `<pushBold/>` and 57 `<a exist=`
+occurrences** — every pattern re-tokenizes the same 80-character markup
+fragment because `GameObj` hands Lich neither the link nor the bold depth.
+Cena's parser produced both, so a rule here is the prose alone.
+
+**The purpose is the author's, and the source does not explain it:**
+
+> *"So you're in a room with a creature, that creature hides and it gets
+> removed from the room's creatures. […] Where overwatch comes in: when a
+> creature attacks from hiding, sometimes there's a bug in the game and that
+> creature doesn't get added to the room creatures. So overwatch watches for
+> their attack and forces them in, making sure they existed so our scripts
+> could attack."*
+
+So the module is **a workaround for a game bug**, not merely a hiding tracker.
+The reveal half putting the creature back on the roster *is* the feature.
+
+**Monsterbold is the creature test.** VERIFIED by running Lich's own
+`REVEALED_COMES_OUT` and `SILENT_LEAP_ATTACK` against the corpus: all **41**
+matching lines are players — negative ids, no bold — and **not one matches**.
+That narrowing is correct and is now stated rather than inherited.
+
+#### A real ordering bug, found by a test
+
+A creature hides, then a `<nav>` arrives before the next prompt. Hiding was
+classified at `close_chunk`, so it recorded the room walked **to**. Moved to
+`streams.rs`, where the line arrives and the room is still the one it happened
+in. Every other classifier is fine at `close_chunk` — none of them reads state
+a later frame in the same chunk can move.
+
+#### The inference I got wrong, twice
+
+The author's rule has **three** conditions: gone, **not dead**, and **not seen
+to leave**. I implemented two, and wrote a test asserting the two-condition
+version — which passed, because code and test shared the mistake:
+
+> *"but gone just means not in the room, doesn't mean hid. We have creature
+> arrival and leaving messaging though, which would get tagged somewhere along
+> the way and get pushed to the creature."*
+
+**The third condition needs a flee classifier that does not exist.**
+`creature_messages.tsv` already holds **1,067 `flee` and 991 `arrival`** lines,
+but nothing matches a line against them — `MessageKind::Flee` is in the
+bestiary and unread. **802 of the 1,067 carry `{direction}`/`{pronoun}`
+placeholders**, so matching them is a port of its own.
+
+So `vanished_not_dead` **records nothing**: a creature that walked out
+satisfies "not dead" exactly as one that hid does, and claiming it is hiding
+would have a behavior search an empty room. The hiding *prose* is acted on,
+because that signal is unambiguous.
+
+**NEW WORK, not scheduled here: the flee/arrival classifier.** It completes
+this inference and is wanted independently — a creature that fled is gone, and
+a hunting behavior should know without waiting for a room refresh.
+
+**`plan/20`'s list is complete.** Everything the author named is built or has a
+recorded reason for being deferred to M6.

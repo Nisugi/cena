@@ -212,6 +212,21 @@ impl Creatures {
         true
     }
 
+    /// Ids that were in the room and are not now.
+    ///
+    /// Valid only between a roster rebuild and the next one:
+    /// [`Self::clear_room`] moves the roster to `previous_roster`, so this is
+    /// the difference the last restatement made.
+    ///
+    /// **Says nothing about WHY** — dead, walked off, or hidden. The caller
+    /// decides, and `GameState::note_vanished` is the one that does.
+    pub fn departed(&self) -> impl Iterator<Item = i64> + '_ {
+        self.previous_roster
+            .iter()
+            .copied()
+            .filter(|id| !self.roster.contains(id))
+    }
+
     /// Empty the roster; the registry is untouched.
     pub fn clear_room(&mut self) {
         self.previous_roster = std::mem::take(&mut self.roster);

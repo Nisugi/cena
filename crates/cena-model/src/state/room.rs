@@ -450,6 +450,10 @@ impl super::GameState {
         if id == "room objs" {
             let now = self.game_time_now();
             self.creatures.apply_room_objs(&self.room.creatures, now);
+            // A creature that vanished without dying MIGHT have hidden --
+            // see `Overwatch::vanished_not_dead`, which deliberately records
+            // nothing because "gone" also covers "walked out", and the flee
+            // classifier that would rule that out is not built yet.
         }
     }
 

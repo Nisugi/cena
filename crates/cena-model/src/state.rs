@@ -64,6 +64,7 @@ pub mod menu;
 pub mod message;
 mod nouns;
 pub mod objectives;
+pub mod overwatch;
 mod reconnect;
 pub mod resolve;
 mod room;
@@ -146,6 +147,8 @@ pub struct GameState {
     pub cooldowns: cooldowns::Cooldowns,
     /// What has been said, and by whom.
     pub messages: message::Messages,
+    /// Where something was last seen hiding.
+    pub overwatch: overwatch::Overwatch,
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,

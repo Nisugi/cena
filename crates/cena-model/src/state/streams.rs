@@ -153,8 +153,26 @@ impl GameState {
                 // The runs themselves, not a rendering of them: the links are
                 // what a combat consumer reads, and this used to drop them
                 // (`chunks.rs`, CORRECTED 2026-09-20).
-                self.chunk
-                    .push_line(super::chunks::ChunkLine { runs: line.clone() });
+                let chunk_line = super::chunks::ChunkLine { runs: line.clone() };
+                // **Hiding is read HERE, not when the chunk closes**, because
+                // it records the room and the room can change first. A `<nav>`
+                // arrives on its own frame while the chunk stays open until
+                // the prompt, so a creature that hides and is then walked away
+                // from would be recorded in the room we walked TO -- found by
+                // a test that expected the departure room and got the arrival
+                // one.
+                //
+                // Every other classifier is happy at close_chunk, because none
+                // of them reads state that a later frame in the same chunk can
+                // move.
+                if matches!(
+                    super::overwatch::classify(&chunk_line),
+                    Some(super::overwatch::Sighting::Hid)
+                ) {
+                    let room = self.room.id.clone();
+                    self.overwatch.hid_in(room);
+                }
+                self.chunk.push_line(chunk_line);
             }
             let buffer = self.streams.entry(text.stream.clone()).or_default();
             // **Bounded.** Found by review: every completed line was retained

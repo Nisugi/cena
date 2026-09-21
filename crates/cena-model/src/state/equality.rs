@@ -64,6 +64,7 @@ impl PartialEq for GameState {
             bank,
             cooldowns,
             messages,
+            overwatch,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -85,6 +86,7 @@ impl PartialEq for GameState {
             && bank == &other.bank
             && cooldowns == &other.cooldowns
             && messages == &other.messages
+            && overwatch == &other.overwatch
             // `arrivals` is NOT compared: it counts how many rooms this
             // session has entered, which is bookkeeping about the session
             // rather than a fact about the world. Two states that have been

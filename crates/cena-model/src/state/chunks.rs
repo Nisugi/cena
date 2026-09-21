@@ -262,6 +262,19 @@ impl super::GameState {
                 if let Some(message) = super::message::classify(line) {
                     self.messages.push(message);
                 }
+                // Creatures hiding and coming out again. A reveal puts the
+                // creature back on the roster, which is what makes it
+                // targetable -- `GameObj.new_npc` plus the target-id unshift
+                // in `overwatch.rb:111-120`.
+                // Only the REVEAL half here. Hiding is read in `streams.rs`
+                // at the moment the line arrives, because it records the room
+                // and a `<nav>` later in the same chunk would move it.
+                if let Some(super::overwatch::Sighting::Revealed { id, noun, name, .. }) =
+                    super::overwatch::classify(line)
+                    && let Ok(numeric) = id.parse::<i64>()
+                {
+                    self.creatures.register(numeric, &name, Some(&noun), at);
+                }
             }
             // `bank account` is a whole-chunk answer: its rows mean nothing
             // without the opener above them.
