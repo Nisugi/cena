@@ -60,6 +60,28 @@ pub enum Routine {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         hands_free_in: Vec<RoomId>,
     },
+    /// The Order of Voln's symbol of seeking: it offers a destination, a
+    /// different one each time, and the walker asks again until the one offered
+    /// is this exit's -- told by the room title the vision shows -- and then
+    /// confirms. Upstream gives up when the offers come round to the first
+    /// again, or after twenty.
+    Seeking {
+        /// Written down once the walker has arrived: which side of the Red
+        /// Forest it sought its way into (`plan/21` §4.4).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        remember: Option<(String, String)>,
+    },
+    /// The Mist Harbor trinket, named by the profile's `fwi_trinket`: get it
+    /// out if it is not worn, turn it, put it back. From a town it remembers
+    /// the room left as `fwi_return_room`; from Mist Harbor it returns there.
+    /// **Arrival in Mist Harbor is a random room, or one a GM has set**, so the
+    /// routine ends by finding out where it is and planning again.
+    Trinket,
+    /// A rogue guild's door: `lean door`, then each verb of the profile's
+    /// `rogue_password` on the door, then `go door`. An exit crossed this way
+    /// is priced impassable when the profile has no password, so the walker
+    /// is never sent to a door it cannot open.
+    GuildPassword,
     Patrol {
         /// `None` keeps a gap upstream left: positions matter.
         starts: Vec<Option<RoomId>>,

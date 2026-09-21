@@ -197,3 +197,64 @@ pub(super) fn signposts(script: &str, to: u32) -> Option<Crossing> {
         hands_free_in: rooms(hands)?,
     }))
 }
+
+/// The scripts whose whole text is kept beside this file. Each is one exit --
+/// a room to itself, or the first town -- that every other exit of its kind
+/// calls; if upstream edits one, this stops matching and the ratchet says so.
+const TRINKET: &str = include_str!("../upstream_scripts/fwi_trinket.rb");
+const PASSWORD: &str = ";e if UserVars.rogue_password.nil? or UserVars.rogue_password.empty?; \
+    echo 'No Rogue Guild password has been set.'; echo 'example:  ;vars set \
+    rogue_password=kick, slap, turn, scratch, kick, slap'; exit; end; fput 'lean door'; \
+    UserVars.rogue_password.split(/, */).each { |verb| fput \"#{verb} door\" }; fput 'go door'";
+
+/// Voln's symbol of seeking: 36 exits that name a destination and call the
+/// one script that seeks it. The destination is the exit's own.
+///
+/// That script also writes `redforest_location` when the destination is the
+/// Red Forest (24715), by which of two rooms the walker sought from; the
+/// converter knows the room, so the memory is settled here.
+pub(super) fn seeking(script: &str, from: u32, to: u32) -> Option<Crossing> {
+    const RED_FOREST: u32 = 24715;
+    let [destination] = holes(
+        script,
+        &[
+            ";e $mapdb_seeking_destination = ",
+            ";Map[3600].wayto['3600'].call;",
+        ],
+    )?[..] else {
+        return None;
+    };
+    (destination.parse() == Ok(to)).then_some(())?;
+    let side = match (to, from) {
+        (RED_FOREST, 3600) => Some("WL"),
+        (RED_FOREST, 10125) => Some("EN"),
+        _ => None,
+    };
+    Some(Crossing::Routine(Routine::Seeking {
+        remember: side.map(|side| ("redforest_location".to_owned(), side.to_owned())),
+    }))
+}
+
+/// The trinket (31 exits) and the rogue guild doors (9): the script itself,
+/// or a call to it.
+pub(super) fn called(script: &str) -> Option<Crossing> {
+    const CALLS: [(&str, Routine); 3] = [
+        (";e Map[7].wayto['3668'].call;", Routine::Trinket),
+        (";e Map[7].wayto['3668'].call", Routine::Trinket),
+        (
+            ";e Map[12421].wayto['14089'].call; # rogue guild proc",
+            Routine::GuildPassword,
+        ),
+    ];
+    let routine = if script == TRINKET {
+        Routine::Trinket
+    } else if script == PASSWORD {
+        Routine::GuildPassword
+    } else {
+        CALLS
+            .iter()
+            .find(|(call, _)| *call == script)
+            .map(|(_, routine)| routine.clone())?
+    };
+    Some(Crossing::Routine(routine))
+}

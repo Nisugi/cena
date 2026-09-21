@@ -1270,6 +1270,27 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    The model keeps the codes undecoded, so a table can be had for free later — every mapped
    room a character enters pairs a code with the mapdb's word for it.
 
+   **The reserved routines (2026-09-21).**
+   - **`Routine::Signposts`** — the underwater route off River's Rest, 75 exits: each room
+     says which way to go from it, until the walker is at the exit's destination. Lost
+     (a room not in the table) means replan; upstream swims at random.
+   - **`Action::MoveUntilThere`** — a command sent until the walker is *at the exit's
+     destination*, 68 exits: a forest whose way in lands somewhere different every time.
+     `KeepMoving` stops at the first change of room; this stops at the right one.
+   - **`Routine::Seeking`** — Voln's symbol, 36 exits. The destination is always the exit's
+     own, so it is not an argument. The upstream script also writes `redforest_location`
+     by which of two rooms the walker sought from; the converter knows the room, so that
+     is settled offline into `remember`.
+   - **`Routine::Trinket`** — 31 exits: the script itself (kept verbatim) or a call to it.
+   - **`Routine::GuildPassword`** — 9 rogue guild doors. **Upstream's script refuses a
+     walker with no password halfway through the crossing** (`echo …; exit`). A check that
+     can refuse belongs to planning, so `priced_for_crossing` moves it into the exit's cost:
+     the door is priced only when the profile has a password, and nobody is walked to a
+     door they cannot open.
+
+   Unported crossings **367**, costs **67**. Reachability did not move: every one of these
+   is behind a setting or a society the ratchet's two walkers do not have.
+
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
    adding once the urchin and portmaster gates are in.

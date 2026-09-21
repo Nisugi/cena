@@ -32,6 +32,23 @@ const META_PREFIX: &str = "meta:";
 /// go instead is `plan/21` §6.
 const FORAGE_META: &str = "forage-sensed";
 
+/// An exit's cost, or the string upstream had there that is not a script.
+fn cost_of<'u>(
+    upstream: Option<&'u Option<UpstreamCost>>,
+    climate: Option<&str>,
+) -> Result<Option<Cost>, &'u str> {
+    match upstream {
+        Some(Some(UpstreamCost::Seconds(seconds))) => Ok(Some(Cost::Fixed(*seconds))),
+        Some(Some(UpstreamCost::Script(script))) if is_script(script) => Ok(Some(
+            crate::recognise::cost(script, climate).unwrap_or_else(|| Cost::Unported {
+                unported: shape_id(script),
+            }),
+        )),
+        Some(Some(UpstreamCost::Script(other))) => Err(other),
+        Some(None) | None => Ok(None),
+    }
+}
+
 /// Convert one room.
 #[must_use]
 pub fn convert_room(upstream: UpstreamRoom) -> Converted {
@@ -83,22 +100,17 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
             problem(format!("wayto key `{destination}` is not a room id"));
             continue;
         };
-        let cost = match upstream.timeto.get(destination) {
-            Some(Some(UpstreamCost::Seconds(seconds))) => Some(Cost::Fixed(*seconds)),
-            Some(Some(UpstreamCost::Script(script))) if is_script(script) => Some(
-                crate::recognise::cost(script, upstream.climate.as_deref()).unwrap_or_else(|| {
-                    Cost::Unported {
-                        unported: shape_id(script),
-                    }
-                }),
-            ),
-            Some(Some(UpstreamCost::Script(other))) => {
+        let cost = match cost_of(
+            upstream.timeto.get(destination),
+            upstream.climate.as_deref(),
+        ) {
+            Ok(cost) => cost,
+            Err(other) => {
                 problem(format!(
                     "timeto for {to} is a string but not a script: {other:?}"
                 ));
                 None
             }
-            Some(None) | None => None,
         };
         let (kind, crossing) = if is_script(command) {
             let crossing = crate::recognise::crossing(command, id, to)
@@ -107,6 +119,7 @@ pub fn convert_room(upstream: UpstreamRoom) -> Converted {
         } else {
             (kind_of(command), Crossing::Command(command.clone()))
         };
+        let cost = crate::recognise::priced_for_crossing(&crossing, cost);
         exits.push(Exit {
             to: RoomId(to),
             kind,

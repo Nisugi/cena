@@ -1,6 +1,6 @@
 //! Arms for upstream cost scripts: who may use an exit, and at what price.
 
-use cena_map::{Cond, Cost};
+use cena_map::{Cond, Cost, Crossing, Routine};
 
 use super::{holes, is_word, quoted};
 
@@ -164,4 +164,35 @@ pub(super) fn setting_or_month(script: &str) -> Option<Cost> {
         .ok()
         .filter(|month| (1..=12).contains(month))?;
     gated(Cond::Month(month), seconds)
+}
+
+/// What a crossing needs of the walker that its own cost does not say.
+///
+/// Upstream's rogue guild script *refuses* a walker whose profile has no
+/// password -- `echo …; exit` -- halfway through the crossing. A check that
+/// can refuse is asked while planning (`cena_map::step`), so it moves into
+/// the cost: such an exit is priced only when the password is set.
+#[must_use]
+pub fn priced_for_crossing(crossing: &Crossing, cost: Option<Cost>) -> Option<Cost> {
+    if !matches!(crossing, Crossing::Routine(Routine::GuildPassword)) {
+        return cost;
+    }
+    let password = Cond::SettingIsSet("rogue_password".to_owned());
+    Some(match cost? {
+        Cost::Fixed(seconds) => Cost::Gated {
+            when: password,
+            then: seconds,
+            otherwise: None,
+        },
+        Cost::Gated {
+            when,
+            then,
+            otherwise: None,
+        } => Cost::Gated {
+            when: Cond::All(vec![password, when]),
+            then,
+            otherwise: None,
+        },
+        other => other,
+    })
 }

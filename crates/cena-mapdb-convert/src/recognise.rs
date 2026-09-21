@@ -33,7 +33,7 @@ use moves::{
     arctic_waters, event_transport, hands_free_move, icy_path, inn_table, move_and_forget,
     plain_move, portmaster, put_then_move, puts_then_move, resolve_then_move,
 };
-use routines::{confluence, minotaur_maze, patrol, signposts};
+use routines::{called, confluence, minotaur_maze, patrol, seeking, signposts};
 
 /// The steps for an upstream crossing script, if an arm knows it. `from` is
 /// the room the exit leaves and `to` the room it reaches, which some scripts
@@ -61,10 +61,14 @@ pub fn crossing(script: &str, from: u32, to: u32) -> Option<Crossing> {
         .or_else(|| minotaur_maze(script, to))
         .or_else(|| patrol(script))
         .or_else(|| signposts(script, to))
+        .or_else(|| seeking(script, from, to))
+        .or_else(|| called(script))
         .or_else(|| tail_a::crossing(script, from, to))
         .or_else(|| tail_b::crossing(script, from, to))
         .or_else(|| tail_c::crossing(script, from, to))
 }
+
+pub use costs::priced_for_crossing;
 
 /// The gate for an upstream cost script, if an arm knows it.
 #[must_use]

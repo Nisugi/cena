@@ -466,3 +466,70 @@ fn a_command_sent_until_the_walker_is_there_names_the_exits_own_room() {
         vec![Action::MoveUntilThere("swim north".into())]
     );
 }
+
+#[test]
+fn seeking_takes_the_exit_as_its_destination_and_knows_the_red_forests_sides() {
+    let script =
+        |to: u32| format!(";e $mapdb_seeking_destination = {to};Map[3600].wayto['3600'].call;");
+    assert_eq!(
+        crossing(&script(12603), 1983, 12603),
+        Some(Crossing::Routine(Routine::Seeking { remember: None }))
+    );
+    assert_eq!(crossing(&script(12603), 1983, 12604), None);
+    let side = |from| match crossing(&script(24715), from, 24715) {
+        Some(Crossing::Routine(Routine::Seeking { remember })) => remember,
+        _ => None,
+    };
+    assert_eq!(side(3600), Some(("redforest_location".into(), "WL".into())));
+    assert_eq!(
+        side(10125),
+        Some(("redforest_location".into(), "EN".into()))
+    );
+    assert_eq!(side(1), None);
+}
+
+#[test]
+fn the_trinket_is_the_script_or_a_call_to_it() {
+    let trinket = Some(Crossing::Routine(Routine::Trinket));
+    assert_eq!(
+        crossing(";e Map[7].wayto['3668'].call;", 284, 3668),
+        trinket
+    );
+    assert_eq!(
+        crossing(";e Map[7].wayto['3668'].call", 3669, 35593),
+        trinket
+    );
+    assert_eq!(
+        crossing(include_str!("../upstream_scripts/fwi_trinket.rb"), 7, 3668),
+        trinket
+    );
+    assert_eq!(crossing(";e Map[8].wayto['3668'].call;", 284, 3668), None);
+}
+
+/// Upstream's script refuses a walker with no password halfway through; here
+/// that is part of the price, so the walker is never sent to the door.
+#[test]
+fn a_guild_door_is_priced_only_when_the_profile_has_the_password() {
+    let door = crossing(
+        ";e Map[12421].wayto['14089'].call; # rogue guild proc",
+        15694,
+        17964,
+    )
+    .unwrap();
+    assert_eq!(door, Crossing::Routine(Routine::GuildPassword));
+    let rogues_only = cost(";e if Stats.prof == 'Rogue'; 1.6; else; nil; end", None);
+    let priced = super::priced_for_crossing(&door, rogues_only.clone()).unwrap();
+    let rogue = |password: &str| cena_map::Walker {
+        profession: Some("Rogue".into()),
+        settings: [("rogue_password".to_owned(), password.to_owned())].into(),
+        ..cena_map::Walker::default()
+    };
+    assert_eq!(priced.price(&rogue("kick, slap")), Some(1.6));
+    assert_eq!(priced.price(&rogue("")), None, "a rogue with no password");
+    // Any other crossing leaves its cost alone.
+    let plain = Crossing::Command("north".into());
+    assert_eq!(
+        super::priced_for_crossing(&plain, rogues_only.clone()),
+        rogues_only
+    );
+}
