@@ -43,7 +43,11 @@ pub struct Walker {
     /// Yes-or-no facts the planner works out, by name: `urchin_access` (the
     /// guides are paid for and have not expired -- a comparison against the
     /// clock, which this crate never reads), `hidden`, `invisible`,
-    /// `mounted`. A name that is absent is unknown.
+    /// `mounted`; `premium_account` (the account, which the urchins' premium
+    /// hall asks about); `hunting` (a hunting or wandering behaviour holds the
+    /// character, which some exits must not be wandered through); `platinum`
+    /// (the Platinum instance, where two shops swap doors). A name that is
+    /// absent is unknown.
     pub flags: HashMap<String, bool>,
     /// As the game spells it: `Bard`.
     pub profession: Option<String>,
