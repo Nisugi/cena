@@ -1337,12 +1337,22 @@ One guard, one pause, one move, four kinds of fact — and the `echo` is dropped
    is on (its title, its location, its climate) is settled by the converter, which is
    holding the room — so the map's vocabulary asks only about the walker.
 
+   **Looking at the room (2026-09-21, `recognise/looking.rs`).** 44 exits in 28 shapes
+   whose scripts decide by what the room looks like. Four questions -- `Sees(text)` (one
+   question for upstream's by-noun, by-name and by-pattern, since a name holds its noun),
+   `ExitsAre`, `ExitsOver`, `At(room)` -- and six steps: `MoveAnyWhile` and `WanderWhile`
+   (the mazes; **seeded**, §4.0), `PutWhile`, `WaitUntil`, `Round` and `RoundWhile` (a run
+   of commands with a `search` in the middle, which `Moves` could not say). One trap worth
+   recording: `if ne … elsif !e …` is asked once upstream, but a flat second guard is asked
+   *after the first answer's moves*. Those moves end at the destination, so the second
+   guard adds `not at(destination)`.
+
    | | start of step 7 | now |
    |---|---|---|
-   | unported crossings | 7,923 | **178** |
+   | unported crossings | 7,923 | **134** |
    | unported costs | 1,860 | **25** |
-   | reachable from Wehnimer's, knowing nothing | 6,969 | **11,354** |
-   | reachable with paid services on | — | **19,272** |
+   | reachable from Wehnimer's, knowing nothing | 6,969 | **11,505** |
+   | reachable with paid services on | — | **20,862** |
 
    `reachable` prices with `as_converted`, so it counts no gated exit at all — a Bard's map
    is larger than this number, and a second figure for a *described* walker is worth
