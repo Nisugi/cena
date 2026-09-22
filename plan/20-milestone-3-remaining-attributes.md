@@ -916,6 +916,16 @@ satisfies "not dead" exactly as one that hid does, and claiming it is hiding
 would have a behavior search an empty room. The hiding *prose* is acted on,
 because that signal is unambiguous.
 
+> **BUILT 2026-09-21, and the design changed on the author's word.** Reading
+> 1,067 flee templates was the wrong tool: *"the room would be giving a link
+> with the id"*. A departure is read off the markup -- the creature's `exist`
+> id and a bare `<d>` direction link, both in the line -- by
+> `state/departure.rs`, and `Creatures::vanished_unaccounted` is the
+> three-condition inference. `state/creature_message.rs` was built first and is
+> kept: it matches the bestiary's prose, which is what tells an ARRIVAL from a
+> departure, and a sweep asserts all 16,342 renderings of the table's templated
+> lines match themselves.
+
 **NEW WORK, not scheduled here: the flee/arrival classifier.** It completes
 this inference and is wanted independently — a creature that fled is gone, and
 a hunting behavior should know without waiting for a room refresh.

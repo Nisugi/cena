@@ -260,6 +260,10 @@ impl super::GameState {
                 if let Some(name) = super::maneuvers::cooldown_refusal(&text) {
                     self.maneuvers.note_cooling(name, at);
                 }
+                // A creature the feed showed leaving (`departure.rs`): the
+                // third condition of the author's hiding rule, read off the
+                // link and the `<d>` rather than matched against prose.
+                self.creatures.read_departure(line);
             }
             // Group events are prose with links, one per line -- see
             // `state/group.rs` for why the links do the work here.

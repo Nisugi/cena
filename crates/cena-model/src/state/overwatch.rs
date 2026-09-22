@@ -233,26 +233,27 @@ impl Overwatch {
     }
 }
 
-// **No `vanished_not_dead` here, and that is deliberate.**
+// **`vanished_not_dead` is not here, and `Creatures::vanished_unaccounted` is
+// -- BUILT 2026-09-21.**
 //
-// An earlier draft had one: departed-and-not-dead, which it reported as
-// hiding. The author corrected it (2026-09-20):
+// An earlier draft had a two-condition version: departed-and-not-dead, reported
+// as hiding. The author corrected it (2026-09-20):
 //
 // > *"but gone just means not in the room, doesn't mean hid. We have creature
 // > arrival and leaving messaging though, which would get tagged somewhere
 // > along the way and get pushed to the creature."*
 //
-// The inference needs THREE conditions -- gone, not dead, and **not seen to
-// leave** -- and the third needs a flee classifier that does not exist.
-// `creature_messages.tsv` holds **1,067 `flee` and 991 `arrival`** lines,
-// `MessageKind::Flee` is in the bestiary, and nothing matches a line against
-// either; **802 of the 1,067 carry `{direction}`/`{pronoun}` placeholders**,
-// so that is a port of its own.
+// The third condition -- **not seen to leave** -- now exists, and the author
+// corrected its design too (2026-09-21): *"the room would be giving a link with
+// the id"*. So a departure is read off the MARKUP (`departure.rs`), not matched
+// against `creature_messages.tsv`'s 1,067 flee lines: the creature's `exist` id
+// and the `<d>` direction are both in the line. No name lookup, no placeholder
+// expansion, and a creature whose flee prose nobody recorded is handled as well
+// as one in the table.
 //
-// A two-condition version was written, and clippy then reported it as never
-// used -- which was the right answer for the wrong reason. It is deleted
-// rather than kept behind an `allow`: a half-inference with no caller is a
-// claim waiting to be believed.
+// The inference lives on `Creatures`, where the roster and the death state are,
+// rather than here: this type knows about a ROOM something hid in and no ids at
+// all. `Creatures::vanished_unaccounted` is the three-condition answer.
 //
 // The primitive it needed, [`Creatures::departed`], stays. It says only what
 // left, which is true, and the flee classifier will join it to what that

@@ -87,6 +87,16 @@ pub struct Creatures {
     pending_links: BTreeMap<i64, (String, String)>,
     /// Creatures an event touched, awaiting a `dead` flag; oldest first.
     death_watch: VecDeque<i64>,
+    /// Creatures the FEED said left, by id, with the direction if one was
+    /// named: `creature_message.rs`'s flee lines.
+    ///
+    /// **This is the third condition of the author's hiding rule** -- "not seen
+    /// to leave". A creature off the roster that is in here walked out; one
+    /// that is not, and did not die, is unaccounted for.
+    ///
+    /// Bounded by the roster's own eviction: an id is dropped when the registry
+    /// drops it, so this cannot outgrow the thing it annotates.
+    seen_to_leave: std::collections::BTreeMap<i64, Option<String>>,
     /// Deaths already announced.
     death_announced: VecDeque<i64>,
     /// Per chunk: creatures a message stood up, and the line it was read
@@ -225,6 +235,63 @@ impl Creatures {
             .iter()
             .copied()
             .filter(|id| !self.roster.contains(id))
+    }
+
+    /// Record a departure the feed showed, if this line shows one.
+    ///
+    /// **Reads the markup** (`departure.rs`): the creature's `exist` id and the
+    /// `<d>` direction link are both in the line, so there is no name lookup
+    /// and no bestiary dependency. Only a creature this room knows is recorded
+    /// -- a line about someone else's fight is not this room's news.
+    pub fn read_departure(&mut self, line: &crate::state::chunks::ChunkLine) -> Option<i64> {
+        let departure = crate::state::departure::classify(line)?;
+        self.instances.contains_key(&departure.id).then(|| {
+            self.note_fled(departure.id, Some(departure.direction));
+            departure.id
+        })
+    }
+
+    /// The feed said this creature left, and which way if it said.
+    ///
+    /// Recorded per id rather than as a one-shot flag: two creatures can flee
+    /// in one chunk, and a behavior asking about the second must not get the
+    /// first's answer.
+    pub fn note_fled(&mut self, id: i64, direction: Option<String>) {
+        self.seen_to_leave.insert(id, direction);
+    }
+
+    /// Whether the feed said this creature left, and which way.
+    ///
+    /// `None`: nothing said so. `Some(None)`: it left and no direction was
+    /// named, which is a real case -- *"slowly backs away, its teeth bared"*
+    /// is a flee line with no direction in it.
+    #[must_use]
+    pub fn fled(&self, id: i64) -> Option<Option<&str>> {
+        self.seen_to_leave.get(&id).map(|d| d.as_deref())
+    }
+
+    /// Creatures that left the room with nothing accounting for it: **gone, not
+    /// dead, and not seen to leave.**
+    ///
+    /// The author's rule, all three conditions (2026-09-20):
+    ///
+    /// > *"but gone just means not in the room, doesn't mean hid. We have
+    /// > creature arrival and leaving messaging though, which would get tagged
+    /// > somewhere along the way and get pushed to the creature."*
+    ///
+    /// A two-condition version of this was written and deleted, because
+    /// departed-and-not-dead is satisfied by a creature that simply walked out.
+    /// `creature_message.rs` supplies the third condition, so the inference can
+    /// exist now.
+    ///
+    /// **Still evidence rather than proof.** A creature can leave by a route
+    /// the bestiary has no line for, and this reports it as unaccounted for; a
+    /// consumer should treat the answer as "worth looking" rather than "it is
+    /// certainly hiding".
+    pub fn vanished_unaccounted(&self) -> impl Iterator<Item = i64> + '_ {
+        self.departed().filter(move |id| {
+            self.fled(*id).is_none() && !self.instances.get(id).is_some_and(|c| c.dead())
+        })
     }
 
     /// Empty the roster; the registry is untouched.
