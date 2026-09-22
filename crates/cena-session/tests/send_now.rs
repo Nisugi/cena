@@ -39,22 +39,36 @@ const PROMPT_AT_100: &[u8] = b"You see nothing unusual.\n<prompt time=\"100\">&g
 /// sometimes a few in a row" and §1.3's complaint in one assertion. The
 /// `send_and_await` never resolves here -- deliberately, because the sigil must
 /// not have to wait for it.
-// # INTERMITTENT, and not yet explained -- observed 2026-09-21
+// # WAS "INTERMITTENT AND NOT YET EXPLAINED". It is explained now, and the
+// # guess recorded here was WRONG -- corrected 2026-09-21.
 //
-// This test and `several_instant_actions_batch_ahead_of_their_trigger` fail
-// together, roughly one full-crate run in three, and pass every time either is
-// run alone or with a handful of other suites. MEASURED: 3 clean runs of four
-// suites together, against 2 failures in ~6 runs of the whole crate.
+// The earlier note blamed `start_paused = true` plus `tokio::spawn` racing the
+// paused clock under full-crate parallelism, and honestly labelled that a
+// guess. It was, and it was wrong. The real cause is not about parallelism at
+// all:
 //
-// The suspected shape is `start_paused = true` plus `tokio::spawn`: the paused
-// clock only advances when every task is idle, and under full-crate parallelism
-// the driver may not have reached its await when the runtime decides to
-// advance. That is a guess, and it is recorded as one.
+// `GameState::game_time_now` is `base + game_time_received.elapsed().as_secs()`
+// (`cena-model/src/state/clock.rs:55`), and `game_time_received` is a
+// **`std::time::Instant`** (`state/equality.rs:11`). Tokio's `start_paused`
+// controls `tokio::time`, NOT `std::time` -- so that elapsed reading is real
+// wall-clock time however the test drives the runtime.
 //
-// **It is not the code under test** -- HEAD passes 267/0 with `--no-fail-fast`,
-// and cargo's default fail-fast is what makes a single flake look like 33
-// missing tests. Anyone chasing a "cena-session lost tests" report should run
-// with `--no-fail-fast` first.
+// Whether `as_secs()` truncates to 0 or 1 therefore depends on where the run
+// falls relative to a one-second boundary. MEASURED 2026-09-21: it fails
+// single-threaded, alone, in a clean worktree at `dbadaef` -- deterministically
+// on this machine. "One run in three, only under load" was a symptom on a
+// faster machine, not the mechanism, and chasing it as a concurrency bug is why
+// it stayed open.
+//
+// **The assertion was the bug, not the code under test.** Pinning an exact
+// server second to a value extrapolated from real elapsed time cannot hold.
+// This is very likely also the M4 Windows CI failure in
+// `status_and_clock::a_real_roundtime_is_in_effect_and_then_is_not`, reported
+// there as "server clock advanced by one second"
+// (`plan/m4-despana-status.md`).
+//
+// Run with `--no-fail-fast` regardless: cargo's default makes one failure look
+// like dozens of missing tests.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn an_instant_action_goes_out_while_a_window_is_open() {
     let (source, transcript) = AnsweringSource::new(PROMPT_AT_100);
@@ -125,11 +139,19 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
     let sent = handle
         .send_now("sigil of escape", Origin::Manual, Gate::Roundtime)
         .await;
-    assert_eq!(
-        sent,
-        Sent::Ok { at: Some(100) },
-        "the sigil must reach the wire, and report the server second its gate \
-         was decided on"
+    // **At 100 or 101, not exactly 100.** The gate reports `game_time_now`,
+    // which extrapolates from a real `Instant` (see this test's note): crossing
+    // a second boundary makes 101 the honest answer. What must hold is that the
+    // sigil reached the wire having decided its gate on a KNOWN clock --
+    // `Some`, not `None`, which is the `plan/12` §5.2 distinction this gate
+    // exists to respect, and the thing a looser `matches!` would drop.
+    let Sent::Ok { at: Some(at) } = sent else {
+        panic!("the sigil must reach the wire with its gate decided on a known clock: {sent:?}");
+    };
+    assert!(
+        (100..=101).contains(&at),
+        "the gate was decided at server second {at}, which is neither the \
+         calibrating prompt's second nor the one after it"
     );
 
     let lines = transcript.lines();
@@ -353,12 +375,16 @@ async fn several_instant_actions_batch_ahead_of_their_trigger() {
     assert!(matches!(first, Outcome::Confirmed(_)), "{first:?}");
 
     for sigil in ["sigil of power", "sigil of defense", "sigil of focus"] {
-        assert_eq!(
-            handle
-                .send_now(sigil, Origin::Manual, Gate::Roundtime)
-                .await,
-            Sent::Ok { at: Some(100) },
-            "{sigil} must go out"
+        // 100 or 101, for the reason the first test's note gives: the gate's
+        // second comes from a real `Instant`, so a second boundary crossed
+        // mid-run is a legitimate 101 rather than a defect.
+        let sent = handle.send_now(sigil, Origin::Manual, Gate::Roundtime).await;
+        let Sent::Ok { at: Some(at) } = sent else {
+            panic!("{sigil} must go out with its gate decided on a known clock: {sent:?}");
+        };
+        assert!(
+            (100..=101).contains(&at),
+            "{sigil} decided its gate at server second {at}"
         );
     }
     let trigger = handle
