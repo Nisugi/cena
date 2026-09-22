@@ -2,7 +2,7 @@
 //!
 //! Upstream (`upstream_scripts/labyrinth_entry.rb`): `touch green leaf` until
 //! "You touch the". When the game says "You shouldn't mess with that while
-//! <someone> is working on it." wait up to fifteen seconds for the leaves to
+//! `<someone>` is working on it." wait up to fifteen seconds for the leaves to
 //! fade or for them to be taken in, and touch again. Any other answer is
 //! "unknown result", and upstream **goes on regardless**; so does this. Then
 //! touch the gold, red and blighted leaves and the outstretched hand, recite

@@ -27,8 +27,9 @@
 //! exit up outright.
 //!
 //! Each solver is written from the upstream script it is pinned to
-//! (`cena-mapdb-convert/src/upstream_scripts/`), which is the reference for
-//! what it must do.
+//! (`upstream_scripts/` in `Nisugi/hydra-mapdb`, the mapdb pipeline's own
+//! repo -- moved out of this workspace, `plan/21` records the move), which
+//! is the reference for what it must do.
 
 mod altar_levers;
 mod bridge_wheel;

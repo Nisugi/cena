@@ -369,22 +369,6 @@ mod tests {
         assert_eq!(strange.ask(&mut mural), Next::Failed);
     }
 
-    /// The table against the script it was copied from: each deity's verses,
-    /// joined as upstream's pattern joins them, sit just before its `push`.
-    #[test]
-    fn the_table_is_upstreams() {
-        let script =
-            include_str!("../../../../cena-mapdb-convert/src/upstream_scripts/mural_of_deities.rb");
-        assert_eq!(script.matches("result.push").count(), VERSES.len());
-        for (deity, verses) in VERSES {
-            let pattern = format!("line =~ /{}/", verses.join("|"));
-            let (_, after) = script.split_once(&pattern).expect("the verses, in order");
-            let pushed = after.trim_start().trim_start_matches("result.push");
-            let pushed = pushed.trim_start().trim_start_matches('(');
-            assert!(pushed.starts_with(&format!("\"{deity}\"")), "{deity}");
-        }
-    }
-
     #[test]
     fn every_verse_is_its_own_deitys_and_the_table_is_whole() {
         assert_eq!(VERSES.len(), 20);

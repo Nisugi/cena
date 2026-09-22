@@ -10,7 +10,7 @@
 //! # What it crosses
 //!
 //! Everything this build can name: a plain command, a list of steps
-//! ([`steps`]), a named routine ([`routines`], handed to the driver as
+//! (`steps`), a named routine (`routines`, handed to the driver as
 //! [`Said::Routine`]), and a pass through a room only the map has. It
 //! **routes around everything else** -- a script nothing has ported, a kind
 //! of crossing a newer map names -- which the trip's own pricing shuts,
@@ -29,7 +29,7 @@
 //! tick, **so that a room change is always looked at first**. A failure line
 //! that raced an arrival belongs to a move that worked, and Vellum recorded
 //! acting on one as a live bug (`plan/21` §2c). The remedies and their
-//! budgets are Lich's ([`recovery`]). The rules around them are Vellum's
+//! budgets are Lich's (`recovery`). The rules around them are Vellum's
 //! lessons, kept as requirements:
 //!
 //! - **what is sent again is what was sent**, never the map's text, since a
@@ -42,7 +42,7 @@
 //!
 //! # Crossings that are lists of steps (stage 3)
 //!
-//! [`steps`] runs them, and a plain exit is the one-step list `[move]`, so
+//! `steps` runs them, and a plain exit is the one-step list `[move]`, so
 //! there is one way across. What the trip cannot spell as a command it hands
 //! to the driver as a [`Deed`]. **Whatever a crossing changed is owed back
 //! before the trip says it is over** -- hands, stance -- on arrival, on

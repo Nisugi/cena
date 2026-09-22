@@ -10,6 +10,10 @@
 //! This crate is the **one definition** every part of the pipeline compiles
 //! against: `cena-mapdb-convert` writes these records as JSON,
 //! `cena-map-combine` packs them into the binary, and the client loads it.
+//! The two converter crates moved to their own repo, `Nisugi/hydra-mapdb`
+//! (`plan/21` records the move); both depend on this crate as a git
+//! dependency rather than a vendored copy, so the format still has one
+//! definition instead of two that can drift.
 //!
 //! It is pure: no file I/O, no clock, no network. The upstream Ruby never
 //! reaches it; a scripted edge that nothing has ported yet arrives here as

@@ -1,8 +1,9 @@
 //! The map file Hydra loads: every room in one versioned binary.
 //!
-//! `plan/21` §3a. Written by `cena-map-combine` from the converter's per-room
-//! JSON, read by the client. Both compile against this module, so there is one
-//! definition of the format and neither side can drift.
+//! `plan/21` §3a. Written by `cena-map-combine` (now in `Nisugi/hydra-mapdb`,
+//! which depends on this crate as a git dependency) from the converter's
+//! per-room JSON, read by the client. Both compile against this module, so
+//! there is one definition of the format and neither side can drift.
 //!
 //! # The three rules the format exists to keep
 //!

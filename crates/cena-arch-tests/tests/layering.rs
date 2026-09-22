@@ -84,17 +84,6 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // (`plan/05` §-1).
     ("cena-map", &[]),
     // The offline converter (`plan/21` §3a). A build tool: it reads the
-    // upstream map file and writes `cena_map::Room` records. Nothing SHIPPED
-    // may depend on it, because it is the one place upstream Ruby is ever seen;
-    // the single edge into it, below, is dev-only and asserted so.
-    ("cena-mapdb-convert", &["cena-map"]),
-    // The second offline tool (`plan/21` §3a): per-room JSON in, one map binary
-    // out. `cena-mapdb-convert` is a DEV-dependency only, for the end-to-end
-    // test -- "the combiner reads what the converter writes" is the contract
-    // between the two tools, and a test that hand-wrote its own input would
-    // hold neither to it. `a_dev_only_edge_stays_out_of_the_shipped_graph`
-    // asserts the combiner itself never links the converter.
-    ("cena-map-combine", &["cena-map", "cena-mapdb-convert"]),
     // AMENDED for Milestone 1 Step 2, the session actor slice. The row was
     // `&["cena-model"]`. Two edges added, both downward under `plan/12:72-86`:
     //
@@ -315,10 +304,7 @@ fn cena_ui_depends_on_no_ui_toolkit() {
 fn a_dev_only_edge_stays_out_of_the_shipped_graph() {
     // (dependent, dependency) pairs whose entry in ALLOWED_EDGES is justified
     // as dev-only. Each is asserted ABSENT from `--edges normal`.
-    const DEV_ONLY: &[(&str, &str)] = &[
-        ("cena-behavior", "cena-platform"),
-        ("cena-map-combine", "cena-mapdb-convert"),
-    ];
+    const DEV_ONLY: &[(&str, &str)] = &[("cena-behavior", "cena-platform")];
 
     for (dependent, dependency) in DEV_ONLY {
         let shipped = cena_arch_tests::harness::shipped_dependency_names(dependent);
@@ -401,7 +387,8 @@ fn model_does_no_file_io() {
 }
 
 /// `plan/21` §3c: `cena-map` is the map's vocabulary and is pure. Reading the
-/// upstream file and writing room files is `cena-mapdb-convert`'s job; loading
+/// upstream file and writing room files is the `Nisugi/hydra-mapdb` repo's
+/// job now (moved out of this workspace, `plan/21` records the move); loading
 /// the built map belongs to whichever crate owns that file handle.
 ///
 /// Written with the crate, not after it (`plan/05` §0). Same needles and the
