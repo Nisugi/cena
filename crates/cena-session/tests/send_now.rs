@@ -378,7 +378,9 @@ async fn several_instant_actions_batch_ahead_of_their_trigger() {
         // 100 or 101, for the reason the first test's note gives: the gate's
         // second comes from a real `Instant`, so a second boundary crossed
         // mid-run is a legitimate 101 rather than a defect.
-        let sent = handle.send_now(sigil, Origin::Manual, Gate::Roundtime).await;
+        let sent = handle
+            .send_now(sigil, Origin::Manual, Gate::Roundtime)
+            .await;
         let Sent::Ok { at: Some(at) } = sent else {
             panic!("{sigil} must go out with its gate decided on a known clock: {sent:?}");
         };

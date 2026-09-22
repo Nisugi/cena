@@ -242,9 +242,7 @@ pub struct GameState {
     /// so "a stream nobody has pushed to" answers empty rather than making every
     /// call site unwrap an `Option`.
     streams: streams::StreamBuffers,
-    /// What each stream does when its window is closed; see
-    /// [`stream_windows`]. Declared by `<streamWindow ifClosed=>`, and the
-    /// reason a `speech` line does not have to render twice.
+    /// Closed-window routing, per stream: [`stream_windows`].
     stream_windows: stream_windows::Windows,
     /// Routed and discarded line tallies; see [`streams::LineTally`].
     tally: streams::LineTally,
@@ -277,29 +275,6 @@ pub struct GameState {
 }
 
 impl GameState {
-    /// Read the widgets of one `<dialogData>`.
-    ///
-    /// Only `dDBTarget` today. A `match` on the widget id rather than a
-    /// growing chain, because the next one that matters (the ammo dropdown,
-    /// the stance bar) lands the same way.
-    fn read_widgets(&mut self, widgets: &cena_protocol::frame::DialogWidgets) {
-        if widgets.kind != "dropDownBox" {
-            return;
-        }
-        for attrs in &widgets.widgets {
-            let get = |name: &str| {
-                attrs
-                    .iter()
-                    .find(|(k, _)| k == name)
-                    .map(|(_, v)| v.as_str())
-            };
-            if get("id") == Some("dDBTarget") {
-                self.targeting
-                    .read(get("content_value").unwrap_or_default(), get("value"));
-            }
-        }
-    }
-
     /// The combat state machine, to read its facts.
     #[must_use]
     pub const fn combat(&self) -> &combat::CombatTracker {
@@ -326,19 +301,7 @@ impl GameState {
     pub fn apply(&mut self, frame: &Frame) -> bool {
         match frame {
             Frame::RoomId { id } => self.arrive(id.as_deref()),
-            Frame::StreamWindow {
-                id,
-                subtitle,
-                attrs,
-                ..
-            } => {
-                // Two independent facts ride one tag: the room's name (on the
-                // `room`/`main` re-title that fires on every move) and what
-                // this stream does when its window is closed. Both are
-                // recorded; only the first can change the room.
-                self.stream_windows.declare(id, attrs);
-                self.name_room(id, subtitle.as_deref())
-            }
+            Frame::StreamWindow { .. } => self.apply_stream_window(frame),
             // See `apply_room_component` for why the styled form is refused.
             Frame::Component { id, body } => self.apply_room_component(id, body),
             Frame::CreatureStatus { id, attrs } => self.apply_creature_status(id, attrs),

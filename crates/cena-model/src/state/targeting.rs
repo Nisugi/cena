@@ -150,3 +150,33 @@ pub fn parse_ids(content_value: &str) -> Vec<i64> {
         .filter_map(|part| part.trim().strip_prefix('#')?.parse().ok())
         .collect()
 }
+
+impl crate::GameState {
+    /// Read the widgets of one `<dialogData>`.
+    ///
+    /// Only `dDBTarget` today. A `match` on the widget id rather than a
+    /// growing chain, because the next one that matters (the ammo dropdown,
+    /// the stance bar) lands the same way.
+    ///
+    /// **Here rather than in `state.rs` under Rule 4.1** -- move code down, do
+    /// not raise the cap. It is a reader for *this* module's `Targeting`, so
+    /// the dispatcher in `apply` calls it and the work lives beside the state
+    /// it maintains. `state.rs` had been sitting at exactly its 550 cap.
+    pub(super) fn read_widgets(&mut self, widgets: &cena_protocol::frame::DialogWidgets) {
+        if widgets.kind != "dropDownBox" {
+            return;
+        }
+        for attrs in &widgets.widgets {
+            let get = |name: &str| {
+                attrs
+                    .iter()
+                    .find(|(k, _)| k == name)
+                    .map(|(_, v)| v.as_str())
+            };
+            if get("id") == Some("dDBTarget") {
+                self.targeting
+                    .read(get("content_value").unwrap_or_default(), get("value"));
+            }
+        }
+    }
+}

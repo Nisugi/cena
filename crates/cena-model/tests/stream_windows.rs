@@ -130,7 +130,10 @@ fn if_closed_is_read_before_style_if_closed() {
 #[test]
 fn an_empty_style_is_no_style() {
     let state = fed(DECLARATIONS);
-    assert_eq!(state.stream_windows().declared("ambients"), Some(&Closed::Main));
+    assert_eq!(
+        state.stream_windows().declared("ambients"),
+        Some(&Closed::Main)
+    );
     assert_eq!(
         state.stream_windows().route("ambients", &all_closed),
         Destination::Main
@@ -170,7 +173,10 @@ fn a_closed_copy_stream_is_dropped_and_a_closed_styled_one_is_not() {
 #[test]
 fn the_main_window_is_always_itself() {
     let state = fed(DECLARATIONS);
-    assert_eq!(state.stream_windows().route("", &all_closed), Destination::Main);
+    assert_eq!(
+        state.stream_windows().route("", &all_closed),
+        Destination::Main
+    );
     assert_eq!(
         state.stream_windows().route("main", &all_closed),
         Destination::Main
@@ -231,7 +237,10 @@ fn a_cycle_of_closed_windows_does_not_hang() {
         "<streamWindow id='b' ifClosed='a'/>\n",
     );
     let state = fed(wire);
-    assert_eq!(state.stream_windows().route("a", &all_closed), Destination::Main);
+    assert_eq!(
+        state.stream_windows().route("a", &all_closed),
+        Destination::Main
+    );
 }
 
 /// A re-declaration replaces, rather than accumulating.

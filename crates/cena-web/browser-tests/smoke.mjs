@@ -105,7 +105,11 @@ try {
     kind: "receipt", version: 1, session: command.session, generation: command.generation,
     request_id: command.request_id, status: "sent", detail: "Written to the game connection.",
   });
-  assert.match(await page.locator("#command-status").textContent(), /game outcome unconfirmed/);
+  // `Sent` must not claim the game ACTED -- only that the bytes went out, with
+  // the server's own detail after it. Matched on the label rather than on
+  // prose: this asserted /game outcome unconfirmed/, which was the old wording,
+  // and a plainer rewording broke it here while `session.test.mjs` passed.
+  assert.match(await page.locator("#command-status").textContent(), /^Sent: Written to the game connection\.$/);
   assert.equal(await page.locator("#command-input").evaluate((input) => document.activeElement === input && !input.readOnly), true);
   assert.equal(await page.locator("#history-gap").isVisible(), false);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

@@ -220,3 +220,32 @@ impl Windows {
 /// window `main` in `<streamWindow id="main">`. Both are handled by
 /// [`Windows::route`], which is why this is one constant and not two.
 pub const MAIN: &str = "main";
+
+impl crate::GameState {
+    /// Apply a `<streamWindow>`: **two independent facts ride one tag.**
+    ///
+    /// The room's name, on the `room`/`main` re-title that fires on every move
+    /// (MEASURED: 77,497 and 77,411 of the census's 157,220 tags), and what
+    /// this stream does when its window is closed. Both are recorded; only the
+    /// first can change the room.
+    ///
+    /// Here rather than in `state.rs`'s `apply` under Rule 4.1 -- move code
+    /// down, do not raise the cap. Adding this inline put `state.rs` at 567
+    /// against its 550, and `split_parents_stay_facades` said so.
+    /// Takes the whole frame rather than its three parts: destructuring it in
+    /// `apply`'s match arm cost six lines there and put `state.rs` over its
+    /// cap. Unpacking here instead is the same Rule 4.1 move in miniature.
+    pub(super) fn apply_stream_window(&mut self, frame: &cena_protocol::Frame) {
+        let cena_protocol::Frame::StreamWindow {
+            id,
+            subtitle,
+            attrs,
+            ..
+        } = frame
+        else {
+            return;
+        };
+        self.stream_windows.declare(id, attrs);
+        self.name_room(id, subtitle.as_deref());
+    }
+}

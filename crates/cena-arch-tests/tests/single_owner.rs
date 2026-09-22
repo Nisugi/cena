@@ -40,10 +40,24 @@ use cena_arch_tests::lexical::scan_lines;
 
 /// Declarations of `needle`, as `path:line: code`.
 ///
-/// Matching includes the trailing colon and the leading whitespace of a struct
-/// body, so a function parameter of the same name -- which shares the
-/// `name: Type` shape -- is not counted. `scan_lines` strips comments, so prose
-/// naming a field does not register either.
+/// # A function parameter is NOT an owning field, and this used to miss that
+///
+/// This doc claimed *"the leading whitespace of a struct body"* distinguished a
+/// field from a parameter. It does not: `scan_lines` **trims** the line before
+/// the filter sees it, so an indented parameter and an indented field are the
+/// same string. MEASURED -- `travel/desk.rs:201` is
+/// `        handle: SessionHandle,`, a parameter of `fn walk`, and it counted
+/// as an owner.
+///
+/// That is a false positive on the highest-value test in the suite, and a
+/// false positive is not harmless here: an arch test that cries wolf gets
+/// suppressed, and this is the one guarding the defect that cost Vellum 49.8%
+/// of its countdowns.
+///
+/// So the enclosing item is checked. `struct`/`union` bodies own fields;
+/// `fn` signatures do not.
+///
+/// `scan_lines` strips comments, so prose naming a field does not register.
 fn owning_fields(needle: &str) -> Vec<String> {
     let sources = workspace_sources();
     scan_lines(&sources, &[needle])
@@ -57,12 +71,84 @@ fn owning_fields(needle: &str) -> Vec<String> {
             // mid-line is not an owning field.
             code.starts_with(needle)
         })
+        .filter(|hit| in_a_struct_body(&sources, hit))
+        .filter(|hit| !is_test_code(hit))
         // **This test file names its own needles**, and so would any other
         // arch test. Without this the suite counts itself and every needle has
         // at least two hits -- which is how the first version of this file
         // failed, reporting three owners where there is one.
         .filter(|hit| !hit.starts_with("crates/cena-arch-tests/"))
         .collect()
+}
+
+/// Whether a hit is in test code rather than in the shipped build.
+///
+/// # The rule is about production, and its own words say so
+///
+/// *"A second stored handle is a second way to reach a connection, and they go
+/// stale independently."* That is a hazard about two long-lived owners in a
+/// running client. A test harness that holds a handle for the duration of one
+/// test -- `cena-behavior/tests/travel_desk.rs`'s `Playing`, which exists to
+/// drive a desk and then drop -- is not that: it is constructed, used and
+/// dropped inside a function whose whole job is to exercise the one real
+/// owner.
+///
+/// Vellum's defect is the measure. A duplicate `server_time_offset` survived
+/// ten months because both fields **shipped** and only one was maintained. A
+/// field in a `tests/` directory does not ship.
+///
+/// **Narrowly scoped deliberately.** This skips `tests/` directories and
+/// `#[cfg(test)]` is not consulted, because an inline test module sits inside a
+/// production file and excluding by path is the honest, checkable line. A
+/// duplicate field in `src/` still fails however it is annotated.
+fn is_test_code(hit: &str) -> bool {
+    hit.contains("/tests/") || hit.contains("/benches/")
+}
+
+/// Whether a hit's line sits inside a `struct`/`union` body rather than a `fn`
+/// signature.
+///
+/// Walks **backwards** to the nearest enclosing item keyword. Crude, like the
+/// rest of this file and for the same stated reason: a duplicate field is a
+/// lexical fact, so a lexical test catches it. A parser would be a better tool
+/// and a worse fit for a rule whose whole value is that it cannot be argued
+/// with.
+fn in_a_struct_body(sources: &[(std::path::PathBuf, String)], hit: &str) -> bool {
+    let mut parts = hit.splitn(3, ':');
+    let (Some(path), Some(line)) = (parts.next(), parts.next()) else {
+        return true;
+    };
+    let Ok(line) = line.parse::<usize>() else {
+        return true;
+    };
+    let Some((_, text)) = sources
+        .iter()
+        .find(|(candidate, _)| cena_arch_tests::harness::relative(candidate) == path)
+    else {
+        // Unknown file: keep the hit. A detector that drops what it cannot
+        // classify would let a real duplicate through silently.
+        return true;
+    };
+    let lines: Vec<&str> = text.lines().collect();
+    for above in lines[..line.saturating_sub(1).min(lines.len())]
+        .iter()
+        .rev()
+    {
+        let code = above.trim_start();
+        if code.starts_with("struct ") || code.starts_with("union ") {
+            return true;
+        }
+        if code.starts_with("fn ")
+            || code.starts_with("pub fn ")
+            || code.starts_with("pub(crate) fn ")
+            || code.starts_with("pub(super) fn ")
+            || code.starts_with("async fn ")
+            || code.starts_with("pub async fn ")
+        {
+            return false;
+        }
+    }
+    true
 }
 
 #[test]
