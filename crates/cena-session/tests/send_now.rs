@@ -39,6 +39,22 @@ const PROMPT_AT_100: &[u8] = b"You see nothing unusual.\n<prompt time=\"100\">&g
 /// sometimes a few in a row" and §1.3's complaint in one assertion. The
 /// `send_and_await` never resolves here -- deliberately, because the sigil must
 /// not have to wait for it.
+// # INTERMITTENT, and not yet explained -- observed 2026-09-21
+//
+// This test and `several_instant_actions_batch_ahead_of_their_trigger` fail
+// together, roughly one full-crate run in three, and pass every time either is
+// run alone or with a handful of other suites. MEASURED: 3 clean runs of four
+// suites together, against 2 failures in ~6 runs of the whole crate.
+//
+// The suspected shape is `start_paused = true` plus `tokio::spawn`: the paused
+// clock only advances when every task is idle, and under full-crate parallelism
+// the driver may not have reached its await when the runtime decides to
+// advance. That is a guess, and it is recorded as one.
+//
+// **It is not the code under test** -- HEAD passes 267/0 with `--no-fail-fast`,
+// and cargo's default fail-fast is what makes a single flake look like 33
+// missing tests. Anyone chasing a "cena-session lost tests" report should run
+// with `--no-fail-fast` first.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn an_instant_action_goes_out_while_a_window_is_open() {
     let (source, transcript) = AnsweringSource::new(PROMPT_AT_100);

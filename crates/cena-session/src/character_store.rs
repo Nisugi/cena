@@ -106,9 +106,7 @@ pub fn data_dir() -> PathBuf {
 ///
 /// An empty result is refused by the caller rather than defaulted, because a
 /// store named after nobody is worse than no store.
-pub(crate) fn safe_component(name: &str) -> String {
-    name.chars().filter(char::is_ascii_alphanumeric).collect()
-}
+pub(crate) use crate::store::safe_component;
 
 /// The path a character's snapshot lives at.
 ///
@@ -117,12 +115,7 @@ pub(crate) fn safe_component(name: &str) -> String {
 /// filename would mean two such characters sharing a store.
 #[must_use]
 pub fn store_path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
-    let instance = safe_component(instance);
-    let character = safe_component(character);
-    if instance.is_empty() || character.is_empty() {
-        return None;
-    }
-    Some(dir.join(format!("{instance}_{character}.json")))
+    crate::store::character_path(dir, instance, character, ".json")
 }
 
 /// Why a snapshot could not be loaded.
@@ -225,49 +218,8 @@ pub fn load(dir: &Path, instance: &str, character: &str) -> Result<CharacterSnap
 /// Returns the underlying [`io::Error`] if the directory cannot be created or
 /// the file cannot be written or renamed.
 pub fn save(dir: &Path, snapshot: &CharacterSnapshot) -> io::Result<PathBuf> {
-    let path = store_path(dir, &snapshot.instance, &snapshot.character).ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "character or instance has no usable filename",
-        )
-    })?;
-    fs::create_dir_all(dir)?;
-
-    // Pretty-printed, deliberately. This is a file a person opens when a
-    // character's skills look wrong -- the author's "way to reset and refresh
-    // it" starts with looking at what is stored. The size difference is
-    // irrelevant at one file per character.
-    let text = serde_json::to_string_pretty(snapshot)
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-
-    // Temp file in the SAME directory, so the rename is within one filesystem
-    // and therefore atomic. The OS temp dir would not be: a cross-device
-    // rename degrades to copy-then-delete, which is the non-atomic write this
-    // exists to avoid.
-    //
-    // # NOT UNIT-TESTED, and this is the honest statement of that
-    //
-    // Mutation found that replacing these three lines with a direct
-    // `fs::write(&path, text)` leaves the whole suite green, and THREE
-    // attempts to close that failed:
-    //
-    //  1. "identical bytes after an identical save" -- true of a direct write
-    //     too.
-    //  2. "no leftover .tmp, right parent directory" -- likewise.
-    //  3. "make the target read-only, assert the original survives" --
-    //     MEASURED on Windows: `fs::write` and `fs::rename` BOTH fail with
-    //     `PermissionDenied`, and both leave the original intact. The test
-    //     passes under either implementation, for a reason that has nothing
-    //     to do with atomicity.
-    //
-    // The property is "a crash between the truncate and the write leaves a
-    // valid file", and a unit test cannot crash the process at a chosen
-    // instant. Writing a fourth test that merely looked like coverage would
-    // repeat the mistake the first three made, so it is stated here instead:
-    // **this is enforced by review, not by a test.** If these lines become a
-    // direct write, nothing will fail.
-    let temp = path.with_extension("json.tmp");
-    fs::write(&temp, text)?;
-    fs::rename(&temp, &path)?;
+    let path = store_path(dir, &snapshot.instance, &snapshot.character)
+        .ok_or_else(crate::store::unusable_name)?;
+    crate::store::save_json(dir, &path, snapshot)?;
     Ok(path)
 }

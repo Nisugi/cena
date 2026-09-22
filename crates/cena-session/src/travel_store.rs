@@ -248,16 +248,10 @@ fn read(dir: &Path) -> Result<Shared, TravelLoadError> {
     Ok(shared)
 }
 
-/// Atomically: a temp file in the same directory, then a rename
-/// (`character_store::save` has the why).
+/// Atomically, via [`crate::store::save_json`], which records why.
 fn write(dir: &Path, shared: &Shared) -> io::Result<PathBuf> {
     let path = travel_path(dir);
-    fs::create_dir_all(dir)?;
-    let text = serde_json::to_string_pretty(shared)
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-    let temp = path.with_extension("json.tmp");
-    fs::write(&temp, text)?;
-    fs::rename(&temp, &path)?;
+    crate::store::save_json(dir, &path, shared)?;
     Ok(path)
 }
 

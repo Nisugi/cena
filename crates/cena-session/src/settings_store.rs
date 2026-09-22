@@ -34,10 +34,12 @@
 //! written by a system this build has not heard of -- the travel file's
 //! version-1-build hazard, once per system instead of once per file.
 //!
-//! The third store of this shape (`character_store`, `travel_store`). The
-//! rule of three says the shared part -- path, atomic save, the
-//! newer/wrong-character refusals -- is now due to be moved down. Not done in
-//! the change that adds the third; recorded so it is.
+//! The third store of this shape (`character_store`, `travel_store`), and the
+//! rule of three was paid the next day: the filename rule and the atomic write
+//! live in [`crate::store`]. **The `load`s did NOT move** -- each has its own
+//! error enum with its own wording, and `travel_store` reads a file holding
+//! every character, so a shared one would need a trait with three implementors
+//! to say what each already says plainly.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -46,8 +48,6 @@ use std::path::{Path, PathBuf};
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-
-use crate::character_store::safe_component;
 
 /// The version this build writes. Bump it **with a migration**.
 ///
@@ -116,12 +116,7 @@ impl SettingsFile {
 /// to nothing, as for the snapshot.
 #[must_use]
 pub fn settings_path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
-    let instance = safe_component(instance);
-    let character = safe_component(character);
-    if instance.is_empty() || character.is_empty() {
-        return None;
-    }
-    Some(dir.join(format!("{instance}_{character}.settings.json")))
+    crate::store::character_path(dir, instance, character, ".settings.json")
 }
 
 /// Why a settings file could not be used.
@@ -198,17 +193,8 @@ pub fn load(
 ///
 /// The underlying [`io::Error`].
 pub fn save(dir: &Path, file: &SettingsFile) -> io::Result<PathBuf> {
-    let path = settings_path(dir, &file.instance, &file.character).ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "character or instance has no usable filename",
-        )
-    })?;
-    fs::create_dir_all(dir)?;
-    let text = serde_json::to_string_pretty(file)
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-    let temp = path.with_extension("json.tmp");
-    fs::write(&temp, text)?;
-    fs::rename(&temp, &path)?;
+    let path = settings_path(dir, &file.instance, &file.character)
+        .ok_or_else(crate::store::unusable_name)?;
+    crate::store::save_json(dir, &path, file)?;
     Ok(path)
 }

@@ -42,6 +42,7 @@ mod observation;
 pub mod player_log;
 pub mod queue;
 pub mod settings_store;
+pub mod store;
 pub mod supervisor;
 pub mod travel_store;
 
