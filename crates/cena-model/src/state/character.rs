@@ -62,6 +62,7 @@ pub mod spellsong;
 pub mod stance;
 pub mod standing;
 pub mod stats;
+pub mod training;
 pub mod vocabulary;
 
 use std::collections::BTreeMap;
@@ -81,6 +82,17 @@ pub struct Experience {
     /// that into `100` is a guess about a format the game may change, and every
     /// consumer that wants to display it wants the string back.
     pub level: Option<String>,
+    /// Physical training points, from `<label id='PTPs'>`. See
+    /// [`training`](training) for how these were found and why Lich has them
+    /// nowhere: the wire is the only authority.
+    pub physical_training: Option<u32>,
+    /// Mental training points, from `<label id='MTPs'>`.
+    pub mental_training: Option<u32>,
+    /// Physical points already converted to mental, from `<label id='p2m'>`.
+    /// Conversion is capped, so this is a separate question from the total.
+    pub physical_converted: Option<u32>,
+    /// Mental points converted to physical, from `<label id='m2p'>`.
+    pub mental_converted: Option<u32>,
     /// `<progressBar id='mindState' text='clear as a bell'>`.
     pub mind_state: Option<String>,
     /// `mindState`'s `value=`, 0-100.
@@ -490,6 +502,9 @@ impl Character {
     pub(super) fn apply_label(&mut self, dialog: &str, id: &str, value: &str) {
         match (dialog, id) {
             ("expr", "yourLvl") => self.experience.level = Some(value.to_owned()),
+            // Training points, moved down under Rule 4.1 when this file passed
+            // its cap: `training::read_label` owns the four `expr` labels.
+            ("expr", id) if training::read_label(&mut self.experience, id, value) => {}
             ("encum", "encumblurb") => self.encumbrance_detail = Some(value.to_owned()),
             _ => {}
         }

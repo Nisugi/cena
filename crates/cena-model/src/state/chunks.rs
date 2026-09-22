@@ -248,7 +248,13 @@ impl super::GameState {
             self.character.consume_chunk(&chunk);
             // The bounty task and the guild's answers (`bounty_status.rs`).
             for line in chunk.lines() {
-                self.bounty.read_line(&line.text());
+                let text = line.text();
+                self.bounty.read_line(&text);
+                // The six statuses that arrive only as prose, never as an
+                // `<indicator>` (`afflictions.rs`).
+                if let Some((affliction, active)) = super::afflictions::classify(&text) {
+                    self.status.set(affliction.id(), active);
+                }
             }
             // Group events are prose with links, one per line -- see
             // `state/group.rs` for why the links do the work here.

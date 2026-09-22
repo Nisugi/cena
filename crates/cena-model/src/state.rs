@@ -39,6 +39,7 @@ use cena_protocol::runs::Runs;
 use idle::{IDLE_WARNING, IdleWarning};
 use std::time::Instant;
 
+pub mod afflictions;
 pub mod armaments;
 pub mod bank;
 pub mod bounty;

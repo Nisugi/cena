@@ -72,6 +72,16 @@ impl StatusInfo {
         self.flags.insert(Self::key(id), active) != Some(active)
     }
 
+    /// Forget one id, so it reads *never reported* again.
+    ///
+    /// For a reconnect, and only for the statuses nothing re-states: the login
+    /// burst re-declares every `<indicator>`, so those are kept
+    /// (`reconnect.rs`), while `afflictions.rs`'s six have no indicator and
+    /// would otherwise keep a belief forever.
+    pub fn forget(&mut self, id: &str) {
+        self.flags.remove(&Self::key(id));
+    }
+
     /// Read an indicator. An id the game has never mentioned reads `false`.
     #[must_use]
     pub fn get(&self, id: &str) -> bool {
@@ -198,6 +208,25 @@ status_accessors! {
     /// because the map is filled by id rather than by field.
     joined,
     dead,
+    // --- text-derived, and there is NO indicator for any of these ----------
+    //
+    // `afflictions.rs` classifies the lines; these are the accessors, here
+    // rather than in a second type because a caller asking "is this character
+    // silenced" should not need to know whether an indicator or a sentence
+    // said so. `infomon/status.rb` is the split CLAUDE.md names, and Lich
+    // stores both in one place for the same reason.
+    /// Immobilised (Bind, moonbeam traps). Text only.
+    bound,
+    /// Calmed, so unable to attack. Text only.
+    calmed,
+    /// Vocal cords cut, so unable to cast. Text only.
+    cutthroat,
+    /// Silenced by a pall of silence. Text only.
+    silenced,
+    /// Asleep. Text only.
+    sleeping,
+    /// Thorn-poisoned. Text only.
+    thorned,
     /// On the wire and **absent from the wiki's list** (`plan/15` §2, note 1).
     poisoned,
     /// See [`Self::poisoned`].

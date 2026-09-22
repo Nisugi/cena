@@ -300,7 +300,22 @@ impl GameState {
         // "spells tick down in real time". They do not tick while the
         // character is out of the world, and the burst re-declares all ten
         // indicators in one line anyway.
-        let _ = (status, effects);
+        let _ = effects;
+
+        // **Indicators are kept; the text-derived statuses are NOT.** The
+        // reasoning above is the burst re-declaring all ten indicators in one
+        // line -- and it does, which is why `status` was kept whole. It does
+        // not hold for `afflictions.rs`'s six: NO indicator exists for
+        // `silenced`, `bound`, `calmed`, `cutthroat`, `sleeping` or `thorned`,
+        // so nothing re-states them and a kept belief is a belief nothing can
+        // ever correct. A character silenced when the socket dropped would read
+        // silenced forever.
+        //
+        // Found by a test that asserted the whole map was cleared, which was
+        // wrong in the other direction -- the indicators SHOULD survive.
+        for id in crate::state::afflictions::Affliction::ALL {
+            status.forget(id.id());
+        }
 
         // The quest and bounty list. A logged-off character completes no
         // quests and is offered none, and the list is not in the login burst
