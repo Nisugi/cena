@@ -24,13 +24,19 @@
 //! The prose is not the only signal, and it is not the reliable one. A
 //! creature that **vanishes from `room creatures` without dying and without
 //! being seen to leave has hidden** — that is an inference the roster already
-//! supports, because [`Creatures`] keeps the previous roster
-//! (`creatures.rs:81`) and flags the dead
+//! supports, because [`Creatures`](super::creatures::Creatures) keeps the
+//! previous roster (`creatures.rs:81`) and flags the dead
 //! ([`Classification::Dead`](crate::state::creature::status::Classification::Dead)).
 //!
-//! So [`Overwatch::vanished`] is a second entry alongside the prose, and an
-//! earlier draft of this module had only the prose — which would miss every
-//! creature that hides quietly.
+//! So that inference is a second entry alongside the prose, and an earlier
+//! draft of this module had only the prose — which would miss every creature
+//! that hides quietly.
+//!
+//! **It does NOT live here.** This doc named an `Overwatch::vanished` that was
+//! never written; the inference is
+//! [`Creatures::vanished_unaccounted`](super::creatures::Creatures::vanished_unaccounted),
+//! on the roster that owns the facts it reasons over (Rule 2.2a, one home per
+//! fact). The dead link was the only thing saying otherwise.
 //!
 //! # The port is a tenth the size, and §3a is why
 //!

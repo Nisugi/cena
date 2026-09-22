@@ -10,19 +10,19 @@
 //! outcome belongs to the event the line opens. Every reordering Lich tried
 //! is recorded there as a bug, and the citations travel with the branches.
 //!
-//! Each branch is a method on [`cursor::Cursor`] in its own module, split
+//! Each branch is a method on `cursor::Cursor` in its own module, split
 //! by what the branch handles rather than by size:
 //!
 //! | Module | `processor.rb` | Handles |
 //! |---|---|---|
-//! | [`cursor`] | the ~26 locals | the working state, the pool, the predicates |
-//! | [`facts`] | 520-661 | statuses, spell losses, UCS |
-//! | [`flares`] | 663-816 | flare announces, sequence and assault brackets |
-//! | [`switch`] | 818-916 | target switching |
-//! | [`rolls`] | 918-1135 | roll lines, outcome lines |
-//! | [`attack`] | 1137-1580 | initiations, and every claim they make |
-//! | [`damage`] | 1582-1690 | damage, the coup, the crit lookahead |
-//! | [`finish`] | 1704-1786 | the hold, the orphan sinks, the emit |
+//! | `cursor` | the ~26 locals | the working state, the pool, the predicates |
+//! | `facts` | 520-661 | statuses, spell losses, UCS |
+//! | `flares` | 663-816 | flare announces, sequence and assault brackets |
+//! | `switch` | 818-916 | target switching |
+//! | `rolls` | 918-1135 | roll lines, outcome lines |
+//! | `attack` | 1137-1580 | initiations, and every claim they make |
+//! | `damage` | 1582-1690 | damage, the coup, the crit lookahead |
+//! | `finish` | 1704-1786 | the hold, the orphan sinks, the emit |
 //!
 //! # What the port does NOT carry
 //!

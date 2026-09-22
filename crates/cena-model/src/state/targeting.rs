@@ -43,7 +43,9 @@
 //! **`value="none"` and `content_value="target help"` are the empty state.**
 //! Neither is an id, so both produce an empty list -- and an empty list that
 //! the game HAS stated is different from never having been told, which is why
-//! [`Targeting::stated`] exists (`plan/12` section 5.2).
+//! `Targeting`'s private `stated` flag exists, and why
+//! [`Targeting::is_targetable`] answers `Option<bool>` rather than `bool`
+//! (`plan/12` section 5.2).
 //!
 //! # This says nothing about hostility on its own
 //!

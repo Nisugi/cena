@@ -1,6 +1,6 @@
 //! The player log's writer: **`plan/25` step 2**.
 //!
-//! Takes lines off [`LogSink`](super::LogSink) and puts them on disk, one file
+//! Takes lines off [`super::LogSink`] and puts them on disk, one file
 //! per character per day.
 //!
 //! # The shape, and where it comes from
@@ -18,7 +18,7 @@
 //!   hunt in half.
 //! - **The date is in the filename, not the line.** `sink/config.rs:175`
 //!   reached the same conclusion for the wire log: *"repeating it on 30,000
-//!   lines is waste"*. The stamp is [`line_time`]'s, so the two logs of one
+//!   lines is waste"*. The stamp is [`cena_platform::line_time`]'s, so the two logs of one
 //!   session line up by eye.
 //! - **The stream tag is in brackets.** A reader greps `[death]`; a future
 //!   parser splits on the same bracket. One format serves both.

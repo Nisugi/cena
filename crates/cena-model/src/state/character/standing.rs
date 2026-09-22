@@ -396,7 +396,7 @@ pub struct PsmChange {
     pub name: String,
     /// The category word the line used, e.g. `"Combat"` or `"Shield"`.
     ///
-    /// **Not parsed into [`PsmCategory`](super::psm::PsmCategory) here.** The
+    /// **Not parsed into a `PsmCategory` here.** The
     /// line's word is the game's, and mapping it is the caller's business --
     /// a classifier that refused an unrecognised category would silently drop
     /// a PSM the game added, which is the Rule 2.2 failure `plan/dazzling`

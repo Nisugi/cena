@@ -289,7 +289,7 @@ pub struct Defs {
     /// `processor.rb`'s `NARRATION_PATTERN`: creature-linked lines that
     /// carry no combat fact and must not drive the target switcher.
     narration: Vec<Regex>,
-    /// `processor.rb:1205`: *"You nock <ammo> in your <bow>."* -- the only
+    /// `processor.rb:1205`: *"You nock `<ammo>` in your `<bow>`."* -- the only
     /// clue a pre-empted fire was a fire.
     nock: Option<Regex>,
 }
@@ -533,7 +533,7 @@ impl Defs {
         self.narration.iter().any(|re| re.is_match(text))
     }
 
-    /// The bow a *"You nock ... in your <bow>."* line names.
+    /// The bow a *"You nock ... in your `<bow>`."* line names.
     #[must_use]
     pub fn nock_weapon(&self, text: &str) -> Option<String> {
         self.nock

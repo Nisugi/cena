@@ -48,7 +48,7 @@
 //! finish a trip at once. So **nothing here writes the file it read**. A save
 //! changes one thing -- one character's spot ([`save`]), or one target
 //! ([`save_target`]) -- by reading the file afresh, changing that, and
-//! writing it back, all under [`WRITING`]. A character that holds a stale
+//! writing it back, all under the private `WRITING` lock. A character that holds a stale
 //! copy of someone else's spot cannot write it back, because it never writes
 //! any spot but its own; and a [`TravelFile`]'s `targets` are a copy to read
 //! -- everyone's and its own together -- which [`save`] does not write.

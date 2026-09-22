@@ -19,7 +19,7 @@
 //! bookkeeping exists.
 //!
 //! One chunk is one transaction. If any write fails the chunk is rolled back
-//! and the in-memory state ([`Live`]) is restored with it, so a cached row id
+//! and the in-memory state (its private `Live`) is restored with it, so a cached row id
 //! can never outlive the row (Lich's `in_txn`, `recorder.rb:633-651`).
 //!
 //! # Time is the server's

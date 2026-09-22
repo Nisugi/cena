@@ -248,7 +248,7 @@ pub struct GameState {
     /// **A frame boundary is not a line boundary.** The parser emits one run per
     /// markup boundary, so `  a` + `<a>pebbled grey leather doublet</a>` is two
     /// frames of one line -- the split that printed the author's worn inventory
-    /// down the screen. [`TextFrame::ends_line`] is what says where a line really
+    /// down the screen. `TextFrame`'s `ends_line` is what says where a line really
     /// ends, and this holds the runs until it does.
     ///
     /// Keyed by stream because two streams can be mid-line at once: a

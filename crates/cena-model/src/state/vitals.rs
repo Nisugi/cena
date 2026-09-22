@@ -17,7 +17,7 @@ pub type Vitals = std::collections::BTreeMap<String, Vital>;
 /// **This used to be a bare `u32` percent**, which threw away the two
 /// numbers a consumer actually wants. `<progressBar id='health' value='95'
 /// text='health 213/223'/>` carries the current value and the maximum, the
-/// parser already parses both into [`Amount`](cena_protocol::Amount), and
+/// parser already parses both into [`Amount`](cena_protocol::frame::Amount), and
 /// the model discarded them -- so "can I afford this spell" was unanswerable
 /// from `GameState` and a Heal behavior could not see 213 of 223.
 ///
@@ -34,7 +34,7 @@ pub struct Vital {
     pub percent: u32,
     /// Current, when the bar's text states a pair.
     ///
-    /// Signed, for the reason [`Amount::current`](cena_protocol::Amount)
+    /// Signed, for the reason [`Amount`](cena_protocol::frame::Amount)'s own `current`
     /// gives: negative health is real and is the interesting case.
     pub current: Option<i32>,
     /// Maximum, when the bar's text states a pair.

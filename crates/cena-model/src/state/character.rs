@@ -83,7 +83,7 @@ pub struct Experience {
     /// consumer that wants to display it wants the string back.
     pub level: Option<String>,
     /// Physical training points, from `<label id='PTPs'>`. See
-    /// [`training`](training) for how these were found and why Lich has them
+    /// [`training`] for how these were found and why Lich has them
     /// nowhere: the wire is the only authority.
     pub physical_training: Option<u32>,
     /// Mental training points, from `<label id='MTPs'>`.
@@ -538,7 +538,7 @@ impl Character {
     /// **The wire still shows only one per part**, because a wound covers a
     /// scar in the default injury mode. Keeping the last-known scar is
     /// therefore the best available answer rather than a complete one; see
-    /// [`injured`](super::injured) for what that costs.
+    /// [`injured`] for what that costs.
     pub(super) fn apply_injury_image(&mut self, part: &str, name: &str) {
         let rank = |prefix: &str| -> Option<u8> { name.strip_prefix(prefix)?.parse().ok() };
         let known = self.injuries.get(part).copied().unwrap_or_default();

@@ -34,13 +34,13 @@
 //! **How long is left.** The line carries no duration and the game sends no
 //! other statement of one -- so this records *"the game said this was on
 //! cooldown, at this server second"* and nothing more. A caller wanting "is it
-//! ready" has [`Self::said_at`] and the game clock and can decide how stale a
+//! ready" has [`Maneuvers::said_at`] and the game clock and can decide how stale a
 //! reading it will trust; inventing a duration here would be the
 //! `plan/18` `pbarStance` mistake, an interface over data nobody has measured.
 //!
 //! **That it has ENDED.** Nothing says so. A maneuver is off cooldown when the
 //! game stops refusing it, which only a send can discover. So there is no
-//! `clear` for one maneuver, and [`Self::is_cooling`] is deliberately absent:
+//! `clear` for one maneuver, and `is_cooling` is deliberately absent:
 //! the honest question is *"when was I last told"*, not *"is it ready"*.
 
 use std::collections::BTreeMap;

@@ -197,7 +197,7 @@ fn ladder() -> &'static Vec<(Regex, MoveFeedback)> {
     })
 }
 
-/// How many of [`LADDER`]'s patterns compiled. A test holds this to the
+/// How many of `LADDER`'s patterns compiled. A test holds this to the
 /// ladder's length: a pattern that failed to compile would otherwise be a
 /// class of line the walker silently never sees.
 #[must_use]

@@ -10,8 +10,8 @@
 //!
 //! | Field | Lich | Why it must survive the prompt |
 //! |---|---|---|
-//! | [`held_cast`](CombatTracker::held_cast) | `@held_cast` | *"You gesture at X."* ends a chunk; the spell's result opens the next. Held for ONE chunk, then superseded or emitted as itself. |
-//! | [`held_pre_flares`](CombatTracker::held_pre_flares) | `@held_pre_flares` | A bow's dispel fires on the NOCK and resolves before *"You fire"* prints -- in the next chunk. |
+//! | `held_cast` | `@held_cast` | *"You gesture at X."* ends a chunk; the spell's result opens the next. Held for ONE chunk, then superseded or emitted as itself. |
+//! | `held_pre_flares` | `@held_pre_flares` | A bow's dispel fires on the NOCK and resolves before *"You fire"* prints -- in the next chunk. |
 //! | [`active_assault`](CombatTracker::active_assault) | `@active_assault` | A flurry's rounds arrive over several chunks; the opener named the only target they can strike. |
 //!
 //! Lich's `@death_watch` / `@death_announced` (a creature an event touched,
@@ -32,7 +32,7 @@
 //! `crit.rs` holds `CritTables` behind an `Arc` and forbids a static, for
 //! the reason multi-session depends on. So the tracker is *handed* its tables
 //! by whoever built the `GameState` -- [`CombatTracker::set_crit_tables`] --
-//! and without them the crit lookahead is skipped and every [`Hit`] carries
+//! and without them the crit lookahead is skipped and every [`Hit`](super::event::Hit) carries
 //! `crit: None`. A test that asserts crits sets them; a session sets them
 //! once.
 

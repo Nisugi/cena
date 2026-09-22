@@ -26,7 +26,7 @@
 //!
 //! # Telling a move from standing still
 //!
-//! [`moved_from`] is the subtle part, and Lich's comment explains why
+//! `moved_from` is the subtle part, and Lich's comment explains why
 //! (`fog.rb:230`): `XMLData.room_id` is an **MD5 of the room's text** when the
 //! room has no UID, so **two unmapped rooms that read the same share an id**.
 //! A fog between them looks like standing still.

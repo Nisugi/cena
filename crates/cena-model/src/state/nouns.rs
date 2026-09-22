@@ -6,7 +6,7 @@
 //!
 //! §2e says *"every interactable carries a stable id... it is what makes 'the
 //! doublet' resolvable to a thing"*. The **capture** of `exist=`/`noun=` already
-//! happened in steps 2 and 4 -- every [`RoomItem`](super::RoomItem) in the room
+//! happened in steps 2 and 4 -- every `RoomItem` in the room
 //! and in every container carries both. What was missing is the lookup, and that
 //! is all this adds.
 //!

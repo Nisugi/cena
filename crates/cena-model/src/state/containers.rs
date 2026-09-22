@@ -37,7 +37,7 @@
 //! `valid?` (`stowlist.rb:45`, `readylist.rb:59`) re-checks every held id
 //! against `GameObj.inv` and clears the `checked` flag if one has gone. That
 //! is a *cache-coherence* check, and it belongs to whoever owns inventory --
-//! not to a record of what the game said. [`Containers::checked`] reports
+//! not to a record of what the game said. `Containers`'s `checked` flag reports
 //! whether the list was ever taught; a consumer that needs "and the items
 //! still exist" asks inventory, which is the layer that knows.
 

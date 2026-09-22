@@ -59,7 +59,7 @@
 //!
 //! First match wins, and the specific causes sit above the broad ones
 //! (`move.rb:59-60`). `Map`'s pattern includes `too far away`; `Engaged`'s is
-//! the bare word. Reordering changes answers, so [`CAUSES`] is a slice in
+//! the bare word. Reordering changes answers, so `CAUSES` is a slice in
 //! source order and a test asserts the shadowing cases.
 
 use std::fmt;
@@ -363,7 +363,7 @@ pub fn stand_failure_cause(overburdened: bool, limb_wounds: bool) -> MoveFailure
 /// what they are; **anything else on that branch is a climb**. The branch is
 /// only entered for a climb or a swim, so the fallback is information rather
 /// than a guess — which is why [`MoveFailure::Climb`] has no phrases of its
-/// own in [`CAUSES`] and can only be reached here.
+/// own in `CAUSES` and can only be reached here.
 #[must_use]
 pub fn roll_cause(line: &str) -> MoveFailure {
     match classify(line) {
