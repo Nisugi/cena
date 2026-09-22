@@ -8,6 +8,31 @@ const PRESETS = new Map([
   ["whisper", "text-whisper"], ["thought", "text-thought"],
 ]);
 
+// Which stream windows this viewer has open. Per-viewer by nature -- the server
+// broadcasts one message to every viewer, so it ships each line's DECLARATION
+// (`closed`) and the decision is made here.
+//
+// Nothing is open by default: Despana has one Story pane, so the wire's
+// fall-through behaviours are exactly what a new viewer wants.
+export function placeLine(line, isOpen, seen = new Set()) {
+  const stream = line.stream;
+  if (!stream || stream === "main") return { where: "story" };
+  let at = stream;
+  for (;;) {
+    if (isOpen(at)) return { where: "window", id: at };
+    if (seen.has(at)) return { where: "story" };   // a cycle of closed windows
+    seen.add(at);
+    const closed = at === stream ? line.closed : null;
+    // Only the line's own stream carries a declaration. A `route` target's
+    // behaviour is unknown here, so an open check is all we can do for it.
+    if (!closed) return { where: "story" };
+    if (closed.kind === "drop") return { where: "dropped" };
+    if (closed.kind === "styled") return { where: "story", style: closed.style };
+    if (closed.kind === "route") { at = closed.window; continue; }
+    return { where: "story" };
+  }
+}
+
 export function appendRuns(document, target, runs) {
   for (const run of runs) {
     const span = document.createElement("span");
@@ -39,11 +64,24 @@ export function mount(document, environment) {
   let renderedGeneration = null;
   let currentView = null;
   let roundtimeReceivedAt = 0;
+  // Streams this viewer has opened a window for. Per-viewer and local: the
+  // server cannot know it, and it is a display preference rather than game
+  // state, so it is not sent anywhere.
+  const openWindows = new Set();
+  let currentStory = [];
+  const isOpen = (id) => openWindows.has(id);
+  // Streams seen so far, so a toggle only appears once the game has used one.
+  // Offering all 16 declared ids up front would list windows this character
+  // never fills (MEASURED: 16 declared against 6 ever pushed to).
+  const knownStreams = new Map();
   const text = (id, value) => { element(id).textContent = value; };
   const hand = (value) => value?.kind === "empty" ? "Empty" : value?.kind === "holding" ? value.name : "Unknown";
 
-  function renderStory(lines) {
-    if (renderedLines === lines) return;
+  function renderStory(lines, force = false) {
+    // A toggle changes where lines GO without changing the lines, so the
+    // identity short-circuit has to be bypassed or the screen would not move.
+    if (renderedLines === lines && !force) return;
+    if (force) { renderedLines = []; story.replaceChildren(); }
     const atBottom = story.scrollHeight - story.clientHeight - story.scrollTop < 48;
     // Preserve existing nodes (and screen reader position) for ordinary appends.
     const first = lines.indexOf(renderedLines[0]);
@@ -57,8 +95,14 @@ export function mount(document, environment) {
     }
     if (!overlap) story.replaceChildren();
     for (const line of lines.slice(overlap)) {
+      const place = placeLine(line, isOpen);
+      // A duplicate the game already sent to main, or text showing in its own
+      // window: either way it is not a Story line. THIS is what stops every
+      // spoken line appearing twice.
+      if (place.where !== "story") continue;
       const node = document.createElement("p");
       node.className = "text-line";
+      if (place.style) node.classList.add(PRESETS.get(place.style) ?? "text-stream-styled");
       if (line.stream !== "") {
         const label = document.createElement("span");
         label.className = "stream-label";
@@ -82,6 +126,77 @@ export function mount(document, environment) {
     }
     renderedLines = lines;
     if (atBottom) story.scrollTop = story.scrollHeight;
+  }
+
+  // One checkbox per stream the game has actually used. Ticking it opens a
+  // window: that stream's lines leave the Story and show in their own pane.
+  function renderStreamToggles(lines) {
+    let added = false;
+    for (const line of lines) {
+      if (!line.stream || line.stream === "main" || knownStreams.has(line.stream)) continue;
+      knownStreams.set(line.stream, line.closed?.kind ?? "main");
+      added = true;
+    }
+    if (!added) return;
+    const host = element("stream-toggles");
+    host.replaceChildren();
+    for (const [stream, kind] of [...knownStreams].sort(([a], [b]) => a.localeCompare(b))) {
+      const label = document.createElement("label");
+      label.className = "stream-toggle";
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = openWindows.has(stream);
+      box.addEventListener("change", () => {
+        if (box.checked) openWindows.add(stream); else openWindows.delete(stream);
+        renderStreams();
+        renderStory(currentStory, true);
+      });
+      const name = document.createElement("span");
+      name.textContent = stream;
+      label.append(box, name);
+      // `drop` streams are the duplicated ones. Say so, because closing such a
+      // window loses nothing -- the same text is in the Story already.
+      if (kind === "drop") {
+        const note = document.createElement("span");
+        note.className = "stream-note-inline";
+        note.textContent = "also in Story";
+        label.appendChild(note);
+      }
+      host.appendChild(label);
+    }
+    element("stream-windows").hidden = knownStreams.size === 0;
+  }
+
+  // A pane per open window, holding that stream's lines.
+  function renderStreams() {
+    const host = element("stream-panes");
+    host.replaceChildren();
+    for (const stream of [...openWindows].sort((a, b) => a.localeCompare(b))) {
+      const pane = document.createElement("section");
+      pane.className = "stream-pane";
+      const heading = document.createElement("h3");
+      heading.textContent = stream;
+      const body = document.createElement("div");
+      body.className = "text-output stream-body";
+      for (const line of currentStory) {
+        const place = placeLine(line, isOpen);
+        if (place.where !== "window" || place.id !== stream) continue;
+        const node = document.createElement("p");
+        node.className = "text-line";
+        appendRuns(document, node, line.runs);
+        body.appendChild(node);
+      }
+      if (!body.childElementCount) {
+        const empty = document.createElement("p");
+        empty.className = "empty-state";
+        empty.textContent = "Nothing yet.";
+        body.appendChild(empty);
+      }
+      pane.append(heading, body);
+      host.appendChild(pane);
+      body.scrollTop = body.scrollHeight;
+    }
+    host.hidden = openWindows.size === 0;
   }
 
   function renderRoundtime() {
@@ -144,7 +259,10 @@ export function mount(document, environment) {
     // Drafts have no outbox; do not carry a draft into a different game generation.
     if (renderedGeneration !== null && state.generation !== null && renderedGeneration !== state.generation) input.value = "";
     if (state.generation !== null) renderedGeneration = state.generation;
+    currentStory = state.story;
+    renderStreamToggles(state.story);
     renderStory(state.story);
+    renderStreams();
   }
 
   const protocol = environment.location.protocol === "https:" ? "wss:" : "ws:";

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { HydraSession, MAX_STORY_LINES, commandError, takeLaunchToken } from "../session.js";
-import { lifecycleText } from "../app.js";
+import { lifecycleText, placeLine } from "../app.js";
 
 // Shared synthetic contract fixture, also round-tripped by Rust cena-ui tests.
 export const fixture = () => JSON.parse(readFileSync(new URL("../../../cena-ui/tests/fixtures/snapshot-v1.json", import.meta.url)));
@@ -34,6 +34,12 @@ function update(snapshot, extra = {}) {
   const { story, history_gap, ...value } = structuredClone(snapshot);
   return { ...value, kind: "update", cursor: String(BigInt(value.cursor) + 1n), lines: [], ...extra };
 }
+
+// "We do not know whether that command ran" -- matched as a PROPERTY of the
+// message rather than as its exact words. A display string was previously also
+// used as a sentinel in session.js, and rewording it broke a comparison
+// silently; these assertions are kept loose for the same reason.
+const UNSURE = /may or may not|Not sure if/;
 
 test("launch token is removed before use and query strings never supply authentication", () => {
   const writes = [];
@@ -86,7 +92,7 @@ test("reconnect authenticates afresh, replaces history, and never replays comman
   socket.close(1006);
   assert.equal(session.ready, false);
   assert.equal(session.state.view, null);
-  assert.match(session.state.commandStatus, /uncertain/);
+  assert.match(session.state.commandStatus, UNSURE);
   assert.equal(timers[0].delay, 1000);
   timers[0].fn();
   const replacement = session.socket;
@@ -98,7 +104,7 @@ test("reconnect authenticates afresh, replaces history, and never replays comman
   replacement.message(fresh);
   assert.equal(session.ready, true);
   assert.equal(session.state.story.length, 0);
-  assert.match(session.state.commandStatus, /uncertain/);
+  assert.match(session.state.commandStatus, UNSURE);
   socket.message(update(fresh)); // late callback from old socket is ignored
   assert.equal(session.state.cursor, "0");
 });
@@ -112,16 +118,20 @@ test("generation change invalidates pending delivery and respects supplied unkno
   assert.equal(session.ready, false);
   assert.equal(session.state.view.left_hand.kind, "unknown");
   assert.equal(session.pending.size, 0);
-  assert.match(session.state.commandStatus, /uncertain/);
+  assert.match(session.state.commandStatus, UNSURE);
   socket.message({ kind: "receipt", version: 1, session: fixture().session, generation: fixture().generation,
     request_id: "1", status: "sent", detail: "Old generation" });
-  assert.match(session.state.commandStatus, /uncertain/);
+  assert.match(session.state.commandStatus, UNSURE);
 });
 
 test("sent/refused/uncertain receipts distinguish byte delivery from game outcome", () => {
   const { session, socket } = setup();
   socket.message(readySnapshot());
-  for (const [status, pattern] of [["sent", /game outcome unconfirmed/], ["refused", /Command refused/], ["uncertain", /Delivery uncertain/]]) {
+  // The three must stay DISTINGUISHABLE and must not overstate: `sent` may not
+  // claim the game acted, `uncertain` may not read as failure. Matched on the
+  // live labels rather than on prose, so a rewording fails loudly here instead
+  // of quietly passing a regex that no longer describes the text.
+  for (const [status, pattern] of [["sent", /^Sent:/], ["refused", /^Not sent:/], ["uncertain", UNSURE]]) {
     session.command("look");
     const command = socket.sent.at(-1);
     socket.message({ kind: "receipt", version: 1, session: command.session, generation: command.generation,
@@ -191,7 +201,7 @@ test("explicit re-pair revives a refused viewer and fences the old socket", () =
   replacement.message(readySnapshot());
   assert.equal(session.ready, true);
   assert.equal(session.pending.size, 0);
-  assert.match(session.state.commandStatus, /uncertain/);
+  assert.match(session.state.commandStatus, UNSURE);
   assert.equal(replacement.sent.length, 1);
 });
 
@@ -223,8 +233,8 @@ test("policy closure after command submission preserves delivery uncertainty", (
   socket.message(readySnapshot());
   session.command("look");
   socket.close(1008);
-  assert.match(session.state.commandStatus, /delivery is uncertain/);
-  assert.match(session.state.commandStatus, /access refused/);
+  assert.match(session.state.commandStatus, UNSURE);
+  assert.match(session.state.commandStatus, /[Aa]ccess refused/);
 });
 
 test("browser timers are called without the session as their receiver", () => {
@@ -234,4 +244,112 @@ test("browser timers are called without the session as their receiver", () => {
   session.connect();
   session.socket.close(1006);
   session.close();
+});
+
+test("the first snapshot's status is not decided by comparing display text", () => {
+  // **A display string was doing double duty as a sentinel.** session.js
+  // initialised `commandStatus` to a literal and the first snapshot compared
+  // against that same literal to decide "nothing has reported on a command
+  // yet". Rewording the message broke the comparison with nothing failing --
+  // the status silently stopped updating on the first snapshot.
+  const { session, socket } = setup();
+  socket.message(readySnapshot());
+  assert.match(session.state.commandStatus, /Ready/,
+    "a fresh viewer's first snapshot reports readiness");
+
+  // And once something HAS reported on a command, a later snapshot must not
+  // overwrite it with the readiness message -- which is the reason the
+  // comparison existed at all.
+  session.command("look");
+  const command = socket.sent.at(-1);
+  socket.message({ kind: "receipt", version: 1, session: command.session, generation: command.generation,
+    request_id: command.request_id, status: "refused", detail: "Synthetic refusal" });
+  assert.match(session.state.commandStatus, /^Not sent:/);
+  const later = update(fixture(), { cursor: "99" });
+  socket.message(later);
+  assert.match(session.state.commandStatus, /^Not sent:/,
+    "a later snapshot must not bury a real command result");
+});
+
+
+// --- the closed-window rule, in the viewer ---------------------------------
+//
+// The server ships each line's DECLARATION (what its stream does when its
+// window is closed) because the hub broadcasts one message to all viewers.
+// Applying it is the viewer's job, since only the viewer knows what it has
+// open. These pin that half.
+
+const closedNone = () => false;
+
+test("a speech duplicate is shown once when no speech window is open", () => {
+  // **The author's report, as a unit test.** The game sends the same sentence
+  // twice: once inside the `speech` stream and once to main. `speech` declares
+  // `ifClosed=''`, which the protocol wiki calls a duplicate -- so a viewer
+  // with no speech window shows the main copy and drops the stream copy.
+  const streamCopy = { stream: "speech", runs: [], truncated: false, closed: { kind: "drop" } };
+  const mainCopy = { stream: "", runs: [], truncated: false, closed: { kind: "main" } };
+  assert.equal(placeLine(streamCopy, closedNone).where, "dropped");
+  assert.equal(placeLine(mainCopy, closedNone).where, "story");
+});
+
+test("an open window takes its stream's lines out of the Story", () => {
+  const line = { stream: "speech", runs: [], truncated: false, closed: { kind: "drop" } };
+  const place = placeLine(line, (id) => id === "speech");
+  assert.deepEqual(place, { where: "window", id: "speech" });
+});
+
+test("a styled stream falls through to the Story wearing its style", () => {
+  // `thoughts` is declared `styleIfClosed='thought'` and no `ifClosed`: ESP
+  // shows inline rather than vanishing when the window is shut.
+  const line = { stream: "thoughts", runs: [], truncated: false, closed: { kind: "styled", style: "thought" } };
+  assert.deepEqual(placeLine(line, closedNone), { where: "story", style: "thought" });
+});
+
+test("a routed stream chains, and a cycle of closed windows does not hang", () => {
+  const routed = { stream: "voln", runs: [], truncated: false, closed: { kind: "route", window: "thoughts" } };
+  // thoughts is open, so the chain stops there.
+  assert.deepEqual(placeLine(routed, (id) => id === "thoughts"), { where: "window", id: "thoughts" });
+  // Nothing open: the target's own declaration is not on this line, so the
+  // viewer can only fall through to the Story rather than guess.
+  assert.equal(placeLine(routed, closedNone).where, "story");
+  // A self-cycle must terminate.
+  const loop = { stream: "a", runs: [], truncated: false, closed: { kind: "route", window: "a" } };
+  assert.equal(placeLine(loop, closedNone).where, "story");
+});
+
+test("main-window lines and unknown declarations always reach the Story", () => {
+  // The safe direction: text shows rather than disappearing. A missing or
+  // unrecognised `closed` must never hide a line.
+  for (const line of [
+    { stream: "", runs: [], truncated: false, closed: { kind: "main" } },
+    { stream: "main", runs: [], truncated: false, closed: { kind: "drop" } },
+    { stream: "percWindow", runs: [], truncated: false, closed: { kind: "main" } },
+    { stream: "mystery", runs: [], truncated: false },
+    { stream: "future", runs: [], truncated: false, closed: { kind: "something_new" } },
+  ]) {
+    assert.equal(placeLine(line, closedNone).where, "story", `stream: ${line.stream}`);
+  }
+});
+
+test("a malformed closed declaration is refused but an unknown kind is not", () => {
+  // A rejected message does not throw out of `message()`: `onmessage` catches
+  // and reports a protocol error, which is what a viewer can act on. Asserting
+  // a throw here passed a broken test for the wrong reason at first.
+  const { session, socket } = setup();
+  const bad = readySnapshot();
+  // A `styled` with no style is a broken message.
+  bad.story = [{ stream: "thoughts", runs: [], truncated: false, closed: { kind: "styled" } }];
+  socket.message(bad);
+  assert.equal(session.state.connection, "protocol-error");
+  assert.equal(session.state.story.length, 0);
+
+  // But a kind this build has never heard of must NOT break the viewer: a
+  // newer server may add one, and refusing the whole message would blank the
+  // screen over a line it could simply have shown in the Story.
+  const { session: ok, socket: fresh } = setup();
+  const future = readySnapshot();
+  future.story = [{ stream: "later", runs: [], truncated: false, closed: { kind: "something_new" } }];
+  fresh.message(future);
+  assert.equal(ok.state.connection, "connected");
+  assert.equal(ok.state.story.length, 1);
 });

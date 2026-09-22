@@ -97,3 +97,19 @@ meter::-moz-meter-bar { background: var(--vital-color); }
   button { min-height: 40px; }
   #command-input { min-height: 40px; font-size: 1rem; }
 }
+
+/* Stream windows: a stream with its window open leaves the Story for a pane of
+   its own. The game sends some streams (speech, room, inv) twice, so a closed
+   window is not lost text -- the toggle list says which those are. */
+.stream-windows { flex: none; padding: 4px 10px; border-top: 1px solid var(--line); font-size: .75rem; }
+.stream-windows summary { color: var(--muted); cursor: pointer; }
+.stream-note { margin: 5px 0; color: var(--muted); }
+#stream-toggles { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 3px 0 5px; }
+.stream-toggle { display: inline-flex; gap: 5px; align-items: baseline; }
+.stream-note-inline { color: var(--muted); font-style: italic; }
+.stream-panes { flex: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 5px 5px; max-height: 40%; overflow: auto; }
+.stream-pane { flex: 1 1 220px; min-width: 0; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+.stream-pane h3 { margin: 0; padding: 4px 8px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; }
+.stream-body { max-height: 160px; padding: 6px 8px; }
+/* A styled fall-through with no preset mapping of its own. */
+.text-stream-styled { color: #a9bbf5; }

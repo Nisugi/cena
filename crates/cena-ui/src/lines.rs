@@ -3,6 +3,7 @@
 use std::collections::VecDeque;
 
 use crate::projection::bounded_text;
+use crate::view::Closed;
 use crate::{StoryLine, StyledRun};
 
 pub const MAX_LINE_BYTES: usize = 16 * 1024;
@@ -133,11 +134,22 @@ impl Pending {
         self.bytes += piece.len();
     }
 
+    /// **`closed` is left as [`Closed::Main`] here, deliberately.**
+    ///
+    /// The declaration comes from `<streamWindow ifClosed=>` and this
+    /// assembler has no model to ask. The pump that owns the `GameState`
+    /// stamps it (`cena-web/src/presentation.rs`), so the wire's rule is read
+    /// in one place.
+    ///
+    /// `Main` rather than an `Option`: a line nobody classified is a line that
+    /// shows in the story, which is the safe direction -- the unsafe one is
+    /// hiding text because a declaration was missing.
     fn finish(self, stream: String) -> StoryLine {
         StoryLine {
             stream,
             runs: self.runs,
             truncated: self.truncated,
+            closed: Closed::Main,
         }
     }
 }

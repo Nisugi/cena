@@ -23,6 +23,18 @@ function validRuns(runs) {
     && (run.preset === null || typeof run.preset === "string"));
 }
 
+// A line's closed-window declaration. Shape only: an unrecognised `kind` is
+// ACCEPTED, because a newer server adding a behaviour must not make this viewer
+// throw away the whole message -- `placeLine` shows such a line in the Story,
+// which is the safe direction. A missing `closed` is likewise tolerated.
+function validClosed(closed) {
+  if (closed === undefined || closed === null) return true;
+  if (typeof closed !== "object" || typeof closed.kind !== "string") return false;
+  if (closed.kind === "styled") return typeof closed.style === "string";
+  if (closed.kind === "route") return typeof closed.window === "string";
+  return true;
+}
+
 function validView(view) {
   if (!view || !view.room || !view.vitals || !view.roundtime || !view.lifecycle) return false;
   const room = view.room;
@@ -68,8 +80,13 @@ export class HydraSession {
     this.stopped = false;
     this.pending = new Map();
     this.nextRequest = 0n;
+    // `commandStatus` is display text, and `untouched` is the FACT that
+    // nothing has reported on a command yet. They were one thing: the first
+    // snapshot compared `commandStatus` against the literal it was initialised
+    // with, so rewording the message silently stopped the comparison matching.
+    this.untouched = true;
     this.state = { connection: "idle", view: null, story: [], session: null,
-      generation: null, cursor: null, historyGap: false, commandStatus: "Waiting for connection." };
+      generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…" };
   }
 
   get ready() {
@@ -85,7 +102,7 @@ export class HydraSession {
   pair(token) {
     if (!token) return;
     if (["idle", "unpaired"].includes(this.state.connection)) {
-      this.state.commandStatus = "Waiting for connection.";
+      this.state.commandStatus = "Connecting…";
     }
     this.close();
     this.token = token;
@@ -98,7 +115,7 @@ export class HydraSession {
     if (this.stopped || this.socket) return;
     if (!this.token) {
       this.state.connection = "unpaired";
-      this.state.commandStatus = "Open the pairing link printed by Hydra to connect this viewer.";
+      this.state.commandStatus = "Open the pairing link Hydra printed to connect this window.";
       this.emit();
       return;
     }
@@ -122,7 +139,7 @@ export class HydraSession {
       if (this.socket !== socket) return;
       try { this.receive(JSON.parse(event.data)); }
       catch {
-        this.state.commandStatus = "Unsupported or malformed server message. Reopen Hydra's pairing link.";
+        this.state.commandStatus = "Did not understand the game connection. Reopen Hydra's pairing link.";
         this.close("protocol-error");
       }
     };
@@ -136,7 +153,9 @@ export class HydraSession {
 
   uncertain() {
     if (!this.pending.size) return;
-    this.state.commandStatus = `${this.pending.size} command receipt(s) lost; delivery is uncertain. Nothing will be resent.`;
+    const n = this.pending.size;
+    this.untouched = false;
+    this.state.commandStatus = `Lost track of ${n === 1 ? "your last command" : `your last ${n} commands`} — ${n === 1 ? "it" : "they"} may or may not have gone through. Nothing was re-sent.`;
     this.pending.clear();
   }
 
@@ -147,7 +166,8 @@ export class HydraSession {
     this.state.connection = code === 1008 ? "denied" : "reconnecting";
     if (code === 1008) {
       this.state.commandStatus = (hadPending ? this.state.commandStatus + " " : "")
-        + "Viewer access refused. Open a fresh pairing link from Hydra.";
+        + "Access refused. Open a fresh pairing link from Hydra.";
+      this.untouched = false;
       this.stopped = true;
     } else if (!this.stopped) {
       const delay = this.retryMs;
@@ -169,7 +189,11 @@ export class HydraSession {
         throw new Error("Invalid receipt");
       }
       if (!this.pending.delete(message.request_id)) return;
-      const label = { sent: "Bytes sent (game outcome unconfirmed)", refused: "Command refused", uncertain: "Delivery uncertain; do not assume it failed" };
+      // Plain wording, same claims. `sent` must not imply the game ACTED --
+      // the bytes reached the wire and the outcome is whatever the story
+      // shows. `uncertain` must not imply failure: it may well have run.
+      const label = { sent: "Sent", refused: "Not sent", uncertain: "Not sure if this one went through" };
+      this.untouched = false;
       state.commandStatus = `${label[message.status]}: ${message.detail}`;
       this.emit();
       return;
@@ -183,7 +207,8 @@ export class HydraSession {
     if (state.cursor !== null && BigInt(message.cursor) <= BigInt(state.cursor)) return;
     const lines = message.kind === "snapshot" ? message.story : message.lines;
     if (!Array.isArray(lines) || !lines.every((line) => line && typeof line.stream === "string"
-      && typeof line.truncated === "boolean" && validRuns(line.runs))) throw new Error("Invalid Story");
+      && typeof line.truncated === "boolean" && validRuns(line.runs)
+      && validClosed(line.closed))) throw new Error("Invalid Story");
     if (message.kind === "snapshot" && typeof message.history_gap !== "boolean") throw new Error("Invalid gap");
     if (state.generation !== null && message.generation !== state.generation) this.uncertain();
     state.story = (message.kind === "snapshot" ? lines : [...state.story, ...lines]).slice(-MAX_STORY_LINES);
@@ -193,8 +218,8 @@ export class HydraSession {
     state.generation = message.generation;
     state.cursor = message.cursor;
     state.connection = "connected";
-    if (state.commandStatus === "Waiting for connection.") {
-      state.commandStatus = "Manual commands are available when the game session is ready.";
+    if (this.untouched) {
+      state.commandStatus = "Ready when the game is.";
     }
     this.retryMs = 1000;
     this.emit();
@@ -203,7 +228,8 @@ export class HydraSession {
   command(line) {
     const error = commandError(line);
     if (error || !this.ready) {
-      this.state.commandStatus = error || "Wait for a ready session and pending command receipts.";
+      this.untouched = false;
+      this.state.commandStatus = error || "Not ready yet — waiting on the game, or on your last command.";
       this.emit();
       return false;
     }
@@ -212,7 +238,8 @@ export class HydraSession {
     try {
       this.socket.send(JSON.stringify({ kind: "command", version: 1, session: this.state.session,
         generation: this.state.generation, request_id, line }));
-      this.state.commandStatus = "Command submitted; waiting for a delivery receipt.";
+      this.untouched = false;
+      this.state.commandStatus = "Sending…";
     } catch {
       this.uncertain();
       this.socket.close();

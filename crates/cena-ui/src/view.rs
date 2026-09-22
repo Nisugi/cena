@@ -17,6 +17,47 @@ pub struct StoryLine {
     pub stream: String,
     pub runs: Vec<StyledRun>,
     pub truncated: bool,
+    /// What this line's stream declared it does when its window is **closed**.
+    ///
+    /// # Why the declaration rather than a resolved destination
+    ///
+    /// The rule needs two things: what the stream declared (the model has it,
+    /// from `<streamWindow ifClosed=>`) and which windows the viewer has open
+    /// (only the viewer has it). The obvious design -- resolve it server-side
+    /// and ship a destination -- does not fit: the hub encodes **one** message
+    /// and broadcasts it to every viewer, so a per-viewer answer would mean
+    /// re-encoding per client, and two viewers with different windows open
+    /// would need different bytes.
+    ///
+    /// So the declaration travels and the viewer applies it. That still keeps
+    /// one implementation of *reading* the wire's rule
+    /// (`cena_model::state::stream_windows`), which is the part with the
+    /// `Some("")`-versus-`None` trap in it.
+    pub closed: Closed,
+}
+
+/// What a stream's text does when its window is closed: the wire's own rule,
+/// read off `<streamWindow ifClosed= styleIfClosed=>`.
+///
+/// Mirrors `cena_model::state::stream_windows::Closed` as a wire DTO. The two
+/// are deliberately separate types: this one is a versioned contract with a
+/// JavaScript consumer, and the model's is free to change.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Closed {
+    /// Falls through to the main story, unstyled. Also every ordinary
+    /// main-window line, and any stream nobody declared.
+    #[default]
+    Main,
+    /// **A duplicate: the server also sent this line to main.** `speech` is
+    /// declared this way, which is why a viewer that renders every line shows
+    /// everything the character says twice. Show it only in its own window.
+    Drop,
+    /// Falls through to main wearing this style: the inline-thoughts look.
+    Styled { style: String },
+    /// Goes to another window instead, which may itself be closed -- so this
+    /// chains. UNVERIFIED against live traffic; see the model's module docs.
+    Route { window: String },
 }
 
 /// Native lifecycle is supplied by the owner; projection never guesses it.

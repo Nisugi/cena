@@ -5,7 +5,8 @@
 use crate::server::Shared;
 use cena_session::{Event, Frame, Generation, ObservedEvent, SessionObserver, Snapshot, State};
 use cena_ui::{
-    LifecycleView, LineAssembler, ServerMessage, SessionView, StoryLine, StyledRun, WIRE_VERSION,
+    Closed, LifecycleView, LineAssembler, ServerMessage, SessionView, StoryLine, StyledRun,
+    WIRE_VERSION,
 };
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -42,11 +43,23 @@ impl Hub {
         }
     }
 
-    fn publish(&mut self, snapshot: &Snapshot, lines: Vec<StoryLine>, gap: bool) -> Result<(), ()> {
+    fn publish(
+        &mut self,
+        snapshot: &Snapshot,
+        mut lines: Vec<StoryLine>,
+        gap: bool,
+    ) -> Result<(), ()> {
         self.session = snapshot.session.0.to_string();
         self.generation = snapshot.generation.0.to_string();
         self.sequence = self.sequence.checked_add(1).ok_or(())?;
         self.history_gap |= gap;
+        // Stamp each line with what its stream does when its window is closed.
+        // Here rather than in `LineAssembler` because this is where the model
+        // is: the declarations come from `<streamWindow ifClosed=>` and the
+        // viewer cannot be trusted to know them.
+        for line in &mut lines {
+            line.closed = declared(&snapshot.state, &line.stream);
+        }
         for line in &lines {
             let bytes = line_bytes(line);
             self.history.push_back(line.clone());
@@ -110,6 +123,32 @@ pub(crate) fn encode(message: &ServerMessage) -> Result<Arc<str>, ()> {
     let mut bounded = Bounded(Vec::new());
     serde_json::to_writer(&mut bounded, message).map_err(|_| ())?;
     String::from_utf8(bounded.0).map(Arc::from).map_err(|_| ())
+}
+
+/// What `stream` declared it does when its window is closed.
+///
+/// Translates the model's answer into the wire DTO. The main window is not a
+/// stream with a fallback -- it *is* the fallback -- and an undeclared stream
+/// falls through to main rather than being hidden, for the reason
+/// `stream_windows::Windows::route` gives: 16 ids are declared against 8 ever
+/// pushed to, and the pushed set is not closed -- so an unknown stream is
+/// likelier to be one this build has not seen than one the server means to
+/// suppress.
+fn declared(state: &cena_session::GameState, stream: &str) -> Closed {
+    use cena_session::stream_windows::{Closed as Model, MAIN};
+    if stream.is_empty() || stream == MAIN {
+        return Closed::Main;
+    }
+    match state.stream_windows().declared(stream) {
+        Some(Model::Drop) => Closed::Drop,
+        Some(Model::Styled(style)) => Closed::Styled {
+            style: style.clone(),
+        },
+        Some(Model::Route(window)) => Closed::Route {
+            window: window.clone(),
+        },
+        Some(Model::Main) | None => Closed::Main,
+    }
 }
 
 fn lifecycle(snapshot: &Snapshot) -> LifecycleView {
@@ -340,6 +379,80 @@ mod tests {
         }
     }
 
+    /// A state that has seen the login burst's `speech` declaration.
+    fn declared_speech(cursor: u64) -> Snapshot {
+        let mut snapshot = snapshot(cursor);
+        // The frame the parser makes of
+        // `<streamWindow id='speech' ifClosed='' .../>`. Built directly rather
+        // than parsed: `cena-session` deliberately does not re-export `Parser`
+        // (see its lib.rs), and the attribute pair IS the input under test.
+        snapshot.state.apply(&Frame::StreamWindow {
+            id: "speech".into(),
+            title: Some("Speech".into()),
+            subtitle: None,
+            attrs: vec![
+                ("id".into(), "speech".into()),
+                ("ifClosed".into(), String::new()),
+                ("resident".into(), "true".into()),
+            ],
+        });
+        snapshot
+    }
+
+    fn line(stream: &str) -> StoryLine {
+        StoryLine {
+            stream: stream.to_owned(),
+            runs: vec![StyledRun {
+                text: "You say, \"Yep.\"".into(),
+                ..StyledRun::default()
+            }],
+            truncated: false,
+            // Deliberately the DEFAULT, so the assertion proves `publish`
+            // stamped it rather than that the fixture was pre-stamped.
+            closed: Closed::Main,
+        }
+    }
+
+    /// **The duplicate the author reported, at the wire boundary.**
+    ///
+    /// `speech` is declared `ifClosed=''`, which the protocol wiki calls a
+    /// duplicate the server also sends to main. The viewer cannot know that on
+    /// its own, so the pump stamps it -- and this test is what says the stamp
+    /// reaches the bytes a browser receives, not merely the model.
+    #[test]
+    fn a_published_line_carries_what_its_stream_does_when_closed() {
+        let mut hub = Hub::new();
+        let mut viewers = hub.updates.subscribe();
+        hub.publish(&declared_speech(1), vec![line("speech"), line("")], false)
+            .unwrap();
+        let wire: serde_json::Value = serde_json::from_str(&viewers.try_recv().unwrap()).unwrap();
+        let lines = wire["lines"].as_array().expect("an update carries lines");
+        assert_eq!(
+            lines[0]["closed"]["kind"], "drop",
+            "the speech copy is a duplicate: {:?}",
+            lines[0]["closed"]
+        );
+        assert_eq!(
+            lines[1]["closed"]["kind"], "main",
+            "the main-window copy is the one that shows"
+        );
+    }
+
+    /// An undeclared stream falls through to main rather than being hidden.
+    ///
+    /// The unsafe direction is dropping text on a guess: MEASURED, 16 stream
+    /// ids are declared against 8 ever pushed to, and that set is not closed,
+    /// so an unknown stream is likelier to be one this build has not seen.
+    #[test]
+    fn an_undeclared_stream_is_published_as_main() {
+        let mut hub = Hub::new();
+        let mut viewers = hub.updates.subscribe();
+        hub.publish(&snapshot(1), vec![line("percWindow")], false)
+            .unwrap();
+        let wire: serde_json::Value = serde_json::from_str(&viewers.try_recv().unwrap()).unwrap();
+        assert_eq!(wire["lines"][0]["closed"]["kind"], "main");
+    }
+
     #[test]
     fn subscription_and_cache_share_a_presentation_sequence() {
         let mut hub = Hub::new();
@@ -477,6 +590,7 @@ mod tests {
                         ..StyledRun::default()
                     }],
                     truncated: false,
+                    closed: Closed::Main,
                 }],
                 false,
             )

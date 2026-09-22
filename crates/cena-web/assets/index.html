@@ -38,7 +38,13 @@
       <section class="pane story-pane" aria-labelledby="story-heading">
         <header class="pane-header"><h2 id="story-heading">Story</h2><button id="story-bottom" type="button">Latest text</button></header>
         <p id="history-gap" class="output-gap" role="status" hidden>Some Story history is unavailable. This view has been resynchronized.</p>
+        <details id="stream-windows" class="stream-windows" hidden>
+          <summary>Windows</summary>
+          <p class="stream-note">A stream with its window open shows there instead of in the Story. The game sends some streams twice, so closing a window is not the same as losing the text.</p>
+          <div id="stream-toggles" role="group" aria-label="Stream windows"></div>
+        </details>
         <div id="story-output" class="text-output" role="log" aria-live="polite" aria-relevant="additions" tabindex="0" aria-label="Story output"><p class="empty-state">Waiting for game text…</p></div>
+        <div id="stream-panes" class="stream-panes" hidden></div>
         <div class="story-command">
           <form id="command-form" autocomplete="off">
             <label for="command-input" class="visually-hidden">Game command</label>

@@ -8,32 +8,114 @@
     "room": {
       "id": "7503251",
       "title": "A test room",
-      "description": [{"text": "Stone walls.", "bold": false, "monospace": false, "preset": "roomDesc"}],
+      "description": [
+        {
+          "text": "Stone walls.",
+          "bold": false,
+          "monospace": false,
+          "preset": "roomDesc"
+        }
+      ],
       "exits": [],
       "creatures": null,
       "objects": [],
       "players": null
     },
-    "left_hand": {"kind": "unknown"},
-    "right_hand": {"kind": "empty"},
-    "vitals": {
-      "health": {"percent": 0, "current": -5, "max": 100},
-      "mana": null,
-      "stamina": {"percent": 80, "current": null, "max": null},
-      "spirit": {"percent": 100, "current": 10, "max": 10}
+    "left_hand": {
+      "kind": "unknown"
     },
-    "roundtime": {"ends_at": null, "remaining_seconds": null},
-    "lifecycle": {"kind": "reconnecting", "attempt": 2, "retry_delay_ms": 2000, "detail": "Connection lost"},
+    "right_hand": {
+      "kind": "empty"
+    },
+    "vitals": {
+      "health": {
+        "percent": 0,
+        "current": -5,
+        "max": 100
+      },
+      "mana": null,
+      "stamina": {
+        "percent": 80,
+        "current": null,
+        "max": null
+      },
+      "spirit": {
+        "percent": 100,
+        "current": 10,
+        "max": 10
+      }
+    },
+    "roundtime": {
+      "ends_at": null,
+      "remaining_seconds": null
+    },
+    "lifecycle": {
+      "kind": "reconnecting",
+      "attempt": 2,
+      "retry_delay_ms": 2000,
+      "detail": "Connection lost"
+    },
     "prompt": null,
-    "unknown_tags": [{"name": "future", "raw": "<future value=\"<script>\"/>", "truncated": false}]
+    "unknown_tags": [
+      {
+        "name": "future",
+        "raw": "<future value=\"<script>\"/>",
+        "truncated": false
+      }
+    ]
   },
-  "story": [{
-    "stream": "",
-    "runs": [
-      {"text": "You see ", "bold": false, "monospace": false, "preset": null},
-      {"text": "<b>a test creature</b>", "bold": true, "monospace": false, "preset": null}
-    ],
-    "truncated": false
-  }],
+  "story": [
+    {
+      "stream": "",
+      "runs": [
+        {
+          "text": "You see ",
+          "bold": false,
+          "monospace": false,
+          "preset": null
+        },
+        {
+          "text": "<b>a test creature</b>",
+          "bold": true,
+          "monospace": false,
+          "preset": null
+        }
+      ],
+      "truncated": false,
+      "closed": {
+        "kind": "main"
+      }
+    },
+    {
+      "stream": "speech",
+      "runs": [
+        {
+          "text": "You say, \"Yep.\"",
+          "bold": false,
+          "monospace": false,
+          "preset": "speech"
+        }
+      ],
+      "truncated": false,
+      "closed": {
+        "kind": "drop"
+      }
+    },
+    {
+      "stream": "",
+      "runs": [
+        {
+          "text": "You say, \"Yep.\"",
+          "bold": false,
+          "monospace": false,
+          "preset": "speech"
+        }
+      ],
+      "truncated": false,
+      "closed": {
+        "kind": "main"
+      }
+    }
+  ],
   "history_gap": true
 }
