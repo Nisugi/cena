@@ -53,7 +53,7 @@
 //!
 //! | name | blob | carries |
 //! |---|---|---|
-//! | `sheet` | two string refs, either [`NONE`](binary::wire) | `Room::map` (the plate slug) and `Room::area` |
+//! | `sheet` | two string refs, either `NONE` | `Room::map` (the plate slug) and `Room::area` |
 //! | `placement` | `i64` anchor uid, `i32` dx, `i32` dy | `Room::placement` |
 //! | `dirto` | `u32` count, then `u32` destination id + `u32` name ref | `Exit::dirto`, keyed by destination |
 //!

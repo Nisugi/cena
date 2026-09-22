@@ -53,11 +53,42 @@ impl GameState {
     /// `Unknown`, not a fabricated zero.
     #[must_use]
     pub fn game_time_now(&self) -> Option<u32> {
-        let base = self.game_time?;
-        let elapsed = self.game_time_received.map_or(0, |at| {
-            u32::try_from(at.elapsed().as_secs()).unwrap_or(u32::MAX)
-        });
-        Some(base.saturating_add(elapsed))
+        self.game_time_after(self.elapsed_since_prompt())
+    }
+
+    /// [`Self::game_time_now`] with the elapsed interval **supplied** rather
+    /// than read from the local clock.
+    ///
+    /// # Why this exists
+    ///
+    /// `game_time_now` reads `Instant::elapsed`, and **a test cannot control
+    /// it.** `cena-model` deliberately has no tokio dependency, so
+    /// `start_paused` -- the lever that fixed the same defect in
+    /// `send_now` -- is not available here: pulling an async runtime into the
+    /// model crate to make one assertion deterministic buys determinism with
+    /// the layering the workspace exists to enforce.
+    ///
+    /// So the interval becomes a parameter. Production still measures it;
+    /// a test states it, and states `0` when it means "at the instant the
+    /// prompt arrived".
+    ///
+    /// **This is not a test-only method.** A caller that already knows how
+    /// much time has passed -- a replay, a recorded session, anything driving
+    /// the model from a timeline rather than from the wall clock -- wants
+    /// exactly this, and M5's N-sessions-one-process makes that likelier, not
+    /// less.
+    ///
+    /// # The defect it closes
+    ///
+    /// `status_and_clock.rs`'s roundtime test pinned a prompt second and
+    /// asserted the clock equalled it. That held only while the suite ran
+    /// inside one second of wall time: CI's Windows runner crossed a boundary
+    /// and read one second later, so the test failed on the slow machine and
+    /// passed on the fast one. **Not a flake** -- a real dependency on how
+    /// long the process had been running.
+    #[must_use]
+    pub fn game_time_after(&self, elapsed: u32) -> Option<u32> {
+        Some(self.game_time?.saturating_add(elapsed))
     }
 
     /// Whether the character is in roundtime.
@@ -102,7 +133,14 @@ impl GameState {
     /// roundtime nobody has ever mentioned is not running" invents nothing.
     #[must_use]
     pub fn in_roundtime(&self) -> Option<bool> {
-        let now = self.game_time_now()?;
+        self.in_roundtime_after(self.elapsed_since_prompt())
+    }
+
+    /// [`Self::in_roundtime`] against a supplied interval. See
+    /// [`Self::game_time_after`] for why the seam exists.
+    #[must_use]
+    pub fn in_roundtime_after(&self, elapsed: u32) -> Option<bool> {
+        let now = self.game_time_after(elapsed)?;
         Some(self.roundtime_ends.is_some_and(|ends| now < ends))
     }
 
@@ -116,10 +154,28 @@ impl GameState {
     /// in roundtime and then handed a remainder.
     #[must_use]
     pub fn roundtime_remaining(&self) -> Option<u32> {
-        let now = self.game_time_now()?;
+        self.roundtime_remaining_after(self.elapsed_since_prompt())
+    }
+
+    /// [`Self::roundtime_remaining`] against a supplied interval. See
+    /// [`Self::game_time_after`] for why the seam exists.
+    #[must_use]
+    pub fn roundtime_remaining_after(&self, elapsed: u32) -> Option<u32> {
+        let now = self.game_time_after(elapsed)?;
         Some(
             self.roundtime_ends
                 .map_or(0, |ends| ends.saturating_sub(now)),
         )
+    }
+
+    /// Seconds since the last prompt landed, on the local monotonic clock.
+    ///
+    /// The **one** place the wall clock is read. Every extrapolating method
+    /// goes through here, so a caller driving the model from a timeline has a
+    /// single thing to replace -- Rule 2.2a, one home per fact.
+    fn elapsed_since_prompt(&self) -> u32 {
+        self.game_time_received.map_or(0, |at| {
+            u32::try_from(at.elapsed().as_secs()).unwrap_or(u32::MAX)
+        })
     }
 }

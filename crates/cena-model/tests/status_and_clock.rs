@@ -165,11 +165,15 @@ fn a_real_roundtime_is_in_effect_and_then_is_not() {
         state.apply(&frame);
     }
 
+    // `_after(0)`, NOT the wall-clock forms. This asserts the state as of the
+    // instant the prompt landed, and that instant has to be stated: the
+    // wall-clock form failed on CI's Windows runner because the suite crossed
+    // a second boundary, reading 1789775822. See `clock.rs::game_time_after`.
     assert_eq!(state.roundtime_ends, Some(1_789_775_824));
-    assert_eq!(state.game_time_now(), Some(1_789_775_821));
-    assert_eq!(state.in_roundtime(), Some(true));
+    assert_eq!(state.game_time_after(0), Some(1_789_775_821));
+    assert_eq!(state.in_roundtime_after(0), Some(true));
     assert_eq!(
-        state.roundtime_remaining(),
+        state.roundtime_remaining_after(0),
         Some(3),
         "the server said 'Roundtime: 3 sec.' and the arithmetic must agree"
     );
@@ -180,13 +184,13 @@ fn a_real_roundtime_is_in_effect_and_then_is_not() {
     for frame in parser.push_bytes(b"<prompt time=\"1789775824\">&gt;</prompt>\n") {
         state.apply(&frame);
     }
-    assert_eq!(state.game_time_now(), Some(1_789_775_824));
+    assert_eq!(state.game_time_after(0), Some(1_789_775_824));
     assert_eq!(
-        state.in_roundtime(),
+        state.in_roundtime_after(0),
         Some(false),
         "value IS the end instant (plan/15 §2a.4a): at value, roundtime is over"
     );
-    assert_eq!(state.roundtime_remaining(), Some(0));
+    assert_eq!(state.roundtime_remaining_after(0), Some(0));
 }
 
 /// The clock keeps counting **without** a new prompt.
