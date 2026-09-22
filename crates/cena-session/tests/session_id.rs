@@ -84,7 +84,7 @@ async fn the_id_survives_a_reconnect_where_the_generation_does_not() {
         "guard: starts at generation 0"
     );
 
-    let end = session.run().await;
+    let end = Box::pin(session.run()).await;
 
     // The session reconnected, so the generation moved...
     assert!(

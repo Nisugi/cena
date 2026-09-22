@@ -244,7 +244,7 @@ async fn one_hunt_spans_a_reconnect_with_its_tables_and_its_recorder() {
         .with_crit_tables(Arc::new(CritTables::load().expect("crit tables")))
         .with_combat_recorder(handle);
     let (_snapshot, mut events) = session.subscribe();
-    let end = session.run().await;
+    let end = Box::pin(session.run()).await;
     assert!(end.generations.0 >= 1, "guard: it did reconnect");
     drop(end);
 

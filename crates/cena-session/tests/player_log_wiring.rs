@@ -199,7 +199,7 @@ async fn one_log_spans_a_reconnect_and_each_line_says_which_connection() {
     let (log, mut sink) = PlayerLog::new();
     let (session, handle) = cena_session::SupervisedSession::new(connector);
     let session = session.with_player_log(log, Capture::default(), None);
-    let end = session.run().await;
+    let end = Box::pin(session.run()).await;
     assert!(end.generations.0 >= 1, "guard: it did reconnect");
 
     // The handle was returned BEFORE the log was attached, and still reaches it.
@@ -356,7 +356,7 @@ async fn a_supervised_session_reads_the_settings_file_too() {
     let (log, mut sink) = PlayerLog::new();
     let (session, _handle) = cena_session::SupervisedSession::new(connector);
     let session = session.with_player_log(log, Capture::default(), Some(dir.clone()));
-    let _ = session.run().await;
+    let _ = Box::pin(session.run()).await;
 
     let tags: Vec<_> = drain(&mut sink).into_iter().map(|(tag, _)| tag).collect();
     assert!(tags.contains(&"inv".to_owned()), "{tags:?}");

@@ -206,7 +206,7 @@ impl Windows {
             match self.declared.get(&at) {
                 Some(Closed::Drop) => return Destination::Dropped,
                 Some(Closed::Styled(style)) => return Destination::MainStyled(style.clone()),
-                Some(Closed::Route(next)) => at = next.clone(),
+                Some(Closed::Route(next)) => at.clone_from(next),
                 // Declared as plain fall-through, or never declared at all.
                 Some(Closed::Main) | None => return Destination::Main,
             }

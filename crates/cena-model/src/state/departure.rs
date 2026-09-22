@@ -82,8 +82,8 @@ pub fn classify(line: &ChunkLine) -> Option<Departure> {
     let mut direction = None;
 
     for run in &line.runs.runs {
-        let Some(link) = &run.link else { continue };
-        match &link.kind {
+        let Some(anchor) = &run.link else { continue };
+        match &anchor.kind {
             // The creature. Bolded, and the FIRST such link: the line repeats
             // the id on the pronoun, and both are the same creature anyway.
             LinkKind::Exist { id, .. } if run.style.bold_depth > 0 && creature.is_none() => {
@@ -92,7 +92,7 @@ pub fn classify(line: &ChunkLine) -> Option<Departure> {
             // The direction. A bare `<d>` carries its command as its text,
             // which for a movement link IS the direction.
             LinkKind::DirectText if direction.is_none() => {
-                let word = link.text.trim().to_ascii_lowercase();
+                let word = anchor.text.trim().to_ascii_lowercase();
                 if is_direction(&word) {
                     direction = Some(word);
                 }

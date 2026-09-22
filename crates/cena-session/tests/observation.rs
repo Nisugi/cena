@@ -243,7 +243,7 @@ async fn connecting_remains_observable_and_cancel_records_actual_closed_state() 
 async fn fatal_initial_connect_has_a_closed_snapshot_even_without_an_actor() {
     let (session, _) = SupervisedSession::new(Connections(VecDeque::new()));
     let observer = session.observer();
-    session.run().await;
+    Box::pin(session.run()).await;
     let (closed, _) = observer.subscribe().await.expect("fatal shutdown recorded");
     assert_eq!(closed.lifecycle, State::Closed);
 }

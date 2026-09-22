@@ -290,7 +290,11 @@ impl Creatures {
     /// certainly hiding".
     pub fn vanished_unaccounted(&self) -> impl Iterator<Item = i64> + '_ {
         self.departed().filter(move |id| {
-            self.fled(*id).is_none() && !self.instances.get(id).is_some_and(|c| c.dead())
+            self.fled(*id).is_none()
+                && !self
+                    .instances
+                    .get(id)
+                    .is_some_and(instance::CreatureInstance::dead)
         })
     }
 

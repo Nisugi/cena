@@ -102,7 +102,7 @@ async fn an_idle_warning_before_an_unattended_drop_stops_immediately() {
     let (connector, attempts) = KickConnector::new(sources);
     let (session, _handle) = SupervisedSession::new(connector);
 
-    let end = tokio::time::timeout(Duration::from_hours(1), session.run())
+    let end = tokio::time::timeout(Duration::from_hours(1), Box::pin(session.run()))
         .await
         .expect("a warned idle kick must STOP the session, not retry forever");
 
@@ -134,7 +134,7 @@ async fn an_unwarned_quiet_drop_still_takes_two() {
     let (connector, attempts) = KickConnector::new(sources);
     let (session, _handle) = SupervisedSession::new(connector);
 
-    let end = tokio::time::timeout(Duration::from_hours(1), session.run())
+    let end = tokio::time::timeout(Duration::from_hours(1), Box::pin(session.run()))
         .await
         .expect("an unattended session must still stop, just not on the first drop");
 

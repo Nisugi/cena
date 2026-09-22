@@ -66,14 +66,14 @@ async fn what_a_supervised_session_learns_is_on_disk_for_the_next_one() {
 
     let learned = format!("{WHO}{SOCIETY}");
     let (session, _handle) = SupervisedSession::new(Scripted::new(&[&learned]));
-    let _ = session.with_character_store(dir.clone()).run().await;
+    let _ = Box::pin(session.with_character_store(dir.clone()).run()).await;
 
     let stored = character_store::load(&dir, "GS", "Nisugi").expect("the snapshot was written");
     assert_eq!(stored.character, "Nisugi", "guard");
 
     // The next login is told WHO it is and nothing else.
     let (session, _handle) = SupervisedSession::new(Scripted::new(&[WHO]));
-    let end = session.with_character_store(dir.clone()).run().await;
+    let end = Box::pin(session.with_character_store(dir.clone()).run()).await;
     assert_eq!(
         end.state.character.standing.society_rank,
         Some(20),
@@ -92,7 +92,7 @@ async fn the_stored_facts_are_read_once_per_session_not_once_per_connection() {
     let (session, _handle) = SupervisedSession::new(Scripted::new(&[WHO, WHO]));
     let session = session.with_character_store(dir.clone());
     let (_snapshot, mut events) = session.subscribe();
-    let end = session.run().await;
+    let end = Box::pin(session.run()).await;
     assert!(end.generations.0 >= 1, "guard: it did reconnect");
 
     let mut loads = 0;
@@ -111,7 +111,7 @@ async fn a_cmdlist_push_reaches_disk_on_the_second_connection_too() {
     // "handed to the first".
     let dir = temp_dir("menu");
     let (session, _handle) = SupervisedSession::new(Scripted::new(&["hello\n", PUSH]));
-    let _ = session.with_menu_store(dir.clone()).run().await;
+    let _ = Box::pin(session.with_menu_store(dir.clone()).run()).await;
 
     let loaded = menu_store::load(&dir).expect("load");
     assert_eq!(

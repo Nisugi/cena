@@ -7,6 +7,13 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// "We do not know whether that command ran" -- matched as a PROPERTY of the
+// message, not as its exact words. `session.test.mjs` carries the same
+// constant for the same reason: these assertions read `/uncertain/`, which was
+// the old wording, and a plainer rewording broke them here twice -- once at
+// line 108 and again at 134, because the first fix did not grep the file.
+const UNSURE = /may or may not|Not sure if/;
+
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright");
 const fixture = JSON.parse(await readFile(new URL("../../cena-ui/tests/fixtures/snapshot-v1.json", import.meta.url)));
 const assets = new URL("../assets/", import.meta.url);
@@ -131,7 +138,7 @@ try {
   await page.locator("#command-input").press("Enter");
   await page.evaluate(() => window.__sockets.at(-1).close(1006));
   assert.equal(await page.locator("#command-input").isDisabled(), true);
-  assert.match(await page.locator("#command-status").textContent(), /uncertain/);
+  assert.match(await page.locator("#command-status").textContent(), UNSURE);
   await page.waitForFunction(() => window.__sockets.length === 2);
   await page.locator("#connection-status").filter({ hasText: "attempt 2" }).waitFor();
   assert.deepEqual(await page.evaluate(() => window.__sent.map((m) => m.kind)), ["authenticate", "command", "command", "authenticate"]);
@@ -160,7 +167,7 @@ try {
   await page.waitForFunction(() => window.__sent.length === 3 && location.hash === "", null, { timeout: 2000 });
   assert.equal(await page.evaluate(() => window.__sockets[0].readyState), 3);
   assert.equal(await page.locator("#command-input").inputValue(), "");
-  assert.match(await page.locator("#command-status").textContent(), /uncertain/);
+  assert.match(await page.locator("#command-status").textContent(), UNSURE);
   assert.deepEqual(await page.evaluate(() => window.__sent.map((m) => m.kind)), ["authenticate", "command", "authenticate"]);
   await page.evaluate((value) => window.__message(value), ready);
   await page.locator("#command-input").fill("inventory");

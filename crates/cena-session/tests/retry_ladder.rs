@@ -90,7 +90,7 @@ async fn a_fatal_connect_error_is_not_retried_even_once() {
     //
     // The timeout is enormous relative to the one attempt this should take, so
     // it can only fire when the behaviour is actually wrong.
-    let end = tokio::time::timeout(Duration::from_hours(1), session.run())
+    let end = tokio::time::timeout(Duration::from_hours(1), Box::pin(session.run()))
         .await
         .expect(
             "a fatal error must STOP the session. Timing out here means it was \
@@ -195,7 +195,7 @@ async fn an_unattended_session_stops_at_the_cap() {
     // Bounded for the same reason the fatal test is: a supervisor that ignored
     // the cap would exhaust the three sources and then retry the transient
     // exhaustion error forever, hanging instead of failing.
-    let end = tokio::time::timeout(Duration::from_hours(1), session.run())
+    let end = tokio::time::timeout(Duration::from_hours(1), Box::pin(session.run()))
         .await
         .expect(
             "the unattended cap must stop the session. Timing out means it kept \
@@ -282,7 +282,7 @@ async fn a_session_that_never_connects_still_writes_its_log() {
     let (connector, _attempts) =
         LadderConnector::new(vec![], ConnectError::fatal("auth", "no such character"));
     let (session, _handle) = SupervisedSession::new(connector);
-    let end = session.with_sink(sink).run().await;
+    let end = Box::pin(session.with_sink(sink).run()).await;
 
     assert_eq!(
         end.stopped_because,

@@ -12,6 +12,7 @@
 
 use cena_model::GameState;
 use cena_model::Society;
+use cena_model::state::character::standing::{Affiliation, SocietyEvent, profile_affiliation};
 use cena_protocol::Parser;
 
 const PROFILE: &str = include_str!("../../cena-protocol/tests/fixtures/character_profile.xml");
@@ -103,7 +104,6 @@ fn the_society_and_citizenship_reach_standing_not_a_second_copy() {
     // the capture also contains the indented `society` report, which fills the
     // rank by itself -- so the assertion above passed with the profile
     // reader's rank deleted.
-    use cena_model::state::character::standing::{Affiliation, SocietyEvent, profile_affiliation};
     assert_eq!(
         profile_affiliation("Master of the Guardians of Sunfist"),
         Some(Affiliation::Society(SocietyEvent::Report {

@@ -6,7 +6,7 @@
 //! concurrent `cargo test` invocations delete each other's data.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use cena_session::lifecycle::{Generation, SessionId};
 use cena_session::player_log::writer::{self, PlayerWriter};
@@ -35,7 +35,7 @@ fn line(stream: &str, text: &str) -> LogLine {
     clippy::expect_used,
     reason = "a test helper: clippy.toml exempts `#[test]` fns, and this is one in all but attribute"
 )]
-fn only_file(dir: &PathBuf, character: &str) -> (PathBuf, String) {
+fn only_file(dir: &Path, character: &str) -> (PathBuf, String) {
     let days = writer::days(dir, character).expect("read the log directory");
     assert_eq!(days.len(), 1, "expected exactly one day-file, got {days:?}");
     let text = fs::read_to_string(&days[0]).expect("read the day file");
@@ -54,7 +54,13 @@ fn a_line_lands_in_a_dated_file_for_its_character() {
 
     let name = path.file_name().unwrap().to_string_lossy().into_owned();
     assert!(
-        name.starts_with("Nisugi_") && name.ends_with(".log"),
+        // `Path::extension` rather than `ends_with(".log")`: the latter is a
+        // case-sensitive comparison, which is the class of bug the character
+        // store carried until 2026-09-22.
+        name.starts_with("Nisugi_")
+            && std::path::Path::new(&name)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("log")),
         "the filename carries the character and the date: {name}"
     );
     assert_eq!(text, "[06:47:12.481][main] You see a rock.\n");
@@ -305,11 +311,11 @@ fn a_name_of_nothing_but_forbidden_characters_still_gets_a_file() {
     // to the PARENT -- a log written outside the feature's own tree.
     let dir = temp_dir("allbad");
     {
-        let mut w = PlayerWriter::new(&dir, r#"//\::??"#);
+        let mut w = PlayerWriter::new(&dir, r"//\::??");
         w.write(&line("main", "still logged")).expect("write");
     }
 
-    let days = writer::days(&dir, r#"//\::??"#).expect("read");
+    let days = writer::days(&dir, r"//\::??").expect("read");
     assert_eq!(days.len(), 1, "no file was written for an unusable name");
 
     let name = days[0].file_name().unwrap().to_string_lossy().into_owned();

@@ -173,7 +173,7 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
     // what terminates this test: no command is ever sent, so the unattended cap
     // stops the session after the second. It used to terminate by exhausting
     // the connector instead -- the ladder now stops it one step earlier.
-    let end = session.run().await;
+    let end = Box::pin(session.run()).await;
 
     assert_eq!(
         end.generations,
@@ -268,7 +268,7 @@ async fn reconnect_leaves_invalidated_facts_unknown() {
 async fn the_recording_spans_the_reconnect() {
     let connector = ScriptedConnector::new(vec![everything_then_death(), a_real_login_burst()]);
     let (session, _handle) = SupervisedSession::new(connector);
-    let mut end = session.run().await;
+    let mut end = Box::pin(session.run()).await;
 
     let recorded: Vec<u8> = end
         .recorder
@@ -310,7 +310,7 @@ async fn a_cancelled_session_does_not_reconnect() {
     let cancel = session.cancel_token();
     cancel.cancel();
 
-    let end = session.run().await;
+    let end = Box::pin(session.run()).await;
 
     assert_eq!(
         end.reason,

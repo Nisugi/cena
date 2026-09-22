@@ -36,11 +36,11 @@ fn main() -> std::io::Result<()> {
     }
     for path in std::env::args().skip(1) {
         let text = std::fs::read_to_string(&path)?;
-        let scrubbed = scrubber.scrub(&text);
-        if scrubbed == text {
+        let clean = scrubber.scrub(&text);
+        if clean == text {
             println!("unchanged: {path}");
         } else {
-            std::fs::write(&path, &scrubbed)?;
+            std::fs::write(&path, &clean)?;
             println!("scrubbed:  {path}");
         }
     }
