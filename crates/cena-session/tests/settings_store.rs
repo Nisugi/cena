@@ -25,8 +25,11 @@ fn it_sits_beside_the_snapshot_under_the_same_name() {
     let dir = PathBuf::from("data");
     let snapshot = cena_session::character_store::store_path(&dir, "Prime", "Nisugi");
     let settings = settings_store::settings_path(&dir, "Prime", "Nisugi");
-    assert_eq!(snapshot, Some(dir.join("Prime_Nisugi.json")), "guard");
-    assert_eq!(settings, Some(dir.join("Prime_Nisugi.settings.json")));
+    // Lowercased by `store::safe_component`, so one character cannot get two
+    // files on a case-sensitive filesystem. The guard that matters is that
+    // both stores agree on the stem, and it still does.
+    assert_eq!(snapshot, Some(dir.join("prime_nisugi.json")), "guard");
+    assert_eq!(settings, Some(dir.join("prime_nisugi.settings.json")));
 }
 
 #[test]

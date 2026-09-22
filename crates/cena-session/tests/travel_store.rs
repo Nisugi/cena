@@ -234,7 +234,7 @@ fn a_characters_old_file_is_read_into_its_spot() {
     let dir = temp_dir("migrate");
     std::fs::create_dir_all(&dir).unwrap();
     let old = legacy_path(&dir, "GSIV", "Ashryn").unwrap();
-    assert!(old.ends_with("GSIV_Ashryn.travel.json"));
+    assert!(old.ends_with("gsiv_ashryn.travel.json"));
     let text = r#"{"schema_version":2,"instance":"GSIV","character":"Ashryn",
                    "settings":{"ice_mode":"wait"},"memories":{"duskruin_origin":"228"},
                    "targets":{"home":[228,3668],"my shop":[1]},"last_room":228}"#;

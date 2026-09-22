@@ -120,7 +120,11 @@ async fn a_quiet_prompt_publishes_nothing() {
 async fn a_session_records_its_combat_and_a_quiet_prompt_closes_the_idle_hunt() {
     let dir = temp_db("records");
     let (handle, flush, path) = worker::open_live(&dir, "GS3", "Tester").expect("opens");
-    assert!(path.ends_with("GS3_Tester_combat.db"), "{}", path.display());
+    // Lowercased, and that is the fix rather than a cosmetic choice: the
+    // filename is built by `store::safe_component`, which preserved case until
+    // it was found to give one character two files on a case-sensitive
+    // filesystem (`store.rs`, and `character_store::the_path_itself_...`).
+    assert!(path.ends_with("gs3_tester_combat.db"), "{}", path.display());
 
     // a swing, a quiet prompt inside the gap, and one 301s after the swing
     let wire = swing(1_000) + &quiet_prompt(1_200) + &quiet_prompt(1_301);

@@ -246,6 +246,36 @@ fn the_name_matches_regardless_of_case() {
     assert!(load(&dir, "gameinstance", "ASHRYN").is_ok());
 }
 
+/// **The case rule is in the FILENAME, not only in the comparison.**
+///
+/// The test above passed on Windows and failed on Linux for a reason neither
+/// platform's result explained: `describes` compares case-insensitively
+/// (`snapshot.rs:358`) but the filename preserved case, so `save` wrote
+/// `GameInstance_Ashryn.json` and a differently-capitalised `load` opened a
+/// different path. NTFS is case-insensitive and hid it; ext4 is not.
+///
+/// So this asserts on the **path**, which is platform-independent, rather than
+/// on a load succeeding, which is not. A test that only round-trips cannot tell
+/// the two filesystems apart -- which is precisely how the bug survived.
+#[test]
+fn the_path_itself_does_not_depend_on_case() {
+    let dir = temp_dir("case-path");
+    assert_eq!(
+        store_path(&dir, "GameInstance", "Ashryn"),
+        store_path(&dir, "gameinstance", "ASHRYN"),
+        "one character must have one file on every filesystem"
+    );
+    let path = store_path(&dir, "GameInstance", "Ashryn").expect("path");
+    let name = path
+        .file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .expect("a filename");
+    assert_eq!(
+        name, "gameinstance_ashryn.json",
+        "the stored name is lowercased, so no filesystem gets a choice"
+    );
+}
+
 /// A name that sanitises to nothing has no path, rather than a shared one.
 ///
 /// A name of only punctuation gets **no file** instead of a default one that a

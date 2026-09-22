@@ -23,13 +23,38 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-/// Strip everything that cannot appear in a filename.
+/// Strip everything that cannot appear in a filename, and **lowercase it**.
 ///
 /// Character and instance names are the game's and ought to be alphanumeric,
 /// but a filename is not the place to find out otherwise.
+///
+/// # Lowercasing is a bug fix, and the bug was platform-dependent
+///
+/// `CharacterSnapshot::describes` compares both halves with
+/// `eq_ignore_ascii_case` (`snapshot.rs:358`), so the store's contract has
+/// always been that the wire's capitalisation does not matter. The filename did
+/// not honour it: `save` wrote `GameInstance_Ashryn.json` and
+/// `load(dir, "gameinstance", "ASHRYN")` opened `gameinstance_ASHRYN.json`.
+///
+/// On Windows those are one file and the round-trip worked. On Linux they are
+/// two, so `load` returned `Missing` and the character silently got a second,
+/// empty store -- which per this module's own note means "a character who has
+/// to re-run fifteen commands".
+///
+/// That is what failed `character_store::the_name_matches_regardless_of_case`
+/// in CI while it passed locally. It was reported as a shared-temp-directory
+/// race; it is neither shared nor a race. MEASURED: the test owns a directory
+/// named after itself, and it fails single-threaded.
+///
+/// Lowercasing here rather than at each call site because all three stores and
+/// the combat recorder build filenames from this, and a fix in one would have
+/// left the others platform-dependent.
 #[must_use]
 pub fn safe_component(name: &str) -> String {
-    name.chars().filter(char::is_ascii_alphanumeric).collect()
+    name.chars()
+        .filter(char::is_ascii_alphanumeric)
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
 }
 
 /// `<dir>/<instance>_<character><suffix>`, or `None` if either half sanitises
