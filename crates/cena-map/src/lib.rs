@@ -31,10 +31,10 @@ pub mod routine;
 pub mod step;
 
 pub use cond::{Cond, Walker};
-pub use exit::{Cost, Crossing, Exit, ExitKind, Pass, Rung, ShapeId};
+pub use exit::{Cost, Crossing, Dirto, Exit, ExitKind, Pass, Rung, ShapeId};
 pub use locate::{By, Located, Origin, Sighting, title_from_subtitle};
-pub use map::{DuplicateRoom, Map};
-pub use room::{Image, Room, RoomId, Uid};
+pub use map::{DuplicateRoom, Map, Sheet};
+pub use room::{Image, Placement, Room, RoomId, Uid};
 pub use route::{Routes, Target, as_converted, priced_for};
 pub use routine::{Errand, Landmark, Opening, Puzzle, Routine};
 pub use step::{Action, Step, moves_whatever_is_known};

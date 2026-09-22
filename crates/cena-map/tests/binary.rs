@@ -6,7 +6,7 @@
 //! an older client sees when a later build has added a kind it does not know.
 
 use cena_map::binary::{LoadError, MAGIC, VERSION, decode, encode};
-use cena_map::{Cost, Crossing, Map, Room, RoomId, Uid};
+use cena_map::{Cost, Crossing, Dirto, Map, Room, RoomId, Sheet, Uid};
 
 const ROOMS: &str = r#"[
   {"id":7,"uid":[13100007],"title":["[Ta'Illistim, BriarStone Court]"],
@@ -95,7 +95,7 @@ fn repeated_strings_are_stored_once() {
 #[test]
 fn a_crossing_this_build_does_not_know_loads_as_impassable() {
     let file = rename(&encode(&map().unwrap()).unwrap(), "cmd", "zap").unwrap();
-    let map = decode(&file).expect("an unknown crossing is not a load error");
+    let map = decode(&file).unwrap();
     for room in map.rooms() {
         for exit in &room.exits {
             assert!(!matches!(exit.crossing, Crossing::Command(_)));
@@ -129,7 +129,7 @@ fn ported_steps_round_trip_and_a_step_this_build_does_not_know_is_impassable() {
     let at = file.windows(7).position(|w| w == b"\"pause\"").unwrap();
     let mut newer = file.clone();
     newer[at + 1..at + 6].copy_from_slice(b"yodel");
-    let loaded = decode(&newer).expect("one unreadable crossing is not a load error");
+    let loaded = decode(&newer).unwrap();
     let exit = &loaded.room(RoomId(1)).unwrap().exits[0];
     assert_eq!(exit.crossing, Crossing::Unknown("steps".into()));
     assert_eq!(
@@ -299,4 +299,178 @@ fn a_string_reference_outside_the_table_is_an_error() {
         decode(&file),
         Err(LoadError::BadStringRef { reference: 999, .. })
     ));
+}
+
+// --- layout corrections: sheet, placement, dirto -------------------------
+//
+// All three arrive as ROOM EXTENSIONS, which is what the format's rule 1 slot
+// was reserved for -- so `VERSION` does not move and a client built before
+// them skips what it cannot use.
+
+const CORRECTED: &str = r#"[
+  {"id":7,"uid":[13100007],"map":"landing.well","area":"Wehnimer's Landing",
+   "placement":{"anchor":13100008,"dx":-2,"dy":3},
+   "exits":[{"to":8,"kind":"cardinal","cmd":"north","cost":0.2,"dirto":"southwest"},
+            {"to":9,"kind":"cardinal","cmd":"east","cost":0.2,"dirto":"cross-group"},
+            {"to":10,"kind":"cardinal","cmd":"west","cost":0.2}]},
+  {"id":8,"uid":[13100008],"area":"Wehnimer's Landing","exits":[]},
+  {"id":9,"exits":[]},
+  {"id":10,"exits":[]}
+]"#;
+
+/// Encode and decode the corrected fixture, which every test below does.
+fn round_trip(map: &Map) -> Option<Map> {
+    decode(&encode(map).ok()?).ok()
+}
+
+fn corrected() -> Option<Map> {
+    let rooms: Vec<Room> = serde_json::from_str(CORRECTED).ok()?;
+    Map::from_rooms(rooms).ok()
+}
+
+#[test]
+fn layout_corrections_round_trip_through_the_binary() {
+    let Some(before) = corrected() else {
+        panic!("the fixture builds")
+    };
+    let after = decode(&encode(&before).unwrap()).unwrap();
+
+    let seven = after.room(RoomId(7)).unwrap();
+    assert_eq!(seven.map.as_deref(), Some("landing.well"));
+    assert_eq!(seven.area.as_deref(), Some("Wehnimer's Landing"));
+    let placement = seven.placement.unwrap();
+    assert_eq!(placement.anchor, Uid(13_100_008));
+    assert_eq!((placement.dx, placement.dy), (-2, 3));
+
+    // **A plate is a grid, not a place.** Room 8 is on no plate and still has
+    // an area, which is why the two are separate fields.
+    let eight = after.room(RoomId(8)).unwrap();
+    assert_eq!(eight.map, None);
+    assert_eq!(eight.area.as_deref(), Some("Wehnimer's Landing"));
+}
+
+#[test]
+fn dirto_is_per_edge_and_only_where_stated() {
+    let after = round_trip(&corrected().unwrap()).unwrap();
+    let seven = after.room(RoomId(7)).unwrap();
+    let of = |to: u32| {
+        seven
+            .exits
+            .iter()
+            .find(|e| e.to == RoomId(to))
+            .unwrap()
+            .dirto
+    };
+    // The same room has one exit whose command lies about its bearing, one
+    // that connects without positioning, and one that says nothing at all.
+    assert_eq!(of(8), Some(Dirto::Southwest));
+    assert_eq!(of(9), Some(Dirto::CrossGroup));
+    assert_eq!(
+        of(10),
+        None,
+        "absent means fall through to the command text"
+    );
+}
+
+#[test]
+fn a_map_with_no_corrections_is_byte_identical_to_one_built_before_them() {
+    // The extension list is written only for what a room has to say, so
+    // adding the feature did not change any existing file.
+    let plain = map().unwrap();
+    let bytes = encode(&plain).unwrap();
+    let again = decode(&bytes).unwrap();
+    assert_eq!(encode(&again).unwrap(), bytes);
+    for room in again.rooms() {
+        assert_eq!(room.map, None);
+        assert_eq!(room.area, None);
+        assert_eq!(room.placement, None);
+        assert!(room.exits.iter().all(|e| e.dirto.is_none()));
+    }
+}
+
+#[test]
+fn an_extension_this_build_does_not_know_is_skipped() {
+    // **Rule 1, for the slot these corrections arrived in.** Renaming `sheet`
+    // to another name of the same length is exactly what an older client sees
+    // when a later build adds an extension: the room still loads, and the
+    // layout it could not read is simply absent.
+    let Some(map) = corrected() else {
+        panic!("the fixture builds")
+    };
+    let bytes = encode(&map).unwrap();
+    let patched = rename(&bytes, "sheet", "SHEET").unwrap();
+    let after = decode(&patched).unwrap();
+    let seven = after.room(RoomId(7)).unwrap();
+    assert_eq!(seven.map, None, "skipped, not misread");
+    assert_eq!(seven.area, None);
+    // The extensions it DOES know are unaffected -- they are length-delimited
+    // individually, so one unknown does not desynchronise the rest.
+    assert!(seven.placement.is_some(), "placement still read");
+    assert_eq!(
+        seven
+            .exits
+            .iter()
+            .find(|e| e.to == RoomId(8))
+            .unwrap()
+            .dirto,
+        Some(Dirto::Southwest)
+    );
+}
+
+#[test]
+fn an_unknown_bearing_name_reads_as_absent() {
+    // A bearing a later build invents must not fail the load, and must not be
+    // guessed at either: `Dirto::from_name` answers `None`, which is the same
+    // as "fall through to the command text".
+    let Some(map) = corrected() else {
+        panic!("the fixture builds")
+    };
+    let bytes = encode(&map).unwrap();
+    let patched = rename(&bytes, "southwest", "southEAST").unwrap();
+    let after = decode(&patched).unwrap();
+    let seven = after.room(RoomId(7)).unwrap();
+    assert_eq!(
+        seven
+            .exits
+            .iter()
+            .find(|e| e.to == RoomId(8))
+            .unwrap()
+            .dirto,
+        None
+    );
+}
+
+#[test]
+fn the_sheet_registry_is_build_side_and_not_in_the_file() {
+    // Deliberate: the file has no section after its rooms and `decode` refuses
+    // trailing bytes, so carrying it would mean VERSION 2. What a client needs
+    // to DRAW a room is on the room; the registry holds display names.
+    let sheets = std::collections::BTreeMap::from([(
+        "landing.well".to_owned(),
+        Sheet {
+            name: "The Well".to_owned(),
+            area: Some("Wehnimer's Landing".to_owned()),
+        },
+    )]);
+    let Some(map) = corrected() else {
+        panic!("the fixture builds")
+    };
+    let with = map.with_sheets(sheets);
+    assert_eq!(
+        with.sheet("landing.well").map(|s| s.name.as_str()),
+        Some("The Well")
+    );
+    assert_eq!(
+        with.sheet("nobody.knows"),
+        None,
+        "an unknown slug is not an error"
+    );
+
+    // It does not survive the binary, and the rooms still carry their slugs.
+    let after = decode(&encode(&with).unwrap()).unwrap();
+    assert_eq!(after.sheets().count(), 0);
+    assert_eq!(
+        after.room(RoomId(7)).unwrap().map.as_deref(),
+        Some("landing.well")
+    );
 }

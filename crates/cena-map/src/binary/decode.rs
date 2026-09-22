@@ -3,10 +3,10 @@
 //! Nothing here panics and nothing trusts the file: a truncated, corrupt or
 //! hostile input is a [`LoadError`].
 
-use super::wire::{LoadError, MAGIC, NONE, Reader, VERSION};
-use crate::exit::{Cost, Crossing, Exit, ExitKind, ShapeId};
+use super::wire::{EXT_DIRTO, EXT_PLACEMENT, EXT_SHEET, LoadError, MAGIC, NONE, Reader, VERSION};
+use crate::exit::{Cost, Crossing, Dirto, Exit, ExitKind, ShapeId};
 use crate::map::Map;
-use crate::room::{Image, Room, RoomId, Uid};
+use crate::room::{Image, Placement, Room, RoomId, Uid};
 
 /// The smallest a room can be: an id, nine empty lists or absent references,
 /// a flag byte, an image byte and two empty counts.
@@ -123,10 +123,47 @@ fn read_room(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Room, LoadErro
     for _ in 0..r.count(MIN_EXIT)? {
         exits.push(read_exit(r, strings)?);
     }
-    // Extensions this build does not know: skipped by length (rule 1).
+    // **Known extensions are read; the rest are skipped by length (rule 1).**
+    // A name this build does not know is not an error -- that is the whole
+    // point of the mechanism, and it is what lets a map carry layout to a
+    // client built before layout existed.
+    let mut map = None;
+    let mut area = None;
+    let mut placement = None;
+    let mut bearings: Vec<(u32, Option<Dirto>)> = Vec::new();
     for _ in 0..r.count(8)? {
-        r.u32()?;
-        r.blob()?;
+        let name = strings.get(r)?;
+        let blob = r.blob()?;
+        match name {
+            EXT_SHEET => {
+                let mut b = Reader::new(blob);
+                map = strings.optional(&mut b)?;
+                area = strings.optional(&mut b)?;
+            }
+            EXT_PLACEMENT => {
+                let mut b = Reader::new(blob);
+                placement = Some(Placement {
+                    anchor: Uid(b.i64()?),
+                    dx: b.i32()?,
+                    dy: b.i32()?,
+                });
+            }
+            EXT_DIRTO => {
+                let mut b = Reader::new(blob);
+                for _ in 0..b.count(8)? {
+                    let to = b.u32()?;
+                    // An unknown bearing name reads as absent rather than
+                    // failing the load: rule 1 again.
+                    bearings.push((to, Dirto::from_name(strings.get(&mut b)?)));
+                }
+            }
+            _ => {}
+        }
+    }
+    for exit in &mut exits {
+        if let Some((_, dirto)) = bearings.iter().find(|(to, _)| *to == exit.to.0) {
+            exit.dirto = *dirto;
+        }
     }
     Ok(Room {
         id,
@@ -144,6 +181,9 @@ fn read_room(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Room, LoadErro
         meta,
         image,
         exits,
+        map,
+        area,
+        placement,
     })
 }
 
@@ -207,5 +247,8 @@ fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadErro
         kind,
         crossing,
         cost,
+        // Filled by the room's `dirto` extension, which is where a per-edge
+        // bearing has to live: the exit record has no extension slot.
+        dirto: None,
     })
 }

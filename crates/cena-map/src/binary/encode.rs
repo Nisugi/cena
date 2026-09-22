@@ -1,7 +1,7 @@
 //! Writing a [`Map`] as a map file. The layout is documented on the parent
 //! module; this follows it field for field.
 
-use super::wire::{EncodeError, NONE, Writer};
+use super::wire::{EXT_DIRTO, EXT_PLACEMENT, EXT_SHEET, EncodeError, NONE, Writer};
 use crate::exit::{Cost, Crossing, Exit};
 use crate::map::Map;
 use crate::room::Room;
@@ -63,9 +63,67 @@ fn write_room(w: &mut Writer, room: &Room) -> Result<(), EncodeError> {
     for exit in &room.exits {
         write_exit(w, exit)?;
     }
-    // Extensions: none yet. The count is written so that the first build to
-    // add one does not need a new format version (rule 1).
-    w.len(0)
+    write_room_extensions(w, room)
+}
+
+/// The room's named extensions: **layout arrives here, not as fixed fields.**
+///
+/// This is what the count written since the format landed was for (rule 1),
+/// and why `VERSION` does not move: `decode.rs` has skipped unknown extensions
+/// by length since day one, so a client built before these existed loads a
+/// corrected map and ignores the layout it cannot use.
+///
+/// Each extension is a name and a length-prefixed blob. An extension is
+/// written **only when it has something to say**, so a map with no corrections
+/// is byte-identical to one built before they existed.
+fn write_room_extensions(w: &mut Writer, room: &Room) -> Result<(), EncodeError> {
+    let placement = room.placement.is_some();
+    let sheet = room.map.is_some() || room.area.is_some();
+    let bearings = room.exits.iter().filter(|e| e.dirto.is_some()).count();
+    w.len(usize::from(placement) + usize::from(sheet) + usize::from(bearings > 0))?;
+
+    // **The blob is written into the main writer, not a separate one.** The
+    // string table is file-level, so a nested `Writer` would intern into a
+    // table nobody reads; the length is reserved and back-patched instead.
+    if sheet {
+        w.extension(EXT_SHEET, |w| {
+            write_opt_str(w, room.map.as_deref())?;
+            write_opt_str(w, room.area.as_deref())
+        })?;
+    }
+    if let Some(placement) = room.placement {
+        w.extension(EXT_PLACEMENT, |w| {
+            w.i64(placement.anchor.0);
+            w.i32(placement.dx);
+            w.i32(placement.dy);
+            Ok(())
+        })?;
+    }
+    if bearings > 0 {
+        // Keyed by destination, because the exit record has no extension slot
+        // of its own -- see `EXT_DIRTO`. Only exits that state one are
+        // written; the rest fall through to their command text.
+        w.extension(EXT_DIRTO, |w| {
+            w.len(bearings)?;
+            for exit in &room.exits {
+                if let Some(dirto) = exit.dirto {
+                    w.u32(exit.to.0);
+                    w.string(dirto.name())?;
+                }
+            }
+            Ok(())
+        })?;
+    }
+    Ok(())
+}
+
+/// A string ref, or [`NONE`]. The blob's own convention, matching the room's.
+fn write_opt_str(w: &mut Writer, text: Option<&str>) -> Result<(), EncodeError> {
+    match text {
+        Some(text) => w.string(text)?,
+        None => w.u32(NONE),
+    }
+    Ok(())
 }
 
 fn write_exit(w: &mut Writer, exit: &Exit) -> Result<(), EncodeError> {

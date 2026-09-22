@@ -13,6 +13,26 @@ pub const VERSION: u32 = 1;
 /// "No string": an optional reference that is absent.
 pub(super) const NONE: u32 = u32::MAX;
 
+/// A room's sheet: which plate it is drawn on, and which area it belongs to.
+///
+/// One extension for both because they are one fact about where a room lives,
+/// and a plate without its area is the ambiguity `Room::area` exists to
+/// resolve.
+pub(super) const EXT_SHEET: &str = "sheet";
+
+/// A room's corrected position, as an offset from an unmoved anchor.
+pub(super) const EXT_PLACEMENT: &str = "placement";
+
+/// Stated bearings for this room's exits, keyed by destination room id.
+///
+/// **A room extension although `dirto` is a per-EDGE fact**, because the exit
+/// record ends at `cost` and has no extension slot of its own: appending a
+/// field there would be read as a malformed exit by every client built before
+/// it. The room's extension list is the only place a new field can arrive
+/// without a version bump, so the bearings travel together and are matched to
+/// their exits by `to`.
+pub(super) const EXT_DIRTO: &str = "dirto";
+
 /// Why a map file did not load.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadError {
@@ -190,6 +210,37 @@ impl Writer {
         self.strings.push(text.to_owned());
         self.index.insert(text.to_owned(), reference);
         Ok(reference)
+    }
+
+    /// A named extension whose body is written in place: `u32 name ref,
+    /// u32 length, blob`.
+    ///
+    /// **Distinct from [`Self::named`], which takes an already-built slice.**
+    /// That is right for a blob of fixed-layout bytes and cannot serve a body
+    /// containing *string references*, because interning happens against the
+    /// file-level table and a caller building bytes on the side has no access
+    /// to it.
+    ///
+    /// The length is **reserved and back-patched**, because the body is what
+    /// `write` produces and its size is not known until it has run. Writing
+    /// the blob into a nested `Writer` instead would intern its strings into a
+    /// table nobody reads -- the string table is file-level.
+    ///
+    /// This is rule 1's mechanism: `decode` skips an extension it does not
+    /// know by this length, so a name added later cannot break an older
+    /// client.
+    pub(super) fn extension(
+        &mut self,
+        name: &str,
+        write: impl FnOnce(&mut Self) -> Result<(), EncodeError>,
+    ) -> Result<(), EncodeError> {
+        self.string(name)?;
+        let at = self.body.len();
+        self.u32(0);
+        write(self)?;
+        let len = u32::try_from(self.body.len() - at - 4).map_err(|_| EncodeError)?;
+        self.body[at..at + 4].copy_from_slice(&len.to_le_bytes());
+        Ok(())
     }
 
     pub(super) fn string(&mut self, text: &str) -> Result<(), EncodeError> {

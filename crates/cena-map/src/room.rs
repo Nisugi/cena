@@ -104,6 +104,52 @@ pub struct Room {
     /// Exits, ordered by destination so the file is stable.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub exits: Vec<Exit>,
+
+    /// The grid this room is drawn on, when that is not its area's own sheet:
+    /// a plate, or an `<area>.interiors` shelf.
+    ///
+    /// A slug. What each slug *is* — its display name and the area it is a
+    /// sheet of — lives in a map-level registry, which is not carried here
+    /// yet: a slug with no entry is a validation error for whoever builds the
+    /// file, not a load error for the client.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map: Option<String>,
+
+    /// The area this room belongs to.
+    ///
+    /// **A plate is a grid, not a place.** A room drawn on `landing.well` is
+    /// still a room *of* Wehnimer's Landing, so [`Self::map`] cannot answer
+    /// this and the two are separate fields rather than one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub area: Option<String>,
+
+    /// Where a dragged room sits, relative to a room that did not move.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub placement: Option<Placement>,
+}
+
+/// A corrected position, stated as an offset from a room that did not move.
+///
+/// # Why an offset and not a coordinate
+///
+/// Room ids are assigned by the build, so a rebuild renumbers them and an
+/// absolute position recorded against one build is meaningless in the next.
+/// An offset from an **anchor** survives that, because the anchor is named by
+/// [`Uid`] — the game's own id, which the build does not invent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Placement {
+    /// The room the offset is measured from. Never itself placed.
+    pub anchor: Uid,
+    /// Cells east; negative is west.
+    pub dx: i32,
+    /// Cells south; negative is north.
+    ///
+    /// **The y axis grows DOWNWARD**, which is the opposite of the intuition a
+    /// compass gives. A reader that gets this backwards mirrors every
+    /// correction it applies, and mirrored output looks plausible — so the
+    /// direction is stated here rather than left to be inferred from a
+    /// renderer.
+    pub dy: i32,
 }
 
 // serde's `skip_serializing_if` passes a reference.

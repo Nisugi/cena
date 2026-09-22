@@ -3,7 +3,7 @@
 //! One `Map` is built once and shared by every session in the process; nothing
 //! here is mutable after construction.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 
 use crate::room::{Room, RoomId, Uid};
@@ -27,6 +27,42 @@ pub struct Map {
     rooms: Vec<Room>,
     index_of: HashMap<RoomId, usize>,
     uids: HashMap<Uid, Vec<RoomId>>,
+    sheets: BTreeMap<String, Sheet>,
+}
+
+/// What a plate slug names: a grid a room can be drawn on.
+///
+/// `Room::map` carries only the slug, because a slug repeats across every room
+/// on the plate and a name does not belong on each of them. This is the
+/// registry those slugs point into.
+///
+/// # NOT carried in the binary, and that is a format constraint
+///
+/// The map file has no file-level section after its rooms, and `decode`
+/// refuses trailing bytes (`LoadError::TrailingBytes`) -- so appending one
+/// would make every existing client reject the whole file rather than skip
+/// what it does not know. Carrying the registry would mean `VERSION = 2`.
+///
+/// It does not need to. **What a client needs in order to draw a room -- its
+/// plate slug and its area -- is on the room**, in the `sheet` extension, and
+/// that slot already existed. What is only in the registry is the plate's
+/// display *name*, which is build-side information: a slug with no entry is a
+/// validation error for whoever builds the file, not a load error for whoever
+/// reads it.
+///
+/// So this survives JSON round-trips and is attached with
+/// [`Map::with_sheets`]; it is deliberately absent from `encode`/`decode`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Sheet {
+    /// What to call the plate when it is shown to someone.
+    pub name: String,
+    /// The area this plate is a sheet of, when it is a sheet of one.
+    ///
+    /// **A plate is a grid, not a place** -- `Room::area` is what says where a
+    /// room *is*. This says what the plate as a whole belongs to, which is not
+    /// always answerable: a plate can hold rooms of several areas.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub area: Option<String>,
 }
 
 impl Map {
@@ -51,7 +87,37 @@ impl Map {
             rooms,
             index_of,
             uids,
+            sheets: BTreeMap::new(),
         })
+    }
+
+    /// Attach the plate registry.
+    ///
+    /// **A builder rather than a parameter on [`Self::from_rooms`]**, and
+    /// deliberately: most maps have no plates, ten call sites construct a map
+    /// without one, and a required argument that is almost always empty is a
+    /// worse interface than a method that says what it adds.
+    #[must_use]
+    pub fn with_sheets(mut self, sheets: BTreeMap<String, Sheet>) -> Self {
+        self.sheets = sheets;
+        self
+    }
+
+    /// What a plate slug names, if the registry knows it.
+    ///
+    /// **`None` is not a load error.** A slug with no entry is a validation
+    /// failure for whoever *builds* the file; a client that meets one draws
+    /// the room without a plate name rather than refusing the map.
+    #[must_use]
+    pub fn sheet(&self, slug: &str) -> Option<&Sheet> {
+        self.sheets.get(slug)
+    }
+
+    /// Every plate, by slug.
+    pub fn sheets(&self) -> impl Iterator<Item = (&str, &Sheet)> {
+        self.sheets
+            .iter()
+            .map(|(slug, sheet)| (slug.as_str(), sheet))
     }
 
     /// The room with this id.

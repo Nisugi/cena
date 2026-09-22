@@ -284,6 +284,93 @@ pub struct Exit {
     /// What it costs. Absent means impassable; see [`Cost`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cost: Option<Cost>,
+
+    /// Which way this exit really goes, when the command text is bad evidence.
+    ///
+    /// **Per edge, not per room**, which is why it lives here: the same room
+    /// can have one exit whose command lies about its bearing and another that
+    /// is honest. Read this *before* the movement command when resolving an
+    /// edge's direction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dirto: Option<Dirto>,
+}
+
+/// A stated bearing for one exit, overriding what its command text implies.
+///
+/// # `none` and `skip` are deliberately not variants
+///
+/// The corrections format writes both, and both mean *"fall through to the
+/// command text"* — which is what an absent `dirto` already means. Encoding
+/// them as variants would give three spellings of one state and invite a
+/// consumer to treat them as different. A reader **maps them to `None`**, and
+/// this enum has no way to say them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Dirto {
+    North,
+    Northeast,
+    East,
+    Southeast,
+    South,
+    Southwest,
+    West,
+    Northwest,
+    Up,
+    Down,
+    /// The rooms connect but do not position by this edge.
+    ///
+    /// The fix for two rooms a solver welded together on bad evidence: the
+    /// edge is real and walkable, and using it to place either room is what
+    /// was wrong.
+    #[serde(rename = "cross-group")]
+    CrossGroup,
+}
+
+impl Dirto {
+    /// The wire name, shared by the JSON and the binary (rule 3: one
+    /// vocabulary, defined on the type itself).
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::North => "north",
+            Self::Northeast => "northeast",
+            Self::East => "east",
+            Self::Southeast => "southeast",
+            Self::South => "south",
+            Self::Southwest => "southwest",
+            Self::West => "west",
+            Self::Northwest => "northwest",
+            Self::Up => "up",
+            Self::Down => "down",
+            Self::CrossGroup => "cross-group",
+        }
+    }
+
+    /// The bearing a wire name means, or `None`.
+    ///
+    /// **`none` and `skip` map to `None`**, identically to an absent `dirto`:
+    /// the corrections format writes both to mean *"fall through to the
+    /// command text"*, and giving them variants would be three spellings of
+    /// one state. An unrecognised name is also `None` -- a bearing this build
+    /// does not know is not a bearing it can act on, and refusing the whole
+    /// map over one would break rule 1.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "north" => Self::North,
+            "northeast" => Self::Northeast,
+            "east" => Self::East,
+            "southeast" => Self::Southeast,
+            "south" => Self::South,
+            "southwest" => Self::Southwest,
+            "west" => Self::West,
+            "northwest" => Self::Northwest,
+            "up" => Self::Up,
+            "down" => Self::Down,
+            "cross-group" => Self::CrossGroup,
+            _ => return None,
+        })
+    }
 }
 
 impl Exit {
@@ -305,6 +392,7 @@ mod tests {
             kind: ExitKind::Cardinal,
             crossing,
             cost,
+            dirto: None,
         }
     }
 

@@ -44,6 +44,33 @@
 //!   extensions         u32 count, then each: u32 name ref, u32 length, blob
 //! ```
 //!
+//! # Extensions in use (all at version 1)
+//!
+//! Layout corrections arrive here rather than as fixed fields, which is what
+//! rule 1 reserved the slot for -- an extension is written only when a room has
+//! something to say, so a map with no corrections is byte-identical to one
+//! built before they existed.
+//!
+//! | name | blob | carries |
+//! |---|---|---|
+//! | `sheet` | two string refs, either [`NONE`](binary::wire) | `Room::map` (the plate slug) and `Room::area` |
+//! | `placement` | `i64` anchor uid, `i32` dx, `i32` dy | `Room::placement` |
+//! | `dirto` | `u32` count, then `u32` destination id + `u32` name ref | `Exit::dirto`, keyed by destination |
+//!
+//! **`dirto` is a room extension although it is a per-EDGE fact.** The exit
+//! record ends at `cost` and has no extension slot of its own, so a field
+//! appended there would be read as a malformed exit by every client built
+//! before it. The bearings travel together on the room and are matched to
+//! their exits by `to`.
+//!
+//! **The plate registry is NOT in the file.** `Map::sheets` maps a slug to a
+//! display name and area, and carrying it would need a file-level section
+//! after the rooms -- which `decode` refuses as
+//! [`LoadError::TrailingBytes`], so it would mean `VERSION = 2`. It does not
+//! need to: everything a client needs in order to *draw* a room is on the
+//! room, and the registry holds build-side display names. A slug with no
+//! entry is a validation error for whoever builds the file.
+//!
 //! Blobs by name: `cmd` and `unported` are one string ref; `fixed` is an f64;
 //! `pass` is empty; **`steps`, `routine`, `gated` and `table` are JSON**, the same text the per-room file
 //! holds. JSON inside a binary is deliberate: a step or a condition added by a
