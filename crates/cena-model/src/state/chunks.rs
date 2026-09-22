@@ -255,6 +255,11 @@ impl super::GameState {
                 if let Some((affliction, active)) = super::afflictions::classify(&text) {
                     self.status.set(affliction.id(), active);
                 }
+                // `<Name> is still in cooldown.` -- a fact about the character
+                // rather than an answer to a command (`maneuvers.rs`).
+                if let Some(name) = super::maneuvers::cooldown_refusal(&text) {
+                    self.maneuvers.note_cooling(name, at);
+                }
             }
             // Group events are prose with links, one per line -- see
             // `state/group.rs` for why the links do the work here.

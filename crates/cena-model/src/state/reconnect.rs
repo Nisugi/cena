@@ -141,6 +141,7 @@ impl GameState {
             known_spells,
             bounty,
             targeting,
+            maneuvers,
             cast_time_ends,
             prompt,
             left_hand,
@@ -289,6 +290,9 @@ impl GameState {
         // enforces it across the gap -- and a cast time is not that: it is one
         // spell's preparation, and the spell is gone.
         targeting.clear();
+        // A cooldown with no known duration cannot be reasoned about across a
+        // gap of unknown length (`maneuvers.rs`).
+        maneuvers.clear();
         *cast_time_ends = None;
 
         // The hands. Nothing empties them because a socket dropped, and the

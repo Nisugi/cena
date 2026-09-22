@@ -63,6 +63,7 @@ mod idle;
 mod inventory;
 pub mod inventory_snapshot;
 pub mod known_spells;
+pub mod maneuvers;
 pub mod menu;
 pub mod message;
 pub mod movement;
@@ -145,6 +146,8 @@ pub struct GameState {
     /// next (`bounty_status.rs`). Distinct from [`Self::objectives`], which is
     /// the dialog's row -- this is the task's own description, parsed.
     pub bounty: bounty_status::BountyStatus,
+    /// Maneuvers the game has said are on cooldown (`maneuvers.rs`).
+    pub maneuvers: maneuvers::Maneuvers,
     /// What the game says you can attack (`targeting.rs`): the `combat`
     /// dialog's `dDBTarget` list. Evidence of hostility, and the input to
     /// "something is here that I cannot see".

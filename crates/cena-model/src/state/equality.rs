@@ -68,6 +68,7 @@ impl PartialEq for GameState {
             known_spells,
             bounty,
             targeting,
+            maneuvers,
             cast_time_ends,
         } = self;
         creatures == &other.creatures
@@ -94,6 +95,7 @@ impl PartialEq for GameState {
             && known_spells == &other.known_spells
             && bounty == &other.bounty
             && targeting == &other.targeting
+            && maneuvers == &other.maneuvers
             && cast_time_ends == &other.cast_time_ends
             // `arrivals` is NOT compared: it counts how many rooms this
             // session has entered, which is bookkeeping about the session
