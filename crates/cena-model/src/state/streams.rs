@@ -127,6 +127,20 @@ impl GameState {
             .map(|(id, lines)| (id.as_str(), lines.as_slice()))
     }
 
+    /// What each stream declared it does when its window is **closed**.
+    ///
+    /// The other half of the note above: a `streamWindow` declaration is not a
+    /// buffer, but it is not nothing either. It says whether a closed window's
+    /// text falls through to main, falls through styled, is re-routed, or is a
+    /// duplicate to be dropped -- which is what stops `speech` rendering twice.
+    ///
+    /// See [`stream_windows`](super::stream_windows) for the rule and the
+    /// census behind it.
+    #[must_use]
+    pub const fn stream_windows(&self) -> &super::stream_windows::Windows {
+        &self.stream_windows
+    }
+
     /// Route one text run to its stream, completing a line when it ends one.
     ///
     /// **A frame boundary is not a line boundary.** The parser emits one run per

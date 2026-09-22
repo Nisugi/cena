@@ -76,6 +76,7 @@ mod reconnect;
 pub mod resolve;
 mod room;
 pub mod societies;
+pub mod stream_windows;
 pub mod streams;
 pub mod targeting;
 mod unknown;
@@ -241,6 +242,10 @@ pub struct GameState {
     /// so "a stream nobody has pushed to" answers empty rather than making every
     /// call site unwrap an `Option`.
     streams: streams::StreamBuffers,
+    /// What each stream does when its window is closed; see
+    /// [`stream_windows`]. Declared by `<streamWindow ifClosed=>`, and the
+    /// reason a `speech` line does not have to render twice.
+    stream_windows: stream_windows::Windows,
     /// Routed and discarded line tallies; see [`streams::LineTally`].
     tally: streams::LineTally,
     /// The line being assembled for each stream, not yet terminated.
@@ -321,7 +326,19 @@ impl GameState {
     pub fn apply(&mut self, frame: &Frame) -> bool {
         match frame {
             Frame::RoomId { id } => self.arrive(id.as_deref()),
-            Frame::StreamWindow { id, subtitle, .. } => self.name_room(id, subtitle.as_deref()),
+            Frame::StreamWindow {
+                id,
+                subtitle,
+                attrs,
+                ..
+            } => {
+                // Two independent facts ride one tag: the room's name (on the
+                // `room`/`main` re-title that fires on every move) and what
+                // this stream does when its window is closed. Both are
+                // recorded; only the first can change the room.
+                self.stream_windows.declare(id, attrs);
+                self.name_room(id, subtitle.as_deref())
+            }
             // See `apply_room_component` for why the styled form is refused.
             Frame::Component { id, body } => self.apply_room_component(id, body),
             Frame::CreatureStatus { id, attrs } => self.apply_creature_status(id, attrs),

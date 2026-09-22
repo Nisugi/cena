@@ -41,6 +41,11 @@ impl PartialEq for GameState {
             unknown_tag_counts,
             idle_warning,
             streams,
+            // **Included.** A `streamWindow` declaration is something the
+            // server said, and a replay of the same bytes declares the same
+            // thing -- so two states that disagree about what `speech` does
+            // when closed are not the same state.
+            stream_windows,
             // **Excluded from equality, for a different reason than
             // `game_time_received`.** That one is unreproducible; this is a
             // tally of the process's behaviour rather than a fact about the
@@ -76,6 +81,7 @@ impl PartialEq for GameState {
             && character == &other.character
             && idle_warning == &other.idle_warning
             && streams == &other.streams
+            && stream_windows == &other.stream_windows
             && pending == &other.pending
             && chunk == &other.chunk
             && room == &other.room

@@ -62,6 +62,7 @@
 //! | `game_time` | **cleared** | extrapolated from a LOCAL `Instant`, so a carried clock reports a server time in the future -- the reading is fine, the extrapolation is not |
 //! | `idle_warning` | **cleared** | a fact about the connection that just ended, not about the character |
 //! | `streams`, `pending`, `chunk` | **cleared** | half a sentence nobody will finish; the next connection's bytes are not a continuation |
+//! | `stream_windows` | **cleared** | MEASURED: 15 of 16 declarations arrive before the first prompt, so the burst re-teaches them; and a stale `ifClosed` drops text rather than showing it stale |
 //! | `inventory` | **cleared** | see its own comment: container CONTENTS are not re-sent, and Lich drops them for the same reason |
 //! | `inventory_snapshot` | kept | a logged-off character gains and loses nothing; it is not in the login burst, and it is point-in-time by contract either way |
 //! | `learned_commands` | kept | what a menu coordinate MEANS is a fact about the game, and the push is not repeated on reconnect |
@@ -157,6 +158,7 @@ impl GameState {
             unknown_tag_counts,
             idle_warning,
             streams,
+            stream_windows,
             tally,
             combat,
             creatures,
@@ -381,6 +383,22 @@ impl GameState {
         // connection's bytes are not its continuation.
         streams.clear();
         pending.clear();
+
+        // **Cleared, and MEASURED to be safe.** A `streamWindow` declaration
+        // looks like a durable fact about the game, but it is a fact about the
+        // connection's UI negotiation, and the burst re-teaches it: of the 16
+        // declared ids, **15 arrive before the first prompt** (measured on
+        // `GSIV-Nisugi/2026-09-01_10-02-47.xml`, 19 tags in the first 55KB).
+        //
+        // The one that does not is `charprofile`, declared only when `profile`
+        // is run -- which this method's own rule sends to the cleared side: a
+        // command-taught declaration from a connection that ended says nothing
+        // about the next one.
+        //
+        // Keeping them instead would be defensible and is still wrong: a stale
+        // `ifClosed` decides whether text is DROPPED, so a wrong one loses game
+        // text silently rather than showing something stale.
+        *stream_windows = super::stream_windows::Windows::default();
 
         // A held cast or pre-flare belongs to a chunk the old connection
         // never finished; an assault bracket cannot outlive its fight.
