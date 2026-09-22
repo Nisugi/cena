@@ -65,9 +65,44 @@
 //! > empty buffer (`character/profile.rs`). Whatever pushes `charprofile` in
 //! > the census files, it is not the profile those logs show.
 //!
+//! > **A SECOND CORRECTION, 2026-09-22 -- and the census is not wrong this
+//! > time.** The author pasted live traffic containing
+//! > `<pushStream id="speech"/>`, a ninth pushed id this table does not list.
+//! > Before concluding the census missed one, both were measured over the 208
+//! > `.xml` logs in `E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi`:
+//! >
+//! > | | occurrences | files |
+//! > |---|---|---|
+//! > | `pushStream id="speech"` | **0** | 0 |
+//! > | `preset id='speech'` | 203 | 49 |
+//! >
+//! > So in this corpus speech arrives as a **main-window line wearing a
+//! > `speech` preset**, with no stream push at all -- which is what
+//! > `state/message.rs` was built on and is still right about. The corpus runs
+//! > **2026-09-01 to 2026-09-12**; the author's paste is from 2026-09-22. The
+//! > push is therefore newer than these logs or depends on a client setting
+//! > they do not carry.
+//! >
+//! > **The lesson is the opposite of the `charprofile` one above.** There, a
+//! > census over-claimed. Here it under-claimed, for an honest reason: a census
+//! > describes the traffic it read, and traffic changes. A wider run of the
+//! > same census (208 files, one character) finds **8** pushed ids --
+//! > `room` 77,575 · `inv` 33,378 · `society` 1,087 · `reserve` 91 ·
+//! > `bounty` 86 · `thoughts` 12 · `ambients` 4 · `announcements` 2 -- so
+//! > `charprofile` is absent there too, and `reserve`, `ambients` and
+//! > `announcements` are present. **Neither list is the closed set**, and
+//! > nothing may treat one as such.
+//! >
+//! > What handles all of it is the routing rule rather than any list: the
+//! > stream id is read off the frame, so a push of an id nobody censused needs
+//! > no code change. `state/stream_windows.rs` covers the other half -- what a
+//! > stream does when its window is CLOSED -- and is where `speech` matters,
+//! > because it is declared `ifClosed=''` and therefore duplicated to main.
+//!
 //! **Windows are declared far more widely than they are pushed to** -- 16 against
-//! 6 -- so a router must not assume a push for every declared window, and must
-//! not create a buffer just because a window was announced.
+//! 6 here and 8 in the wider run -- so a router must not assume a push for every
+//! declared window, and must not create a buffer just because a window was
+//! announced.
 
 use cena_model::GameState;
 use cena_protocol::Parser;

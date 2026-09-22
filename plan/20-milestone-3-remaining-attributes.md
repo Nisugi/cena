@@ -72,12 +72,26 @@ with no socket.
 
 ### 0c. Known gaps, stated rather than hidden
 
-- **The flee/arrival classifier.** `creature_messages.tsv` holds **1,067 flee
-  and 991 arrival** lines and `MessageKind::Flee` is in the bestiary, but
-  nothing matches a line against them; **802 carry `{direction}`/`{pronoun}`
-  placeholders**. Without it, overwatch cannot complete the author's
-  "disappeared without being seen to leave" inference — so it records nothing
-  from a disappearance. See §5's overwatch entry.
+- ~~**The flee/arrival classifier.**~~ **DONE 2026-09-21** (`dbadaef`), and it
+  is not the classifier this entry imagined. This said the answer was matching
+  `creature_messages.tsv`'s 1,067 flee lines, 802 of them templated. The author:
+
+  > *"the room would be giving a link with the id"*, and *"leaving a room
+  > indicates a direction in the `<d>`. arriving in the room does not. hiding in
+  > the room does not."*
+
+  Both facts are in the **markup**, so `state/departure.rs` reads them off the
+  frame: the creature from its bolded `<a exist=>` id, the direction from a bare
+  `<d>` command link. MEASURED over eight combat logs: **195 of 195** departures
+  carry a direction link, against **0** of 142 arrivals and **0** of 38 hides.
+
+  No bestiary lookup, no placeholder expansion, no ambiguity between two
+  creatures of the same name, and a creature whose flee line nobody recorded is
+  handled as well as one in the table. `creatures.rs::vanished_unaccounted`
+  completes the overwatch inference. The template matcher was still built
+  (`state/creature_message.rs`) and is honestly labelled: it recognises death
+  and decay **prose as prose**, has no caller, and is not how anything learns
+  that a creature died — `<crtrStatus dead="1">` is the authority on that.
 - **40 of 338 spell durations are real Ruby**, five of them scraping the
   scrollback. They read as `Duration::Unknown` with the source kept.
 - **`stance` as an enum.** A verbatim string today; the five stances are a

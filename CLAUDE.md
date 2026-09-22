@@ -166,19 +166,40 @@ From `plan/05-engineering-rules.md`:
 
 ## Where the build stands
 
-**M1, M2 and M3 are all complete** as of 2026-09-21. `12` §8's table has
-**M4 — a real frontend (web first)** next, with M5 multi-session and M6 the first
-real behavior.
+**M1, M2 and M3 are complete**, and **M4's code is merged** (PRs #1, #2, #3, all
+2026-09-21): `cena-ui` and `cena-web` hold the Despana frontend, with a coherent
+`SessionObserver`, generation-pinned manual input and a bounded projection pump.
+`12` §8's table has **M5 — multi-session** next, then M6, the first real behavior.
 
 > This section is headed by what is DONE rather than what is next, because that is
-> what it has become: three milestones of record with the next one named in a line.
+> what it has become: milestones of record with the next one named in a line.
 > It was called "Next step" while it held one.
 >
+> **M4 IS NOT ACCEPTED, and the distinction is the point.** `plan/m4-despana-status.md`
+> is careful about it and this file should be too: the code is merged and tested,
+> and what remains is **evidence from a running game**. One operator-present smoke
+> covered LOOK, inventory, hand swaps, viewer reattachment and roundtime. Not done:
+> broader live acceptance, live reconnect through the frontend, and fresh CI on
+> merged `main` — every recorded green run predates the merge.
+>
+> **The three baseline failures that doc records were real bugs, not noise** — all
+> three are fixed as of 2026-09-22, and each had a symptom that hid it:
+> the character store built filenames case-sensitively (one file on NTFS, two on
+> ext4, so a Linux character silently got a second empty store); `send_now` pinned
+> an exact server second to a value extrapolated from a `std::time::Instant`, which
+> `start_paused` cannot control; and 42 rustdoc links were broken, two of them
+> naming items that had never existed. Reported as a temp-directory race, a flaky
+> test and lint noise respectively.
+>
 > **M6 is where the deferred work lands**, and it is tabled rather than remembered:
-> `plan/20` §0b lists the sending halves of stash, bank, fog and spellsong; §0c lists
-> the known gaps, of which the **flee/arrival classifier** is the one that blocks a
-> feature — overwatch cannot complete the author's "disappeared without being seen to
-> leave" inference without it.
+> `plan/20` §0b lists the sending halves of stash, bank, fog and spellsong; §0c's
+> remaining gaps are `stance` as an enum and the `resource` capture. **The
+> flee/arrival classifier it named as blocking overwatch is DONE** (`dbadaef`):
+> the author's rule — *"leaving a room indicates a direction in the `<d>`. arriving
+> in the room does not. hiding in the room does not"* — is read straight off the
+> markup by `state/departure.rs`, MEASURED at 195 departures all carrying a
+> direction link against 0 of 142 arrivals and 0 of 38 hides. `creatures.rs`'s
+> `vanished_unaccounted` completes the inference.
 
 ### Milestone 1, narrowed (`12` §9c)
 
