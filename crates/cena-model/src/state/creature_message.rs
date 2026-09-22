@@ -12,22 +12,45 @@
 //! # What this is for, and what it is NOT for
 //!
 //! This began as the third condition of the author's hiding rule -- "not seen
-//! to leave" -- and that is **no longer its job.** The author:
+//! to leave" -- and that is **no longer its job**, twice over. The author:
 //!
-//! > **2026-09-21:** *"the room would be giving a link with the id"*.
+//! > **2026-09-21:** *"the room would be giving a link with the id"*. And:
+//! > *"leaving a room indicates a direction in the `<d>`. arriving in the room
+//! > does not. hiding in the room does not."*
 //!
-//! A departure carries the creature's `exist` id and a `<d>` direction link, so
-//! `departure.rs` reads it off the markup and `Creatures::vanished_unaccounted`
-//! is the inference. That needs no prose at all.
+//! MEASURED over eight combat logs: of the lines carrying a creature link, all
+//! **195** departures carry a direction `<d>`, and **0** of 142 arrivals and 0
+//! of 38 hides do. So `departure.rs` reads all three apart from the markup
+//! alone, and an earlier version of this file claiming the arrival/departure
+//! distinction "stays here" was wrong.
 //!
-//! What this answers instead is the question the markup cannot: **was that an
-//! arrival or a departure?** `bounds <d>southwest</d>` and `charges in` have the
-//! same shape once the words are ignored, and only the bestiary's lines tell
-//! them apart. It also gives a creature's death and decay prose, which nothing
-//! else recognises.
+//! **What survives is death and decay prose, and NOT because it is early.**
 //!
-//! So the two are complementary: `departure.rs` answers *who left and which
-//! way*, and this answers *what kind of message that was*.
+//! I claimed it was the earliest death signal, on the strength of 44 death
+//! lines carrying no `<crtrStatus>` on the same LINE. The author corrected it:
+//!
+//! > **2026-09-21:** *"the earliest signal is crtrStatus which will have the
+//! > death=1 tag at the start of the blob and the death line is usually towards
+//! > the end."*
+//!
+//! The measurement was about lines and the claim was about blobs, which is not
+//! the same question -- the status tag and the prose are in one blob, the tag
+//! first. `<crtrStatus dead="1">` is the authority on death and this is not.
+//! MEASURED for what it is worth: 184 `dead=` attributes across three logs,
+//! every one inside a `room objs` component.
+//!
+//! So what this is for is narrower than I first wrote: it recognises a
+//! creature's death and decay **prose** as prose -- which a log reader, a
+//! transcript or a highlight rule wants, and which nothing else can do. It is
+//! not how a behavior learns that something died.
+//!
+//! # NOT WIRED, and deliberately named as such
+//!
+//! Nothing in the library calls this yet. The consumer is a hunting behavior
+//! (M6), and wiring death prose into `Creatures` now would mean choosing
+//! between it and `<crtrStatus>` as the authority on one creature's death --
+//! a decision with no caller to justify it. Rule -1: it stays a tested
+//! classifier with a stated purpose until something needs it.
 //!
 //! # Placeholders, and why matching is a port rather than a compare
 //!

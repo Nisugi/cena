@@ -30,20 +30,32 @@
 //! creature whose flee line nobody has recorded is handled exactly as well as
 //! one whose line is in the table.
 //!
-//! # What still needs the prose, and why the matcher is kept
+//! # The markup separates all three, and that is MEASURED
 //!
-//! A `<d>` in a line naming a creature says *a direction was clickable there*.
-//! It does not say the creature used it: a bare `<d>` also appears in room
-//! descriptions and in `<compass>`. So [`classify`] requires **both** a bolded
-//! creature link and a direction link in the same line, which is the shape a
-//! departure has and a room description does not.
+//! > **AUTHOR, 2026-09-21:** *"leaving a room indicates a direction in the
+//! > `<d>`. arriving in the room does not. hiding in the room does not."*
 //!
-//! What this cannot do is tell a departure from an *arrival*: `bounds
-//! <d>southwest</d>` and `charges in` are the same shape once the words are
-//! ignored. The words are what separate them, so the arrival/flee distinction
-//! stays with `creature_message.rs` -- and the two are complementary rather
-//! than duplicated. This one answers *"who left, and which way"*; that one
-//! answers *"was this an arrival or a departure"*.
+//! Measured over eight of the author's largest combat logs, counting lines that
+//! carry a creature link:
+//!
+//! | shape | lines | carry a direction `<d>` |
+//! |---|---|---|
+//! | departure | 195 | **195** |
+//! | arrival | 142 | **0** |
+//! | hide | 38 | **0** |
+//!
+//! So a direction link beside a bolded creature link **is** a departure, and no
+//! prose is needed to tell it from the other two. An earlier version of this
+//! doc said the arrival/departure distinction "stays with
+//! `creature_message.rs`"; the author's rule and this census say otherwise.
+//!
+//! # What this still requires, and why
+//!
+//! A bare `<d>` also appears in room descriptions and `<compass>`, and carries
+//! `go bridge` and `climb wall` as well as directions. So [`classify`] requires
+//! **a bolded creature link** *and* a `<d>` whose text is one of the eleven
+//! directions. Bold is the wire's own mark for a creature
+//! (`state/room.rs:207`); an unbolded `<a exist>` is an item or a player.
 
 use cena_protocol::frame::LinkKind;
 
