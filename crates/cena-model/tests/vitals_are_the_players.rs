@@ -54,7 +54,6 @@ fn an_appraised_targets_health_does_not_become_the_players() {
 /// used to drop both on the floor.
 mod amounts {
     use super::*;
-    use cena_model::VitalsExt;
 
     fn minivitals(bars: &str) -> GameState {
         let mut parser = Parser::new();
@@ -72,15 +71,15 @@ mod amounts {
             "<progressBar id='health' value='95' text='health 213/223'/>\
              <progressBar id='mana' value='50' text='mana 60/120'/>",
         );
-        let health = state.vitals.health().expect("health");
+        let health = state.health().expect("health");
         assert_eq!(
             (health.percent, health.current, health.max),
             (95, Some(213), Some(223))
         );
         assert_eq!(health.amount(), Some((213, 223)));
         // the named accessor and the wire id agree
-        assert_eq!(state.vitals.mana().and_then(Vital::amount), Some((60, 120)));
-        assert_eq!(state.vitals.vital("mana"), state.vitals.mana());
+        assert_eq!(state.mana().and_then(Vital::amount), Some((60, 120)));
+        assert_eq!(state.vital("mana"), state.mana());
     }
 
     #[test]
@@ -88,7 +87,7 @@ mod amounts {
         // 213/223 is 95.5%: the wire says 95, and a bar renders what the
         // game said rather than what we would have rounded to.
         let state = minivitals("<progressBar id='health' value='95' text='health 213/223'/>");
-        assert_eq!(state.vitals.health().map(|v| v.percent), Some(95));
+        assert_eq!(state.health().map(|v| v.percent), Some(95));
     }
 
     #[test]
@@ -96,10 +95,7 @@ mod amounts {
         // The interesting case: a character bleeding out reads as -10, not
         // +10. `payload::Amount` records Vellum getting this wrong.
         let state = minivitals("<progressBar id='health' value='0' text='health -10/125'/>");
-        assert_eq!(
-            state.vitals.health().and_then(Vital::amount),
-            Some((-10, 125))
-        );
+        assert_eq!(state.health().and_then(Vital::amount), Some((-10, 125)));
     }
 
     #[test]
@@ -107,14 +103,14 @@ mod amounts {
         // `mindState` is a label, not a pair. Fabricating (percent, 100)
         // here is exactly what `payload::Amount`'s doc refuses.
         let state = minivitals("<progressBar id='mindState' value='34' text='clear'/>");
-        let mind = state.vitals.vital("mindState").expect("the bar landed");
+        let mind = state.vital("mindState").expect("the bar landed");
         assert_eq!((mind.percent, mind.amount()), (34, None));
     }
 
     #[test]
     fn an_absent_gauge_is_none_rather_than_zero() {
         let state = minivitals("<progressBar id='health' value='95' text='health 213/223'/>");
-        assert_eq!(state.vitals.spirit(), None, "never observed, not empty");
-        assert_eq!(state.vitals.stamina(), None);
+        assert_eq!(state.spirit(), None, "never observed, not empty");
+        assert_eq!(state.stamina(), None);
     }
 }

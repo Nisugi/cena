@@ -46,10 +46,19 @@ pub struct Member {
 
 /// What one line said about the group.
 ///
-/// Ported from `group.rb:418-470`'s patterns, minus the two that need no
+/// Ported from `group.rb:418-529`'s patterns, minus the two that need no
 /// pattern here: `GROUP_EMPTIED` is `<indicator id='IconJOINED' visible='n'/>`,
-/// which arrives as a `Frame::StatusIndicator` and is already stored by
-/// `GameState::apply`, and the `EXIST` scan is the links themselves.
+/// which arrives as a `Frame::StatusIndicator` -- `GameState::apply` stores it
+/// AND empties the group on it ([`Group::emptied`]), as Lich's `consume` does
+/// (`group.rb:603-605`) -- and the `EXIST` scan is the links themselves.
+///
+/// > **CORRECTED 2026-09-23.** This said the indicator was "already stored",
+/// > as though storing it were the whole of Lich's handling. It is half: Lich
+/// > also CLEARS the members on it, and on `NO_GROUP` (`:617-619`), and
+/// > replaces them wholesale on the `group` command's `MEMBER` line (`:644-645`,
+/// > `Group.refresh`). None of the three was ported, so nothing but a
+/// > `disband` or a reconnect ever emptied the list -- a character who was
+/// > dropped from a group by someone else kept reporting its members.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GroupEvent {
     /// `<X> joins your group.`
@@ -97,6 +106,21 @@ pub enum GroupEvent {
     },
     /// `You disband your group.`
     Disbanded,
+    /// `You are not currently in a group.` -- `NO_GROUP` (`group.rb:512`),
+    /// the `group` command's answer when there is nothing to list. Lich
+    /// clears on it exactly as on a disband (`:617-619`).
+    NotInGroup,
+    /// `You are leading <X>, <Y>.` or `You are grouped with <X>, <Y>.` --
+    /// `MEMBER` (`group.rb:521`), the `group` command's roster.
+    ///
+    /// **A complete list, so it REPLACES the members** (`Group.refresh`,
+    /// `:67-69`), rather than adding to them: anyone not named has left.
+    Listed {
+        /// `You are leading`: the leader is you, so it is not a link.
+        leading: bool,
+        /// Everyone the line named, in order.
+        members: Vec<Member>,
+    },
 }
 
 /// `HOLD_*_FIRST` (`group.rb:468-479`): you take someone's hand, as the prose
@@ -121,6 +145,12 @@ const YOU_HOLD: [(&str, &str); 4] = [
 /// patterns short, and it is only possible because the parser kept the links.
 #[must_use]
 pub fn classify(line: &ChunkLine) -> Option<GroupEvent> {
+    classify_text(line, &line.text())
+}
+
+/// [`classify`], given the line's text already rendered (the chunk renders
+/// each line once and shares it).
+pub(crate) fn classify_text(line: &ChunkLine, text: &str) -> Option<GroupEvent> {
     let members: Vec<Member> = line
         .links()
         .filter_map(|link| match &link.kind {
@@ -132,12 +162,24 @@ pub fn classify(line: &ChunkLine) -> Option<GroupEvent> {
             _ => None,
         })
         .collect();
-    let text = line.text();
     let trimmed = text.trim();
 
-    // No participants: the only event that needs none.
+    // No participants needed.
     if trimmed.starts_with("You disband your group") {
         return Some(GroupEvent::Disbanded);
+    }
+    // `^You are not currently in a group` (`group.rb:512`), anchored as Lich
+    // anchors it (after `consume`'s `line.strip`, `group.rb:587`): a player
+    // SAYING it puts their own name first.
+    if trimmed.starts_with("You are not currently in a group") {
+        return Some(GroupEvent::NotInGroup);
+    }
+    // `^You are (?:leading|grouped with) (.*)` (`group.rb:521`). Before the
+    // `first` guard, because the members ARE the event, however many.
+    for (opener, leading) in [("You are leading ", true), ("You are grouped with ", false)] {
+        if trimmed.starts_with(opener) {
+            return Some(GroupEvent::Listed { leading, members });
+        }
     }
     let first = members.first()?;
 
@@ -233,13 +275,27 @@ impl Group {
     pub fn apply(&mut self, event: &GroupEvent) -> bool {
         let before = self.clone();
         match event {
-            GroupEvent::Joined(m)
-            | GroupEvent::Added(m)
-            | GroupEvent::AlreadyMember(m)
-            | GroupEvent::LeaderAdded { member: m, .. } => self.push(m),
-            GroupEvent::Left(m)
-            | GroupEvent::Removed(m)
-            | GroupEvent::LeaderRemoved { member: m, .. } => {
+            GroupEvent::Joined(m) | GroupEvent::Added(m) | GroupEvent::AlreadyMember(m) => {
+                self.push(m);
+            }
+            // **Only if the leader is in OUR group** (`group.rb:636-638`,
+            // `Group.push(added) if Group.include?(leader)`). The line is
+            // broadcast to everyone in the room, so `<X> adds <Y> to his
+            // group` is as often news about someone else's group as ours --
+            // and pushing unconditionally put strangers on our roster.
+            GroupEvent::LeaderAdded { leader, member } => {
+                if self.contains(&leader.id) {
+                    self.push(member);
+                }
+            }
+            // The same guard, on removal (`group.rb:639-641`): a leader of
+            // some other group removing someone says nothing about ours.
+            GroupEvent::LeaderRemoved { leader, member } => {
+                if self.contains(&leader.id) {
+                    self.members.retain(|held| held.id != member.id);
+                }
+            }
+            GroupEvent::Left(m) | GroupEvent::Removed(m) => {
                 self.members.retain(|held| held.id != m.id);
             }
             // Joining someone's group replaces whatever was held: you are in
@@ -258,12 +314,39 @@ impl Group {
             // is honest; asking "is it me" is a different question this model
             // cannot answer without knowing its own id.
             GroupEvent::LeaderIsYou(_) => self.leader = None,
-            GroupEvent::Disbanded => {
+            GroupEvent::Disbanded | GroupEvent::NotInGroup => {
+                self.emptied();
+            }
+            // `Group.refresh(*people)` (`group.rb:644-645`): the whole list, as
+            // named. `You are leading` makes the leader you, which this model
+            // spells `None` (see `LeaderIsYou`); `grouped with` names the
+            // leader first (`:610-614`, `Group.leader = people.first`).
+            GroupEvent::Listed { leading, members } => {
                 self.members.clear();
-                self.leader = None;
+                for member in members {
+                    self.push(member);
+                }
+                self.leader = if *leading {
+                    None
+                } else {
+                    members.first().cloned()
+                };
             }
         }
         before != *self
+    }
+
+    /// The group is gone: no members, and no leader but you.
+    ///
+    /// `GROUP_EMPTIED` (`<indicator id='IconJOINED' visible='n'/>`,
+    /// `group.rb:603-605`) and `NO_GROUP`/`DISBAND` (`:617-619`) all do the
+    /// same two things in Lich: `Group.leader = :self` and clear the members.
+    /// Returns whether anything changed.
+    pub fn emptied(&mut self) -> bool {
+        let changed = !self.members.is_empty() || self.leader.is_some();
+        self.members.clear();
+        self.leader = None;
+        changed
     }
 
     /// Add, without duplicating an id already held.

@@ -200,3 +200,37 @@ fn an_unbolded_creature_link_is_not_a_departure() {
     );
     assert_eq!(fed(&wire).creatures().fled(8_365_650), None);
 }
+
+#[test]
+fn a_creature_that_fled_came_back_and_vanished_is_unaccounted_for() {
+    // Review finding. `seen_to_leave` was only ever inserted into, so the
+    // FIRST departure accounted for every later disappearance: a ghast that
+    // bounded southwest, came back, and then hid was reported as having
+    // walked out -- excluded from the one inference that should name it.
+    let wire = format!(
+        "{GHAST_IN_ROOM}{GHAST_FLEES}{PROMPT}{ROOM_EMPTY}{PROMPT}\
+         {GHAST_IN_ROOM}{PROMPT}{ROOM_EMPTY}{PROMPT}"
+    );
+    let state = fed(&wire);
+    assert_eq!(
+        state.creatures().fled(8_365_650),
+        None,
+        "coming back cancels the departure"
+    );
+    assert_eq!(
+        state.creatures().vanished_unaccounted().collect::<Vec<_>>(),
+        vec![8_365_650],
+        "the second disappearance is unexplained"
+    );
+}
+
+#[test]
+fn a_reconnect_forgets_departures_with_the_rosters_they_annotate() {
+    let mut state = fed(&format!("{GHAST_IN_ROOM}{GHAST_FLEES}{PROMPT}"));
+    assert!(
+        state.creatures().fled(8_365_650).is_some(),
+        "guard: recorded"
+    );
+    state.invalidate_for_reconnect();
+    assert_eq!(state.creatures().fled(8_365_650), None);
+}

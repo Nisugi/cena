@@ -159,12 +159,7 @@ fn classify_identity(line: &str) -> Option<Identity> {
 fn classify_gender_age(line: &str) -> Option<(String, u32)> {
     let rest = line.strip_prefix("Gender: ")?;
     let (gender, rest) = rest.split_once(" Age: ")?;
-    let age = rest
-        .split_whitespace()
-        .next()?
-        .replace(',', "")
-        .parse()
-        .ok()?;
+    let age = crate::state::numbers::grouped(rest.split_whitespace().next()?)?;
     let gender = gender.trim();
     if gender.is_empty() {
         return None;

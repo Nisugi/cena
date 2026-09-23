@@ -255,6 +255,7 @@ fn buff_row(dialog: &str, id: &str, text: &str, secs: u32) -> cena_protocol::fra
         percent: 100,
         amount: None,
         time_remaining_secs: Some(secs),
+        attrs: Vec::new(),
     })
 }
 
@@ -464,4 +465,69 @@ fn clearing_effects_forgets_the_observations_too() {
         None,
         "forgetting the effects must forget that the list was ever stated"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Review: a timed effect with no clock is not an indefinite one.
+// ---------------------------------------------------------------------------
+
+/// **The login burst sends the effect dialogs before its first prompt**, and
+/// the prompt is the only thing that teaches the clock. `ends_at` was
+/// `game_time + secs`, so with no `game_time` it was stored `None` -- which
+/// is how this model spells *indefinite*. A two-minute buff read as up
+/// forever: `active()` `Some(true)` at any hour, `remaining()` `None`.
+#[test]
+fn an_effect_that_arrives_before_the_first_prompt_still_expires() {
+    const PROMPT: u32 = 1_789_777_252;
+    let mut state = GameState::default();
+    state.apply(&buff_row("Buffs", "515", "Rapid Fire", 120));
+    assert_eq!(
+        state.effects.remaining("515", 0),
+        Some(120),
+        "before any clock: the duration the game stated, not `None`"
+    );
+
+    // The first prompt anchors it: the duration runs from THIS second.
+    state.apply(&prompt(PROMPT));
+    assert_eq!(
+        state.effects.get("515").and_then(|e| e.ends_at),
+        Some(PROMPT + 120)
+    );
+    assert_eq!(state.effects.active("515", PROMPT + 119), Some(true));
+    assert_eq!(
+        state.effects.active("515", PROMPT + 120),
+        Some(false),
+        "a timed buff must end"
+    );
+    assert_eq!(state.effects.remaining("515", PROMPT + 100), Some(20));
+}
+
+/// **Kept across a reconnect means the time LEFT is kept.** `ends_at` is an
+/// absolute server second and the server's clock runs while the character is
+/// offline, so keeping it unchanged charged the outage against the buff -- the
+/// opposite of what `reconnect.rs` says it does (spells do not tick offline,
+/// author 2026-09-20).
+#[test]
+fn a_reconnect_keeps_the_time_left_not_the_end_second() {
+    const BEFORE: u32 = 1_789_777_252;
+    const AFTER: u32 = BEFORE + 600; // a ten-minute outage
+    let mut state = GameState::default();
+    state.apply(&prompt(BEFORE));
+    state.apply(&buff_row("Buffs", "515", "Rapid Fire", 120));
+    state.apply(&prompt(BEFORE + 20)); // 100 seconds left at the drop
+
+    state.invalidate_for_reconnect();
+    assert_eq!(
+        state.effects.remaining("515", 0),
+        Some(100),
+        "held as time left"
+    );
+
+    state.apply(&prompt(AFTER));
+    assert_eq!(
+        state.effects.active("515", AFTER + 99),
+        Some(true),
+        "the outage did not run the buff down"
+    );
+    assert_eq!(state.effects.active("515", AFTER + 100), Some(false));
 }

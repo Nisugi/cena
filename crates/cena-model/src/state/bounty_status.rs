@@ -135,7 +135,7 @@ impl BountyStatus {
 pub fn vouchers_remaining(line: &str) -> Option<u32> {
     let rest = line.trim().strip_prefix("You have ")?;
     let (count, _) = rest.split_once(" expedited task reassignment vouchers remaining")?;
-    count.replace(',', "").parse().ok()
+    super::numbers::grouped(count)
 }
 
 /// One of the guild's refusals -- `ebounty.lic:950-961`.

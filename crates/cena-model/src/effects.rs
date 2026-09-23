@@ -77,6 +77,14 @@ pub struct Effect {
     /// `None` for an effect with no parseable duration. Vellum notes
     /// "Indefinite" and stack counts; those never tick, and an effect that
     /// never ticks must not be treated as expired.
+    ///
+    /// **Also `None`, briefly, for a timed effect with no clock to stamp it
+    /// against** -- one that arrived before the first `<prompt>` of a
+    /// connection, or was kept across a reconnect. Its duration is then held
+    /// by [`Effects`] and anchored on the next prompt; until then read it
+    /// through [`Effects::active`] / [`Effects::remaining`], which know the
+    /// difference. Reading this field alone would take a 2-minute buff for an
+    /// indefinite one (review).
     pub ends_at: Option<u32>,
     /// The bar percentage the game last reported, 0-100.
     ///
@@ -168,12 +176,90 @@ pub struct Effects {
     /// Scoped per category, because the four dialogs refill independently: a
     /// `Buffs` clear tells you nothing about `Cooldowns`.
     observed: BTreeSet<String>,
+    /// Durations waiting for a server clock to anchor them, by id.
+    ///
+    /// # Why an effect can arrive with no clock
+    ///
+    /// `ends_at` is `prompt second + time=`, and the prompt is the only thing
+    /// that teaches the clock (`GameState::apply`'s `Frame::Prompt` arm).
+    /// The login burst sends the effect dialogs BEFORE its first prompt, and
+    /// a reconnect deliberately forgets the clock (`reconnect.rs`). Either
+    /// way an effect with `time='00:02:00'` arrived with nothing to add it
+    /// to -- and was stored with `ends_at: None`, the spelling for
+    /// *indefinite*. So a two-minute buff read as permanent: `active()` said
+    /// `Some(true)` forever and `remaining()` said `None` (review).
+    ///
+    /// The duration is kept here instead, relative, and [`Self::anchor`]
+    /// turns it absolute against the first prompt that arrives. No local
+    /// clock is read, so replay equality (MO-1) holds.
+    pending: BTreeMap<String, u32>,
 }
 
 impl Effects {
     /// Record or replace an effect.
     pub fn insert(&mut self, id: String, effect: Effect) {
+        self.pending.remove(&id);
         self.by_id.insert(id, effect);
+    }
+
+    /// Record an effect the wire gave a duration, stamping it if the server
+    /// clock is known and holding the duration for [`Self::anchor`] if not.
+    ///
+    /// `effect.ends_at` is overwritten either way: this is the one place the
+    /// duration becomes an end time.
+    pub fn insert_lasting(&mut self, id: String, mut effect: Effect, secs: u32, now: Option<u32>) {
+        if let Some(now) = now {
+            effect.ends_at = Some(now.saturating_add(secs));
+            self.insert(id, effect);
+        } else {
+            effect.ends_at = None;
+            self.by_id.insert(id.clone(), effect);
+            self.pending.insert(id, secs);
+        }
+    }
+
+    /// Give every held duration an end time, against the server second a
+    /// prompt just stated. Called on every prompt; a no-op when nothing waits.
+    pub fn anchor(&mut self, now: u32) {
+        for (id, secs) in std::mem::take(&mut self.pending) {
+            if let Some(effect) = self.by_id.get_mut(&id) {
+                effect.ends_at = Some(now.saturating_add(secs));
+            }
+        }
+    }
+
+    /// Turn every end time back into a duration, measured at `then` -- the
+    /// last server second this connection stated.
+    ///
+    /// For a reconnect. `ends_at` is an ABSOLUTE server second, and the
+    /// server's clock keeps running while the character is logged off; the
+    /// spell does not (author, 2026-09-20). Keeping the absolute value would
+    /// charge the offline gap against every buff -- a 10-minute outage would
+    /// expire a 5-minute spell that had not ticked at all. Holding what was
+    /// LEFT, and anchoring it on the new connection's first prompt, is what
+    /// "kept across a reconnect" has to mean for a timer.
+    ///
+    /// `then` is the raw prompt second, not the extrapolated clock: that
+    /// reads a local `Instant`, which must stay out of compared state (MO-1).
+    /// The cost is at most the seconds between the last prompt and the drop.
+    pub(crate) fn unanchor(&mut self, then: u32) {
+        for (id, effect) in &mut self.by_id {
+            if let Some(ends) = effect.ends_at.take() {
+                self.pending.insert(id.clone(), ends.saturating_sub(then));
+            }
+        }
+    }
+
+    /// Whether a listed effect is live at `now_server`, whichever way its
+    /// time is held.
+    fn live(&self, id: &str, effect: &Effect, now_server: u32) -> bool {
+        match (effect.ends_at, self.pending.get(id)) {
+            (Some(ends), _) => now_server < ends,
+            // Stated with time left and not yet anchored: live, unless the
+            // time it was stated with was already none.
+            (None, Some(secs)) => *secs > 0,
+            (None, None) => true,
+        }
     }
 
     /// Drop every effect in one category, and record that the game is about
@@ -189,6 +275,8 @@ impl Effects {
     /// [`Self::active`] can report as `Some(false)` rather than `None`.
     pub fn clear_category(&mut self, category: &str) {
         self.by_id.retain(|_, e| e.category != category);
+        let by_id = &self.by_id;
+        self.pending.retain(|id, _| by_id.contains_key(id));
         self.observed.insert(category.to_owned());
     }
 
@@ -220,7 +308,7 @@ impl Effects {
     #[must_use]
     pub fn active(&self, id: &str, now_server: u32) -> Option<bool> {
         let effect = self.by_id.get(id)?;
-        Some(effect.ends_at.is_none_or(|ends| now_server < ends))
+        Some(self.live(id, effect, now_server))
     }
 
     /// Whether this effect is active, **knowing which list it would be in**.
@@ -251,7 +339,7 @@ impl Effects {
             // dialog says nothing about this one, and the categories refill
             // independently.
             if effect.category == category {
-                return Some(effect.ends_at.is_none_or(|ends| now_server < ends));
+                return Some(self.live(id, effect, now_server));
             }
         }
         // Absent here. That is a fact only if the game has stated this
@@ -261,10 +349,15 @@ impl Effects {
 
     /// Seconds left on this effect at `now_server`, saturating at zero.
     ///
-    /// `None` when the effect is unlisted or has no end time.
+    /// `None` when the effect is unlisted or has no end time. A duration not
+    /// yet anchored to a clock reports what the game stated, which is the
+    /// best answer available and not `None` -- `None` means *indefinite*.
     #[must_use]
     pub fn remaining(&self, id: &str, now_server: u32) -> Option<u32> {
-        Some(self.by_id.get(id)?.ends_at?.saturating_sub(now_server))
+        match self.by_id.get(id)?.ends_at {
+            Some(ends) => Some(ends.saturating_sub(now_server)),
+            None => self.pending.get(id).copied(),
+        }
     }
 
     /// Every effect, in id order.
@@ -313,6 +406,7 @@ impl Effects {
     pub fn clear(&mut self) {
         self.by_id.clear();
         self.observed.clear();
+        self.pending.clear();
     }
 }
 

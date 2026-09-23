@@ -247,3 +247,81 @@ mod over_a_game_state {
         assert!(state.cooldowns.is_empty());
     }
 }
+
+mod fed_from_the_wire {
+    //! Review finding: `record_group` and `record_target` had no production
+    //! caller, so in a real session nothing was ever stamped and
+    //! `spell_cooldown_ready` named every member castable. These drive the
+    //! stamps from the lines Lich reads (`infomon/parser.rb:647-674`), through
+    //! `GameState::apply` and nothing else.
+
+    use super::{HEROISM, WALL};
+    use cena_model::GameState;
+    use cena_protocol::Parser;
+
+    fn fed(lines: &[&str]) -> GameState {
+        let mut parser = Parser::new();
+        let mut state = GameState::default();
+        for line in lines {
+            for frame in parser.parse_line(line) {
+                state.apply(&frame);
+            }
+        }
+        state
+    }
+
+    const RYEKA_JOINS: &str = r#"<a exist="-1" noun="Ryeka">Ryeka</a> joins your group."#;
+
+    #[test]
+    fn a_group_casting_locks_the_group_out() {
+        // 215's start message, with the `your group` clause the caster sees
+        // for an EVOKE (`parser.rb:662`).
+        let state = fed(&[
+            RYEKA_JOINS,
+            "<prompt time=\"1000\">&gt;</prompt>",
+            "A brilliant aura surrounds you and your group.  You feel charged with extra vitality.",
+            "<prompt time=\"1000\">&gt;</prompt>",
+        ]);
+        assert!(
+            state.spell_cooldown_ready(HEROISM).is_empty(),
+            "Ryeka received it and is locked out"
+        );
+        // Against the stamping prompt's own second, not `game_time_now()`,
+        // which extrapolates on the local clock and would make this a race
+        // (the 2026-09-22 flaky test was exactly that).
+        assert_eq!(state.cooldowns.remaining(HEROISM, "Ryeka", 1000), 180);
+    }
+
+    #[test]
+    fn a_self_cast_of_the_same_spell_locks_nobody_out() {
+        // The same spell, the self-cast wording: no `your group`, so nobody
+        // but the caster received it.
+        let state = fed(&[
+            RYEKA_JOINS,
+            "<prompt time=\"1000\">&gt;</prompt>",
+            "A brilliant aura surrounds you and sinks into your skin.  You feel charged with extra vitality.",
+            "<prompt time=\"1000\">&gt;</prompt>",
+        ]);
+        assert_eq!(state.spell_cooldown_ready(HEROISM).len(), 1);
+    }
+
+    #[test]
+    fn a_targeted_casting_locks_out_whoever_it_names() {
+        // 140's third-person message (`parser.rb:666-673`), grouped or not.
+        let state = fed(&[
+            "<prompt time=\"1000\">&gt;</prompt>",
+            "A wall of force surrounds Ryeka.",
+            "<prompt time=\"1000\">&gt;</prompt>",
+        ]);
+        assert_eq!(state.cooldowns.remaining(WALL, "Ryeka", 1000), 270);
+    }
+
+    #[test]
+    fn every_cooldown_message_in_the_table_compiles() {
+        // The messages are Lich's Ruby regexes, compiled by `regex`. One that
+        // failed to compile would be a cooldown that silently never starts.
+        let (compiled, declared) = cena_model::spells::cooldown_messages_compiled();
+        assert_eq!(compiled, declared);
+        assert_eq!(declared, 5, "the five spells tests/spells.rs pins");
+    }
+}

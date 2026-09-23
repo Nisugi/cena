@@ -276,3 +276,34 @@ fn the_balance_survives_a_reconnect() {
     state.invalidate_for_reconnect();
     assert_eq!(state.bank.at("Four Winds Bank"), Some(425_802_149));
 }
+
+#[test]
+fn a_refusal_outside_a_listing_does_not_erase_the_balances() {
+    // Review finding. The same line answers a WITHDRAW at a bank holding no
+    // account for you (`bank.rb:49-50`), and Lich reads it as an account
+    // answer only inside an issued `bank account` (`bank.rb:108-109`). Any
+    // chunk CONTAINING it used to open a fresh, empty account -- so one
+    // refused withdrawal wiped every balance the listing had taught.
+    let mut state = state_after(LISTING);
+    assert_eq!(state.bank.balances().len(), 5, "guard: known first");
+    let mut parser = Parser::new();
+    for line in [
+        "The teller says, \"I'm sorry, but you don't have access to an account here.\"",
+        "<prompt time=\"2\">&gt;</prompt>",
+    ] {
+        for frame in parser.parse_line(line) {
+            state.apply(&frame);
+        }
+    }
+    assert_eq!(state.bank.balances().len(), 5, "the listing still stands");
+    assert!(state.bank.no_access(), "and THIS bank will not serve you");
+}
+
+#[test]
+fn a_player_saying_it_is_not_the_bank_saying_it() {
+    let bank = state_after(&[
+        r#"<preset id='speech'><a exist="-5" noun="Bob">Bob</a> says</preset>, "you don't have access""#,
+    ])
+    .bank;
+    assert!(!bank.no_access());
+}

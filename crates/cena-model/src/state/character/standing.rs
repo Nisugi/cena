@@ -531,12 +531,10 @@ pub fn suffused_line(line: &str) -> Option<(ResourceType, u32)> {
 pub fn covert_arts_line(line: &str) -> Option<i32> {
     let rest = line.strip_prefix("Covert Arts Charges: ")?;
     let charges = rest.strip_suffix("/200")?;
-    let digits: String = charges.chars().filter(|c| *c != ',').collect();
-    digits.parse().ok()
+    crate::state::numbers::grouped(charges)
 }
 
 /// `"12,345"` -> `12345`. The wire groups thousands.
 fn parse_comma_number(text: &str) -> Option<u32> {
-    let digits: String = text.trim().chars().filter(|c| *c != ',').collect();
-    digits.parse().ok()
+    crate::state::numbers::grouped(text)
 }

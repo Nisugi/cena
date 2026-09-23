@@ -70,10 +70,12 @@ pub mod menu;
 pub mod message;
 pub mod movement;
 mod nouns;
+mod numbers;
 pub mod objectives;
 pub mod overwatch;
 mod reconnect;
 pub mod resolve;
+mod ring;
 mod room;
 pub mod societies;
 pub mod stream_windows;
@@ -339,6 +341,10 @@ impl GameState {
                 if let Ok(t) = time.parse::<u32>() {
                     self.game_time = Some(t);
                     self.game_time_received = Some(Instant::now());
+                    // Effects that arrived with no clock -- the login burst
+                    // precedes its first prompt -- get their end time now
+                    // (`effects.rs`, `Effects::pending`).
+                    self.effects.anchor(t);
                 }
                 // **The chunk closes here**, and this is the only place it
                 // does. See `state/chunks.rs`: Lich closes container fills,
@@ -350,6 +356,12 @@ impl GameState {
             }
             Frame::StatusIndicator { id, active } => {
                 self.status.set(id, *active);
+                // `GROUP_EMPTIED` (`group.rb:603-605`): the indicator going
+                // dark is the game saying you are in no group. See
+                // `Group::emptied`.
+                if id == "IconJOINED" && !*active {
+                    self.group.emptied();
+                }
             }
             Frame::ClearDialogData { id } => {
                 // MEASURED: `<dialogData id='Buffs' clear='t'></dialogData>`
@@ -380,8 +392,11 @@ impl GameState {
                 id,
                 value,
                 dialog: Some(dialog),
+                ..
             } => self.character.apply_label(dialog, id, value),
-            Frame::InjuryImage { id, name, dialog } => {
+            Frame::InjuryImage {
+                id, name, dialog, ..
+            } => {
                 if dialog.as_deref() == Some("injuries") {
                     self.character.apply_injury_image(id, name);
                 }

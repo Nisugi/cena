@@ -253,3 +253,19 @@ mod persistence {
         assert_eq!(Group::Currency.sync_commands(), ["wealth", "tickets"]);
     }
 }
+
+#[test]
+fn a_figure_that_is_not_wholly_a_number_is_not_read() {
+    // Review finding: `number` kept every digit and dropped everything else,
+    // so `12a3` read as 123 -- a balance the wire never stated. The shared
+    // reader (`state/numbers.rs`) refuses a partial number, and `None` says
+    // "not understood" where 123 would have said something false.
+    let currency = state_after(&[
+        "You are carrying a total of 12a3 silver.",
+        "Voln Favor: -5 (9)",
+    ])
+    .character
+    .currency;
+    assert_eq!(currency.silver_total, None);
+    assert_eq!(currency.voln_favor, None);
+}

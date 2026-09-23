@@ -98,6 +98,20 @@ fn the_current_target_is_the_first_of_the_list() {
 }
 
 #[test]
+fn a_list_that_does_not_start_with_an_id_has_no_current_target() {
+    // Review finding. Lich reads the selection with a SECOND match, anchored
+    // on the raw attribute (`xmlparser.rb:781-785`:
+    // `content_value =~ /^\#(\-?\d+)(?:,|$)/`), not by taking the first id
+    // that survived the split. `none,#123` lists 123 as attackable and
+    // selects nothing -- taking the first surviving id reported 123 as the
+    // current target.
+    let mut t = Targeting::default();
+    t.read("none,#123", Some("none"));
+    assert_eq!(t.ids(), [123], "still listed as attackable");
+    assert_eq!(t.current(), None, "but not the selection");
+}
+
+#[test]
 fn a_restatement_of_the_same_target_is_not_a_change() {
     // 1,034 rows a session, mostly identical. A consumer must be able to
     // ignore them.

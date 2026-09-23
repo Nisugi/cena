@@ -35,10 +35,19 @@
 //! <dropDownBox id='dDBTarget' value="none" content_value="target help" .../>
 //! ```
 //!
-//! `xmlparser.rb:776` splits on commas and keeps every `#<digits>` entry, then
-//! takes the first as the current one. A single id is the common case, not the
-//! shape -- so this splits, and `#-12345` (a negative id, which the game uses
-//! for players) is accepted because Lich's own pattern is `\#(\-?\d+)`.
+//! `xmlparser.rb:776` splits on commas and keeps every `#<digits>` entry. A
+//! single id is the common case, not the shape -- so this splits, and `#-12345`
+//! (a negative id, which the game uses for players) is accepted because Lich's
+//! own pattern is `\#(\-?\d+)`.
+//!
+//! **The current target is NOT "the first id in the list".** Lich sets it
+//! from a second, separate match against the RAW attribute
+//! (`xmlparser.rb:781-785`): `content_value =~ /^\#(\-?\d+)(?:,|$)/`, so
+//! there is a current target only when the value *starts* with an id. This
+//! doc said "then takes the first as the current one", and the code did that
+//! after the filter -- so `none,#123` reported 123 as targeted when the
+//! dropdown's own selection was `none`. The list and the selection are two
+//! readings of one attribute, and only the first entry is the selection.
 //!
 //! **`value="none"` and `content_value="target help"` are the empty state.**
 //! Neither is an id, so both produce an empty list -- and an empty list that
@@ -75,7 +84,7 @@ impl Targeting {
     /// identical restatements a session sends.
     pub fn read(&mut self, content_value: &str, value: Option<&str>) -> bool {
         let ids = parse_ids(content_value);
-        let current = ids.first().copied();
+        let current = current_id(content_value);
         let name = value.filter(|v| *v != "none").map(str::to_owned);
         let changed =
             !self.stated || self.ids != ids || self.current != current || self.name != name;
@@ -149,6 +158,17 @@ pub fn parse_ids(content_value: &str) -> Vec<i64> {
         .split(',')
         .filter_map(|part| part.trim().strip_prefix('#')?.parse().ok())
         .collect()
+}
+
+/// The dropdown's selected id: the FIRST entry of the raw `content_value`,
+/// and only if that entry is an id.
+///
+/// `xmlparser.rb:781-785`, which anchors at `^` on the unsplit attribute. Not
+/// `parse_ids(..).first()`: that skips a leading non-id entry and promotes the
+/// next id to "current" -- `none,#123` would answer 123.
+fn current_id(content_value: &str) -> Option<i64> {
+    let first = content_value.split(',').next()?;
+    first.strip_prefix('#')?.parse().ok()
 }
 
 impl crate::GameState {

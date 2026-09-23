@@ -367,3 +367,83 @@ mod vanishing {
         assert!(!state.overwatch.hiders_in(Some("7503251")));
     }
 }
+
+mod review_2026_09_23 {
+    use super::{Sighting, classify, creature, line, state_after};
+
+    #[test]
+    fn a_reveal_forgets_the_hiding_room() {
+        // Lich's `push_revealed_targets` resets `@@hidden_targets = nil`
+        // before anything else (`overwatch.rb:84`). The reveal path here only
+        // registered the creature, so the room kept reporting a hider after
+        // the thing hiding in it had come out.
+        let state = state_after(&[
+            "<nav rm='7503251'/>",
+            &creature("123456", "kobold", "grimy kobold", " slips into hiding."),
+            &creature("123456", "kobold", "grimy kobold", " comes out of hiding."),
+        ]);
+        assert!(!state.overwatch.hiders_in(Some("7503251")));
+        assert_eq!(state.overwatch.room(), None);
+    }
+
+    #[test]
+    fn a_hide_after_a_reveal_in_the_same_chunk_still_counts() {
+        // Wire order, not prompt order: one creature comes out, another goes
+        // in. Clearing at the prompt would erase the second.
+        let state = state_after(&[
+            "<nav rm='7503251'/>",
+            &creature("1", "kobold", "grimy kobold", " comes out of hiding."),
+            &creature("2", "rat", "giant rat", " slips into hiding."),
+        ]);
+        assert!(state.overwatch.hiders_in(Some("7503251")));
+    }
+
+    #[test]
+    fn a_player_saying_the_words_is_not_a_hider() {
+        // `HIDING`'s bare-prose patterns are unanchored in Lich, so a quoted
+        // line trips them there. The speech preset says who is talking.
+        for wire in [
+            r#"<preset id='speech'><a exist="-5" noun="Bob">Bob</a> says</preset>, "Something stirs in the shadows.""#,
+            r#"<preset id='whisper'><a exist="-5" noun="Bob">Bob</a> whispers,</preset> "The figure quickly disappears from view.""#,
+        ] {
+            assert_eq!(classify(&line(wire)), None, "{wire}");
+        }
+    }
+
+    #[test]
+    fn a_creature_phrase_needs_the_creature_before_it() {
+        // Lich anchors these to `<pushBold/>\w+ <a exist="\d+" ...>`
+        // (`overwatch.rb:133-147`). Without the bolded creature link straight
+        // before it the phrase is somebody's prose.
+        for wire in [
+            "A cat slips into hiding.",
+            r#"<a exist="-5" noun="Bob">Bob</a> slips into hiding."#,
+            r#"<pushBold/>a <a exist="1" noun="kobold">kobold</a><popBold/> growls, and a rat slips into hiding."#,
+        ] {
+            assert_eq!(classify(&line(wire)), None, "{wire}");
+        }
+        assert_eq!(
+            classify(&line(&creature(
+                "1",
+                "kobold",
+                "kobold",
+                " darts into the shadows."
+            ))),
+            Some(Sighting::Hid),
+            "guard: the anchored form still reads"
+        );
+    }
+
+    #[test]
+    fn something_flying_out_of_the_shadows_at_someone_is_a_hider() {
+        // `:139` toward a player's (unbolded, negative) link, `:140` toward a
+        // bolded creature after its article, `:134` toward you.
+        for wire in [
+            "A small dart flies out of the shadows toward you!",
+            r#"A small dart flies out of the shadows toward <a exist="-5" noun="Bob">Bob</a>!"#,
+            r#"A small dart flies out of the shadows toward <pushBold/>a <a exist="7" noun="rat">rat</a><popBold/>!"#,
+        ] {
+            assert_eq!(classify(&line(wire)), Some(Sighting::Hid), "{wire}");
+        }
+    }
+}

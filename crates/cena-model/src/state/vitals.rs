@@ -77,34 +77,41 @@ impl Vital {
 /// # see tests/vitals_are_the_players.rs), plus mindState/nextLvlPB/
 /// # pbarStance/encumlevel, which are the character model's, not vitals'.
 /// ```
-pub trait VitalsExt {
+///
+/// **Inherent on `GameState`, not a trait on the map.** These were
+/// `VitalsExt`, an extension trait with exactly one implementor -- the
+/// `BTreeMap` alias -- which `plan/05` §-1 rules out. A newtype would have
+/// kept `state.vitals.health()` but broken the ~30 sites that use the map as
+/// a map; the gauges are the character's, so the character answers.
+impl super::GameState {
     /// One gauge by its wire id, for the bars with no named accessor.
-    fn vital(&self, id: &str) -> Option<Vital>;
+    #[must_use]
+    pub fn vital(&self, id: &str) -> Option<Vital> {
+        self.vitals.get(id).copied()
+    }
 
     /// Health.
-    fn health(&self) -> Option<Vital> {
+    #[must_use]
+    pub fn health(&self) -> Option<Vital> {
         self.vital("health")
     }
 
     /// Mana.
-    fn mana(&self) -> Option<Vital> {
+    #[must_use]
+    pub fn mana(&self) -> Option<Vital> {
         self.vital("mana")
     }
 
     /// Stamina.
-    fn stamina(&self) -> Option<Vital> {
+    #[must_use]
+    pub fn stamina(&self) -> Option<Vital> {
         self.vital("stamina")
     }
 
     /// Spirit.
-    fn spirit(&self) -> Option<Vital> {
+    #[must_use]
+    pub fn spirit(&self) -> Option<Vital> {
         self.vital("spirit")
-    }
-}
-
-impl VitalsExt for Vitals {
-    fn vital(&self, id: &str) -> Option<Vital> {
-        self.get(id).copied()
     }
 }
 
@@ -197,18 +204,25 @@ impl crate::GameState {
             // `game_time_now()` remains right for READING the clock --
             // `in_roundtime` needs to know what time it is now. It is
             // wrong for STAMPING a fact the server already dated.
-            let ends_at = bar
-                .time_remaining_secs
-                .and_then(|secs| Some(self.game_time?.saturating_add(secs)));
-            self.effects.insert(
-                bar.id.clone(),
-                crate::effects::Effect {
-                    category: dialog.to_owned(),
-                    text: bar.text.clone(),
-                    ends_at,
-                    percent: bar.percent,
-                },
-            );
+            //
+            // **And no clock is not "no end".** Before the first prompt of a
+            // connection `game_time` is `None`, and this used to store
+            // `ends_at: None` -- the spelling for an indefinite effect -- so
+            // every buff in the login burst read as permanent (review).
+            // `insert_lasting` holds the duration until a prompt anchors it.
+            let effect = crate::effects::Effect {
+                category: dialog.to_owned(),
+                text: bar.text.clone(),
+                ends_at: None,
+                percent: bar.percent,
+            };
+            match bar.time_remaining_secs {
+                Some(secs) => {
+                    self.effects
+                        .insert_lasting(bar.id.clone(), effect, secs, self.game_time);
+                }
+                None => self.effects.insert(bar.id.clone(), effect),
+            }
             return;
         }
         // Step 3's dialogs, before vitals and for the same reason

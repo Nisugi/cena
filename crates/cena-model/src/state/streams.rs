@@ -82,7 +82,12 @@ use cena_protocol::runs::Runs;
 /// `BTreeMap`, not `HashMap`, for the reason
 /// [`Vitals`](super::Vitals) already gives: criterion 7 replays this state, and
 /// a `HashMap`'s iteration order varies run to run.
-pub type StreamBuffers = std::collections::BTreeMap<String, Vec<Runs>>;
+///
+/// Each buffer is a `Ring` (`state/ring.rs`), not a `Vec`: at
+/// [`MAX_STREAM_LINES`] the old `Vec::remove(0)` shifted 1,999 lines to drop
+/// one, on every line the main window received (review). `pub(crate)` since
+/// then, because the ring is; nothing outside the crate named this alias.
+pub(crate) type StreamBuffers = std::collections::BTreeMap<String, super::ring::Ring<Runs>>;
 
 impl GameState {
     /// How many completed lines this session has ever routed.
@@ -112,7 +117,9 @@ impl GameState {
     /// every call site to ask a question with one sensible answer.
     #[must_use]
     pub fn stream(&self, id: &str) -> &[Runs] {
-        self.streams.get(id).map_or(&[], Vec::as_slice)
+        self.streams
+            .get(id)
+            .map_or(&[], super::ring::Ring::as_slice)
     }
 
     /// Every stream that has received text, in id order.
@@ -167,6 +174,14 @@ impl GameState {
                 // The runs themselves, not a rendering of them: the links are
                 // what a combat consumer reads, and this used to drop them
                 // (`chunks.rs`, CORRECTED 2026-09-20).
+                //
+                // **The one deep copy on this path, and it is not waste.** The
+                // chunk and the scrollback each OWN the line -- one is drained
+                // at the prompt, the other outlives it -- and `stream()` hands
+                // out `&[Runs]`, so sharing would change a type other crates
+                // read. The review's other costs on this path (the line text
+                // rebuilt per classifier, the `remove(0)` shift) were not
+                // inherent and are gone.
                 let chunk_line = super::chunks::ChunkLine { runs: line.clone() };
                 // **Hiding is read HERE, not when the chunk closes**, because
                 // it records the room and the room can change first. A `<nav>`
@@ -179,12 +194,33 @@ impl GameState {
                 // Every other classifier is happy at close_chunk, because none
                 // of them reads state that a later frame in the same chunk can
                 // move.
-                if matches!(
-                    super::overwatch::classify(&chunk_line),
-                    Some(super::overwatch::Sighting::Hid)
-                ) {
-                    let room = self.room.id.clone();
-                    self.overwatch.hid_in(room);
+                //
+                // **And a reveal clears it, here too.** Lich's
+                // `push_revealed_targets` resets `@@hidden_targets = nil` first
+                // (`overwatch.rb:84`), whatever else it does. The reveal was
+                // handled only at `close_chunk`, and only to register the
+                // creature, so a room stayed "has hiders" after the thing
+                // hiding in it had come out (review). It is cleared at
+                // ARRIVAL, not at the prompt, for the reason hiding is: in wire
+                // order, a reveal then a fresh hide must leave a hider, and
+                // the prompt would see both at once and could not tell.
+                let rendered = chunk_line.text();
+                match super::overwatch::classify_text(&chunk_line, &rendered) {
+                    Some(super::overwatch::Sighting::Hid) => {
+                        let room = self.room.id.clone();
+                        self.overwatch.hid_in(room);
+                    }
+                    Some(super::overwatch::Sighting::Revealed { .. }) => self.overwatch.clear(),
+                    None => {}
+                }
+                // **Group lines are read here too, for the same reason:
+                // order.** `<indicator id='IconJOINED' visible='n'/>` empties
+                // the group the moment its frame arrives (`group.rb:603-605`),
+                // and a join line read later, at the prompt, would undo that
+                // though the wire sent it FIRST. Found by the test for the
+                // indicator, which failed exactly so.
+                if let Some(event) = super::group::classify_text(&chunk_line, &rendered) {
+                    self.group.apply(&event);
                 }
                 self.chunk.push_line(chunk_line);
             }
@@ -204,11 +240,9 @@ impl GameState {
             // reasoning as `chunks.rs`'s cap: the recent lines are the ones a
             // reader or a renderer wants, and a scrollback that forgets its
             // beginning is a scrollback rather than a leak.
-            if buffer.len() >= MAX_STREAM_LINES {
-                buffer.remove(0);
+            if buffer.push(line, MAX_STREAM_LINES) {
                 self.tally.dropped = self.tally.dropped.saturating_add(1);
             }
-            buffer.push(line);
             self.tally.seen = self.tally.seen.saturating_add(1);
         }
     }

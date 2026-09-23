@@ -470,3 +470,64 @@ fn both_lists_survive_a_reconnect() {
         "your backpack is still on your back"
     );
 }
+
+mod anchored_as_lich_anchors {
+    //! Review finding: the stow-row and ready-row fallbacks matched the
+    //! TRIMMED text of any main-window line. Lich's row patterns all open
+    //! `^  ` (`xmlparser.rb:516`, `:522-524`), and the ready rows also require
+    //! the row's own `<d cmd='store ...'>`/`<d cmd='ready ...'>` link.
+
+    use super::{ReadySlot, StowSlot, link, state_after};
+
+    #[test]
+    fn an_unindented_line_ending_in_a_category_is_not_a_stow_row() {
+        let state = state_after(&[&format!(
+            "You notice a {} (gem)",
+            link("12345", "pouch", "velvet pouch")
+        )]);
+        assert_eq!(state.containers.stow(StowSlot::Gem), None);
+    }
+
+    #[test]
+    fn a_label_and_a_colon_is_not_a_ready_row() {
+        // Unindented, and no slot command either.
+        for wire in [
+            format!("shield: {}", link("111", "shield", "a shield")),
+            format!("  shield: {}", link("111", "shield", "a shield")),
+        ] {
+            let state = state_after(&[&wire]);
+            assert_eq!(state.containers.ready(ReadySlot::Shield), None, "{wire}");
+        }
+    }
+
+    #[test]
+    fn a_row_that_names_no_item_does_not_clear_one() {
+        // `unless match[:id].nil?` (`xmlparser.rb:600`): Lich writes a slot
+        // only when the row named something. A confirmation taught the shield;
+        // a stray `none` row with no opener before it is not evidence enough
+        // to forget it.
+        let state = state_after(&[
+            &format!(
+                "Setting a {} to be your default shield.",
+                link("111", "shield", "kite shield")
+            ),
+            "  shield: (<d cmd='ready SHIELD'>none</d>) (<d cmd='store set'>stowed</d>)",
+        ]);
+        assert_eq!(
+            state
+                .containers
+                .ready(ReadySlot::Shield)
+                .map(|i| i.id.clone()),
+            Some("111".to_owned())
+        );
+    }
+
+    #[test]
+    fn a_stow_confirmation_must_begin_set() {
+        let state = state_after(&[&format!(
+            "Bob says, \"a {}\" to be your STOW GEM container.",
+            link("999", "pouch", "velvet pouch")
+        )]);
+        assert_eq!(state.containers.stow(StowSlot::Gem), None);
+    }
+}

@@ -98,13 +98,29 @@ impl Affliction {
 /// `(affliction, active)`: `true` began or continues, `false` ended.
 #[must_use]
 pub fn classify(line: &str) -> Option<(Affliction, bool)> {
-    // Mid-line FIRST, and only this one, because it is the only pattern Lich
-    // does not anchor (`parser.rb:95`). Checked before the anchored set so a
-    // line that is both cannot be taken for the other.
+    // Mid-line FIRST, because Lich does not anchor these at the start
+    // (`parser.rb:95`, and one alternative of `:101` below). Checked before
+    // the anchored set so a line that is both cannot be taken for the other.
+    // This said "only this one", which missed the thorn line.
     if line.ends_with("slices deep into your vocal cords!") {
         return Some((Affliction::Cutthroat, true));
     }
+    // The other unanchored one: `ThornPoisonDeprogression`'s second
+    // alternative has `$` and no `^` (`parser.rb:101`), unlike its three
+    // siblings. A deprogression line is the poison weakening, so `true`.
+    if line.trim_end().ends_with(THORN_EASING) {
+        return Some((Affliction::Thorned, true));
+    }
     let text = line.trim_start();
+    // `ThornPoisonStart` (`parser.rb:99`) has a wildcard in the MIDDLE --
+    // `^One of the vines surrounding .*? lashes out at you, driving a thorn`
+    // -- so it is a prefix AND a suffix, not a prefix alone. The prefix alone
+    // matched any line that began by describing someone else's vines.
+    if let Some(rest) = text.strip_prefix(THORN_START.0)
+        && rest.trim_end().ends_with(THORN_START.1)
+    {
+        return Some((Affliction::Thorned, true));
+    }
     for (affliction, active, patterns) in TABLE {
         if patterns.iter().any(|p| text.starts_with(*p)) {
             return Some((*affliction, *active));
@@ -112,6 +128,17 @@ pub fn classify(line: &str) -> Option<(Affliction, bool)> {
     }
     None
 }
+
+/// `ThornPoisonStart` (`parser.rb:99`): the text either side of its `.*?`.
+///
+/// Two spaces after `skin!`, as the regex writes them.
+const THORN_START: (&str, &str) = (
+    "One of the vines surrounding ",
+    " lashes out at you, driving a thorn into your skin!  You feel poison coursing through your veins.",
+);
+
+/// `ThornPoisonDeprogression`'s unanchored alternative (`parser.rb:101`).
+const THORN_EASING: &str = "Although you can't seem to move as quickly as you usually can, you're feeling better than you were just moments ago.";
 
 /// The prefixes, from `infomon/parser.rb:87-102`.
 ///
@@ -206,7 +233,6 @@ const TABLE: Table = &[
         Affliction::Thorned,
         true,
         &[
-            "One of the vines surrounding",
             "You begin to feel a strange fatigue, spreading throughout your body.",
             "The strange lassitude is growing worse,",
             "You find yourself gradually slowing down, your muscles trembling with fatigue.",
