@@ -103,35 +103,117 @@ fn every_member_crate_inherits_the_workspace_lints() {
 /// good reason to silence them one line at a time.
 #[test]
 fn no_site_reopens_a_denied_lint_by_attribute() {
-    let banned = [
+    let hits = reopened_lints(&cena_arch_tests::harness::workspace_sources());
+    assert!(
+        hits.is_empty(),
+        "a per-site `#[allow]` or `#[expect]` reopens a lint the workspace \
+         denied, one site at a time and without the manifest recording it. The \
+         root Cargo.toml rejected the per-file form for the same reason.\n\n\
+         `clippy.toml` already scopes these away from `#[test]` functions and \
+         `#[cfg(test)]` modules, so a test HELPER that needs one belongs in a \
+         `#[cfg(test)] mod` (or should return a Result) -- not behind an \
+         attribute that silences the objection beside it.\n{}",
+        hits.join("\n")
+    );
+}
+
+/// The lints the workspace denies that a site could reopen, and the group
+/// that contains the three clippy ones.
+///
+/// `clippy::restriction` is here because `#[allow(clippy::restriction)]`
+/// silences `unwrap_used`, `expect_used` and `panic` together without naming
+/// any of them.
+const DENIED: &[&str] = &[
+    "clippy::unwrap_used",
+    "clippy::expect_used",
+    "clippy::panic",
+    "clippy::restriction",
+    "unsafe_code",
+];
+
+/// Every attribute in `sources` that allows or expects a [`DENIED`] lint.
+///
+/// # Parsed, not needled (review finding 6)
+///
+/// The needles were `allow(clippy::unwrap_used` and three siblings, matched
+/// one line at a time. Four ordinary spellings walked past them:
+///
+/// - `#[allow(` on one line and the lint on the next -- which is how rustfmt
+///   lays out an attribute with a `reason`, and exactly how
+///   `crates/cena-session/tests/player_log_writer.rs` line 34 reopens
+///   `expect_used`, with this test green;
+/// - `#[expect(clippy::unwrap_used)]` -- `expect` silences a lint as surely
+///   as `allow` does, it only also warns when there is nothing to silence;
+/// - `#[allow(dead_code, clippy::unwrap_used)]` -- the lint is not first;
+/// - `#[allow(clippy::restriction)]` -- the group, which names none of them.
+///
+/// Attributes are now read whole from tokens, and every `allow(..)` or
+/// `expect(..)` list inside one -- including inside a `cfg_attr` -- is split
+/// into its lints and compared exactly.
+fn reopened_lints(sources: &[(std::path::PathBuf, String)]) -> Vec<String> {
+    let mut hits = Vec::new();
+    for (path, text) in sources {
+        if path.extension().is_none_or(|e| e != "rs") {
+            continue;
+        }
+        for attr in cena_arch_tests::structure::outline(text).attributes {
+            let lints: Vec<String> = ["allow", "expect"]
+                .iter()
+                .flat_map(|head| attr.lists(head))
+                .filter(|lint| DENIED.contains(&lint.as_str()))
+                .collect();
+            if !lints.is_empty() {
+                hits.push(format!(
+                    "{}:{}: {}",
+                    cena_arch_tests::harness::relative(path),
+                    attr.line,
+                    lints.join(", ")
+                ));
+            }
+        }
+    }
+    hits
+}
+
+/// Finding 6's four spellings, each of which passed the old needles.
+#[test]
+fn every_spelling_of_a_reopened_lint_is_found() {
+    let old_needles = [
         "allow(clippy::unwrap_used",
         "allow(clippy::expect_used",
         "allow(clippy::panic",
         "allow(unsafe_code",
     ];
-    let hits = cena_arch_tests::lexical::scan_lines(
-        &cena_arch_tests::harness::workspace_sources(),
-        &banned,
-    );
-    // This file names every needle it bans, as any needle test must.
-    let hits: Vec<String> = hits
-        .into_iter()
-        .filter(|h| !h.starts_with("crates/cena-arch-tests/tests/lints_are_inherited.rs"))
-        .collect();
-
-    assert!(
-        hits.is_empty(),
-        "a per-site `#[allow]` reopens a lint the workspace denied, one line \
-         at a time and without the manifest recording it. The root Cargo.toml \
-         rejected the per-file form for the same reason.\n\n\
-         `clippy.toml` already scopes these away from test code, so this is \
-         not blocking an ordinary `unwrap()` in a test -- it is blocking one \
-         in production with the objection silenced beside it.\n{}",
-        hits.join("\n")
-    );
+    let fixtures = [
+        "#[allow(\n    clippy::expect_used,\n    reason = \"a helper\"\n)]\nfn f() {}\n",
+        "#[expect(clippy::unwrap_used)]\nfn f() {}\n",
+        "#[allow(dead_code, clippy::unwrap_used)]\nfn f() {}\n",
+        "#[allow(clippy::restriction)]\nfn f() {}\n",
+        "#[cfg_attr(test, allow(clippy::panic))]\nfn f() {}\n",
+        "#![allow(unsafe_code)]\n",
+    ];
+    let path = cena_arch_tests::harness::workspace_root().join("crates/cena-fixture/src/f.rs");
+    for fixture in fixtures {
+        let hits = reopened_lints(&[(path.clone(), fixture.to_owned())]);
+        assert_eq!(hits.len(), 1, "not found: {fixture:?}");
+    }
+    // The first four defeat the old needles line by line; asserted so the
+    // fixtures cannot drift into a shape the old test would also have caught.
+    for fixture in &fixtures[..4] {
+        assert!(
+            !fixture
+                .lines()
+                .any(|l| old_needles.iter().any(|n| l.contains(n))),
+            "{fixture:?} no longer defeats the old needles"
+        );
+    }
+    // Negative control: an unrelated allow, and a denied lint named in prose.
+    let clean =
+        "#[allow(clippy::too_many_arguments, reason = \"clippy::unwrap_used\")]\nfn f() {}\n";
+    assert!(reopened_lints(&[(path, clean.to_owned())]).is_empty());
 }
 
-/// The unpinned-TLS weakening announces itself in a release build.
+// The unpinned-TLS weakening announces itself in a release build.
 ///
 /// `live.rs` says the `danger_accept_invalid_certs` call "is the one thing in
 /// this module that should not survive to a release build". That was a note,

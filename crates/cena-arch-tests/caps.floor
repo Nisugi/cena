@@ -26,3 +26,22 @@ crates/cena-protocol/src/tags.rs 400
 crates/cena-protocol/src/text.rs 450
 crates/cena-session/src/actor.rs 650
 crates/cena-session/src/supervisor.rs 650
+
+# Discovered 2026-09-23 (review finding 4); see caps.baseline for the measurement.
+crates/cena-behavior/src/travel.rs 750
+crates/cena-behavior/src/travel/drive.rs 800
+crates/cena-behavior/src/travel/routines.rs 350
+crates/cena-behavior/src/travel/routines/day_pass.rs 700
+crates/cena-map/src/binary.rs 200
+crates/cena-model/src/state/character.rs 800
+crates/cena-model/src/state/combat.rs 200
+crates/cena-model/src/state/combat/parse.rs 300
+crates/cena-model/src/state/creature.rs 600
+crates/cena-model/src/state/creatures.rs 600
+crates/cena-model/src/state/societies.rs 350
+crates/cena-platform/src/gemstone.rs 150
+crates/cena-platform/src/gemstone/weblogin.rs 150
+crates/cena-session/src/combat_recorder.rs 500
+
+# New split parent 2026-09-23; see caps.baseline for the measurement.
+crates/cena-web/src/presentation.rs 250

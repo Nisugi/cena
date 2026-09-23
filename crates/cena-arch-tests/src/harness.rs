@@ -293,8 +293,18 @@ fn crate_sources(krate: &str) -> Vec<(PathBuf, String)> {
 ///
 /// That inversion is why this list does not have to be exhaustive. A list of
 /// extensions is a guess about what someone might include; a ban is not a
-/// guess. The list matters only for `include_str!` of a file the walk already
-/// collects — the crit tables — which is why `.tsv` is here.
+/// guess.
+///
+/// **This paragraph used to end: "The list matters only for `include_str!` of
+/// a file the walk already collects -- the crit tables."** That was false
+/// (review finding 10): `cena-web` embeds its `.html`, `.js` and `.css`
+/// assets and several tests embed `.xml` wire fixtures, none of which this
+/// walk collects. They are harmless for the reason the amendment below gives
+/// -- `include_str!` yields a `&str`, never items -- but a harmless exception
+/// nobody recorded is still an unchecked claim. `tests/include_ban.rs`'s
+/// `embedded_text_is_scanned_or_inert` now requires every `include_str!`
+/// target to be either one of these extensions or a named, justified
+/// `INERT_EXTENSIONS` entry, so the claim is enforced rather than asserted.
 ///
 /// A doc describing a test that does not exist is the citation rot `plan/05`
 /// §−2 warns about, in its most expensive form: it describes a guarantee the
@@ -308,7 +318,7 @@ fn crate_sources(krate: &str) -> Vec<(PathBuf, String)> {
 /// is therefore covered by every rule in this suite -- the `static mut` ban,
 /// the game-name ban and the line cap all read it -- which is what makes
 /// `include_str!` of it unable to smuggle anything past them.
-const SOURCE_EXTENSIONS: &[&str] = &["rs", "in", "inc", "tsv"];
+pub const SOURCE_EXTENSIONS: &[&str] = &["rs", "in", "inc", "tsv"];
 
 fn collect_sources(dir: &Path, out: &mut Vec<(PathBuf, String)>) {
     collect_sources_inner(dir, out, true);

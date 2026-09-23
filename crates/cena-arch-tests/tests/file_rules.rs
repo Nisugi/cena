@@ -2,11 +2,11 @@
 //!
 //! The companion to `tests/architecture.rs`, which holds layering and state.
 //! Split by rule section under `plan/05:352-353` -- move code down, do not
-//! raise the cap. This file carries Rule 4.1 (caps), Rule 4.4 (facades), the
-//! `include!` ban that keeps files inside the scan at all, and Rule 2.1 (no
-//! raw wire text in `cena-protocol`'s public API). Rule 9.3 and the
-//! enforcer-integrity tests moved to `tests/ratchet.rs` when this file went
-//! red a fourth time.
+//! raise the cap. This file carries Rule 4.1 (caps), Rule 4.4 (facades),
+//! Rule 3.4 (game names) and the `panic = "abort"` guard. The `include!` ban
+//! is in `tests/include_ban.rs` and Rule 2.1 in `tests/raw_text_escapes.rs`.
+//! Rule 9.3 and the enforcer-integrity tests moved to `tests/ratchet.rs` when
+//! this file went red a fourth time.
 //!
 //! Read `tests/architecture.rs`'s module header first: its "what these tests
 //! do NOT claim" paragraph governs all three files.
@@ -15,6 +15,7 @@ use cena_arch_tests::harness::{relative, scannable_sources, workspace_root, work
 use cena_arch_tests::lexical::{declares_behavior, items, scan_lines};
 use std::collections::BTreeSet;
 use std::fs;
+use std::path::PathBuf;
 
 // ---------------------------------------------------------------------------
 // Rule 4.1 — Per-file line caps, from day one. (plan/05:346-365)
@@ -149,7 +150,16 @@ const CAP_EXCEPTIONS: &[CapException] = &[
     CapException {
         path: "crates/cena-model/data/menu_commands.tsv",
         cap: 1300,
-        justification: "DATA, not code: one row per line, a flat sequence keyed by coordinate                         with no seam to split on, and plan/13:125 specifies this exact shape --                         'static data; ships as data files'. The 1,106 rows of the game's own                         cmdlist1.xml, which is the only thing that turns a context menu of bare                         coordinates into labels: the wire carries none, measured over 425 items                         in the corpus. Scanned deliberately (SOURCE_EXTENSIONS covers .tsv) so                         include_str! of it cannot smuggle a game name past the bans. The cap is                         1300 rather than unbounded because this file demonstrably grows -- it                         gained 514 rows when regenerated from the live client's copy rather than                         the 2003 one the reference ships.",
+        justification: "DATA, not code: one row per line, a flat sequence keyed by coordinate \
+                        with no seam to split on, and plan/13:125 specifies this exact shape -- \
+                        'static data; ships as data files'. The 1,106 rows of the game's own \
+                        cmdlist1.xml, which is the only thing that turns a context menu of bare \
+                        coordinates into labels: the wire carries none, measured over 425 items \
+                        in the corpus. Scanned deliberately (SOURCE_EXTENSIONS covers .tsv) so \
+                        include_str! of it cannot smuggle a game name past the bans. The cap is \
+                        1300 rather than unbounded because this file demonstrably grows -- it \
+                        gained 514 rows when regenerated from the live client's copy rather than \
+                        the 2003 one the reference ships.",
     },
     CapException {
         path: "crates/cena-model/data/crit_tables.tsv",
@@ -341,144 +351,14 @@ fn facade_files_stay_facades() {
 }
 
 // ---------------------------------------------------------------------------
-// `include!` — the file-discovery escape hatch, banned outright.
-//
-// `harness::crate_sources` now walks the whole crate directory, which closes
-// the `#[path = "../gen/globals.rs"]` evasion. `include!` is the other half:
-// it accepts any path, including one outside the crate and one with an
-// extension the walk does not collect.
-//
-// VERIFIED: `include!("parser_body.in")` in `cena-protocol/src/lib.rs`, with a
-// 906-line `parser_body.in` holding `pub static mut CURRENT_STREAM_BUFFER` and
-// `if game == "GemStone"`, compiled into the crate with the line cap, the
-// `static mut` ban and the game-name ban all green simultaneously. One line
-// defeated four rules.
-//
-// Banning it is cheaper than chasing it and loses nothing: `include!` has no
-// legitimate M1 use. When generated code arrives (`plan/13` §4a names
-// `KNOWN_WIRE_TAGS` and the 63-variant `ParsedElement` as ports, which is
-// exactly where a build script would generate a table), the honest move is to
-// lift this ban with a written reason and extend `SOURCE_EXTENSIONS`, not to
-// route around it.
-//
-// # AMENDED when the crit tables landed: `include_str!` of a SCANNED file
-//
-// That day came. `plan/13` section 4a names the crit tables as a port target
-// and `plan/13:125` says they "ship as data files". A const array is not an
-// option: `cargo fmt` was VERIFIED to expand 200 entries written one per line
-// from 203 lines to 4,223 (21x), which extrapolates to ~50,500 lines and ~127
-// files at the 400-line default cap. Moving code down does not mean 127 files
-// of generated Rust nobody reads.
-//
-// So the amendment this comment asked for in advance was taken, exactly as
-// written: `harness::SOURCE_EXTENSIONS` gained `tsv`, and the ban narrowed
-// from three macros to two.
-//
-// **The narrowing is sound because the ban was never about `include_str!`.**
-// The stated harm is a file spliced into a crate from OUTSIDE EVERY SCAN.
-// `include_str!` of a scanned `.tsv` has neither half of that: the file is
-// walked by `crate_sources`, so the line cap, the `static mut` ban and the
-// game-name ban all read it -- and its contents become a `&str`, never items,
-// so there is nothing for those bans to miss. The 906-line `pub static mut`
-// that defeated four rules is not expressible through a string literal.
-//
-// `include!` and `include_bytes!` stay banned. `include!` splices code, which
-// is the original harm. `include_bytes!` is banned because bytes are NOT
-// scanned as text: `collect_sources` reads with `read_to_string`, so a
-// non-UTF-8 payload is a file the walk cannot read -- the out-of-scan hole
-// again, by another route.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn no_source_file_is_included_from_outside_the_scan() {
-    // **The macro name, not the name plus one delimiter.**
-    //
-    // These needles were `include!(` and `include_bytes!(`, so every other
-    // legal delimiter walked straight past: `include!["body.in"]` and
-    // `include!{"body.in"}` are the same macro, and the square-bracket form
-    // was VERIFIED to compile a `pub static mut` into a crate with this test
-    // green (review AR-5).
-    //
-    // `#[path = "..."]` is banned for the same reason by a different
-    // mechanism: it does not splice a file in, it points `mod` at one
-    // OUTSIDE the directory the walk follows, which reaches the same place --
-    // crate source that no scan in this suite can see.
-    let hits = scan_lines(&scannable_sources(), &["include!", "include_bytes!"]);
-
-    // `#[path]` is a SEPARATE question, and banning it outright was wrong.
-    //
-    // It does not splice a file in; it points a `mod` at one. That is a hazard
-    // only when the target is somewhere the walk does not follow, and the two
-    // uses in this workspace -- `fallback_tests.rs`, `weblogin/scrape_tests.rs`
-    // -- are ordinary `.rs` files inside `src/` that every scan already
-    // collects. A first cut of this fix flagged both, which is the false
-    // positive that would get this test weakened or deleted.
-    //
-    // What is actually banned is a target that ESCAPES: a `..` component, or
-    // an absolute path. `#[path = "../../gen/x.rs"] mod x;` reaches the same
-    // place `include!` does, by another route (review AR-5).
-    let escaping: Vec<String> = scan_lines(&scannable_sources(), &["#[path"])
-        .into_iter()
-        .filter(|hit| {
-            let Some(value) = hit.split_once('"').and_then(|(_, r)| r.split_once('"')) else {
-                // A `#[path]` whose value this scan cannot read is reported
-                // rather than assumed harmless.
-                return true;
-            };
-            let target = value.0;
-            target.contains("..") || target.starts_with('/') || target.contains(':')
-        })
-        .collect();
-    assert!(
-        escaping.is_empty(),
-        "`#[path]` pointing OUTSIDE the source walk puts crate source where no          scan in this suite can see it -- the same hole `include!` opens, by          another route. A `#[path]` naming a sibling inside `src/` is fine and          is not flagged.
-{}",
-        escaping.join("
-")
-    );
-    assert!(
-        hits.is_empty(),
-        "`include!` splices a file into a crate without that file being a \
-         module, which puts it outside every scan in this suite. VERIFIED: a \
-         906-line `.in` file with `pub static mut` and an `if game == \
-         \"GemStone\"` branch compiled in with four bans green.\n\n\
-         If generated code is genuinely needed (plan/13 §4a), lift this ban \
-         deliberately and extend harness::SOURCE_EXTENSIONS so the generated \
-         file is scanned, rather than routing around the scan.\n\n\
-         `include_str!` of a file the walk already collects is NOT banned -- \
-         see this test's comment for the crit tables, the case that amendment \
-         was written for. `include_bytes!` remains banned: collect_sources \
-         reads with read_to_string, so a non-UTF-8 payload is a file no scan \
-         can see.\n\n\
-         `#[path = \"...\"]` is banned by the same test: it points a `mod` at \
-         a file outside the directory the walk follows, which reaches the \
-         same place by another route.\n{}",
-        hits.join("\n")
-    );
-}
-
+// The `include!` ban, escaping `#[path]`, and what `include_str!` may embed
+// moved to `tests/include_ban.rs` when hardening them (review finding 10)
+// would have put this file past its own cap.
 // ---------------------------------------------------------------------------
 
 #[test]
 fn game_names_outside_game_modules_are_flagged() {
-    let sources = scannable_sources();
-    let needles = &[
-        "GemStone",
-        "Gemstone",
-        "gemstone",
-        "GS4",
-        "Gs4",
-        "gs4",
-        "DragonRealms",
-        "Dragonrealms",
-        "dragonrealms",
-    ];
-    let hits: Vec<String> = scan_lines(&sources, needles)
-        .into_iter()
-        .filter(|hit| !hit.contains("/src/gemstone/") && !hit.contains("/src/dragonrealms/"))
-        .filter(|hit| !is_module_plumbing(hit))
-        .filter(|hit| !is_game_data(hit))
-        .collect();
+    let hits = game_name_hits(&scannable_sources());
     assert!(
         hits.is_empty(),
         "game-specific names belong under <crate>/src/<game>/, not in shared \
@@ -491,6 +371,117 @@ fn game_names_outside_game_modules_are_flagged() {
     );
 }
 
+/// The game's names, in every case this workspace has written them.
+///
+/// `GEMSTONE` and `DRAGONREALMS` were missing (review finding 13): the
+/// all-caps spelling of a constant, `const GEMSTONE: &str`, was the one form
+/// the list did not have.
+const GAME_NAMES: &[&str] = &[
+    "GemStone",
+    "Gemstone",
+    "gemstone",
+    "GEMSTONE",
+    "GS4",
+    "Gs4",
+    "gs4",
+    "DragonRealms",
+    "Dragonrealms",
+    "dragonrealms",
+    "DRAGONREALMS",
+];
+
+/// `EAccess` instance codes (`plan/10`): each names one game as surely as its
+/// title does, and a default of `"GST"` in shared code is a `GemStone` default.
+///
+/// Matched as WHOLE WORDS, because three capitals are common in other words;
+/// `GST` must not fire on `GSTREAMER`. Bare `DR` and `GS` are not here for the
+/// reason `DR` never was: they match `DRY`, `ADDR` and every hex literal.
+const INSTANCE_CODES: &[&str] = &["GS3", "GST", "GSX", "GSF", "DRX", "DRF", "DRT"];
+
+/// Every Rule 3.4 hit in `sources`.
+///
+/// # Why instance codes exempt test code and names do not
+///
+/// A test of the login protocol must SEND an instance code -- `EAccess` takes it
+/// as a parameter, and `creds("GS3")` is how a handshake test says which
+/// instance it is scripting. That is a protocol input, not a branch. A game's
+/// NAME in a test has no such necessity, and the rule has always read tests.
+/// So the codes skip `tests/` directories, `*_tests.rs` files and
+/// `#[cfg(test)]` modules; the names skip nothing new.
+fn game_name_hits(sources: &[(PathBuf, String)]) -> Vec<String> {
+    let exempt = |hit: &String| {
+        hit.contains("/src/gemstone/")
+            || hit.contains("/src/dragonrealms/")
+            || is_module_plumbing(hit)
+            || is_game_data(hit)
+    };
+    let mut hits: Vec<String> = scan_lines(sources, GAME_NAMES)
+        .into_iter()
+        .filter(|hit| !exempt(hit))
+        .collect();
+    for (path, text) in sources {
+        let rel = relative(path);
+        let stem = path.file_stem().unwrap_or_default().to_string_lossy();
+        let test_file = rel.contains("/tests/") || stem.ends_with("_tests");
+        if test_file || path.extension().is_none_or(|e| e != "rs") {
+            continue;
+        }
+        for item in items(text).into_iter().filter(|i| !i.in_test_module) {
+            let hit = format!("{rel}:{}: {}", item.line, item.code);
+            if INSTANCE_CODES.iter().any(|c| has_word(&item.code, c)) && !exempt(&hit) {
+                hits.push(hit);
+            }
+        }
+    }
+    hits
+}
+
+/// Whether `word` occurs in `text` with no identifier character either side.
+fn has_word(text: &str, word: &str) -> bool {
+    let ident = |c: char| c.is_alphanumeric() || c == '_';
+    text.match_indices(word).any(|(at, _)| {
+        let before = text[..at].chars().next_back();
+        let after = text[at + word.len()..].chars().next();
+        !before.is_some_and(ident) && !after.is_some_and(ident)
+    })
+}
+
+/// Finding 13's mutations: each passed the previous needle list.
+#[test]
+fn an_all_caps_name_or_an_instance_code_is_flagged() {
+    let shared = workspace_root().join("crates/cena-fixture/src/lib.rs");
+    let cases = [
+        "pub const GEMSTONE: &str = \"x\";\n",
+        "let g = if g.is_empty() { \"GST\".to_owned() } else { g };\n",
+        "match code { \"DRX\" => dr(), _ => gs() }\n",
+    ];
+    // The list as it stood before this finding.
+    let old = [
+        "GemStone",
+        "Gemstone",
+        "gemstone",
+        "GS4",
+        "Gs4",
+        "gs4",
+        "DragonRealms",
+        "Dragonrealms",
+        "dragonrealms",
+    ];
+    for case in cases {
+        let hits = game_name_hits(&[(shared.clone(), case.to_owned())]);
+        assert_eq!(hits.len(), 1, "missed: {case:?}");
+        assert!(
+            !old.iter().any(|n| case.contains(n)),
+            "{case:?} no longer defeats the old list"
+        );
+    }
+    // Whole words only, and a test of the protocol may name its instance.
+    let clean = "const GSTREAMER: u8 = 1;\n";
+    assert!(game_name_hits(&[(shared, clean.to_owned())]).is_empty());
+    let test_file = workspace_root().join("crates/cena-fixture/tests/login.rs");
+    let in_test = "let r = run(creds(\"GS3\"));\n";
+    assert!(game_name_hits(&[(test_file, in_test.to_owned())]).is_empty());
+}
 /// Whether a flagged line is a row of **game data** rather than Rust code.
 ///
 /// # Why data is different from code
@@ -583,24 +574,41 @@ fn is_module_plumbing(hit: &str) -> bool {
 // cut from a named profile.
 //
 // Known gap, recorded not fixed: `CARGO_PROFILE_RELEASE_PANIC=abort` or
-// `RUSTFLAGS=-Cpanic=abort` in the CI environment defeats this, and no
-// manifest test can see it. The CI workflow sets neither.
+// `RUSTFLAGS=-Cpanic=abort` in the CI environment defeats this, and so does a
+// `config.toml` in a PARENT directory or in `$CARGO_HOME` -- Cargo merges
+// config from every ancestor of the working directory and from the user's
+// home, and none of those is in this repository for a test to read. The CI
+// workflow sets neither variable.
 //
 // Member manifests are not read: Cargo ignores `[profile.*]` outside the
 // workspace root with a warning, so a profile there is inert.
+//
+// **The workspace's own `.cargo/config.toml` IS read (review finding 9).**
+// This test read only the root `Cargo.toml`, and Cargo takes `[profile.*]` --
+// and `[build] rustflags` -- from `.cargo/config.toml` (or the legacy
+// `.cargo/config`) with the same authority. A committed
+// `[profile.release] panic = "abort"` there shipped abort with this green.
 // ---------------------------------------------------------------------------
 
-#[test]
-fn no_profile_aborts_on_panic() {
-    let manifest = fs::read_to_string(workspace_root().join("Cargo.toml"))
-        .expect("root Cargo.toml must be readable");
-    // Strip `#` comments first. Without this, the comment in the root manifest
-    // that *states* this rule breaks it -- the same failure that made
-    // `cena_ui_depends_on_no_ui_toolkit` fire on a comment reading "we
-    // deliberately avoid ratatui". A test that punishes documenting the rule
-    // gets fixed by deleting the documentation.
-    let offenders: Vec<String> = manifest
-        .lines()
+/// The files under `root` that can set a profile's `panic` strategy.
+fn panic_config_files(root: &std::path::Path) -> Vec<PathBuf> {
+    ["Cargo.toml", ".cargo/config.toml", ".cargo/config"]
+        .iter()
+        .map(|name| root.join(name))
+        .filter(|path| path.is_file())
+        .collect()
+}
+
+/// The lines of a TOML file that select `panic = "abort"`, however quoted.
+///
+/// Strips `#` comments first. Without this, the comment in the root manifest
+/// that *states* this rule breaks it -- the same failure that made
+/// `cena_ui_depends_on_no_ui_toolkit` fire on a comment reading "we
+/// deliberately avoid ratatui". A test that punishes documenting the rule gets
+/// fixed by deleting the documentation. Also catches `-C panic=abort` in a
+/// `rustflags` array, which normalizes to the same string.
+fn abort_lines(text: &str) -> Vec<String> {
+    text.lines()
         .map(|line| line.split('#').next().unwrap_or(""))
         .filter(|line| {
             // Normalize both whitespace and TOML's two string quotings.
@@ -608,7 +616,24 @@ fn no_profile_aborts_on_panic() {
                 .contains("panic=abort")
         })
         .map(str::to_owned)
-        .collect();
+        .collect()
+}
+
+#[test]
+fn no_profile_aborts_on_panic() {
+    let root = workspace_root();
+    let files = panic_config_files(&root);
+    assert!(
+        files.iter().any(|f| f.ends_with("Cargo.toml")),
+        "the root Cargo.toml must be readable"
+    );
+    let mut offenders = Vec::new();
+    for file in &files {
+        let text = fs::read_to_string(file).expect("config file must be readable");
+        for line in abort_lines(&text) {
+            offenders.push(format!("{}: {line}", relative(file)));
+        }
+    }
     assert!(
         offenders.is_empty(),
         "panic=abort defeats per-session panic isolation (plan/12 §5.5): a \
@@ -617,4 +642,29 @@ fn no_profile_aborts_on_panic() {
          `inherits = \"release\"` was VERIFIED to build and ship abort.\n{}",
         offenders.join("\n")
     );
+}
+
+/// Finding 9's mutation: the abort lives in `.cargo/config.toml`, which the
+/// previous test never opened.
+#[test]
+fn an_abort_in_cargo_config_is_found() {
+    let dir = std::env::temp_dir().join(format!("cena-arch-panic-{}", std::process::id()));
+    fs::create_dir_all(dir.join(".cargo")).expect("temp dir");
+    fs::write(dir.join("Cargo.toml"), "[workspace]\nmembers = []\n").expect("manifest");
+    fs::write(
+        dir.join(".cargo/config.toml"),
+        "[profile.release]\npanic = 'abort'\n\n[build]\nrustflags = [\"-C\", \"panic=abort\"]\n",
+    )
+    .expect("config");
+
+    let files = panic_config_files(&dir);
+    let manifest = fs::read_to_string(dir.join("Cargo.toml")).expect("manifest");
+    // The old test read the manifest alone, and it is clean.
+    assert!(abort_lines(&manifest).is_empty());
+    let found: usize = files
+        .iter()
+        .map(|f| abort_lines(&fs::read_to_string(f).expect("read")).len())
+        .sum();
+    fs::remove_dir_all(&dir).expect("clean up");
+    assert_eq!(found, 2, "the profile line and the rustflags line");
 }

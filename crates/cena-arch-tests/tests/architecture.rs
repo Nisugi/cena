@@ -22,7 +22,9 @@
 //! one claiming less, because the reader stops looking.
 
 use cena_arch_tests::harness::{relative, scannable_sources, workspace_root};
-use cena_arch_tests::lexical::{items, scan_spans};
+use cena_arch_tests::lexical::scan_spans;
+use cena_arch_tests::structure::outline;
+use std::path::PathBuf;
 
 // ---------------------------------------------------------------------------
 // Rule 5.2 — No process globals. None. (plan/05:400-408)
@@ -62,8 +64,8 @@ use cena_arch_tests::lexical::{items, scan_spans};
 // So the test is inverted. Every `static` item in the workspace must appear in
 // `ALLOWED_STATICS` with a justification. A new `static` is then a reviewed
 // table entry regardless of its type, which is strictly more enforcing than
-// any needle and needs no dependency. The workspace has zero statics today, so
-// the table starts empty and costs nothing.
+// any needle and needs no dependency. The workspace had zero statics when this
+// was written and the table started empty; it now holds eleven, each reviewed.
 //
 // `static mut` keeps its own test below, because the message it gives is
 // specific and `static mut` is never allowlistable.
@@ -87,6 +89,14 @@ struct AllowedStatic {
     path: &'static str,
     /// The static's identifier.
     name: &'static str,
+    /// The function whose body declares it, or `""` at item level.
+    ///
+    /// Part of the key because ten of the eleven are function-local, and a
+    /// `(file, name)` key allowed ANY static of that name in that file: a
+    /// second `fn` in `gameobj.rs` declaring its own `TABLE` -- a different
+    /// global, reviewed by nobody -- matched this entry and passed (review
+    /// finding 7).
+    function: &'static str,
     /// Why this static is not a process global.
     justification: &'static str,
 }
@@ -96,11 +106,25 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
         path: "crates/cena-session/src/travel_store.rs",
         name: "WRITING",
-        justification: "A Mutex<()>: it holds NO state, only the right to read-change-write                         travel.json. Unlike every other entry here it is not an immutable                         table, so the argument is its own: the thing it guards is itself                         process-wide by the author's decision (2026-09-21, 'a global file with                         character spots within it'), and 3-25 sessions in one process may each                         finish a trip at once. Without it two saves interleave as read, read,                         write, write and the first character's memories are lost -- which                         strands it at an event, the module's stated worst case. It names no                         session and reaches none; a per-session lock could not do the job,                         because the file is not per-session. The alternative considered was a                         lock file on disk, which would also cover two processes; not built,                         since one process is the product (plan/12, one binary) and a stale lock                         file is a worse failure than the one it prevents.",
+        function: "",
+        justification: "A Mutex<()>: it holds NO state, only the right to read-change-write \
+                        travel.json. Unlike every other entry here it is not an immutable \
+                        table, so the argument is its own: the thing it guards is itself \
+                        process-wide by the author's decision (2026-09-21, 'a global file with \
+                        character spots within it'), and 3-25 sessions in one process may each \
+                        finish a trip at once. Without it two saves interleave as read, read, \
+                        write, write and the first character's memories are lost -- which \
+                        strands it at an event, the module's stated worst case. It names no \
+                        session and reaches none; a per-session lock could not do the job, \
+                        because the file is not per-session. The alternative considered was a \
+                        lock file on disk, which would also cover two processes; not built, \
+                        since one process is the product (plan/12, one binary) and a stale lock \
+                        file is a worse failure than the one it prevents.",
     },
     AllowedStatic {
         path: "crates/cena-model/src/state/combat/defs.rs",
         name: "DEFS",
+        function: "table",
         justification: "A OnceLock<Defs> holding the 954 combat definition rows from three \
                         include_str! TSVs -- 946 of them compiled regexes -- built on first use \
                         and never mutated. The same argument as bounty.rs's MATCHERS, gameobj.rs's \
@@ -118,6 +142,7 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
         path: "crates/cena-model/src/state/menu.rs",
         name: "DICT",
+        function: "dictionary",
         justification: "A OnceLock<MenuCommands> holding the 1,106 context-menu command rows \
                         from one include_str! TSV, built on first use and never mutated. The \
                         same argument as defs.rs's DEFS and creature.rs's BESTIARY, and the same \
@@ -135,7 +160,8 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
         path: "crates/cena-model/src/spells.rs",
         name: "TABLE",
-        justification: "A OnceLock<BTreeMap<u16, Spell>> holding the 514 spells cut from Lich's \
+        function: "table",
+        justification: "A OnceLock<Tables> holding the 514 spells cut from Lich's \
                         data/effect-list.xml by tools/extract_spells.rb, parsed from one \
                         include_str! TSV on first use and never mutated. The same argument as \
                         creature.rs's BESTIARY, armaments.rs's TABLES and gameobj.rs's TABLE, and \
@@ -146,11 +172,16 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
                         spell.rb:160's rule. Smaller than the bestiary, but asked on every spell \
                         up and down message, so parsing per query would be a per-line cost. NOT \
                         included: anything about which spells are ACTIVE, which is per-session \
-                        and lives in Effects and in the character model.",
+                        and lives in Effects and in the character model. AMENDED 2026-09-23: \
+                        the same static now also holds the compiled cooldown-landing regexes, \
+                        a pure function of the same TSV, built in the same get_or_init rather \
+                        than behind a second global (spells.rs, struct Tables). Still \
+                        immutable after init; still no session state.",
     },
     AllowedStatic {
         path: "crates/cena-model/src/state/creature.rs",
         name: "BESTIARY",
+        function: "bestiary",
         justification: "A OnceLock<Bestiary> holding the 627 creature templates, joined from four \
                         include_str! TSVs on first use and never mutated. The same argument as \
                         armaments.rs's TABLES and gameobj.rs's TABLE, and the same honest caveat: \
@@ -169,6 +200,7 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
         path: "crates/cena-model/src/state/societies/membership.rs",
         name: "STANDING",
+        function: "standing_pattern",
         justification: "A OnceLock<Option<Regex>> holding ONE compiled pattern: the society \
                         standing line (parser.rb:38), which is the only membership line needing \
                         captures -- it reads a society name and an optional rank out of the \
@@ -185,16 +217,39 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
         path: "crates/cena-model/src/state/armaments.rs",
         name: "TABLES",
-        justification: "A OnceLock<Tables> holding the weapon, armor, shield and alias tables,                         parsed from four include_str! TSVs on first use and never mutated. The                         third of these in the crate and the argument does not change: process-                         wide state, made safe by holding no session handle and being a pure                         function of compile-time strings. 96 weapons, 18 armor sub-groups, 4                         shields and 706 aliases, parsed once rather than per lookup -- and a                         loot filter or a damage estimate reads them per item, so per-call                         parsing is not a tradeoff worth making. Lich holds the same data in                         class variables behind Lich::Util.deep_freeze                         (armaments/weapon_stats.rb:55).",
+        function: "tables",
+        justification: "A OnceLock<Tables> holding the weapon, armor, shield and alias tables, \
+                        parsed from four include_str! TSVs on first use and never mutated. The \
+                        third of these in the crate and the argument does not change: process- \
+                        wide state, made safe by holding no session handle and being a pure \
+                        function of compile-time strings. 96 weapons, 18 armor sub-groups, 4 \
+                        shields and 706 aliases, parsed once rather than per lookup -- and a \
+                        loot filter or a damage estimate reads them per item, so per-call \
+                        parsing is not a tradeoff worth making. Lich holds the same data in \
+                        class variables behind Lich::Util.deep_freeze \
+                        (armaments/weapon_stats.rb:55).",
     },
     AllowedStatic {
         path: "crates/cena-model/src/state/gameobj.rs",
         name: "TABLE",
-        justification: "A OnceLock<Table> holding the compiled gameobj classification patterns,                         built from an include_str! of data/gameobj-data.tsv on first use and                         never mutated after. Same argument as bounty.rs's MATCHERS below, and                         the same caveat: it IS process-wide state, made safe by holding no                         session handle and being a pure function of a compile-time string. The                         table is ~100 regexes over a 135 KB TSV, one of which is a 40 KB                         alternation of creature names, so compiling it per object -- which is                         what a non-static would mean for a loot filter walking a room -- is not                         a tradeoff worth making. Lich reaches the same conclusion with class                         variables plus a memo cache (gameobj.rb:42, :260); the cache is NOT                         ported, because keying it by object identity would be per-session state                         in a crate that holds none.",
+        function: "table",
+        justification: "A OnceLock<Table> holding the compiled gameobj classification patterns, \
+                        built from an include_str! of data/gameobj-data.tsv on first use and \
+                        never mutated after. Same argument as bounty.rs's MATCHERS below, and \
+                        the same caveat: it IS process-wide state, made safe by holding no \
+                        session handle and being a pure function of a compile-time string. The \
+                        table is ~100 regexes over a 135 KB TSV, one of which is a 40 KB \
+                        alternation of creature names, so compiling it per object -- which is \
+                        what a non-static would mean for a loot filter walking a room -- is not \
+                        a tradeoff worth making. Lich reaches the same conclusion with class \
+                        variables plus a memo cache (gameobj.rb:42, :260); the cache is NOT \
+                        ported, because keying it by object identity would be per-session state \
+                        in a crate that holds none.",
     },
     AllowedStatic {
         path: "crates/cena-model/src/movement.rs",
         name: "LADDER_BUILT",
+        function: "ladder",
         justification: "A OnceLock<Vec<(Regex, MoveFeedback)>> holding the 27 compiled patterns \
                         of Lich's `move` ladder, built on first use and never mutated. The same \
                         argument as bounty.rs's MATCHERS below, and the same caveat: it IS \
@@ -207,11 +262,25 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
     AllowedStatic {
         path: "crates/cena-model/src/state/bounty.rs",
         name: "MATCHERS",
-        justification: "A OnceLock<Vec<(TaskKind, Regex)>> holding the 22 compiled bounty task                         patterns, built on first use and never mutated after. It is process-wide                         state and this entry does not pretend otherwise -- what makes it safe is                         that it holds no handle to anything a session owns and its contents are                         a pure function of string literals in the same file, so two sessions                         reading it concurrently cannot observe different values or interfere.                         The alternative is compiling 22 regexes per bounty check, per session;                         `regex` documents compilation as the expensive step and matching as the                         cheap one. `crit.rs` faces the same tradeoff for ~2,395 patterns and                         resolves it with an owned table threaded through the model, which is the                         better shape -- this should move to it when a second consumer needs the                         patterns, and until then a table with one reader does not earn the                         plumbing (Rule -1).",
+        function: "matchers",
+        justification: "A OnceLock<Vec<(TaskKind, Regex)>> holding the 22 compiled bounty task \
+                        patterns, built on first use and never mutated after. It is process-wide \
+                        state and this entry does not pretend otherwise -- what makes it safe is \
+                        that it holds no handle to anything a session owns and its contents are \
+                        a pure function of string literals in the same file, so two sessions \
+                        reading it concurrently cannot observe different values or interfere. \
+                        The alternative is compiling 22 regexes per bounty check, per session; \
+                        `regex` documents compilation as the expensive step and matching as the \
+                        cheap one. `crit.rs` faces the same tradeoff for ~2,395 patterns and \
+                        resolves it with an owned table threaded through the model, which is the \
+                        better shape -- this should move to it when a second consumer needs the \
+                        patterns, and until then a table with one reader does not earn the \
+                        plumbing (Rule -1).",
     },
     AllowedStatic {
         path: "crates/cena-protocol/src/tags.rs",
         name: "KNOWN_WIRE_TAGS",
+        function: "",
         justification: "An interned table of wire element names, which plan/05:408 names as fine: \
                     `&[&str]` of string literals, immutable, with no interior mutability and no \
                     handle to anything a session owns. It is read through is_known(), a \
@@ -227,50 +296,62 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
     },
 ];
 
-#[test]
-fn every_static_is_allowlisted() {
-    let sources = scannable_sources();
+/// Every `static` in `sources` that no `ALLOWED_STATICS` entry covers, and
+/// how many declarations each entry matched.
+///
+/// Declarations come from `structure::outline`, a scope walk over tokens. The
+/// line scan it replaced had three holes (review finding 7), each closed here
+/// and pinned by a fixture below:
+///
+/// - It skipped any line where `fn` preceded `static`, to avoid `&'static`
+///   in signatures -- which the lifetime TOKEN already excludes -- and so it
+///   skipped `fn f() -> &'static R { static R: .. }` written on one line.
+/// - `thread_local!(static X: ..)` has no whitespace between `(` and
+///   `static`, so no whitespace-split token equalled `static`.
+/// - Its comment claimed `item.code` joins a declaration split across lines.
+///   `items()` is line-by-line and joins nothing; the claim described
+///   `item_spans`. Tokens make the question moot: a token stream has no lines.
+fn statics_outside_the_allowlist(sources: &[(PathBuf, String)]) -> (Vec<String>, Vec<usize>) {
     let mut violations = Vec::new();
-
-    for (path, text) in &sources {
+    let mut matched = vec![0usize; ALLOWED_STATICS.len()];
+    // Rust only. A `.tsv` row cannot declare anything -- `include_str!` makes
+    // it a `&str` -- and tokenizing prose finds `static` in "static-charged".
+    for (path, text) in sources
+        .iter()
+        .filter(|(p, _)| p.extension().is_some_and(|e| e == "rs"))
+    {
         let rel = relative(path);
-        for item in items(text) {
-            // Anchored on `static` as a standalone token in a line that
-            // declares an item. `item.code` is whitespace-collapsed, so a
-            // declaration split by rustfmt -- or held apart by
-            // `#[rustfmt::skip]`, which survives `cargo fmt --check` -- is
-            // still one string here.
-            let tokens: Vec<&str> = item.code.split_whitespace().collect();
-            let Some(pos) = tokens.iter().position(|t| *t == "static") else {
-                continue;
-            };
-            // `&'static T` in a signature is not a static item. The keyword
-            // there is part of the lifetime token `'static`, which does not
-            // match `== "static"`, so this is already excluded -- but a
-            // `static` appearing after `fn` is a signature, not an item.
-            if tokens[..pos].contains(&"fn") {
-                continue;
-            }
-            // `static NAME:` or `static mut NAME:`; the name is the first
-            // token after the keyword that is not `mut`.
-            let name = tokens
+        for found in outline(text).statics {
+            let function = found.function.as_deref().unwrap_or("");
+            let entry = ALLOWED_STATICS
                 .iter()
-                .skip(pos + 1)
-                .find(|t| **t != "mut")
-                .map_or("<unnamed>", |t| t.trim_end_matches(':'));
-            let allowed = ALLOWED_STATICS
-                .iter()
-                .any(|a| a.path == rel && a.name == name);
-            if !allowed {
-                violations.push(format!("{rel}:{}: static {name}", item.line));
+                .position(|a| a.path == rel && a.name == found.name && a.function == function);
+            match entry {
+                Some(k) => matched[k] += 1,
+                None => violations.push(format!(
+                    "{rel}:{}: static {} in {}",
+                    found.line,
+                    found.name,
+                    if function.is_empty() {
+                        "item scope".to_owned()
+                    } else {
+                        format!("fn {function}")
+                    }
+                )),
             }
         }
     }
+    (violations, matched)
+}
 
+#[test]
+fn every_static_is_allowlisted() {
+    let (violations, matched) = statics_outside_the_allowlist(&scannable_sources());
     assert!(
         violations.is_empty(),
         "No process globals. None. (plan/05 Rule 5.2, :400-408.) Every \
-         `static` must be listed in ALLOWED_STATICS with a justification.\n\n\
+         `static` must be listed in ALLOWED_STATICS with a justification, \
+         keyed by file, enclosing function and name.\n\n\
          This is an allowlist and not a needle because a needle was VERIFIED \
          defeated by the ordinary shape of a registry with an API: \
          `struct Registry {{ inner: Mutex<..> }}` plus `static R: Registry = \
@@ -282,6 +363,70 @@ fn every_static_is_allowlisted() {
          in the process.\n{}",
         violations.join("\n")
     );
+    // Each entry excuses EXACTLY one declaration. Zero is a stale entry
+    // waiting to excuse the next static of that name; two is a second global
+    // hiding behind the first one's review.
+    for (entry, count) in ALLOWED_STATICS.iter().zip(matched) {
+        assert_eq!(
+            count, 1,
+            "ALLOWED_STATICS entry {}::{}::{} matched {count} declarations; it \
+             must match exactly one",
+            entry.path, entry.function, entry.name
+        );
+    }
+}
+
+/// Finding 7's three mutations, each a static the previous scan passed.
+#[test]
+fn a_static_the_old_scan_missed_is_flagged() {
+    let gameobj = workspace_root().join("crates/cena-model/src/state/gameobj.rs");
+    let cases = [
+        (
+            "a second fn in gameobj.rs declaring its own TABLE",
+            "fn table() -> &'static Table {\n    static TABLE: OnceLock<Table> = OnceLock::new();\n}\n\
+             fn cache() -> &'static Table {\n    static TABLE: OnceLock<Table> = OnceLock::new();\n}\n",
+        ),
+        (
+            "a one-line function body",
+            "fn r() -> &'static R { static R: OnceLock<R> = OnceLock::new(); R.get().unwrap() }\n",
+        ),
+        (
+            "thread_local! with no space before static",
+            "thread_local!(static CURRENT: RefCell<u8> = RefCell::new(0));\n",
+        ),
+    ];
+    for (label, fixture) in cases {
+        let (violations, _) =
+            statics_outside_the_allowlist(&[(gameobj.clone(), fixture.to_owned())]);
+        assert_eq!(violations.len(), 1, "{label}: {violations:?}");
+    }
+    // Why each passed before, asserted so the fixtures keep exercising it:
+    // (1) the old key was (file, name), and this pair is allowlisted;
+    assert!(
+        ALLOWED_STATICS
+            .iter()
+            .any(|a| a.path.ends_with("gameobj.rs") && a.name == "TABLE")
+    );
+    // (2) the old scan skipped a line where `fn` came before `static`;
+    let one_line: Vec<&str> = cases[1].1.split_whitespace().collect();
+    let at = one_line
+        .iter()
+        .position(|t| *t == "static")
+        .expect("static");
+    assert!(one_line[..at].contains(&"fn"));
+    // (3) no whitespace-separated token of the macro line is `static`.
+    assert!(!cases[2].1.split_whitespace().any(|t| t == "static"));
+}
+
+/// The negative control: the allowlisted shape itself passes.
+#[test]
+fn the_allowlisted_static_itself_is_not_flagged() {
+    let gameobj = workspace_root().join("crates/cena-model/src/state/gameobj.rs");
+    let fixture = "fn table() -> &'static Table {\n    static TABLE: OnceLock<Table> = OnceLock::new();\n}\n\
+                   fn user(t: &'static str) -> &'static str { t }\n";
+    let (violations, matched) = statics_outside_the_allowlist(&[(gameobj, fixture.to_owned())]);
+    assert!(violations.is_empty(), "{violations:?}");
+    assert_eq!(matched.iter().sum::<usize>(), 1);
 }
 
 #[test]

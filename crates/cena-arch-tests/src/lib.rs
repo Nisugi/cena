@@ -21,6 +21,8 @@
 //! raw lines, and Rule 5.2 is an allowlist rather than a needle. Each of those
 //! replaced something that was VERIFIED green on a real violation.
 
+pub mod caps;
 pub mod harness;
 pub mod lexical;
 pub mod plan_rules;
+pub mod structure;
