@@ -111,15 +111,22 @@ pub enum Prefer {
 ///
 /// Under [`Prefer::WebOnly`] the error is the **web-login** failure, since no
 /// eaccess attempt was made to have one.
+///
+/// A certificate that does not match `pin` is FATAL (see `pin.rs`), so it is
+/// returned as the diagnosis and web login is **not** tried: the operator must
+/// see that message, and a fallback that succeeded would bury it. `pin` is
+/// eaccess's alone -- the web path is verified TLS to www.play.net and does
+/// not read it.
 pub async fn authenticate_via(
     creds: Credentials<'_>,
     prefer: Prefer,
+    pin: &std::path::Path,
     mut progress: impl FnMut(&str),
 ) -> Result<(LaunchPayload, Provider), EaccessError> {
     decide(
         prefer,
         &mut progress,
-        async |progress| super::authenticate(creds, progress).await,
+        async |progress| super::authenticate(creds, pin, progress).await,
         async |progress| try_web(creds, progress).await,
     )
     .await

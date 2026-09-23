@@ -59,11 +59,11 @@ pub mod record;
 pub mod replay;
 pub mod sink;
 
-pub use answering::{AnsweringSource, TranscriptHandle};
+pub use answering::{AnsweringSource, LOGIN_BURST, TranscriptHandle};
 pub use bytes::ByteSource;
 pub use eaccess::{
-    Credentials, EaccessError, LaunchPayload, Prefer, Provider, authenticate, authenticate_via,
-    connect_game,
+    Credentials, EaccessError, LaunchPayload, PIN_FILENAME, Prefer, Provider, authenticate,
+    authenticate_via, connect_game,
 };
 pub use live::{KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, LiveSource, UNACKED_SEND_TIMEOUT};
 pub use record::{MAX_RECORDED_BYTES, RecordedEvent, Recorder};

@@ -11,6 +11,7 @@
 //! Read [`super`] for why `EAccess` lives in `cena-platform` and for the BUILT,
 //! NOT RUN rule that governs every function below.
 
+use super::pin::open_pinned;
 use super::refusal::{describe_launch_refusal, launch_refusal_is_fatal};
 use super::wire::hash_password;
 use super::wire::{
@@ -19,7 +20,7 @@ use super::wire::{
     resolve_char_code,
 };
 use crate::bytes::ByteSource;
-use crate::live::LiveSource;
+use std::path::Path;
 
 /// How long one stage may wait for its answer.
 ///
@@ -107,30 +108,37 @@ async fn send(
 /// where a program's output goes -- and it is what lets the tests below exist
 /// at all.
 ///
+/// `pin` is the certificate pin file (`<data dir>/`[`PIN_FILENAME`]): the
+/// server's certificate is recorded there on first use and must match it on
+/// every later login. See `pin.rs` for why a mismatch is fatal rather than
+/// silently re-pinned, as Lich does.
+///
 /// # Errors
 ///
 /// [`EaccessError`], naming the stage. The failure paths are deliberately
 /// specific: a game code the server does not offer, a launch refusal, and a
 /// character that is not on the account each produce their own message rather
-/// than a generic rejection.
+/// than a generic rejection. A certificate that does not match the pin is a
+/// fatal `cert_pin` error naming the file.
+///
+/// [`PIN_FILENAME`]: super::PIN_FILENAME
 ///
 /// # Panics
 ///
 /// Does not panic.
 pub async fn authenticate(
     creds: Credentials<'_>,
+    pin: &Path,
     mut progress: impl FnMut(&str),
 ) -> Result<LaunchPayload, EaccessError> {
     // Three weakenings, all required, all documented on `connect_tls`: no SNI,
     // no cert verification, no hostname check. The cert is self-signed with no
-    // chain, so there is nothing to verify against; we do NOT pin, which
-    // `connect_tls` records as the cost.
+    // chain, so there is nothing to verify against -- the PIN replaces that
+    // verification, and is checked before `converse` sends a byte.
     progress(&format!(
         "[stage: tls_handshake] {EACCESS_HOST}:{EACCESS_PORT}, no SNI (matching Lich)"
     ));
-    let mut conn = LiveSource::connect_tls(EACCESS_HOST, EACCESS_PORT)
-        .await
-        .map_err(|e| err("tls_handshake", e))?;
+    let mut conn = open_pinned(EACCESS_HOST, EACCESS_PORT, pin, &mut progress).await?;
 
     let launch = converse(&mut conn, creds, &mut progress).await;
 

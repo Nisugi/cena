@@ -62,10 +62,14 @@
 //! because three review findings (the key trimmed at the call site, an `M`
 //! refusal that was never fatal, an `L` quoted unredacted) sat in exactly the
 //! code a pure-function test cannot see.
+//! `pin` opens the TLS connection and checks its certificate against the
+//! stored pin before `handshake` may send anything on it -- trust on first
+//! use, and a FATAL refusal on change, unlike Lich's silent re-pin.
 
 mod fallback;
 mod game;
 mod handshake;
+mod pin;
 mod refusal;
 mod reject;
 mod wire;
@@ -74,6 +78,7 @@ pub use crate::gemstone::endpoint::other_spelling;
 pub use fallback::{Prefer, Provider, authenticate_via};
 pub use game::connect_game;
 pub use handshake::authenticate;
+pub use pin::PIN_FILENAME;
 pub use refusal::{describe_launch_refusal, launch_refusal_is_fatal};
 pub use reject::{Rejection, classify_a_rejection};
 pub use wire::{

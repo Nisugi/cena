@@ -213,6 +213,7 @@ dependencies = [
 name = "cena-platform"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "futures-util",
  "jiff",
  "native-tls",

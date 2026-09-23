@@ -34,7 +34,8 @@
 //!    eaccess over TLS for the login handshake, then opens a *plain* TCP
 //!    connection to the game host and sends the key. This type is the second
 //!    of those: the session's byte source is the game stream, which is not TLS.
-//!    [`LiveSource::connect_tls`] exists for the eaccess half.
+//!    `LiveSource::connect_tls` exists for the eaccess half, and is reachable
+//!    only through the certificate pin (`eaccess/pin.rs`).
 //!
 //! The game stream has a second route since Lich PR #1664: the WebSocket shim
 //! on 443 ([`LiveSource::connect_shim`], `shim.rs`), which IS TLS -- verified
@@ -279,42 +280,33 @@ impl LiveSource {
     /// 3. **`danger_accept_invalid_hostnames(true)`** -- follows from 1 and 2.
     ///    With no SNI and no chain, there is no name to check against.
     ///
-    /// # What this does NOT do, and what it costs
+    /// # What replaces the verification: the pin
     ///
-    /// **It does not pin, so this handshake is MITM-able, and the account
-    /// password crosses it.**
+    /// **This function does not verify the peer, and must not be the last
+    /// thing between the network and the password.** Its one caller is
+    /// `eaccess::pin::open_pinned`, which reads the certificate off the
+    /// finished handshake ([`Self::peer_certificate_der`]) and compares it
+    /// with the pin in `simu.pem` before the conversation sends a byte:
+    /// trust on first use, and a **fatal** refusal on change. That is
+    /// `plan/10` §2.3's model minus its hole -- Lich re-pins silently on a
+    /// mismatch, so "an attacker who MITMs one connection installs a
+    /// persistent pin". Read `eaccess/pin.rs` for the whole argument.
     ///
-    /// `plan/10` §2.3 finds Lich's own model is trust-on-first-use with
-    /// *silent auto-re-pin* -- "an attacker who MITMs one connection installs
-    /// a persistent pin" -- and §9.2 says Cena should compare a **SHA-256 of
-    /// the DER**, not PEM text (PEM equality is line-ending sensitive,
-    /// `plan/10` §12.3). None of that is built here.
+    /// `pub(crate)`, not `pub`, for exactly that reason: outside this crate
+    /// there is no way to open the eaccess TLS connection except through the
+    /// pin. This used to be `pub`, UNPINNED, and a release build printed a
+    /// warning saying so every time it ran (review PL-10); the warning went
+    /// when the pin landed, because it would have been false.
     ///
-    /// That is a deliberate M1 scope call rather than an oversight:
-    /// `plan/12` §7.1 puts saved credentials and the login ladder Out, and a
-    /// pin with nowhere to be stored is half a mechanism. It is recorded on
-    /// this line, not in a backlog, because the weakening is *here* and a
-    /// reader of it must see the cost. **It is the one thing in this module
-    /// that should not survive to a release build.**
-    ///
-    /// ## That sentence is now enforced, not just written
-    ///
-    /// It was a note and nothing checked it (review PL-10), which is `plan/05`
-    /// Rule 0's definition of a wish. Two things hold it now:
-    ///
-    /// * A **release build says so at runtime**, every time this runs. Not a
-    ///   `compile_error!`: pinning does not exist yet, so refusing to build
-    ///   would only force the guard to be deleted, and a deleted guard is
-    ///   worse than a loud one. `debug_assertions` is the discriminator --
-    ///   it is off in `--release` and on in the dev profile the author runs.
-    /// * `cena-arch-tests` asserts the warning is still here, so removing it
-    ///   fails the suite rather than quietly restoring the silence.
+    /// What the pin cannot do is vouch for the FIRST connection. A machine
+    /// with no `simu.pem` trusts whatever it reaches first, as Lich and
+    /// `VellumFE` do. The first-use line in the login output says so.
     ///
     /// # Errors
     ///
     /// Connect, TLS-builder and handshake errors, each mapped to
     /// [`io::Error`] so one `?` chain covers the sequence.
-    pub async fn connect_tls(host: &str, port: u16) -> io::Result<Self> {
+    pub(crate) async fn connect_tls(host: &str, port: u16) -> io::Result<Self> {
         let stream = connect_bounded(host, port).await?;
         stream.set_nodelay(true)?;
         // NO keepalive here, unlike the game socket. This connection is a
@@ -323,16 +315,6 @@ impl LiveSource {
         // guards a connection that sits IDLE for minutes, which this one never
         // does. Stated because its absence beside `connect`'s presence would
         // otherwise read as an oversight.
-        // ARCH-TEST ANCHOR: `release_builds_announce_the_unpinned_tls`.
-        if !cfg!(debug_assertions) {
-            eprintln!(
-                "[tls] WARNING: this is a RELEASE build and the eaccess TLS \
-                 handshake is UNPINNED -- certificates and hostnames are not \
-                 verified, and the account password crosses this connection. \
-                 plan/10 section 9.2 specifies a SHA-256-of-DER pin; it is \
-                 not built. Do not ship this."
-            );
-        }
         let connector = native_tls::TlsConnector::builder()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true)
@@ -353,6 +335,27 @@ impl LiveSource {
             })?
             .map_err(|e| io::Error::other(format!("tls handshake with {host}: {e}")))?;
         Ok(Self::Tls(Box::new(tls)))
+    }
+
+    /// The certificate the peer presented in the TLS handshake, as DER.
+    ///
+    /// For the eaccess pin (`eaccess/pin.rs`), which is what stands in for
+    /// the chain verification [`Self::connect_tls`] turns off.
+    ///
+    /// # Errors
+    ///
+    /// Not a [`Self::Tls`] connection, no certificate presented, or the TLS
+    /// library could not encode it.
+    pub(crate) fn peer_certificate_der(&self) -> io::Result<Vec<u8>> {
+        let Self::Tls(tls) = self else {
+            return Err(io::Error::other("not a TLS connection"));
+        };
+        tls.get_ref()
+            .peer_certificate()
+            .map_err(io::Error::other)?
+            .ok_or_else(|| io::Error::other("the server presented no certificate"))?
+            .to_der()
+            .map_err(io::Error::other)
     }
 }
 
