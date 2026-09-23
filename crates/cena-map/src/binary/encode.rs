@@ -1,7 +1,7 @@
 //! Writing a [`Map`] as a map file. The layout is documented on the parent
 //! module; this follows it field for field.
 
-use super::wire::{EXT_DIRTO, EXT_PLACEMENT, EXT_SHEET, EncodeError, NONE, Writer};
+use super::wire::{EXT_EXIT_DIRTO, EXT_PLACEMENT, EXT_SHEET, EncodeError, NONE, Writer};
 use crate::exit::{Cost, Crossing, Exit};
 use crate::map::Map;
 use crate::room::Room;
@@ -100,14 +100,15 @@ fn write_room_extensions(w: &mut Writer, room: &Room) -> Result<(), EncodeError>
         })?;
     }
     if bearings > 0 {
-        // Keyed by destination, because the exit record has no extension slot
-        // of its own -- see `EXT_DIRTO`. Only exits that state one are
+        // Keyed by the exit's index in this room's list, because the exit
+        // record has no extension slot of its own and a destination does not
+        // name an edge -- see `EXT_EXIT_DIRTO`. Only exits that state one are
         // written; the rest fall through to their command text.
-        w.extension(EXT_DIRTO, |w| {
+        w.extension(EXT_EXIT_DIRTO, |w| {
             w.len(bearings)?;
-            for exit in &room.exits {
+            for (index, exit) in room.exits.iter().enumerate() {
                 if let Some(dirto) = exit.dirto {
-                    w.u32(exit.to.0);
+                    w.len(index)?;
                     w.string(dirto.name())?;
                 }
             }

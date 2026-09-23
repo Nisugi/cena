@@ -134,3 +134,61 @@ fn a_price_that_would_corrupt_the_search_is_a_wall() {
         "zero is a fair price"
     );
 }
+
+/// ```text
+///   1 --1s-- 2 (the target)
+///   1 --5s-- 3          discovered at 5s before the search stops...
+///   2 --1s-- 3          ...but 2s is the real answer, never looked at
+/// ```
+#[test]
+fn a_room_the_search_stopped_short_of_is_not_answered_for() {
+    // **A tentative distance is not a distance.** Stopping at room 2 leaves
+    // room 3 discovered at 5s, one step past the frontier; the shortest way
+    // is 2s, through the target. Answering 5s -- and the direct path -- would
+    // be a longer route presented as the shortest.
+    let rooms: Vec<Room> = serde_json::from_str(
+        r#"[
+      {"id":1,"exits":[{"to":2,"kind":"cardinal","cmd":"east","cost":1},
+                       {"to":3,"kind":"cardinal","cmd":"north","cost":5}]},
+      {"id":2,"exits":[{"to":3,"kind":"cardinal","cmd":"north","cost":1}]},
+      {"id":3}
+    ]"#,
+    )
+    .unwrap();
+    let map = Map::from_rooms(rooms).unwrap();
+    let stopped = map.routes(RoomId(1), Target::Room(RoomId(2)), as_converted);
+    assert_eq!(
+        stopped.seconds_to(RoomId(2)),
+        Some(1.0),
+        "the target is settled"
+    );
+    assert_eq!(stopped.seconds_to(RoomId(3)), None, "not known, not 5s");
+    assert_eq!(stopped.path_to(RoomId(3)), None);
+    // The same question with nowhere to stop gets the real answer.
+    let whole = map.routes(RoomId(1), Target::Everything, as_converted);
+    assert_eq!(whole.seconds_to(RoomId(3)), Some(2.0));
+    assert_eq!(whole.path_to(RoomId(3)), Some(ids(&[2, 3])));
+}
+
+#[test]
+fn the_route_names_which_of_two_parallel_exits_it_took() {
+    // A gate and a wall into the same room, at different prices. `path_to`
+    // says only "room 2"; `exits_to` says the wall -- index 1 -- so a caller
+    // does not re-price both to rediscover the search's choice.
+    let rooms: Vec<Room> = serde_json::from_str(
+        r#"[
+      {"id":1,"exits":[{"to":2,"kind":"go","cmd":"go gate","cost":5},
+                       {"to":2,"kind":"climb","cmd":"climb wall","cost":1}]},
+      {"id":2,"exits":[{"to":1,"kind":"go","cmd":"go gate","cost":5}]}
+    ]"#,
+    )
+    .unwrap();
+    let map = Map::from_rooms(rooms).unwrap();
+    let routes = map.routes(RoomId(1), Target::Room(RoomId(2)), as_converted);
+    assert_eq!(routes.path_to(RoomId(2)), Some(ids(&[2])));
+    assert_eq!(
+        routes.exits_to(RoomId(2)),
+        Some(vec![(RoomId(1), 1, RoomId(2))])
+    );
+    assert_eq!(routes.exits_to(RoomId(1)), Some(vec![]), "already there");
+}
