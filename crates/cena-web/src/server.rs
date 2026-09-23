@@ -33,6 +33,29 @@ pub(crate) struct Shared {
     pub(crate) stop: CancellationToken,
 }
 
+#[cfg(test)]
+impl Shared {
+    /// State with no listener and no session behind it, so a test can drive
+    /// the presentation pump directly. The handle's inbox has no reader.
+    pub(crate) fn for_test() -> Arc<Self> {
+        let handle = SessionHandle::new(
+            tokio::sync::mpsc::channel(1).0,
+            cena_session::GenerationCell::default(),
+            tokio::sync::broadcast::channel(1).0,
+        );
+        Arc::new(Self {
+            token: String::new(),
+            authority: String::new(),
+            origin: String::new(),
+            csp: HeaderValue::from_static("default-src 'none'"),
+            hub: Mutex::new(Hub::new()),
+            handle,
+            clients: Arc::new(Semaphore::new(MAX_CLIENTS)),
+            stop: CancellationToken::new(),
+        })
+    }
+}
+
 /// A bound, authenticated, single-session viewer. Binding never logs in or
 /// waits for the session actor. Start `run` alongside that actor.
 pub struct WebServer {
@@ -96,8 +119,10 @@ impl WebServer {
     /// All upgraded viewers and the projection task stop with this future.
     ///
     /// # Errors
-    /// Returns a listener/server I/O failure, unavailable native observation,
-    /// or a presentation that exceeds the bounded message size.
+    /// Returns a listener/server I/O failure, or native observation that has
+    /// ended for good (the session owner gone). A busy or slow owner is
+    /// retried, and an oversized presentation is degraded; neither stops
+    /// the server (see `presentation`).
     pub async fn run(self, shutdown: impl Future<Output = ()> + Send + 'static) -> io::Result<()> {
         let stop = self.shared.stop.clone();
         let projection = pump(self.observer, Arc::clone(&self.shared));

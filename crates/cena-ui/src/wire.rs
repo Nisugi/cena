@@ -37,6 +37,15 @@ pub enum ReceiptStatus {
     Refused,
     /// The send outcome cannot be established. Do not retry automatically.
     Uncertain,
+    /// Hydra ran the line itself -- a `;` command -- and **nothing was sent
+    /// to the game**.
+    ///
+    /// Not `Sent`: that claims bytes reached the wire, which for a claimed
+    /// line is false, and every one of them used to come back saying so. Not
+    /// `Refused` either: nothing was refused, the line did what it was for.
+    /// A third fact, so a third word. The browser assets ship in the same
+    /// binary as the server, so no viewer can be older than this variant.
+    Handled,
 }
 
 /// A snapshot replaces the browser's view/history; updates append whole lines.

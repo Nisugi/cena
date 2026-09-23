@@ -89,7 +89,13 @@ export function mount(document, environment) {
     if (!overlap && renderedLines.length && lines.length) {
       const offset = renderedLines.indexOf(lines[0]);
       if (offset >= 0) {
-        for (let i = 0; i < offset; i++) story.firstChild?.remove();
+        // Remove one node per evicted line THAT HAD ONE. Only Story-placed
+        // lines own a paragraph -- a dropped duplicate or a line shown in its
+        // own window owns nothing here -- so counting every evicted line took
+        // still-retained Story paragraphs off the top along with them.
+        const owned = renderedLines.slice(0, offset)
+          .filter((line) => placeLine(line, isOpen).where === "story").length;
+        for (let i = 0; i < owned; i++) story.firstChild?.remove();
         overlap = renderedLines.length - offset;
       }
     }
@@ -167,34 +173,65 @@ export function mount(document, environment) {
     element("stream-windows").hidden = knownStreams.size === 0;
   }
 
-  // A pane per open window, holding that stream's lines.
+  // A pane per open window, holding that stream's lines: stream -> the lines
+  // it last rendered (null before its first) and the body they are in.
+  const panes = new Map();
+
+  // **Rebuild a pane only when its own lines changed, and keep the reader's
+  // place.** This used to rebuild every pane on every message and pin each to
+  // the bottom. Every message includes a roundtime tick, so during combat the
+  // panes were rebuilt and snapped ten times a second and could not be
+  // scrolled back at all. A pane now keeps its DOM when its lines are the same
+  // objects as last time, and on a real change snaps to the bottom only if the
+  // reader was already there.
   function renderStreams() {
     const host = element("stream-panes");
-    host.replaceChildren();
-    for (const stream of [...openWindows].sort((a, b) => a.localeCompare(b))) {
-      const pane = document.createElement("section");
-      pane.className = "stream-pane";
-      const heading = document.createElement("h3");
-      heading.textContent = stream;
-      const body = document.createElement("div");
-      body.className = "text-output stream-body";
-      for (const line of currentStory) {
+    const streams = [...openWindows].sort((a, b) => a.localeCompare(b));
+    if (streams.join("\n") !== [...panes.keys()].join("\n")) {
+      // Windows opened or closed. Panes still open keep their node.
+      for (const stream of [...panes.keys()]) if (!openWindows.has(stream)) panes.delete(stream);
+      for (const stream of streams) {
+        if (panes.has(stream)) continue;
+        const section = document.createElement("section");
+        section.className = "stream-pane";
+        const heading = document.createElement("h3");
+        heading.textContent = stream;
+        const body = document.createElement("div");
+        body.className = "text-output stream-body";
+        section.append(heading, body);
+        panes.set(stream, { lines: null, body, section });
+      }
+      const ordered = new Map(streams.map((stream) => [stream, panes.get(stream)]));
+      panes.clear();
+      for (const [stream, pane] of ordered) panes.set(stream, pane);
+      host.replaceChildren(...[...panes.values()].map((pane) => pane.section));
+    }
+    for (const [stream, pane] of panes) {
+      const lines = currentStory.filter((line) => {
         const place = placeLine(line, isOpen);
-        if (place.where !== "window" || place.id !== stream) continue;
+        return place.where === "window" && place.id === stream;
+      });
+      if (pane.lines && pane.lines.length === lines.length
+        && pane.lines.every((line, index) => line === lines[index])) continue;
+      const body = pane.body;
+      const atBottom = pane.lines === null
+        || body.scrollHeight - body.clientHeight - body.scrollTop < 48;
+      const top = body.scrollTop;
+      body.replaceChildren();
+      for (const line of lines) {
         const node = document.createElement("p");
         node.className = "text-line";
         appendRuns(document, node, line.runs);
         body.appendChild(node);
       }
-      if (!body.childElementCount) {
+      if (!lines.length) {
         const empty = document.createElement("p");
         empty.className = "empty-state";
         empty.textContent = "Nothing yet.";
         body.appendChild(empty);
       }
-      pane.append(heading, body);
-      host.appendChild(pane);
-      body.scrollTop = body.scrollHeight;
+      pane.lines = lines;
+      body.scrollTop = atBottom ? body.scrollHeight : top;
     }
     host.hidden = openWindows.size === 0;
   }
