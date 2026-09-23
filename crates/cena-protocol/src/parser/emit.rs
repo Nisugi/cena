@@ -125,7 +125,19 @@ impl Parser {
         body: &str,
         unmodelled: &mut Vec<String>,
     ) -> Runs {
-        let saved_bold = self.bold_depth;
+        // **All four pieces of markup state, and all four the same way:
+        // cleared on entry, restored on exit.**
+        //
+        // `mono` was not saved at all, so `<component id='x'><output
+        // class="mono"/>a</component>after` left "after" -- and the rest of
+        // the session -- in the mono font. And the three that were saved
+        // disagreed on entry: presets and links started empty while bold was
+        // inherited, so the same unbalanced `<pushBold/>` before a component
+        // made its body bold and an unbalanced `<preset>` did not. A body is
+        // its own context in both directions: nothing leaks out of it, and
+        // nothing leaked from outside leaks in (review 2026-09-23).
+        let saved_bold = std::mem::take(&mut self.bold_depth);
+        let saved_mono = std::mem::take(&mut self.mono);
         let saved_presets = std::mem::take(&mut self.presets);
         let saved_links = std::mem::take(&mut self.links);
 
@@ -164,6 +176,7 @@ impl Parser {
         self.push_run(&mut buffer, &mut runs);
 
         self.bold_depth = saved_bold;
+        self.mono = saved_mono;
         self.presets = saved_presets;
         self.links = saved_links;
         Runs { runs }
@@ -232,6 +245,8 @@ mod tests {
             "<d cmd=\"store weapon\">a <a exist=\"9\" noun=\"katar\">katar</a></d>",
             "<preset id=\"speech\">",
             "</preset>",
+            "<output class=\"mono\"/>",
+            "<output class=\"\"/>",
             // NOT markup -- these must be collected, never swallowed.
             "<newThing id=\"1\"/>",
             "<futureTag attr=\"v\">",
@@ -381,6 +396,7 @@ mod tests {
             let mut unmodelled = Vec::new();
             let _ = parser.parse_runs_reporting(&body, &mut unmodelled);
             prop_assert_eq!(parser.bold_depth, before, "bold depth leaked");
+            prop_assert!(!parser.mono, "mono leaked out of {:?}", body);
         }
 
         /// Arbitrary text never panics and conserves just the same.
@@ -394,6 +410,31 @@ mod tests {
             let joined: String = runs.runs.iter().map(|r| r.text.as_str()).collect();
             prop_assert_eq!(joined, expected_text(&body));
         }
+    }
+
+    #[test]
+    fn a_body_neither_inherits_nor_leaks_markup_state() {
+        // Review 2026-09-23. Mono leaked OUT (it was never saved), and bold
+        // leaked IN while presets and links did not.
+        let mut parser = Parser::new();
+        let mut unmodelled = Vec::new();
+        let _ = parser.parse_runs_reporting("<output class=\"mono\"/>a", &mut unmodelled);
+        assert!(!parser.mono, "mono leaked out of the body");
+
+        parser.bold_depth = 1;
+        parser.mono = true;
+        let runs = parser.parse_runs_reporting("plain", &mut unmodelled);
+        let styles: Vec<_> = runs
+            .runs
+            .iter()
+            .map(|r| (r.style.bold_depth, r.style.mono))
+            .collect();
+        assert_eq!(styles, [(0, false)], "outer markup leaked into the body");
+        assert_eq!(
+            (parser.bold_depth, parser.mono),
+            (1, true),
+            "and is restored after"
+        );
     }
 
     #[test]

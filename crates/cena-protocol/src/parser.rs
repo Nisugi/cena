@@ -142,17 +142,17 @@ pub struct Parser {
     /// `minivitals` and `health2` in `injuries`. Without the enclosing id a
     /// consumer cannot tell which gauge it is looking at.
     dialog: Option<String>,
-    /// Inside the login `<settings>` blob, whose close has not arrived.
+    /// Where the parser stands relative to the login `<settings>` blob.
     ///
     /// State rather than a within-line scan because the blob exceeds a line:
     /// 513,700 bytes in one measured case, which `MAX_LINE_BYTES` splits.
-    in_settings: bool,
+    settings: wire::SettingsRegion,
     /// The last few bytes seen inside a `<settings>` blob, for matching its
     /// close across a read boundary.
     ///
     /// At most `SETTINGS_CLOSE.len()` bytes, so a 786 KB blob costs eleven bytes
     /// of state rather than 786 KB of buffer. That is what lets `push_bytes`
-    /// skip the line cap entirely while a blob is open -- see its `in_settings`
+    /// skip the line cap entirely while a blob is open -- see its settings
     /// arm for the three defects that removes.
     settings_tail: Vec<u8>,
     /// The `<inventoryViewItem>` block being captured across lines.
@@ -198,35 +198,6 @@ impl Parser {
         Self::default()
     }
 
-    /// Consume a line belonging to an open login `<settings>` blob.
-    ///
-    /// `Some(frames)` means the line was the blob's and `parse_line` is done
-    /// with it; `None` means the blob is not open and the line is ordinary.
-    ///
-    /// Inside the blob the line is client configuration rather than game
-    /// output, so it is consumed whole. A `<prompt>` breaks the region for the
-    /// same reason it breaks a capture: a blob whose close never arrives must
-    /// not swallow the rest of the session.
-    fn continue_settings_blob(&mut self, line: &str) -> Option<Vec<Frame>> {
-        if !self.in_settings {
-            return None;
-        }
-        if let Some(at) = line.find(SETTINGS_CLOSE) {
-            self.in_settings = false;
-            let after = line[at + SETTINGS_CLOSE.len()..].to_owned();
-            return Some(if after.is_empty() {
-                Vec::new()
-            } else {
-                self.parse_line(&after)
-            });
-        }
-        if !line.contains("<prompt") {
-            return Some(Vec::new());
-        }
-        self.in_settings = false;
-        None
-    }
-
     /// Parse one complete line, newline already removed.
     ///
     /// Never panics on any input: that is `plan/06` §1.5's non-negotiable, and
@@ -270,21 +241,48 @@ impl Parser {
         let line = line.trim_end_matches(['\r', '\n']);
         let mut frames = Vec::new();
 
-        if let Some(done) = self.continue_settings_blob(line) {
-            return done;
-        }
+        let Some(mut rest) = self.continue_settings_blob(line) else {
+            return frames;
+        };
 
         // An open `<inventoryViewItem>` owns the line until its close.
-        if let Some(done) = self.continue_view_item(line) {
-            return done;
+        if self.view_item.is_some() {
+            self.begin_captured_line(&mut frames);
         }
-
-        // Preserve intentional blank lines: vertical spacing is content.
-        if line.is_empty() {
+        if self.view_item.is_none() && rest.is_empty() {
+            // Preserve intentional blank lines: vertical spacing is content.
             frames.push(self.text_frame(""));
             return frames;
         }
 
+        // **One loop, two modes, and no recursion.** A line can open and
+        // close captures any number of times, and each handoff used to be a
+        // nested call -- `parse_line` into the capture and back into
+        // `parse_line`. MEASURED: 2,000 `<inventoryViewItem>` open/close pairs
+        // on one 92 KB line, under the line cap, overflowed a 2 MiB stack in a
+        // release build. That is an abort, not a panic, so it took every
+        // session in the process with it.
+        //
+        // Each turn either consumes at least one tag or switches mode, so this
+        // terminates, and stack depth no longer depends on the input.
+        loop {
+            let next = if self.view_item.is_some() {
+                self.view_item_line(rest, &mut frames)
+            } else {
+                self.parse_ordinary(rest, &mut frames)
+            };
+            match next {
+                Some(after) => rest = after,
+                None => return frames,
+            }
+        }
+    }
+
+    /// Parse `line` outside any capture, until it ends or opens one.
+    ///
+    /// Returns the rest of the line when an `<inventoryViewItem>` opened
+    /// part-way through it, for the capture to take over.
+    fn parse_ordinary<'a>(&mut self, line: &'a str, frames: &mut Vec<Frame>) -> Option<&'a str> {
         let mut buffer = String::new();
         let mut rest = line;
 
@@ -311,7 +309,7 @@ impl Parser {
             // its `<c>` body becomes a frame; the settings chatter around it
             // is discarded with the region rather than misread as protocol.
             if tail.starts_with(CLIENT_OPEN) {
-                self.flush(&mut buffer, &mut frames);
+                self.flush(&mut buffer, frames);
                 let (frame, after) = client_region(tail);
                 if let Some(frame) = frame {
                     frames.push(frame);
@@ -345,10 +343,10 @@ impl Parser {
             // looked inside this line would lose the close and leak the blob's
             // 26 private element names into UnknownTag on every login.
             if tail.starts_with("<settings ") || tail.starts_with("<settings>") {
-                self.flush(&mut buffer, &mut frames);
+                self.flush(&mut buffer, frames);
                 frames.push(Frame::ClientSettings);
                 let Some(at) = tail.find(SETTINGS_CLOSE) else {
-                    self.in_settings = true;
+                    self.settings = wire::SettingsRegion::Open;
                     break;
                 };
                 rest = &tail[at + SETTINGS_CLOSE.len()..];
@@ -359,7 +357,7 @@ impl Parser {
             // may appear inside it, so it is consumed on its own terms.
             if let Some(body) = tail.strip_prefix("<!--") {
                 let Some(at) = body.find(COMMENT_CLOSE) else {
-                    self.flush(&mut buffer, &mut frames);
+                    self.flush(&mut buffer, frames);
                     frames.push(Frame::MalformedTag {
                         raw: tail.to_owned(),
                     });
@@ -372,7 +370,7 @@ impl Parser {
             let Some(close) = tail.find('>') else {
                 // Rule 2.2, and Vellum's silent-desync bug fixed: a tag that
                 // never closed is typed and logged, not smuggled into prose.
-                self.flush(&mut buffer, &mut frames);
+                self.flush(&mut buffer, frames);
                 frames.push(Frame::MalformedTag {
                     raw: tail.to_owned(),
                 });
@@ -396,7 +394,7 @@ impl Parser {
                 // buffering path, and Rule 2.2 for why the answer is a frame
                 // rather than a silent drop.
                 let Some(at) = tail.find(&close_tag) else {
-                    self.flush(&mut buffer, &mut frames);
+                    self.flush(&mut buffer, frames);
                     frames.push(Frame::MalformedTag {
                         raw: tail.to_owned(),
                     });
@@ -407,7 +405,7 @@ impl Parser {
                 rest = &tail[end..];
             }
 
-            self.dispatch(tag, &mut buffer, &mut frames);
+            self.dispatch(tag, &mut buffer, frames);
 
             // Opening an `<inventoryViewItem>` hands the REST of this line to
             // the capture. Without this the envelope opened the capture and
@@ -417,15 +415,13 @@ impl Parser {
             // 39 sections captured where the wire sent 52, exactly one lost
             // per response.
             if self.view_item.is_some() && !rest.is_empty() {
-                let tail = std::mem::take(&mut rest);
-                self.flush(&mut buffer, &mut frames);
-                frames.extend(self.continue_line_in_capture(tail));
-                break;
+                self.flush(&mut buffer, frames);
+                return Some(rest);
             }
         }
 
-        self.flush(&mut buffer, &mut frames);
-        frames
+        self.flush(&mut buffer, frames);
+        None
     }
 }
 

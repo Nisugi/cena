@@ -28,7 +28,9 @@ fn images(wire: &[u8]) -> Vec<(String, String, Option<String>)> {
         .push_bytes(wire)
         .into_iter()
         .filter_map(|f| match f {
-            Frame::InjuryImage { id, name, dialog } => Some((id, name, dialog)),
+            Frame::InjuryImage {
+                id, name, dialog, ..
+            } => Some((id, name, dialog)),
             _ => None,
         })
         .collect()

@@ -225,3 +225,43 @@ fn the_byte_that_trips_the_cap_is_not_lost() {
         "the region did not close, so the following line was swallowed"
     );
 }
+
+/// A blob whose `</settings>` never arrives, then a prompt and the burst.
+const UNCLOSED: &str = concat!(
+    "<settings client='1'><h id='1' text='a highlight'/>\n",
+    "<prompt time='1'>&gt;</prompt>\n",
+    "<nav rm='42'/>\n",
+    "You see a room.\n",
+);
+
+#[test]
+fn a_prompt_ends_an_unclosed_blob_on_the_production_path() {
+    // `parse_line` has always ended an unclosed blob at a `<prompt`. The
+    // session feeds `push_bytes`, whose settings arm discarded every byte
+    // before `parse_line` saw it -- so on the path production actually uses,
+    // the barrier never fired and the blob swallowed the rest of the session.
+    let found = frames(UNCLOSED.as_bytes());
+
+    assert!(
+        found.iter().any(|f| matches!(f, Frame::Prompt { .. })),
+        "the prompt that ends the region was swallowed: {found:?}"
+    );
+    assert!(
+        found
+            .iter()
+            .any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("42"))),
+        "the burst after an unclosed blob was swallowed: {found:?}"
+    );
+}
+
+#[test]
+fn both_entry_points_agree_about_an_unclosed_blob() {
+    // The falsifying pair: the two entry points diverging is the defect.
+    let mut by_line = Parser::new();
+    let lines: Vec<Frame> = UNCLOSED
+        .lines()
+        .flat_map(|line| by_line.parse_line(line))
+        .collect();
+
+    assert_eq!(frames(UNCLOSED.as_bytes()), lines);
+}

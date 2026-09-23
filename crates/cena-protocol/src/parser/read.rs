@@ -8,10 +8,14 @@
 //! cannot desync the parser. Enforcing that here rather than assuming it of
 //! the caller is what lets a test drive a split at every byte offset.
 
-use super::wire::SETTINGS_CLOSE;
 use super::wire::decode_wire_line;
+use super::wire::{SETTINGS_CLOSE, SettingsRegion};
 use super::{MAX_LINE_BYTES, Parser};
 use crate::frame::Frame;
+
+/// The start of a `<prompt>`: the resync barrier that ends an unclosed
+/// settings blob. Shorter than [`SETTINGS_CLOSE`], so the same tail holds it.
+const PROMPT_OPEN: &[u8] = b"<prompt";
 
 impl Parser {
     /// Feed raw socket bytes; get frames for every **complete** line.
@@ -31,12 +35,24 @@ impl Parser {
                     self.pending.clear();
                     continue;
                 }
+                // A tag never spans a newline, so neither does a close
+                // matched from the blob's tail.
+                self.settings_tail.clear();
+                // A blob line that closed with nothing after it is not a
+                // blank line; `parse_line` yields nothing for it, and so
+                // does this. See `SettingsRegion::ClosedThisLine`.
+                if self.settings == SettingsRegion::ClosedThisLine {
+                    self.settings = SettingsRegion::Outside;
+                    if self.pending.is_empty() {
+                        continue;
+                    }
+                }
                 let line = decode_wire_line(&self.pending);
                 self.pending.clear();
                 frames.extend(self.parse_line(&line));
             } else if self.dropping_oversized_line {
                 // Mid-discard: swallow bytes until the newline above.
-            } else if self.in_settings {
+            } else if self.settings == SettingsRegion::Open {
                 // **Inside the blob, nothing is buffered at all.**
                 //
                 // The blob is client configuration rather than game output, so
@@ -66,8 +82,20 @@ impl Parser {
                     self.settings_tail.remove(0);
                 }
                 if self.settings_tail == close {
-                    self.in_settings = false;
+                    self.settings = SettingsRegion::ClosedThisLine;
                     self.settings_tail.clear();
+                } else if self.settings_tail.ends_with(PROMPT_OPEN) {
+                    // **A prompt breaks the region here too.** `parse_line`
+                    // already ends a blob whose close never came at the first
+                    // `<prompt`, but this arm discards bytes before
+                    // `parse_line` sees them, so on the production path the
+                    // barrier never fired and an unclosed blob swallowed the
+                    // rest of the session (VERIFIED: a room, a prompt and
+                    // prose after it all vanished). The prompt's own bytes are
+                    // put back so it parses as the resync point it is.
+                    self.settings = SettingsRegion::Outside;
+                    self.settings_tail.clear();
+                    self.pending.extend_from_slice(PROMPT_OPEN);
                 }
             } else if self.pending.len() < MAX_LINE_BYTES {
                 self.pending.push(byte);
@@ -97,7 +125,7 @@ impl Parser {
                 // this branch the blob became a MalformedTag on every login,
                 // which is the cry-wolf failure the region exists to prevent.
                 //
-                // NOTE: with the `in_settings` arm above, a blob never reaches
+                // NOTE: with the settings arm above, a blob never reaches
                 // this branch after its FIRST cap -- that arm takes over the
                 // moment `<settings` opens the region. This remains for the
                 // first chunk, which is the one that opens it.

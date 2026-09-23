@@ -191,6 +191,10 @@ pub enum Frame {
         value: String,
         /// The enclosing `<dialogData id=>`, if any.
         dialog: Option<String>,
+        /// Every attribute, in wire order. `<label>` carries its layout --
+        /// `top`/`left`/`width`/`height`/`align` in `character_info.xml` --
+        /// and only `id` and `value` were kept (Rule 2.2a).
+        attrs: Attrs,
     },
     /// `<compass><dir value=>` -- the obvious exits, as direction tokens.
     Compass { directions: Vec<String> },
@@ -294,6 +298,11 @@ pub enum Frame {
         name: String,
         /// The enclosing `<dialogData id=>`, if any.
         dialog: Option<String>,
+        /// Every attribute, in wire order. Not only layout: the toolbar
+        /// `<image>`s in `inventory_container.xml` carry `cmd=`, `echo=` and
+        /// `tooltip=` -- a button's whole behaviour -- and all of it was
+        /// dropped while only `id` and `name` were kept (Rule 2.2a).
+        attrs: Attrs,
     },
     /// `<indicator id= visible=>`.
     StatusIndicator { id: String, active: bool },

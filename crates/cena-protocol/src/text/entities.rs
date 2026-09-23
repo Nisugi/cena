@@ -84,9 +84,55 @@ pub fn strip_control_chars(text: &str) -> String {
         .collect()
 }
 
+/// Decode an ATTRIBUTE value: entities once, then control characters out --
+/// except `\n` and `\t`.
+///
+/// **Attribute values were decoded and never stripped.** Every text path
+/// pairs `decode_entities` with [`strip_control_chars`] (`emit.rs`,
+/// `inner.rs`, the prompt in `dispatch.rs`, found by review PR-9), and the
+/// two attribute readers in `text.rs` did not. So
+/// `<pushStream id='a&#27;]52;c;Zm9v&#7;'/>` put a real ESC and BEL into
+/// `Text.stream`, and `<component id='room&#27;[2J objs'>` into
+/// `Component.id` -- strings a frontend prints as a window title or log
+/// line. Entities are decoded HERE, so the control characters do not exist
+/// on the wire for anything upstream to have caught; the game socket is
+/// plain TCP (`plan/10`), so they are modifiable in flight.
+///
+/// **Why not [`strip_control_chars`] itself:** it drops newlines, on the
+/// grounds that text input is line-framed and none can arrive. An attribute
+/// value is the one place a newline legitimately arrives, as an entity:
+/// `<objective description=>` carries `&#10;` (`payload.rs`, `Objective`).
+/// Tab survives for the same reason it survives there. Everything else in
+/// C0/C1 plus DEL goes -- a principled rule, not a list of known-bad bytes.
+#[must_use]
+pub fn decode_attribute_value(raw: &str) -> String {
+    let kept = |c: char| !(c.is_control() || c == '\u{7f}') || c == '\n' || c == '\t';
+    let decoded = decode_entities(raw);
+    if decoded.chars().all(kept) {
+        return decoded;
+    }
+    decoded.chars().filter(|c| kept(*c)).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn attribute_values_lose_escapes_but_keep_newlines_and_tabs() {
+        // OSC-52 (clipboard write) and a clear-screen, both built from
+        // entities so no raw control byte is on the wire.
+        assert_eq!(
+            decode_attribute_value("a&#27;]52;c;Zm9v&#7;"),
+            "a]52;c;Zm9v"
+        );
+        assert_eq!(decode_attribute_value("room&#27;[2J objs"), "room[2J objs");
+        assert_eq!(decode_attribute_value("x&#x9b;y&#127;z"), "xyz");
+        // The legitimate cases: `<objective description=>` uses `&#10;`.
+        assert_eq!(decode_attribute_value("one&#10;two"), "one\ntwo");
+        assert_eq!(decode_attribute_value("a&#9;b"), "a\tb");
+        assert_eq!(decode_attribute_value("plain"), "plain");
+    }
 
     #[test]
     fn entities_decode_exactly_once() {

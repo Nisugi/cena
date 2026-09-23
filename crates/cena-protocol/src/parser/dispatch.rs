@@ -89,7 +89,7 @@
 
 use super::Parser;
 use super::compass::directions;
-use super::inner::inner_text;
+use super::inner::{children, inner_text, open_tag};
 use super::markup::is_markup;
 use super::thin::thin_frame;
 use crate::frame::{Frame, ProgressBar};
@@ -187,7 +187,13 @@ impl Parser {
             // Structural, so nothing is dropped (Rule 2.2's floor) --
             // `thin.rs`'s fallthrough would make it a `WindowHints`, which is
             // the same wrong answer in a different shape.
-            "dynaStream" => self.structural_only("dynaStream", tag, buffer, frames),
+            //
+            // **`stream` too.** PR-4 added this arm for `dynaStream` alone,
+            // so a self-closing `<stream id='Spells'/>` still fell through
+            // to `thin.rs` and became a `StreamWindow` -- the declaration
+            // bug the paired arm above was written to remove, surviving in
+            // the one form that arm's guard excludes (review 2026-09-23).
+            "stream" | "dynaStream" => self.structural_only(name, tag, buffer, frames),
             "popStream" => {
                 self.flush(buffer, frames);
                 self.pop_stream(tag, frames);
@@ -520,10 +526,13 @@ fn progress_bar(tag: &str, dialog: Option<&str>) -> Frame {
             .as_deref()
             .and_then(parse_duration_secs),
         text: text_attr,
+        attrs: text::attributes(tag),
     })
 }
 
-/// Runs helper kept next to its only caller.
+/// Runs helper. Its only caller is `tests/golden_room.rs` -- no library code
+/// calls it -- so it is public because an integration test cannot see
+/// anything less, and it lives here only because it always has.
 impl Runs {
     /// True when every run is whitespace.
     #[must_use]
@@ -533,12 +542,6 @@ impl Runs {
 }
 
 impl Parser {
-    /// Emit a tag as [`Frame::Structural`] and nothing else.
-    ///
-    /// For a tag that is real, carries no payload this parser models, and must
-    /// not be guessed at -- a self-closing `<dynaStream/>` is the case that
-    /// needed it. Split out to keep `dispatch` under clippy's 100-line limit,
-    /// which the `dynaStream` arms took it past.
     /// Emit [`Frame::ClearStream`] for `clearStream` / `clearDynaStream`.
     ///
     /// Split out with `structural_only` for the same reason: `dispatch` is a
@@ -551,6 +554,12 @@ impl Parser {
         });
     }
 
+    /// Emit a tag as [`Frame::Structural`] and nothing else.
+    ///
+    /// For a tag that is real, carries no payload this parser models, and must
+    /// not be guessed at -- a self-closing `<dynaStream/>` is the case that
+    /// needed it. Split out to keep `dispatch` under clippy's 100-line limit,
+    /// which the `dynaStream` arms took it past.
     fn structural_only(
         &mut self,
         name: &str,
@@ -615,18 +624,16 @@ fn body_tag_frame(name: &str, raw: &str) -> Frame {
 /// a new attribute to hide tomorrow; `tests/menu_responses.rs` fails if the
 /// wire grows one, which is the honest enforcement of Rule 2.2a here.
 fn menu(tag: &str) -> crate::frame::Menu {
-    let items = inner_text(tag)
-        .split('<')
-        .filter(|part| part.starts_with("mi "))
-        .map(|part| {
-            let raw = format!("<{}>", part.trim_end_matches(['/', '>']).trim_end());
-            crate::frame::MenuItem {
-                coord: text::attribute(&raw, "coord"),
-                noun: text::attribute(&raw, "noun"),
-                menu_cat: text::attribute(&raw, "menu_cat"),
-            }
+    let items = children(tag, "mi")
+        .iter()
+        .map(|raw| crate::frame::MenuItem {
+            coord: text::attribute(raw, "coord"),
+            noun: text::attribute(raw, "noun"),
+            menu_cat: text::attribute(raw, "menu_cat"),
         })
         .collect();
+    // The envelope's own attributes come from its open tag, not its body.
+    let tag = open_tag(tag);
     crate::frame::Menu {
         id: text::attribute(tag, "id").unwrap_or_default(),
         path: text::attribute(tag, "path"),
@@ -659,19 +666,13 @@ impl Parser {
 
 /// Assemble an `<objectives>` and the `<objective>` rows in its body.
 fn objectives(tag: &str) -> Frame {
-    let entries = inner_text(tag)
-        .split('<')
-        .filter(|part| part.starts_with("objective "))
-        .map(|part| {
-            objective(&format!(
-                "<{}>",
-                part.trim_end_matches(['/', '>']).trim_end()
-            ))
-        })
+    let entries = children(tag, "objective")
+        .iter()
+        .map(|row| objective(row))
         .collect();
     Frame::ObjectivesUpdate {
         action: crate::frame::ObjectivesAction::parse(
-            &text::attribute(tag, "action").unwrap_or_default(),
+            &text::attribute(open_tag(tag), "action").unwrap_or_default(),
         ),
         entries,
     }
@@ -697,17 +698,13 @@ pub(super) fn objective(tag: &str) -> crate::frame::Objective {
 /// See [`crate::frame::CmdListUpdate`] for what the push is and why the
 /// client's `cmdlist1.xml` is a cache of it rather than shipped data.
 fn cmdlist(tag: &str) -> Frame {
-    let entries = inner_text(tag)
-        .split('<')
-        .filter(|part| part.starts_with("cli "))
-        .map(|part| {
-            let row = format!("<{}>", part.trim_end_matches(['/', '>']).trim_end());
-            crate::frame::CmdListEntry {
-                coord: text::attribute(&row, "coord").unwrap_or_default(),
-                label: text::attribute(&row, "menu").unwrap_or_default(),
-                command: text::attribute(&row, "command").unwrap_or_default(),
-                category: text::attribute(&row, "menu_cat").unwrap_or_default(),
-            }
+    let entries = children(tag, "cli")
+        .iter()
+        .map(|row| crate::frame::CmdListEntry {
+            coord: text::attribute(row, "coord").unwrap_or_default(),
+            label: text::attribute(row, "menu").unwrap_or_default(),
+            command: text::attribute(row, "command").unwrap_or_default(),
+            category: text::attribute(row, "menu_cat").unwrap_or_default(),
         })
         .collect();
     Frame::CmdListUpdate(crate::frame::CmdListUpdate { entries })

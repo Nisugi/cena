@@ -225,6 +225,14 @@ pub struct ProgressBar {
     /// uniform: all 55,444 values in a 20-file census match `HH:MM:SS`.
     /// `None` when the attribute is absent or does not have that shape.
     pub time_remaining_secs: Option<u32>,
+    /// Every attribute, in wire order -- the modelled ones included.
+    ///
+    /// The fields above are the ones a behavior reads; the wire sends more,
+    /// and they were dropped (Rule 2.2a). `vitals_secondary.xml` carries
+    /// `top`/`left`/`width`/`height`/`align` on every bar and `tooltip` on
+    /// the stance bar -- the whole layout a frontend needs to draw the
+    /// dialog. The same bag `DialogOpen` and `StreamWindow` carry.
+    pub attrs: super::Attrs,
 }
 
 /// A `current/max` pair parsed from a progress bar's `text=`.
