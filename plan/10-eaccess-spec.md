@@ -830,7 +830,8 @@ health check on an auth endpoint must verify a protocol response, not a TCP acce
 > unreachable while eaccess is healthy.
 >
 > **Originally built as:** `cena-platform/src/gemstone/weblogin/`, wired into
-> `eaccess::authenticate_with_fallback`. The author asked for it ahead of Phase 2b with the
+> `eaccess::authenticate_with_fallback` -- since removed (2026-09-23, it had no production
+> caller); the fallback choice is `eaccess::fallback::decide`. The author asked for it ahead of Phase 2b with the
 > reason that settles its priority: *"they've been having issues with the normal login, and the
 > web one seems to stay up during these times allowing access to the game."* It is the outage
 > path, not redundancy.

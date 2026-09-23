@@ -307,8 +307,9 @@ mutations.
 > for `"<dir "` *with a trailing space*. The assertion was right and the input
 > never arrived — the same failure as the four in M3, now five.
 
-**Deferred, each needing an author decision:** SE-4 (authority across generations),
-SE-6 (`Lagged` recovery unreachable). **MO-3 is FIXED** (M3 step 10): `Effects::active_in`
+**Deferred, each needing an author decision:** SE-4 (authority across generations).
+**SE-6 is RESOLVED** (2026-09-23): `SupervisedSession::observer()` plus
+`SessionObserver::subscribe` recover from `Lagged` (`plan/19` records it). **MO-3 is FIXED** (M3 step 10): `Effects::active_in`
 distinguishes "the game stated this list and your id is not in it" from "nobody has said".
 
 **Milestone 3 — the typed character model — is COMPLETE as of 2026-09-21.**
