@@ -605,6 +605,7 @@ impl<S: ByteSource> SessionActor<S> {
     pub(super) fn ingest(&mut self, chunk: &[u8]) {
         self.recorder.inbound(chunk);
         self.log_wire(true, chunk);
+        self.readiness.bytes_arrived();
         for frame in self.parser.push_bytes(chunk) {
             // Offered to the waiter AND published. `plan/12` §4.4:
             // "observation never competes with attribution."
@@ -683,6 +684,8 @@ impl<S: ByteSource> SessionActor<S> {
             if is_push {
                 self.persist_learned_commands();
             }
+            // Read before the frame is moved into its event; acted on below.
+            let completes_burst = self.completes_burst(&frame);
             let _ = self.events.send(Event::Frame(Box::new(frame)));
             if terminator {
                 // before the `send_now` early-out below: a chunk closed
@@ -700,6 +703,39 @@ impl<S: ByteSource> SessionActor<S> {
                 if self.owed.prompt(self.queue.window_is_open()) {
                     self.queue.close_window();
                 }
+            }
+            // After the frame is published, so an observer sees the prompt
+            // that completed the burst and then `Ready`.
+            if let Some(verdict) = completes_burst {
+                self.become_ready(verdict);
+            }
+        }
+    }
+
+    /// Whether `frame` completes this connection's login burst
+    /// (`readiness.rs`). Only ever from `Syncing`: `Ready` is left by the
+    /// connection ending, never by a frame.
+    fn completes_burst(&mut self, frame: &Frame) -> Option<super::readiness::Verdict> {
+        if self.lifecycle == crate::lifecycle::State::Syncing {
+            self.readiness.frame(frame)
+        } else {
+            None
+        }
+    }
+
+    /// `Syncing` -> `Ready`, logging when the fallback is why.
+    fn become_ready(&mut self, verdict: super::readiness::Verdict) {
+        match verdict {
+            super::readiness::Verdict::AfterSetup => {
+                self.transition(crate::lifecycle::State::Ready);
+            }
+            super::readiness::Verdict::SetupNeverEnded => {
+                self.log(&format!(
+                    "ready: no <endSetup/> within {:?} of the first byte; \
+                     ready at this prompt instead (fallback)",
+                    super::readiness::SETUP_DEADLINE
+                ));
+                self.transition(crate::lifecycle::State::Ready);
             }
         }
     }

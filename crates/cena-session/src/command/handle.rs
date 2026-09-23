@@ -357,21 +357,9 @@ impl SessionHandle {
             return Outcome::Disconnected;
         }
         // The player's own commands never reach the game, known or not
-        // (`super::claimant`). Answered as though they were sent and
-        // answered, which is what they are: a frontend awaiting a receipt
-        // gets one either way.
-        //
-        // # `Confirmed` here is a borrowed word, and a frontend must know it
-        //
-        // `Outcome::Confirmed` means "a frame from the wire matched", and no
-        // frame did. `cena-web` renders it as "Bytes sent and server output
-        // observed", which is false for a claimed line, and so tells claimed
-        // lines apart by the command symbol itself (`socket.rs`, `claimed`).
-        // A variant of its own would be the honest type -- `Sent` exists apart
-        // from `Outcome` for exactly this reason -- but `Outcome` is matched
-        // exhaustively in `cena-behavior` (`look.rs`, `sync.rs`,
-        // `travel/drive.rs`), none of which can ever receive it. Left for the
-        // author (review finding 8).
+        // (`super::claimant`), so they are answered `Handled`: no window was
+        // opened and no frame matched. An unknown one is handled too -- by
+        // telling the player so.
         if let Some(claimed) = self.typed(line) {
             if claimed == super::Claimed::Unknown {
                 let symbol = self.command_symbol().unwrap_or(super::COMMAND_SYMBOL);
@@ -384,10 +372,7 @@ impl SessionHandle {
                     ),
                 ));
             }
-            return Outcome::Confirmed(Box::new(crate::Frame::Prompt {
-                text: String::new(),
-                time: String::new(),
-            }));
+            return Outcome::Handled;
         }
         let (reply, answer) = oneshot::channel();
         let envelope = Envelope {

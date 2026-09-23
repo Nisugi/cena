@@ -38,6 +38,11 @@ pub enum Event {
     /// Empty means nothing is stale, and is still published: "checked, nothing
     /// to do" and "never checked" are different facts. See `load_character`
     /// for when this fires and why it reports rather than syncs.
+    ///
+    /// **It arrives before `Ready`.** It fires on `<app>`, inside the login
+    /// burst, while the session is still `Syncing` -- and a behavior's command
+    /// then is refused. Whoever runs the sync waits for
+    /// `StateChanged(Ready)` first.
     SyncNeeded(Vec<cena_model::state::character::snapshot::Group>),
     /// A command's bytes went out. Carries the origin, so a behavior can
     /// "notice the player moved the character and re-orient" (`plan/12` §4.1)

@@ -104,10 +104,12 @@ mod event;
 mod handle;
 mod io;
 mod owed;
+mod readiness;
 
 pub use ending::EndReason;
 pub use event::Event;
 pub use handle::{Session, Snapshot};
+pub use readiness::SETUP_DEADLINE;
 
 /// Inbound command channel bound.
 ///
@@ -272,6 +274,9 @@ pub struct SessionActor<S: ByteSource> {
     /// was sent to modify (review SE-5). It was a bare count until review
     /// finding 1 showed the count assumed an order; see `owed.rs`.
     owed: owed::OwedPrompts,
+    /// Whether this connection's login burst has finished: `Syncing` becomes
+    /// `Ready` on the first prompt after `<endSetup/>` (`readiness.rs`).
+    readiness: readiness::Readiness,
     commands: mpsc::Receiver<crate::command::Inbox>,
     events: EventPublisher,
     observations: ObservationRequests,
@@ -410,6 +415,7 @@ impl<S: ByteSource> SessionActor<S> {
             lifecycle: State::Connecting,
             queue: CommandQueue::new(),
             owed: owed::OwedPrompts::default(),
+            readiness: readiness::Readiness::default(),
             commands,
             events,
             observations,
@@ -434,14 +440,14 @@ impl<S: ByteSource> SessionActor<S> {
     /// every waiter is answered [`Outcome::Dead`](crate::command::Outcome::Dead), and the function returns.
     /// None of them panics, and none of them leaves a socket open.
     pub async fn run(mut self) -> SessionEnd<S> {
-        // The three states Step 2 transits before behaviors may run. A replay
-        // has nothing to do in Connecting or Authenticating and no Infomon
-        // sync to run in Syncing (`plan/12` §7.1 puts that in the Out column),
-        // so they are transited rather than worked -- but they are transited,
-        // which is what makes §5.3's readiness gate have a false branch.
+        // The connector has already authenticated by the time an actor holds
+        // a source, so Authenticating is transited. SYNCING IS INHABITED: the
+        // login burst is read in it, and `ingest` moves to `Ready` at the
+        // first prompt after `<endSetup/>` (`readiness.rs`). This used to step
+        // straight to `Ready` here, before a byte was read, so `Ready` meant
+        // "the loop started" rather than "the burst arrived" (`plan/12` §5.2).
         self.transition(State::Authenticating);
         self.transition(State::Syncing);
-        self.transition(State::Ready);
 
         let mut buf = vec![0u8; READ_BUF];
         // See the command arm below for why this exists.
@@ -582,11 +588,10 @@ impl<S: ByteSource> SessionActor<S> {
     /// Take everything already queued on the command channel, applying the
     /// readiness gate to each.
     ///
-    /// Public so that `plan/12` §5.3's gate can be exercised in the state it
-    /// governs. `run` transitions to `Ready` before its first turn -- there is
-    /// no Infomon sync to wait for in Step 2 (§7.1) -- so a test that only
-    /// used `run` could never observe the gate's false branch, and a gate
-    /// whose false branch is unreachable is not a gate (`plan/05` §0).
+    /// Public so that `plan/12` §5.3's gate can be exercised by hand, on an
+    /// actor that was never run. `run` holds `Syncing` until the first prompt
+    /// after `<endSetup/>`, and `tests/readiness_gate.rs` exercises the gate
+    /// through `run` as well.
     ///
     /// Non-blocking: it drains what is there and returns. It is the same
     /// `admit` the loop calls, not a second path that could drift from it.

@@ -5,14 +5,13 @@
 //! something: a behavior that could issue commands during `Syncing` would be
 //! acting on state the session has not finished learning.
 //!
-//! # Why `Syncing` exists in Step 2 at all
+//! # `Syncing` is inhabited
 //!
-//! `plan/12` §7.1 puts the ~15-command Infomon sync in Milestone 1's **Out**
-//! column, so `Syncing` does no work here -- it is transited, not inhabited.
-//! It is kept because **a gate whose false branch is unreachable is not a
-//! gate**, and this file is what makes the false branch reachable. `Degraded`
-//! was excluded on the opposite reasoning: it would be entered and never left,
-//! because there is no re-sync in Step 2 to leave it by.
+//! It was transited, not inhabited: `run` stepped to `Ready` before its first
+//! read, and the first two tests here drive the gate by hand because that was
+//! the only way to reach its false branch. Since 2026-09-23 `run` holds
+//! `Syncing` until the first prompt after `<endSetup/>` (`actor/readiness.rs`),
+//! and the tests at the bottom of this file drive the rule through `run`.
 
 use cena_platform::AnsweringSource;
 use cena_session::{CommandId, Origin, Outcome, Session, State};
@@ -50,9 +49,8 @@ async fn a_behavior_command_before_ready_is_refused_rather_than_queued() {
     });
     tokio::task::yield_now().await;
 
-    // Drive one turn of the actor's command intake by hand. `run` would
-    // transition straight to Ready first, which is the state this test is
-    // about NOT being in.
+    // Drive one turn of the actor's command intake by hand, on an actor that
+    // was never run and so has not even reached `Syncing`.
     actor.drain_commands_once().await;
 
     let outcome = waiter.await.expect("the waiter must not panic");
@@ -191,4 +189,172 @@ async fn a_full_command_channel_refuses_rather_than_blocking() {
         }
         waiter.abort();
     }
+}
+
+// ---------------------------------------------------------------------------
+// When `run` becomes Ready (`actor/readiness.rs`)
+//
+// Driven through `run`, not by hand: `Syncing` is now inhabited, so the gate's
+// false branch is reachable the way a real login reaches it. Every byte comes
+// from a MANUAL command's scripted reply, because manual input is not gated
+// (above) and `AnsweringSource` says nothing unprompted.
+// ---------------------------------------------------------------------------
+
+/// A line and its prompt: the prompt is the terminator, not a match, so a
+/// reply of nothing but a prompt answers `Timeout`.
+const BARE_PROMPT: &[u8] = b"Ok.\n<prompt time=\"1\">&gt;</prompt>\n";
+
+/// Type `line` and wait for its reply to be read.
+async fn type_line(handle: &cena_session::SessionHandle, id: u64, line: &str) {
+    let outcome = handle
+        .send_and_await(
+            CommandId(id),
+            line,
+            Origin::Manual,
+            Duration::from_secs(5),
+            cena_session::queue::any_frame,
+        )
+        .await;
+    assert!(
+        matches!(outcome, Outcome::Confirmed(_)),
+        "{line}: {outcome:?}"
+    );
+}
+
+/// Every lifecycle state published so far.
+fn states(events: &mut tokio::sync::broadcast::Receiver<cena_session::Event>) -> Vec<State> {
+    let mut seen = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        if let cena_session::Event::StateChanged(s) = event {
+            seen.push(s);
+        }
+    }
+    seen
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn ready_is_the_first_prompt_after_end_setup_and_neither_alone() {
+    let (source, transcript) = AnsweringSource::new(BARE_PROMPT);
+    // The marker with no prompt behind it, as the wire sends it: indicators
+    // and vitals follow `<endSetup/>`, and the burst ends at the prompt.
+    transcript.answer(
+        "marker",
+        b"<endSetup/>\n<indicator id=\"IconSTANDING\" visible=\"y\"/>\n",
+    );
+    let session = Session::new(source);
+    let handle = session.handle();
+    let (_, mut events) = session.subscribe();
+    let running = tokio::spawn(session.into_actor().run());
+
+    // A prompt BEFORE the marker does not open the gate.
+    type_line(&handle, 1, "early").await;
+    let seen = states(&mut events);
+    assert!(seen.contains(&State::Syncing), "{seen:?}");
+    assert!(
+        !seen.contains(&State::Ready),
+        "a prompt before <endSetup/> made the session Ready: {seen:?}"
+    );
+
+    // The marker alone does not either. Its reply has no prompt, so the
+    // command times out -- which is the point: nothing terminated the burst.
+    let marker = handle
+        .send_and_await(
+            CommandId(2),
+            "marker",
+            Origin::Manual,
+            Duration::from_secs(1),
+            cena_session::queue::any_frame,
+        )
+        .await;
+    assert!(
+        matches!(marker, Outcome::Confirmed(_) | Outcome::Timeout),
+        "{marker:?}"
+    );
+    let seen = states(&mut events);
+    assert!(
+        !seen.contains(&State::Ready),
+        "<endSetup/> alone made the session Ready, before the indicators and \
+         vitals behind it: {seen:?}"
+    );
+
+    // The first prompt after it does.
+    type_line(&handle, 3, "after").await;
+    assert_eq!(states(&mut events), vec![State::Ready]);
+
+    running.abort();
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_behavior_is_refused_while_syncing_and_runs_once_ready() {
+    let (source, transcript) = AnsweringSource::new(BARE_PROMPT);
+    transcript.answer("marker", b"<endSetup/>\n<prompt time=\"1\">&gt;</prompt>\n");
+    let session = Session::new(source);
+    let handle = session.handle();
+    let running = tokio::spawn(session.into_actor().run());
+
+    let behavior = |id| {
+        let handle = handle.clone();
+        async move {
+            handle
+                .send_and_await(
+                    CommandId(id),
+                    "look",
+                    Origin::Behavior(cena_session::AuthorityToken(1)),
+                    Duration::from_secs(5),
+                    cena_session::queue::any_frame,
+                )
+                .await
+        }
+    };
+
+    // Claimed up front, so a refusal below is the gate's and not authority's.
+    handle
+        .claim(cena_session::AuthorityToken(1))
+        .await
+        .expect("nobody else holds the authority");
+    type_line(&handle, 1, "early").await;
+    assert_eq!(
+        behavior(2).await,
+        Outcome::Refused(cena_session::Refusal::Transient),
+        "run() is past its first read and still Syncing: the gate must hold"
+    );
+    let written = transcript.written_count();
+
+    type_line(&handle, 3, "marker").await;
+    let ran = behavior(4).await;
+    assert!(
+        matches!(ran, Outcome::Confirmed(_)),
+        "a Ready session must run the behavior: {ran:?}"
+    );
+    assert_eq!(transcript.written_count(), written + 2);
+
+    running.abort();
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn without_end_setup_the_first_prompt_after_the_deadline_is_ready() {
+    let (source, _transcript) = AnsweringSource::new(BARE_PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let (_, mut events) = session.subscribe();
+    let running = tokio::spawn(session.into_actor().run());
+
+    type_line(&handle, 1, "first").await;
+    tokio::time::advance(cena_session::SETUP_DEADLINE.saturating_sub(Duration::from_secs(1))).await;
+    type_line(&handle, 2, "just before").await;
+    assert!(
+        !states(&mut events).contains(&State::Ready),
+        "the fallback fired before SETUP_DEADLINE"
+    );
+
+    tokio::time::advance(Duration::from_secs(2)).await;
+    type_line(&handle, 3, "after").await;
+    assert_eq!(
+        states(&mut events),
+        vec![State::Ready],
+        "a server that never sends <endSetup/> must not hold the session \
+         un-Ready for the life of the connection"
+    );
+
+    running.abort();
 }

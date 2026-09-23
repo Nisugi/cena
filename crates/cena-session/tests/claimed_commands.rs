@@ -35,15 +35,21 @@ async fn a_mistyped_command_is_answered_and_the_game_never_hears_it() {
     assert_eq!(handle.command_symbol(), Some(';'));
 
     // The game's, and it goes to the game.
-    handle.send_manual_at(generation, "north", DEADLINE).await;
+    let north = handle.send_manual_at(generation, "north", DEADLINE).await;
     // Hydra's, and known.
-    handle
+    let known = handle
         .send_manual_at(generation, ";go2 bank", DEADLINE)
         .await;
     // Hydra's, and NOT known -- the line the author named.
-    handle
+    let unknown = handle
         .send_manual_at(generation, ";go22 bank", DEADLINE)
         .await;
+
+    // Said by the outcome, not by a frame nobody sent: these were answered
+    // `Confirmed(Prompt)`, and a frontend told them apart by the `;`.
+    assert_ne!(north, cena_session::Outcome::Handled);
+    assert_eq!(known, cena_session::Outcome::Handled);
+    assert_eq!(unknown, cena_session::Outcome::Handled);
 
     assert_eq!(
         transcript.lines(),
@@ -112,8 +118,9 @@ async fn a_session_with_no_desk_sends_everything_as_it_always_did() {
 
     assert_eq!(handle.command_symbol(), None);
     assert_eq!(handle.typed(";go2 bank"), None);
-    handle
+    let sent = handle
         .send_manual_at(generation, ";go2 bank", DEADLINE)
         .await;
+    assert_ne!(sent, cena_session::Outcome::Handled);
     assert_eq!(transcript.lines(), [";go2 bank"]);
 }

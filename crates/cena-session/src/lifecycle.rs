@@ -13,7 +13,7 @@
 //! |---|---|---|
 //! | `Connecting` | yes | criterion 1; a replay enters it too |
 //! | `Authenticating` | yes | ditto; a replay transits it without work |
-//! | `Syncing` | yes, pass-through | §5.3 gates behaviors on `Ready`, and criterion 4 needs that gate to exist |
+//! | `Syncing` | yes, **inhabited** | the login burst is read in it; `Ready` is the first prompt after `<endSetup/>` (`actor/readiness.rs`) |
 //! | `Ready` | yes | behaviors run here |
 //! | `Reconnecting` | **yes, Milestone 2** | see below |
 //! | `Closed` | yes | criterion 6 |
@@ -38,9 +38,10 @@
 //! gate would consult it, and nothing would ever set it -- a config option with
 //! one value, in enum form.
 //!
-//! The distinction that keeps one and not the other is **transited versus
-//! entered-and-never-left**. `Syncing` and `Reconnecting` are both passed
-//! through; `Degraded` would be a trap.
+//! The distinction that keeps one and not the other is **left versus
+//! entered-and-never-left**. `Syncing` is left at the prompt that ends the
+//! login burst (or [`SETUP_DEADLINE`](crate::SETUP_DEADLINE) after its first
+//! byte), and `Reconnecting` by a new connection; `Degraded` would be a trap.
 
 /// Which **session** a fact belongs to.
 ///
@@ -219,8 +220,9 @@ pub enum State {
     Connecting,
     /// The `EAccess` handshake. A replay transits this without work.
     Authenticating,
-    /// The login-state queries. A pass-through in Step 2: §7.1 puts the
-    /// ~15-command Infomon sync in M1's Out column.
+    /// The login burst is arriving. Left for `Ready` at the first prompt
+    /// after `<endSetup/>` (`actor/readiness.rs`, 2026-09-23); until then it
+    /// was a pass-through that `run` stepped over before its first read.
     Syncing,
     /// State is trustworthy; behaviors may run.
     Ready,
@@ -267,8 +269,8 @@ impl State {
     /// Whether a behavior may start.
     ///
     /// `plan/12` §5.3: "**Behaviors may not start until `Ready`.**" This is the
-    /// gate, and it is the reason `Syncing` exists at all in Step 2 -- a gate
-    /// whose false branch is unreachable is not a gate.
+    /// gate. Its false branch is reached by every login: `Syncing` lasts until
+    /// the login burst has arrived.
     #[must_use]
     pub fn behaviors_may_run(self) -> bool {
         matches!(self, Self::Ready)

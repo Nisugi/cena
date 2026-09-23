@@ -190,6 +190,21 @@ pub enum Outcome {
     Disconnected,
     /// Not run, with a reason.
     Refused(Refusal),
+    /// Hydra ran the line itself; nothing went to the game.
+    ///
+    /// A player's own command (`;go2 bank`, `super::claimant`) is taken by
+    /// the desk before the queue, so there is no window and no frame. It was
+    /// answered `Confirmed` with a fabricated `Frame::Prompt`, which put a
+    /// frame that never crossed the wire into a value whose meaning is "the
+    /// frame that matched" -- the lie [`Sent`] exists to avoid -- and
+    /// `cena-web` had to tell claimed lines apart by their first character to
+    /// avoid rendering "server output observed" (review finding 8; author,
+    /// 2026-09-23: "handled by hydra works").
+    ///
+    /// Only [`SessionHandle::send_manual_at`](super::SessionHandle::send_manual_at)
+    /// returns it. A behavior's round trip never can: behaviors send through
+    /// `send_and_await`, which does not consult the desk.
+    Handled,
 }
 
 /// What a [`SessionHandle::send_now`](super::SessionHandle::send_now) did.

@@ -81,6 +81,7 @@ impl<S: ByteSource> Session<S> {
                 lifecycle: State::Connecting,
                 queue: CommandQueue::new(),
                 owed: owed::OwedPrompts::default(),
+                readiness: super::readiness::Readiness::default(),
                 commands: rx,
                 events: events.clone(),
                 observations: ObservationRequests::new(),

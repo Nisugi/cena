@@ -46,7 +46,7 @@ pub mod store;
 pub mod supervisor;
 pub mod travel_store;
 
-pub use actor::{EndReason, Event, Session, SessionActor, Snapshot};
+pub use actor::{EndReason, Event, SETUP_DEADLINE, Session, SessionActor, Snapshot};
 // `CritTables` is this crate's own vocabulary, not a relay: `with_crit_tables`
 // takes one, and the binary that calls it has no edge to `cena-model`.
 pub use cena_model::crit::CritTables;

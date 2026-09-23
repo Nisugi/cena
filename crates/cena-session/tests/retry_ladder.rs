@@ -412,7 +412,8 @@ impl Connector for ClimbThenServe {
 /// Climb the ladder three rungs, hold one working connection open for
 /// `lived`, drop it, and report the attempt number of the next retry.
 async fn next_attempt_after_a_connection_that_lived(lived: Duration) -> u32 {
-    let (source, transcript) = AnsweringSource::new(b"You see.\n<prompt time='1'>&gt;</prompt>\n");
+    let (source, transcript) =
+        AnsweringSource::logged_in(b"You see.\n<prompt time='1'>&gt;</prompt>\n");
     let (session, handle) = SupervisedSession::new(ClimbThenServe {
         failures: 3,
         calls: 0,
