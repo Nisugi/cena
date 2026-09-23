@@ -50,38 +50,15 @@ use super::wire::{Credentials, EaccessError, LaunchPayload};
 /// Which provider produced a launch.
 ///
 /// Reported rather than hidden, because the two are not equivalent: a web-login
-/// launch synthesises a field the eaccess `L` response returns, and a reader
-/// diagnosing an odd session needs to know which path produced it.
+/// launch came through an HTML scrape and a redirect chain rather than the
+/// `C`/`L` exchange, and a reader diagnosing an odd session needs to know
+/// which path produced it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Provider {
     /// The `K A M F G P C L` exchange over TLS.
     Eaccess,
     /// The HTTPS web flow, after eaccess could not be reached.
     WebLogin,
-}
-
-/// Authenticate, falling back to web login if eaccess cannot be **reached**.
-///
-/// # The order is not arbitrary
-///
-/// eaccess is tried first because it is the real protocol: it enumerates
-/// instances, it supports the character generator, and it returns every launch
-/// field rather than having some synthesised. Web login is narrower, so it is
-/// the fallback rather than the default even though it is more reliable on a
-/// bad day.
-///
-/// # Errors
-///
-/// The **eaccess** error, always -- even when the fallback also failed.
-/// `L` named the primary path, and its failure is the answer to "why could I
-/// not log in"; the fallback's failure is a footnote that would otherwise
-/// replace the real cause. The fallback's failure is passed to `progress`
-/// instead, so it is visible without being mistaken for the diagnosis.
-pub async fn authenticate_with_fallback(
-    creds: Credentials<'_>,
-    progress: impl FnMut(&str),
-) -> Result<(LaunchPayload, Provider), EaccessError> {
-    authenticate_via(creds, Prefer::Eaccess, progress).await
 }
 
 /// Which provider to try first, or to use alone.
@@ -104,35 +81,76 @@ pub enum Prefer {
     WebOnly,
 }
 
-/// Authenticate, choosing the provider.
+/// Authenticate, choosing the provider -- and falling back to web login if
+/// eaccess cannot be **reached**.
 ///
-/// [`authenticate_with_fallback`] is this with [`Prefer::Eaccess`], which is
-/// what production wants. [`Prefer::WebOnly`] exists so the web path can be
-/// exercised on a day when eaccess is healthy -- see [`Prefer`].
+/// # The order is not arbitrary
+///
+/// eaccess is tried first because it is the real protocol: it enumerates
+/// instances, it supports the character generator, and it returns what the
+/// launch needs without a scrape in between. Web login is narrower, so it is
+/// the fallback rather than the default even though it is more reliable on a
+/// bad day. [`Prefer::WebOnly`] exists so the web path can be exercised on a
+/// day when eaccess is healthy -- see [`Prefer`].
+///
+/// # There used to be a second entry point
+///
+/// `authenticate_with_fallback` was this with [`Prefer::Eaccess`] fixed. Its
+/// only production caller moved to this function when `--web-login` arrived,
+/// and it was left exported with none (review finding 12, `plan/05` §-1).
+/// Removed rather than kept as a convenience: a second name for one behaviour
+/// is a second place a reader must check is the same.
 ///
 /// # Errors
 ///
-/// As [`authenticate_with_fallback`]. Under [`Prefer::WebOnly`] the error is
-/// the **web-login** failure, since no eaccess attempt was made to have one.
+/// The **eaccess** error, always -- even when the fallback also failed.
+/// `L` named the primary path, and its failure is the answer to "why could I
+/// not log in"; the fallback's failure is a footnote that would otherwise
+/// replace the real cause. The fallback's failure is passed to `progress`
+/// instead, so it is visible without being mistaken for the diagnosis.
+///
+/// Under [`Prefer::WebOnly`] the error is the **web-login** failure, since no
+/// eaccess attempt was made to have one.
 pub async fn authenticate_via(
     creds: Credentials<'_>,
     prefer: Prefer,
     mut progress: impl FnMut(&str),
 ) -> Result<(LaunchPayload, Provider), EaccessError> {
+    decide(
+        prefer,
+        &mut progress,
+        async |progress| super::authenticate(creds, progress).await,
+        async |progress| try_web(creds, progress).await,
+    )
+    .await
+}
+
+/// The choice between the two providers, with the providers passed in.
+///
+/// # Why the stages are parameters
+///
+/// So that the RULE can be tested -- the thing this module exists for -- with
+/// no network. [`authenticate_via`] passes the real two; `fallback_tests.rs`
+/// passes stubs that fail on command and record whether they were called.
+///
+/// The tests before this could not reach the rule at all. They asserted
+/// `.fatal` on errors they had built themselves and never called anything that
+/// read it, so deleting the `if primary.fatal { return Err(primary) }` below --
+/// the line that stops a bad password being resubmitted to a second system --
+/// left every one of them green (review finding 5).
+async fn decide<P: FnMut(&str)>(
+    prefer: Prefer,
+    progress: &mut P,
+    eaccess: impl AsyncFnOnce(&mut P) -> Result<LaunchPayload, EaccessError>,
+    web: impl AsyncFnOnce(&mut P) -> Result<Launch, WebLoginFailure>,
+) -> Result<(LaunchPayload, Provider), EaccessError> {
     if prefer == Prefer::WebOnly {
         progress("[login] web login FORCED; eaccess will not be tried");
-        let launch = try_web(creds, &mut progress).await.map_err(|failure| {
-            // No primary error to carry, so this is the whole diagnosis.
-            EaccessError {
-                stage: "web_login",
-                detail: failure.to_string(),
-                fatal: failure.is_credential_refusal(),
-            }
-        })?;
-        return Ok((from_web(&launch, creds.game_code), Provider::WebLogin));
+        let launch = web(progress).await.map_err(|f| web_only_error(&f))?;
+        return Ok((from_web(&launch), Provider::WebLogin));
     }
 
-    let primary = match super::authenticate(creds, &mut progress).await {
+    let primary = match eaccess(progress).await {
         Ok(launch) => return Ok((launch, Provider::Eaccess)),
         Err(error) => error,
     };
@@ -149,13 +167,38 @@ pub async fn authenticate_via(
         primary.stage
     ));
 
-    match try_web(creds, &mut progress).await {
-        Ok(launch) => Ok((from_web(&launch, creds.game_code), Provider::WebLogin)),
+    match web(progress).await {
+        Ok(launch) => Ok((from_web(&launch), Provider::WebLogin)),
         Err(secondary) => {
-            // Reported, not returned. See this function's `# Errors`.
+            // Reported, not returned. See `authenticate_via`'s `# Errors`.
             progress(&format!("[fallback] web login also failed: {secondary}"));
             Err(carry_forward(&primary, &secondary))
         }
+    }
+}
+
+/// A forced web login's failure, as the whole diagnosis.
+///
+/// No primary error to carry, so this is all there is -- and its fatality is
+/// decided differently from [`carry_forward`]'s, for one variant.
+///
+/// # `UnsupportedGameCode` is fatal HERE, and only here
+///
+/// In the fallback it is not: web login's table is narrower than eaccess's, so
+/// "web cannot route this code" says nothing about whether eaccess will, once
+/// it answers. Under [`Prefer::WebOnly`] there is no eaccess to answer. The
+/// table is compiled into this binary, so the verdict is identical on every
+/// attempt -- and a supervisor told "transient" re-runs it every 30 seconds
+/// forever, for a mistyped `GS4` (review finding 1, its second path).
+///
+/// `LoginRejected` is fatal for the reason it is everywhere: the credentials
+/// were refused. The rest stay transient for the reasons `carry_forward` gives.
+fn web_only_error(failure: &WebLoginFailure) -> EaccessError {
+    EaccessError {
+        stage: "web_login",
+        detail: failure.to_string(),
+        fatal: failure.is_credential_refusal()
+            || matches!(failure, WebLoginFailure::UnsupportedGameCode),
     }
 }
 
@@ -181,21 +224,18 @@ async fn try_web(
 
 /// A web-login [`Launch`] as a [`LaunchPayload`].
 ///
-/// # Two fields are synthesised, and that is a real difference
+/// # Nothing is synthesised, and that used to be untrue
 ///
-/// The web flow returns a host, a port and a key -- and **not** `GAMECODE`,
-/// which eaccess's `L` response carries. Lich synthesises the same defaults
-/// (`web_login.rb:206-216`) and flags them: they are correct for the
-/// Stormfront/Wrayth case, which is the only one Cena has.
-///
-/// The `game_code` is carried through from the request rather than invented,
-/// because the caller asked for a specific instance and that is a fact, not a
-/// default.
-fn from_web(launch: &Launch, game_code: &str) -> LaunchPayload {
+/// The web flow returns a host, a port and a key, and a [`LaunchPayload`] is
+/// now exactly those three. It used to carry a `gamecode` too, which the web
+/// flow does not return -- so this filled it with the REQUESTED code (`GS3`),
+/// where eaccess's `L` fills it with the server's family code (`GS`). One field,
+/// two vocabularies, and no reader (review finding 11). `wire.rs` records why
+/// it went rather than being made `None` here.
+fn from_web(launch: &Launch) -> LaunchPayload {
     LaunchPayload {
         gamehost: launch.host.clone(),
         gameport: launch.port,
-        gamecode: Some(game_code.to_owned()),
         key: launch.key.clone(),
     }
 }

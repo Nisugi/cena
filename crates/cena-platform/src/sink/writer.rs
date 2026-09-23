@@ -13,169 +13,10 @@
 use super::config::{
     CLIENT_CLOSE, CLIENT_OPEN, bytes_timestamps_enabled, line_time, rotate_after_lines,
 };
+use super::redactions::Redactions;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
-
-/// The exact strings to remove before anything is written.
-///
-/// **A closed set, known in advance.** That is what makes this exact rather
-/// than a guess: the account and character are typed at a prompt, and the key
-/// arrives in the `L` response. Nothing here has to decide whether a word
-/// *looks like* a credential.
-///
-/// The live run of 2026-09-18 printed
-/// `A\t<ACCOUNT>\tKEY\t<KEY-REDACTED>\t<NAME>` -- the key was already
-/// redacted for the terminal; the account name and the author's real name were
-/// not, and would have gone to disk verbatim.
-#[derive(Default, Clone)]
-pub struct Redactions {
-    secrets: Vec<(String, &'static str)>,
-}
-
-/// Hand-written, because the derive **printed every secret**.
-///
-/// `Redactions` exists to keep launch keys out of files, and deriving `Debug`
-/// meant any `{:?}` -- on it, on a `SessionSink`, or on a `SessionEnd` that
-/// contains one -- dumped the whole `Vec<(String, _)>` in the clear. Found by
-/// review. The same mistake `Credentials` and `LaunchPayload` were already
-/// written by hand to avoid.
-///
-/// The COUNT is shown, which is what a reader legitimately wants ("was anything
-/// registered?") and reveals nothing.
-impl std::fmt::Debug for Redactions {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Redactions")
-            .field(
-                "secrets",
-                &format_args!("{} registered", self.secrets.len()),
-            )
-            .finish()
-    }
-}
-
-impl Redactions {
-    /// Nothing redacted yet.
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Redact one exact string wherever it appears.
-    ///
-    /// Ignores empties and very short strings: a one- or two-character secret
-    /// would match everywhere and turn the log into noise, which is a worse
-    /// outcome than not redacting a string that short. Three is the floor.
-    pub fn add(&mut self, secret: &str, replacement: &'static str) {
-        let secret = secret.trim();
-        if secret.len() >= 3 {
-            self.secrets.push((secret.to_owned(), replacement));
-        }
-    }
-
-    /// The account name, its `A`-response echo, and the real name beside it.
-    pub fn account(&mut self, account: &str) {
-        self.add(account, "<ACCOUNT>");
-        // The server echoes the account uppercased in `A\t<ACCOUNT>\tKEY...`,
-        // which a case-sensitive match would miss.
-        self.add(&account.to_uppercase(), "<ACCOUNT>");
-    }
-
-    /// The session key from `L`. One-shot and short-lived, but it is a
-    /// credential for as long as it is valid.
-    pub fn key(&mut self, key: &str) {
-        self.add(key, "<KEY>");
-    }
-
-    /// The account holder's real name, as the `A` response carries it.
-    pub fn real_name(&mut self, name: &str) {
-        self.add(name, "<NAME>");
-        self.add(&name.to_uppercase(), "<NAME>");
-    }
-
-    /// Apply every redaction to a string.
-    #[must_use]
-    pub fn apply(&self, text: &str) -> String {
-        let mut out = text.to_owned();
-        for (secret, replacement) in &self.secrets {
-            if out.contains(secret.as_str()) {
-                out = out.replace(secret.as_str(), replacement);
-            }
-        }
-        out
-    }
-
-    /// Apply every redaction to raw wire bytes, **byte for byte**.
-    ///
-    /// # Why this does not go through `str`
-    ///
-    /// It used to: on a match the whole chunk round-tripped through
-    /// `String::from_utf8_lossy`, which replaces every invalid byte with
-    /// U+FFFD. So redacting a secret silently corrupted **unrelated bytes in
-    /// the same chunk** -- and the `.bytes` file is meant to be the wire, so a
-    /// fixture cut from such a chunk would differ from what the server sent,
-    /// with nothing to indicate it.
-    ///
-    /// The no-match path was always byte-exact, and
-    /// `bytes_without_a_secret_are_returned_unchanged` only covered that path,
-    /// so the corruption had no test. Review finding PL-5.
-    ///
-    /// Scanning bytes also removes the question of whether a secret is valid
-    /// UTF-8: the old comment reasoned that every secret is ASCII "so that case
-    /// does not arise", which was true but load-bearing. Now it is irrelevant.
-    #[must_use]
-    pub fn apply_bytes(&self, bytes: &[u8]) -> Vec<u8> {
-        if self.secrets.is_empty() {
-            return bytes.to_vec();
-        }
-        let mut out = Vec::with_capacity(bytes.len());
-        let mut at = 0;
-        'outer: while at < bytes.len() {
-            for (secret, replacement) in &self.secrets {
-                let needle = secret.as_bytes();
-                if bytes[at..].starts_with(needle) {
-                    out.extend_from_slice(replacement.as_bytes());
-                    at += needle.len();
-                    continue 'outer;
-                }
-            }
-            out.push(bytes[at]);
-            at += 1;
-        }
-        out
-    }
-
-    /// The registered secrets, for the sink's boundary arithmetic.
-    ///
-    /// Crate-visible, not public: the values are credentials, and the only
-    /// legitimate caller is the sink deciding where a chunk may be cut.
-    pub(crate) fn secrets(&self) -> &[(String, &'static str)] {
-        &self.secrets
-    }
-
-    /// The length of the longest registered secret, in bytes.
-    ///
-    /// The sink uses this to size the tail it carries between chunks: a secret
-    /// can straddle a read boundary, and holding back `longest - 1` bytes
-    /// guarantees any secret is whole in some chunk. Zero when nothing is
-    /// registered.
-    #[must_use]
-    pub fn longest_secret(&self) -> usize {
-        self.secrets
-            .iter()
-            .map(|(secret, _)| secret.len())
-            .max()
-            .unwrap_or(0)
-    }
-
-    /// Whether anything is being redacted. For a startup line that says so,
-    /// because a log that *claims* to be scrubbed and is not is worse than one
-    /// that admits it is raw.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.secrets.is_empty()
-    }
-}
 
 /// Two files for one session: the raw wire, and what we did.
 ///
@@ -204,6 +45,10 @@ pub struct SessionSink {
     /// registered. See `redact_across_chunks`; `drain_pending` is what
     /// guarantees these bytes still reach the file.
     pending: Vec<u8>,
+    /// Whether the last inbound byte seen left a line unfinished.
+    line_open: bool,
+    /// Framed commands waiting for that line to end. See [`Self::wire`].
+    awaiting_line_end: Vec<Vec<u8>>,
     /// Whether the bytes file carries per-line times. Read once at creation
     /// rather than per line: an env var that changed mid-session would produce
     /// a file that is half one format.
@@ -330,9 +175,9 @@ impl SessionSink {
              # OTHER PLAYERS' NAMES ARE NOT REDACTED. Cut fixtures through\n\
              # cena_protocol::scrub with the names named, as CLAUDE.md requires.",
             if redactions.is_empty() {
-                "none -- no account or character was registered"
+                "none -- no account was registered".to_owned()
             } else {
-                "account and character"
+                redactions.kinds()
             }
         )?;
 
@@ -344,6 +189,8 @@ impl SessionSink {
             events_path,
             lines_written: 0,
             pending: Vec::new(),
+            line_open: false,
+            awaiting_line_end: Vec::new(),
             stamp_bytes: bytes_timestamps_enabled(),
             stem: dir.join(safe_stem),
             part: 0,
@@ -368,36 +215,42 @@ impl SessionSink {
     ///
     /// Any write failure.
     pub fn wire(&mut self, inbound: bool, bytes: &[u8]) -> io::Result<()> {
-        // `None` means every byte is still held back waiting for more: nothing
-        // to write yet, and writing a stamp for it would invent a line.
-        let Some(redacted) = self.redact_across_chunks(inbound, bytes) else {
-            return Ok(());
-        };
-        if self.stamp_bytes {
-            write!(self.bytes, "{}: ", line_time())?;
-        }
         if inbound {
-            self.bytes.write_all(&redacted)?;
+            // `false` means every byte is still held back waiting for more:
+            // nothing was written, so there is no line to count.
+            if !self.inbound(bytes)? {
+                return Ok(());
+            }
         } else {
-            // Client input is WRAPPED, not prefixed -- the same markers
-            // `logxml.lic` uses ("Messages from the client will be wrapped in
-            // <!-- CLIENT -->...<!-- ENDCLIENT --> tags"). That script produced
-            // the 49.55 GB corpus every fixture in this repo came from, so
-            // matching it means a Cena capture can be read by anything that
-            // already reads those, and vice versa. Inventing a private framing
-            // here would have made our own logs the odd ones out.
-            self.bytes.write_all(CLIENT_OPEN)?;
-            self.bytes.write_all(redacted.trim_ascii_end())?;
-            self.bytes.write_all(CLIENT_CLOSE)?;
-            // **The wrapper gets its own terminator, unconditionally**, because
-            // the command's own newline was just trimmed off. Without it the
-            // next inbound line is glued to `ENDCLIENT -->` and a reader
-            // splitting on lines sees one line where there were two.
+            let record = self.client_record(bytes);
+            // **A command waits for the inbound line in progress to end.**
             //
-            // The old check tested `redacted` -- the UNTRIMMED buffer -- while
-            // writing the trimmed one, so a command ending in a newline took the
-            // "already terminated" branch and got nothing.
-            self.bytes.write_all(b"\n")?;
+            // The server's bytes before the command reached this file split
+            // wherever a TCP read ended -- or wherever the redaction hold cut
+            // them, which with any secret registered is every chunk. Writing
+            // the command at once spliced it into the middle of a line, even
+            // a tag. VERIFIED before this fix:
+            //
+            // ```text
+            // <prompt ti<!-- CLIENT -->look<!-- ENDCLIENT -->
+            // me="1758600000">&gt;</prompt>
+            // ```
+            //
+            // That is not a parseable file, and this is the file fixtures are
+            // cut from. `logxml.lic`, whose framing this copies, is written a
+            // line at a time and so never splits one; interleaving at the next
+            // line end is the same granularity. The command moves by at most
+            // the rest of one line, and `Recorder` keeps the exact order for
+            // replay.
+            //
+            // It also makes the flush below safe for redaction: the held-back
+            // tail ends in a newline, and no secret spans one.
+            if self.line_open {
+                self.awaiting_line_end.push(record);
+            } else {
+                self.drain_pending()?;
+                self.bytes.write_all(&record)?;
+            }
         }
         // **NOTHING is appended to inbound bytes**, and that fidelity is this
         // file's whole purpose. This used to add a newline to any chunk that did
@@ -418,6 +271,75 @@ impl SessionSink {
             self.roll()?;
         }
         Ok(())
+    }
+
+    /// Write inbound bytes, releasing any command that was waiting for the
+    /// line they finish. Returns whether anything reached the file.
+    fn inbound(&mut self, bytes: &[u8]) -> io::Result<bool> {
+        let Some(last) = bytes.last() else {
+            return Ok(false);
+        };
+        let mut wrote = false;
+        let mut rest = bytes;
+        if !self.awaiting_line_end.is_empty()
+            && let Some(at) = rest.iter().position(|&b| b == b'\n')
+        {
+            let (line_end, after) = rest.split_at(at + 1);
+            self.inbound_chunk(line_end)?;
+            // The tail now ends in a newline, so draining it cannot cut a
+            // secret in two -- and the drain releases the waiting commands.
+            self.drain_pending()?;
+            wrote = true;
+            rest = after;
+        }
+        if !rest.is_empty() {
+            wrote |= self.inbound_chunk(rest)?;
+        }
+        self.line_open = *last != b'\n';
+        Ok(wrote)
+    }
+
+    /// One inbound chunk through the redaction hold.
+    fn inbound_chunk(&mut self, bytes: &[u8]) -> io::Result<bool> {
+        // `None` means every byte is still held back waiting for more: nothing
+        // to write yet, and writing a stamp for it would invent a line.
+        let Some(redacted) = self.redact_across_chunks(bytes) else {
+            return Ok(false);
+        };
+        if self.stamp_bytes {
+            write!(self.bytes, "{}: ", line_time())?;
+        }
+        self.bytes.write_all(&redacted)?;
+        Ok(true)
+    }
+
+    /// One outbound command, redacted and framed, ready to write.
+    fn client_record(&self, bytes: &[u8]) -> Vec<u8> {
+        let redacted = self.redactions.apply_bytes(bytes);
+        let mut record = Vec::with_capacity(redacted.len() + 64);
+        if self.stamp_bytes {
+            record.extend_from_slice(format!("{}: ", line_time()).as_bytes());
+        }
+        // Client input is WRAPPED, not prefixed -- the same markers
+        // `logxml.lic` uses ("Messages from the client will be wrapped in
+        // <!-- CLIENT -->...<!-- ENDCLIENT --> tags"). That script produced
+        // the 49.55 GB corpus every fixture in this repo came from, so
+        // matching it means a Cena capture can be read by anything that
+        // already reads those, and vice versa. Inventing a private framing
+        // here would have made our own logs the odd ones out.
+        record.extend_from_slice(CLIENT_OPEN);
+        record.extend_from_slice(redacted.trim_ascii_end());
+        record.extend_from_slice(CLIENT_CLOSE);
+        // **The wrapper gets its own terminator, unconditionally**, because
+        // the command's own newline was just trimmed off. Without it the
+        // next inbound line is glued to `ENDCLIENT -->` and a reader
+        // splitting on lines sees one line where there were two.
+        //
+        // The old check tested `redacted` -- the UNTRIMMED buffer -- while
+        // writing the trimmed one, so a command ending in a newline took the
+        // "already terminated" branch and got nothing.
+        record.push(b'\n');
+        record
     }
 
     /// Redact `bytes`, carrying a tail forward so a secret cannot hide in a
@@ -452,14 +374,12 @@ impl SessionSink {
     /// - a credential in a log is a worse outcome than a shifted split in a
     ///   fixture.
     ///
-    /// **Outbound writes are not deferred.** They are whole commands, framed by
-    /// the caller rather than by a read boundary, so there is nothing to
-    /// straddle -- and deferring one would move it after inbound bytes that
-    /// really did arrive later, corrupting the order the file records.
-    fn redact_across_chunks(&mut self, inbound: bool, bytes: &[u8]) -> Option<Vec<u8>> {
+    /// Inbound only. Outbound commands are whole, so there is nothing to
+    /// straddle; they are placed at line ends instead (see [`Self::wire`]).
+    fn redact_across_chunks(&mut self, bytes: &[u8]) -> Option<Vec<u8>> {
         let hold = self.redactions.longest_secret().saturating_sub(1);
-        if hold == 0 || !inbound {
-            // Nothing registered, or an outbound command: redact in place.
+        if hold == 0 {
+            // Nothing registered: redact in place.
             return Some(self.redactions.apply_bytes(bytes));
         }
 
@@ -526,13 +446,19 @@ impl SessionSink {
     /// # Errors
     ///
     /// Any write failure.
+    ///
+    /// Commands still waiting for a line end go out after it: a session that
+    /// ends mid-line must not lose the commands it sent.
     fn drain_pending(&mut self) -> io::Result<()> {
-        if self.pending.is_empty() {
-            return Ok(());
+        if !self.pending.is_empty() {
+            let tail: Vec<u8> = std::mem::take(&mut self.pending);
+            let redacted = self.redactions.apply_bytes(&tail);
+            self.bytes.write_all(&redacted)?;
         }
-        let tail: Vec<u8> = std::mem::take(&mut self.pending);
-        let redacted = self.redactions.apply_bytes(&tail);
-        self.bytes.write_all(&redacted)
+        for record in std::mem::take(&mut self.awaiting_line_end) {
+            self.bytes.write_all(&record)?;
+        }
+        Ok(())
     }
 
     /// Close the current `.bytes` part and open the next.
@@ -643,7 +569,8 @@ impl SessionSink {
     ///
     /// That is why this is narrow rather than a general `redactions_mut`: the
     /// launch key is the only secret that is genuinely per-connection. The
-    /// account and character are typed once and registered at creation.
+    /// account is typed once and registered at creation (the character is
+    /// not registered at all: it is display text on every line).
     ///
     /// Keys accumulate. An earlier generation's key stays redacted, because
     /// the log still contains the bytes it appeared in.

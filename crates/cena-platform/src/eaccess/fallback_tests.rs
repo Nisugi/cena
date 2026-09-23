@@ -1,19 +1,27 @@
 //! Tests for the fallback decision, without authenticating anything.
 //!
-//! [`authenticate_with_fallback`](super::authenticate_with_fallback) itself is
-//! **never called here** -- it reaches a live service, which `CLAUDE.md`
-//! forbids from this workspace. What is tested is the two pure decisions it
-//! makes, which is where the cost of being wrong lives:
+//! [`authenticate_via`](super::authenticate_via) itself is **never called
+//! here** -- it reaches a live service, which `CLAUDE.md` forbids from this
+//! workspace. What is called is [`decide`], the whole of its logic with the two
+//! providers passed in as stubs. That is where the cost of being wrong lives:
 //!
 //! - **whether to fall back at all**, read off `EaccessError::fatal`
 //! - **what to report when both fail**, which must not replace the real cause
 //!
-//! The dispatch between them is three lines of `match`, checked by eye.
+//! # The first half used to test nothing
+//!
+//! The three tests that opened this file asserted `.fatal` on errors they had
+//! built themselves -- `err(..)` is transient, `err(..).fatal()` is fatal --
+//! and never called anything that READ the flag. Deleting the rule they were
+//! named after, `if primary.fatal { return Err(primary) }`, left all three
+//! green (review finding 5). A test of a decision must make the decision.
 
-use crate::eaccess::wire::{EaccessError, err};
-use crate::gemstone::weblogin::WebLoginFailure;
+use std::cell::Cell;
 
-use super::carry_forward;
+use crate::eaccess::wire::{EaccessError, LaunchPayload, err};
+use crate::gemstone::weblogin::{Launch, WebLoginFailure};
+
+use super::{Prefer, Provider, carry_forward, decide};
 
 /// A transport failure: eaccess could not be reached.
 fn unreachable() -> EaccessError {
@@ -25,38 +33,134 @@ fn refused() -> EaccessError {
     err("a_response", "PASSWORD").fatal()
 }
 
-#[test]
-fn an_unreachable_eaccess_is_not_fatal_so_the_fallback_runs() {
-    // **The case the module exists for**, and the 2026-09-08 shape: the SYN is
-    // dropped, eaccess never answers, and the website is up the whole time.
-    assert!(
-        !unreachable().fatal,
-        "a transport failure was marked fatal, which skips the fallback on \
-         exactly the day it is needed"
-    );
+/// What a successful web login hands back. No key worth keeping.
+fn web_launch() -> Launch {
+    Launch {
+        host: "web.example".to_owned(),
+        port: 1,
+        key: "k".to_owned(),
+    }
 }
 
-#[test]
-fn a_credential_refusal_is_fatal_so_the_fallback_is_skipped() {
+/// Run [`decide`] with stub providers, and report whether web login was TRIED.
+///
+/// `web_calls` is the observable that matters: a fallback that ran when it
+/// must not have is a bad password resubmitted to a second system, and it
+/// looks identical to one that did not run if only the returned error is
+/// checked -- `carry_forward` keeps the primary's error either way.
+async fn run(
+    prefer: Prefer,
+    eaccess: Result<LaunchPayload, EaccessError>,
+    web: Result<Launch, WebLoginFailure>,
+) -> (Result<(LaunchPayload, Provider), EaccessError>, u32, u32) {
+    let eaccess_calls = Cell::new(0);
+    let web_calls = Cell::new(0);
+    let result = decide(
+        prefer,
+        &mut |_line: &str| {},
+        async |_progress| {
+            eaccess_calls.set(eaccess_calls.get() + 1);
+            eaccess
+        },
+        async |_progress| {
+            web_calls.set(web_calls.get() + 1);
+            web
+        },
+    )
+    .await;
+    (result, eaccess_calls.get(), web_calls.get())
+}
+
+#[tokio::test]
+async fn an_unreachable_eaccess_falls_back_to_web_login() {
+    // **The case the module exists for**, and the 2026-09-08 shape: the SYN is
+    // dropped, eaccess never answers, and the website is up the whole time.
+    let (result, _, web_calls) = run(Prefer::Eaccess, Err(unreachable()), Ok(web_launch())).await;
+    assert_eq!(
+        web_calls, 1,
+        "a transport failure did not reach the fallback, which skips it on \
+         exactly the day it is needed"
+    );
+    let (launch, provider) = result.expect("the fallback succeeded");
+    assert_eq!(provider, Provider::WebLogin);
+    assert_eq!(launch.gamehost, "web.example");
+}
+
+#[tokio::test]
+async fn a_credential_refusal_never_reaches_web_login() {
     // **The rule.** Lich: "WebLogin would reject the same credentials too, so
     // falling back would just resubmit them to a second system for no benefit."
     // The cost of getting this wrong is a second bad-password strike against
     // the account, on every retry, forever.
-    assert!(
-        refused().fatal,
-        "a credential refusal did not stop the ladder"
+    //
+    // The web stub SUCCEEDS, deliberately: if the rule is gone, this run
+    // returns Ok and the assertion below says why that is wrong.
+    let (result, _, web_calls) = run(Prefer::Eaccess, Err(refused()), Ok(web_launch())).await;
+    assert_eq!(
+        web_calls, 0,
+        "a credential refusal was resubmitted through web login"
     );
+    let error = result.expect_err("the refusal is the answer");
+    assert!(error.fatal);
+    assert_eq!(error.stage, "a_response");
 }
 
-#[test]
-fn an_unclassified_failure_falls_back() {
+#[tokio::test]
+async fn an_unclassified_failure_falls_back() {
     // `fatal` defaults to false, and that default is deliberate: an
-    // unclassified error retried costs a bounded ladder, while an unclassified
-    // error treated as fatal costs the session (`wire.rs:160-163`).
+    // unclassified error treated as fatal costs the session outright
+    // (`wire.rs`, `EaccessError::fatal`).
     //
-    // Asserted here because the fallback READS that default, so a change to it
-    // silently changes this module's behaviour too.
-    assert!(!err("some_new_stage", "something nobody has classified").fatal);
+    // The price of the other direction is NOT "a bounded ladder", which is
+    // what this comment used to say. `cena-session`'s supervisor retries a
+    // transient connect failure FOREVER, on a backoff capped at 30s
+    // (`SupervisedSession::run`'s docs: "There is deliberately no fourth"
+    // stop). `MAX_UNATTENDED_LOSSES` counts dropped CONNECTIONS, not failed
+    // logins. So a misclassified refusal is a full login every 30 seconds
+    // until someone notices -- which is why findings 1 and 5 matter.
+    //
+    // Asserted through `decide` because the fallback READS that default, so
+    // a change to it silently changes this module's behaviour too.
+    let unclassified = err("some_new_stage", "something nobody has classified");
+    let (_, _, web_calls) = run(Prefer::Eaccess, Err(unclassified), Ok(web_launch())).await;
+    assert_eq!(web_calls, 1);
+}
+
+#[tokio::test]
+async fn a_forced_web_login_never_tries_eaccess() {
+    let (result, eaccess_calls, web_calls) =
+        run(Prefer::WebOnly, Err(unreachable()), Ok(web_launch())).await;
+    assert_eq!((eaccess_calls, web_calls), (0, 1));
+    assert_eq!(result.expect("web succeeded").1, Provider::WebLogin);
+}
+
+#[tokio::test]
+async fn a_forced_web_login_with_a_code_it_cannot_route_is_fatal() {
+    // **Finding 1's second path.** With eaccess out of the picture, "web
+    // login has no route for this code" is decided by a table compiled into
+    // this binary. Nothing a retry does changes it, and a transient verdict
+    // here is a supervisor re-running it every 30 seconds for good.
+    let (result, _, _) = run(
+        Prefer::WebOnly,
+        Err(unreachable()),
+        Err(WebLoginFailure::UnsupportedGameCode),
+    )
+    .await;
+    let error = result.expect_err("no route");
+    assert!(error.fatal, "{error}");
+    assert_eq!(error.stage, "web_login");
+}
+
+#[tokio::test]
+async fn a_forced_web_login_that_could_not_connect_stays_retryable() {
+    // The converse: the forced path must not turn every failure fatal.
+    let (result, _, _) = run(
+        Prefer::WebOnly,
+        Err(unreachable()),
+        Err(WebLoginFailure::Transport("dns".to_owned())),
+    )
+    .await;
+    assert!(!result.expect_err("transport").fatal);
 }
 
 // ---------------------------------------------------------------------------

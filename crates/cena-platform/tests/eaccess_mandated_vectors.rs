@@ -33,6 +33,22 @@
 //! Probability is 4/256 per key that the first byte is one of those, so roughly
 //! **one login in 64**. That is not exotic; it is a coin-flip that has not come
 //! up yet.
+//!
+//! ## What the PL-3 tests below can and cannot catch
+//!
+//! They call [`hash_password`] with a whole key, so they pin the ARITHMETIC:
+//! a hash that trimmed its own input would fail them. They **cannot** see the
+//! call site -- the trim PL-3 removed lived in `handshake.rs`, before the hash
+//! was called, and putting it back there left every test in this file green
+//! (review finding 4, measured by doing exactly that).
+//!
+//! The call site is pinned by
+//! `src/eaccess/handshake_tests.rs::the_a_request_carries_the_hash_of_the_whole_key_as_sent`,
+//! which drives the real conversation over a scripted server with a key whose
+//! first byte is `0x20`, and reads back the `A` line that was written. That is
+//! a unit test rather than one here because the conversation is crate-private:
+//! exporting it for a test would widen the public API to reach a function
+//! whose only other caller is `authenticate`.
 
 use cena_platform::eaccess::{hash_password, redact_char_code, resolve_char_code};
 

@@ -213,12 +213,14 @@ dependencies = [
 name = "cena-platform"
 version = "0.1.0"
 dependencies = [
+ "futures-util",
  "jiff",
  "native-tls",
  "reqwest",
  "socket2",
  "tokio",
  "tokio-native-tls",
+ "tokio-tungstenite",
 ]
 
 [[package]]

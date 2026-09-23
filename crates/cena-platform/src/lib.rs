@@ -53,6 +53,7 @@ pub mod eaccess;
 /// Crate-private: its one consumer is [`eaccess`], which re-exports what it
 /// needs. Public here would put a second path to the same item in the API.
 pub(crate) mod gemstone;
+pub use gemstone::endpoint::DEFAULT_GAME_CODE;
 pub mod live;
 pub mod record;
 pub mod replay;
@@ -62,9 +63,9 @@ pub use answering::{AnsweringSource, TranscriptHandle};
 pub use bytes::ByteSource;
 pub use eaccess::{
     Credentials, EaccessError, LaunchPayload, Prefer, Provider, authenticate, authenticate_via,
-    authenticate_with_fallback, connect_game,
+    connect_game,
 };
-pub use live::{KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, LiveSource};
+pub use live::{KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, LiveSource, UNACKED_SEND_TIMEOUT};
 pub use record::{MAX_RECORDED_BYTES, RecordedEvent, Recorder};
 pub use replay::ReplaySource;
 pub use sink::{

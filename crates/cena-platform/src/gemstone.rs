@@ -57,6 +57,11 @@
 //! When DragonRealms is genuinely taken on, the row moves with the rest of the
 //! DR work. Until then it is inert -- Cena never launches a DR game code -- and
 //! recorded here so its placement reads as a decision, not an oversight.
+//!
+//! [`shim`]'s host remap has a DragonRealms row (`hydra.play.net`) on the same
+//! terms: it is one branch of a two-branch rule ported whole from play.net's
+//! browser client, and it is inert while no DR game code is launched.
 
 pub mod endpoint;
+pub mod shim;
 pub mod weblogin;
