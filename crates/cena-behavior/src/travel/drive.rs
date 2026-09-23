@@ -6,22 +6,29 @@
 //! model), says where the character is, sends what the trip says to send, and
 //! does the [`Deed`]s.
 //!
-//! # Stopping (`plan/12` §4.3, and the author's one exception)
+//! # Stopping (`plan/12` §4.3, and the author's exceptions)
 //!
 //! Every await is raced against the stop token, as `look` documents. A
 //! stopped behavior's cleanup "cannot send commands" -- otherwise *stop*
-//! becomes *send more*. The author, 2026-09-21, allows exactly one thing:
+//! becomes *send more*. The author, 2026-09-21, allowed exactly one thing:
 //! **one command per stored item, to take it back, and then it stops.** No
 //! retry and no waiting to see, because the character may not be able to hold
 //! a shield where it now stands. What did not come back is in
 //! [`Travelled::still_stored`], for a frontend to say.
 //!
-//! The stance is **not** put back on a stop: that would be a second kind of
-//! command, and the ruling was for one. [`Travelled::stance_before`] says
-//! what it was. Nor is a key a crossing took out ([`Deed::TakeOut`]): it is
-//! not *stored*, so the ruling does not reach it, and
-//! [`Travelled::still_out`] says what is in the walker's hand instead of in
-//! its container.
+//! **A key a crossing took out ([`Deed::TakeOut`]) is put back too, first.**
+//! The author, 2026-09-23: on a stop, travel should *"finish up and get
+//! safe"* -- the key goes back in its container, then the hands are filled.
+//! Key first, as [`Trip::owed`] orders it, because it goes back with the
+//! hands as they are. One command, the same way: sent once, not retried,
+//! not waited for. Nothing sees it go in, so [`Travelled::still_out`] still
+//! names it, as `still_stored` names what was asked back; the notice says
+//! which of the two happened -- sent back once, or not sent at all. This
+//! was reported and left in hand until then.
+//!
+//! The stance is **not** put back on a stop: both rulings are about things
+//! and where they are kept, and a stance is neither. [`Travelled::stance_before`]
+//! says what it was.
 //!
 //! A dead or disconnected session sends nothing at all.
 //!
@@ -113,18 +120,21 @@ pub struct Travelled {
     /// down as `TravelNotes::last_room`. `None` if it never knew.
     pub last_room: Option<RoomId>,
     /// What a crossing took out of a container ([`Deed::TakeOut`], as the map
-    /// names it: `heavy key`) and did not put back, because the trip ended
-    /// between the two.
+    /// names it: `heavy key`) and was not seen to put back, because the trip
+    /// ended between the two. A stop sends it back once and does not wait to
+    /// see it go (module docs), so it is still named here.
     pub still_out: Option<String>,
 }
 
 /// What a crossing took out, and the container it came from, as ids; and
-/// what the map called it, for the player.
+/// what the map called it, for the player; and whether a stop's one
+/// put-back reached the game.
 #[derive(Debug, Clone)]
 struct Taken {
     thing: String,
     container: String,
     name: String,
+    sent_back: bool,
 }
 
 /// Walk to `goal`.
@@ -212,10 +222,10 @@ pub async fn travel(
     if let Some(why) = &driver.halted {
         handle.say(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
     }
-    let still_out = driver.taken.map(|taken| taken.name);
-    for notice in report(ended, &driver.stored, &changed, still_out.as_deref()) {
+    for notice in report(ended, &driver.stored, &changed, driver.taken.as_ref()) {
         handle.say(notice);
     }
+    let still_out = driver.taken.map(|taken| taken.name);
     Travelled {
         ended,
         still_stored: driver.stored,
@@ -278,7 +288,7 @@ fn report(
     ended: Ended,
     stored: &[Stored],
     changed: &[(&str, Option<&str>)],
-    out: Option<&str>,
+    out: Option<&Taken>,
 ) -> Vec<Notice> {
     let mut said = Vec::new();
     let why = match ended {
@@ -301,10 +311,13 @@ fn report(
         said.push(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
     }
     if let Some(out) = out {
-        said.push(Notice::line(
-            NoticeKind::Warn,
-            format!("Travel: your {out} is out, and I did not put it back."),
-        ));
+        let name = &out.name;
+        let text = if out.sent_back {
+            format!("Travel: your {name} was out; I put it back once, and did not wait to see.")
+        } else {
+            format!("Travel: your {name} is out, and I did not put it back.")
+        };
+        said.push(Notice::line(NoticeKind::Warn, text));
     }
     if !stored.is_empty() {
         let names: Vec<&str> = stored.iter().map(|stored| stored.name.as_str()).collect();
@@ -680,13 +693,19 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         }
     }
 
-    /// The author's one exception to "cleanup cannot send": one command per
-    /// stored item, not waited for. They stay in `stored`, since nothing saw
-    /// them come back.
+    /// The author's exception to "cleanup cannot send": one command to put
+    /// back a key a crossing took out, then one per stored item, none waited
+    /// for (module docs). They stay in `taken` and `stored`, since nothing
+    /// saw them go.
     async fn take_back_once(&mut self) {
+        let origin = Origin::Behavior(self.token);
+        if let Some(taken) = &mut self.taken {
+            let command = format!("put #{} in #{}", taken.thing, taken.container);
+            let sent = self.handle.send_now(&command, origin, Gate::None).await;
+            taken.sent_back = matches!(sent, Sent::Ok { .. });
+        }
         for stored in self.stored.iter().rev() {
             let command = take_back(&self.state, stored);
-            let origin = Origin::Behavior(self.token);
             let _ = self.handle.send_now(&command, origin, Gate::None).await;
         }
     }

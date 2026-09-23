@@ -115,7 +115,7 @@ pub fn set_out_on_a_connection(
     Receiver<Event>,
     GenerationCell,
 ) {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
     let cell = session.generation_cell();
@@ -123,6 +123,7 @@ pub fn set_out_on_a_connection(
     let (mut snapshot, events) = session.subscribe();
     // A second listener, as a frontend would be: what the player is told.
     let (_, told) = session.subscribe();
+    let (_, ready) = session.subscribe();
     snapshot.state.room.id = Some("1001".into());
     snapshot.state.right_hand = Hand::Holding {
         id: Some("11".into()),
@@ -136,6 +137,9 @@ pub fn set_out_on_a_connection(
 
     let stop = stop.clone();
     let walk = tokio::spawn(async move {
+        // Inside the task: this function is not async, and the walk is what
+        // must not start before the session is `Ready`.
+        crate::ready::until_ready(ready).await.ok()?;
         // `None` is a broken fixture, which every test unwraps into a failure.
         let rooms: Vec<Room> = serde_json::from_str(rooms).ok()?;
         let map = Map::from_rooms(rooms).ok()?;

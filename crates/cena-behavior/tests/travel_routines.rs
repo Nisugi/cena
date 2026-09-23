@@ -3,6 +3,8 @@
 //! the loop that runs them: a routine's moves going back through the trip,
 //! its answers reaching it, and the trip looking at where it landed.
 
+mod ready;
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -38,14 +40,18 @@ fn set_out(
     TranscriptHandle,
     CancellationToken,
 ) {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
     let session_cancel = session.cancel_token();
     let (mut snapshot, events) = session.subscribe();
+    let (_, ready) = session.subscribe();
     snapshot.state.room.id = Some("1001".into());
     tokio::spawn(session.into_actor().run());
     let walk = tokio::spawn(async move {
+        // Inside the task: `set_out` is not async, and the walk is what must
+        // not start before the session is `Ready`.
+        ready::until_ready(ready).await.ok()?;
         let rooms: Vec<Room> = serde_json::from_str(rooms).ok()?;
         let map = Map::from_rooms(rooms).ok()?;
         let next = Arc::new(AtomicU64::new(0));

@@ -8,6 +8,8 @@
 //! Virtual time throughout, as in `travel_drive.rs`, whose harness this
 //! shares (`drive_support`).
 
+mod ready;
+
 mod drive_support;
 
 use std::time::Duration;
@@ -73,14 +75,17 @@ async fn a_stop_while_taking_back_keeps_everything_not_yet_back_on_record() {
     session.cancel();
 }
 
-/// The key is out when the stop lands: the walk says so. It is **not** put
-/// back -- the author's one exception is for what was stored, and a put is a
-/// second kind of command, as the stance is (`drive`'s module docs).
+/// The key is out when the stop lands: it is **put back**, once and not
+/// waited for, and the walk still names it, since nothing saw it go in.
 ///
 /// Review finding (2026-09-23): the key taken mid-crossing was in neither
 /// `Travelled` nor the player's notices, so a stop left it in hand silently.
+/// Then the author, the same day: a stop should *"finish up and get safe"*,
+/// so the key goes back rather than only being reported (`drive`'s module
+/// docs). Seen to fail with the put-back removed: the last line written was
+/// the unanswered `unlock`.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
-async fn a_key_out_when_the_walk_stops_is_reported() {
+async fn a_key_out_when_the_walk_stops_is_put_back_and_reported() {
     let stop = CancellationToken::new();
     let (walk, transcript, session, _, mut told) = set_out_as(&stop, GATE, None, |_| {});
     transcript.answer(
@@ -96,16 +101,60 @@ async fn a_key_out_when_the_walk_stops_is_reported() {
     let travelled = walk.await.expect("the walk must not panic").unwrap();
     assert_eq!(travelled.ended, Ended::Stopped(BehaviorError::Cancelled));
     assert_eq!(travelled.still_out.as_deref(), Some("heavy key"));
+    let lines = transcript.lines();
     assert_eq!(
-        transcript.lines().last().map(String::as_str),
-        Some("unlock spiked gate with my heavy key"),
-        "nothing is sent to put it back"
+        lines[lines.len() - 2..],
+        ["unlock spiked gate with my heavy key", "put #77 in #88"],
+        "one put, by the ids the game gave, and nothing after it"
     );
     let said = told_so_far(&mut told);
     assert!(
-        said.iter()
-            .any(|(kind, text)| *kind == NoticeKind::Warn && text.contains("heavy key")),
+        said.iter().any(|(kind, text)| *kind == NoticeKind::Warn
+            && text.contains("heavy key")
+            && text.contains("put it back once")),
         "{said:?}"
+    );
+    session.cancel();
+}
+
+/// Stored hands **and** a key out when the stop lands: the key goes back
+/// first, then the hands are filled -- `Trip::owed`'s order, since the key
+/// goes back with the hands as they are. One command each.
+///
+/// Author, 2026-09-23. Seen to fail with the put-back removed (only
+/// `get #11` followed the `unlock`) and with the two in the other order.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_stop_puts_the_key_back_before_filling_the_hands() {
+    const HANDS_AND_KEY: &str = r#"[
+      {"id":1,"uid":[1001],"exits":[{"to":3,"kind":"scripted","cost":1,
+         "steps":[{"empty_hands":null},{"take_out":"heavy key"},
+           {"put":"unlock spiked gate with my heavy key"},{"put_back":null},
+           {"move":"go spiked gate"},{"fill_hands":null}]}]},
+      {"id":3,"uid":[1003]}
+    ]"#;
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, _, _) = set_out_as(&stop, HANDS_AND_KEY, None, |_| {});
+    transcript.answer("store right", SWORD_GONE);
+    transcript.answer(
+        "get my heavy key",
+        b"You remove <a exist=\"77\" noun=\"key\">a heavy iron key</a> from in your \
+          <a exist=\"88\" noun=\"cloak\">dark cloak</a>.\n<prompt time=\"2\">&gt;</prompt>\n",
+    );
+    transcript.answer("unlock spiked gate with my heavy key", b"You fumble.\n");
+    assert!(until_written(&transcript, "unlock spiked gate with my heavy key").await);
+    stop.cancel();
+
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Stopped(BehaviorError::Cancelled));
+    let lines = transcript.lines();
+    assert_eq!(
+        lines[lines.len() - 3..],
+        [
+            "unlock spiked gate with my heavy key",
+            "put #77 in #88",
+            "get #11"
+        ],
+        "{lines:?}"
     );
     session.cancel();
 }
@@ -337,6 +386,8 @@ async fn a_cast_refused_for_roundtime_is_cast_again() {
 /// ever (cena-model, 2026-09-23).
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_spell_the_login_burst_stated_as_over_is_not_taken_for_live() {
+    // The silent source, not `logged_in`: this is about a session that has
+    // seen no prompt yet, and it runs no behavior for the gate to hold.
     let (source, transcript) = AnsweringSource::new(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();

@@ -12,6 +12,8 @@
 //! behavior out of the session permanently -- the same permanent lockout
 //! `14f14b6` fixed on the dropped-release path, arriving by a different route.
 
+mod ready;
+
 use cena_behavior::{BehaviorError, LOOK_INTERVAL, look};
 use cena_platform::AnsweringSource;
 use cena_session::{AuthorityToken, CommandId, Session};
@@ -36,11 +38,15 @@ fn ids() -> impl FnMut() -> CommandId {
 /// satisfy it by accident.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_cancelled_look_releases_the_authority() {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
+    let (_, ready) = session.subscribe();
     let handle = session.handle();
     let session_cancel = session.cancel_token();
     let actor = tokio::spawn(session.into_actor().run());
+    ready::until_ready(ready)
+        .await
+        .expect("the session becomes Ready");
 
     let stop = CancellationToken::new();
     let behavior_stop = stop.clone();
@@ -92,12 +98,16 @@ async fn a_cancelled_look_releases_the_authority() {
 /// unit test pins the arm; this pins the path end to end.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_look_on_an_older_connection_ends_as_a_disconnection() {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
+    let (_, ready) = session.subscribe();
     let handle = session.handle();
     let cell = session.generation_cell();
     let session_cancel = session.cancel_token();
     let actor = tokio::spawn(session.into_actor().run());
+    ready::until_ready(ready)
+        .await
+        .expect("the session becomes Ready");
     // What a supervisor does between connections. This actor keeps the old
     // generation, so every command the handle stamps now is stale.
     cell.advance();

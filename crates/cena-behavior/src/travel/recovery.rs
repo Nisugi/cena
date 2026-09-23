@@ -19,8 +19,13 @@ pub const MAX_REMEDIES: u32 = 3;
 /// Tries for a skill roll. `move.rb:55`.
 pub const MAX_ROLLS: u32 = 20;
 
+/// The doors tried in turn, `move.rb:276`. **`eighth`, where Lich has
+/// `eight`**: upstream's slip, which sends `go eight door` for the eighth
+/// door. Ported verbatim at first; the author ruled to fix it (2026-09-23).
+/// The other eleven match upstream and are spelled right. (UNVERIFIED how the
+/// game answers `go eight door`: no capture of an eighth door was looked for.)
 const ORDINALS: [&str; 12] = [
-    "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eight", "ninth", "tenth",
+    "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
     "eleventh", "twelfth",
 ];
 
@@ -174,10 +179,10 @@ impl Attempt {
                     // Opened once already and still shut: locked.
                     return wrong;
                 }
-                let open = self
-                    .sent
-                    .replacen("go", "open", 1)
-                    .replacen("climb", "open", 1);
+                // Lich: `dir.sub(/go|climb/, 'open')` (`move.rb:360`). The
+                // verb, not the first `go` anywhere: two `replacen`s made
+                // `climb wagon` into `open waopenn`.
+                let open = with_verb(&self.sent, &["go", "climb"], "open");
                 now(vec![First::Send(open)])
             }
             // Roundtime always ends, so waiting is not a remedy that can
@@ -219,9 +224,13 @@ impl Attempt {
         }
     }
 
+    /// Lich: `dir.gsub!('go', 'climb')` and back (`move.rb:332`, `:334`).
+    /// **The verb only**: `gsub!` replaces every `go` in the line, so
+    /// `go wagon` became `climb waclimbn` -- ported verbatim at first, and
+    /// the author ruled to fix it (2026-09-23).
     fn swap_verb(&mut self, from: &str, to: &str) -> Reaction {
         if self.may(Remedy::Verb, MAX_REMEDIES) {
-            self.sent = self.sent.replace(from, to);
+            self.sent = with_verb(&self.sent, &[from], to);
             Reaction::Again {
                 first: Vec::new(),
                 after_ms: 0,
@@ -261,6 +270,20 @@ impl Attempt {
         };
         self.sent = next;
         true
+    }
+}
+
+/// `command` with its leading word replaced by `to`, if that word is one of
+/// `from`; otherwise unchanged. A whole word, so a noun that merely contains
+/// the verb (`wagon`, `cargo`) is left alone.
+fn with_verb(command: &str, from: &[&str], to: &str) -> String {
+    let (verb, rest) = command
+        .split_once(' ')
+        .map_or((command, None), |(verb, rest)| (verb, Some(rest)));
+    match rest {
+        _ if !from.contains(&verb) => command.to_owned(),
+        Some(rest) => format!("{to} {rest}"),
+        None => to.to_owned(),
     }
 }
 
@@ -308,6 +331,52 @@ mod tests {
         assert_eq!(doors.sent, "go second door");
         doors.react(MoveFeedback::WrongDoor, true, false);
         assert_eq!(doors.sent, "go third door");
+    }
+
+    /// Author, 2026-09-23: Lich's `gsub!` made `go wagon` into
+    /// `climb waclimbn`. Only the verb changes, both ways, and a command with
+    /// no such verb is sent as it was.
+    #[test]
+    fn only_the_verb_is_swapped_never_a_noun_that_contains_it() {
+        let mut wagon = Attempt::new("go wagon");
+        wagon.react(MoveFeedback::NeedsClimb, true, false);
+        assert_eq!(wagon.sent, "climb wagon");
+
+        let mut back = Attempt::new("climb climbing rope");
+        back.react(MoveFeedback::NeedsGo, true, false);
+        assert_eq!(back.sent, "go climbing rope");
+
+        let mut cargo = Attempt::new("go cargo gangplank");
+        cargo.react(MoveFeedback::NeedsClimb, true, false);
+        assert_eq!(cargo.sent, "climb cargo gangplank");
+
+        let mut plain = Attempt::new("north");
+        plain.react(MoveFeedback::NeedsClimb, true, false);
+        assert_eq!(plain.sent, "north");
+    }
+
+    /// The same slip in `open`: `climb wagon` became `open waopenn`.
+    #[test]
+    fn a_closed_way_opens_the_noun_not_a_word_inside_it() {
+        let mut attempt = Attempt::new("climb wagon");
+        assert_eq!(
+            attempt.react(MoveFeedback::Closed, true, false),
+            again(Some("open wagon"), 0)
+        );
+    }
+
+    /// Author, 2026-09-23: Lich's list has `eight`. Every ordinal is tried in
+    /// turn, and the eighth is spelled as the game reads it.
+    #[test]
+    fn every_door_is_tried_in_turn_and_the_eighth_is_spelled_right() {
+        let mut doors = Attempt::new("go door");
+        let mut seen = Vec::new();
+        while doors.react(MoveFeedback::WrongDoor, true, false) == again(None, 0) {
+            seen.push(doors.sent.clone());
+        }
+        assert_eq!(seen.get(6).map(String::as_str), Some("go eighth door"));
+        assert_eq!(seen.last().map(String::as_str), Some("go twelfth door"));
+        assert_eq!(seen.len(), 11, "second to twelfth: {seen:?}");
     }
 
     #[test]

@@ -84,6 +84,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                     thing,
                     container,
                     name,
+                    sent_back: false,
                 });
                 if self.taken.is_none() {
                     trip.could_not();

@@ -5,6 +5,7 @@
 //! what is measured is how many awaits a stop had to cross, not the machine.
 
 mod drive_support;
+mod ready;
 
 use std::time::Duration;
 

@@ -2,6 +2,8 @@
 //! `parse_command`, done by the `Desk` against a session that is already
 //! running -- each command from a fresh subscription, as a frontend has.
 
+mod ready;
+
 use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -55,11 +57,13 @@ impl Playing {
     async fn at_the_gate(test: &str) -> Option<Playing> {
         let dir = std::env::temp_dir().join(format!("cena-desk-test-{test}"));
         let _ = std::fs::remove_dir_all(&dir);
-        let (source, transcript) = AnsweringSource::new(PROMPT);
+        let (source, transcript) = AnsweringSource::logged_in(PROMPT);
         let session = Session::new(source);
         let (handle, observer) = (session.handle(), session.observer());
         let (_, told) = session.subscribe();
+        let (_, ready) = session.subscribe();
         tokio::spawn(session.into_actor().run());
+        ready::until_ready(ready).await.ok()?;
         // The game says who and where, as a login does.
         let mut login = b"<app char=\"Ashryn\" game=\"GSIV\"/>\n".to_vec();
         login.extend(arrival(1001));

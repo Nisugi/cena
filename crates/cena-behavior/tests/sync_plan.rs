@@ -9,6 +9,8 @@
 //! > coverage that resolves to nothing is a false negative waiting to be
 //! > believed.
 
+mod ready;
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
@@ -202,19 +204,24 @@ fn ids() -> impl FnMut() -> CommandId {
 /// A running session that answers every command with a prompt. The
 /// generation cell comes back for the test that moves the connection under a
 /// sync.
-fn a_session() -> (
-    SessionHandle,
-    TranscriptHandle,
-    CancellationToken,
-    GenerationCell,
-) {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+async fn a_session() -> Result<
+    (
+        SessionHandle,
+        TranscriptHandle,
+        CancellationToken,
+        GenerationCell,
+    ),
+    String,
+> {
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
+    let (_, ready) = session.subscribe();
     let handle = session.handle();
     let cell = session.generation_cell();
     let session_cancel = session.cancel_token();
     tokio::spawn(session.into_actor().run());
-    (handle, transcript, session_cancel, cell)
+    ready::until_ready(ready).await?;
+    Ok((handle, transcript, session_cancel, cell))
 }
 
 /// A character whose stats and identity are stale: one command between them.
@@ -234,7 +241,7 @@ fn stats_and_identity_stale() -> Vec<(Group, &'static str)> {
 /// again afterwards -- the property the next behavior depends on.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_sync_sends_what_was_planned_once_and_lets_go() {
-    let (handle, transcript, session, _) = a_session();
+    let (handle, transcript, session, _) = a_session().await.expect("the session becomes Ready");
     let commands = stats_and_identity_stale();
     let stop = CancellationToken::new();
 
@@ -257,7 +264,7 @@ async fn a_sync_sends_what_was_planned_once_and_lets_go() {
 /// else.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_full_sync_sends_every_planned_command_in_order() {
-    let (handle, transcript, session, _) = a_session();
+    let (handle, transcript, session, _) = a_session().await.expect("the session becomes Ready");
     let commands = plan(&snapshot(), SystemTime::now(), MAX_AGE);
     let stop = CancellationToken::new();
 
@@ -273,7 +280,7 @@ async fn a_full_sync_sends_every_planned_command_in_order() {
 /// lets the authority go.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_sync_stopped_before_it_starts_sends_nothing() {
-    let (handle, transcript, session, _) = a_session();
+    let (handle, transcript, session, _) = a_session().await.expect("the session becomes Ready");
     let stop = CancellationToken::new();
     stop.cancel();
     let commands = stats_and_identity_stale();
@@ -297,7 +304,7 @@ async fn a_sync_stopped_before_it_starts_sends_nothing() {
 /// unit test pins the arm; this pins the path end to end.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_command_from_an_older_connection_is_a_disconnection() {
-    let (handle, transcript, session, cell) = a_session();
+    let (handle, transcript, session, cell) = a_session().await.expect("the session becomes Ready");
     // What a supervisor does between connections. This actor keeps the old
     // generation, so everything the handle stamps from now on is stale.
     cell.advance();
