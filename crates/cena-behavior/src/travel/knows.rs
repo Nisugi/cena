@@ -23,7 +23,7 @@
 use std::collections::HashSet;
 
 use cena_session::spells::{self, Spell};
-use cena_session::{GameState, Society, VitalsExt};
+use cena_session::{GameState, Society};
 
 /// The spell circles as `skills` prints them, by circle number. Lich's
 /// `SPELL_CIRCLE_INDEX_TO_NAME` (`lib/gemstone/armaments.rb:54-72`), less the
@@ -115,7 +115,7 @@ pub(super) fn affordable_spells(
     state: &GameState,
     known: &HashSet<String>,
 ) -> Option<HashSet<String>> {
-    let have = |id: &str| state.vitals.vital(id)?.current;
+    let have = |id: &str| state.vital(id)?.current;
     let (mana, stamina, spirit) = (have("mana")?, have("stamina")?, have("spirit")?);
     Some(
         spells::all()

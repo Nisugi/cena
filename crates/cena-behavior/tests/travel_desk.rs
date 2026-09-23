@@ -211,6 +211,98 @@ async fn a_second_go2_replaces_the_first() {
     assert_eq!(sent[sent.len() - 2..], ["get #11", "north"], "{sent:?}");
 }
 
+/// `;go2 stop`, then at once `;go2 bank`: the stopped walk is still sending
+/// its one `get #11` and holds the authority until it has, so the new walk
+/// **waits for it** exactly as a replacing walk does -- and then walks.
+///
+/// Review finding (2026-09-23): the stop emptied the desk's slot, so the next
+/// walk found nothing to wait for, claimed at once, was refused, and ended
+/// before it had said a word. Reproduced before the fix: the second walk
+/// ended `Stopped(AuthorityHeld)` and `north` was never sent.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_go2_typed_straight_after_a_stop_waits_for_the_stopped_walk() {
+    let playing = Playing::at_the_gate("stop-then-go").await.unwrap();
+    // Two things to take back, so the stopped walk's one take-back is two
+    // round trips through the actor: long enough for a walk that does not
+    // wait to claim in between.
+    let armed = b"<right exist=\"11\" noun=\"sword\">broadsword</right>
+                  <left exist=\"12\" noun=\"shield\">kite shield</left>
+                  <prompt time=\"2\">&gt;</prompt>
+";
+    playing.transcript.answer("glance", armed);
+    playing
+        .handle
+        .send_and_await(
+            CommandId(2),
+            "glance",
+            Origin::Manual,
+            Duration::from_secs(5),
+            |_| true,
+        )
+        .await;
+    playing.transcript.answer(
+        "store right",
+        b"<right>Empty</right>
+<prompt time=\"3\">&gt;</prompt>
+",
+    );
+    playing.transcript.answer(
+        "store left",
+        b"<left>Empty</left>
+<prompt time=\"3\">&gt;</prompt>
+",
+    );
+    // Up the rope with empty hands; the climb is never answered.
+    let first = playing.types("go2 loft").await.unwrap();
+    for _ in 0..40 {
+        tokio::time::advance(Duration::from_millis(50)).await;
+        tokio::task::yield_now().await;
+    }
+    assert!(
+        playing
+            .transcript
+            .lines()
+            .iter()
+            .any(|line| line == "climb rope"),
+        "{:?}",
+        playing.transcript.lines()
+    );
+    playing.transcript.answer("north", &arrival(1002));
+    // `;go2 stop` and `;go2 bank` with nothing between them. `types` awaits a
+    // subscription before each command, and that await alone let the stopped
+    // walk finish before the next began, which hid the defect: the mutant
+    // that empties the slot on a stop passed this test when it was typed.
+    // So the subscription is taken first, and the stop and the new walk
+    // follow with no await between them -- the tightest a frontend can type.
+    let for_the_stop = playing.observer.subscribe().await.unwrap();
+    let for_the_bank = playing.observer.subscribe().await.unwrap();
+    let stop = parse_command("go2 stop").unwrap().unwrap();
+    let bank = parse_command("go2 bank").unwrap().unwrap();
+    assert!(
+        playing
+            .desk
+            .run(&playing.handle, for_the_stop, stop)
+            .is_none()
+    );
+    let second = playing
+        .desk
+        .run(&playing.handle, for_the_bank, bank)
+        .unwrap();
+    assert_eq!(
+        first.await.unwrap().ended,
+        Ended::Stopped(BehaviorError::Cancelled)
+    );
+    assert_eq!(second.await.unwrap().ended, Ended::Arrived);
+    let sent = playing.sent();
+    assert_eq!(
+        sent[sent.len() - 3..],
+        ["get #12", "get #11", "north"],
+        "{sent:?}"
+    );
+    // Both walks are over, and the slot is empty again.
+    assert!(playing.types("go2 stop").await.is_none());
+}
+
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_name_is_saved_listed_walked_to_and_forgotten() {
     let mut playing = Playing::at_the_gate("names").await.unwrap();

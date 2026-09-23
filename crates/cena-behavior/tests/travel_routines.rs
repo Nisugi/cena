@@ -231,6 +231,23 @@ async fn a_walker_with_the_fare_just_goes() {
     session.cancel();
 }
 
+/// `wealth quiet` answered with nothing the model can read: how much is
+/// carried is **unknown**, not nothing (`plan/12` §5.2). The walker says so
+/// and goes, as it does with `get_silvers` off -- no bank, no withdrawal.
+///
+/// Review finding (2026-09-23): unknown was `unwrap_or(0)`. Reproduced before
+/// the fix: the walker went `east` to the bank.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn silver_nobody_stated_is_not_taken_for_none() {
+    let (walk, transcript, session) = set_out(FERRY, 2, with(&["get_silvers"]));
+    // `wealth quiet` is left to the source's own reply: a bare prompt.
+    transcript.answer("north", &arrival(1002));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(transcript.lines(), ["wealth quiet", "north"]);
+    session.cancel();
+}
+
 /// North is five seconds; the urchins' way is one, for a walker who has them.
 const URCHINS: &str = r#"[
   {"id":1,"uid":[1001],"exits":[

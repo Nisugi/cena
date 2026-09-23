@@ -81,3 +81,32 @@ async fn a_cancelled_look_releases_the_authority() {
     session_cancel.cancel();
     actor.await.expect("the actor task must not panic");
 }
+
+/// **A `look` whose connection changed under it ends as a disconnection**,
+/// and still lets the authority go.
+///
+/// Not the test that pins the `Interrupted` arm: `cena-session` now answers
+/// a stale command `Disconnected` at admission (`actor/io.rs`), so this
+/// reaches that first. MEASURED: it stayed green with the old
+/// `Interrupted -> Cancelled` arm restored. `BehaviorError::from_outcome`'s
+/// unit test pins the arm; this pins the path end to end.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_look_on_an_older_connection_ends_as_a_disconnection() {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let cell = session.generation_cell();
+    let session_cancel = session.cancel_token();
+    let actor = tokio::spawn(session.into_actor().run());
+    // What a supervisor does between connections. This actor keeps the old
+    // generation, so every command the handle stamps now is stale.
+    cell.advance();
+
+    let result = look(&handle, &CancellationToken::new(), ids(), AuthorityToken(1)).await;
+
+    assert_eq!(result, Err(BehaviorError::Disconnected));
+    assert_eq!(transcript.written_count(), 0, "discarded, never written");
+    assert!(handle.claim(AuthorityToken(2)).await.is_ok());
+    session_cancel.cancel();
+    actor.await.expect("the actor task must not panic");
+}

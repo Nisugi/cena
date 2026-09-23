@@ -43,6 +43,16 @@ pub const MAX_TURNS: u32 = 50;
 /// voyage is the longest thing waited for; this is a stop, not an estimate.
 pub const MAX_WAIT_MS: u64 = 30 * 60 * 1000;
 
+/// How long a spell cast to carry the walker ([`Deed::CastAt`]) is given to
+/// do it, from the moment the cast is done. A move's own
+/// [`STEP_TIMEOUT_MS`]: Phase moves the caster as part of the cast's answer.
+///
+/// It used to be the generic arrival wait, bounded only by [`MAX_WAIT_MS`] --
+/// thirty minutes, sized for a ship's voyage -- so a cast that fizzled, or
+/// was never made for want of mana, stood the walker in place for half an
+/// hour before the exit was given up (review, 2026-09-23).
+pub const CARRIED_WITHIN_MS: u64 = STEP_TIMEOUT_MS;
+
 /// Something the driver must do for the trip, to completion, before it ticks
 /// again. See the module docs.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,6 +177,10 @@ enum Job {
     Pause(u64),
     Line(Vec<String>, u64),
     Arrival(RoomId, u64),
+    /// A spell cast to carry the walker ([`Deed::CastAt`]): the room it was
+    /// cast in, and when the cast was done -- `None` until the tick after the
+    /// deed, because the deed's own mana wait is not the carrying's.
+    Carried(RoomId, Option<u64>),
     Fact(Cond, u64),
     /// A deed was handed to the driver; the step is done when it ticks again.
     Deeded,
@@ -300,6 +314,28 @@ impl Run {
                 .then(|| self.wait(Job::Line(lines, since), since, tick.ms)),
             Job::Arrival(began_in, since) => (tick.here == began_in && tick.here != self.expected)
                 .then(|| self.wait(Job::Arrival(began_in, since), since, tick.ms)),
+            Job::Carried(began_in, since) => {
+                // The driver could not cast it: no mana in ten minutes, or
+                // hindered every time. Nothing is coming to carry the walker.
+                if tick.could_not {
+                    return Some(Out::GiveUp {
+                        ban: true,
+                        wrong: false,
+                    });
+                }
+                if tick.here != began_in || tick.here == self.expected {
+                    return None;
+                }
+                let since = since.unwrap_or(tick.ms);
+                if tick.ms.saturating_sub(since) >= CARRIED_WITHIN_MS {
+                    return Some(Out::GiveUp {
+                        ban: true,
+                        wrong: false,
+                    });
+                }
+                self.job = Some(Job::Carried(began_in, Some(since)));
+                Some(Out::Hold)
+            }
             Job::Fact(cond, since) => {
                 (!cond.holds(walker)).then(|| self.wait(Job::Fact(cond, since), since, tick.ms))
             }
@@ -487,8 +523,9 @@ impl Run {
                 }
                 Action::CastAt(spell, target) => {
                     // It carries the walker, so what follows the deed is the
-                    // wait to land.
-                    self.job = Some(Job::Arrival(tick.here, ms));
+                    // wait to land -- a short one, since the spell has gone
+                    // off by the time the deed is done.
+                    self.job = Some(Job::Carried(tick.here, None));
                     return Begun::Out(Out::Deed(Deed::CastAt(spell, target)));
                 }
                 // The loops and the deeds were taken above, so nothing is left.

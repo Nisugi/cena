@@ -14,15 +14,15 @@
 //! *not known* and as *affordable*: the first keeps a walker from preparing a
 //! spell it may not have, the second costs one failed `prepare` at worst.
 
-use cena_session::{VitalsExt, spells};
+use cena_session::spells;
 
 use super::{Next, Seen};
 
 /// How long one wait for mana is, and how many there are: ten minutes.
-pub(super) const MANA_WAIT_MS: u64 = 5000;
-pub(super) const MANA_WAITS: u32 = 120;
+pub(in crate::travel) const MANA_WAIT_MS: u64 = 5000;
+pub(in crate::travel) const MANA_WAITS: u32 = 120;
 /// How often a hindered cast is made again.
-pub(super) const MAX_HINDERED: u32 = 20;
+pub(in crate::travel) const MAX_HINDERED: u32 = 20;
 
 /// The spell's name in the table, which is how a [`Seen`] lists spells.
 pub(super) fn name_of(number: u16) -> Option<&'static str> {
@@ -106,7 +106,6 @@ impl Casting {
             Pay::Affordable => affords(seen, self.number),
             Pay::ManaOver(least) => seen
                 .state
-                .vitals
                 .mana()
                 .and_then(|mana| mana.current)
                 .is_none_or(|mana| mana > least),

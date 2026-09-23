@@ -19,6 +19,14 @@
 //! go2 as already running, and the player kills the first by hand.) The old
 //! walk's stop is the author's one-`get` stop (`drive`), and the new one
 //! claims the authority once the old has let it go.
+//!
+//! **A stopped walk is still in the slot until it has finished stopping.**
+//! `;go2 stop` used to empty the slot, so a `;go2` typed straight after found
+//! nothing to wait for and claimed at once -- while the stopped walk still
+//! held the authority, sending its `get #id`. The claim was refused, and the
+//! walk ended before it had said anything: the player typed a destination and
+//! nothing happened. A walk now leaves the slot itself, as its last act, and
+//! only if it is still the one there.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -46,14 +54,18 @@ pub struct Desk {
     /// Where `travel.json` is kept.
     dir: PathBuf,
     token: AuthorityToken,
-    /// The walk under way.
+    /// The walk under way, or the last one while it is still stopping.
     walking: Mutex<Option<Walk>>,
     ids: Arc<AtomicU64>,
+    /// Which walk is which, so one ending clears the slot only for itself.
+    walks: AtomicU64,
 }
 
 /// A walk under way: how to stop it, and how to know it is over.
 #[derive(Clone)]
 struct Walk {
+    /// This desk's count of walks.
+    number: u64,
     stop: CancellationToken,
     /// Cancelled by the walk itself, as the last thing it does.
     over: CancellationToken,
@@ -76,20 +88,25 @@ impl Desk {
             walking: Mutex::new(None),
             // Clear of the ids the binary's own commands use.
             ids: Arc::new(AtomicU64::new(100_000)),
+            walks: AtomicU64::new(0),
         })
     }
 
-    /// Stop the walk under way. `false`: there was none.
+    /// Stop the walk under way. `false`: there was none, or it is already
+    /// stopping.
+    ///
+    /// **The walk is left in the slot** (module docs): it is still holding
+    /// the authority until it has sent its one take-back, and the next walk
+    /// must wait for that.
     pub fn stop(&self) -> bool {
-        let walking = self
-            .walking
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
-        walking.is_some_and(|walk| {
-            walk.stop.cancel();
-            true
-        })
+        let walking = self.walking.lock().unwrap_or_else(PoisonError::into_inner);
+        walking
+            .as_ref()
+            .filter(|walk| !walk.stop.is_cancelled())
+            .is_some_and(|walk| {
+                walk.stop.cancel();
+                true
+            })
     }
 
     /// Do what was asked. Everything but a walk is done before this returns;
@@ -204,6 +221,7 @@ impl Desk {
         traveller: Traveller,
     ) -> JoinHandle<Travelled> {
         let walk = Walk {
+            number: self.walks.fetch_add(1, Ordering::Relaxed),
             stop: CancellationToken::new(),
             over: CancellationToken::new(),
         };
@@ -217,7 +235,7 @@ impl Desk {
         }
         let desk = Arc::clone(self);
         tokio::spawn(async move {
-            let Walk { stop, over } = walk;
+            let Walk { number, stop, over } = walk;
             // The walk before this one holds the authority under the same
             // token until it has stopped: claiming before then would be
             // released from under this walk when that one lets go.
@@ -245,10 +263,15 @@ impl Desk {
                 notes.last_room = Some(ended_in.0);
             }
             desk.keep(&handle, file.as_mut(), &notes);
-            // Still the walk under way, unless it was stopped or replaced --
-            // and either of those cancels `stop` and owns the slot.
-            if !stop.is_cancelled() {
-                *desk.walking.lock().unwrap_or_else(PoisonError::into_inner) = None;
+            // Out of the slot, if it is still this walk's: a walk that was
+            // replaced has handed the slot on, and must not empty it under
+            // its successor. Before `over`, so that nobody woken by `over`
+            // finds a finished walk still named.
+            {
+                let mut walking = desk.walking.lock().unwrap_or_else(PoisonError::into_inner);
+                if walking.as_ref().is_some_and(|walk| walk.number == number) {
+                    *walking = None;
+                }
             }
             over.cancel();
             ended

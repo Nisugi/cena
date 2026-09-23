@@ -1,13 +1,25 @@
 //! The login sync: what it asks for, and what it leaves alone.
 //!
 //! `plan` is a pure function of a snapshot and a clock, so most of this needs
-//! no session at all. The running half is exercised against a real actor at
-//! the bottom.
+//! no session at all. The running half, `sync`, is exercised against a real
+//! actor at the bottom.
+//!
+//! > **CORRECTED 2026-09-23.** This header promised that running half, and
+//! > the file ended without it: `sync` had no caller and no test. A claim of
+//! > coverage that resolves to nothing is a false negative waiting to be
+//! > believed.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
-use cena_behavior::sync::{MAX_AGE, plan};
-use cena_session::{CharacterSnapshot, Group};
+use cena_behavior::BehaviorError;
+use cena_behavior::sync::{MAX_AGE, plan, sync};
+use cena_platform::{AnsweringSource, TranscriptHandle};
+use cena_session::{
+    AuthorityToken, CharacterSnapshot, CommandId, GenerationCell, Group, Session, SessionHandle,
+};
+use tokio_util::sync::CancellationToken;
 
 fn snapshot() -> CharacterSnapshot {
     CharacterSnapshot::new("GS", "Nisugi")
@@ -17,45 +29,61 @@ fn snapshot() -> CharacterSnapshot {
 fn a_character_nobody_has_synced_is_asked_everything() {
     // What makes the first login work. A group with no timestamp is always
     // stale, so an empty snapshot plans every command.
+    //
+    // Asked of the COMMANDS, not the group column: `Identity` shares `info
+    // full` with `Stats` and is planned under it, so a group can be taught
+    // without ever being named there (`plan`'s docs).
     let commands = plan(&snapshot(), SystemTime::now(), MAX_AGE);
-    let groups: Vec<Group> = commands.iter().map(|(g, _)| *g).collect();
+    let planned: Vec<&str> = commands.iter().map(|(_, c)| *c).collect();
     for group in Group::ALL {
-        assert!(groups.contains(&group), "{group:?} was not planned");
+        for command in group.sync_commands() {
+            assert!(
+                planned.contains(command),
+                "{group:?}'s {command:?} was not planned"
+            );
+        }
     }
 }
 
 #[test]
-fn a_full_sync_is_sixteen_commands() {
+fn a_full_sync_is_fifteen_commands() {
     // Pinned so a group gaining a command is a visible change to the cost of
     // a login rather than a silent one.
     //
     // MEASURED, because the number was wrong twice before this test existed.
-    // Lich sends **15**, not the 16 stated in conversation all session:
+    // Lich sends **15**:
     //
     // ```text
     // $ awk "/request = \{/,/\}$/" reference/lich-5/lib/gemstone/infomon/cli.rb     //     | grep -coE "'[a-z ]+'\s+=>"
     // 15
     // ```
     //
-    // Sixteen here, and every difference is accounted for rather than assumed:
+    // Fifteen here too, by a different sum -- every difference accounted for
+    // rather than assumed:
     //
     //   15  Lich's list
     //   -3  groups this model does not read yet: `spell`, `experience` (the
     //       report is read but not persisted -- see `Group`, which has no
     //       `Experience`), `profile full`
-    //   +2  `info full` is planned twice, because `Stats` and `Identity` are
-    //       separately staleable and either alone can be the stale one
+    //   +1  `inventory enhancive totals`, for `Group::Enhancives`
     //   +2  `wealth` and `tickets`, which Lich does not sync at all: its
     //       currency keys are filled only from ordinary play, so a character
     //       who never ran them reads as unknown
     //   ==
-    //   16
-    assert_eq!(plan(&snapshot(), SystemTime::now(), MAX_AGE).len(), 16);
+    //   15
+    //
+    // > CORRECTED 2026-09-23. This was sixteen, and its sum said `info full`
+    // > was planned twice "because Stats and Identity are separately
+    // > staleable" -- counting as +2 a duplicate that is +1, and leaving the
+    // > enhancive report out so the total came right. The duplicate was a
+    // > defect (`stats_and_identity_share_one_command`), and `plan` now drops
+    // > it.
+    assert_eq!(plan(&snapshot(), SystemTime::now(), MAX_AGE).len(), 15);
 }
 
 #[test]
 fn a_freshly_stamped_character_is_asked_nothing() {
-    // The point of persisting at all: a login that re-ran sixteen commands
+    // The point of persisting at all: a login that re-ran fifteen commands
     // regardless of the store would make the store pointless.
     let mut snapshot = snapshot();
     let now = SystemTime::now();
@@ -126,10 +154,10 @@ fn stats_and_identity_share_one_command() {
 
     let commands = plan(&snapshot, now, MAX_AGE);
     assert_eq!(
-        commands.iter().filter(|(_, c)| *c == "info full").count(),
-        2,
-        "once per stale group -- the CALLER dedupes, and this records that it \
-         has to: sending `info full` twice is the cost of not doing so"
+        commands,
+        [(Group::Stats, "info full")],
+        "one report teaches both groups, so it is sent once. This asserted TWO \
+         and said the caller dedupes; no caller did (review, 2026-09-23)"
     );
 }
 
@@ -144,7 +172,7 @@ fn a_clock_that_went_backwards_does_not_make_data_fresh() {
     for group in Group::ALL {
         snapshot.touch(group, future);
     }
-    assert_eq!(plan(&snapshot, now, MAX_AGE).len(), 16, "all of it");
+    assert_eq!(plan(&snapshot, now, MAX_AGE).len(), 15, "all of it");
 }
 
 #[test]
@@ -157,4 +185,128 @@ fn every_group_names_at_least_one_command() {
             "{group:?} has no sync command"
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// The running half: `sync`, against a real session.
+// ---------------------------------------------------------------------------
+
+/// Every sync command is a report closed by a prompt.
+const PROMPT: &[u8] = b"<prompt time=\"1\">&gt;</prompt>\n";
+
+fn ids() -> impl FnMut() -> CommandId {
+    let next = Arc::new(AtomicU64::new(0));
+    move || CommandId(next.fetch_add(1, Ordering::Relaxed))
+}
+
+/// A running session that answers every command with a prompt. The
+/// generation cell comes back for the test that moves the connection under a
+/// sync.
+fn a_session() -> (
+    SessionHandle,
+    TranscriptHandle,
+    CancellationToken,
+    GenerationCell,
+) {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let cell = session.generation_cell();
+    let session_cancel = session.cancel_token();
+    tokio::spawn(session.into_actor().run());
+    (handle, transcript, session_cancel, cell)
+}
+
+/// A character whose stats and identity are stale: one command between them.
+fn stats_and_identity_stale() -> Vec<(Group, &'static str)> {
+    let mut snapshot = snapshot();
+    let now = SystemTime::now();
+    for group in Group::ALL {
+        snapshot.touch(group, now);
+    }
+    let stale = now - MAX_AGE - Duration::from_secs(1);
+    snapshot.touch(Group::Stats, stale);
+    snapshot.touch(Group::Identity, stale);
+    plan(&snapshot, now, MAX_AGE)
+}
+
+/// What is planned is what goes on the wire, once, and the authority is free
+/// again afterwards -- the property the next behavior depends on.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_sync_sends_what_was_planned_once_and_lets_go() {
+    let (handle, transcript, session, _) = a_session();
+    let commands = stats_and_identity_stale();
+    let stop = CancellationToken::new();
+
+    let sent = sync(&handle, &stop, ids(), AuthorityToken(1), &commands).await;
+
+    assert_eq!(sent, Ok(1));
+    assert_eq!(
+        transcript.lines(),
+        ["info full"],
+        "once, not once per group"
+    );
+    assert!(
+        handle.claim(AuthorityToken(2)).await.is_ok(),
+        "the authority was not released"
+    );
+    session.cancel();
+}
+
+/// A full sync, end to end: every planned command, in order, and nothing
+/// else.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_full_sync_sends_every_planned_command_in_order() {
+    let (handle, transcript, session, _) = a_session();
+    let commands = plan(&snapshot(), SystemTime::now(), MAX_AGE);
+    let stop = CancellationToken::new();
+
+    let sent = sync(&handle, &stop, ids(), AuthorityToken(1), &commands).await;
+
+    assert_eq!(sent, Ok(commands.len()));
+    let planned: Vec<&str> = commands.iter().map(|(_, command)| *command).collect();
+    assert_eq!(transcript.lines(), planned);
+    session.cancel();
+}
+
+/// Stopped before it starts, it sends nothing (`plan/12` §4.3), and still
+/// lets the authority go.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_sync_stopped_before_it_starts_sends_nothing() {
+    let (handle, transcript, session, _) = a_session();
+    let stop = CancellationToken::new();
+    stop.cancel();
+    let commands = stats_and_identity_stale();
+
+    let sent = sync(&handle, &stop, ids(), AuthorityToken(1), &commands).await;
+
+    assert_eq!(sent, Err(BehaviorError::Cancelled));
+    assert_eq!(transcript.written_count(), 0);
+    assert!(handle.claim(AuthorityToken(2)).await.is_ok());
+    session.cancel();
+}
+
+/// The connection changes under the sync: the actor discards its command as
+/// an older connection's and answers `Interrupted`. That is a disconnection,
+/// not the player's stop.
+///
+/// Not the test that pins the `Interrupted` arm: `cena-session` now answers
+/// a stale command `Disconnected` at admission (`actor/io.rs`), so this
+/// reaches that first. MEASURED: it stayed green with the old
+/// `Interrupted -> Cancelled` arm restored. `BehaviorError::from_outcome`'s
+/// unit test pins the arm; this pins the path end to end.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_command_from_an_older_connection_is_a_disconnection() {
+    let (handle, transcript, session, cell) = a_session();
+    // What a supervisor does between connections. This actor keeps the old
+    // generation, so everything the handle stamps from now on is stale.
+    cell.advance();
+    let commands = stats_and_identity_stale();
+    let stop = CancellationToken::new();
+
+    let sent = sync(&handle, &stop, ids(), AuthorityToken(1), &commands).await;
+
+    assert_eq!(sent, Err(BehaviorError::Disconnected));
+    assert_eq!(transcript.written_count(), 0, "discarded, never written");
+    session.cancel();
 }

@@ -83,11 +83,18 @@ pub fn walker_from(state: &GameState, notes: &TravelNotes, now_server: u32) -> W
     .into_iter()
     .filter_map(|(name, reported)| Some((name.to_owned(), reported?)))
     .collect();
-    let mut running = state.effects.iter().peekable();
+    let effects = &state.effects;
     // No effect ever listed is "not told", not "nothing is up".
-    let active_spells = running.peek().is_some().then(|| {
-        running
-            .filter(|(_, effect)| effect.ends_at.is_none_or(|ends| now_server < ends))
+    //
+    // Live or not is `Effects::active`'s to say, not `ends_at`'s: a timed
+    // effect that arrived before the connection's first prompt has no end
+    // time yet -- its duration is held until a clock can stamp it -- and
+    // reading the field alone takes a buff stated with no time left for one
+    // that never ends (cena-model, 2026-09-23).
+    let active_spells = (!effects.is_empty()).then(|| {
+        effects
+            .iter()
+            .filter(|(id, _)| effects.active(id, now_server) == Some(true))
             .map(|(_, effect)| effect.text.clone())
             .collect()
     });

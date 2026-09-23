@@ -64,28 +64,43 @@ pub const SYNC_DEADLINE: Duration = Duration::from_secs(10);
 /// a caller was already given.
 pub use cena_session::MAX_STALE as MAX_AGE;
 
-/// What a sync would send, in order, for one stored snapshot.
+/// What a sync would send, in order, for one stored snapshot: each command
+/// **once**.
 ///
 /// Separate from running it so a caller can ask **what this would cost** --
-/// sixteen commands at up to ten seconds each is a visible amount of game
+/// fifteen commands at up to ten seconds each is a visible amount of game
 /// traffic, and a frontend that wants to say so should not have to run it to
 /// find out. `stale_groups` is a pure function of the snapshot and the clock.
+///
+/// # One command, several groups
+///
+/// `info full` teaches both [`Group::Stats`] and [`Group::Identity`]
+/// (`Group::sync_commands`), and either can be stale alone. This planned it
+/// once per stale group and left the duplicate for "the caller" to drop --
+/// and no caller did, so a full sync sent `info full` twice, the exact
+/// doubling `sync_commands`' own comment says it exists to prevent (review,
+/// 2026-09-23). The plan is the one place that sees every group at once, so
+/// it drops it here.
+///
+/// The [`Group`] beside a command is the **first** stale group that asks for
+/// it. A caller stamping groups fresh after a sync should stamp every stale
+/// group whose `sync_commands` were all sent, not read this column as the
+/// only group a command taught.
 #[must_use]
 pub fn plan(
     snapshot: &CharacterSnapshot,
     now: std::time::SystemTime,
     max_age: Duration,
 ) -> Vec<(Group, &'static str)> {
-    snapshot
-        .stale_groups(now, max_age)
-        .into_iter()
-        .flat_map(|group| {
-            group
-                .sync_commands()
-                .iter()
-                .map(move |command| (group, *command))
-        })
-        .collect()
+    let mut planned: Vec<(Group, &'static str)> = Vec::new();
+    for group in snapshot.stale_groups(now, max_age) {
+        for command in group.sync_commands() {
+            if !planned.iter().any(|(_, already)| already == command) {
+                planned.push((group, command));
+            }
+        }
+    }
+    planned
 }
 
 /// Matches the prompt that ends a command's output.
@@ -164,6 +179,10 @@ async fn sync_holding_authority(
             ) => outcome,
         };
 
+        // §5.1: no automation runs while a session has no transport.
+        if let Some(gone) = BehaviorError::from_outcome(&outcome) {
+            return Err(gone);
+        }
         match outcome {
             // `Timeout` is counted as sent, and that is deliberate: §4.4 says
             // it means "no match within the window", never "the command did
@@ -172,12 +191,9 @@ async fn sync_holding_authority(
             // the group learned is the model's answer, not this loop's.
             Outcome::Confirmed(_) | Outcome::Timeout => sent += 1,
             // A refusal is the queue being full, which a sync should not push
-            // against: the rest of the commands would refuse too.
-            Outcome::Refused(_) => return Ok(sent),
-            Outcome::Interrupted => return Err(BehaviorError::Cancelled),
-            Outcome::Dead => return Err(BehaviorError::Dead),
-            // §5.1: no automation runs while a session has no transport.
-            Outcome::Disconnected => return Err(BehaviorError::Disconnected),
+            // against: the rest of the commands would refuse too. (What is
+            // left was answered above.)
+            _ => return Ok(sent),
         }
     }
     Ok(sent)
