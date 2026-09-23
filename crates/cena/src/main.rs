@@ -284,7 +284,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //
     // NOTHING CONNECTS HERE. `SupervisedSession::new` touches no network; the
     // login happens inside `run()`, once per generation.
-    let connector = LiveConnector::new(typed, run::login_provider());
+    //
+    // The eaccess certificate pin lives in the data directory, beside the
+    // character and menu stores, under Lich's and VellumFE's name.
+    let pin = cena_session::character_store::data_dir().join(cena_platform::PIN_FILENAME);
+    let connector = LiveConnector::new(typed, run::login_provider(), pin);
     // The handle comes back WITH the session, because
     // `SupervisedSession::new` mints it: it must be obtainable before `run`
     // consumes the session, and there is no `handle()` accessor to call

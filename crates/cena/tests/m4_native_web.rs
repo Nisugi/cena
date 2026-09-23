@@ -204,12 +204,13 @@ async fn assert_story(socket: &mut Browser, mut lines: Vec<StoryLine>) -> TestRe
 
 #[tokio::test]
 async fn late_viewer_gets_native_panels_and_manual_input_preserves_behavior_authority() {
-    let (source, transcript) = AnsweringSource::new(&panel_reply());
+    let (source, transcript) = AnsweringSource::logged_in(&panel_reply());
     let session = Session::new(source);
     let handle = session.handle();
     let observer = session.observer();
     let stop_session = session.cancel_token();
     let actor = tokio::spawn(session.into_actor().run());
+    await_ready(&observer, Generation::FIRST).await.unwrap();
     assert!(matches!(
         handle
             .send_manual_at(Generation::FIRST, "look", DEADLINE)
@@ -323,12 +324,13 @@ impl Connector for Connections {
 
 #[tokio::test]
 async fn reconnect_refuses_old_browser_generation_including_quit_without_writing() {
-    let (first, first_transcript) = AnsweringSource::new(ROOM);
-    let (second, second_transcript) = AnsweringSource::new(ROOM);
+    let (first, first_transcript) = AnsweringSource::logged_in(ROOM);
+    let (second, second_transcript) = AnsweringSource::logged_in(ROOM);
     let (session, handle) = SupervisedSession::new(Connections(vec![first, second].into()));
     let observer = session.observer();
     let stop_session = session.cancel_token();
     let actor = tokio::spawn(session.run());
+    await_ready(&observer, Generation::FIRST).await.unwrap();
     let (initial, _) = observer.subscribe().await.unwrap();
     assert_eq!(initial.lifecycle, State::Ready);
     assert!(matches!(
@@ -372,16 +374,19 @@ async fn reconnect_refuses_old_browser_generation_including_quit_without_writing
                     panic!("unexpected reconnect message: {other:?}")
                 }
             };
-            if current != generation {
+            // Invalidated until the new connection's login burst re-teaches
+            // it (`plan/12` §5.2). `Ready` is the prompt that ENDS that
+            // burst, so the Ready view may already know the clock again.
+            if current != generation && view.lifecycle != LifecycleView::Ready {
                 assert_eq!(view.vitals.health, None);
                 assert_eq!(view.roundtime.remaining_seconds, None);
                 assert_eq!(view.room.objects, None);
                 assert_eq!(view.room.creatures, None);
                 assert_eq!(view.room.players, None);
                 saw_reconnecting |= matches!(view.lifecycle, LifecycleView::Reconnecting { .. });
-                if view.lifecycle == LifecycleView::Ready {
-                    break current;
-                }
+            }
+            if current != generation && view.lifecycle == LifecycleView::Ready {
+                break current;
             }
         }
     })
@@ -513,20 +518,20 @@ async fn websocket_requires_local_origin_and_auth_before_state_or_native_command
     actor.await.unwrap();
 }
 
-async fn await_reconnected_ready(observer: &SessionObserver) -> TestResult {
+/// Wait until connection `generation` is `Ready`: the first prompt after
+/// `<endSetup/>`, which `AnsweringSource::logged_in` sends on connect.
+async fn await_ready(observer: &SessionObserver, generation: Generation) -> TestResult {
     let (snapshot, mut events) = observer
         .subscribe()
         .await
         .map_err(|error| io::Error::other(format!("native observation failed: {error:?}")))?;
-    if snapshot.generation != Generation::FIRST && snapshot.lifecycle == State::Ready {
+    if snapshot.generation == generation && snapshot.lifecycle == State::Ready {
         return Ok(());
     }
     tokio::time::timeout(DEADLINE, async {
         loop {
             let event = events.recv().await?;
-            if event.generation == Generation::FIRST.next()
-                && event.event == Event::StateChanged(State::Ready)
-            {
+            if event.generation == generation && event.event == Event::StateChanged(State::Ready) {
                 return Ok(());
             }
         }
@@ -537,13 +542,15 @@ async fn await_reconnected_ready(observer: &SessionObserver) -> TestResult {
 #[tokio::test]
 async fn exhausted_request_budget_refuses_before_close_and_fresh_connection_can_send() {
     let (first, disconnected) = AnsweringSource::new(ROOM);
-    let (source, transcript) = AnsweringSource::new(ROOM);
+    let (source, transcript) = AnsweringSource::logged_in(ROOM);
     let (session, handle) = SupervisedSession::new(Connections(vec![first, source].into()));
     let observer = session.observer();
     let stop_session = session.cancel_token();
     disconnected.hang_up();
     let actor = tokio::spawn(session.run());
-    await_reconnected_ready(&observer).await.unwrap();
+    await_ready(&observer, Generation::FIRST.next())
+        .await
+        .unwrap();
     let server = WebServer::bind(observer, handle).await.unwrap();
     let pairing = server.pairing_url();
     let stop_web = CancellationToken::new();

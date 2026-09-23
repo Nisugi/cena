@@ -57,6 +57,13 @@ pub struct LiveConnector {
     /// with `--web-login` that silently reverted to eaccess on reconnect would
     /// be testing something other than what was asked for.
     prefer: cena_platform::Prefer,
+    /// The eaccess certificate pin, `<data dir>/simu.pem`.
+    ///
+    /// Recorded on the first login and checked on every one after, reconnects
+    /// included -- a reconnect is a full re-login, and the one a MITM would
+    /// most like to intercept. A mismatch is FATAL, so the supervisor stops
+    /// rather than resubmitting the password (`cena-platform`'s `pin.rs`).
+    pin: std::path::PathBuf,
     /// How many times `connect` has been called. For the log line only: the
     /// supervisor owns the real retry count.
     attempts: u32,
@@ -72,13 +79,18 @@ pub struct LiveConnector {
 
 impl LiveConnector {
     /// Retain what a re-login needs.
-    pub fn new(typed: crate::ask::Typed, prefer: cena_platform::Prefer) -> Self {
+    pub fn new(
+        typed: crate::ask::Typed,
+        prefer: cena_platform::Prefer,
+        pin: std::path::PathBuf,
+    ) -> Self {
         Self {
             account: typed.account,
             password: typed.password,
             character: typed.character,
             game_code: typed.game_code,
             prefer,
+            pin,
             attempts: 0,
             secrets: Vec::new(),
         }
@@ -125,6 +137,7 @@ impl std::fmt::Debug for LiveConnector {
             .field("character", &self.character)
             .field("game_code", &self.game_code)
             .field("prefer", &self.prefer)
+            .field("pin", &self.pin)
             .field("attempts", &self.attempts)
             .field("secrets", &format_args!("{} pending", self.secrets.len()))
             .finish()
@@ -155,9 +168,11 @@ impl Connector for LiveConnector {
         // the author reports that is still the pattern. A credential rejection
         // is NOT retried through it -- see `eaccess/fallback.rs`.
         let (payload, provider) =
-            cena_platform::authenticate_via(credentials, self.prefer, |line| eprintln!("{line}"))
-                .await
-                .map_err(classify)?;
+            cena_platform::authenticate_via(credentials, self.prefer, &self.pin, |line| {
+                eprintln!("{line}");
+            })
+            .await
+            .map_err(classify)?;
         if provider == cena_platform::Provider::WebLogin {
             // Worth saying out loud: a web-login launch came through an HTML
             // scrape and a redirect chain rather than eaccess's `C`/`L`, so a
