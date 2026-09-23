@@ -65,10 +65,21 @@ pub(crate) fn requested() -> bool {
 /// Keep a selected web session open until explicit shutdown, native session
 /// completion, or an explicitly selected hold deadline. Non-web callers keep
 /// the demonstration binary's existing ten-second default.
+///
+/// Ctrl-C arrives as `interrupt`, not as a `ctrl_c()` of its own. This was the
+/// ONE place that listened for it, so the phases before the hold had no
+/// handler at all; `crate::interrupt` now owns the signal for the whole run
+/// and this is one of the waits it ends.
 pub(crate) async fn wait_for_stop(
     holding: Option<Duration>,
     supervisor: &JoinHandle<SupervisedEnd>,
+    interrupt: &CancellationToken,
 ) {
+    if interrupt.is_cancelled() {
+        // An earlier phase was interrupted; announcing a hold now would be
+        // announcing something that is not going to happen.
+        return;
+    }
     match holding {
         Some(duration) => eprintln!("[session] holding for {duration:?} (Ctrl-C to stop early)"),
         None => eprintln!(
@@ -89,10 +100,6 @@ pub(crate) async fn wait_for_stop(
     tokio::select! {
         () = deadline => {}
         () = session_ended => eprintln!("[session] Native session ended; finishing shutdown."),
-        result = tokio::signal::ctrl_c() => {
-            if let Err(error) = result {
-                eprintln!("[session] Could not listen for Ctrl-C ({error}); shutting down.");
-            }
-        }
+        () = interrupt.cancelled() => {}
     }
 }

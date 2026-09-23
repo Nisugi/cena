@@ -29,7 +29,7 @@ pub(crate) fn demo_requested() -> bool {
 ///
 /// # Why this is needed to test the thing at all
 ///
-/// `authenticate_with_fallback` reaches web login only when eaccess cannot be
+/// `authenticate_via` reaches web login only when eaccess cannot be
 /// REACHED -- and eaccess is up almost always. So without a forcing flag the
 /// fallback is exercised for the first time during an outage, which is the
 /// worst possible moment to find a bug in it.
@@ -446,7 +446,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
             // player nothing the game said is not a client.
             Ok(Event::Frame(frame)) => screen.show(&frame),
             // REPORTED, NOT ACTED ON. Running the sync means sending up to
-            // fourteen commands, which needs the authority token
+            // fifteen commands (`a_full_sync_is_fifteen_commands`), which needs the authority token
             // (`plan/12` §4.2) that this watcher does not hold -- it renders,
             // it does not claim. `cena_behavior::sync` is what runs it, and
             // the character's owner decides whether to spend that traffic.

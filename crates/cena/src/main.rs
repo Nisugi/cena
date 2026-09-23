@@ -67,6 +67,7 @@
 mod ask;
 mod connector;
 mod frontend;
+mod interrupt;
 mod probe;
 mod run;
 mod travel;
@@ -76,6 +77,7 @@ use cena_behavior::look;
 use cena_platform::{Redactions, SessionSink};
 use cena_session::{AuthorityToken, CommandId, SupervisedSession};
 use connector::LiveConnector;
+use interrupt::unless_interrupted;
 use run::{run_or_probe, send_manual, wait_for_room, watch_events};
 use std::io;
 use std::sync::Arc;
@@ -244,13 +246,18 @@ fn ids() -> impl FnMut() -> CommandId {
 /// vars.
 fn banner() {
     eprintln!("Hydra -- one supervised session against the live game.");
-    eprintln!(
-        "The password is never logged, but it IS kept in memory for the          session,
-because reconnecting re-logs in. The wire IS written to          disk -- see the
-log paths below.
-"
-    );
+    eprintln!("{BANNER_NOTE}");
 }
+
+/// The banner's second paragraph, a constant so a test can read it.
+///
+/// Two sentences on two lines, then a blank one. It had collapsed to "for the
+/// (ten spaces) session," -- a `\` continuation whose backslash and newline
+/// were lost and whose next-line indent was kept, so the operator read a gap
+/// mid-sentence (review finding 14).
+const BANNER_NOTE: &str = "The password is never logged, but it IS kept in memory for the \
+     session,\nbecause reconnecting re-logs in. The wire IS written to disk -- \
+     see the\nlog paths below.\n";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -258,6 +265,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let typed = ask()?;
     eprintln!();
+    // From here on Ctrl-C means "shut down in order", not "die". Installed
+    // after the prompts: before a session exists there is nothing to order.
+    let interrupt = interrupt::on_ctrl_c();
 
     // --- Criterion 1, now SUPERVISED ---------------------------------------
     //
@@ -304,9 +314,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // --- Criterion 2: the room, from TYPED FRAMES --------------------------
     eprintln!("[waiting] for the first room description frame...");
-    let room_shown = wait_for_room(&mut events).await;
+    let room_shown = unless_interrupted(&interrupt, wait_for_room(&mut events)).await;
 
-    if !room_shown {
+    if room_shown == Some(false) {
         eprintln!(
             "[FAIL criterion 2] no room description frame within {ROOM_DEADLINE:?}. \
              The session is connected -- 'connected' is not 'working' (plan/10 \
@@ -333,18 +343,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // still worth watching.
     let watcher = tokio::spawn(watch_events(events));
 
-    let behavior = run_demo(&handle, demo, &stop).await;
+    // **Every phase from here to the hold is raced against Ctrl-C**, and an
+    // interrupted one falls through to the SAME orderly shutdown below. This
+    // comment used to make that claim for the hold alone, which was the only
+    // phase that had a handler: Ctrl-C during the room wait, `--demo`, a
+    // capture or `--first` killed the process -- no `quit` (plan/16 5b), no
+    // sink flush, the combat thread never joined (review finding 8).
+    // `interrupt.rs` has the mechanism.
+    let behavior = run_demo(&handle, demo, &stop, &interrupt).await;
 
-    run_or_probe(&handle, &mut probe_events, &stop).await;
+    unless_interrupted(&interrupt, run_or_probe(&handle, &mut probe_events, &stop)).await;
 
-    travel::after_login(mirror, &hand_over, &handle, observer.clone()).await;
+    let desk = travel::after_login(mirror, &hand_over, &handle, observer.clone());
+    if unless_interrupted(&interrupt, desk).await.is_none() {
+        // The mirror is waiting to be told to hand over; tell it, so it ends
+        // now rather than when the supervisor closes its subscription.
+        hand_over.cancel();
+    }
 
-    // **Ctrl-C ends the hold early and then falls through to the SAME orderly
-    // shutdown below.** There was no signal handling at all, so interrupting a
-    // run killed the process -- skipping both the `quit` (plan/16 5b) and the
-    // sink flush. The character was left link-dead and the log truncated, on
-    // the exit a person is most likely to use.
-    frontend::wait_for_stop(hold_for(frontend.is_some()), &supervisor).await;
+    frontend::wait_for_stop(hold_for(frontend.is_some()), &supervisor, &interrupt).await;
 
     // --- Criterion 4: stop, within PREEMPT_GRACE ---------------------------
     // The latency is MEASURED in `cena-behavior`'s tests under virtual time,
@@ -463,6 +480,7 @@ async fn run_demo(
     handle: &cena_session::SessionHandle,
     demo: bool,
     stop: &CancellationToken,
+    interrupt: &CancellationToken,
 ) -> Option<tokio::task::JoinHandle<Result<(), cena_behavior::BehaviorError>>> {
     if !demo {
         eprintln!(
@@ -484,6 +502,20 @@ async fn run_demo(
         look(&behavior_handle, &behavior_stop, ids(), AuthorityToken(1)).await
     });
 
+    // The warm-up and the manual command are raced against Ctrl-C; the SPAWN
+    // above is not, so the behavior's handle always comes back to `main`,
+    // which cancels and awaits it whether or not this finished.
+    unless_interrupted(interrupt, interleave_manual(handle, &behavior)).await;
+    Some(behavior)
+}
+
+/// Criterion 5: a manual command MID-BEHAVIOR, after the behavior has warmed
+/// up. Split from [`run_demo`] so the wait can be interrupted without losing
+/// the behavior's handle.
+async fn interleave_manual(
+    handle: &cena_session::SessionHandle,
+    behavior: &tokio::task::JoinHandle<Result<(), cena_behavior::BehaviorError>>,
+) {
     tokio::time::sleep(BEHAVIOR_WARMUP).await;
 
     // Criterion 5: a manual command MID-BEHAVIOR. It jumps the queue, runs its
@@ -504,7 +536,6 @@ async fn run_demo(
 ",
         !behavior.is_finished()
     );
-    Some(behavior)
 }
 
 /// How many connections actually carried traffic.
@@ -707,8 +738,18 @@ fn open_log(character: &str, account: &str) -> io::Result<SessionSink> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_hold;
+    use super::{BANNER_NOTE, parse_hold};
     use std::time::Duration;
+
+    /// The banner reads as two sentences, not as a sentence with a hole in it.
+    ///
+    /// Review finding 14: a lost `\` continuation left its next-line indent in
+    /// the string, and the operator saw "for the          session,".
+    #[test]
+    fn the_banner_has_no_collapsed_gap() {
+        assert!(!BANNER_NOTE.contains("  "), "{BANNER_NOTE:?}");
+        assert!(BANNER_NOTE.contains("for the session,\nbecause"));
+    }
 
     /// A malformed `--hold` is reported, not silently defaulted.
     ///

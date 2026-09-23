@@ -13,6 +13,7 @@
 //! mode, which is the credential ladder `plan/12` §7.1 puts Out for M1. Said
 //! plainly here because `main.rs` once claimed the opposite.
 
+use cena_platform::DEFAULT_GAME_CODE;
 use std::io::{self, BufRead, IsTerminal, Write};
 
 /// Read one line from stdin, without echoing a prompt into the transcript.
@@ -105,43 +106,78 @@ pub fn ask() -> io::Result<Typed> {
     // not a prompt: the headless credential ladder is `plan/12` §7.1's Out
     // column for M1, so there is no correct unattended path yet, and inventing
     // one here would be the wrong place for it.
-    if !io::stdin().is_terminal() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "stdin is not a terminal, so nobody is at the keyboard. This \
-             program reaches the LIVE login service and does not run \
-             unattended (CLAUDE.md, Credentials). The headless credential \
-             ladder is plan/12 section 7.1's Out column for M1; when it \
-             exists, it -- not this prompt -- is what runs without a human.",
-        ));
-    }
+    refuse_unattended(io::stdin().is_terminal())?;
     // `require`, not `prompt`: an empty answer to any of these means nobody is
     // at the keyboard, and this program reaches the live login service.
     let account = require("account")?;
     let password = require("password")?;
     let character = require("character")?;
-    // Game codes are CASE-SENSITIVE on the wire. `M` lists them uppercase and
-    // a lowercase code is not recognised -- but the failure is silent and
-    // misleading: F still answers, about the account's DEFAULT instance, so
-    // the login proceeds pointed at the wrong game and fails four commands
-    // later at L. Uppercasing here is a convenience for the human at the
-    // prompt; `cena_platform::eaccess` must NOT do it silently (`plan/10`
-    // §4.4a), and does not -- it refuses at M with the offered list.
-    let game_code = {
-        let g = prompt("game code [GST]")?;
-        let g = if g.is_empty() { "GST".to_owned() } else { g };
-        let upper = g.to_ascii_uppercase();
-        if upper != g {
-            eprintln!("[input] game code {g:?} -> {upper:?} (codes are case-sensitive)");
-        }
-        upper
-    };
-    Ok(Typed {
-        account,
+    let game_code = prompt(&format!("game code [{DEFAULT_GAME_CODE}]"))?;
+    Ok(tidy(&account, password, &character, &game_code))
+}
+
+/// The guard `ask` opens with, split out so it can be tested on BOTH answers.
+///
+/// Its only input is whether stdin is a terminal, and a test cannot choose
+/// that for its own process -- `cargo test` from a PowerShell prompt inherits
+/// the console, and CI does not. So the one test that called `ask()` asserted
+/// a non-terminal first, and failed for a developer running the suite by hand
+/// (review finding 15). Taking the bit as an argument lets both branches be
+/// checked everywhere.
+fn refuse_unattended(stdin_is_terminal: bool) -> io::Result<()> {
+    if stdin_is_terminal {
+        return Ok(());
+    }
+    Err(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "stdin is not a terminal, so nobody is at the keyboard. This \
+         program reaches the LIVE login service and does not run \
+         unattended (CLAUDE.md, Credentials). The headless credential \
+         ladder is plan/12 section 7.1's Out column for M1; when it \
+         exists, it -- not this prompt -- is what runs without a human.",
+    ))
+}
+
+/// Clean up what was typed, **without touching the password**.
+///
+/// # Names are trimmed, because nothing downstream does it
+///
+/// A trailing space on the account or character name was sent as typed
+/// (review finding 16). The `C` walk compares names with
+/// `eq_ignore_ascii_case` and no trim (`cena-platform`'s `resolve_char_code`),
+/// so `"Nisugi "` is not on the account -- a FATAL stop for a character that
+/// exists. The account went to `A` with the space inside it, which the server
+/// can only read as a different account -- a refusal, and plausibly a strike
+/// (INFERRED: not something to test against the live service). Both are
+/// invisible on screen. A name never legitimately begins or ends in whitespace.
+///
+/// # The password is NOT trimmed
+///
+/// Whitespace is a legal password byte, and the hash covers every byte
+/// (`plan/10` §3.3). Trimming it would turn a correct password into a wrong
+/// one -- the very failure trimming names prevents.
+///
+/// # Game codes are CASE-SENSITIVE on the wire
+///
+/// `M` lists them uppercase and a lowercase code is not recognised -- but the
+/// failure is silent and misleading: F still answers, about the account's
+/// DEFAULT instance, so the login proceeds pointed at the wrong game and fails
+/// four commands later at L. Uppercasing here is a convenience for the human
+/// at the prompt; `cena_platform::eaccess` must NOT do it silently (`plan/10`
+/// §4.4a), and does not -- it refuses at M with the offered list.
+fn tidy(account: &str, password: String, character: &str, game_code: &str) -> Typed {
+    let g = game_code.trim();
+    let g = if g.is_empty() { DEFAULT_GAME_CODE } else { g };
+    let upper = g.to_ascii_uppercase();
+    if upper != g {
+        eprintln!("[input] game code {g:?} -> {upper:?} (codes are case-sensitive)");
+    }
+    Typed {
+        account: account.trim().to_owned(),
         password,
-        character,
-        game_code,
-    })
+        character: character.trim().to_owned(),
+        game_code: upper,
+    }
 }
 
 #[cfg(test)]
@@ -150,21 +186,27 @@ mod tests {
 
     /// **`ask()` refuses when stdin is not a terminal.**
     ///
-    /// A test harness runs with stdin redirected, so the test process is
-    /// itself the unattended case this guard exists for: calling `ask()` here
-    /// exercises the real refusal on the real condition, with no mocking.
+    /// A test harness usually runs with stdin redirected, so the test process
+    /// is itself the unattended case this guard exists for: calling `ask()`
+    /// here exercises the real refusal on the real condition, with no mocking.
     ///
     /// That also means the test can never accidentally reach the network. If
     /// the guard regresses, `ask()` blocks on a prompt instead and the test
     /// hangs rather than logging in -- a failure, and a safe one.
+    ///
+    /// **Skipped when stdin IS a terminal**, which is `cargo test` typed at a
+    /// PowerShell prompt. It used to assert the opposite and fail there (review
+    /// finding 15); calling `ask()` instead would block on a real prompt. The
+    /// guard's two answers are checked on every machine by the test below.
     #[test]
     fn asking_without_a_terminal_refuses_rather_than_prompting() {
-        assert!(
-            !io::stdin().is_terminal(),
-            "this test asserts behaviour under a non-terminal stdin, and the \
-             harness is supposed to provide one; if stdin IS a terminal here \
-             the test proves nothing"
-        );
+        if io::stdin().is_terminal() {
+            eprintln!(
+                "skipped: stdin is a terminal here, so ask() would prompt. \
+                 refuse_unattended's own test covers the guard."
+            );
+            return;
+        }
 
         let Err(e) = ask() else {
             panic!(
@@ -178,11 +220,39 @@ mod tests {
             io::ErrorKind::InvalidInput,
             "the refusal must be a refusal, not an incidental read error: {e}"
         );
+    }
+
+    #[test]
+    fn the_unattended_guard_refuses_a_pipe_and_admits_a_terminal() {
+        let e = refuse_unattended(false).expect_err("a pipe is nobody");
+        assert_eq!(e.kind(), io::ErrorKind::InvalidInput);
         let text = e.to_string();
         assert!(
             text.contains("not a terminal"),
             "the message must say WHY, so whoever hit it knows this is a \
              deliberate guard and not a broken prompt: {text}"
         );
+        assert!(refuse_unattended(true).is_ok());
+    }
+
+    #[test]
+    fn names_are_trimmed_and_the_password_is_not() {
+        // Finding 16: `"Nisugi "` is not on the account, so the `C` walk
+        // stops FATAL on a character that exists.
+        let typed = tidy(" someacct\t", " pass word ".to_owned(), "Nisugi ", " gs3 ");
+        assert_eq!(typed.account, "someacct");
+        assert_eq!(typed.character, "Nisugi");
+        assert_eq!(
+            typed.password, " pass word ",
+            "whitespace is a legal password byte; trimming it sends a wrong \
+             password and costs a strike"
+        );
+        assert_eq!(typed.game_code, "GS3");
+    }
+
+    #[test]
+    fn an_empty_game_code_is_the_default() {
+        let typed = tidy("a", "p".to_owned(), "c", "  ");
+        assert_eq!(typed.game_code, "GST");
     }
 }

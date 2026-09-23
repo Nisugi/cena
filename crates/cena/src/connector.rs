@@ -159,9 +159,10 @@ impl Connector for LiveConnector {
                 .await
                 .map_err(classify)?;
         if provider == cena_platform::Provider::WebLogin {
-            // Worth saying out loud: a web-login launch synthesises fields the
-            // eaccess `L` response returns, so a reader diagnosing an odd
-            // session needs to know which path produced it.
+            // Worth saying out loud: a web-login launch came through an HTML
+            // scrape and a redirect chain rather than eaccess's `C`/`L`, so a
+            // reader diagnosing an odd session needs to know which path
+            // produced it.
             eprintln!("[connect] authenticated via the web-login fallback");
         }
         // BEFORE the payload is printed or logged. `LaunchPayload`'s own
