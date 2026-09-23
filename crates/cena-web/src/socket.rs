@@ -110,9 +110,8 @@ pub(crate) async fn serve(
                             };
                             let handle = shared.handle.clone();
                             pending = Some(Box::pin(async move {
-                                let local = claimed(handle.command_symbol(), &line);
                                 let outcome = handle.send_manual_at(Generation(number), &line, COMMAND_TIMEOUT).await;
-                                let (status, detail) = outcome_receipt(&outcome, local);
+                                let (status, detail) = outcome_receipt(&outcome);
                                 receipt(session, generation, request_id, status, detail)
                             }));
                         }
@@ -169,34 +168,18 @@ fn receipt(
     }
 }
 
-/// Whether the session's claimant takes `line` instead of the game: it starts,
-/// after leading space, with the symbol the session marks commands with.
-///
-/// The session's own rule (`cena_session::command::claimant`), read through
-/// the one public fact it exposes for this, `SessionHandle::command_symbol`.
-/// It is asked BEFORE the send because the answer is not in the outcome: a
-/// claimed line comes back as `Confirmed` with a prompt no server sent,
-/// indistinguishable by type from a real round trip.
-fn claimed(symbol: Option<char>, line: &str) -> bool {
-    symbol.is_some_and(|symbol| line.trim_start().starts_with(symbol))
-}
-
 /// The receipt for what `send_manual_at` answered.
 ///
-/// `local` is [`claimed`]'s answer for the line. It only ever turns a
-/// `Confirmed` into [`ReceiptStatus::Handled`] -- **every claimed `;` line
-/// used to come back as "Bytes sent and subsequent server output observed"**,
-/// and neither half was true. Any other outcome is the session's own word and
-/// is reported as such: a claimed line from a stale generation that the
-/// session refuses is refused, not handled.
-///
-/// UNVERIFIED FOR THE FUTURE: `cena-session` may give a locally handled line
-/// its own `Outcome`. When it does, the exhaustive match below stops
-/// compiling, which is the point -- that variant maps to `Handled`, and
-/// `local` can then be retired.
-fn outcome_receipt(outcome: &Outcome, local: bool) -> (ReceiptStatus, &'static str) {
+/// **Every claimed `;` line used to come back as "Bytes sent and subsequent
+/// server output observed"**, and neither half was true. The session answered
+/// it `Confirmed` with a prompt no server sent, so this module told claimed
+/// lines apart by their first character. The session now answers
+/// [`Outcome::Handled`], and the receipt reads it off the outcome -- a
+/// claimed line from a stale generation is still the session's to refuse,
+/// and is reported `Disconnected` like any other.
+fn outcome_receipt(outcome: &Outcome) -> (ReceiptStatus, &'static str) {
     match outcome {
-        Outcome::Confirmed(_) if local => (
+        Outcome::Handled => (
             ReceiptStatus::Handled,
             "Handled by Hydra; nothing was sent to the game",
         ),
@@ -277,43 +260,28 @@ mod tests {
             Outcome::Dead,
             Outcome::Disconnected,
         ] {
-            for local in [false, true] {
-                assert_eq!(outcome_receipt(&outcome, local).0, ReceiptStatus::Uncertain);
-            }
+            assert_eq!(outcome_receipt(&outcome).0, ReceiptStatus::Uncertain);
         }
-        for local in [false, true] {
-            assert_eq!(
-                outcome_receipt(&Outcome::Refused(cena_session::Refusal::Transient), local).0,
-                ReceiptStatus::Refused
-            );
-        }
+        assert_eq!(
+            outcome_receipt(&Outcome::Refused(cena_session::Refusal::Transient)).0,
+            ReceiptStatus::Refused
+        );
     }
 
     /// **A `;` line never reaches the game**, and its receipt said it had:
     /// "Bytes sent and subsequent server output observed", on a prompt the
-    /// session fabricated. The receipt must say what happened.
+    /// session fabricated. The receipt must say what happened. Which lines
+    /// are claimed is the session's rule, tested there (`claimed_commands.rs`).
     #[test]
     fn a_line_hydra_handled_is_not_reported_as_sent() {
-        let answered = || {
-            Outcome::Confirmed(Box::new(cena_session::Frame::Prompt {
-                text: String::new(),
-                time: String::new(),
-            }))
-        };
-        let symbol = Some(';');
-        assert!(claimed(symbol, ";go2 bank"));
-        assert!(claimed(symbol, "  ;"), "the symbol alone is claimed too");
-        let (status, detail) = outcome_receipt(&answered(), claimed(symbol, ";go2 bank"));
+        let (status, detail) = outcome_receipt(&Outcome::Handled);
         assert_eq!(status, ReceiptStatus::Handled);
         assert!(detail.contains("nothing was sent"), "{detail}");
 
-        // The game's own lines are unaffected, and so is every line when no
-        // claimant is installed.
-        assert!(!claimed(symbol, "look ;"));
-        assert!(!claimed(None, ";go2 bank"));
-        assert_eq!(
-            outcome_receipt(&answered(), claimed(None, ";go2 bank")).0,
-            ReceiptStatus::Sent
-        );
+        let answered = Outcome::Confirmed(Box::new(cena_session::Frame::Prompt {
+            text: String::new(),
+            time: String::new(),
+        }));
+        assert_eq!(outcome_receipt(&answered).0, ReceiptStatus::Sent);
     }
 }
