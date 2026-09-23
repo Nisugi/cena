@@ -269,8 +269,11 @@ fn thin_frame_rest(name: &str, tag: &str) -> Frame {
 fn known_fallback(name: &str, tag: &str) -> Frame {
     let attrs = text::attributes(tag);
     match name {
+        // Typed, not a bag: the session's readiness gate keys on it, and
+        // matching a `WindowHints` by its id string is re-reading markup.
+        "endSetup" => Frame::EndSetup,
         "playerID" | "settings" | "settingsInfo" | "sentSettings" | "presets" | "palette"
-        | "macros" | "endSetup" | "mode" | "FEVersion" | "LichWebUI" => Frame::WindowHints {
+        | "macros" | "mode" | "FEVersion" | "LichWebUI" => Frame::WindowHints {
             id: name.to_owned(),
             attrs,
         },

@@ -122,7 +122,7 @@ fn the_documented_variant_count_is_the_actual_variant_count() {
     // "update BOTH"; there are three, and the third is the one that decides
     // whether the test passes. A test that hardcodes the thing it verifies is
     // a copy like any other and drifts like any other.
-    let claimed = 53;
+    let claimed = 54;
     assert_eq!(
         names.len(),
         claimed,

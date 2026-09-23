@@ -46,11 +46,11 @@
 //!
 //! # The arithmetic, stated so it can be checked
 //!
-//! This enum has **53** variants:
+//! This enum has **54** variants:
 //!
 //! ```text
 //! $ awk '/^pub enum Frame \{/,/^\}/' src/frame.rs | grep -oE '^    [A-Z][A-Za-z0-9]*' | sort -u | wc -l
-//! 53
+//! 54
 //! ```
 //!
 //! (`sort -u` is load-bearing: `ActiveEffect` is both a variant name and the
@@ -61,7 +61,7 @@
 //! PR-13). The missing one is `Structural`, a Cena addition the arithmetic
 //! below never counted (`grep -c Structural` over Vellum's parser: 0).
 //!
-//! `63 - 5 - 5 - 7 + 7 = 53`, where:
+//! `63 - 5 - 5 - 7 + 8 = 54`, where:
 //!
 //! - **-5 not-wire variants**, each named above: `VellumImage`,
 //!   `VellumCommand`, `VellumTimer`, `Event`, `LichWebUI`.
@@ -94,7 +94,8 @@
 //!   puts it above this crate; `ClearActiveEffects` is what
 //!   [`Frame::ClearDialogData`] already emits now that `clear='t'` is read on
 //!   the open tag.
-//! - **+7 Cena adds**: [`Frame::UnknownTag`] and [`Frame::MalformedTag`], both
+//! - **+8 Cena adds** ([`Frame::EndSetup`], typed 2026-09-23 because readiness
+//!   keys on it, is the eighth): [`Frame::UnknownTag`] and [`Frame::MalformedTag`], both
 //!   mandated by Rule 2.2; [`Frame::ClientCommand`] and
 //!   [`Frame::ClientSettings`], which the gated corpus replay found in real
 //!   traffic that Vellum's vocabulary does not name; and
@@ -131,6 +132,7 @@
 
 use crate::runs::Runs;
 
+mod methods;
 mod payload;
 
 pub use payload::{
@@ -232,6 +234,15 @@ pub enum Frame {
     DeleteContainer { id: String },
     /// Placement attrs riding a `<streamWindow>`/`<openDialog>`/`<container>`.
     WindowHints { id: String, attrs: Attrs },
+    /// `<endSetup/>`: the login setup is over. The session keys `Ready` on the
+    /// first `<prompt>` after it (`cena-session`, `actor/readiness.rs`). It
+    /// was a `WindowHints` bag, which a consumer could only recognise by
+    /// string; unit because the tag has no attributes (`Wrayth protocol.txt:21`
+    /// "Key Attributes: (none)"). MEASURED 2026-09-23 over
+    /// `C:/Gemstone/lich-5/logs/*/2026/09/*.xml`: 143 of 164 logs carry
+    /// it, every one bare --
+    /// `grep -ho "<endSetup[^>]*>" | sort | uniq -c` -> `143 <endSetup/>`.
+    EndSetup,
     /// `<app char= game= title=>` -- who this connection is, and where.
     ///
     /// **`game` is the INSTANCE**, and a multi-session client needs it. The
@@ -472,28 +483,4 @@ pub enum Frame {
     /// log and no test asserting the behaviour. Typed here so the case is
     /// visible, testable, and cannot be mistaken for prose.
     MalformedTag { raw: String },
-}
-
-impl Frame {
-    /// True for a frame that records a tag's presence without modelling it.
-    ///
-    /// Provided here rather than left to each caller because the drop-nothing
-    /// rule creates this filter for **every** consumer at once -- a renderer,
-    /// the replay differ, and a behavior all need the same predicate on the
-    /// same day, which is the rule of three (`plan/05` §-1) satisfied at
-    /// introduction rather than anticipated. It is one `matches!`, not a
-    /// trait and not a config option.
-    #[must_use]
-    pub fn is_structural(&self) -> bool {
-        matches!(self, Frame::Structural { .. })
-    }
-
-    /// A [`Frame::Structural`] for `name`, carrying `raw` verbatim.
-    #[must_use]
-    pub(crate) fn structural(name: &str, raw: &str) -> Self {
-        Frame::Structural {
-            name: name.to_owned(),
-            raw: raw.to_owned(),
-        }
-    }
 }

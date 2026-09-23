@@ -543,3 +543,31 @@ fn a_nested_object_carries_its_own_text_not_an_empty_string() {
         .expect("the command link");
     assert_eq!(outer.text, "a mithril katar", "the whole run, as before");
 }
+
+#[test]
+fn end_setup_is_its_own_frame_as_the_login_burst_sends_it() {
+    // The session keys `Ready` on the first prompt after `<endSetup/>`
+    // (`cena-session`, `actor/readiness.rs`). As a `WindowHints` bag it could
+    // be recognised only by its id string. Read from the committed login
+    // fixture, where it shares a line with `<app>` exactly as the wire sends
+    // it, so the test cannot pass on a shape the game never produces.
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/login_setup.xml");
+    let bytes = std::fs::read(&path).expect("the login fixture is committed");
+    let frames = Parser::new().push_bytes(&bytes);
+    let ended = frames.iter().position(|f| matches!(f, Frame::EndSetup));
+    let app = frames
+        .iter()
+        .position(|f| matches!(f, Frame::AppInfo { .. }));
+    assert!(
+        ended.is_some(),
+        "no EndSetup in the login burst: {frames:#?}"
+    );
+    assert!(ended < app, "<endSetup/> precedes <app> on the wire");
+    assert!(
+        !frames
+            .iter()
+            .any(|f| matches!(f, Frame::WindowHints { id, .. } if id == "endSetup")),
+        "endSetup is still ALSO emitted as a WindowHints bag"
+    );
+}
