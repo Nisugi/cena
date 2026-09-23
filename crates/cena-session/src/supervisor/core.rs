@@ -85,6 +85,13 @@ pub struct SessionCore {
     pub(super) menu_dir: Option<std::path::PathBuf>,
     /// The shared generation every handle reads.
     pub(super) generation: GenerationCell,
+    /// Set when a caller sent something while there was no actor to take it;
+    /// read and cleared by the supervisor's `after_connection` as attendance.
+    ///
+    /// A field rather than the local it was, because the inbox is now answered
+    /// from three places -- the sweep before an actor starts, and the connect
+    /// and backoff waits (review finding 6) -- and all three must count.
+    pub(super) attended_while_disconnected: bool,
     /// Stops the **session**, not one connection.
     ///
     /// This is the distinction that makes a supervisor possible: the actor's
@@ -163,39 +170,58 @@ impl SessionCore {
         let mut swept = 0;
         while let Ok(message) = self.commands.try_recv() {
             swept += 1;
-            // Anything a caller SENT is someone acting, whatever becomes of it.
-            if matches!(
-                message,
-                Inbox::Command(_) | Inbox::SendNow { .. } | Inbox::Quit { .. }
-            ) {
-                self.state.answer_idle_warning();
-            }
-            match message {
-                // §5.1: a command aimed at a dead connection fails with
-                // `Disconnected`, which a behavior reads as "this connection
-                // died and a retry may work" -- not `Dead`, which is permanent.
-                Inbox::Command(envelope) => {
-                    let _ = envelope.reply.send(Outcome::Disconnected);
-                }
-                Inbox::SendNow { reply, .. } => {
-                    let _ = reply.send(Sent::Dead);
-                }
-                // **The one that logs the character out.** The caller has
-                // already been told `Unsent`; this makes that true.
-                Inbox::Quit { reply, .. } => {
-                    let _ = reply.send(Farewell::Unsent);
-                }
-                // A claim against a connection that no longer exists. Answering
-                // `Ok` would hand out authority over a queue that is about to
-                // be replaced.
-                Inbox::Claim { reply, .. } => {
-                    drop(reply);
-                }
-                // Nothing to answer, and nothing to release: the queue that
-                // held the authority died with the actor.
-                Inbox::Release(_) => {}
-            }
+            self.refuse_while_disconnected(message);
         }
         swept
+    }
+
+    /// Answer one message that arrived while there is no connection.
+    ///
+    /// # Answered as it arrives, not when the next connection does
+    ///
+    /// `plan/12` §5.1 says commands during `Reconnecting` *"fail immediately
+    /// with `Disconnected`"*, and `State::Reconnecting`'s docs claimed they
+    /// did. They did not: the inbox was swept only after a connect SUCCEEDED,
+    /// so with the network down a `send_and_await` waited out its own deadline
+    /// and came back `Timeout` -- 30 s in the review's probe, and `Timeout`
+    /// tells a behavior the command may have run -- while `send_now` hit its
+    /// 5 s backstop. The supervisor now calls this from its connect and
+    /// backoff waits as well as from the sweep (review finding 6).
+    ///
+    /// Anything a caller SENT counts as attendance, whatever becomes of it --
+    /// see [`Self::discard_stale_inbox`].
+    pub(super) fn refuse_while_disconnected(&mut self, message: Inbox) {
+        if matches!(
+            message,
+            Inbox::Command(_) | Inbox::SendNow { .. } | Inbox::Quit { .. }
+        ) {
+            self.state.answer_idle_warning();
+            self.attended_while_disconnected = true;
+        }
+        match message {
+            // §5.1: a command aimed at a dead connection fails with
+            // `Disconnected`, which a behavior reads as "this connection
+            // died and a retry may work" -- not `Dead`, which is permanent.
+            Inbox::Command(envelope) => {
+                let _ = envelope.reply.send(Outcome::Disconnected);
+            }
+            Inbox::SendNow { reply, .. } => {
+                let _ = reply.send(Sent::Dead);
+            }
+            // **The one that logs the character out.** The caller has
+            // already been told `Unsent`; this makes that true.
+            Inbox::Quit { reply, .. } => {
+                let _ = reply.send(Farewell::Unsent);
+            }
+            // A claim against a connection that no longer exists. Answering
+            // `Ok` would hand out authority over a queue that is about to
+            // be replaced.
+            Inbox::Claim { reply, .. } => {
+                drop(reply);
+            }
+            // Nothing to answer, and nothing to release: the queue that
+            // held the authority died with the actor.
+            Inbox::Release(_) => {}
+        }
     }
 }

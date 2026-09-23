@@ -133,7 +133,26 @@ impl ObservationRequests {
 }
 
 /// Both legacy and fenced streams share one publication point. Clones pass
-/// ownership between the supervisor and actor; only that owner publishes.
+/// ownership between the supervisor and actor, and the owner publishes
+/// everything **except notices**, which a [`SessionHandle`](crate::SessionHandle)
+/// publishes from whatever task calls `say`.
+///
+/// # Why there is a lock, and what it costs
+///
+/// Notices used to go to the legacy sender alone, so they never reached the
+/// fenced stream a `SessionObserver` reads -- a frontend attached through
+/// `observer().subscribe()` never saw "Travel: no route" (review finding 7).
+/// Routing them through [`Self::send`] fixes that, but makes a second task a
+/// publisher, and the fence is only exact while one task at a time can
+/// publish or take a snapshot: a notice that took its cursor between another
+/// task's snapshot and its `subscribe` would be missed by that subscriber, or
+/// arrive numbered at or below the snapshot's cursor and be discarded as
+/// already seen.
+///
+/// So publication and `answer` share one mutex. It is per session, so 25
+/// sessions never contend with each other, and within one session the second
+/// party is a notice -- a handful per session. Uncontended, it costs one
+/// lock and unlock per event.
 #[derive(Clone, Debug)]
 pub(crate) struct EventPublisher {
     legacy: broadcast::Sender<Event>,
@@ -142,6 +161,9 @@ pub(crate) struct EventPublisher {
     generation: GenerationCell,
     session: SessionId,
     retry: Arc<Mutex<Option<RetryStatus>>>,
+    /// Held while a cursor is taken and its event sent, and while a snapshot
+    /// is paired with a subscription. See the type's docs.
+    fence: Arc<Mutex<()>>,
 }
 
 impl EventPublisher {
@@ -153,17 +175,24 @@ impl EventPublisher {
             generation,
             session: SessionId::FIRST,
             retry: Arc::new(Mutex::new(None)),
+            fence: Arc::new(Mutex::new(())),
         }
     }
 
-    /// The legacy `Event` sender, for the places that still hold one.
+    /// A publisher over a caller's own legacy channel, with a fenced stream
+    /// nobody can subscribe to.
     ///
-    /// `SessionHandle` takes a raw sender because `say` publishes a notice
-    /// straight to it. Handing out the inner channel keeps ONE publication
-    /// point -- the alternative, a second `broadcast::channel`, would give the
-    /// handle a stream no subscriber reads, and notices would vanish.
-    pub(crate) fn legacy_sender(&self) -> broadcast::Sender<Event> {
-        self.legacy.clone()
+    /// For [`SessionHandle::new`](crate::SessionHandle::new), which is public
+    /// and takes a raw `broadcast::Sender` -- tests build a handle with no
+    /// session behind it. Such a handle has no observers, so an unread fenced
+    /// stream loses nothing.
+    pub(crate) fn from_legacy(
+        legacy: broadcast::Sender<Event>,
+        generation: GenerationCell,
+    ) -> Self {
+        let mut publisher = Self::new(1, generation);
+        publisher.legacy = legacy;
+        publisher
     }
 
     pub(crate) fn send(&self, event: Event) -> Result<usize, broadcast::error::SendError<Event>> {
@@ -192,6 +221,10 @@ impl EventPublisher {
             }
             _ => {}
         }
+        let _fence = self
+            .fence
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let cursor = self.cursor.fetch_add(1, Ordering::Relaxed) + 1;
         if self.observed.receiver_count() > 0 {
             let _ = self.observed.send(ObservedEvent {
@@ -225,7 +258,16 @@ impl EventPublisher {
 
     pub(crate) fn answer(&self, request: Request, state: &GameState, lifecycle: State) {
         if !request.is_closed() {
-            let _ = request.send((self.snapshot(state, lifecycle), self.observed.subscribe()));
+            // Under the fence: no notice can take a cursor between the
+            // snapshot's and the subscription's start.
+            let subscription = {
+                let _fence = self
+                    .fence
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                (self.snapshot(state, lifecycle), self.observed.subscribe())
+            };
+            let _ = request.send(subscription);
         }
     }
 }

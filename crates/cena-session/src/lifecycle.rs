@@ -236,7 +236,15 @@ pub enum State {
     ///   by the gate that already existed.
     /// * **`Disconnected`** -- the actor answers its waiters on the way out
     ///   (`SessionActor::shutdown`), so by the time a session is in this state
-    ///   nobody is still waiting on the old connection.
+    ///   nobody is still waiting on the old connection; and anything sent
+    ///   DURING this state is answered as it arrives by the supervisor, which
+    ///   reads the inbox while it waits to connect
+    ///   (`SessionCore::refuse_while_disconnected`).
+    ///
+    ///   That second half was claimed here before it was true. The inbox was
+    ///   swept only once a connect succeeded, so with the network down a
+    ///   command waited out its caller's deadline and came back `Timeout`
+    ///   (review finding 6).
     ///
     /// A session in this state has **no actor**: the previous one returned its
     /// [`SessionEnd`](crate::actor::SessionEnd) and the next has not been
@@ -244,6 +252,14 @@ pub enum State {
     /// the actor doing it -- there is no actor to.
     Reconnecting,
     /// The transport is gone and the task has ended.
+    ///
+    /// **Terminal, and only published when it is.** A supervised session that
+    /// loses a connection goes `Ready -> Reconnecting`, never through `Closed`;
+    /// `Closed` is published once, when the session itself stops (a cancel, a
+    /// fatal connect error, the unattended cap), or when a plain
+    /// [`Session`](crate::Session)'s one connection ends. A consumer may read
+    /// it as "gone for good" -- `cena-behavior`'s travel maps it to `Dead` --
+    /// and review finding 2 was that a dropped connection published it first.
     Closed,
 }
 

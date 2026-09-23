@@ -262,3 +262,138 @@ async fn a_quit_is_ordered_behind_commands_already_queued() {
 
     let _ = task.await;
 }
+
+/// A server that answers `quit` by RESETTING the connection rather than
+/// closing it: one prompt, then a read error once `quit` has been written.
+struct ResetOnQuit {
+    prompted: bool,
+    quit: bool,
+}
+
+impl cena_platform::ByteSource for ResetOnQuit {
+    async fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if !self.prompted {
+            self.prompted = true;
+            buf[..PROMPT.len()].copy_from_slice(PROMPT);
+            return Ok(PROMPT.len());
+        }
+        if self.quit {
+            return Err(std::io::ErrorKind::ConnectionReset.into());
+        }
+        std::future::pending().await
+    }
+
+    async fn write_all(&mut self, message: &[u8]) -> std::io::Result<()> {
+        self.quit |= message == b"quit\n";
+        Ok(())
+    }
+
+    async fn shutdown(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// **A reset after a quit is still the goodbye.**
+///
+/// Only the EOF arm asked whether a quit was pending, so a quit answered by a
+/// reset -- or a link that dropped in the same moment -- ended as
+/// `ReadFailed`, and the supervisor logged the character straight back in.
+/// VERIFIED before the fix: a typed `quit` then a reset gave two connect
+/// attempts and generation 1.
+///
+/// Both ways in are covered, because they are two code paths: the handle's
+/// `quit`, and a player TYPING it -- which `cena-web` sends since M4.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_quit_answered_by_a_reset_does_not_warrant_a_reconnect() {
+    for typed in [false, true] {
+        let session = Session::new(ResetOnQuit {
+            prompted: false,
+            quit: false,
+        });
+        let handle = session.handle();
+        let task = tokio::spawn(session.into_actor().run());
+
+        if typed {
+            let _ = handle
+                .send_manual_at(handle.generation(), "quit", EXIT_TIMEOUT)
+                .await;
+        } else {
+            let _ = handle.quit(EXIT_TIMEOUT).await;
+        }
+
+        let end = task.await.expect("the actor must not panic");
+        assert!(
+            !end.reason.warrants_reconnect(),
+            "typed={typed}: a quit answered by a reset ended as {:?}, which \
+             reconnects -- the player asked to leave and was put back in-world",
+            end.reason
+        );
+    }
+}
+
+/// A socket whose send buffer never drains: every write parks forever.
+struct StalledWrite;
+
+impl cena_platform::ByteSource for StalledWrite {
+    async fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+        std::future::pending().await
+    }
+
+    async fn write_all(&mut self, _message: &[u8]) -> std::io::Result<()> {
+        std::future::pending().await
+    }
+
+    async fn shutdown(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// **A cancel interrupts a write in progress, and is reported as a cancel.**
+///
+/// Every write is awaited outside the loop's `select!`, so the cancel arm
+/// could not fire until the write gave up: VERIFIED before the fix, a stop
+/// took the full `WRITE_DEADLINE` (5 s) against `plan/12` §4.3's 250 ms
+/// `PREEMPT_GRACE`, and the session ended `WriteFailed` -- a lost transport,
+/// which a supervisor answers `Disconnected` and reconnects (review
+/// finding 5).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_cancel_interrupts_a_stalled_write() {
+    const PREEMPT_GRACE: Duration = Duration::from_millis(250);
+    let session = Session::new(StalledWrite);
+    let handle = session.handle();
+    let cancel = session.cancel_token();
+    let task = tokio::spawn(session.into_actor().run());
+    let waiting = tokio::spawn(async move {
+        handle
+            .send_and_await(
+                cena_session::CommandId(1),
+                "look",
+                cena_session::Origin::Manual,
+                Duration::from_mins(1),
+                cena_session::queue::any_frame,
+            )
+            .await
+    });
+    // The command is now mid-write, and will stay there.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    let start = tokio::time::Instant::now();
+    cancel.cancel();
+    let end = task.await.expect("the actor must not panic");
+    let took = start.elapsed();
+
+    assert!(
+        took <= PREEMPT_GRACE,
+        "the stop took {took:?}: it waited for the stalled write to time out"
+    );
+    assert_eq!(
+        end.reason,
+        cena_session::EndReason::Cancelled,
+        "a stop is a cancel, not a lost transport a supervisor would reconnect"
+    );
+    assert_eq!(
+        waiting.await.expect("the waiter must not panic"),
+        cena_session::Outcome::Dead,
+        "the command caught in the write is answered, not dropped"
+    );
+}

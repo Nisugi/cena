@@ -139,13 +139,41 @@ impl<S: ByteSource> SessionActor<S> {
         // the only way to lose facts is a crash, and the facts a crash could
         // lose are re-taught by a sync.
         self.save_character();
-        self.transition(State::Closed);
+        // **`Closed` means the session is over, so it is published only when
+        // it is** (review finding 2). A supervised connection that was LOST is
+        // not the end of anything: the supervisor is about to publish
+        // `Reconnecting` with the next generation (`supervisor.rs`,
+        // `reconnect`). Publishing `Closed` first told every observer the
+        // session had ended -- `State::Closed` is documented as "the task has
+        // ended", and `cena-behavior`'s travel maps it to `Dead` -- and then
+        // contradicted it one event later. VERIFIED: with this guard removed,
+        // `observation.rs`'s `a_lost_connection_goes_to_reconnecting_without_closing`
+        // fails on a `Closed` before `Reconnecting`.
+        //
+        // The lifecycle this actor hands back is then its last live state,
+        // and the supervisor owns what comes next: `Reconnecting`, or
+        // `Closed` from `finish` if it decides to stop. A plain `Session`, and
+        // any cancellation, has nothing after it and closes here as before.
+        if !self.connection_loss_is_supervised(reason) {
+            self.transition(State::Closed);
+        }
         // Flush LAST, after the Closed transition has been logged, so the file
         // records its own end. Buffered writers otherwise lose the final lines
         // -- which are the ones that say why a session stopped.
         if let Some(sink) = self.sink.as_mut() {
             let _ = sink.flush();
         }
+    }
+
+    /// Whether this ending is a lost connection that a supervisor will act on,
+    /// rather than the end of the session.
+    ///
+    /// `on_disconnect` is the fact the owner gave the actor about whether
+    /// anything will open another connection -- the same fact `into_end`
+    /// reads -- and `warrants_reconnect` is the actor's own verdict on the
+    /// reason. Both must hold: a cancelled supervised session is over.
+    fn connection_loss_is_supervised(&self, reason: EndReason) -> bool {
+        reason.warrants_reconnect() && self.on_disconnect == crate::Outcome::Disconnected
     }
 
     /// Answer a pending quit, if there is one. Returns whether there was.
@@ -191,7 +219,7 @@ impl<S: ByteSource> SessionActor<S> {
     /// # It reports rather than syncs
     ///
     /// Publishes [`Event::SyncNeeded`] with whatever the store says is stale.
-    /// Running the sync means sending up to fourteen commands, and `plan/12`
+    /// Running the sync means sending up to fifteen commands, and `plan/12`
     /// §4.2 gives the authority to one claimant at a time -- an actor that
     /// issued them on its own would be a claimant nobody claimed. So the
     /// session says what it found and whoever owns the character decides

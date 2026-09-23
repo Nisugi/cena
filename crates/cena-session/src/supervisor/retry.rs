@@ -38,6 +38,22 @@ use std::time::Duration;
 /// than reinvent.
 const BACKOFF_SECONDS: &[u64] = &[1, 2, 5, 10, 30];
 
+/// How long a connection must stay up before its loss resets the ladder.
+///
+/// **The ladder's top rung, and that is the argument for it.** A connection
+/// that lived at least as long as the longest wait cannot, by resetting the
+/// ladder, produce reconnects faster than the capped ladder already allows --
+/// so the reset can never be what turns a flapping connection into a login
+/// storm. Anything shorter could: a connection that receives its login burst
+/// and is knocked off a second later (two clients fighting over one
+/// character) used to reset on that burst and retry at one second forever
+/// (review finding 3).
+///
+/// Derived from `BACKOFF_SECONDS` rather than restated, so the two cannot
+/// drift apart.
+pub const STABLE_CONNECTION: Duration =
+    Duration::from_secs(BACKOFF_SECONDS[BACKOFF_SECONDS.len() - 1]);
+
 /// Consecutive losses with **no command sent in between** before the supervisor
 /// stops on its own.
 ///

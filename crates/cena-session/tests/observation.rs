@@ -107,6 +107,89 @@ async fn lag_resubscription_replaces_the_old_fence_with_fresh_authoritative_stat
     assert_eq!(closed.event, Event::StateChanged(State::Closed));
 }
 
+/// **A lost connection is not the end of the session, so it does not say
+/// `Closed`.**
+///
+/// The actor published `Closed` on its way out of every connection, and the
+/// supervisor published `Reconnecting` one event later -- so a lost link read
+/// `[Ready, Closed, Reconnecting, ...]` to every observer, and `Closed` is
+/// documented as "the task has ended". `cena-behavior`'s travel maps it to
+/// `Dead` (review finding 2). `Closed` belongs to the session's end, once.
+#[tokio::test(start_paused = true)]
+async fn a_lost_connection_goes_to_reconnecting_without_closing() {
+    let reply = b"<prompt time='1'>&gt;</prompt>\n";
+    let (first, transcript) = AnsweringSource::new(reply);
+    let (second, _) = AnsweringSource::new(reply);
+    let (session, _handle) = SupervisedSession::new(Connections(vec![first, second].into()));
+    let (_, mut events) = session.subscribe();
+    let observer = session.observer();
+    let cancel = session.cancel_token();
+    let running = tokio::spawn(session.run());
+    let _ = observer.subscribe().await.expect("first connection ready");
+
+    transcript.hang_up();
+    let mut lifecycle = Vec::new();
+    while lifecycle.last() != Some(&State::Reconnecting) {
+        if let Event::StateChanged(state) = events.recv().await.expect("an event") {
+            lifecycle.push(state);
+        }
+    }
+    assert!(
+        !lifecycle.contains(&State::Closed),
+        "a dropped connection announced the session closed: {lifecycle:?}"
+    );
+
+    cancel.cancel();
+    let _ = running.await;
+    while let Ok(event) = events.try_recv() {
+        if let Event::StateChanged(state) = event {
+            lifecycle.push(state);
+        }
+    }
+    assert_eq!(
+        lifecycle.iter().filter(|s| **s == State::Closed).count(),
+        1,
+        "the session's real end says `Closed` exactly once: {lifecycle:?}"
+    );
+    assert_eq!(lifecycle.last(), Some(&State::Closed), "{lifecycle:?}");
+}
+
+/// **A notice reaches a frontend attached through the observer.**
+///
+/// `SessionHandle::say` published to the legacy `Event` channel only, so the
+/// fenced stream `SessionObserver::subscribe` returns -- the one `cena-web`
+/// reads -- never carried one (review finding 7). "Travel: no route" reached
+/// nobody watching the web frontend.
+#[tokio::test(start_paused = true)]
+async fn a_notice_reaches_the_fenced_observer_stream() {
+    let (source, _) = AnsweringSource::new(b"<prompt time='1'>&gt;</prompt>\n");
+    let session = Session::new(source);
+    let handle = session.handle();
+    let observer = session.observer();
+    let cancel = session.cancel_token();
+    let driver = tokio::spawn(session.into_actor().run());
+    let (snapshot, mut fenced) = observer.subscribe().await.expect("running owner");
+
+    handle.say(cena_session::Notice::line(
+        cena_session::NoticeKind::Error,
+        "Travel: no route",
+    ));
+    let event = fenced
+        .try_recv()
+        .expect("the notice must be on the fenced stream");
+    assert!(matches!(event.event, Event::Notice(_)), "{:?}", event.event);
+    assert!(
+        event.cursor > snapshot.cursor,
+        "numbered after the snapshot it followed, or a frontend discards it \
+         as already seen: {} vs {}",
+        event.cursor,
+        snapshot.cursor
+    );
+
+    cancel.cancel();
+    let _ = driver.await;
+}
+
 #[tokio::test(start_paused = true)]
 async fn reconnect_snapshot_and_transition_share_the_new_generation() {
     let reply = b"<progressBar id='health' value='97'/><prompt time='1'>&gt;</prompt>\n";

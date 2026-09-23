@@ -12,7 +12,7 @@
 //! time it has paid: a file at its cap has an obvious seam instead of an
 //! argument about one.
 
-use super::{COMMAND_CHANNEL_BOUND, EVENT_CHANNEL_BOUND, Event, SessionActor};
+use super::{COMMAND_CHANNEL_BOUND, EVENT_CHANNEL_BOUND, Event, SessionActor, owed};
 use crate::command::SessionHandle;
 use crate::lifecycle::{Generation, State};
 use crate::observation::{EventPublisher, ObservationRequests};
@@ -80,7 +80,7 @@ impl<S: ByteSource> Session<S> {
                 state: GameState::default(),
                 lifecycle: State::Connecting,
                 queue: CommandQueue::new(),
-                send_now_prompts_owed: 0,
+                owed: owed::OwedPrompts::default(),
                 commands: rx,
                 events: events.clone(),
                 observations: ObservationRequests::new(),
@@ -98,9 +98,9 @@ impl<S: ByteSource> Session<S> {
                 // see `SessionActor::on_disconnect`.
                 on_disconnect: crate::command::Outcome::Dead,
                 quitting: None,
-                write_broke_the_stream: false,
+                write_ended: None,
             },
-            handle: SessionHandle::new(tx, generation, events.legacy_sender()),
+            handle: SessionHandle::publishing_to(tx, generation, events.clone()),
             events,
             cancel,
         }

@@ -55,7 +55,7 @@ pub use cena_model::movement::{self, MoveFeedback};
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::{containers, gameobj, group, hands, stream_windows};
 pub use cena_model::{ChunkLine, GameState, Room, RoomItem, UnknownTag};
-pub use cena_model::{SkillKind, SkillLine, Society, Vital, VitalsExt, spell_named, spells};
+pub use cena_model::{SkillKind, SkillLine, Society, Vital, spell_named, spells};
 pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Link, LinkKind};
 pub use cena_protocol::runs::Runs;
@@ -70,8 +70,8 @@ pub use player_log::writer::PlayerWriter;
 pub use player_log::{LogLine, LogSink, PlayerLog};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
 pub use supervisor::{
-    ConnectError, Connector, MAX_UNATTENDED_LOSSES, Retryability, SessionCore, StoppedBecause,
-    SupervisedEnd, SupervisedSession, backoff,
+    ConnectError, Connector, MAX_UNATTENDED_LOSSES, Retryability, STABLE_CONNECTION, SessionCore,
+    StoppedBecause, SupervisedEnd, SupervisedSession, backoff,
 };
 
 /// The wire vocabulary, re-exported for behaviors.

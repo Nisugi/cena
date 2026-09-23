@@ -66,6 +66,40 @@ async fn a_mistyped_command_is_answered_and_the_game_never_hears_it() {
     assert!(said[0].contains(";go22 bank"), "{said:?}");
 }
 
+/// **A claimed line checks the generation before it runs.**
+///
+/// The actor's generation fence only sees what reaches the actor, and a
+/// claimed line never does: `;go2 bank` typed into a browser still showing
+/// the previous connection ran the desk anyway, and came back `Confirmed`
+/// (review finding 8).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_claimed_line_from_a_stale_generation_does_not_run() {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let stale = handle.generation();
+    tokio::spawn(session.into_actor().run());
+
+    let ran: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let kept = Arc::clone(&ran);
+    let runner: Runner = Arc::new(move |line: &str| {
+        kept.lock().map(|mut ran| ran.push(line.to_owned())).ok();
+        Claimed::Done
+    });
+    assert!(handle.set_desk(Desk::new(None, runner)));
+    // What a reconnect does to every handle: the frontend is now a
+    // generation behind.
+    let _ = handle.generation_cell().advance();
+
+    let outcome = handle.send_manual_at(stale, ";go2 bank", DEADLINE).await;
+    assert_eq!(outcome, cena_session::Outcome::Disconnected);
+    assert!(
+        ran.lock().unwrap().is_empty(),
+        "the desk ran a command addressed to a connection that is gone"
+    );
+    assert!(transcript.lines().is_empty());
+}
+
 /// With nothing registered, a session behaves exactly as it did before: the
 /// symbol means nothing and every line is the game's.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
