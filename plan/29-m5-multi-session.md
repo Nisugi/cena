@@ -132,6 +132,17 @@ Each step ends in something demonstrable, the way M1's did.
    > table with step 4. A failing store write (moved here from §3a) is still to test.
 4. **The credential ladder (Q2).** OS keyring, then a source the user names (env var, file,
    stdin), then refuse loudly naming the account. The prompt stops echoing.
+   > **BUILT 2026-09-23** in the binary (`crates/cena/src/secrets.rs`): keyring (service
+   > `hydra`, keyed by the account in lowercase, as `VellumFE` does), then
+   > `CENA_PASSWORD_<ACCOUNT>`, then a prompt that does not echo, then a refusal naming the
+   > account. A typed password is offered to the keyring after the login reaches `Ready`,
+   > default no. In the binary, not `cena-platform`, because `keyring` has no Android backend
+   > and CI builds `cena-platform` for Android. No password file (author: ladder as proposed).
+   >
+   > **Next with it:** the binary onto the table. `--character Nisugi --character Nerten`
+   > needs each character's account, which is not secret and not in the keyring, so a small
+   > record in the data directory keeps character → account and game code, written the first
+   > time a character logs in (author's question, 2026-09-23).
 5. **The web hub and per-session URLs (§5a).** *Demo:* two scripted sessions, one hub, one
    tab per character, and switching inside the hub.
 6. **Live, author present:** two characters on two accounts at once. This is M5's

@@ -43,14 +43,9 @@
 //! old comment admitted as much. The lifetime is longer and now honest;
 //! `zeroize` is still the step `plan/12` §7.1 puts Out of scope.
 //!
-//! **The prompt ECHOES what you type.** There is no terminal echo suppression
-//! here: the password appears on screen as it is typed and stays in the
-//! terminal's scrollback. Suppressing it needs `rpassword` or raw-mode
-//! handling, which is the credential ladder `plan/12` §7.1 puts Out for M1.
-//!
-//! This paragraph replaced the claim "the password is never printed", which
-//! was **false** and was caught by adversarial review. Do not run this on a
-//! shared screen or a recorded session until the prompt is fixed.
+//! **The password comes from the credential ladder** (`secrets.rs`): the OS
+//! keyring, the account's environment variable, or a prompt that does not
+//! echo. The prompt used to print it as it was typed (`plan/29` Q2).
 //!
 //! # Why this names `cena-platform` directly
 //!
@@ -71,6 +66,7 @@ mod frontend;
 mod interrupt;
 mod probe;
 mod run;
+mod secrets;
 mod travel;
 
 use ask::ask;
@@ -289,6 +285,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The eaccess certificate pin lives in the data directory, beside the
     // character and menu stores, under Lich's and VellumFE's name.
     let pin = cena_session::character_store::data_dir().join(cena_platform::PIN_FILENAME);
+    // A typed password is offered to the keyring once the login proves it.
+    let remember = (typed.password_from == secrets::Source::Prompt)
+        .then(|| (typed.account.clone(), typed.password.clone()));
     let connector = LiveConnector::new(typed, run::login_provider(), pin);
     // The handle comes back WITH the session, because
     // `SupervisedSession::new` mints it: it must be obtainable before `run`
@@ -298,6 +297,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Hydra's command line, before anything connects (`commands.rs`).
     let commands = commands::Commands::install(&handle);
     let observer = session.observer();
+    if let Some((account, password)) = remember {
+        tokio::spawn(secrets::offer_to_remember(
+            account,
+            password,
+            observer.clone(),
+        ));
+    }
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
     // A SECOND receiver, for the probe. `events` is moved into the watcher
