@@ -1,10 +1,11 @@
-//! Travel, wired to this binary: load the map, build the desk, and give it
-//! the lines the player types that begin with the command symbol.
+//! Travel, wired to this binary: load the map, build the desk, and register
+//! it on Hydra's command line (`crate::commands`) for travel's own words.
 //!
 //! **Nothing here decides what a command means.** The symbol and the claiming
-//! are `cena_session::command::claimant`; the commands and what they do are
-//! `cena_behavior::travel` (`command.rs`, `desk.rs`). This file is the join,
-//! which is the binary's job and no crate's.
+//! are `cena_session::command::claimant`, the routing is `crate::commands`,
+//! and the commands and what they do are `cena_behavior::travel`
+//! (`command.rs`, `desk.rs`). This file is the join, which is the binary's
+//! job and no crate's.
 //!
 //! # BUILT, NOT RUN
 //!
@@ -31,8 +32,9 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use crate::commands::Commands;
 use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command, read_map};
-use cena_session::command::claimant::{self, Claimed, Runner};
+use cena_session::command::claimant::{self, Claimed};
 use cena_session::{
     AuthorityToken, Event, Notice, NoticeKind, SessionHandle, SessionObserver, Snapshot,
 };
@@ -131,6 +133,7 @@ pub(crate) async fn after_login(
     hand_over: &CancellationToken,
     handle: &SessionHandle,
     observer: SessionObserver,
+    commands: &Commands,
 ) {
     // Sent while the mirror is still reading, so it sees where this lands.
     if let Some(first) = first_command(std::env::args().skip(1)) {
@@ -140,27 +143,37 @@ pub(crate) async fn after_login(
     }
     hand_over.cancel();
     match mirror.await {
-        Ok(joined) => open_desk(handle, observer, joined),
+        Ok(joined) => open_travel(handle, observer, joined, commands),
         Err(e) => eprintln!("[travel] the mirror task failed: {e}"),
     }
 }
 
-/// Load the map and take the player's travel commands from now on.
-fn open_desk(
+/// Register travel on Hydra's command line (`crate::commands`), with the map
+/// if there is one.
+///
+/// Also where the character's own command symbol is applied: the command
+/// line was installed at startup with the default, and this is the first
+/// moment the login has said who the character is.
+fn open_travel(
     handle: &SessionHandle,
     observer: SessionObserver,
     joined: (Snapshot, Receiver<Event>),
+    commands: &Commands,
 ) {
     let state = joined.0.state.clone();
+    if let Some(symbol) = symbol(handle, &state)
+        && !handle.set_command_symbol(symbol)
+    {
+        eprintln!("  !! [commands] no command line to give the symbol {symbol} to");
+    }
     let Some(map) = load_map(handle) else {
-        // **The desk opens anyway**, answering every command with why it
-        // cannot travel. Returning here left the session with no desk, so
-        // nothing claimed `;` and `;go2 bank` went to the game -- twice, in
-        // the author's first live `--web` run (2026-09-23), with the one
-        // "no map" notice long scrolled away. A command of Hydra's must never
-        // reach the game because a setting is missing.
+        // Travel's words are answered with why it cannot travel, and nothing
+        // is sent. Every other word is the command line's to route.
         let told = handle.clone();
-        let runner: Runner = Arc::new(move |_: &str| {
+        commands.travel(Arc::new(move |line: &str| {
+            // Travel's word, well-formed or not: without a map, either way
+            // the answer is the same.
+            let _ = parse_command(line)?;
             told.say(Notice::line(
                 NoticeKind::Error,
                 format!(
@@ -168,12 +181,8 @@ fn open_desk(
                      combined map file and start Hydra again."
                 ),
             ));
-            Claimed::Done
-        });
-        let desk = cena_session::command::claimant::Desk::new(symbol(handle, &state), runner);
-        if !handle.set_desk(desk) {
-            eprintln!("  !! [travel] something already runs this session's commands");
-        }
+            Some(Claimed::Done)
+        }));
         return;
     };
     let travel = Desk::new(
@@ -183,30 +192,22 @@ fn open_desk(
     );
     // The login's own subscription, for the first command only.
     let first = Mutex::new(Some(joined));
-    let runner: Runner = {
-        let handle = handle.clone();
-        Arc::new(move |line: &str| {
-            let Some(command) = travel_command(&handle, line) else {
-                return Claimed::Unknown;
-            };
-            let (travel, handle) = (Arc::clone(&travel), handle.clone());
-            let joined = first.lock().ok().and_then(|mut first| first.take());
-            let observer = observer.clone();
-            tokio::spawn(async move {
-                match joined {
-                    Some(joined) => run(&travel, &handle, joined, command).await,
-                    None => run_fresh(&travel, &handle, &observer, command).await,
-                }
-            });
-            Claimed::Done
-        })
-    };
-    let desk = cena_session::command::claimant::Desk::new(symbol(handle, &state), runner);
-    let symbol = desk.symbol();
+    let handler = handle.clone();
+    commands.travel(Arc::new(move |line: &str| {
+        let command = travel_command(&handler, line)?;
+        let (travel, handle) = (Arc::clone(&travel), handler.clone());
+        let joined = first.lock().ok().and_then(|mut first| first.take());
+        let observer = observer.clone();
+        tokio::spawn(async move {
+            match joined {
+                Some(joined) => run(&travel, &handle, joined, command).await,
+                None => run_fresh(&travel, &handle, &observer, command).await,
+            }
+        });
+        Some(Claimed::Done)
+    }));
+    let symbol = handle.command_symbol().unwrap_or(claimant::DEFAULT_SYMBOL);
     eprintln!("[travel] ready: {symbol}go2 bank, {symbol}go2 targets, {symbol}route2 bank");
-    if !handle.set_desk(desk) {
-        eprintln!("  !! [travel] something already runs this session's commands");
-    }
 }
 
 /// What this character marks a command with: the `commands` section of their

@@ -124,3 +124,36 @@ async fn a_session_with_no_desk_sends_everything_as_it_always_did() {
     assert_ne!(sent, cena_session::Outcome::Handled);
     assert_eq!(transcript.lines(), [";go2 bank"]);
 }
+
+/// **The desk goes in at startup and learns the character's symbol later.**
+/// A character whose settings choose `/` gets `/` from then on, and `;` goes
+/// back to being the game's -- without a second desk, which `set_desk` refuses.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_symbol_can_change_after_the_desk_is_installed() {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let generation = handle.generation();
+    tokio::spawn(session.into_actor().run());
+
+    let runner: Runner = Arc::new(|_: &str| Claimed::Done);
+    assert!(handle.set_desk(Desk::new(None, runner)));
+    assert_eq!(handle.command_symbol(), Some(';'));
+
+    assert!(handle.set_command_symbol('/'));
+    assert_eq!(handle.command_symbol(), Some('/'));
+    assert_eq!(
+        handle
+            .send_manual_at(generation, "/go2 bank", DEADLINE)
+            .await,
+        cena_session::Outcome::Handled
+    );
+    handle
+        .send_manual_at(generation, ";go2 bank", DEADLINE)
+        .await;
+    assert_eq!(
+        transcript.lines(),
+        [";go2 bank"],
+        "once the symbol is `/`, `;` is the game's"
+    );
+}

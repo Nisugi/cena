@@ -237,6 +237,16 @@ impl SessionHandle {
         self.desk.set(desk).is_ok()
     }
 
+    /// Change the command symbol of the desk already registered; `false` if
+    /// none is. See `Desk::set_symbol`.
+    #[must_use]
+    pub fn set_command_symbol(&self, symbol: char) -> bool {
+        self.desk
+            .get()
+            .map(|desk| desk.set_symbol(symbol))
+            .is_some()
+    }
+
     /// What this session marks a command with, if anything runs them.
     #[must_use]
     pub fn command_symbol(&self) -> Option<char> {

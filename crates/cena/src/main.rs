@@ -65,6 +65,7 @@
 //! inside the session.
 
 mod ask;
+mod commands;
 mod connector;
 mod frontend;
 mod interrupt;
@@ -294,6 +295,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // consumes the session, and there is no `handle()` accessor to call
     // afterwards.
     let (session, handle, combat_flush, player_flush) = open_session(connector);
+    // Hydra's command line, before anything connects (`commands.rs`).
+    let commands = commands::Commands::install(&handle);
     let observer = session.observer();
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
@@ -359,7 +362,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     unless_interrupted(&interrupt, run_or_probe(&handle, &mut probe_events, &stop)).await;
 
-    let desk = travel::after_login(mirror, &hand_over, &handle, observer.clone());
+    let desk = travel::after_login(mirror, &hand_over, &handle, observer.clone(), &commands);
     if unless_interrupted(&interrupt, desk).await.is_none() {
         // The mirror is waiting to be told to hand over; tell it, so it ends
         // now rather than when the supervisor closes its subscription.
