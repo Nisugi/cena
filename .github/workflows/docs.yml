@@ -1,0 +1,79 @@
+name: docs
+
+# Publishes the workspace rustdoc to GitHub Pages on every push to main.
+#
+# ci.yml already *checks* this build -- `missing_docs` and the three rustdoc
+# link lints are DENY in [workspace.lints] -- but a check keeps nothing. This
+# job publishes the same `cargo doc` invocation, so the published docs are
+# exactly what CI verified, and they can never be older than main.
+#
+# Nothing generated is committed: target/ is gitignored, and committed HTML
+# would be stale on the next change.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. A newer push queues behind a running deploy
+# rather than cancelling it halfway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # No version: rust-toolchain.toml pins it (see ci.yml).
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # The same invocation as ci.yml's doc step. Public items only; the
+      # binary crate is mostly crate-private, so its page is thin by design.
+      - run: cargo doc --workspace --no-deps
+
+      # rustdoc writes one directory per crate and no top-level page, so the
+      # site root would 404 without this. Built from the directories that
+      # exist, so a new crate appears without editing this file.
+      - name: Write the index page
+        shell: bash
+        run: |
+          {
+            echo '<!doctype html>'
+            echo '<meta charset="utf-8">'
+            echo '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            echo '<title>Hydra API docs</title>'
+            echo '<style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem}</style>'
+            echo '<h1>Hydra API docs</h1>'
+            echo "<p>Rustdoc for every crate in the workspace (working name <code>cena</code>), built from <code>main</code> at <code>${GITHUB_SHA::7}</code>.</p>"
+            echo '<ul>'
+            for dir in target/doc/*/; do
+              name=$(basename "$dir")
+              if [ -f "$dir/index.html" ]; then
+                echo "<li><a href=\"$name/index.html\">$name</a></li>"
+              fi
+            done
+            echo '</ul>'
+          } > target/doc/index.html
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: target/doc
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
