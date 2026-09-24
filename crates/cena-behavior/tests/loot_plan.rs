@@ -3,7 +3,44 @@
 
 use cena_behavior::loot::{Left, LootProfile, Memory, Outcome, Planner, Step};
 use cena_session::containers::{ContainerEvent, ItemRef, StowSlot};
-use cena_session::{Frame, GameState, RoomItem};
+use cena_session::{Frame, GameState, Link, LinkKind, RoomItem, Run, Runs};
+
+/// One `<inv>` line of a container's contents, as the wire states it.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors; only the link matters"
+)]
+fn inside(state: &mut GameState, container: &str, id: &str, noun: &str, text: &str) {
+    state.apply(&Frame::ContainerItem {
+        container_id: container.to_owned(),
+        content: Runs {
+            runs: vec![Run {
+                text: text.to_owned(),
+                style: Default::default(),
+                link: Some(Link {
+                    kind: LinkKind::Exist {
+                        id: id.to_owned(),
+                        noun: noun.to_owned(),
+                    },
+                    text: text.to_owned(),
+                    coord: None,
+                }),
+                inner_link: None,
+            }],
+        },
+    });
+}
+
+fn nisugi() -> LootProfile {
+    let yaml = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/eloot.yaml"
+    ))
+    .unwrap_or_default();
+    cena_behavior::loot::import(&yaml)
+        .map(|brought| brought.profile)
+        .unwrap_or_default()
+}
 
 fn profile() -> LootProfile {
     LootProfile {
@@ -222,4 +259,90 @@ fn a_box_left_in_hand_is_a_reason_to_rest() {
     });
     let mut plan = Planner::new(profile(), Memory::default(), &[]);
     assert_eq!(plan.next(&state), Step::Done(Left::BoxInHand));
+}
+
+#[test]
+fn a_search_that_fails_on_condition_casts_the_sigil_once_then_tries_again() {
+    let state = state(&[], true);
+    let mut p = profile();
+    p.sigil_on_fail = true;
+    let mut plan = Planner::new(p, Memory::default(), &[41]);
+    assert_eq!(plan.next(&state), Step::Search(41));
+    plan.outcome(&Outcome::NotInCondition);
+    assert_eq!(
+        plan.next(&state),
+        Step::Cast("incant 9716".to_owned()),
+        "Sigil of Determination, as Lich casts a sigil"
+    );
+    assert_eq!(plan.next(&state), Step::Search(41), "the search again");
+    plan.outcome(&Outcome::NotInCondition);
+    assert_eq!(
+        plan.next(&state),
+        Step::Search(41),
+        "the sigil is cast once a visit"
+    );
+}
+
+#[test]
+fn a_critters_bag_is_opened_looked_in_and_emptied_before_it_is_taken() {
+    // Nisugi takes clothing and gems: a dropped pouch holding an emerald.
+    let floor = [item("5", "bag", "worn leather bag")];
+    let mut state = state(&floor, true);
+    let mut plan = Planner::new(nisugi(), Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::Open("5".to_owned()));
+    plan.outcome(&Outcome::Stored);
+    assert_eq!(plan.next(&state), Step::LookIn("5".to_owned()));
+    // The game lists the pouch's contents.
+    state.apply(&Frame::Container {
+        id: "5".to_owned(),
+        title: Some("Bag".to_owned()),
+        target: None,
+    });
+    inside(&mut state, "5", "6", "emerald", "uncut emerald");
+    assert_eq!(
+        plan.next(&state),
+        Step::LootItem("6".to_owned()),
+        "the emerald inside goes to the gem bag by the game's verb"
+    );
+    state.apply(&Frame::ClearContainer { id: "5".to_owned() });
+    assert_eq!(
+        plan.next(&state),
+        Step::LootItem("5".to_owned()),
+        "then the bag itself, clothing the game stows by its own verb, is taken"
+    );
+    assert!(plan.memory().checked_bags.contains("5"));
+}
+
+#[test]
+fn a_special_that_turns_out_not_to_be_a_bag_is_simply_taken() {
+    let floor = [item("5", "bag", "burlap bag")];
+    let state = state(&floor, true);
+    let mut plan = Planner::new(nisugi(), Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::Open("5".to_owned()));
+    plan.outcome(&Outcome::NotAContainer);
+    assert_eq!(plan.next(&state), Step::LootItem("5".to_owned()));
+}
+
+#[test]
+fn specials_go_one_by_one_before_loot_room_takes_the_rest() {
+    let floor = [
+        item("1", "emerald", "uncut emerald"),
+        item("2", "coffer", "enruned steel coffer"),
+    ];
+    let state = state(&floor, true);
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    // The coffer is a special (a box): dragged to the default bag, since
+    // the test's stow list names no box bag; the emerald waits for
+    // `loot room`.
+    assert_eq!(
+        plan.next(&state),
+        Step::Drag {
+            item: "2".to_owned(),
+            bag: "902".to_owned()
+        }
+    );
+    plan.outcome(&Outcome::Stored);
+    let mut without_box = state.clone();
+    without_box.room.objects.remove(1);
+    assert_eq!(plan.next(&without_box), Step::LootRoom);
 }

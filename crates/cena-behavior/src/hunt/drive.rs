@@ -245,12 +245,13 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                     }
                     break;
                 }
-                Step::Stance(line) => (line.clone(), None),
+                Step::Stance(line) | Step::Cast(line) => (line.clone(), None),
                 Step::Ask(what) => ((*what).to_owned(), None),
                 Step::Search(id) => (format!("loot #{id}"), None),
                 Step::LootRoom => ("loot room".to_owned(), None),
                 Step::LootItem(id) => (format!("loot #{id}"), self.floor_name(id)),
-                Step::Open(bag) => (format!("open #{bag}"), None),
+                Step::Open(bag) => (format!("open #{bag}"), self.floor_name(bag)),
+                Step::LookIn(bag) => (format!("look in #{bag}"), None),
                 Step::Drag { item, bag } => {
                     (format!("_drag #{item} #{bag}"), self.floor_name(item))
                 }
@@ -267,6 +268,17 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
             if outcomes.is_empty() {
                 // The floor is restated a moment after the verb lands.
                 self.hold(BEAT).await?;
+                // A stow the text did not confirm is confirmed by the bag's
+                // contents, as eloot confirms it (`eloot.lic:4102-4108`).
+                if let Step::Drag { item, bag } = &step
+                    && self
+                        .state
+                        .inventory
+                        .container(bag)
+                        .is_some_and(|held| held.items.iter().any(|thing| thing.id == *item))
+                {
+                    planner.outcome(&LootOutcome::Stored);
+                }
             }
         }
         self.memory = planner.memory().clone();

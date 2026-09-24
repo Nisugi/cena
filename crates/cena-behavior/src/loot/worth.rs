@@ -79,6 +79,28 @@ pub const LOOTABLE_BY_VERB: &[&str] = &[
     "forageable",
 ];
 
+/// The kinds eloot takes one by one before `loot room` (`loot_specials`,
+/// `eloot.lic:5513`, `special_types`): decursed where needed, and a
+/// clothing bag opened and emptied first.
+pub const SPECIAL_KINDS: &[&str] = &[
+    "box",
+    "clothing",
+    "collectible",
+    "cursed",
+    "jewelry",
+    "food",
+    "breakable",
+    "lm trap",
+];
+
+/// Hinterwilds uncommon items `loot room` does not take
+/// (`eloot.lic:5513`, `uncommon_loot`): dragged by name.
+pub const UNCOMMON_NAMES: &[&str] = &[
+    "stygian valravn quill",
+    "nacreous disir feather",
+    "silver-veined black draconic idol",
+];
+
 /// Whether a thing is taken, and if not, why.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Verdict {
@@ -136,6 +158,18 @@ pub fn verdict(item: &RoomItem, profile: &LootProfile) -> Verdict {
     }
     // Of no category eloot knows: taken, as eloot does (`:5608`).
     Verdict::Take(types)
+}
+
+/// Is this one of eloot's specials: taken one by one before `loot room`,
+/// a critter's bag emptied first?
+#[must_use]
+pub fn is_special(item: &RoomItem, types: &ObjectTypes) -> bool {
+    types
+        .types
+        .iter()
+        .any(|kind| SPECIAL_KINDS.contains(&kind.as_str()))
+        || types.is("lockandkey")
+        || UNCOMMON_NAMES.iter().any(|name| item.text.contains(name))
 }
 
 /// The stow list's slot for a thing of these kinds: the first kind that

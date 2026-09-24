@@ -28,4 +28,4 @@ pub use import::{Import, import};
 pub use outcome::{Outcome, classify};
 pub use plan::{Left, Memory, Planner, Step};
 pub use profile::{LootProfile, path};
-pub use worth::{Verdict, stow_slot, verdict};
+pub use worth::{Verdict, is_special, stow_slot, verdict};

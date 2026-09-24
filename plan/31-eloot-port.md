@@ -1,6 +1,12 @@
 # 31 — The Loot behavior: eloot, measured and ordered
 
-**Status: Stages 1 and 2 BUILT 2026-09-24.** Stage 1 is `crates/cena-behavior/src/loot/`
+**Status: Stages 1, 2 and 3 BUILT 2026-09-24.** Stage 3 in the planner: eloot's two passes
+(the specials one by one, then `loot room`), a critter's bag opened, looked in and emptied
+before it is taken, the three uncommon Hinterwilds names dragged by name, Sigil of
+Determination (`incant 9716`) cast once when a search fails on condition, and a stow the
+text did not confirm confirmed by the bag's contents (`state.inventory`). The *at your
+feet* line needs nothing of its own: a searched corpse's finds land on the floor, which
+the planner loots next. Stage 1 is `crates/cena-behavior/src/loot/`
 (profile, importer, worth, outcome, planner; 24 tests in `tests/loot_*.rs`, Nisugi's
 `eloot.yaml` importing whole with no notes). Stage 2 is the hunt driver's `loot` loop
 (`hunt/drive.rs`): the engine says `Said::Loot(corpses)` when the character has a loot

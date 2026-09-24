@@ -57,6 +57,10 @@ fn every_phrase_eloot_acts_on_has_an_outcome() {
         ),
         ("Get what?", Outcome::NotFound),
         (
+            "There doesn't seem to be any way to do that.",
+            Outcome::NotAContainer,
+        ),
+        (
             "You gather up and stow as much treasure as you can manage, but there is more than you can carry.",
             Outcome::TooMuch,
         ),

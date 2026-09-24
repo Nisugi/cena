@@ -39,6 +39,9 @@ pub enum Outcome {
     Unlootable,
     /// `I could not find what you were referring to` / `Get what`: gone.
     NotFound,
+    /// `There doesn't seem to be any way to do that`: the thing opened is
+    /// not a container (`bag_loot`, `eloot.lic:4990`).
+    NotAContainer,
 }
 
 /// Read one reply line. `None` when it says nothing about a loot command.
@@ -72,6 +75,9 @@ pub fn classify(line: &str) -> Option<Outcome> {
     }
     if has("I could not find what you were referring to") || text.starts_with("Get what") {
         return Some(Outcome::NotFound);
+    }
+    if has("There doesn't seem to be any way to do that") {
+        return Some(Outcome::NotAContainer);
     }
     // `loot_all`'s "too much" alternation (`eloot.lic:5185`).
     if (has("up and stow") && has("treasure")) || has("but quickly realize") {
