@@ -167,13 +167,13 @@ pub(crate) struct EventPublisher {
 }
 
 impl EventPublisher {
-    pub(crate) fn new(bound: usize, generation: GenerationCell) -> Self {
+    pub(crate) fn new(bound: usize, generation: GenerationCell, session: SessionId) -> Self {
         Self {
             legacy: broadcast::channel(bound).0,
             observed: broadcast::channel(bound).0,
             cursor: Arc::new(AtomicU64::new(0)),
             generation,
-            session: SessionId::FIRST,
+            session,
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
         }
@@ -190,7 +190,9 @@ impl EventPublisher {
         legacy: broadcast::Sender<Event>,
         generation: GenerationCell,
     ) -> Self {
-        let mut publisher = Self::new(1, generation);
+        // A handle with no session behind it names no real one; `FIRST` is
+        // what every such handle has always carried.
+        let mut publisher = Self::new(1, generation, SessionId::FIRST);
         publisher.legacy = legacy;
         publisher
     }
@@ -235,6 +237,11 @@ impl EventPublisher {
             });
         }
         self.legacy.send(event)
+    }
+
+    /// The session every event and snapshot from this publisher names.
+    pub(crate) const fn session(&self) -> SessionId {
+        self.session
     }
 
     pub(crate) fn subscribe(&self) -> broadcast::Receiver<Event> {
