@@ -158,7 +158,6 @@ exception:crates/cena-model/data/crit_tables.tsv 2400
 # governing one file is confusing enough that the author asked where 500 came
 # from -- the answer being that nobody chose it. If a cap here ever needs to
 # rise again, say why, with a measurement, as this note does.
-crates/cena/src/probe.rs 350
 crates/cena-model/src/crit.rs 300
 crates/cena-model/src/state.rs 550
 crates/cena-protocol/src/frame.rs 500

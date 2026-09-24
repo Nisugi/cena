@@ -95,29 +95,6 @@ impl LiveConnector {
             secrets: Vec::new(),
         }
     }
-
-    /// The game instance code (`GS3`, `GSX`), for a data filename: two
-    /// characters of one name on different instances are different
-    /// characters. Not a credential.
-    pub fn game_code(&self) -> &str {
-        &self.game_code
-    }
-
-    /// The character this logs in, for a log filename. Not a credential.
-    pub fn character(&self) -> &str {
-        &self.character
-    }
-
-    /// The account name, **to register for redaction**.
-    ///
-    /// It IS a credential-adjacent identifier -- `plan/10` §4.6 shows it
-    /// echoed in the `A` response and embedded in every character code as
-    /// `W_<ACCOUNT>_<SLOT>` -- so the only legitimate caller is the one
-    /// registering it with [`cena_platform::Redactions`]. Everything else
-    /// should use [`Self::character`].
-    pub fn account_for_redaction(&self) -> &str {
-        &self.account
-    }
 }
 
 /// Deliberately hand-written: the derived one would print the password.
@@ -225,5 +202,40 @@ fn classify(error: cena_platform::EaccessError) -> ConnectError {
         } else {
             Retryability::Transient
         },
+    }
+}
+
+/// Whether this run was asked to force the **web-login** path (`-- --web-login`).
+///
+/// # Why this is needed to test the thing at all
+///
+/// `authenticate_via` reaches web login only when eaccess cannot be
+/// REACHED -- and eaccess is up almost always. So without a forcing flag the
+/// fallback is exercised for the first time during an outage, which is the
+/// worst possible moment to find a bug in it.
+///
+/// Lich carries the same escape hatch (`auth_provider: :web`).
+///
+/// An argument, not an env var: an env var set once in a shell drove the
+/// character on every later run.
+#[must_use]
+pub(crate) fn web_login_forced() -> bool {
+    std::env::args().skip(1).any(|arg| arg == "--web-login")
+}
+
+/// Which login provider this run uses, announcing the choice when it is not
+/// the default.
+///
+#[must_use]
+pub(crate) fn login_provider() -> cena_platform::Prefer {
+    if web_login_forced() {
+        eprintln!(
+            "
+[login] --web-login: forcing the HTTPS web-login path.
+[login] eaccess will NOT be tried, so there is no fallback if this fails."
+        );
+        cena_platform::Prefer::WebOnly
+    } else {
+        cena_platform::Prefer::Eaccess
     }
 }

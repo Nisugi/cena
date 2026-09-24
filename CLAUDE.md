@@ -134,9 +134,10 @@ CI (`.github/workflows/ci.yml`) also builds the five core crates (`cena-platform
 either build breaks `plan/12` §1a.
 
 **Do not run the binary.** `cargo run -p cena` logs into the live game in **every** mode:
-the default, `--web`, `--demo` (which *sends* commands) and `--web-login`. Only the author
-runs it (see Credentials). Scripted runs are selected by arguments, not env vars; an env
-var set once in a shell drove the character on every later run (`crates/cena/src/run.rs`).
+`--character <name>` (repeatable; with none, it asks), `--web` and `--web-login`. Only the
+author runs it (see Credentials). Run options are arguments, not env vars: an env var set
+once in a shell drove the character on every later run. M1's `--demo` and the measurement
+probes were removed at M6 (`plan/30` §2).
 `CENA_MAP` points travel at a converted map file.
 
 `spike/eaccess-spike` and `rtest/` are excluded from the workspace. The spike has its own

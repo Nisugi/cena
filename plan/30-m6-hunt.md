@@ -95,6 +95,15 @@ What the M1 slice left behind, measured:
    (author, Q2): one status line per stage, so the player knows what is running and that it
    is not stuck, with the commands' game output kept out of the story.
 
+> **BUILT 2026-09-24.** `look` lives on as `cena-behavior/tests/looping/`, and a bare
+> sleep substituted for its cancel-aware one still turns
+> `stop_stops_the_behavior_within_preempt_grace` red. `BehaviorError` is `error.rs`; the
+> terminal's view is `cena/src/watch.rs`; the `--web-login` switch moved to `connector.rs`.
+> Also gone as dead code once the single path went: `Frontend::start`, `wait_for_stop`,
+> `unless_interrupted`, `setup::open_session`, and a single session's terminal story
+> renderer. With no `--web`, a run is now headless, with Hydra's own lines only, as it
+> already was under `--character`. `sync` at Ready is the next commit.
+
 Done when: `grep -rn "look(" crates/*/src` finds no behavior, the binary has one run path,
 and the whole suite is green, including the two re-hosted criteria tests with their mutations.
 
@@ -410,6 +419,9 @@ projection transform ported from VellumFE. None depends on the hunt, so they can
 cycle: hunt, a rest threshold, walk to rest, loot stored, healed, walk back, hunt. It is
 stopped mid-attack from the hub within `PREEMPT_GRACE`. A manual command mid-hunt interleaves.
 A reconnect mid-hunt keeps the hunt, as (c) decides.
+
+**For later, not M6:** `tpick` (<https://github.com/Lord-Dreaven/tpick>), named by the
+author on 2026-09-24 as a script to port in the future. Not yet read.
 
 ---
 

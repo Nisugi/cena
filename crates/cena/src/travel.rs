@@ -79,7 +79,7 @@ pub(crate) async fn after_login(
 ) {
     if let Some(first) = first_command(std::env::args().skip(1)) {
         eprintln!("[travel] first: {first}");
-        let outcome = crate::run::send_manual(handle, &first).await;
+        let outcome = crate::watch::send_manual(handle, &first).await;
         eprintln!("[travel] first: {outcome:?}");
     }
     match observer.subscribe().await {
@@ -261,14 +261,14 @@ mod tests {
     #[test]
     fn the_first_command_is_read_from_the_arguments() {
         assert_eq!(
-            first_command(["--first", "south", "--demo"]),
+            first_command(["--first", "south", "--web"]),
             Some("south".to_owned())
         );
         assert_eq!(
             first_command(["--first=go gate"]),
             Some("go gate".to_owned())
         );
-        assert_eq!(first_command(["--demo"]), None);
+        assert_eq!(first_command(["--web"]), None);
         // A flag with nothing after it is not a command.
         assert_eq!(first_command(["--first"]), None);
     }

@@ -1,5 +1,5 @@
-//! Asking the human at the keyboard for four fields, and refusing to proceed
-//! without one.
+//! Asking the human at the keyboard for what a login needs, and refusing to
+//! proceed without it.
 //!
 //! Split from `main.rs` under `plan/05` Rule 4.1 -- move code down, do not
 //! raise the cap -- when the review fixes pushed that file past 400 lines.
@@ -52,8 +52,8 @@ fn prompt(label: &str) -> io::Result<String> {
 /// **This check is not sufficient on its own, and used to claim it was.** It
 /// said three required fields made "the network unreachable without someone
 /// at the keyboard"; a pipe supplying three non-empty lines passes all of
-/// them. The sufficient check is the `is_terminal` refusal in [`ask`]. This
-/// one stays because an empty answer at a real terminal is still worth
+/// them. The sufficient check is the `is_terminal` refusal every prompt here
+/// opens with. This one stays because an empty answer at a real terminal is still worth
 /// refusing -- a slipped Enter should not become a login attempt.
 ///
 /// A comment would not have prevented this; a refusal does.
@@ -86,47 +86,35 @@ pub struct Typed {
     pub password_from: crate::secrets::Source,
 }
 
-/// Ask for the four fields the login needs.
+/// Ask which character to play, when none was named with `--character`.
 ///
-/// Split out of `main` under `plan/05` Rule 4.1 -- move code down, do not
-/// raise the cap. Clippy caught `main` at 108 lines against a 100 limit.
-pub fn ask() -> io::Result<Typed> {
-    // **The keyboard must be a keyboard.**
-    //
-    // The non-empty checks below were described as making "the network
-    // unreachable without someone at the keyboard". They do not: a pipe
-    // supplying three non-empty lines passes every one of them and reaches a
-    // real `A` authentication against the live service (review BI-1).
-    //
-    // An empty answer is evidence nobody is there; it is not the only such
-    // evidence, and a non-empty one is not evidence anybody is. What actually
-    // distinguishes the two cases is whether stdin is a terminal.
-    //
-    // This is the guard `CLAUDE.md` asks for -- "do not log into a live game
-    // service without the author present" -- stated as a condition the program
-    // can check rather than one it hopes for. It is deliberately a REFUSAL and
-    // not a prompt: the headless credential ladder is `plan/12` §7.1's Out
-    // column for M1, so there is no correct unattended path yet, and inventing
-    // one here would be the wrong place for it.
-    refuse_unattended(io::stdin().is_terminal())?;
-    // `require`, not `prompt`: an empty answer to any of these means nobody is
-    // at the keyboard, and this program reaches the live login service.
-    let account = require("account")?;
-    let (password, password_from) = crate::secrets::password(account.trim(), true)?;
-    let character = require("character")?;
-    let game_code = prompt(&format!("game code [{DEFAULT_GAME_CODE}]"))?;
-    let mut typed = tidy(&account, password, &character, &game_code);
-    typed.password_from = password_from;
-    Ok(typed)
-}
-
-/// Ask for what the roster does not know about `character` -- its account
-/// and game code -- for its first login under `--character` (`roster.rs`).
-/// The password comes from the ladder, as in [`ask`].
+/// Everything else comes from where `--character` gets it: the roster for a
+/// character that has logged in before, [`ask_for`] for one that has not.
+/// There is one run path (`plan/30` §2); this only names its character.
 ///
 /// # Errors
 ///
-/// As [`ask`]: nobody at a terminal, an empty answer, or no password.
+/// Nobody at a terminal, or an empty answer.
+pub fn character() -> io::Result<String> {
+    // **The keyboard must be a keyboard.**
+    //
+    // A pipe supplying non-empty lines passes every emptiness check and
+    // reaches a real authentication against the live service (review BI-1).
+    // What actually distinguishes a person from a pipe is whether stdin is a
+    // terminal, so that is what is checked -- the guard `CLAUDE.md` asks for,
+    // "do not log into a live game service without the author present",
+    // stated as a condition the program can check.
+    refuse_unattended(io::stdin().is_terminal())?;
+    Ok(require("character")?.trim().to_owned())
+}
+
+/// Ask for what the roster does not know about `character` -- its account
+/// and game code -- for its first login (`roster.rs`). The password comes
+/// from the ladder (`crate::secrets`).
+///
+/// # Errors
+///
+/// Nobody at a terminal, an empty answer, or no password.
 pub fn ask_for(character: &str) -> io::Result<Typed> {
     refuse_unattended(io::stdin().is_terminal())?;
     eprintln!("[login] {character} has not logged in through Hydra before.");
@@ -152,11 +140,11 @@ pub fn from_roster(entry: &crate::roster::Entry, at_terminal: bool) -> io::Resul
     Ok(typed)
 }
 
-/// The guard `ask` opens with, split out so it can be tested on BOTH answers.
+/// The guard every prompt here opens with, split out so it can be tested on BOTH answers.
 ///
 /// Its only input is whether stdin is a terminal, and a test cannot choose
 /// that for its own process -- `cargo test` from a PowerShell prompt inherits
-/// the console, and CI does not. So the one test that called `ask()` asserted
+/// the console, and CI does not. So the one test that called `character()` asserted
 /// a non-terminal first, and failed for a developer running the suite by hand
 /// (review finding 15). Taking the bit as an argument lets both branches be
 /// checked everywhere.
@@ -221,33 +209,33 @@ fn tidy(account: &str, password: String, character: &str, game_code: &str) -> Ty
 mod tests {
     use super::*;
 
-    /// **`ask()` refuses when stdin is not a terminal.**
+    /// **`character()` refuses when stdin is not a terminal.**
     ///
     /// A test harness usually runs with stdin redirected, so the test process
-    /// is itself the unattended case this guard exists for: calling `ask()`
+    /// is itself the unattended case this guard exists for: calling `character()`
     /// here exercises the real refusal on the real condition, with no mocking.
     ///
     /// That also means the test can never accidentally reach the network. If
-    /// the guard regresses, `ask()` blocks on a prompt instead and the test
+    /// the guard regresses, `character()` blocks on a prompt instead and the test
     /// hangs rather than logging in -- a failure, and a safe one.
     ///
     /// **Skipped when stdin IS a terminal**, which is `cargo test` typed at a
     /// PowerShell prompt. It used to assert the opposite and fail there (review
-    /// finding 15); calling `ask()` instead would block on a real prompt. The
+    /// finding 15); calling `character()` instead would block on a real prompt. The
     /// guard's two answers are checked on every machine by the test below.
     #[test]
     fn asking_without_a_terminal_refuses_rather_than_prompting() {
         if io::stdin().is_terminal() {
             eprintln!(
-                "skipped: stdin is a terminal here, so ask() would prompt. \
+                "skipped: stdin is a terminal here, so character() would prompt. \
                  refuse_unattended's own test covers the guard."
             );
             return;
         }
 
-        let Err(e) = ask() else {
+        let Err(e) = character() else {
             panic!(
-                "ask() succeeded with no terminal attached. This program \
+                "character() succeeded with no terminal attached. This program \
                  reaches the LIVE login service and CLAUDE.md forbids doing \
                  that unattended."
             )
