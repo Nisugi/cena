@@ -39,6 +39,11 @@ pub(crate) struct Shared {
     pub(crate) control: std::sync::Mutex<Option<HubControl>>,
     /// Characters the hub may add, as the control's owner last said.
     pub(crate) available: std::sync::Mutex<Vec<String>>,
+    /// Set by [`WebServer::bind`], the one-session server: a page naming no
+    /// session reaches that session. Otherwise it always reaches the hub --
+    /// quitting all but one character must not turn the hub's link into a
+    /// character's page (author's live run, 2026-09-24).
+    pub(crate) single: std::sync::atomic::AtomicBool,
     /// Every session's shared streams, merged for the hub (`plan/29` 5d).
     pub(crate) merged: Arc<crate::merged::MergedFeed>,
     pub(crate) clients: Arc<Semaphore>,
@@ -56,7 +61,7 @@ impl Shared {
             Asked::Session(id) => sessions.get(&id).map_or(Choice::Missing, |viewed| {
                 Choice::Session(Arc::clone(viewed))
             }),
-            Asked::Only if sessions.len() == 1 => sessions
+            Asked::Only if self.single.load(std::sync::atomic::Ordering::Relaxed) => sessions
                 .values()
                 .next()
                 .map_or(Choice::Hub, |viewed| Choice::Session(Arc::clone(viewed))),
@@ -93,6 +98,8 @@ pub enum HubRequest {
     Add(String),
     /// Quit this session and take it off the table.
     Remove(SessionId),
+    /// Log this stopped session's character back in.
+    Reconnect(SessionId),
 }
 
 /// What answers the hub's requests: the owner of the session table, which
@@ -279,6 +286,10 @@ impl WebServer {
     /// As [`Self::open`].
     pub async fn bind(observer: SessionObserver, handle: SessionHandle) -> io::Result<Self> {
         let server = Self::open().await?;
+        server
+            .shared
+            .single
+            .store(true, std::sync::atomic::Ordering::Relaxed);
         server.sessions().attach(String::new(), observer, handle);
         Ok(server)
     }
@@ -304,6 +315,7 @@ impl WebServer {
             control: std::sync::Mutex::new(None),
             available: std::sync::Mutex::new(Vec::new()),
             merged: Arc::new(crate::merged::MergedFeed::new()),
+            single: std::sync::atomic::AtomicBool::new(false),
             clients: Arc::new(Semaphore::new(MAX_CLIENTS)),
             stop: CancellationToken::new(),
         });

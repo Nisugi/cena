@@ -378,6 +378,14 @@ export class HydraSession {
     return true;
   }
 
+  reconnectSession(session) {
+    if (this.state.hub === null || this.socket?.readyState !== 1 || !decimal(session)) return false;
+    this.state.hubNote = "Asking the character to log back in…";
+    this.socket.send(JSON.stringify({ kind: "reconnect_session", version: 1, session }));
+    this.emit();
+    return true;
+  }
+
   // This only closes the viewer socket. No game command or session-close message exists.
   close(connection = "closed") {
     this.stopped = true;

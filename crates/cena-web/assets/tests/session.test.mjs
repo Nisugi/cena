@@ -524,7 +524,7 @@ test("the hub lists every character, each linking to its own page", () => {
   assert.equal(cards.length, 2);
   assert.equal(cards[1].children[0].textContent, "Nerten");
   const link = cards[1].children[3].children[0];
-  assert.equal(link.textContent, "Open Nerten's page");
+  assert.equal(link.textContent, "Open page");
   assert.equal(link.href, "#token=synthetic-token&session=1");
   assert.equal(link.target, "_blank");
   assert.match(cards[0].children[2].textContent, /HP 80%/);
@@ -563,6 +563,11 @@ test("the hub starts and quits characters by request, and shows the answer", () 
   const quit = element("hub-list").children[0].children[3].children[1];
   quit.fire("click");
   assert.deepEqual(socket.sent.at(-1), { kind: "remove_session", version: 1, session: "0" });
+  // Open page, Quit, Reconnect -- in that order (author, 2026-09-24).
+  const actions = element("hub-list").children[0].children[3].children;
+  assert.deepEqual(actions.map((node) => node.textContent), ["Open page", "Quit", "Reconnect"]);
+  actions[2].fire("click");
+  assert.deepEqual(socket.sent.at(-1), { kind: "reconnect_session", version: 1, session: "0" });
   socket.message({ kind: "hub_note", version: 1, detail: "Nisugi has quit." });
   assert.equal(element("hub-note").textContent, "Nisugi has quit.");
 });

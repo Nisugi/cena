@@ -265,7 +265,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // (`play.rs`). Without it, the one-character path below, prompted.
     let characters = play::characters();
     if !characters.is_empty() {
-        return play::play(characters).await;
+        return Box::pin(play::play(characters)).await;
     }
 
     let typed = ask()?;
@@ -408,7 +408,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // and `?` here would skip it and hide the panic inside a `JoinError`.
     let joined = supervisor.await;
     watcher.abort();
-    setup::flush_combat(combat_flush);
+    setup::flush_combat(combat_flush).await;
     setup::flush_player_log(player_flush).await;
 
     match joined {

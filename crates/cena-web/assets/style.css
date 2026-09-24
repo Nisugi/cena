@@ -125,7 +125,7 @@ meter::-moz-meter-bar { background: var(--vital-color); }
 .hub-open:hover { border-color: var(--amber); }
 .hub-status { float: right; color: var(--muted); font-size: .75rem; }
 .hub-summary { margin: 6px 0 0; color: var(--text); font-family: var(--font-text); font-size: .75rem; overflow-wrap: anywhere; }
-.hub-quit { font-size: .75rem; padding: 3px 10px; }
+.hub-quit, .hub-reconnect { font-size: .75rem; padding: 3px 10px; }
 .hub-available { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .hub-note { display: block; margin-top: 10px; color: var(--muted); }
 .hub-merged { max-height: 45vh; overflow: auto; margin-top: 6px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface-inset); }

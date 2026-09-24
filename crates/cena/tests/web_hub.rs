@@ -380,9 +380,9 @@ async fn a_supervised_character_that_stops_unattended_shows_closed_on_the_hub() 
     let pairing = server.pairing_url();
     let stop_web = CancellationToken::new();
     let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
-    // One session and none named is its page, not the hub: name none with a
-    // second attached would be the hub. Read its view instead.
-    let mut page = browser(&pairing).await.unwrap();
+    // Its own page: on a server built with `open`, a page naming no session
+    // is always the hub.
+    let mut page = browser_for(&pairing, Some("0")).await.unwrap();
 
     first_transcript.hang_up();
     await_ready(&observer, Generation::FIRST.next())
@@ -423,4 +423,55 @@ async fn a_supervised_character_that_stops_unattended_shows_closed_on_the_hub() 
 
     stop_web.cancel();
     web.await.unwrap().unwrap();
+}
+
+/// Live, 2026-09-24: quitting a character that had already stopped hung, and
+/// the other character's Quit did nothing after it. Requests now run on their
+/// own: one that never finishes does not hold the next.
+#[tokio::test]
+async fn a_hub_request_that_never_finishes_does_not_block_the_next() {
+    let (a_source, _) = AnsweringSource::logged_in(ROOM);
+    let a = Session::numbered(SessionId(0), a_source);
+    let a_stop = a.cancel_token();
+    let server = WebServer::open().await.unwrap();
+    let sessions = server.sessions();
+    sessions.attach("Nisugi", a.observer(), a.handle());
+    let a_actor = tokio::spawn(a.into_actor().run());
+    sessions.control(std::sync::Arc::new(|request: HubRequest| {
+        Box::pin(async move {
+            if request == HubRequest::Remove(SessionId(7)) {
+                std::future::pending::<()>().await;
+            }
+            format!("handled {request:?}")
+        })
+    }));
+    let pairing = server.pairing_url();
+    let stop_web = CancellationToken::new();
+    let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
+
+    // One character running, and the hub's link is still the hub.
+    let mut hub = browser(&pairing).await.unwrap();
+    assert!(matches!(
+        receive(&mut hub).await.unwrap(),
+        ServerMessage::Sessions { .. }
+    ));
+    send(&mut hub, &remove("7")).await.unwrap();
+    send(&mut hub, &reconnect("0")).await.unwrap();
+    assert_eq!(
+        next_note(&mut hub).await.as_deref(),
+        Some("handled Reconnect(SessionId(0))"),
+        "the second request was answered while the first never finished"
+    );
+
+    stop_web.cancel();
+    web.await.unwrap().unwrap();
+    a_stop.cancel();
+    let _ = a_actor.await;
+}
+
+fn reconnect(session: &str) -> ClientMessage {
+    ClientMessage::ReconnectSession {
+        version: WIRE_VERSION,
+        session: session.to_owned(),
+    }
 }

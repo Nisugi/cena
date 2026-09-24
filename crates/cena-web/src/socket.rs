@@ -152,6 +152,10 @@ fn hub_request(text: &str) -> Option<HubRequest> {
             let id = session_id(&session)?;
             (version == WIRE_VERSION).then_some(HubRequest::Remove(id))
         }
+        ClientMessage::ReconnectSession { version, session } => {
+            let id = session_id(&session)?;
+            (version == WIRE_VERSION).then_some(HubRequest::Reconnect(id))
+        }
         _ => None,
     }
 }
@@ -215,6 +219,10 @@ async fn serve_hub(mut socket: WebSocket, shared: Arc<Shared>) {
     // Subscribed before the history is read, so no merged line falls between
     // the two; one that is in both arrives twice, and a page keys lines by id.
     let mut merged = shared.merged.updates.subscribe();
+    // Requests run on their own, and their notes come back here: a quit waits
+    // on the game, and one slow request held every request after it
+    // (author's live run, 2026-09-24).
+    let (answered, mut answers) = tokio::sync::mpsc::channel::<String>(8);
     let mut last: Option<Arc<str>> = None;
     let mut history_sent = false;
     loop {
@@ -264,6 +272,11 @@ async fn serve_hub(mut socket: WebSocket, shared: Arc<Shared>) {
             () = shared.stop.cancelled() => { close(&mut socket, 1001, "Viewer stopped").await; return; }
             // A lag is only "something changed" said more than once.
             _ = changed.recv() => tokio::time::sleep(HUB_REFRESH).await,
+            Some(detail) = answers.recv() => {
+                let note = ServerMessage::HubNote { version: WIRE_VERSION, detail };
+                let Ok(message) = encode(&note) else { return; };
+                if !write(&mut socket, &message).await { return; }
+            }
             line = merged.recv() => match line {
                 Ok(message) => if !write(&mut socket, &message).await { return; },
                 // Behind: the page resynchronises on its fresh history.
@@ -286,13 +299,14 @@ async fn serve_hub(mut socket: WebSocket, shared: Arc<Shared>) {
                         .lock()
                         .unwrap_or_else(std::sync::PoisonError::into_inner)
                         .clone();
-                    let detail = match control {
-                        Some(control) => control(request).await,
-                        None => "Adding and removing characters is not offered here.".to_owned(),
-                    };
-                    let note = ServerMessage::HubNote { version: WIRE_VERSION, detail };
-                    let Ok(message) = encode(&note) else { return; };
-                    if !write(&mut socket, &message).await { return; }
+                    let answered = answered.clone();
+                    tokio::spawn(async move {
+                        let detail = match control {
+                            Some(control) => control(request).await,
+                            None => "Adding and removing characters is not offered here.".to_owned(),
+                        };
+                        let _ = answered.send(detail).await;
+                    });
                 }
                 Some(Ok(_)) => {
                     close(&mut socket, 1008, "Text JSON messages required").await;

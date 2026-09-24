@@ -57,6 +57,9 @@ fn characters_in(args: impl IntoIterator<Item = String>) -> Vec<String> {
 /// One started session's loose ends, for its stop.
 struct Started {
     character: String,
+    /// The roster name it logs in by, `GAME:Name`, for a reconnect from the
+    /// hub.
+    login: String,
     watcher: tokio::task::JoinHandle<()>,
     combat: Option<std::thread::JoinHandle<()>>,
     player: tokio::task::JoinHandle<u64>,
@@ -136,6 +139,7 @@ impl Table {
         let character = typed.character.clone();
         let (account, game) = (typed.account.clone(), typed.game_code.clone());
         let proven = Proven::of(&typed);
+        let login = format!("{game}:{character}");
         let who = Who {
             account: account.clone(),
             character: character.clone(),
@@ -179,6 +183,7 @@ impl Table {
                 id,
                 Started {
                     character,
+                    login,
                     watcher,
                     combat,
                     player,
@@ -198,17 +203,53 @@ impl Table {
                 Err(e) => e,
             },
             HubRequest::Remove(id) => self.remove(id).await,
+            HubRequest::Reconnect(id) => self.reconnect(id).await,
         };
         self.offer().await;
         said
     }
 
-    /// Quit session `id` and take it off the table: its page is detached,
-    /// its `quit` sent, and its logs flushed.
+    /// Quit session `id` and take it off the table: its page is detached and
+    /// its `quit` sent. Its logs are flushed in the background, so the answer
+    /// does not wait on them.
     async fn remove(&self, id: SessionId) -> String {
-        let Some(hosted) = self.host.lock().await.take(id) else {
-            return "That character is no longer running.".to_owned();
-        };
+        match self.take_off(id).await {
+            Some((character, _)) => format!("{character} has quit."),
+            None => "That character is no longer on the table.".to_owned(),
+        }
+    }
+
+    /// Log a stopped character back in: off the table, then started again
+    /// from the roster and the ladder, as the hub's Add does.
+    async fn reconnect(&self, id: SessionId) -> String {
+        let running = self
+            .host
+            .lock()
+            .await
+            .get(id)
+            .map(cena_host::Hosted::is_running);
+        match running {
+            None => "That character is no longer on the table.".to_owned(),
+            Some(true) => "That character is still connected.".to_owned(),
+            Some(false) => {
+                let Some((character, login)) = self.take_off(id).await else {
+                    return "That character is no longer on the table.".to_owned();
+                };
+                match hub_login(&self.dir, &login) {
+                    Ok(typed) => match self.start(typed).await {
+                        Ok(_) => format!("Reconnecting {character}."),
+                        Err(e) => e,
+                    },
+                    Err(e) => e,
+                }
+            }
+        }
+    }
+
+    /// Take session `id` off the table and stop it; its loose ends are closed
+    /// in the background. Its character and roster name, when it was there.
+    async fn take_off(&self, id: SessionId) -> Option<(String, String)> {
+        let hosted = self.host.lock().await.take(id)?;
         if let Some(web) = &self.web {
             web.detach(id);
         }
@@ -217,15 +258,12 @@ impl Table {
             .started
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .remove(&id);
-        match one {
-            Some(one) => {
-                let character = one.character.clone();
-                finish(one, end).await;
-                format!("{character} has quit.")
-            }
-            None => "Stopped.".to_owned(),
-        }
+            .remove(&id)?;
+        let named = (one.character.clone(), one.login.clone());
+        // A character still in the process holds its logs open (`setup`'s
+        // FLUSH_WAIT has why); the hub is not made to wait for that.
+        tokio::spawn(finish(one, end));
+        Some(named)
     }
 
     /// Tell the hub which characters it can add: in the roster, with a saved
@@ -310,7 +348,7 @@ impl Table {
 /// Close one stopped session's loose ends, and say how it ended.
 async fn finish(one: Started, end: Option<cena_session::SupervisedEnd>) {
     one.watcher.abort();
-    setup::flush_combat(one.combat);
+    setup::flush_combat(one.combat).await;
     setup::flush_player_log(one.player).await;
     let character = &one.character;
     match end.map(|end| end.stopped_because) {

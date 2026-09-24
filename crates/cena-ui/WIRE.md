@@ -14,7 +14,7 @@ updates, not game events. Never convert these fields to JavaScript Number.
 
 | Kind | Other fields | Meaning |
 | --- | --- | --- |
-| `authenticate` | `token`, optional `session` | First client message; no state before authentication. `session` names the character this page is for; absent, the only session is served, and with several the hub is. |
+| `authenticate` | `token`, optional `session` | First client message; no state before authentication. `session` names the character this page is for; absent, the hub is served -- except by a server built for one session (`WebServer::bind`), which serves that session. |
 | `command` | `session`, `generation`, `request_id`, `line` | One manual command; never automatically retried. |
 | `snapshot` | `session`, `generation`, `cursor`, `view`, `story`, `history_gap` | Replace view and bounded history; `history_gap` makes missing history explicit. |
 | `update` | `session`, `generation`, `cursor`, `view`, `lines` | Replace view and append complete lines. |
@@ -22,6 +22,7 @@ updates, not game events. Never convert these fields to JavaScript Number.
 | `sessions` | `sessions`, `available` | The hub page (`plan/29` step 5b): one card per character, replacing the last list whole, and the characters it may start. Sent to a viewer that named no session when there is not exactly one. The hub takes no game commands. |
 | `add_character` | `character` | Hub only (step 5c): start a character that has logged in before -- in the roster, with a saved password. No credential crosses the socket. |
 | `remove_session` | `session` | Hub only: quit a character and take it off the table. |
+| `reconnect_session` | `session` | Hub only: log a stopped character back in, from the roster and the keyring. |
 | `merged` | `lines` | Hub only (step 5d): thoughts, speech, logons, deaths and announcements across every character. Each line has decimal `id`, `stream`, styled `runs` and `from`, the characters that received it. Identical text on one stream from different characters within 1 second is one line; a line sent again with the same `id` has gained a character. |
 | `hub_note` | `detail` | What became of the hub request just made, as one line of plain text. |
 

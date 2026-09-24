@@ -113,15 +113,30 @@ fn attach_player_log(
     )
 }
 
-/// Wait for the player log's last flush, and say so if lines were lost.
+/// How long a stop waits for a session's logs to finish writing.
 ///
-/// The writer ends when the last `PlayerLog` drops, which the supervisor's
-/// return just did.
+/// **A bound, because the wait can be for ever.** The player-log writer ends
+/// only when every `PlayerLog` has dropped, and every clone of the session's
+/// command handle holds one -- the web page, the `;` command line, travel. In
+/// the one-character run those all go with the process. On the hub, a
+/// character is quit while the rest keep running, and the unbounded wait hung
+/// the quit, and every hub request after it (author's live run, 2026-09-24).
+/// What was written is on disk either way; this only says whether it closed.
+const FLUSH_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Wait, a bounded while, for the player log's last flush, and say so if
+/// lines were lost.
 pub(crate) async fn flush_player_log(flush: tokio::task::JoinHandle<u64>) {
-    match flush.await {
-        Ok(0) => {}
-        Ok(lost) => eprintln!("[player log] {lost} lines were NOT recorded; the log has holes"),
-        Err(_) => eprintln!("[player log] the writer task panicked; the log's tail may be missing"),
+    match tokio::time::timeout(FLUSH_WAIT, flush).await {
+        Ok(Ok(0)) => {}
+        Ok(Ok(lost)) => eprintln!("[player log] {lost} lines were NOT recorded; the log has holes"),
+        Ok(Err(_)) => {
+            eprintln!("[player log] the writer task panicked; the log's tail may be missing");
+        }
+        Err(_) => eprintln!(
+            "[player log] still open while something holds the character's handle; \
+             what was written is on disk"
+        ),
     }
 }
 
@@ -158,16 +173,30 @@ fn attach_combat(
     }
 }
 
-/// Wait for the recorder to write what is queued and close its hunt.
+/// Wait, a bounded while ([`FLUSH_WAIT`]), for the recorder to write what is
+/// queued and close its hunt.
 ///
-/// Its thread ends when the last handle drops, which the supervisor's return
-/// just did. Without this wait the process can exit between the last chunk
-/// and its commit.
-pub(crate) fn flush_combat(flush: Option<std::thread::JoinHandle<()>>) {
-    if let Some(flush) = flush
-        && flush.join().is_err()
-    {
-        eprintln!("[combat] the recorder thread panicked; the last hunt may be open");
+/// Its thread ends when the last handle drops. Without this wait the process
+/// can exit between the last chunk and its commit.
+///
+/// The join runs on a detached thread of its own: a blocking `join()` here
+/// held an async worker, and `spawn_blocking` would hold the runtime's
+/// shutdown instead, for as long as the recorder never ends.
+pub(crate) async fn flush_combat(flush: Option<std::thread::JoinHandle<()>>) {
+    let Some(flush) = flush else { return };
+    let (joined, done) = tokio::sync::oneshot::channel();
+    std::thread::spawn(move || {
+        let _ = joined.send(flush.join().is_ok());
+    });
+    match tokio::time::timeout(FLUSH_WAIT, done).await {
+        Ok(Ok(true)) => {}
+        Ok(Ok(false)) => {
+            eprintln!("[combat] the recorder thread panicked; the last hunt may be open");
+        }
+        Ok(Err(_)) | Err(_) => eprintln!(
+            "[combat] still recording while something holds the character's handle; \
+             its hunt closes when that ends"
+        ),
     }
 }
 

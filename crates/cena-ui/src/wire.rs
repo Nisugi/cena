@@ -62,6 +62,15 @@ pub enum ClientMessage {
         /// The session to remove, as a canonical decimal string.
         session: String,
     },
+    /// `kind: "reconnect_session"`, from the hub page: log a character that
+    /// has stopped -- refused, idle, or given up to another client -- back in,
+    /// from the roster and the keyring.
+    ReconnectSession {
+        /// Must equal `WIRE_VERSION`.
+        version: u16,
+        /// The session to reconnect, as a canonical decimal string.
+        session: String,
+    },
 }
 
 /// What the sender can establish. No variant asserts game action completion.

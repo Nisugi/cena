@@ -275,7 +275,8 @@ export function mount(document, environment) {
       link.href = `#token=${session.token}&session=${card.session}`;
       link.target = "_blank";
       link.rel = "noopener";
-      link.textContent = `Open ${name}'s page`;
+      link.textContent = "Open page";
+      link.title = `Open ${name}'s page in a new tab`;
       const status = document.createElement("span");
       status.className = "hub-status";
       status.textContent = lifecycleText(card.lifecycle);
@@ -287,9 +288,16 @@ export function mount(document, environment) {
       quit.className = "hub-quit";
       quit.textContent = "Quit";
       quit.addEventListener("click", () => session.removeSession(card.session));
+      // A character that stopped -- refused, idle, or given up to another
+      // client -- is logged back in from here (author, 2026-09-24).
+      const reconnect = document.createElement("button");
+      reconnect.type = "button";
+      reconnect.className = "hub-reconnect";
+      reconnect.textContent = "Reconnect";
+      reconnect.addEventListener("click", () => session.reconnectSession(card.session));
       const actions = document.createElement("div");
       actions.className = "hub-actions";
-      actions.append(link, quit);
+      actions.append(link, quit, reconnect);
       item.append(heading, status, summary, actions);
       list.appendChild(item);
     }
