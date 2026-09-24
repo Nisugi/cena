@@ -14,32 +14,30 @@
 //! binary (`CLAUDE.md`, Credentials). Everything it calls is tested against a
 //! scripted game in `cena-behavior`; what is untested is the wiring here.
 //!
-//! # Why a mirror
+//! # Why no mirror
 //!
 //! A behavior has no live read of the model: it is handed a snapshot and a
-//! subscription and keeps its own `GameState` (`plan/24`, 4a's finding). The
-//! snapshot taken before login is empty, and the login burst overflows the
-//! event ring if nobody is reading it -- MEASURED on the first live session,
-//! 99 events dropped (`CLAUDE.md`). So a task reads from the first moment and
-//! folds every frame, and hands its state and its subscription over together,
-//! with no gap between the two for an event to fall into.
+//! subscription and keeps its own `GameState` (`plan/24`, 4a's finding). This
+//! file used to keep a second copy for the first command after a login -- a
+//! task folding every frame from the first moment -- because a snapshot taken
+//! before login is empty.
 //!
-//! The desk subscribes afresh for every command after that
-//! (`SessionObserver::subscribe`), which needs no mirror. The mirror is for
-//! the **first** command after a login, whose state would otherwise be a
-//! snapshot of a character the game has not described yet.
+//! It is gone because it lagged. In the author's live run of 2026-09-23 the
+//! login burst outran it: it kept the room's title from the burst's first
+//! lines and lost `<app>` and `<nav rm=>` behind it, so the first `;go2` said
+//! "the game has not said who this is" and "I cannot tell which room this is"
+//! of a login that had said both (the wire capture has them at lines 154 and
+//! 157). Every command now asks the session itself
+//! (`SessionObserver::subscribe`), whose state is the one the actor folds and
+//! which already holds what the character store restored.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::commands::Commands;
 use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command, read_map};
 use cena_session::command::claimant::{self, Claimed};
-use cena_session::{
-    AuthorityToken, Event, Notice, NoticeKind, SessionHandle, SessionObserver, Snapshot,
-};
-use tokio::sync::broadcast::{Receiver, error::RecvError};
-use tokio_util::sync::CancellationToken;
+use cena_session::{AuthorityToken, Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Where the combined map is. No default: a wrong map is worse than none.
 ///
@@ -69,82 +67,24 @@ where
     None
 }
 
-/// Keep a `GameState` current from `joined` until `hand_over` is cancelled,
-/// then give back the state and the **same** subscription. See the module
-/// docs for why.
-pub(crate) async fn mirror(
-    joined: (Snapshot, Receiver<Event>),
-    hand_over: CancellationToken,
-) -> (Snapshot, Receiver<Event>) {
-    let (mut snapshot, mut events) = joined;
-    let mut restored = false;
-    loop {
-        let event = tokio::select! {
-            biased;
-            () = hand_over.cancelled() => return (snapshot, events),
-            event = events.recv() => event,
-        };
-        match event {
-            Ok(Event::Frame(frame)) => {
-                snapshot.state.apply(&frame);
-                restored = restored || restore_stored(&mut snapshot.state);
-            }
-            Ok(_) => {}
-            Err(RecvError::Lagged(missed)) => eprintln!(
-                "  !! [travel] {missed} events dropped before the walker could read them: \
-                 what it knows of the character may be stale"
-            ),
-            Err(RecvError::Closed) => return (snapshot, events),
-        }
-    }
-}
-
-/// What the character store knows -- skills, society, citizenship -- put into
-/// the mirror's state, **when the session itself does it**: the moment the
-/// game has said who this is (`actor/ending.rs`, `load_character`). The
-/// session restores into its own state and publishes no frame for it, so a
-/// mirror that only folded frames would never learn a skill, and every exit
-/// priced on one would read "not known yet". Frames after this overwrite it
-/// with what is fresher, exactly as they do there. `true` once it has been
-/// tried, whatever came of it.
-fn restore_stored(state: &mut cena_session::GameState) -> bool {
-    let character = &state.character;
-    let (Some(instance), Some(name)) = (character.instance.clone(), character.name.clone()) else {
-        return false;
-    };
-    let dir = cena_session::character_store::data_dir();
-    match cena_session::character_store::load(&dir, &instance, &name) {
-        Ok(stored) => {
-            let took = stored.restore_into(&mut state.character);
-            eprintln!("[travel] character store: restored={took}");
-        }
-        Err(e) => eprintln!("[travel] character store: {e} -- the walker knows only this login"),
-    }
-    true
-}
-
-/// What `main` does once the session is up: send `--first`, take the state
-/// back from the mirror, and open the travel desk so `;go2` works.
+/// What `main` does once the session is up: send `--first`, then put travel
+/// on the command line so `;go2` works.
 ///
 /// Here and not in `main` because `main` is at clippy's line limit, and the
 /// rule is to move code down.
 pub(crate) async fn after_login(
-    mirror: tokio::task::JoinHandle<(Snapshot, Receiver<Event>)>,
-    hand_over: &CancellationToken,
     handle: &SessionHandle,
     observer: SessionObserver,
     commands: &Commands,
 ) {
-    // Sent while the mirror is still reading, so it sees where this lands.
     if let Some(first) = first_command(std::env::args().skip(1)) {
         eprintln!("[travel] first: {first}");
         let outcome = crate::run::send_manual(handle, &first).await;
         eprintln!("[travel] first: {outcome:?}");
     }
-    hand_over.cancel();
-    match mirror.await {
-        Ok(joined) => open_travel(handle, observer, joined, commands),
-        Err(e) => eprintln!("[travel] the mirror task failed: {e}"),
+    match observer.subscribe().await {
+        Ok((snapshot, _)) => open_travel(handle, observer, &snapshot.state, commands),
+        Err(e) => eprintln!("[travel] could not read the session to open travel: {e:?}"),
     }
 }
 
@@ -157,11 +97,10 @@ pub(crate) async fn after_login(
 fn open_travel(
     handle: &SessionHandle,
     observer: SessionObserver,
-    joined: (Snapshot, Receiver<Event>),
+    state: &cena_session::GameState,
     commands: &Commands,
 ) {
-    let state = joined.0.state.clone();
-    if let Some(symbol) = symbol(handle, &state)
+    if let Some(symbol) = symbol(handle, state)
         && !handle.set_command_symbol(symbol)
     {
         eprintln!("  !! [commands] no command line to give the symbol {symbol} to");
@@ -190,20 +129,12 @@ fn open_travel(
         cena_session::character_store::data_dir(),
         AuthorityToken(2),
     );
-    // The login's own subscription, for the first command only.
-    let first = Mutex::new(Some(joined));
     let handler = handle.clone();
     commands.travel(Arc::new(move |line: &str| {
         let command = travel_command(&handler, line)?;
         let (travel, handle) = (Arc::clone(&travel), handler.clone());
-        let joined = first.lock().ok().and_then(|mut first| first.take());
         let observer = observer.clone();
-        tokio::spawn(async move {
-            match joined {
-                Some(joined) => run(&travel, &handle, joined, command).await,
-                None => run_fresh(&travel, &handle, &observer, command).await,
-            }
-        });
+        tokio::spawn(async move { run_fresh(&travel, &handle, &observer, command).await });
         Some(Claimed::Done)
     }));
     let symbol = handle.command_symbol().unwrap_or(claimant::DEFAULT_SYMBOL);
@@ -247,17 +178,6 @@ fn travel_command(handle: &SessionHandle, line: &str) -> Option<Command> {
             handle.say(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
             Some(Command::Nothing)
         }
-    }
-}
-
-async fn run(
-    travel: &Arc<Desk>,
-    handle: &SessionHandle,
-    joined: (Snapshot, Receiver<Event>),
-    command: Command,
-) {
-    if let Some(walk) = travel.run(handle, joined, command) {
-        walked(walk.await);
     }
 }
 

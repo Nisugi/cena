@@ -310,12 +310,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The supervisor's `run` IS the login: it connects, runs one actor over
     // the connection, and opens another if the reason warrants it. Everything
     // below happens against whichever generation is current.
-    // The walker's own view of the character, read from the first moment so
-    // the login burst is not lost to it (`travel.rs`, "Why a mirror").
-    // Always: the travel desk is open for every run, and its first command
-    // needs the login's own state (`travel.rs`, "Why a mirror").
-    let hand_over = CancellationToken::new();
-    let mirror = tokio::spawn(travel::mirror(session.subscribe(), hand_over.clone()));
     let supervisor = tokio::spawn(session.run());
     let frontend = frontend::Frontend::start(observer.clone(), handle.clone()).await;
 
@@ -362,12 +356,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     unless_interrupted(&interrupt, run_or_probe(&handle, &mut probe_events, &stop)).await;
 
-    let desk = travel::after_login(mirror, &hand_over, &handle, observer.clone(), &commands);
-    if unless_interrupted(&interrupt, desk).await.is_none() {
-        // The mirror is waiting to be told to hand over; tell it, so it ends
-        // now rather than when the supervisor closes its subscription.
-        hand_over.cancel();
-    }
+    let desk = travel::after_login(&handle, observer.clone(), &commands);
+    unless_interrupted(&interrupt, desk).await;
 
     frontend::wait_for_stop(hold_for(frontend.is_some()), &supervisor, &interrupt).await;
 
