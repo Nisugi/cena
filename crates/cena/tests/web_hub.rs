@@ -241,3 +241,61 @@ async fn next_note(socket: &mut Browser) -> Option<String> {
     .await
     .ok()
 }
+
+/// `plan/29` step 5d: a thought both characters hear is one line on the hub,
+/// tagged with both -- the author's rule, "the same line is a duplicate line".
+#[tokio::test]
+async fn a_thought_two_characters_hear_is_one_line_on_the_hub_tagged_with_both() {
+    let (a_source, a_transcript) = AnsweringSource::logged_in(ROOM);
+    let (b_source, b_transcript) = AnsweringSource::logged_in(ROOM);
+    let a = Session::numbered(SessionId(0), a_source);
+    let b = Session::numbered(SessionId(1), b_source);
+    let (a_handle, b_handle) = (a.handle(), b.handle());
+    let (a_observer, b_observer) = (a.observer(), b.observer());
+    let (a_stop, b_stop) = (a.cancel_token(), b.cancel_token());
+    let a_actor = tokio::spawn(a.into_actor().run());
+    let b_actor = tokio::spawn(b.into_actor().run());
+    await_ready(&a_observer, Generation::FIRST).await.unwrap();
+    await_ready(&b_observer, Generation::FIRST).await.unwrap();
+
+    let server = WebServer::open().await.unwrap();
+    let sessions = server.sessions();
+    sessions.attach("Nisugi", a_observer, a_handle.clone());
+    sessions.attach("Nerten", b_observer, b_handle.clone());
+    let pairing = server.pairing_url();
+    let stop_web = CancellationToken::new();
+    let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
+    let mut hub = browser(&pairing).await.unwrap();
+
+    let thought: &[u8] =
+        b"<pushStream id='thoughts'/>[General] Someone: hello there\n<popStream/><prompt time='1'>&gt;</prompt>\n";
+    a_transcript.answer("listen", thought);
+    b_transcript.answer("listen", thought);
+    for handle in [&a_handle, &b_handle] {
+        let _ = handle
+            .send_manual_at(Generation::FIRST, "listen", DEADLINE)
+            .await;
+    }
+
+    let merged = tokio::time::timeout(DEADLINE, async {
+        loop {
+            if let Ok(ServerMessage::Merged { lines, .. }) = receive(&mut hub).await
+                && let Some(line) = lines.iter().find(|line| line.from.len() == 2)
+            {
+                return line.clone();
+            }
+        }
+    })
+    .await
+    .expect("the hub never showed the thought tagged with both characters");
+    assert_eq!(merged.stream, "thoughts");
+    assert_eq!(merged.from, ["Nisugi", "Nerten"]);
+    let text: String = merged.runs.iter().map(|run| run.text.as_str()).collect();
+    assert!(text.contains("hello there"), "{text:?}");
+
+    stop_web.cancel();
+    web.await.unwrap().unwrap();
+    a_stop.cancel();
+    b_stop.cancel();
+    let _ = (a_actor.await, b_actor.await);
+}

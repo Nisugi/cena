@@ -212,7 +212,11 @@ async fn attach(viewed: &Viewed) -> (Arc<str>, broadcast::Receiver<Arc<str>>) {
 /// a command belongs to one character, whose own page sends it.
 async fn serve_hub(mut socket: WebSocket, shared: Arc<Shared>) {
     let mut changed = shared.changed.subscribe();
+    // Subscribed before the history is read, so no merged line falls between
+    // the two; one that is in both arrives twice, and a page keys lines by id.
+    let mut merged = shared.merged.updates.subscribe();
     let mut last: Option<Arc<str>> = None;
+    let mut history_sent = false;
     loop {
         let available = if shared
             .control
@@ -243,10 +247,32 @@ async fn serve_hub(mut socket: WebSocket, shared: Arc<Shared>) {
             }
             last = Some(message);
         }
+        if !history_sent {
+            history_sent = true;
+            let history = ServerMessage::Merged {
+                version: WIRE_VERSION,
+                lines: shared.merged.history(),
+            };
+            let Ok(message) = encode(&history) else {
+                return;
+            };
+            if !write(&mut socket, &message).await {
+                return;
+            }
+        }
         tokio::select! {
             () = shared.stop.cancelled() => { close(&mut socket, 1001, "Viewer stopped").await; return; }
             // A lag is only "something changed" said more than once.
             _ = changed.recv() => tokio::time::sleep(HUB_REFRESH).await,
+            line = merged.recv() => match line {
+                Ok(message) => if !write(&mut socket, &message).await { return; },
+                // Behind: the page resynchronises on its fresh history.
+                Err(broadcast::error::RecvError::Lagged(_)) => {
+                    close(&mut socket, 1013, "Hub lagged; reconnect for the merged history").await;
+                    return;
+                }
+                Err(broadcast::error::RecvError::Closed) => {}
+            },
             incoming = socket.recv() => match incoming {
                 Some(Ok(Message::Ping(_) | Message::Pong(_))) => {}
                 Some(Ok(Message::Close(_)) | Err(_)) | None => return,

@@ -285,6 +285,26 @@ export function mount(document, environment) {
     element("hub-empty").hidden = cards.length > 0;
   }
 
+  // Thoughts, speech, logons, deaths and announcements from every character,
+  // each line once, tagged with who received it (plan/29 step 5d).
+  function renderMerged(lines) {
+    const host = element("hub-merged");
+    const atBottom = host.scrollTop + host.clientHeight >= host.scrollHeight - 4;
+    host.replaceChildren();
+    for (const line of lines) {
+      const paragraph = document.createElement("p");
+      paragraph.className = `merged-line merged-${line.stream}`;
+      const tag = document.createElement("span");
+      tag.className = "merged-tag";
+      tag.textContent = `[${line.from.join(", ")}] `;
+      paragraph.appendChild(tag);
+      appendRuns(document, paragraph, line.runs);
+      host.appendChild(paragraph);
+    }
+    element("hub-merged-empty").hidden = lines.length > 0;
+    if (atBottom) host.scrollTop = host.scrollHeight;
+  }
+
   // Characters the hub can start: ones that have logged in before, with a
   // saved password. Anything else is logged in once from the command line.
   function renderAvailable(available, note) {
@@ -308,6 +328,7 @@ export function mount(document, environment) {
       text("connection-status", "Characters");
       renderHub(state.hub);
       renderAvailable(state.available, state.hubNote);
+      renderMerged(state.merged);
       return;
     }
     const view = state.view;

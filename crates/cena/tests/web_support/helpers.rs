@@ -96,7 +96,9 @@ pub async fn receipt(
                 ServerMessage::Receipt { .. } => {
                     return Err(io::Error::other("unexpected command receipt").into());
                 }
-                ServerMessage::Sessions { .. } | ServerMessage::HubNote { .. } => {
+                ServerMessage::Sessions { .. }
+                | ServerMessage::HubNote { .. }
+                | ServerMessage::Merged { .. } => {
                     return Err(io::Error::other("a session's page was sent the hub").into());
                 }
             }

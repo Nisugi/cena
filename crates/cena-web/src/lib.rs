@@ -2,6 +2,7 @@
 //! when every browser disconnects; this crate only projects and submits input.
 
 mod listener;
+mod merged;
 mod presentation;
 mod server;
 mod socket;

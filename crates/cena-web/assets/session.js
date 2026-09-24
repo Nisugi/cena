@@ -82,6 +82,10 @@ function validCard(card) {
     && (card.room === null || typeof card.room === "string");
 }
 
+// Merged shared-stream lines the hub keeps (plan/29 step 5d); the server
+// keeps the same number, so a reopened hub shows what this one did.
+export const MAX_MERGED_LINES = 200;
+
 export class HydraSession {
   constructor({ url, token, sessionId = null, onChange, WebSocketImpl = WebSocket,
     schedule = setTimeout, cancel = clearTimeout }) {
@@ -113,7 +117,7 @@ export class HydraSession {
     // last hub request.
     this.state = { connection: "idle", view: null, story: [], session: null,
       generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…", hub: null,
-      available: [], hubNote: "" };
+      available: [], hubNote: "", merged: [] };
   }
 
   get ready() {
@@ -218,6 +222,23 @@ export class HydraSession {
       this.state.available = message.available;
       this.state.connection = "hub";
       this.state.commandStatus = "Choose a character to play.";
+      this.emit();
+      return;
+    }
+    // Shared streams across characters: a line whose id was seen before is
+    // that line gaining a character, so it replaces the earlier copy.
+    if (message && message.kind === "merged") {
+      if (message.version !== 1 || !Array.isArray(message.lines) || !message.lines.every((line) => line
+        && decimal(line.id) && typeof line.stream === "string" && validRuns(line.runs)
+        && Array.isArray(line.from) && line.from.every((tag) => typeof tag === "string"))) {
+        throw new Error("Invalid merged lines");
+      }
+      const merged = [...this.state.merged];
+      for (const line of message.lines) {
+        const at = merged.findIndex((kept) => kept.id === line.id);
+        if (at >= 0) merged[at] = line; else merged.push(line);
+      }
+      this.state.merged = merged.slice(-MAX_MERGED_LINES);
       this.emit();
       return;
     }

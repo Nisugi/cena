@@ -141,7 +141,9 @@ where
         let (snapshot, next) = result.map_err(fatal)?;
         pending.fence(&snapshot, &mut events);
         events = next;
-        let lines = pending.lines.drain(..).collect();
+        let lines: Vec<_> = pending.lines.drain(..).collect();
+        // The hub's merged streams read the same lines this page shows.
+        shared.merged.offer(shared.id, &shared.tag(), &lines);
         pending.bytes = 0;
         let gap = std::mem::take(&mut pending.gap);
         if shared

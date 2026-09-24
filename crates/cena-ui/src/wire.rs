@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::merge::MergedLine;
 use crate::view::{SessionCard, SessionView, StoryLine};
 
 /// The `version` every message in both directions must carry; anything else
@@ -155,6 +156,16 @@ pub enum ServerMessage {
         /// Characters the hub can add: in the roster, with a saved password,
         /// and not running. Empty when adding is not offered.
         available: Vec<String>,
+    },
+    /// `kind: "merged"`, to the hub page: thoughts, speech, logons, deaths and
+    /// announcements across every character, each line once (`plan/29`
+    /// step 5d). A line whose `id` was sent before is that line gaining a
+    /// character.
+    Merged {
+        /// Always `WIRE_VERSION`.
+        version: u16,
+        /// New lines, and earlier ones gaining a character, in order.
+        lines: Vec<MergedLine>,
     },
     /// `kind: "hub_note"`: what became of a hub request, for the page that
     /// made it.

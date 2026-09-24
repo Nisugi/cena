@@ -22,6 +22,7 @@ updates, not game events. Never convert these fields to JavaScript Number.
 | `sessions` | `sessions`, `available` | The hub page (`plan/29` step 5b): one card per character, replacing the last list whole, and the characters it may start. Sent to a viewer that named no session when there is not exactly one. The hub takes no game commands. |
 | `add_character` | `character` | Hub only (step 5c): start a character that has logged in before -- in the roster, with a saved password. No credential crosses the socket. |
 | `remove_session` | `session` | Hub only: quit a character and take it off the table. |
+| `merged` | `lines` | Hub only (step 5d): thoughts, speech, logons, deaths and announcements across every character. Each line has decimal `id`, `stream`, styled `runs` and `from`, the characters that received it. Identical text on one stream from different characters within 1 second is one line; a line sent again with the same `id` has gained a character. |
 | `hub_note` | `detail` | What became of the hub request just made, as one line of plain text. |
 
 `status` is `sent`, `refused`, `uncertain`, or `handled` (a `;` command Hydra ran itself; nothing was sent). Sent establishes that command

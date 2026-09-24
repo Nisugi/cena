@@ -39,6 +39,8 @@ pub(crate) struct Shared {
     pub(crate) control: std::sync::Mutex<Option<HubControl>>,
     /// Characters the hub may add, as the control's owner last said.
     pub(crate) available: std::sync::Mutex<Vec<String>>,
+    /// Every session's shared streams, merged for the hub (`plan/29` 5d).
+    pub(crate) merged: Arc<crate::merged::MergedFeed>,
     pub(crate) clients: Arc<Semaphore>,
     pub(crate) stop: CancellationToken,
 }
@@ -121,6 +123,8 @@ pub(crate) enum Asked {
 /// One session as the web frontend sees it: its presentation hub, the
 /// handle its viewers' commands go through, and the stop for its pump.
 pub(crate) struct Viewed {
+    /// Which session this is.
+    pub(crate) id: SessionId,
     /// The character's name, for its card on the hub page.
     pub(crate) name: String,
     pub(crate) hub: Mutex<Hub>,
@@ -129,6 +133,20 @@ pub(crate) struct Viewed {
     pub(crate) stop: CancellationToken,
     /// The server's hub-page signal, sent after each publish.
     pub(crate) changed: tokio::sync::broadcast::Sender<()>,
+    /// Where this session's shared-stream lines are merged with the others'.
+    pub(crate) merged: Arc<crate::merged::MergedFeed>,
+}
+
+impl Viewed {
+    /// This session's tag on a merged line: the character's name, or its id
+    /// when it was given none.
+    pub(crate) fn tag(&self) -> String {
+        if self.name.is_empty() {
+            format!("Session {}", self.id.0)
+        } else {
+            self.name.clone()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -142,11 +160,13 @@ impl Viewed {
             tokio::sync::broadcast::channel(1).0,
         );
         Arc::new(Self {
+            id: handle.session(),
             name: String::new(),
             hub: Mutex::new(Hub::new()),
             handle,
             stop: CancellationToken::new(),
             changed: tokio::sync::broadcast::channel(1).0,
+            merged: Arc::new(crate::merged::MergedFeed::new()),
         })
     }
 }
@@ -177,11 +197,13 @@ impl Sessions {
     ) {
         let id = handle.session();
         let viewed = Arc::new(Viewed {
+            id,
             name: name.into(),
             hub: Mutex::new(Hub::new()),
             handle,
             stop: self.shared.stop.child_token(),
             changed: self.shared.changed.clone(),
+            merged: Arc::clone(&self.shared.merged),
         });
         let replaced = self
             .shared
@@ -281,6 +303,7 @@ impl WebServer {
             changed: tokio::sync::broadcast::channel(1).0,
             control: std::sync::Mutex::new(None),
             available: std::sync::Mutex::new(Vec::new()),
+            merged: Arc::new(crate::merged::MergedFeed::new()),
             clients: Arc::new(Semaphore::new(MAX_CLIENTS)),
             stop: CancellationToken::new(),
         });

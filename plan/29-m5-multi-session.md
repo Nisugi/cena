@@ -153,6 +153,19 @@ Each step ends in something demonstrable, the way M1's did.
    > time a character logs in (author's question, 2026-09-23).
 5. **The web hub and per-session URLs (§5a).** *Demo:* two scripted sessions, one hub, one
    tab per character, and switching inside the hub.
+   > **BUILT 2026-09-24**, in four commits on `m5-session-ids`:
+   > - **5a** (`ac5ac04`): one listener, a hub and pump per session; a page names its session
+   >   in `authenticate`; sessions attach and detach at runtime.
+   > - **5b** (`63ba7d9`): the hub page, a card per character (lifecycle, vitals, roundtime,
+   >   room), updated when a card changes, at most every 250 ms.
+   > - **5c** (`a47d890`): the hub starts and quits characters through a control the binary
+   >   installs; roster-and-keyring characters only, no credential in the browser (author: a).
+   >   The hub's link is printed on its own, labelled, beside each character's (`d67bab4`).
+   > - **5d**: `cena_ui::Merger` merges thoughts, speech, logons, deaths and announcements
+   >   across characters -- identical text on one stream within 1 s is one line, tagged with
+   >   every character that received it -- shown on the hub page. The configurable tag is
+   >   still the character's name; making it configurable waits for the settings taxonomy
+   >   (`28` §7f).
 6. **Live, author present:** two characters on two accounts at once. This is M5's
    acceptance, as the M1 live run was M1's.
 

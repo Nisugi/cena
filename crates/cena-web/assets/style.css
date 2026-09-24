@@ -126,4 +126,8 @@ meter::-moz-meter-bar { background: var(--vital-color); }
 .hub-quit { margin-top: 8px; font-size: .75rem; padding: 3px 10px; }
 .hub-available { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .hub-note { display: block; margin-top: 10px; color: var(--muted); }
+.hub-merged { max-height: 45vh; overflow: auto; margin-top: 6px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface-inset); }
+.hub #hub-merged-heading { margin-top: 18px; }
+.merged-line { margin: 0 0 2px; font-family: var(--font-text); }
+.merged-tag { color: var(--amber); }
 

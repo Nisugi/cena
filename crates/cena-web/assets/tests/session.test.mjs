@@ -566,3 +566,19 @@ test("the hub starts and quits characters by request, and shows the answer", () 
   assert.equal(element("hub-note").textContent, "Nisugi has quit.");
 });
 
+test("the hub shows each shared-stream line once, gaining a character's tag in place", () => {
+  // plan/29 step 5d: the same id is the same line, not a second one.
+  const { session, socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi"), card("1", "Nerten")], available: [] });
+  const runs = [{ text: "[General] Someone: hello", bold: false, monospace: false, preset: null }];
+  socket.message({ kind: "merged", version: 1, lines: [{ id: "4", stream: "thoughts", runs, from: ["Nisugi"] }] });
+  socket.message({ kind: "merged", version: 1, lines: [{ id: "4", stream: "thoughts", runs, from: ["Nisugi", "Nerten"] }] });
+  assert.equal(session.state.merged.length, 1);
+  const shown = element("hub-merged").children;
+  assert.equal(shown.length, 1);
+  assert.equal(shown[0].textContent, "[Nisugi, Nerten] [General] Someone: hello");
+  // A malformed line is a protocol error, not a half-drawn panel.
+  socket.message({ kind: "merged", version: 1, lines: [{ id: "x", stream: "thoughts", runs, from: [] }] });
+  assert.equal(session.state.connection, "protocol-error");
+});
+
