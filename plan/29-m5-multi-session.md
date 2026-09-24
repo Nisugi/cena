@@ -103,6 +103,13 @@ normal deadline.
 Each must go red when isolation is broken on purpose, for example by sharing one event ring
 between two sessions, or it tests nothing.
 
+> **BUILT 2026-09-23** as `crates/cena-session/tests/isolation.rs`, five tests. Two rows
+> changed on contact. A wedged **behavior** needs `BEHAVIOR_WATCHDOG`, which is not built and
+> belongs with behaviors (M6); the session-level wedge -- a game that stops answering -- is
+> tested instead. A failing **store write** needs a filesystem fault and moves to step 3,
+> where the session table owns the stores. Two mutations were verified: a shared event ring
+> turns the lag test red, and a shared generation counter turns the reconnect test red.
+
 ---
 
 ## 4. Steps (proposed order)
