@@ -564,6 +564,23 @@ player — and Saga's own lead developer agreed about his own product:**
   user-authored automation; ~2 people in ten weeks ask for a reactive trigger. The demand we
   were designing against does not exist.
 
+> **CORRECTED 2026-09-24 (author).** "No conditionals" read as banning **guards**, which
+> would make every real hunting profile inexpressible. The author: *"conditions are a big
+> part, there are preconditions. If not listed here then how would they actually be used?"*
+> bigshot's routine lines carry them -- `fire(hidden)`, `coupdegrace(thp20 empowered30)`,
+> `incant 611(!frozen)` -- and `bigshot.lic:3197` accepts 87 such words.
+>
+> What the ban means is **control flow authored by the user**: no `if`/`else` blocks, no
+> loops, no variables, no expressions, nothing `eval`'d. A **guard** is different: a named
+> precondition on one step, drawn from a closed vocabulary Hydra defines, each reading one
+> fact the model already holds, with at most one number. Guards are policy. `plan/30` §5 has
+> the vocabulary. This rule was Claude's reading of the player thread, never the author's.
+>
+> **And the evidence above was misread** (author, same day): soleblaze's "config creep" is
+> about **Saga's settings** -- *"bells and whistles, tweaks, tons of settings"* -- not about
+> automation expressing conditions. So it argues for **few, opinionated settings and
+> presets**, which is what this section's other bullets say. It never argued against guards.
+
 ### 6a.2 Settings inherit: global → profile → character
 
 **The second message in the entire thread**, still unresolved ten weeks later, raised by 7–10
