@@ -19,6 +19,7 @@ impl SessionView {
         let room = &state.room;
         let contents_known = room.component("room objs").is_some();
         Self {
+            map_location: None,
             room: RoomView {
                 id: room.id.clone(),
                 title: room.title.clone(),

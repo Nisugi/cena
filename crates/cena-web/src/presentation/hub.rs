@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 pub(crate) struct Hub {
+    pub(crate) map_projection: Option<crate::MapProjection>,
     pub(crate) snapshot: Option<Arc<str>>,
     pub(crate) session: String,
     pub(crate) generation: String,
@@ -49,6 +50,7 @@ pub(crate) struct Hub {
 impl Hub {
     pub(crate) fn new() -> Self {
         Self {
+            map_projection: None,
             snapshot: None,
             session: String::new(),
             generation: String::new(),
@@ -142,11 +144,17 @@ impl Hub {
     ) -> Result<(), ()> {
         let session = snapshot.session.0.to_string();
         let generation = snapshot.generation.0.to_string();
-        let view = SessionView::project(
+        let mut view = SessionView::project(
             &snapshot.state,
             lifecycle(snapshot),
             snapshot.state.game_time_now(),
         );
+        if snapshot.lifecycle == State::Ready {
+            view.map_location = self
+                .map_projection
+                .as_ref()
+                .map(|project| project(snapshot));
+        }
         let resync = gap || std::mem::take(&mut self.resync);
         if !resync
             && lines.is_empty()
@@ -236,6 +244,7 @@ impl Hub {
 /// not. What stays is small by construction: vitals, roundtime, lifecycle.
 fn degraded(view: &SessionView) -> SessionView {
     SessionView {
+        map_location: None,
         room: cena_ui::RoomView {
             id: None,
             title: None,

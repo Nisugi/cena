@@ -15,6 +15,53 @@ fn snapshot(cursor: u64) -> Snapshot {
     }
 }
 
+#[test]
+fn map_location_uses_the_same_snapshot_and_is_cleared_outside_ready() {
+    let mut hub = Hub::new();
+    hub.map_projection = Some(Arc::new(|snapshot| cena_ui::MapLocationView {
+        map_sha256: "a".repeat(64),
+        room: snapshot
+            .state
+            .room
+            .id
+            .as_deref()
+            .and_then(|id| id.parse().ok()),
+    }));
+    let mut first = snapshot(1);
+    first.state.room.id = Some("228".into());
+    hub.publish(&first, vec![], false).unwrap();
+    assert_eq!(
+        hub.view().unwrap().map_location.as_ref().unwrap().room,
+        Some(228)
+    );
+    let mut second = snapshot(2);
+    second.session = SessionId(2);
+    second.state.room.id = Some("400".into());
+    let mut other = Hub::new();
+    other.map_projection = hub.map_projection.clone();
+    other.publish(&second, vec![], false).unwrap();
+    assert_eq!(
+        other.view().unwrap().map_location.as_ref().unwrap().room,
+        Some(400)
+    );
+    assert_eq!(
+        hub.view().unwrap().map_location.as_ref().unwrap().room,
+        Some(228)
+    );
+    for lifecycle in [State::Reconnecting, State::Closed, State::Connecting] {
+        second.lifecycle = lifecycle;
+        other.publish(&second, vec![], false).unwrap();
+        assert!(other.view().unwrap().map_location.is_none());
+        assert_eq!(
+            hub.view().unwrap().map_location.as_ref().unwrap().room,
+            Some(228)
+        );
+    }
+    let mut without_map = Hub::new();
+    without_map.publish(&first, vec![], false).unwrap();
+    assert!(without_map.view().unwrap().map_location.is_none());
+}
+
 /// A state that has seen the login burst's `speech` declaration.
 fn declared_speech(cursor: u64) -> Snapshot {
     let mut snapshot = snapshot(cursor);

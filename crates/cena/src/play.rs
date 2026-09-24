@@ -72,6 +72,7 @@ struct Started {
 /// the web frontend -- behind locks, so the hub page can add and remove
 /// characters while Hydra runs (`plan/29` step 5c).
 struct Table {
+    map: crate::map_context::ConfiguredMap,
     host: tokio::sync::Mutex<Host>,
     started: std::sync::Mutex<BTreeMap<SessionId, Started>>,
     web: Option<frontend::Frontend>,
@@ -98,12 +99,14 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
     }
     eprintln!();
     let interrupt = interrupt::on_ctrl_c();
+    let map = crate::map_context::load();
     let table = Arc::new(Table {
         host: tokio::sync::Mutex::new(Host::new()),
         started: std::sync::Mutex::default(),
         // One listener for every character, each with its own page; each
         // page's link is printed when its character is `Ready`.
-        web: frontend::Frontend::open().await,
+        web: frontend::Frontend::open(&map).await,
+        map,
         pin: dir.join(cena_platform::PIN_FILENAME),
         dir,
         turn: Arc::default(),
@@ -204,6 +207,7 @@ impl Table {
             commands,
             learning,
             format!("[{character}]"),
+            self.map.clone(),
         ));
         self.started
             .lock()
@@ -423,12 +427,13 @@ async fn after_ready(
     commands: Commands,
     mut learning: tokio::sync::broadcast::Receiver<Event>,
     who: String,
+    map: crate::map_context::ConfiguredMap,
 ) {
     let Some(stale) = learn::stale_at_ready(&mut learning).await else {
         return;
     };
     drop(learning);
-    travel::after_login(&handle, observer, &commands).await;
+    travel::after_login(&handle, observer, &commands, &map).await;
     learn::sync(&handle, &stale, &who).await;
 }
 

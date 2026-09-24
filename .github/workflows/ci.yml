@@ -115,3 +115,4 @@ jobs:
         run: |
           cargo build --locked -p cena-web --example atlas_preview
           node crates/cena-web/browser-tests/atlas.mjs
+          node crates/cena-web/browser-tests/minimap.mjs

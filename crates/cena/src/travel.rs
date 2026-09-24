@@ -31,11 +31,10 @@
 //! (`SessionObserver::subscribe`), whose state is the one the actor folds and
 //! which already holds what the character store restored.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::commands::Commands;
-use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command, read_map};
+use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command};
 use cena_session::command::claimant::{self, Claimed};
 use cena_session::{AuthorityToken, Notice, NoticeKind, SessionHandle, SessionObserver};
 
@@ -76,6 +75,7 @@ pub(crate) async fn after_login(
     handle: &SessionHandle,
     observer: SessionObserver,
     commands: &Commands,
+    map: &crate::map_context::ConfiguredMap,
 ) {
     if let Some(first) = first_command(std::env::args().skip(1)) {
         eprintln!("[travel] first: {first}");
@@ -83,7 +83,7 @@ pub(crate) async fn after_login(
         eprintln!("[travel] first: {outcome:?}");
     }
     match observer.subscribe().await {
-        Ok((snapshot, _)) => open_travel(handle, observer, &snapshot.state, commands),
+        Ok((snapshot, _)) => open_travel(handle, observer, &snapshot.state, commands, map),
         Err(e) => eprintln!("[travel] could not read the session to open travel: {e:?}"),
     }
 }
@@ -99,13 +99,14 @@ fn open_travel(
     observer: SessionObserver,
     state: &cena_session::GameState,
     commands: &Commands,
+    configured: &crate::map_context::ConfiguredMap,
 ) {
     if let Some(symbol) = symbol(handle, state)
         && !handle.set_command_symbol(symbol)
     {
         eprintln!("  !! [commands] no command line to give the symbol {symbol} to");
     }
-    let map = load_map(handle).map(Arc::new);
+    let map = load_map(handle, configured);
     // Hunt walks with travel's driver, so it takes the same map, or none.
     crate::hunt::open(handle, observer.clone(), state, commands, map.clone());
     let Some(map) = map else {
@@ -223,35 +224,17 @@ fn walked(travelled: Result<Travelled, tokio::task::JoinError>) {
 
 /// The map, or why there is none. Said to the player, not only to stderr: a
 /// walk that cannot happen should say so where the player is looking.
-fn load_map(handle: &SessionHandle) -> Option<Map> {
-    let say = |text: String| handle.say(Notice::line(NoticeKind::Error, text));
-    let Some(path) = std::env::var_os(MAP_ENV) else {
-        say(format!(
-            "Travel: no map. Set {MAP_ENV} to a combined map file."
-        ));
-        return None;
-    };
-    let bytes = match std::fs::read(&path) {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            say(format!(
-                "Travel: cannot read the map at {}: {e}",
-                PathBuf::from(&path).display()
-            ));
-            return None;
+fn load_map(
+    handle: &SessionHandle,
+    configured: &crate::map_context::ConfiguredMap,
+) -> Option<Arc<Map>> {
+    match configured {
+        Ok(context) => {
+            eprintln!("[travel] map: {} rooms", context.map.rooms().len());
+            Some(Arc::clone(&context.map))
         }
-    };
-    match read_map(&bytes) {
-        Ok(map) => {
-            eprintln!(
-                "[travel] map: {} rooms from {}",
-                map.rooms().len(),
-                PathBuf::from(&path).display()
-            );
-            Some(map)
-        }
-        Err(e) => {
-            say(format!("Travel: the map file cannot be used: {e}"));
+        Err(error) => {
+            handle.say(Notice::line(NoticeKind::Error, format!("Travel: {error}")));
             None
         }
     }
