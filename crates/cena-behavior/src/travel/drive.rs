@@ -90,6 +90,7 @@ pub const LOST_WAIT: Duration = Duration::from_secs(10);
 /// How a trip ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ended {
+    /// The walker reached the destination room.
     Arrived,
     /// The trip gave up, and why.
     Failed(Why),
@@ -105,6 +106,8 @@ pub enum Ended {
 /// What a finished trip leaves for whoever started it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Travelled {
+    /// How the trip ended: arrived, or why not. The player has already been
+    /// told; this is the same fact for the caller.
     pub ended: Ended,
     /// Stored by the trip and not seen to come back.
     pub still_stored: Vec<Stored>,

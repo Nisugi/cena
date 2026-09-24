@@ -77,6 +77,9 @@ pub struct Tap {
 }
 
 impl Tap {
+    /// A tap for `session` writing to `log`, capturing `capture` until the
+    /// character's settings file (looked for in `settings_dir`, if given) is
+    /// laid over it.
     #[must_use]
     pub fn new(
         log: PlayerLog,

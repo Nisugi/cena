@@ -39,6 +39,8 @@ pub const DEFAULT_SYMBOL: char = ';';
 /// one their fingers know, not a session where nothing is a command.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Settings {
+    /// The command symbol as the file spells it. Only a single character is
+    /// used; `None` or anything else means `DEFAULT_SYMBOL`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub symbol: Option<String>,
 }

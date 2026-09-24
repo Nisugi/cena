@@ -118,6 +118,7 @@ impl Capture {
 /// file written today does not switch off a feed that is added tomorrow.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LogSettings {
+    /// Feed tag to on/off, overriding the default for each feed named.
     #[serde(default)]
     pub feeds: BTreeMap<String, bool>,
 }
@@ -155,6 +156,8 @@ pub struct Feed {
 }
 
 impl Feed {
+    /// A feed for connection `generation`, writing through `tap`, with nothing
+    /// held and nothing yet written.
     #[must_use]
     pub const fn new(tap: Tap, generation: Generation) -> Self {
         Self {

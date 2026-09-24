@@ -34,6 +34,7 @@ use super::{Trip, can_cross};
 /// One exit taken.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Leg {
+    /// The room this exit arrives in.
     pub to: RoomId,
     /// What crosses it: a command, or the steps in order.
     pub how: String,
@@ -41,7 +42,9 @@ pub struct Leg {
     pub seconds: f64,
     /// And for everything up to and including it.
     pub so_far: f64,
+    /// The arrival room's first title in the map; `None` if the map has none.
     pub title: Option<String>,
+    /// The arrival room's location name in the map, when it records one.
     pub location: Option<String>,
     /// The exits out of the room this leg *leaves* that are shut to this
     /// walker. Not every exit it passed by -- only the ones it could not have
@@ -52,8 +55,11 @@ pub struct Leg {
 /// An exit this walker cannot take.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Shut {
+    /// The room the shut exit leads to.
     pub to: RoomId,
+    /// What would cross it: a command, or the steps in order.
     pub how: String,
+    /// Why this walker cannot take it.
     pub why: ShutWhy,
 }
 

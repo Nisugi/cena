@@ -93,7 +93,10 @@ pub type Targets = BTreeMap<String, Vec<u32>>;
 /// to see why a route was refused, and a diff of it should show what changed.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TravelFile {
+    /// The game instance of the character this view is for.
     pub instance: String,
+    /// The character this view is for; its spot and own targets are read by
+    /// this name and `instance`.
     pub character: String,
     /// The travel profile: `ice_mode`, `use_urchins`, the name of the sack a
     /// house key is kept in.
@@ -196,10 +199,16 @@ fn spot_name(instance: &str, character: &str) -> Option<String> {
 pub enum TravelLoadError {
     /// Written by a newer build than this one. Refused rather than guessed
     /// at -- and **not overwritten**: nothing is saved over it.
-    Newer { found: u32 },
+    Newer {
+        /// The file's `schema_version`, above what this build reads.
+        found: u32,
+    },
     /// A character's own file, from before the shared one, names a different
     /// character or instance.
-    WrongCharacter { found: String },
+    WrongCharacter {
+        /// Who the file does name, as `instance/character`.
+        found: String,
+    },
     /// The file could not be read, or is not valid JSON. Also not to be
     /// overwritten: a person can mend a file, and cannot mend a lost memory.
     Unreadable(String),
@@ -401,7 +410,10 @@ pub enum Whose<'a> {
     /// This character's alone. What `--save-target` means unless told
     /// otherwise.
     Character {
+        /// The game instance the character is on.
         instance: &'a str,
+        /// The character's name; with `instance`, it picks whose spot in the
+        /// travel file holds the target.
         character: &'a str,
     },
     /// Every character's, on every instance. `--global`.

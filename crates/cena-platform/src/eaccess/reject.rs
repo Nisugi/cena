@@ -61,7 +61,10 @@ pub enum Rejection {
     ///
     /// **No body.** It is the case most likely to be a WAF intercept page or a
     /// truncated fragment, and a length is all a diagnostic needs.
-    Divergence { bytes: usize },
+    Divergence {
+        /// Length of the unrecognised response, in bytes.
+        bytes: usize,
+    },
 }
 
 impl Rejection {

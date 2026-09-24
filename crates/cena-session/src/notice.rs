@@ -75,7 +75,10 @@ pub enum Body {
 /// One thing Hydra says to the player.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Notice {
+    /// What it is about, which is how a frontend colours it (and whether it
+    /// shows a `Debug` one at all).
     pub kind: NoticeKind,
+    /// The words: prose to wrap, or a fixed-width table.
     pub body: Body,
 }
 

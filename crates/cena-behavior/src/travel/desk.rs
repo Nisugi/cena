@@ -49,6 +49,8 @@ use super::{
 /// How many rooms a place that fits several is listed with.
 const MAX_LISTED: usize = 40;
 
+/// One session's travel desk: runs each travel [`Command`] against the shared
+/// map, and holds the one walk that may be under way.
 pub struct Desk {
     map: Arc<Map>,
     /// Where `travel.json` is kept.
@@ -79,6 +81,8 @@ struct Traveller {
 }
 
 impl Desk {
+    /// A desk with no walk under way. `dir` is where `travel.json` is kept;
+    /// `token` is the authority its walks claim to run their command sequences.
     #[must_use]
     pub fn new(map: Arc<Map>, dir: PathBuf, token: AuthorityToken) -> Arc<Desk> {
         Arc::new(Desk {

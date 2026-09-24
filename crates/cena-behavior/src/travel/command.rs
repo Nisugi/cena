@@ -35,12 +35,19 @@ pub enum Command {
     /// From now on `name` means these rooms: each a number, `u<uid>`, or
     /// `current`. None given means `current`.
     Save {
+        /// The name to save, as typed (it may hold spaces).
         name: String,
+        /// The comma-separated room words after `=`, trimmed and lowercased
+        /// but not yet resolved; empty when none were given.
         rooms: Vec<String>,
+        /// `--global` was typed: save for every character, not just this one.
         global: bool,
     },
+    /// Forget a saved name (`;go2 delete`).
     Forget {
+        /// The saved name to forget, as typed.
         name: String,
+        /// `--global` was typed: forget it from every character's names.
         global: bool,
     },
     /// Stop the walk under way.
