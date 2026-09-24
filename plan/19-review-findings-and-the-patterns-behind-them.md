@@ -299,6 +299,12 @@ answer is a judgement about what Cena should do:
 - **§6.3's `Lagged` recovery is unreachable**: `subscribe` is on
   `SupervisedSession` and `run` consumes it.
 
+  > **RESOLVED 2026-09-23.** Reachable now: `SupervisedSession::observer()`
+  > hands out a `SessionObserver`, and `SessionObserver::subscribe` re-fences
+  > after a lag -- tested by
+  > `cena-session/tests/observation.rs::lag_resubscription_replaces_the_old_fence_with_fresh_authoritative_state`.
+  > It stays true only of the legacy `broadcast::Receiver<Event>`.
+
 **Deferred to M2, deliberately.** The remaining frame-vocabulary gaps —
 unknown tags inside `<component>` bodies, `dialogData` without `clear`,
 `dynaStream` typed as a window — are M2's actual subject. Fixing them now means

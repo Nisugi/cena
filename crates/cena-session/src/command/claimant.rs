@@ -23,6 +23,7 @@
 //! binary is what joins the two, which is the same layering as
 //! `plan/12` §3a's "one parser, N classifiers".
 
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, OnceLock};
 
 /// Lich's `$lich_char`, and every `GemStone` player's habit.
@@ -39,6 +40,8 @@ pub const DEFAULT_SYMBOL: char = ';';
 /// one their fingers know, not a session where nothing is a command.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Settings {
+    /// The command symbol as the file spells it. Only a single character is
+    /// used; `None` or anything else means `DEFAULT_SYMBOL`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub symbol: Option<String>,
 }
@@ -86,7 +89,10 @@ pub type Slot = Arc<OnceLock<Desk>>;
 /// What a session does with typed lines.
 #[derive(Clone)]
 pub struct Desk {
-    symbol: char,
+    /// A `char` as its `u32`, so it can change after the desk is installed:
+    /// the desk goes in when the session is built, and the character's own
+    /// symbol is only known once the login says who it is.
+    symbol: Arc<AtomicU32>,
     runner: Runner,
 }
 
@@ -95,7 +101,7 @@ impl std::fmt::Debug for Desk {
     /// symbol is the only part anyone could print.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Desk")
-            .field("symbol", &self.symbol)
+            .field("symbol", &self.symbol())
             .finish_non_exhaustive()
     }
 }
@@ -105,15 +111,22 @@ impl Desk {
     #[must_use]
     pub fn new(symbol: Option<char>, runner: Runner) -> Desk {
         Desk {
-            symbol: symbol.unwrap_or(DEFAULT_SYMBOL),
+            symbol: Arc::new(AtomicU32::new(u32::from(symbol.unwrap_or(DEFAULT_SYMBOL)))),
             runner,
         }
     }
 
     /// The symbol this session marks commands with.
     #[must_use]
-    pub const fn symbol(&self) -> char {
-        self.symbol
+    pub fn symbol(&self) -> char {
+        char::from_u32(self.symbol.load(Ordering::Relaxed)).unwrap_or(DEFAULT_SYMBOL)
+    }
+
+    /// Mark commands with `symbol` from now on: the character's preference,
+    /// learned after the desk was installed (author, 2026-09-23: the command
+    /// line is "loaded on startup by default", not when a feature is ready).
+    pub fn set_symbol(&self, symbol: char) {
+        self.symbol.store(u32::from(symbol), Ordering::Relaxed);
     }
 
     /// What to do with a typed line. `None`: it is the game's.
@@ -122,7 +135,7 @@ impl Desk {
     /// is: `  ;go2 bank` is a command, `say ;go2 bank` is speech.
     #[must_use]
     pub fn claim(&self, line: &str) -> Option<Claimed> {
-        let rest = line.trim_start().strip_prefix(self.symbol)?;
+        let rest = line.trim_start().strip_prefix(self.symbol())?;
         // The symbol alone is not a command, and is not the game's either.
         if rest.trim().is_empty() {
             return Some(Claimed::Unknown);

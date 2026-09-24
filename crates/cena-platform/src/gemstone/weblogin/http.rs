@@ -19,8 +19,8 @@ use std::time::Duration;
 use super::failure::WebLoginFailure;
 use super::instance::{Instance, instance_for};
 use super::scrape::{
-    Launch, LoginRedirect, classify_login_redirect, find_char_code, is_subscription_needed,
-    parse_launch,
+    Hop, Launch, LoginRedirect, classify_login_redirect, find_char_code, is_subscription_needed,
+    next_hop, parse_launch,
 };
 
 /// What a web login needs to know.
@@ -261,24 +261,24 @@ async fn select_character(
             ));
         };
 
-        // The launch URL is recognised by carrying the three parameters, not by
-        // its path: the path has changed before and the parameters are what is
-        // actually needed.
-        if location.contains("host=") && location.contains("key=") {
-            // The URL itself is NOT printed: it carries the launch key.
-            progress(&format!(
-                "[web] launch url reached after {} hop(s)",
-                hop + 1
-            ));
-            return parse_launch(&location, instance);
-        }
+        // Every hop goes through `next_hop`, which refuses any that leaves
+        // https://www.play.net. This used to follow ANY `Location` starting
+        // with `http` -- a downgrade or an off-site host included -- with the
+        // session's cookie jar attached (review finding 3). The rule, and why
+        // it matches Lich's rather than inventing one, is on `next_hop`.
+        let next = match next_hop(&location)? {
+            Hop::Launch(url) => {
+                // The URL itself is NOT printed: it carries the launch key.
+                progress(&format!(
+                    "[web] launch url reached after {} hop(s)",
+                    hop + 1
+                ));
+                return parse_launch(&url, instance);
+            }
+            Hop::Follow(url) => url,
+        };
         progress(&format!("[web] hop {}: following redirect", hop + 1));
 
-        let next = if location.starts_with("http") {
-            location
-        } else {
-            format!("{BASE}{location}")
-        };
         response = client
             .get(&next)
             .send()

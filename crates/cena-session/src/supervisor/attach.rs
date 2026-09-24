@@ -4,6 +4,17 @@
 //! Moved down out of `supervisor.rs` under Rule 4.4 when the two stores took
 //! it past its cap (680 of 650). Each of these only sets a field on the
 //! durable core; what is done with it is the actor's, per connection.
+//!
+//! # Why these mirror `Session`'s builders rather than share them
+//!
+//! Review finding 10 asked whether the two sets of `with_*` could be one.
+//! They set different targets -- `Session`'s write the actor it will hand
+//! out, these write the core that builds an actor per connection -- so one
+//! definition needs a trait over the two owners, or a macro. Two types is
+//! below the rule of three (`plan/05` §-1), and the drift the sharing would
+//! prevent is the one recorded on `with_character_store`: a builder
+//! MISSING from one side, which a shared trait would catch but a shared body
+//! would not. Declined, and recorded so it is not re-asked.
 
 use cena_platform::SessionSink;
 

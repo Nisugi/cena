@@ -1,4 +1,6 @@
-//! Keep the read seam available while a connector or retry timer is waiting.
+//! Keep the read seam available while a connector or retry timer is waiting
+//! -- and the command inbox answered, so nothing sent during an outage waits
+//! for the outage to end (`plan/12` §5.1; review finding 6).
 
 use super::{ConnectError, Connector, Generation, SupervisedSession};
 use std::time::Duration;
@@ -18,6 +20,9 @@ impl<C: Connector> SupervisedSession<C> {
                 Some(request) = self.core.observations.requests.recv() => {
                     self.core.events.answer(request, &self.core.state, self.core.lifecycle);
                 }
+                Some(message) = self.core.commands.recv() => {
+                    self.core.refuse_while_disconnected(message);
+                }
             }
         }
     }
@@ -32,6 +37,9 @@ impl<C: Connector> SupervisedSession<C> {
                 () = &mut waiting => return true,
                 Some(request) = self.core.observations.requests.recv() => {
                     self.core.events.answer(request, &self.core.state, self.core.lifecycle);
+                }
+                Some(message) = self.core.commands.recv() => {
+                    self.core.refuse_while_disconnected(message);
                 }
             }
         }

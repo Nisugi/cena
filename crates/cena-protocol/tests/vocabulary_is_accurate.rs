@@ -86,9 +86,9 @@ fn app_info_keeps_the_instance_and_the_title() {
 #[test]
 fn the_documented_variant_count_is_the_actual_variant_count() {
     let source = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/frame.rs"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/frame/vocabulary.rs"),
     )
-    .unwrap_or_else(|e| panic!("frame.rs must be readable: {e}"));
+    .unwrap_or_else(|e| panic!("frame/vocabulary.rs must be readable: {e}"));
 
     let mut names = std::collections::BTreeSet::new();
     let mut in_enum = false;
@@ -115,14 +115,17 @@ fn the_documented_variant_count_is_the_actual_variant_count() {
         }
     }
 
-    assert!(in_enum, "the enum body was never found in frame.rs");
+    assert!(
+        in_enum,
+        "the enum body was never found in frame/vocabulary.rs"
+    );
 
     // The number the module header states, in both places it is stated --
     // and in this test, which is the THIRD copy. The message below said
     // "update BOTH"; there are three, and the third is the one that decides
     // whether the test passes. A test that hardcodes the thing it verifies is
     // a copy like any other and drifts like any other.
-    let claimed = 53;
+    let claimed = 54;
     assert_eq!(
         names.len(),
         claimed,

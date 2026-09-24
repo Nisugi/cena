@@ -53,7 +53,7 @@ mod retry;
 
 pub use connect::{ConnectError, Connector};
 pub use core::SessionCore;
-pub use retry::{MAX_UNATTENDED_LOSSES, Retryability, backoff};
+pub use retry::{MAX_UNATTENDED_LOSSES, Retryability, STABLE_CONNECTION, backoff};
 // Not re-exported: the jitter source is an implementation detail of the
 // ladder, and `backoff` takes the fraction as a parameter precisely so
 // callers never need it.
@@ -68,13 +68,24 @@ use cena_platform::Recorder;
 use tokio::sync::{broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
 
-/// Inbound command channel bound. Matches [`crate::actor`]'s, for the same
-/// reason: bounded everywhere (`plan/12` §5.5).
-const COMMAND_CHANNEL_BOUND: usize = 32;
+// The channel bounds are the actor's, imported rather than copied: a
+// supervised session and a plain one must size their channels alike, and two
+// copies commented "matches" is how they would stop matching.
+use crate::actor::{COMMAND_CHANNEL_BOUND, EVENT_CHANNEL_BOUND};
 
-/// Event broadcast ring size. Matches [`crate::actor`]'s, which carries the
-/// measurement: the login burst is 794-1,151 frames.
-const EVENT_CHANNEL_BOUND: usize = 2048;
+/// What one connection did, for [`SupervisedSession::after_connection`].
+///
+/// A struct because the function took five positional counters, and two
+/// adjacent `u64`s are where the wrong one gets passed.
+#[derive(Clone, Copy)]
+struct Connection {
+    /// The recorder's outbound count when the connection opened.
+    sent_before: u64,
+    /// Its inbound count at the same moment.
+    received_before: u64,
+    /// How long the connection's actor ran.
+    lived: std::time::Duration,
+}
 
 /// Why a supervised session stopped reconnecting.
 ///
@@ -153,7 +164,7 @@ impl<C: Connector> SupervisedSession<C> {
         let (tx, rx) = mpsc::channel(COMMAND_CHANNEL_BOUND);
         let generation = GenerationCell::first();
         let events = EventPublisher::new(EVENT_CHANNEL_BOUND, generation.clone());
-        let handle = SessionHandle::new(tx, generation.clone(), events.legacy_sender());
+        let handle = SessionHandle::publishing_to(tx, generation.clone(), events.clone());
         let session = Self {
             core: SessionCore {
                 id: crate::lifecycle::SessionId::FIRST,
@@ -169,6 +180,7 @@ impl<C: Connector> SupervisedSession<C> {
                 character_dir: None,
                 menu_dir: None,
                 generation,
+                attended_while_disconnected: false,
                 cancel: CancellationToken::new(),
             },
             connector,
@@ -240,9 +252,6 @@ impl<C: Connector> SupervisedSession<C> {
         // Consecutive losses with no command sent. `MAX_UNATTENDED_LOSSES` of
         // these stops the session.
         let mut unattended = 0u32;
-        // Set when the sweep discards something a caller sent; read and cleared
-        // by `after_connection`. See the sweep's comment.
-        let mut attended_while_disconnected = false;
         loop {
             let generation = self.core.generation.get();
             // **Raced against the cancel token.** Only the backoff sleep was,
@@ -310,7 +319,7 @@ impl<C: Connector> SupervisedSession<C> {
             let received_before = self.core.recorder.inbound_count();
 
             // **Before the new actor sees the channel.** See `sweep_inbox`.
-            attended_while_disconnected |= self.sweep_inbox();
+            self.sweep_inbox();
 
             // The name arrives with the `<app>` that triggers the load, and the
             // state is carried across connections: a known name means an
@@ -351,6 +360,7 @@ impl<C: Connector> SupervisedSession<C> {
             // on x86_64 Linux, Rust 1.96.1, test transport, 2026-09-21).
             // This is storage evidence, not a runtime performance guarantee.
             // This remains the same task and ownership handoff, not a spawn.
+            let connected_at = tokio::time::Instant::now();
             let end = Box::pin(actor.run()).await;
 
             // Take the durable parts back BEFORE deciding anything. They must
@@ -383,11 +393,13 @@ impl<C: Connector> SupervisedSession<C> {
             // behavior) present; none across MAX_UNATTENDED_LOSSES connections
             // is an abandoned client being idle-kicked in a loop.
             if let Some(stop) = self.after_connection(
-                sent_before,
-                received_before,
+                Connection {
+                    sent_before,
+                    received_before,
+                    lived: connected_at.elapsed(),
+                },
                 &mut attempt,
                 &mut unattended,
-                std::mem::take(&mut attended_while_disconnected),
             ) {
                 stopped_because = stop;
                 break;
@@ -444,20 +456,23 @@ impl<C: Connector> SupervisedSession<C> {
 
     /// Discard everything parked since the last connection ended.
     ///
-    /// Returns whether anything was swept, which the caller feeds to
-    /// [`Self::after_connection`] as attendance: a swept command never reaches
-    /// the recorder, but somebody typed it.
-    /// [`SessionCore::discard_stale_inbox`] has the full reasoning and the
-    /// transcript of the defect (review finding SE-1).
-    fn sweep_inbox(&mut self) -> bool {
+    /// Anything swept counts as attendance -- a swept command never reaches
+    /// the recorder, but somebody typed it -- and
+    /// [`SessionCore::refuse_while_disconnected`] records that for
+    /// [`Self::after_connection`]. [`SessionCore::discard_stale_inbox`] has
+    /// the full reasoning and the transcript of the defect (review finding
+    /// SE-1).
+    ///
+    /// Since review finding 6 the connect and backoff waits answer the inbox
+    /// as messages arrive, so this catches only what landed in the instant
+    /// between the connector returning and the actor starting.
+    fn sweep_inbox(&mut self) {
         let swept = self.core.discard_stale_inbox();
-        if swept == 0 {
-            return false;
+        if swept > 0 {
+            self.log(&format!(
+                "discarded {swept} message(s) queued while disconnected"
+            ));
         }
-        self.log(&format!(
-            "discarded {swept} message(s) queued while disconnected"
-        ));
-        true
     }
 
     /// Update the ladder and the unattended cap from what this connection did.
@@ -468,12 +483,17 @@ impl<C: Connector> SupervisedSession<C> {
     /// loop, this owns one connection's accounting.
     fn after_connection(
         &mut self,
-        sent_before: u64,
-        received_before: u64,
+        connection: Connection,
         attempt: &mut u32,
         unattended: &mut u32,
-        attended_while_disconnected: bool,
     ) -> Option<StoppedBecause> {
+        let Connection {
+            sent_before,
+            received_before,
+            lived,
+        } = connection;
+        let attended_while_disconnected =
+            std::mem::take(&mut self.core.attended_while_disconnected);
         // **Two different questions, and they were conflated.**
         //
         // ATTENDED asks "is anyone using this session" and bounds the
@@ -490,11 +510,29 @@ impl<C: Connector> SupervisedSession<C> {
         // A connection that received nothing did not work, however much we
         // wrote at it: an accepted socket that dies before the login burst
         // is exactly the flapping case the ladder is for.
+        //
+        // **And receiving is not enough either** (review finding 3). That
+        // fix stopped the ladder resetting on an outbound byte, and then
+        // reset it on an INBOUND one -- which a login burst always is. Two
+        // clients fighting over one character each get the burst before the
+        // other knocks them off, so the ladder still reset every time: the
+        // review's probe made 20 connects in 20 virtual seconds.
+        //
+        // So a connection has worked when it received something AND stayed
+        // up for `STABLE_CONNECTION`, the ladder's top rung. That bound is not
+        // tuned, it is the one that makes the reset safe: a connection that
+        // lives at least as long as the longest wait cannot, by resetting,
+        // produce reconnects faster than the capped ladder already allows.
+        // `VellumFE` resets on the character's identity being confirmed
+        // (`reference/VellumFE/src/frontend/headless/runtime.rs:948`), which
+        // the burst also carries, so it has the same hole.
+        //
         // `|| attended_while_disconnected`: a command the sweep discarded
         // never reached the recorder, but somebody typed it.
         let attended =
             self.core.recorder.outbound_count() > sent_before || attended_while_disconnected;
-        let worked = self.core.recorder.inbound_count() > received_before;
+        let worked =
+            self.core.recorder.inbound_count() > received_before && lived >= STABLE_CONNECTION;
         if worked {
             *attempt = 0;
         }

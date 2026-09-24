@@ -23,15 +23,34 @@ pub(super) const EXT_SHEET: &str = "sheet";
 /// A room's corrected position, as an offset from an unmoved anchor.
 pub(super) const EXT_PLACEMENT: &str = "placement";
 
-/// Stated bearings for this room's exits, keyed by destination room id.
+/// **Legacy, read and never written:** stated bearings keyed by destination.
+///
+/// Superseded by [`EXT_EXIT_DIRTO`] because a destination does not name an
+/// edge. Two exits from one room can reach the same room -- a gate and a wall
+/// to climb -- and keyed by `to` their bearings merged: the probe that found
+/// it wrote `[Some(North), None]` and read back `[Some(North), Some(North)]`.
+///
+/// Still decoded so a map built before the fix loads with the bearings it
+/// has (exact wherever a room has one exit per destination, which is the
+/// common case). Not *reinterpreted*: changing what this name's blob means
+/// would have an older client read an exit index as a room id -- a silent
+/// misread, which rule 2 exists to prevent. A new name is rule 1's answer.
+pub(super) const EXT_DIRTO: &str = "dirto";
+
+/// Stated bearings for this room's exits, keyed by **exit index** -- the
+/// position of the exit in the room's own exit list.
 ///
 /// **A room extension although `dirto` is a per-EDGE fact**, because the exit
 /// record ends at `cost` and has no extension slot of its own: appending a
 /// field there would be read as a malformed exit by every client built before
 /// it. The room's extension list is the only place a new field can arrive
-/// without a version bump, so the bearings travel together and are matched to
-/// their exits by `to`.
-pub(super) const EXT_DIRTO: &str = "dirto";
+/// without a version bump. The index is what makes the room-level record
+/// per-edge again: it is the one key two parallel exits cannot share.
+///
+/// A client built before this name existed skips it by length (rule 1) and
+/// falls through to the command text, which is what an absent bearing means
+/// anyway.
+pub(super) const EXT_EXIT_DIRTO: &str = "exit_dirto";
 
 /// Why a map file did not load.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,15 +59,36 @@ pub enum LoadError {
     BadMagic,
     /// A map file of a version this build cannot read. The format changed
     /// incompatibly; this client needs updating, or the map rebuilding.
-    UnsupportedVersion { found: u32, supported: u32 },
+    UnsupportedVersion {
+        /// The version the file's header states.
+        found: u32,
+        /// The one version this build reads: `VERSION`.
+        supported: u32,
+    },
     /// The file ends, or a count claims more than remains, at this offset.
-    Truncated { at: usize },
+    Truncated {
+        /// Byte offset from the start of the file -- or of the room extension
+        /// blob, when the error arose inside one -- where the read began.
+        at: usize,
+    },
     /// A string reference points past the string table.
-    BadStringRef { reference: u32, at: usize },
+    BadStringRef {
+        /// The string-table index that was read.
+        reference: u32,
+        /// Byte offset from the start of the file -- or of the room extension
+        /// blob, when the error arose inside one -- where the read began.
+        at: usize,
+    },
     /// A string is not UTF-8.
-    BadUtf8 { at: usize },
+    BadUtf8 {
+        /// Byte offset in the file of the string table entry's length prefix.
+        at: usize,
+    },
     /// Bytes remain after the last room.
-    TrailingBytes { at: usize },
+    TrailingBytes {
+        /// Byte offset in the file of the first byte after the last room.
+        at: usize,
+    },
     /// Two rooms share an id.
     Duplicate(DuplicateRoom),
 }

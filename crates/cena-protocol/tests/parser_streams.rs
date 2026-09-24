@@ -1,3 +1,9 @@
+//! Stream routing across `<dynaStream>` closes.
+//!
+//! A paired `<dynaStream>` opens a routing context like `<stream>`; these pin
+//! that its close restores the enclosing route, and that a stray close pops
+//! nothing.
+
 /// **`</dynaStream>` closes its routing context**, which it did not.
 ///
 /// Review finding 5. The open arm takes `"stream" | "dynaStream"` together and

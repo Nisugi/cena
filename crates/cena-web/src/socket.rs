@@ -86,6 +86,13 @@ pub(crate) async fn serve(
                             return;
                         }
                         requests.insert(request_id.clone());
+                        // An early refusal only, never the authority. The hub's
+                        // generation is the last one PUBLISHED and can lag the
+                        // session's; the viewer's echoed `generation` is what
+                        // goes to `send_manual_at`, whose actor checks it
+                        // against the live connection before anything acts.
+                        // This comparison can only refuse a viewer that is
+                        // behind the hub, which is behind the session.
                         let refusal = {
                             let hub = shared.hub.lock().await;
                             if session != hub.session || generation != hub.generation {
@@ -161,8 +168,21 @@ fn receipt(
     }
 }
 
+/// The receipt for what `send_manual_at` answered.
+///
+/// **Every claimed `;` line used to come back as "Bytes sent and subsequent
+/// server output observed"**, and neither half was true. The session answered
+/// it `Confirmed` with a prompt no server sent, so this module told claimed
+/// lines apart by their first character. The session now answers
+/// [`Outcome::Handled`], and the receipt reads it off the outcome -- a
+/// claimed line from a stale generation is still the session's to refuse,
+/// and is reported `Disconnected` like any other.
 fn outcome_receipt(outcome: &Outcome) -> (ReceiptStatus, &'static str) {
     match outcome {
+        Outcome::Handled => (
+            ReceiptStatus::Handled,
+            "Handled by Hydra; nothing was sent to the game",
+        ),
         Outcome::Confirmed(_) => (
             ReceiptStatus::Sent,
             "Bytes sent and subsequent server output observed; action completion is not established",
@@ -246,5 +266,22 @@ mod tests {
             outcome_receipt(&Outcome::Refused(cena_session::Refusal::Transient)).0,
             ReceiptStatus::Refused
         );
+    }
+
+    /// **A `;` line never reaches the game**, and its receipt said it had:
+    /// "Bytes sent and subsequent server output observed", on a prompt the
+    /// session fabricated. The receipt must say what happened. Which lines
+    /// are claimed is the session's rule, tested there (`claimed_commands.rs`).
+    #[test]
+    fn a_line_hydra_handled_is_not_reported_as_sent() {
+        let (status, detail) = outcome_receipt(&Outcome::Handled);
+        assert_eq!(status, ReceiptStatus::Handled);
+        assert!(detail.contains("nothing was sent"), "{detail}");
+
+        let answered = Outcome::Confirmed(Box::new(cena_session::Frame::Prompt {
+            text: String::new(),
+            time: String::new(),
+        }));
+        assert_eq!(outcome_receipt(&answered).0, ReceiptStatus::Sent);
     }
 }

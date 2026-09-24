@@ -295,3 +295,97 @@ fn percent_decode(value: &str) -> String {
     }
     String::from_utf8_lossy(&out).into_owned()
 }
+
+/// The one host every hop of the selection chain may point at.
+pub const TRUSTED_HOST: &str = "www.play.net";
+
+/// The path the chain's final, absolute redirect must name. Lich's
+/// `validate_final_url!` (`web_login.rb:483-487`) accepts nothing else.
+const FINAL_PATH: &str = "/play/home.asp";
+
+/// What to do with one `Location` from the character-selection chain.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Hop {
+    /// The chain has ended: hand this to [`parse_launch`]. Carries the launch
+    /// key, so it is never printed.
+    Launch(String),
+    /// Request this absolute URL next. Always `https://www.play.net/...`.
+    Follow(String),
+}
+
+/// Decide where one redirect in the selection chain goes -- **and refuse any
+/// that leaves play.net**.
+///
+/// # This is a security boundary, and it was not one
+///
+/// The loop in `http.rs` used to follow any `Location` that started with
+/// `http`, verbatim. So a redirect to `http://anything/` -- a downgrade, an
+/// off-site host, a MITM'd hop -- was fetched with the session's cookie jar,
+/// and the chain it led to could end on a URL whose `host=`/`key=` then
+/// reached [`parse_launch`] (review finding 3). `parse_launch` pins host and
+/// port against the instance table, which kept the game socket safe; nothing
+/// kept the REQUESTS safe.
+///
+/// Lich refuses it (`web_login.rb:430-431`, `:483-487`) and this ports its
+/// rule:
+///
+/// - **An absolute `Location` ends the chain**, and must be exactly
+///   `https://www.play.net/play/home.asp` -- scheme `https`, default port,
+///   no userinfo, that path. Lich's reason for checking every absolute URL,
+///   `http://` included, is the downgrade: a plain-http target must be
+///   recognised and REJECTED, not requested.
+/// - **A relative one is followed**, resolved against `https://www.play.net/`,
+///   and the resolved URL is checked again. That catches the one relative
+///   form that is not relative: `//evil.example/x` is a network-path
+///   reference, and resolving it lands on another host. Lich sends it as a
+///   literal path on its open connection, so it cannot leave play.net there;
+///   Cena resolves, so it must re-check.
+///
+/// One Cena behaviour is kept that Lich does not have: a RELATIVE location
+/// already carrying `host=` and `key=` is taken as the launch URL. It is
+/// same-origin by construction and `parse_launch` still pins what it names.
+///
+/// # Errors
+///
+/// [`WebLoginFailure::UnexpectedResponse`] -- transient, as every "the server
+/// did something the confirmed shape does not cover" is. The URL is never
+/// carried: on the last hop it holds the launch key.
+pub fn next_hop(location: &str) -> Result<Hop, WebLoginFailure> {
+    const UNTRUSTED: WebLoginFailure =
+        WebLoginFailure::UnexpectedResponse("character selection: untrusted redirect");
+
+    let has_prefix = |prefix: &str| {
+        location
+            .get(..prefix.len())
+            .is_some_and(|head| head.eq_ignore_ascii_case(prefix))
+    };
+    if has_prefix("https://") || has_prefix("http://") {
+        let url = reqwest::Url::parse(location).map_err(|_| UNTRUSTED)?;
+        return if is_play_net(&url) && url.path() == FINAL_PATH {
+            Ok(Hop::Launch(location.to_owned()))
+        } else {
+            Err(UNTRUSTED)
+        };
+    }
+
+    if location.contains("host=") && location.contains("key=") {
+        return Ok(Hop::Launch(location.to_owned()));
+    }
+
+    let base = reqwest::Url::parse(&format!("https://{TRUSTED_HOST}/")).map_err(|_| UNTRUSTED)?;
+    let next = base.join(location).map_err(|_| UNTRUSTED)?;
+    if !is_play_net(&next) {
+        return Err(UNTRUSTED);
+    }
+    Ok(Hop::Follow(next.into()))
+}
+
+/// Scheme `https`, host `www.play.net`, port 443, no userinfo -- the origin
+/// half of Lich's `validate_final_url!`.
+fn is_play_net(url: &reqwest::Url) -> bool {
+    url.scheme() == "https"
+        && url.host_str() == Some(TRUSTED_HOST)
+        && url.port_or_known_default() == Some(443)
+        && url.username().is_empty()
+        && url.password().is_none()
+}

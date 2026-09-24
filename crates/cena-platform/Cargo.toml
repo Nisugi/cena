@@ -29,8 +29,18 @@ tokio-native-tls = "0.3"
 # as tokio's own dependency, so this adds a dependency EDGE and no new code to
 # the build. It is what makes a half-open socket detectable at all: see
 # `live.rs`'s KEEPALIVE_* constants.
-socket2 = "0.6"
+#
+# `all` for `set_tcp_user_timeout` (Linux/Android), the send-side twin of
+# keepalive -- see `live.rs`'s UNACKED_SEND_TIMEOUT. A feature of the crate
+# already built, not a new dependency.
+socket2 = { version = "0.6", features = ["all"] }
 jiff = "0.2.37"
+# The eaccess certificate pin (`src/eaccess/pin.rs`) is stored as PEM and
+# compared as DER, so it must decode base64. Already in the lock file at this
+# version as `reqwest`'s own dependency, so this adds an EDGE and no new code.
+# Hand-rolled PEM framing around it, as VellumFE does (`network.rs`
+# `pem_to_der`): native-tls's `Certificate::from_pem` is a stub on iOS.
+base64 = "0.22"
 
 # The HTTPS web-login fallback (plan/10 section 5.3). Chosen for the WORKSPACE,
 # not just for this module: the author named three consumers -- this fallback, a
@@ -75,10 +85,20 @@ reqwest = { version = "0.12", default-features = false, features = [
     "gzip",
 ] }
 
+# The WebSocket shim game transport (`src/shim.rs`), the automatic fallback
+# when the game port is unreachable (Lich PR #1664). Already in the lock file
+# at this version through `cena-web`'s axum, so it adds an edge and no second
+# copy. `handshake` only: TLS is this crate's own native-tls connector, so the
+# crate's TLS features stay off and cannot pull in a second stack.
+tokio-tungstenite = { version = "0.29", default-features = false, features = ["handshake"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
-# The keepalive test opens a loopback socket to prove the option is accepted.
-socket2 = "0.6"
+# The keepalive test reads the options back off a loopback socket. `all` for
+# the getters (`tcp_keepalive_time`, `tcp_user_timeout`), which is what lets
+# it check the VALUES rather than only the on/off bit.
+socket2 = { version = "0.6", features = ["all"] }
 
 [lints]
 workspace = true

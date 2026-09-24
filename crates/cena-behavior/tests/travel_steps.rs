@@ -474,3 +474,39 @@ fn the_last_crossing_is_finished_before_arriving() {
     trip.prompted();
     assert_eq!(trip.tick(&map, &walker, at(2, 300)), Said::Arrived);
 }
+
+/// Two things owed when the trip arrives: **both** are given back, one a
+/// tick, before it says it is over.
+///
+/// Review finding (2026-09-23): `tick` called `owed()` and kept only the
+/// first deed -- but `owed` clears every flag as it lists them, so the stance
+/// came back, the hands were forgotten, and the trip said `Arrived` with the
+/// sword still put away. Reproduced before the fix: `FillHands` was never
+/// asked for.
+#[test]
+fn everything_owed_at_the_end_is_given_back_not_just_the_first() {
+    let steps = r#"[{"stance":"defensive"},{"empty_hands":null},{"move":"climb rope"}]"#;
+    let map = map(steps).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(2));
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, 0)),
+        Said::Do(Deed::Stance("defensive".into()))
+    );
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, 100)),
+        Said::Do(Deed::EmptyHands)
+    );
+    assert_eq!(trip.tick(&map, &walker, at(1, 200)), send("climb rope"));
+    // Arrived, owing two things: each is asked for, in `owed`'s order.
+    assert_eq!(
+        trip.tick(&map, &walker, at(2, 300)),
+        Said::Do(Deed::RestoreStance)
+    );
+    assert_eq!(
+        trip.tick(&map, &walker, at(2, 400)),
+        Said::Do(Deed::FillHands)
+    );
+    assert_eq!(trip.tick(&map, &walker, at(2, 500)), Said::Arrived);
+    assert_eq!(trip.owed(), [], "and each was owed once");
+}

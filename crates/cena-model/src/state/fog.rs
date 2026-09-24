@@ -330,7 +330,7 @@ impl GameState {
         let Some(cost) = spell.mana else {
             return Some(true);
         };
-        let mana = crate::state::vitals::VitalsExt::mana(&self.vitals)?;
+        let mana = self.mana()?;
         let (current, _) = mana.amount()?;
         Some(i64::from(current) >= i64::from(cost))
     }

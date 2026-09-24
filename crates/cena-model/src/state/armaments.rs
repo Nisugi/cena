@@ -49,17 +49,24 @@ const ALIASES_TSV: &str = include_str!("../../data/armament_aliases.tsv");
 /// Which table an alias resolves into.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ArmamentKind {
+    /// `weapon` in the alias table's `kind` column; resolves into `weapons.tsv`.
     Weapon,
+    /// `armor` in the alias table's `kind` column; resolves into `armor.tsv`.
     Armor,
+    /// `shield` in the alias table's `kind` column; resolves into `shields.tsv`.
     Shield,
 }
 
 /// How much of the body a suit of armor covers (`armor_stats.rb:370-389`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Coverage {
+    /// Armor sub-groups 1-4.
     Torso,
+    /// Armor sub-groups 5-8.
     TorsoAndArms,
+    /// Armor sub-groups 9-12.
     TorsoArmsAndLegs,
+    /// Armor sub-groups 13-20.
     TorsoArmsLegsAndHead,
 }
 

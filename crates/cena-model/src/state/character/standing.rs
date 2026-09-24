@@ -362,7 +362,11 @@ pub fn profile_affiliation(line: &str) -> Option<Affiliation> {
 /// What one `profile` affiliation line states.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Affiliation {
+    /// `Master of the X` or `Member of the X`, as a `SocietyEvent::Report`;
+    /// a Master's rank is filled with the society's maximum.
     Society(SocietyEvent),
+    /// `Full citizen of X`: the town name as printed. Other citizenship
+    /// wordings are unmeasured and not read.
     Citizenship(String),
 }
 
@@ -531,12 +535,10 @@ pub fn suffused_line(line: &str) -> Option<(ResourceType, u32)> {
 pub fn covert_arts_line(line: &str) -> Option<i32> {
     let rest = line.strip_prefix("Covert Arts Charges: ")?;
     let charges = rest.strip_suffix("/200")?;
-    let digits: String = charges.chars().filter(|c| *c != ',').collect();
-    digits.parse().ok()
+    crate::state::numbers::grouped(charges)
 }
 
 /// `"12,345"` -> `12345`. The wire groups thousands.
 fn parse_comma_number(text: &str) -> Option<u32> {
-    let digits: String = text.trim().chars().filter(|c| *c != ',').collect();
-    digits.parse().ok()
+    crate::state::numbers::grouped(text)
 }

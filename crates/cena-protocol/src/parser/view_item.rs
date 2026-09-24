@@ -13,6 +13,8 @@
 //! condition is honoured -- this is bounded by **lines**, not bytes, so the
 //! worst case is a countable and small loss rather than an open-ended one.
 
+use std::ops::ControlFlow;
+
 use super::Parser;
 use crate::frame::{Frame, ItemDetail, Link};
 use crate::text;
@@ -47,43 +49,43 @@ pub(super) struct ViewItem {
 }
 
 impl Parser {
-    /// Feed one line to an open `<inventoryViewItem>` capture.
+    /// Account for a new physical line arriving inside an open capture.
     ///
-    /// Returns `None` when no capture is open, so the caller parses normally.
-    pub(super) fn continue_view_item(&mut self, line: &str) -> Option<Vec<Frame>> {
-        self.view_item.as_ref()?;
-        if let Some(view) = self.view_item.as_mut() {
-            view.lines += 1;
-            // A physical line boundary inside a section IS a newline in its
-            // text: `analyze` and `inspect` arrive formatted with indented
-            // tables and blank separators, and flattening them runs the
-            // paragraphs together (`VellumFE/src/parser/handlers.rs:779-783`).
-            if view.current.is_some() {
-                view.append_text("\n");
-            }
-            // The loss bound. A block this long means the close was lost;
-            // surfacing what we have beats consuming the stream forever.
-            if view.lines > MAX_VIEWITEM_LINES {
-                let mut frames = vec![self.finish_view_item(Some("truncated"))];
-                frames.extend(self.parse_line(line));
-                return Some(frames);
-            }
+    /// Only for a line that STARTS inside the capture: the line that opened
+    /// it must not count against [`MAX_VIEWITEM_LINES`] and must not insert
+    /// the newline that a real line boundary does. When the bound is passed,
+    /// the capture is surfaced and closed, and the caller parses the line
+    /// normally.
+    pub(super) fn begin_captured_line(&mut self, frames: &mut Vec<Frame>) {
+        let Some(view) = self.view_item.as_mut() else {
+            return;
+        };
+        view.lines += 1;
+        // A physical line boundary inside a section IS a newline in its
+        // text: `analyze` and `inspect` arrive formatted with indented
+        // tables and blank separators, and flattening them runs the
+        // paragraphs together (`VellumFE/src/parser/handlers.rs:779-783`).
+        if view.current.is_some() {
+            view.append_text("\n");
         }
-        Some(self.view_item_line(line))
+        // The loss bound. A block this long means the close was lost;
+        // surfacing what we have beats consuming the stream forever.
+        if view.lines > MAX_VIEWITEM_LINES {
+            frames.push(self.finish_view_item(Some("truncated")));
+        }
     }
 
-    /// Continue the line that opened the capture, from just after the
-    /// envelope tag.
+    /// Walk `line` inside the capture, emitting only when the block ends.
     ///
-    /// Separate from [`Parser::continue_view_item`] because this is not a new
-    /// line: it must not count against [`MAX_VIEWITEM_LINES`] and must not
-    /// insert the newline that a real line boundary does.
-    pub(super) fn continue_line_in_capture(&mut self, rest: &str) -> Vec<Frame> {
-        self.view_item_line(rest)
-    }
-
-    /// Walk one line inside the capture, emitting only when the block ends.
-    fn view_item_line(&mut self, line: &str) -> Vec<Frame> {
+    /// Returns what is left of the line when the capture ended part-way
+    /// through it -- or was replaced by a second envelope -- so the caller
+    /// carries on in whichever mode the parser is now in. Never recurses back
+    /// into the line parser: see `parse_line_inner` for what that cost.
+    pub(super) fn view_item_line<'a>(
+        &mut self,
+        line: &'a str,
+        frames: &mut Vec<Frame>,
+    ) -> Option<&'a str> {
         let mut rest = line;
         while !rest.is_empty() {
             let Some(start) = text::find_tag_start(rest) else {
@@ -95,22 +97,53 @@ impl Parser {
                 self.view_item_text(prose);
                 rest = tail;
             }
+            let at_tag = rest;
             let Some(end) = rest.find('>') else {
                 self.view_item_text(rest);
                 break;
             };
-            let (tag, tail) = rest.split_at(end + 1);
+            // A paired tag is taken WHOLE, as `parse_ordinary` takes it: its
+            // body is the frame's content, and the non-styling arm below
+            // hands it to `dispatch`, which expects the whole thing. A pair
+            // whose close is not on this line is a `MalformedTag` there, so
+            // it is one here too. `<prompt>` is exempt -- its arm ends the
+            // capture and re-parses from `at_tag`, closed or not.
+            let mut end = end + 1;
+            let open = &rest[..end];
+            let name = text::tag_name(open);
+            if name != "prompt"
+                && !open.ends_with("/>")
+                && !text::is_close_tag(open)
+                && super::is_paired(open)
+            {
+                let close = format!("</{name}>");
+                let Some(at) = rest.find(&close) else {
+                    frames.push(Frame::MalformedTag {
+                        raw: rest.to_owned(),
+                    });
+                    break;
+                };
+                end = at + close.len();
+            }
+            let (tag, tail) = rest.split_at(end);
             rest = tail;
-            if let Some(done) = self.view_item_tag(tag, rest) {
-                return done;
+            if let ControlFlow::Break(after) = self.view_item_tag(tag, at_tag, rest, frames) {
+                return after;
             }
         }
-        Vec::new()
+        None
     }
 
-    /// Handle one tag inside the capture. `Some` means the block ended and
-    /// the rest of the line is ordinary feed again.
-    fn view_item_tag(&mut self, tag: &str, rest: &str) -> Option<Vec<Frame>> {
+    /// Handle one tag inside the capture. `Break` means the block ended,
+    /// carrying what of the line is left to parse; `at_tag` is the line from
+    /// this tag onward, `rest` from just after it.
+    fn view_item_tag<'a>(
+        &mut self,
+        tag: &str,
+        at_tag: &'a str,
+        rest: &'a str,
+        frames: &mut Vec<Frame>,
+    ) -> ControlFlow<Option<&'a str>> {
         let closing = text::is_close_tag(tag);
         match (text::tag_name(tag), closing) {
             // A second envelope while one is open. The close of the first
@@ -119,53 +152,51 @@ impl Parser {
             // second envelope into the first block's prose and losing it
             // entirely. `open_view_item`'s own guard cannot fire here,
             // because an open capture owns the line before dispatch sees it.
+            //
+            // The rest of the line goes on in whichever mode that leaves: the
+            // new capture if it is open, ordinary feed if the envelope was
+            // self-closing. It used to be dropped in the second case.
             ("inventoryViewItem", false) => {
-                let mut frames = vec![self.finish_view_item(Some("malformed"))];
-                self.open_view_item(tag, &mut frames);
-                if !rest.trim().is_empty() && self.view_item.is_some() {
-                    frames.extend(self.view_item_line(rest));
-                }
-                Some(frames)
+                frames.push(self.finish_view_item(Some("malformed")));
+                self.open_view_item(tag, frames);
+                ControlFlow::Break((!rest.trim().is_empty()).then_some(rest))
             }
             ("inventoryViewItem", true) => {
-                let mut frames = vec![self.finish_view_item(None)];
-                if !rest.trim().is_empty() {
-                    frames.extend(self.parse_line(rest));
-                }
-                Some(frames)
+                frames.push(self.finish_view_item(None));
+                ControlFlow::Break((!rest.trim().is_empty()).then_some(rest))
             }
             // A prompt means the block was torn mid-send. Surface the partial
             // response rather than swallowing the rest of the session, and
             // let the prompt parse normally -- it is the resync barrier.
             ("prompt", _) => {
-                let mut frames = vec![self.finish_view_item(Some("malformed"))];
-                frames.extend(self.parse_line(&format!("{tag}{rest}")));
-                Some(frames)
+                frames.push(self.finish_view_item(Some("malformed")));
+                ControlFlow::Break(Some(at_tag))
             }
             ("result", false) => {
                 self.open_section(tag);
-                None
+                ControlFlow::Continue(())
             }
             ("result", true) => {
                 if let Some(view) = self.view_item.as_mut() {
                     view.close_section();
                 }
-                None
+                ControlFlow::Continue(())
             }
             ("br", _) => {
                 self.view_item_text("\n");
-                None
+                ControlFlow::Continue(())
             }
             // An item link inside the prose. VellumFE flattens these away
             // (`src/parser/handlers.rs:866`); this parser already types
             // links, so the noun in a description stays clickable.
+            // `open_link`, not `link_from_tag`: a bare `<d>` has no `cmd=`,
+            // so `link_from_tag` answers `None` and the link used to be lost
+            // here while the same `<d>` anywhere else became `DirectText`.
             ("a" | "d", false) => {
-                if let (Some(link), Some(view)) =
-                    (text::link_from_tag(tag), self.view_item.as_mut())
-                {
-                    view.open_link = Some(link);
+                if let Some(view) = self.view_item.as_mut() {
+                    view.open_link = Some(super::markup::open_link(tag));
                 }
-                None
+                ControlFlow::Continue(())
             }
             ("a" | "d", true) => {
                 if let Some(view) = self.view_item.as_mut()
@@ -173,11 +204,31 @@ impl Parser {
                 {
                     view.push_link(link);
                 }
-                None
+                ControlFlow::Continue(())
             }
-            // Every other inline tag is styling, and a detail section is
-            // prose: flattened away.
-            _ => None,
+            // Styling is flattened: a detail section is prose, and its text
+            // is the capture's, not the parser's. So is a comment, which has
+            // no name to dispatch on.
+            (name, _) if super::markup::is_markup(name) || name.starts_with('!') => {
+                ControlFlow::Continue(())
+            }
+            // **Everything else still happens.** This arm used to read
+            // "every other inline tag is styling" and flatten it -- which
+            // was true of `<b>` and false of `<pushStream>`, `<popStream>`,
+            // `<progressBar>`, `<dialogData>`, `<nav>`, `<roundTime>` and
+            // `<indicator>`, all of which vanished if they arrived while a
+            // block was open. The stream stack never saw the push, so the
+            // matching pop after the capture popped the WRONG stream (review
+            // 2026-09-23).
+            //
+            // `dispatch` is the one answer for a tag, wherever it sits. The
+            // capture keeps its own text semantics because the buffer it is
+            // handed is empty: no prose reaches `dispatch`, only the tag.
+            _ => {
+                let mut no_text = String::new();
+                self.dispatch(tag, &mut no_text, frames);
+                ControlFlow::Continue(())
+            }
         }
     }
 

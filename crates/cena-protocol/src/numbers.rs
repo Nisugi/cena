@@ -47,8 +47,14 @@ pub fn parse_amount(text: &str) -> Option<Amount> {
     let trimmed = text.trim();
     // `rfind`, not `find`: a label may itself contain a slash.
     let slash = trimmed.rfind('/')?;
-    let current = last_signed_number(&trimmed[..slash])?;
-    let max = first_signed_number(&trimmed[slash + 1..])?;
+    // The numbers must ABUT the slash -- the token immediately either side,
+    // not the nearest number anywhere in the label. Searching for one let
+    // `"stamina 100 foo/200"` read as 100/200: a pair assembled from a
+    // stray number and a denominator that belongs to nothing, which is the
+    // fabricated-answer failure this module's header exists to refuse.
+    // Whitespace next to the slash is tolerated; a word is not.
+    let current = signed(tokens(trimmed[..slash].trim_end()).next_back()?)?;
+    let max = signed(tokens(trimmed[slash + 1..].trim_start()).next()?)?;
     Some(Amount { current, max })
 }
 
@@ -90,16 +96,6 @@ pub fn parse_duration_secs(text: &str) -> Option<u32> {
 /// Split into tokens on whitespace and bracket/percent noise.
 fn tokens(input: &str) -> impl DoubleEndedIterator<Item = &str> {
     input.split(|c: char| c.is_whitespace() || c == '(' || c == ')' || c == '%')
-}
-
-/// The last token in `input` that is a signed integer.
-fn last_signed_number(input: &str) -> Option<i32> {
-    tokens(input).rev().find_map(signed)
-}
-
-/// The first token in `input` that is a signed integer.
-fn first_signed_number(input: &str) -> Option<i32> {
-    tokens(input).find_map(signed)
 }
 
 /// A whole token parsed as a signed integer.
@@ -227,5 +223,22 @@ mod tests {
         assert_eq!(parse_amount("health 12a/223"), None);
         // Overflow is not a panic and not a wrong number.
         assert_eq!(parse_amount("health 99999999999/1"), None);
+    }
+
+    #[test]
+    fn the_numbers_must_abut_the_slash() {
+        // Review 2026-09-23: `find_map` over every token read the first of
+        // these as 100/200, pairing a stray number with a denominator.
+        assert_eq!(parse_amount("stamina 100 foo/200"), None);
+        assert_eq!(parse_amount("stamina 100/foo 200"), None);
+        // The shapes that must keep working.
+        assert_eq!(
+            parse_amount("health 213 / 223"),
+            Some(Amount {
+                current: 213,
+                max: 223
+            })
+        );
+        assert_eq!(parse_amount("(8/9)"), Some(Amount { current: 8, max: 9 }));
     }
 }

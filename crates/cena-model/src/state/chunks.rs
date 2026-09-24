@@ -126,6 +126,24 @@ impl ChunkLine {
     pub fn objects(&self) -> impl Iterator<Item = &cena_protocol::frame::Link> {
         self.runs.objects()
     }
+
+    /// Whether someone SAID this line: it carries a `speech` or `whisper`
+    /// preset (`message.rs`).
+    ///
+    /// For the classifiers whose Lich patterns are unanchored prose. Lich
+    /// cannot ask this -- it sees a string -- so `Bob says, "Something stirs
+    /// in the shadows."` trips its `HIDING` union. The preset is the markup
+    /// saying who is talking, and it is already typed here.
+    #[must_use]
+    pub fn is_spoken(&self) -> bool {
+        self.runs.runs.iter().any(|run| {
+            run.style
+                .preset
+                .as_deref()
+                .and_then(super::message::Channel::parse)
+                .is_some()
+        })
+    }
 }
 
 /// Lines accumulated since the last prompt.
@@ -137,7 +155,9 @@ impl ChunkLine {
 /// most recent lines, which are the ones a terminator would have applied.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Chunk {
-    lines: Vec<ChunkLine>,
+    /// A `Ring` (`state/ring.rs`): the drop at the cap is O(1), not the
+    /// `Vec::remove(0)` shift it was (review).
+    lines: super::ring::Ring<ChunkLine>,
     /// Lines discarded to the cap since this chunk opened.
     ///
     /// Reported rather than silent: a truncated chunk is a fact a consumer may
@@ -157,7 +177,7 @@ impl Chunk {
     /// Every line in the chunk, oldest first.
     #[must_use]
     pub fn lines(&self) -> &[ChunkLine] {
-        &self.lines
+        self.lines.as_slice()
     }
 
     /// How many lines were dropped to the cap.
@@ -184,11 +204,9 @@ impl Chunk {
     /// ever constructing one through the parser, which makes a chunk-level
     /// property (the cap, the drop count) expensive to state.
     pub fn push_line(&mut self, line: ChunkLine) {
-        if self.lines.len() >= MAX_CHUNK_LINES {
-            self.lines.remove(0);
+        if self.lines.push(line, MAX_CHUNK_LINES) {
             self.dropped = self.dropped.saturating_add(1);
         }
-        self.lines.push(line);
     }
 
     /// Take the chunk, leaving an empty one behind.
@@ -246,58 +264,18 @@ impl super::GameState {
             }
         } else {
             self.character.consume_chunk(&chunk);
-            // The bounty task and the guild's answers (`bounty_status.rs`).
-            for line in chunk.lines() {
-                let text = line.text();
-                self.bounty.read_line(&text);
-                // The six statuses that arrive only as prose, never as an
-                // `<indicator>` (`afflictions.rs`).
-                if let Some((affliction, active)) = super::afflictions::classify(&text) {
-                    self.status.set(affliction.id(), active);
-                }
-                // `<Name> is still in cooldown.` -- a fact about the character
-                // rather than an answer to a command (`maneuvers.rs`).
-                if let Some(name) = super::maneuvers::cooldown_refusal(&text) {
-                    self.maneuvers.note_cooling(name, at);
-                }
-                // A creature the feed showed leaving (`departure.rs`): the
-                // third condition of the author's hiding rule, read off the
-                // link and the `<d>` rather than matched against prose.
-                self.creatures.read_departure(line);
-            }
-            // Group events are prose with links, one per line -- see
-            // `state/group.rs` for why the links do the work here.
-            for line in chunk.lines() {
-                if let Some(event) = super::group::classify(line) {
-                    self.group.apply(&event);
-                }
-                // The stow and ready lists, taught by their commands and by
-                // the one-line confirmations that follow a `stow set`.
-                if let Some(event) = super::containers::classify(line) {
-                    self.containers.apply(&event);
-                }
-                // Speech and whispers, which the markup already types -- the
-                // preset names the channel and the link names the speaker.
-                if let Some(message) = super::message::classify(line) {
-                    self.messages.push(message);
-                }
-                // Creatures hiding and coming out again. A reveal puts the
-                // creature back on the roster, which is what makes it
-                // targetable -- `GameObj.new_npc` plus the target-id unshift
-                // in `overwatch.rb:111-120`.
-                // Only the REVEAL half here. Hiding is read in `streams.rs`
-                // at the moment the line arrives, because it records the room
-                // and a `<nav>` later in the same chunk would move it.
-                if let Some(super::overwatch::Sighting::Revealed { id, noun, name, .. }) =
-                    super::overwatch::classify(line)
-                    && let Ok(numeric) = id.parse::<i64>()
-                {
-                    self.creatures.register(numeric, &name, Some(&noun), at);
-                }
+            // **Each line's text is rendered ONCE and shared** (review: the
+            // same line was rebuilt by every classifier that wanted it), and
+            // the per-line readers run in ONE pass, in wire order. Two passes
+            // put every departure before every reveal, so a creature revealed
+            // on line 1 and seen fleeing on line 5 was handled backwards.
+            let texts: Vec<String> = chunk.lines().iter().map(ChunkLine::text).collect();
+            for (line, text) in chunk.lines().iter().zip(&texts) {
+                self.read_chunk_line(line, text, at);
             }
             // `bank account` is a whole-chunk answer: its rows mean nothing
             // without the opener above them.
-            self.bank.read_chunk(&chunk);
+            self.bank.read_lines(chunk.lines(), &texts);
             self.combat.parse_chunk(&chunk, at)
         };
         // Lich's `process`: parse, persist to the registry, then emit -- and
@@ -305,5 +283,63 @@ impl super::GameState {
         // can flag a death a chunk after the killing blow.
         self.creatures.apply_chunk(&mut facts, at);
         self.combat.publish(facts);
+    }
+
+    /// Every per-line reader, for one line of a closing chunk, in a fixed
+    /// order so a replay is deterministic (criterion 7).
+    fn read_chunk_line(&mut self, line: &ChunkLine, text: &str, at: Option<u32>) {
+        // The bounty task and the guild's answers (`bounty_status.rs`).
+        self.bounty.read_line(text);
+        // The six statuses that arrive only as prose, never as an
+        // `<indicator>` (`afflictions.rs`).
+        if let Some((affliction, active)) = super::afflictions::classify(text) {
+            self.status.set(affliction.id(), active);
+        }
+        // `<Name> is still in cooldown.` -- a fact about the character
+        // rather than an answer to a command (`maneuvers.rs`).
+        if let Some(name) = super::maneuvers::cooldown_refusal(text) {
+            self.maneuvers.note_cooling(name, at);
+        }
+        // A creature the feed showed leaving (`departure.rs`): the third
+        // condition of the author's hiding rule, read off the link and the
+        // `<d>` rather than matched against prose.
+        self.creatures.read_departure(line);
+        // A spell that locks its recipients out (`cooldowns.rs`), stamped
+        // with the prompt that closed the chunk -- the clock every other
+        // stamp here uses. The GROUP it stamps is the group as the chunk
+        // ends: group lines are read on arrival (`streams.rs`), so a group
+        // change in the same prompt window as a group casting is already
+        // applied. Lich reads `_members` at the casting line itself; the
+        // difference needs both in one window and is bounded the way the
+        // module doc bounds every group stamp -- by one cooldown.
+        if let Some(now) = at
+            && let Some(landing) = crate::spells::cooldown_landing(text)
+        {
+            self.record_cooldown(&landing, now);
+        }
+        // The stow and ready lists, taught by their commands and by the
+        // one-line confirmations that follow a `stow set`.
+        if let Some(event) = super::containers::classify_text(line, text) {
+            self.containers.apply(&event);
+        }
+        // Speech and whispers, which the markup already types -- the preset
+        // names the channel and the link names the speaker.
+        if let Some(message) = super::message::classify(line) {
+            self.messages.push(message);
+        }
+        // A creature coming out of hiding. A reveal puts it back on the
+        // roster, which is what makes it targetable -- `GameObj.new_npc` plus
+        // the target-id unshift in `overwatch.rb:111-120`.
+        //
+        // Only the REGISTRATION here. Both halves of the room tracker --
+        // hiding sets it, a reveal clears it (`overwatch.rb:84`) -- run in
+        // `streams.rs` as each line arrives, because they must stay in wire
+        // order with each other and with any `<nav>` between them.
+        if let Some(super::overwatch::Sighting::Revealed { id, noun, name, .. }) =
+            super::overwatch::classify_text(line, text)
+            && let Ok(numeric) = id.parse::<i64>()
+        {
+            self.creatures.register(numeric, &name, Some(&noun), at);
+        }
     }
 }

@@ -100,6 +100,25 @@ DEFAULT_MAX_LINES 800
 # nothing removed. The next regeneration should go red and be looked at.
 MAX_CAP_EXCEPTIONS 5
 
+# EACH EXCEPTION'S OWN CAP. Added 2026-09-23 (review finding 3).
+#
+# The two numbers above guarded the default and the COUNT of exceptions, and
+# nothing guarded the caps inside them: raising crit_tables.tsv from 2400 to
+# 24000 changed neither number and passed green. An exception table with a
+# fixed count and raisable entries is five caps with no ratchet.
+#
+# So each exception's cap is recorded here too, as `exception:<path> <cap>`,
+# at the value it carries today in tests/file_rules.rs. The reasoning for each
+# is already written beside the entry there (and above, for the four that
+# raised MAX_CAP_EXCEPTIONS); these lines are the ratchet, not a restatement.
+# `the_cap_ratchet_only_turns_down` fails on a raise, on an exception with no
+# line here, and on a line here with no exception.
+exception:crates/cena-model/data/creature_messages.tsv 4200
+exception:crates/cena-model/data/creature_attacks.tsv 1800
+exception:crates/cena-model/data/creature_areas.tsv 1600
+exception:crates/cena-model/data/menu_commands.tsv 1300
+exception:crates/cena-model/data/crit_tables.tsv 2400
+
 # SPLIT PARENTS -- Rule 4.4's other half. `plan/05:385-388` cites Vellum's
 # `split_parents_stay_facades` BY NAME, and Cena implemented only the
 # `lib.rs`/`mod.rs` half: nine files with child modules -- state.rs, actor.rs,
@@ -148,3 +167,49 @@ crates/cena-protocol/src/tags.rs 400
 crates/cena-protocol/src/text.rs 450
 crates/cena-session/src/actor.rs 650
 crates/cena-session/src/supervisor.rs 650
+
+# DISCOVERED, NOT LISTED -- fourteen more, added 2026-09-23 (review finding 4).
+#
+# The nine above were written in by hand on 2026-09-19 and nothing found the
+# next one. `split_parents_stay_facades` now discovers every `name.rs` with a
+# sibling `name/` of `.rs` files and fails on one with no line here. That found
+# fourteen, among them the three largest split parents in the workspace.
+#
+# Each is capped by the rule above -- measured size + 50, rounded up to the
+# next 50 -- measured at HEAD 2ad1209, and CLAMPED TO DEFAULT_MAX_LINES: a
+# split-parent cap above 800 would be a number the default already overrides.
+#
+#   travel.rs 661  drive.rs 750  routines.rs 297  day_pass.rs 612
+#   binary.rs 101  character.rs 797  combat.rs 123  combat/parse.rs 239
+#   creature.rs 540  creatures.rs 535  societies.rs 280  gemstone.rs 62
+#   weblogin.rs 85  combat_recorder.rs 449
+#
+# THE HONEST COST: these are recordings of what exists, not judgements that it
+# is right. Three sit at or near the default and are split parents in name
+# only -- state/character.rs has 3 lines of headroom, travel/drive.rs 50,
+# travel.rs 89 -- which is the shape Rule 4.4 exists to prevent: the parent
+# kept growing after the split. They are baselined rather than failed because
+# the rule that would have caught them did not exist; they can only ratchet
+# down from here, and the author should decide whether to tighten them.
+crates/cena-behavior/src/travel.rs 750
+crates/cena-behavior/src/travel/drive.rs 800
+crates/cena-behavior/src/travel/routines.rs 350
+crates/cena-behavior/src/travel/routines/day_pass.rs 700
+crates/cena-map/src/binary.rs 200
+crates/cena-model/src/state/character.rs 800
+crates/cena-model/src/state/combat.rs 200
+crates/cena-model/src/state/combat/parse.rs 300
+crates/cena-model/src/state/creature.rs 600
+crates/cena-model/src/state/creatures.rs 600
+crates/cena-model/src/state/societies.rs 350
+crates/cena-platform/src/gemstone.rs 150
+crates/cena-platform/src/gemstone/weblogin.rs 150
+crates/cena-session/src/combat_recorder.rs 500
+
+# NEW SPLIT PARENT, 2026-09-23. crates/cena-web/src/presentation.rs was 1,071
+# lines against the 800 default, and was split by moving code down rather than
+# raising a cap: the hub into presentation/hub.rs, the pending-line fence into
+# presentation/pending.rs, the tests into presentation/tests.rs. The parent kept
+# the constants and the pump -- 158 lines -- so its cap is the rule above:
+# 158 + 50, rounded up to the next 50.
+crates/cena-web/src/presentation.rs 250

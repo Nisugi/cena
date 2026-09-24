@@ -18,7 +18,7 @@
 
 use super::text;
 use crate::frame::Frame;
-use crate::parser::inner::inner_text;
+use crate::parser::inner::{children, open_tag};
 
 /// Assemble an `<inventoryManager>` and the `<i>` rows in its body.
 ///
@@ -26,27 +26,27 @@ use crate::parser::inner::inner_text;
 /// snapshot is truncated, not items. None appear in the author's logs, but
 /// treating one as an item would put a cursor in the inventory tree.
 pub(super) fn inventory_manager(tag: &str) -> Frame {
-    let mut items = Vec::new();
-    let mut continuations = Vec::new();
-    for part in inner_text(tag).split('<') {
-        let child = format!("<{}>", part.trim_end_matches(['/', '>']).trim_end());
-        if part.starts_with("i ") {
-            if let Some(item) = inventory_item(&child) {
-                items.push(item);
-            }
-        } else if part.starts_with("continuation") {
-            continuations.push(crate::frame::Continuation {
-                root: text::attribute(&child, "root").unwrap_or_default(),
-                last: text::attribute(&child, "last").unwrap_or_default(),
-            });
-        }
-    }
+    let items = children(tag, "i")
+        .iter()
+        .filter_map(|child| inventory_item(child))
+        .collect();
+    let continuations = children(tag, "continuation")
+        .iter()
+        .map(|child| crate::frame::Continuation {
+            root: text::attribute(child, "root").unwrap_or_default(),
+            last: text::attribute(child, "last").unwrap_or_default(),
+        })
+        .collect();
+    // The envelope's OWN attributes, read from its open tag only. Read from
+    // the whole string, a `<continuation root='777'/>` child supplied `root`
+    // to an envelope that sent none. See `open_tag`.
+    let envelope = open_tag(tag);
     Frame::InventoryManager(crate::frame::InventoryResponse {
-        token: text::attribute(tag, "id").unwrap_or_default(),
-        room: text::attribute(tag, "room").unwrap_or_default(),
-        root: text::attribute(tag, "root"),
-        after: text::attribute(tag, "after"),
-        state: text::attribute(tag, "state"),
+        token: text::attribute(envelope, "id").unwrap_or_default(),
+        room: text::attribute(envelope, "room").unwrap_or_default(),
+        root: text::attribute(envelope, "root"),
+        after: text::attribute(envelope, "after"),
+        state: text::attribute(envelope, "state"),
         items,
         continuations,
     })

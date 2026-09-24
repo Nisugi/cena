@@ -46,7 +46,10 @@ pub enum Refusal {
     /// `Come back in about N minutes if you want another task.`
     ///
     /// Minutes as stated. The guild says "about", so this is not a deadline.
-    Wait { minutes: u32 },
+    Wait {
+        /// The `N` from the message, parsed as an integer.
+        minutes: u32,
+    },
     /// `I don't have any tasks for you right now` -- `ebounty.lic:2596` waits
     /// on it beside the others.
     NoneAvailable,
@@ -135,7 +138,7 @@ impl BountyStatus {
 pub fn vouchers_remaining(line: &str) -> Option<u32> {
     let rest = line.trim().strip_prefix("You have ")?;
     let (count, _) = rest.split_once(" expedited task reassignment vouchers remaining")?;
-    count.replace(',', "").parse().ok()
+    super::numbers::grouped(count)
 }
 
 /// One of the guild's refusals -- `ebounty.lic:950-961`.

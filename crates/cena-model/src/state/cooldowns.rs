@@ -144,6 +144,35 @@ impl Cooldowns {
 }
 
 impl GameState {
+    /// Stamp a cooldown a closing chunk's line started.
+    ///
+    /// # What drives [`Cooldowns`]
+    ///
+    /// > **CORRECTED 2026-09-23 (review).** `record_group` and
+    /// > `record_target` had NO production caller -- only `tests/cooldowns.rs`
+    /// > -- so the map stayed empty in a real session and
+    /// > [`Self::spell_cooldown_ready`] named every member castable. A
+    /// > cooldown tracker that is never fed answers "ready" forever, which is
+    /// > the one answer that makes a buff behavior waste casts.
+    ///
+    /// The input is Lich's own (`infomon/parser.rb:647-674`): the caster's
+    /// start message, when it says `your group`, and the third-person
+    /// message naming a target. [`crate::spells::cooldown_landing`] reads
+    /// both from the spell table's messages, and `close_chunk` calls this per
+    /// line, after that line's group event. `now` is the prompt's server
+    /// second, the clock every other stamp in this model uses.
+    pub(super) fn record_cooldown(&mut self, landing: &crate::spells::CooldownLanding, now: u32) {
+        match landing {
+            crate::spells::CooldownLanding::Group { spell } => {
+                self.cooldowns
+                    .record_group(*spell, self.group.members(), now);
+            }
+            crate::spells::CooldownLanding::Target { spell, noun } => {
+                self.cooldowns.record_target(*spell, noun, now);
+            }
+        }
+    }
+
     /// Which of the current group a spell would actually affect.
     ///
     /// `spell_cooldown_ready` (`group.rb:255`). Empty when the group is

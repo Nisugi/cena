@@ -6,21 +6,43 @@
 //! model), says where the character is, sends what the trip says to send, and
 //! does the [`Deed`]s.
 //!
-//! # Stopping (`plan/12` §4.3, and the author's one exception)
+//! # Stopping (`plan/12` §4.3, and the author's exceptions)
 //!
 //! Every await is raced against the stop token, as `look` documents. A
 //! stopped behavior's cleanup "cannot send commands" -- otherwise *stop*
-//! becomes *send more*. The author, 2026-09-21, allows exactly one thing:
+//! becomes *send more*. The author, 2026-09-21, allowed exactly one thing:
 //! **one command per stored item, to take it back, and then it stops.** No
 //! retry and no waiting to see, because the character may not be able to hold
 //! a shield where it now stands. What did not come back is in
 //! [`Travelled::still_stored`], for a frontend to say.
 //!
-//! The stance is **not** put back on a stop: that would be a second kind of
-//! command, and the ruling was for one. [`Travelled::stance_before`] says
-//! what it was.
+//! **A key a crossing took out ([`Deed::TakeOut`]) is put back too, first.**
+//! The author, 2026-09-23: on a stop, travel should *"finish up and get
+//! safe"* -- the key goes back in its container, then the hands are filled.
+//! Key first, as [`Trip::owed`] orders it, because it goes back with the
+//! hands as they are. One command, the same way: sent once, not retried,
+//! not waited for. Nothing sees it go in, so [`Travelled::still_out`] still
+//! names it, as `still_stored` names what was asked back; the notice says
+//! which of the two happened -- sent back once, or not sent at all. This
+//! was reported and left in hand until then.
+//!
+//! The stance is **not** put back on a stop: both rulings are about things
+//! and where they are kept, and a stance is neither. [`Travelled::stance_before`]
+//! says what it was.
 //!
 //! A dead or disconnected session sends nothing at all.
+//!
+//! # A command from an older connection is a disconnection
+//!
+//! `Outcome::Interrupted` and `Sent::Interrupted` have one producer each:
+//! the actor's stale-generation discard (`cena-session`, `actor/io.rs`), a
+//! command stamped for a connection that is no longer the one open. That is
+//! the connection changing under the walk, and it ends the walk as
+//! [`BehaviorError::Disconnected`] -- **not** `Cancelled`, which is the
+//! player's stop. The two differ in what follows: a stop sends its one
+//! take-back, and a disconnection sends nothing on a connection the walk did
+//! not start on, nor tells the player they stopped it. `send` always read it
+//! this way; `exchange` read it as a stop.
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -31,16 +53,17 @@ use cena_map::{
 use cena_session::group::{self, GroupEvent};
 use cena_session::{
     AuthorityToken, ChunkLine, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind,
-    Origin, Outcome, Sent, SessionHandle, Snapshot, State,
+    Origin, Sent, SessionHandle, Snapshot, State,
 };
 use tokio::sync::broadcast::{error::RecvError, error::TryRecvError};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use super::hands::{Stored, cast_commands, store_commands, take_back};
+use super::hands::{Stored, take_back};
 use super::heard::Heard;
 use super::kept;
 
+mod deeds;
 mod preflight;
 mod solve;
 use super::{Deed, Now, Said, TravelNotes, Trip, Why, walker_from};
@@ -67,6 +90,7 @@ pub const LOST_WAIT: Duration = Duration::from_secs(10);
 /// How a trip ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ended {
+    /// The walker reached the destination room.
     Arrived,
     /// The trip gave up, and why.
     Failed(Why),
@@ -82,6 +106,8 @@ pub enum Ended {
 /// What a finished trip leaves for whoever started it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Travelled {
+    /// How the trip ended: arrived, or why not. The player has already been
+    /// told; this is the same fact for the caller.
     pub ended: Ended,
     /// Stored by the trip and not seen to come back.
     pub still_stored: Vec<Stored>,
@@ -96,6 +122,22 @@ pub struct Travelled {
     /// The last room the walk knew itself to be in: what a caller writes
     /// down as `TravelNotes::last_room`. `None` if it never knew.
     pub last_room: Option<RoomId>,
+    /// What a crossing took out of a container ([`Deed::TakeOut`], as the map
+    /// names it: `heavy key`) and was not seen to put back, because the trip
+    /// ended between the two. A stop sends it back once and does not wait to
+    /// see it go (module docs), so it is still named here.
+    pub still_out: Option<String>,
+}
+
+/// What a crossing took out, and the container it came from, as ids; and
+/// what the map called it, for the player; and whether a stop's one
+/// put-back reached the game.
+#[derive(Debug, Clone)]
+struct Taken {
+    thing: String,
+    container: String,
+    name: String,
+    sent_back: bool,
 }
 
 /// Walk to `goal`.
@@ -116,14 +158,23 @@ pub async fn travel(
     wrote: impl FnMut(&TravelNotes) + Send,
 ) -> Travelled {
     if handle.claim(token).await.is_err() {
+        let ended = Ended::Stopped(BehaviorError::AuthorityHeld);
+        // Said, like every other ending: the player typed a destination, and
+        // a walk that never started is news. This returned silently, and the
+        // desk's `;go2 stop` then `;go2 bank` reached it every time (review,
+        // 2026-09-23).
+        for notice in report(ended, &[], &[], None) {
+            handle.say(notice);
+        }
         return Travelled {
-            ended: Ended::Stopped(BehaviorError::AuthorityHeld),
+            ended,
             still_stored: Vec::new(),
             stance_before: None,
             wrong_for_the_map: Vec::new(),
             seed: 0,
             halted: None,
             last_room: None,
+            still_out: None,
         };
     }
     let (snapshot, events) = joined;
@@ -174,9 +225,10 @@ pub async fn travel(
     if let Some(why) = &driver.halted {
         handle.say(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
     }
-    for notice in report(ended, &driver.stored, &changed) {
+    for notice in report(ended, &driver.stored, &changed, driver.taken.as_ref()) {
         handle.say(notice);
     }
+    let still_out = driver.taken.map(|taken| taken.name);
     Travelled {
         ended,
         still_stored: driver.stored,
@@ -185,6 +237,7 @@ pub async fn travel(
         seed,
         halted: driver.halted,
         last_room: driver.was.map(|(_, room)| room),
+        still_out,
     }
 }
 
@@ -234,11 +287,19 @@ pub fn room_of(map: &Map, state: &GameState, whence: Whence) -> Option<RoomId> {
 ///
 /// The return value carries the same facts for a caller; this is for the
 /// person, who should not depend on a caller remembering to print them.
-fn report(ended: Ended, stored: &[Stored], changed: &[(&str, Option<&str>)]) -> Vec<Notice> {
+fn report(
+    ended: Ended,
+    stored: &[Stored],
+    changed: &[(&str, Option<&str>)],
+    out: Option<&Taken>,
+) -> Vec<Notice> {
     let mut said = Vec::new();
     let why = match ended {
         // A halt has said why already, in the routine's own words.
         Ended::Arrived | Ended::Halted | Ended::Stopped(BehaviorError::Cancelled) => None,
+        Ended::Stopped(BehaviorError::AuthorityHeld) => {
+            Some("something else is driving this character, so I did not set out.")
+        }
         Ended::Failed(Why::NoRoute) => Some("there is no way there that this character can take."),
         Ended::Failed(Why::OffTheMap) => {
             Some("I do not know what room this is, so I have stopped.")
@@ -251,6 +312,15 @@ fn report(ended: Ended, stored: &[Stored], changed: &[(&str, Option<&str>)]) -> 
     };
     if let Some(why) = why {
         said.push(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
+    }
+    if let Some(out) = out {
+        let name = &out.name;
+        let text = if out.sent_back {
+            format!("Travel: your {name} was out; I put it back once, and did not wait to see.")
+        } else {
+            format!("Travel: your {name} is out, and I did not put it back.")
+        };
+        said.push(Notice::line(NoticeKind::Warn, text));
     }
     if !stored.is_empty() {
         let names: Vec<&str> = stored.iter().map(|stored| stored.name.as_str()).collect();
@@ -329,8 +399,8 @@ struct Driver<'a, N> {
     answer: Vec<ChunkLine>,
     /// The language spoken before a crossing changed it.
     speech_before: Option<String>,
-    /// What a crossing took out, and the container it came from, as ids.
-    taken: Option<(String, String)>,
+    /// What a crossing took out, and where from.
+    taken: Option<Taken>,
     /// Why a routine stopped the trip, in its own words.
     halted: Option<String>,
     /// Facts asked for before the first plan (`preflight`): `urchin_access`.
@@ -522,6 +592,14 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             // `plan/12` §5.1: no automation runs without a transport. Only
             // the two states that mean it is gone: a session still on its
             // way up to `Ready` announces each step, and has lost nothing.
+            //
+            // **`Closed` is the session ending, and only that.** A supervised
+            // connection that drops publishes `Reconnecting` and not `Closed`
+            // (`cena-session`, 2026-09-23); it used to publish `Closed` on the
+            // way, which this read as death, ending a walk as `Dead` for a
+            // drop the supervisor was about to mend. Under that contract the
+            // mapping is exact: `Reconnecting` stops this run and expects the
+            // session back, `Closed` expects nothing.
             Event::StateChanged(State::Reconnecting) => Err(BehaviorError::Disconnected),
             Event::StateChanged(State::Closed) => Err(BehaviorError::Dead),
             _ => Ok(()),
@@ -611,139 +689,26 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 |frame| matches!(frame, Frame::Prompt { .. }),
             ) => outcome,
         };
-        match outcome {
-            Outcome::Confirmed(_) | Outcome::Timeout | Outcome::Refused(_) => {
-                self.drain(trip).map_err(Ended::Stopped)
-            }
-            Outcome::Interrupted => Err(Ended::Stopped(BehaviorError::Cancelled)),
-            Outcome::Dead => Err(Ended::Stopped(BehaviorError::Dead)),
-            Outcome::Disconnected => Err(Ended::Stopped(BehaviorError::Disconnected)),
+        // An older connection's command is not a stop (module docs).
+        match BehaviorError::from_outcome(&outcome) {
+            Some(gone) => Err(Ended::Stopped(gone)),
+            None => self.drain(trip).map_err(Ended::Stopped),
         }
     }
 
-    async fn deed(&mut self, trip: &mut Trip, deed: Deed) -> Result<(), Ended> {
-        match deed {
-            Deed::EmptyHands => {
-                for (stored, command) in store_commands(&self.state) {
-                    // Written down before it is sent: a stop between the two
-                    // must still know what to take back.
-                    self.stored.push(stored);
-                    self.exchange(trip, &command).await?;
-                }
-            }
-            Deed::FillHands => {
-                // Last stored, first back. One command each (`hands`).
-                for stored in std::mem::take(&mut self.stored).into_iter().rev() {
-                    let command = take_back(&self.state, &stored);
-                    let asked = self.exchange(trip, &command).await;
-                    if self.state.hand_holding(&stored.id).is_none() {
-                        self.stored.push(stored);
-                    }
-                    asked?;
-                }
-            }
-            Deed::Cast(spell) => self.cast(trip, &spell, None).await?,
-            Deed::CastAt(spell, target) => self.cast(trip, &spell, Some(&target)).await?,
-            Deed::Stance(stance) => {
-                // The first one replaced is the one to go back to.
-                if self.stance_before.is_none() {
-                    self.stance_before.clone_from(&self.state.character.stance);
-                }
-                self.exchange(trip, &format!("stance {stance}")).await?;
-            }
-            Deed::RestoreStance => {
-                if let Some(before) = self.stance_before.take() {
-                    self.exchange(trip, &format!("stance {before}")).await?;
-                }
-            }
-            Deed::AwaitFollowers => self.await_followers(trip).await?,
-            Deed::Speak(language) => {
-                self.exchange(trip, "speak").await?;
-                let speaking = kept::language_in(&self.answer);
-                if !speaking
-                    .as_deref()
-                    .is_some_and(|is| kept::is_spoken(&language, is))
-                {
-                    // The first one replaced is the one to go back to.
-                    if self.speech_before.is_none() {
-                        self.speech_before = speaking;
-                    }
-                    self.exchange(trip, &format!("speak {language}")).await?;
-                }
-            }
-            Deed::RestoreSpeech => {
-                if let Some(before) = self.speech_before.take() {
-                    self.exchange(trip, &format!("speak {before}")).await?;
-                }
-            }
-            Deed::TakeOut(thing) => {
-                self.exchange(trip, &format!("get my {thing}")).await?;
-                self.taken = kept::taken_from(&self.answer);
-                if self.taken.is_none() {
-                    trip.could_not();
-                }
-            }
-            Deed::PutBack => {
-                if let Some((thing, container)) = self.taken.take() {
-                    self.exchange(trip, &format!("put #{thing} in #{container}"))
-                        .await?;
-                }
-            }
-            // Handled where the notes are: `walk`.
-            Deed::Remember(..) | Deed::Forget(_) => {}
-        }
-        Ok(())
-    }
-
-    async fn cast(&mut self, trip: &mut Trip, spell: &str, at: Option<&str>) -> Result<(), Ended> {
-        let Some(commands) = cast_commands(spell, at) else {
-            return Err(Ended::UnknownSpell);
-        };
-        for command in commands {
-            self.exchange(trip, &command).await?;
-        }
-        Ok(())
-    }
-
-    /// Until everyone who set out with the walker has rejoined it, or
-    /// [`FOLLOW_WAIT`].
-    ///
-    /// Upstream's loop, from the six crossings that have it (`keys.rs`,
-    /// `with_company`): a ladder or a bridge does not carry a group, so each
-    /// follower crosses alone and the leader waits for
-    /// `X joins your group.` or `You reach out and hold X's hand.`, striking
-    /// each name as it comes, until none is left.
-    ///
-    /// Who is waited for is **the group, as the model has it now** -- the
-    /// port of Lich's `Group` (author, 2026-09-21: *"we don't use
-    /// `$group_members` ... we use what we ported from the Group module"*).
-    /// Upstream's list is a global nothing in any reference sets; the group
-    /// is what it stood for. Asked here and not when the trip set out, so
-    /// someone who joined on the road is waited for too.
-    ///
-    /// Upstream's only way out of a follower who never comes is typing `go`;
-    /// here it is the clock, and a stop.
-    ///
-    /// Listening starts now, as upstream's `clear` has it: a rejoining heard
-    /// before the crossing is not one after it.
-    async fn await_followers(&mut self, trip: &mut Trip) -> Result<(), Ended> {
-        let group = self.state.group.members();
-        self.behind = group.iter().map(|member| member.id.clone()).collect();
-        let until = Instant::now() + FOLLOW_WAIT;
-        while !self.behind.is_empty() && Instant::now() < until {
-            self.hold(trip).await?;
-        }
-        self.behind.clear();
-        Ok(())
-    }
-
-    /// The author's one exception to "cleanup cannot send": one command per
-    /// stored item, not waited for. They stay in `stored`, since nothing saw
-    /// them come back.
+    /// The author's exception to "cleanup cannot send": one command to put
+    /// back a key a crossing took out, then one per stored item, none waited
+    /// for (module docs). They stay in `taken` and `stored`, since nothing
+    /// saw them go.
     async fn take_back_once(&mut self) {
+        let origin = Origin::Behavior(self.token);
+        if let Some(taken) = &mut self.taken {
+            let command = format!("put #{} in #{}", taken.thing, taken.container);
+            let sent = self.handle.send_now(&command, origin, Gate::None).await;
+            taken.sent_back = matches!(sent, Sent::Ok { .. });
+        }
         for stored in self.stored.iter().rev() {
             let command = take_back(&self.state, stored);
-            let origin = Origin::Behavior(self.token);
             let _ = self.handle.send_now(&command, origin, Gate::None).await;
         }
     }

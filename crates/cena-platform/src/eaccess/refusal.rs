@@ -13,15 +13,30 @@
 //! facts that will not change between attempts, so retrying burns three logins
 //! to reach the same refusal and delays the real message to the user.
 
+use super::wire::redact;
+
 /// Explain an `L` refusal, including the code Lich does not document.
 ///
 /// Split out so the PROBLEM 3 finding is testable without a live login --
 /// it is INFERRED from a single observation, and an inference that cannot be
 /// re-read is one that quietly becomes folklore.
+///
+/// # The reply is REDACTED before it is quoted
+///
+/// Both arms quote the raw `L` line, and this string becomes an
+/// [`EaccessError`](super::EaccessError) detail -- which `main` prints to
+/// stderr and the session writes to its `.log`. The arm that matters is the
+/// one for a reply that is **neither** `L\tOK` nor `L\tPROBLEM`: nothing here
+/// knows what it carries, and an `L` reply is the one response in the
+/// sequence built to carry a `KEY=` (review finding 2). The success line in
+/// `handshake.rs` was already printed through [`redact`](super::redact); this
+/// one was not, on the path whose premise is that the reply is not the shape
+/// expected -- the same reasoning `expect_echo` records for the same exposure.
 #[must_use]
 pub fn describe_launch_refusal(l: &str) -> String {
+    let quoted = redact(l.trim());
     let Some(rest) = l.trim().strip_prefix("L\tPROBLEM") else {
-        return format!("launch refused: {}", l.trim());
+        return format!("launch refused: {quoted}");
     };
     // All four codes are VERIFIED (`plan/10` §4.7 item 2a) from Saga 0.9.9's
     // own user-facing English strings -- Simutronics' client, read directly.
@@ -65,7 +80,7 @@ pub fn describe_launch_refusal(l: &str) -> String {
              server grew one."
         }
     };
-    format!("launch refused ({}): {detail}", l.trim())
+    format!("launch refused ({quoted}): {detail}")
 }
 
 /// Whether an `L PROBLEM` refusal is worth another attempt.

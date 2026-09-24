@@ -6,8 +6,12 @@ use crate::projection::bounded_text;
 use crate::view::Closed;
 use crate::{StoryLine, StyledRun};
 
+/// Text bytes kept per unfinished line; overflow marks the line `truncated`.
 pub const MAX_LINE_BYTES: usize = 16 * 1024;
+/// Runs kept per unfinished line; overflow marks the line `truncated`.
 pub const MAX_LINE_RUNS: usize = 256;
+/// Streams that may hold an unfinished line at once; a new stream beyond this
+/// emits the least recently used partial, marked `truncated`.
 pub const MAX_PENDING_STREAMS: usize = 32;
 const MAX_STREAM_BYTES: usize = 128;
 const MAX_PRESET_BYTES: usize = 128;

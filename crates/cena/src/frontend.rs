@@ -1,7 +1,9 @@
 //! Optional embedded presentation; neither opening nor closing a viewer owns
 //! the native session's lifetime. Pairing tokens exist only for this process.
 
-use cena_session::{SessionHandle, SessionObserver, SupervisedEnd};
+use cena_session::{
+    Event, Generation, ObserveError, SessionHandle, SessionObserver, State, SupervisedEnd,
+};
 use std::time::Duration;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -19,15 +21,15 @@ impl Frontend {
         if !requested() {
             return None;
         }
-        match cena_web::WebServer::bind(observer, handle).await {
+        match cena_web::WebServer::bind(observer.clone(), handle).await {
             Ok(server) => {
-                // Explicit pairing handoff to the local operator. Do not put
-                // this URL in the game recorder or normal application logs.
-                eprintln!(
-                    "[web] Open this private pairing URL: {}",
-                    server.pairing_url()
-                );
                 let stop = CancellationToken::new();
+                // Explicit pairing handoff to the local operator, printed when
+                // the session is Ready rather than at bind: printed at bind it
+                // scrolled away under the login burst before anyone could use
+                // it (author, 2026-09-23). Never into the game recorder or
+                // normal application logs.
+                tokio::spawn(announce(observer, server.pairing_url(), stop.clone()));
                 let shutdown = stop.clone();
                 let task =
                     tokio::spawn(async move { server.run(shutdown.cancelled_owned()).await });
@@ -57,6 +59,50 @@ impl Frontend {
     }
 }
 
+/// Print the pairing URL each time a connection becomes Ready.
+///
+/// Once per generation: a reconnect earns a fresh reminder, a lagged
+/// resubscription does not. Reads the observer's snapshot first, so a session
+/// that was already Ready when this started is announced too.
+async fn announce(observer: SessionObserver, url: String, stop: CancellationToken) {
+    let mut announced: Option<Generation> = None;
+    let mut tell = |generation: Generation| {
+        if announced != Some(generation) {
+            announced = Some(generation);
+            eprintln!(
+                "[web] Ready. Play in the browser; the terminal shows only Hydra's own messages."
+            );
+            eprintln!("[web] Open this private pairing URL: {url}");
+        }
+    };
+    loop {
+        let (snapshot, mut events) = match observer.subscribe().await {
+            Ok(subscription) => subscription,
+            Err(ObserveError::Closed) => return,
+            // `Busy` and `Timeout` are retryable (`SessionObserver::subscribe`).
+            Err(_) => {
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                continue;
+            }
+        };
+        if snapshot.lifecycle == State::Ready {
+            tell(snapshot.generation);
+        }
+        loop {
+            tokio::select! {
+                () = stop.cancelled() => return,
+                next = events.recv() => match next {
+                    Ok(o) if o.event == Event::StateChanged(State::Ready) => tell(o.generation),
+                    Ok(_) => {}
+                    // Resubscribe: the fresh snapshot says whether it is Ready.
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => break,
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                },
+            }
+        }
+    }
+}
+
 /// No implicit frontend for existing command-line users.
 pub(crate) fn requested() -> bool {
     std::env::args().skip(1).any(|arg| arg == "--web")
@@ -65,10 +111,21 @@ pub(crate) fn requested() -> bool {
 /// Keep a selected web session open until explicit shutdown, native session
 /// completion, or an explicitly selected hold deadline. Non-web callers keep
 /// the demonstration binary's existing ten-second default.
+///
+/// Ctrl-C arrives as `interrupt`, not as a `ctrl_c()` of its own. This was the
+/// ONE place that listened for it, so the phases before the hold had no
+/// handler at all; `crate::interrupt` now owns the signal for the whole run
+/// and this is one of the waits it ends.
 pub(crate) async fn wait_for_stop(
     holding: Option<Duration>,
     supervisor: &JoinHandle<SupervisedEnd>,
+    interrupt: &CancellationToken,
 ) {
+    if interrupt.is_cancelled() {
+        // An earlier phase was interrupted; announcing a hold now would be
+        // announcing something that is not going to happen.
+        return;
+    }
     match holding {
         Some(duration) => eprintln!("[session] holding for {duration:?} (Ctrl-C to stop early)"),
         None => eprintln!(
@@ -89,10 +146,6 @@ pub(crate) async fn wait_for_stop(
     tokio::select! {
         () = deadline => {}
         () = session_ended => eprintln!("[session] Native session ended; finishing shutdown."),
-        result = tokio::signal::ctrl_c() => {
-            if let Err(error) = result {
-                eprintln!("[session] Could not listen for Ctrl-C ({error}); shutting down.");
-            }
-        }
+        () = interrupt.cancelled() => {}
     }
 }

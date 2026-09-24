@@ -96,6 +96,14 @@ pub struct Creatures {
     ///
     /// Bounded by the roster's own eviction: an id is dropped when the registry
     /// drops it, so this cannot outgrow the thing it annotates.
+    ///
+    /// > **CORRECTED 2026-09-23 (review).** The paragraph above was a wish:
+    /// > nothing ever removed an id. So it grew for the session, and -- the
+    /// > real defect -- a creature that fled, came BACK, and then hid was
+    /// > still "seen to leave", and `vanished_unaccounted` excluded it: the
+    /// > one case the inference exists for. An id now leaves this map when
+    /// > it reappears on the roster ([`Self::mark_in_room`]), when the
+    /// > registry drops it (eviction and `cleanup_old`), and on a reconnect.
     seen_to_leave: std::collections::BTreeMap<i64, Option<String>>,
     /// Deaths already announced.
     death_announced: VecDeque<i64>,
@@ -214,11 +222,16 @@ impl Creatures {
     }
 
     /// Mark an id present in the room. `true` when newly added.
+    ///
+    /// **Arriving cancels a departure.** A creature on the roster again is
+    /// here, so whatever the feed said about it leaving is history -- and if
+    /// it now vanishes, that departure must not account for it.
     pub fn mark_in_room(&mut self, id: i64) -> bool {
         if self.roster.contains(&id) {
             return false;
         }
         self.roster.push(id);
+        self.seen_to_leave.remove(&id);
         true
     }
 
@@ -403,6 +416,10 @@ impl Creatures {
         self.instances.retain(|id, c| {
             shelter.contains(id) || c.last_seen_at.is_none_or(|seen| seen >= cutoff)
         });
+        // Trimmed WITH the registry, as the field doc promises.
+        let instances = &self.instances;
+        self.seen_to_leave
+            .retain(|id, _| instances.contains_key(id));
         let removed = before - self.instances.len();
         self.evicted = self.evicted.saturating_add(removed as u64);
         removed
@@ -444,6 +461,7 @@ impl Creatures {
         let (id, _) = pool.into_iter().min_by_key(|(_, seen)| *seen)?;
         let id = *id;
         self.instances.remove(&id);
+        self.seen_to_leave.remove(&id);
         self.evicted = self.evicted.saturating_add(1);
         Some(id)
     }
@@ -528,6 +546,9 @@ impl Creatures {
     pub(crate) fn invalidate_for_reconnect(&mut self) {
         self.roster.clear();
         self.previous_roster.clear();
+        // Departures are about the room the old connection was watching, the
+        // same as the rosters they annotate.
+        self.seen_to_leave.clear();
         self.pending_status.clear();
         self.pending_links.clear();
         self.position_recovered.clear();

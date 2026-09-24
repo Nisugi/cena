@@ -32,7 +32,7 @@
 //! behalf is the exact move Rule 2.2a forbids, so an unasked field goes in
 //! the second and is owed a question.
 
-use cena_model::{GameState, VitalsExt};
+use cena_model::GameState;
 use cena_protocol::Parser;
 
 fn state_after(lines: &[&str]) -> GameState {
@@ -106,7 +106,7 @@ mod progress_bar {
     #[test]
     fn the_amount_survives_not_just_the_percent() {
         let state = state_after(&[HEALTH]);
-        let health = state.vitals.health().expect("health");
+        let health = state.health().expect("health");
         assert_eq!(
             health.amount(),
             Some((213, 223)),
@@ -120,10 +120,7 @@ mod progress_bar {
     fn the_games_own_percent_survives_too() {
         // Both, not either: 213/223 is 95.5%, so a consumer cannot recover
         // the game's own rounding from the pair.
-        assert_eq!(
-            state_after(&[HEALTH]).vitals.health().map(|v| v.percent),
-            Some(95)
-        );
+        assert_eq!(state_after(&[HEALTH]).health().map(|v| v.percent), Some(95));
     }
 
     #[test]
@@ -203,7 +200,7 @@ fn a_label_only_bar_reports_no_amount_rather_than_a_fabricated_one() {
         "<dialogData id='minivitals'><progressBar id='mindState' value='34' \
          text='clear'/></dialogData>",
     ]);
-    let mind = state.vitals.vital("mindState").expect("the bar landed");
+    let mind = state.vital("mindState").expect("the bar landed");
     assert_eq!((mind.percent, mind.amount()), (34, None));
 }
 

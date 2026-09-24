@@ -105,14 +105,23 @@ pub enum Cost {
     /// `else` when it does not -- and **impassable when it cannot be answered**
     /// (`crate::cond`), which is not the same as "does not hold".
     Gated {
+        /// The question asked of the walker.
         when: Cond,
+        /// Seconds when `when` holds.
         then: f64,
+        /// Seconds when `when` is known not to hold; `None` (JSON key `else`
+        /// absent) makes the exit impassable then.
         #[serde(default, rename = "else", skip_serializing_if = "Option::is_none")]
         otherwise: Option<f64>,
     },
     /// A price the planner worked out and put in `Walker::tables`: table
     /// `table`, room `key`. Impassable when either is missing.
-    Table { table: String, key: RoomId },
+    Table {
+        /// The name of the table in `Walker::tables`: `instability`.
+        table: String,
+        /// The room whose entry in that table is the price, in seconds.
+        key: RoomId,
+    },
     /// Several prices, the first whose question holds being the one paid: a
     /// wall that costs little to a walker who can unlock its gate, more to
     /// one who climbs it, and most to one who waits. **A rung that cannot be
@@ -121,7 +130,9 @@ pub enum Cost {
     /// the walker its discount. `else` is the price when none holds;
     /// without one the exit is then impassable.
     Ladder {
+        /// The rungs, tried in order; the first that holds is paid.
         ladder: Vec<Rung>,
+        /// Seconds when no rung holds (JSON key `else`); `None` is impassable.
         #[serde(default, rename = "else", skip_serializing_if = "Option::is_none")]
         otherwise: Option<f64>,
     },
@@ -132,7 +143,12 @@ pub enum Cost {
     /// 100`, never below 0.4, and rounded down -- the divisions by five
     /// whole, as upstream's are. **Everyone passes**: without Haste, or
     /// without the ranks to work it out, the price is the full roundtime.
-    Hasted { hasted: f64, step: f64 },
+    Hasted {
+        /// The full roundtime, in seconds, before any Haste shortening.
+        hasted: f64,
+        /// Seconds the move costs on top of the roundtime.
+        step: f64,
+    },
     /// A kind of cost this build does not know. **Impassable**; produced only
     /// by the binary loader, for the same reason as [`Crossing::Unknown`].
     #[serde(skip)]
@@ -155,7 +171,9 @@ fn shortened(roundtime: f64, walker: &Walker) -> Option<f64> {
 /// One price of a [`Cost::Ladder`], and the question that earns it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Rung {
+    /// The question; a rung it cannot answer is passed over.
     pub when: Cond,
+    /// Seconds paid when `when` holds.
     pub then: f64,
 }
 
@@ -307,15 +325,25 @@ pub struct Exit {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Dirto {
+    /// The exit leads north, whatever its command says.
     North,
+    /// The exit leads northeast, whatever its command says.
     Northeast,
+    /// The exit leads east, whatever its command says.
     East,
+    /// The exit leads southeast, whatever its command says.
     Southeast,
+    /// The exit leads south, whatever its command says.
     South,
+    /// The exit leads southwest, whatever its command says.
     Southwest,
+    /// The exit leads west, whatever its command says.
     West,
+    /// The exit leads northwest, whatever its command says.
     Northwest,
+    /// The exit leads up a floor, whatever its command says.
     Up,
+    /// The exit leads down a floor, whatever its command says.
     Down,
     /// The rooms connect but do not position by this edge.
     ///

@@ -29,20 +29,17 @@ pub enum Routine {
     /// `leave` is how upstream's two goals are told apart. `false`: reach the
     /// exit's destination, a room of the plane. `true`: find the point of
     /// elemental tranquility and go through it, which lands outside.
-    Confluence { leave: bool },
+    Confluence {
+        /// `true` to leave the plane through the point of tranquility;
+        /// `false` to reach the exit's destination on the plane.
+        leave: bool,
+    },
     /// The minotaur maze beneath the Landing: the same search over a fixed
     /// set of rooms. Leaving the set means the walker fell out and replans.
-    MinotaurMaze { rooms: Vec<RoomId> },
-    /// Walk a fixed circuit until something appears, then go through it. The
-    /// Rift: its ways out -- a thread, a maw, a door, a mirror, a fissure --
-    /// drift from room to room, so the walker goes round until it sees one.
-    ///
-    /// The walk starts at the walker's place on the circuit: its room's
-    /// position in `starts` is the position in `dirs` to begin from, and
-    /// `dirs` then repeats. The two lists are not the same length upstream
-    /// and need not be. A walker whose room is not in `starts` is lost, and
-    /// replans. **Where the way out lands is not known in advance**, so this
-    /// routine always ends by finding out where it is and planning again.
+    MinotaurMaze {
+        /// The maze's rooms; the walker being outside them means it fell out.
+        rooms: Vec<RoomId>,
+    },
     /// Follow signposts: each room on the way says which way to go from it,
     /// until the walker is at the exit's destination. The underwater route off
     /// River's Rest, where a current can carry the walker somewhere else on the
@@ -57,6 +54,7 @@ pub enum Routine {
         verb: String,
         /// `(room, direction)`, in upstream's order.
         dirs: Vec<(RoomId, String)>,
+        /// Rooms where a walk starting there empties the hands first.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         hands_free_in: Vec<RoomId>,
     },
@@ -86,16 +84,24 @@ pub enum Routine {
     /// that changes: `look`, read which flight is on this `wall`
     /// (`northern`), and climb that one -- `climb steps`, `climb second
     /// steps`, and so on. Upstream gives up when no flight is on the wall.
-    FlightOfSteps { wall: String },
+    FlightOfSteps {
+        /// The wall whose flight to climb, as the room describes it: `northern`.
+        wall: String,
+    },
     /// Go to each of `rooms` in turn, by the map, until one shows a thing
     /// whose name holds `sees`; then `enter` it. A portal or a doorframe
     /// that wanders. `by_uid`: the rooms are the game's numbers, not the
     /// map's. Where it leads is not promised, so it ends by planning again.
     SearchRooms {
+        /// The rooms to visit, in order: map ids, or the game's numbers when
+        /// `by_uid` is set.
         rooms: Vec<u32>,
+        /// Whether `rooms` holds the game's room numbers rather than map ids.
         #[serde(default, skip_serializing_if = "std::ops::Not::not")]
         by_uid: bool,
+        /// Text a shown thing's name must hold for the search to stop there.
         sees: String,
+        /// The command sent to go through what was found.
         enter: String,
     },
     /// Room 16165: turn the mirror right to its stop, then tilt it until the
@@ -110,14 +116,20 @@ pub enum Routine {
     /// and Force Projection at it, waiting for the mana and casting again
     /// when armour hinders; failing that a Warrior of 15 batters it, where
     /// `batter` allows; failing that, push it with empty hands.
-    BronzeGate { batter: bool },
+    BronzeGate {
+        /// Whether a Warrior of 15 may batter the gate when no spell serves.
+        batter: bool,
+    },
     /// Room 30850: the barrier's colour says which walk leads to its
     /// grotto. Walk it, `touch crystal`, walk back, and `go barrier`.
     ColourBarrier,
     /// A puzzle that belongs to one place and takes no arguments: the map
     /// names it, and the Travel behaviour knows how it goes. What each one
     /// does is written on [`Puzzle`].
-    Puzzle { puzzle: Puzzle },
+    Puzzle {
+        /// Which puzzle.
+        puzzle: Puzzle,
+    },
     /// A Chronomage day pass between two towns, `route` naming them as
     /// upstream's setting does -- `wl,imt`, from and then to. Take a pass
     /// that is valid for both towns out of the profile's `day_pass_sack`,
@@ -132,13 +144,32 @@ pub enum Routine {
     /// `day_pass:imt,wl`, the two towns in alphabetical order since one pass
     /// serves both ways (`cena_map::Cost` cannot send commands, and should
     /// not).
-    DayPass { route: String },
+    DayPass {
+        /// The two towns, from and then to, as upstream's setting spells
+        /// them: `wl,imt`.
+        route: String,
+    },
     /// A crossing that stops part-way to **make another trip** and come
     /// back: to a bank, a shop, a ticket seller. See [`Errand`].
-    Errand { errand: Errand },
+    Errand {
+        /// Which errand.
+        errand: Errand,
+    },
+    /// Walk a fixed circuit until something appears, then go through it. The
+    /// Rift: its ways out -- a thread, a maw, a door, a mirror, a fissure --
+    /// drift from room to room, so the walker goes round until it sees one.
+    ///
+    /// The walk starts at the walker's place on the circuit: its room's
+    /// position in `starts` is the position in `dirs` to begin from, and
+    /// `dirs` then repeats. The two lists are not the same length upstream
+    /// and need not be. A walker whose room is not in `starts` is lost, and
+    /// replans. **Where the way out lands is not known in advance**, so this
+    /// routine always ends by finding out where it is and planning again.
     Patrol {
+        /// The circuit's rooms, by position, for finding where to begin.
         /// `None` keeps a gap upstream left: positions matter.
         starts: Vec<Option<RoomId>>,
+        /// The directions walked, repeated from the starting position.
         dirs: Vec<String>,
         /// What to look for among the room's objects. The first listed that is
         /// present wins.
@@ -244,7 +275,10 @@ pub struct Landmark {
 /// `tries` times, standing up again between tries if knocked down.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Opening {
+    /// The command sent each try.
     pub command: String,
+    /// Text in the game's reply that says the landmark is open.
     pub until: String,
+    /// The most times `command` is sent.
     pub tries: u32,
 }

@@ -534,4 +534,55 @@ mod view_item {
         );
         assert_eq!(view.results.len(), 1, "what was captured is still surfaced");
     }
+
+    #[test]
+    fn many_captures_on_one_line_do_not_grow_the_stack() {
+        // Each open/close used to be a nested call -- `parse_line` into the
+        // capture, and the close back into `parse_line`. MEASURED: 2,000
+        // pairs on one 92 KB line (under the 256 KB line cap) overflowed a
+        // 2 MiB stack in release, and 500 did in debug. An overflow aborts
+        // the process rather than panicking, so every session died with it.
+        //
+        // Run on a deliberately SMALL stack, so a regression aborts this test
+        // binary at any build profile rather than depending on the default.
+        const PAIRS: usize = 2_000;
+        let line = format!(
+            "{}And then some prose.",
+            "<inventoryViewItem id='t'></inventoryViewItem>".repeat(PAIRS)
+        );
+        let spawned = std::thread::Builder::new()
+            .stack_size(128 * 1024)
+            .spawn(move || Parser::new().parse_line(&line));
+        let Ok(handle) = spawned else {
+            unreachable!("the test thread could not be spawned");
+        };
+        let out = handle.join().unwrap_or_default();
+
+        let views = out
+            .iter()
+            .filter(|f| matches!(f, Frame::InventoryViewItem(_)))
+            .count();
+        assert_eq!(views, PAIRS, "every pair is one detail frame");
+        assert!(
+            out.iter()
+                .any(|f| matches!(f, Frame::Text(t) if t.content.contains("And then some prose"))),
+            "the prose after the last close is ordinary feed"
+        );
+    }
+
+    #[test]
+    fn text_after_a_self_closing_second_envelope_is_not_dropped() {
+        // A torn block followed by a complete, empty response on the same
+        // line. The rest of the line was fed onward only if the new capture
+        // stayed open, so after a self-closing envelope it vanished.
+        let out = frames(&[
+            r"<inventoryViewItem id='1' exist='9'><result command='look'>Torn.",
+            r"<inventoryViewItem id='2' exist='9'/>You also see a rock.",
+        ]);
+        assert!(
+            out.iter()
+                .any(|f| matches!(f, Frame::Text(t) if t.content.contains("You also see a rock"))),
+            "got {out:?}"
+        );
+    }
 }

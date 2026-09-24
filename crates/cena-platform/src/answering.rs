@@ -222,7 +222,25 @@ impl AnsweringSource {
             transcript,
         )
     }
+
+    /// [`Self::new`], but the source first says [`LOGIN_BURST`] unprompted,
+    /// as the game does on connect.
+    ///
+    /// A session is `Ready` only at the first prompt after `<endSetup/>`
+    /// (`cena-session`'s `actor/readiness.rs`), and a source that speaks only
+    /// when spoken to never sends one -- so a test that runs a behavior needs
+    /// this, and a test about a pre-`Ready` session needs [`Self::new`].
+    #[must_use]
+    pub fn logged_in(reply: &[u8]) -> (Self, TranscriptHandle) {
+        let (mut source, transcript) = Self::new(reply);
+        source.pending.extend_from_slice(LOGIN_BURST);
+        (source, transcript)
+    }
 }
+
+/// The end of a login burst, reduced to what marks it: `<endSetup/>` and the
+/// prompt that follows everything the burst describes.
+pub const LOGIN_BURST: &[u8] = b"<endSetup/>\n<prompt time=\"0\">&gt;</prompt>\n";
 
 impl ByteSource for AnsweringSource {
     async fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {

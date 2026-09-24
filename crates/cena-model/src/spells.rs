@@ -258,15 +258,26 @@ impl Spell {
     ///
     /// `spell.rb`: a three-digit number's circle is its first digit, anything
     /// else its first two. So 215 is circle 2 and 1215 is circle 12.
+    ///
+    /// **Total over every `u16`.** This sliced the decimal string `[..2]`,
+    /// which panics on a one-digit number -- unreachable from the shipped
+    /// table (MEASURED: the lowest number is 101), but `number` is a `pub`
+    /// field, so `Spell { number: 5, .. }.circle()` was a panic one struct
+    /// literal away. Ruby's `"5"[0..1]` is `"5"`, not an error, so the faithful
+    /// answer for a number under 100 is the number itself, and this computes
+    /// the same digits arithmetically rather than by slicing.
     #[must_use]
-    pub fn circle(&self) -> u16 {
-        let text = self.number.to_string();
-        let head = if text.len() == 3 {
-            &text[..1]
-        } else {
-            &text[..2]
-        };
-        head.parse().unwrap_or(0)
+    pub const fn circle(&self) -> u16 {
+        let mut head = self.number;
+        if head >= 100 && head < 1000 {
+            return head / 100;
+        }
+        // The first two digits of a 4- or 5-digit number; a number under 100
+        // is already its own first two digits.
+        while head >= 100 {
+            head /= 10;
+        }
+        head
     }
 
     /// What this spell is for, as a set.
@@ -347,17 +358,135 @@ impl Spell {
 }
 
 /// The spell table, parsed once.
-fn table() -> &'static BTreeMap<u16, Spell> {
-    static TABLE: OnceLock<BTreeMap<u16, Spell>> = OnceLock::new();
+fn spells_by_number() -> &'static BTreeMap<u16, Spell> {
+    &table().spells
+}
+
+/// The spells, and the compiled messages that start a cooldown.
+///
+/// Held by `table()`, the function `ALLOWED_STATICS` names for this static.
+///
+/// **One static, holding both.** The landing patterns are a pure function of
+/// the same compile-time TSV as the spells, so they are built in the same
+/// `get_or_init` rather than behind a second process global -- the
+/// architecture's allowlist (`cena-arch-tests`, `ALLOWED_STATICS`) names this
+/// one, and a second would be a second reviewed exception for no gain.
+struct Tables {
+    spells: BTreeMap<u16, Spell>,
+    landings: Vec<Landing>,
+}
+
+/// One message that starts a per-character cooldown, compiled.
+struct Landing {
+    spell: u16,
+    kind: CooldownKind,
+    /// `^(?:message)$`: Lich anchors both lists whole (`parser.rb`'s
+    /// `SpellUpMsgs` joins with `$|^`, and `:672` matches `^#{target_msgup}$`).
+    pattern: regex::Regex,
+}
+
+fn table() -> &'static Tables {
+    static TABLE: OnceLock<Tables> = OnceLock::new();
     TABLE.get_or_init(|| {
-        SPELLS_TSV
+        let spells: BTreeMap<u16, Spell> = SPELLS_TSV
             .lines()
             .filter(|line| !line.starts_with('#'))
             .skip(1) // the header
             .filter(|line| !line.trim().is_empty())
             .filter_map(|line| read_row(line).map(|spell| (spell.number, spell)))
-            .collect()
+            .collect();
+        let landings = spells
+            .values()
+            .flat_map(|spell| {
+                spell.cooldowns.iter().filter_map(|(kind, _)| {
+                    // A group cooldown starts on the caster's own start
+                    // message; a target one on the third-person message that
+                    // names who it landed on (see the module doc's table).
+                    let source = match kind {
+                        CooldownKind::Group => spell.message_up.as_deref()?,
+                        CooldownKind::Target => spell.target_start.as_deref()?,
+                    };
+                    // The messages are Lich's Ruby regexes. A pattern that
+                    // does not compile is left out, and
+                    // `every_cooldown_message_compiles` counts them so that
+                    // is loud rather than silent.
+                    let pattern = regex::Regex::new(&format!("^(?:{source})$")).ok()?;
+                    Some(Landing {
+                        spell: spell.number,
+                        kind: *kind,
+                        pattern,
+                    })
+                })
+            })
+            .collect();
+        Tables { spells, landings }
     })
+}
+
+/// A line that starts a per-character cooldown, and who it lands on.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CooldownLanding {
+    /// The caster's own start message for a **group** casting: stamp every
+    /// member (`Group.record_spell_cooldown`, `infomon/parser.rb:662`).
+    Group {
+        /// The spell.
+        spell: u16,
+    },
+    /// The third-person message naming who a targeted cast landed on
+    /// (`Group.record_target_cooldown`, `infomon/parser.rb:673`).
+    Target {
+        /// The spell.
+        spell: u16,
+        /// The noun the message named.
+        noun: String,
+    },
+}
+
+/// Read a line as the start of a per-character spell cooldown.
+///
+/// Lich's two call sites, ported whole:
+///
+/// * **Group** -- a `SpellUpMsgs` line (the caster's own start message) whose
+///   spell has a group cooldown, **and** that contains `your group`
+///   (`parser.rb:662`). The clause is the only thing telling a group casting
+///   from a self-cast of the same spell, which is why it is required.
+/// * **Target** -- a `SpellTargetUpMsgs` line, with the `noun` capture
+///   (`parser.rb:666-673`).
+#[must_use]
+pub fn cooldown_landing(line: &str) -> Option<CooldownLanding> {
+    let line = line.trim();
+    // Every main-window line comes through here, so the cheap test runs
+    // first: a group landing needs `your group` before its regex is worth
+    // trying, and only a target landing needs captures at all.
+    let grouped = line.contains("your group");
+    table()
+        .landings
+        .iter()
+        .find_map(|landing| match landing.kind {
+            CooldownKind::Group => {
+                (grouped && landing.pattern.is_match(line)).then_some(CooldownLanding::Group {
+                    spell: landing.spell,
+                })
+            }
+            CooldownKind::Target => Some(CooldownLanding::Target {
+                spell: landing.spell,
+                noun: landing
+                    .pattern
+                    .captures(line)?
+                    .name("noun")?
+                    .as_str()
+                    .to_owned(),
+            }),
+        })
+}
+
+/// How many cooldown-starting messages compiled, against how many the table
+/// declares -- so a pattern that failed to compile is a test failure rather
+/// than a cooldown that silently never starts.
+#[must_use]
+pub fn cooldown_messages_compiled() -> (usize, usize) {
+    let declared = spells_by_number().values().map(|s| s.cooldowns.len()).sum();
+    (table().landings.len(), declared)
 }
 
 /// One TSV row.
@@ -431,27 +560,29 @@ fn optional(field: &str) -> Option<String> {
 /// A spell by number.
 #[must_use]
 pub fn spell(number: u16) -> Option<&'static Spell> {
-    table().get(&number)
+    spells_by_number().get(&number)
 }
 
 /// A spell by name, case-insensitively.
 #[must_use]
 pub fn spell_named(name: &str) -> Option<&'static Spell> {
-    table()
+    spells_by_number()
         .values()
         .find(|spell| spell.name.eq_ignore_ascii_case(name.trim()))
 }
 
 /// Every spell, by number.
 pub fn all() -> impl Iterator<Item = &'static Spell> {
-    table().values()
+    spells_by_number().values()
 }
 
 /// Every spell that locks a character out, with its kind and seconds.
 ///
 /// MEASURED: five, and the split is by **cast mechanic** — see the module doc.
 pub fn with_cooldowns() -> impl Iterator<Item = &'static Spell> {
-    table().values().filter(|s| !s.cooldowns.is_empty())
+    spells_by_number()
+        .values()
+        .filter(|s| !s.cooldowns.is_empty())
 }
 
 /// The name of a spell circle (`spells.rb:6`).

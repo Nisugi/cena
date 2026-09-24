@@ -7,9 +7,9 @@
 //! 6,373 measured countdowns were wrong, and the bug was invisible because both
 //! fields existed, both compiled, and only one was maintained.
 //!
-//! The mechanism is deliberately crude -- a needle for a literal field
-//! declaration -- and that is the point. A duplicate field is a *lexical* fact,
-//! so a lexical test catches it, where no type or trait could.
+//! The mechanism is deliberately crude -- a scan for a field declaration --
+//! and that is the point. A duplicate field is a *lexical* fact, so a lexical
+//! test catches it, where no type or trait could.
 //!
 //! # Why these tests did not exist until now, and what that cost
 //!
@@ -29,59 +29,62 @@
 //!
 //! # The two assertions, and why the second one matters
 //!
-//! Each test asserts `hits.len() == 1` **and the owning path**. Ported from
+//! Each test asserts the count **and the owning path**. Ported from
 //! `reference/VellumFE/tests/architecture.rs:337-358`, whose comment explains
 //! the second: the count alone passes if the field is *relocated* to a crate
 //! that has no business owning it, because one hit is still one hit. The path
 //! assertion is what makes a silent move fail.
+//!
+//! # Fields are found by STRUCTURE, not by a needle (review findings 1 and 2)
+//!
+//! The first version matched a trimmed line that STARTED with a needle --
+//! `handle: SessionHandle,`, `game_time:`, `pub roundtime_ends:` -- and then
+//! walked upward to the nearest line starting `struct ` or `fn `. Three holes,
+//! all live or one keystroke from it:
+//!
+//! 1. **Visibility defeated the needle.** `pub(crate) handle: SessionHandle,`
+//!    does not start with `handle:`. MEASURED: `crates/cena-web/src/server.rs`
+//!    line 31 is exactly that, a second stored handle, and the suite was
+//!    green. The same hole let a `pub game_time` or a private
+//!    `roundtime_ends` copy through.
+//! 2. **A name is not the value.** The handle needle named the field; a
+//!    `conn: SessionHandle` is the same second handle under another name.
+//! 3. **`pub struct` was not a struct.** The walk-up knew `struct ` and
+//!    `union ` only, so above `pub struct Copy { pub roundtime_ends: .. }` it
+//!    kept going to the nearest `fn` and DROPPED the hit.
+//!
+//! `cena_arch_tests::structure::outline` answers "is this a field, of what"
+//! with a scope stack, so all three close together: a field is a field
+//! whatever its visibility, the handle is matched by TYPE, and the container is
+//! whatever opened the scope.
 
-use cena_arch_tests::harness::workspace_sources;
-use cena_arch_tests::lexical::scan_lines;
+use cena_arch_tests::harness::{relative, workspace_sources};
+use cena_arch_tests::lexical::{TokenKind, tokens};
+use cena_arch_tests::structure::{Field, outline};
+use std::path::PathBuf;
 
-/// Declarations of `needle`, as `path:line: code`.
+/// Every field in `sources` matching `wanted`, as `path:line: Container.name: Type`.
 ///
-/// # A function parameter is NOT an owning field, and this used to miss that
-///
-/// This doc claimed *"the leading whitespace of a struct body"* distinguished a
-/// field from a parameter. It does not: `scan_lines` **trims** the line before
-/// the filter sees it, so an indented parameter and an indented field are the
-/// same string. MEASURED -- `travel/desk.rs:201` is
-/// `        handle: SessionHandle,`, a parameter of `fn walk`, and it counted
-/// as an owner.
-///
-/// That is a false positive on the highest-value test in the suite, and a
-/// false positive is not harmless here: an arch test that cries wolf gets
-/// suppressed, and this is the one guarding the defect that cost Vellum 49.8%
-/// of its countdowns.
-///
-/// So the enclosing item is checked. `struct`/`union` bodies own fields;
-/// `fn` signatures do not.
-///
-/// `scan_lines` strips comments, so prose naming a field does not register.
-fn owning_fields(needle: &str) -> Vec<String> {
-    let sources = workspace_sources();
-    scan_lines(&sources, &[needle])
-        .into_iter()
-        .filter(|hit| {
-            // `scan_lines` emits `path:line: <trimmed code>`. Split after the
-            // LINE NUMBER -- `splitn(3, ':')` -- not on `": "`, which lands
-            // inside the needle's own trailing colon.
-            let code = hit.splitn(3, ':').nth(2).unwrap_or_default().trim();
-            // The code must START with the declaration, so a match buried
-            // mid-line is not an owning field.
-            code.starts_with(needle)
-        })
-        .filter(|hit| in_a_struct_body(&sources, hit))
-        .filter(|hit| !is_test_code(hit))
-        // **This test file names its own needles**, and so would any other
-        // arch test. Without this the suite counts itself and every needle has
-        // at least two hits -- which is how the first version of this file
-        // failed, reporting three owners where there is one.
-        .filter(|hit| !hit.starts_with("crates/cena-arch-tests/"))
-        .collect()
+/// Skips this crate -- whose fixtures below declare the very fields the rules
+/// look for -- and test code (see [`is_test_code`]).
+fn owning_fields(sources: &[(PathBuf, String)], wanted: impl Fn(&Field) -> bool) -> Vec<String> {
+    let mut hits = Vec::new();
+    for (path, text) in sources {
+        let rel = relative(path);
+        if rel.starts_with("crates/cena-arch-tests/") || is_test_code(&rel) {
+            continue;
+        }
+        for field in outline(text).fields.iter().filter(|f| wanted(f)) {
+            hits.push(format!(
+                "{rel}:{}: {}.{}: {}",
+                field.line, field.container, field.name, field.ty
+            ));
+        }
+    }
+    hits
 }
 
-/// Whether a hit is in test code rather than in the shipped build.
+/// Whether a path is test code rather than the shipped build.
 ///
 /// # The rule is about production, and its own words say so
 ///
@@ -101,54 +104,38 @@ fn owning_fields(needle: &str) -> Vec<String> {
 /// `#[cfg(test)]` is not consulted, because an inline test module sits inside a
 /// production file and excluding by path is the honest, checkable line. A
 /// duplicate field in `src/` still fails however it is annotated.
-fn is_test_code(hit: &str) -> bool {
-    hit.contains("/tests/") || hit.contains("/benches/")
+fn is_test_code(rel: &str) -> bool {
+    rel.contains("/tests/") || rel.contains("/benches/")
 }
 
-/// Whether a hit's line sits inside a `struct`/`union` body rather than a `fn`
-/// signature.
+/// Whether a field's type STORES a `SessionHandle`, as opposed to borrowing
+/// one.
 ///
-/// Walks **backwards** to the nearest enclosing item keyword. Crude, like the
-/// rest of this file and for the same stated reason: a duplicate field is a
-/// lexical fact, so a lexical test catches it. A parser would be a better tool
-/// and a worse fit for a rule whose whole value is that it cannot be argued
-/// with.
-fn in_a_struct_body(sources: &[(std::path::PathBuf, String)], hit: &str) -> bool {
-    let mut parts = hit.splitn(3, ':');
-    let (Some(path), Some(line)) = (parts.next(), parts.next()) else {
-        return true;
-    };
-    let Ok(line) = line.parse::<usize>() else {
-        return true;
-    };
-    let Some((_, text)) = sources
-        .iter()
-        .find(|(candidate, _)| cena_arch_tests::harness::relative(candidate) == path)
-    else {
-        // Unknown file: keep the hit. A detector that drops what it cannot
-        // classify would let a real duplicate through silently.
-        return true;
-    };
-    let lines: Vec<&str> = text.lines().collect();
-    for above in lines[..line.saturating_sub(1).min(lines.len())]
-        .iter()
-        .rev()
-    {
-        let code = above.trim_start();
-        if code.starts_with("struct ") || code.starts_with("union ") {
-            return true;
-        }
-        if code.starts_with("fn ")
-            || code.starts_with("pub fn ")
-            || code.starts_with("pub(crate) fn ")
-            || code.starts_with("pub(super) fn ")
-            || code.starts_with("async fn ")
-            || code.starts_with("pub async fn ")
-        {
+/// `SessionHandle`, `Option<SessionHandle>`, `Vec<cena_session::SessionHandle>`
+/// all store it; `&SessionHandle`, `&'a SessionHandle` and `&mut SessionHandle`
+/// borrow it, and a borrow is not ownership -- which is why the many
+/// `handle: &SessionHandle` parameters in behavior code never counted, and why
+/// a struct holding a reference does not either.
+fn stores_a_handle(field: &Field) -> bool {
+    let toks = tokens(&field.ty);
+    toks.iter().enumerate().any(|(k, t)| {
+        if !(t.kind == TokenKind::Ident && t.text == "SessionHandle") {
             return false;
         }
-    }
-    true
+        // Step back over a `path::` prefix, then an optional `mut` and
+        // lifetime, to whatever precedes the type.
+        let mut j = k;
+        while j >= 3 && toks[j - 1].is(":") && toks[j - 2].is(":") {
+            j -= 3;
+        }
+        if j >= 1 && toks[j - 1].is("mut") {
+            j -= 1;
+        }
+        if j >= 1 && toks[j - 1].kind == TokenKind::Lifetime {
+            j -= 1;
+        }
+        !(j >= 1 && toks[j - 1].is("&"))
+    })
 }
 
 #[test]
@@ -158,17 +145,18 @@ fn roundtime_has_a_single_owning_field() {
     // that made half of Vellum's countdowns wrong -- and a gated send reading
     // the stale one fires EARLY, which `plan/19` §1a records as the roundtime
     // defect that "acts" rather than merely displaying wrong.
-    let hits = owning_fields("pub roundtime_ends:");
+    let hits = owning_fields(&workspace_sources(), |f| f.name == "roundtime_ends");
     assert_eq!(
         hits.len(),
         1,
-        "exactly one struct may own a roundtime_ends field (GameState). \
-         A second copy is the Vellum bug: both compile, one is maintained, and \
-         a gated send reading the stale one fires early. Found:\n{}",
+        "exactly one struct may own a roundtime_ends field (GameState), \
+         whatever its visibility. A second copy is the Vellum bug: both \
+         compile, one is maintained, and a gated send reading the stale one \
+         fires early. Found:\n{}",
         hits.join("\n")
     );
     assert!(
-        hits[0].contains("cena-model/src/state.rs"),
+        hits[0].contains("cena-model/src/state.rs") && hits[0].contains("GameState."),
         "roundtime must stay on GameState in cena-model -- a copy anywhere \
          above it is a second source of truth for the same fact. Found at {}",
         hits[0]
@@ -177,10 +165,10 @@ fn roundtime_has_a_single_owning_field() {
 
 #[test]
 fn the_server_clock_has_a_single_owning_field() {
-    // Cena's equivalent of Vellum's `server_time_offset`, and private rather
-    // than `pub` -- `state.rs:119` -- because it is read through
-    // `game_time_now()`. The needle has no `pub ` prefix for that reason.
-    let hits = owning_fields("game_time:");
+    // Cena's equivalent of Vellum's `server_time_offset`. Private on
+    // GameState, read through `game_time_now()` -- and matched by NAME with
+    // any visibility, so a `pub game_time` copy elsewhere counts too.
+    let hits = owning_fields(&workspace_sources(), |f| f.name == "game_time");
     assert_eq!(
         hits.len(),
         1,
@@ -190,11 +178,38 @@ fn the_server_clock_has_a_single_owning_field() {
         hits.join("\n")
     );
     assert!(
-        hits[0].contains("cena-model/src/state.rs"),
+        hits[0].contains("cena-model/src/state.rs") && hits[0].contains("GameState."),
         "the server clock must stay on GameState. Found at {}",
         hits[0]
     );
 }
+
+/// The one struct that OWNS the session handle: it is built beside the actor.
+const HANDLE_OWNER: (&str, &str) = ("crates/cena-session/src/actor/handle.rs", "Session");
+
+/// Long-lived HOLDERS of a cloned `SessionHandle`, beyond the owner, each with
+/// why it cannot go stale independently.
+///
+/// An allowlist, like `ALLOWED_STATICS`: a new holder is a reviewed entry, not
+/// a needle miss.
+const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[(
+    "crates/cena-web/src/server.rs",
+    "Shared",
+    "The embedded frontend's manual-input surface. Found by review finding 1 \
+     (it evaded the old needle by being `pub(crate)`), and allowed rather than \
+     reported, on the type's own terms: SessionHandle is documented as \
+     'Cloneable, so a behavior and the manual-input surface hold the same \
+     handle and their commands therefore go through the same queue' \
+     (crates/cena-session/src/command/handle.rs:165-168), and every one of \
+     its fields is a channel sender or an Arc-shared slot, cell or \
+     publisher -- so a \
+     clone cannot drift from the original, which is the hazard Rule 4.3 \
+     exists for (plan/05:376-383). Sends are generation-pinned \
+     (cena-web/src/socket.rs, send_manual_at), so a stale view is refused by \
+     the session rather than delivered. M4 decision D2 gives cena-web this \
+     edge (layering.rs ALLOWED_EDGES). `the_handle_premise_holds` checks the \
+     'every field is shared' half mechanically.",
+)];
 
 #[test]
 fn the_session_handle_has_a_single_owning_field() {
@@ -202,21 +217,92 @@ fn the_session_handle_has_a_single_owning_field() {
     // a command reaches a connection its holder has already been told is gone
     // -- the shape review finding SE-1 turned out to be.
     //
-    // The needle is the TYPED declaration, so the many `handle: &SessionHandle`
-    // parameters in behavior code do not count: a borrow is not ownership.
-    let hits = owning_fields("handle: SessionHandle,");
+    // Matched by TYPE: any field whose type stores a SessionHandle, whatever
+    // the field is called and whatever its visibility.
+    let hits = owning_fields(&workspace_sources(), stores_a_handle);
+    let (owner_path, owner) = HANDLE_OWNER;
+    let is = |hit: &str, path: &str, container: &str| {
+        hit.starts_with(&format!("{path}:")) && hit.contains(&format!(" {container}."))
+    };
+    let owners: Vec<&String> = hits.iter().filter(|h| is(h, owner_path, owner)).collect();
     assert_eq!(
-        hits.len(),
+        owners.len(),
         1,
-        "exactly one struct may own a SessionHandle field. A second stored \
-         handle is a second way to reach a connection, and they go stale \
-         independently. Found:\n{}",
+        "the owning SessionHandle field must stay on `{owner}` in \
+         {owner_path}. Found:\n{}",
         hits.join("\n")
     );
+    let unreviewed: Vec<&String> = hits
+        .iter()
+        .filter(|h| !is(h, owner_path, owner))
+        .filter(|h| !HANDLE_HOLDERS.iter().any(|(p, c, _)| is(h, p, c)))
+        .collect();
     assert!(
-        hits[0].contains("cena-session/src/actor/handle.rs"),
-        "the owning handle must stay in cena-session. Found at {}",
-        hits[0]
+        unreviewed.is_empty(),
+        "a struct stores a SessionHandle and is neither its owner nor a \
+         reviewed holder. A second stored handle is a second way to reach a \
+         connection. If this one is a clone that cannot go stale, add it to \
+         HANDLE_HOLDERS and say why; otherwise borrow the handle.\n{}",
+        unreviewed
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    for (path, container, why) in HANDLE_HOLDERS {
+        assert!(
+            hits.iter().any(|h| is(h, path, container)),
+            "HANDLE_HOLDERS names {container} in {path}, which no longer holds \
+             a handle: delete the entry, or it will excuse a future one unseen"
+        );
+        assert!(why.len() > 200 && why.contains(':'), "{container}: {why:?}");
+    }
+}
+
+/// The premise `HANDLE_HOLDERS` rests on: a clone of `SessionHandle` shares
+/// all of its state, so it cannot go stale on its own.
+///
+/// If `SessionHandle` gains a plain-value field -- a cached generation, a copy
+/// of anything -- then two clones CAN disagree, the holder entry's argument is
+/// false, and this fails before the allowance quietly outlives its reason.
+#[test]
+fn the_handle_premise_holds() {
+    let path = cena_arch_tests::harness::workspace_root()
+        .join("crates/cena-session/src/command/handle.rs");
+    let text = std::fs::read_to_string(&path).expect("SessionHandle's file");
+    let fields: Vec<Field> = outline(&text)
+        .fields
+        .into_iter()
+        .filter(|f| f.container == "SessionHandle")
+        .collect();
+    assert!(
+        fields.len() >= 3,
+        "found {} SessionHandle fields; the struct moved and this premise \
+         check is vacuous",
+        fields.len()
+    );
+    // `EventPublisher` is itself only broadcast senders, `Arc`s, a
+    // `GenerationCell` and the session's immutable id (observation.rs,
+    // `struct EventPublisher`), so a clone of it is shared the same way. It
+    // replaced a bare `broadcast::Sender` while this check was being written,
+    // which is the case for naming it rather than widening the predicate.
+    let shared = |ty: &str| {
+        ty.contains("Sender<")
+            || ty.ends_with("GenerationCell")
+            || ty.ends_with("::Slot")
+            || ty.ends_with("::EventPublisher")
+    };
+    let copied: Vec<String> = fields
+        .iter()
+        .filter(|f| !shared(&f.ty))
+        .map(|f| format!("{}: {}", f.name, f.ty))
+        .collect();
+    assert!(
+        copied.is_empty(),
+        "SessionHandle gained a field that is not a channel sender or a \
+         shared slot, so two clones can now disagree -- and HANDLE_HOLDERS' \
+         justification is false. Either make it shared, or revisit every \
+         holder: {copied:?}"
     );
 }
 
@@ -236,3 +322,70 @@ fn the_session_handle_has_a_single_owning_field() {
 // silently, and this one cannot.
 //
 // If `Room` ever gains a distinctively-named id field, write the test then.
+
+// ---------------------------------------------------------------------------
+// Mutations. Each fixture is a shape the PREVIOUS version of this file passed
+// green; the old needle's miss is asserted beside the new detector's hit, so
+// the fixture cannot silently stop exercising the distinction.
+// ---------------------------------------------------------------------------
+
+/// Run the detector over one fixture as if it were a production file.
+fn fixture_hits(text: &str, wanted: impl Fn(&Field) -> bool) -> Vec<String> {
+    let path = cena_arch_tests::harness::workspace_root().join("crates/cena-fixture/src/f.rs");
+    owning_fields(&[(path, text.to_owned())], wanted)
+}
+
+/// Finding 1: a second handle under `pub(crate)`, or under another name, is
+/// still a second handle -- the `crates/cena-web/src/server.rs` shape.
+#[test]
+fn a_restricted_or_renamed_handle_field_is_found() {
+    let fixture = "pub(crate) struct Shared {\n    pub(crate) handle: SessionHandle,\n}\n\
+                   struct Other {\n    conn: Option<cena_session::SessionHandle>,\n}\n";
+    // The old test: a trimmed line had to START with the needle.
+    let old_needle = "handle: SessionHandle,";
+    assert!(
+        !fixture.lines().any(|l| l.trim().starts_with(old_needle)),
+        "the fixture no longer defeats the old needle, so it proves nothing"
+    );
+    let hits = fixture_hits(fixture, stores_a_handle);
+    assert_eq!(hits.len(), 2, "{hits:?}");
+}
+
+/// Finding 1, the clock and roundtime halves: visibility does not hide a copy.
+#[test]
+fn a_clock_copy_is_found_whatever_its_visibility() {
+    let fixture =
+        "struct Cache {\n    pub game_time: Option<u32>,\n    roundtime_ends: Option<u32>,\n}\n";
+    assert!(
+        !fixture
+            .lines()
+            .any(|l| l.trim().starts_with("pub roundtime_ends:")),
+        "the fixture no longer defeats the old roundtime needle"
+    );
+    assert_eq!(fixture_hits(fixture, |f| f.name == "game_time").len(), 1);
+    assert_eq!(
+        fixture_hits(fixture, |f| f.name == "roundtime_ends").len(),
+        1
+    );
+}
+
+/// Finding 2: `pub struct` with a `fn` above it. The old walk-up did not know
+/// `pub struct`, reached `fn f`, and dropped the hit.
+#[test]
+fn a_field_of_a_pub_struct_below_a_fn_is_found() {
+    let fixture =
+        "fn f() {}\n\npub struct Copy<T> where T: Clone {\n    pub roundtime_ends: Option<T>,\n}\n";
+    let hits = fixture_hits(fixture, |f| f.name == "roundtime_ends");
+    assert_eq!(hits.len(), 1, "{hits:?}");
+    assert!(hits[0].contains("Copy.roundtime_ends"), "{hits:?}");
+}
+
+/// The false positives the old walk-up existed to prevent must stay excluded:
+/// a parameter, a borrow, and a construction site are not owning fields.
+#[test]
+fn parameters_borrows_and_literals_are_not_owners() {
+    let fixture = "fn walk(\n    handle: SessionHandle,\n) {\n    let s = Shared { handle };\n}\n\
+                   struct View<'a> {\n    handle: &'a SessionHandle,\n    other: &mut SessionHandle,\n}\n";
+    let hits = fixture_hits(fixture, stores_a_handle);
+    assert!(hits.is_empty(), "{hits:?}");
+}

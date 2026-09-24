@@ -19,8 +19,8 @@
 use super::failure::WebLoginFailure;
 use super::instance::instance_for;
 use super::scrape::{
-    LoginRedirect, character_entries, classify_login_redirect, find_char_code,
-    is_subscription_needed, parse_launch,
+    Hop, LoginRedirect, character_entries, classify_login_redirect, find_char_code,
+    is_subscription_needed, next_hop, parse_launch,
 };
 
 /// `GemStone` Prime, the instance with the code divergence.
@@ -492,4 +492,64 @@ fn a_failure_message_never_carries_the_response_body() {
     let rendered = format!("{failure}");
     assert!(rendered.contains("character list"), "{rendered}");
     assert!(!rendered.contains("<html"), "{rendered}");
+}
+
+// ---------------------------------------------------------------------------
+// The selection chain's redirects -- a security boundary too (finding 3)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn the_real_final_redirect_ends_the_chain() {
+    let url = prime_launch("host=storm.gs4.game.play.net&port=10024&key=abc123");
+    assert_eq!(next_hop(&url), Ok(Hop::Launch(url.clone())));
+}
+
+#[test]
+fn a_relative_hop_is_followed_on_play_net() {
+    // The confirmed chain is relative: goplay2.asp -> playing_web.asp -> ...
+    assert_eq!(
+        next_hop("/includes/common/play/playing_web.asp"),
+        Ok(Hop::Follow(
+            "https://www.play.net/includes/common/play/playing_web.asp".to_owned()
+        ))
+    );
+}
+
+#[test]
+fn a_redirect_off_play_net_is_refused_not_followed() {
+    // **The defect.** Every one of these was followed before: the loop took
+    // any `Location` starting with `http` verbatim, cookie jar attached.
+    for hostile in [
+        // Off-site, with a launch-shaped query so the old recogniser took it.
+        "https://evil.example/play/home.asp?host=h&port=1&key=k",
+        // The downgrade Lich names: plain http to the right host and path.
+        "http://www.play.net/play/home.asp?host=h&port=1&key=k",
+        // A lookalike host, and userinfo smuggling the real one in front.
+        "https://www.play.net.evil.example/play/home.asp",
+        "https://www.play.net@evil.example/play/home.asp",
+        "https://user@www.play.net/play/home.asp",
+        // The right origin on the wrong port.
+        "https://www.play.net:8443/play/home.asp",
+        // A scheme-relative "path" that resolves to another host.
+        "//evil.example/includes/common/play/playing_web.asp",
+        // An absolute URL that is not the final page. Lich treats EVERY
+        // absolute Location as the end of the chain, and pins its path.
+        "https://www.play.net/includes/common/play/playing_web.asp",
+    ] {
+        assert_eq!(
+            next_hop(hostile),
+            Err(WebLoginFailure::UnexpectedResponse(
+                "character selection: untrusted redirect"
+            )),
+            "{hostile} was not refused"
+        );
+    }
+}
+
+#[test]
+fn the_trusted_origin_is_matched_case_insensitively() {
+    // A URL's scheme and host are case-insensitive; `Url` normalises both, so
+    // a server that capitalises them is not mistaken for an attacker.
+    let url = "HTTPS://WWW.PLAY.NET/play/home.asp?host=h&port=1&key=k";
+    assert_eq!(next_hop(url), Ok(Hop::Launch(url.to_owned())));
 }

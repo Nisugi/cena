@@ -150,5 +150,6 @@ stay separate from acting.
 | Society coverage | a character run through the societies |
 | `creature_message.rs` wiring | a hunting behavior (M6) — see [`27d`](27d-model-api-room.md) |
 
-**SE-4** (authority across generations) and **SE-6** (`Lagged` recovery
-unreachable) remain deferred, each needing an author decision.
+**SE-4** (authority across generations) remains deferred, needing an author
+decision. **SE-6** (`Lagged` recovery unreachable) is RESOLVED as of 2026-09-23
+(`plan/19`).

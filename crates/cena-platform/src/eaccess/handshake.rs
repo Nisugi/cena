@@ -11,6 +11,7 @@
 //! Read [`super`] for why `EAccess` lives in `cena-platform` and for the BUILT,
 //! NOT RUN rule that governs every function below.
 
+use super::pin::open_pinned;
 use super::refusal::{describe_launch_refusal, launch_refusal_is_fatal};
 use super::wire::hash_password;
 use super::wire::{
@@ -19,7 +20,7 @@ use super::wire::{
     resolve_char_code,
 };
 use crate::bytes::ByteSource;
-use crate::live::LiveSource;
+use std::path::Path;
 
 /// How long one stage may wait for its answer.
 ///
@@ -58,7 +59,10 @@ const STAGE_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
 /// a slow link -- which also breaks the spike's own pass criterion, that a bad
 /// login "must fail cleanly in under 2s, naming the stage -- not hang"
 /// (`spike/eaccess-spike/src/main.rs:599-600`).
-async fn read_response(conn: &mut LiveSource, stage: &'static str) -> Result<String, EaccessError> {
+async fn read_response(
+    conn: &mut impl ByteSource,
+    stage: &'static str,
+) -> Result<String, EaccessError> {
     let mut buf = vec![0u8; READ_BUF];
     let read = tokio::time::timeout(STAGE_DEADLINE, conn.read(&mut buf))
         .await
@@ -84,7 +88,11 @@ async fn read_response(conn: &mut LiveSource, stage: &'static str) -> Result<Str
 ///
 /// [`ByteSource::write_all`] carries the single-write contract; this just adds
 /// the newline to the same buffer rather than writing it separately.
-async fn send(conn: &mut LiveSource, line: &str, stage: &'static str) -> Result<(), EaccessError> {
+async fn send(
+    conn: &mut impl ByteSource,
+    line: &str,
+    stage: &'static str,
+) -> Result<(), EaccessError> {
     let mut message = Vec::with_capacity(line.len() + 1);
     message.extend_from_slice(line.as_bytes());
     message.push(b'\n');
@@ -100,42 +108,74 @@ async fn send(conn: &mut LiveSource, line: &str, stage: &'static str) -> Result<
 /// where a program's output goes -- and it is what lets the tests below exist
 /// at all.
 ///
+/// `pin` is the certificate pin file (`<data dir>/`[`PIN_FILENAME`]): the
+/// server's certificate is recorded there on first use and must match it on
+/// every later login. See `pin.rs` for why a mismatch is fatal rather than
+/// silently re-pinned, as Lich does.
+///
 /// # Errors
 ///
 /// [`EaccessError`], naming the stage. The failure paths are deliberately
 /// specific: a game code the server does not offer, a launch refusal, and a
 /// character that is not on the account each produce their own message rather
-/// than a generic rejection.
+/// than a generic rejection. A certificate that does not match the pin is a
+/// fatal `cert_pin` error naming the file.
+///
+/// [`PIN_FILENAME`]: super::PIN_FILENAME
 ///
 /// # Panics
 ///
 /// Does not panic.
 pub async fn authenticate(
     creds: Credentials<'_>,
+    pin: &Path,
     mut progress: impl FnMut(&str),
 ) -> Result<LaunchPayload, EaccessError> {
     // Three weakenings, all required, all documented on `connect_tls`: no SNI,
     // no cert verification, no hostname check. The cert is self-signed with no
-    // chain, so there is nothing to verify against; we do NOT pin, which
-    // `connect_tls` records as the cost.
+    // chain, so there is nothing to verify against -- the PIN replaces that
+    // verification, and is checked before `converse` sends a byte.
     progress(&format!(
         "[stage: tls_handshake] {EACCESS_HOST}:{EACCESS_PORT}, no SNI (matching Lich)"
     ));
-    let mut conn = LiveSource::connect_tls(EACCESS_HOST, EACCESS_PORT)
-        .await
-        .map_err(|e| err("tls_handshake", e))?;
+    let mut conn = open_pinned(EACCESS_HOST, EACCESS_PORT, pin, &mut progress).await?;
 
-    prove_identity(&mut conn, creds, &mut progress).await?;
-    select_instance(&mut conn, creds, &mut progress).await?;
-    let char_code = resolve_character(&mut conn, creds, &mut progress).await?;
-    let launch = launch_character(&mut conn, &char_code, &mut progress).await?;
+    let launch = converse(&mut conn, creds, &mut progress).await;
 
-    // The eaccess socket has done its job. Close it: the game socket is a
-    // different connection, and leaving this one open is a leaked socket
-    // (criterion 6) for the whole life of the session.
+    // The eaccess socket has done its job -- or failed at it. Close it either
+    // way: the game socket is a different connection, and leaving this one
+    // open is a leaked socket (criterion 6) for the whole life of the session.
     let _ = conn.shutdown().await;
 
-    Ok(launch)
+    launch
+}
+
+/// The `K A M F G P C L` conversation, over any [`ByteSource`].
+///
+/// # Why this is split from [`authenticate`]
+///
+/// So that a test can hold the other end. Every decision below -- the key used
+/// whole, a code `M` does not list refused fatally, a strange `L` redacted --
+/// used to be reachable only through `connect_tls`, which no test may call.
+/// The PL-3 guard proved what that costs: the tests pinning "the key is used
+/// whole" called [`hash_password`] directly, so the `trim_ascii` they existed to
+/// forbid could have come back at the one call site that mattered and left
+/// every one of them green (review finding 4). Driving the conversation over
+/// [`crate::AnsweringSource`] closes that: `handshake_tests.rs` scripts each
+/// server reply and reads back the bytes this function actually wrote.
+///
+/// Generic rather than `&mut dyn`: `ByteSource`'s methods return `impl Future`,
+/// so it is not object-safe, and the generic costs one monomorphisation per
+/// caller -- `LiveSource` in production, `AnsweringSource` under test.
+pub(super) async fn converse(
+    conn: &mut impl ByteSource,
+    creds: Credentials<'_>,
+    progress: &mut impl FnMut(&str),
+) -> Result<LaunchPayload, EaccessError> {
+    prove_identity(conn, creds, progress).await?;
+    select_instance(conn, creds, progress).await?;
+    let char_code = resolve_character(conn, creds, progress).await?;
+    launch_character(conn, &char_code, progress).await
 }
 
 /// `K` then `A`: get the server's hash key, and prove we know the password.
@@ -147,7 +187,7 @@ pub async fn authenticate(
 /// the letters stay: the response to `A` being called `a` is the clearest name
 /// available, once only one of them is in scope at a time.
 async fn prove_identity(
-    conn: &mut LiveSource,
+    conn: &mut impl ByteSource,
     creds: Credentials<'_>,
     progress: &mut impl FnMut(&str),
 ) -> Result<(), EaccessError> {
@@ -197,7 +237,10 @@ async fn prove_identity(
     // a coin-flip that has not come up yet, not an exotic case. The trim bought
     // nothing in either direction, which is what makes removing it free.
     //
-    // `crates/cena-platform/tests/eaccess_mandated_vectors.rs` pins it.
+    // `handshake_tests.rs` pins it HERE, at the call site, by reading back the
+    // `A` line written for a key that starts with 0x20. The vectors in
+    // `tests/eaccess_mandated_vectors.rs` pin only the hash's arithmetic, and
+    // stayed green with a trim restored on this line (review finding 4).
     let key = key_raw.as_slice();
     if key.is_empty() {
         return Err(err("k_response", "MALFORMED_K_RESPONSE (empty)"));
@@ -272,7 +315,7 @@ async fn prove_identity(
 /// MEASURED 2026-09-18: `gs3` lowercase produced exactly that chain
 /// (F=PREMIUM, C=16 slots, L=PROBLEM 3).
 async fn select_instance(
-    conn: &mut LiveSource,
+    conn: &mut impl ByteSource,
     creds: Credentials<'_>,
     progress: &mut impl FnMut(&str),
 ) -> Result<(), EaccessError> {
@@ -283,6 +326,17 @@ async fn select_instance(
     if !codes.contains(&creds.game_code) {
         // FATAL: the server's own list of instances does not contain this code.
         // No number of retries adds one.
+        //
+        // **It said FATAL and was not** (review finding 1). The `.fatal()` was
+        // never called, so the error defaulted to transient -- and a transient
+        // eaccess error falls back to web login, which refuses the same code
+        // as `UnsupportedGameCode`, which `carry_forward` deliberately does not
+        // treat as a verdict. So a mistyped `GS4` became a supervisor retrying
+        // forever, each attempt a FULL login that sends the password to `A`
+        // every 30 seconds: the exact account-lock pattern the mistyped
+        // CHARACTER name below was made fatal to stop. A comment claiming a
+        // verdict the code does not deliver is worse than no comment -- it is
+        // what a reviewer reads instead of the code.
         return Err(err(
             "m_response",
             format!(
@@ -294,7 +348,8 @@ async fn select_instance(
                 creds.game_code,
                 codes.join(", ")
             ),
-        ));
+        )
+        .fatal());
     }
     // The WHOLE line, not just the parsed codes. `offered_game_codes` keeps
     // every other field, which drops the human-readable instance names -- and
@@ -354,7 +409,7 @@ async fn select_instance(
 /// `C`: list the account's characters on the selected instance and find the
 /// one asked for.
 async fn resolve_character(
-    conn: &mut LiveSource,
+    conn: &mut impl ByteSource,
     creds: Credentials<'_>,
     progress: &mut impl FnMut(&str),
 ) -> Result<String, EaccessError> {
@@ -438,7 +493,7 @@ async fn resolve_character(
 /// that a loose guard accepts it and then parses a garbage launch payload
 /// (`plan/10` §4.7 item 2).
 async fn launch_character(
-    conn: &mut LiveSource,
+    conn: &mut impl ByteSource,
     char_code: &str,
     progress: &mut impl FnMut(&str),
 ) -> Result<LaunchPayload, EaccessError> {
@@ -461,3 +516,7 @@ async fn launch_character(
     progress(&format!("[stage: l_response] {}", redact(l.trim())));
     parse_launch(&l)
 }
+
+#[cfg(test)]
+#[path = "handshake_tests.rs"]
+mod handshake_tests;

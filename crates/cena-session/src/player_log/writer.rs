@@ -291,17 +291,39 @@ impl Drop for PlayerWriter {
     }
 }
 
-/// Strip characters that cannot appear in a filename.
+/// The character's name as a path component: ASCII alphanumerics, lowercased.
 ///
-/// Character names are the game's and ought to be alphabetic, but a filename
-/// is not the place to find out otherwise. Lichborne strips the same set; the
-/// development platform is Windows, where `:` and `?` are hard errors rather
-/// than odd names.
+/// **The same rule as every other per-character file**
+/// ([`crate::store::safe_component`]), and it was not always. This stripped
+/// only the characters Windows forbids, which left three defects (review
+/// finding 12):
+///
+/// * **Case.** `Nisugi` and `nisugi` -- the wire's spelling and a typed one --
+///   are one directory on NTFS and two on ext4, so a Linux player's history
+///   split silently. The exact bug `store.rs` records fixing for the
+///   character store.
+/// * **Dots.** `..` passed the filter, so a name of `..` put the log one
+///   level above its own `player/` directory.
+/// * **Reserved names.** `Con`, `Aux`, `Nul`, `Prn` are devices on Windows,
+///   and a directory by that name cannot be created there.
+///
+/// Lowercase ASCII alphanumerics answer the first two -- no separator or dot
+/// survives. They do not answer the third, because the directory is the bare
+/// name, so a device name gets a trailing `_`. `store.rs` does not need that:
+/// its names always carry an `<instance>_` prefix. Game names are alphabetic,
+/// so no real character loses anything here.
 fn safe_name(character: &str) -> String {
-    let cleaned: String = character
-        .chars()
-        .filter(|c| !r#"/\:*?"<>|"#.contains(*c) && !c.is_control())
-        .collect();
+    let cleaned = crate::store::safe_component(character);
+    // Windows reserves these as device names in any case and with any
+    // extension. `com1`-`com9` and `lpt1`-`lpt9` are the same family.
+    let reserved = matches!(cleaned.as_str(), "con" | "aux" | "nul" | "prn")
+        || ((cleaned.starts_with("com") || cleaned.starts_with("lpt"))
+            && cleaned.len() == 4
+            && cleaned.as_bytes()[3].is_ascii_digit()
+            && cleaned.as_bytes()[3] != b'0');
+    if reserved {
+        return format!("{cleaned}_");
+    }
     if cleaned.is_empty() {
         // A name that was ENTIRELY forbidden characters would otherwise
         // produce `_2026-09-21.log` in the log root's parent -- a path outside

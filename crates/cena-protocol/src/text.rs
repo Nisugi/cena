@@ -13,7 +13,7 @@ mod entities;
 #[cfg(test)]
 mod termination;
 
-pub use entities::{decode_entities, strip_control_chars};
+pub use entities::{decode_attribute_value, decode_entities, strip_control_chars};
 
 use crate::frame::{Link, LinkKind};
 
@@ -161,7 +161,9 @@ pub fn attribute(tag: &str, name: &str) -> Option<String> {
         }
         let body = &rest[quote.len_utf8()..];
         let end = body.find(quote)?;
-        return Some(decode_entities(&body[..end]));
+        // Decoded AND control-stripped: an id or title decoded to a raw ESC
+        // reaches a frontend's window title. See `decode_attribute_value`.
+        return Some(decode_attribute_value(&body[..end]));
     }
     None
 }
@@ -230,7 +232,7 @@ pub fn attributes(tag: &str) -> Vec<(String, String)> {
         let key = key.rsplit(char::is_whitespace).next().unwrap_or(key);
         let value_body = &after_eq[quote.len_utf8()..];
         if !key.is_empty() {
-            out.push((key.to_owned(), decode_entities(&value_body[..end])));
+            out.push((key.to_owned(), decode_attribute_value(&value_body[..end])));
         }
         rest = &value_body[end + quote.len_utf8()..];
     }

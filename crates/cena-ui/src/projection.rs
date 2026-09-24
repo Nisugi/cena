@@ -1,6 +1,6 @@
 //! Pure model projection: the caller supplies lifecycle and observation time.
 
-use cena_model::{GameState, Hand, RoomItem, Vital, VitalsExt};
+use cena_model::{GameState, Hand, RoomItem, Vital};
 
 use crate::view::{
     HandView, LifecycleView, RoomItemView, RoomView, RoundtimeView, SessionView, StyledRun,
@@ -41,10 +41,10 @@ impl SessionView {
             left_hand: hand(&state.left_hand),
             right_hand: hand(&state.right_hand),
             vitals: VitalsView {
-                health: state.vitals.health().map(vital),
-                mana: state.vitals.mana().map(vital),
-                stamina: state.vitals.stamina().map(vital),
-                spirit: state.vitals.spirit().map(vital),
+                health: state.health().map(vital),
+                mana: state.mana().map(vital),
+                stamina: state.stamina().map(vital),
+                spirit: state.spirit().map(vital),
             },
             roundtime: RoundtimeView {
                 ends_at: state.roundtime_ends,

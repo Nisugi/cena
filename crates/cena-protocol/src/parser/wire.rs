@@ -17,6 +17,65 @@ pub(super) const COMMENT_CLOSE: &str = "-->";
 /// Closes the login client-settings blob.
 pub(super) const SETTINGS_CLOSE: &str = "</settings>";
 
+impl super::Parser {
+    // Moved here from `parser.rs` when that file passed its 500-line facade
+    // cap: the settings blob is a wire region, like the client region below.
+    /// Consume a line belonging to an open login `<settings>` blob.
+    ///
+    /// Returns what is left to parse: the whole line when no blob is open,
+    /// what follows `</settings>` when the blob closes on it, and `None` when
+    /// the blob consumed all of it.
+    ///
+    /// Inside the blob the line is client configuration rather than game
+    /// output, so it is consumed whole. A `<prompt>` breaks the region for the
+    /// same reason it breaks a capture: a blob whose close never arrives must
+    /// not swallow the rest of the session.
+    pub(super) fn continue_settings_blob<'a>(&mut self, line: &'a str) -> Option<&'a str> {
+        if self.settings != SettingsRegion::Open {
+            return Some(line);
+        }
+        // Whichever comes FIRST ends the region, and a prompt ends it AT the
+        // prompt: what precedes it on the line is still blob. Both are what
+        // `push_bytes` does, scanning byte by byte, and this used to differ
+        // on each -- checking the close before the prompt regardless of
+        // order, and re-parsing the blob's bytes before a prompt as game
+        // text. Found by `push_bytes_and_parse_line_agree`.
+        let close = line.find(SETTINGS_CLOSE);
+        let prompt = line.find("<prompt");
+        match (close, prompt) {
+            (Some(at), p) if p.is_none_or(|p| at < p) => {
+                self.settings = SettingsRegion::Outside;
+                let after = &line[at + SETTINGS_CLOSE.len()..];
+                (!after.is_empty()).then_some(after)
+            }
+            (_, Some(at)) => {
+                self.settings = SettingsRegion::Outside;
+                Some(&line[at..])
+            }
+            _ => None,
+        }
+    }
+}
+
+/// The parser's position relative to the login `<settings>` blob.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum SettingsRegion {
+    /// No blob open. The ordinary case.
+    #[default]
+    Outside,
+    /// Inside a blob whose close has not arrived.
+    Open,
+    /// `push_bytes` saw the blob close on the line it is still reading.
+    ///
+    /// That line's blob bytes were never buffered, so at its newline
+    /// `pending` holds only what followed `</settings>` -- nothing, when the
+    /// close ended the line -- and parsing that empty remainder emitted a
+    /// BLANK LINE that `parse_line` never produced for the same bytes. Found
+    /// by `push_bytes_and_parse_line_agree` on its first run. A third state
+    /// rather than a fourth `bool` on `Parser`: the two cannot both hold.
+    ClosedThisLine,
+}
+
 /// Consume a `<!-- CLIENT --> ... <!-- ENDCLIENT -->` region.
 ///
 /// Returns the command the player typed, when the region carries one, and the
@@ -35,7 +94,9 @@ pub(super) fn client_region(tail: &str) -> (Option<Frame>, &str) {
     // `<c>` carries the player's own command; everything else in the region
     // is the client's settings traffic and is not protocol.
     let command = body.strip_prefix("<c>").map(|cmd| Frame::ClientCommand {
-        command: text::decode_entities(cmd),
+        // Stripped like every other decoded text: `&#27;` here is a real ESC
+        // by the time a replay prints it.
+        command: text::strip_control_chars(&text::decode_entities(cmd)),
     });
     (command, after)
 }

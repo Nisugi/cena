@@ -4,7 +4,9 @@
 //! which is Lich's ladder -- so these tests start from text, as the driver
 //! will, and not from a hand-picked enum.
 
-use cena_behavior::travel::{MAX_RESENDS, Now, ORPHAN_MS, STEP_TIMEOUT_MS, Said, Trip, Why};
+use cena_behavior::travel::{
+    MAX_RESENDS, MAX_STANDS, Now, ORPHAN_MS, STAND_TIMEOUT_MS, STEP_TIMEOUT_MS, Said, Trip, Why,
+};
 use cena_map::{Map, Room, RoomId, Walker};
 use cena_session::movement::classify;
 
@@ -193,6 +195,79 @@ fn a_walker_on_the_ground_stands_before_it_moves() {
     let mut trip = Trip::to(RoomId(3));
     assert_eq!(trip.tick(&map, &walker, at(1, 0)), send("stand"));
     walker.posture = Some("standing".into());
+    assert_eq!(trip.tick(&map, &walker, at(1, 100)), send("go gate"));
+}
+
+/// One `stand`, and then a wait for it -- not one a tick. Vellum's
+/// `AwaitStand` (`executor.rs:891-915`): another try only after
+/// [`STAND_TIMEOUT_MS`], and never inside a roundtime the game has stated.
+///
+/// Review finding (2026-09-23): the trip answered `stand` on every tick, so
+/// a driver that ticks on each line sent five in five milliseconds and then
+/// the move, still kneeling. Reproduced before the fix: ticks 0..=4 were all
+/// `stand` and tick 5 was `go gate`.
+#[test]
+fn a_stand_is_waited_on_before_another_is_sent() {
+    let map = map().unwrap();
+    let mut walker = Walker {
+        posture: Some("kneeling".into()),
+        ..Walker::default()
+    };
+    let mut trip = Trip::to(RoomId(3));
+    assert_eq!(trip.tick(&map, &walker, at(1, 0)), send("stand"));
+    for ms in 1..=6 {
+        assert_eq!(trip.tick(&map, &walker, at(1, ms)), Said::Hold, "tick {ms}");
+    }
+    // Unanswered for long enough: another try.
+    let again = STAND_TIMEOUT_MS;
+    assert_eq!(trip.tick(&map, &walker, at(1, again)), send("stand"));
+    // Refused for roundtime: nothing until it has passed, though the stand's
+    // own timeout runs out first.
+    hear(&mut trip, "...wait 5 seconds.");
+    assert_eq!(trip.tick(&map, &walker, at(1, again + 100)), Said::Hold);
+    let past_timeout = again + 100 + STAND_TIMEOUT_MS;
+    assert_eq!(trip.tick(&map, &walker, at(1, past_timeout)), Said::Hold);
+    let past_rt = again + 100 + 5000;
+    assert_eq!(trip.tick(&map, &walker, at(1, past_rt)), send("stand"));
+    // On its feet: the move, at once.
+    walker.posture = Some("standing".into());
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, past_rt + 1)),
+        send("go gate")
+    );
+}
+
+/// [`MAX_STANDS`] tries, each waited on, and then the move goes anyway, as
+/// go2's does: its own "you must be standing" remedy is bounded.
+#[test]
+fn a_walker_that_will_not_stand_moves_in_the_end() {
+    let map = map().unwrap();
+    let walker = Walker {
+        posture: Some("kneeling".into()),
+        ..Walker::default()
+    };
+    let mut trip = Trip::to(RoomId(3));
+    let mut said = Vec::new();
+    for tick in 0..=u64::from(MAX_STANDS) {
+        said.push(trip.tick(&map, &walker, at(1, tick * STAND_TIMEOUT_MS)));
+    }
+    let stands = said.iter().filter(|said| **said == send("stand")).count();
+    assert_eq!(stands, MAX_STANDS as usize, "{said:?}");
+    assert_eq!(said.last(), Some(&send("go gate")), "{said:?}");
+}
+
+/// go2's `stand_regex`: some places will not let anyone stand, and saying
+/// `stand` again there only spends the tries. The walker moves on.
+#[test]
+fn where_nobody_can_stand_the_walker_moves_without_it() {
+    let map = map().unwrap();
+    let walker = Walker {
+        posture: Some("sitting".into()),
+        ..Walker::default()
+    };
+    let mut trip = Trip::to(RoomId(3));
+    assert_eq!(trip.tick(&map, &walker, at(1, 0)), send("stand"));
+    trip.heard("There is not enough room to stand up in here.");
     assert_eq!(trip.tick(&map, &walker, at(1, 100)), send("go gate"));
 }
 

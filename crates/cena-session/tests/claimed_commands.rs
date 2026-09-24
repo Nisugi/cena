@@ -35,15 +35,21 @@ async fn a_mistyped_command_is_answered_and_the_game_never_hears_it() {
     assert_eq!(handle.command_symbol(), Some(';'));
 
     // The game's, and it goes to the game.
-    handle.send_manual_at(generation, "north", DEADLINE).await;
+    let north = handle.send_manual_at(generation, "north", DEADLINE).await;
     // Hydra's, and known.
-    handle
+    let known = handle
         .send_manual_at(generation, ";go2 bank", DEADLINE)
         .await;
     // Hydra's, and NOT known -- the line the author named.
-    handle
+    let unknown = handle
         .send_manual_at(generation, ";go22 bank", DEADLINE)
         .await;
+
+    // Said by the outcome, not by a frame nobody sent: these were answered
+    // `Confirmed(Prompt)`, and a frontend told them apart by the `;`.
+    assert_ne!(north, cena_session::Outcome::Handled);
+    assert_eq!(known, cena_session::Outcome::Handled);
+    assert_eq!(unknown, cena_session::Outcome::Handled);
 
     assert_eq!(
         transcript.lines(),
@@ -66,6 +72,40 @@ async fn a_mistyped_command_is_answered_and_the_game_never_hears_it() {
     assert!(said[0].contains(";go22 bank"), "{said:?}");
 }
 
+/// **A claimed line checks the generation before it runs.**
+///
+/// The actor's generation fence only sees what reaches the actor, and a
+/// claimed line never does: `;go2 bank` typed into a browser still showing
+/// the previous connection ran the desk anyway, and came back `Confirmed`
+/// (review finding 8).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_claimed_line_from_a_stale_generation_does_not_run() {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let stale = handle.generation();
+    tokio::spawn(session.into_actor().run());
+
+    let ran: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let kept = Arc::clone(&ran);
+    let runner: Runner = Arc::new(move |line: &str| {
+        kept.lock().map(|mut ran| ran.push(line.to_owned())).ok();
+        Claimed::Done
+    });
+    assert!(handle.set_desk(Desk::new(None, runner)));
+    // What a reconnect does to every handle: the frontend is now a
+    // generation behind.
+    let _ = handle.generation_cell().advance();
+
+    let outcome = handle.send_manual_at(stale, ";go2 bank", DEADLINE).await;
+    assert_eq!(outcome, cena_session::Outcome::Disconnected);
+    assert!(
+        ran.lock().unwrap().is_empty(),
+        "the desk ran a command addressed to a connection that is gone"
+    );
+    assert!(transcript.lines().is_empty());
+}
+
 /// With nothing registered, a session behaves exactly as it did before: the
 /// symbol means nothing and every line is the game's.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
@@ -78,8 +118,42 @@ async fn a_session_with_no_desk_sends_everything_as_it_always_did() {
 
     assert_eq!(handle.command_symbol(), None);
     assert_eq!(handle.typed(";go2 bank"), None);
+    let sent = handle
+        .send_manual_at(generation, ";go2 bank", DEADLINE)
+        .await;
+    assert_ne!(sent, cena_session::Outcome::Handled);
+    assert_eq!(transcript.lines(), [";go2 bank"]);
+}
+
+/// **The desk goes in at startup and learns the character's symbol later.**
+/// A character whose settings choose `/` gets `/` from then on, and `;` goes
+/// back to being the game's -- without a second desk, which `set_desk` refuses.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_symbol_can_change_after_the_desk_is_installed() {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let generation = handle.generation();
+    tokio::spawn(session.into_actor().run());
+
+    let runner: Runner = Arc::new(|_: &str| Claimed::Done);
+    assert!(handle.set_desk(Desk::new(None, runner)));
+    assert_eq!(handle.command_symbol(), Some(';'));
+
+    assert!(handle.set_command_symbol('/'));
+    assert_eq!(handle.command_symbol(), Some('/'));
+    assert_eq!(
+        handle
+            .send_manual_at(generation, "/go2 bank", DEADLINE)
+            .await,
+        cena_session::Outcome::Handled
+    );
     handle
         .send_manual_at(generation, ";go2 bank", DEADLINE)
         .await;
-    assert_eq!(transcript.lines(), [";go2 bank"]);
+    assert_eq!(
+        transcript.lines(),
+        [";go2 bank"],
+        "once the symbol is `/`, `;` is the game's"
+    );
 }

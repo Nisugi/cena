@@ -63,6 +63,7 @@ mod preflight;
 mod recovery;
 mod replies;
 mod routines;
+mod standing;
 mod steps;
 
 use std::collections::HashSet;
@@ -85,7 +86,11 @@ pub use hands::{Stored, cast_commands, store_commands, take_back};
 pub use heard::Heard;
 pub use itinerary::{Leg, PLACES, Shut, ShutWhy, described, destination, itinerary, places, table};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
-pub use steps::{Deed, EXCHANGE_TIMEOUT_MS, MAX_RESENDS, MAX_TURNS, MAX_WAIT_MS, STEP_TIMEOUT_MS};
+pub use standing::{MAX_STANDS, STAND_TIMEOUT_MS};
+pub use steps::{
+    CARRIED_WITHIN_MS, Deed, EXCHANGE_TIMEOUT_MS, MAX_RESENDS, MAX_TURNS, MAX_WAIT_MS,
+    STEP_TIMEOUT_MS,
+};
 use steps::{Out, Owes, Run, Tick};
 
 /// How many times one trip may plan again before it gives up. A walker that
@@ -97,10 +102,6 @@ pub const MAX_REPLANS: u32 = 20;
 /// After giving an exit up, how long lines are ignored: they are about the
 /// move just abandoned. Vellum's orphan window.
 pub const ORPHAN_MS: u64 = 1500;
-
-/// How many times the trip will send `stand` before a move. Vellum's
-/// `MAX_STAND_ATTEMPTS`.
-pub const MAX_STANDS: u32 = 5;
 
 /// What the trip asks of whoever drives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -176,7 +177,16 @@ pub struct Trip {
     believed: Option<(RoomId, RoomId)>,
     first_room: Option<RoomId>,
     left_first_room: bool,
+    /// `stand`s sent before the crossing about to begin.
     stands: u32,
+    /// When the last of them went out, while it is still unanswered by the
+    /// walker's posture. Vellum's `Step::AwaitStand`.
+    stand_sent: Option<u64>,
+    /// No `stand` before this: the game asked for roundtime to pass.
+    stand_rt_until: u64,
+    /// The game said the walker cannot stand here: move without it. Cleared
+    /// once the walker is seen on its feet, as Vellum's `stand_waived` is.
+    stand_waived: bool,
     /// What the crossings have changed and not yet put back.
     owes: Owes,
     /// The driver could not do the deed it was last handed.
@@ -220,6 +230,9 @@ impl Trip {
             first_room: None,
             left_first_room: false,
             stands: 0,
+            stand_sent: None,
+            stand_rt_until: 0,
+            stand_waived: false,
             owes: Owes::default(),
             could_not: false,
             routine: None,
@@ -323,21 +336,29 @@ impl Trip {
     /// stopping it**: a user's stop asks once for what is stored (`drive`). Taking
     /// it clears it.
     pub fn owed(&mut self) -> Vec<Deed> {
-        let mut owed = Vec::new();
-        // The key first: it goes back with the hands as they are.
-        if std::mem::take(&mut self.owes.taken) {
-            owed.push(Deed::PutBack);
-        }
-        if std::mem::take(&mut self.owes.speech) {
-            owed.push(Deed::RestoreSpeech);
-        }
-        if std::mem::take(&mut self.owes.stance) {
-            owed.push(Deed::RestoreStance);
-        }
-        if std::mem::take(&mut self.owes.hands) {
-            owed.push(Deed::FillHands);
-        }
-        owed
+        std::iter::from_fn(|| self.next_owed()).collect()
+    }
+
+    /// The first thing still owed, **and only that one** cleared.
+    ///
+    /// The order is [`Self::owed`]'s: the key first, since it goes back with
+    /// the hands as they are.
+    ///
+    /// Separate from `owed` because `tick` hands the driver one deed at a
+    /// time. It used to call `owed()` and keep `.next()` -- and `owed` takes
+    /// *every* flag as it builds the list, so a trip owing a stance and the
+    /// hands restored the stance, dropped the hands on the floor and said
+    /// `Arrived` with the sword still stored.
+    fn next_owed(&mut self) -> Option<Deed> {
+        let owes = &mut self.owes;
+        [
+            (&mut owes.taken, Deed::PutBack),
+            (&mut owes.speech, Deed::RestoreSpeech),
+            (&mut owes.stance, Deed::RestoreStance),
+            (&mut owes.hands, Deed::FillHands),
+        ]
+        .into_iter()
+        .find_map(|(owed, deed)| std::mem::take(owed).then_some(deed))
     }
 
     /// Where the walker is, what time it is, and what it knows of itself.
@@ -348,9 +369,10 @@ impl Trip {
     /// giving the answer it finished with.
     pub fn tick(&mut self, map: &Map, walker: &Walker, now: Now) -> Said {
         let said = self.tick_inner(map, walker, now);
-        // Whatever ends the trip, what it changed is put back first.
+        // Whatever ends the trip, what it changed is put back first -- one
+        // deed a tick, the rest still owed for the ticks after.
         if matches!(said, Said::Arrived | Said::Failed(_))
-            && let Some(deed) = self.owed().into_iter().next()
+            && let Some(deed) = self.next_owed()
         {
             return Said::Do(deed);
         }
@@ -372,6 +394,7 @@ impl Trip {
         let lines = std::mem::take(&mut self.lines);
         let prompted = std::mem::take(&mut self.prompted);
         let could_not = std::mem::take(&mut self.could_not);
+        self.heard_about_standing(&feedback, &lines, now.ms);
         if let Some((steps, to)) = self.aside.take() {
             // Nowhere the map has, when where it lands is not known.
             let to = to.unwrap_or(RoomId(u32::MAX));
@@ -543,11 +566,12 @@ impl Trip {
             if steps::is_stunned(walker) {
                 return Said::Hold;
             }
-            if self.must_stand_first(walker, &steps) {
-                return Said::Send("stand".to_owned());
+            if let Some(said) = self.stand_first(walker, &steps, ms) {
+                return said;
             }
             self.ahead.remove(0);
             self.stands = 0;
+            self.stand_sent = None;
             // What an earlier crossing changed is still owed: upstream climbs
             // a ledge with empty hands and fills them at the top of the next.
             let mut run = Run::new(here, leaving, next, steps);
@@ -563,23 +587,6 @@ impl Trip {
                 },
             );
         }
-    }
-
-    /// Vellum stands before it moves, unless the move is a swim or a pedal
-    /// (`tick_prepare`). A walker whose posture is not known is left alone:
-    /// the game will say "you must be standing" if it matters, and that has
-    /// its own remedy.
-    fn must_stand_first(&mut self, walker: &Walker, steps: &[Step]) -> bool {
-        let down = walker.posture.as_deref().is_some_and(|is| is != "standing");
-        let afloat = steps.iter().any(|step| match &step.action {
-            Action::Move(command) => command.contains("swim") || command.contains("pedal"),
-            _ => false,
-        });
-        if down && !afloat && self.stands < MAX_STANDS {
-            self.stands += 1;
-            return true;
-        }
-        false
     }
 
     fn replan(&mut self, map: &Map, walker: &Walker, here: RoomId, ms: u64) -> Said {

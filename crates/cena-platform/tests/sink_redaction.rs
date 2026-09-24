@@ -481,8 +481,16 @@ fn a_registered_account_is_redacted_and_the_header_names_it() {
 
     let header = std::fs::read_to_string(&events_path).expect("readable");
     assert!(
-        header.contains("account and character"),
+        header.contains("registered BEFORE the first byte: the account name."),
         "the header must name WHAT is registered, not just say yes:\n{header}"
+    );
+    // **And nothing that was not.** This header said "account and character"
+    // for any non-empty set, while nothing registers the character (review
+    // finding 9) -- the direction that tells a reader a log is more scrubbed
+    // than it is.
+    assert!(
+        !header.contains("character"),
+        "the header claims a character redaction nobody registered:\n{header}"
     );
 }
 
@@ -540,4 +548,86 @@ fn a_secret_split_across_a_rotation_is_redacted() {
         "and neither must the first fragment, which is what rotation used to \
          flush in clear: {all:?}"
     );
+}
+
+/// Write `steps` through a fresh sink and return the whole bytes file.
+fn wire_log(name: &str, key: Option<&str>, steps: &[(bool, &[u8])]) -> std::io::Result<String> {
+    let dir = std::env::temp_dir().join(format!("cena-sink-{name}"));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut sink = cena_platform::SessionSink::create(&dir, "Tester", "stamp", Redactions::new())?;
+    if let Some(key) = key {
+        sink.redact_key(key);
+    }
+    for &(inbound, bytes) in steps {
+        sink.wire(inbound, bytes)?;
+    }
+    sink.flush()?;
+    let path = sink.bytes_path().to_owned();
+    drop(sink);
+    Ok(String::from_utf8_lossy(&std::fs::read(&path)?).into_owned())
+}
+
+/// A prompt split by a read, and the player's command sent between the halves.
+const SPLIT_PROMPT: &[(bool, &[u8])] = &[
+    (true, b"You see a room.\n<prompt ti"),
+    (false, b"look\n"),
+    (true, b"me='1'>&gt;</prompt>\nnext line\n"),
+];
+
+/// What the file must hold: the command after the line it interrupted.
+const LINE_WHOLE: &str = "You see a room.\n<prompt time='1'>&gt;</prompt>\n\
+                          <!-- CLIENT -->look<!-- ENDCLIENT -->\nnext line\n";
+
+/// **A command never splits an inbound line.**
+///
+/// With a secret registered, every inbound chunk has a tail held back, and a
+/// command was written at once -- so it landed before bytes that arrived
+/// earlier, inside a tag. VERIFIED before the fix:
+/// `<prompt ti<!-- CLIENT -->look<!-- ENDCLIENT -->\nme=...`. This is the file
+/// fixtures are cut from.
+#[test]
+fn a_command_waits_for_the_line_the_redaction_hold_interrupted() {
+    let written = wire_log(
+        "cmd-held",
+        Some("a-key-that-never-appears-in-the-payload"),
+        SPLIT_PROMPT,
+    )
+    .expect("the wire log must write");
+    assert_eq!(written, LINE_WHOLE);
+}
+
+/// The same splice with NOTHING registered: a TCP read that ends mid-line is
+/// enough on its own. The hold only made it happen on every chunk.
+#[test]
+fn a_command_waits_for_the_line_a_read_boundary_interrupted() {
+    let written = wire_log("cmd-read", None, SPLIT_PROMPT).expect("the wire log must write");
+    assert_eq!(written, LINE_WHOLE);
+}
+
+/// The falsifying pair: between lines, a command is written in place, not
+/// deferred past the next line.
+#[test]
+fn a_command_between_lines_is_written_in_place() {
+    let written = wire_log(
+        "cmd-between",
+        Some("a-key-that-never-appears-in-the-payload"),
+        &[
+            (true, b"first line\n"),
+            (false, b"look\n"),
+            (true, b"second line\n"),
+        ],
+    )
+    .expect("the wire log must write");
+    assert_eq!(
+        written,
+        "first line\n<!-- CLIENT -->look<!-- ENDCLIENT -->\nsecond line\n"
+    );
+}
+
+/// A session that ends mid-line must not lose the command it sent.
+#[test]
+fn a_command_still_waiting_at_the_end_is_not_lost() {
+    let written = wire_log("cmd-end", None, &[(true, b"half a li"), (false, b"quit\n")])
+        .expect("the wire log must write");
+    assert_eq!(written, "half a li<!-- CLIENT -->quit<!-- ENDCLIENT -->\n");
 }

@@ -25,6 +25,38 @@ pub(super) fn inner_text(tag: &str) -> String {
     }
 }
 
+/// The OPEN tag of a paired string: `<x a='1'>body</x>` -> `<x a='1'>`.
+///
+/// An envelope's own attributes must be read from here, never from the whole
+/// paired string. [`text::attribute`] scans every byte it is given, so asking
+/// the whole `<inventoryManager id=..><continuation root='777'/>...` for
+/// `root` found the CHILD's and reported it as the envelope's -- a fabricated
+/// value on an envelope that sent none (review 2026-09-23).
+pub(super) fn open_tag(tag: &str) -> &str {
+    tag.find('>').map_or(tag, |end| &tag[..=end])
+}
+
+/// Every child element called `name` in a paired tag's body, each cut out as
+/// a standalone tag that [`text::attribute`] can read.
+///
+/// The one implementation of what `menu`, `objectives`, `cmdlist` and
+/// `inventoryManager` each used to spell out -- `split('<')`, a prefix test,
+/// `format!("<{}>", ..)` -- four copies that had already drifted: the
+/// continuation row matched on `starts_with("continuation")` with no
+/// delimiter, so `<continuationX>` would have been read as one. Here the
+/// NAME must match exactly, and a child is cut at its own `>`, so prose
+/// after it is not folded into its attribute string.
+pub(super) fn children(tag: &str, name: &str) -> Vec<String> {
+    inner_text(tag)
+        .split('<')
+        .filter(|part| text::tag_name(part) == name)
+        .map(|part| {
+            let own = part.find('>').map_or(part, |end| &part[..end]);
+            format!("<{}>", own.trim_end_matches('/').trim_end())
+        })
+        .collect()
+}
+
 /// A tag's inner text as the layer above should receive it: nested markup
 /// flattened away, entities decoded, control characters stripped.
 ///

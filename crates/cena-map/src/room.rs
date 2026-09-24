@@ -132,10 +132,14 @@ pub struct Room {
 ///
 /// # Why an offset and not a coordinate
 ///
-/// Room ids are assigned by the build, so a rebuild renumbers them and an
-/// absolute position recorded against one build is meaningless in the next.
-/// An offset from an **anchor** survives that, because the anchor is named by
-/// [`Uid`] — the game's own id, which the build does not invent.
+/// Room ids are **upstream's**, not ours: the converter takes them unchanged
+/// and never renumbers ([`RoomId`]; `plan/21` §3d, "Taken from upstream
+/// unchanged"). But upstream can renumber between its own releases -- the
+/// same risk `plan/21` §3a keys crossings by shape to survive -- so an
+/// absolute position recorded against one upstream map is not safe to carry
+/// into the next. An offset from an **anchor** survives that, because the
+/// anchor is named by [`Uid`] -- the game's own id, which no map build
+/// invents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Placement {
     /// The room the offset is measured from. Never itself placed.

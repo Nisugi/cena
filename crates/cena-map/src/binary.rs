@@ -55,13 +55,21 @@
 //! |---|---|---|
 //! | `sheet` | two string refs, either `NONE` | `Room::map` (the plate slug) and `Room::area` |
 //! | `placement` | `i64` anchor uid, `i32` dx, `i32` dy | `Room::placement` |
-//! | `dirto` | `u32` count, then `u32` destination id + `u32` name ref | `Exit::dirto`, keyed by destination |
+//! | `exit_dirto` | `u32` count, then `u32` exit index + `u32` name ref | `Exit::dirto`, keyed by the exit's position in the room |
+//! | `dirto` | the same, keyed by destination id | **legacy: read, never written** |
 //!
-//! **`dirto` is a room extension although it is a per-EDGE fact.** The exit
+//! **A bearing is a room extension although it is a per-EDGE fact.** The exit
 //! record ends at `cost` and has no extension slot of its own, so a field
 //! appended there would be read as a malformed exit by every client built
 //! before it. The bearings travel together on the room and are matched to
-//! their exits by `to`.
+//! their exits by **index**.
+//!
+//! They were first matched by `to`, as `dirto`, and that was wrong: two exits
+//! from one room can reach the same room, and their bearings merged. The fix is
+//! a new name rather than a new meaning for the old one -- an older client
+//! reading an index as a room id would be a silent misread -- so `VERSION`
+//! still does not move. A client built before `exit_dirto` skips it and falls
+//! through to command text; a map built before it still loads its `dirto`.
 //!
 //! **The plate registry is NOT in the file.** `Map::sheets` maps a slug to a
 //! display name and area, and carrying it would need a file-level section

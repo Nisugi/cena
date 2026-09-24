@@ -3,7 +3,9 @@
 //! Nothing here panics and nothing trusts the file: a truncated, corrupt or
 //! hostile input is a [`LoadError`].
 
-use super::wire::{EXT_DIRTO, EXT_PLACEMENT, EXT_SHEET, LoadError, MAGIC, NONE, Reader, VERSION};
+use super::wire::{
+    EXT_DIRTO, EXT_EXIT_DIRTO, EXT_PLACEMENT, EXT_SHEET, LoadError, MAGIC, NONE, Reader, VERSION,
+};
 use crate::exit::{Cost, Crossing, Dirto, Exit, ExitKind, ShapeId};
 use crate::map::Map;
 use crate::room::{Image, Placement, Room, RoomId, Uid};
@@ -130,7 +132,8 @@ fn read_room(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Room, LoadErro
     let mut map = None;
     let mut area = None;
     let mut placement = None;
-    let mut bearings: Vec<(u32, Option<Dirto>)> = Vec::new();
+    let mut by_destination: Vec<(u32, Option<Dirto>)> = Vec::new();
+    let mut by_index: Option<Vec<(u32, Option<Dirto>)>> = None;
     for _ in 0..r.count(8)? {
         let name = strings.get(r)?;
         let blob = r.blob()?;
@@ -148,21 +151,27 @@ fn read_room(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Room, LoadErro
                     dy: b.i32()?,
                 });
             }
-            EXT_DIRTO => {
-                let mut b = Reader::new(blob);
-                for _ in 0..b.count(8)? {
-                    let to = b.u32()?;
-                    // An unknown bearing name reads as absent rather than
-                    // failing the load: rule 1 again.
-                    bearings.push((to, Dirto::from_name(strings.get(&mut b)?)));
-                }
-            }
+            EXT_DIRTO => by_destination = read_bearings(blob, strings)?,
+            EXT_EXIT_DIRTO => by_index = Some(read_bearings(blob, strings)?),
             _ => {}
         }
     }
-    for exit in &mut exits {
-        if let Some((_, dirto)) = bearings.iter().find(|(to, _)| *to == exit.to.0) {
-            exit.dirto = *dirto;
+    // **The index-keyed record wins whenever it is present**, because it is
+    // the only one that can tell two parallel exits apart (`EXT_EXIT_DIRTO`).
+    // The destination-keyed one is read only for a map built before the fix.
+    if let Some(bearings) = by_index {
+        for (index, dirto) in bearings {
+            // An index past the end names no exit: skipped rather than
+            // failing the load, as an unknown bearing name is.
+            if let Some(exit) = usize::try_from(index).ok().and_then(|i| exits.get_mut(i)) {
+                exit.dirto = dirto;
+            }
+        }
+    } else {
+        for exit in &mut exits {
+            if let Some((_, dirto)) = by_destination.iter().find(|(to, _)| *to == exit.to.0) {
+                exit.dirto = *dirto;
+            }
         }
     }
     Ok(Room {
@@ -185,6 +194,23 @@ fn read_room(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Room, LoadErro
         area,
         placement,
     })
+}
+
+/// A bearings blob: a count, then a `u32` key and a bearing name ref each. The
+/// key is an exit index or a destination id, by which extension it came in.
+fn read_bearings(
+    blob: &[u8],
+    strings: &Strings<'_>,
+) -> Result<Vec<(u32, Option<Dirto>)>, LoadError> {
+    let mut b = Reader::new(blob);
+    let mut bearings = Vec::new();
+    for _ in 0..b.count(8)? {
+        let key = b.u32()?;
+        // An unknown bearing name reads as absent rather than failing the
+        // load: rule 1 again.
+        bearings.push((key, Dirto::from_name(strings.get(&mut b)?)));
+    }
+    Ok(bearings)
 }
 
 fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadError> {
@@ -251,4 +277,81 @@ fn read_exit(r: &mut Reader<'_>, strings: &Strings<'_>) -> Result<Exit, LoadErro
         // bearing has to live: the exit record has no extension slot.
         dirto: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::wire::{EncodeError, Writer};
+    use super::*;
+
+    /// A one-room file whose bearings arrive under `name`, keyed by `key`.
+    ///
+    /// Written by hand because the encoder no longer writes the legacy
+    /// extension, and a map built before the fix is exactly what this checks.
+    fn file_with(name: &str, key: u32) -> Result<Vec<u8>, EncodeError> {
+        let mut w = Writer::default();
+        w.len(1)?; // rooms
+        w.u32(7); // id
+        for _ in 0..7 {
+            w.len(0)?; // uid, then the six string lists
+        }
+        for _ in 0..3 {
+            w.u32(NONE); // location, climate, terrain
+        }
+        w.u8(0); // flags
+        w.u8(0); // no image
+        w.len(2)?; // exits: a gate to room 8, then a door to room 9
+        for (to, command) in [(8, "go gate"), (9, "go door")] {
+            w.u32(to);
+            w.string(ExitKind::Cardinal.name())?;
+            let reference = w.intern(command)?;
+            w.named(Crossing::COMMAND, &reference.to_le_bytes())?;
+            w.u8(0); // no cost
+        }
+        w.len(1)?; // extensions
+        w.extension(name, |w| {
+            w.len(1)?;
+            w.u32(key);
+            w.string(Dirto::North.name())
+        })?;
+        w.finish()
+    }
+
+    #[test]
+    fn a_map_built_before_exit_indices_still_loads_its_bearings() {
+        // The legacy extension is keyed by destination: room 9 is the door.
+        let map = decode(&file_with(EXT_DIRTO, 9).unwrap()).unwrap();
+        let bearings: Vec<_> = map
+            .room(RoomId(7))
+            .unwrap()
+            .exits
+            .iter()
+            .map(|e| e.dirto)
+            .collect();
+        assert_eq!(bearings, [None, Some(Dirto::North)]);
+    }
+
+    #[test]
+    fn the_new_extension_is_keyed_by_position_and_ignores_a_stray_index() {
+        // Index 0 is the gate -- whose destination, 8, the old key would have
+        // matched against too. The index is the only key that names one edge.
+        let map = decode(&file_with(EXT_EXIT_DIRTO, 0).unwrap()).unwrap();
+        let bearings: Vec<_> = map
+            .room(RoomId(7))
+            .unwrap()
+            .exits
+            .iter()
+            .map(|e| e.dirto)
+            .collect();
+        assert_eq!(bearings, [Some(Dirto::North), None]);
+        // An index past the end names no exit: skipped, not a failed load.
+        let map = decode(&file_with(EXT_EXIT_DIRTO, 5).unwrap()).unwrap();
+        assert!(
+            map.room(RoomId(7))
+                .unwrap()
+                .exits
+                .iter()
+                .all(|e| e.dirto.is_none())
+        );
+    }
 }

@@ -25,11 +25,17 @@ use super::verdict::{CommandId, Gate, Origin, Outcome, Refusal, Sent};
 /// How long to wait for the **actor** to answer a message that it answers in
 /// the turn it receives.
 ///
-/// Not a game deadline: a live actor replies in microseconds. This bounds the
-/// case where there is no actor at all -- between generations, while the
-/// supervisor climbs its retry ladder and nothing reads the inbox. Without it
-/// `send_now` and `claim` waited forever, and `look` awaits `claim` outside its
-/// own cancel select, so `stop` could not stop a behavior during an outage.
+/// Not a game deadline: a live actor replies in microseconds. It bounds the
+/// cases where nothing answers in time: an actor stalled in a write (up to
+/// `WRITE_DEADLINE`), or a message that lands in the instant between one
+/// connection ending and the supervisor's next wait. Without it `send_now`
+/// and `claim` could wait forever, and `look` awaits `claim` outside its own
+/// cancel select, so `stop` could not stop a behavior.
+///
+/// It used to be the ONLY answer during a reconnect, because nothing read the
+/// inbox while the supervisor climbed its ladder. The supervisor now answers
+/// the inbox during its connect and backoff waits (review finding 6), so this
+/// is a backstop in the strict sense.
 ///
 /// Five seconds is far longer than any live reply and far shorter than an
 /// outage, which is what makes it a backstop rather than a policy.
@@ -174,9 +180,10 @@ pub struct SessionHandle {
     /// working afterwards; see [`GenerationCell`] for why that does not weaken
     /// `plan/12` §4.4's discard rule.
     generation: crate::lifecycle::GenerationCell,
-    /// Where [`Self::say`] publishes. The session's own event channel, which
-    /// lives as long as the session does, reconnects included.
-    events: tokio::sync::broadcast::Sender<crate::Event>,
+    /// Where [`Self::say`] publishes. The session's own publisher, which
+    /// lives as long as the session does, reconnects included -- so a notice
+    /// reaches the fenced observer stream as well as the legacy one.
+    events: crate::observation::EventPublisher,
     /// The player log, once one is attached. Shared with every clone.
     log: crate::player_log::tap::Slot,
     /// Who runs the player's own commands, once anything does. Shared
@@ -185,12 +192,28 @@ pub struct SessionHandle {
 }
 
 impl SessionHandle {
-    /// Wrap a sender. Called by [`crate::actor`] when it builds the session.
+    /// Wrap a sender and a bare event channel: a handle with no session
+    /// behind it, for tests. Notices reach `events` and nothing else.
     #[must_use]
     pub fn new(
         sender: tokio::sync::mpsc::Sender<Inbox>,
         generation: crate::lifecycle::GenerationCell,
         events: tokio::sync::broadcast::Sender<crate::Event>,
+    ) -> Self {
+        let events = crate::observation::EventPublisher::from_legacy(events, generation.clone());
+        Self::publishing_to(sender, generation, events)
+    }
+
+    /// The handle a session builds: notices go through the session's own
+    /// publisher, so they are numbered and fenced like every other event.
+    ///
+    /// Review finding 7: sessions built their handle with `new` and the raw
+    /// legacy sender, so a frontend on the fenced stream
+    /// (`SessionObserver::subscribe`) never saw a notice.
+    pub(crate) fn publishing_to(
+        sender: tokio::sync::mpsc::Sender<Inbox>,
+        generation: crate::lifecycle::GenerationCell,
+        events: crate::observation::EventPublisher,
     ) -> Self {
         Self {
             sender,
@@ -212,6 +235,16 @@ impl SessionHandle {
     #[must_use]
     pub fn set_desk(&self, desk: super::claimant::Desk) -> bool {
         self.desk.set(desk).is_ok()
+    }
+
+    /// Change the command symbol of the desk already registered; `false` if
+    /// none is. See `Desk::set_symbol`.
+    #[must_use]
+    pub fn set_command_symbol(&self, symbol: char) -> bool {
+        self.desk
+            .get()
+            .map(|desk| desk.set_symbol(symbol))
+            .is_some()
     }
 
     /// What this session marks a command with, if anything runs them.
@@ -239,7 +272,8 @@ impl SessionHandle {
     /// bounded and is the game's: a behavior reporting why it stopped must
     /// not be refused because the queue it was filling is full, and must not
     /// take a slot a `release` needs. It is published straight to the event
-    /// stream every frontend already reads.
+    /// streams every frontend already reads -- the legacy one and the fenced
+    /// one, through the session's single publication point.
     ///
     /// It cannot fail in a way the caller could act on: with nobody
     /// listening there is nobody to tell.
@@ -311,19 +345,31 @@ impl SessionHandle {
     }
 
     /// Queue manual input for the connection the frontend actually observed.
-    /// The generation is checked by the actor before any command, including
-    /// a typed quit, can act. This uses the ordinary manual queue and never
-    /// claims or cancels behavior authority.
+    /// The generation is checked before any command, including a typed quit
+    /// or one of Hydra's own, can act. This uses the ordinary manual queue and
+    /// never claims or cancels behavior authority.
     pub async fn send_manual_at(
         &self,
         generation: Generation,
         line: &str,
         deadline: std::time::Duration,
     ) -> Outcome {
+        // **The generation first, and here rather than only in the actor.**
+        // A claimed line never reaches the actor, so the actor's check could
+        // not protect it: a `;go2 bank` typed into a browser still showing
+        // the previous connection ran against the new one (review finding 8).
+        // `Disconnected` is what the actor answers a stale command, so both
+        // paths say the same thing.
+        //
+        // This is a pre-check, not the fence: the cell can advance between
+        // here and the actor, which is why the actor checks again.
+        if generation != self.generation.get() {
+            return Outcome::Disconnected;
+        }
         // The player's own commands never reach the game, known or not
-        // (`super::claimant`). Answered as though they were sent and
-        // answered, which is what they are: a frontend awaiting a receipt
-        // gets one either way.
+        // (`super::claimant`), so they are answered `Handled`: no window was
+        // opened and no frame matched. An unknown one is handled too -- by
+        // telling the player so.
         if let Some(claimed) = self.typed(line) {
             if claimed == super::Claimed::Unknown {
                 let symbol = self.command_symbol().unwrap_or(super::COMMAND_SYMBOL);
@@ -336,10 +382,7 @@ impl SessionHandle {
                     ),
                 ));
             }
-            return Outcome::Confirmed(Box::new(crate::Frame::Prompt {
-                text: String::new(),
-                time: String::new(),
-            }));
+            return Outcome::Handled;
         }
         let (reply, answer) = oneshot::channel();
         let envelope = Envelope {
@@ -478,13 +521,15 @@ impl SessionHandle {
     /// hang", on the grounds that an absent actor drops the sender and resolves
     /// immediately as [`Sent::Dead`]. **A supervised session breaks the
     /// premise**: between generations there is no actor, and the sender is very
-    /// much alive because the *supervisor* holds the receiver. Nothing reads the
-    /// inbox during a retry ladder, so the wait is unbounded -- and a message
-    /// parked there is delivered to the NEXT connection, long after its caller
+    /// much alive because the *supervisor* holds the receiver. Nothing read the
+    /// inbox during a retry ladder, so the wait was unbounded -- and a message
+    /// parked there was delivered to the NEXT connection, long after its caller
     /// gave up.
     ///
     /// So it is bounded by `ACTOR_REPLY_DEADLINE`, which is generous by design:
-    /// it is not a game timeout, it is a backstop for "nobody is home".
+    /// it is not a game timeout, it is a backstop for "nobody is home". The
+    /// supervisor now answers `Dead` during its waits itself (review finding
+    /// 6), so the backstop is for an actor stalled in a write.
     ///
     /// # Errors
     ///
@@ -509,7 +554,16 @@ impl SessionHandle {
             Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => return Sent::Dead,
         }
         // Bounded: see `ACTOR_REPLY_DEADLINE`. `Dead` for a timeout is the
-        // honest answer -- nothing read the message, so nothing sent it.
+        // honest answer for a message the actor has not reached: it checks
+        // `reply.is_closed()` before writing, so a message whose caller gave
+        // up here is dropped rather than written late. That check was missing
+        // when this comment was first written, which made it false for a
+        // message queued behind a slow write (review finding 4).
+        //
+        // It is NOT a guarantee for a message whose write had already begun:
+        // a write can take up to `WRITE_DEADLINE`, as long as this wait, and
+        // bytes in flight cannot be recalled. That residue is one message, the
+        // one being written when the wait expired.
         tokio::time::timeout(ACTOR_REPLY_DEADLINE, answer)
             .await
             .unwrap_or(Ok(Sent::Dead))

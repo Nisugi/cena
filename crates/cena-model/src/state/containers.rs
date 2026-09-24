@@ -83,18 +83,31 @@ impl ItemRef {
 /// match rather than a silent miss.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum StowSlot {
+    /// `box`: boxes.
     Box,
+    /// `gem`: gems.
     Gem,
+    /// `herb`: herbs.
     Herb,
+    /// `skin`: skins.
     Skin,
+    /// `wand`: wands.
     Wand,
+    /// `scroll`: scrolls.
     Scroll,
+    /// `potion`: potions.
     Potion,
+    /// `trinket`: trinkets.
     Trinket,
+    /// `reagent`: reagents.
     Reagent,
+    /// `lockpick`: lockpicks.
     Lockpick,
+    /// `treasure`: treasure.
     Treasure,
+    /// `forageable`: foraged items.
     Forageable,
+    /// `collectible`: collectibles.
     Collectible,
     /// Where anything uncategorised goes -- and what `bank.rb:155` reaches
     /// for when it needs somewhere to put your notes.
@@ -161,14 +174,23 @@ impl StowSlot {
 /// `readylist.rb:6`'s `ORIGINAL_READY_LIST`, ported whole.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ReadySlot {
+    /// `shield`. Has a store-mode.
     Shield,
+    /// `weapon`. Has a store-mode.
     Weapon,
+    /// `secondary weapon`. Has a store-mode.
     SecondaryWeapon,
+    /// `ranged weapon`. Has a store-mode.
     RangedWeapon,
+    /// `ammo bundle`. Has a store-mode.
     AmmoBundle,
+    /// `ammo2 bundle`: a second ammo bundle. No store-mode.
     Ammo2Bundle,
+    /// `sheath`: a place items are stored into. No store-mode.
     Sheath,
+    /// `secondary sheath`: a place items are stored into. No store-mode.
     SecondarySheath,
+    /// `wand`. Has a store-mode.
     Wand,
 }
 
@@ -317,9 +339,14 @@ pub enum ContainerEvent {
 
 /// Read a line as a container event, or `None` if it is not one.
 #[must_use]
-#[allow(clippy::too_many_lines)]
 pub fn classify(line: &ChunkLine) -> Option<ContainerEvent> {
-    let text = line.text();
+    classify_text(line, &line.text())
+}
+
+/// [`classify`], given the line's text already rendered (the chunk renders
+/// each line once and shares it).
+#[allow(clippy::too_many_lines)]
+pub(crate) fn classify_text(line: &ChunkLine, text: &str) -> Option<ContainerEvent> {
     let trimmed = text.trim();
 
     if trimmed == "You have the following containers set as stow targets:" {
@@ -348,9 +375,18 @@ pub fn classify(line: &ChunkLine) -> Option<ContainerEvent> {
         });
     }
 
+    // **The two list rows are INDENTED, and Lich requires it.** Both
+    // `StowListContainer` (`xmlparser.rb:516`) and the three `ReadyList*`
+    // row patterns (`:522-524`) open with `^  `: two spaces, the listing's
+    // own layout. The port matched the trimmed text, so any main-window line
+    // ending `(gem)` with a link on it taught a stow container, and any line
+    // shaped `shield: ...` taught a ready slot (review). Indentation is what
+    // separates the listing from prose that happens to look like a row.
+    let indented = text.starts_with("  ");
+
     // A `stow list` row: `  <a ...>my backpack</a> (gem)`. The category is
     // the parenthesised word at the end, and the container is the link.
-    if let Some(slot) = trailing_parenthetical(trimmed).and_then(StowSlot::parse) {
+    if indented && let Some(slot) = trailing_parenthetical(trimmed).and_then(StowSlot::parse) {
         return Some(ContainerEvent::StowSet {
             slot,
             item: ItemRef::first_on(line)?,
@@ -359,8 +395,12 @@ pub fn classify(line: &ChunkLine) -> Option<ContainerEvent> {
 
     // `Set "<a ...>a pouch</a>" to be your STOW GEM container.` and the
     // `default` spelling, which `xmlparser.rb:518` splits into a second
-    // pattern only because the game omits `^` on that one line.
-    if trimmed.contains("\" to be your ") && trimmed.ends_with(" STOW container.") {
+    // pattern only because the game omits `^` on that one line. Both begin
+    // `Set "` in Lich (`:517` anchored, `:518` not), so both require it here.
+    if trimmed.contains("Set \"")
+        && trimmed.contains("\" to be your ")
+        && trimmed.ends_with(" STOW container.")
+    {
         let slot = trimmed
             .rsplit_once("\" to be your ")
             .map(|(_, tail)| tail.trim_end_matches(" STOW container."))
@@ -370,7 +410,9 @@ pub fn classify(line: &ChunkLine) -> Option<ContainerEvent> {
             item: ItemRef::first_on(line)?,
         });
     }
-    if let Some((_, tail)) = trimmed.rsplit_once("\" to be your STOW ") {
+    if trimmed.starts_with("Set \"")
+        && let Some((_, tail)) = trimmed.rsplit_once("\" to be your STOW ")
+    {
         let slot = StowSlot::parse(tail.trim_end_matches(" container."))?;
         return Some(ContainerEvent::StowSet {
             slot,
@@ -379,12 +421,15 @@ pub fn classify(line: &ChunkLine) -> Option<ContainerEvent> {
     }
 
     // `Setting <a ...>a sword</a> to be your default weapon.`
+    //
+    // `ReadyItemSet` (`xmlparser.rb:527`) requires the link, so a line with
+    // none is not this event -- `?`, not an `Option` that would clear.
     if trimmed.starts_with("Setting ")
         && let Some((_, tail)) = trimmed.rsplit_once(" to be your default ")
     {
         return Some(ContainerEvent::ReadySet {
             slot: ReadySlot::parse(tail.trim_end_matches('.'))?,
-            item: ItemRef::first_on(line),
+            item: Some(ItemRef::first_on(line)?),
             store: None,
         });
     }
@@ -392,6 +437,14 @@ pub fn classify(line: &ChunkLine) -> Option<ContainerEvent> {
     // A `ready list` row: `  weapon: (<a ...>a sword</a>) (stowed)`, or with
     // `none` where nothing is set, or with no store-mode at all for the
     // sheaths and the second ammo bundle.
+    //
+    // Indented, and carrying the row's own `<d cmd='store ...'>` or
+    // `<d cmd='ready ...'>` link around the item or the `none`: every one of
+    // Lich's three row patterns requires that command (`xmlparser.rb:522-524`),
+    // and it is what makes the row a row of THIS listing.
+    if !indented || !has_slot_command(line) {
+        return None;
+    }
     let (label, rest) = trimmed.split_once(": ")?;
     let slot = ReadySlot::parse(label)?;
     let store = trailing_parenthetical(rest).and_then(StoreMode::parse);
@@ -399,6 +452,18 @@ pub fn classify(line: &ChunkLine) -> Option<ContainerEvent> {
         slot,
         item: ItemRef::first_on(line),
         store,
+    })
+}
+
+/// Whether the line carries a `ready list` row's slot command:
+/// `<d cmd='store WEAPON clear'>`, `<d cmd='ready SHIELD'>`. The store-mode
+/// link, `<d cmd='store set'>`, is on every row too and is not this.
+fn has_slot_command(line: &ChunkLine) -> bool {
+    line.links().any(|link| match &link.kind {
+        LinkKind::Direct { cmd } => {
+            (cmd.starts_with("store ") || cmd.starts_with("ready ")) && cmd != "store set"
+        }
+        _ => false,
     })
 }
 
@@ -443,9 +508,14 @@ impl Containers {
             ContainerEvent::ReadyListEnds => self.ready_checked = true,
             ContainerEvent::StowSet { slot, item } => set(&mut self.stow, *slot, item.clone()),
             ContainerEvent::ReadySet { slot, item, store } => {
-                match item {
-                    Some(item) => set(&mut self.ready, *slot, item.clone()),
-                    None => self.ready.retain(|(held, _)| held != slot),
+                // **A row with no item leaves the slot as it was**, as Lich
+                // does: `unless match[:id].nil?` (`xmlparser.rb:600`) writes
+                // only when the row named something. A `none` row inside a
+                // listing finds the slot already emptied by the opener, so
+                // nothing is lost; outside one, it is not evidence enough to
+                // throw away an item a confirmation taught (review).
+                if let Some(item) = item {
+                    set(&mut self.ready, *slot, item.clone());
                 }
                 if let Some(store) = store {
                     set(&mut self.store, *slot, *store);

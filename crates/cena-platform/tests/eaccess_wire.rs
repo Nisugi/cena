@@ -98,7 +98,19 @@ fn credentials_debug_hides_the_password() {
     };
     let shown = format!("{creds:?}");
     assert!(!shown.contains("correct horse"), "leaked: {shown}");
-    assert!(shown.contains("someacct"), "account is not secret: {shown}");
+    // **The account is redacted too**, and this line used to assert the
+    // opposite ("account is not secret"). Every other holder of it already
+    // disagreed: `WebLoginRequest` and the binary's `LiveConnector` both
+    // redact it, the wire log registers it for redaction, and `redact` blanks
+    // it out of the `A` response -- because it is embedded in every character
+    // code as `W_<ACCOUNT>_<SLOT>` (`plan/10` §4.6). One `Debug` printing it
+    // undid all of that for whoever logged this struct (review finding 13).
+    assert!(!shown.contains("someacct"), "account leaked: {shown}");
+    assert!(
+        shown.contains("Nisugi") && shown.contains("GST"),
+        "the character and instance are what a reader diagnosing a login \
+         needs, and are not credentials: {shown}"
+    );
 }
 
 /// Same for the launch payload, whose key sits beside the host a caller
@@ -108,7 +120,6 @@ fn launch_payload_debug_hides_the_key() {
     let p = LaunchPayload {
         gamehost: "gamehost.example.net".to_owned(),
         gameport: 10024,
-        gamecode: Some("GS".to_owned()),
         key: "9ac77c189205275c1b604953d7e2b6aa".to_owned(),
     };
     let shown = format!("{p:?}");
@@ -163,8 +174,9 @@ fn parses_a_launch_payload_with_an_equals_in_the_key() {
 /// Every earlier fixture here was hand-written. This one is what the server
 /// actually sent, which is the only kind that can contradict an assumption --
 /// and it did: `GAMECODE=GS`, not `GS3`. **`L` answers with a family code, not
-/// the code `G` selected.** Anything that compares `gamecode` against the
-/// requested instance must expect that.
+/// the code `G` selected.** `GAMECODE` is no longer carried (review finding
+/// 11: no consumer, and the web path filled it with the other vocabulary);
+/// `wire.rs` records the fact for whoever brings it back.
 #[test]
 fn parses_the_launch_payload_the_live_server_actually_sent() {
     let l = "L\tOK\tUPPORT=5535\tGAME=STORM\tGAMECODE=GS\tFULLGAMENAME=Wrayth\t\
@@ -173,16 +185,11 @@ fn parses_the_launch_payload_the_live_server_actually_sent() {
     let p = parse_launch(l).expect("the live server's own response must parse");
     assert_eq!(p.gamehost, "gamehost.example.net");
     assert_eq!(p.gameport, 10024);
-    assert_eq!(
-        p.gamecode.as_deref(),
-        Some("GS"),
-        "the login requested GS3 and L answered GAMECODE=GS -- a family code, \
-         not the selected instance"
-    );
-    // The four launcher-only fields are dropped, per plan/10 §4.9.
+    // The launcher-only fields are dropped, per plan/10 §4.9 -- and so is
+    // GAMECODE, until something reads it.
     let shown = format!("{p:?}");
     assert!(
-        !shown.contains("WRAYTH.EXE") && !shown.contains("UPPORT"),
+        !shown.contains("WRAYTH.EXE") && !shown.contains("UPPORT") && !shown.contains("\"GS\""),
         "fields that only tell a Simutronics launcher which .EXE to run must \
          not be carried: {shown}"
     );
@@ -190,10 +197,10 @@ fn parses_the_launch_payload_the_live_server_actually_sent() {
 
 /// A generator-path response carries no `GAMECODE`, and that is not an error.
 #[test]
-fn a_missing_gamecode_is_absent_rather_than_a_failure() {
+fn a_missing_gamecode_is_not_a_failure() {
     let l = "L\tOK\tGAMEHOST=h\tGAMEPORT=1\tKEY=k";
     let p = parse_launch(l).expect("GAMECODE is not required");
-    assert_eq!(p.gamecode, None);
+    assert_eq!((p.gamehost.as_str(), p.gameport), ("h", 1));
 }
 
 /// A launch line missing a field is an error naming the field, not a
@@ -505,7 +512,8 @@ fn launch_refusals_are_fatal_per_sub_code_not_wholesale() {
         );
         assert!(
             describe_launch_refusal(&l).contains("DO NOT RETRY"),
-            "...and that verdict must still be what the message advises, or              this classification has drifted from its evidence"
+            "...and that verdict must still be what the message advises, or \
+             this classification has drifted from its evidence"
         );
     }
 
@@ -532,7 +540,8 @@ fn an_unknown_launch_sub_code_is_not_fatal() {
     assert!(!launch_refusal_is_fatal("L	PROBLEM	9"));
     assert!(
         !launch_refusal_is_fatal("L	something else entirely"),
-        "and so is an L that is not a PROBLEM at all -- nothing about it says          the account is at fault"
+        "and so is an L that is not a PROBLEM at all -- nothing about it says \
+         the account is at fault"
     );
 }
 

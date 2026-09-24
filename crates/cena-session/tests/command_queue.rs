@@ -317,11 +317,16 @@ async fn a_window_resolves_with_what_the_matcher_accepted() {
 /// transcript reads `["attack", "retreat"]`.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_behavior_without_the_authority_is_refused_not_queued() {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
     let cancel = session.cancel_token();
+    let (_, mut events) = session.subscribe();
     let actor = tokio::spawn(session.into_actor().run());
+    // Behaviors wait for `Ready` (`readiness_gate.rs`); this is about authority.
+    while events.recv().await.expect("the session is running")
+        != cena_session::Event::StateChanged(cena_session::State::Ready)
+    {}
 
     let first = cena_session::AuthorityToken(1);
     let second = cena_session::AuthorityToken(2);

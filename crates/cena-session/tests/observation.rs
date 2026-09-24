@@ -15,6 +15,36 @@ use tokio::sync::broadcast::error::TryRecvError;
 
 const DEADLINE: Duration = Duration::from_secs(2);
 
+/// A subscription taken once the connection is `Ready`.
+///
+/// `run` holds `Syncing` until the first prompt after `<endSetup/>`, and the
+/// observation arm comes before the read arm in the actor's `biased` select,
+/// so a subscription made the moment an actor starts can see `Syncing`. These
+/// tests are about a session somebody is already playing, so they wait.
+///
+/// A `Result` because this is not a `#[test]` function, so the workspace's
+/// `expect_used` denial reaches it.
+async fn ready(
+    observer: &cena_session::SessionObserver,
+) -> Result<
+    (
+        cena_session::Snapshot,
+        tokio::sync::broadcast::Receiver<cena_session::ObservedEvent>,
+    ),
+    String,
+> {
+    let (snapshot, mut events) = observer.subscribe().await.map_err(|e| format!("{e:?}"))?;
+    if snapshot.lifecycle == State::Ready {
+        return Ok((snapshot, events));
+    }
+    loop {
+        let next = events.recv().await.map_err(|e| e.to_string())?;
+        if next.event == Event::StateChanged(State::Ready) {
+            return observer.subscribe().await.map_err(|e| format!("{e:?}"));
+        }
+    }
+}
+
 struct Connections(VecDeque<AnsweringSource>);
 
 impl Connector for Connections {
@@ -29,14 +59,13 @@ impl Connector for Connections {
 
 #[tokio::test(start_paused = true)]
 async fn mid_session_snapshot_is_ready_and_stream_starts_after_its_state() {
-    let (source, _) = AnsweringSource::new(&support::room_fixture().expect("room fixture"));
+    let (source, _) = AnsweringSource::logged_in(&support::room_fixture().expect("room fixture"));
     let (session, handle) = SupervisedSession::new(Connections(vec![source].into()));
     let observer = session.observer();
     let cancel = session.cancel_token();
     let running = tokio::spawn(session.run());
 
-    // An observation request itself synchronizes with the running owner.
-    let (initial, _) = observer.subscribe().await.expect("running owner");
+    let (initial, _) = ready(&observer).await.expect("the session becomes Ready");
     assert_eq!(initial.lifecycle, State::Ready);
     assert!(matches!(
         handle
@@ -107,16 +136,99 @@ async fn lag_resubscription_replaces_the_old_fence_with_fresh_authoritative_stat
     assert_eq!(closed.event, Event::StateChanged(State::Closed));
 }
 
+/// **A lost connection is not the end of the session, so it does not say
+/// `Closed`.**
+///
+/// The actor published `Closed` on its way out of every connection, and the
+/// supervisor published `Reconnecting` one event later -- so a lost link read
+/// `[Ready, Closed, Reconnecting, ...]` to every observer, and `Closed` is
+/// documented as "the task has ended". `cena-behavior`'s travel maps it to
+/// `Dead` (review finding 2). `Closed` belongs to the session's end, once.
+#[tokio::test(start_paused = true)]
+async fn a_lost_connection_goes_to_reconnecting_without_closing() {
+    let reply = b"<prompt time='1'>&gt;</prompt>\n";
+    let (first, transcript) = AnsweringSource::new(reply);
+    let (second, _) = AnsweringSource::new(reply);
+    let (session, _handle) = SupervisedSession::new(Connections(vec![first, second].into()));
+    let (_, mut events) = session.subscribe();
+    let observer = session.observer();
+    let cancel = session.cancel_token();
+    let running = tokio::spawn(session.run());
+    let _ = observer.subscribe().await.expect("first connection ready");
+
+    transcript.hang_up();
+    let mut lifecycle = Vec::new();
+    while lifecycle.last() != Some(&State::Reconnecting) {
+        if let Event::StateChanged(state) = events.recv().await.expect("an event") {
+            lifecycle.push(state);
+        }
+    }
+    assert!(
+        !lifecycle.contains(&State::Closed),
+        "a dropped connection announced the session closed: {lifecycle:?}"
+    );
+
+    cancel.cancel();
+    let _ = running.await;
+    while let Ok(event) = events.try_recv() {
+        if let Event::StateChanged(state) = event {
+            lifecycle.push(state);
+        }
+    }
+    assert_eq!(
+        lifecycle.iter().filter(|s| **s == State::Closed).count(),
+        1,
+        "the session's real end says `Closed` exactly once: {lifecycle:?}"
+    );
+    assert_eq!(lifecycle.last(), Some(&State::Closed), "{lifecycle:?}");
+}
+
+/// **A notice reaches a frontend attached through the observer.**
+///
+/// `SessionHandle::say` published to the legacy `Event` channel only, so the
+/// fenced stream `SessionObserver::subscribe` returns -- the one `cena-web`
+/// reads -- never carried one (review finding 7). "Travel: no route" reached
+/// nobody watching the web frontend.
+#[tokio::test(start_paused = true)]
+async fn a_notice_reaches_the_fenced_observer_stream() {
+    let (source, _) = AnsweringSource::new(b"<prompt time='1'>&gt;</prompt>\n");
+    let session = Session::new(source);
+    let handle = session.handle();
+    let observer = session.observer();
+    let cancel = session.cancel_token();
+    let driver = tokio::spawn(session.into_actor().run());
+    let (snapshot, mut fenced) = observer.subscribe().await.expect("running owner");
+
+    handle.say(cena_session::Notice::line(
+        cena_session::NoticeKind::Error,
+        "Travel: no route",
+    ));
+    let event = fenced
+        .try_recv()
+        .expect("the notice must be on the fenced stream");
+    assert!(matches!(event.event, Event::Notice(_)), "{:?}", event.event);
+    assert!(
+        event.cursor > snapshot.cursor,
+        "numbered after the snapshot it followed, or a frontend discards it \
+         as already seen: {} vs {}",
+        event.cursor,
+        snapshot.cursor
+    );
+
+    cancel.cancel();
+    let _ = driver.await;
+}
+
 #[tokio::test(start_paused = true)]
 async fn reconnect_snapshot_and_transition_share_the_new_generation() {
     let reply = b"<progressBar id='health' value='97'/><prompt time='1'>&gt;</prompt>\n";
-    let (first, transcript) = AnsweringSource::new(reply);
-    let (second, second_transcript) = AnsweringSource::new(reply);
+    let (first, transcript) = AnsweringSource::logged_in(reply);
+    let (second, second_transcript) = AnsweringSource::logged_in(reply);
     let (session, handle) = SupervisedSession::new(Connections(vec![first, second].into()));
     let observer = session.observer();
     let cancel = session.cancel_token();
     let running = tokio::spawn(session.run());
-    let (initial, mut events) = observer.subscribe().await.expect("first ready");
+    let (initial, mut events) = ready(&observer).await.expect("the session becomes Ready");
     assert!(matches!(
         handle
             .send_manual_at(initial.generation, "look", DEADLINE)
@@ -149,11 +261,11 @@ async fn reconnect_snapshot_and_transition_share_the_new_generation() {
     assert!(retry.cursor >= transition.cursor);
 
     tokio::time::advance(Duration::from_secs(2)).await;
-    let (ready, _) = observer.subscribe().await.expect("second ready");
-    assert_eq!(ready.lifecycle, State::Ready);
-    assert_eq!(ready.generation, retry.generation);
+    let (again, _) = ready(&observer).await.expect("the session becomes Ready");
+    assert_eq!(again.lifecycle, State::Ready);
+    assert_eq!(again.generation, retry.generation);
     assert!(
-        ready.retry.is_none(),
+        again.retry.is_none(),
         "a ready connection has no pending retry"
     );
     // The special quit path must reject the browser's previous generation.
@@ -166,7 +278,7 @@ async fn reconnect_snapshot_and_transition_share_the_new_generation() {
     assert_eq!(second_transcript.written_count(), 0);
     assert!(matches!(
         handle
-            .send_manual_at(ready.generation, "look", DEADLINE)
+            .send_manual_at(again.generation, "look", DEADLINE)
             .await,
         Outcome::Confirmed(_)
     ));
@@ -305,7 +417,7 @@ async fn an_undrained_observation_inbox_refuses_excess_requests() {
 #[tokio::test(start_paused = true)]
 async fn expired_manual_input_including_quit_cannot_fire_when_the_actor_resumes() {
     let (source, transcript) =
-        AnsweringSource::new(b"You look around.\n<prompt time='1'>&gt;</prompt>\n");
+        AnsweringSource::logged_in(b"You look around.\n<prompt time='1'>&gt;</prompt>\n");
     let session = Session::new(source);
     let handle = session.handle();
     let observer = session.observer();
@@ -319,7 +431,7 @@ async fn expired_manual_input_including_quit_cannot_fire_when_the_actor_resumes(
         );
     }
     let running = tokio::spawn(session.into_actor().run());
-    let (snapshot, _) = observer.subscribe().await.expect("actor resumed");
+    let (snapshot, _) = ready(&observer).await.expect("the session becomes Ready");
     assert_eq!(snapshot.lifecycle, State::Ready);
     assert_eq!(
         transcript.written_count(),
@@ -436,12 +548,12 @@ async fn a_subscription_racing_ready_ingress_splits_the_exact_observed_event_seq
 
 #[tokio::test(start_paused = true)]
 async fn aborting_an_active_actor_does_not_fabricate_a_closed_snapshot_or_event() {
-    let (source, _) = AnsweringSource::new(b"");
+    let (source, _) = AnsweringSource::logged_in(b"");
     let session = Session::new(source);
     let observer = session.observer();
     let running = tokio::spawn(session.into_actor().run());
-    let (ready, mut events) = observer.subscribe().await.expect("active actor answers");
-    assert_eq!(ready.lifecycle, State::Ready);
+    let (active, mut events) = ready(&observer).await.expect("the session becomes Ready");
+    assert_eq!(active.lifecycle, State::Ready);
 
     running.abort();
     let ended = tokio::time::timeout(DEADLINE, running)

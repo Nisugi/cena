@@ -1,10 +1,17 @@
-//! The ladder over every room of a real map. Needs a built map, so it runs only
-//! when `CENA_MAP` names one:
+//! The ladder over every room of a real map. Needs a built map, so it is
+//! `#[ignore]`d and runs only when asked for, with `CENA_MAP` naming one:
 //!
 //! ```powershell
 //! $env:CENA_MAP = "E:\Cena\reference\mapdb\converted\hydra.map"
-//! cargo test --release -p cena-map --test locate_real_map -- --nocapture
+//! cargo test --release -p cena-map --test locate_real_map -- --ignored --nocapture
 //! ```
+//!
+//! **Ignored rather than silently passing.** It used to return early when
+//! `CENA_MAP` was unset and report `1 passed` -- a green line for a check that
+//! never ran -- and `decode(..).ok()?` turned a map that *failed to load* into
+//! the same skip, so a format regression read as success on exactly the run
+//! meant to catch it. Now an ordinary run says `ignored`, and a named map that
+//! cannot be read or decoded fails.
 //!
 //! The property is the module's promise, **unambiguous or nothing**: shown a
 //! room's own recorded text, `locate` names that room or declines -- it never
@@ -55,16 +62,21 @@ impl Tally {
     }
 }
 
+/// The map `CENA_MAP` names; `None` only when it names nothing. A map that is
+/// named and cannot be read or decoded is a failure, never a skip.
+// `cfg(test)` so clippy.toml's allow-expect-in-tests covers a helper too.
+#[cfg(test)]
 fn load() -> Option<Map> {
     let path = std::env::var_os("CENA_MAP")?;
-    let bytes = std::fs::read(path).ok()?;
-    binary::decode(&bytes).ok()
+    let bytes = std::fs::read(&path).expect("CENA_MAP names a file that cannot be read");
+    Some(binary::decode(&bytes).expect("CENA_MAP names a map that does not decode"))
 }
 
 #[test]
+#[ignore = "Tier 2: needs a built map in CENA_MAP; run with --ignored"]
 fn a_rooms_own_text_never_names_another_room() {
     let Some(map) = load() else {
-        eprintln!("CENA_MAP is not set to a readable map; skipped");
+        eprintln!("CENA_MAP is not set; skipped");
         return;
     };
     let started = std::time::Instant::now();

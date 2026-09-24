@@ -14,10 +14,11 @@
 //! window, leaves it open, and asserts the sigil still reached the wire. Run
 //! it against the old code and it fails.
 
-use cena_platform::AnsweringSource;
+use cena_platform::{AnsweringSource, ByteSource};
 use cena_session::{
     AuthorityToken, CommandId, Gate, Origin, Outcome, Refusal, Sent, Session, State,
 };
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// A reply with no prompt, so a window opened against it stays open.
@@ -107,6 +108,11 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
     // answering, so no prompt arrives to close it. The waiter is spawned
     // because `send_and_await` does not return until it is answered, and the
     // point is that it is not.
+    //
+    // Each gets ITS OWN reply, so the end of this test can see whose text
+    // resolved the attack (review finding 1).
+    transcript.answer("attack", ATTACK_REPLY);
+    transcript.answer("sigil of escape", SIGIL_REPLY);
     transcript.hold_replies();
     let blocked_handle = handle.clone();
     let blocked = tokio::spawn(async move {
@@ -177,9 +183,229 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
          attribution in, which is review finding SE-5"
     );
 
+    // **Now the replies, in the order the server sends them: the ATTACK's
+    // first**, because it was on the wire first. This half used to be absent
+    // -- the test above named the case and never released a reply -- and the
+    // case was broken: the attack resolved `Confirmed("You feel a surge.")`.
+    // The owed-prompt count assumed every instant action's prompt arrives
+    // before the waiting command's, which is true only of one sent BEFORE the
+    // command. So the attack's text was suppressed, its prompt was spent as
+    // the sigil's, and the sigil's text was credited to the attack.
+    transcript.release_one();
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert!(
+        blocked.is_finished(),
+        "the attack's own prompt arrived and must close its window. Still \
+         waiting means that prompt was spent as the sigil's"
+    );
+    let resolved = blocked.await.expect("the attack's task must not panic");
+    assert_eq!(
+        text_of(&resolved).as_deref(),
+        Some("You swing at the kobold."),
+        "the attack must resolve on ITS OWN reply, not the sigil's: {resolved:?}"
+    );
+
+    // And the sigil's prompt, still owed, must not close the NEXT window.
+    let looked = the_next_window_survives_one_owed_prompt(&handle, &transcript).await;
+    assert_eq!(
+        looked.as_ref().and_then(text_of).as_deref(),
+        Some("You see nothing unusual."),
+        "the look must resolve on its own prompt: {looked:?}"
+    );
+
     cancel.cancel();
     let _ = driver.await;
-    blocked.abort();
+}
+
+/// Send a `look` while one instant action's prompt is still owed, release
+/// that prompt, and check the look is still waiting; then release its own and
+/// return what the look resolved to (`None` if it never did).
+///
+/// Returns rather than asserting on the result, so the helper needs no
+/// `expect` -- the workspace denies it outside `#[test]` fns.
+async fn the_next_window_survives_one_owed_prompt(
+    handle: &cena_session::SessionHandle,
+    transcript: &cena_platform::TranscriptHandle,
+) -> Option<Outcome> {
+    let next = tokio::spawn({
+        let handle = handle.clone();
+        async move {
+            handle
+                .send_and_await(
+                    CommandId(3),
+                    "look",
+                    Origin::Manual,
+                    Duration::from_secs(30),
+                    cena_session::queue::any_frame,
+                )
+                .await
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    transcript.release_one();
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert!(
+        !next.is_finished(),
+        "the sigil's prompt closed the next command's window: {:?}",
+        transcript.lines()
+    );
+    transcript.release_one();
+    tokio::time::timeout(Duration::from_secs(1), next)
+        .await
+        .ok()?
+        .ok()
+}
+
+/// A socket whose writes each take three seconds, recording what landed.
+struct SlowWrite(Arc<Mutex<Vec<String>>>);
+
+impl ByteSource for SlowWrite {
+    async fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+        std::future::pending().await
+    }
+
+    async fn write_all(&mut self, message: &[u8]) -> std::io::Result<()> {
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .push(String::from_utf8_lossy(message).trim().to_owned());
+        Ok(())
+    }
+
+    async fn shutdown(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// **An instant action whose caller was told `Dead` is never written.**
+///
+/// `SessionHandle::send_now` stops waiting after five seconds and answers
+/// `Dead` -- "nothing sent it". Three sends into a socket that takes three
+/// seconds per write put the third past that deadline while it is still in
+/// the inbox, and the actor used to write it anyway: VERIFIED before the fix,
+/// all three sends on the wire with the third's caller told `Dead` (review
+/// finding 4).
+/// A caller that believed `Dead` and re-sent `sigil of escape` another way
+/// would fire it twice.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_instant_action_whose_caller_gave_up_is_not_written() {
+    let wire = Arc::new(Mutex::new(Vec::new()));
+    let session = Session::new(SlowWrite(Arc::clone(&wire)));
+    let handle = session.handle();
+    let cancel = session.cancel_token();
+    let driver = tokio::spawn(session.into_actor().run());
+
+    let lines = ["sigil of power", "sigil of defense", "sigil of escape"];
+    let mut sends = Vec::new();
+    for line in lines {
+        let handle = handle.clone();
+        sends.push(tokio::spawn(async move {
+            handle.send_now(line, Origin::Manual, Gate::None).await
+        }));
+        tokio::task::yield_now().await;
+    }
+    let mut verdicts = Vec::new();
+    for send in sends {
+        verdicts.push(send.await.expect("a send must not panic"));
+    }
+    // Long enough for every write the actor would ever make to finish.
+    tokio::time::sleep(Duration::from_secs(10)).await;
+    let written = wire
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone();
+
+    assert_eq!(
+        verdicts[2],
+        Sent::Dead,
+        "guard: the third send must have outlived its caller's wait, or this \
+         test is not exercising the case. Verdicts: {verdicts:?}"
+    );
+    assert!(
+        !written.iter().any(|w| w == "sigil of escape"),
+        "the caller was told `Dead` before the actor reached this send, and \
+         it was written anyway: {written:?}"
+    );
+    // NOT asserted: the SECOND send. Its caller also gives up at five
+    // seconds, but by then the actor is already inside that write -- which
+    // lands at six. A write in progress cannot be recalled, so `Dead` there is
+    // a verdict on the wait, not on the wire. The fix closes the case where
+    // the actor had not started; see `SessionHandle::send_now`.
+
+    cancel.cancel();
+    let _ = driver.await;
+}
+
+/// What the attack says, distinct from anything else in this file.
+const ATTACK_REPLY: &[u8] = b"You swing at the kobold.
+<prompt time=\"101\">&gt;</prompt>
+";
+/// What the sigil says.
+const SIGIL_REPLY: &[u8] = b"You feel a surge.
+<prompt time=\"101\">&gt;</prompt>
+";
+
+/// The text an outcome was confirmed on, if it was confirmed on text.
+fn text_of(outcome: &Outcome) -> Option<String> {
+    match outcome {
+        Outcome::Confirmed(frame) => match &**frame {
+            cena_protocol::Frame::Text(text) => Some(text.content.trim().to_owned()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// **An instant action whose prompt never comes stops being owed.**
+///
+/// Review finding 9: the count only ever went down on a prompt, so one
+/// `send_now` that drew none -- swallowed, or merged into another reply --
+/// left every later window closing one prompt late for the rest of the
+/// connection. INFERRED risk; this pins the safety bound (`owed.rs`).
+///
+/// The sigil here answers with text and NO prompt. Past the deadline, the next
+/// command's prompt must be its own.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_owed_prompt_that_never_arrives_does_not_hold_the_next_window() {
+    let (source, transcript) = AnsweringSource::new(PROMPT_AT_100);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let cancel = session.cancel_token();
+    let driver = tokio::spawn(session.into_actor().run());
+
+    transcript.answer(
+        "sigil of power",
+        b"You feel a surge.
+",
+    );
+    assert!(matches!(
+        handle
+            .send_now("sigil of power", Origin::Manual, Gate::None)
+            .await,
+        Sent::Ok { .. }
+    ));
+    // Longer than any instant action takes to be answered.
+    tokio::time::sleep(Duration::from_mins(1)).await;
+
+    let looked = handle
+        .send_and_await(
+            CommandId(1),
+            "look",
+            Origin::Manual,
+            Duration::from_secs(5),
+            cena_session::queue::any_frame,
+        )
+        .await;
+    assert_eq!(
+        text_of(&looked).as_deref(),
+        Some("You see nothing unusual."),
+        "the look's own prompt was spent on a sigil that was never answered \
+         with one: {looked:?}"
+    );
+
+    cancel.cancel();
+    let _ = driver.await;
 }
 
 /// The roundtime gate refuses, and says so with the typed reason.

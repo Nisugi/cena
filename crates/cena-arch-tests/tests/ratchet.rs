@@ -9,11 +9,16 @@
 //! Read `tests/architecture.rs`'s module header first: its "what these tests
 //! do NOT claim" paragraph governs all three files.
 
+use cena_arch_tests::caps::{
+    EXCEPTION_PREFIX, cap_exceptions, caps_file, exception_cap_drift, is_split_parent_entry,
+    scan_usize, split_parents, suggested_split_parent_cap,
+};
 use cena_arch_tests::harness::{lint_keys, workspace_root, workspace_sources};
-use cena_arch_tests::lexical::{code_lines, collapse_whitespace, scan_lines};
+use cena_arch_tests::lexical::scan_lines;
 use cena_arch_tests::plan_rules::{
     architecture_test_paragraph_count, architecture_test_tagged_rules,
 };
+use cena_arch_tests::structure::live_test_names;
 use std::collections::BTreeSet;
 use std::fs;
 
@@ -197,7 +202,8 @@ fn every_covered_rule_names_a_test_that_exists() {
     names.sort();
     assert!(
         names.len() >= 3,
-        "the tests directory should hold at least the three rule files; found          {names:?}. A scan that finds nothing reports every rule as deleted."
+        "the tests directory should hold at least the three rule files; found \
+         {names:?}. A scan that finds nothing reports every rule as deleted."
     );
     let mut declared: BTreeSet<String> = BTreeSet::new();
     for name in &names {
@@ -347,46 +353,14 @@ const CAPS_BASELINE: &str = "caps.baseline";
 /// without an edit here. See `the_split_parent_caps_only_turn_down`.
 const CAPS_FLOOR: &str = "caps.floor";
 
-/// Read `<name> <value>` pairs from the baseline, ignoring comments and blanks.
+/// The committed baseline the live caps are measured against.
 fn baseline_caps() -> std::collections::BTreeMap<String, usize> {
-    caps_from(CAPS_BASELINE)
+    caps_file(CAPS_BASELINE)
 }
 
 /// The committed floor the baseline is measured against.
 fn floor_caps() -> std::collections::BTreeMap<String, usize> {
-    caps_from(CAPS_FLOOR)
-}
-
-/// Read a `<name> <value>` cap file.
-fn caps_from(file: &str) -> std::collections::BTreeMap<String, usize> {
-    let path = workspace_root()
-        .join("crates")
-        .join("cena-arch-tests")
-        .join(file);
-    let text = fs::read_to_string(&path).unwrap_or_else(|e| {
-        panic!(
-            "{} must exist and be readable: {e}. It is the cap ratchet's \
-             baseline -- deleting it would silently disable Rule 4.1's \
-             increase check, which is the exact failure the check exists to \
-             prevent.",
-            path.display()
-        )
-    });
-    let mut caps = std::collections::BTreeMap::new();
-    for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (name, value) = line.split_once(' ').unwrap_or_else(|| {
-            panic!("malformed baseline line {line:?}: expected `<name> <value>`")
-        });
-        let value = value.trim().parse().unwrap_or_else(|e| {
-            panic!("malformed baseline value in {line:?}: {e}");
-        });
-        caps.insert(name.to_owned(), value);
-    }
-    caps
+    caps_file(CAPS_FLOOR)
 }
 
 /// **A cap may go down silently. Raising one must appear in the diff.**
@@ -430,8 +404,8 @@ fn the_split_parent_caps_only_turn_down() {
     let mut missing = Vec::new();
     let mut checked = 0usize;
     for (name, cap) in &baseline {
-        if !name.contains('/') {
-            continue; // a scalar like DEFAULT_MAX_LINES, guarded elsewhere
+        if !is_split_parent_entry(name) {
+            continue; // a scalar or an exception cap, guarded elsewhere
         }
         checked += 1;
         match floor.get(name) {
@@ -451,30 +425,50 @@ fn the_split_parent_caps_only_turn_down() {
     // protects itself.
     assert!(
         checked >= 9,
-        "only {checked} split parents were compared against caps.floor; there          were 9 when this rule was written. A parent missing from caps.baseline          is a parent nothing is watching."
+        "only {checked} split parents were compared against caps.floor; there \
+         were 9 when this rule was written. A parent missing from caps.baseline \
+         is a parent nothing is watching."
     );
     assert!(
         missing.is_empty(),
-        "these split parents have a cap in caps.baseline and no entry in          caps.floor, so their caps can be raised without any test failing. Add          them to caps.floor at their current value:
-{}",
-        missing.join("
-")
+        "these split parents have a cap in caps.baseline and no entry in \
+         caps.floor, so their caps can be raised without any test failing. Add \
+         them to caps.floor at their current value:\n{}",
+        missing.join("\n")
     );
     assert!(
         raised.is_empty(),
-        "RULE 4.4: a split-parent cap went UP. Lowering one is silent and          encouraged; raising one has to be visible.
-
-{}
-
-         `plan/05:385-388`: \"if one trips, move code down into a submodule          instead of raising the cap.\"
-
-         If the increase is genuinely right, edit caps.floor in this same commit          and say why in caps.baseline -- with a measurement, as the 2026-09-19          re-baselining did.",
-        raised.join("
-")
+        "RULE 4.4: a split-parent cap went UP. Lowering one is silent and \
+         encouraged; raising one has to be visible.\n\n{}\n\n\
+         `plan/05:385-388`: \"if one trips, move code down into a submodule \
+         instead of raising the cap.\"\n\n\
+         If the increase is genuinely right, edit caps.floor in this same commit \
+         and say why in caps.baseline -- with a measurement, as the 2026-09-19 \
+         re-baselining did.",
+        raised.join("\n")
     );
 }
 
-/// someone who never looks at a diff at all.
+/// **Every live cap is at or below its committed baseline**: the default, the
+/// size of the exception table, and each exception's own cap.
+///
+/// The mechanism is the one [`the_split_parent_caps_only_turn_down`]
+/// describes -- an increase must be an edit to `caps.baseline` in the same
+/// commit -- applied to the constants in `tests/file_rules.rs`.
+///
+/// # Each exception's cap is ratcheted too (review finding 3)
+///
+/// This used to compare only `DEFAULT_MAX_LINES` and the COUNT of
+/// `CapException` entries. The caps inside them -- 4200, 1800, 1600, 1300,
+/// 2400 -- were recorded nowhere else, so raising `crit_tables.tsv` from 2400
+/// to 24000 changed neither number this test read and passed green: the
+/// exception table was a set of five raisable caps behind one fixed count.
+/// `an_exception_cap_raised_in_place_fails` is that edit, fed through the
+/// same functions, and it asserts the two old checks still pass it.
+///
+/// Each exception now has an `exception:<path>` line in `caps.baseline`. A
+/// raise must edit it; a new exception must add one; a deleted exception must
+/// remove it, so a stale line cannot pre-authorise the next one.
 #[test]
 fn the_cap_ratchet_only_turns_down() {
     let baseline = baseline_caps();
@@ -493,10 +487,7 @@ fn the_cap_ratchet_only_turns_down() {
 
     let live_default = scan_usize(&file_rules, "const DEFAULT_MAX_LINES: usize = ")
         .expect("DEFAULT_MAX_LINES must still be a plain `const ... = N;`");
-    let live_exceptions = file_rules
-        .lines()
-        .filter(|line| line.trim_start().starts_with("CapException {"))
-        .count();
+    let live = cap_exceptions(&file_rules);
 
     let baseline_default = baseline["DEFAULT_MAX_LINES"];
     assert!(
@@ -521,15 +512,77 @@ fn the_cap_ratchet_only_turns_down() {
 
     let baseline_exceptions = baseline["MAX_CAP_EXCEPTIONS"];
     assert!(
-        live_exceptions <= baseline_exceptions,
-        "RULE 4.1: the exception table may only SHRINK. There are now \
-         {live_exceptions} entries in CAP_EXCEPTIONS and caps.baseline allows \
+        live.len() <= baseline_exceptions,
+        "RULE 4.1: the exception table may only SHRINK. There are now {} \
+         entries in CAP_EXCEPTIONS and caps.baseline allows \
          {baseline_exceptions}.\n\n\
          A growing exception table is a cap that is failing -- each entry is a \
          file that was allowed to keep growing instead of being split. If the \
          new exception is justified, raise MAX_CAP_EXCEPTIONS in caps.baseline \
-         and say why."
+         and say why.",
+        live.len()
     );
+
+    let drift = exception_cap_drift(&live, &baseline);
+    assert!(
+        drift.is_empty(),
+        "RULE 4.1: every CapException's cap is ratcheted by an \
+         `{EXCEPTION_PREFIX}<path>` line in caps.baseline, and these disagree. \
+         A cap may fall silently; raising one, adding one, or removing one \
+         must edit caps.baseline in the same commit.\n{}",
+        drift.join("\n")
+    );
+}
+
+/// Finding 3's mutation, run through the real functions against the real
+/// file: raise one exception's cap in place and nothing else.
+#[test]
+fn an_exception_cap_raised_in_place_fails() {
+    let path = workspace_root().join("crates/cena-arch-tests/tests/file_rules.rs");
+    let original = fs::read_to_string(&path).expect("file_rules.rs");
+    let live = cap_exceptions(&original);
+    let (victim, cap) = live.first().expect("at least one CapException").clone();
+    let from = format!("cap: {cap},");
+    let to = format!("cap: {},", cap * 10);
+    assert_eq!(
+        original.matches(&from).count(),
+        1,
+        "fixture edit must be unique"
+    );
+    let mutated = original.replace(&from, &to);
+
+    // What the OLD test compared: the default and the number of entries. The
+    // mutation changes neither, which is why it passed.
+    let old_count = |t: &str| {
+        t.lines()
+            .filter(|l| l.trim_start().starts_with("CapException {"))
+            .count()
+    };
+    let prefix = "const DEFAULT_MAX_LINES: usize = ";
+    assert_eq!(scan_usize(&mutated, prefix), scan_usize(&original, prefix));
+    assert_eq!(old_count(&mutated), old_count(&original));
+
+    let baseline = baseline_caps();
+    assert!(
+        exception_cap_drift(&live, &baseline).is_empty(),
+        "unmutated must pass"
+    );
+    let drift = exception_cap_drift(&cap_exceptions(&mutated), &baseline);
+    assert!(
+        drift
+            .iter()
+            .any(|d| d.contains(&victim) && d.contains("ABOVE")),
+        "raising {victim} from {cap} to {} went unnoticed: {drift:?}",
+        cap * 10
+    );
+}
+
+/// The token parse counts what the old line count could not see.
+#[test]
+fn an_unformatted_exception_entry_is_still_counted() {
+    let text = "#[rustfmt::skip]\nconst X: &[CapException] = &[CapException{ path: \"a/b.tsv\", \
+                cap: 1_200, justification: \"j\" }];\nstruct CapException { path: &'static str }\n";
+    assert_eq!(cap_exceptions(text), vec![("a/b.tsv".to_owned(), 1200)]);
 }
 
 /// The baseline itself must carry its reasoning, for the same reason a cap
@@ -559,22 +612,11 @@ fn the_caps_baseline_explains_itself() {
     );
 }
 
-/// Pull `const NAME: usize = N;` out of source text.
-fn scan_usize(text: &str, prefix: &str) -> Option<usize> {
-    text.lines()
-        .find_map(|line| line.trim().strip_prefix(prefix))
-        .and_then(|rest| rest.trim_end_matches(';').trim().parse().ok())
-}
-
 /// **Rule 4.4's other half: split parents stay facades.**
 ///
 /// `plan/05:385-388` cites Vellum's `split_parents_stay_facades` BY NAME, and
 /// Cena implemented only the `lib.rs`/`mod.rs` half (`file_rules.rs`'s
-/// `facade_files_stay_facades`, which skips every other filename). MEASURED at
-/// 2026-09-19: **nine** files own child modules -- `state.rs`, `actor.rs`,
-/// `supervisor.rs`, `parser.rs`, `frame.rs`, `text.rs`, `tags.rs`, `crit.rs`,
-/// `probe.rs` -- and every one was governed by the 800-line default and nothing
-/// else.
+/// `facade_files_stay_facades`, which skips every other filename).
 ///
 /// # It is a cap, not a no-behavior rule
 ///
@@ -589,55 +631,78 @@ fn scan_usize(text: &str, prefix: &str) -> Option<usize> {
 /// So this is the same ratchet as [`the_cap_ratchet_only_turns_down`], applied
 /// per file: the baseline is editable, but only in the same commit, in a file
 /// that exists for no other purpose.
+///
+/// # Split parents are DISCOVERED (review finding 4)
+///
+/// MEASURED at 2026-09-19, nine files owned child modules, and they were
+/// written into `caps.baseline` by hand. Nothing discovered the next one. By
+/// 2026-09-23 there were twenty-three, and the fourteen unlisted ones included
+/// the three largest split parents in the workspace -- `state/character.rs` at
+/// 797 lines, `travel/drive.rs` at 750, `travel.rs` at 661 -- each governed by
+/// the 800 default and nothing else. That is the hand-maintained-list failure
+/// `harness.rs` names for source discovery, one layer up.
+///
+/// Now every `name.rs` with a sibling `name/` of `.rs` files is a split parent,
+/// and it FAILS until `caps.baseline` and `caps.floor` record a cap for it --
+/// by the rule written there: measured size + 50, rounded up to the next 50,
+/// never above the default. An entry for a file that is no longer a split
+/// parent fails too, so the table cannot rot in either direction.
 #[test]
 fn split_parents_stay_facades() {
     let baseline = baseline_caps();
-    let root = workspace_root();
-    let mut violations = Vec::new();
-    let mut checked = 0usize;
+    let default = baseline["DEFAULT_MAX_LINES"];
+    let discovered = split_parents(&workspace_sources());
 
-    for (name, cap) in &baseline {
-        // The split-parent entries are the ones whose name is a path.
-        if !name.contains('/') {
-            continue;
+    // The guard against the guard. Discovery that found nothing would pass
+    // vacuously, which is the dead-ratchet shape this file already records
+    // for `tags.rs`.
+    assert!(
+        discovered.len() >= 9,
+        "only {} split parents were discovered; there were 9 when this rule \
+         was written. The walk has stopped seeing submodule directories.",
+        discovered.len()
+    );
+
+    let mut violations = Vec::new();
+    for (name, lines) in &discovered {
+        match baseline.get(name) {
+            Some(cap) if lines > cap => {
+                violations.push(format!("{name}: {lines} lines, cap {cap}"));
+            }
+            Some(_) => {}
+            None => violations.push(format!(
+                "{name}: a split parent ({lines} lines) with no cap. Add \
+                 `{name} {}` to caps.baseline AND caps.floor.",
+                suggested_split_parent_cap(*lines, default)
+            )),
         }
-        checked += 1;
-        let path = root.join(name);
-        let Ok(text) = fs::read_to_string(&path) else {
+    }
+    for name in baseline.keys().filter(|n| is_split_parent_entry(n)) {
+        if !discovered.contains_key(name) {
             violations.push(format!(
-                "{name}: listed in caps.baseline but not readable. A split                  parent that was renamed or removed must be removed from the                  baseline in the same commit, or this rule silently stops                  covering it."
+                "{name}: in caps.baseline, but not a split parent -- renamed, \
+                 removed, or its submodules folded back. Remove the entry in \
+                 the same commit, or this rule silently stops covering the file \
+                 it meant."
             ));
-            continue;
-        };
-        let lines = text.lines().count();
-        if lines > *cap {
-            violations.push(format!("{name}: {lines} lines, cap {cap}"));
         }
     }
 
-    // The guard against the guard. A baseline whose path entries were all
-    // deleted would pass vacuously, which is the dead-ratchet shape this file
-    // already records for `tags.rs`.
-    assert!(
-        checked >= 9,
-        "only {checked} split parents are covered; there were 9 when this rule          was written. A parent dropped from caps.baseline is a parent nothing          is watching."
-    );
-
     assert!(
         violations.is_empty(),
-        "RULE 4.4: a split parent grew past its cap. **Move the new code into          its submodule** -- that is what the parent was split for.
-
-         `plan/05:385-388` cites Vellum's `split_parents_stay_facades`, whose          own comment is the instruction: \"if one trips, move code down into a          submodule instead of raising the cap.\"
-
-         If the increase is genuinely right, edit caps.baseline in this same          commit and say why.
-
-{}",
-        violations.join("
-")
+        "RULE 4.4: a split parent grew past its cap, or has none. **Move the \
+         new code into its submodule** -- that is what the parent was split \
+         for.\n\n\
+         `plan/05:385-388` cites Vellum's `split_parents_stay_facades`, whose \
+         own comment is the instruction: \"if one trips, move code down into a \
+         submodule instead of raising the cap.\"\n\n\
+         If the increase is genuinely right, edit caps.baseline and caps.floor \
+         in this same commit and say why.\n\n{}",
+        violations.join("\n")
     );
 }
 
-/// A deferral whose unblocking condition has come true must FAIL.
+// A deferral whose unblocking condition has come true must FAIL.
 ///
 /// # The hole this closes
 ///
@@ -683,62 +748,51 @@ fn a_spent_deferral_fails() {
     }
 }
 
-/// Names of functions in `text` that are **live `#[test]`s**.
-///
-/// # Why "declared" was not enough
-///
-/// This used to collect any line beginning `fn `, which made
-/// `every_covered_rule_names_a_test_that_exists` answer a weaker question than
-/// its name: the function existed, but nothing checked it still *ran*.
-///
-/// A reviewer demonstrated the gap by adding `#[ignore]` to every `#[test]` in
-/// `layering.rs` -- including `cena_ui_depends_on_no_ui_toolkit`, which is
-/// `COVERED_RULES`' entry for Rule 1.3 -- and running the suite. Two tests
-/// reported `ignored` and **nothing failed**. Removing `#[test]` entirely, or
-/// adding `#[cfg(any())]`, was equally invisible (review AR-3).
-///
-/// That is the exact failure `plan/05` Rule 0 names: the rule was still in the
-/// table, the function was still in the file, and the enforcement was gone.
-/// A withdrawal-side ratchet that cannot see a withdrawal is decoration.
-///
-/// So a name counts only when the attributes immediately above it include
-/// `#[test]` and exclude `#[ignore]` and `#[cfg(`. Attribute lines and `///`
-/// docs may sit between the attribute and the `fn`, so the walk goes upward
-/// through those and stops at anything else.
-fn live_test_names(text: &str) -> BTreeSet<String> {
-    let lines = code_lines(text);
-    let collapsed: Vec<String> = lines.iter().map(|l| collapse_whitespace(l)).collect();
-    let mut names = BTreeSet::new();
-    for (i, line) in collapsed.iter().enumerate() {
-        let Some(rest) = line.strip_prefix("fn ") else {
-            continue;
-        };
-        let Some(name) = rest.split('(').next() else {
-            continue;
-        };
-        // Walk up through the attribute/doc block directly above the `fn`.
-        let mut has_test = false;
-        let mut suppressed = false;
-        for above in collapsed[..i].iter().rev() {
-            if above.is_empty() {
-                continue;
-            }
-            if !above.starts_with("#[") && !above.starts_with("#![") {
-                break;
-            }
-            if above.starts_with("#[test]") {
-                has_test = true;
-            }
-            // `#[ignore]`, `#[ignore = "..."]` and any `#[cfg(...)]` all mean
-            // the function may not run. A test that is conditionally compiled
-            // out is not enforcing anything on the runs where it is absent.
-            if above.starts_with("#[ignore") || above.starts_with("#[cfg(") {
-                suppressed = true;
-            }
-        }
-        if has_test && !suppressed {
-            names.insert(name.to_owned());
-        }
+// ---------------------------------------------------------------------------
+// Review finding 5: what `every_covered_rule_names_a_test_that_exists` counts
+// as a LIVE test. The mechanism is `cena_arch_tests::structure::live_test_names`,
+// whose doc records the history. Each fixture below was run through the
+// previous, attributes-directly-above version in a scratch binary, and every
+// one was reported live. They are asserted not live here.
+// ---------------------------------------------------------------------------
+
+/// Each way of compiling a test out while its `#[test]` stays in place.
+#[test]
+fn a_test_compiled_out_by_its_surroundings_is_not_live() {
+    let fixtures = [
+        (
+            "an inner cfg at file top",
+            "#![cfg(any())]\n#[test]\nfn a() {}\n",
+        ),
+        (
+            "a cfg on the enclosing module",
+            "#[cfg(any())]\nmod off {\n    #[test]\n    fn b() {}\n}\n",
+        ),
+        (
+            "ignore applied through cfg_attr",
+            "#[cfg_attr(all(), ignore)]\n#[test]\nfn c() {}\n",
+        ),
+        (
+            "the same cfg_attr split over lines",
+            "#[cfg_attr(\n    all(),\n    ignore\n)]\n#[test]\nfn d() {}\n",
+        ),
+        (
+            "an inner cfg inside a module",
+            "mod m {\n    #![cfg(any())]\n    #[test]\n    fn e() {}\n}\n",
+        ),
+    ];
+    for (label, fixture) in fixtures {
+        let live = live_test_names(fixture);
+        assert!(live.is_empty(), "{label}: counted as live: {live:?}");
     }
-    names
+}
+
+/// The negative control: without it, a `live_test_names` that returned
+/// nothing would pass the test above.
+#[test]
+fn an_ordinary_test_is_live() {
+    let fixture = "#[cfg(test)]\nfn helper() {}\n\n/// Doc.\n#[test]\n#[should_panic]\nfn plain() {}\n\
+                   mod inner {\n    #[test]\n    fn nested() {}\n}\n";
+    let live: Vec<String> = live_test_names(fixture).into_iter().collect();
+    assert_eq!(live, ["nested", "plain"]);
 }

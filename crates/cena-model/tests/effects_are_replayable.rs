@@ -39,6 +39,7 @@ fn buff_with_remaining(id: &str, secs: u32) -> Frame {
         percent: 50,
         amount: None,
         time_remaining_secs: Some(secs),
+        attrs: Vec::new(),
     })
 }
 

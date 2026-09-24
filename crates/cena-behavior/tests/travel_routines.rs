@@ -3,6 +3,8 @@
 //! the loop that runs them: a routine's moves going back through the trip,
 //! its answers reaching it, and the trip looking at where it landed.
 
+mod ready;
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -38,14 +40,18 @@ fn set_out(
     TranscriptHandle,
     CancellationToken,
 ) {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
     let session_cancel = session.cancel_token();
     let (mut snapshot, events) = session.subscribe();
+    let (_, ready) = session.subscribe();
     snapshot.state.room.id = Some("1001".into());
     tokio::spawn(session.into_actor().run());
     let walk = tokio::spawn(async move {
+        // Inside the task: `set_out` is not async, and the walk is what must
+        // not start before the session is `Ready`.
+        ready::until_ready(ready).await.ok()?;
         let rooms: Vec<Room> = serde_json::from_str(rooms).ok()?;
         let map = Map::from_rooms(rooms).ok()?;
         let next = Arc::new(AtomicU64::new(0));
@@ -224,6 +230,23 @@ async fn a_bank_that_cannot_cover_the_fare_stops_the_trip() {
 async fn a_walker_with_the_fare_just_goes() {
     let (walk, transcript, session) = set_out(FERRY, 2, with(&["get_silvers"]));
     transcript.answer("wealth quiet", &wealth(50));
+    transcript.answer("north", &arrival(1002));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(transcript.lines(), ["wealth quiet", "north"]);
+    session.cancel();
+}
+
+/// `wealth quiet` answered with nothing the model can read: how much is
+/// carried is **unknown**, not nothing (`plan/12` §5.2). The walker says so
+/// and goes, as it does with `get_silvers` off -- no bank, no withdrawal.
+///
+/// Review finding (2026-09-23): unknown was `unwrap_or(0)`. Reproduced before
+/// the fix: the walker went `east` to the bank.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn silver_nobody_stated_is_not_taken_for_none() {
+    let (walk, transcript, session) = set_out(FERRY, 2, with(&["get_silvers"]));
+    // `wealth quiet` is left to the source's own reply: a bare prompt.
     transcript.answer("north", &arrival(1002));
     let travelled = walk.await.expect("the walk must not panic").unwrap();
     assert_eq!(travelled.ended, Ended::Arrived);

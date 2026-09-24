@@ -14,7 +14,7 @@
 use cena_arch_tests::harness::{
     crate_dependency_names, member_crates, relative, scannable_sources,
 };
-use cena_arch_tests::lexical::scan_lines;
+use cena_arch_tests::lexical::tokens;
 use std::collections::{BTreeMap, BTreeSet};
 
 // ---------------------------------------------------------------------------
@@ -83,7 +83,11 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // whatever consumes it is added when that consumer exists, not before
     // (`plan/05` §-1).
     ("cena-map", &[]),
-    // The offline converter (`plan/21` §3a). A build tool: it reads the
+    // (The offline converter's row, `plan/21` §3a, went with the converter:
+    // it moved out of this workspace to `Nisugi/hydra-mapdb`, as
+    // `map_does_no_file_io` below records. A half-sentence of its comment
+    // was left here, cut off mid-clause, until review finding 14.)
+    //
     // AMENDED for Milestone 1 Step 2, the session actor slice. The row was
     // `&["cena-model"]`. Two edges added, both downward under `plan/12:72-86`:
     //
@@ -95,8 +99,10 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // (`crates/cena-model/Cargo.toml:8`), so this is the same direction one
     // layer further; it closes no cycle and skips no layer upward. Routing it
     // through `cena-model` was the alternative and was rejected: re-exporting
-    // `Parser` and 53 `Frame` variants (measured: python over the enum body in crates/cena-protocol/src/frame.rs, counting 4-space-indented variant heads) is a pass-through facade with one
-    // caller, which Rule -1 (`plan/05` §-1) forbids.
+    // `Parser` and 53 `Frame` variants (measured: python over the enum body
+    // in crates/cena-protocol/src/frame.rs, counting 4-space-indented variant
+    // heads) is a pass-through facade with one caller, which Rule -1
+    // (`plan/05` §-1) forbids.
     //
     // `cena-platform` -- the session OWNS THE SOCKET. `plan/12` §9c moves
     // reconnect to Milestone 2, so a connection-manager crate between them
@@ -359,7 +365,86 @@ fn a_dev_only_edge_stays_out_of_the_shipped_graph() {
 /// code down, do not raise the cap.
 #[test]
 fn model_does_no_file_io() {
-    let needles = &[
+    let hits = file_io_in("crates/cena-model/src/");
+    assert!(
+        hits.is_empty(),
+        "cena-model is the meaning layer and must not touch the filesystem.          The snapshot TYPE lives here; loading and saving it lives in          `cena-session/src/character_store.rs`, the only crate the layering          table lets hold both (layering.rs:98-101).
+{}",
+        hits.join("
+")
+    );
+}
+
+/// Every filesystem reach in the sources under `prefix`, which must exist.
+fn file_io_in(prefix: &str) -> Vec<String> {
+    let sources: Vec<(std::path::PathBuf, String)> = scannable_sources()
+        .into_iter()
+        .filter(|(path, _)| relative(path).starts_with(prefix))
+        .collect();
+    assert!(
+        !sources.is_empty(),
+        "the scan found no sources under {prefix}, so this test is vacuous"
+    );
+    file_io(&sources)
+}
+
+/// Every token in `sources` that reaches the filesystem.
+///
+/// # Tokens, not needles (review finding 12)
+///
+/// The needles were `std::fs`, `fs::read`, `fs::write`, `File::open`,
+/// `File::create` and `OpenOptions`. Two ordinary lines passed all six:
+///
+/// - `use std::{fs, io};` then `fs::remove_file(p)` -- the grouped import
+///   never spells `std::fs`, and `remove_file` was not a needle; neither
+///   were `create_dir`, `rename`, `copy` or `read_dir`;
+/// - `Path::new(p).exists()` -- a filesystem query through `Path`, with no
+///   `fs` in sight.
+///
+/// So the question is asked of identifiers: the module `fs` named at all (in
+/// any import or path -- every `std::fs` item is reached through it), the
+/// types `File`, `OpenOptions`, `DirEntry` and `ReadDir`, and the `Path`
+/// methods that touch the disk. A string containing "fs" is a literal and is
+/// not a token, which is what keeps `int("fs")` in `combat/resolution.rs`
+/// clean.
+fn file_io(sources: &[(std::path::PathBuf, String)]) -> Vec<String> {
+    const MODULES_AND_TYPES: &[&str] = &["fs", "File", "OpenOptions", "DirEntry", "ReadDir"];
+    const PATH_METHODS: &[&str] = &[
+        "exists",
+        "try_exists",
+        "is_file",
+        "is_dir",
+        "is_symlink",
+        "metadata",
+        "symlink_metadata",
+        "read_dir",
+        "read_link",
+        "canonicalize",
+    ];
+    let mut hits = Vec::new();
+    for (path, text) in sources {
+        if path.extension().is_none_or(|e| e != "rs") {
+            continue;
+        }
+        let toks = tokens(text);
+        for (k, t) in toks.iter().enumerate() {
+            let named = MODULES_AND_TYPES.iter().any(|n| t.is(n));
+            let method = k > 0
+                && toks[k - 1].is(".")
+                && PATH_METHODS.iter().any(|m| t.is(m))
+                && toks.get(k + 1).is_some_and(|n| n.is("("));
+            if named || method {
+                hits.push(format!("{}:{}: `{}`", relative(path), t.line, t.text));
+            }
+        }
+    }
+    hits
+}
+
+/// Finding 12's mutations: each passed all six old needles.
+#[test]
+fn a_grouped_import_or_a_path_query_is_file_io() {
+    let old = [
         "std::fs",
         "File::open",
         "File::create",
@@ -367,23 +452,26 @@ fn model_does_no_file_io() {
         "fs::write",
         "OpenOptions",
     ];
-    let sources: Vec<(std::path::PathBuf, String)> = scannable_sources()
-        .into_iter()
-        .filter(|(path, _)| relative(path).starts_with("crates/cena-model/src/"))
-        .collect();
-    assert!(
-        !sources.is_empty(),
-        "the scan found no cena-model sources, so this test is vacuous"
-    );
-    let hits = scan_lines(&sources, needles);
-    assert!(
-        hits.is_empty(),
-        "cena-model is the meaning layer and must not touch the filesystem. \
-         The snapshot TYPE lives here; loading and saving it lives in \
-         `cena-session/src/character_store.rs`, the only crate the layering \
-         table lets hold both (layering.rs:98-101).\n{}",
-        hits.join("\n")
-    );
+    let path = cena_arch_tests::harness::workspace_root().join("crates/cena-model/src/f.rs");
+    for case in [
+        "use std::{fs, io};
+fn gone(p: &str) { let _ = fs::remove_file(p); }
+",
+        "fn here(p: &str) -> bool { std::path::Path::new(p).exists() }
+",
+    ] {
+        assert!(!old.iter().any(|n| case.contains(n)), "{case:?}");
+        assert!(
+            !file_io(&[(path.clone(), case.to_owned())]).is_empty(),
+            "missed: {case:?}"
+        );
+    }
+    // Negative control: the word in a literal, and a method named alike on
+    // something that is not a path call.
+    let clean = "fn f() -> Option<u8> { int(\"fs\") }
+fn exists() {}
+";
+    assert!(file_io(&[(path, clean.to_owned())]).is_empty());
 }
 
 /// `plan/21` §3c: `cena-map` is the map's vocabulary and is pure. Reading the
@@ -391,30 +479,18 @@ fn model_does_no_file_io() {
 /// job now (moved out of this workspace, `plan/21` records the move); loading
 /// the built map belongs to whichever crate owns that file handle.
 ///
-/// Written with the crate, not after it (`plan/05` §0). Same needles and the
+/// Written with the crate, not after it (`plan/05` §0). Same tokens and the
 /// same lexical limits as [`model_does_no_file_io`].
 #[test]
 fn map_does_no_file_io() {
-    let needles = &[
-        "std::fs",
-        "File::open",
-        "File::create",
-        "fs::read",
-        "fs::write",
-        "OpenOptions",
-    ];
-    let sources: Vec<(std::path::PathBuf, String)> = scannable_sources()
-        .into_iter()
-        .filter(|(path, _)| relative(path).starts_with("crates/cena-map/src/"))
-        .collect();
-    assert!(
-        !sources.is_empty(),
-        "the scan found no cena-map sources, so this test is vacuous"
-    );
-    let hits = scan_lines(&sources, needles);
+    let hits = file_io_in("crates/cena-map/src/");
     assert!(
         hits.is_empty(),
-        "cena-map must not touch the filesystem (`plan/21` §3c).\n{}",
-        hits.join("\n")
+        "cena-map must not touch the filesystem (`plan/21` §3c).
+{}",
+        hits.join(
+            "
+"
+        )
     );
 }

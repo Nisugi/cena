@@ -31,15 +31,15 @@ fn line(stream: &str, text: &str) -> LogLine {
 }
 
 /// The one file a writer has created, and its contents.
-#[allow(
-    clippy::expect_used,
-    reason = "a test helper: clippy.toml exempts `#[test]` fns, and this is one in all but attribute"
-)]
-fn only_file(dir: &Path, character: &str) -> (PathBuf, String) {
-    let days = writer::days(dir, character).expect("read the log directory");
+///
+/// Returns the I/O error rather than `expect`ing it: the workspace denies
+/// `expect` outside `#[test]` fns, and `no_site_reopens_a_denied_lint_by_attribute`
+/// refuses the `#[allow]` this helper used to carry. The callers are tests.
+fn only_file(dir: &Path, character: &str) -> std::io::Result<(PathBuf, String)> {
+    let days = writer::days(dir, character)?;
     assert_eq!(days.len(), 1, "expected exactly one day-file, got {days:?}");
-    let text = fs::read_to_string(&days[0]).expect("read the day file");
-    (days[0].clone(), text)
+    let text = fs::read_to_string(&days[0])?;
+    Ok((days[0].clone(), text))
 }
 
 #[test]
@@ -50,14 +50,14 @@ fn a_line_lands_in_a_dated_file_for_its_character() {
         w.write(&line("main", "You see a rock.")).expect("write");
     } // dropped, which flushes
 
-    let (path, text) = only_file(&dir, "Nisugi");
+    let (path, text) = only_file(&dir, "Nisugi").expect("read the log");
 
     let name = path.file_name().unwrap().to_string_lossy().into_owned();
     assert!(
         // `Path::extension` rather than `ends_with(".log")`: the latter is a
         // case-sensitive comparison, which is the class of bug the character
         // store carried until 2026-09-22.
-        name.starts_with("Nisugi_")
+        name.starts_with("nisugi_")
             && std::path::Path::new(&name)
                 .extension()
                 .is_some_and(|e| e.eq_ignore_ascii_case("log")),
@@ -119,7 +119,7 @@ fn a_second_session_the_same_day_appends_rather_than_truncating() {
         w.write(&line("main", "afternoon")).expect("write");
     }
 
-    let (_, text) = only_file(&dir, "Nisugi");
+    let (_, text) = only_file(&dir, "Nisugi").expect("read the log");
     assert!(text.contains("morning"), "the first session was erased");
     assert!(text.contains("afternoon"));
     assert_eq!(text.lines().count(), 2);
@@ -138,7 +138,7 @@ fn a_registered_secret_never_reaches_the_disk() {
             .expect("write");
     }
 
-    let (_, text) = only_file(&dir, "Nisugi");
+    let (_, text) = only_file(&dir, "Nisugi").expect("read the log");
     assert!(
         !text.contains("SUPERSECRETKEY"),
         "the secret reached disk: {text}"
@@ -161,9 +161,54 @@ fn a_secret_registered_after_the_file_is_open_still_redacts() {
             .expect("write");
     }
 
-    let (_, text) = only_file(&dir, "Nisugi");
+    let (_, text) = only_file(&dir, "Nisugi").expect("read the log");
     assert!(text.contains("first generation"), "guard: both lines wrote");
     assert!(!text.contains("SECONDKEY"), "the later key leaked: {text}");
+}
+
+/// **One character, one directory, whatever the spelling or the platform.**
+///
+/// The directory and file names are the character's name lowercased and cut
+/// to ASCII alphanumerics -- `store.rs`'s rule for every other per-character
+/// file. Before review finding 12 they kept the case (two directories on
+/// ext4 for `Nisugi` and `nisugi`), kept dots (`..` escaped its directory),
+/// and passed Windows device names (`Con` cannot be a directory there).
+#[test]
+fn the_log_path_is_one_safe_lowercase_component() {
+    let dir = temp_dir("safe-name");
+    let upper = PlayerWriter::new(&dir, "Nisugi");
+    let lower = PlayerWriter::new(&dir, "nisugi");
+    assert_eq!(upper.dir(), lower.dir(), "one character, one directory");
+    assert_eq!(
+        upper.dir().file_name().and_then(|n| n.to_str()),
+        Some("nisugi")
+    );
+
+    let escaping = PlayerWriter::new(&dir, "..");
+    // Components, not `parent()`: `Path::parent` is lexical, so the parent of
+    // `player/..` is `player` and the escape would look contained.
+    assert!(
+        escaping
+            .dir()
+            .components()
+            .all(|c| c != std::path::Component::ParentDir),
+        "`..` left the log root: {}",
+        escaping.dir().display()
+    );
+    for device in ["Con", "AUX", "nul", "Prn", "com1", "LPT9"] {
+        let name = PlayerWriter::new(&dir, device)
+            .dir()
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(str::to_owned)
+            .unwrap_or_default();
+        assert_ne!(
+            name,
+            device.to_ascii_lowercase(),
+            "`{device}` is a Windows device name and cannot be a directory"
+        );
+    }
+    let _ = fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -231,7 +276,7 @@ async fn the_writer_drains_a_sink_and_flushes_at_the_end() {
 
     w.run(sink).await;
 
-    let (_, text) = only_file(&dir, "Nisugi");
+    let (_, text) = only_file(&dir, "Nisugi").expect("read the log");
     assert!(text.contains("[main] first"));
     assert!(text.contains("[thoughts] second"));
     assert_eq!(text.lines().count(), 2, "the tail was not flushed");
@@ -249,7 +294,7 @@ async fn an_idle_writer_flushes_on_the_timer_while_the_session_lives() {
     log.record(line("main", "the last thing before going quiet"));
     tokio::time::sleep(writer::FLUSH_EVERY * 3).await;
 
-    let (_, text) = only_file(&dir, "Nisugi");
+    let (_, text) = only_file(&dir, "Nisugi").expect("read the log");
     assert!(
         text.contains("the last thing before going quiet"),
         "an idle session's tail never reached the disk: {text:?}"

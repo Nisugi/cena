@@ -64,12 +64,11 @@ pub(super) fn read_label(exp: &mut Experience, id: &str, value: &str) -> bool {
 ///
 /// `None` for a value that does not start with a digit -- never `0`, because
 /// zero training points is a real reading and "not a number" is not.
+///
+/// **The first whitespace-separated token, read whole.** This used to take
+/// the leading digits and stop, so `12a3 PTPs` read as `12` -- a partial
+/// parse of something the wire never sent. The token now goes through the
+/// shared strict reader (`state/numbers.rs`), which refuses it.
 fn leading_number(value: &str) -> Option<u32> {
-    let digits: String = value
-        .trim_start()
-        .chars()
-        .take_while(|c| c.is_ascii_digit() || *c == ',')
-        .filter(|c| *c != ',')
-        .collect();
-    digits.parse().ok()
+    crate::state::numbers::grouped(value.split_whitespace().next()?)
 }

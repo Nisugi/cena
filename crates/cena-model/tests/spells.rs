@@ -79,6 +79,32 @@ mod circles {
     }
 
     #[test]
+    fn the_circle_is_total_over_every_number() {
+        // `number` is a `pub` field, and `circle` used to slice the decimal
+        // string `[..2]` -- a panic on any one-digit number. Ruby's
+        // `"5"[0..1]` is `"5"`, so a number under 100 is its own circle, and
+        // a five-digit one keeps its first two digits (`"65535"[0..1]`).
+        let circle = |number| {
+            spells::Spell {
+                number,
+                ..Default::default()
+            }
+            .circle()
+        };
+        assert_eq!(circle(0), 0);
+        assert_eq!(circle(5), 5);
+        assert_eq!(circle(12), 12);
+        assert_eq!(circle(99), 99);
+        assert_eq!(circle(100), 1);
+        assert_eq!(circle(999), 9);
+        assert_eq!(circle(1000), 10);
+        assert_eq!(circle(65_535), 65);
+        for number in 0..=u16::MAX {
+            let _ = circle(number);
+        }
+    }
+
+    #[test]
     fn the_circle_names_are_ported_whole_including_their_gaps() {
         // `spells.rb:6`. The numbering is not contiguous -- there is no 13,
         // 14 or 15, and it jumps to 65, 66, then the 90s.

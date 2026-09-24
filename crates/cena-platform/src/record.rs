@@ -40,9 +40,21 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RecordedEvent {
     /// Bytes read from the wire, exactly as one `read` returned them.
-    Inbound { seq: u64, bytes: Vec<u8> },
+    Inbound {
+        /// Position in the recorder's counter, shared by both directions and
+        /// seeded at 0; not a timestamp.
+        seq: u64,
+        /// The chunk, unsplit and unjoined.
+        bytes: Vec<u8>,
+    },
     /// Bytes written to the wire, exactly as one `write_all` sent them.
-    Outbound { seq: u64, bytes: Vec<u8> },
+    Outbound {
+        /// Position in the recorder's counter, shared by both directions and
+        /// seeded at 0; not a timestamp.
+        seq: u64,
+        /// The message as written in one call, its trailing newline included.
+        bytes: Vec<u8>,
+    },
 }
 
 impl RecordedEvent {

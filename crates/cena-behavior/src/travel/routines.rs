@@ -34,7 +34,9 @@
 mod altar_levers;
 mod bridge_wheel;
 mod bronze_gate;
-mod casting;
+/// Its bounds on waiting for mana and recasting are the driver's too, for
+/// [`super::Deed::CastAt`]: one loop upstream, so one set of numbers here.
+pub(super) mod casting;
 mod colour_barrier;
 mod confluence;
 mod crown_door;

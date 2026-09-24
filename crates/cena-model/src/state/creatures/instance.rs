@@ -179,6 +179,9 @@ pub struct CreatureInstance {
     stated_max_health: Option<u32>,
     /// When the feed first and last showed it.
     pub first_seen_at: Option<u32>,
+    /// Game-time second of the most recent sighting; `touch_seen` advances it
+    /// only when the clock is known, and the stale-creature sweep compares it
+    /// against a cutoff. `None` if every sighting came with no clock.
     pub last_seen_at: Option<u32>,
 }
 

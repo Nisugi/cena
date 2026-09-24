@@ -11,6 +11,7 @@
 use super::wire::{CLIENT_BANNER, EaccessError, LaunchPayload, err};
 use crate::bytes::ByteSource;
 use crate::gemstone::endpoint::other_spelling;
+use crate::gemstone::shim;
 use crate::live::LiveSource;
 
 /// Open the game socket and send the three-part handshake.
@@ -118,6 +119,21 @@ const READY_SIGNAL_GAP: std::time::Duration = std::time::Duration::from_millis(3
 /// "why could I not reach the server the login told me to use". The fallback's
 /// failure is a footnote: it is expected to fail whenever the table is simply
 /// not relevant to this endpoint.
+///
+/// # Then the WebSocket shim
+///
+/// When neither spelling connects, the same stream is tried through play.net's
+/// WebSocket shim on 443 (`crate::gemstone::shim`, ported from Lich PR #1664). That is
+/// the network that blocks the game port and leaves 443 open -- a school, a
+/// hotel, a carrier -- and it is the author's call that the fallback is
+/// automatic, as Lich's is, rather than a flag.
+///
+/// **Every connect failure triggers it**, not Lich's list of five error
+/// classes. Lich narrows it so an error the shim would hit identically is not
+/// delayed; but nothing has been exchanged at this point and the key is
+/// unspent, so the cost of trying is one bounded connect, and an allowlist of
+/// error KINDS is the part that does not port: a DNS failure's kind differs by
+/// platform. A shim failure after a direct one reports both.
 async fn connect_with_fallback(host: &str, port: u16) -> std::io::Result<LiveSource> {
     let first = match LiveSource::connect(host, port).await {
         Ok(sock) => return Ok(sock),
@@ -125,12 +141,28 @@ async fn connect_with_fallback(host: &str, port: u16) -> std::io::Result<LiveSou
     };
 
     // No counterpart is the common case -- an endpoint the table does not know
-    // -- and it is not an error. There is simply nothing else to try.
-    let Some((alt_host, alt_port)) = other_spelling(host, port) else {
-        return Err(first);
-    };
+    // -- and it is not an error. There is simply nothing else to try on TCP.
+    if let Some((alt_host, alt_port)) = other_spelling(host, port)
+        && let Ok(sock) = LiveSource::connect(alt_host, alt_port).await
+    {
+        return Ok(sock);
+    }
 
-    LiveSource::connect(alt_host, alt_port)
-        .await
-        .map_err(|_alt| first)
+    match LiveSource::connect_shim(host, port).await {
+        Ok(sock) => {
+            // Said once, where the operator will see it: a session on the
+            // fallback behaves the same, and nothing else would tell them the
+            // game port is blocked where they are.
+            eprintln!(
+                "[game] {host}:{port} unreachable ({first}); connected through \
+                 the WebSocket shim at wss://{}/shim/{port}",
+                shim::shim_host(host)
+            );
+            Ok(sock)
+        }
+        Err(shim) => Err(std::io::Error::new(
+            first.kind(),
+            format!("{first}; the WebSocket shim fallback failed too: {shim}"),
+        )),
+    }
 }

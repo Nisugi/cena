@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::view::{SessionView, StoryLine};
 
+/// The `version` every message in both directions must carry; anything else
+/// is refused by the listener and rejected by the browser.
 pub const WIRE_VERSION: u16 = 1;
 
 /// Input does not expose lifecycle control or behavior authority.
@@ -14,15 +16,27 @@ pub const WIRE_VERSION: u16 = 1;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ClientMessage {
+    /// `kind: "authenticate"`: must be the socket's first message; nothing is
+    /// sent to the browser before it succeeds.
     Authenticate {
+        /// Must equal `WIRE_VERSION`.
         version: u16,
+        /// The pairing token, compared in full against the listener's secret.
         token: String,
     },
+    /// `kind: "command"`: one manual command line, never retried automatically.
     Command {
+        /// Must equal `WIRE_VERSION`.
         version: u16,
+        /// The target session id, as a canonical decimal u64 string.
         session: String,
+        /// The connection generation the browser saw, as a canonical decimal
+        /// u64 string; a stale generation is refused rather than sent.
         generation: String,
+        /// Browser-chosen id (1-64 ASCII letters, digits, `-` or `_`) that the
+        /// matching receipt echoes back.
         request_id: String,
+        /// The command text, sent exactly as given (no trimming).
         line: String,
     },
 }
@@ -37,6 +51,15 @@ pub enum ReceiptStatus {
     Refused,
     /// The send outcome cannot be established. Do not retry automatically.
     Uncertain,
+    /// Hydra ran the line itself -- a `;` command -- and **nothing was sent
+    /// to the game**.
+    ///
+    /// Not `Sent`: that claims bytes reached the wire, which for a claimed
+    /// line is false, and every one of them used to come back saying so. Not
+    /// `Refused` either: nothing was refused, the line did what it was for.
+    /// A third fact, so a third word. The browser assets ship in the same
+    /// binary as the server, so no viewer can be older than this variant.
+    Handled,
 }
 
 /// A snapshot replaces the browser's view/history; updates append whole lines.
@@ -48,29 +71,55 @@ pub enum ReceiptStatus {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ServerMessage {
+    /// `kind: "snapshot"`: the browser replaces its view and Story wholesale.
     Snapshot {
+        /// Always `WIRE_VERSION`.
         version: u16,
+        /// Session id, canonical decimal u64 string.
         session: String,
+        /// Connection generation, canonical decimal u64 string; the browser
+        /// ignores state older than the generation it holds.
         generation: String,
+        /// Presentation cursor, canonical decimal u64 string; the browser drops
+        /// any snapshot or update whose cursor is not above its last.
         cursor: String,
+        /// The full current view.
         view: SessionView,
+        /// The retained Story history, oldest first.
         story: Vec<StoryLine>,
+        /// True when lines are missing from inside `story`; the browser shows
+        /// a gap notice until that many lines have scrolled out.
         history_gap: bool,
     },
+    /// `kind: "update"`: replaces the view and appends lines to the Story.
     Update {
+        /// Always `WIRE_VERSION`.
         version: u16,
+        /// Session id, canonical decimal u64 string.
         session: String,
+        /// Connection generation, canonical decimal u64 string.
         generation: String,
+        /// Presentation cursor, canonical decimal u64 string, above the last.
         cursor: String,
+        /// The full current view, replacing the previous one.
         view: SessionView,
+        /// Complete lines assembled since the previous message, to append.
         lines: Vec<StoryLine>,
     },
+    /// `kind: "receipt"`: the send outcome for one `ClientMessage::Command`.
     Receipt {
+        /// Always `WIRE_VERSION`.
         version: u16,
+        /// Session id the command targeted, canonical decimal u64 string.
         session: String,
+        /// The generation the command requested, echoed so a stale refusal
+        /// stays attributable; the browser ignores receipts for another one.
         generation: String,
+        /// The command's `request_id`, echoed so the browser can match it.
         request_id: String,
+        /// What the sender can establish about the send.
         status: ReceiptStatus,
+        /// Human-readable explanation, shown after the status label.
         detail: String,
     },
 }

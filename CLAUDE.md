@@ -107,6 +107,69 @@ From `plan/05-engineering-rules.md`:
 3. **A rule that is not enforced is a wish (§0).** Structural rules are compiler-enforced by
    the crate graph; the rest live in architecture tests, written *when the rule is adopted*.
 
+## Commands
+
+The toolchain is pinned in `rust-toolchain.toml` (**1.96.1**, with rustfmt and clippy);
+CI and local runs use the same one. Clippy at `-D warnings` is part of the build contract,
+not an optional lint pass.
+
+```sh
+cargo test --workspace                             # everything, including architecture tests
+cargo test -p cena-model                           # one crate
+cargo test -p cena-model --test stream_windows     # one integration file: crates/cena-model/tests/stream_windows.rs
+cargo test -p cena-model -- speech                 # tests whose name contains "speech"
+cargo test -p cena-arch-tests --test citations     # every path cited in plan/ still resolves
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --check
+cargo doc --workspace --no-deps                    # rustdoc link lints are DENY: a broken link is a red build
+node crates/cena-web/browser-tests/smoke.mjs       # Despana browser smoke (CI job `browser-smoke`)
+```
+
+`/check` runs the full set and reports what failed. Use it before any commit, and after any
+agent claims the tree is green.
+
+CI (`.github/workflows/ci.yml`) also builds the five core crates (`cena-platform`,
+`cena-protocol`, `cena-model`, `cena-session`, `cena-behavior`) for `aarch64-linux-android`
+(via `cargo ndk`) and `aarch64-apple-ios` (macOS runner only). A dependency that breaks
+either build breaks `plan/12` §1a.
+
+**Do not run the binary.** `cargo run -p cena` logs into the live game in **every** mode:
+the default, `--web`, `--demo` (which *sends* commands) and `--web-login`. Only the author
+runs it (see Credentials). Scripted runs are selected by arguments, not env vars; an env
+var set once in a shell drove the character on every later run (`crates/cena/src/run.rs`).
+`CENA_MAP` points travel at a converted map file.
+
+`spike/eaccess-spike` and `rtest/` are excluded from the workspace. The spike has its own
+lockfile; run cargo inside it only for the spike.
+
+## Architecture at a glance
+
+| Crate | What it is | Depends on (cena crates) |
+|---|---|---|
+| `cena-platform` | the bottom layer: the pipe a session's bytes come through, and the log | — |
+| `cena-protocol` | the wire layer: bytes in, `Frame`s out. The one parser, plus `tags.rs` | platform |
+| `cena-model` | typed game state (`state/`) that a session folds frames into, plus game data | protocol |
+| `cena-map` | the map's vocabulary (rooms, exits); `plan/21` | — |
+| `cena-session` | one character's connection as one actor: socket, parser, state, reconnect | platform, protocol, model |
+| `cena-behavior` | curated Rust behaviors (travel, …) | platform, map, session |
+| `cena-ui` | pure, versioned projection of a session for frontends (`SessionView`, `WIRE.md`) | model |
+| `cena-web` | Despana: embedded loopback viewer; the native session stays authoritative | ui, session |
+| `cena` | the binary | behavior, platform, session, ui, web |
+| `cena-arch-tests` | the rules the compiler cannot express | — |
+
+(Measured from each crate's `Cargo.toml`. Re-measure; do not restate.)
+
+The flow is **bytes → `cena-protocol` `Frame`s → classifiers → `cena-model` `GameState` →
+consumers**. `cena-ui` projects state to frontends, and `cena-web` serves the projection over
+a local WebSocket.
+
+**The architecture tests are the rulebook** (`crates/cena-arch-tests/tests/`): `layering.rs`
+holds the allowed crate edges (`ALLOWED_EDGES`, the table that *is* the architecture);
+`file_rules.rs` caps every source file at **800 lines** by default, with facade files capped
+lower and explicit, justified exceptions in `CAP_EXCEPTIONS`; `citations.rs` checks that
+every path cited in `plan/` resolves. When a file hits its cap, split it. **Moving code down
+is the fix; raising the cap is not.**
+
 ## Working in this repo
 
 - **Workspace of crates**, not one crate with modules. The dependency graph *is* the
@@ -307,8 +370,9 @@ mutations.
 > for `"<dir "` *with a trailing space*. The assertion was right and the input
 > never arrived — the same failure as the four in M3, now five.
 
-**Deferred, each needing an author decision:** SE-4 (authority across generations),
-SE-6 (`Lagged` recovery unreachable). **MO-3 is FIXED** (M3 step 10): `Effects::active_in`
+**Deferred, each needing an author decision:** SE-4 (authority across generations).
+**SE-6 is RESOLVED** (2026-09-23): `SupervisedSession::observer()` plus
+`SessionObserver::subscribe` recover from `Lagged` (`plan/19` records it). **MO-3 is FIXED** (M3 step 10): `Effects::active_in`
 distinguishes "the game stated this list and your id is not in it" from "nobody has said".
 
 **Milestone 3 — the typed character model — is COMPLETE as of 2026-09-21.**

@@ -179,19 +179,49 @@ mod joining_someone_elses {
         // group.` is two links and `<X> adds <Y> to <his> group.` is three,
         // and the prose either side of the middle name is identical -- so the
         // count is what tells them apart.
+        //
+        // In Etanamir's group first: Lich adds only when the leader is ours
+        // (`group.rb:636-638`), which the next test pins.
+        let group = state_after(&[
+            ETANAMIR_JOINED,
+            concat!(
+                r#"<a exist="-10488845" noun="Etanamir">Etanamir</a> adds "#,
+                r#"<a exist="-10974229" noun="Szan">Szan</a> to "#,
+                r#"<a exist="-10488845" noun="Etanamir">his</a> group."#,
+            ),
+        ])
+        .group;
+        assert_eq!(
+            group.members().len(),
+            2,
+            "Etanamir and Szan, not a third member called `his`"
+        );
+        assert!(group.contains("-10974229"));
+    }
+
+    /// You join Etanamir's group: he is its leader and its one known member.
+    const ETANAMIR_JOINED: &str = r#"You join <a exist="-10488845" noun="Etanamir">Etanamir</a>."#;
+
+    #[test]
+    fn a_stranger_adding_someone_to_their_own_group_is_not_ours() {
+        // Review finding. `LEADER_ADDED_MEMBER` is `Group.push(added) if
+        // Group.include?(leader)` (`group.rb:636-638`): the line reaches
+        // everyone in the room, so a leader we are not grouped with adding
+        // someone is THEIR news. Pushing unconditionally put strangers on
+        // our roster.
         let group = state_after(&[concat!(
             r#"<a exist="-10488845" noun="Etanamir">Etanamir</a> adds "#,
             r#"<a exist="-10974229" noun="Szan">Szan</a> to "#,
             r#"<a exist="-10488845" noun="Etanamir">his</a> group."#,
         )])
         .group;
-        assert_eq!(group.members().len(), 1, "Szan, not Szan and `his`");
-        assert!(group.contains("-10974229"));
+        assert!(group.is_empty(), "neither of them is in our group");
     }
 
     #[test]
     fn a_leader_removing_someone_removes_them() {
         let group = state_after(&[
+            ETANAMIR_JOINED,
             concat!(
                 r#"<a exist="-10488845" noun="Etanamir">Etanamir</a> adds "#,
                 r#"<a exist="-10974229" noun="Szan">Szan</a> to "#,
@@ -223,4 +253,76 @@ fn the_group_is_forgotten_on_a_reconnect() {
     assert_eq!(state.group.members().len(), 1, "guard: known first");
     state.invalidate_for_reconnect();
     assert!(state.group.is_empty());
+}
+
+mod emptied {
+    //! Review finding: nothing but `disband` or a reconnect ever emptied the
+    //! group. Lich clears it on three more signals (`group.rb:603-605`,
+    //! `:617-619`) and replaces it on the `group` command's roster (`:644-645`).
+
+    use super::{OREH_JOINS, state_after};
+
+    #[test]
+    fn the_joined_indicator_going_dark_empties_the_group() {
+        // `GROUP_EMPTIED`: `<indicator id='IconJOINED' visible='n'/>`.
+        let group = state_after(&[OREH_JOINS, r#"<indicator id="IconJOINED" visible="n"/>"#]).group;
+        assert!(group.is_empty());
+        assert_eq!(group.leader(), None, "the leader is you again");
+    }
+
+    #[test]
+    fn the_indicator_lighting_up_changes_nothing() {
+        let group = state_after(&[OREH_JOINS, r#"<indicator id="IconJOINED" visible="y"/>"#]).group;
+        assert_eq!(group.members().len(), 1);
+    }
+
+    #[test]
+    fn not_being_in_a_group_empties_it() {
+        // `NO_GROUP`, `^You are not currently in a group` (`group.rb:512`).
+        let group = state_after(&[OREH_JOINS, "You are not currently in a group."]).group;
+        assert!(group.is_empty());
+    }
+
+    #[test]
+    fn a_player_saying_it_is_not_the_game_saying_it() {
+        // Anchored, as Lich anchors it.
+        let group = state_after(&[
+            OREH_JOINS,
+            r#"<a exist="-5" noun="Bob">Bob</a> says, "You are not currently in a group.""#,
+        ])
+        .group;
+        assert_eq!(group.members().len(), 1);
+    }
+
+    #[test]
+    fn the_group_roster_replaces_the_members() {
+        // `MEMBER` (`group.rb:521`) -> `Group.refresh(*people)`: a complete
+        // list, so Oreh -- held from before and not named -- has gone.
+        let group = state_after(&[
+            OREH_JOINS,
+            concat!(
+                r#"You are grouped with <a exist="-10488845" noun="Etanamir">Etanamir</a>, "#,
+                r#"<a exist="-10974229" noun="Szan">Szan</a>."#,
+            ),
+        ])
+        .group;
+        let nouns: Vec<&str> = group.members().iter().map(|m| m.noun.as_str()).collect();
+        assert_eq!(nouns, ["Etanamir", "Szan"]);
+        assert_eq!(
+            group.leader().map(|m| m.noun.as_str()),
+            Some("Etanamir"),
+            "`grouped with` names the leader first (`group.rb:610-614`)"
+        );
+    }
+
+    #[test]
+    fn leading_the_roster_makes_the_leader_you() {
+        let group = state_after(&[concat!(
+            r#"You are leading <a exist="-10467645" noun="Oreh">Oreh</a>, "#,
+            r#"<a exist="-10974229" noun="Szan">Szan</a>."#,
+        )])
+        .group;
+        assert_eq!(group.members().len(), 2);
+        assert_eq!(group.leader(), None, "you, which is not a link");
+    }
 }

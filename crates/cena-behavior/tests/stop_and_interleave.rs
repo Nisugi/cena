@@ -30,6 +30,8 @@
 //! behavior has completed at least one round trip and entered its sleep**,
 //! which is the state the 250ms is actually about, and asserts that it did so.
 
+mod ready;
+
 use cena_behavior::{BehaviorError, LOOK_INTERVAL, look};
 use cena_platform::AnsweringSource;
 use cena_session::{CommandId, Origin, Outcome, Session};
@@ -55,11 +57,15 @@ fn ids() -> impl FnMut() -> CommandId {
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn stop_stops_the_behavior_within_preempt_grace() {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
+    let (_, ready) = session.subscribe();
     let handle = session.handle();
     let session_cancel = session.cancel_token();
     let actor = tokio::spawn(session.into_actor().run());
+    ready::until_ready(ready)
+        .await
+        .expect("the session becomes Ready");
 
     let stop = CancellationToken::new();
     let behavior_stop = stop.clone();
@@ -111,14 +117,18 @@ async fn stop_stops_the_behavior_within_preempt_grace() {
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_manual_command_midflight_does_not_stop_the_behavior() {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
+    let (_, ready) = session.subscribe();
     let behavior_handle = session.handle();
     // THE SAME handle type, cloned from the same session -- criterion 3's
     // "the same queue as the behavior's" is structural here, not asserted.
     let manual_handle = session.handle();
     let session_cancel = session.cancel_token();
     let actor = tokio::spawn(session.into_actor().run());
+    ready::until_ready(ready)
+        .await
+        .expect("the session becomes Ready");
 
     let stop = CancellationToken::new();
     let behavior_stop = stop.clone();
@@ -248,11 +258,15 @@ async fn a_manual_command_midflight_does_not_stop_the_behavior() {
 /// `.await` (verified): elapsed becomes `ROUND_TRIP_DEADLINE`, not <= 250ms.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn stop_stops_the_behavior_while_a_round_trip_is_in_flight() {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
+    let (_, ready) = session.subscribe();
     let handle = session.handle();
     let session_cancel = session.cancel_token();
     let actor = tokio::spawn(session.into_actor().run());
+    ready::until_ready(ready)
+        .await
+        .expect("the session becomes Ready");
 
     let stop = CancellationToken::new();
     let behavior_stop = stop.clone();

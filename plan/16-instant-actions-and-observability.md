@@ -355,7 +355,7 @@ scroll past inside combat spam.
 
 ### 2.2 The wire already carries it
 
-`Frame` (`crates/cena-protocol/src/frame.rs:229`) already models "a row of `ActiveSpells` /
+`Frame::ActiveEffect` (`crates/cena-protocol/src/frame/vocabulary.rs:294`) already models "a row of `ActiveSpells` /
 `Buffs` / `Debuffs` / `Cooldowns`."
 
 And `plan/15` §2.7 measured how those four arrive: `clear='t'` followed by a **full refill on one

@@ -59,8 +59,11 @@ pub const SETTINGS_SCHEMA_VERSION: u32 = 1;
 /// One character's settings, for every system that has any.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsFile {
+    /// The envelope version it was written with; see `SETTINGS_SCHEMA_VERSION`.
     pub schema_version: u32,
+    /// The game instance the character is on; checked on load, ignoring case.
     pub instance: String,
+    /// The character's name; checked on load, ignoring case.
     pub character: String,
     /// By system name. `BTreeMap`, so the file is written in a stable order
     /// and a diff of it shows what changed.
@@ -126,9 +129,15 @@ pub fn settings_path(dir: &Path, instance: &str, character: &str) -> Option<Path
 #[derive(Debug)]
 pub enum SettingsLoadError {
     /// Written by a newer build. Refused, and **not to be overwritten**.
-    Newer { found: u32 },
+    Newer {
+        /// The file's `schema_version`, above what this build reads.
+        found: u32,
+    },
     /// The file names a different character or instance.
-    WrongCharacter { found: String },
+    WrongCharacter {
+        /// Who the file does name, as `instance/character`.
+        found: String,
+    },
     /// Unreadable, or not valid JSON. Also not to be overwritten: a person can
     /// mend a file, and cannot mend settings that were replaced with none.
     Unreadable(String),

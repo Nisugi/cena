@@ -8,8 +8,12 @@ use cena_session::{Event, ObservedEvent};
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 
+/// A session's event stream, in whichever of its two forms the walk was given.
 pub enum Heard {
+    /// Subscribed before the session started: bare events.
     Plain(Receiver<Event>),
+    /// Joined while it runs (`SessionObserver::subscribe`): each event with its
+    /// place in the stream, which the walk drops.
     Located(Receiver<ObservedEvent>),
 }
 

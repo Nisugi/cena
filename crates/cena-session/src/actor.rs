@@ -103,10 +103,13 @@ mod ending;
 mod event;
 mod handle;
 mod io;
+mod owed;
+mod readiness;
 
 pub use ending::EndReason;
 pub use event::Event;
 pub use handle::{Session, Snapshot};
+pub use readiness::SETUP_DEADLINE;
 
 /// Inbound command channel bound.
 ///
@@ -115,7 +118,11 @@ pub use handle::{Session, Snapshot};
 /// real load". What matters structurally is that it is *bounded*: a full
 /// queue refuses (`Outcome::Refused(Transient)`) rather than blocking the
 /// caller, which is what stops a slow session wedging a frontend.
-const COMMAND_CHANNEL_BOUND: usize = 32;
+///
+/// **One definition for both entry points.** [`Session`] and the supervisor
+/// each held a copy, commented "matches the actor's" -- a promise nothing
+/// checked (review finding 10).
+pub(crate) const COMMAND_CHANNEL_BOUND: usize = 32;
 
 /// Event broadcast ring size.
 ///
@@ -143,7 +150,19 @@ const COMMAND_CHANNEL_BOUND: usize = 32;
 ///
 /// It is a size, not a promise: a slow enough subscriber still lags, and
 /// `crates/cena-session/tests/event_ring.rs` asserts that it is still told.
-const EVENT_CHANNEL_BOUND: usize = 2048;
+///
+/// # And a subscriber that lagged can recover
+///
+/// `plan/12` §6.3's recovery is to drop the lagged receiver and take a fresh
+/// snapshot plus stream. `plan/19` (SE-6) recorded that as unreachable,
+/// because `subscribe` lived on the owner and `run` consumed it. It is
+/// reachable now: [`SessionObserver`](crate::SessionObserver) is obtained
+/// before `run` and outlives it, and `subscribe` on it returns a fresh
+/// fenced pair at any point in the session's life, reconnects included.
+/// `tests/observation.rs`'s
+/// `lag_resubscription_replaces_the_old_fence_with_fresh_authoritative_state`
+/// exercises exactly that path.
+pub(crate) const EVENT_CHANNEL_BOUND: usize = 2048;
 
 /// How long one read may block before the loop takes a turn anyway.
 ///
@@ -202,7 +221,15 @@ pub struct SessionEnd<S: ByteSource> {
     pub recorder: Recorder,
     /// What the session knew when it ended. Criteria 2 and 8 read this.
     pub state: GameState,
-    /// Always [`State::Closed`] -- the session shut down cleanly.
+    /// [`State::Closed`] when the session ended -- a plain [`Session`], or any
+    /// cancellation.
+    ///
+    /// **Not `Closed` for a supervised connection that was lost**, which is
+    /// the last live state instead: that connection ended but the session did
+    /// not, and the supervisor publishes what follows (`Reconnecting`, or
+    /// `Closed` if it stops). It used to be `Closed` always, published on the
+    /// way out, which told observers the session was over one event before
+    /// `Reconnecting` said otherwise (review finding 2).
     pub lifecycle: State,
     /// The source, closed. Criterion 6 reads this.
     pub source: S,
@@ -237,14 +264,19 @@ pub struct SessionActor<S: ByteSource> {
     state: GameState,
     lifecycle: State,
     queue: CommandQueue,
-    /// Prompts owed to `send_now` commands whose responses have not arrived.
+    /// Prompts owed to `send_now` commands whose responses have not arrived,
+    /// and on which side of the in-flight command's prompt each will land.
     ///
     /// An instant action bypasses the queue, so its response is not attributed
     /// to anything -- but it still draws a prompt, and a prompt is what closes
     /// the in-flight command's round-trip window (`plan/12` §4.4). Without
-    /// this counter a sigil's prompt closed the window belonging to the
-    /// command it was sent to modify (review SE-5).
-    send_now_prompts_owed: usize,
+    /// this a sigil's prompt closed the window belonging to the command it
+    /// was sent to modify (review SE-5). It was a bare count until review
+    /// finding 1 showed the count assumed an order; see `owed.rs`.
+    owed: owed::OwedPrompts,
+    /// Whether this connection's login burst has finished: `Syncing` becomes
+    /// `Ready` on the first prompt after `<endSetup/>` (`readiness.rs`).
+    readiness: readiness::Readiness,
     commands: mpsc::Receiver<crate::command::Inbox>,
     events: EventPublisher,
     observations: ObservationRequests,
@@ -325,13 +357,16 @@ pub struct SessionActor<S: ByteSource> {
     /// check (`orderly_shutdown.rb:189`), which is the same distinction a
     /// reconnect needs.
     quitting: Option<Quitting>,
-    /// Set when a write failed or timed out, so [`Self::handle_inbox`] can end
-    /// the connection.
+    /// Set when a write failed, timed out or was cancelled, so
+    /// [`Self::handle_inbox`] can end the connection with the right reason.
     ///
-    /// A flag rather than a richer return from `send_now`, which has five early
-    /// returns that have nothing to do with writing. It names ONE thing --
-    /// "the bytes did not go out" -- and is taken (cleared) when read.
-    write_broke_the_stream: bool,
+    /// A field rather than a richer return from `send_now`, which has five
+    /// early returns that have nothing to do with writing. It names ONE thing
+    /// -- "the bytes did not go out, and this is why" -- and is taken (cleared)
+    /// when read. An `EndReason` rather than the `bool` it was, because a
+    /// cancel that overtook the write must end as `Cancelled`, not as a lost
+    /// transport a supervisor would reconnect (review finding 5).
+    write_ended: Option<EndReason>,
 }
 
 /// An exit command has been sent; this is what the loop owes the caller.
@@ -379,7 +414,8 @@ impl<S: ByteSource> SessionActor<S> {
             state,
             lifecycle: State::Connecting,
             queue: CommandQueue::new(),
-            send_now_prompts_owed: 0,
+            owed: owed::OwedPrompts::default(),
+            readiness: readiness::Readiness::default(),
             commands,
             events,
             observations,
@@ -394,7 +430,7 @@ impl<S: ByteSource> SessionActor<S> {
             generation,
             on_disconnect: crate::command::Outcome::Disconnected,
             quitting: None,
-            write_broke_the_stream: false,
+            write_ended: None,
         }
     }
 
@@ -404,14 +440,14 @@ impl<S: ByteSource> SessionActor<S> {
     /// every waiter is answered [`Outcome::Dead`](crate::command::Outcome::Dead), and the function returns.
     /// None of them panics, and none of them leaves a socket open.
     pub async fn run(mut self) -> SessionEnd<S> {
-        // The three states Step 2 transits before behaviors may run. A replay
-        // has nothing to do in Connecting or Authenticating and no Infomon
-        // sync to run in Syncing (`plan/12` §7.1 puts that in the Out column),
-        // so they are transited rather than worked -- but they are transited,
-        // which is what makes §5.3's readiness gate have a false branch.
+        // The connector has already authenticated by the time an actor holds
+        // a source, so Authenticating is transited. SYNCING IS INHABITED: the
+        // login burst is read in it, and `ingest` moves to `Ready` at the
+        // first prompt after `<endSetup/>` (`readiness.rs`). This used to step
+        // straight to `Ready` here, before a byte was read, so `Ready` meant
+        // "the loop started" rather than "the burst arrived" (`plan/12` §5.2).
         self.transition(State::Authenticating);
         self.transition(State::Syncing);
-        self.transition(State::Ready);
 
         let mut buf = vec![0u8; READ_BUF];
         // See the command arm below for why this exists.
@@ -520,8 +556,20 @@ impl<S: ByteSource> SessionActor<S> {
                             };
                             break;
                         }
+                        // **A reset after a quit is still the goodbye.** The
+                        // EOF arm above was the only one that asked whether a
+                        // quit was pending, so a server that answered `quit`
+                        // by resetting rather than closing -- or a link that
+                        // dropped in the same moment -- read as a lost
+                        // transport, and the supervisor logged the character
+                        // straight back in. VERIFIED: a typed `quit` then a
+                        // reset gave two connect attempts and generation 1.
                         Ok(Err(_)) => {
-                            reason = EndReason::ReadFailed;
+                            reason = if self.finish_quit(crate::command::Farewell::Acknowledged) {
+                                EndReason::Cancelled
+                            } else {
+                                EndReason::ReadFailed
+                            };
                             break;
                         }
                         Ok(Ok(n)) => self.ingest(&buf[..n]),
@@ -540,11 +588,10 @@ impl<S: ByteSource> SessionActor<S> {
     /// Take everything already queued on the command channel, applying the
     /// readiness gate to each.
     ///
-    /// Public so that `plan/12` §5.3's gate can be exercised in the state it
-    /// governs. `run` transitions to `Ready` before its first turn -- there is
-    /// no Infomon sync to wait for in Step 2 (§7.1) -- so a test that only
-    /// used `run` could never observe the gate's false branch, and a gate
-    /// whose false branch is unreachable is not a gate (`plan/05` §0).
+    /// Public so that `plan/12` §5.3's gate can be exercised by hand, on an
+    /// actor that was never run. `run` holds `Syncing` until the first prompt
+    /// after `<endSetup/>`, and `tests/readiness_gate.rs` exercises the gate
+    /// through `run` as well.
     ///
     /// Non-blocking: it drains what is there and returns. It is the same
     /// `admit` the loop calls, not a second path that could drift from it.

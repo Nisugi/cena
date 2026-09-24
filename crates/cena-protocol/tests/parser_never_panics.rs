@@ -82,6 +82,12 @@ const HOSTILE_FRAGMENTS: &[&str] = &[
     "<prompt time='not-a-number'>&gt;</prompt>",
     // Very long attribute value.
     "<nav rm='000000000000000000000000000000000000000000000000000'/>",
+    // The two multi-line regions, opened and never closed: each must end at
+    // the prompt rather than swallow the session.
+    "<settings client='1'><h id='1'/>",
+    "<inventoryViewItem id='iv1' exist='9'><result command='look'>torn",
+    "<inventoryManager id='im1'><i id='1' loc='worn,player'/>",
+    "<menu id='1'><mi coord='1,2'/>",
 ];
 
 #[test]
@@ -140,6 +146,21 @@ fn tagish() -> impl Strategy<Value = String> {
         "output",
         "pushBold",
         "inv",
+        // The assembled and captured tags, which the generator never
+        // reached (review 2026-09-23): the two multi-line regions and the
+        // envelopes whose bodies are children.
+        "settings",
+        "inventoryViewItem",
+        "result",
+        "inventoryManager",
+        "i",
+        "continuation",
+        "menu",
+        "mi",
+        "objectives",
+        "cmdlist",
+        "stream",
+        "dynaStream",
         "unknownFutureTag",
         "",
         " ",
@@ -155,12 +176,38 @@ fn tagish() -> impl Strategy<Value = String> {
         " ='x'",
         " id='",
         " exist='1' noun='y'",
+        " id='x' loc='worn,player'",
+        " command='look'",
+        " client='1'",
     ]);
     let close = prop::sample::select(vec!["/>", ">", "", " />", "/"]);
     (name, attr, close, 0usize..3).prop_map(|(n, a, c, slashes)| {
         let open = if slashes % 2 == 0 { "<" } else { "</" };
         format!("{open}{n}{a}{c}")
     })
+}
+
+/// Whole lines, as the wire sends them: tag garbage, and the real shapes of
+/// the two regions that span lines -- opened, filled, closed at end of line,
+/// closed mid-line, and torn by a prompt with junk before it.
+fn wire_line() -> impl Strategy<Value = String> {
+    let real = prop::sample::select(vec![
+        "<settings client='1'><h id='1'/>",
+        "<h id='2'/><dc id='3'/>",
+        "<ignores/></settings>",
+        "<panels/></settings>after the blob",
+        "junk<prompt time='1'>&gt;</prompt>",
+        "<prompt time='1'>&gt;</prompt>",
+        "<inventoryViewItem id='iv1' exist='9'><result command='look'>A rock.",
+        "</result></inventoryViewItem>after",
+        "<pushStream id='inv'/>worn items",
+        "plain prose",
+        "",
+    ]);
+    prop_oneof![
+        real.prop_map(str::to_owned),
+        prop::collection::vec(tagish(), 0..4).prop_map(|p| p.concat()),
+    ]
 }
 
 proptest! {
@@ -187,6 +234,48 @@ proptest! {
             frames.iter().any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("42"))),
             "parser failed to recover after {parts:?}"
         );
+    }
+
+    /// The same recovery, through `push_bytes` -- the entry point a session
+    /// actually uses. Every property above drove `parse_line` alone, and the
+    /// two diverged at least once already: the settings blob's prompt
+    /// barrier held on `parse_line` and was absent on `push_bytes`.
+    #[test]
+    fn tagish_garbage_recovers_through_push_bytes(parts in prop::collection::vec(tagish(), 0..24)) {
+        let mut parser = Parser::new();
+        for part in &parts {
+            let _ = parser.push_bytes(part.as_bytes());
+            let _ = parser.push_bytes(b"\n");
+        }
+        let _ = parser.push_bytes(b"<prompt time='1'>&gt;</prompt>\n");
+        let frames = parser.push_bytes(b"<nav rm='42'/>\n");
+        prop_assert!(
+            frames.iter().any(|f| matches!(f, Frame::RoomId { id } if id.as_deref() == Some("42"))),
+            "push_bytes failed to recover after {parts:?}"
+        );
+    }
+
+    /// **The two entry points agree**, wherever the network cuts.
+    ///
+    /// `push_bytes` is `parse_line` plus reassembly, and nothing more: the
+    /// same lines must yield the same frames whether they arrive whole or as
+    /// bytes split at an arbitrary offset. Anything else means one path has
+    /// grown behaviour the other lacks -- which is how the settings blob's
+    /// prompt barrier came to exist on one path only.
+    #[test]
+    fn push_bytes_and_parse_line_agree(
+        lines in prop::collection::vec(wire_line(), 0..12),
+        split in 0usize..2048,
+    ) {
+        let mut by_line = Parser::new();
+        let expected: Vec<Frame> = lines.iter().flat_map(|l| by_line.parse_line(l)).collect();
+
+        let wire: String = lines.iter().flat_map(|l| [l.as_str(), "\n"]).collect();
+        let at = split.min(wire.len());
+        let mut by_bytes = Parser::new();
+        let mut got = by_bytes.push_bytes(&wire.as_bytes()[..at]);
+        got.extend(by_bytes.push_bytes(&wire.as_bytes()[at..]));
+        prop_assert_eq!(got, expected, "lines: {:?}", lines);
     }
 
     /// Arbitrary BYTES -- not just valid UTF-8. The wire is CP1252, so

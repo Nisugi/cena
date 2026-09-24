@@ -35,7 +35,15 @@ const PULSE_MAX_SECS: u32 = 75;
 /// variant; a name that is not gets [`Frame::UnknownTag`] with the raw bytes,
 /// so a protocol change announces itself instead of being swallowed.
 pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
-    let attrs: Attrs = text::attributes(tag);
+    // Built on demand, not up front. Most arms never read the bag -- the
+    // hands, the timers, `indicator` -- and building it eagerly walked every
+    // attribute of every one of them into owned strings only to drop them.
+    // MEASURED 2026-09-23, release build, 1M `parse_line` calls over
+    // `<indicator>`, `<roundTime>`, `<left>` and `<spell>` in rotation, three
+    // runs each: 864/750/736 ms eager, 475/480/479 ms lazy. The paired ones
+    // were worse than wasted: `attributes` over `<left exist=..>sword</left>`
+    // walks the body too.
+    let attrs = || -> Attrs { text::attributes(tag) };
     let id = || text::attribute(tag, "id").unwrap_or_default();
     match name {
         "spell" => Frame::Spell {
@@ -77,10 +85,11 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
             id: id(),
             value: text::attribute(tag, "value").unwrap_or_else(|| inner_display_text(tag)),
             dialog: dialog.map(str::to_owned),
+            attrs: attrs(),
         },
         "crtrStatus" => Frame::CreatureStatus {
             id: text::attribute(tag, "exist").unwrap_or_default(),
-            attrs,
+            attrs: attrs(),
         },
         "roommeta" => Frame::RoomMeta(room_meta(tag)),
         "closeDialog" | "closedialog" => Frame::CloseDialog { id: id() },
@@ -101,6 +110,7 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
             id: id(),
             name: text::attribute(tag, "name").unwrap_or_default(),
             dialog: dialog.map(str::to_owned),
+            attrs: attrs(),
         },
         // The `Icon` prefix is kept, deliberately, where Vellum strips it
         // (`src/parser/handlers.rs:427`). The wire id IS `IconSTUNNED` in all
@@ -147,13 +157,13 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
                 Frame::DialogPanelOpen {
                     id: id(),
                     title,
-                    attrs,
+                    attrs: attrs(),
                 }
             } else {
                 Frame::DialogOpen {
                     id: id(),
                     title,
-                    attrs,
+                    attrs: attrs(),
                 }
             }
         }
@@ -163,19 +173,19 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
                 id: id(),
                 dialog: dialog.map(str::to_owned),
                 kind: name.to_owned(),
-                widgets: vec![attrs],
+                widgets: vec![attrs()],
             })
         }
         // Containers, inventory and the remaining singletons live in
         // `thin_frame_rest` so neither function exceeds the 100-line clippy
         // ceiling; the split is alphabetically arbitrary but the boundary is
         // stable, and both halves are one flat match.
-        _ => thin_frame_rest(name, tag, attrs),
+        _ => thin_frame_rest(name, tag),
     }
 }
 
 /// The second half of [`thin_frame`]: containers, inventory, and the rest.
-fn thin_frame_rest(name: &str, tag: &str, attrs: Attrs) -> Frame {
+fn thin_frame_rest(name: &str, tag: &str) -> Frame {
     let id = || text::attribute(tag, "id").unwrap_or_default();
     match name {
         "container" => Frame::Container {
@@ -233,17 +243,20 @@ fn thin_frame_rest(name: &str, tag: &str, attrs: Attrs) -> Frame {
         // `dynaStream` and `clearDynaStream` were here and are NOT window
         // declarations -- they feed and clear a streamBox control
         // (`Wrayth protocol.txt:169-170`). Handled in `dispatch.rs` beside
-        // `<stream>`, which had the identical bug (review PR-4).
-        "streamId" | "stream" => Frame::StreamWindow {
+        // `<stream>`, which had the identical bug (review PR-4). `stream`
+        // itself is gone from this arm for the same reason: every form of it
+        // is handled in `dispatch.rs`, and a name left here only invites the
+        // next caller of `thin_frame` to declare a window nobody sent.
+        "streamId" => Frame::StreamWindow {
             id: id(),
             title: text::attribute(tag, "title"),
             subtitle: text::attribute(tag, "subtitle"),
-            attrs,
+            attrs: text::attributes(tag),
         },
         // A known tag with no dedicated variant still becomes one: an effect
         // row when it looks like one, otherwise a window hint carrying its
         // attributes. Nothing is dropped.
-        _ if tags::is_known(name) => known_fallback(name, tag, attrs),
+        _ if tags::is_known(name) => known_fallback(name, tag),
         // Rule 2.2: unmodelled markup, carried whole, never dropped.
         _ => Frame::UnknownTag {
             name: name.to_owned(),
@@ -253,10 +266,14 @@ fn thin_frame_rest(name: &str, tag: &str, attrs: Attrs) -> Frame {
 }
 
 /// A known tag with no dedicated variant.
-fn known_fallback(name: &str, tag: &str, attrs: Attrs) -> Frame {
+fn known_fallback(name: &str, tag: &str) -> Frame {
+    let attrs = text::attributes(tag);
     match name {
+        // Typed, not a bag: the session's readiness gate keys on it, and
+        // matching a `WindowHints` by its id string is re-reading markup.
+        "endSetup" => Frame::EndSetup,
         "playerID" | "settings" | "settingsInfo" | "sentSettings" | "presets" | "palette"
-        | "macros" | "endSetup" | "mode" | "FEVersion" | "LichWebUI" => Frame::WindowHints {
+        | "macros" | "mode" | "FEVersion" | "LichWebUI" => Frame::WindowHints {
             id: name.to_owned(),
             attrs,
         },

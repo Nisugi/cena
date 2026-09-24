@@ -53,6 +53,16 @@
 //! counterpart whichever side it arrives on, so the fallback is correct for a
 //! legacy host, a modern host, and an unknown host (no counterpart, no retry).
 
+/// The instance a login asks for when the player names none: `GST`, the
+/// `GemStone` IV test instance, so an unconsidered login lands somewhere a
+/// mistake costs nothing.
+///
+/// Here rather than as a literal at the prompt because an instance code is
+/// game-specific data, which Rule 3.4 keeps under this namespace -- the
+/// hardened `game_names_outside_game_modules_are_flagged` found the literal
+/// in `cena/src/ask.rs`.
+pub const DEFAULT_GAME_CODE: &str = "GST";
+
 /// One endpoint pair: the two spellings of the same game server.
 type Pair = (&'static str, u16);
 

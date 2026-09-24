@@ -23,6 +23,7 @@ publish.workspace = true
 # and the rest of the workspace set are preserved verbatim.
 [lints.rust]
 unsafe_code = "deny"
+missing_docs = "deny"
 
 # Inherited from the workspace unchanged: a broken doc link is as wrong in the
 # crate that enforces the architecture as anywhere else. Restated by hand only

@@ -306,7 +306,17 @@ impl GameState {
         // "spells tick down in real time". They do not tick while the
         // character is out of the world, and the burst re-declares all ten
         // indicators in one line anyway.
-        let _ = effects;
+        //
+        // **Kept as DURATIONS, not as end times** (review). An effect's
+        // `ends_at` is an absolute SERVER second, and the server's clock does
+        // not stop while we are offline -- so keeping it unchanged charged
+        // the gap against every buff, the opposite of what this comment says.
+        // `unanchor` holds what was left, measured at the last prompt, and
+        // the new connection's first prompt re-anchors it. Must run before
+        // `game_time` is cleared below, since that is what it measures from.
+        if let Some(then) = *game_time {
+            effects.unanchor(then);
+        }
 
         // **Indicators are kept; the text-derived statuses are NOT.** The
         // reasoning above is the burst re-declaring all ten indicators in one

@@ -18,9 +18,10 @@
 //! test just as fast as a correct one. So the test that cares about the delay
 //! asserts on elapsed time explicitly rather than on completion.
 
-use cena_platform::ReplaySource;
+use cena_platform::{AnsweringSource, ReplaySource};
 use cena_session::{
-    ConnectError, Connector, Gate, Generation, Origin, StoppedBecause, SupervisedSession,
+    CommandId, ConnectError, Connector, Event, Gate, Generation, Origin, Outcome, Sent,
+    StoppedBecause, SupervisedSession,
 };
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -347,7 +348,184 @@ async fn quitting_during_a_reconnect_does_not_hang() {
     let _ = task.await;
 }
 
+/// **Receiving the login burst is not the same as working, either.**
+///
+/// The fix below stopped the ladder resetting on an OUTBOUND byte and made it
+/// reset on an inbound one instead -- which every connection that gets as far
+/// as its login burst has. Two clients fighting over one character each get
+/// the burst before the other knocks them off, so the ladder still reset on
+/// every drop: VERIFIED before the fix, **20 connects in 20 virtual seconds**
+/// (review finding 3).
+///
+/// Same shape as the test below, but every connection RECEIVES a prompt
+/// before it drops.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_connection_that_receives_and_drops_at_once_does_not_reset_the_ladder() {
+    let sources: Vec<Vec<Vec<u8>>> = (0..60).map(|_| a_connection_that_drops()).collect();
+    let (connector, attempts) =
+        LadderConnector::new(sources, ConnectError::transient("tcp", "unreachable"));
+    let (session, handle) = SupervisedSession::new(connector);
+    let cancel = session.cancel_token();
+    let task = tokio::spawn(session.run());
+    let sender = tokio::spawn(async move {
+        for _ in 0..40 {
+            let _ = handle.send_now("look", Origin::Manual, Gate::None).await;
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    });
+
+    tokio::time::sleep(Duration::from_secs(20)).await;
+    let made = attempts.load(Ordering::Relaxed);
+    cancel.cancel();
+    sender.abort();
+    let _ = task.await;
+
+    assert!(
+        made < 10,
+        "{made} connects in 20 s: a connection that lived for one login burst \
+         reset the ladder to its one-second rung"
+    );
+}
+
+/// Fails `failures` times, then serves one held-open connection, then fails
+/// forever.
+struct ClimbThenServe {
+    failures: u32,
+    calls: u32,
+    source: Option<AnsweringSource>,
+}
+
+impl Connector for ClimbThenServe {
+    type Source = AnsweringSource;
+
+    async fn connect(&mut self, _: Generation) -> Result<AnsweringSource, ConnectError> {
+        self.calls += 1;
+        if self.calls <= self.failures {
+            return Err(ConnectError::transient("tcp", "unreachable"));
+        }
+        self.source
+            .take()
+            .ok_or_else(|| ConnectError::transient("tcp", "unreachable"))
+    }
+}
+
+/// Climb the ladder three rungs, hold one working connection open for
+/// `lived`, drop it, and report the attempt number of the next retry.
+async fn next_attempt_after_a_connection_that_lived(lived: Duration) -> u32 {
+    let (source, transcript) =
+        AnsweringSource::logged_in(b"You see.\n<prompt time='1'>&gt;</prompt>\n");
+    let (session, handle) = SupervisedSession::new(ClimbThenServe {
+        failures: 3,
+        calls: 0,
+        source: Some(source),
+    });
+    let (_, mut events) = session.subscribe();
+    let cancel = session.cancel_token();
+    let task = tokio::spawn(session.run());
+
+    while !matches!(
+        events.recv().await,
+        Ok(Event::StateChanged(cena_session::State::Ready))
+    ) {}
+    // Something received, and something sent: worked, and attended.
+    let looked = handle
+        .send_and_await(
+            CommandId(1),
+            "look",
+            Origin::Manual,
+            Duration::from_secs(5),
+            cena_session::queue::any_frame,
+        )
+        .await;
+    assert!(matches!(looked, Outcome::Confirmed(_)), "{looked:?}");
+    tokio::time::sleep(lived).await;
+    transcript.hang_up();
+
+    let attempt = loop {
+        if let Ok(Event::ConnectFailed { attempt, .. }) = events.recv().await {
+            break attempt;
+        }
+    };
+    cancel.cancel();
+    let _ = task.await;
+    attempt
+}
+
+/// **The threshold, from both sides.** A connection that outlived the
+/// ladder's top rung resets it; one that did not, does not. Pins
+/// `STABLE_CONNECTION` as the boundary rather than only asserting that a
+/// short connection does not reset -- which a supervisor that NEVER reset
+/// would also pass.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn only_a_connection_that_stayed_up_resets_the_ladder() {
+    let stable = cena_session::STABLE_CONNECTION;
+    assert_eq!(
+        next_attempt_after_a_connection_that_lived(stable).await,
+        1,
+        "a connection that stayed up {stable:?} must reset the ladder"
+    );
+    assert_eq!(
+        next_attempt_after_a_connection_that_lived(Duration::from_secs(1)).await,
+        4,
+        "a connection that lasted one second must not: the three failed \
+         connects before it are still the ladder's position"
+    );
+}
+
+/// **A command sent during an outage is answered at once.**
+///
+/// `plan/12` §5.1: commands during `Reconnecting` *"fail immediately with
+/// `Disconnected`"*. They did not: the inbox was swept only after a connect
+/// SUCCEEDED, so with the network down a `send_and_await` waited out its own
+/// 30 s deadline and came back `Timeout` -- which tells a behavior the command
+/// may have run -- and `send_now` waited out its 5 s backstop. VERIFIED before
+/// the fix by the review's probe (review finding 6).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_command_during_an_outage_is_answered_at_once() {
+    let (connector, _attempts) = LadderConnector::new(
+        vec![a_connection_that_drops()],
+        ConnectError::transient("tcp", "unreachable"),
+    );
+    let (session, handle) = SupervisedSession::new(connector);
+    let cancel = session.cancel_token();
+    let task = tokio::spawn(session.run());
+    // The one connection has come and gone; the supervisor is on its ladder.
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let start = tokio::time::Instant::now();
+    let outcome = handle
+        .send_and_await(
+            CommandId(9),
+            "look",
+            Origin::Manual,
+            Duration::from_secs(30),
+            cena_session::queue::any_frame,
+        )
+        .await;
+    assert_eq!(outcome, Outcome::Disconnected);
+    assert!(
+        start.elapsed() < Duration::from_millis(100),
+        "answered after {:?}: it waited for the outage, not for nothing",
+        start.elapsed()
+    );
+
+    let start = tokio::time::Instant::now();
+    let sent = handle.send_now("sigil", Origin::Manual, Gate::None).await;
+    assert_eq!(sent, Sent::Dead);
+    assert!(
+        start.elapsed() < Duration::from_millis(100),
+        "send_now answered after {:?}",
+        start.elapsed()
+    );
+
+    cancel.cancel();
+    let _ = task.await;
+}
+
 /// **Writing to a connection is not the same as it working.**
+///
+/// Its successor, receiving, was not enough either: see
+/// `a_connection_that_receives_and_drops_at_once_does_not_reset_the_ladder`.
 ///
 /// The defect, found by review: the ladder reset on any outbound byte, so with a
 /// behavior sending, "attended" was always true and **neither bound bound

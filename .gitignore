@@ -8,3 +8,9 @@ research/jev-trial/results/cache/
 research/jev-trial/**/*.raw.json
 research/jev-trial/__pycache__/
 target-pr1-review/
+
+# What a run of the binary writes beside it: private session logs, and the
+# data dir (character stores, the eaccess certificate pin). Root-anchored so
+# crates/cena-model/data/, which is source, stays tracked.
+/logs/
+/data/

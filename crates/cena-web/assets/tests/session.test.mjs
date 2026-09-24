@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { HydraSession, MAX_STORY_LINES, commandError, takeLaunchToken } from "../session.js";
-import { lifecycleText, placeLine } from "../app.js";
+import { lifecycleText, mount, placeLine } from "../app.js";
 
 // Shared synthetic contract fixture, also round-tripped by Rust cena-ui tests.
 export const fixture = () => JSON.parse(readFileSync(new URL("../../../cena-ui/tests/fixtures/snapshot-v1.json", import.meta.url)));
@@ -131,7 +131,8 @@ test("sent/refused/uncertain receipts distinguish byte delivery from game outcom
   // claim the game acted, `uncertain` may not read as failure. Matched on the
   // live labels rather than on prose, so a rewording fails loudly here instead
   // of quietly passing a regex that no longer describes the text.
-  for (const [status, pattern] of [["sent", /^Sent:/], ["refused", /^Not sent:/], ["uncertain", UNSURE]]) {
+  for (const [status, pattern] of [["sent", /^Sent:/], ["refused", /^Not sent:/], ["uncertain", UNSURE],
+    ["handled", /^Done by Hydra:/]]) {
     session.command("look");
     const command = socket.sent.at(-1);
     socket.message({ kind: "receipt", version: 1, session: command.session, generation: command.generation,
@@ -352,4 +353,131 @@ test("a malformed closed declaration is refused but an unknown kind is not", () 
   fresh.message(future);
   assert.equal(ok.state.connection, "connected");
   assert.equal(ok.state.story.length, 1);
+});
+
+
+// --- the Story gap notice ----------------------------------------------------
+
+test("the history gap notice clears once the hole can no longer be in the Story", () => {
+  // A snapshot says only THAT its Story has a hole. The notice used to stay
+  // until the next snapshot, which with no further loss meant forever.
+  const { session, socket } = setup();
+  const gapped = readySnapshot();
+  gapped.history_gap = true;
+  gapped.story = Array.from({ length: 5 }, (_, i) => ({ stream: "", runs: [], truncated: false, closed: { kind: "main" } }));
+  socket.message(gapped);
+  assert.equal(session.state.historyGap, true);
+  const line = { stream: "", runs: [], truncated: false, closed: { kind: "main" } };
+  // Filling up to the cap evicts nothing: the hole may still be on screen.
+  socket.message(update(gapped, { lines: Array.from({ length: MAX_STORY_LINES - 5 }, () => line) }));
+  assert.equal(session.state.historyGap, true);
+  // Four of the five lines that could precede the hole are gone; one is not.
+  socket.message(update(gapped, { cursor: String(BigInt(gapped.cursor) + 2n), lines: Array.from({ length: 4 }, () => line) }));
+  assert.equal(session.state.historyGap, true);
+  socket.message(update(gapped, { cursor: String(BigInt(gapped.cursor) + 3n), lines: [line] }));
+  assert.equal(session.state.historyGap, false, "every line that could precede the hole has been evicted");
+});
+
+// --- the page itself, over a minimal DOM -------------------------------------
+//
+// Just enough of the DOM for `mount`: a tree of nodes with text, children and
+// a scroll model (20px per child, 100px tall). Not a browser -- the smoke test
+// in browser-tests/ is that -- but enough to hold what the renderer does to
+// its nodes, which is where the next two defects lived.
+
+class FakeNode {
+  constructor(tag) {
+    this.tagName = tag; this.children = []; this.parent = null; this.own = "";
+    this.classes = []; this.listeners = {}; this.scrollTop = 0; this.clientHeight = 100; this.hidden = false;
+    this.classList = { add: (...names) => this.classes.push(...names) };
+  }
+  get scrollHeight() { return this.children.length * 20; }
+  get firstChild() { return this.children[0] ?? null; }
+  get childElementCount() { return this.children.length; }
+  get textContent() { return this.own + this.children.map((child) => child.textContent).join(""); }
+  set textContent(value) { this.replaceChildren(); this.own = String(value); }
+  appendChild(child) { child.remove(); child.parent = this; this.children.push(child); return child; }
+  append(...children) { for (const child of children) this.appendChild(child); }
+  replaceChildren(...children) {
+    for (const child of this.children) child.parent = null;
+    this.children = []; this.own = "";
+    this.append(...children);
+  }
+  remove() {
+    if (!this.parent) return;
+    this.parent.children = this.parent.children.filter((child) => child !== this);
+    this.parent = null;
+  }
+  addEventListener(type, listener) { (this.listeners[type] ??= []).push(listener); }
+  fire(type) { for (const listener of this.listeners[type] ?? []) listener({ preventDefault() {} }); }
+  focus() {}
+}
+
+function page() {
+  const nodes = new Map();
+  const document = {
+    getElementById(id) { if (!nodes.has(id)) nodes.set(id, new FakeNode("div")); return nodes.get(id); },
+    createElement(tag) { return new FakeNode(tag); },
+  };
+  const environment = {
+    location: { hash: "#token=synthetic-token", pathname: "/", search: "", protocol: "http:", host: "127.0.0.1:1" },
+    history: { replaceState() {} }, WebSocket: FakeSocket, performance: { now: () => 0 },
+    setInterval: () => 1, clearInterval() {}, addEventListener() {}, removeEventListener() {},
+  };
+  const session = mount(document, environment);
+  session.socket.open();
+  return { session, socket: session.socket, element: (id) => document.getElementById(id) };
+}
+
+const said = (text, stream = "") => ({ stream, runs: [{ text, bold: false, monospace: false, preset: null }],
+  truncated: false, closed: { kind: stream ? "drop" : "main" } });
+
+test("evicting lines that own no Story node does not take Story paragraphs with them", () => {
+  // Only Story-placed lines get a paragraph. The eviction loop removed one
+  // node per evicted LINE, so ten evicted speech duplicates -- which own
+  // nothing -- took the ten oldest real paragraphs with them.
+  const { socket, element } = page();
+  const snapshot = readySnapshot();
+  snapshot.story = [
+    ...Array.from({ length: 10 }, (_, i) => said(`duplicate ${i}`, "speech")),
+    ...Array.from({ length: MAX_STORY_LINES - 10 }, (_, i) => said(`kept ${i}`)),
+  ];
+  socket.message(snapshot);
+  const story = element("story-output");
+  assert.equal(story.children.length, MAX_STORY_LINES - 10);
+  socket.message(update(snapshot, { lines: Array.from({ length: 10 }, (_, i) => said(`new ${i}`)) }));
+  assert.equal(story.children.length, MAX_STORY_LINES, "990 retained + 10 new, one paragraph each");
+  assert.equal(story.children[0].textContent, "kept 0", "the oldest retained line is still on screen");
+});
+
+test("a stream pane keeps the reader's place when its own lines have not changed", () => {
+  // Every message -- including each roundtime tick -- rebuilt every pane and
+  // pinned it to the bottom, so a pane could not be scrolled back mid-fight.
+  const { socket, element } = page();
+  const snapshot = readySnapshot();
+  snapshot.story = Array.from({ length: 30 }, (_, i) => said(`spoken ${i}`, "speech"));
+  socket.message(snapshot);
+  const toggle = element("stream-toggles").children[0].children[0];
+  toggle.checked = true;
+  toggle.fire("change");
+  const body = element("stream-panes").children[0].children[1];
+  assert.equal(body.children.length, 30);
+  assert.equal(body.scrollTop, body.scrollHeight, "a new pane opens at the bottom");
+  const nodes = [...body.children];
+
+  body.scrollTop = 0; // the reader scrolls back
+  let cursor = BigInt(snapshot.cursor);
+  const next = (lines) => { cursor += 1n; socket.message(update(snapshot, { cursor: String(cursor), lines })); };
+  next([]);                        // a tick: nothing new anywhere
+  next([said("main text")]);       // new Story text, nothing new for speech
+  assert.deepEqual(body.children, nodes, "unchanged lines are not rebuilt");
+  assert.equal(body.scrollTop, 0, "and the reader's place is kept");
+
+  next([said("spoken 30", "speech")]);
+  assert.equal(body.children.length, 31);
+  assert.equal(body.scrollTop, 0, "new text while scrolled back does not yank the reader down");
+
+  body.scrollTop = body.scrollHeight; // back at the bottom: follow new text
+  next([said("spoken 31", "speech")]);
+  assert.equal(body.scrollTop, body.scrollHeight);
 });

@@ -115,7 +115,35 @@ fn a_thorn_deprogression_is_still_poisoned() {
 }
 
 #[test]
-fn cutthroat_is_the_one_pattern_that_is_not_anchored() {
+fn the_thorn_start_needs_its_whole_sentence_and_the_unanchored_easing_line_is_read() {
+    // Review finding, both halves of `parser.rb:99-101` ported exactly.
+    //
+    // `ThornPoisonStart` is `^One of the vines surrounding .*? lashes out at
+    // you, driving a thorn into your skin!  You feel poison...$`. The port
+    // kept only the prefix, so a line that merely BEGAN by describing vines
+    // set `thorned`.
+    assert_eq!(
+        classify("One of the vines surrounding the thicket rustles in the breeze."),
+        None
+    );
+    assert_eq!(
+        classify(
+            "One of the vines surrounding the thicket lashes out at you, driving a thorn into your skin!  You feel poison coursing through your veins."
+        ),
+        Some((Affliction::Thorned, true))
+    );
+    // And the deprogression alternative Lich writes WITHOUT `^`, which the
+    // port had left out entirely.
+    assert_eq!(
+        classify(
+            "Although you can't seem to move as quickly as you usually can, you're feeling better than you were just moments ago."
+        ),
+        Some((Affliction::Thorned, true))
+    );
+}
+
+#[test]
+fn cutthroat_is_not_anchored() {
     // Lich marks it in its own source: `CutthroatActiveMid` is "mid-line:
     // cannot be part of the anchored fast path", because the attacker comes
     // first on the wire.
@@ -126,7 +154,7 @@ fn cutthroat_is_the_one_pattern_that_is_not_anchored() {
 }
 
 #[test]
-fn every_other_pattern_is_anchored_so_a_player_cannot_say_it() {
+fn the_anchored_patterns_cannot_be_said_by_a_player() {
     // The anchors in `parser.rb` are load-bearing: a player can type any of
     // these into a channel, and a speech line puts the speaker first.
     for said in [

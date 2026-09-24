@@ -176,7 +176,9 @@ fn unquote(body: &str) -> String {
 /// the one least worth keeping.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Messages {
-    recent: Vec<Message>,
+    /// A `Ring` (`state/ring.rs`), so the drop at the cap does not shift
+    /// the other 199 (review).
+    recent: super::ring::Ring<Message>,
 }
 
 /// How many messages are retained.
@@ -189,27 +191,24 @@ pub const MAX_MESSAGES: usize = 200;
 impl Messages {
     /// Record one, dropping the oldest at the cap.
     pub fn push(&mut self, message: Message) {
-        if self.recent.len() >= MAX_MESSAGES {
-            self.recent.remove(0);
-        }
-        self.recent.push(message);
+        self.recent.push(message, MAX_MESSAGES);
     }
 
     /// Every message held, oldest first.
     #[must_use]
     pub fn all(&self) -> &[Message] {
-        &self.recent
+        self.recent.as_slice()
     }
 
     /// The most recent message on a channel.
     #[must_use]
     pub fn last_on(&self, channel: Channel) -> Option<&Message> {
-        self.recent.iter().rev().find(|m| m.channel == channel)
+        self.all().iter().rev().find(|m| m.channel == channel)
     }
 
     /// Everything one speaker has said, oldest first.
     pub fn from_speaker(&self, id: &str) -> impl Iterator<Item = &Message> {
-        self.recent
+        self.all()
             .iter()
             .filter(move |m| m.speaker_id.as_deref() == Some(id))
     }

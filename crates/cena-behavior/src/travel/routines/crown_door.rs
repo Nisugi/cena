@@ -27,7 +27,6 @@
 //!
 //! [`Action::Cast`]: cena_map::Action::Cast
 
-use cena_session::VitalsExt;
 use cena_session::spells::{self, Spell};
 
 use super::{MAX_TURNS, Next, Seen, Solver};
@@ -110,7 +109,7 @@ impl CrownDoor {
             return self.go();
         }
         if seen.answered(SET) && STONES.iter().any(|stone| seen.answered(stone)) {
-            let mana = seen.state.vitals.mana().and_then(|mana| mana.current);
+            let mana = seen.state.mana().and_then(|mana| mana.current);
             self.needed = if mana.is_some_and(|mana| mana >= WANTED) {
                 WANTED
             } else {

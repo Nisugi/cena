@@ -73,6 +73,9 @@ const COLUMNS: [&str; 19] = [
 pub struct LoadError {
     /// 1-based line number in the data file, counting the header.
     pub line: usize,
+    /// What was wrong with that line: an empty file, a header mismatch, a
+    /// wrong field count, or a field that is empty or would not parse. Names
+    /// the offending field and its text where there is one.
     pub reason: String,
 }
 

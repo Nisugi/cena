@@ -2,16 +2,26 @@
 
 use std::fmt;
 
+/// Longest accepted command line, in UTF-8 bytes.
 pub const MAX_COMMAND_BYTES: usize = 4096;
+/// Longest accepted `request_id`, in bytes (it is ASCII-only).
 pub const MAX_REQUEST_ID_BYTES: usize = 64;
 
+/// Why `validate_command` refused a command; `Display` gives the rule broken.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputError {
+    /// `session` is not a canonical decimal u64 (no sign, no leading zero).
     InvalidSession,
+    /// `generation` is not a canonical decimal u64 (no sign, no leading zero).
     InvalidGeneration,
+    /// `request_id` is empty, longer than `MAX_REQUEST_ID_BYTES`, or holds a
+    /// byte other than an ASCII letter, digit, `-` or `_`.
     InvalidRequestId,
+    /// The line is empty or only whitespace.
     EmptyCommand,
+    /// The line exceeds `MAX_COMMAND_BYTES`.
     CommandTooLong,
+    /// The line contains CR, LF or NUL, so could send more than one command.
     MultipleLines,
 }
 

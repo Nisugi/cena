@@ -6,7 +6,10 @@
 //! present, and `plan/12` §7.2 criterion 1 ("logs in against the live server")
 //! is the one criterion Milestone 1 Step 2 does not exercise here. This module
 //! is complete and compiles; **no test in this workspace calls
-//! [`LiveSource::connect`]**, and none may. The author runs it.
+//! [`LiveSource::connect`] against a real host**, and none may. The author
+//! runs it. One test calls it against a LOOPBACK listener in its own process
+//! (`tests/keepalive.rs`), to read back the socket options it sets -- nothing
+//! leaves the machine.
 //!
 //! # Three findings ported verbatim from the spike
 //!
@@ -31,9 +34,15 @@
 //!    eaccess over TLS for the login handshake, then opens a *plain* TCP
 //!    connection to the game host and sends the key. This type is the second
 //!    of those: the session's byte source is the game stream, which is not TLS.
-//!    [`LiveSource::connect_tls`] exists for the eaccess half.
+//!    `LiveSource::connect_tls` exists for the eaccess half, and is reachable
+//!    only through the certificate pin (`eaccess/pin.rs`).
+//!
+//! The game stream has a second route since Lich PR #1664: the WebSocket shim
+//! on 443 ([`LiveSource::connect_shim`], `shim.rs`), which IS TLS -- verified
+//! TLS, unlike eaccess. It is the fallback when the game port is unreachable.
 
 use crate::bytes::ByteSource;
+use crate::gemstone::shim;
 use std::io;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -49,12 +58,35 @@ pub const KEEPALIVE_IDLE: Duration = Duration::from_secs(30);
 /// Time between probes once they start.
 pub const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
 
+/// How long sent data may sit unacknowledged before the kernel fails the
+/// socket. `TCP_USER_TIMEOUT`, Linux and Android only -- see
+/// `set_user_timeout` in this file for why it is only those two.
+///
+/// **Lich's value, which is 120s and not 10s.** The review that asked for this
+/// said "~10s", reading `tcp_maxrt: 10` in `games.rb:473`. That is the
+/// WINDOWS option (`TCP_MAXRT`, seconds). On Unix, Lich's
+/// `SocketConfigurator.configure_unix` sets `TCP_USER_TIMEOUT` to a fixed
+/// `120000` ms (`reference/lich-5/lib/common/socketconfigurator.rb:289-292`).
+/// Taken verbatim, like the keepalive pair: a shipped value against these
+/// servers, and 10s would drop a session over an ordinary mobile handover.
+///
+/// What it buys is the send-side twin of keepalive. Keepalive only probes an
+/// IDLE connection; once a command has been written and not acknowledged, the
+/// socket is not idle, keepalive stays silent, and Linux retransmits for
+/// `tcp_retries2` = 15 rounds before the write errors -- `tcp(7)` puts the
+/// default at a hypothetical 924.6 seconds, about 15 minutes. Not measured
+/// here: no test in this workspace may sever a real connection.
+pub const UNACKED_SEND_TIMEOUT: Duration = Duration::from_mins(2);
+
 /// A live connection: plain TCP to the game, or TLS to eaccess.
 ///
 /// Two shapes rather than two types because they differ only in whether a TLS
 /// layer is wrapped around the same socket, and everything above them --
 /// read, single-write, shutdown -- is identical. Two types would be a trait
 /// with two implementors that never diverge, which is Rule -1's other half.
+///
+/// The third shape is the same game stream reached another way, when the game
+/// port cannot be: see `gemstone/shim.rs`.
 #[derive(Debug)]
 pub enum LiveSource {
     /// The game stream. Plain TCP: the game host takes the key in the clear,
@@ -62,6 +94,9 @@ pub enum LiveSource {
     Plain(TcpStream),
     /// The eaccess handshake. TLS 1.2, static-RSA, `native-tls`.
     Tls(Box<tokio_native_tls::TlsStream<TcpStream>>),
+    /// The game stream through play.net's WebSocket shim on 443, over
+    /// verified TLS. The fallback when [`Self::Plain`] cannot connect.
+    WebSocket(Box<shim::ShimStream>),
 }
 
 /// Turn on TCP keepalive, so a half-open socket eventually fails a read.
@@ -118,13 +153,79 @@ fn set_keepalive(stream: &TcpStream) {
     // does not close the fd when dropped.
     if let Err(e) = socket2::SockRef::from(stream).set_tcp_keepalive(&params) {
         eprintln!(
-            "[socket] WARNING: TCP keepalive could not be set ({e}). The              session continues on OS defaults, but a connection that              disappears without a FIN -- airplane mode, a dropped VPN -- may              now hang instead of failing, which is what this setting exists              to prevent."
+            "[socket] WARNING: TCP keepalive could not be set ({e}). The \
+             session continues on OS defaults, but a connection that \
+             disappears without a FIN -- airplane mode, a dropped VPN -- may \
+             now hang instead of failing, which is what this setting exists \
+             to prevent."
         );
     }
 }
 
+/// Bound how long a SENT byte may go unacknowledged, where the platform lets
+/// this crate say so.
+///
+/// Best-effort and warned on failure, exactly as [`set_keepalive`] is and for
+/// the same reason: a session without it still works, but a write into a dead
+/// link goes back to hanging for the OS default, and nobody would know why.
+///
+/// # Only Linux and Android, and why not Windows
+///
+/// Lich sets the equivalent on both families: `TCP_USER_TIMEOUT` on Unix and
+/// `TCP_MAXRT` on Windows (`socketconfigurator.rb:289-292`, `:421-431`).
+/// socket2 0.6.5 exposes the first and **not the second** -- `grep -rn MAXRT`
+/// over its source returns nothing -- and setting it by hand is a raw
+/// `setsockopt`, which is `unsafe`, which the workspace denies
+/// (`Cargo.toml`, `unsafe_code = "deny"`). So Windows keeps its OS default.
+/// That is a decision for the author, recorded rather than taken here: it
+/// needs either an `unsafe` exception or a dependency that wraps the call.
+///
+/// macOS has `TCP_RXT_CONNDROPTIME`, which socket2 does not expose either, and
+/// Lich does not set. Nothing is claimed for it.
+///
+/// Lich's other half of that block -- `SO_RCVTIMEO`/`SO_SNDTIMEO` at 30s -- is
+/// deliberately NOT ported. Those bound a BLOCKING call; tokio's sockets are
+/// non-blocking, where the options do not apply. The read side is already
+/// bounded where it can be cancelled: the session's own read deadline.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn set_user_timeout(stream: &TcpStream) {
+    if let Err(e) = socket2::SockRef::from(stream).set_tcp_user_timeout(Some(UNACKED_SEND_TIMEOUT))
+    {
+        eprintln!(
+            "[socket] WARNING: TCP_USER_TIMEOUT could not be set ({e}). The \
+             session continues, but a command written into a dead link may \
+             now wait out the kernel's ~15 minute retransmission default \
+             before the session notices."
+        );
+    }
+}
+
+/// No `TCP_USER_TIMEOUT` here -- see the Linux version's docs for why.
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+fn set_user_timeout(_stream: &TcpStream) {}
+
+/// Every option a GAME socket carries, in one place.
+///
+/// Shared by [`LiveSource::connect`] and [`LiveSource::connect_shim`] so the
+/// two routes to the same stream cannot drift: they did not share this, and
+/// each would have needed the send timeout added by hand. The eaccess socket
+/// takes only `nodelay` -- see [`LiveSource::connect_tls`] for why.
+fn configure_game_socket(stream: &TcpStream) -> io::Result<()> {
+    // Nagle batches small writes, which is exactly wrong for a stream of
+    // one-line commands: it would add up to 200ms to every round trip and
+    // make criterion 4's PREEMPT_GRACE measurement a measurement of Nagle.
+    stream.set_nodelay(true)?;
+    set_keepalive(stream);
+    set_user_timeout(stream);
+    Ok(())
+}
+
 impl LiveSource {
     /// Open a plain TCP connection.
+    ///
+    /// `tests/keepalive.rs` calls this against a LOOPBACK listener and reads
+    /// the options back off the socket it returns -- the only way to know
+    /// they are set by the code that runs, rather than by a test's own copy.
     ///
     /// # Errors
     ///
@@ -133,12 +234,28 @@ impl LiveSource {
     /// an abstraction with one caller.
     pub async fn connect(host: &str, port: u16) -> io::Result<Self> {
         let stream = connect_bounded(host, port).await?;
-        // Nagle batches small writes, which is exactly wrong for a stream of
-        // one-line commands: it would add up to 200ms to every round trip and
-        // make criterion 4's PREEMPT_GRACE measurement a measurement of Nagle.
-        stream.set_nodelay(true)?;
-        set_keepalive(&stream);
+        configure_game_socket(&stream)?;
         Ok(Self::Plain(stream))
+    }
+
+    /// Open the game stream through the WebSocket shim, for the game host and
+    /// port the login named.
+    ///
+    /// The socket goes to `shim_host`'s remap of `gamehost` on 443 and the game port
+    /// rides in the upgrade path. Nagle, keepalive and the send timeout are
+    /// set on the TCP socket underneath, for the same reasons as
+    /// [`Self::connect`]: they are socket options, and the WebSocket above
+    /// cannot set them.
+    ///
+    /// # Errors
+    ///
+    /// The TCP connect, TLS or upgrade failure.
+    pub async fn connect_shim(gamehost: &str, gameport: u16) -> io::Result<Self> {
+        let host = shim::shim_host(gamehost);
+        let stream = connect_bounded(host, shim::SHIM_PORT).await?;
+        configure_game_socket(&stream)?;
+        let shim = shim::ShimStream::open(stream, host, gameport).await?;
+        Ok(Self::WebSocket(Box::new(shim)))
     }
 
     /// Open a TLS connection for the eaccess handshake.
@@ -163,42 +280,33 @@ impl LiveSource {
     /// 3. **`danger_accept_invalid_hostnames(true)`** -- follows from 1 and 2.
     ///    With no SNI and no chain, there is no name to check against.
     ///
-    /// # What this does NOT do, and what it costs
+    /// # What replaces the verification: the pin
     ///
-    /// **It does not pin, so this handshake is MITM-able, and the account
-    /// password crosses it.**
+    /// **This function does not verify the peer, and must not be the last
+    /// thing between the network and the password.** Its one caller is
+    /// `eaccess::pin::open_pinned`, which reads the certificate off the
+    /// finished handshake ([`Self::peer_certificate_der`]) and compares it
+    /// with the pin in `simu.pem` before the conversation sends a byte:
+    /// trust on first use, and a **fatal** refusal on change. That is
+    /// `plan/10` §2.3's model minus its hole -- Lich re-pins silently on a
+    /// mismatch, so "an attacker who MITMs one connection installs a
+    /// persistent pin". Read `eaccess/pin.rs` for the whole argument.
     ///
-    /// `plan/10` §2.3 finds Lich's own model is trust-on-first-use with
-    /// *silent auto-re-pin* -- "an attacker who MITMs one connection installs
-    /// a persistent pin" -- and §9.2 says Cena should compare a **SHA-256 of
-    /// the DER**, not PEM text (PEM equality is line-ending sensitive,
-    /// `plan/10` §12.3). None of that is built here.
+    /// `pub(crate)`, not `pub`, for exactly that reason: outside this crate
+    /// there is no way to open the eaccess TLS connection except through the
+    /// pin. This used to be `pub`, UNPINNED, and a release build printed a
+    /// warning saying so every time it ran (review PL-10); the warning went
+    /// when the pin landed, because it would have been false.
     ///
-    /// That is a deliberate M1 scope call rather than an oversight:
-    /// `plan/12` §7.1 puts saved credentials and the login ladder Out, and a
-    /// pin with nowhere to be stored is half a mechanism. It is recorded on
-    /// this line, not in a backlog, because the weakening is *here* and a
-    /// reader of it must see the cost. **It is the one thing in this module
-    /// that should not survive to a release build.**
-    ///
-    /// ## That sentence is now enforced, not just written
-    ///
-    /// It was a note and nothing checked it (review PL-10), which is `plan/05`
-    /// Rule 0's definition of a wish. Two things hold it now:
-    ///
-    /// * A **release build says so at runtime**, every time this runs. Not a
-    ///   `compile_error!`: pinning does not exist yet, so refusing to build
-    ///   would only force the guard to be deleted, and a deleted guard is
-    ///   worse than a loud one. `debug_assertions` is the discriminator --
-    ///   it is off in `--release` and on in the dev profile the author runs.
-    /// * `cena-arch-tests` asserts the warning is still here, so removing it
-    ///   fails the suite rather than quietly restoring the silence.
+    /// What the pin cannot do is vouch for the FIRST connection. A machine
+    /// with no `simu.pem` trusts whatever it reaches first, as Lich and
+    /// `VellumFE` do. The first-use line in the login output says so.
     ///
     /// # Errors
     ///
     /// Connect, TLS-builder and handshake errors, each mapped to
     /// [`io::Error`] so one `?` chain covers the sequence.
-    pub async fn connect_tls(host: &str, port: u16) -> io::Result<Self> {
+    pub(crate) async fn connect_tls(host: &str, port: u16) -> io::Result<Self> {
         let stream = connect_bounded(host, port).await?;
         stream.set_nodelay(true)?;
         // NO keepalive here, unlike the game socket. This connection is a
@@ -207,12 +315,6 @@ impl LiveSource {
         // guards a connection that sits IDLE for minutes, which this one never
         // does. Stated because its absence beside `connect`'s presence would
         // otherwise read as an oversight.
-        // ARCH-TEST ANCHOR: `release_builds_announce_the_unpinned_tls`.
-        if !cfg!(debug_assertions) {
-            eprintln!(
-                "[tls] WARNING: this is a RELEASE build and the eaccess TLS                  handshake is UNPINNED -- certificates and hostnames are not                  verified, and the account password crosses this connection.                  plan/10 section 9.2 specifies a SHA-256-of-DER pin; it is                  not built. Do not ship this."
-            );
-        }
         let connector = native_tls::TlsConnector::builder()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true)
@@ -233,6 +335,27 @@ impl LiveSource {
             })?
             .map_err(|e| io::Error::other(format!("tls handshake with {host}: {e}")))?;
         Ok(Self::Tls(Box::new(tls)))
+    }
+
+    /// The certificate the peer presented in the TLS handshake, as DER.
+    ///
+    /// For the eaccess pin (`eaccess/pin.rs`), which is what stands in for
+    /// the chain verification [`Self::connect_tls`] turns off.
+    ///
+    /// # Errors
+    ///
+    /// Not a [`Self::Tls`] connection, no certificate presented, or the TLS
+    /// library could not encode it.
+    pub(crate) fn peer_certificate_der(&self) -> io::Result<Vec<u8>> {
+        let Self::Tls(tls) = self else {
+            return Err(io::Error::other("not a TLS connection"));
+        };
+        tls.get_ref()
+            .peer_certificate()
+            .map_err(io::Error::other)?
+            .ok_or_else(|| io::Error::other("the server presented no certificate"))?
+            .to_der()
+            .map_err(io::Error::other)
     }
 }
 
@@ -273,6 +396,7 @@ impl ByteSource for LiveSource {
         match self {
             Self::Plain(s) => s.read(buf).await,
             Self::Tls(s) => s.read(buf).await,
+            Self::WebSocket(s) => s.read(buf).await,
         }
     }
 
@@ -290,6 +414,8 @@ impl ByteSource for LiveSource {
                 s.write_all(message).await?;
                 s.flush().await
             }
+            // One message is one WebSocket frame, which is one TLS write.
+            Self::WebSocket(s) => s.write_all(message).await,
         }
     }
 
@@ -297,6 +423,7 @@ impl ByteSource for LiveSource {
         let result = match self {
             Self::Plain(s) => s.shutdown().await,
             Self::Tls(s) => s.shutdown().await,
+            Self::WebSocket(s) => s.shutdown().await,
         };
         // Idempotence (the trait's contract, for criterion 6): a second
         // shutdown on a closed socket returns NotConnected on every platform

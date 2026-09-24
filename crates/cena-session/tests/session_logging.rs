@@ -41,7 +41,7 @@ async fn a_session_with_a_sink_writes_both_directions_to_disk() {
     let bytes_path = sink.bytes_path().to_path_buf();
     let events_path = sink.events_path().to_path_buf();
 
-    let (source, _transcript) = AnsweringSource::new(PROMPT);
+    let (source, _transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source).with_sink(sink);
     let handle = session.handle();
     let cancel = session.cancel_token();

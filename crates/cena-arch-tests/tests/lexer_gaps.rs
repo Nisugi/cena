@@ -167,3 +167,129 @@ fn a_url_in_a_literal_is_not_a_line_comment() {
         "the line after a URL literal was lost: {lines:?}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Review finding 8. Each fixture below was run against the PREVIOUS lexer
+// (`git show 2ad1209:crates/cena-arch-tests/src/lexical.rs`, compiled in a
+// scratch binary) and produced the failure its assertion names: the banned
+// line blanked, the comment text visible, or a line after a test module still
+// marked as test code. All five pass against the current one.
+// ---------------------------------------------------------------------------
+
+/// **A `"` inside a char literal must not open a string.**
+///
+/// The previous lexer did not track char literals, and its doc said that was
+/// safe because "a lone `"` in one cannot open a *comment*". It opens a
+/// string, which closes at the first quote of the NEXT literal -- leaving that
+/// literal's body read as code. Here the body is a glob, so its `/*` opened a
+/// block comment that ran to end of file.
+#[test]
+fn a_quote_in_a_char_literal_does_not_open_a_string() {
+    let source = format!(
+        "let q = '\"'; let g = \"**/*.rs\";\n{}",
+        banned_decl("AFTER_CHAR")
+    );
+    let lines = code_lines(&source);
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains(&banned_needle("AFTER_CHAR"))),
+        "a quote in a char literal desynced the lexer and blanked the rest of \
+         the file: {lines:?}"
+    );
+}
+
+/// An ordinary literal that spans lines stays a literal on its second line.
+///
+/// The previous lexer closed every ordinary literal at end of line, so the
+/// second line of a multi-line string was read as code -- and a `/*` there
+/// blanked everything after it.
+#[test]
+fn a_multi_line_string_does_not_end_at_the_newline() {
+    let source = format!(
+        "let s = \"one\n/* two\n\";\n{}",
+        banned_decl("AFTER_MULTILINE")
+    );
+    let lines = code_lines(&source);
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains(&banned_needle("AFTER_MULTILINE"))),
+        "the second line of a string literal was read as code: {lines:?}"
+    );
+    assert!(
+        lines.iter().any(|l| l.contains("/* two")),
+        "the literal's second line is literal text and must be copied: {lines:?}"
+    );
+}
+
+/// A brace in a char literal is not a scope.
+///
+/// `items` counted braces on the raw line, so a `'{'` inside a test module
+/// left its depth one too high: the module never closed, and every item after
+/// it was marked test code -- exempt from the facade rule. The doc on
+/// `code_lines` claimed `items` handled this. It did not.
+#[test]
+fn a_brace_in_a_char_literal_does_not_open_a_scope() {
+    let source = "#[cfg(test)]\nmod tests {\n    const C: char = '{';\n}\npub fn after() {}\n";
+    let after = cena_arch_tests::lexical::items(source)
+        .into_iter()
+        .find(|item| item.code.contains("after"))
+        .expect("the fixture's last item");
+    assert!(
+        !after.in_test_module,
+        "`after` sits outside the test module, and a `'{{'` in a char literal \
+         kept the module open past its closing brace"
+    );
+}
+
+/// Block comments nest in Rust, so the first `*/` does not end them.
+#[test]
+fn a_nested_block_comment_closes_at_its_own_end() {
+    let lines = code_lines("/* outer /* inner */ still comment */ let x = 1;\n");
+    assert!(
+        !lines[0].contains("still comment"),
+        "the inner `*/` closed the outer comment, exposing prose to the needle \
+         scans: {lines:?}"
+    );
+    assert!(lines[0].contains("let x = 1;"), "{lines:?}");
+}
+
+/// `br#"..."#` is a raw literal: its inner quote does not close it.
+#[test]
+fn a_byte_raw_literal_is_raw() {
+    let source = format!(
+        "let b = br#\"a \" /* x\"#;\n{}",
+        banned_decl("AFTER_BYTE_RAW")
+    );
+    let lines = code_lines(&source);
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains(&banned_needle("AFTER_BYTE_RAW"))),
+        "`br#\"` was read as an ordinary literal, closed at its inner quote, \
+         and the `/*` after it blanked the file: {lines:?}"
+    );
+}
+
+/// Lifetimes are not char literals, and a char that looks like one is.
+#[test]
+fn lifetimes_and_chars_are_told_apart() {
+    let source = format!(
+        "fn f<'a>(x: &'a str) -> char {{ let _ = x; 'a' }}\n{}",
+        banned_decl("AFTER_LIFETIME")
+    );
+    let lines = code_lines(&source);
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains(&banned_needle("AFTER_LIFETIME"))),
+        "{lines:?}"
+    );
+    let tokens = cena_arch_tests::lexical::tokens(&source);
+    let lifetimes = tokens
+        .iter()
+        .filter(|t| t.kind == cena_arch_tests::lexical::TokenKind::Lifetime)
+        .count();
+    assert_eq!(lifetimes, 2, "`'a` twice as a lifetime: {tokens:?}");
+}

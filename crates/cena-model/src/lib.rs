@@ -68,7 +68,7 @@ pub use state::menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem, 
 pub use state::societies::membership::MembershipLine;
 pub use state::societies::{Ability, AbilityKind, AlternateCost, Cost, CostTiming, Target};
 pub use state::streams::{LineTally, MAX_STREAM_LINES};
-pub use state::vitals::{Vital, Vitals, VitalsExt};
+pub use state::vitals::{Vital, Vitals};
 pub use state::{
     Character, Container, DISK_NOUNS, Disk, Experience, Found, GameState, Injury, Inventory,
     MAX_UNKNOWN_TAGS, PlayerStatus, Room, RoomItem, UnknownTag, Where,

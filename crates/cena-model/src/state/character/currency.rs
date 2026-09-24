@@ -190,15 +190,13 @@ impl Currency {
     }
 }
 
-/// `"1,024"` -> `1024`.
+/// `"1,024"` -> `1024`. The shared, strict reader: see `state/numbers.rs` for
+/// why `"12a3"` is `None` rather than `123`.
 fn number(text: &str) -> Option<u64> {
-    let digits: String = text.trim().chars().filter(char::is_ascii_digit).collect();
-    digits.parse().ok()
+    crate::state::numbers::grouped(text)
 }
 
 /// Same, keeping a leading `-`.
 fn signed(text: &str) -> Option<i64> {
-    let negative = text.trim_start().starts_with('-');
-    let magnitude = i64::try_from(number(text)?).ok()?;
-    Some(if negative { -magnitude } else { magnitude })
+    crate::state::numbers::grouped(text)
 }

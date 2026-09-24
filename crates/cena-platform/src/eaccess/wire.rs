@@ -59,10 +59,18 @@ pub struct Credentials<'a> {
 /// Deliberately not `Debug`-derived: a derived impl prints the password, and
 /// the one place a credential struct reliably leaks is a debug log written in
 /// a hurry.
+///
+/// **The account is redacted as well** (review finding 13). It printed here
+/// while `WebLoginRequest` and the binary's `LiveConnector` -- the other two
+/// holders of the same field -- both blanked it, and while the wire log
+/// registered it for redaction. It is credential-adjacent: half of what is
+/// sent at `A`, and embedded in every character code as `W_<ACCOUNT>_<SLOT>`
+/// (`plan/10` §4.6). The character and game code stay visible; they are what
+/// a reader diagnosing a login needs.
 impl fmt::Debug for Credentials<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Credentials")
-            .field("account", &self.account)
+            .field("account", &"<REDACTED>")
             .field("password", &"<REDACTED>")
             .field("character", &self.character)
             .field("game_code", &self.game_code)
@@ -89,18 +97,23 @@ pub struct LaunchPayload {
     pub gamehost: String,
     /// The game port.
     pub gameport: u16,
-    /// The instance the server actually launched, e.g. `GS` or `DR`.
-    ///
-    /// **This is the server's answer, not the code that was requested.** `G`
-    /// selects with a code from `M` (`GS3`, `GST`, `GSX`, ...) and `L` answers
-    /// with a shorter family code, so a `GS3` login returns `GAMECODE=GS`.
-    /// `plan/10` §4.9 lists this among the four fields "Cena needs" -- the
-    /// other four (`UPPORT`, `GAME`, `FULLGAMENAME`, `GAMEFILE`) "exist solely
-    /// to tell a Simutronics launcher which `.EXE` to run" and are dropped.
-    ///
-    /// Absent on the generator path, so `Option` -- unlike the two above, this
-    /// one costs nothing, because nothing dereferences it.
-    pub gamecode: Option<String>,
+    // **`GAMECODE` is NOT carried, and was until review finding 11.**
+    //
+    // It was a `gamecode: Option<String>` that nothing read -- `plan/05` §-1's
+    // field with no consumer -- and it was wrong on one of the two paths that
+    // filled it. `L` answers with the server's FAMILY code (`GS` for a `GS3`
+    // login, VERIFIED in the 2026-09-18 capture), while the web-login fallback
+    // has no `GAMECODE` at all and filled it with the REQUESTED code, `GS3`.
+    // So one field held two different vocabularies depending on which provider
+    // ran, and the only place it surfaced was the `[connect]` debug line --
+    // where it made a web launch look like a server answer.
+    //
+    // Removed rather than made honest (`None` on the web path) because an
+    // honest field with no reader is still a field with no reader. `plan/10`
+    // §4.9 lists it among the fields "Cena needs"; the need it would serve is
+    // telling GemStone from DragonRealms, which `plan/12` §9d defers. When
+    // that lands, it comes back WITH its consumer, and `parse_launch` below
+    // records the one fact it needs: the value is a family, not an instance.
     /// The session key. One shot, short-lived, and a credential: see this
     /// type's `Debug`.
     pub key: String,
@@ -113,7 +126,6 @@ impl fmt::Debug for LaunchPayload {
         f.debug_struct("LaunchPayload")
             .field("gamehost", &self.gamehost)
             .field("gameport", &self.gameport)
-            .field("gamecode", &self.gamecode)
             .field("key", &"<REDACTED>")
             .finish()
     }
@@ -158,18 +170,25 @@ pub struct EaccessError {
     /// than leaving a caller to match on the message.
     ///
     /// **Defaults to `false`** (`err` sets it), so a failure nobody has
-    /// classified is retried. That is the direction that fails safe: an
-    /// unclassified error retried costs a bounded ladder, while an
-    /// unclassified error treated as fatal costs the session.
+    /// classified is retried. That is the direction that fails safe for the
+    /// SESSION: an unclassified error treated as fatal costs it outright.
+    ///
+    /// It is not free for the ACCOUNT, and this used to say it cost "a bounded
+    /// ladder". It does not: the supervisor retries a transient connect
+    /// failure forever, capped at one attempt per 30s, and every attempt past
+    /// `A` sends the password. So a refusal left at the default is a login
+    /// every 30 seconds until someone notices -- which is why each refusal
+    /// below that is genuinely a verdict calls [`Self::fatal`] explicitly.
     pub fatal: bool,
 }
 
 impl EaccessError {
     /// Mark this failure as one no retry can fix.
     ///
-    /// Used at the two places that are genuinely a refusal rather than a
-    /// transport failure: a rejected `A` response, and an `L PROBLEM` launch
-    /// refusal.
+    /// Used wherever the answer is a verdict rather than a transport failure:
+    /// a rejected `A`, a game code `M` does not list, no entitlement at `F`, a
+    /// character not in `C`, an `L PROBLEM` of 1-3, and a password the hash
+    /// cannot encode. This said "the two places" long after there were six.
     #[must_use]
     pub fn fatal(mut self) -> Self {
         self.fatal = true;
@@ -409,17 +428,18 @@ pub fn is_launch_ok(l_response: &str) -> bool {
 pub fn parse_launch(l_response: &str) -> Result<LaunchPayload, EaccessError> {
     let mut gamehost = None;
     let mut gameport = None;
-    let mut gamecode = None;
     let mut key = None;
     for field in l_response.trim().split('\t') {
         let mut kv = field.splitn(2, '=');
         match (kv.next(), kv.next()) {
             (Some("GAMEHOST"), Some(v)) => gamehost = Some(v.to_owned()),
             (Some("GAMEPORT"), Some(v)) => gameport = v.parse::<u16>().ok(),
-            // `plan/10` §4.9's fourth needed field. The other four in the
-            // response -- UPPORT, GAME, FULLGAMENAME, GAMEFILE -- tell a
-            // Simutronics launcher which .EXE to run, and are dropped.
-            (Some("GAMECODE"), Some(v)) => gamecode = Some(v.to_owned()),
+            // Everything else is dropped. UPPORT, GAME, FULLGAMENAME and
+            // GAMEFILE tell a Simutronics launcher which .EXE to run
+            // (`plan/10` §4.9). GAMECODE is `plan/10`'s fourth "needed" field
+            // and has no consumer yet -- see `LaunchPayload` for why it is not
+            // carried. If one arrives: it is the server's FAMILY code (`GS`),
+            // not the instance `G` selected (`GS3`).
             (Some("KEY"), Some(v)) => key = Some(v.to_owned()),
             _ => {}
         }
@@ -427,7 +447,6 @@ pub fn parse_launch(l_response: &str) -> Result<LaunchPayload, EaccessError> {
     Ok(LaunchPayload {
         gamehost: gamehost.ok_or_else(|| err("l_response", "no GAMEHOST in launch payload"))?,
         gameport: gameport.ok_or_else(|| err("l_response", "no GAMEPORT in launch payload"))?,
-        gamecode,
         key: key.ok_or_else(|| err("l_response", "no KEY in launch payload"))?,
     })
 }

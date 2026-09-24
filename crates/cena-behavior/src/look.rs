@@ -64,7 +64,14 @@ pub const LOOK_INTERVAL: Duration = Duration::from_secs(1);
 /// Why a behavior stopped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BehaviorError {
-    /// The token was cancelled, or the session interrupted the round trip.
+    /// The token was cancelled: the player, or whoever runs the behavior,
+    /// said stop.
+    ///
+    /// **Only that.** `Outcome::Interrupted` used to land here too, but its
+    /// one producer is a command from an earlier connection being discarded
+    /// -- the connection changed, which is [`Self::Disconnected`]. A stop
+    /// earns its one take-back (`travel::drive`); a changed connection must
+    /// not.
     ///
     /// `plan/12` §4.4: cancellation does not un-send. A cancelled command may
     /// already have reached the game; this means "stop waiting and do not act
@@ -92,6 +99,40 @@ pub enum BehaviorError {
     /// how you get an attack that fires four seconds after the fight ended."
     /// So this is returned immediately, never after a wait.
     AuthorityHeld,
+}
+
+impl BehaviorError {
+    /// What a round trip's [`Outcome`] means for the behavior that sent it,
+    /// **when it means the session is gone or going**: `None` for an answer,
+    /// a timeout or a refusal, which each behavior reads its own way.
+    ///
+    /// # Why one function
+    ///
+    /// `look`, `sync` and travel's driver each spelled this out, and the three
+    /// copies agreed on everything but `Interrupted` -- which all three read
+    /// as [`Self::Cancelled`] while travel's own `send` read the same event as
+    /// [`Self::Disconnected`] (review, 2026-09-23). `Interrupted`'s one
+    /// producer is the actor discarding a command stamped for an earlier
+    /// connection (`cena-session`, `actor/io.rs`): the connection changed, and
+    /// that is a disconnection. A stop earns its one take-back
+    /// (`travel::drive`); a changed connection must not.
+    ///
+    /// Only a stop the behavior's own token saw is `Cancelled`, and no
+    /// `Outcome` can say that: the token is raced beside the await, not
+    /// inside it.
+    #[must_use]
+    pub fn from_outcome(outcome: &Outcome) -> Option<BehaviorError> {
+        match outcome {
+            // `Handled` is the desk's answer to a typed line, which a
+            // behavior's round trip never goes through; an answer if it did.
+            Outcome::Confirmed(_) | Outcome::Timeout | Outcome::Refused(_) | Outcome::Handled => {
+                None
+            }
+            Outcome::Dead => Some(BehaviorError::Dead),
+            // §5.1: no automation runs while a session has no transport.
+            Outcome::Interrupted | Outcome::Disconnected => Some(BehaviorError::Disconnected),
+        }
+    }
 }
 
 /// The frame that answers a `look`: the styled room description.
@@ -200,7 +241,7 @@ async fn look_holding_authority(
         // that decides whether criterion 4 actually holds.
         //
         // Cancelling does NOT un-send: the command may already have reached
-        // the game (`plan/12` §4.4). `Interrupted` is the honest answer.
+        // the game (`plan/12` §4.4). `Cancelled` is the honest answer.
         let outcome = tokio::select! {
             biased;
             () = cancel.cancelled() => return Err(BehaviorError::Cancelled),
@@ -212,17 +253,14 @@ async fn look_holding_authority(
                 is_room_description,
             ) => outcome,
         };
-        match outcome {
-            // A window that closed with nothing matched is not a failure:
-            // §4.4 says `Timeout` means "no match within the window", never
-            // "the command did not happen". Looping is the correct response.
-            Outcome::Confirmed(_) | Outcome::Timeout | Outcome::Refused(_) => {}
-            Outcome::Interrupted => return Err(BehaviorError::Cancelled),
-            Outcome::Dead => return Err(BehaviorError::Dead),
-            // Stop this run and say why. NOT a retry: §5.1 says no automation
-            // runs while a session has no transport, so looping here would
-            // spin against a socket that is gone.
-            Outcome::Disconnected => return Err(BehaviorError::Disconnected),
+        // A window that closed with nothing matched is not a failure: §4.4
+        // says `Timeout` means "no match within the window", never "the
+        // command did not happen". Looping is the correct response. A session
+        // gone or going stops this run and says why -- NOT a retry: §5.1 says
+        // no automation runs while a session has no transport, so looping
+        // would spin against a socket that is gone.
+        if let Some(gone) = BehaviorError::from_outcome(&outcome) {
+            return Err(gone);
         }
 
         // THE LOAD-BEARING AWAIT. A bare `sleep(LOOK_INTERVAL).await` here
@@ -232,6 +270,42 @@ async fn look_holding_authority(
             biased;
             () = cancel.cancelled() => return Err(BehaviorError::Cancelled),
             () = tokio::time::sleep(LOOK_INTERVAL) => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use cena_session::command::Refusal;
+
+    use super::*;
+
+    /// The one mapping every behavior shares. `Interrupted` is the case the
+    /// review found wrong three times over (2026-09-23): it is the actor
+    /// discarding an earlier connection's command, so it is a disconnection.
+    ///
+    /// A unit test, and not only the end-to-end ones beside `sync` and
+    /// travel: `cena-session` now also answers a stale command `Disconnected`
+    /// at admission (`actor/io.rs`), so a test that moves the connection
+    /// reaches `Disconnected` first and cannot tell whether `Interrupted` is
+    /// read right. MEASURED: all three end-to-end tests stayed green with the
+    /// old `Interrupted -> Cancelled` arm restored.
+    #[test]
+    fn a_command_from_an_older_connection_is_a_disconnection_not_a_stop() {
+        assert_eq!(
+            BehaviorError::from_outcome(&Outcome::Interrupted),
+            Some(BehaviorError::Disconnected)
+        );
+        assert_eq!(
+            BehaviorError::from_outcome(&Outcome::Disconnected),
+            Some(BehaviorError::Disconnected)
+        );
+        assert_eq!(
+            BehaviorError::from_outcome(&Outcome::Dead),
+            Some(BehaviorError::Dead)
+        );
+        for answered in [Outcome::Timeout, Outcome::Refused(Refusal::Transient)] {
+            assert_eq!(BehaviorError::from_outcome(&answered), None, "{answered:?}");
         }
     }
 }

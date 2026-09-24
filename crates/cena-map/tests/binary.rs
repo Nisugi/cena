@@ -474,3 +474,36 @@ fn the_sheet_registry_is_build_side_and_not_in_the_file() {
         Some("landing.well")
     );
 }
+
+#[test]
+fn two_exits_to_the_same_room_keep_their_own_bearings() {
+    // **Parallel exits are real**: two commands that both reach the same room
+    // (a door and a window, `go gate` and `climb wall`). Keyed by destination,
+    // the bearings could not tell them apart -- the probe that found it read
+    // `[Some(North), None]` back as `[Some(North), Some(North)]`, handing the
+    // exit that stated nothing a bearing it never had. Both orders are held,
+    // because a first-match lookup gets one of them right by accident.
+    for stated in [[Some("north"), None], [None, Some("south")]] {
+        let exit = |cmd: &str, dirto: Option<&str>| {
+            let dirto = dirto.map_or_else(String::new, |d| format!(r#","dirto":"{d}""#));
+            format!(r#"{{"to":8,"kind":"cardinal","cmd":"{cmd}","cost":0.2{dirto}}}"#)
+        };
+        let rooms = format!(
+            r#"[{{"id":7,"exits":[{},{}]}},{{"id":8,"exits":[]}}]"#,
+            exit("go gate", stated[0]),
+            exit("climb wall", stated[1]),
+        );
+        let rooms: Vec<Room> = serde_json::from_str(&rooms).unwrap();
+        let before = Map::from_rooms(rooms).unwrap();
+        let after = round_trip(&before).unwrap();
+        let bearings = |map: &Map| -> Vec<Option<Dirto>> {
+            map.room(RoomId(7))
+                .unwrap()
+                .exits
+                .iter()
+                .map(|e| e.dirto)
+                .collect()
+        };
+        assert_eq!(bearings(&after), bearings(&before), "stated: {stated:?}");
+    }
+}

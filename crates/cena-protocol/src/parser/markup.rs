@@ -97,48 +97,52 @@ impl Parser {
                     }
                 }
             }
-            name @ ("a" | "d") => {
-                if let Some(link) = text::link_from_tag(tag) {
-                    self.links.push(link);
-                } else if name == "d" {
-                    // A bare `<d>` has no cmd: the link TEXT is the command,
-                    // and `LinkKind::DirectText` says so in the type. It was
-                    // `Direct { cmd: String::new() }` here, which shipped an
-                    // empty command to the consumer -- on 85% of direct links,
-                    // every room exit among them. See `LinkKind::DirectText`.
-                    self.links.push(crate::frame::Link {
-                        kind: crate::frame::LinkKind::DirectText,
-                        text: String::new(),
-                        coord: None,
-                    });
-                } else {
-                    // An `<a>` carrying NONE of href/exist/cmd is not a
-                    // command link, and must not be turned into one.
-                    //
-                    // `DirectText` means "send the link text as a command", so
-                    // `<a char='Someone' game='GSIV'>Someone</a>` (wiki
-                    // `:317-318`) became a link that would send the player's
-                    // NAME to the game. That is invention, not omission --
-                    // the failure mode the drop-nothing rule is least able to
-                    // tolerate, because a consumer cannot tell a fabricated
-                    // command from a real one.
-                    //
-                    // No link is the honest answer: the text still reaches the
-                    // consumer, and the attributes still ride the surrounding
-                    // `Frame::Structural`'s raw bytes. The same applies to any
-                    // `<a>` attribute Simutronics adds later -- it arrives as
-                    // plain text rather than as a command nobody authored.
-                    //
-                    self.links.push(crate::frame::Link {
-                        kind: crate::frame::LinkKind::NotActionable,
-                        text: String::new(),
-                        coord: None,
-                    });
-                }
-            }
+            "a" | "d" => self.links.push(open_link(tag)),
             // `<b>` and `<i>` reach here and change nothing, deliberately.
             _ => {}
         }
+    }
+}
+
+/// The [`Link`](crate::frame::Link) an opening `<a>` or `<d>` starts.
+///
+/// Shared with the `<inventoryViewItem>` capture, which used to call
+/// [`text::link_from_tag`] alone and so dropped every bare `<d>` -- the
+/// fallback below lived only here, and a `<d>` in an item description lost
+/// its link while the same `<d>` anywhere else kept one (review 2026-09-23).
+pub(super) fn open_link(tag: &str) -> crate::frame::Link {
+    if let Some(link) = text::link_from_tag(tag) {
+        return link;
+    }
+    let kind = if text::tag_name(tag) == "d" {
+        // A bare `<d>` has no cmd: the link TEXT is the command, and
+        // `LinkKind::DirectText` says so in the type. It was
+        // `Direct { cmd: String::new() }` here, which shipped an empty
+        // command to the consumer -- on 85% of direct links, every room exit
+        // among them. See `LinkKind::DirectText`.
+        crate::frame::LinkKind::DirectText
+    } else {
+        // An `<a>` carrying NONE of href/exist/cmd is not a command link, and
+        // must not be turned into one.
+        //
+        // `DirectText` means "send the link text as a command", so
+        // `<a char='Someone' game='GSIV'>Someone</a>` (wiki `:317-318`)
+        // became a link that would send the player's NAME to the game. That
+        // is invention, not omission -- the failure mode the drop-nothing
+        // rule is least able to tolerate, because a consumer cannot tell a
+        // fabricated command from a real one.
+        //
+        // No link is the honest answer: the text still reaches the consumer,
+        // and the attributes still ride the surrounding `Frame::Structural`'s
+        // raw bytes. The same applies to any `<a>` attribute Simutronics adds
+        // later -- it arrives as plain text rather than as a command nobody
+        // authored.
+        crate::frame::LinkKind::NotActionable
+    };
+    crate::frame::Link {
+        kind,
+        text: String::new(),
+        coord: None,
     }
 }
 

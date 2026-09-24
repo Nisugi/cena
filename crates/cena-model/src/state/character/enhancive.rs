@@ -90,8 +90,11 @@ pub struct Bonus {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum Section {
+    /// `Stats:` -- one line per stat, `Wisdom (WIS): 15/40`.
     Stats,
+    /// `Skills:` -- skill bonus and skill rank lines, `value/cap` each.
     Skills,
+    /// `Resources:` -- the five `Resource` lines, `value/cap` each.
     Resources,
     /// Spell numbers granted by an item, e.g. `215, 506, 515, 1109`.
     Spells,
@@ -144,10 +147,15 @@ impl Section {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum Resource {
+    /// Printed `Max Mana`.
     MaxMana,
+    /// Printed `Max Health`.
     MaxHealth,
+    /// Printed `Max Stamina`.
     MaxStamina,
+    /// Printed `Mana Recovery`.
     ManaRecovery,
+    /// Printed `Stamina Recovery`.
     StaminaRecovery,
 }
 
@@ -185,19 +193,56 @@ impl Resource {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnhanciveLine {
     /// `  Wisdom (WIS): 15/40`
-    Stat { kind: StatKind, bonus: Bonus },
+    Stat {
+        /// The stat, matched on its full name case-insensitively; the
+        /// parenthesised abbreviation is ignored.
+        kind: StatKind,
+        /// Granted value and item cap, from `value/cap`.
+        bonus: Bonus,
+    },
     /// `  Two Weapon Combat Bonus: 10/50`
-    SkillBonus { kind: SkillKind, bonus: Bonus },
+    SkillBonus {
+        /// The skill named before the ` Bonus: ` keyword.
+        kind: SkillKind,
+        /// Granted skill bonus and its cap.
+        bonus: Bonus,
+    },
     /// `  Ambush Ranks: 3/50`
-    SkillRanks { kind: SkillKind, bonus: Bonus },
+    SkillRanks {
+        /// The skill named before the ` Ranks: ` keyword.
+        kind: SkillKind,
+        /// Granted ranks and their cap, reusing `Bonus` for the `value/cap`.
+        bonus: Bonus,
+    },
     /// `  Max Stamina: 6/300`
-    Resource { kind: Resource, bonus: Bonus },
+    Resource {
+        /// Which of the five resources the line names.
+        kind: Resource,
+        /// Granted amount and its cap.
+        bonus: Bonus,
+    },
     /// `  215, 506, 515, 1109` -- or, in the details form, one per line.
-    Spells { numbers: Vec<u16> },
+    Spells {
+        /// Spell numbers in printed order; never empty.
+        numbers: Vec<u16>,
+    },
     /// `  Coup de Grace: +2 ranks`, or `  +2 Ranks Coup de Grace: <item>`.
-    Martial { name: String, ranks: u16 },
+    Martial {
+        /// The maneuver's printed name, trimmed, with any `: <item>` removed.
+        /// Text, not an enum: the maneuver set is open, and the report prints
+        /// the display name (`Coup de Grace`), not the mnemonic.
+        name: String,
+        /// The `+N` rank count.
+        ranks: u16,
+    },
     /// `  Enhancive Items: 6`
-    Statistic { name: String, value: u32 },
+    Statistic {
+        /// One of `Enhancive Items`, `Enhancive Properties` or
+        /// `Total Enhancive Amount`.
+        name: String,
+        /// The count printed after the colon.
+        value: u32,
+    },
 }
 
 /// The counts the `Statistics:` section reports.

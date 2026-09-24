@@ -85,6 +85,8 @@ export class HydraSession {
     // snapshot compared `commandStatus` against the literal it was initialised
     // with, so rewording the message silently stopped the comparison matching.
     this.untouched = true;
+    // An upper bound on where the last reported hole sits in the Story.
+    this.linesBeforeGap = 0;
     this.state = { connection: "idle", view: null, story: [], session: null,
       generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…" };
   }
@@ -185,14 +187,16 @@ export class HydraSession {
     if (message.kind === "receipt") {
       if (state.connection !== "connected") throw new Error("Receipt before snapshot");
       if (message.session !== state.session || message.generation !== state.generation) return;
-      if (!["sent", "refused", "uncertain"].includes(message.status) || typeof message.detail !== "string") {
+      if (!["sent", "refused", "uncertain", "handled"].includes(message.status) || typeof message.detail !== "string") {
         throw new Error("Invalid receipt");
       }
       if (!this.pending.delete(message.request_id)) return;
       // Plain wording, same claims. `sent` must not imply the game ACTED --
       // the bytes reached the wire and the outcome is whatever the story
       // shows. `uncertain` must not imply failure: it may well have run.
-      const label = { sent: "Sent", refused: "Not sent", uncertain: "Not sure if this one went through" };
+      // `handled` is a `;` command Hydra ran itself: nothing went to the game.
+      const label = { sent: "Sent", refused: "Not sent", uncertain: "Not sure if this one went through",
+        handled: "Done by Hydra" };
       this.untouched = false;
       state.commandStatus = `${label[message.status]}: ${message.detail}`;
       this.emit();
@@ -211,8 +215,22 @@ export class HydraSession {
       && validClosed(line.closed))) throw new Error("Invalid Story");
     if (message.kind === "snapshot" && typeof message.history_gap !== "boolean") throw new Error("Invalid gap");
     if (state.generation !== null && message.generation !== state.generation) this.uncertain();
+    // How many lines leave the front of the Story with this message.
+    const evicted = message.kind === "snapshot" ? 0
+      : Math.max(0, state.story.length + lines.length - MAX_STORY_LINES);
     state.story = (message.kind === "snapshot" ? lines : [...state.story, ...lines]).slice(-MAX_STORY_LINES);
-    if (message.kind === "snapshot") state.historyGap = message.history_gap;
+    // **The gap notice clears once the hole cannot still be on screen.** A
+    // snapshot says only THAT its Story has a hole, not where; the hole is
+    // somewhere among its lines, so it has certainly scrolled out of memory
+    // once that many lines have been evicted since. The notice used to stay
+    // until the next snapshot -- which, with no further loss, meant forever.
+    if (message.kind === "snapshot") {
+      state.historyGap = message.history_gap;
+      this.linesBeforeGap = message.history_gap ? lines.length : 0;
+    } else if (state.historyGap && evicted > 0) {
+      this.linesBeforeGap -= evicted;
+      if (this.linesBeforeGap <= 0) state.historyGap = false;
+    }
     state.view = message.view;
     state.session = message.session;
     state.generation = message.generation;

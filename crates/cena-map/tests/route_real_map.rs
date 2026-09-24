@@ -1,30 +1,48 @@
 //! The pathfinder over a real map, against an answer key computed from the
 //! upstream file by an independent implementation
-//! (`research/mapdb-inventory/route_key.py`). Runs only when both are named:
+//! (`research/mapdb-inventory/route_key.py`). `#[ignore]`d, and runs only when
+//! asked for with both named:
 //!
 //! ```powershell
 //! python research\mapdb-inventory\route_key.py <upstream-map.json> > route_key.tsv
 //! $env:CENA_MAP = "<dir>\hydra.map"; $env:CENA_ROUTE_KEY = "route_key.tsv"
-//! cargo test --release -p cena-map --test route_real_map -- --nocapture
+//! cargo test --release -p cena-map --test route_real_map -- --ignored --nocapture
 //! ```
 //!
 //! The key and the binary must come from the same upstream file.
+//!
+//! **Ignored rather than silently passing**, for the reason
+//! `locate_real_map.rs` gives: an early return reported `1 passed` for a check
+//! that never ran, and `decode(..).ok()?` did the same for a map that failed
+//! to load. A named file that cannot be read or decoded now fails.
 
 use std::collections::BTreeMap;
 use std::time::Instant;
 
 use cena_map::{Map, RoomId, Target, as_converted, binary};
 
+/// The map and key the environment names; `None` only when one is not named.
+/// A named file that cannot be read, or a map that does not decode, is a
+/// failure -- never a skip.
+// `cfg(test)` so clippy.toml's allow-expect-in-tests covers a helper too.
+#[cfg(test)]
 fn load() -> Option<(Map, String)> {
-    let map = std::fs::read(std::env::var_os("CENA_MAP")?).ok()?;
-    let key = std::fs::read_to_string(std::env::var_os("CENA_ROUTE_KEY")?).ok()?;
-    Some((binary::decode(&map).ok()?, key))
+    let (map, key) = (
+        std::env::var_os("CENA_MAP")?,
+        std::env::var_os("CENA_ROUTE_KEY")?,
+    );
+    let bytes = std::fs::read(&map).expect("CENA_MAP names a file that cannot be read");
+    let key =
+        std::fs::read_to_string(&key).expect("CENA_ROUTE_KEY names a file that cannot be read");
+    let map = binary::decode(&bytes).expect("CENA_MAP names a map that does not decode");
+    Some((map, key))
 }
 
 #[test]
+#[ignore = "Tier 2: needs CENA_MAP and CENA_ROUTE_KEY; run with --ignored"]
 fn distances_agree_with_the_independent_key() {
     let Some((map, key)) = load() else {
-        eprintln!("CENA_MAP and CENA_ROUTE_KEY are not both readable; skipped");
+        eprintln!("CENA_MAP and CENA_ROUTE_KEY are not both set; skipped");
         return;
     };
     let mut wanted: BTreeMap<u32, Vec<(u32, Option<f64>)>> = BTreeMap::new();

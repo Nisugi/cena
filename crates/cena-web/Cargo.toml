@@ -13,5 +13,10 @@ tokio-util = "0.7"
 serde_json.workspace = true
 getrandom = "0.3"
 
+[dev-dependencies]
+# `test-util` for `start_paused`: the observation retry backoff is tested on a
+# paused clock rather than by sleeping through it.
+tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
+
 [lints]
 workspace = true

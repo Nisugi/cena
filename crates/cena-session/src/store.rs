@@ -124,8 +124,20 @@ pub fn save_json<T: serde::Serialize>(dir: &Path, path: &Path, value: &T) -> io:
     let text = serde_json::to_string_pretty(value)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
     let temp = path.with_extension("json.tmp");
-    fs::write(&temp, text)?;
+    // **Synced before the rename, and the directory after it.** The rename
+    // alone survives a process crash, not a power loss: the rename's
+    // directory entry can reach disk before the file's data does, leaving a
+    // valid name over an empty file -- the torn write this function exists
+    // to prevent, by another route. Same review-only status as the rest.
+    let mut file = fs::File::create(&temp)?;
+    io::Write::write_all(&mut file, text.as_bytes())?;
+    file.sync_all()?;
+    drop(file);
     fs::rename(&temp, path)?;
+    // std cannot open a directory for syncing on Windows, where NTFS
+    // journals the rename itself.
+    #[cfg(unix)]
+    fs::File::open(dir)?.sync_all()?;
     Ok(())
 }
 

@@ -53,13 +53,16 @@ pub struct Walker {
     pub profession: Option<String>,
     /// As the game spells it: `Forest Gnome`. Asked about by a word of it.
     pub race: Option<String>,
+    /// As the game spells it; compared exactly by [`Cond::Gender`].
     pub gender: Option<String>,
+    /// The walker's experience level.
     pub level: Option<u32>,
     /// The town, as the game spells it: `Wehnimer's Landing`. `Some("")` is a
     /// walker known to be a citizen of nowhere; `None` is not known.
     pub citizenship: Option<String>,
     /// `Order of Voln`. `Some("")` is known to belong to none.
     pub society: Option<String>,
+    /// The walker's rank within `society`.
     pub society_rank: Option<u32>,
     /// `standing`, `sitting`, `kneeling`, `prone`.
     pub posture: Option<String>,
@@ -104,8 +107,13 @@ pub struct Walker {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Cond {
+    /// Every part holds. One known `false` settles it even if others are
+    /// unknown; an empty list holds.
     All(Vec<Cond>),
+    /// At least one part holds. One known `true` settles it even if others
+    /// are unknown; an empty list does not hold.
     Any(Vec<Cond>),
+    /// The inner answer negated; unknown stays unknown.
     Not(Box<Cond>),
     /// True unless the inner question is *known* to hold -- so it is never
     /// unknown. For the second of two ways to cross: `go` when Water Walking
@@ -122,15 +130,22 @@ pub enum Cond {
     Flag(String),
     /// The memory `.0` is exactly `.1`. See [`Walker::memories`].
     Remembered(String, String),
+    /// The walker's profession is exactly this: `Bard`.
     Profession(String),
     /// The walker's race **contains** this word: `Gnome` is true of a Forest
     /// Gnome and a Burghal Gnome, as upstream's `=~ /Gnome/` is.
     Race(String),
+    /// The walker's gender is exactly this.
     Gender(String),
+    /// The walker's level is this or higher.
     LevelAtLeast(u32),
+    /// The walker is a citizen of exactly this town; `""` asks for none.
     Citizenship(String),
+    /// The walker belongs to exactly this society; `""` asks for none.
     Society(String),
+    /// The walker's society rank is this or higher.
     SocietyRankAtLeast(u32),
+    /// The walker's posture is exactly this: `standing`, `kneeling`.
     Posture(String),
     /// The walker wears or carries loose a thing with exactly this name: a
     /// key on a cord.
@@ -158,7 +173,9 @@ pub enum Cond {
     /// The crossing has not moved the walker yet: what an earlier
     /// `Action::TryMove` left to be done.
     StillHere,
+    /// The game's calendar month is exactly this, 1-12.
     Month(u32),
+    /// The walker carries more than this percent of capacity.
     EncumbranceOver(u32),
     /// Ranks in skill `.0` are below `.1`.
     SkillUnder(String, u32),
@@ -167,8 +184,13 @@ pub enum Cond {
     /// encumbrance / 1.25`, kept in whole numbers so a question can be
     /// compared for equality.
     SkillCarriesLoad(String, u32, u32),
+    /// A spell of exactly this name is in effect. See [`Walker::active_spells`].
     SpellActive(String),
+    /// The walker can cast a spell or power of exactly this name. See
+    /// [`Walker::known_spells`].
     SpellKnown(String),
+    /// The walker can pay for this spell now. See
+    /// [`Walker::affordable_spells`].
     SpellAffordable(String),
 }
 

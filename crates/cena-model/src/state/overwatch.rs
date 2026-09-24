@@ -75,6 +75,9 @@
 //! The per-creature message families — 20 `REVEALED_*` and 6 `SILENT_*` —
 //! collapse into their prose. `@@debug` and its `respond` calls are output.
 
+use cena_protocol::frame::LinkKind;
+use cena_protocol::runs::Run;
+
 use crate::state::chunks::ChunkLine;
 
 /// A creature revealed from hiding, or the fact that one hid.
@@ -99,25 +102,54 @@ pub enum Sighting {
     },
 }
 
-/// Prose that means something hid, from `HIDING` (`overwatch.rb:131-147`).
+/// Prose that means something hid, from `HIDING` (`overwatch.rb:131-148`),
+/// split the way Lich's own patterns split.
 ///
-/// The markup is stripped out: what is left is the phrase. Several of Lich's
-/// fifteen name no creature at all (`Something stirs in the shadows.`), which
-/// is why [`Sighting::Hid`] carries nobody.
-const HID: [&str; 12] = [
+/// # Anchored, as Lich anchors them
+///
+/// > **CORRECTED 2026-09-23 (review).** This was one flat list matched with
+/// > `text.contains`, and no creature link required -- so `Bob says,
+/// > "Something stirs in the shadows."` recorded a hider. Lich's fifteen
+/// > patterns are not flat: nine put the phrase **straight after a bolded
+/// > creature link** (`<pushBold/>\w+ <a exist="\d+" ...>...</a><popBold/>
+/// > slips into hiding\.`), and only the rest are bare prose.
+///
+/// [`AFTER_CREATURE`] is the first kind: the phrase must be the text that
+/// immediately follows a bolded, positive-id link. [`PROSE`] is the second,
+/// matched anywhere as Lich matches it -- **except in speech**, which Lich does
+/// not exclude and should: its regexes are unanchored, so a player quoting the
+/// line trips them too. The `<preset id='speech'>` markup says who is talking,
+/// and a line someone SAID is not the game narrating.
+const AFTER_CREATURE: [&str; 7] = [
     " slips into hiding.",
+    // `With a barely audible hiss, <creature> fades...` (`:137`).
     " fades into the surroundings.",
+    // `With a sibilant exhalation, <creature> slips...` (`:138`).
     " slips into the shadows.",
-    " darts into the shadows.",
+    // `:141` ends in `.`, and `:142`'s pronoun link ends in `!`; both follow
+    // a bolded positive-id link.
+    " darts into the shadows",
     " disperses into roiling shadows!",
     " blends with the shadows, moving too swiftly for the eye to follow.",
-    "flies out of the shadows toward",
+    // `You notice the hiding place of <creature>, but do not ...` (`:147`).
+    ", but do not reveal your hidden position.",
+];
+
+/// `HIDING`'s bare-prose patterns, which name no creature
+/// (`overwatch.rb:134-136`, `:144-145`) and are unanchored in Lich.
+const PROSE: [&str; 5] = [
+    "flies out of the shadows toward you!",
     "A faint silvery light flickers from the shadows.",
     "Suddenly, a tiny shard of jet black crystal flies from the shadows toward you!",
     "Something stirs in the shadows.",
     "The figure quickly disappears from view.",
-    ", but do not reveal your hidden position.",
 ];
+
+/// What precedes the target in `:139`/`:140`: `... flies out of the shadows
+/// toward <someone>!` -- a player's link directly, or a creature's after its
+/// article (`\w+ `). The one `HIDING` shape with text on BOTH sides of the
+/// link, so it is checked apart from [`AFTER_CREATURE`].
+const FLIES_TOWARD: &str = "flies out of the shadows toward";
 
 /// Prose that means a creature was revealed, from the 20 `REVEALED_*`
 /// constants (`overwatch.rb:150-178`).
@@ -166,8 +198,14 @@ const STRUCK: [&str; 6] = [
 /// player coming out of hiding is not this.
 #[must_use]
 pub fn classify(line: &ChunkLine) -> Option<Sighting> {
-    let text = line.text();
+    classify_text(line, &line.text())
+}
 
+/// [`classify`], given the line's text already rendered.
+///
+/// The chunk consumers render each line once and share it (review: a main
+/// line was being rebuilt about six times on its way through).
+pub(crate) fn classify_text(line: &ChunkLine, text: &str) -> Option<Sighting> {
     // A strike is also a reveal, so the specific test comes first.
     for (phrases, struck) in [(STRUCK.as_slice(), true), (REVEALED.as_slice(), false)] {
         if phrases.iter().any(|phrase| text.contains(phrase))
@@ -181,9 +219,79 @@ pub fn classify(line: &ChunkLine) -> Option<Sighting> {
             });
         }
     }
-    HID.iter()
-        .any(|phrase| text.contains(phrase))
-        .then_some(Sighting::Hid)
+    hid(line, text).then_some(Sighting::Hid)
+}
+
+/// Whether the line is one of `HIDING`'s fifteen, anchored as Lich anchors
+/// them (see [`AFTER_CREATURE`]).
+fn hid(line: &ChunkLine, text: &str) -> bool {
+    if line.is_spoken() {
+        return false;
+    }
+    if PROSE.iter().any(|phrase| text.contains(phrase)) {
+        return true;
+    }
+    after_links(line, text).any(|(run, before, after)| {
+        let creature = bolded_positive(run);
+        if flies_toward(before) {
+            // `:139` is toward a PLAYER -- a negative id, no bold -- and
+            // `:140` toward a creature. Both end `!` straight after the link.
+            let player = matches!(run.object().map(|l| &l.kind),
+                Some(LinkKind::Exist { id, .. }) if id.starts_with('-'));
+            return (creature || player) && after.starts_with('!');
+        }
+        creature
+            && AFTER_CREATURE
+                .iter()
+                .any(|phrase| after.starts_with(phrase))
+    })
+}
+
+/// Whether the text before a link ends `flies out of the shadows toward `,
+/// with or without one word (a creature's article) between.
+fn flies_toward(before: &str) -> bool {
+    let before = before.trim_end();
+    before.ends_with(FLIES_TOWARD)
+        || before
+            .rsplit_once(' ')
+            .is_some_and(|(head, _article)| head.ends_with(FLIES_TOWARD))
+}
+
+/// Whether a run is a bolded link to a positive `exist` id -- Lich's
+/// `<pushBold/>... <a exist="\d+" ...>` creature shape.
+fn bolded_positive(run: &Run) -> bool {
+    run.style.bold_depth > 0
+        && matches!(run.object().map(|l| &l.kind),
+            Some(LinkKind::Exist { id, .. }) if !id.starts_with('-'))
+}
+
+/// Every object link on the line, with the text before and after it.
+///
+/// A link can span several runs (a style change inside it), so the "after"
+/// is taken from the LAST run of each span.
+fn after_links<'a>(
+    line: &'a ChunkLine,
+    text: &'a str,
+) -> impl Iterator<Item = (&'a Run, &'a str, &'a str)> + 'a {
+    let runs = &line.runs.runs;
+    let mut at = 0;
+    let mut span_start = 0;
+    runs.iter().enumerate().filter_map(move |(i, run)| {
+        let object = run.object();
+        // A run continuing the previous run's link keeps the span's start.
+        if i == 0 || object.is_none() || runs[i - 1].object() != object {
+            span_start = at;
+        }
+        at += run.text.len();
+        let object = object?;
+        if runs.get(i + 1).and_then(Run::object) == Some(object) {
+            return None;
+        }
+        // `text` is these runs concatenated, so the offsets line up; `get`
+        // rather than indexing so a caller passing other text degrades to
+        // "no match" instead of a panic.
+        Some((run, text.get(..span_start)?, text.get(at..)?))
+    })
 }
 
 /// The first bolded creature link on a line.
@@ -196,7 +304,7 @@ fn bolded_creature(line: &ChunkLine) -> Option<(String, String, String)> {
         .iter()
         .filter(|run| run.style.bold_depth > 0)
         .find_map(|run| match run.object().map(|link| &link.kind) {
-            Some(cena_protocol::frame::LinkKind::Exist { id, noun }) => {
+            Some(LinkKind::Exist { id, noun }) => {
                 Some((id.clone(), noun.clone(), run.text.clone()))
             }
             _ => None,

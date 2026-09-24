@@ -58,14 +58,33 @@ fn is_exit_intent(line: &str) -> bool {
 }
 
 impl<S: ByteSource> SessionActor<S> {
-    /// Write one message, bounded by [`WRITE_DEADLINE`].
+    /// Write one message, bounded by [`WRITE_DEADLINE`] **and by the cancel
+    /// token**.
     ///
-    /// Returns `false` if the write failed **or timed out**, which callers
+    /// `Err(WriteFailed)` if the write failed or timed out, which callers
     /// treat identically: both mean this connection can no longer be written
-    /// to. A timeout is not recoverable here for the reason
-    /// `WRITE_DEADLINE` records -- a partially written command has already
-    /// broken the single-write rule, so the stream cannot be trusted.
-    async fn write_bounded(&mut self, message: &[u8]) -> bool {
+    /// to. A timeout is not recoverable here for the reason `WRITE_DEADLINE`
+    /// records -- a partially written command has already broken the
+    /// single-write rule, so the stream cannot be trusted.
+    ///
+    /// `Err(Cancelled)` if the session was cancelled first.
+    ///
+    /// # Why the write races the cancel token (review finding 5)
+    ///
+    /// Every write is awaited OUTSIDE the loop's `select!` -- `pump` runs
+    /// before it, and `handle_inbox` inside one of its arms -- so the cancel
+    /// arm cannot fire while a write is pending. A stalled socket therefore
+    /// held a `stop` for up to `WRITE_DEADLINE` (5 s) against `plan/12` §4.3's
+    /// `PREEMPT_GRACE` of 250 ms, and then reported the end as `WriteFailed`:
+    /// a lost transport, which a supervisor answers `Disconnected` and
+    /// reconnects -- for a session somebody had just stopped. VERIFIED by
+    /// `orderly_shutdown.rs`'s `a_cancel_interrupts_a_stalled_write` with the
+    /// cancel arm below removed: the stop took 4.9 s.
+    ///
+    /// Abandoning the write may leave part of a command on the wire. That is
+    /// the state `WRITE_DEADLINE` already accepts, and it costs nothing here:
+    /// the connection is being closed either way.
+    async fn write_bounded(&mut self, message: &[u8]) -> Result<(), super::EndReason> {
         // The character acted, which answers the server's idle warning. Here
         // rather than at the three call sites because **this is the one
         // chokepoint they all pass through** -- and a fix applied at one of three
@@ -80,10 +99,17 @@ impl<S: ByteSource> SessionActor<S> {
         if let Some(log) = &mut self.player_log {
             log.command(message);
         }
-        matches!(
-            tokio::time::timeout(WRITE_DEADLINE, self.source.write_all(message)).await,
-            Ok(Ok(()))
-        )
+        tokio::select! {
+            // Cancellation first, for the reason the loop's `biased;` gives.
+            biased;
+            () = self.cancel.cancelled() => Err(super::EndReason::Cancelled),
+            wrote = tokio::time::timeout(WRITE_DEADLINE, self.source.write_all(message)) => {
+                match wrote {
+                    Ok(Ok(())) => Ok(()),
+                    Ok(Err(_)) | Err(_) => Err(super::EndReason::WriteFailed),
+                }
+            }
+        }
     }
 
     /// Route one inbox message.
@@ -137,9 +163,8 @@ impl<S: ByteSource> SessionActor<S> {
                 // asked" rather than as a drop. `plan/16` §5b is precisely
                 // that distinction.
                 //
-                // Latent today -- the binary has no typed-game-command
-                // surface -- and live the day a frontend adds one, which is
-                // when it would be hardest to diagnose.
+                // Live since M4: `cena-web` sends typed lines through
+                // `send_manual_at`, so a player typing `quit` reaches here.
                 if is_exit_intent(&envelope.line) {
                     // The caller asked for a command outcome, and the honest
                     // one is `Disconnected`: §5.1 defines it as "this
@@ -157,8 +182,10 @@ impl<S: ByteSource> SessionActor<S> {
                     } else {
                         Outcome::Dead
                     });
+                    // Cancelled, not WriteFailed: the player asked to leave,
+                    // and a write failure would reconnect them.
                     if !ok {
-                        return Some(super::EndReason::WriteFailed);
+                        return Some(super::EndReason::Cancelled);
                     }
                 } else {
                     self.admit(*envelope);
@@ -197,20 +224,36 @@ impl<S: ByteSource> SessionActor<S> {
                 gate,
                 reply,
             } => {
+                // **A caller that has stopped waiting has been told `Dead`**
+                // (review finding 4). `SessionHandle::send_now` gives up after
+                // `ACTOR_REPLY_DEADLINE` and reports that nothing sent the
+                // line -- and a turn can spend `WRITE_DEADLINE` in a single
+                // write, so the message could still be sitting here when the
+                // caller gave up. Writing it then makes the verdict a lie: a
+                // `sigil of escape` the caller retried by another route would
+                // fire twice. The `Command` arm has always had this check;
+                // this arm is where it was missing.
+                //
+                // Returned before `send_now`, so no prompt is booked for a
+                // line that never went out.
+                if reply.is_closed() {
+                    return None;
+                }
                 let outcome = self.send_now(&line, origin, generation, gate).await;
                 let _ = reply.send(outcome);
                 // Set by `send_now`'s write path only -- NOT inferred from
                 // `Sent::Dead`, which a caller also sees for a generation
-                // mismatch or a closed transport. The flag names one specific
-                // thing: the bytes could not be written, so the stream is
-                // untrustworthy.
-                if std::mem::take(&mut self.write_broke_the_stream) {
-                    return Some(super::EndReason::WriteFailed);
+                // mismatch or a closed transport. It names one specific thing:
+                // the bytes did not go out, and why.
+                if let Some(reason) = self.write_ended.take() {
+                    return Some(reason);
                 }
             }
+            // A quit that cannot be written still ends as a quit: the player
+            // asked to leave, and `WriteFailed` would reconnect them.
             crate::command::Inbox::Quit { timeout, reply } => {
                 if !self.begin_quit(timeout, reply).await {
-                    return Some(super::EndReason::WriteFailed);
+                    return Some(super::EndReason::Cancelled);
                 }
             }
         }
@@ -254,8 +297,9 @@ impl<S: ByteSource> SessionActor<S> {
         let mut message = Vec::with_capacity(EXIT_COMMAND.len() + 1);
         message.extend_from_slice(EXIT_COMMAND.as_bytes());
         message.push(b'\n');
-        if !self.write_bounded(&message).await {
-            // Nothing to say goodbye to. Lich raises `IOError` here
+        if self.write_bounded(&message).await.is_err() {
+            // Nothing to say goodbye to -- or a cancel overtook the write,
+            // which ends the session as a quit would. Lich raises `IOError` here
             // (`orderly_shutdown.rb:181`); Cena reports it and lets the caller
             // cancel, because a transport that cannot be written to is already
             // the state a shutdown was trying to reach.
@@ -369,29 +413,20 @@ impl<S: ByteSource> SessionActor<S> {
         message.push(b'\n');
         // Same single write as `pump`: two writes can emit two TLS records and
         // the server drops the command (`cena_platform::bytes::ByteSource`).
-        if !self.write_bounded(&message).await {
+        if let Err(reason) = self.write_bounded(&message).await {
             // See `handle_inbox`: this ends the connection, because a write that
             // timed out may have put a partial command on the wire and
             // `plan/10`'s single-write rule makes that unrecoverable.
-            self.write_broke_the_stream = true;
+            self.write_ended = Some(reason);
             return Sent::Dead;
         }
         // **This command's response is now owed, and its prompt is not the
-        // in-flight command's terminator.**
-        //
-        // Any prompt closed the single round-trip window, so three sigils
-        // followed by `send_and_await("attack")` resolved the attack on the
-        // FIRST sigil's prompt: `Confirmed("You feel a surge.")` under
-        // `any_frame`, or a timeout under a strict matcher with the real
-        // answer arriving a window late. VERIFIED on the wire before this
-        // fix, and the batching shape is the author's own documented usage
-        // (review SE-5).
-        //
-        // A counter rather than attribution: `send_now` has none to protect
-        // (`handle.rs`), and it does not need any. What it needs is for the
-        // window to survive the prompts that belong to commands sent before
-        // it -- which is a COUNT, and the prompts arrive in order.
-        self.send_now_prompts_owed = self.send_now_prompts_owed.saturating_add(1);
+        // in-flight command's terminator.** Which side of that terminator it
+        // lands on depends on whether the command was already on the wire;
+        // see `owed.rs`, which records the order rather than a count (review
+        // SE-5, then finding 1).
+        let window_open = self.queue.window_is_open();
+        self.owed.instant_sent(window_open);
         self.recorder.outbound(&message);
         self.log_wire(false, &message);
         self.log(&format!("send_now {origin:?} {line}"));
@@ -505,9 +540,9 @@ impl<S: ByteSource> SessionActor<S> {
             let mut message = Vec::with_capacity(envelope.line.len() + 1);
             message.extend_from_slice(envelope.line.as_bytes());
             message.push(b'\n');
-            if !self.write_bounded(&message).await {
+            if let Err(reason) = self.write_bounded(&message).await {
                 let _ = envelope.reply.send(Outcome::Dead);
-                return Some(super::EndReason::WriteFailed);
+                return Some(reason);
             }
             self.recorder.outbound(&message);
             self.log_wire(false, &message);
@@ -570,58 +605,28 @@ impl<S: ByteSource> SessionActor<S> {
     pub(super) fn ingest(&mut self, chunk: &[u8]) {
         self.recorder.inbound(chunk);
         self.log_wire(true, chunk);
+        self.readiness.bytes_arrived();
         for frame in self.parser.push_bytes(chunk) {
             // Offered to the waiter AND published. `plan/12` §4.4:
             // "observation never competes with attribution."
             //
-            // **Not while an instant action's reply is outstanding.** Found by
-            // review: `send_now_prompts_owed` protected the TERMINATOR but not
-            // the frames before it, so text answering a sigil was offered to a
-            // waiting `attack`'s matcher -- reproduced as
-            // `Confirmed("You feel a surge.")` attributed to the attack.
+            // **Not while an instant action's reply is ahead of the waiting
+            // command's.** Everything up to that prompt is the instant
+            // action's response, and offering it would credit a sigil's text
+            // to the attack -- a confident wrong answer, which is worse than a
+            // timeout because `offer` records the FIRST match and never
+            // revises it (`queue.rs:283`). `owed.rs` says whose reply is
+            // next, from the wire order it recorded.
             //
-            // The counter already says whose text this is. A non-zero count
-            // means at least one instant action was sent after the waiting
-            // command and its prompt has not arrived, so everything up to that
-            // prompt is the instant action's response. Skipping only the
-            // terminator left the frames in between attributed to whoever
-            // happened to be waiting.
-            //
-            // This is `plan/12` §4.4's own rule read the other way round:
-            // observation must not compete with attribution, and attributing
-            // ANOTHER command's text is the sharper failure -- a matcher that
-            // sees nothing times out and retries, while one that matches the
-            // wrong text returns a confident wrong answer. `offer` records the
-            // FIRST match and never revises it (`queue.rs:283`), so the
-            // instant action's text wins permanently once it lands.
-            //
-            // # NOT UNIT-TESTED, stated rather than faked
-            //
-            // Three attempts failed, and all three would have shipped as false
-            // coverage:
-            //
-            //  1. `send_now.rs` with `release_one` -- `AnsweringSource`
-            //     delivers one fixed reply per command, text and prompt as a
-            //     single unit, so the owed prompt is always spent on the same
-            //     delivery that carries the text. The defect cannot occur.
-            //  2. The same, asserting the attack stays unresolved -- passed
-            //     under the defect for the same reason.
-            //  3. `command_queue.rs` with `ReplaySource`, which CAN split text
-            //     from prompt -- but it drains every chunk as fast as it is
-            //     read, so the sigil's text arrives before the attack is even
-            //     sent. The result was a `Timeout`, i.e. the test measuring
-            //     the scheduler rather than the rule.
-            //
-            // What is needed is a source that withholds bytes until told AND
-            // can deliver text without its prompt. `AnsweringSource` has the
-            // first, `ReplaySource` the second, neither has both. Building one
-            // is the honest fix and it is more than this change should carry;
-            // until then this is **enforced by review**, and the mutation that
-            // removes `owned_by_send_now` leaves the suite green.
-            let owned_by_send_now = self.send_now_prompts_owed > 0;
+            // Tested by `tests/send_now.rs`, in both orders (sigils ahead of
+            // the attack, and a sigil while the attack is on the wire), each
+            // releasing one reply at a time. This comment used to record three
+            // failed attempts to test it: the piece they lacked was
+            // `TranscriptHandle::answer`, which gives each command its own
+            // reply so whose text arrived is visible.
             if self.queue.window_is_open()
-                && !owned_by_send_now
                 && !matches!(frame, Frame::Prompt { .. })
+                && self.owed.window_is_answered_next()
             {
                 self.queue.offer(&frame);
             }
@@ -679,6 +684,8 @@ impl<S: ByteSource> SessionActor<S> {
             if is_push {
                 self.persist_learned_commands();
             }
+            // Read before the frame is moved into its event; acted on below.
+            let completes_burst = self.completes_burst(&frame);
             let _ = self.events.send(Event::Frame(Box::new(frame)));
             if terminator {
                 // before the `send_now` early-out below: a chunk closed
@@ -689,15 +696,46 @@ impl<S: ByteSource> SessionActor<S> {
                 if let Some(log) = &mut self.player_log {
                     log.close(combat);
                 }
-                // A prompt owed to an earlier `send_now` is NOT this window's
-                // terminator. Spend one and leave the window open; the
-                // in-flight command's own prompt is still coming (SE-5).
-                if self.send_now_prompts_owed > 0 {
-                    self.send_now_prompts_owed -= 1;
-                    continue;
+                // A prompt owed to an instant action is NOT this window's
+                // terminator: `owed.rs` spends it and the window stays open,
+                // because the in-flight command's own prompt is still coming
+                // (SE-5). Otherwise it closes the window (`plan/12` §4.4).
+                if self.owed.prompt(self.queue.window_is_open()) {
+                    self.queue.close_window();
                 }
-                // The next `Frame::Prompt` closes the window (`plan/12` §4.4).
-                self.queue.close_window();
+            }
+            // After the frame is published, so an observer sees the prompt
+            // that completed the burst and then `Ready`.
+            if let Some(verdict) = completes_burst {
+                self.become_ready(verdict);
+            }
+        }
+    }
+
+    /// Whether `frame` completes this connection's login burst
+    /// (`readiness.rs`). Only ever from `Syncing`: `Ready` is left by the
+    /// connection ending, never by a frame.
+    fn completes_burst(&mut self, frame: &Frame) -> Option<super::readiness::Verdict> {
+        if self.lifecycle == crate::lifecycle::State::Syncing {
+            self.readiness.frame(frame)
+        } else {
+            None
+        }
+    }
+
+    /// `Syncing` -> `Ready`, logging when the fallback is why.
+    fn become_ready(&mut self, verdict: super::readiness::Verdict) {
+        match verdict {
+            super::readiness::Verdict::AfterSetup => {
+                self.transition(crate::lifecycle::State::Ready);
+            }
+            super::readiness::Verdict::SetupNeverEnded => {
+                self.log(&format!(
+                    "ready: no <endSetup/> within {:?} of the first byte; \
+                     ready at this prompt instead (fallback)",
+                    super::readiness::SETUP_DEADLINE
+                ));
+                self.transition(crate::lifecycle::State::Ready);
             }
         }
     }

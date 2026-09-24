@@ -14,6 +14,17 @@
 //!
 //! **Upstream `exit`s where this halts**: too poor to reach a bank, or the
 //! bank has not enough. Both are for the player to settle.
+//!
+//! # Silver nobody has stated is not no silver
+//!
+//! `plan/12` §5.2: a fact the game has not stated is `Unknown`, never its
+//! zero. `wealth quiet` is asked, and if the model still cannot say what is
+//! carried -- an answer it did not recognise, a game that did not answer --
+//! the amount is unknown. This read that as nothing carried, so a character
+//! with a purse of platinum was walked to the bank and made to withdraw the
+//! whole fare (review, 2026-09-23). Unknown now does what `get_silvers` off
+//! does: says so, and goes. The ferryman will refuse soon enough if the purse
+//! is short, and the trip plans round him.
 
 use cena_map::{RoomId, Target, Uid};
 use cena_session::{CommandId, Notice, NoticeKind};
@@ -56,7 +67,15 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         if needed == 0 {
             return Ok(());
         }
-        let have = self.silver(cx).await?;
+        let Some(have) = self.silver(cx).await? else {
+            self.handle.say(Notice::line(
+                NoticeKind::Warn,
+                format!(
+                    "Travel: this route asks for {needed} silver, and I could not tell how                      much you carry, so I am going anyway."
+                ),
+            ));
+            return Ok(());
+        };
         if have >= needed {
             return Ok(());
         }
@@ -203,10 +222,11 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         leg(from, goal) + back
     }
 
-    /// `wealth`, as the model read it. Nothing said is nothing carried.
-    async fn silver(&mut self, cx: &mut Cx<'_>) -> Result<u64, Ended> {
+    /// `wealth`, as the model read it. `None`: nobody has said (module docs),
+    /// which is not zero.
+    async fn silver(&mut self, cx: &mut Cx<'_>) -> Result<Option<u64>, Ended> {
         self.put(cx.trip, "wealth quiet").await?;
-        Ok(self.state.character.currency.silver.unwrap_or(0))
+        Ok(self.state.character.currency.silver)
     }
 
     async fn by_way_of_the_bank(
@@ -239,7 +259,10 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             return self.halt("I could not get to the bank.");
         }
         let needed = self.silver_needed(cx, bank, goal);
-        let have = self.silver(cx).await?;
+        // Known before the walk here, and the model does not forget a stated
+        // amount, so `None` cannot follow a `Some`. Were it to, the amount
+        // known before is the careful reading: it withdraws the most.
+        let have = self.silver(cx).await?.unwrap_or(have);
         if needed > have {
             let walker = self.walker(cx.notes);
             let unseen = ["hidden", "invisible"]
@@ -250,7 +273,9 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             }
             let command = withdraw_command(self.state.room.title.as_deref(), needed - have);
             self.put(cx.trip, &command).await?;
-            if self.silver(cx).await? < needed {
+            // Only a shortfall the game stated halts the trip; an amount it
+            // did not state goes on, as the module docs say.
+            if self.silver(cx).await?.is_some_and(|have| have < needed) {
                 return self.halt("there is not enough silver in this bank for the trip.");
             }
         }

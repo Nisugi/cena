@@ -88,16 +88,51 @@ pub struct Account {
 impl Account {
     /// Read a whole `bank account` response.
     pub fn read_chunk(&mut self, chunk: &Chunk) -> bool {
-        let opened = chunk.lines().iter().any(|line| opens_account(&line.text()));
-        if !opened {
+        let texts: Vec<String> = chunk.lines().iter().map(ChunkLine::text).collect();
+        self.read_lines(chunk.lines(), &texts)
+    }
+
+    /// [`Self::read_chunk`], given each line's text already rendered.
+    ///
+    /// # A refusal is not a listing
+    ///
+    /// Lich reads `NO_ACCESS` only inside the capture of an issued
+    /// `bank account` (`bank.rb:108-109`, `issue_command` between
+    /// `ACCOUNT_START` and `ACCOUNT_END`). This model sees no commands, only
+    /// what came back -- and the same line also answers a `WITHDRAW` at a bank
+    /// holding no account for you (`bank.rb:49-50` says so). So a chunk that
+    /// merely CONTAINED the refusal used to open a fresh, empty account and
+    /// replace the listing: one refused withdrawal erased every balance
+    /// (review).
+    ///
+    /// Now only a listing's own opener replaces the account. A refusal outside
+    /// one sets [`Self::no_access`] -- which is true in both contexts: this
+    /// bank will not serve you -- and keeps the balances, which a refusal says
+    /// nothing about. A line someone SAID is neither.
+    ///
+    /// **Needs the author**: true command scoping needs the session to tell
+    /// the model which command a chunk answers, and no such input exists.
+    pub(crate) fn read_lines(&mut self, lines: &[ChunkLine], texts: &[String]) -> bool {
+        let heard = || {
+            lines
+                .iter()
+                .zip(texts)
+                .filter(|(line, _)| !line.is_spoken())
+                .map(|(_, text)| text.as_str())
+        };
+        if !heard().any(opens_account) {
+            if heard().any(|text| no_access(text.trim())) && !self.no_access {
+                self.no_access = true;
+                return true;
+            }
             return false;
         }
         let mut fresh = Self {
             known: true,
             ..Self::default()
         };
-        for line in chunk.lines() {
-            fresh.read_line(&line.text());
+        for text in heard() {
+            fresh.read_line(text);
         }
         let changed = *self != fresh;
         *self = fresh;
@@ -299,14 +334,14 @@ fn town_of(bank: &str) -> &str {
     bank.strip_suffix(" Bank").unwrap_or(bank)
 }
 
-/// Whether a line opens a `bank account` response.
+/// Whether a line opens a `bank account` LISTING.
 ///
-/// `ACCOUNT_START` (`bank.rb:73`).
+/// `ACCOUNT_START` (`bank.rb:68`) minus its third alternative, the refusal:
+/// see [`Account::read_lines`] for why a refusal alone no longer opens one.
 fn opens_account(text: &str) -> bool {
     let trimmed = text.trim();
     trimmed.starts_with("You currently have the following amounts on deposit")
         || trimmed.starts_with("You currently have an account")
-        || no_access(trimmed)
 }
 
 /// `NO_ACCESS` (`bank.rb:47`), case-insensitive as Lich writes it.
@@ -320,15 +355,9 @@ fn after(text: &str, phrase: &str) -> Option<u64> {
     number(rest.split_whitespace().next()?)
 }
 
-/// A comma-grouped silver figure.
+/// A comma-grouped silver figure, forgiving only the sentence's own trailing
+/// punctuation (`"50,000."`). The number itself goes through the shared strict
+/// reader (`state/numbers.rs`).
 fn number(text: &str) -> Option<u64> {
-    let digits: String = text
-        .trim()
-        .trim_end_matches(['.', ','])
-        .chars()
-        .filter(|c| *c != ',')
-        .collect();
-    (!digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()))
-        .then(|| digits.parse().ok())
-        .flatten()
+    crate::state::numbers::grouped(text.trim().trim_end_matches(['.', ',']))
 }

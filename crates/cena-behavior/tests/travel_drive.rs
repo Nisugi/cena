@@ -4,160 +4,19 @@
 //! Virtual time throughout, for the reason `stop_and_interleave.rs` gives:
 //! what is measured is how many awaits a stop had to cross, not the machine.
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+mod drive_support;
+mod ready;
+
 use std::time::Duration;
 
 use cena_behavior::BehaviorError;
-use cena_behavior::travel::{
-    Ended, FOLLOW_WAIT, LOST_WAIT, TravelNotes, Travelled, Why, seed_for, travel,
-};
-use cena_map::{Map, Room, RoomId};
-use cena_platform::{AnsweringSource, TranscriptHandle};
-use cena_session::group::{GroupEvent, Member};
-use cena_session::hands::Hand;
-use cena_session::{
-    AuthorityToken, CommandId, Event, Frame, GameState, Gate, NoticeKind, Origin, Session,
-    SessionHandle,
-};
-use tokio::sync::broadcast::Receiver;
-use tokio::task::JoinHandle;
+use cena_behavior::travel::{Ended, FOLLOW_WAIT, LOST_WAIT, Why, seed_for};
+use cena_map::RoomId;
+use cena_session::group::Member;
+use cena_session::{Frame, GameState, Gate, NoticeKind, Origin};
+use drive_support::*;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
-
-/// `plan/12` §4.3.
-const PREEMPT_GRACE: Duration = Duration::from_millis(250);
-
-/// What the game says to a command nothing was scripted for: nothing, and a
-/// prompt. The character does not move.
-const PROMPT: &[u8] = b"<prompt time=\"1\">&gt;</prompt>\n";
-
-/// ```text
-///   1 --north-- 2 --(hands emptied) climb rope (hands filled)-- 3
-/// ```
-/// The game's numbers are the ids plus a thousand, so a test that confused
-/// the two would not find its room.
-const ROOMS: &str = r#"[
-  {"id":1,"uid":[1001],"exits":[{"to":2,"kind":"cardinal","cmd":"north","cost":1}]},
-  {"id":2,"uid":[1002],"exits":[{"to":3,"kind":"scripted","cost":1,
-     "steps":[{"empty_hands":null},{"move":"climb rope"},{"fill_hands":null}]}]},
-  {"id":3,"uid":[1003]}
-]"#;
-
-fn arrival(uid: u32) -> Vec<u8> {
-    format!("<nav rm='{uid}'/>\n<prompt time=\"2\">&gt;</prompt>\n").into_bytes()
-}
-
-const REFUSED: &[u8] = b"You can't go there.\n<prompt time=\"2\">&gt;</prompt>\n";
-const SWORD_GONE: &[u8] = b"<right>Empty</right>\n<prompt time=\"2\">&gt;</prompt>\n";
-const SWORD_BACK: &[u8] =
-    b"<right exist=\"11\" noun=\"sword\">broadsword</right>\n<prompt time=\"3\">&gt;</prompt>\n";
-
-/// A character in room 1 with a broadsword, walking to room 3.
-fn set_out(
-    stop: &CancellationToken,
-    rooms: &'static str,
-) -> (
-    JoinHandle<Option<Travelled>>,
-    TranscriptHandle,
-    CancellationToken,
-) {
-    let (walk, transcript, session, _) = set_out_with(stop, rooms, &[]);
-    (walk, transcript, session)
-}
-
-/// [`set_out`], grouped with `company`, and with the handle a player would
-/// type into: the only way a test can make the game say something the walker
-/// did not ask for.
-fn set_out_with(
-    stop: &CancellationToken,
-    rooms: &'static str,
-    company: &[Member],
-) -> (
-    JoinHandle<Option<Travelled>>,
-    TranscriptHandle,
-    CancellationToken,
-    SessionHandle,
-) {
-    let (walk, transcript, session, typed, _) = set_out_as(stop, rooms, None, |state| {
-        for member in company {
-            state.group.apply(&GroupEvent::Joined(member.clone()));
-        }
-    });
-    (walk, transcript, session, typed)
-}
-
-/// [`set_out`], with whatever else the character knows as it sets out.
-fn set_out_as(
-    stop: &CancellationToken,
-    rooms: &'static str,
-    last_room: Option<u32>,
-    knows: impl FnOnce(&mut GameState),
-) -> (
-    JoinHandle<Option<Travelled>>,
-    TranscriptHandle,
-    CancellationToken,
-    SessionHandle,
-    Receiver<Event>,
-) {
-    let (source, transcript) = AnsweringSource::new(PROMPT);
-    let session = Session::new(source);
-    let handle = session.handle();
-    let session_cancel = session.cancel_token();
-    let (mut snapshot, events) = session.subscribe();
-    // A second listener, as a frontend would be: what the player is told.
-    let (_, told) = session.subscribe();
-    snapshot.state.room.id = Some("1001".into());
-    snapshot.state.right_hand = Hand::Holding {
-        id: Some("11".into()),
-        noun: Some("sword".into()),
-        name: "broadsword".into(),
-    };
-    snapshot.state.left_hand = Hand::Empty;
-    knows(&mut snapshot.state);
-    let typed = handle.clone();
-    tokio::spawn(session.into_actor().run());
-
-    let stop = stop.clone();
-    let walk = tokio::spawn(async move {
-        // `None` is a broken fixture, which every test unwraps into a failure.
-        let rooms: Vec<Room> = serde_json::from_str(rooms).ok()?;
-        let map = Map::from_rooms(rooms).ok()?;
-        let next = Arc::new(AtomicU64::new(0));
-        let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
-        let mut notes = TravelNotes {
-            last_room,
-            ..TravelNotes::default()
-        };
-        // Boxed: the driver's future is large now that routines recurse.
-        let travelled = Box::pin(travel(
-            &handle,
-            &stop,
-            ids,
-            AuthorityToken(1),
-            (snapshot, events),
-            &map,
-            RoomId(3),
-            &mut notes,
-            |_| {},
-        ))
-        .await;
-        Some(travelled)
-    });
-    (walk, transcript, session_cancel, typed, told)
-}
-
-/// Let virtual time run until `line` has been written. `false` if it never is.
-async fn until_written(transcript: &TranscriptHandle, line: &str) -> bool {
-    for _ in 0..200 {
-        if transcript.lines().iter().any(|written| written == line) {
-            return true;
-        }
-        tokio::time::advance(Duration::from_millis(50)).await;
-        tokio::task::yield_now().await;
-    }
-    false
-}
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn it_walks_there_storing_and_taking_back_on_the_way() {
@@ -506,17 +365,6 @@ async fn the_maze_is_walked_by_the_wires_seed() {
     );
 }
 
-/// Every notice published so far, as `(kind, text)`.
-fn told_so_far(told: &mut Receiver<Event>) -> Vec<(NoticeKind, String)> {
-    let mut said = Vec::new();
-    while let Ok(event) = told.try_recv() {
-        if let Event::Notice(notice) = event {
-            said.push((notice.kind, notice.lines().join(" ")));
-        }
-    }
-    said
-}
-
 /// The player is told, in words, by the trip itself: why it failed, and what
 /// it could not put back. Nobody has to remember to print a return value.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
@@ -625,17 +473,6 @@ async fn where_it_was_last_tells_apart_rooms_that_read_alike() {
     let (ended, _) = first_move_from(Some(3)).await;
     assert_eq!(ended, Ended::Failed(Why::OffTheMap));
 }
-
-/// `heavy_key.rb`, 1 -> 3 by the spiked gate; and the long way by 2.
-const GATE: &str = r#"[
-  {"id":1,"uid":[1001],"exits":[
-     {"to":3,"kind":"scripted","cost":1,"steps":[{"take_out":"heavy key"},
-        {"put":"unlock spiked gate with my heavy key"},{"put_back":null},
-        {"move":"go spiked gate"}]},
-     {"to":2,"kind":"cardinal","cmd":"east","cost":50}]},
-  {"id":2,"uid":[1002],"exits":[{"to":3,"kind":"cardinal","cmd":"north","cost":50}]},
-  {"id":3,"uid":[1003]}
-]"#;
 
 /// The key goes back into what the game said it came out of, by id: the
 /// answer's two links, which is all upstream reads too.
