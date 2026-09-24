@@ -318,7 +318,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // --- Criterion 2: the room, from TYPED FRAMES --------------------------
     eprintln!("[waiting] for the first room description frame...");
-    let room_shown = unless_interrupted(&interrupt, wait_for_room(&mut events)).await;
+    let room_shown =
+        unless_interrupted(&interrupt, wait_for_room(&mut events, frontend.is_none())).await;
 
     if room_shown == Some(false) {
         eprintln!(
@@ -345,7 +346,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // The event watcher runs either way: it only READS, and a quiet session is
     // still worth watching.
-    let watcher = tokio::spawn(watch_events(events));
+    let watcher = tokio::spawn(watch_events(events, frontend.is_none()));
 
     // **Every phase from here to the hold is raced against Ctrl-C**, and an
     // interrupted one falls through to the SAME orderly shutdown below. This

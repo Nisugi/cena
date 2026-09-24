@@ -305,13 +305,16 @@ async fn run_capture(handle: &SessionHandle) {
 /// "parse first" means (`CLAUDE.md`, settled decisions).
 ///
 /// Returns `false` on timeout or a closed stream; the caller prints the
-/// failure, because only it knows what to blame.
-pub(crate) async fn wait_for_room(events: &mut broadcast::Receiver<Event>) -> bool {
+/// failure, because only it knows what to blame. `print` is false under
+/// `--web`, where the browser shows the room.
+pub(crate) async fn wait_for_room(events: &mut broadcast::Receiver<Event>, print: bool) -> bool {
     tokio::time::timeout(ROOM_DEADLINE, async {
         loop {
             match events.recv().await {
                 Ok(Event::Frame(frame)) if is_room_description(&frame) => {
-                    print_room(&frame);
+                    if print {
+                        print_room(&frame);
+                    }
                     return true;
                 }
                 Ok(_) => {}
@@ -390,7 +393,11 @@ pub(crate) fn print_room(frame: &Frame) {
 /// Moved out of `main` when that function passed clippy's 100-line limit. It
 /// is a whole task with one job, which makes it the obvious seam: `main` wires
 /// the run together, and this watches it.
-pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
+///
+/// `render` is false under `--web`: the browser is the screen, and game text
+/// echoed here buried the pairing URL (author, 2026-09-23). Hydra's own lines
+/// -- lifecycle, notices, sends, retries -- print either way.
+pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, render: bool) {
     let mut screen = Screen::default();
     loop {
         match events.recv().await {
@@ -444,7 +451,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
             // Exactly so, and it is backwards now that the session is the
             // point rather than the demo. A client that connects and shows the
             // player nothing the game said is not a client.
-            Ok(Event::Frame(frame)) => screen.show(&frame),
+            Ok(Event::Frame(frame)) if render => screen.show(&frame),
             // REPORTED, NOT ACTED ON. Running the sync means sending up to
             // fifteen commands (`a_full_sync_is_fifteen_commands`), which needs the authority token
             // (`plan/12` §4.2) that this watcher does not hold -- it renders,
@@ -462,9 +469,10 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>) {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            // Not rendered yet: the recorder takes these over its own queue,
-            // and a combat view is a frontend's to build.
-            Ok(Event::Combat(_)) => {}
+            // Not rendered here: combat because the recorder takes these over
+            // its own queue and a combat view is a frontend's to build; a frame
+            // under `--web` because the browser is the screen.
+            Ok(Event::Frame(_) | Event::Combat(_)) => {}
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and
             // `-> [behavior]` lines for the rest of the run -- and those

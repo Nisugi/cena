@@ -1,7 +1,9 @@
 //! Optional embedded presentation; neither opening nor closing a viewer owns
 //! the native session's lifetime. Pairing tokens exist only for this process.
 
-use cena_session::{SessionHandle, SessionObserver, SupervisedEnd};
+use cena_session::{
+    Event, Generation, ObserveError, SessionHandle, SessionObserver, State, SupervisedEnd,
+};
 use std::time::Duration;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -19,15 +21,15 @@ impl Frontend {
         if !requested() {
             return None;
         }
-        match cena_web::WebServer::bind(observer, handle).await {
+        match cena_web::WebServer::bind(observer.clone(), handle).await {
             Ok(server) => {
-                // Explicit pairing handoff to the local operator. Do not put
-                // this URL in the game recorder or normal application logs.
-                eprintln!(
-                    "[web] Open this private pairing URL: {}",
-                    server.pairing_url()
-                );
                 let stop = CancellationToken::new();
+                // Explicit pairing handoff to the local operator, printed when
+                // the session is Ready rather than at bind: printed at bind it
+                // scrolled away under the login burst before anyone could use
+                // it (author, 2026-09-23). Never into the game recorder or
+                // normal application logs.
+                tokio::spawn(announce(observer, server.pairing_url(), stop.clone()));
                 let shutdown = stop.clone();
                 let task =
                     tokio::spawn(async move { server.run(shutdown.cancelled_owned()).await });
@@ -52,6 +54,50 @@ impl Frontend {
             Err(_) => {
                 self.task.abort();
                 eprintln!("[web] Frontend shutdown exceeded its deadline; task aborted.");
+            }
+        }
+    }
+}
+
+/// Print the pairing URL each time a connection becomes Ready.
+///
+/// Once per generation: a reconnect earns a fresh reminder, a lagged
+/// resubscription does not. Reads the observer's snapshot first, so a session
+/// that was already Ready when this started is announced too.
+async fn announce(observer: SessionObserver, url: String, stop: CancellationToken) {
+    let mut announced: Option<Generation> = None;
+    let mut tell = |generation: Generation| {
+        if announced != Some(generation) {
+            announced = Some(generation);
+            eprintln!(
+                "[web] Ready. Play in the browser; the terminal shows only Hydra's own messages."
+            );
+            eprintln!("[web] Open this private pairing URL: {url}");
+        }
+    };
+    loop {
+        let (snapshot, mut events) = match observer.subscribe().await {
+            Ok(subscription) => subscription,
+            Err(ObserveError::Closed) => return,
+            // `Busy` and `Timeout` are retryable (`SessionObserver::subscribe`).
+            Err(_) => {
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                continue;
+            }
+        };
+        if snapshot.lifecycle == State::Ready {
+            tell(snapshot.generation);
+        }
+        loop {
+            tokio::select! {
+                () = stop.cancelled() => return,
+                next = events.recv() => match next {
+                    Ok(o) if o.event == Event::StateChanged(State::Ready) => tell(o.generation),
+                    Ok(_) => {}
+                    // Resubscribe: the fresh snapshot says whether it is Ready.
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => break,
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+                },
             }
         }
     }
