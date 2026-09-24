@@ -550,6 +550,11 @@ Demonstrated live on a short hunt.
 **M6c — eloot.** Its port plan first (`plan/31`), then the halves a hunt calls: loot,
 sort, box in hand. Town errands follow in the same plan's order.
 
+> **`plan/31` PROPOSED 2026-09-24.** eloot measured module by module: the hunt's share is
+> ~1,750 of 8,029 lines (Main, Inventory, Room looting); the rest is a settings window and
+> the town. Four stages, the first two pure planner and driver, and four questions for the
+> author before building.
+
 **M6d — eherbs.** Its port plan first (`plan/32`), then healing at the rest room.
 
 **M6e — the `;` tools.** `;foreach` and `;multi` on the `;` line, and `;sorter` as a
