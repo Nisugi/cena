@@ -50,6 +50,8 @@ pub struct Sighting<'a> {
     pub uid: Option<Uid>,
     /// As the map spells it: see [`title_from_subtitle`].
     pub title: Option<&'a str>,
+    /// The room description, as shown; compared, trimmed, against each of a
+    /// room's recorded descriptions.
     pub description: Option<&'a str>,
     /// The whole exits line, `Obvious paths: north, east`.
     pub paths: Option<&'a str>,
@@ -81,10 +83,14 @@ pub enum By {
     CameFrom,
 }
 
+/// The answer to where the character is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Located {
+    /// Exactly one room.
     Here {
+        /// The room the character is in.
         room: RoomId,
+        /// What settled it.
         by: By,
     },
     /// More than one room fits and nothing seen tells them apart. In id order.

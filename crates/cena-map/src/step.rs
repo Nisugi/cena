@@ -70,8 +70,12 @@ pub enum Action {
     /// slices proposed this same step independently. `tries` is upstream's
     /// bound where it has one; the walker bounds it regardless.
     PutUntil {
+        /// The command sent each time.
         command: String,
+        /// Texts any one of which, held by the game's answer, ends the step.
         until: Vec<String>,
+        /// Upstream's limit on sends, when it has one; `None` leaves only
+        /// the walker's own bound.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         tries: Option<u32>,
     },
@@ -126,8 +130,13 @@ pub enum Action {
     /// [`Action::PutUntil`] for a round of commands: `search`, `get rock`,
     /// until the game answers the **last** of them with one of `until`.
     RoundUntil {
+        /// The round, sent in order each time.
         commands: Vec<String>,
+        /// Texts any one of which, held by the answer to the last command,
+        /// ends the step.
         until: Vec<String>,
+        /// Upstream's limit on rounds, when it has one; `None` leaves only
+        /// the walker's own bound.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         tries: Option<u32>,
     },
@@ -218,6 +227,7 @@ pub enum Action {
 /// In JSON the action's tag sits beside `when`: `{"pause": 4200, "when": {…}}`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Step {
+    /// What the step does. Flattened: its tag sits beside `when` in JSON.
     #[serde(flatten)]
     pub action: Action,
     /// Absent: always. Present and unanswerable: skipped (`Cond::holds`).

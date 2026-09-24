@@ -38,6 +38,7 @@ use crate::room::{Room, RoomId};
 /// When a search may stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Target<'a> {
+    /// This one room.
     Room(RoomId),
     /// The nearest of these. The starting room counts, at distance zero.
     Nearest(&'a [RoomId]),

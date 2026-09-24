@@ -59,15 +59,36 @@ pub enum LoadError {
     BadMagic,
     /// A map file of a version this build cannot read. The format changed
     /// incompatibly; this client needs updating, or the map rebuilding.
-    UnsupportedVersion { found: u32, supported: u32 },
+    UnsupportedVersion {
+        /// The version the file's header states.
+        found: u32,
+        /// The one version this build reads: `VERSION`.
+        supported: u32,
+    },
     /// The file ends, or a count claims more than remains, at this offset.
-    Truncated { at: usize },
+    Truncated {
+        /// Byte offset from the start of the file -- or of the room extension
+        /// blob, when the error arose inside one -- where the read began.
+        at: usize,
+    },
     /// A string reference points past the string table.
-    BadStringRef { reference: u32, at: usize },
+    BadStringRef {
+        /// The string-table index that was read.
+        reference: u32,
+        /// Byte offset from the start of the file -- or of the room extension
+        /// blob, when the error arose inside one -- where the read began.
+        at: usize,
+    },
     /// A string is not UTF-8.
-    BadUtf8 { at: usize },
+    BadUtf8 {
+        /// Byte offset in the file of the string table entry's length prefix.
+        at: usize,
+    },
     /// Bytes remain after the last room.
-    TrailingBytes { at: usize },
+    TrailingBytes {
+        /// Byte offset in the file of the first byte after the last room.
+        at: usize,
+    },
     /// Two rooms share an id.
     Duplicate(DuplicateRoom),
 }
