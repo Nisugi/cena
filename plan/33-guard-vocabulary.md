@@ -72,7 +72,17 @@ least 50". The plain `!` form is a clean negation for these five, and they keep 
 | `v` | spirit ≥ N | `vitals` spirit | **rename** `spirit_at_least N` |
 | `e` | encumbrance % < N | `character.encumbrance_percent` | **rename** `encumbrance_below N` |
 | `essence` | shadow essence ≥ N | not captured (`CLAUDE.md`: the `resource` capture is an open M6 gap) | **later** `essence_at_least N` |
-| `k` | **I am** not kneeling (`!k`: I am). Takes a number and ignores it | `status.known().kneeling()` | **rename** `self_kneeling`, with no number. Bare `kneeling` is the **target's** (§2d), and sharing it was the trap |
+| `k` | **I am** kneeling (`!k`: I am not). Takes a number and ignores it | `status.known().kneeling()` | **rename** `self_kneeling`, with no number. Bare `kneeling` is the **target's** (§2d), and sharing it was the trap |
+
+> **CORRECTED 2026-09-24 (author).** The `k` row read "I am **not** kneeling", and the
+> author's instinct was the other way: *"since it's talking about you I would think it
+> means do this if I am (k) kneeling."* The author is right. `:3212` is
+> `'k' => !checkkneeling` in `COMMAND_AMOUNT_CHECKS`, and an amount check answers **skip**
+> (`:4228`): skip while not kneeling, so `(k)` runs while kneeling. The row had read the
+> lambda as "runs when". The table's own rule, read the branch not the name, was not
+> followed for this one row, and a wrong polarity on a self-status is the kind of error a
+> test cannot catch because the test would share it. `!k` is kept as well: *"no reason not
+> to support it."*
 
 ### 2b. Me: conditions and place
 
@@ -83,7 +93,8 @@ least 50". The plain `!` form is a clean negation for these five, and they keep 
 | `poison` | `:4400` | I am poisoned | `status.known().poisoned()` | **keep** |
 | `outside` | `:4398` | the room is outdoors (Lich: exits read `Obvious paths:`) | the room's exits label or `<roommeta>`. INFERRED: which one holds it is checked when built | **keep** |
 | `splashy` | `:4507` | the room has the map tag `meta:splashy` | `cena-map` `Room::meta` | **keep** |
-| `pcs` | `:4511` | no other player outside my group is here | `room.players` minus `group` | **rename** `alone` (bigshot's `(pcs)` means **no** players) |
+| `pcs` | `:4511` | no other player outside my group is here | `room.players` minus `group` | **rename** `alone` (bigshot's `(pcs)` means **no** players). Built on the claim system's `Occupants` (`state/claim.rs`), which already reads `room players` and the hidden-player clause, less the group |
+| -- | -- | the room's map tag `meta:nomagic`: casting is not possible here | `cena-map` `Room::meta`, as `splashy` | **new** `nomagic` (author, 2026-09-24: *"we should probably add a (nocast) or (nomagic) for the meta:nomagic tag too"*). A step that casts carries `!nomagic`; the engine may also apply it to every `incant` step itself, which is the better home |
 
 ### 2c. Me: effects
 
@@ -123,7 +134,7 @@ into one of them. Adding an ability then needs no new word.
 | `voidweaver` | `:4388` | **no** Voidweaver buff is up (**inverted**) | **merge** → `!buff "Voidweaver"` |
 | `yowlp` | `:4390` | Yertie's Yowlp | **merge** → `buff` |
 | `justice` | `:4515` | I have a Swift Justice charge. Counted from two game messages (`:2827`) | **later**: needs a classifier for the charge count |
-| `reflex` | `:4517` | Arcane Reflexes is up. Scanned from two messages (`:2760`) | **later**. UNVERIFIED whether the effects list shows it; if it does, **merge** → `buff` |
+| `reflex` | `:4517` | Arcane Reflexes is up. Scanned from two messages (`:2760`) | **merge** → `buff "<name>"`. VERIFIED by the author (2026-09-24): it shows in the Buffs list, as does its counterpart Physical Prowess, **with the name cut off** by the dialog. MEASURED in `GSIV-Nisugi/2026/08/xml/2026-08-20_22-46-30.xml`: `<dialogData id='Buffs'>` carries `<progressBar id='1094608548' text="Nature's Touch Arcane Ref" time='00:00:30'/>`, 97 times; the id is not a spell number. Physical Prowess does not appear in a ranger's log and is taken on the author's word. That truncation is why effect names match by prefix (question 3): the importer writes the name as the dialog shows it, `buff "Nature's Touch Arcane Ref"` |
 
 **On `"<name>"`:** bigshot compiles the text into a case-insensitive **regex** (`:4302`).
 Hydra matches **the effect's displayed name, whole, ignoring case**, and does not use a
@@ -207,7 +218,20 @@ else as unknown and skips, as bigshot does.
 
 | Word | Line | What it does | Verdict |
 |---|---|---|---|
-| `censer` | `:4520` | **casts spell 320 as a side effect** of being checked, when affordable and off cooldown, and never skips (`handle_censer`, `:4530`) | **drop** as a guard. It is a step: a sequence that casts Ethereal Censer, `cooldown`-guarded, before the step it was on. The importer rewrites it and says so |
+| `censer` | `:4520` | **casts spell 320 as a side effect** of being checked, when affordable and off cooldown, and never skips (`handle_censer`, `:4530`) | **drop** as a guard; it becomes an engine policy, not a step (below) |
+
+**`censer`, in the author's words (2026-09-24):** *"the idea of censer is it is essentially
+a free spell: it costs the mana but you get the mana back over its cooldown, it also provides
+effects like reduced mana cost of other spells if you cycle spells and don't cast the same
+one two times in a row. So the command was created as a shorthand to not have to add a censer
+check in between each command."* So the intent is **"cast Ethereal Censer between actions
+whenever it is off cooldown and affordable"**, for the whole routine, and the guard word was
+bigshot's only place to hang that. The draft's "rewrite as a sequence before the step it was
+on" would have cast it before one step; the shorthand meant every step. **Verdict revised:
+an engine behavior**, `censer_between_actions` (the author's name), a profile flag under
+Maintain that the engine honours between routine steps, `cooldown`- and mana-guarded. The
+importer sets the flag when any routine carries `censer` and drops the word from the step,
+saying so. Built in M6b, where the engine is.
 
 ---
 
@@ -280,6 +304,40 @@ The reduction is mostly the 21 named-effect words becoming four.
    word, the one exception to question 1's rule. Keep the rule, or rename the word?
 
 ---
+
+### Answers (author, 2026-09-24)
+
+| Q | Answer | Consequence |
+|---|---|---|
+| 1 polarity | **agreed** | one rule; the importer flips `frozen`, `prone`, `rooted`, `voidweaver` (built for `frozen`) |
+| 2 the 21 effect words | **merge** into `buff "<name>"` and the other three forms | 21 rows become translations in `import.rs`, none a word |
+| 3 effect names | **starts-with, ignoring case** (below) | the dialog truncates long names, so the written name is a prefix by nature |
+| 4 `down`, `alone` | **agreed**; `alone` sits on the claim system | `Occupants` less the group |
+| 5 the four new words | **build** | `injured`, `stunned_for`, `helpless`, `coup_ready`, plus `nomagic` (§2b) |
+| 6 `expiring` polarity | (open; explained below) | -- |
+
+**Question 3, plainly.** An effect guard names a buff, and the game lists buffs by a display
+name. Two ways to say which one: a *pattern* (bigshot's regex, `EB"Empow.*30"`), or the
+*name*. A pattern can say anything, including things a person did not mean: `.` matches
+any character, `+` is not a plus, and a name with parentheses in it, `Empowered (+30)`,
+needs escaping or it silently matches nothing. A name is what the person sees in the list.
+The one thing a name cannot do is match a buff whose full name the dialog cuts off, and
+the author's `reflex` shows the dialog does that. **Starts-with matching, ignoring case,
+covers it**: `buff "Empowered"` matches `Empowered (+30)`, and `buff "Natures"` matches the
+cut-off Arcane Reflexes line as written. What is lost against a regex: matching the middle
+of a name (`buff "Reflex"` would not find `Natures ... Arcane Ref`), and "either of two
+names" in one guard, which two steps can say. `expiring` uses the same rule.
+
+**Question 6, plainly.** Every guard names when the step **runs**: `(hidden)` runs it while
+I am hidden. bigshot's `buff5` on `kweed` means the opposite kind of thing: *don't* run it
+while the buff has five seconds or less left. Two spellings were possible. `plan/33` §5's
+draft made the word itself mean "not expiring", so that `expiring "Tangleweed Vigor" 5`
+runs the step **unless** the buff is about to lapse; short to write, but the one word in the
+vocabulary whose meaning is inverted, which is bigshot's `frozen` trap again. What was
+built makes `expiring` mean what it says, the buff is up with N seconds or less left, and
+puts the "don't" in the `!` like every other word: `kweed (!expiring "Tangleweed Vigor" 5)`.
+The cost is one `!` on every import of `buffN`. The question is whether the extra `!` is
+worth the uniform rule. **Recommendation: keep it as built.**
 
 ## 7. What follows the review
 
