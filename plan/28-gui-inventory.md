@@ -502,6 +502,8 @@ The third is the recommendation, and it needs the author's call. It is consisten
 `cena-gui-is-primary`'s note that the architecture stays frontend-agnostic while the GUI
 leads, and with the measured fact that `cena-ui` depends on `cena-model` alone.
 
+Third option is the one - Nisugi
+
 ### 7c. Windows: what replaces the four enums
 
 Three things Vellum conflated, kept separate:
@@ -1059,7 +1061,7 @@ cost is fan-out, not existence: four near-identical click-to-place editors shari
 ## 9. Open questions for the author
 
 1. **§7b — the `SessionView` fork.** Native reads `GameState` directly while
-   `SessionView` stays the wire DTO, or one projection for all frontends?
+   `SessionView` stays the wire DTO, or one projection for all frontends?  Yes
 2. ~~**§7d — free placement or a layout tree?**~~ **DECIDED 2026-09-22:** free rects,
    grid as a snap target, main area + four drawers + a container window. See §7d.
    The adjustable grid (§7d.1) is settled too — it answers a **Saga** complaint and
@@ -1071,8 +1073,8 @@ cost is fan-out, not existence: four near-identical click-to-place editors shari
    > (§7d's cost table). This is a budgeted cost, not an unexamined one — but multi-session
    > is still where it gets tested.
 3. **§7f — the settings taxonomy.** Where does a knob live? This is the one the inventory
-   says to decide *first*.
+   says to decide *first*. Hmm, we shall discuss this when it's time taking inventory of all settings we have and need.
 4. **Does the TUI carry forward?** `12` §8's M10 says "TUI/GUI". If it does not, §2e's
-   second layout engine and one of the two persistence formats never need to exist.
+   second layout engine and one of the two persistence formats never need to exist. TUI will likely be rebuilt in the future, but it's not on the menu until like M15+
 5. **Is the creature field in scope?** It is the flagship novel feature and the single
-   largest body of game-specific geometric work, and its art is unfinished.
+   largest body of game-specific geometric work, and its art is unfinished.  Creature field is in scope but it may evolve before we get to putting it in here, we are exploring ways to make it better.
