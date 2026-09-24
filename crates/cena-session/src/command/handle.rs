@@ -194,6 +194,8 @@ pub struct SessionHandle {
     desk: super::claimant::Slot,
     /// What a person has done through this handle (`attendance.rs`).
     pub(super) attendance: super::attendance::Attendance,
+    /// The session's command authority (`authority.rs`).
+    pub(super) authority: super::authority::Authority,
 }
 
 impl SessionHandle {
@@ -227,7 +229,13 @@ impl SessionHandle {
             log: crate::player_log::tap::Slot::default(),
             desk: super::claimant::Slot::default(),
             attendance: super::attendance::Attendance::default(),
+            authority: super::authority::Authority::default(),
         }
+    }
+
+    /// The session's authority cell, for its queues and its supervisor.
+    pub(crate) fn authority_cell(&self) -> super::authority::Authority {
+        self.authority.clone()
     }
 
     /// What a person has done through this session, for its supervisor.

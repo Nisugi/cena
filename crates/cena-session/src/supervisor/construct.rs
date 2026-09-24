@@ -64,6 +64,7 @@ impl<C: Connector> SupervisedSession<C> {
                 generation,
                 attendance: handle.attendance(),
                 attendance_seen: 0,
+                authority: handle.authority_cell(),
                 cancel: CancellationToken::new(),
             },
             connector,

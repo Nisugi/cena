@@ -293,6 +293,9 @@ impl<C: Connector> SupervisedSession<C> {
                 generation,
             );
             actor.menu_dir.clone_from(&self.core.menu_dir);
+            // The session's authority, not a fresh one: a holder keeps it
+            // across the reconnect (SE-4).
+            actor.share_authority(self.core.authority.clone());
             actor.persistence.dir.clone_from(&self.core.character_dir);
             // **Read the stored facts once per SESSION, not once per
             // connection.** `<app>` is re-sent on every reconnect, and

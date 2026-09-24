@@ -91,6 +91,9 @@ pub struct SessionCore {
     /// How much of [`Self::attendance`] `after_connection` has already
     /// counted, so what a person did between two losses is told apart.
     pub(super) attendance_seen: u64,
+    /// The session's command authority, which every connection's queue
+    /// shares (`command/authority.rs`, SE-4).
+    pub(super) authority: crate::command::authority::Authority,
     /// Stops the **session**, not one connection.
     ///
     /// This is the distinction that makes a supervisor possible: the actor's
@@ -204,15 +207,18 @@ impl SessionCore {
             Inbox::Quit { reply, .. } => {
                 let _ = reply.send(Farewell::Unsent);
             }
-            // A claim against a connection that no longer exists. Answering
-            // `Ok` would hand out authority over a queue that is about to
-            // be replaced.
-            Inbox::Claim { reply, .. } => {
-                drop(reply);
+            // The authority is the SESSION's (`command/authority.rs`, SE-4),
+            // so a claim or a release between connections is answered as one
+            // during a connection would be, and holds for the next. Rolled
+            // back if nobody hears the grant, as the actor does.
+            Inbox::Claim { token, reply } => {
+                let outcome = self.authority.claim(token);
+                let granted = outcome.is_ok();
+                if reply.send(outcome).is_err() && granted {
+                    self.authority.release(token);
+                }
             }
-            // Nothing to answer, and nothing to release: the queue that
-            // held the authority died with the actor.
-            Inbox::Release(_) => {}
+            Inbox::Release(token) => self.authority.release(token),
         }
     }
 }

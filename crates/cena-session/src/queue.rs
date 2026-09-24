@@ -103,8 +103,9 @@ pub const fn any_frame(_frame: &cena_protocol::Frame) -> bool {
 /// page on.
 #[derive(Debug, Default)]
 pub struct CommandQueue {
-    /// Who holds the authority, if anyone.
-    authority: Option<AuthorityToken>,
+    /// Who holds the authority, if anyone: the **session's** cell, shared
+    /// with the next connection's queue (`command/authority.rs`, SE-4).
+    authority: crate::command::authority::Authority,
     /// Manual commands. Jump the head. **Never touch `authority`.**
     manual: VecDeque<Envelope>,
     /// The authority holder's own commands.
@@ -132,24 +133,24 @@ impl CommandQueue {
     /// not queue behind it -- "silent queueing is how you get an attack that
     /// fires four seconds after the fight ended."
     pub fn claim(&mut self, token: AuthorityToken) -> Result<(), AuthorityHeld> {
-        if let Some(held) = self.authority {
-            return Err(AuthorityHeld(held));
-        }
-        self.authority = Some(token);
-        Ok(())
+        self.authority.claim(token)
     }
 
     /// Give the authority back.
     pub fn release(&mut self, token: AuthorityToken) {
-        if self.authority == Some(token) {
-            self.authority = None;
-        }
+        self.authority.release(token);
     }
 
     /// Who holds the authority.
     #[must_use]
     pub fn authority(&self) -> Option<AuthorityToken> {
-        self.authority
+        self.authority.holder()
+    }
+
+    /// Hold the authority in `cell`, the session's, rather than this queue's
+    /// own: what makes it outlive a connection (SE-4).
+    pub(crate) fn share_authority(&mut self, cell: crate::command::authority::Authority) {
+        self.authority = cell;
     }
 
     /// Accept a command into the queue.
@@ -227,10 +228,23 @@ impl CommandQueue {
         // disagree.
         loop {
             let next = self.manual.pop_front().or_else(|| self.held.pop_front())?;
-            if !next.reply.is_closed() {
-                return Some(next);
+            if next.reply.is_closed() {
+                self.abandoned += 1;
+                continue;
             }
-            self.abandoned += 1;
+            // **A preempted holder's queued commands are not sent** (`plan/12`
+            // §4.3). They were admitted while it held the authority; it no
+            // longer does, and an attack from a behavior that was stopped is
+            // the thing a stop exists to prevent.
+            if let Some(token) = next.origin.token()
+                && self.authority.holder() != Some(token)
+            {
+                let _ = next
+                    .reply
+                    .send(Outcome::Refused(crate::command::Refusal::Permanent));
+                continue;
+            }
+            return Some(next);
         }
     }
 

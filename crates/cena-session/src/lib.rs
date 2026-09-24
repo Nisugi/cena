@@ -61,7 +61,8 @@ pub use cena_protocol::frame::{Link, LinkKind};
 pub use cena_protocol::runs::Runs;
 pub use character_store::MAX_STALE;
 pub use command::{
-    CommandId, Envelope, Farewell, Gate, Origin, Outcome, Refusal, Sent, SessionHandle,
+    CommandId, Envelope, Farewell, Gate, Origin, Outcome, PREEMPT_GRACE, Preempted, Refusal, Sent,
+    SessionHandle,
 };
 pub use lifecycle::{Generation, GenerationCell, SessionId, State};
 pub use notice::{Body, Notice, NoticeKind};

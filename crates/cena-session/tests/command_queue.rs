@@ -72,6 +72,11 @@ async fn a_manual_command_jumps_the_queue_ahead_of_the_behaviors() {
     // one-window-at-a-time pacing on top of it -- which would make the test
     // pass even if `next()` drained `held` first.
     let mut queue = CommandQueue::new();
+    // The behavior holds the authority, as it must for its commands to be
+    // sent at all (a revoked holder's queued commands are refused).
+    queue
+        .claim(cena_session::AuthorityToken(1))
+        .expect("nobody holds it");
     let mut keep = Vec::new();
     for (id, line, origin) in [
         (
