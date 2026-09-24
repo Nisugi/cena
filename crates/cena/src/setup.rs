@@ -12,33 +12,13 @@ use cena_session::SupervisedSession;
 
 use crate::connector::LiveConnector;
 
-/// Build the session, attaching a log unless one cannot be opened.
+/// Give `session` its wire log, stores, combat recorder and player log. The
+/// session table builds the session itself (`cena_host::Host::add`).
 ///
-/// Split from `main` under `plan/05` Rule 4.1 -- move code down, do not raise
-/// the cap -- when clippy caught `main` at 112 lines against a 100 limit.
-pub(crate) fn open_session(
-    connector: LiveConnector,
-) -> (
-    SupervisedSession<LiveConnector>,
-    cena_session::SessionHandle,
-    Option<std::thread::JoinHandle<()>>,
-    tokio::task::JoinHandle<u64>,
-) {
-    let character = connector.character().to_owned();
-    let game = connector.game_code().to_owned();
-    let account = connector.account_for_redaction().to_owned();
-    // Logging is ON by default. Author's call, 2026-09-18: "we want it on by
-    // default during our dev work. That way there's always a log for you."
-    //
-    // Opt-OUT, not opt-in: a session that fails in an interesting way is
-    // exactly the one nobody remembered to enable logging for.
-    let (session, handle) = SupervisedSession::new(connector);
-    let (session, combat_flush, player_flush) = attach(session, &character, &game, &account);
-    (session, handle, combat_flush, player_flush)
-}
-
-/// Give `session` everything [`open_session`] does, for a session built
-/// elsewhere -- the session table builds its own (`cena_host::Host::add`).
+/// Logging is ON by default. Author's call, 2026-09-18: "we want it on by
+/// default during our dev work. That way there's always a log for you."
+/// Opt-OUT, not opt-in: a session that fails in an interesting way is exactly
+/// the one nobody remembered to enable logging for.
 pub(crate) fn attach(
     session: SupervisedSession<LiveConnector>,
     character: &str,

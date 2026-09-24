@@ -379,7 +379,7 @@ impl<S: ByteSource> SessionActor<S> {
         generation: crate::lifecycle::Generation,
         gate: crate::command::Gate,
     ) -> Sent {
-        use crate::command::{Gate, Refusal};
+        use crate::command::Refusal;
 
         if generation != self.generation {
             return Sent::Interrupted;
@@ -393,19 +393,10 @@ impl<S: ByteSource> SessionActor<S> {
         if origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
             return Sent::Refused(Refusal::Transient);
         }
-        // The gate, and the reason it returns three different things.
-        let at = match gate {
-            Gate::None => None,
-            Gate::Roundtime => match self.state.in_roundtime() {
-                Some(true) => return Sent::Refused(Refusal::Roundtime),
-                // Unknown is NOT permission (`plan/12` §5.2). `Transient`
-                // because a prompt will arrive and then the answer is knowable
-                // -- it is "ask again", not "never".
-                None => return Sent::Refused(Refusal::Transient),
-                // `in_roundtime` returning `Some` means the clock is known, so
-                // this cannot be `None`.
-                Some(false) => self.state.game_time_now(),
-            },
+        // The gate (`gate.rs`).
+        let at = match self.check_gate(gate) {
+            Ok(at) => at,
+            Err(refusal) => return Sent::Refused(refusal),
         };
 
         let mut message = Vec::with_capacity(line.len() + 1);
@@ -526,12 +517,20 @@ impl<S: ByteSource> SessionActor<S> {
             return None;
         }
         while let Some(envelope) = self.queue.take_next() {
+            // A window closed (or was dropped) before this one opens.
+            self.end_quiet_window();
             // `plan/12` §5.2: anything from a prior generation is discarded.
             // It cannot fire in Step 2 -- nothing reconnects -- but the check
             // is one line and the alternative is retrofitting it onto a live
             // reconnect path later.
             if envelope.generation != self.generation {
                 let _ = envelope.reply.send(Outcome::Interrupted);
+                continue;
+            }
+            // The action's last check, against the live model, as it goes
+            // out (`gate.rs`). Refused, not written.
+            if let Err(refusal) = self.check_gate(envelope.gate) {
+                let _ = envelope.reply.send(Outcome::Refused(refusal));
                 continue;
             }
             // ONE write of the finished message. See
@@ -558,8 +557,24 @@ impl<S: ByteSource> SessionActor<S> {
                 envelope.reply,
                 envelope.matcher,
             );
+            if envelope.quiet {
+                self.quiet_window = true;
+                let _ = self.events.send(Event::Quiet(true));
+            }
         }
+        // `take_next` drops a window whose caller stopped waiting, so a quiet
+        // one can end here as well as at its prompt.
+        self.end_quiet_window();
         None
+    }
+
+    /// Say a quiet window is over, once it is. Its report is done, and what
+    /// follows is the story again.
+    fn end_quiet_window(&mut self) {
+        if self.quiet_window && !self.queue.window_is_open() {
+            self.quiet_window = false;
+            let _ = self.events.send(Event::Quiet(false));
+        }
     }
 
     /// Feed bytes to the parser, fold the frames, publish them, and close a
@@ -703,6 +718,9 @@ impl<S: ByteSource> SessionActor<S> {
                 if self.owed.prompt(self.queue.window_is_open()) {
                     self.queue.close_window();
                 }
+                // After the prompt's own frame: the report's terminator is
+                // part of what stays out of the story.
+                self.end_quiet_window();
             }
             // After the frame is published, so an observer sees the prompt
             // that completed the burst and then `Ready`.

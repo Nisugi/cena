@@ -16,10 +16,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
 use cena_behavior::BehaviorError;
-use cena_behavior::sync::{MAX_AGE, plan, sync};
+use cena_behavior::sync::{MAX_AGE, commands_for, plan, sync};
 use cena_platform::{AnsweringSource, TranscriptHandle};
 use cena_session::{
-    AuthorityToken, CharacterSnapshot, CommandId, GenerationCell, Group, Session, SessionHandle,
+    AuthorityToken, CharacterSnapshot, CommandId, Event, GenerationCell, Group, Session,
+    SessionHandle,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -316,4 +317,59 @@ async fn a_command_from_an_older_connection_is_a_disconnection() {
     assert_eq!(sent, Err(BehaviorError::Disconnected));
     assert_eq!(transcript.written_count(), 0, "discarded, never written");
     session.cancel();
+}
+
+/// `commands_for` is `plan` for groups a caller already has -- what
+/// `Event::SyncNeeded` carries -- and plans the same commands.
+#[test]
+fn planning_from_groups_matches_planning_from_a_snapshot() {
+    assert_eq!(
+        commands_for(&Group::ALL),
+        plan(&snapshot(), SystemTime::now(), MAX_AGE)
+    );
+}
+
+/// Quiet, like infomon (author, 2026-09-24): every command goes out quietly,
+/// so its report stays out of the story, and Hydra says one line per stage --
+/// a start, one per command naming it, and an end -- so the player knows
+/// what is running and that it is not stuck.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_sync_is_quiet_and_says_each_stage() {
+    let (source, _transcript) = AnsweringSource::logged_in(PROMPT);
+    let session = Session::new(source);
+    let (_, ready) = session.subscribe();
+    let (_, mut events) = session.subscribe();
+    let handle = session.handle();
+    let session_cancel = session.cancel_token();
+    tokio::spawn(session.into_actor().run());
+    ready::until_ready(ready)
+        .await
+        .expect("the session becomes Ready");
+    let commands = commands_for(&[Group::Stats, Group::Skills]);
+    assert_eq!(commands.len(), 2);
+
+    let sent = sync(
+        &handle,
+        &CancellationToken::new(),
+        ids(),
+        AuthorityToken(1),
+        &commands,
+    )
+    .await;
+    assert_eq!(sent, Ok(2));
+
+    let (mut said, mut quiet_windows) = (Vec::new(), 0);
+    while let Ok(event) = events.try_recv() {
+        match event {
+            Event::Notice(notice) => said.extend(notice.lines().iter().cloned()),
+            Event::Quiet(true) => quiet_windows += 1,
+            _ => {}
+        }
+    }
+    assert_eq!(quiet_windows, 2, "every sync command goes out quietly");
+    assert_eq!(said.len(), 4, "a start, one per command, an end: {said:?}");
+    assert!(said[1].contains("(1 of 2): info full"), "{said:?}");
+    assert!(said[2].contains("(2 of 2): skills full"), "{said:?}");
+    assert!(said[3].contains("2 of 2"), "{said:?}");
+    session_cancel.cancel();
 }

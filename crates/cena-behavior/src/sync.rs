@@ -27,23 +27,25 @@
 //! syncs **everything**, because its store is a key/value table with no notion
 //! of groups. Per-group staleness is cheaper and is already in the snapshot.
 //!
-//! # Quiet
+//! # Quiet, like infomon
 //!
-//! > **AUTHOR, 2026-09-20:** *"if not, then we run through a set of commands
-//! > quietly capturing all the data."*
+//! > **AUTHOR, 2026-09-24:** *"run it quietly but like infomon, infomon does
+//! > a one line message for each stage and hides all the spam. That way they
+//! > know something is going on, what it is, and that it's not stuck."*
 //!
-//! Lich says the same thing in a comment -- *"since none of this information
-//! is 3rd party displayed, silence is golden"* (`cli.rb:8`). Nothing here
-//! suppresses output, and that is deliberate: this crate sends commands and
-//! does not render, so "quiet" is a frontend concern. What this owes the
-//! frontend is a way to know the traffic was ours, which [`Origin::Behavior`]
-//! already provides on every command.
+//! Lich's sync says *"Infomon sync requested."*, runs every command through
+//! `issue_command(..., quiet: true)` and says *"Requested Infomon sync
+//! complete."* (`reference/lich-5/lib/gemstone/infomon/cli.rb:10-40`). Here
+//! each command goes out with [`SessionHandle::send_quietly`], so its report
+//! stays out of the story while every frame still teaches the model, and
+//! Hydra says one line as each stage starts, as a notice, which is Hydra's
+//! own voice and not the game's.
 
 use std::time::Duration;
 
 use cena_session::command::{CommandId, Origin, Outcome};
 use cena_session::queue::AuthorityToken;
-use cena_session::{CharacterSnapshot, Frame, Group, SessionHandle};
+use cena_session::{CharacterSnapshot, Frame, Group, Notice, NoticeKind, SessionHandle};
 use tokio_util::sync::CancellationToken;
 
 use crate::BehaviorError;
@@ -92,8 +94,17 @@ pub fn plan(
     now: std::time::SystemTime,
     max_age: Duration,
 ) -> Vec<(Group, &'static str)> {
+    commands_for(&snapshot.stale_groups(now, max_age))
+}
+
+/// What a sync of these groups would send, in order, each command **once** --
+/// [`plan`], for groups a caller already has. The session reports them in
+/// `Event::SyncNeeded` when it reads the store, so a caller that heard that
+/// event needs no snapshot to plan from.
+#[must_use]
+pub fn commands_for(groups: &[Group]) -> Vec<(Group, &'static str)> {
     let mut planned: Vec<(Group, &'static str)> = Vec::new();
-    for group in snapshot.stale_groups(now, max_age) {
+    for &group in groups {
         for command in group.sync_commands() {
             if !planned.iter().any(|(_, already)| already == command) {
                 planned.push((group, command));
@@ -157,20 +168,33 @@ async fn sync_holding_authority(
     commands: &[(Group, &'static str)],
 ) -> Result<usize, BehaviorError> {
     let mut sent = 0;
-    for (_group, command) in commands {
+    let total = commands.len();
+    handle.say(Notice::line(
+        NoticeKind::Info,
+        format!("Learning this character: {total} commands, kept out of the story."),
+    ));
+    for (index, (group, command)) in commands.iter().enumerate() {
         // Checked before the send, so a sync started with an already-cancelled
         // token sends nothing (`plan/12` §4.3).
         if cancel.is_cancelled() {
             return Err(BehaviorError::Cancelled);
         }
 
+        handle.say(Notice::line(
+            NoticeKind::Info,
+            format!(
+                "Learning {} ({} of {total}): {command}",
+                label(*group),
+                index + 1
+            ),
+        ));
         // Cancellation wins over the await, for the reason `look` documents at
         // length: awaiting `send_and_await` bare makes `stop` wait for the
         // game, and criterion 4's budget is 250ms against a 10s deadline.
         let outcome = tokio::select! {
             biased;
             () = cancel.cancelled() => return Err(BehaviorError::Cancelled),
-            outcome = handle.send_and_await(
+            outcome = handle.send_quietly(
                 next_id(),
                 command,
                 Origin::Behavior(token),
@@ -196,5 +220,22 @@ async fn sync_holding_authority(
             _ => return Ok(sent),
         }
     }
+    handle.say(Notice::line(
+        NoticeKind::Info,
+        format!("Learned this character: {sent} of {total} commands answered."),
+    ));
     Ok(sent)
+}
+
+/// A group, as the stage line names it.
+const fn label(group: Group) -> &'static str {
+    match group {
+        Group::Stats => "stats",
+        Group::Identity => "identity",
+        Group::Skills => "skills",
+        Group::Psms => "maneuvers and feats",
+        Group::Enhancives => "enhancives",
+        Group::Currency => "currency",
+        Group::Standing => "society and standing",
+    }
 }

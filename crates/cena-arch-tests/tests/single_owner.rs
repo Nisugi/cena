@@ -308,6 +308,12 @@ fn the_handle_premise_holds() {
             || ty.ends_with("GenerationCell")
             || ty.ends_with("::Slot")
             || ty.ends_with("::EventPublisher")
+            // An `Arc<AtomicU64>` (`command/attendance.rs`): every clone
+            // counts into the one number, so clones cannot disagree.
+            || ty.ends_with("::Attendance")
+            // An `Arc<Mutex<..>>` (`command/authority.rs`): the session's one
+            // authority cell, the same for every clone.
+            || ty.ends_with("::Authority")
     };
     let copied: Vec<String> = fields
         .iter()

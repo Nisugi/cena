@@ -53,15 +53,19 @@ pub use cena_model::crit::CritTables;
 pub use cena_model::movement::{self, MoveFeedback};
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
+pub use cena_model::state::character::stance::Stance;
 pub use cena_model::state::{containers, gameobj, group, hands, stream_windows};
 pub use cena_model::{ChunkLine, GameState, Room, RoomItem, UnknownTag};
-pub use cena_model::{SkillKind, SkillLine, Society, Vital, spell_named, spells};
+pub use cena_model::{
+    PsmCategory, PsmLine, PsmRanks, SkillKind, SkillLine, Society, Vital, spell_named, spells,
+};
 pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Link, LinkKind};
 pub use cena_protocol::runs::Runs;
 pub use character_store::MAX_STALE;
 pub use command::{
-    CommandId, Envelope, Farewell, Gate, Origin, Outcome, Refusal, Sent, SessionHandle,
+    CommandId, Envelope, Farewell, Gate, Origin, Outcome, PREEMPT_GRACE, Preempted, Refusal, Sent,
+    SessionHandle,
 };
 pub use lifecycle::{Generation, GenerationCell, SessionId, State};
 pub use notice::{Body, Notice, NoticeKind};
@@ -70,8 +74,8 @@ pub use player_log::writer::PlayerWriter;
 pub use player_log::{LogLine, LogSink, PlayerLog};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
 pub use supervisor::{
-    ConnectError, Connector, MAX_UNATTENDED_LOSSES, Retryability, STABLE_CONNECTION, SessionCore,
-    StoppedBecause, SupervisedEnd, SupervisedSession, backoff,
+    ConnectError, Connector, LONG_LIVED, MAX_UNATTENDED_LOSSES, Retryability, STABLE_CONNECTION,
+    SessionCore, StoppedBecause, SupervisedEnd, SupervisedSession, backoff,
 };
 
 /// The wire vocabulary, re-exported for behaviors.

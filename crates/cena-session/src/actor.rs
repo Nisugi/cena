@@ -101,6 +101,7 @@ use tokio_util::sync::CancellationToken;
 mod combat;
 mod ending;
 mod event;
+mod gate;
 mod handle;
 mod io;
 mod owed;
@@ -274,6 +275,8 @@ pub struct SessionActor<S: ByteSource> {
     /// was sent to modify (review SE-5). It was a bare count until review
     /// finding 1 showed the count assumed an order; see `owed.rs`.
     owed: owed::OwedPrompts,
+    /// Whether the open window is a quiet command's (`Event::Quiet`, `io.rs`).
+    quiet_window: bool,
     /// Whether this connection's login burst has finished: `Syncing` becomes
     /// `Ready` on the first prompt after `<endSetup/>` (`readiness.rs`).
     readiness: readiness::Readiness,
@@ -415,6 +418,7 @@ impl<S: ByteSource> SessionActor<S> {
             lifecycle: State::Connecting,
             queue: CommandQueue::new(),
             owed: owed::OwedPrompts::default(),
+            quiet_window: false,
             readiness: readiness::Readiness::default(),
             commands,
             events,

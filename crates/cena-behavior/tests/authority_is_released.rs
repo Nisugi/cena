@@ -12,11 +12,13 @@
 //! behavior out of the session permanently -- the same permanent lockout
 //! `14f14b6` fixed on the dropped-release path, arriving by a different route.
 
+mod looping;
 mod ready;
 
-use cena_behavior::{BehaviorError, LOOK_INTERVAL, look};
+use cena_behavior::BehaviorError;
 use cena_platform::AnsweringSource;
 use cena_session::{AuthorityToken, CommandId, Session};
+use looping::{LOOK_INTERVAL, look};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio_util::sync::CancellationToken;

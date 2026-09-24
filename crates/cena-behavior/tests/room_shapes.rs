@@ -4,6 +4,8 @@
 //! BEHAVIOR's matcher -- and `cena-session` must not depend upward on
 //! `cena-behavior` (`plan/12` §2).
 
+mod looping;
+
 use cena_platform::AnsweringSource;
 use cena_session::{CommandId, Origin, Outcome, Session};
 use std::time::Duration;
@@ -47,7 +49,7 @@ async fn both_room_shapes_answer_a_look() {
                 "look",
                 Origin::Manual,
                 Duration::from_secs(5),
-                cena_behavior::is_room_description,
+                looping::is_room_description,
             )
             .await;
 

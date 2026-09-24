@@ -87,14 +87,18 @@ impl<S: ByteSource> Session<S> {
         // so a supervised session needs no different handle type.
         let generation = crate::lifecycle::GenerationCell::first();
         let events = EventPublisher::new(EVENT_CHANNEL_BOUND, generation.clone(), id);
+        let handle = SessionHandle::publishing_to(tx, generation.clone(), events.clone());
+        let mut queue = CommandQueue::new();
+        queue.share_authority(handle.authority_cell());
         Self {
             actor: SessionActor {
                 source,
                 parser: Parser::new(),
                 state: GameState::default(),
                 lifecycle: State::Connecting,
-                queue: CommandQueue::new(),
+                queue,
                 owed: owed::OwedPrompts::default(),
+                quiet_window: false,
                 readiness: super::readiness::Readiness::default(),
                 commands: rx,
                 events: events.clone(),
@@ -115,7 +119,7 @@ impl<S: ByteSource> Session<S> {
                 quitting: None,
                 write_ended: None,
             },
-            handle: SessionHandle::publishing_to(tx, generation, events.clone()),
+            handle,
             events,
             cancel,
         }
@@ -263,5 +267,14 @@ impl<S: ByteSource> Session<S> {
     /// Consume the session, yielding the actor to drive.
     pub fn into_actor(self) -> SessionActor<S> {
         self.actor
+    }
+}
+
+impl<S: ByteSource> SessionActor<S> {
+    /// Hold the command authority in the session's cell rather than this
+    /// connection's own, so a holder keeps it across a reconnect
+    /// (`command/authority.rs`, SE-4).
+    pub(crate) fn share_authority(&mut self, cell: crate::command::authority::Authority) {
+        self.queue.share_authority(cell);
     }
 }

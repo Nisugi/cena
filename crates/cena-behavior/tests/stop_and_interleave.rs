@@ -30,11 +30,13 @@
 //! behavior has completed at least one round trip and entered its sleep**,
 //! which is the state the 250ms is actually about, and asserts that it did so.
 
+mod looping;
 mod ready;
 
-use cena_behavior::{BehaviorError, LOOK_INTERVAL, look};
+use cena_behavior::BehaviorError;
 use cena_platform::AnsweringSource;
 use cena_session::{CommandId, Origin, Outcome, Session};
+use looping::{LOOK_INTERVAL, look};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;

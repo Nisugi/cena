@@ -177,6 +177,30 @@ pub async fn travel(
             still_out: None,
         };
     }
+    let travelled = travel_holding(
+        handle, cancel, next_id, token, joined, map, goal, notes, wrote,
+    )
+    .await;
+    // Released on every exit. A release is not a command.
+    handle.release(token);
+    travelled
+}
+
+/// [`travel`], for a caller that already holds the authority as `token` and
+/// keeps it after: Hunt walks to its hunting ground and back without letting
+/// a manual `;go2` in between (`plan/30` §3). Neither claims nor releases.
+#[allow(clippy::too_many_arguments)]
+pub async fn travel_holding(
+    handle: &SessionHandle,
+    cancel: &CancellationToken,
+    next_id: impl FnMut() -> CommandId,
+    token: AuthorityToken,
+    joined: (Snapshot, impl Into<Heard>),
+    map: &Map,
+    goal: RoomId,
+    notes: &mut TravelNotes,
+    wrote: impl FnMut(&TravelNotes) + Send,
+) -> Travelled {
     let (snapshot, events) = joined;
     let seed = seed_for(&snapshot.state, goal);
     let mut trip = Trip::seeded(goal, seed);
@@ -216,8 +240,6 @@ pub async fn travel(
     if ended == Ended::Stopped(BehaviorError::Cancelled) {
         driver.take_back_once().await;
     }
-    // Released on every exit. A release is not a command.
-    handle.release(token);
     let changed = [
         ("stance", driver.stance_before.as_deref()),
         ("language", driver.speech_before.as_deref()),

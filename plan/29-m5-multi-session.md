@@ -291,7 +291,8 @@ enough, maybe it could be an advanced option."* **Deferred** to the settings tax
 
 ## 6. Acceptance
 
-> **ACCEPTED LIVE, 2026-09-24, author present**, pending only fresh CI on the merged result.
+> **ACCEPTED LIVE, 2026-09-24, author present.** Fresh CI on the merged result is green: PR #7
+> merged as `671bc32`, and `main`'s run 35968050792 passed all five jobs.
 > Two characters on two accounts, Nisugi and Dicate, in one Hydra with `--character ...
 > --web`. The author confirmed: the hub opens and lists both with live vitals and room; each
 > character's page takes only its own commands; the merged panel shows a shared line once,

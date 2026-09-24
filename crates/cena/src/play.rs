@@ -14,8 +14,8 @@
 //! two characters' story in one window is what `plan/29` §5a R2 rules out.
 //! Ctrl-C quits every session together.
 //!
-//! The M1 walkthroughs (`--demo`, `--capture`, `--typeahead`) are
-//! single-session tools and do not run here.
+//! **The only run path** (`plan/30` §2): with no `--character`, `main` asks
+//! for one and runs it here.
 
 use std::collections::BTreeMap;
 use std::io::IsTerminal;
@@ -30,10 +30,10 @@ use cena_web::HubRequest;
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
-use crate::{frontend, interrupt, roster, run, secrets, setup, travel};
+use crate::{connector, frontend, interrupt, learn, roster, secrets, setup, travel, watch};
 
-/// The characters named with `--character`, in order. Empty means the
-/// single-session path, which asks for one character at the prompt.
+/// The characters named with `--character`, in order. Empty means none was
+/// named, and `main` asks for one at the prompt.
 pub(crate) fn characters() -> Vec<String> {
     characters_in(std::env::args().skip(1))
 }
@@ -156,19 +156,22 @@ impl Table {
             account: account.clone(),
             character: character.clone(),
         };
-        let connector = LiveConnector::new(typed, run::login_provider(), self.pin.clone());
+        let connector = LiveConnector::new(typed, connector::login_provider(), self.pin.clone());
         let mut host = self.host.lock().await;
         let mut attached = None;
         let id = host
             .add(who, connector, |session| {
-                // Subscribed before it runs, so the watcher sees the whole login.
+                // Subscribed before it runs, so the watcher sees the whole
+                // login, and the sync hears the store's report mid-burst.
                 let (_, events) = session.subscribe();
+                let (_, learning) = session.subscribe();
                 let (session, combat, player) = setup::attach(session, &character, &game, &account);
-                attached = Some((events, combat, player));
+                attached = Some((events, learning, combat, player));
                 session
             })
             .map_err(|e| format!("[{character}] not started: {e}"))?;
-        let (Some((events, combat, player)), Some(hosted)) = (attached, host.get(id)) else {
+        let (Some((events, learning, combat, player)), Some(hosted)) = (attached, host.get(id))
+        else {
             return Err(format!(
                 "[{character}] not started: it left the table at once"
             ));
@@ -181,12 +184,14 @@ impl Table {
                 hosted.handle.clone(),
             );
         }
-        let watcher = tokio::spawn(run::watch_events(events, false, format!("[{character}]")));
+        let watcher = tokio::spawn(watch::watch_events(events, format!("[{character}]")));
         proven.on_ready(&hosted.observer, &self.turn);
         tokio::spawn(after_ready(
             hosted.handle.clone(),
             hosted.observer.clone(),
             commands,
+            learning,
+            format!("[{character}]"),
         ));
         self.started
             .lock()
@@ -398,11 +403,21 @@ fn hub_login(dir: &Path, name: &str) -> Result<Typed, String> {
     }
 }
 
-/// Once the login is proven, open travel.
-async fn after_ready(handle: SessionHandle, observer: SessionObserver, commands: Commands) {
-    if until_ready(&observer).await {
-        travel::after_login(&handle, observer, &commands).await;
-    }
+/// Once the login is proven, open travel, then sync the character if the
+/// store said anything is stale (`learn.rs`).
+async fn after_ready(
+    handle: SessionHandle,
+    observer: SessionObserver,
+    commands: Commands,
+    mut learning: tokio::sync::broadcast::Receiver<Event>,
+    who: String,
+) {
+    let Some(stale) = learn::stale_at_ready(&mut learning).await else {
+        return;
+    };
+    drop(learning);
+    travel::after_login(&handle, observer, &commands).await;
+    learn::sync(&handle, &stale, &who).await;
 }
 
 /// What a login leaves behind once it is proven: its roster entry, and --
@@ -505,8 +520,8 @@ mod tests {
     }
 
     #[test]
-    fn no_character_is_the_one_session_path() {
-        assert!(characters_in(args("--web --demo")).is_empty());
+    fn no_character_named_is_none() {
+        assert!(characters_in(args("--web")).is_empty());
         // A trailing flag with no name names nobody, rather than the next run.
         assert!(characters_in(args("--character")).is_empty());
     }

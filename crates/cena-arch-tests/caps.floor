@@ -17,7 +17,6 @@
 #
 # FORMAT: `<path> <value>`, `#` comments and blank lines ignored.
 
-crates/cena/src/probe.rs 350
 crates/cena-model/src/crit.rs 300
 crates/cena-model/src/state.rs 550
 crates/cena-protocol/src/frame.rs 500

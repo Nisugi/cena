@@ -111,22 +111,12 @@ impl Origin {
 /// resend**: Lich's ladder with `max_resends` is behavior policy, and
 /// building it now would be a config option with no second caller (Rule -1).
 ///
-/// # Only `Roundtime` is constructed today
+/// # All of them are constructed now
 ///
-/// This said "Step 2 detects and reports", of all three. `Roundtime` is
-/// reported -- `send_now`'s gate answers it from the model's clock -- and
-/// **`Stunned` and `Webbed` are never constructed anywhere**
-/// (`grep -rn 'Refusal::Stunned' crates/`: 0 hits outside this enum).
-///
-/// Nothing maps Lich's `:1578` regex to a refusal, because nothing scans
-/// server text for it: that means matching prose, and `plan/12` §5.2 already
-/// carries the same facts as typed state -- `status.known().stunned()` is the
-/// answer, from an `<indicator>` rather than from a sentence.
-///
-/// The variants are kept rather than deleted because a gated send is the
-/// natural place for them and `Gate` has room for exactly this, but they are
-/// **vocabulary ahead of a caller** and this comment now says so rather than
-/// implying the detection exists (review SE-11).
+/// `Stunned` and `Webbed` were vocabulary ahead of a caller from M1 until
+/// M6 (review SE-11). [`Gate::Act`] constructs them, from typed state --
+/// `status.known().stunned()`, an `<indicator>` -- rather than by scanning
+/// server text for Lich's `:1578` regex, which would be matching prose.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Refusal {
     /// Try again later: the queue was full, or the session was busy.
@@ -139,6 +129,11 @@ pub enum Refusal {
     Stunned,
     /// The character is webbed.
     Webbed,
+    /// A cast roundtime is running ([`Gate::Act`]).
+    Casttime,
+    /// The action's target is no longer in the room, or no longer a valid
+    /// target -- dead, by the game's flag or its hit points ([`Gate::Act`]).
+    TargetGone,
 }
 
 /// What a round trip produced. Verbatim from `plan/12` §4.5.
@@ -352,4 +347,15 @@ pub enum Gate {
     /// `assess <target>`, which cost nothing and which the server MEASURED as
     /// running during a roundtime.
     None,
+    /// An action's last check, made by the session as its bytes go out
+    /// (`plan/30` §3): refused in roundtime or cast roundtime, stunned,
+    /// webbed or dead, and -- given a target's `exist` id -- when that
+    /// creature is no longer in the room, or no longer a valid target.
+    ///
+    /// The behavior made the same checks against its own copy of the state;
+    /// this is the actor making them against the live one, which is newer.
+    Act {
+        /// The creature the action is aimed at, if any.
+        target: Option<i64>,
+    },
 }

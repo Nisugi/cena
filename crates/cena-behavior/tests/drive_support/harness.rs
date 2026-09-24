@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use cena_behavior::travel::{TravelNotes, Travelled, travel};
+use cena_behavior::travel::{TravelNotes, Travelled, travel, travel_holding};
 use cena_map::{Map, Room, RoomId};
 use cena_platform::{AnsweringSource, TranscriptHandle};
 use cena_session::group::{GroupEvent, Member};
@@ -115,6 +115,40 @@ pub fn set_out_on_a_connection(
     Receiver<Event>,
     GenerationCell,
 ) {
+    set_out_claiming(stop, rooms, last_room, knows, false)
+}
+
+/// [`set_out`], by a caller that claims the authority itself and walks with
+/// `travel_holding`, as Hunt does: the walk must leave the claim in place.
+pub fn set_out_holding(
+    stop: &CancellationToken,
+    rooms: &'static str,
+) -> (
+    JoinHandle<Option<Travelled>>,
+    TranscriptHandle,
+    CancellationToken,
+    SessionHandle,
+) {
+    let (walk, transcript, session, typed, _, _) =
+        set_out_claiming(stop, rooms, None, |_| {}, true);
+    (walk, transcript, session, typed)
+}
+
+#[allow(clippy::type_complexity)] // as above
+fn set_out_claiming(
+    stop: &CancellationToken,
+    rooms: &'static str,
+    last_room: Option<u32>,
+    knows: impl FnOnce(&mut GameState),
+    holding: bool,
+) -> (
+    JoinHandle<Option<Travelled>>,
+    TranscriptHandle,
+    CancellationToken,
+    SessionHandle,
+    Receiver<Event>,
+    GenerationCell,
+) {
     let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
@@ -149,19 +183,36 @@ pub fn set_out_on_a_connection(
             last_room,
             ..TravelNotes::default()
         };
+        let joined = (snapshot, events);
         // Boxed: the driver's future is large now that routines recurse.
-        let travelled = Box::pin(travel(
-            &handle,
-            &stop,
-            ids,
-            AuthorityToken(1),
-            (snapshot, events),
-            &map,
-            RoomId(3),
-            &mut notes,
-            |_| {},
-        ))
-        .await;
+        let travelled = if holding {
+            handle.claim(AuthorityToken(1)).await.ok()?;
+            let walk = travel_holding(
+                &handle,
+                &stop,
+                ids,
+                AuthorityToken(1),
+                joined,
+                &map,
+                RoomId(3),
+                &mut notes,
+                |_| {},
+            );
+            Box::pin(walk).await
+        } else {
+            let walk = travel(
+                &handle,
+                &stop,
+                ids,
+                AuthorityToken(1),
+                joined,
+                &map,
+                RoomId(3),
+                &mut notes,
+                |_| {},
+            );
+            Box::pin(walk).await
+        };
         Some(travelled)
     });
     (walk, transcript, session_cancel, typed, told, cell)

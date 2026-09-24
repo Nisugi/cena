@@ -85,13 +85,15 @@ pub struct SessionCore {
     pub(super) menu_dir: Option<std::path::PathBuf>,
     /// The shared generation every handle reads.
     pub(super) generation: GenerationCell,
-    /// Set when a caller sent something while there was no actor to take it;
-    /// read and cleared by the supervisor's `after_connection` as attendance.
-    ///
-    /// A field rather than the local it was, because the inbox is now answered
-    /// from three places -- the sweep before an actor starts, and the connect
-    /// and backoff waits (review finding 6) -- and all three must count.
-    pub(super) attended_while_disconnected: bool,
+    /// What a person has done through this session's handles
+    /// (`command/attendance.rs`).
+    pub(super) attendance: crate::command::attendance::Attendance,
+    /// How much of [`Self::attendance`] `after_connection` has already
+    /// counted, so what a person did between two losses is told apart.
+    pub(super) attendance_seen: u64,
+    /// The session's command authority, which every connection's queue
+    /// shares (`command/authority.rs`, SE-4).
+    pub(super) authority: crate::command::authority::Authority,
     /// Stops the **session**, not one connection.
     ///
     /// This is the distinction that makes a supervisor possible: the actor's
@@ -138,19 +140,12 @@ impl SessionCore {
     /// window it clears is exactly "since the last connection ended". Anything
     /// arriving after this point belongs to the new connection and is handled
     /// normally.
-    /// # A swept message COUNTS AS ATTENDANCE, and the caller must record it
+    /// # A person's swept command still counts as attendance
     ///
-    /// Attendance is measured from `recorder.outbound_count()`, and a swept
-    /// command never reaches the recorder -- so without the caller noting it, a
-    /// player typing DURING a reconnect looks exactly like an empty chair, and
-    /// the unattended cap stops a session someone is sitting at.
-    ///
-    /// `io.rs`'s `write_bounded` states the principle for the live path: *"a
-    /// write that fails still means someone tried ... The supervisor's question
-    /// is 'is anyone here', not 'did the packet land'."* This is the same
-    /// question one layer out. The return value is non-zero exactly when
-    /// something was swept, which is what the supervisor feeds to
-    /// `after_connection`.
+    /// It was counted at the handle when it was typed
+    /// (`command/attendance.rs`), so sweeping it here loses nothing: a player
+    /// typing DURING a reconnect is never an empty chair. A behavior's swept
+    /// command is not a person, and is never counted.
     ///
     /// # Discarding a command is NOT evidence that nobody is there
     ///
@@ -188,15 +183,14 @@ impl SessionCore {
     /// 5 s backstop. The supervisor now calls this from its connect and
     /// backoff waits as well as from the sweep (review finding 6).
     ///
-    /// Anything a caller SENT counts as attendance, whatever becomes of it --
-    /// see [`Self::discard_stale_inbox`].
+    /// A person's command was already counted as attendance where it was
+    /// typed -- see [`Self::discard_stale_inbox`].
     pub(super) fn refuse_while_disconnected(&mut self, message: Inbox) {
         if matches!(
             message,
             Inbox::Command(_) | Inbox::SendNow { .. } | Inbox::Quit { .. }
         ) {
             self.state.answer_idle_warning();
-            self.attended_while_disconnected = true;
         }
         match message {
             // §5.1: a command aimed at a dead connection fails with
@@ -213,15 +207,18 @@ impl SessionCore {
             Inbox::Quit { reply, .. } => {
                 let _ = reply.send(Farewell::Unsent);
             }
-            // A claim against a connection that no longer exists. Answering
-            // `Ok` would hand out authority over a queue that is about to
-            // be replaced.
-            Inbox::Claim { reply, .. } => {
-                drop(reply);
+            // The authority is the SESSION's (`command/authority.rs`, SE-4),
+            // so a claim or a release between connections is answered as one
+            // during a connection would be, and holds for the next. Rolled
+            // back if nobody hears the grant, as the actor does.
+            Inbox::Claim { token, reply } => {
+                let outcome = self.authority.claim(token);
+                let granted = outcome.is_ok();
+                if reply.send(outcome).is_err() && granted {
+                    self.authority.release(token);
+                }
             }
-            // Nothing to answer, and nothing to release: the queue that
-            // held the authority died with the actor.
-            Inbox::Release(_) => {}
+            Inbox::Release(token) => self.authority.release(token),
         }
     }
 }

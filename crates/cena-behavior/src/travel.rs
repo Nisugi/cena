@@ -80,6 +80,7 @@ pub use command::{Command, parse as parse_command};
 pub use desk::Desk;
 pub use drive::{
     BEAT, DEED_DEADLINE, Ended, FOLLOW_WAIT, LOST_WAIT, Travelled, room_of, seed_for, travel,
+    travel_holding,
 };
 pub use facts::{TravelNotes, walker_from};
 pub use hands::{Stored, cast_commands, store_commands, take_back};
