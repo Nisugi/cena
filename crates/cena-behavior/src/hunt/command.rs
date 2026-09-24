@@ -5,10 +5,9 @@
 //! ;hunt import <path> as <name>   ...under another name
 //! ;hunt check <name>              read a profile the way this character would run it, and say what is held
 //! ;hunt list                      the profiles there are
+//! ;hunt <name>                    hunt on that profile, as this character
+//! ;hunt stop                      stop hunting
 //! ```
-//!
-//! Running one (`;hunt <name>`) and stopping it are M6b's, when there is an
-//! engine to run it (`plan/30` §4, §7).
 //!
 //! **The symbol is not this module's.** A line reaches here already marked
 //! as Hydra's and stripped of its symbol (`cena_session::command::claimant`),
@@ -30,12 +29,19 @@ pub enum Command {
     Check(String),
     /// List the profiles.
     List,
+    /// Hunt on this profile.
+    Run(String),
+    /// Stop the hunt under way.
+    Stop,
     /// Hunt's, and already answered: said wrongly. Nothing to do.
     Nothing,
 }
 
+/// The words that are hunt's own, and so never a profile's name.
+const RESERVED: &[&str] = &["import", "check", "list", "stop"];
+
 /// What a wrongly said command is answered with.
-pub const USAGE: &str = "hunt import <bigshot yaml> [as <name>], hunt check <name>, or hunt list";
+pub const USAGE: &str = "hunt <name>, hunt stop, hunt import <bigshot yaml> [as <name>], hunt check <name>, or hunt list";
 
 /// The hunt command a line is, **the command symbol already gone**. `None`:
 /// not hunt's. `Some(Err(_))`: hunt's, said wrongly.
@@ -52,6 +58,13 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
             Ok(Command::Check((*name).to_owned()))
         }
         Some((word, [])) if word.eq_ignore_ascii_case("list") => Ok(Command::List),
+        Some((word, [])) if word.eq_ignore_ascii_case("stop") => Ok(Command::Stop),
+        // `hunt check` with nothing after it is a check said wrongly, not a
+        // profile named "check": the words above are not profile names.
+        Some((word, _)) if RESERVED.iter().any(|r| word.eq_ignore_ascii_case(r)) => {
+            Err(USAGE.to_owned())
+        }
+        Some((name, [])) => Ok(Command::Run((*name).to_owned())),
         _ => Err(USAGE.to_owned()),
     })
 }
@@ -102,6 +115,11 @@ mod tests {
             Some(Ok(Command::Check("archer".to_owned())))
         );
         assert_eq!(parse("hunt list"), Some(Ok(Command::List)));
+        assert_eq!(parse("hunt stop"), Some(Ok(Command::Stop)));
+        assert_eq!(
+            parse("hunt ojandhaart"),
+            Some(Ok(Command::Run("ojandhaart".to_owned())))
+        );
     }
 
     #[test]
@@ -113,6 +131,7 @@ mod tests {
             "hunt check",
             "hunt check a b",
             "hunt list all",
+            "hunt a b",
         ] {
             assert!(matches!(parse(line), Some(Err(_))), "{line}");
         }

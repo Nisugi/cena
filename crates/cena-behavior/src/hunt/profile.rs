@@ -158,7 +158,8 @@ pub struct Until {
     /// Mana at or above this percent (`rest_till_mana`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mana: Option<u32>,
-    /// Spirit at or above this percent (`rest_till_spirit`).
+    /// Spirit at or above this many **points**, not a percent
+    /// (`rest_till_spirit`; bigshot compares `Char.spirit`, `rest.rb:239`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spirit: Option<u32>,
     /// Stamina at or above this percent (`rest_till_percentstamina`).

@@ -30,7 +30,7 @@ use cena_web::HubRequest;
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
-use crate::{connector, frontend, hunt, interrupt, learn, roster, secrets, setup, travel, watch};
+use crate::{connector, frontend, interrupt, learn, roster, secrets, setup, travel, watch};
 
 /// The characters named with `--character`, in order. Empty means none was
 /// named, and `main` asks for one at the prompt.
@@ -416,8 +416,7 @@ async fn after_ready(
         return;
     };
     drop(learning);
-    travel::after_login(&handle, observer.clone(), &commands).await;
-    hunt::after_login(&handle, &observer, &commands).await;
+    travel::after_login(&handle, observer, &commands).await;
     learn::sync(&handle, &stale, &who).await;
 }
 

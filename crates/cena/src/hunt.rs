@@ -1,10 +1,11 @@
-//! Hunt profiles, wired to this binary: `;hunt import`, `;hunt check` and
-//! `;hunt list` on Hydra's command line (`crate::commands`).
+//! Hunt, wired to this binary: `;hunt <name>`, `;hunt stop`, `;hunt import`,
+//! `;hunt check` and `;hunt list` on Hydra's command line (`crate::commands`).
 //!
 //! The join only, as `travel.rs` is for travel: what a command means and
-//! what it does are `cena_behavior::hunt`'s; where the data directory is
-//! and who the character is are known here. Nothing here sends to the game.
-//! Running a profile is M6b's (`plan/30` §7).
+//! what it does are `cena_behavior::hunt`'s; where the data directory is,
+//! who the character is and which map is loaded are known here. The map is
+//! travel's, loaded once and shared: a hunt walks with travel's own driver,
+//! so without a map there is no hunt, and `;hunt <name>` says so.
 //!
 //! # BUILT, NOT RUN
 //!
@@ -18,31 +19,28 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::commands::Commands;
-use cena_behavior::hunt::{self, Command, LoadError, parse_command};
+use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
+use cena_behavior::travel::Map;
 use cena_session::command::claimant::Claimed;
-use cena_session::{GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
-
-/// Once the login is proven: learn who the character is, and put hunt's
-/// words on the command line.
-pub(crate) async fn after_login(
-    handle: &SessionHandle,
-    observer: &SessionObserver,
-    commands: &Commands,
-) {
-    match observer.subscribe().await {
-        Ok((snapshot, _)) => open(handle, &snapshot.state, commands),
-        Err(e) => eprintln!("[hunt] could not read the session to open hunt: {e:?}"),
-    }
-}
+use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Register hunt's words. The character's instance and name, when the login
-/// has said them, choose the character level of the chain.
-fn open(handle: &SessionHandle, state: &GameState, commands: &Commands) {
+/// has said them, choose the character level of the chain; `map` is the one
+/// travel loaded, and `None` when travel has none.
+pub(crate) fn open(
+    handle: &SessionHandle,
+    observer: SessionObserver,
+    state: &GameState,
+    commands: &Commands,
+    map: Option<Arc<Map>>,
+) {
     let who = state
         .character
         .instance
         .clone()
         .zip(state.character.name.clone());
+    let dir = cena_session::character_store::data_dir();
+    let desk = map.map(|map| Desk::new(map, dir.clone(), AuthorityToken(3)));
     let handler = handle.clone();
     commands.hunt(Arc::new(move |line: &str| {
         let command = match parse_command(line)? {
@@ -52,25 +50,52 @@ fn open(handle: &SessionHandle, state: &GameState, commands: &Commands) {
                 return Some(Claimed::Done);
             }
         };
-        let (handle, who) = (handler.clone(), who.clone());
-        // Files are read and written, so not on the session's own thread.
-        tokio::task::spawn_blocking(move || run(&handle, who.as_ref(), command));
+        match command {
+            Command::Run(_) | Command::Stop => {
+                let Some(desk) = desk.clone() else {
+                    handler.say(Notice::line(
+                        NoticeKind::Error,
+                        "Hunt: there is no map, so there is no hunting. Set the map and start Hydra again.",
+                    ));
+                    return Some(Claimed::Done);
+                };
+                let (handle, observer) = (handler.clone(), observer.clone());
+                tokio::spawn(async move {
+                    match observer.subscribe().await {
+                        Ok(joined) => {
+                            desk.run(&handle, joined, command);
+                        }
+                        Err(e) => handle.say(Notice::line(
+                            NoticeKind::Error,
+                            format!("Hunt: I could not read the session -- {e:?}."),
+                        )),
+                    }
+                });
+            }
+            Command::Import { .. } | Command::Check(_) | Command::List => {
+                let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
+                // Files are read and written, so not on the session's own thread.
+                tokio::task::spawn_blocking(move || run(&handle, &dir, who.as_ref(), command));
+            }
+            Command::Nothing => {}
+        }
         Some(Claimed::Done)
     }));
-    eprintln!("[hunt] ready: hunt import <bigshot yaml>, hunt check <name>, hunt list");
+    eprintln!(
+        "[hunt] ready: hunt <name>, hunt stop, hunt import <bigshot yaml>, hunt check <name>, hunt list"
+    );
 }
 
 /// What is said to the player.
 type Say<'a> = &'a dyn Fn(NoticeKind, String);
 
-fn run(handle: &SessionHandle, who: Option<&(String, String)>, command: Command) {
-    let dir = cena_session::character_store::data_dir();
+fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, command: Command) {
     let say = |kind: NoticeKind, text: String| handle.say(Notice::line(kind, text));
     match command {
-        Command::Import { path, name } => import(&dir, &path, name.as_deref(), &say),
-        Command::Check(name) => check(&dir, who, &name, &say),
-        Command::List => list(&dir, &say),
-        Command::Nothing => {}
+        Command::Import { path, name } => import(dir, &path, name.as_deref(), &say),
+        Command::Check(name) => check(dir, who, &name, &say),
+        Command::List => list(dir, &say),
+        Command::Run(_) | Command::Stop | Command::Nothing => {}
     }
 }
 

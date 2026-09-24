@@ -482,6 +482,45 @@ guards), Maintain, Wander and Rest, pure, driven by replay fixtures from Nisugi'
 corpus cut is asked for first). Loot is `loot #id` and healing is waiting, as stand-ins.
 Demonstrated live on a short hunt.
 
+> **BUILT 2026-09-24, not yet run live.** `cena-behavior/src/hunt/engine.rs` is the pure
+> machine: `Hunt::tick(&GameState, Here, now) -> Said`, eohunter's seven behaviors as the
+> arms of one `match` in eohunter's priority order (`runner.rb`, `behavior.rb`), under one
+> holder of the authority. `drive.rs` is the `async` layer: it holds the token, folds the
+> session's events, places the character by the map, settles roundtime, sends through the
+> write-time `Gate::Act`, and **walks by running travel's own driver inside the hunt's
+> authority** (`travel_holding`, with a second listener on the stream and the hunt folding its
+> own meanwhile). `desk.rs` runs one hunt per session with the watchdog beside it; `;hunt
+> <name>` and `;hunt stop` are on the command line, with travel's map.
+> - **What each arm does now:** Survival stands or stops on death; Flee leaves a room over
+>   `flee.count` or holding a `flee.from` creature; Rest is the whole cycle (reasons, the
+>   walk, the rest commands, the `until` thresholds, the walk back, the prepare commands);
+>   Loot is `loot #id` once per corpse, after the room clears when `loot.delay`; Maintain
+>   casts a sign the effects list says is down, once a minute at most, with no target
+>   present; Engage targets, takes the hunting stance, and runs the routine one step a tick,
+>   skipping held steps and steps whose guards do not hold, expanding sequences; Wander waits
+>   `wander.wait`, takes the wander stance, and walks to a fresh crossable room off the
+>   boundary list, least-recently-visited when none is fresh.
+> - **Two facts the port corrected:** `rest_till_spirit` is spirit **points**, not a percent
+>   (`rest.rb:239`); and the game's current target is `Targeting::current()`, the first id of
+>   the dropdown, not membership in its list.
+> - **Stand-ins and gaps, each said to the player where it bites:** Assume Aspect (`650 …`
+>   signs) is not cast; a walk inside a hunt runs on default travel notes, so a character's
+>   saved travel memories are not read; groups, `pull`, `deader`, ammo, wands, boons and the
+>   `censer_between_actions` policy (`plan/33`) are not built.
+> - **The corpus cut was not made.** The author's condition was *"nothing from
+>   hinterwilds"*, and MEASURED over every third of Nisugi's 6,570 sessions plus all of the
+>   newest 45: every session with a fight is in the Hinterwilds or the Duskruin Arena. The
+>   engine is driven by frames built in the test instead (`tests/hunt_engine.rs`, 9 tests
+>   over every arm and the rest cycle end to end); a replay fixture needs a log from another
+>   character or another area, which is the author's to name.
+> - MEASURED: 29 hunt tests in `cena-behavior` (`hunt_engine` 9, `hunt_guard` 7,
+>   `hunt_profile` 9, `hunt_import` 4), plus the `yaml` and `command` unit tests.
+>
+> **Live acceptance is the next thing**, and it is the author's: `;hunt ojandhaart` with the
+> map set, in the hunting ground, with `;hunt stop` at hand. What it will show first is
+> whether the routine's plain verbs (`fire`, `kweed`, `coupdegrace`, `incant 608`) are sent as
+> the game takes them, which no test here can prove.
+
 **M6c — eloot.** Its port plan first (`plan/31`), then the halves a hunt calls: loot,
 sort, box in hand. Town errands follow in the same plan's order.
 

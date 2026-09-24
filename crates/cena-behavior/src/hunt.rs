@@ -1,8 +1,8 @@
 //! Hunt: the profile a hunt runs on, and how one gets in (`plan/30` §5 and
 //! §7, M6a step 4).
 //!
-//! The engine that runs a profile is M6b (`plan/30` §3); this is what it
-//! reads. Four pieces, each pure and tested without a game:
+//! Six pieces. The first four are what a hunt reads, each pure and tested
+//! without a game; the last two run it:
 //!
 //! | Piece | Module | What it is |
 //! |---|---|---|
@@ -11,7 +11,11 @@
 //! | the chain | [`chain`] | how a key resolves: character, then profile, then global, then the built-in default (`plan/12` §6a.2) |
 //! | the importer | [`import`](mod@import) | a bigshot profile in, a Hydra profile out, with what it could not carry named |
 //!
-//! [`command`] is what a player types about any of it while playing.
+//! | the engine | [`engine`] | [`Hunt`], a pure state machine: the profile and the state in, one thing to do out |
+//! | the driver | [`drive`] | the `async` layer that holds the authority, folds events, sends and walks |
+//!
+//! [`command`] is what a player types about any of it, and [`desk`] does it
+//! for one session while it is being played.
 //!
 //! # Policy, not programs
 //!
@@ -37,13 +41,20 @@
 
 pub mod chain;
 pub mod command;
+pub mod desk;
+pub mod drive;
+pub mod engine;
 pub mod guard;
 pub mod import;
 pub mod profile;
+pub mod said;
 pub mod yaml;
 
 pub use chain::{LoadError, Loaded, load};
 pub use command::{Command, parse as parse_command};
+pub use desk::Desk;
+pub use drive::{HuntEnd, hunt};
+pub use engine::{Ending, Here, Hunt, Said};
 pub use guard::{Condition, Guard};
 pub use import::{Import, import};
 pub use profile::{Profile, Step};

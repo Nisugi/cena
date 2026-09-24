@@ -1,0 +1,112 @@
+//! What the hunt machine says and where it stands: the vocabulary of
+//! [`super::engine`], kept beside it so that file holds the decisions.
+
+use std::fmt;
+
+use cena_map::RoomId;
+
+/// Where the character is, as the map knows it, and where it could go.
+#[derive(Clone, Copy, Debug)]
+pub struct Here<'a> {
+    /// The room, when the map could place it.
+    pub room: Option<RoomId>,
+    /// The rooms one crossable exit away.
+    pub exits: &'a [RoomId],
+}
+
+/// One thing for the driver to do.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Said {
+    /// Send this line, gated at write time on `target` still being here.
+    Send {
+        /// The line, as the game takes it.
+        line: String,
+        /// The creature it is aimed at, for the gate.
+        target: Option<i64>,
+    },
+    /// Walk there: travel, under the hunt's authority.
+    Walk(RoomId),
+    /// Nothing to do for this many seconds; fold events meanwhile.
+    Wait(u32),
+    /// The hunt is over.
+    Done(Ending),
+    /// Nothing this tick.
+    Nothing,
+}
+
+/// Why a hunt ended of its own accord.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ending {
+    /// The character died.
+    Dead,
+    /// A rest was needed and the profile names no resting room.
+    NoRestingRoom,
+    /// The walk back needs a hunting room and the profile names none.
+    NoHuntingRoom,
+    /// A walk the hunt depends on could not be made.
+    Unreachable(RoomId),
+}
+
+impl fmt::Display for Ending {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Dead => f.write_str("the character died"),
+            Self::NoRestingRoom => {
+                f.write_str("a rest is needed and the profile names no resting room")
+            }
+            Self::NoHuntingRoom => f.write_str("the profile names no hunting room to return to"),
+            Self::Unreachable(room) => write!(f, "there is no way to room {}", room.0),
+        }
+    }
+}
+
+/// Why the hunt is resting.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Why {
+    /// A `rest.when` condition holds.
+    Wounded,
+    /// The mind is at or above `rest.fried`, with the overkill spent.
+    Fried,
+    /// Encumbrance is at or above `rest.encumbered`.
+    Encumbered,
+    /// Mana is below `rest.mana_below`.
+    Mana,
+}
+
+impl fmt::Display for Why {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Wounded => "wounded",
+            Self::Fried => "fried",
+            Self::Encumbered => "encumbered",
+            Self::Mana => "out of mana",
+        })
+    }
+}
+
+/// Where the hunt is in its cycle.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Phase {
+    /// In the hunting ground.
+    Hunting,
+    /// Walking to the resting room.
+    ToRest(Why),
+    /// At the resting room, until the thresholds are met.
+    Resting(Why),
+    /// Walking back to the hunting room.
+    Returning,
+    /// At the hunting room, sending the prepare commands.
+    Preparing,
+}
+
+impl fmt::Display for Phase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Hunting => f.write_str("hunting"),
+            Self::ToRest(why) => write!(f, "{why}: walking to the resting room"),
+            Self::Resting(why) => write!(f, "resting ({why})"),
+            Self::Returning => f.write_str("rested: walking back"),
+            Self::Preparing => f.write_str("preparing"),
+        }
+    }
+}

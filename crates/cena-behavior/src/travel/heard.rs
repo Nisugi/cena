@@ -30,17 +30,37 @@ impl From<Receiver<ObservedEvent>> for Heard {
 }
 
 impl Heard {
-    pub(super) async fn recv(&mut self) -> Result<Event, RecvError> {
+    /// The next event, whichever kind the stream carries.
+    ///
+    /// # Errors
+    ///
+    /// The stream lagged or closed (`RecvError`).
+    pub async fn recv(&mut self) -> Result<Event, RecvError> {
         match self {
             Heard::Plain(events) => events.recv().await,
             Heard::Located(events) => events.recv().await.map(|located| located.event),
         }
     }
 
-    pub(super) fn try_recv(&mut self) -> Result<Event, TryRecvError> {
+    /// An event already waiting, or why not.
+    ///
+    /// # Errors
+    ///
+    /// Nothing waiting, lagged, or closed (`TryRecvError`).
+    pub fn try_recv(&mut self) -> Result<Event, TryRecvError> {
         match self {
             Heard::Plain(events) => events.try_recv(),
             Heard::Located(events) => events.try_recv().map(|located| located.event),
+        }
+    }
+
+    /// A second listener from this point on: what a hunt hands the walk it
+    /// runs inside itself, keeping its own stream to fold meanwhile.
+    #[must_use]
+    pub fn resubscribe(&self) -> Heard {
+        match self {
+            Heard::Plain(events) => Heard::Plain(events.resubscribe()),
+            Heard::Located(events) => Heard::Located(events.resubscribe()),
         }
     }
 }
