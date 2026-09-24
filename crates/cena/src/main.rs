@@ -64,6 +64,7 @@ mod commands;
 mod connector;
 mod frontend;
 mod interrupt;
+mod map_context;
 mod play;
 mod probe;
 mod roster;
@@ -320,7 +321,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // the connection, and opens another if the reason warrants it. Everything
     // below happens against whichever generation is current.
     let supervisor = tokio::spawn(session.run());
-    let frontend = frontend::Frontend::start(observer.clone(), handle.clone()).await;
+    let map = map_context::load();
+    let frontend = frontend::Frontend::start(observer.clone(), handle.clone(), &map).await;
 
     // --- Criterion 2: the room, from TYPED FRAMES --------------------------
     eprintln!("[waiting] for the first room description frame...");
@@ -365,7 +367,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     unless_interrupted(&interrupt, run_or_probe(&handle, &mut probe_events, &stop)).await;
 
-    let desk = travel::after_login(&handle, observer.clone(), &commands);
+    let desk = travel::after_login(&handle, observer.clone(), &commands, &map);
     unless_interrupted(&interrupt, desk).await;
 
     frontend::wait_for_stop(hold_for(frontend.is_some()), &supervisor, &interrupt).await;

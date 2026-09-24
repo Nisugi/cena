@@ -403,6 +403,12 @@ test("the history gap notice clears once the hole can no longer be in the Story"
 // its nodes, which is where the next two defects lived.
 
 class FakeNode {
+  toggleAttribute(name, value) { this[name] = value; }
+  querySelector(selector) {
+    this.selected ??= new Map();
+    if (!this.selected.has(selector)) this.selected.set(selector, new FakeNode('div'));
+    return this.selected.get(selector);
+  }
   constructor(tag) {
     this.tagName = tag; this.children = []; this.parent = null; this.own = "";
     this.classes = []; this.listeners = {}; this.scrollTop = 0; this.clientHeight = 100; this.hidden = false;
@@ -631,4 +637,3 @@ test("the hub shuts Hydra down after asking, and then stops reconnecting", () =>
   assert.equal(session.socket, null);
   assert.equal(element("connection-status").textContent, "Hydra has shut down");
 });
-
