@@ -1,0 +1,294 @@
+//! Hunt, wired to this binary: `;hunt <name>`, `;hunt stop`, `;hunt import`,
+//! `;hunt check` and `;hunt list` on Hydra's command line (`crate::commands`).
+//!
+//! The join only, as `travel.rs` is for travel: what a command means and
+//! what it does are `cena_behavior::hunt`'s; where the data directory is,
+//! who the character is and which map is loaded are known here. The map is
+//! travel's, loaded once and shared: a hunt walks with travel's own driver,
+//! so without a map there is no hunt, and `;hunt <name>` says so.
+//!
+//! # BUILT, NOT RUN
+//!
+//! Like everything in this binary that reaches the game (`main.rs`'s module
+//! docs), this has been compiled and never executed: only the author runs
+//! the binary (`CLAUDE.md`, Credentials). What it calls is tested in
+//! `cena-behavior`; what is untested is the wiring here.
+
+use std::io;
+use std::path::Path;
+use std::sync::Arc;
+
+use crate::commands::Commands;
+use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
+use cena_behavior::travel::Map;
+use cena_session::command::claimant::Claimed;
+use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
+
+/// Register hunt's words. The character's instance and name, when the login
+/// has said them, choose the character level of the chain; `map` is the one
+/// travel loaded, and `None` when travel has none.
+pub(crate) fn open(
+    handle: &SessionHandle,
+    observer: SessionObserver,
+    state: &GameState,
+    commands: &Commands,
+    map: Option<Arc<Map>>,
+) {
+    let who = state
+        .character
+        .instance
+        .clone()
+        .zip(state.character.name.clone());
+    let dir = cena_session::character_store::data_dir();
+    let desk = map.map(|map| Desk::new(map, dir.clone(), AuthorityToken(3)));
+    let handler = handle.clone();
+    commands.hunt(Arc::new(move |line: &str| {
+        let command = match parse_command(line)? {
+            Ok(command) => command,
+            Err(why) => {
+                handler.say(Notice::line(NoticeKind::Error, format!("Hunt: {why}")));
+                return Some(Claimed::Done);
+            }
+        };
+        match command {
+            Command::Run(_) | Command::Stop => {
+                let Some(desk) = desk.clone() else {
+                    handler.say(Notice::line(
+                        NoticeKind::Error,
+                        "Hunt: there is no map, so there is no hunting. Set the map and start Hydra again.",
+                    ));
+                    return Some(Claimed::Done);
+                };
+                let (handle, observer) = (handler.clone(), observer.clone());
+                tokio::spawn(async move {
+                    match observer.subscribe().await {
+                        Ok(joined) => {
+                            desk.run(&handle, joined, command);
+                        }
+                        Err(e) => handle.say(Notice::line(
+                            NoticeKind::Error,
+                            format!("Hunt: I could not read the session -- {e:?}."),
+                        )),
+                    }
+                });
+            }
+            Command::Import { .. } | Command::Check(_) | Command::List => {
+                let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
+                // Files are read and written, so not on the session's own thread.
+                tokio::task::spawn_blocking(move || run(&handle, &dir, who.as_ref(), command));
+            }
+            Command::Nothing => {}
+        }
+        Some(Claimed::Done)
+    }));
+    eprintln!(
+        "[hunt] ready: hunt <name>, hunt stop, hunt import <bigshot yaml>, hunt check <name>, hunt list"
+    );
+}
+
+/// What is said to the player.
+type Say<'a> = &'a dyn Fn(NoticeKind, String);
+
+fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, command: Command) {
+    let say = |kind: NoticeKind, text: String| handle.say(Notice::line(kind, text));
+    match command {
+        Command::Import { path, name } => import(dir, &path, name.as_deref(), &say),
+        Command::Check(name) => check(dir, who, &name, &say),
+        Command::List => list(dir, &say),
+        Command::Run(_) | Command::Stop | Command::Nothing => {}
+    }
+}
+
+/// Read a bigshot profile and write it as a Hydra one, never over a profile
+/// that is already there.
+fn import(dir: &Path, path: &str, name: Option<&str>, say: Say<'_>) {
+    let own = || {
+        Path::new(path)
+            .file_stem()
+            .map(|stem| stem.to_string_lossy().into_owned())
+    };
+    let Some(name) = name
+        .map(str::to_owned)
+        .or_else(own)
+        .and_then(|name| hunt::chain::file_name(&name))
+    else {
+        say(
+            NoticeKind::Error,
+            format!("Hunt: {path} gives no name a profile can have; say `as <name>`."),
+        );
+        return;
+    };
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) => {
+            say(NoticeKind::Error, format!("Hunt: cannot read {path}: {e}"));
+            return;
+        }
+    };
+    let brought = match hunt::import(&name, &text) {
+        Ok(brought) => brought,
+        Err(why) => {
+            say(
+                NoticeKind::Error,
+                format!("Hunt: {path} is not a bigshot profile: {why}"),
+            );
+            return;
+        }
+    };
+    let rendered = match brought.render() {
+        Ok(rendered) => rendered,
+        Err(why) => {
+            say(
+                NoticeKind::Error,
+                format!("Hunt: could not write the profile: {why}"),
+            );
+            return;
+        }
+    };
+    let Some(target) = hunt::chain::profile_path(dir, &name) else {
+        say(
+            NoticeKind::Error,
+            format!("Hunt: {name} is not a name a profile can have."),
+        );
+        return;
+    };
+    match hunt::chain::write_new(&target, &rendered) {
+        Ok(()) => say(
+            NoticeKind::Info,
+            format!("Hunt: imported {name} to {}", target.display()),
+        ),
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+            say(
+                NoticeKind::Error,
+                format!(
+                    "Hunt: {} is already there. Import `as` another name, or delete it first.",
+                    target.display()
+                ),
+            );
+            return;
+        }
+        Err(e) => {
+            say(
+                NoticeKind::Error,
+                format!("Hunt: cannot write {}: {e}", target.display()),
+            );
+            return;
+        }
+    }
+    if brought.notes.is_empty() {
+        say(
+            NoticeKind::Info,
+            "Hunt: everything in the bigshot profile was carried over.".to_owned(),
+        );
+    }
+    for note in &brought.notes {
+        say(NoticeKind::Warn, format!("Hunt: {note}"));
+    }
+}
+
+/// Read a profile as this character would run it, and say what is held.
+fn check(dir: &Path, who: Option<&(String, String)>, name: &str, say: Say<'_>) {
+    let (instance, character) = who.map_or((None, None), |(instance, character)| {
+        (Some(instance.as_str()), Some(character.as_str()))
+    });
+    if who.is_none() {
+        say(
+            NoticeKind::Warn,
+            "Hunt: the game has not said who this is yet, so the character's own file is not read."
+                .to_owned(),
+        );
+    }
+    let loaded = match hunt::load(dir, instance, character, name) {
+        Ok(loaded) => loaded,
+        Err(LoadError::Invalid(problems)) => {
+            for problem in problems {
+                say(NoticeKind::Error, format!("Hunt: {name}: {problem}"));
+            }
+            return;
+        }
+        Err(e) => {
+            say(NoticeKind::Error, format!("Hunt: {e}"));
+            return;
+        }
+    };
+    let sources: Vec<String> = loaded
+        .sources
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect();
+    say(
+        NoticeKind::Info,
+        format!(
+            "Hunt: {name} reads cleanly from {}",
+            sources.join(", then ")
+        ),
+    );
+    let profile = &loaded.profile;
+    say(
+        NoticeKind::Info,
+        format!(
+            "Hunt: {} target(s), {} routine(s), {} sequence(s); hunting room {}, resting room {}",
+            profile.targets.len(),
+            profile.routines.len(),
+            profile.sequences.len(),
+            room(profile.rooms.hunting),
+            room(profile.rooms.resting),
+        ),
+    );
+    for (place, step) in profile.held_steps() {
+        say(
+            NoticeKind::Warn,
+            format!(
+                "Hunt: {place} is held: `{}`: {}",
+                step.send,
+                step.held.as_deref().unwrap_or("")
+            ),
+        );
+    }
+    for sequence in profile.unwritten_sequences() {
+        say(
+            NoticeKind::Warn,
+            format!("Hunt: sequence {sequence} has no steps yet; the routine skips it."),
+        );
+    }
+}
+
+fn room(id: Option<u32>) -> String {
+    id.map_or_else(|| "unset".to_owned(), |id| id.to_string())
+}
+
+/// The profiles there are.
+fn list(dir: &Path, say: Say<'_>) {
+    let profiles = hunt::chain::profiles_dir(dir);
+    let mut names: Vec<String> = match std::fs::read_dir(&profiles) {
+        Ok(entries) => entries
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().is_some_and(|x| x == "toml"))
+            .filter_map(|path| {
+                path.file_stem()
+                    .map(|stem| stem.to_string_lossy().into_owned())
+            })
+            .collect(),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Vec::new(),
+        Err(e) => {
+            say(
+                NoticeKind::Error,
+                format!("Hunt: cannot read {}: {e}", profiles.display()),
+            );
+            return;
+        }
+    };
+    names.sort();
+    if names.is_empty() {
+        say(
+            NoticeKind::Info,
+            format!(
+                "Hunt: no profiles yet under {}. `hunt import <bigshot yaml>` brings one in.",
+                profiles.display()
+            ),
+        );
+    } else {
+        say(NoticeKind::Info, format!("Hunt: {}", names.join(", ")));
+    }
+}

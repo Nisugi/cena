@@ -511,6 +511,30 @@ impl CreatureInstance {
         self.current_hp() == 0
     }
 
+    /// A corpse: dead by the wire's flag or by hit points. The room list
+    /// carries `dead="1"` for a creature whose health was never reported,
+    /// so [`Self::dead`] alone misses it. MEASURED in a replay of a real
+    /// kill (`cena-behavior/tests/hunt_replay.rs`): the pegasus died with
+    /// no `health=` ever sent, and read as alive until it vanished.
+    #[must_use]
+    pub fn corpse(&self) -> bool {
+        self.flag(Classification::Dead) || self.dead()
+    }
+
+    /// Is it hostile? `None` until a `<crtrStatus>` has been seen for it
+    /// at all: the flag's absence means nothing before then. Once one has,
+    /// a creature without `hostile="1"` is not an enemy: a companion's
+    /// status carries only its health, and a hunt replayed on real wire
+    /// (`cena-behavior/tests/hunt_replay.rs`) targeted the author's own
+    /// battle mastodon under an any-creature rule before this existed.
+    #[must_use]
+    pub fn hostile(&self) -> Option<bool> {
+        if self.flags.is_empty() && self.stated_health.is_none() {
+            return None;
+        }
+        Some(self.flag(Classification::Hostile))
+    }
+
     /// Should this be attacked? (`valid_target?`, `creature.rb:642-651`):
     /// not dead by flag or HP, not an animated decoy (slush excepted), not
     /// a bare appendage (kraken tentacles excepted).

@@ -379,7 +379,9 @@
 //! [`actor`](cena_session::actor), [`supervisor`](cena_session::supervisor);
 //! [`cena_behavior`] with [`travel`](cena_behavior::travel) first;
 //! [`cena_ui`] and [`cena_web`] for the viewer; [`cena_host`] for the table;
-//! and [`play`](crate::play) for how the binary ties them together. For the
-//! reasoning behind any of it, `plan/12` first and `plan/05` beside it.
+//! and [`play`](crate::play) for how the binary ties them together. The
+//! words this page uses, and the ones that already mean two things, are in
+//! [`glossary`](crate::glossary). For the reasoning behind any of it,
+//! `plan/12` first and `plan/05` beside it.
 //! `research/` holds designs that were reversed or deferred, and is never
 //! instructions.

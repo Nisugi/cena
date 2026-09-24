@@ -54,14 +54,18 @@ pub use cena_model::movement::{self, MoveFeedback};
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
-pub use cena_model::state::{containers, gameobj, group, hands, stream_windows};
+pub use cena_model::state::{claim, containers, gameobj, group, hands, stream_windows};
 pub use cena_model::{ChunkLine, GameState, Room, RoomItem, UnknownTag};
+// The creature a hunt reads and the status words it asks about: `plan/30`
+// section 1's table of what the model answers a hunter with. Beside the
+// other model vocabulary re-exported for behaviors, on the same terms.
+pub use cena_model::{Able, CreatureInstance, Effect, Injuries, StatusName};
 pub use cena_model::{
     PsmCategory, PsmLine, PsmRanks, SkillKind, SkillLine, Society, Vital, spell_named, spells,
 };
 pub use cena_protocol::InventoryItem;
-pub use cena_protocol::frame::{Link, LinkKind};
-pub use cena_protocol::runs::Runs;
+pub use cena_protocol::frame::{Link, LinkKind, ProgressBar};
+pub use cena_protocol::runs::{Run, Runs};
 pub use character_store::MAX_STALE;
 pub use command::{
     CommandId, Envelope, Farewell, Gate, Origin, Outcome, PREEMPT_GRACE, Preempted, Refusal, Sent,

@@ -53,6 +53,13 @@ serde_json = "1"
 # carries its own and no target needs a system library.
 rusqlite = { version = "0.40", features = ["bundled"] }
 
+# Hunt profiles (`plan/30` section 5). TOML is the author's choice for what a
+# player writes by hand (Q4, 2026-09-24): "Stores that Hydra writes stay
+# JSON." Read and written through serde, so the profile is one typed struct
+# and a mistyped key is refused by name rather than ignored. Pure Rust, so
+# the Android and iOS core builds (`plan/12` section 1a) are unaffected.
+toml = "1"
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 

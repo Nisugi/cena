@@ -6,7 +6,8 @@
 //!
 //! **How the whole workspace fits together is [`architecture`]**: the crate
 //! graph, the flow of one line of game text, the three seams, and the tests
-//! that hold each in place. Read it first.
+//! that hold each in place. Read it first. **The words it uses are
+//! [`glossary`]**: one per concept, each linked to the item it names.
 //!
 //! This was M1's end-to-end slice, run for real: a single session narrated
 //! criterion by criterion, a looping `look` behind `--demo`, and measurement
@@ -36,6 +37,8 @@ mod ask;
 mod commands;
 mod connector;
 mod frontend;
+mod glossary;
+mod hunt;
 mod interrupt;
 mod learn;
 mod play;

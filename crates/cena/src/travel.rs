@@ -105,7 +105,10 @@ fn open_travel(
     {
         eprintln!("  !! [commands] no command line to give the symbol {symbol} to");
     }
-    let Some(map) = load_map(handle) else {
+    let map = load_map(handle).map(Arc::new);
+    // Hunt walks with travel's driver, so it takes the same map, or none.
+    crate::hunt::open(handle, observer.clone(), state, commands, map.clone());
+    let Some(map) = map else {
         // Travel's words are answered with why it cannot travel, and nothing
         // is sent. Every other word is the command line's to route.
         let told = handle.clone();
@@ -125,7 +128,7 @@ fn open_travel(
         return;
     };
     let travel = Desk::new(
-        Arc::new(map),
+        map,
         cena_session::character_store::data_dir(),
         AuthorityToken(2),
     );

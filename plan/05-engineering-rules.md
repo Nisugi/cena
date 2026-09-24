@@ -545,17 +545,19 @@ emit intent; the UI decides rendering. Where a script must know, it asks
 
 ## 8. Glossary — one word per concept
 
-Binding on code, docs and the Lua API. Add to it rather than inventing a synonym.
+Binding on code, docs and plans. Add to it rather than inventing a synonym.
 
-| Term | Means | Not |
-|---|---|---|
-| **Frame** | one typed thing the game told us | message, packet, event |
-| **Event** | a derived, momentary fact scripts subscribe to | signal, trigger, hook |
-| **Session** | one logged-in character | connection, account, client |
-| **Script** | one Lua program in a session | task, job, macro |
-| **Snapshot** | an owned, point-in-time copy of state | view, handle, ref |
-| **Ladder** | the resend/recovery protocol around one command | retry, loop |
-| **Adapter** | the per-game implementation (`GameAdapter`) | driver, backend |
+**The glossary is `crates/cena/src/glossary.rs`**, published with the rustdoc beside the
+architecture page. Every term there links to the item it names, and broken intra-doc links
+are denied, so a renamed type without a renamed entry is a red build.
+
+> **MOVED 2026-09-24.** This section held a seven-row table. It had drifted: **Script** was
+> "one Lua program in a session" (scripting is deferred, not built), **Adapter** was
+> `GameAdapter` (refused, `12` §9d), and **Ladder** was "the resend/recovery protocol around
+> one command", Lich's `fput`, which Hydra builds as the round trip while the code uses
+> "ladder" for three other things. None of generation, authority, gate, guard or held was in
+> it. The glossary keeps all three under **Retired** so an old document still reads, and it
+> lists the words that already mean two things in the code (`claim` means three).
 
 ---
 

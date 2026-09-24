@@ -26,6 +26,7 @@ pub(crate) type Handler = Arc<dyn Fn(&str) -> Option<Claimed> + Send + Sync>;
 #[derive(Clone, Default)]
 pub(crate) struct Commands {
     travel: Arc<OnceLock<Handler>>,
+    hunt: Arc<OnceLock<Handler>>,
 }
 
 impl Commands {
@@ -34,15 +35,31 @@ impl Commands {
     pub(crate) fn install(handle: &SessionHandle) -> Self {
         let commands = Self::default();
         let travel = Arc::clone(&commands.travel);
+        let hunt = Arc::clone(&commands.hunt);
         let told = handle.clone();
         let runner: Runner = Arc::new(move |line: &str| {
-            if let Some(handler) = travel.get() {
-                return handler(line).unwrap_or(Claimed::Unknown);
+            // Each family answers `Some` for its own words and `None` for
+            // the rest; the first to answer has the line.
+            for family in [&travel, &hunt] {
+                if let Some(handler) = family.get()
+                    && let Some(claimed) = handler(line)
+                {
+                    return claimed;
+                }
             }
-            if cena_behavior::travel::parse_command(line).is_some() {
+            let starting = if cena_behavior::travel::parse_command(line).is_some() {
+                Some("Travel")
+            } else if cena_behavior::hunt::parse_command(line).is_some() {
+                Some("Hunt")
+            } else {
+                None
+            };
+            if let Some(family) = starting {
                 told.say(Notice::line(
                     NoticeKind::Warn,
-                    "Travel is still starting; nothing was sent. Try again once logged in.",
+                    format!(
+                        "{family} is still starting; nothing was sent. Try again once logged in."
+                    ),
                 ));
                 return Claimed::Done;
             }
@@ -59,6 +76,13 @@ impl Commands {
     pub(crate) fn travel(&self, handler: Handler) {
         if self.travel.set(handler).is_err() {
             eprintln!("  !! [commands] travel was registered twice; keeping the first");
+        }
+    }
+
+    /// Route hunt's words to `handler` from now on. Once, as for travel.
+    pub(crate) fn hunt(&self, handler: Handler) {
+        if self.hunt.set(handler).is_err() {
+            eprintln!("  !! [commands] hunt was registered twice; keeping the first");
         }
     }
 }

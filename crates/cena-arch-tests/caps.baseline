@@ -212,3 +212,9 @@ crates/cena-session/src/combat_recorder.rs 500
 # the constants and the pump -- 158 lines -- so its cap is the rule above:
 # 158 + 50, rounded up to the next 50.
 crates/cena-web/src/presentation.rs 250
+
+# NEW SPLIT PARENT, 2026-09-24. crates/cena-behavior/src/hunt.rs is the facade
+# over hunt/ (the profile, guards, chain, importer, YAML reader and command
+# parser: M6a step 4). It holds the module docs and the re-exports, 49 lines,
+# so its cap is the rule above: 49 + 50, rounded up to the next 50.
+crates/cena-behavior/src/hunt.rs 100

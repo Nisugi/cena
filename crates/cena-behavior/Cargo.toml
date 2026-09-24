@@ -9,6 +9,10 @@ publish.workspace = true
 # depends on nothing, so the edge points downward.
 cena-map.workspace = true
 cena-session.workspace = true
+# The hunt profile (`hunt/profile.rs`) is a serde struct read from and
+# written to TOML; the bigshot importer writes one.
+serde.workspace = true
+toml.workspace = true
 tokio = { version = "1", features = ["macros", "rt", "time"] }
 # CancellationToken: plan/12 section 4.3's PREEMPT_GRACE is measured against
 # it, and section 5.5 names it as the mechanism for "every behavior is
