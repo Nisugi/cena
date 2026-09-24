@@ -1,4 +1,4 @@
-import { HydraSession, takeLaunchToken } from "./session.js";
+import { HydraSession, launchSession, takeLaunchToken } from "./session.js";
 
 // Despana presentation adapted from VellumFE's despana/app.js and app.css.
 // Hydra uses its own DTOs, and never interprets game text or presets as HTML/CSS.
@@ -56,6 +56,8 @@ export function lifecycleText(lifecycle) {
 }
 
 export function mount(document, environment) {
+  // Read before the token: taking the token removes the whole fragment.
+  const sessionId = launchSession(environment.location);
   const token = takeLaunchToken(environment.location, environment.history);
   const element = (id) => document.getElementById(id);
   const input = element("command-input");
@@ -304,7 +306,7 @@ export function mount(document, environment) {
 
   const protocol = environment.location.protocol === "https:" ? "wss:" : "ws:";
   const session = new HydraSession({ url: `${protocol}//${environment.location.host}/ws`, token,
-    onChange: render, WebSocketImpl: environment.WebSocket });
+    sessionId, onChange: render, WebSocketImpl: environment.WebSocket });
   const pairFromFragment = () => {
     // A pairing URL opened in this same tab changes only the fragment: mount
     // does not run again. Strip it before rendering or opening another socket.

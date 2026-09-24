@@ -195,8 +195,10 @@ const HANDLE_OWNER: (&str, &str) = ("crates/cena-session/src/actor/handle.rs", "
 const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
     (
         "crates/cena-web/src/server.rs",
-        "Shared",
-        "The embedded frontend's manual-input surface. Found by review finding 1 \
+        "Viewed",
+        "The embedded frontend's manual-input surface, one per served session \
+     since plan/29 step 5 (it was one `Shared` for the only session; the \
+     reasoning below is unchanged by the move). Found by review finding 1 \
      (it evaded the old needle by being `pub(crate)`), and allowed rather than \
      reported, on the type's own terms: SessionHandle is documented as \
      'Cloneable, so a behavior and the manual-input surface hold the same \
@@ -218,7 +220,7 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
          It is the handle `SupervisedSession::numbered` returned, kept for the \
          session's whole life in the table, and it cannot outlive the \
          connection it reaches: `Host::take` removes the entry and \
-         `Hosted::stop` consumes it. The same premise as `Shared` above holds \
+         `Hosted::stop` consumes it. The same premise as `Viewed` above holds \
          -- every field of a SessionHandle is a channel sender or an \
          Arc-shared slot, so a frontend's clone taken from this entry cannot \
          drift from it -- and sends from a frontend stay generation-pinned. \

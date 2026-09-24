@@ -9,7 +9,7 @@ mod tests;
 
 pub(crate) use hub::{Hub, encode};
 
-use crate::server::Shared;
+use crate::server::Viewed;
 use cena_session::{Event, ObserveError, ObservedEvent, SessionObserver, Snapshot, State};
 use pending::Pending;
 use std::future::Future;
@@ -77,13 +77,13 @@ where
 
 type Subscription = (Snapshot, broadcast::Receiver<ObservedEvent>);
 
-pub(crate) async fn pump(observer: SessionObserver, shared: Arc<Shared>) -> std::io::Result<()> {
-    project(|| observer.subscribe(), shared).await
+pub(crate) async fn pump(observer: SessionObserver, viewed: Arc<Viewed>) -> std::io::Result<()> {
+    project(|| observer.subscribe(), viewed).await
 }
 
 /// The pump over any source of subscriptions: [`pump`] passes the session's,
 /// and a test passes one that fails on cue.
-async fn project<F, Fut>(mut subscribe: F, shared: Arc<Shared>) -> std::io::Result<()>
+async fn project<F, Fut>(mut subscribe: F, shared: Arc<Viewed>) -> std::io::Result<()>
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<Subscription, ObserveError>>,

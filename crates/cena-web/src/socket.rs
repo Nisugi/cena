@@ -2,9 +2,9 @@
 //! a bounded duplicate set, and no command outbox or retry path.
 
 use crate::presentation::encode;
-use crate::server::Shared;
+use crate::server::{Asked, Shared, Viewed};
 use axum::extract::ws::{CloseFrame, Message, WebSocket};
-use cena_session::{Generation, Outcome};
+use cena_session::{Generation, Outcome, SessionId};
 use cena_ui::{ClientMessage, ReceiptStatus, ServerMessage, WIRE_VERSION, validate_command};
 use std::collections::HashSet;
 use std::future::Future;
@@ -24,20 +24,25 @@ pub(crate) async fn serve(
     shared: Arc<Shared>,
     _permit: OwnedSemaphorePermit,
 ) {
-    let authenticated = tokio::select! {
-        () = shared.stop.cancelled() => false,
+    let asked = tokio::select! {
+        () = shared.stop.cancelled() => None,
         result = tokio::time::timeout(AUTH_TIMEOUT, socket.recv()) => match result {
             Ok(Some(Ok(Message::Text(text)))) => authenticate(&text, &shared.token),
-            _ => false,
+            _ => None,
         }
     };
-    if !authenticated {
+    let Some(asked) = asked else {
         close(&mut socket, 1008, "Authentication required").await;
         return;
-    }
+    };
+    // Which session this viewer is for: the one it named, or the only one.
+    let Some(viewed) = shared.choose(asked) else {
+        close(&mut socket, 1008, "No such session; open the page for one").await;
+        return;
+    };
     let initial = tokio::select! {
-        () = shared.stop.cancelled() => None,
-        result = tokio::time::timeout(AUTH_TIMEOUT, attach(&shared)) => result.ok(),
+        () = viewed.stop.cancelled() => None,
+        result = tokio::time::timeout(AUTH_TIMEOUT, attach(&viewed)) => result.ok(),
     };
     let Some((snapshot, mut events)) = initial else {
         close(&mut socket, 1013, "Session unavailable").await;
@@ -50,7 +55,7 @@ pub(crate) async fn serve(
     let mut pending: Option<Submission> = None;
     loop {
         tokio::select! {
-            () = shared.stop.cancelled() => { close(&mut socket, 1001, "Viewer stopped").await; return; }
+            () = viewed.stop.cancelled() => { close(&mut socket, 1001, "Viewer stopped").await; return; }
             update = events.recv() => if let Ok(message) = update {
                 if !write(&mut socket, &message).await { return; }
             } else {
@@ -94,7 +99,7 @@ pub(crate) async fn serve(
                         // This comparison can only refuse a viewer that is
                         // behind the hub, which is behind the session.
                         let refusal = {
-                            let hub = shared.hub.lock().await;
+                            let hub = viewed.hub.lock().await;
                             if session != hub.session || generation != hub.generation {
                                 Some("Session or generation changed; command refused")
                             } else if pending.is_some() { Some("A command is already awaiting its receipt") }
@@ -108,7 +113,7 @@ pub(crate) async fn serve(
                             let Ok(number) = generation.parse::<u32>() else {
                                 close(&mut socket, 1008, "Unsupported generation").await; return;
                             };
-                            let handle = shared.handle.clone();
+                            let handle = viewed.handle.clone();
                             pending = Some(Box::pin(async move {
                                 let outcome = handle.send_manual_at(Generation(number), &line, COMMAND_TIMEOUT).await;
                                 let (status, detail) = outcome_receipt(&outcome);
@@ -125,24 +130,47 @@ pub(crate) async fn serve(
     }
 }
 
-fn authenticate(text: &str, expected: &str) -> bool {
-    let Ok(ClientMessage::Authenticate { version, token }) = serde_json::from_str(text) else {
-        return false;
+/// The session a correctly authenticated viewer asked for, or `None` when
+/// authentication failed.
+///
+/// A named session must be a canonical decimal id; anything else fails
+/// authentication rather than being read as "none named".
+fn authenticate(text: &str, expected: &str) -> Option<Asked> {
+    let Ok(ClientMessage::Authenticate {
+        version,
+        token,
+        session,
+    }) = serde_json::from_str(text)
+    else {
+        return None;
     };
     // Fixed-width comparison avoids revealing matching token prefixes.
-    version == WIRE_VERSION
+    let matched = version == WIRE_VERSION
         && token.len() == expected.len()
         && token
             .bytes()
             .zip(expected.bytes())
             .fold(0_u8, |difference, (a, b)| difference | (a ^ b))
-            == 0
+            == 0;
+    if !matched {
+        return None;
+    }
+    match session {
+        None => Some(Asked::Only),
+        Some(id) => {
+            let canonical = !id.is_empty()
+                && id.bytes().all(|b| b.is_ascii_digit())
+                && (id == "0" || !id.starts_with('0'));
+            let number = id.parse::<u32>().ok().filter(|_| canonical)?;
+            Some(Asked::Session(SessionId(number)))
+        }
+    }
 }
 
-async fn attach(shared: &Shared) -> (Arc<str>, broadcast::Receiver<Arc<str>>) {
+async fn attach(viewed: &Viewed) -> (Arc<str>, broadcast::Receiver<Arc<str>>) {
     loop {
         {
-            let hub = shared.hub.lock().await;
+            let hub = viewed.hub.lock().await;
             if let Some(snapshot) = &hub.snapshot {
                 return (Arc::clone(snapshot), hub.updates.subscribe());
             }
@@ -231,25 +259,52 @@ mod tests {
     #[test]
     fn authentication_requires_first_message_kind_version_and_full_token() {
         let token = "a".repeat(64);
-        assert!(authenticate(
-            &format!(r#"{{"kind":"authenticate","version":1,"token":"{token}"}}"#),
-            &token
-        ));
+        assert_eq!(
+            authenticate(
+                &format!(r#"{{"kind":"authenticate","version":1,"token":"{token}"}}"#),
+                &token
+            ),
+            Some(Asked::Only),
+            "authenticated, naming no session"
+        );
         for text in [
             r#"{"kind":"authenticate","version":2,"token":"a"}"#,
             r#"{"kind":"command","version":1}"#,
             "{}",
             "not json",
         ] {
-            assert!(!authenticate(text, &token));
+            assert_eq!(authenticate(text, &token), None);
         }
-        assert!(!authenticate(
-            &format!(
-                r#"{{"kind":"authenticate","version":1,"token":"{}b"}}"#,
-                "a".repeat(63)
+        assert_eq!(
+            authenticate(
+                &format!(
+                    r#"{{"kind":"authenticate","version":1,"token":"{}b"}}"#,
+                    "a".repeat(63)
+                ),
+                &token
             ),
-            &token
-        ));
+            None
+        );
+    }
+
+    /// `plan/29` step 5: a viewer names the session its page is for. A
+    /// malformed id fails authentication rather than being read as "none".
+    #[test]
+    fn a_viewer_names_its_session_by_canonical_decimal_id() {
+        let token = "a".repeat(64);
+        let with = |session: &str| {
+            authenticate(
+                &format!(
+                    r#"{{"kind":"authenticate","version":1,"token":"{token}","session":"{session}"}}"#
+                ),
+                &token,
+            )
+        };
+        assert_eq!(with("0"), Some(Asked::Session(SessionId(0))));
+        assert_eq!(with("7"), Some(Asked::Session(SessionId(7))));
+        for bad in ["", "07", "-1", "x", "4294967296"] {
+            assert_eq!(with(bad), None, "{bad:?} is not a session id");
+        }
     }
 
     #[test]

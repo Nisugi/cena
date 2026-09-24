@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { HydraSession, MAX_STORY_LINES, commandError, takeLaunchToken } from "../session.js";
+import { HydraSession, MAX_STORY_LINES, commandError, launchSession, takeLaunchToken } from "../session.js";
 import { lifecycleText, mount, placeLine } from "../app.js";
 
 // Shared synthetic contract fixture, also round-tripped by Rust cena-ui tests.
@@ -48,6 +48,23 @@ test("launch token is removed before use and query strings never supply authenti
   assert.equal(token, "synthetic-token");
   assert.deepEqual(writes, [[null, "", "/"]]);
   assert.equal(takeLaunchToken({ hash: "", pathname: "/", search: "?token=ignored" }, {}), "");
+});
+
+test("a page names its session from the launch fragment, and says so when it authenticates", () => {
+  // plan/29 step 5: one listener serves every character, so a page opened for
+  // one of them names it. Read before the token, which clears the fragment.
+  assert.equal(launchSession({ hash: "#token=t&session=7" }), "7");
+  assert.equal(launchSession({ hash: "#token=t" }), null);
+  for (const bad of ["07", "-1", "x", ""]) {
+    assert.equal(launchSession({ hash: `#token=t&session=${bad}` }), null, bad);
+  }
+  const session = new HydraSession({ url: "ws://127.0.0.1/ws", token: "synthetic-token", sessionId: "7",
+    WebSocketImpl: FakeSocket, onChange() {}, schedule() { return 1; }, cancel() {} });
+  session.connect();
+  session.socket.open();
+  assert.deepEqual(session.socket.sent,
+    [{ kind: "authenticate", version: 1, token: "synthetic-token", session: "7" }]);
+  session.close();
 });
 
 test("authenticate is first; commands require authenticated snapshot and Ready lifecycle", () => {

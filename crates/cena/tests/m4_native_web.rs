@@ -8,7 +8,7 @@
 use cena_platform::AnsweringSource;
 use cena_session::{
     AuthorityToken, ConnectError, Connector, Event, Generation, Origin, Outcome, Session,
-    SessionObserver, State, SupervisedSession,
+    SessionId, SessionObserver, State, SupervisedSession,
 };
 use cena_ui::{
     ClientMessage, HandView, LifecycleView, ReceiptStatus, ServerMessage, SessionView, StoryLine,
@@ -40,6 +40,11 @@ fn panel_reply() -> Vec<u8> {
 }
 
 async fn browser(pairing: &str) -> TestResult<Browser> {
+    browser_for(pairing, None).await
+}
+
+/// A viewer for session `session`, as a page opened from its own link is.
+async fn browser_for(pairing: &str, session: Option<&str>) -> TestResult<Browser> {
     let (base, token) = pairing
         .split_once("/#token=")
         .ok_or_else(|| io::Error::other("missing pairing fragment"))?;
@@ -52,10 +57,19 @@ async fn browser(pairing: &str) -> TestResult<Browser> {
         &ClientMessage::Authenticate {
             version: WIRE_VERSION,
             token: token.to_owned(),
+            session: session.map(str::to_owned),
         },
     )
     .await?;
     Ok(socket)
+}
+
+/// The next thing the server does with `socket` is close it.
+async fn closes(socket: &mut Browser) -> bool {
+    matches!(
+        tokio::time::timeout(DEADLINE, socket.next()).await,
+        Ok(Some(Ok(Message::Close(_)) | Err(_)) | None)
+    )
 }
 
 async fn send(socket: &mut Browser, message: &ClientMessage) -> TestResult {
@@ -468,10 +482,12 @@ async fn websocket_requires_local_origin_and_auth_before_state_or_native_command
         ClientMessage::Authenticate {
             version: WIRE_VERSION,
             token: "incorrect".into(),
+            session: None,
         },
         ClientMessage::Authenticate {
             version: WIRE_VERSION + 1,
             token: token.into(),
+            session: None,
         },
         command("0", "0", "unauthenticated", "quit"),
     ] {
@@ -645,4 +661,64 @@ async fn exhausted_request_budget_refuses_before_close_and_fresh_connection_can_
     web.await.unwrap().unwrap();
     stop_session.cancel();
     actor.await.unwrap();
+}
+
+/// `plan/29` step 5: one listener serves every character, each on its own
+/// page. A page names its session; one that names none, with two attached,
+/// is refused rather than shown either -- a command typed there would have
+/// no character to go to.
+#[tokio::test]
+async fn one_listener_serves_each_session_on_its_own_page() {
+    let (a_source, a_transcript) = AnsweringSource::logged_in(ROOM);
+    let (b_source, b_transcript) = AnsweringSource::logged_in(ROOM);
+    let a = Session::numbered(SessionId(0), a_source);
+    let b = Session::numbered(SessionId(1), b_source);
+    let (a_handle, a_observer, a_stop) = (a.handle(), a.observer(), a.cancel_token());
+    let (b_handle, b_observer, b_stop) = (b.handle(), b.observer(), b.cancel_token());
+    let a_actor = tokio::spawn(a.into_actor().run());
+    let b_actor = tokio::spawn(b.into_actor().run());
+    await_ready(&a_observer, Generation::FIRST).await.unwrap();
+    await_ready(&b_observer, Generation::FIRST).await.unwrap();
+
+    let server = WebServer::open().await.unwrap();
+    let sessions = server.sessions();
+    sessions.attach(a_observer, a_handle);
+    sessions.attach(b_observer, b_handle);
+    let pairing = server.pairing_url();
+    let stop_web = CancellationToken::new();
+    let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
+
+    let mut unnamed = browser(&pairing).await.unwrap();
+    assert!(closes(&mut unnamed).await, "two sessions and none named");
+
+    let mut page = browser_for(&pairing, Some("1")).await.unwrap();
+    let ServerMessage::Snapshot {
+        session,
+        generation,
+        ..
+    } = receive(&mut page).await.unwrap()
+    else {
+        panic!("a named session's page opens on its snapshot");
+    };
+    assert_eq!(session, "1");
+    send(&mut page, &command(&session, &generation, "look-1", "look"))
+        .await
+        .unwrap();
+    assert_eq!(
+        receipt(&mut page, "look-1", &mut Vec::new()).await.unwrap(),
+        ReceiptStatus::Sent
+    );
+    assert_eq!(b_transcript.lines(), ["look"], "the page's own session");
+    assert!(a_transcript.lines().is_empty(), "and no other");
+
+    // Detached, its page is closed; the session itself runs on.
+    sessions.detach(SessionId(1));
+    assert!(closes(&mut page).await, "a detached session's page closes");
+    assert!(!b_actor.is_finished());
+
+    stop_web.cancel();
+    web.await.unwrap().unwrap();
+    a_stop.cancel();
+    b_stop.cancel();
+    let _ = (a_actor.await, b_actor.await);
 }

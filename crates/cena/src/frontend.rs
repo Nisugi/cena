@@ -12,28 +12,40 @@ use tokio_util::sync::CancellationToken;
 pub(crate) struct Frontend {
     stop: CancellationToken,
     task: JoinHandle<std::io::Result<()>>,
+    sessions: cena_web::Sessions,
+    pairing: String,
 }
 
 impl Frontend {
-    /// Bind only when explicitly selected. Failure leaves the CLI/session path
-    /// available and is reported, rather than bypassing native shutdown.
+    /// Bind for one session, when `--web` asked for it. Failure leaves the
+    /// CLI/session path available and is reported, rather than bypassing
+    /// native shutdown.
     pub(crate) async fn start(observer: SessionObserver, handle: SessionHandle) -> Option<Self> {
+        let frontend = Self::open().await?;
+        frontend.attach(None, observer, handle);
+        Some(frontend)
+    }
+
+    /// Bind, serving no session yet, when `--web` asked for it; see
+    /// [`Self::attach`]. One listener serves every character (`plan/23` §D1a).
+    pub(crate) async fn open() -> Option<Self> {
         if !requested() {
             return None;
         }
-        match cena_web::WebServer::bind(observer.clone(), handle).await {
+        match cena_web::WebServer::open().await {
             Ok(server) => {
                 let stop = CancellationToken::new();
-                // Explicit pairing handoff to the local operator, printed when
-                // the session is Ready rather than at bind: printed at bind it
-                // scrolled away under the login burst before anyone could use
-                // it (author, 2026-09-23). Never into the game recorder or
-                // normal application logs.
-                tokio::spawn(announce(observer, server.pairing_url(), stop.clone()));
+                let sessions = server.sessions();
+                let pairing = server.pairing_url();
                 let shutdown = stop.clone();
                 let task =
                     tokio::spawn(async move { server.run(shutdown.cancelled_owned()).await });
-                Some(Self { stop, task })
+                Some(Self {
+                    stop,
+                    task,
+                    sessions,
+                    pairing,
+                })
             }
             Err(error) => {
                 eprintln!(
@@ -42,6 +54,31 @@ impl Frontend {
                 None
             }
         }
+    }
+
+    /// Serve one more session. `character` names it when several run: its
+    /// page's link then carries `&session=N`, and the announcement says whose
+    /// it is.
+    ///
+    /// The link is the pairing handoff to the local operator, printed when the
+    /// session is `Ready` rather than at bind: printed at bind it scrolled
+    /// away under the login burst before anyone could use it (author,
+    /// 2026-09-23). Never into the game recorder or normal application logs.
+    pub(crate) fn attach(
+        &self,
+        character: Option<&str>,
+        observer: SessionObserver,
+        handle: SessionHandle,
+    ) {
+        let (url, tag) = match character {
+            Some(name) => (
+                format!("{}&session={}", self.pairing, handle.session().0),
+                format!("[{name}] "),
+            ),
+            None => (self.pairing.clone(), String::new()),
+        };
+        self.sessions.attach(observer.clone(), handle);
+        tokio::spawn(announce(observer, url, tag, self.stop.clone()));
     }
 
     /// Stop serving without changing the game's command authority.
@@ -64,15 +101,15 @@ impl Frontend {
 /// Once per generation: a reconnect earns a fresh reminder, a lagged
 /// resubscription does not. Reads the observer's snapshot first, so a session
 /// that was already Ready when this started is announced too.
-async fn announce(observer: SessionObserver, url: String, stop: CancellationToken) {
+async fn announce(observer: SessionObserver, url: String, tag: String, stop: CancellationToken) {
     let mut announced: Option<Generation> = None;
     let mut tell = |generation: Generation| {
         if announced != Some(generation) {
             announced = Some(generation);
             eprintln!(
-                "[web] Ready. Play in the browser; the terminal shows only Hydra's own messages."
+                "{tag}[web] Ready. Play in the browser; the terminal shows only Hydra's own messages."
             );
-            eprintln!("[web] Open this private pairing URL: {url}");
+            eprintln!("{tag}[web] Open this private pairing URL: {url}");
         }
     };
     loop {

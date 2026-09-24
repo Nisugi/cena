@@ -23,6 +23,11 @@ pub enum ClientMessage {
         version: u16,
         /// The pairing token, compared in full against the listener's secret.
         token: String,
+        /// Which session this viewer is for, as a canonical decimal string --
+        /// the page's own URL names it when several characters run
+        /// (`plan/29` step 5). Absent: the only session, when there is one.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        session: Option<String>,
     },
     /// `kind: "command"`: one manual command line, never retried automatically.
     Command {

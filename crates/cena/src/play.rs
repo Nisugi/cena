@@ -77,28 +77,15 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
     let pin = dir.join(cena_platform::PIN_FILENAME);
     let turn = Arc::default();
     let mut host = Host::new();
+    // One listener for every character, each with its own page (`plan/29`
+    // step 5); each page's link is printed when its character is `Ready`.
+    let frontend = frontend::Frontend::open().await;
     let mut started = Vec::new();
     for typed in logins {
-        if let Some(one) = start(&mut host, typed, &pin, &turn) {
+        if let Some(one) = start(&mut host, typed, &pin, &turn, frontend.as_ref()) {
             started.push(one);
         }
     }
-
-    let frontend = match host.sessions().next() {
-        Some((_, first)) => {
-            let frontend =
-                frontend::Frontend::start(first.observer.clone(), first.handle.clone()).await;
-            if frontend.is_some() && started.len() > 1 {
-                eprintln!(
-                    "[web] the page shows {} only; one page for every character is the hub, \
-                     plan/29 step 5",
-                    first.who.character
-                );
-            }
-            frontend
-        }
-        None => None,
-    };
 
     eprintln!(
         "[play] {} session(s) running; Ctrl-C quits them all",
@@ -151,6 +138,7 @@ fn start(
     typed: Typed,
     pin: &Path,
     turn: &Arc<std::sync::Mutex<()>>,
+    web: Option<&frontend::Frontend>,
 ) -> Option<Started> {
     let character = typed.character.clone();
     let (account, game) = (typed.account.clone(), typed.game_code.clone());
@@ -178,6 +166,13 @@ fn start(
     let (events, combat, player) = attached?;
     let hosted = host.get(id)?;
     let commands = Commands::install(&hosted.handle);
+    if let Some(web) = web {
+        web.attach(
+            Some(&character),
+            hosted.observer.clone(),
+            hosted.handle.clone(),
+        );
+    }
     let watcher = tokio::spawn(run::watch_events(events, false, format!("[{character}]")));
     proven.on_ready(&hosted.observer, turn);
     tokio::spawn(after_ready(

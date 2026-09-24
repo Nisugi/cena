@@ -3,6 +3,14 @@ export const MAX_STORY_LINES = 1000;
 const decimal = (value) => typeof value === "string" && /^(0|[1-9][0-9]{0,19})$/.test(value)
   && BigInt(value) <= 18446744073709551615n;
 
+// Which session this page is for, from the launch fragment (`#token=…&session=N`).
+// Read BEFORE takeLaunchToken, which removes the fragment. `null`: the page
+// names none, and the server serves its only session.
+export function launchSession(location) {
+  const session = new URLSearchParams(location.hash.slice(1)).get("session");
+  return decimal(session) ? session : null;
+}
+
 export function takeLaunchToken(location, history) {
   const token = new URLSearchParams(location.hash.slice(1)).get("token") || "";
   // Remove all fragment material before opening a socket or touching the view.
@@ -65,10 +73,12 @@ function validView(view) {
 }
 
 export class HydraSession {
-  constructor({ url, token, onChange, WebSocketImpl = WebSocket,
+  constructor({ url, token, sessionId = null, onChange, WebSocketImpl = WebSocket,
     schedule = setTimeout, cancel = clearTimeout }) {
     this.url = url;
     this.token = token;
+    // The session this page is for, or null for the server's only session.
+    this.sessionId = sessionId;
     this.onChange = onChange;
     this.WebSocketImpl = WebSocketImpl;
     // Browser timer functions must not be invoked with the session as receiver.
@@ -134,7 +144,9 @@ export class HydraSession {
     socket.onopen = () => {
       if (this.socket !== socket) return;
       this.state.connection = "authenticating";
-      socket.send(JSON.stringify({ kind: "authenticate", version: 1, token: this.token }));
+      const hello = { kind: "authenticate", version: 1, token: this.token };
+      if (this.sessionId !== null) hello.session = this.sessionId;
+      socket.send(JSON.stringify(hello));
       this.emit();
     };
     socket.onmessage = (event) => {

@@ -9,7 +9,8 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use cena_session::{SessionHandle, SessionObserver};
+use cena_session::{SessionHandle, SessionId, SessionObserver};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::future::{Future, IntoFuture};
 use std::io;
@@ -27,16 +28,50 @@ pub(crate) struct Shared {
     pub(crate) authority: String,
     pub(crate) origin: String,
     csp: HeaderValue,
-    pub(crate) hub: Mutex<Hub>,
-    pub(crate) handle: SessionHandle,
+    /// Every session a viewer can attach to, by id (`plan/29` step 5). One
+    /// listener serves them all (`plan/23` §D1a); each has its own hub.
+    pub(crate) sessions: std::sync::Mutex<BTreeMap<SessionId, Arc<Viewed>>>,
     pub(crate) clients: Arc<Semaphore>,
     pub(crate) stop: CancellationToken,
 }
 
-#[cfg(test)]
 impl Shared {
-    /// State with no listener and no session behind it, so a test can drive
-    /// the presentation pump directly. The handle's inbox has no reader.
+    /// The session a viewer asked for; or, when it named none, the only one.
+    pub(crate) fn choose(&self, asked: Asked) -> Option<Arc<Viewed>> {
+        let sessions = self
+            .sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        match asked {
+            Asked::Session(id) => sessions.get(&id).cloned(),
+            Asked::Only if sessions.len() == 1 => sessions.values().next().cloned(),
+            Asked::Only => None,
+        }
+    }
+}
+
+/// Which session an authenticated viewer is for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Asked {
+    /// It named none: the only session, when there is exactly one.
+    Only,
+    /// It named this one.
+    Session(SessionId),
+}
+
+/// One session as the web frontend sees it: its presentation hub, the
+/// handle its viewers' commands go through, and the stop for its pump.
+pub(crate) struct Viewed {
+    pub(crate) hub: Mutex<Hub>,
+    pub(crate) handle: SessionHandle,
+    /// Cancelled when the session is detached, or the whole server stops.
+    pub(crate) stop: CancellationToken,
+}
+
+#[cfg(test)]
+impl Viewed {
+    /// A session view with no session behind it, so a test can drive the
+    /// presentation pump directly. The handle's inbox has no reader.
     pub(crate) fn for_test() -> Arc<Self> {
         let handle = SessionHandle::new(
             tokio::sync::mpsc::channel(1).0,
@@ -44,23 +79,70 @@ impl Shared {
             tokio::sync::broadcast::channel(1).0,
         );
         Arc::new(Self {
-            token: String::new(),
-            authority: String::new(),
-            origin: String::new(),
-            csp: HeaderValue::from_static("default-src 'none'"),
             hub: Mutex::new(Hub::new()),
             handle,
-            clients: Arc::new(Semaphore::new(MAX_CLIENTS)),
             stop: CancellationToken::new(),
         })
     }
 }
 
-/// A bound, authenticated, single-session viewer. Binding never logs in or
-/// waits for the session actor. Start `run` alongside that actor.
+/// Attach and detach sessions on a [`WebServer`]. Cloneable, and usable after
+/// `run` has taken the server -- which is when a session table adds and
+/// removes characters.
+#[derive(Clone)]
+pub struct Sessions {
+    shared: Arc<Shared>,
+}
+
+impl fmt::Debug for Sessions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Sessions").finish_non_exhaustive()
+    }
+}
+
+impl Sessions {
+    /// Serve `handle`'s session to viewers, and start its presentation pump.
+    /// Replaces an earlier attachment of the same session.
+    pub fn attach(&self, observer: SessionObserver, handle: SessionHandle) {
+        let id = handle.session();
+        let viewed = Arc::new(Viewed {
+            hub: Mutex::new(Hub::new()),
+            handle,
+            stop: self.shared.stop.child_token(),
+        });
+        let replaced = self
+            .shared
+            .sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(id, Arc::clone(&viewed));
+        if let Some(old) = replaced {
+            old.stop.cancel();
+        }
+        // The pump's ending is this session's own: an owner gone ends this
+        // pump, and its last view stays for any viewer still looking.
+        tokio::spawn(pump(observer, viewed));
+    }
+
+    /// Stop serving session `id`. Its viewers are closed; the session itself
+    /// is not touched -- the session table owns its lifetime.
+    pub fn detach(&self, id: SessionId) {
+        let removed = self
+            .shared
+            .sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(&id);
+        if let Some(viewed) = removed {
+            viewed.stop.cancel();
+        }
+    }
+}
+
+/// A bound, authenticated viewer of one or more sessions. Binding never logs
+/// in or waits for a session actor. Start `run` alongside the actors.
 pub struct WebServer {
     listener: TcpListener,
-    observer: SessionObserver,
     shared: Arc<Shared>,
 }
 
@@ -73,11 +155,22 @@ impl fmt::Debug for WebServer {
 }
 
 impl WebServer {
-    /// Bind an ephemeral IPv4 loopback port and create a fresh 256-bit secret.
+    /// Bind for one session: [`Self::open`], then [`Sessions::attach`].
+    ///
+    /// # Errors
+    /// As [`Self::open`].
+    pub async fn bind(observer: SessionObserver, handle: SessionHandle) -> io::Result<Self> {
+        let server = Self::open().await?;
+        server.sessions().attach(observer, handle);
+        Ok(server)
+    }
+
+    /// Bind an ephemeral IPv4 loopback port and create a fresh 256-bit secret,
+    /// serving no session until one is attached ([`Self::sessions`]).
     ///
     /// # Errors
     /// Returns local bind/address errors or failure of OS random generation.
-    pub async fn bind(observer: SessionObserver, handle: SessionHandle) -> io::Result<Self> {
+    pub async fn open() -> io::Result<Self> {
         let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).await?;
         let authority = listener.local_addr()?.to_string();
         let csp = HeaderValue::from_str(&format!(
@@ -88,16 +181,19 @@ impl WebServer {
             origin: format!("http://{authority}"),
             authority,
             csp,
-            hub: Mutex::new(Hub::new()),
-            handle,
+            sessions: std::sync::Mutex::new(BTreeMap::new()),
             clients: Arc::new(Semaphore::new(MAX_CLIENTS)),
             stop: CancellationToken::new(),
         });
-        Ok(Self {
-            listener,
-            observer,
-            shared,
-        })
+        Ok(Self { listener, shared })
+    }
+
+    /// Attach and detach sessions, now or after `run` has taken the server.
+    #[must_use]
+    pub fn sessions(&self) -> Sessions {
+        Sessions {
+            shared: Arc::clone(&self.shared),
+        }
     }
 
     /// Explicit pairing handoff. The fragment is never sent in an HTTP request.
@@ -115,18 +211,20 @@ impl WebServer {
         self.listener.local_addr()
     }
 
-    /// Serve until shutdown, without owning the runtime or session lifetime.
-    /// All upgraded viewers and the projection task stop with this future.
+    /// Serve until shutdown, without owning the runtime or any session's
+    /// lifetime. All upgraded viewers and every presentation pump stop with
+    /// this future.
+    ///
+    /// A session whose owner has gone ends only its own pump, and its last
+    /// view stays up. It no longer ends the server, because one server serves
+    /// every session (`plan/29` step 5). A busy or slow owner is retried, and
+    /// an oversized presentation is degraded (see `presentation`).
     ///
     /// # Errors
-    /// Returns a listener/server I/O failure, or native observation that has
-    /// ended for good (the session owner gone). A busy or slow owner is
-    /// retried, and an oversized presentation is degraded; neither stops
-    /// the server (see `presentation`).
+    /// Returns a listener/server I/O failure.
     pub async fn run(self, shutdown: impl Future<Output = ()> + Send + 'static) -> io::Result<()> {
         let stop = self.shared.stop.clone();
-        let projection = pump(self.observer, Arc::clone(&self.shared));
-        let server = axum::serve(BoundedListener::new(self.listener), router(self.shared))
+        let result = axum::serve(BoundedListener::new(self.listener), router(self.shared))
             .with_graceful_shutdown({
                 let stop = stop.clone();
                 async move {
@@ -134,12 +232,8 @@ impl WebServer {
                     stop.cancel();
                 }
             })
-            .into_future();
-        tokio::pin!(projection);
-        let result = tokio::select! {
-            result = server => result,
-            result = &mut projection => result,
-        };
+            .into_future()
+            .await;
         stop.cancel();
         result
     }

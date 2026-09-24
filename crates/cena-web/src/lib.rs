@@ -6,4 +6,4 @@ mod presentation;
 mod server;
 mod socket;
 
-pub use server::WebServer;
+pub use server::{Sessions, WebServer};
