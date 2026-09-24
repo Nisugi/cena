@@ -34,6 +34,9 @@ If anything else contradicts it, it wins.
 | `plan/10-eaccess-spec.md` | the login protocol, reimplementable |
 | `plan/15-wrayth-protocol.md` | **the game stream** — the XML protocol after login |
 | `plan/13-greenfield-vs-evolution.md` | why this is a new codebase, not a Vellum fork |
+| `plan/30-m6-hunt.md` | **the current milestone**: M6, the first real behavior, step by step with what is built |
+| `plan/33-guard-vocabulary.md` | bigshot's 87 guard words evaluated; PROPOSED, awaiting the author |
+| `crates/cena/src/architecture.rs` | the workspace as rustdoc: crate graph, one line's journey, the three seams, every rule and its test. Link-checked, so it cannot go stale silently |
 | `research/` | **rationale and evidence only. Never instructions.** Contains superseded designs. |
 | `inventory/` | what the reference codebases contain, measured |
 
@@ -126,7 +129,17 @@ node crates/cena-web/browser-tests/smoke.mjs       # Despana browser smoke (CI j
 ```
 
 `/check` runs the full set and reports what failed. Use it before any commit, and after any
-agent claims the tree is green.
+agent claims the tree is green. The other project commands: `/where` (milestone, HEAD,
+uncommitted work, what is next), `/corpus` (query the log archive; ask the author first),
+`/findings` (the research findings on disk) and `/agents`.
+
+`cargo test -p X -- name` filters by **test name**, not file: an integration file whose
+tests lack the word runs zero tests and reports green. Name the file with `--test`.
+
+`missing_docs` is **deny** across the workspace, so every `pub` item needs a doc comment,
+and `.github/workflows/docs.yml` publishes the rustdoc to GitHub Pages on every push to
+`main`. Clippy's test exemption for `unwrap`/`expect`/`panic` covers `#[test]` bodies
+only: a helper fn in `tests/` returns `Option`/`Result` and the test unwraps it.
 
 CI (`.github/workflows/ci.yml`) also builds the five core crates (`cena-platform`,
 `cena-protocol`, `cena-model`, `cena-session`, `cena-behavior`) for `aarch64-linux-android`
@@ -152,14 +165,22 @@ lockfile; run cargo inside it only for the spike.
 | `cena-model` | typed game state (`state/`) that a session folds frames into, plus game data | protocol |
 | `cena-map` | the map's vocabulary (rooms, exits); `plan/21` | — |
 | `cena-session` | one character's connection as one actor: socket, parser, state, reconnect | platform, protocol, model |
-| `cena-behavior` | curated Rust behaviors (travel, …) | platform, map, session |
+| `cena-behavior` | curated Rust behaviors (travel, sync, and hunt's profile, guards and importer) | map, session (platform dev-only) |
 | `cena-ui` | pure, versioned projection of a session for frontends (`SessionView`, `WIRE.md`) | model |
 | `cena-web` | Despana: embedded loopback viewer; the native session stays authoritative | ui, session |
-| `cena-host` | the table of sessions one Hydra runs: add, remove, one per account, stop all (`plan/29`) | session |
-| `cena` | the binary | behavior, platform, session, ui, web |
+| `cena-host` | the table of sessions one Hydra runs: add, remove, one per account, stop all (`plan/29`) | session (platform dev-only) |
+| `cena` | the binary | behavior, host, platform, session, ui, web |
 | `cena-arch-tests` | the rules the compiler cannot express | — |
 
-(Measured from each crate's `Cargo.toml`. Re-measure; do not restate.)
+(Measured from each crate's `Cargo.toml`, 2026-09-24:
+`awk '/^\[/{s=$0} /^cena-/{print s, $1}' crates/*/Cargo.toml`. Re-measure; do not restate.
+`crates/cena-arch-tests/tests/layering.rs`'s `ALLOWED_EDGES` asserts this graph as a set
+equality, and `crates/cena/src/architecture.rs` is the long-form map with every item linked.)
+
+> **CORRECTED 2026-09-24.** This table said `cena` depended on five crates and omitted
+> `cena-host`, and listed `platform` as a real edge of `cena-behavior` and `cena-host`
+> when both are dev-dependencies for the scripted game their tests talk to. It claimed to
+> be measured. Where a table can be produced by a command, cite the command.
 
 The flow is **bytes → `cena-protocol` `Frame`s → classifiers → `cena-model` `GameState` →
 consumers**. `cena-ui` projects state to frontends, and `cena-web` serves the projection over
@@ -240,8 +261,18 @@ characters on two accounts (`plan/29` §6 records the run). `cena-host` is the s
 table; `cena --character A --character B --web` runs several characters, with the account
 login from the OS keyring; one web listener serves a hub page -- a card per character,
 start, quit, reconnect, and thoughts, speech, logons, deaths and announcements merged
-across characters -- and each character's own page. Next in `12` §8: **M6, the first real
-behavior.**
+across characters -- and each character's own page.
+
+**M6 is under way on branch `m6-hunt`** (`plan/30` is the record; read its §7 for what is
+built and what is next). **M6a, the foundations, is built as of 2026-09-24**: the M1
+scaffolding is gone and there is one run path; the session prerequisites (attendance
+counts a person, the authority survives a reconnect, preempt and the behavior watchdog);
+the acting primitives (the stance setter, cast roundtime, the write-time `Gate`,
+`travel_holding`); and step 4's profile format, inheritance chain and bigshot importer
+(`cena-behavior/src/hunt/`, `;hunt import|check|list`). Nisugi's `ojandhaart.yaml`
+imports whole. **Open for the author:** `plan/33`'s six questions on the guard vocabulary;
+until a word is built, a step carrying it imports **held**, never silently lost.
+**Next:** M6b, the engine (`plan/30` §3, §7).
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.
