@@ -37,6 +37,7 @@ If anything else contradicts it, it wins.
 | `plan/30-m6-hunt.md` | **the current milestone**: M6, the first real behavior, step by step with what is built |
 | `plan/33-guard-vocabulary.md` | bigshot's 87 guard words evaluated; PROPOSED, awaiting the author |
 | `crates/cena/src/architecture.rs` | the workspace as rustdoc: crate graph, one line's journey, the three seams, every rule and its test. Link-checked, so it cannot go stale silently |
+| `crates/cena/src/glossary.rs` | **the words**: one per concept, each linked to its item, plus the ones that already mean two things (`claim`, `ladder`, `Desk`, …). Binding (`plan/05` §8) |
 | `research/` | **rationale and evidence only. Never instructions.** Contains superseded designs. |
 | `inventory/` | what the reference codebases contain, measured |
 
