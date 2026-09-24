@@ -54,6 +54,23 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 [workspace.lints.rust]
 unsafe_code = "deny"
 
+# **Rustdoc is the API reference; `plan/27` is the reading guide.** That split
+# was decided after `27g` described the bounty module's messaging layer and
+# omitted `classify()` and `TaskKind`'s 22 variants -- the centre of the port.
+# A hand-written summary drifts from the code; generated docs cannot, but only
+# for items that HAVE docs. This is what makes the reference complete enough to
+# be the reference.
+#
+# `warn`, not `deny`, deliberately: this is a ratchet, and it starts where the
+# code is rather than where it should be. Turning it straight to `deny` would
+# either break the build or force a few hundred placeholder comments written to
+# silence a lint, which is worse than no comment -- it looks like documentation
+# and says nothing. Raise it to `deny` when the count reaches zero.
+#
+# A rustc lint, not a rustdoc one, so it fires on `cargo clippy` too and an
+# undocumented item is visible without building docs.
+missing_docs = "warn"
+
 # A citation that resolves to nothing does not fail loudly; it manufactures a
 # false negative. `CLAUDE.md` records the cost in full: an agent searched a dead
 # path, got zero hits, and concluded the wiki does not document `styleIfClosed`.
