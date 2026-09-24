@@ -522,8 +522,9 @@ test("the hub lists every character, each linking to its own page", () => {
   assert.ok(element("shell").classes.includes("hub-mode"), "the one-character panes are hidden");
   const cards = element("hub-list").children;
   assert.equal(cards.length, 2);
-  const link = cards[1].children[0];
-  assert.equal(link.textContent, "Nerten");
+  assert.equal(cards[1].children[0].textContent, "Nerten");
+  const link = cards[1].children[3].children[0];
+  assert.equal(link.textContent, "Open Nerten's page");
   assert.equal(link.href, "#token=synthetic-token&session=1");
   assert.equal(link.target, "_blank");
   assert.match(cards[0].children[2].textContent, /HP 80%/);
@@ -559,7 +560,7 @@ test("the hub starts and quits characters by request, and shows the answer", () 
   assert.equal(offered[0].textContent, "Start Sugiin");
   offered[0].fire("click");
   assert.deepEqual(socket.sent.at(-1), { kind: "add_character", version: 1, character: "Sugiin" });
-  const quit = element("hub-list").children[0].children[3];
+  const quit = element("hub-list").children[0].children[3].children[1];
   quit.fire("click");
   assert.deepEqual(socket.sent.at(-1), { kind: "remove_session", version: 1, session: "0" });
   socket.message({ kind: "hub_note", version: 1, detail: "Nisugi has quit." });

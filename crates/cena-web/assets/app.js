@@ -263,11 +263,18 @@ export function mount(document, environment) {
     for (const card of cards) {
       const item = document.createElement("li");
       item.className = "hub-card";
+      const name = card.name || `Session ${card.session}`;
+      const heading = document.createElement("strong");
+      heading.className = "hub-name";
+      heading.textContent = name;
+      // A button-looking link: the name alone read as plain text, and the
+      // author could not find the way to a character's page from the hub.
       const link = document.createElement("a");
+      link.className = "hub-open";
       link.href = `#token=${session.token}&session=${card.session}`;
       link.target = "_blank";
       link.rel = "noopener";
-      link.textContent = card.name || `Session ${card.session}`;
+      link.textContent = `Open ${name}'s page`;
       const status = document.createElement("span");
       status.className = "hub-status";
       status.textContent = lifecycleText(card.lifecycle);
@@ -279,7 +286,10 @@ export function mount(document, environment) {
       quit.className = "hub-quit";
       quit.textContent = "Quit";
       quit.addEventListener("click", () => session.removeSession(card.session));
-      item.append(link, status, summary, quit);
+      const actions = document.createElement("div");
+      actions.className = "hub-actions";
+      actions.append(link, quit);
+      item.append(heading, status, summary, actions);
       list.appendChild(item);
     }
     element("hub-empty").hidden = cards.length > 0;

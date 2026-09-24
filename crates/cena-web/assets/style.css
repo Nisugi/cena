@@ -119,11 +119,13 @@ meter::-moz-meter-bar { background: var(--vital-color); }
 .hub h2 { margin: 0 0 10px; color: var(--amber); font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; }
 .hub-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
 .hub-card { padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
-.hub-card a { color: #f0eee8; font-weight: 600; text-decoration: none; }
-.hub-card a:hover { color: #f0c674; }
+.hub-name { color: #f0eee8; }
+.hub-actions { display: flex; gap: 6px; margin-top: 8px; }
+.hub-open { display: inline-block; padding: 3px 10px; border: 1px solid var(--line-strong); border-radius: 2px; background: var(--surface-inset); color: #f0c674; font-size: .75rem; text-decoration: none; }
+.hub-open:hover { border-color: var(--amber); }
 .hub-status { float: right; color: var(--muted); font-size: .75rem; }
 .hub-summary { margin: 6px 0 0; color: var(--text); font-family: var(--font-text); font-size: .75rem; overflow-wrap: anywhere; }
-.hub-quit { margin-top: 8px; font-size: .75rem; padding: 3px 10px; }
+.hub-quit { font-size: .75rem; padding: 3px 10px; }
 .hub-available { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .hub-note { display: block; margin-top: 10px; color: var(--muted); }
 .hub-merged { max-height: 45vh; overflow: auto; margin-top: 6px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface-inset); }
