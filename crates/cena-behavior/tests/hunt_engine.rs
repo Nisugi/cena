@@ -314,6 +314,53 @@ fn maintain_casts_a_sign_the_game_says_is_down() {
 }
 
 #[test]
+fn assume_aspect_is_cast_one_step_a_tick_and_confirmed_by_the_buffs() {
+    let mut profile = profile().unwrap();
+    profile.signs = vec!["650 panther evoke".to_owned()];
+    let mut hunt = Hunt::new(profile, 1);
+    let mut state = state(1_000, "10");
+    state.effects.clear_category("Buffs");
+    let at = here(10, NO_EXITS);
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_000)),
+        send("incant 650 evoke", None),
+        "the spell first, evoked (`cmd_assume`)"
+    );
+    state.effects.insert(
+        "650".to_owned(),
+        Effect {
+            category: "Buffs".to_owned(),
+            text: "Assume Aspect".to_owned(),
+            ends_at: Some(1_600),
+            percent: 100,
+        },
+    );
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_001)),
+        send("assume panther", None)
+    );
+    assert_ne!(
+        hunt.tick(&state, at, Some(1_002)),
+        send("assume panther", None),
+        "not asked again within the retry window"
+    );
+    state.effects.insert(
+        "9650".to_owned(),
+        Effect {
+            category: "Buffs".to_owned(),
+            text: "Aspect of the Panther".to_owned(),
+            ends_at: Some(2_600),
+            percent: 100,
+        },
+    );
+    assert_ne!(
+        hunt.tick(&state, at, Some(1_100)),
+        send("incant 650 evoke", None),
+        "an aspect up: nothing to cast"
+    );
+}
+
+#[test]
 fn wander_waits_then_walks_to_a_fresh_room_inside_the_boundaries() {
     let mut hunt = Hunt::new(profile().unwrap(), 7);
     let mut state = state(1_000, "10");

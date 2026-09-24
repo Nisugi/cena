@@ -15,7 +15,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use cena_map::Map;
-use cena_session::{AuthorityToken, CommandId, Notice, NoticeKind, SessionHandle, Snapshot};
+use cena_session::travel_store::{self, TravelFile};
+use cena_session::{
+    AuthorityToken, CommandId, GameState, Notice, NoticeKind, SessionHandle, Snapshot,
+};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
@@ -24,7 +27,7 @@ use super::command::Command;
 use super::drive::{HuntEnd, hunt};
 use super::engine::Hunt;
 use crate::error::BehaviorError;
-use crate::travel::Heard;
+use crate::travel::{Heard, TravelNotes};
 use crate::watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, watch};
 
 /// One session's hunt desk.
@@ -186,9 +189,11 @@ impl Desk {
         let heartbeat = Heartbeat::default();
         let next = Arc::clone(&self.ids);
         let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
+        let (mut file, notes) = self.traveller(handle, &joined.0.state);
         let end = {
+            let wrote = |notes: &TravelNotes| self.keep(handle, file.as_mut(), notes);
             let run = Box::pin(hunt(
-                handle, stop, ids, self.token, joined, &self.map, machine, &heartbeat,
+                handle, stop, ids, self.token, joined, &self.map, machine, &heartbeat, notes, wrote,
             ));
             tokio::select! {
                 end = run => end,
@@ -201,5 +206,58 @@ impl Desk {
         };
         handle.release(self.token);
         end
+    }
+
+    /// The character's travel file and the notes a walk works from, as
+    /// travel's desk reads them. Without a name, or a readable file, the
+    /// walks run on empty notes and nothing is remembered; said once.
+    fn traveller(
+        &self,
+        handle: &SessionHandle,
+        state: &GameState,
+    ) -> (Option<TravelFile>, TravelNotes) {
+        let character = &state.character;
+        let (Some(instance), Some(name)) =
+            (character.instance.as_deref(), character.name.as_deref())
+        else {
+            handle.say(Notice::line(
+                NoticeKind::Warn,
+                "Hunt: the game has not said who this is, so the walks will remember nothing.",
+            ));
+            return (None, TravelNotes::default());
+        };
+        match travel_store::load(&self.dir, instance, name) {
+            Ok(file) => {
+                let notes = TravelNotes {
+                    settings: file.settings.clone().into_iter().collect(),
+                    memories: file.memories.clone().into_iter().collect(),
+                    targets: file.targets.clone(),
+                    last_room: file.last_room,
+                };
+                (Some(file), notes)
+            }
+            Err(why) => {
+                handle.say(Notice::line(
+                    NoticeKind::Warn,
+                    format!("Hunt: {why} -- the travel file is left alone, and the walks will remember nothing."),
+                ));
+                (None, TravelNotes::default())
+            }
+        }
+    }
+
+    /// Write what a walk learned back to the character's spot in the travel
+    /// file, as travel's desk does.
+    fn keep(&self, handle: &SessionHandle, file: Option<&mut TravelFile>, notes: &TravelNotes) {
+        let Some(file) = file else { return };
+        file.settings = notes.settings.clone().into_iter().collect();
+        file.memories = notes.memories.clone().into_iter().collect();
+        file.last_room = notes.last_room;
+        if let Err(why) = travel_store::save(&self.dir, file) {
+            handle.say(Notice::line(
+                NoticeKind::Error,
+                format!("Hunt: what the walk learned could not be saved -- {why}."),
+            ));
+        }
     }
 }

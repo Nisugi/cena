@@ -503,10 +503,13 @@ Demonstrated live on a short hunt.
 > - **Two facts the port corrected:** `rest_till_spirit` is spirit **points**, not a percent
 >   (`rest.rb:239`); and the game's current target is `Targeting::current()`, the first id of
 >   the dropdown, not membership in its list.
-> - **Stand-ins and gaps, each said to the player where it bites:** Assume Aspect (`650 …`
->   signs) is not cast; a walk inside a hunt runs on default travel notes, so a character's
->   saved travel memories are not read; groups, `pull`, `deader`, ammo, wands, boons and the
->   `censer_between_actions` policy (`plan/33`) are not built.
+> - **Stand-ins and gaps, each said to the player where it bites:** loot is `loot #id` and
+>   healing is waiting (the plan's stand-ins, until M6c and M6d); groups, `pull`, `deader`,
+>   ammo, wands, boons and the `censer_between_actions` policy (`plan/33`) are not built.
+>   **Closed the same day, on the author's objection to trying it live with gaps open:**
+>   Assume Aspect is cast as `cmd_assume` casts it (the spell, evoked or prepared, then
+>   `assume <aspect>` once the effects list shows it), and a walk inside a hunt reads and
+>   keeps the character's travel file as travel's own desk does.
 > - **The corpus cut was not made.** The author's condition was *"nothing from
 >   hinterwilds"*, and MEASURED over every third of Nisugi's 6,570 sessions plus all of the
 >   newest 45: every session with a fight is in the Hinterwilds or the Duskruin Arena. The

@@ -26,7 +26,9 @@
 //! [`travel_holding`] under the hunt's token, given a second listener on the
 //! same stream ([`Heard::resubscribe`]) and a copy of the state. The hunt
 //! keeps folding its own stream meanwhile, so that when the walk returns the
-//! hunt's state is as current as the walk's, and nothing was missed.
+//! hunt's state is as current as the walk's, and nothing was missed. The
+//! walk reads the character's travel notes and what it learns is written
+//! back after each walk, as travel's own desk does.
 //!
 //! # Stopping (`plan/12` §4.3)
 //!
@@ -78,6 +80,8 @@ pub async fn hunt(
     map: &Map,
     machine: Hunt,
     heartbeat: &Heartbeat,
+    notes: TravelNotes,
+    wrote: impl FnMut(&TravelNotes) + Send,
 ) -> HuntEnd {
     let (snapshot, events) = joined;
     let mut driver = Driver {
@@ -94,7 +98,8 @@ pub async fn hunt(
         map,
         machine,
         last_room: None,
-        notes: TravelNotes::default(),
+        notes,
+        wrote,
     };
     let end = driver.run(heartbeat).await;
     let text = match end {
@@ -106,7 +111,7 @@ pub async fn hunt(
     end
 }
 
-struct Driver<'a, F: FnMut() -> CommandId> {
+struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> {
     handle: &'a SessionHandle,
     cancel: &'a CancellationToken,
     token: AuthorityToken,
@@ -120,10 +125,13 @@ struct Driver<'a, F: FnMut() -> CommandId> {
     map: &'a Map,
     machine: Hunt,
     last_room: Option<RoomId>,
+    /// The character's travel file: what earlier crossings wrote down, read
+    /// once and kept as a walk changes it.
     notes: TravelNotes,
+    wrote: W,
 }
 
-impl<F: FnMut() -> CommandId> Driver<'_, F> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
     async fn run(&mut self, heartbeat: &Heartbeat) -> HuntEnd {
         loop {
             heartbeat.beat();
@@ -306,6 +314,7 @@ impl<F: FnMut() -> CommandId> Driver<'_, F> {
             }
         };
         self.notes = notes;
+        (self.wrote)(&self.notes);
         if let Some(room) = travelled.last_room {
             self.last_room = Some(room);
         }

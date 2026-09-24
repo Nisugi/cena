@@ -87,7 +87,6 @@ pub struct Hunt {
     signs_cast: BTreeMap<String, u32>,
     /// Things to tell the player, taken by the driver.
     notes: Vec<String>,
-    said_aspect: bool,
     seed: u64,
 }
 
@@ -111,7 +110,6 @@ impl Hunt {
             pending: VecDeque::new(),
             signs_cast: BTreeMap::new(),
             notes: Vec::new(),
-            said_aspect: false,
             seed,
         }
     }
@@ -449,14 +447,12 @@ impl Hunt {
         let now = now?;
         let effects = &state.effects;
         let known = effects.saw_category(ACTIVE_SPELLS) || effects.saw_category("Buffs");
-        for sign in &self.profile.signs {
+        let signs = self.profile.signs.clone();
+        for sign in &signs {
             let id = sign.split_whitespace().next()?;
             if id == "650" {
-                if !self.said_aspect {
-                    self.said_aspect = true;
-                    self.notes.push(format!(
-                        "sign `{sign}`: Assume Aspect is not cast by Hydra yet; cast it yourself."
-                    ));
+                if let Some(said) = self.assume_aspect(sign, state, now) {
+                    return Some(said);
                 }
                 continue;
             }
@@ -479,6 +475,56 @@ impl Hunt {
             });
         }
         None
+    }
+
+    /// Assume Aspect (`650 <aspect> <aspect|evoke>`), as bigshot casts it
+    /// (`cmd_assume`, `bigshot.lic:5588-5645`): nothing while an aspect
+    /// named is up; the spell first, evoked when the second word is `evoke`
+    /// and prepared otherwise; then `assume <aspect>` for each aspect whose
+    /// buff is down, once the spell is up. One step a tick, each confirmed
+    /// by the effects list before the next.
+    fn assume_aspect(&mut self, sign: &str, state: &GameState, now: u32) -> Option<Said> {
+        let mut words = sign.split_whitespace().skip(1);
+        let first = words.next()?.to_ascii_lowercase();
+        let second = words.next().map(str::to_ascii_lowercase);
+        let evoke = second.as_deref() == Some("evoke");
+        let aspects: Vec<String> = std::iter::once(first)
+            .chain(second.filter(|word| word != "evoke"))
+            .collect();
+        let up = |text: &str| {
+            state.effects.iter().any(|(id, effect)| {
+                effect.text.eq_ignore_ascii_case(text)
+                    && state.effects.active(id, now) == Some(true)
+            })
+        };
+        if aspects
+            .iter()
+            .any(|aspect| up(&format!("Aspect of the {aspect}")))
+        {
+            return None;
+        }
+        let recent = self
+            .signs_cast
+            .get("650")
+            .is_some_and(|at| now.saturating_sub(*at) < SIGN_RETRY);
+        if recent {
+            return None;
+        }
+        let spell_up = state.effects.active("650", now) == Some(true) || up("Assume Aspect");
+        let line = if spell_up {
+            let aspect = aspects.first()?;
+            format!("assume {aspect}")
+        } else if evoke {
+            "incant 650 evoke".to_owned()
+        } else {
+            "prep 650".to_owned()
+        };
+        // Every step of the sequence is its own cast, so the retry window
+        // starts after the last one lands, not the first.
+        if spell_up {
+            self.signs_cast.insert("650".to_owned(), now);
+        }
+        Some(Said::Send { line, target: None })
     }
 
     // --- engage -----------------------------------------------------------------
