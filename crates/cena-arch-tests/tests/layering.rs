@@ -166,10 +166,13 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // NOTE the scope of what this permits: `cena` may now name
     // `cena-platform`. It still may not name `cena-protocol` or `cena-model`,
     // and the set equality below is what keeps that true.
+    // AMENDED for `plan/29`: `cena-host`, the session table, which the
+    // binary's `--character` path runs several characters on (`play.rs`).
     (
         "cena",
         &[
             "cena-behavior",
+            "cena-host",
             "cena-platform",
             "cena-session",
             "cena-ui",

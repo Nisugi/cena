@@ -14,6 +14,9 @@ cena-platform.workspace = true
 cena-session.workspace = true
 cena-ui.workspace = true
 cena-web.workspace = true
+cena-host.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 # `signal` for Ctrl-C. Without it the only early exit was killing the process,
 # which skips BOTH the `quit` (plan/16 5b) and the sink flush -- so the run that

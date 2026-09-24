@@ -120,6 +120,39 @@ pub fn ask() -> io::Result<Typed> {
     Ok(typed)
 }
 
+/// Ask for what the roster does not know about `character` -- its account
+/// and game code -- for its first login under `--character` (`roster.rs`).
+/// The password comes from the ladder, as in [`ask`].
+///
+/// # Errors
+///
+/// As [`ask`]: nobody at a terminal, an empty answer, or no password.
+pub fn ask_for(character: &str) -> io::Result<Typed> {
+    refuse_unattended(io::stdin().is_terminal())?;
+    eprintln!("[login] {character} has not logged in through Hydra before.");
+    let account = require(&format!("account for {character}"))?;
+    let (password, password_from) = crate::secrets::password(account.trim(), true)?;
+    let game_code = prompt(&format!("game code for {character} [{DEFAULT_GAME_CODE}]"))?;
+    let mut typed = tidy(&account, password, character, &game_code);
+    typed.password_from = password_from;
+    Ok(typed)
+}
+
+/// The login for a character the roster knows: its account and game from the
+/// roster, and its password from the ladder -- which prompts only if a person
+/// is at a terminal.
+///
+/// # Errors
+///
+/// No rung of the ladder had a password.
+pub fn from_roster(entry: &crate::roster::Entry) -> io::Result<Typed> {
+    let (password, password_from) =
+        crate::secrets::password(&entry.account, io::stdin().is_terminal())?;
+    let mut typed = tidy(&entry.account, password, &entry.character, &entry.game_code);
+    typed.password_from = password_from;
+    Ok(typed)
+}
+
 /// The guard `ask` opens with, split out so it can be tested on BOTH answers.
 ///
 /// Its only input is whether stdin is a terminal, and a test cannot choose

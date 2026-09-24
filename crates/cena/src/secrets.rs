@@ -143,10 +143,15 @@ fn from_keyring(account: &str) -> Option<String> {
 /// the runtime waits for blocking tasks when it shuts down, so an unanswered
 /// question would hold the process open after Ctrl-C had already stopped the
 /// session. A detached thread ends with the process.
+///
+/// `turn` is shared by every session's offer, so when several characters
+/// log in at once their questions are asked one at a time rather than
+/// talking over each other on one terminal.
 pub(crate) async fn offer_to_remember(
     account: String,
     password: String,
     observer: SessionObserver,
+    turn: std::sync::Arc<std::sync::Mutex<()>>,
 ) {
     let Ok((snapshot, mut events)) = observer.subscribe().await else {
         return;
@@ -161,6 +166,9 @@ pub(crate) async fn offer_to_remember(
         }
     }
     std::thread::spawn(move || {
+        let _turn = turn
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         print!("Save the password for {account} in the OS keyring? [y/N]: ");
         let _ = io::stdout().flush();
         let mut answer = String::new();

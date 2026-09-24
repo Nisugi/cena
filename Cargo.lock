@@ -171,6 +171,7 @@ name = "cena"
 version = "0.1.0"
 dependencies = [
  "cena-behavior",
+ "cena-host",
  "cena-platform",
  "cena-session",
  "cena-ui",
@@ -178,6 +179,7 @@ dependencies = [
  "futures-util",
  "keyring",
  "rpassword",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-tungstenite",

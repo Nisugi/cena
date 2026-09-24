@@ -397,7 +397,15 @@ pub(crate) fn print_room(frame: &Frame) {
 /// `render` is false under `--web`: the browser is the screen, and game text
 /// echoed here buried the pairing URL (author, 2026-09-23). Hydra's own lines
 /// -- lifecycle, notices, sends, retries -- print either way.
-pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, render: bool) {
+///
+/// `who` goes at the front of every line: empty for one session, and
+/// `[Nisugi]` when several share the terminal (`plan/29` Q7), so each line
+/// says whose it is.
+pub(crate) async fn watch_events(
+    mut events: broadcast::Receiver<Event>,
+    render: bool,
+    who: String,
+) {
     let mut screen = Screen::default();
     loop {
         match events.recv().await {
@@ -412,9 +420,9 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, render:
                     // script sent this".
                     Origin::Script => "script",
                 };
-                eprintln!("  -> [{tag}] {line}");
+                eprintln!("{who}  -> [{tag}] {line}");
             }
-            Ok(Event::StateChanged(state)) => eprintln!("  .. lifecycle: {state:?}"),
+            Ok(Event::StateChanged(state)) => eprintln!("{who}  .. lifecycle: {state:?}"),
             // Hydra's own voice (`cena_session::notice`). A terminal is
             // already fixed-width, so a table and prose print the same way;
             // the mark says which kind, since there is no colour to.
@@ -426,7 +434,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, render:
                     cena_session::NoticeKind::Debug => "..",
                 };
                 for line in notice.lines() {
-                    eprintln!("  {mark} {line}");
+                    eprintln!("{who}  {mark} {line}");
                 }
             }
             // The ladder, made visible. These used to go only to the session
@@ -437,7 +445,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, render:
                 delay,
                 detail,
             }) => eprintln!(
-                "  !! attempt {attempt} failed ({detail}) -- next in {:.1}s",
+                "{who}  !! attempt {attempt} failed ({detail}) -- next in {:.1}s",
                 delay.as_secs_f32()
             ),
             // **The game's own output.** This arm used to be `{}` -- every
@@ -458,10 +466,10 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, render:
             // it does not claim. `cena_behavior::sync` is what runs it, and
             // the character's owner decides whether to spend that traffic.
             Ok(Event::SyncNeeded(groups)) if groups.is_empty() => {
-                eprintln!("  .. character store: up to date");
+                eprintln!("{who}  .. character store: up to date");
             }
             Ok(Event::SyncNeeded(groups)) => eprintln!(
-                "  .. character store: {} group(s) stale -- {}",
+                "{who}  .. character store: {} group(s) stale -- {}",
                 groups.len(),
                 groups
                     .iter()
@@ -479,7 +487,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, render:
             // lines ARE criterion 5's evidence, so their absence would look
             // exactly like the interleaving failing.
             Err(broadcast::error::RecvError::Lagged(missed)) => {
-                eprintln!("  !! {missed} events dropped from the ring (still watching)");
+                eprintln!("{who}  !! {missed} events dropped from the ring (still watching)");
             }
             Err(broadcast::error::RecvError::Closed) => break,
         }

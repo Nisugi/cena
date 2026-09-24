@@ -139,7 +139,15 @@ Each step ends in something demonstrable, the way M1's did.
    > default no. In the binary, not `cena-platform`, because `keyring` has no Android backend
    > and CI builds `cena-platform` for Android. No password file (author: ladder as proposed).
    >
-   > **Next with it:** the binary onto the table. `--character Nisugi --character Nerten`
+   > **BUILT 2026-09-23, the binary on the table:** `cena -- --character Nisugi --character
+   > Nerten` (`crates/cena/src/play.rs`). Every login is settled before anything connects --
+   > the roster (`roster.rs`) for account and game, the ladder for the password, a prompt for
+   > a character it does not know -- then each goes on `cena_host::Host`. The terminal tags
+   > every line with its character and shows no game text (§5a R2); Ctrl-C quits them all.
+   > The one-character path is unchanged and records its character in the roster once
+   > `Ready`. `--web` serves the first character until the hub.
+   >
+   > **What it was:** the binary onto the table. `--character Nisugi --character Nerten`
    > needs each character's account, which is not secret and not in the keyring, so a small
    > record in the data directory keeps character → account and game code, written the first
    > time a character logs in (author's question, 2026-09-23).

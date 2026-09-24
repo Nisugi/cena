@@ -64,19 +64,20 @@ mod commands;
 mod connector;
 mod frontend;
 mod interrupt;
+mod play;
 mod probe;
+mod roster;
 mod run;
 mod secrets;
+mod setup;
 mod travel;
 
 use ask::ask;
 use cena_behavior::look;
-use cena_platform::{Redactions, SessionSink};
-use cena_session::{AuthorityToken, CommandId, SupervisedSession};
+use cena_session::{AuthorityToken, CommandId};
 use connector::LiveConnector;
 use interrupt::unless_interrupted;
 use run::{run_or_probe, send_manual, wait_for_room, watch_events};
-use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -260,6 +261,13 @@ const BANNER_NOTE: &str = "The password is never logged, but it IS kept in memor
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     banner();
 
+    // `--character`, once or more: several characters on the session table
+    // (`play.rs`). Without it, the one-character path below, prompted.
+    let characters = play::characters();
+    if !characters.is_empty() {
+        return play::play(characters).await;
+    }
+
     let typed = ask()?;
     eprintln!();
     // From here on Ctrl-C means "shut down in order", not "die". Installed
@@ -285,25 +293,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The eaccess certificate pin lives in the data directory, beside the
     // character and menu stores, under Lich's and VellumFE's name.
     let pin = cena_session::character_store::data_dir().join(cena_platform::PIN_FILENAME);
-    // A typed password is offered to the keyring once the login proves it.
-    let remember = (typed.password_from == secrets::Source::Prompt)
-        .then(|| (typed.account.clone(), typed.password.clone()));
+    // Remembered in the roster once the login proves it, so `--character`
+    // can start this character next time without asking.
+    // The roster entry, and a typed password's keyring offer, once proven.
+    let proven = play::Proven::of(&typed);
     let connector = LiveConnector::new(typed, run::login_provider(), pin);
     // The handle comes back WITH the session, because
     // `SupervisedSession::new` mints it: it must be obtainable before `run`
     // consumes the session, and there is no `handle()` accessor to call
     // afterwards.
-    let (session, handle, combat_flush, player_flush) = open_session(connector);
+    let (session, handle, combat_flush, player_flush) = setup::open_session(connector);
     // Hydra's command line, before anything connects (`commands.rs`).
     let commands = commands::Commands::install(&handle);
     let observer = session.observer();
-    if let Some((account, password)) = remember {
-        tokio::spawn(secrets::offer_to_remember(
-            account,
-            password,
-            observer.clone(),
-        ));
-    }
+    proven.on_ready(&observer, &std::sync::Arc::default());
     let session_cancel = session.cancel_token();
     let (_snapshot, mut events) = session.subscribe();
     // A SECOND receiver, for the probe. `events` is moved into the watcher
@@ -349,7 +352,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // The event watcher runs either way: it only READS, and a quiet session is
     // still worth watching.
-    let watcher = tokio::spawn(watch_events(events, frontend.is_none()));
+    let watcher = tokio::spawn(watch_events(events, frontend.is_none(), String::new()));
 
     // **Every phase from here to the hold is raced against Ctrl-C**, and an
     // interrupted one falls through to the SAME orderly shutdown below. This
@@ -405,8 +408,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // and `?` here would skip it and hide the panic inside a `JoinError`.
     let joined = supervisor.await;
     watcher.abort();
-    flush_combat(combat_flush);
-    flush_player_log(player_flush).await;
+    setup::flush_combat(combat_flush);
+    setup::flush_player_log(player_flush).await;
 
     match joined {
         Ok(end) => {
@@ -553,191 +556,6 @@ fn connections_made(end: &cena_session::SupervisedEnd) -> u32 {
     } else {
         end.generations.0 + 1
     }
-}
-
-/// Build the session, attaching a log unless one cannot be opened.
-///
-/// Split from `main` under `plan/05` Rule 4.1 -- move code down, do not raise
-/// the cap -- when clippy caught `main` at 112 lines against a 100 limit.
-fn open_session(
-    connector: LiveConnector,
-) -> (
-    SupervisedSession<LiveConnector>,
-    cena_session::SessionHandle,
-    Option<std::thread::JoinHandle<()>>,
-    tokio::task::JoinHandle<u64>,
-) {
-    let character = connector.character().to_owned();
-    let game = connector.game_code().to_owned();
-    let account = connector.account_for_redaction().to_owned();
-    // Logging is ON by default. Author's call, 2026-09-18: "we want it on by
-    // default during our dev work. That way there's always a log for you."
-    //
-    // Opt-OUT, not opt-in: a session that fails in an interesting way is
-    // exactly the one nobody remembered to enable logging for.
-    let (session, handle) = SupervisedSession::new(connector);
-    let session = match open_log(&character, &account) {
-        Ok(sink) => {
-            eprintln!(
-                "[log] {}
-[log] {}",
-                sink.bytes_path().display(),
-                sink.events_path().display()
-            );
-            session.with_sink(sink)
-        }
-        Err(e) => {
-            // A log that cannot be opened must not stop a session. Say so
-            // loudly -- silence here reads as "logging worked".
-            eprintln!("[log] DISABLED -- could not open a log file: {e}");
-            session
-        }
-    };
-    // **What the character learns, and what the game teaches about its
-    // menus, kept across logins.** Missing until 2026-09-21: the supervised
-    // session could not be given either store, so no live run ever wrote one.
-    // One directory for both, beside the settings and travel files.
-    let data = cena_session::character_store::data_dir();
-    eprintln!("[data] {}", data.display());
-    let session = session
-        .with_character_store(data.clone())
-        .with_menu_store(data);
-    let (session, combat_flush) = attach_combat(session, &game, &character);
-    let (session, player_flush) = attach_player_log(session, &character);
-    (session, handle, combat_flush, player_flush)
-}
-
-/// Give the session its player log (`plan/25`): what the player saw and sent,
-/// per character per day, under `<log_dir>/player/`.
-///
-/// Nothing here can fail up front -- the writer creates its directory on the
-/// first line, and a failure then is counted rather than fatal. The count
-/// comes back through the handle, so the exit can say the history has a hole.
-///
-/// **No account redaction, unlike the wire log, and deliberately.** An account
-/// name is often the character's name, and this log is display text: redacting
-/// it would replace the character's own name on every line that mentions it.
-/// The credentials that reach the WIRE (password hash, launch key) are never
-/// display text and never pass through the command queue.
-fn attach_player_log(
-    session: SupervisedSession<LiveConnector>,
-    character: &str,
-) -> (
-    SupervisedSession<LiveConnector>,
-    tokio::task::JoinHandle<u64>,
-) {
-    let (log, sink) = cena_session::PlayerLog::new();
-    let writer =
-        cena_session::PlayerWriter::new(cena_session::player_log::writer::root(), character);
-    eprintln!("[player log] {}", writer.dir().display());
-    (
-        session.with_player_log(
-            log,
-            cena_session::player_log::Capture::default(),
-            Some(cena_session::character_store::data_dir()),
-        ),
-        tokio::spawn(writer.run_reporting(sink)),
-    )
-}
-
-/// Wait for the player log's last flush, and say so if lines were lost.
-///
-/// The writer ends when the last `PlayerLog` drops, which the supervisor's
-/// return just did.
-async fn flush_player_log(flush: tokio::task::JoinHandle<u64>) {
-    match flush.await {
-        Ok(0) => {}
-        Ok(lost) => eprintln!("[player log] {lost} lines were NOT recorded; the log has holes"),
-        Err(_) => eprintln!("[player log] the writer task panicked; the log's tail may be missing"),
-    }
-}
-
-/// Give the session its crit tables and its combat database.
-///
-/// Both are optional to a working session and neither may stop one, which is
-/// `open_log`'s rule: say loudly what is missing, then carry on. Without the
-/// tables every hit records no crit; without the database nothing records.
-fn attach_combat(
-    session: SupervisedSession<LiveConnector>,
-    game: &str,
-    character: &str,
-) -> (
-    SupervisedSession<LiveConnector>,
-    Option<std::thread::JoinHandle<()>>,
-) {
-    let session = match cena_session::CritTables::load() {
-        Ok(tables) => session.with_crit_tables(Arc::new(tables)),
-        Err(e) => {
-            eprintln!("[combat] crit tables DISABLED -- {e}");
-            session
-        }
-    };
-    let dir = cena_session::character_store::data_dir();
-    match cena_session::combat_recorder::worker::open_live(&dir, game, character) {
-        Ok((recorder, flush, path)) => {
-            eprintln!("[combat] {}", path.display());
-            (session.with_combat_recorder(recorder), Some(flush))
-        }
-        Err(e) => {
-            eprintln!("[combat] recorder DISABLED -- {e}");
-            (session, None)
-        }
-    }
-}
-
-/// Wait for the recorder to write what is queued and close its hunt.
-///
-/// Its thread ends when the last handle drops, which the supervisor's return
-/// just did. Without this wait the process can exit between the last chunk
-/// and its commit.
-fn flush_combat(flush: Option<std::thread::JoinHandle<()>>) {
-    if let Some(flush) = flush
-        && flush.join().is_err()
-    {
-        eprintln!("[combat] the recorder thread panicked; the last hunt may be open");
-    }
-}
-
-/// Open this session's log, with the credentials registered for redaction.
-///
-/// Returns the sink rather than storing it: the session owns it, one per
-/// session, no process-global logger (`plan/05` Rule 5.2).
-///
-/// # The launch key is NOT registered here any more
-///
-/// It used to be, because the log was opened after the login and there was
-/// exactly one key. A supervised session has **one key per generation**
-/// (`plan/10` §4.6: the SGE connection is *"strictly single-use per auth"*),
-/// and the log is opened *before* the first login -- so the keys arrive later
-/// and keep arriving.
-///
-/// `Connector::take_secrets` is that seam: the supervisor drains it after every
-/// `connect` and calls [`SessionSink::redact_key`] before a byte of the new
-/// connection is written. Registering a key here would cover the first
-/// connection and silently miss every reconnect, which is worse than not
-/// pretending to.
-///
-/// # The ACCOUNT is registered here, and used not to be
-///
-/// `Redactions::account` existed with **no production caller** (review finding
-/// PL-5), so the account name reached the log unredacted wherever the wire
-/// carried it -- and it does carry it: every character code is
-/// `W_<ACCOUNT>_<SLOT>` (`plan/10` §4.6).
-///
-/// Unlike the key it is known before the first byte, so it belongs at creation
-/// rather than per generation. It does not change across reconnects.
-///
-/// The holder's REAL NAME is still not registered: it arrives in the `A`
-/// response and `authenticate` discards it, so there is nothing to register
-/// from. That remains owed, and is the last piece of the redaction set that is
-/// known to the protocol but not to the sink.
-fn open_log(character: &str, account: &str) -> io::Result<SessionSink> {
-    // Filled further per generation by the supervisor, which registers each
-    // connection's launch key before a byte of it is written.
-    let mut redactions = Redactions::new();
-    redactions.account(account);
-    let dir = cena_platform::log_dir().join(cena_platform::date_dir());
-    SessionSink::create(&dir, character, &cena_platform::file_stamp(), redactions)
 }
 
 #[cfg(test)]
