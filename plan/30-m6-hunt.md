@@ -420,6 +420,25 @@ engine, so it is cut into sub-milestones that each finish with something the aut
      the actor evaluates at write time;
    - `creature_message` wiring;
    - travel's drive loop split from its claim.
+   > **BUILT 2026-09-24.**
+   > - **Cast roundtime:** `in_casttime` and `casttime_remaining` in `cena-model`'s
+   >   `clock.rs`, beside the roundtime readers they mirror.
+   > - **The stance setter** (`cena-behavior/src/stance.rs`, `00575eb`) is pure. It works
+   >   out what to send, confirms the change from `pbarStance` rather than from the
+   >   game's sentence, and picks the safest stance. A percent is sent as `cman stance N`
+   >   only when Stance Perfection is trained.
+   > - **The last check is the session's** (`actor/gate.rs`). `Gate::Act { target }`
+   >   refuses an action, and does not write it, when the live model shows roundtime,
+   >   cast roundtime, stunned, webbed or dead, or when the target is no longer in the room
+   >   alive (`valid_target`). `send_gated` carries the gate. `Refusal::Stunned` and
+   >   `Webbed` finally have a caller (review SE-11).
+   > - **`travel_holding`** is the walk without the claim and release, so Hunt can walk
+   >   while keeping the authority. `travel` is now claim, then `travel_holding`, then
+   >   release.
+   > - **`creature_message` wiring was DROPPED.** Hunt gets all it needs elsewhere:
+   >   deaths from `<crtrStatus>`, flight from `state/departure.rs`, and decay from the
+   >   room list. `plan/27d` already records the wiring as deliberately not done.
+   > - Each gate condition, and the split, has a test that a named mutation turns red.
 4. **The guard evaluation** (§5): a table of bigshot's 87 words with a verdict each, for the
    author to review. Then **the profile format, the chain and the bigshot importer**:
    `ojandhaart.yaml` imports, and what it drops is named.
