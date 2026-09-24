@@ -13,7 +13,7 @@ use cena_behavior::BehaviorError;
 use cena_behavior::travel::{Ended, FOLLOW_WAIT, LOST_WAIT, Why, seed_for};
 use cena_map::RoomId;
 use cena_session::group::Member;
-use cena_session::{Frame, GameState, Gate, NoticeKind, Origin};
+use cena_session::{AuthorityToken, Frame, GameState, Gate, NoticeKind, Origin};
 use drive_support::*;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -34,6 +34,24 @@ async fn it_walks_there_storing_and_taking_back_on_the_way() {
         ["north", "store right", "climb rope", "get #11"]
     );
     assert!(travelled.still_stored.is_empty(), "the sword came back");
+    session.cancel();
+}
+
+/// A caller holding the authority walks with `travel_holding` and still holds
+/// it after: Hunt goes to its hunting ground without a manual `;go2` getting
+/// in between (`plan/30` §3).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_walk_by_a_holder_leaves_the_authority_held() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session, handle) = set_out_holding(&stop, ROOMS);
+    transcript.answer("north", &arrival(1002));
+    transcript.answer("store right", SWORD_GONE);
+    transcript.answer("climb rope", &arrival(1003));
+    transcript.answer("get #11", SWORD_BACK);
+
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(handle.holder(), Some(AuthorityToken(1)), "still held");
     session.cancel();
 }
 
