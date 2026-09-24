@@ -275,6 +275,20 @@ between two sessions is exactly what §3a's isolation tests exist to catch.
 - **When: whenever** -- the author set no milestone. The proposal stays M5 for the status
   cards and the merge, because both are frontend-agnostic and testable before the GUI.
 
+### 5b. From the first live run (2026-09-24)
+
+**Two clients, one character: Hydra backs off, and that stays the default.** The author
+forced a disconnect by logging Nisugi in on a phone (VellumFE). Hydra reconnected, knocking
+the phone off; the phone's own ladder retried about a second later and took the character
+back, 7 ms after Hydra's `Ready` (session log: `Ready` at `00:54:57.757`, the connection
+ended `.764`). With no command sent across the two connections, Hydra stopped as
+`Unattended` rather than fight -- `MAX_UNATTENDED_LOSSES`, working as written. INFERRED
+from the timing, which matches VellumFE's 1 s first rung; nothing in the logs contradicts it.
+
+The author on whether an open page should count as attendance: *"I don't think open page is
+enough, maybe it could be an advanced option."* **Deferred** to the settings taxonomy
+(`28` §7f): an opt-in that lets an attached viewer count as attended. Not built.
+
 ## 6. Acceptance (proposed)
 
 - The isolation tests pass, and each has a recorded mutation that turns it red.
