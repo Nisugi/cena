@@ -168,6 +168,46 @@ impl GameState {
         )
     }
 
+    /// Whether a **cast** roundtime is running: [`Self::in_roundtime`]'s
+    /// answer for `<castTime value=>`, with its rules.
+    ///
+    /// A behavior settles both before it acts (`plan/30` §3): Lich's stance
+    /// change is declined with *"Cast Roundtime in effect"* (`stance.rb`), and
+    /// its `safest` stance is `guarded` rather than `defensive` while one runs.
+    /// A cast roundtime never reported is over, as a roundtime is -- Lich
+    /// starts `@cast_roundtime_end` at 0 (`reference/lich-5/lib/common/xmlparser.rb:63`)
+    /// and `waitcastrt?` compares `cast_roundtime_end - now > 0`
+    /// (`lib/global_defs.rb:288`).
+    #[must_use]
+    pub fn in_casttime(&self) -> Option<bool> {
+        self.in_casttime_after(self.elapsed_since_prompt())
+    }
+
+    /// [`Self::in_casttime`] against a supplied interval. See
+    /// [`Self::game_time_after`] for why the seam exists.
+    #[must_use]
+    pub fn in_casttime_after(&self, elapsed: u32) -> Option<bool> {
+        let now = self.game_time_after(elapsed)?;
+        Some(self.cast_time_ends.is_some_and(|ends| now < ends))
+    }
+
+    /// How many seconds of cast roundtime remain; [`Self::roundtime_remaining`]
+    /// for `<castTime>`.
+    #[must_use]
+    pub fn casttime_remaining(&self) -> Option<u32> {
+        self.casttime_remaining_after(self.elapsed_since_prompt())
+    }
+
+    /// [`Self::casttime_remaining`] against a supplied interval.
+    #[must_use]
+    pub fn casttime_remaining_after(&self, elapsed: u32) -> Option<u32> {
+        let now = self.game_time_after(elapsed)?;
+        Some(
+            self.cast_time_ends
+                .map_or(0, |ends| ends.saturating_sub(now)),
+        )
+    }
+
     /// Seconds since the last prompt landed, on the local monotonic clock.
     ///
     /// The **one** place the wall clock is read. Every extrapolating method
