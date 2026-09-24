@@ -16,21 +16,26 @@ pub(crate) struct Frontend {
     task: std::sync::Mutex<Option<JoinHandle<std::io::Result<()>>>>,
     sessions: cena_web::Sessions,
     pairing: String,
+    map_projection: Option<cena_web::MapProjection>,
 }
 
 impl Frontend {
     /// Bind for one session, when `--web` asked for it. Failure leaves the
     /// CLI/session path available and is reported, rather than bypassing
     /// native shutdown.
-    pub(crate) async fn start(observer: SessionObserver, handle: SessionHandle) -> Option<Self> {
-        let frontend = Self::open().await?;
+    pub(crate) async fn start(
+        observer: SessionObserver,
+        handle: SessionHandle,
+        map: &crate::map_context::ConfiguredMap,
+    ) -> Option<Self> {
+        let frontend = Self::open(map).await?;
         frontend.attach(None, observer, handle);
         Some(frontend)
     }
 
     /// Bind, serving no session yet, when `--web` asked for it; see
     /// [`Self::attach`]. One listener serves every character (`plan/23` §D1a).
-    pub(crate) async fn open() -> Option<Self> {
+    pub(crate) async fn open(map: &crate::map_context::ConfiguredMap) -> Option<Self> {
         if !requested() {
             return None;
         }
@@ -47,6 +52,7 @@ impl Frontend {
                     task: std::sync::Mutex::new(Some(task)),
                     sessions,
                     pairing,
+                    map_projection: crate::map_context::projection(map),
                 })
             }
             Err(error) => {
@@ -76,8 +82,12 @@ impl Frontend {
             Some(_) => format!("{}&session={}", self.pairing, handle.session().0),
             None => self.pairing.clone(),
         };
-        self.sessions
-            .attach(character.unwrap_or_default(), observer.clone(), handle);
+        self.sessions.attach_with_map(
+            character.unwrap_or_default(),
+            observer.clone(),
+            handle,
+            self.map_projection.clone(),
+        );
         tokio::spawn(announce(
             observer,
             url,

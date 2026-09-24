@@ -4,6 +4,9 @@ This brings the independently tested atlas presentation into Despana's existing
 loopback server. Open **Map explorer** from the character hub or a character page.
 It opens in a separate tab so the live story and command entry stay available.
 
+This document records the first, offline integration. The separate read-only
+character minimap follow-up is documented in [plan 30](30-despana-live-map.md).
+
 ## What is included
 
 - World connections and canonical room search; region overview with Map and
