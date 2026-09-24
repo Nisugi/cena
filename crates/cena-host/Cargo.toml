@@ -1,0 +1,18 @@
+[package]
+name = "cena-host"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cena-session.workspace = true
+tokio = { version = "1", features = ["rt", "sync", "time"] }
+tokio-util = "0.7"
+
+[dev-dependencies]
+# Scripted game connections for the table's tests; not in the shipped graph.
+cena-platform.workspace = true
+tokio = { version = "1", features = ["macros", "rt", "sync", "test-util", "time"] }
+
+[lints]
+workspace = true

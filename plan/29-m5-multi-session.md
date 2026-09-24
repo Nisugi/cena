@@ -125,6 +125,11 @@ Each step ends in something demonstrable, the way M1's did.
    lifetime; adding one starts a supervisor, removing one sends its `quit`; Ctrl-C shuts all
    of them down in order. It refuses a second session on an account already in use. *Demo:*
    add two characters on scripted sources, remove one, Ctrl-C, clean farewells.
+   > **BUILT 2026-09-23** as the `cena-host` crate (`Host`, `Hosted`, `stop_all`), five
+   > tests over scripted sources, each red under a mutation: no account check, a stopped
+   > session holding its account, and a stop that skips `quit`. The binary does not use it
+   > yet: adding a live session needs credentials per account, so the binary moves onto the
+   > table with step 4. A failing store write (moved here from §3a) is still to test.
 4. **The credential ladder (Q2).** OS keyring, then a source the user names (env var, file,
    stdin), then refuse loudly naming the account. The prompt stops echoing.
 5. **The web hub and per-session URLs (§5a).** *Demo:* two scripted sessions, one hub, one

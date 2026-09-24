@@ -92,9 +92,17 @@ cena-session     session actor: state, queue, lifecycle       (cena-model, cena-
 cena-behavior    curated behaviors as async tasks             (cena-session)
 cena-agent       external agent protocol over a socket        (cena-session)
 cena-ui          frontend-agnostic snapshot + input types     (cena-model)
+cena-host        the table of sessions one Hydra runs         (cena-session)
 cena-tui/gui/web frontends                                    (cena-ui, cena-session)
 cena             binary                                       (everything)
 ```
+
+> **AMENDED 2026-09-23 (`plan/29` step 3, author's go-ahead):** `cena-host` added. A
+> session is one character; this is what knows there are several -- it adds and removes
+> them while Hydra runs, numbers them, refuses a second session on one account, and stops
+> them all. It is a crate rather than part of the binary because its callers include the
+> web hub and the GUI launcher, and a frontend cannot depend on the binary. The web
+> frontend will gain an edge to it when the hub is built (`plan/29` step 5).
 
 Unchanged from `05` §1 except `cena-script` → `cena-behavior`. All rules in `05` §1–§2 apply,
 reading "behavior" for "script".

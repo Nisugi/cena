@@ -192,10 +192,11 @@ const HANDLE_OWNER: (&str, &str) = ("crates/cena-session/src/actor/handle.rs", "
 ///
 /// An allowlist, like `ALLOWED_STATICS`: a new holder is a reviewed entry, not
 /// a needle miss.
-const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[(
-    "crates/cena-web/src/server.rs",
-    "Shared",
-    "The embedded frontend's manual-input surface. Found by review finding 1 \
+const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
+    (
+        "crates/cena-web/src/server.rs",
+        "Shared",
+        "The embedded frontend's manual-input surface. Found by review finding 1 \
      (it evaded the old needle by being `pub(crate)`), and allowed rather than \
      reported, on the type's own terms: SessionHandle is documented as \
      'Cloneable, so a behavior and the manual-input surface hold the same \
@@ -209,7 +210,21 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[(
      the session rather than delivered. M4 decision D2 gives cena-web this \
      edge (layering.rs ALLOWED_EDGES). `the_handle_premise_holds` checks the \
      'every field is shared' half mechanically.",
-)];
+    ),
+    (
+        "crates/cena-host/src/table.rs",
+        "Hosted",
+        "The session table's entry for one running session (plan/29 step 3). \
+         It is the handle `SupervisedSession::numbered` returned, kept for the \
+         session's whole life in the table, and it cannot outlive the \
+         connection it reaches: `Host::take` removes the entry and \
+         `Hosted::stop` consumes it. The same premise as `Shared` above holds \
+         -- every field of a SessionHandle is a channel sender or an \
+         Arc-shared slot, so a frontend's clone taken from this entry cannot \
+         drift from it -- and sends from a frontend stay generation-pinned. \
+         The cena-host row of layering.rs ALLOWED_EDGES gives it the edge.",
+    ),
+];
 
 #[test]
 fn the_session_handle_has_a_single_owning_field() {

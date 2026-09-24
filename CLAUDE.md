@@ -154,6 +154,7 @@ lockfile; run cargo inside it only for the spike.
 | `cena-behavior` | curated Rust behaviors (travel, …) | platform, map, session |
 | `cena-ui` | pure, versioned projection of a session for frontends (`SessionView`, `WIRE.md`) | model |
 | `cena-web` | Despana: embedded loopback viewer; the native session stays authoritative | ui, session |
+| `cena-host` | the table of sessions one Hydra runs: add, remove, one per account, stop all (`plan/29`) | session |
 | `cena` | the binary | behavior, platform, session, ui, web |
 | `cena-arch-tests` | the rules the compiler cannot express | — |
 

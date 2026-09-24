@@ -193,6 +193,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cena-host"
+version = "0.1.0"
+dependencies = [
+ "cena-platform",
+ "cena-session",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "cena-map"
 version = "0.1.0"
 dependencies = [

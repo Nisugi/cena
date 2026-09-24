@@ -9,6 +9,7 @@ members = [
     "crates/cena-behavior",
     "crates/cena-ui",
     "crates/cena-web",
+    "crates/cena-host",
     "crates/cena",
     "crates/cena-arch-tests",
 ]
@@ -34,6 +35,7 @@ cena-session = { path = "crates/cena-session" }
 cena-behavior = { path = "crates/cena-behavior" }
 cena-ui = { path = "crates/cena-ui" }
 cena-web = { path = "crates/cena-web" }
+cena-host = { path = "crates/cena-host" }
 
 # The first and only serialization in the workspace, added for M3 step 8.
 # `research/04-inherited-decisions.md:1878` (C21) argues the character store is
