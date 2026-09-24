@@ -118,9 +118,17 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
     table.offer().await;
 
     eprintln!("[play] running; Ctrl-C quits every character");
-    tokio::select! {
-        () = interrupt.cancelled() => {}
-        () = table.all_stopped() => eprintln!("[play] every session has stopped"),
+    // With the hub up, no character left running is not the end: the hub can
+    // start one again, and quitting the last from it shut Hydra down under
+    // the page (author's live run, 2026-09-24). Only Ctrl-C ends a --web run.
+    // Without it, nothing could start another, so all stopped is the end.
+    if table.web.is_some() {
+        interrupt.cancelled().await;
+    } else {
+        tokio::select! {
+            () = interrupt.cancelled() => {}
+            () = table.all_stopped() => eprintln!("[play] every session has stopped"),
+        }
     }
     if let Some(web) = &table.web {
         web.shutdown().await;

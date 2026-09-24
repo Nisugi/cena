@@ -609,3 +609,14 @@ test("a refreshed page keeps its pairing and its session, for this tab only", ()
   assert.equal(takeLaunchToken(refreshed, history, null), "");
 });
 
+test("a hub that loses its server stays a hub while it reconnects", () => {
+  // Live, 2026-09-24: the page fell back to an empty character layout.
+  const { session, socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")], available: [] });
+  socket.close(1006);
+  assert.equal(session.state.connection, "reconnecting");
+  assert.notEqual(session.state.hub, null, "the last cards stay up");
+  assert.ok(element("shell").classes.includes("hub-mode"));
+  assert.equal(element("connection-status").textContent, "Hub disconnected · reconnecting…");
+});
+

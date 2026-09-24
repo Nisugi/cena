@@ -344,7 +344,9 @@ export function mount(document, environment) {
     element("hub").hidden = state.hub === null;
     element("shell").classList.toggle("hub-mode", state.hub !== null);
     if (state.hub !== null) {
-      text("connection-status", "Characters");
+      text("connection-status", state.connection === "hub" ? "Characters"
+        : state.connection === "reconnecting" ? "Hub disconnected · reconnecting…"
+        : state.connection === "denied" ? "Pairing refused" : "Connecting…");
       renderHub(state.hub);
       renderAvailable(state.available, state.hubNote);
       renderMerged(state.merged);

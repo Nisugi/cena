@@ -181,7 +181,10 @@ export class HydraSession {
     this.state.cursor = null;
     this.state.session = null;
     this.state.generation = null;
-    this.state.hub = null;
+    // The hub stays up while it reconnects: dropping to a character layout
+    // made a hub waiting for its server look like an empty character page
+    // (author's live run, 2026-09-24). A snapshot, which only a character's
+    // page receives, is what ends hub mode.
     this.emit();
     let socket;
     try { socket = new this.WebSocketImpl(this.url); }
@@ -330,6 +333,7 @@ export class HydraSession {
     state.generation = message.generation;
     state.cursor = message.cursor;
     state.connection = "connected";
+    state.hub = null;
     if (this.untouched) {
       state.commandStatus = "Ready when the game is.";
     }
