@@ -102,7 +102,16 @@ What the M1 slice left behind, measured:
 > Also gone as dead code once the single path went: `Frontend::start`, `wait_for_stop`,
 > `unless_interrupted`, `setup::open_session`, and a single session's terminal story
 > renderer. With no `--web`, a run is now headless, with Hydra's own lines only, as it
-> already was under `--character`. `sync` at Ready is the next commit.
+> already was under `--character`.
+>
+> **`sync` at Ready, BUILT 2026-09-24.** The session gained **quiet round trips**:
+> `SessionHandle::send_quietly` brackets a command's window with `Event::Quiet(true/false)`,
+> and the web story leaves that window's main-stream text and prompt out. Other streams
+> still show, and every frame is still folded, logged and published. `learn.rs` hears
+> `SyncNeeded` from a subscription made before the session runs, waits for `Ready`, and
+> runs `cena_behavior::sync`, which sends quietly and says a start line, one line per
+> command naming it, and an end line. `tests/web_quiet.rs` goes red if either half is
+> broken (both mutations verified), and `sync_plan.rs` goes red if the sync sends loudly.
 
 Done when: `grep -rn "look(" crates/*/src` finds no behavior, the binary has one run path,
 and the whole suite is green, including the two re-hosted criteria tests with their mutations.

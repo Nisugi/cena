@@ -30,7 +30,7 @@ use cena_web::HubRequest;
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
-use crate::{connector, frontend, interrupt, roster, secrets, setup, travel, watch};
+use crate::{connector, frontend, interrupt, learn, roster, secrets, setup, travel, watch};
 
 /// The characters named with `--character`, in order. Empty means none was
 /// named, and `main` asks for one at the prompt.
@@ -161,14 +161,17 @@ impl Table {
         let mut attached = None;
         let id = host
             .add(who, connector, |session| {
-                // Subscribed before it runs, so the watcher sees the whole login.
+                // Subscribed before it runs, so the watcher sees the whole
+                // login, and the sync hears the store's report mid-burst.
                 let (_, events) = session.subscribe();
+                let (_, learning) = session.subscribe();
                 let (session, combat, player) = setup::attach(session, &character, &game, &account);
-                attached = Some((events, combat, player));
+                attached = Some((events, learning, combat, player));
                 session
             })
             .map_err(|e| format!("[{character}] not started: {e}"))?;
-        let (Some((events, combat, player)), Some(hosted)) = (attached, host.get(id)) else {
+        let (Some((events, learning, combat, player)), Some(hosted)) = (attached, host.get(id))
+        else {
             return Err(format!(
                 "[{character}] not started: it left the table at once"
             ));
@@ -187,6 +190,8 @@ impl Table {
             hosted.handle.clone(),
             hosted.observer.clone(),
             commands,
+            learning,
+            format!("[{character}]"),
         ));
         self.started
             .lock()
@@ -398,11 +403,21 @@ fn hub_login(dir: &Path, name: &str) -> Result<Typed, String> {
     }
 }
 
-/// Once the login is proven, open travel.
-async fn after_ready(handle: SessionHandle, observer: SessionObserver, commands: Commands) {
-    if until_ready(&observer).await {
-        travel::after_login(&handle, observer, &commands).await;
-    }
+/// Once the login is proven, open travel, then sync the character if the
+/// store said anything is stale (`learn.rs`).
+async fn after_ready(
+    handle: SessionHandle,
+    observer: SessionObserver,
+    commands: Commands,
+    mut learning: tokio::sync::broadcast::Receiver<Event>,
+    who: String,
+) {
+    let Some(stale) = learn::stale_at_ready(&mut learning).await else {
+        return;
+    };
+    drop(learning);
+    travel::after_login(&handle, observer, &commands).await;
+    learn::sync(&handle, &stale, &who).await;
 }
 
 /// What a login leaves behind once it is proven: its roster entry, and --

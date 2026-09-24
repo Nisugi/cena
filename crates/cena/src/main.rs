@@ -32,6 +32,7 @@ mod commands;
 mod connector;
 mod frontend;
 mod interrupt;
+mod learn;
 mod play;
 mod roster;
 mod secrets;

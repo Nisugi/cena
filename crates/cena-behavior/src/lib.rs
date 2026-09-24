@@ -27,4 +27,4 @@ pub mod sync;
 pub mod travel;
 
 pub use error::BehaviorError;
-pub use sync::{MAX_AGE, SYNC_DEADLINE, plan, sync};
+pub use sync::{MAX_AGE, SYNC_DEADLINE, commands_for, plan, sync};
