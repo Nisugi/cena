@@ -19,3 +19,8 @@ crates/cena-model/data/*.tsv -text
 # The same for the converter's fixture, which is a cut of the upstream file.
 crates/cena-mapdb-convert/src/upstream_scripts/* -text
 crates/cena-mapdb-convert/tests/fixtures/*.json -text
+
+# Hash-bound snapshots must not acquire CRLF on Windows checkout.
+crates/cena-web/atlas-data/**/*.json -text linguist-generated=true
+crates/cena-web/atlas-data/inventory.json -text linguist-generated=true
+tools/atlas/creature-catalogue.json -text linguist-generated=true

@@ -425,6 +425,9 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
                 )
             }),
         )
+        .route("/atlas", get(crate::atlas::home))
+        .route("/atlas/", get(crate::atlas::home))
+        .route("/atlas/{*path}", get(crate::atlas::asset))
         .route("/ws", get(upgrade))
         .layer(middleware::from_fn_with_state(Arc::clone(&shared), guard))
         .with_state(shared)

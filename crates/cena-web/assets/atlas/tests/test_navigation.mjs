@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {routeTo,routeOnMap,routeVisits,edgeWeight} from '../navigation.mjs';
+import {defaults,cleanPreferences,preset,annotations} from '../preferences.mjs';
+import {index} from '../model.mjs';
+const room=(id,edges=[])=>({id,exits:edges}),edge=(to,cost=1)=>({to,cost,cmd:'east'});
+const rooms={1:room(1,[edge(2),edge(5,5)]),2:room(2,[edge(3)]),3:room(3,[edge(4)]),4:room(4,[edge(5)]),5:room(5)};
+const lookup={1:{area:'town'},2:{area:'town'},3:{area:'cat'},4:{area:'town'},5:{area:'town'}};
+const route=routeTo(rooms,1,5);
+assert.deepEqual(route.ids,[1,2,3,4,5],'Cheaper underground shortcut wins');
+assert.deepEqual(routeVisits(route,lookup).map(v=>v.area),['town','cat','town']);
+assert.deepEqual(routeOnMap(route,lookup,'town').segments.map(e=>[e.from,e.to]),[[1,2],[4,5]],'Never draw a false surface connection');
+assert.equal(routeOnMap(route,lookup,'town').crossings.length,2);
+assert.equal(routeTo(rooms,5,1).status,'unreachable','Do not fabricate reverse exits');
+assert.equal(routeTo(rooms,1,999).status,'unbundled');
+assert.equal(routeTo({...rooms,3:{...rooms[3],status:'closed'}},1,4).status,'unreachable','Closed rooms cannot enter a route');
+assert.deepEqual(routeTo(rooms,1,1).ids,[1]);
+assert.deepEqual(routeTo(rooms,1,5,{metric:'steps'}).ids,[1,5]);
+for(const e of [{to:2,cmd:'north',cost:{then:1,when:true}},{to:2,pass:null,cost:1},{to:2,routine:'x',cost:1},{to:2,cmd:'north',cost:-1},{to:2,cmd:'north',cost:NaN},{to:2,steps:[{remember:['origin',1]}],cost:1}])assert.equal(edgeWeight(e,{scripted:true}),null);
+const scripted={to:2,steps:[{put:'search'},{move:'go opening'}],cost:2};
+assert.equal(edgeWeight(scripted),null);assert.equal(edgeWeight(scripted,{scripted:true}),2);
+assert.equal(edgeWeight({...scripted,steps:[{move:'go wagon'}]},{scripted:true}),null);
+assert.equal(cleanPreferences({colors:{shops:'url(bad)'},animate:'false'}).colors.shops,defaults().colors.shops);
+assert.equal(preset('travel',defaults()).layers.shops,false);
+const data=JSON.parse(readFileSync(new URL('../../../atlas-data/landing/data.json',import.meta.url))),before=JSON.stringify(data),ix=index(data);
+for(const dest of [1245,1248,7501,7544]){
+ const r=routeTo(data.rooms,228,dest);assert.equal(r.status,'found',`Real demo destination ${dest} reachable`);
+ for(const e of r.edges)assert.deepEqual(data.rooms[e.from].exits[e.ordinal],e.edge);
+ for(const area of Object.keys(data.scenes))for(const e of routeOnMap(r,ix,area).segments)assert.equal(ix[e.from].area,ix[e.to].area);
+}
+assert.ok(annotations(data,ix)[228].kinds.includes('landmarks'));
+assert.equal(JSON.stringify(data),before,'Routing and highlights must not mutate source');
+console.log('PASS: directed cost routing, catacomb split segments, one-way/unbundled failures, scripted gates, presets, metadata hints, unchanged native data.');
