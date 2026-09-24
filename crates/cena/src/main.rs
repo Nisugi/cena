@@ -4,6 +4,10 @@
 //! with none named, Hydra asks for one at the terminal. Either way they go on
 //! the session table (`play.rs`), with the web hub under `--web`.
 //!
+//! **How the whole workspace fits together is [`architecture`]**: the crate
+//! graph, the flow of one line of game text, the three seams, and the tests
+//! that hold each in place. Read it first.
+//!
 //! This was M1's end-to-end slice, run for real: a single session narrated
 //! criterion by criterion, a looping `look` behind `--demo`, and measurement
 //! probes behind `--capture`, `--psm` and `--typeahead`. M6 retired all of it
@@ -27,6 +31,7 @@
 //! is a full re-login (`LiveConnector`). The wire is written to disk, with
 //! the credential redacted (`Redactions`).
 
+mod architecture;
 mod ask;
 mod commands;
 mod connector;
