@@ -95,6 +95,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -105,3 +107,11 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Despana rendering and same-tab pairing regression
         run: node crates/cena-web/browser-tests/smoke.mjs
+      - name: Explorer snapshot and pure presentation regressions
+        run: |
+          python3 -m unittest discover -s tools/atlas -p 'test_*.py'
+          node --test crates/cena-web/assets/atlas/tests/*.mjs
+      - name: Native explorer browser regression (no game session)
+        run: |
+          cargo build --locked -p cena-web --example atlas_preview
+          node crates/cena-web/browser-tests/atlas.mjs
