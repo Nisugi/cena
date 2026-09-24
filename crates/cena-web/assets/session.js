@@ -3,19 +3,45 @@ export const MAX_STORY_LINES = 1000;
 const decimal = (value) => typeof value === "string" && /^(0|[1-9][0-9]{0,19})$/.test(value)
   && BigInt(value) <= 18446744073709551615n;
 
-// Which session this page is for, from the launch fragment (`#token=…&session=N`).
-// Read BEFORE takeLaunchToken, which removes the fragment. `null`: the page
-// names none, and the server serves its only session.
-export function launchSession(location) {
-  const session = new URLSearchParams(location.hash.slice(1)).get("session");
-  return decimal(session) ? session : null;
+// A refresh keeps its pairing (author, 2026-09-24: refreshing the hub showed
+// "Pairing required"). The launch fragment is kept in this TAB's
+// sessionStorage -- per tab, gone when the tab closes -- so the token still
+// never sits in the URL, history or a referrer. `storage` is optional: without
+// it (tests, a browser refusing storage) a refresh needs the link again.
+const TOKEN_KEY = "hydra-token";
+const SESSION_KEY = "hydra-session";
+function stored(storage, key) {
+  try { return storage?.getItem(key) ?? null; } catch { return null; }
+}
+function store(storage, key, value) {
+  try { if (value === null) storage?.removeItem(key); else storage?.setItem(key, value); } catch { /* none kept */ }
 }
 
-export function takeLaunchToken(location, history) {
+// Which session this page is for, from the launch fragment (`#token=…&session=N`),
+// or -- on a refresh, which has no fragment -- the one this tab was opened for.
+// Read BEFORE takeLaunchToken, which removes the fragment. `null`: the page
+// names none, and the server serves its only session, or the hub.
+export function launchSession(location, storage = null) {
+  const params = new URLSearchParams(location.hash.slice(1));
+  if (params.get("token")) {
+    const session = params.get("session");
+    const named = decimal(session) ? session : null;
+    store(storage, SESSION_KEY, named);
+    return named;
+  }
+  const kept = stored(storage, SESSION_KEY);
+  return decimal(kept) ? kept : null;
+}
+
+export function takeLaunchToken(location, history, storage = null) {
   const token = new URLSearchParams(location.hash.slice(1)).get("token") || "";
   // Remove all fragment material before opening a socket or touching the view.
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-  return token;
+  if (token) {
+    store(storage, TOKEN_KEY, token);
+    return token;
+  }
+  return stored(storage, TOKEN_KEY) || "";
 }
 
 export function commandError(line) {

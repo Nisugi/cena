@@ -583,3 +583,24 @@ test("the hub shows each shared-stream line once, gaining a character's tag in p
   assert.equal(session.state.connection, "protocol-error");
 });
 
+test("a refreshed page keeps its pairing and its session, for this tab only", () => {
+  // Live, 2026-09-24: refreshing the hub showed "Pairing required".
+  const kept = new Map();
+  const storage = { getItem: (k) => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, v),
+    removeItem: (k) => kept.delete(k) };
+  const history = { replaceState() {} };
+  const opened = { hash: "#token=t0&session=1", pathname: "/", search: "" };
+  assert.equal(launchSession(opened, storage), "1");
+  assert.equal(takeLaunchToken(opened, history, storage), "t0");
+  // The refresh: the fragment is gone, and the tab still knows both.
+  const refreshed = { hash: "", pathname: "/", search: "" };
+  assert.equal(launchSession(refreshed, storage), "1");
+  assert.equal(takeLaunchToken(refreshed, history, storage), "t0");
+  // A hub link names no session, and clears the one kept.
+  const hub = { hash: "#token=t0", pathname: "/", search: "" };
+  assert.equal(launchSession(hub, storage), null);
+  assert.equal(launchSession(refreshed, storage), null);
+  // No storage: as before, a refresh needs the link again.
+  assert.equal(takeLaunchToken(refreshed, history, null), "");
+});
+

@@ -7,6 +7,7 @@ use cena_platform::AnsweringSource;
 use cena_session::{Generation, Outcome, Session, SessionId};
 use cena_ui::{ClientMessage, LifecycleView, ReceiptStatus, ServerMessage, WIRE_VERSION};
 use cena_web::{HubRequest, WebServer};
+use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 use web_support::*;
 
@@ -298,4 +299,128 @@ async fn a_thought_two_characters_hear_is_one_line_on_the_hub_tagged_with_both()
     a_stop.cancel();
     b_stop.cancel();
     let _ = (a_actor.await, b_actor.await);
+}
+
+/// Live, 2026-09-24: a character's session ended while the hub was open, and
+/// the author saw no change until refreshing. A card must follow its
+/// character to the end.
+#[tokio::test]
+async fn a_character_whose_session_ends_shows_closed_on_the_hub_without_a_refresh() {
+    let (a_source, _) = AnsweringSource::logged_in(ROOM);
+    let (b_source, _) = AnsweringSource::logged_in(ROOM);
+    let a = Session::numbered(SessionId(0), a_source);
+    let b = Session::numbered(SessionId(1), b_source);
+    let (a_observer, b_observer) = (a.observer(), b.observer());
+    let (a_stop, b_stop) = (a.cancel_token(), b.cancel_token());
+    let server = WebServer::open().await.unwrap();
+    let sessions = server.sessions();
+    sessions.attach("Nisugi", a_observer.clone(), a.handle());
+    sessions.attach("Nerten", b_observer.clone(), b.handle());
+    let a_actor = tokio::spawn(a.into_actor().run());
+    let b_actor = tokio::spawn(b.into_actor().run());
+    await_ready(&a_observer, Generation::FIRST).await.unwrap();
+    await_ready(&b_observer, Generation::FIRST).await.unwrap();
+    let pairing = server.pairing_url();
+    let stop_web = CancellationToken::new();
+    let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
+    let mut hub = browser(&pairing).await.unwrap();
+
+    b_stop.cancel();
+    let _ = b_actor.await;
+    let closed = tokio::time::timeout(DEADLINE, async {
+        loop {
+            if let Ok(ServerMessage::Sessions {
+                sessions: cards, ..
+            }) = receive(&mut hub).await
+                && matches!(cards[1].lifecycle, LifecycleView::Closed { .. })
+            {
+                return;
+            }
+        }
+    })
+    .await;
+    assert!(closed.is_ok(), "the hub never showed Nerten closed");
+
+    stop_web.cancel();
+    web.await.unwrap().unwrap();
+    a_stop.cancel();
+    let _ = a_actor.await;
+}
+
+/// The live case exactly: a supervised character knocked off twice with no
+/// command between -- the "two clients fighting" guard -- stops as
+/// Unattended. Its card must say so without a refresh.
+#[tokio::test]
+async fn a_supervised_character_that_stops_unattended_shows_closed_on_the_hub() {
+    struct Connections(std::collections::VecDeque<AnsweringSource>);
+    impl cena_session::Connector for Connections {
+        type Source = AnsweringSource;
+        async fn connect(
+            &mut self,
+            _: Generation,
+        ) -> Result<AnsweringSource, cena_session::ConnectError> {
+            self.0
+                .pop_front()
+                .ok_or_else(|| cena_session::ConnectError::fatal("fixture", "exhausted"))
+        }
+    }
+    let (first, first_transcript) = AnsweringSource::logged_in(ROOM);
+    let (second, second_transcript) = AnsweringSource::logged_in(ROOM);
+    let (session, handle) = cena_session::SupervisedSession::numbered(
+        SessionId(0),
+        Connections(vec![first, second].into()),
+    );
+    let observer = session.observer();
+    let server = WebServer::open().await.unwrap();
+    server
+        .sessions()
+        .attach("Nisugi", observer.clone(), handle.clone());
+    let running = tokio::spawn(session.run());
+    await_ready(&observer, Generation::FIRST).await.unwrap();
+    let pairing = server.pairing_url();
+    let stop_web = CancellationToken::new();
+    let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
+    // One session and none named is its page, not the hub: name none with a
+    // second attached would be the hub. Read its view instead.
+    let mut page = browser(&pairing).await.unwrap();
+
+    first_transcript.hang_up();
+    await_ready(&observer, Generation::FIRST.next())
+        .await
+        .unwrap();
+    second_transcript.hang_up();
+    let end = tokio::time::timeout(Duration::from_secs(15), running)
+        .await
+        .expect("the supervisor stops")
+        .unwrap();
+    assert!(
+        matches!(
+            end.stopped_because,
+            cena_session::StoppedBecause::Unattended
+        ),
+        "{:?}",
+        end.stopped_because
+    );
+    let closed = tokio::time::timeout(DEADLINE, async {
+        loop {
+            match receive(&mut page).await {
+                Ok(ServerMessage::Snapshot { view, .. } | ServerMessage::Update { view, .. })
+                    if matches!(view.lifecycle, LifecycleView::Closed { .. }) =>
+                {
+                    return true;
+                }
+                Ok(_) => {}
+                Err(_) => return false,
+            }
+        }
+    })
+    .await;
+    assert_eq!(
+        closed.ok(),
+        Some(true),
+        "the page never showed the character closed"
+    );
+
+    stop_web.cancel();
+    web.await.unwrap().unwrap();
 }

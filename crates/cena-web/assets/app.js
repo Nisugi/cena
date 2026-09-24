@@ -67,8 +67,9 @@ export function cardSummary(card) {
 
 export function mount(document, environment) {
   // Read before the token: taking the token removes the whole fragment.
-  const sessionId = launchSession(environment.location);
-  const token = takeLaunchToken(environment.location, environment.history);
+  const storage = environment.sessionStorage ?? null;
+  const sessionId = launchSession(environment.location, storage);
+  const token = takeLaunchToken(environment.location, environment.history, storage);
   const element = (id) => document.getElementById(id);
   const input = element("command-input");
   const story = element("story-output");
@@ -406,9 +407,11 @@ export function mount(document, environment) {
   const pairFromFragment = () => {
     // A pairing URL opened in this same tab changes only the fragment: mount
     // does not run again. Strip it before rendering or opening another socket.
-    const nextToken = takeLaunchToken(environment.location, environment.history);
+    const nextSession = launchSession(environment.location, storage);
+    const nextToken = takeLaunchToken(environment.location, environment.history, storage);
     if (!nextToken) return;
     input.value = "";
+    session.sessionId = nextSession;
     session.pair(nextToken);
   };
   environment.addEventListener("hashchange", pairFromFragment);
