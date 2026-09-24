@@ -100,6 +100,8 @@ pub enum HubRequest {
     Remove(SessionId),
     /// Log this stopped session's character back in.
     Reconnect(SessionId),
+    /// Shut Hydra down in order, as Ctrl-C does.
+    Shutdown,
 }
 
 /// What answers the hub's requests: the owner of the session table, which

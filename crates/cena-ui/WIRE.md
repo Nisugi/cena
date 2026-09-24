@@ -23,6 +23,7 @@ updates, not game events. Never convert these fields to JavaScript Number.
 | `add_character` | `character` | Hub only (step 5c): start a character that has logged in before -- in the roster, with a saved password. No credential crosses the socket. |
 | `remove_session` | `session` | Hub only: quit a character and take it off the table. |
 | `reconnect_session` | `session` | Hub only: log a stopped character back in, from the roster and the keyring. |
+| `shutdown` | -- | Hub only: shut Hydra down in order, as Ctrl-C does: every character quits, the logs flush, the process exits. |
 | `merged` | `lines` | Hub only (step 5d): thoughts, speech, logons, deaths and announcements across every character. Each line has decimal `id`, `stream`, styled `runs` and `from`, the characters that received it. Identical text on one stream from different characters within 1 second is one line; a line sent again with the same `id` has gained a character. |
 | `hub_note` | `detail` | What became of the hub request just made, as one line of plain text. |
 

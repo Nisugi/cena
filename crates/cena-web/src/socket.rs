@@ -152,6 +152,9 @@ fn hub_request(text: &str) -> Option<HubRequest> {
             let id = session_id(&session)?;
             (version == WIRE_VERSION).then_some(HubRequest::Remove(id))
         }
+        ClientMessage::Shutdown { version } => {
+            (version == WIRE_VERSION).then_some(HubRequest::Shutdown)
+        }
         ClientMessage::ReconnectSession { version, session } => {
             let id = session_id(&session)?;
             (version == WIRE_VERSION).then_some(HubRequest::Reconnect(id))
@@ -421,6 +424,24 @@ mod tests {
                 ),
                 &token
             ),
+            None
+        );
+    }
+
+    /// The hub's requests, as the page sends them; anything else is refused.
+    #[test]
+    fn the_hub_reads_its_requests_and_nothing_else() {
+        assert_eq!(
+            hub_request(r#"{"kind":"shutdown","version":1}"#),
+            Some(HubRequest::Shutdown)
+        );
+        assert_eq!(
+            hub_request(r#"{"kind":"reconnect_session","version":1,"session":"3"}"#),
+            Some(HubRequest::Reconnect(SessionId(3)))
+        );
+        assert_eq!(hub_request(r#"{"kind":"shutdown","version":2}"#), None);
+        assert_eq!(
+            hub_request(r#"{"kind":"add_character","version":1,"character":"  "}"#),
             None
         );
     }

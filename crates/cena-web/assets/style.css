@@ -132,4 +132,8 @@ meter::-moz-meter-bar { background: var(--vital-color); }
 .hub #hub-merged-heading { margin-top: 18px; }
 .merged-line { margin: 0 0 2px; font-family: var(--font-text); }
 .merged-tag { color: var(--amber); }
+.hub-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.hub-top h2 { margin: 0; }
+.hub-shutdown { font-size: .75rem; padding: 3px 10px; border-color: #7a3b3b; }
+.hub-shutdown:hover { border-color: #c96b6b; color: #e8a3a3; }
 

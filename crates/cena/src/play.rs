@@ -75,6 +75,9 @@ struct Table {
     dir: PathBuf,
     pin: PathBuf,
     turn: Arc<std::sync::Mutex<()>>,
+    /// The Ctrl-C token: the hub's Shut down cancels it, and the run ends by
+    /// the one orderly path either way.
+    interrupt: tokio_util::sync::CancellationToken,
 }
 
 /// Run every named character until Ctrl-C, or until all have stopped.
@@ -101,6 +104,7 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
         pin: dir.join(cena_platform::PIN_FILENAME),
         dir,
         turn: Arc::default(),
+        interrupt: interrupt.clone(),
     });
     for typed in logins {
         if let Err(e) = table.start(typed).await {
@@ -212,6 +216,11 @@ impl Table {
             },
             HubRequest::Remove(id) => self.remove(id).await,
             HubRequest::Reconnect(id) => self.reconnect(id).await,
+            HubRequest::Shutdown => {
+                eprintln!("[play] shut down from the hub");
+                self.interrupt.cancel();
+                return "Hydra is shutting down: every character is quitting.".to_owned();
+            }
         };
         self.offer().await;
         said

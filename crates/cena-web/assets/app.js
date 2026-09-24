@@ -345,6 +345,7 @@ export function mount(document, environment) {
     element("shell").classList.toggle("hub-mode", state.hub !== null);
     if (state.hub !== null) {
       text("connection-status", state.connection === "hub" ? "Characters"
+        : state.connection === "shut-down" ? "Hydra has shut down"
         : state.connection === "reconnecting" ? "Hub disconnected · reconnecting…"
         : state.connection === "denied" ? "Pairing refused" : "Connecting…");
       renderHub(state.hub);
@@ -429,6 +430,12 @@ export function mount(document, environment) {
     event.preventDefault();
     if (session.command(input.value)) input.value = "";
     if (!input.disabled) input.focus();
+  });
+  // Ends every character, so it asks first (author, 2026-09-24: "a way to
+  // shut it all down", for when nobody is at the terminal for Ctrl-C).
+  element("hub-shutdown").addEventListener("click", () => {
+    const sure = environment.confirm?.("Shut Hydra down? Every character will quit.") ?? true;
+    if (sure) session.shutdownHydra();
   });
   element("story-bottom").addEventListener("click", () => { story.scrollTop = story.scrollHeight; });
   const timer = environment.setInterval(renderRoundtime, 250);

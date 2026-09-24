@@ -620,3 +620,15 @@ test("a hub that loses its server stays a hub while it reconnects", () => {
   assert.equal(element("connection-status").textContent, "Hub disconnected · reconnecting…");
 });
 
+test("the hub shuts Hydra down after asking, and then stops reconnecting", () => {
+  // Author, 2026-09-24: a way to shut it all down without Ctrl-C.
+  const { session, socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")], available: [] });
+  element("hub-shutdown").fire("click");
+  assert.deepEqual(socket.sent.at(-1), { kind: "shutdown", version: 1 });
+  socket.close(1001);
+  assert.equal(session.state.connection, "shut-down");
+  assert.equal(session.socket, null);
+  assert.equal(element("connection-status").textContent, "Hydra has shut down");
+});
+

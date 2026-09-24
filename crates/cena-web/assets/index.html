@@ -16,7 +16,10 @@
       <output id="connection-status" role="status">Connecting viewer…</output>
     </header>
     <section id="hub" class="hub" aria-labelledby="hub-heading" hidden>
-      <h2 id="hub-heading">Characters</h2>
+      <div class="hub-top">
+        <h2 id="hub-heading">Characters</h2>
+        <button id="hub-shutdown" type="button" class="hub-shutdown">Shut down Hydra</button>
+      </div>
       <ul id="hub-list" class="hub-list"></ul>
       <p id="hub-empty" class="empty-state">No characters are running.</p>
       <div id="hub-available" class="hub-available" aria-label="Characters to start" hidden></div>

@@ -223,6 +223,13 @@ export class HydraSession {
   }
 
   disconnected(code) {
+    if (this.shuttingDown) {
+      this.stopped = true;
+      this.state.connection = "shut-down";
+      this.state.hubNote = "Hydra has shut down. Start it again from the terminal.";
+      this.emit();
+      return;
+    }
     const hadPending = this.pending.size > 0;
     this.uncertain();
     this.state.view = null;
@@ -378,6 +385,17 @@ export class HydraSession {
     if (this.state.hub === null || this.socket?.readyState !== 1 || !decimal(session)) return false;
     this.state.hubNote = "Asking the character to quit…";
     this.socket.send(JSON.stringify({ kind: "remove_session", version: 1, session }));
+    this.emit();
+    return true;
+  }
+
+  // Shut Hydra down in order, as Ctrl-C does. The page then expects its
+  // server to go, and says so instead of reconnecting for ever.
+  shutdownHydra() {
+    if (this.state.hub === null || this.socket?.readyState !== 1) return false;
+    this.shuttingDown = true;
+    this.state.hubNote = "Shutting Hydra down…";
+    this.socket.send(JSON.stringify({ kind: "shutdown", version: 1 }));
     this.emit();
     return true;
   }

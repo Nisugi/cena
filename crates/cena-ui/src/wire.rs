@@ -62,6 +62,13 @@ pub enum ClientMessage {
         /// The session to remove, as a canonical decimal string.
         session: String,
     },
+    /// `kind: "shutdown"`, from the hub page: shut Hydra down in order -- every
+    /// character quits, the logs flush, the process exits -- as Ctrl-C does,
+    /// for an operator who is not at the terminal (author, 2026-09-24).
+    Shutdown {
+        /// Must equal `WIRE_VERSION`.
+        version: u16,
+    },
     /// `kind: "reconnect_session"`, from the hub page: log a character that
     /// has stopped -- refused, idle, or given up to another client -- back in,
     /// from the roster and the keyring.
