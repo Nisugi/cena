@@ -67,6 +67,9 @@ pub struct Envelope {
     /// Whether the command's report is kept out of the story
     /// ([`SessionHandle::send_quietly`]).
     pub quiet: bool,
+    /// The last check the session makes as the command goes out
+    /// ([`SessionHandle::send_gated`]).
+    pub gate: super::verdict::Gate,
 }
 
 /// What the session's inbox carries.

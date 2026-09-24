@@ -7,9 +7,26 @@
 //! the one path a command takes through it and back.
 
 use super::handle::{Envelope, Inbox, SessionHandle};
-use super::verdict::{CommandId, Origin, Outcome, Refusal};
+use super::verdict::{CommandId, Gate, Origin, Outcome, Refusal};
 use crate::lifecycle::Generation;
 use tokio::sync::oneshot;
+
+/// How a round trip goes out, beyond what it says: quietly, and past which
+/// gate.
+#[derive(Clone, Copy)]
+struct How {
+    quiet: bool,
+    gate: Gate,
+}
+
+impl Default for How {
+    fn default() -> Self {
+        Self {
+            quiet: false,
+            gate: Gate::None,
+        }
+    }
+}
 
 impl SessionHandle {
     /// Send a command and wait for its typed [`Outcome`]. **One call.**
@@ -39,8 +56,32 @@ impl SessionHandle {
         deadline: std::time::Duration,
         matcher: crate::queue::Matcher,
     ) -> Outcome {
-        self.round_trip(id, line, origin, deadline, matcher, false)
+        self.round_trip(id, line, origin, deadline, matcher, How::default())
             .await
+    }
+
+    /// [`Self::send_and_await`], checked once more by the session as the
+    /// bytes go out: an action ([`Gate::Act`]) is refused -- not written --
+    /// if the live model says roundtime, cast roundtime, stunned, webbed,
+    /// dead, or its target gone (`plan/30` §3).
+    pub async fn send_gated(
+        &self,
+        id: CommandId,
+        line: &str,
+        origin: Origin,
+        deadline: std::time::Duration,
+        matcher: crate::queue::Matcher,
+        gate: Gate,
+    ) -> Outcome {
+        self.round_trip(
+            id,
+            line,
+            origin,
+            deadline,
+            matcher,
+            How { quiet: false, gate },
+        )
+        .await
     }
 
     /// [`Self::send_and_await`], with the game's answer kept **out of the
@@ -61,8 +102,18 @@ impl SessionHandle {
         deadline: std::time::Duration,
         matcher: crate::queue::Matcher,
     ) -> Outcome {
-        self.round_trip(id, line, origin, deadline, matcher, true)
-            .await
+        self.round_trip(
+            id,
+            line,
+            origin,
+            deadline,
+            matcher,
+            How {
+                quiet: true,
+                gate: Gate::None,
+            },
+        )
+        .await
     }
 
     async fn round_trip(
@@ -72,7 +123,7 @@ impl SessionHandle {
         origin: Origin,
         deadline: std::time::Duration,
         matcher: crate::queue::Matcher,
-        quiet: bool,
+        How { quiet, gate }: How,
     ) -> Outcome {
         if origin == Origin::Manual {
             self.attendance.mark();
@@ -86,6 +137,7 @@ impl SessionHandle {
             generation: self.generation.get(),
             matcher,
             quiet,
+            gate,
         };
         self.submit_and_await(envelope, answer, deadline).await
     }
@@ -144,6 +196,7 @@ impl SessionHandle {
             generation,
             matcher: crate::queue::any_frame,
             quiet: false,
+            gate: Gate::None,
         };
         self.submit_and_await(envelope, answer, deadline).await
     }

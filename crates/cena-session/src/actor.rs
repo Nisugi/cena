@@ -101,6 +101,7 @@ use tokio_util::sync::CancellationToken;
 mod combat;
 mod ending;
 mod event;
+mod gate;
 mod handle;
 mod io;
 mod owed;

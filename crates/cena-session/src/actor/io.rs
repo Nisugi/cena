@@ -379,7 +379,7 @@ impl<S: ByteSource> SessionActor<S> {
         generation: crate::lifecycle::Generation,
         gate: crate::command::Gate,
     ) -> Sent {
-        use crate::command::{Gate, Refusal};
+        use crate::command::Refusal;
 
         if generation != self.generation {
             return Sent::Interrupted;
@@ -393,19 +393,10 @@ impl<S: ByteSource> SessionActor<S> {
         if origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
             return Sent::Refused(Refusal::Transient);
         }
-        // The gate, and the reason it returns three different things.
-        let at = match gate {
-            Gate::None => None,
-            Gate::Roundtime => match self.state.in_roundtime() {
-                Some(true) => return Sent::Refused(Refusal::Roundtime),
-                // Unknown is NOT permission (`plan/12` §5.2). `Transient`
-                // because a prompt will arrive and then the answer is knowable
-                // -- it is "ask again", not "never".
-                None => return Sent::Refused(Refusal::Transient),
-                // `in_roundtime` returning `Some` means the clock is known, so
-                // this cannot be `None`.
-                Some(false) => self.state.game_time_now(),
-            },
+        // The gate (`gate.rs`).
+        let at = match self.check_gate(gate) {
+            Ok(at) => at,
+            Err(refusal) => return Sent::Refused(refusal),
         };
 
         let mut message = Vec::with_capacity(line.len() + 1);
@@ -534,6 +525,12 @@ impl<S: ByteSource> SessionActor<S> {
             // reconnect path later.
             if envelope.generation != self.generation {
                 let _ = envelope.reply.send(Outcome::Interrupted);
+                continue;
+            }
+            // The action's last check, against the live model, as it goes
+            // out (`gate.rs`). Refused, not written.
+            if let Err(refusal) = self.check_gate(envelope.gate) {
+                let _ = envelope.reply.send(Outcome::Refused(refusal));
                 continue;
             }
             // ONE write of the finished message. See
