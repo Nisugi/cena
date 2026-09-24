@@ -153,8 +153,12 @@ impl Connector for LiveConnector {
         // three times and read as a loop. The attempt counter distinguishes
         // them.
         self.attempts += 1;
+        // Every line names its character: with several logging in at once,
+        // untagged stages from two logins interleaved and read as one
+        // (author's live run, 2026-09-24).
+        let who = format!("[{}] ", self.character);
         eprintln!(
-            "\n[connect] generation {}, attempt {}: logging in",
+            "\n{who}[connect] generation {}, attempt {}: logging in",
             generation.0, self.attempts
         );
         let credentials = Credentials {
@@ -169,7 +173,7 @@ impl Connector for LiveConnector {
         // is NOT retried through it -- see `eaccess/fallback.rs`.
         let (payload, provider) =
             cena_platform::authenticate_via(credentials, self.prefer, &self.pin, |line| {
-                eprintln!("{line}");
+                eprintln!("{who}{line}");
             })
             .await
             .map_err(classify)?;
@@ -178,14 +182,14 @@ impl Connector for LiveConnector {
             // scrape and a redirect chain rather than eaccess's `C`/`L`, so a
             // reader diagnosing an odd session needs to know which path
             // produced it.
-            eprintln!("[connect] authenticated via the web-login fallback");
+            eprintln!("{who}[connect] authenticated via the web-login fallback");
         }
         // BEFORE the payload is printed or logged. `LaunchPayload`'s own
         // `Debug` redacts the key, but the supervisor is about to write log
         // lines about this connection and the game socket is about to carry
         // the key in its handshake.
         self.secrets.push(payload.key.clone());
-        eprintln!("[connect] {payload:?}");
+        eprintln!("{who}[connect] {payload:?}");
 
         // A failure HERE is always transient: the credentials were accepted
         // and the launch key issued, so what failed is reaching the game
@@ -193,7 +197,7 @@ impl Connector for LiveConnector {
         let socket = cena_platform::connect_game(&payload)
             .await
             .map_err(|error| ConnectError::transient("game_connect", error.to_string()))?;
-        eprintln!("[connect] game socket open\n");
+        eprintln!("{who}[connect] game socket open\n");
         Ok(socket)
     }
 

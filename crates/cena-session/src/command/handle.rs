@@ -247,6 +247,13 @@ impl SessionHandle {
             .is_some()
     }
 
+    /// Which session this handle reaches: the id every event and snapshot of
+    /// that session names. A frontend serving several keys its views by it.
+    #[must_use]
+    pub fn session(&self) -> crate::lifecycle::SessionId {
+        self.events.session()
+    }
+
     /// What this session marks a command with, if anything runs them.
     #[must_use]
     pub fn command_symbol(&self) -> Option<char> {

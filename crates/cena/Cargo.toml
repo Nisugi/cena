@@ -14,6 +14,9 @@ cena-platform.workspace = true
 cena-session.workspace = true
 cena-ui.workspace = true
 cena-web.workspace = true
+cena-host.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 # `signal` for Ctrl-C. Without it the only early exit was killing the process,
 # which skips BOTH the `quit` (plan/16 5b) and the sink flush -- so the run that
@@ -26,6 +29,14 @@ tokio = { version = "1", features = [
     "time",
 ] }
 tokio-util = "0.7"
+
+# The credential ladder (plan/29 Q2): the OS keyring, keyed by account, and a
+# password prompt that does not echo. VellumFE's choices, at VellumFE's
+# versions and backends (reference/VellumFE/Cargo.toml). Here in the binary
+# and not in cena-platform, because CI builds cena-platform for Android and
+# keyring has no Android backend; the binary is desktop-only.
+keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service", "vendored"] }
+rpassword = "7"
 
 [dev-dependencies]
 # `test-util` for `start_paused`: `interrupt.rs`'s tests race a phase that

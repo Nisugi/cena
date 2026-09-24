@@ -9,7 +9,7 @@ mod tests;
 
 pub(crate) use hub::{Hub, encode};
 
-use crate::server::Shared;
+use crate::server::Viewed;
 use cena_session::{Event, ObserveError, ObservedEvent, SessionObserver, Snapshot, State};
 use pending::Pending;
 use std::future::Future;
@@ -77,13 +77,13 @@ where
 
 type Subscription = (Snapshot, broadcast::Receiver<ObservedEvent>);
 
-pub(crate) async fn pump(observer: SessionObserver, shared: Arc<Shared>) -> std::io::Result<()> {
-    project(|| observer.subscribe(), shared).await
+pub(crate) async fn pump(observer: SessionObserver, viewed: Arc<Viewed>) -> std::io::Result<()> {
+    project(|| observer.subscribe(), viewed).await
 }
 
 /// The pump over any source of subscriptions: [`pump`] passes the session's,
 /// and a test passes one that fails on cue.
-async fn project<F, Fut>(mut subscribe: F, shared: Arc<Shared>) -> std::io::Result<()>
+async fn project<F, Fut>(mut subscribe: F, shared: Arc<Viewed>) -> std::io::Result<()>
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<Subscription, ObserveError>>,
@@ -105,6 +105,8 @@ where
     {
         return Err(std::io::Error::other("Presentation sequence exhausted"));
     }
+    // The hub page's cards are read from this view (`socket::serve_hub`).
+    let _ = shared.changed.send(());
     let mut terminal = initial.lifecycle == State::Closed;
     let mut dirty = false;
     let mut ticking = initial.state.in_roundtime() == Some(true);
@@ -139,7 +141,9 @@ where
         let (snapshot, next) = result.map_err(fatal)?;
         pending.fence(&snapshot, &mut events);
         events = next;
-        let lines = pending.lines.drain(..).collect();
+        let lines: Vec<_> = pending.lines.drain(..).collect();
+        // The hub's merged streams read the same lines this page shows.
+        shared.merged.offer(shared.id, &shared.tag(), &lines);
         pending.bytes = 0;
         let gap = std::mem::take(&mut pending.gap);
         if shared
@@ -151,6 +155,7 @@ where
         {
             return Err(std::io::Error::other("Presentation sequence exhausted"));
         }
+        let _ = shared.changed.send(());
         dirty = false;
         ticking = snapshot.state.in_roundtime() == Some(true);
         terminal = snapshot.lifecycle == State::Closed;

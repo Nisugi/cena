@@ -6,12 +6,12 @@
 //! The seam is real: nothing here knows what a session is, and nothing here
 //! touches the network.
 //!
-//! # The prompt ECHOES the password
+//! # The password is not asked for here
 //!
-//! There is no terminal echo suppression: the password appears on screen as it
-//! is typed and stays in scrollback. Suppressing it needs `rpassword` or raw
-//! mode, which is the credential ladder `plan/12` §7.1 puts Out for M1. Said
-//! plainly here because `main.rs` once claimed the opposite.
+//! It comes from the credential ladder (`crate::secrets`): the OS keyring,
+//! then the account's environment variable, then a prompt that does not
+//! echo. This prompt used to read the password with the other fields and
+//! print it as it was typed, into scrollback.
 
 use cena_platform::DEFAULT_GAME_CODE;
 use std::io::{self, BufRead, IsTerminal, Write};
@@ -82,6 +82,8 @@ pub struct Typed {
     pub password: String,
     pub character: String,
     pub game_code: String,
+    /// Which rung of the ladder the password came from.
+    pub password_from: crate::secrets::Source,
 }
 
 /// Ask for the four fields the login needs.
@@ -110,10 +112,44 @@ pub fn ask() -> io::Result<Typed> {
     // `require`, not `prompt`: an empty answer to any of these means nobody is
     // at the keyboard, and this program reaches the live login service.
     let account = require("account")?;
-    let password = require("password")?;
+    let (password, password_from) = crate::secrets::password(account.trim(), true)?;
     let character = require("character")?;
     let game_code = prompt(&format!("game code [{DEFAULT_GAME_CODE}]"))?;
-    Ok(tidy(&account, password, &character, &game_code))
+    let mut typed = tidy(&account, password, &character, &game_code);
+    typed.password_from = password_from;
+    Ok(typed)
+}
+
+/// Ask for what the roster does not know about `character` -- its account
+/// and game code -- for its first login under `--character` (`roster.rs`).
+/// The password comes from the ladder, as in [`ask`].
+///
+/// # Errors
+///
+/// As [`ask`]: nobody at a terminal, an empty answer, or no password.
+pub fn ask_for(character: &str) -> io::Result<Typed> {
+    refuse_unattended(io::stdin().is_terminal())?;
+    eprintln!("[login] {character} has not logged in through Hydra before.");
+    let account = require(&format!("account for {character}"))?;
+    let (password, password_from) = crate::secrets::password(account.trim(), true)?;
+    let game_code = prompt(&format!("game code for {character} [{DEFAULT_GAME_CODE}]"))?;
+    let mut typed = tidy(&account, password, character, &game_code);
+    typed.password_from = password_from;
+    Ok(typed)
+}
+
+/// The login for a character the roster knows: its account and game from the
+/// roster, and its password from the ladder -- which prompts only when
+/// `at_terminal` says a person is there to answer.
+///
+/// # Errors
+///
+/// No rung of the ladder had a password.
+pub fn from_roster(entry: &crate::roster::Entry, at_terminal: bool) -> io::Result<Typed> {
+    let (password, password_from) = crate::secrets::password(&entry.account, at_terminal)?;
+    let mut typed = tidy(&entry.account, password, &entry.character, &entry.game_code);
+    typed.password_from = password_from;
+    Ok(typed)
 }
 
 /// The guard `ask` opens with, split out so it can be tested on BOTH answers.
@@ -177,6 +213,7 @@ fn tidy(account: &str, password: String, character: &str, game_code: &str) -> Ty
         password,
         character: character.trim().to_owned(),
         game_code: upper,
+        password_from: crate::secrets::Source::Prompt,
     }
 }
 

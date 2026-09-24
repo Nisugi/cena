@@ -103,6 +103,13 @@ normal deadline.
 Each must go red when isolation is broken on purpose, for example by sharing one event ring
 between two sessions, or it tests nothing.
 
+> **BUILT 2026-09-23** as `crates/cena-session/tests/isolation.rs`, five tests. Two rows
+> changed on contact. A wedged **behavior** needs `BEHAVIOR_WATCHDOG`, which is not built and
+> belongs with behaviors (M6); the session-level wedge -- a game that stops answering -- is
+> tested instead. A failing **store write** needs a filesystem fault and moves to step 3,
+> where the session table owns the stores. Two mutations were verified: a shared event ring
+> turns the lag test red, and a shared generation counter turns the reconnect test red.
+
 ---
 
 ## 4. Steps (proposed order)
@@ -118,10 +125,47 @@ Each step ends in something demonstrable, the way M1's did.
    lifetime; adding one starts a supervisor, removing one sends its `quit`; Ctrl-C shuts all
    of them down in order. It refuses a second session on an account already in use. *Demo:*
    add two characters on scripted sources, remove one, Ctrl-C, clean farewells.
+   > **BUILT 2026-09-23** as the `cena-host` crate (`Host`, `Hosted`, `stop_all`), five
+   > tests over scripted sources, each red under a mutation: no account check, a stopped
+   > session holding its account, and a stop that skips `quit`. The binary does not use it
+   > yet: adding a live session needs credentials per account, so the binary moves onto the
+   > table with step 4. A failing store write (moved here from §3a) is still to test.
 4. **The credential ladder (Q2).** OS keyring, then a source the user names (env var, file,
    stdin), then refuse loudly naming the account. The prompt stops echoing.
+   > **BUILT 2026-09-23** in the binary (`crates/cena/src/secrets.rs`): keyring (service
+   > `hydra`, keyed by the account in lowercase, as `VellumFE` does), then
+   > `CENA_PASSWORD_<ACCOUNT>`, then a prompt that does not echo, then a refusal naming the
+   > account. A typed password is offered to the keyring after the login reaches `Ready`,
+   > default no. In the binary, not `cena-platform`, because `keyring` has no Android backend
+   > and CI builds `cena-platform` for Android. No password file (author: ladder as proposed).
+   >
+   > **BUILT 2026-09-23, the binary on the table:** `cena -- --character Nisugi --character
+   > Nerten` (`crates/cena/src/play.rs`). Every login is settled before anything connects --
+   > the roster (`roster.rs`) for account and game, the ladder for the password, a prompt for
+   > a character it does not know -- then each goes on `cena_host::Host`. The terminal tags
+   > every line with its character and shows no game text (§5a R2); Ctrl-C quits them all.
+   > The one-character path is unchanged and records its character in the roster once
+   > `Ready`. `--web` serves the first character until the hub.
+   >
+   > **What it was:** the binary onto the table. `--character Nisugi --character Nerten`
+   > needs each character's account, which is not secret and not in the keyring, so a small
+   > record in the data directory keeps character → account and game code, written the first
+   > time a character logs in (author's question, 2026-09-23).
 5. **The web hub and per-session URLs (§5a).** *Demo:* two scripted sessions, one hub, one
    tab per character, and switching inside the hub.
+   > **BUILT 2026-09-24**, in four commits on `m5-session-ids`:
+   > - **5a** (`ac5ac04`): one listener, a hub and pump per session; a page names its session
+   >   in `authenticate`; sessions attach and detach at runtime.
+   > - **5b** (`63ba7d9`): the hub page, a card per character (lifecycle, vitals, roundtime,
+   >   room), updated when a card changes, at most every 250 ms.
+   > - **5c** (`a47d890`): the hub starts and quits characters through a control the binary
+   >   installs; roster-and-keyring characters only, no credential in the browser (author: a).
+   >   The hub's link is printed on its own, labelled, beside each character's (`d67bab4`).
+   > - **5d**: `cena_ui::Merger` merges thoughts, speech, logons, deaths and announcements
+   >   across characters -- identical text on one stream within 1 s is one line, tagged with
+   >   every character that received it -- shown on the hub page. The configurable tag is
+   >   still the character's name; making it configurable waits for the settings taxonomy
+   >   (`28` §7f).
 6. **Live, author present:** two characters on two accounts at once. This is M5's
    acceptance, as the M1 live run was M1's.
 
@@ -231,7 +275,36 @@ between two sessions is exactly what §3a's isolation tests exist to catch.
 - **When: whenever** -- the author set no milestone. The proposal stays M5 for the status
   cards and the merge, because both are frontend-agnostic and testable before the GUI.
 
-## 6. Acceptance (proposed)
+### 5b. From the first live run (2026-09-24)
+
+**Two clients, one character: Hydra backs off, and that stays the default.** The author
+forced a disconnect by logging Nisugi in on a phone (VellumFE). Hydra reconnected, knocking
+the phone off; the phone's own ladder retried about a second later and took the character
+back, 7 ms after Hydra's `Ready` (session log: `Ready` at `00:54:57.757`, the connection
+ended `.764`). With no command sent across the two connections, Hydra stopped as
+`Unattended` rather than fight -- `MAX_UNATTENDED_LOSSES`, working as written. INFERRED
+from the timing, which matches VellumFE's 1 s first rung; nothing in the logs contradicts it.
+
+The author on whether an open page should count as attendance: *"I don't think open page is
+enough, maybe it could be an advanced option."* **Deferred** to the settings taxonomy
+(`28` §7f): an opt-in that lets an attached viewer count as attended. Not built.
+
+## 6. Acceptance
+
+> **ACCEPTED LIVE, 2026-09-24, author present**, pending only fresh CI on the merged result.
+> Two characters on two accounts, Nisugi and Dicate, in one Hydra with `--character ...
+> --web`. The author confirmed: the hub opens and lists both with live vitals and room; each
+> character's page takes only its own commands; the merged panel shows a shared line once,
+> tagged with both; a phone login knocking one off leaves the other untouched and the hub
+> follows the reconnect; quitting both from the hub leaves the hub up, and both start again
+> from it with no password prompt; refreshing the hub or a page keeps where it was; Ctrl-C
+> quits both cleanly.
+>
+> Four defects were found by the live runs and fixed before acceptance, each with a test:
+> the hub's link was not printed on its own (`d67bab4`); a refresh lost its pairing and a
+> login's lines were untagged (`f140544`); a quit hung on its log flush and blocked the
+> hub's next request, and the hub's link became a character's page with one left
+> (`67e5745`); quitting the last character from the hub shut Hydra down (`6039f68`).
 
 - The isolation tests pass, and each has a recorded mutation that turns it red.
 - Two real characters on two accounts run at once in one Hydra, with the author present:

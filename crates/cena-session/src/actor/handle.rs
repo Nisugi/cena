@@ -64,15 +64,29 @@ impl<S: ByteSource> Session<S> {
     /// Nothing runs until [`Session::into_actor`]'s actor is driven, so
     /// constructing a session touches no network even with a
     /// [`LiveSource`](cena_platform::LiveSource).
+    ///
+    /// It is [`SessionId::FIRST`](crate::SessionId::FIRST): the one session
+    /// of a process that has one. See [`Self::numbered`] for the others.
     #[must_use]
     pub fn new(source: S) -> Self {
+        Self::numbered(crate::lifecycle::SessionId::FIRST, source)
+    }
+
+    /// Build session `id` over this byte source: [`Self::new`] for a process
+    /// running several (`plan/29`). Every event and snapshot names `id`, so a
+    /// frontend serving N sessions can tell them apart.
+    ///
+    /// The caller mints the ids. Nothing here counts them: a process-wide
+    /// counter would be global state, which `plan/12` §7.1 keeps out.
+    #[must_use]
+    pub fn numbered(id: crate::lifecycle::SessionId, source: S) -> Self {
         let (tx, rx) = mpsc::channel(COMMAND_CHANNEL_BOUND);
         let cancel = CancellationToken::new();
         // The cell a handle reads. A plain `Session` never advances it -- one
         // connection, one generation -- but the handle reads it the same way,
         // so a supervised session needs no different handle type.
         let generation = crate::lifecycle::GenerationCell::first();
-        let events = EventPublisher::new(EVENT_CHANNEL_BOUND, generation.clone());
+        let events = EventPublisher::new(EVENT_CHANNEL_BOUND, generation.clone(), id);
         Self {
             actor: SessionActor {
                 source,
@@ -191,12 +205,7 @@ impl<S: ByteSource> Session<S> {
         capture: crate::player_log::Capture,
         settings_dir: Option<std::path::PathBuf>,
     ) -> Self {
-        let tap = crate::player_log::Tap::new(
-            log,
-            crate::lifecycle::SessionId::FIRST,
-            capture,
-            settings_dir,
-        );
+        let tap = crate::player_log::Tap::new(log, self.events.session(), capture, settings_dir);
         // First attachment wins; the actor and the handle must agree.
         let tap = self.handle.log_slot().get_or_init(|| tap).clone();
         self.actor.player_log = Some(crate::player_log::Feed::new(tap, self.actor.generation));

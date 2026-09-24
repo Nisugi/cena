@@ -154,6 +154,7 @@ lockfile; run cargo inside it only for the spike.
 | `cena-behavior` | curated Rust behaviors (travel, …) | platform, map, session |
 | `cena-ui` | pure, versioned projection of a session for frontends (`SessionView`, `WIRE.md`) | model |
 | `cena-web` | Despana: embedded loopback viewer; the native session stays authoritative | ui, session |
+| `cena-host` | the table of sessions one Hydra runs: add, remove, one per account, stop all (`plan/29`) | session |
 | `cena` | the binary | behavior, platform, session, ui, web |
 | `cena-arch-tests` | the rules the compiler cannot express | — |
 
@@ -232,7 +233,14 @@ is the fix; raising the cap is not.**
 **M1, M2 and M3 are complete**, and **M4's code is merged** (PRs #1, #2, #3, all
 2026-09-21): `cena-ui` and `cena-web` hold the Despana frontend, with a coherent
 `SessionObserver`, generation-pinned manual input and a bounded projection pump.
-`12` §8's table has **M5 — multi-session** next, then M6, the first real behavior.
+
+**M5 -- multi-session -- was accepted live on 2026-09-24**, the author present, with two
+characters on two accounts (`plan/29` §6 records the run). `cena-host` is the session
+table; `cena --character A --character B --web` runs several characters, with the account
+login from the OS keyring; one web listener serves a hub page -- a card per character,
+start, quit, reconnect, and thoughts, speech, logons, deaths and announcements merged
+across characters -- and each character's own page. Next in `12` §8: **M6, the first real
+behavior.**
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.

@@ -135,6 +135,14 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // M4 author decision D2: the embedded frontend projects native session
     // observations through toolkit-free UI vocabulary. No frontend owns parsing.
     ("cena-web", &["cena-session", "cena-ui"]),
+    // ADDED for `plan/29` step 3, the session table: the crate that knows a
+    // Hydra runs several sessions. It sits above `cena-session` and below
+    // every frontend that adds or removes one -- the binary, the web hub, the
+    // GUI launcher -- which is why it is a crate and not part of the binary.
+    // `cena-platform` is a DEV-dependency only, for `AnsweringSource` in its
+    // tests, and `a_dev_only_edge_stays_out_of_the_shipped_graph` holds it
+    // there: the table must never open a transport itself.
+    ("cena-host", &["cena-platform", "cena-session"]),
     // AMENDED for Milestone 1 Step 2, the live run (author's call,
     // 2026-09-18). The row was `&["cena-behavior", "cena-session",
     // "cena-ui"]`.
@@ -158,10 +166,13 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // NOTE the scope of what this permits: `cena` may now name
     // `cena-platform`. It still may not name `cena-protocol` or `cena-model`,
     // and the set equality below is what keeps that true.
+    // AMENDED for `plan/29`: `cena-host`, the session table, which the
+    // binary's `--character` path runs several characters on (`play.rs`).
     (
         "cena",
         &[
             "cena-behavior",
+            "cena-host",
             "cena-platform",
             "cena-session",
             "cena-ui",
@@ -310,7 +321,10 @@ fn cena_ui_depends_on_no_ui_toolkit() {
 fn a_dev_only_edge_stays_out_of_the_shipped_graph() {
     // (dependent, dependency) pairs whose entry in ALLOWED_EDGES is justified
     // as dev-only. Each is asserted ABSENT from `--edges normal`.
-    const DEV_ONLY: &[(&str, &str)] = &[("cena-behavior", "cena-platform")];
+    const DEV_ONLY: &[(&str, &str)] = &[
+        ("cena-behavior", "cena-platform"),
+        ("cena-host", "cena-platform"),
+    ];
 
     for (dependent, dependency) in DEV_ONLY {
         let shipped = cena_arch_tests::harness::shipped_dependency_names(dependent);

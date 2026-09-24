@@ -1,4 +1,4 @@
-import { HydraSession, takeLaunchToken } from "./session.js";
+import { HydraSession, launchSession, takeLaunchToken } from "./session.js";
 
 // Despana presentation adapted from VellumFE's despana/app.js and app.css.
 // Hydra uses its own DTOs, and never interprets game text or presets as HTML/CSS.
@@ -55,8 +55,21 @@ export function lifecycleText(lifecycle) {
   return `Game reconnecting${attempt}${delay}${lifecycle.detail ? ` — ${lifecycle.detail}` : ""}`;
 }
 
+// One line of a hub card: vitals as percents, roundtime while it runs, the room.
+export function cardSummary(card) {
+  const vital = (key, label) => `${label} ${card.vitals[key] == null ? "?" : `${card.vitals[key].percent}%`}`;
+  const parts = [vital("health", "HP"), vital("mana", "MP"), vital("stamina", "SP"), vital("spirit", "Sp")];
+  const remaining = card.roundtime.remaining_seconds;
+  if (remaining != null && remaining > 0) parts.push(`RT ${remaining}s`);
+  if (card.room) parts.push(card.room);
+  return parts.join(" · ");
+}
+
 export function mount(document, environment) {
-  const token = takeLaunchToken(environment.location, environment.history);
+  // Read before the token: taking the token removes the whole fragment.
+  const storage = environment.sessionStorage ?? null;
+  const sessionId = launchSession(environment.location, storage);
+  const token = takeLaunchToken(environment.location, environment.history, storage);
   const element = (id) => document.getElementById(id);
   const input = element("command-input");
   const story = element("story-output");
@@ -242,7 +255,104 @@ export function mount(document, environment) {
       : `${Math.ceil(Math.max(0, remaining - (environment.performance.now() - roundtimeReceivedAt) / 1000))}s`);
   }
 
+  // The hub page: a card per character, each linking to its own page. Opened
+  // in a new tab so the hub stays up; the link carries the pairing token, as
+  // the link Hydra printed does.
+  function renderHub(cards) {
+    const list = element("hub-list");
+    list.replaceChildren();
+    for (const card of cards) {
+      const item = document.createElement("li");
+      item.className = "hub-card";
+      const name = card.name || `Session ${card.session}`;
+      const heading = document.createElement("strong");
+      heading.className = "hub-name";
+      heading.textContent = name;
+      // A button-looking link: the name alone read as plain text, and the
+      // author could not find the way to a character's page from the hub.
+      const link = document.createElement("a");
+      link.className = "hub-open";
+      link.href = `#token=${session.token}&session=${card.session}`;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = "Open page";
+      link.title = `Open ${name}'s page in a new tab`;
+      const status = document.createElement("span");
+      status.className = "hub-status";
+      status.textContent = lifecycleText(card.lifecycle);
+      const summary = document.createElement("p");
+      summary.className = "hub-summary";
+      summary.textContent = cardSummary(card);
+      const quit = document.createElement("button");
+      quit.type = "button";
+      quit.className = "hub-quit";
+      quit.textContent = "Quit";
+      quit.addEventListener("click", () => session.removeSession(card.session));
+      // A character that stopped -- refused, idle, or given up to another
+      // client -- is logged back in from here (author, 2026-09-24).
+      const reconnect = document.createElement("button");
+      reconnect.type = "button";
+      reconnect.className = "hub-reconnect";
+      reconnect.textContent = "Reconnect";
+      reconnect.addEventListener("click", () => session.reconnectSession(card.session));
+      const actions = document.createElement("div");
+      actions.className = "hub-actions";
+      actions.append(link, quit, reconnect);
+      item.append(heading, status, summary, actions);
+      list.appendChild(item);
+    }
+    element("hub-empty").hidden = cards.length > 0;
+  }
+
+  // Thoughts, speech, logons, deaths and announcements from every character,
+  // each line once, tagged with who received it (plan/29 step 5d).
+  function renderMerged(lines) {
+    const host = element("hub-merged");
+    const atBottom = host.scrollTop + host.clientHeight >= host.scrollHeight - 4;
+    host.replaceChildren();
+    for (const line of lines) {
+      const paragraph = document.createElement("p");
+      paragraph.className = `merged-line merged-${line.stream}`;
+      const tag = document.createElement("span");
+      tag.className = "merged-tag";
+      tag.textContent = `[${line.from.join(", ")}] `;
+      paragraph.appendChild(tag);
+      appendRuns(document, paragraph, line.runs);
+      host.appendChild(paragraph);
+    }
+    element("hub-merged-empty").hidden = lines.length > 0;
+    if (atBottom) host.scrollTop = host.scrollHeight;
+  }
+
+  // Characters the hub can start: ones that have logged in before, with a
+  // saved password. Anything else is logged in once from the command line.
+  function renderAvailable(available, note) {
+    const host = element("hub-available");
+    host.replaceChildren();
+    for (const name of available) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.textContent = `Start ${name}`;
+      add.addEventListener("click", () => session.addCharacter(name));
+      host.appendChild(add);
+    }
+    host.hidden = available.length === 0;
+    text("hub-note", note);
+  }
+
   function render(state, ready) {
+    element("hub").hidden = state.hub === null;
+    element("shell").classList.toggle("hub-mode", state.hub !== null);
+    if (state.hub !== null) {
+      text("connection-status", state.connection === "hub" ? "Characters"
+        : state.connection === "shut-down" ? "Hydra has shut down"
+        : state.connection === "reconnecting" ? "Hub disconnected · reconnecting…"
+        : state.connection === "denied" ? "Pairing refused" : "Connecting…");
+      renderHub(state.hub);
+      renderAvailable(state.available, state.hubNote);
+      renderMerged(state.merged);
+      return;
+    }
     const view = state.view;
     if (currentView !== view) roundtimeReceivedAt = environment.performance.now();
     currentView = view;
@@ -304,13 +414,15 @@ export function mount(document, environment) {
 
   const protocol = environment.location.protocol === "https:" ? "wss:" : "ws:";
   const session = new HydraSession({ url: `${protocol}//${environment.location.host}/ws`, token,
-    onChange: render, WebSocketImpl: environment.WebSocket });
+    sessionId, onChange: render, WebSocketImpl: environment.WebSocket });
   const pairFromFragment = () => {
     // A pairing URL opened in this same tab changes only the fragment: mount
     // does not run again. Strip it before rendering or opening another socket.
-    const nextToken = takeLaunchToken(environment.location, environment.history);
+    const nextSession = launchSession(environment.location, storage);
+    const nextToken = takeLaunchToken(environment.location, environment.history, storage);
     if (!nextToken) return;
     input.value = "";
+    session.sessionId = nextSession;
     session.pair(nextToken);
   };
   environment.addEventListener("hashchange", pairFromFragment);
@@ -318,6 +430,12 @@ export function mount(document, environment) {
     event.preventDefault();
     if (session.command(input.value)) input.value = "";
     if (!input.disabled) input.focus();
+  });
+  // Ends every character, so it asks first (author, 2026-09-24: "a way to
+  // shut it all down", for when nobody is at the terminal for Ctrl-C).
+  element("hub-shutdown").addEventListener("click", () => {
+    const sure = environment.confirm?.("Shut Hydra down? Every character will quit.") ?? true;
+    if (sure) session.shutdownHydra();
   });
   element("story-bottom").addEventListener("click", () => { story.scrollTop = story.scrollHeight; });
   const timer = environment.setInterval(renderRoundtime, 250);

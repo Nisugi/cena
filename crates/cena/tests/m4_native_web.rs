@@ -5,10 +5,12 @@
 //! panels; it is not claimed to be one recorded login or a real command reply.
 //! `AnsweringSource` supplies only transport timing and a write transcript.
 
+mod web_support;
+
 use cena_platform::AnsweringSource;
 use cena_session::{
-    AuthorityToken, ConnectError, Connector, Event, Generation, Origin, Outcome, Session,
-    SessionObserver, State, SupervisedSession,
+    AuthorityToken, ConnectError, Connector, Event, Generation, Origin, Outcome, Session, State,
+    SupervisedSession,
 };
 use cena_ui::{
     ClientMessage, HandView, LifecycleView, ReceiptStatus, ServerMessage, SessionView, StoryLine,
@@ -20,15 +22,10 @@ use std::collections::VecDeque;
 use std::error::Error;
 use std::io;
 use std::time::Duration;
-use tokio::net::TcpStream;
+use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::{Message, client::IntoClientRequest};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 use tokio_util::sync::CancellationToken;
-
-type TestResult<T = ()> = Result<T, Box<dyn Error + Send + Sync>>;
-type Browser = WebSocketStream<MaybeTlsStream<TcpStream>>;
-const DEADLINE: Duration = Duration::from_secs(5);
-const ROOM: &[u8] = include_str!("../../cena-protocol/tests/fixtures/room.xml").as_bytes();
+use web_support::*;
 
 fn panel_reply() -> Vec<u8> {
     [
@@ -37,74 +34,6 @@ fn panel_reply() -> Vec<u8> {
         ROOM,
     ]
     .concat()
-}
-
-async fn browser(pairing: &str) -> TestResult<Browser> {
-    let (base, token) = pairing
-        .split_once("/#token=")
-        .ok_or_else(|| io::Error::other("missing pairing fragment"))?;
-    let mut request =
-        format!("{}/ws", base.replacen("http://", "ws://", 1)).into_client_request()?;
-    request.headers_mut().insert("origin", base.parse()?);
-    let (mut socket, _) = connect_async(request).await?;
-    send(
-        &mut socket,
-        &ClientMessage::Authenticate {
-            version: WIRE_VERSION,
-            token: token.to_owned(),
-        },
-    )
-    .await?;
-    Ok(socket)
-}
-
-async fn send(socket: &mut Browser, message: &ClientMessage) -> TestResult {
-    socket
-        .send(Message::Text(serde_json::to_string(message)?.into()))
-        .await?;
-    Ok(())
-}
-
-async fn receive(socket: &mut Browser) -> TestResult<ServerMessage> {
-    let message = tokio::time::timeout(DEADLINE, socket.next())
-        .await?
-        .ok_or_else(|| io::Error::other("viewer closed before its message"))??;
-    match message {
-        Message::Text(text) => Ok(serde_json::from_str(&text)?),
-        other => Err(io::Error::other(format!("expected application text: {other:?}")).into()),
-    }
-}
-
-fn command(session: &str, generation: &str, request_id: &str, line: &str) -> ClientMessage {
-    ClientMessage::Command {
-        version: WIRE_VERSION,
-        session: session.to_owned(),
-        generation: generation.to_owned(),
-        request_id: request_id.to_owned(),
-        line: line.to_owned(),
-    }
-}
-
-async fn receipt(
-    socket: &mut Browser,
-    expected_id: &str,
-    lines: &mut Vec<StoryLine>,
-) -> TestResult<ReceiptStatus> {
-    tokio::time::timeout(DEADLINE, async {
-        loop {
-            match receive(socket).await? {
-                ServerMessage::Receipt {
-                    request_id, status, ..
-                } if request_id == expected_id => return Ok(status),
-                ServerMessage::Update { lines: new, .. } => lines.extend(new),
-                ServerMessage::Snapshot { story, .. } => *lines = story,
-                ServerMessage::Receipt { .. } => {
-                    return Err(io::Error::other("unexpected command receipt").into());
-                }
-            }
-        }
-    })
-    .await?
 }
 
 fn line_text(line: &StoryLine) -> String {
@@ -160,7 +89,10 @@ async fn assert_story(socket: &mut Browser, mut lines: Vec<StoryLine>) -> TestRe
             match receive(socket).await? {
                 ServerMessage::Update { lines: new, .. } => lines.extend(new),
                 ServerMessage::Snapshot { story, .. } => lines = story,
-                ServerMessage::Receipt { .. } => {
+                ServerMessage::Receipt { .. }
+                | ServerMessage::Sessions { .. }
+                | ServerMessage::HubNote { .. }
+                | ServerMessage::Merged { .. } => {
                     return Err(io::Error::other("expected room presentation").into());
                 }
             }
@@ -370,9 +302,7 @@ async fn reconnect_refuses_old_browser_generation_including_quit_without_writing
                 | ServerMessage::Snapshot {
                     generation, view, ..
                 } => (generation, view),
-                other @ ServerMessage::Receipt { .. } => {
-                    panic!("unexpected reconnect message: {other:?}")
-                }
+                other => panic!("unexpected reconnect message: {other:?}"),
             };
             // Invalidated until the new connection's login burst re-teaches
             // it (`plan/12` §5.2). `Ready` is the prompt that ENDS that
@@ -468,10 +398,12 @@ async fn websocket_requires_local_origin_and_auth_before_state_or_native_command
         ClientMessage::Authenticate {
             version: WIRE_VERSION,
             token: "incorrect".into(),
+            session: None,
         },
         ClientMessage::Authenticate {
             version: WIRE_VERSION + 1,
             token: token.into(),
+            session: None,
         },
         command("0", "0", "unauthenticated", "quit"),
     ] {
@@ -516,27 +448,6 @@ async fn websocket_requires_local_origin_and_auth_before_state_or_native_command
     web.await.unwrap().unwrap();
     stop_session.cancel();
     actor.await.unwrap();
-}
-
-/// Wait until connection `generation` is `Ready`: the first prompt after
-/// `<endSetup/>`, which `AnsweringSource::logged_in` sends on connect.
-async fn await_ready(observer: &SessionObserver, generation: Generation) -> TestResult {
-    let (snapshot, mut events) = observer
-        .subscribe()
-        .await
-        .map_err(|error| io::Error::other(format!("native observation failed: {error:?}")))?;
-    if snapshot.generation == generation && snapshot.lifecycle == State::Ready {
-        return Ok(());
-    }
-    tokio::time::timeout(DEADLINE, async {
-        loop {
-            let event = events.recv().await?;
-            if event.generation == generation && event.event == Event::StateChanged(State::Ready) {
-                return Ok(());
-            }
-        }
-    })
-    .await?
 }
 
 #[tokio::test]

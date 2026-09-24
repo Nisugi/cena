@@ -415,7 +415,7 @@ fn state_changed(events: &broadcast::Sender<ObservedEvent>) {
 /// failures `cena_session::observation` documents as retryable.
 #[tokio::test(start_paused = true)]
 async fn a_busy_or_slow_owner_is_retried_and_the_viewer_stays_up() {
-    let shared = Shared::for_test();
+    let shared = crate::server::Viewed::for_test();
     let (events, _keep) = broadcast::channel(8);
     let (calls, subscribe) = scripted(
         vec![
@@ -445,7 +445,7 @@ async fn a_busy_or_slow_owner_is_retried_and_the_viewer_stays_up() {
 /// answer that ends observation.
 #[tokio::test(start_paused = true)]
 async fn an_owner_that_is_gone_ends_the_pump() {
-    let shared = Shared::for_test();
+    let shared = crate::server::Viewed::for_test();
     let (events, _keep) = broadcast::channel(8);
     let (calls, subscribe) = scripted(vec![Ok(()), Err(ObserveError::Closed)], events.clone());
     let pump = tokio::spawn(project(subscribe, Arc::clone(&shared)));

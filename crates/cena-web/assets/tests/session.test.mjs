@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { HydraSession, MAX_STORY_LINES, commandError, takeLaunchToken } from "../session.js";
-import { lifecycleText, mount, placeLine } from "../app.js";
+import { HydraSession, MAX_STORY_LINES, commandError, launchSession, takeLaunchToken } from "../session.js";
+import { cardSummary, lifecycleText, mount, placeLine } from "../app.js";
 
 // Shared synthetic contract fixture, also round-tripped by Rust cena-ui tests.
 export const fixture = () => JSON.parse(readFileSync(new URL("../../../cena-ui/tests/fixtures/snapshot-v1.json", import.meta.url)));
@@ -48,6 +48,23 @@ test("launch token is removed before use and query strings never supply authenti
   assert.equal(token, "synthetic-token");
   assert.deepEqual(writes, [[null, "", "/"]]);
   assert.equal(takeLaunchToken({ hash: "", pathname: "/", search: "?token=ignored" }, {}), "");
+});
+
+test("a page names its session from the launch fragment, and says so when it authenticates", () => {
+  // plan/29 step 5: one listener serves every character, so a page opened for
+  // one of them names it. Read before the token, which clears the fragment.
+  assert.equal(launchSession({ hash: "#token=t&session=7" }), "7");
+  assert.equal(launchSession({ hash: "#token=t" }), null);
+  for (const bad of ["07", "-1", "x", ""]) {
+    assert.equal(launchSession({ hash: `#token=t&session=${bad}` }), null, bad);
+  }
+  const session = new HydraSession({ url: "ws://127.0.0.1/ws", token: "synthetic-token", sessionId: "7",
+    WebSocketImpl: FakeSocket, onChange() {}, schedule() { return 1; }, cancel() {} });
+  session.connect();
+  session.socket.open();
+  assert.deepEqual(session.socket.sent,
+    [{ kind: "authenticate", version: 1, token: "synthetic-token", session: "7" }]);
+  session.close();
 });
 
 test("authenticate is first; commands require authenticated snapshot and Ready lifecycle", () => {
@@ -389,7 +406,13 @@ class FakeNode {
   constructor(tag) {
     this.tagName = tag; this.children = []; this.parent = null; this.own = "";
     this.classes = []; this.listeners = {}; this.scrollTop = 0; this.clientHeight = 100; this.hidden = false;
-    this.classList = { add: (...names) => this.classes.push(...names) };
+    this.classList = {
+      add: (...names) => this.classes.push(...names),
+      toggle: (name, on) => {
+        this.classes = this.classes.filter((c) => c !== name);
+        if (on) this.classes.push(name);
+      },
+    };
   }
   get scrollHeight() { return this.children.length * 20; }
   get firstChild() { return this.children[0] ?? null; }
@@ -481,3 +504,131 @@ test("a stream pane keeps the reader's place when its own lines have not changed
   next([said("spoken 31", "speech")]);
   assert.equal(body.scrollTop, body.scrollHeight);
 });
+
+// plan/29 step 5b: the hub page.
+const card = (session, name, health = null) => ({
+  session, name, lifecycle: { kind: "ready" }, room: "Town Square",
+  vitals: { health: health === null ? null : { percent: health, current: null, max: null },
+    mana: null, stamina: null, spirit: null },
+  roundtime: { ends_at: null, remaining_seconds: 3 },
+});
+
+test("the hub lists every character, each linking to its own page", () => {
+  const { session, socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi", 80), card("1", "Nerten")],
+    available: [] });
+  assert.equal(session.state.connection, "hub");
+  assert.equal(element("hub").hidden, false);
+  assert.ok(element("shell").classes.includes("hub-mode"), "the one-character panes are hidden");
+  const cards = element("hub-list").children;
+  assert.equal(cards.length, 2);
+  assert.equal(cards[1].children[0].textContent, "Nerten");
+  const link = cards[1].children[3].children[0];
+  assert.equal(link.textContent, "Open page");
+  assert.equal(link.href, "#token=synthetic-token&session=1");
+  assert.equal(link.target, "_blank");
+  assert.match(cards[0].children[2].textContent, /HP 80%/);
+  // A later list replaces the earlier one whole.
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")], available: [] });
+  assert.equal(element("hub-list").children.length, 1);
+});
+
+test("a card says what is unknown, and shows roundtime only while it runs", () => {
+  assert.equal(cardSummary(card("0", "Nisugi", 55)), "HP 55% · MP ? · SP ? · Sp ? · RT 3s · Town Square");
+  const idle = card("0", "Nisugi");
+  idle.roundtime.remaining_seconds = 0;
+  idle.room = null;
+  assert.equal(cardSummary(idle), "HP ? · MP ? · SP ? · Sp ?");
+});
+
+test("a malformed session list is a protocol error, not a partial hub", () => {
+  const { session, socket } = page();
+  const bad = card("0", "Nisugi");
+  bad.session = "07";
+  socket.message({ kind: "sessions", version: 1, sessions: [bad], available: [] });
+  assert.equal(session.state.hub, null);
+  assert.equal(session.state.connection, "protocol-error");
+});
+
+test("the hub starts and quits characters by request, and shows the answer", () => {
+  // plan/29 step 5c: only names the hub offered, and only an id -- no
+  // credential ever leaves the page.
+  const { socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")], available: ["Sugiin"] });
+  const offered = element("hub-available").children;
+  assert.equal(offered.length, 1);
+  assert.equal(offered[0].textContent, "Start Sugiin");
+  offered[0].fire("click");
+  assert.deepEqual(socket.sent.at(-1), { kind: "add_character", version: 1, character: "Sugiin" });
+  const quit = element("hub-list").children[0].children[3].children[1];
+  quit.fire("click");
+  assert.deepEqual(socket.sent.at(-1), { kind: "remove_session", version: 1, session: "0" });
+  // Open page, Quit, Reconnect -- in that order (author, 2026-09-24).
+  const actions = element("hub-list").children[0].children[3].children;
+  assert.deepEqual(actions.map((node) => node.textContent), ["Open page", "Quit", "Reconnect"]);
+  actions[2].fire("click");
+  assert.deepEqual(socket.sent.at(-1), { kind: "reconnect_session", version: 1, session: "0" });
+  socket.message({ kind: "hub_note", version: 1, detail: "Nisugi has quit." });
+  assert.equal(element("hub-note").textContent, "Nisugi has quit.");
+});
+
+test("the hub shows each shared-stream line once, gaining a character's tag in place", () => {
+  // plan/29 step 5d: the same id is the same line, not a second one.
+  const { session, socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi"), card("1", "Nerten")], available: [] });
+  const runs = [{ text: "[General] Someone: hello", bold: false, monospace: false, preset: null }];
+  socket.message({ kind: "merged", version: 1, lines: [{ id: "4", stream: "thoughts", runs, from: ["Nisugi"] }] });
+  socket.message({ kind: "merged", version: 1, lines: [{ id: "4", stream: "thoughts", runs, from: ["Nisugi", "Nerten"] }] });
+  assert.equal(session.state.merged.length, 1);
+  const shown = element("hub-merged").children;
+  assert.equal(shown.length, 1);
+  assert.equal(shown[0].textContent, "[Nisugi, Nerten] [General] Someone: hello");
+  // A malformed line is a protocol error, not a half-drawn panel.
+  socket.message({ kind: "merged", version: 1, lines: [{ id: "x", stream: "thoughts", runs, from: [] }] });
+  assert.equal(session.state.connection, "protocol-error");
+});
+
+test("a refreshed page keeps its pairing and its session, for this tab only", () => {
+  // Live, 2026-09-24: refreshing the hub showed "Pairing required".
+  const kept = new Map();
+  const storage = { getItem: (k) => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, v),
+    removeItem: (k) => kept.delete(k) };
+  const history = { replaceState() {} };
+  const opened = { hash: "#token=t0&session=1", pathname: "/", search: "" };
+  assert.equal(launchSession(opened, storage), "1");
+  assert.equal(takeLaunchToken(opened, history, storage), "t0");
+  // The refresh: the fragment is gone, and the tab still knows both.
+  const refreshed = { hash: "", pathname: "/", search: "" };
+  assert.equal(launchSession(refreshed, storage), "1");
+  assert.equal(takeLaunchToken(refreshed, history, storage), "t0");
+  // A hub link names no session, and clears the one kept.
+  const hub = { hash: "#token=t0", pathname: "/", search: "" };
+  assert.equal(launchSession(hub, storage), null);
+  assert.equal(launchSession(refreshed, storage), null);
+  // No storage: as before, a refresh needs the link again.
+  assert.equal(takeLaunchToken(refreshed, history, null), "");
+});
+
+test("a hub that loses its server stays a hub while it reconnects", () => {
+  // Live, 2026-09-24: the page fell back to an empty character layout.
+  const { session, socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")], available: [] });
+  socket.close(1006);
+  assert.equal(session.state.connection, "reconnecting");
+  assert.notEqual(session.state.hub, null, "the last cards stay up");
+  assert.ok(element("shell").classes.includes("hub-mode"));
+  assert.equal(element("connection-status").textContent, "Hub disconnected · reconnecting…");
+});
+
+test("the hub shuts Hydra down after asking, and then stops reconnecting", () => {
+  // Author, 2026-09-24: a way to shut it all down without Ctrl-C.
+  const { session, socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")], available: [] });
+  element("hub-shutdown").fire("click");
+  assert.deepEqual(socket.sent.at(-1), { kind: "shutdown", version: 1 });
+  socket.close(1001);
+  assert.equal(session.state.connection, "shut-down");
+  assert.equal(session.socket, null);
+  assert.equal(element("connection-status").textContent, "Hydra has shut down");
+});
+

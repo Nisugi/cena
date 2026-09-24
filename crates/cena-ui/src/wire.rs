@@ -2,7 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::view::{SessionView, StoryLine};
+use crate::merge::MergedLine;
+use crate::view::{SessionCard, SessionView, StoryLine};
 
 /// The `version` every message in both directions must carry; anything else
 /// is refused by the listener and rejected by the browser.
@@ -23,6 +24,11 @@ pub enum ClientMessage {
         version: u16,
         /// The pairing token, compared in full against the listener's secret.
         token: String,
+        /// Which session this viewer is for, as a canonical decimal string --
+        /// the page's own URL names it when several characters run
+        /// (`plan/29` step 5). Absent: the only session, when there is one.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        session: Option<String>,
     },
     /// `kind: "command"`: one manual command line, never retried automatically.
     Command {
@@ -38,6 +44,39 @@ pub enum ClientMessage {
         request_id: String,
         /// The command text, sent exactly as given (no trimming).
         line: String,
+    },
+    /// `kind: "add_character"`, from the hub page: start a character that has
+    /// logged in before -- in the roster, with its password in the keyring
+    /// (`plan/29` step 5c). No credential ever crosses this socket.
+    AddCharacter {
+        /// Must equal `WIRE_VERSION`.
+        version: u16,
+        /// The character, as the hub offered it in `available`.
+        character: String,
+    },
+    /// `kind: "remove_session"`, from the hub page: quit a character and take
+    /// it off the table.
+    RemoveSession {
+        /// Must equal `WIRE_VERSION`.
+        version: u16,
+        /// The session to remove, as a canonical decimal string.
+        session: String,
+    },
+    /// `kind: "shutdown"`, from the hub page: shut Hydra down in order -- every
+    /// character quits, the logs flush, the process exits -- as Ctrl-C does,
+    /// for an operator who is not at the terminal (author, 2026-09-24).
+    Shutdown {
+        /// Must equal `WIRE_VERSION`.
+        version: u16,
+    },
+    /// `kind: "reconnect_session"`, from the hub page: log a character that
+    /// has stopped -- refused, idle, or given up to another client -- back in,
+    /// from the roster and the keyring.
+    ReconnectSession {
+        /// Must equal `WIRE_VERSION`.
+        version: u16,
+        /// The session to reconnect, as a canonical decimal string.
+        session: String,
     },
 }
 
@@ -120,6 +159,36 @@ pub enum ServerMessage {
         /// What the sender can establish about the send.
         status: ReceiptStatus,
         /// Human-readable explanation, shown after the status label.
+        detail: String,
+    },
+    /// `kind: "sessions"`: the hub page -- every character this Hydra runs, at
+    /// a glance (`plan/29` step 5b). Sent to a viewer that named no session
+    /// when there is not exactly one, and again whenever a card changes.
+    Sessions {
+        /// Always `WIRE_VERSION`.
+        version: u16,
+        /// One card per session, in the order they were added.
+        sessions: Vec<SessionCard>,
+        /// Characters the hub can add: in the roster, with a saved password,
+        /// and not running. Empty when adding is not offered.
+        available: Vec<String>,
+    },
+    /// `kind: "merged"`, to the hub page: thoughts, speech, logons, deaths and
+    /// announcements across every character, each line once (`plan/29`
+    /// step 5d). A line whose `id` was sent before is that line gaining a
+    /// character.
+    Merged {
+        /// Always `WIRE_VERSION`.
+        version: u16,
+        /// New lines, and earlier ones gaining a character, in order.
+        lines: Vec<MergedLine>,
+    },
+    /// `kind: "hub_note"`: what became of a hub request, for the page that
+    /// made it.
+    HubNote {
+        /// Always `WIRE_VERSION`.
+        version: u16,
+        /// One line of plain text.
         detail: String,
     },
 }

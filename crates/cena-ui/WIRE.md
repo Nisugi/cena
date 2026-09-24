@@ -14,16 +14,28 @@ updates, not game events. Never convert these fields to JavaScript Number.
 
 | Kind | Other fields | Meaning |
 | --- | --- | --- |
-| `authenticate` | `token` | First client message; no state before authentication. |
+| `authenticate` | `token`, optional `session` | First client message; no state before authentication. `session` names the character this page is for; absent, the hub is served -- except by a server built for one session (`WebServer::bind`), which serves that session. |
 | `command` | `session`, `generation`, `request_id`, `line` | One manual command; never automatically retried. |
 | `snapshot` | `session`, `generation`, `cursor`, `view`, `story`, `history_gap` | Replace view and bounded history; `history_gap` makes missing history explicit. |
 | `update` | `session`, `generation`, `cursor`, `view`, `lines` | Replace view and append complete lines. |
 | `receipt` | `session`, `generation`, `request_id`, `status`, `detail` | Send outcome, attributable to the requested generation. |
+| `sessions` | `sessions`, `available` | The hub page (`plan/29` step 5b): one card per character, replacing the last list whole, and the characters it may start. Sent to a viewer that named no session when there is not exactly one. The hub takes no game commands. |
+| `add_character` | `character` | Hub only (step 5c): start a character that has logged in before -- in the roster, with a saved password. No credential crosses the socket. |
+| `remove_session` | `session` | Hub only: quit a character and take it off the table. |
+| `reconnect_session` | `session` | Hub only: log a stopped character back in, from the roster and the keyring. |
+| `shutdown` | -- | Hub only: shut Hydra down in order, as Ctrl-C does: every character quits, the logs flush, the process exits. |
+| `merged` | `lines` | Hub only (step 5d): thoughts, speech, logons, deaths and announcements across every character. Each line has decimal `id`, `stream`, styled `runs` and `from`, the characters that received it. Identical text on one stream from different characters within 1 second is one line; a line sent again with the same `id` has gained a character. |
+| `hub_note` | `detail` | What became of the hub request just made, as one line of plain text. |
 
-`status` is `sent`, `refused`, or `uncertain`. Sent establishes that command
+`status` is `sent`, `refused`, `uncertain`, or `handled` (a `;` command Hydra ran itself; nothing was sent). Sent establishes that command
 bytes were written, not that the requested game action completed. An observed
 reply can be described in `detail`. A missing or uncertain receipt never gives
 permission to resend.
+
+A `SessionCard` holds decimal `session`, `name` (empty when none was given),
+`lifecycle`, `vitals`, `roundtime` -- each as in `SessionView` below -- and
+nullable `room`, the room's title. A character's own page is the pairing link
+with `&session=` its id appended.
 
 `SessionView` holds `room`, `left_hand`, `right_hand`, `vitals`, `roundtime`,
 `lifecycle`, nullable `prompt`, and bounded `unknown_tags`. `RoomView` has

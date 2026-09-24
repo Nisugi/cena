@@ -143,12 +143,19 @@ try {
   await page.locator("#connection-status").filter({ hasText: "attempt 2" }).waitFor();
   assert.deepEqual(await page.evaluate(() => window.__sent.map((m) => m.kind)), ["authenticate", "command", "command", "authenticate"]);
 
-  // A reload loses the memory-only token. Opening the pairing URL in this
-  // existing tab is a fragment navigation, not another mount/document load.
+  // A reload keeps this tab's pairing: the token is in the tab's
+  // sessionStorage, never in the URL (author, 2026-09-24 -- a refreshed hub
+  // showed "Pairing required"). It reconnects with the same token, naming no
+  // session because this page was opened for none.
   await page.reload();
-  await page.locator("#connection-status").filter({ hasText: "Pairing required" }).waitFor();
-  assert.equal(await page.evaluate(() => window.__sockets.length), 0);
-  await page.evaluate(() => { window.__sameDocument = true; });
+  await page.waitForFunction(() => window.__sent.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sent), [
+    { kind: "authenticate", version: 1, token: "synthetic-test-only" },
+  ]);
+  assert.equal(new URL(page.url()).hash, "", "the token did not come back into the URL");
+  // Opening a pairing URL in this existing tab is a fragment navigation, not
+  // another mount/document load, and re-pairs with the new token.
+  await page.evaluate(() => { window.__sameDocument = true; window.__sent = []; });
   await page.goto(`http://127.0.0.1:${server.address().port}/#token=synthetic-repair-only`);
   await page.waitForFunction(() => location.hash === "", null, { timeout: 2000 });
   assert.equal(await page.evaluate(() => window.__sameDocument), true);
@@ -165,7 +172,9 @@ try {
   // keep the input empty and delivery uncertain, and never resend that command.
   await page.goto(`http://127.0.0.1:${server.address().port}/#token=synthetic-second-pair`);
   await page.waitForFunction(() => window.__sent.length === 3 && location.hash === "", null, { timeout: 2000 });
-  assert.equal(await page.evaluate(() => window.__sockets[0].readyState), 3);
+  // The socket that carried the outstanding command -- the one before this
+  // re-pair's -- is closed.
+  assert.equal(await page.evaluate(() => window.__sockets.at(-2).readyState), 3);
   assert.equal(await page.locator("#command-input").inputValue(), "");
   assert.match(await page.locator("#command-status").textContent(), UNSURE);
   assert.deepEqual(await page.evaluate(() => window.__sent.map((m) => m.kind)), ["authenticate", "command", "authenticate"]);
@@ -174,7 +183,7 @@ try {
   await page.locator("#command-input").press("Enter");
   assert.deepEqual(await page.evaluate(() => window.__sent.filter((m) => m.kind === "command").map((m) => m.line)), ["look", "inventory"]);
   assert.deepEqual(errors, []);
-  console.log(`PASS: shared fixture rendering, text safety, keyboard command, delivery receipt, reconnect/no replay, refresh/same-tab re-pair, desktop/mobile overflow. Screenshots: ${output}`);
+  console.log(`PASS: shared fixture rendering, text safety, keyboard command, delivery receipt, reconnect/no replay, refresh keeps pairing, same-tab re-pair, desktop/mobile overflow. Screenshots: ${output}`);
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.close(resolve));

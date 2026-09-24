@@ -3,11 +3,45 @@ export const MAX_STORY_LINES = 1000;
 const decimal = (value) => typeof value === "string" && /^(0|[1-9][0-9]{0,19})$/.test(value)
   && BigInt(value) <= 18446744073709551615n;
 
-export function takeLaunchToken(location, history) {
+// A refresh keeps its pairing (author, 2026-09-24: refreshing the hub showed
+// "Pairing required"). The launch fragment is kept in this TAB's
+// sessionStorage -- per tab, gone when the tab closes -- so the token still
+// never sits in the URL, history or a referrer. `storage` is optional: without
+// it (tests, a browser refusing storage) a refresh needs the link again.
+const TOKEN_KEY = "hydra-token";
+const SESSION_KEY = "hydra-session";
+function stored(storage, key) {
+  try { return storage?.getItem(key) ?? null; } catch { return null; }
+}
+function store(storage, key, value) {
+  try { if (value === null) storage?.removeItem(key); else storage?.setItem(key, value); } catch { /* none kept */ }
+}
+
+// Which session this page is for, from the launch fragment (`#token=…&session=N`),
+// or -- on a refresh, which has no fragment -- the one this tab was opened for.
+// Read BEFORE takeLaunchToken, which removes the fragment. `null`: the page
+// names none, and the server serves its only session, or the hub.
+export function launchSession(location, storage = null) {
+  const params = new URLSearchParams(location.hash.slice(1));
+  if (params.get("token")) {
+    const session = params.get("session");
+    const named = decimal(session) ? session : null;
+    store(storage, SESSION_KEY, named);
+    return named;
+  }
+  const kept = stored(storage, SESSION_KEY);
+  return decimal(kept) ? kept : null;
+}
+
+export function takeLaunchToken(location, history, storage = null) {
   const token = new URLSearchParams(location.hash.slice(1)).get("token") || "";
   // Remove all fragment material before opening a socket or touching the view.
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-  return token;
+  if (token) {
+    store(storage, TOKEN_KEY, token);
+    return token;
+  }
+  return stored(storage, TOKEN_KEY) || "";
 }
 
 export function commandError(line) {
@@ -64,11 +98,27 @@ function validView(view) {
     && typeof tag.name === "string" && typeof tag.raw === "string" && typeof tag.truncated === "boolean");
 }
 
+// A hub card (plan/29 step 5b): one character at a glance.
+const LIFECYCLES = ["connecting", "ready", "reconnecting", "closed"];
+function validCard(card) {
+  return card && decimal(card.session) && typeof card.name === "string"
+    && card.lifecycle && LIFECYCLES.includes(card.lifecycle.kind)
+    && card.vitals && typeof card.vitals === "object"
+    && card.roundtime && typeof card.roundtime === "object"
+    && (card.room === null || typeof card.room === "string");
+}
+
+// Merged shared-stream lines the hub keeps (plan/29 step 5d); the server
+// keeps the same number, so a reopened hub shows what this one did.
+export const MAX_MERGED_LINES = 200;
+
 export class HydraSession {
-  constructor({ url, token, onChange, WebSocketImpl = WebSocket,
+  constructor({ url, token, sessionId = null, onChange, WebSocketImpl = WebSocket,
     schedule = setTimeout, cancel = clearTimeout }) {
     this.url = url;
     this.token = token;
+    // The session this page is for, or null for the server's only session.
+    this.sessionId = sessionId;
     this.onChange = onChange;
     this.WebSocketImpl = WebSocketImpl;
     // Browser timer functions must not be invoked with the session as receiver.
@@ -87,8 +137,13 @@ export class HydraSession {
     this.untouched = true;
     // An upper bound on where the last reported hole sits in the Story.
     this.linesBeforeGap = 0;
+    // `hub`: the character cards, when this page is the hub rather than one
+    // character's page; null otherwise.
+    // `available`: characters the hub may add; `hubNote`: what became of the
+    // last hub request.
     this.state = { connection: "idle", view: null, story: [], session: null,
-      generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…" };
+      generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…", hub: null,
+      available: [], hubNote: "", merged: [] };
   }
 
   get ready() {
@@ -126,6 +181,10 @@ export class HydraSession {
     this.state.cursor = null;
     this.state.session = null;
     this.state.generation = null;
+    // The hub stays up while it reconnects: dropping to a character layout
+    // made a hub waiting for its server look like an empty character page
+    // (author's live run, 2026-09-24). A snapshot, which only a character's
+    // page receives, is what ends hub mode.
     this.emit();
     let socket;
     try { socket = new this.WebSocketImpl(this.url); }
@@ -134,7 +193,9 @@ export class HydraSession {
     socket.onopen = () => {
       if (this.socket !== socket) return;
       this.state.connection = "authenticating";
-      socket.send(JSON.stringify({ kind: "authenticate", version: 1, token: this.token }));
+      const hello = { kind: "authenticate", version: 1, token: this.token };
+      if (this.sessionId !== null) hello.session = this.sessionId;
+      socket.send(JSON.stringify(hello));
       this.emit();
     };
     socket.onmessage = (event) => {
@@ -162,6 +223,13 @@ export class HydraSession {
   }
 
   disconnected(code) {
+    if (this.shuttingDown) {
+      this.stopped = true;
+      this.state.connection = "shut-down";
+      this.state.hubNote = "Hydra has shut down. Start it again from the terminal.";
+      this.emit();
+      return;
+    }
     const hadPending = this.pending.size > 0;
     this.uncertain();
     this.state.view = null;
@@ -180,6 +248,42 @@ export class HydraSession {
   }
 
   receive(message) {
+    // The hub page: every character's card, replacing the last list whole.
+    if (message && message.kind === "sessions") {
+      if (message.version !== 1 || !Array.isArray(message.sessions) || !message.sessions.every(validCard)
+        || !Array.isArray(message.available) || !message.available.every((name) => typeof name === "string")) {
+        throw new Error("Invalid session list");
+      }
+      this.state.hub = message.sessions;
+      this.state.available = message.available;
+      this.state.connection = "hub";
+      this.state.commandStatus = "Choose a character to play.";
+      this.emit();
+      return;
+    }
+    // Shared streams across characters: a line whose id was seen before is
+    // that line gaining a character, so it replaces the earlier copy.
+    if (message && message.kind === "merged") {
+      if (message.version !== 1 || !Array.isArray(message.lines) || !message.lines.every((line) => line
+        && decimal(line.id) && typeof line.stream === "string" && validRuns(line.runs)
+        && Array.isArray(line.from) && line.from.every((tag) => typeof tag === "string"))) {
+        throw new Error("Invalid merged lines");
+      }
+      const merged = [...this.state.merged];
+      for (const line of message.lines) {
+        const at = merged.findIndex((kept) => kept.id === line.id);
+        if (at >= 0) merged[at] = line; else merged.push(line);
+      }
+      this.state.merged = merged.slice(-MAX_MERGED_LINES);
+      this.emit();
+      return;
+    }
+    if (message && message.kind === "hub_note") {
+      if (message.version !== 1 || typeof message.detail !== "string") throw new Error("Invalid hub note");
+      this.state.hubNote = message.detail;
+      this.emit();
+      return;
+    }
     if (!message || message.version !== 1 || !decimal(message.session) || !decimal(message.generation)) {
       throw new Error("Invalid envelope");
     }
@@ -236,6 +340,7 @@ export class HydraSession {
     state.generation = message.generation;
     state.cursor = message.cursor;
     state.connection = "connected";
+    state.hub = null;
     if (this.untouched) {
       state.commandStatus = "Ready when the game is.";
     }
@@ -262,6 +367,43 @@ export class HydraSession {
       this.uncertain();
       this.socket.close();
     }
+    this.emit();
+    return true;
+  }
+
+  // Hub requests (plan/29 step 5c). The hub starts only characters that
+  // have logged in before; no credential is ever sent from here.
+  addCharacter(character) {
+    if (this.state.hub === null || this.socket?.readyState !== 1) return false;
+    this.state.hubNote = `Asking to start ${character}…`;
+    this.socket.send(JSON.stringify({ kind: "add_character", version: 1, character }));
+    this.emit();
+    return true;
+  }
+
+  removeSession(session) {
+    if (this.state.hub === null || this.socket?.readyState !== 1 || !decimal(session)) return false;
+    this.state.hubNote = "Asking the character to quit…";
+    this.socket.send(JSON.stringify({ kind: "remove_session", version: 1, session }));
+    this.emit();
+    return true;
+  }
+
+  // Shut Hydra down in order, as Ctrl-C does. The page then expects its
+  // server to go, and says so instead of reconnecting for ever.
+  shutdownHydra() {
+    if (this.state.hub === null || this.socket?.readyState !== 1) return false;
+    this.shuttingDown = true;
+    this.state.hubNote = "Shutting Hydra down…";
+    this.socket.send(JSON.stringify({ kind: "shutdown", version: 1 }));
+    this.emit();
+    return true;
+  }
+
+  reconnectSession(session) {
+    if (this.state.hub === null || this.socket?.readyState !== 1 || !decimal(session)) return false;
+    this.state.hubNote = "Asking the character to log back in…";
+    this.socket.send(JSON.stringify({ kind: "reconnect_session", version: 1, session }));
     this.emit();
     return true;
   }
