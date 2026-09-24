@@ -442,6 +442,9 @@ engine, so it is cut into sub-milestones that each finish with something the aut
 4. **The guard evaluation** (§5): a table of bigshot's 87 words with a verdict each, for the
    author to review. Then **the profile format, the chain and the bigshot importer**:
    `ojandhaart.yaml` imports, and what it drops is named.
+   > **The evaluation is `plan/33`, 2026-09-24: PROPOSED, awaiting the author.** Of the 87
+   > words, 38 are kept, 11 renamed, 34 merged, 3 deferred and 1 dropped, with 4 new ones
+   > proposed.
 
 **M6b — Hunt, without the ports.** Engine, Survival, Flee, Engage (Nisugi's verbs and
 guards), Maintain, Wander and Rest, pure, driven by replay fixtures from Nisugi's area (the
