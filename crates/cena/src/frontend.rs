@@ -11,7 +11,9 @@ use tokio_util::sync::CancellationToken;
 /// Server lifetime owned by the executable, independently of browser tabs.
 pub(crate) struct Frontend {
     stop: CancellationToken,
-    task: JoinHandle<std::io::Result<()>>,
+    /// Taken by [`Self::shutdown`]; behind a lock so the frontend can be
+    /// shared with the hub's control while it runs.
+    task: std::sync::Mutex<Option<JoinHandle<std::io::Result<()>>>>,
     sessions: cena_web::Sessions,
     pairing: String,
 }
@@ -42,7 +44,7 @@ impl Frontend {
                     tokio::spawn(async move { server.run(shutdown.cancelled_owned()).await });
                 Some(Self {
                     stop,
-                    task,
+                    task: std::sync::Mutex::new(Some(task)),
                     sessions,
                     pairing,
                 })
@@ -82,15 +84,31 @@ impl Frontend {
         tokio::spawn(announce(observer, url, tag, self.stop.clone()));
     }
 
+    /// The sessions it serves, for the hub's control and its offer.
+    pub(crate) fn sessions(&self) -> &cena_web::Sessions {
+        &self.sessions
+    }
+
+    /// Stop serving `id`: its page closes; the session is not touched.
+    pub(crate) fn detach(&self, id: cena_session::SessionId) {
+        self.sessions.detach(id);
+    }
+
     /// Stop serving without changing the game's command authority.
-    pub(crate) async fn shutdown(mut self) {
+    pub(crate) async fn shutdown(&self) {
         self.stop.cancel();
-        match tokio::time::timeout(Duration::from_secs(3), &mut self.task).await {
+        let task = self
+            .task
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take();
+        let Some(mut task) = task else { return };
+        match tokio::time::timeout(Duration::from_secs(3), &mut task).await {
             Ok(Ok(Ok(()))) => {}
             Ok(Ok(Err(error))) => eprintln!("[web] Frontend stopped with an error: {error}"),
             Ok(Err(error)) => eprintln!("[web] Frontend task failed: {error}"),
             Err(_) => {
-                self.task.abort();
+                task.abort();
                 eprintln!("[web] Frontend shutdown exceeded its deadline; task aborted.");
             }
         }

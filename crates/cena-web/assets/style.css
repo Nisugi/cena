@@ -123,4 +123,7 @@ meter::-moz-meter-bar { background: var(--vital-color); }
 .hub-card a:hover { color: #f0c674; }
 .hub-status { float: right; color: var(--muted); font-size: .75rem; }
 .hub-summary { margin: 6px 0 0; color: var(--text); font-family: var(--font-text); font-size: .75rem; overflow-wrap: anywhere; }
+.hub-quit { margin-top: 8px; font-size: .75rem; padding: 3px 10px; }
+.hub-available { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.hub-note { display: block; margin-top: 10px; color: var(--muted); }
 

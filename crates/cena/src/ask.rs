@@ -139,15 +139,14 @@ pub fn ask_for(character: &str) -> io::Result<Typed> {
 }
 
 /// The login for a character the roster knows: its account and game from the
-/// roster, and its password from the ladder -- which prompts only if a person
-/// is at a terminal.
+/// roster, and its password from the ladder -- which prompts only when
+/// `at_terminal` says a person is there to answer.
 ///
 /// # Errors
 ///
 /// No rung of the ladder had a password.
-pub fn from_roster(entry: &crate::roster::Entry) -> io::Result<Typed> {
-    let (password, password_from) =
-        crate::secrets::password(&entry.account, io::stdin().is_terminal())?;
+pub fn from_roster(entry: &crate::roster::Entry, at_terminal: bool) -> io::Result<Typed> {
+    let (password, password_from) = crate::secrets::password(&entry.account, at_terminal)?;
     let mut typed = tidy(&entry.account, password, &entry.character, &entry.game_code);
     typed.password_from = password_from;
     Ok(typed)

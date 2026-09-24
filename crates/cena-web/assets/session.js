@@ -109,8 +109,11 @@ export class HydraSession {
     this.linesBeforeGap = 0;
     // `hub`: the character cards, when this page is the hub rather than one
     // character's page; null otherwise.
+    // `available`: characters the hub may add; `hubNote`: what became of the
+    // last hub request.
     this.state = { connection: "idle", view: null, story: [], session: null,
-      generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…", hub: null };
+      generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…", hub: null,
+      available: [], hubNote: "" };
   }
 
   get ready() {
@@ -207,12 +210,20 @@ export class HydraSession {
   receive(message) {
     // The hub page: every character's card, replacing the last list whole.
     if (message && message.kind === "sessions") {
-      if (message.version !== 1 || !Array.isArray(message.sessions) || !message.sessions.every(validCard)) {
+      if (message.version !== 1 || !Array.isArray(message.sessions) || !message.sessions.every(validCard)
+        || !Array.isArray(message.available) || !message.available.every((name) => typeof name === "string")) {
         throw new Error("Invalid session list");
       }
       this.state.hub = message.sessions;
+      this.state.available = message.available;
       this.state.connection = "hub";
       this.state.commandStatus = "Choose a character to play.";
+      this.emit();
+      return;
+    }
+    if (message && message.kind === "hub_note") {
+      if (message.version !== 1 || typeof message.detail !== "string") throw new Error("Invalid hub note");
+      this.state.hubNote = message.detail;
       this.emit();
       return;
     }
@@ -298,6 +309,24 @@ export class HydraSession {
       this.uncertain();
       this.socket.close();
     }
+    this.emit();
+    return true;
+  }
+
+  // Hub requests (plan/29 step 5c). The hub starts only characters that
+  // have logged in before; no credential is ever sent from here.
+  addCharacter(character) {
+    if (this.state.hub === null || this.socket?.readyState !== 1) return false;
+    this.state.hubNote = `Asking to start ${character}…`;
+    this.socket.send(JSON.stringify({ kind: "add_character", version: 1, character }));
+    this.emit();
+    return true;
+  }
+
+  removeSession(session) {
+    if (this.state.hub === null || this.socket?.readyState !== 1 || !decimal(session)) return false;
+    this.state.hubNote = "Asking the character to quit…";
+    this.socket.send(JSON.stringify({ kind: "remove_session", version: 1, session }));
     this.emit();
     return true;
   }

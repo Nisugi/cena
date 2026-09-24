@@ -34,6 +34,11 @@ pub(crate) struct Shared {
     /// Signalled when a session is attached or detached, or publishes a new
     /// view: the hub page rebuilds its cards on it.
     pub(crate) changed: tokio::sync::broadcast::Sender<()>,
+    /// Who answers the hub's add and remove requests; `None`, and the hub
+    /// offers neither (`plan/29` step 5c).
+    pub(crate) control: std::sync::Mutex<Option<HubControl>>,
+    /// Characters the hub may add, as the control's owner last said.
+    pub(crate) available: std::sync::Mutex<Vec<String>>,
     pub(crate) clients: Arc<Semaphore>,
     pub(crate) stop: CancellationToken,
 }
@@ -78,6 +83,21 @@ impl Shared {
         cards
     }
 }
+
+/// A request from the hub page, for whoever runs the sessions.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HubRequest {
+    /// Start this character: one the hub offered as available.
+    Add(String),
+    /// Quit this session and take it off the table.
+    Remove(SessionId),
+}
+
+/// What answers the hub's requests: the owner of the session table, which
+/// alone knows the roster and the keyring. It returns one line for the page
+/// that asked. A closure, not a trait: there is one answerer.
+pub type HubControl =
+    Arc<dyn Fn(HubRequest) -> std::pin::Pin<Box<dyn Future<Output = String> + Send>> + Send + Sync>;
 
 /// What an authenticated viewer is shown.
 pub(crate) enum Choice {
@@ -178,6 +198,27 @@ impl Sessions {
         tokio::spawn(pump(observer, viewed));
     }
 
+    /// Answer the hub page's add and remove requests with `control`
+    /// (`plan/29` step 5c). Until this is called the hub offers neither.
+    pub fn control(&self, control: HubControl) {
+        *self
+            .shared
+            .control
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(control);
+        let _ = self.shared.changed.send(());
+    }
+
+    /// The characters the hub may offer to add, replacing the last list.
+    pub fn offer(&self, available: Vec<String>) {
+        *self
+            .shared
+            .available
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = available;
+        let _ = self.shared.changed.send(());
+    }
+
     /// Stop serving session `id`. Its viewers are closed; the session itself
     /// is not touched -- the session table owns its lifetime.
     pub fn detach(&self, id: SessionId) {
@@ -238,6 +279,8 @@ impl WebServer {
             csp,
             sessions: std::sync::Mutex::new(BTreeMap::new()),
             changed: tokio::sync::broadcast::channel(1).0,
+            control: std::sync::Mutex::new(None),
+            available: std::sync::Mutex::new(Vec::new()),
             clients: Arc::new(Semaphore::new(MAX_CLIENTS)),
             stop: CancellationToken::new(),
         });

@@ -515,7 +515,8 @@ const card = (session, name, health = null) => ({
 
 test("the hub lists every character, each linking to its own page", () => {
   const { session, socket, element } = page();
-  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi", 80), card("1", "Nerten")] });
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi", 80), card("1", "Nerten")],
+    available: [] });
   assert.equal(session.state.connection, "hub");
   assert.equal(element("hub").hidden, false);
   assert.ok(element("shell").classes.includes("hub-mode"), "the one-character panes are hidden");
@@ -527,7 +528,7 @@ test("the hub lists every character, each linking to its own page", () => {
   assert.equal(link.target, "_blank");
   assert.match(cards[0].children[2].textContent, /HP 80%/);
   // A later list replaces the earlier one whole.
-  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")] });
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")], available: [] });
   assert.equal(element("hub-list").children.length, 1);
 });
 
@@ -543,7 +544,25 @@ test("a malformed session list is a protocol error, not a partial hub", () => {
   const { session, socket } = page();
   const bad = card("0", "Nisugi");
   bad.session = "07";
-  socket.message({ kind: "sessions", version: 1, sessions: [bad] });
+  socket.message({ kind: "sessions", version: 1, sessions: [bad], available: [] });
   assert.equal(session.state.hub, null);
   assert.equal(session.state.connection, "protocol-error");
 });
+
+test("the hub starts and quits characters by request, and shows the answer", () => {
+  // plan/29 step 5c: only names the hub offered, and only an id -- no
+  // credential ever leaves the page.
+  const { socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")], available: ["Sugiin"] });
+  const offered = element("hub-available").children;
+  assert.equal(offered.length, 1);
+  assert.equal(offered[0].textContent, "Start Sugiin");
+  offered[0].fire("click");
+  assert.deepEqual(socket.sent.at(-1), { kind: "add_character", version: 1, character: "Sugiin" });
+  const quit = element("hub-list").children[0].children[3];
+  quit.fire("click");
+  assert.deepEqual(socket.sent.at(-1), { kind: "remove_session", version: 1, session: "0" });
+  socket.message({ kind: "hub_note", version: 1, detail: "Nisugi has quit." });
+  assert.equal(element("hub-note").textContent, "Nisugi has quit.");
+});
+

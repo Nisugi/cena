@@ -274,10 +274,31 @@ export function mount(document, environment) {
       const summary = document.createElement("p");
       summary.className = "hub-summary";
       summary.textContent = cardSummary(card);
-      item.append(link, status, summary);
+      const quit = document.createElement("button");
+      quit.type = "button";
+      quit.className = "hub-quit";
+      quit.textContent = "Quit";
+      quit.addEventListener("click", () => session.removeSession(card.session));
+      item.append(link, status, summary, quit);
       list.appendChild(item);
     }
     element("hub-empty").hidden = cards.length > 0;
+  }
+
+  // Characters the hub can start: ones that have logged in before, with a
+  // saved password. Anything else is logged in once from the command line.
+  function renderAvailable(available, note) {
+    const host = element("hub-available");
+    host.replaceChildren();
+    for (const name of available) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.textContent = `Start ${name}`;
+      add.addEventListener("click", () => session.addCharacter(name));
+      host.appendChild(add);
+    }
+    host.hidden = available.length === 0;
+    text("hub-note", note);
   }
 
   function render(state, ready) {
@@ -286,6 +307,7 @@ export function mount(document, environment) {
     if (state.hub !== null) {
       text("connection-status", "Characters");
       renderHub(state.hub);
+      renderAvailable(state.available, state.hubNote);
       return;
     }
     const view = state.view;

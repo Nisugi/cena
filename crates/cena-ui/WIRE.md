@@ -19,7 +19,10 @@ updates, not game events. Never convert these fields to JavaScript Number.
 | `snapshot` | `session`, `generation`, `cursor`, `view`, `story`, `history_gap` | Replace view and bounded history; `history_gap` makes missing history explicit. |
 | `update` | `session`, `generation`, `cursor`, `view`, `lines` | Replace view and append complete lines. |
 | `receipt` | `session`, `generation`, `request_id`, `status`, `detail` | Send outcome, attributable to the requested generation. |
-| `sessions` | `sessions` | The hub page (`plan/29` step 5b): one card per character, replacing the last list whole. Sent to a viewer that named no session when there is not exactly one. The hub takes no commands. |
+| `sessions` | `sessions`, `available` | The hub page (`plan/29` step 5b): one card per character, replacing the last list whole, and the characters it may start. Sent to a viewer that named no session when there is not exactly one. The hub takes no game commands. |
+| `add_character` | `character` | Hub only (step 5c): start a character that has logged in before -- in the roster, with a saved password. No credential crosses the socket. |
+| `remove_session` | `session` | Hub only: quit a character and take it off the table. |
+| `hub_note` | `detail` | What became of the hub request just made, as one line of plain text. |
 
 `status` is `sent`, `refused`, `uncertain`, or `handled` (a `;` command Hydra ran itself; nothing was sent). Sent establishes that command
 bytes were written, not that the requested game action completed. An observed

@@ -5,10 +5,12 @@
 //! panels; it is not claimed to be one recorded login or a real command reply.
 //! `AnsweringSource` supplies only transport timing and a write transcript.
 
+mod web_support;
+
 use cena_platform::AnsweringSource;
 use cena_session::{
-    AuthorityToken, ConnectError, Connector, Event, Generation, Origin, Outcome, Session,
-    SessionId, SessionObserver, State, SupervisedSession,
+    AuthorityToken, ConnectError, Connector, Event, Generation, Origin, Outcome, Session, State,
+    SupervisedSession,
 };
 use cena_ui::{
     ClientMessage, HandView, LifecycleView, ReceiptStatus, ServerMessage, SessionView, StoryLine,
@@ -20,15 +22,10 @@ use std::collections::VecDeque;
 use std::error::Error;
 use std::io;
 use std::time::Duration;
-use tokio::net::TcpStream;
+use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::{Message, client::IntoClientRequest};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 use tokio_util::sync::CancellationToken;
-
-type TestResult<T = ()> = Result<T, Box<dyn Error + Send + Sync>>;
-type Browser = WebSocketStream<MaybeTlsStream<TcpStream>>;
-const DEADLINE: Duration = Duration::from_secs(5);
-const ROOM: &[u8] = include_str!("../../cena-protocol/tests/fixtures/room.xml").as_bytes();
+use web_support::*;
 
 fn panel_reply() -> Vec<u8> {
     [
@@ -37,91 +34,6 @@ fn panel_reply() -> Vec<u8> {
         ROOM,
     ]
     .concat()
-}
-
-async fn browser(pairing: &str) -> TestResult<Browser> {
-    browser_for(pairing, None).await
-}
-
-/// A viewer for session `session`, as a page opened from its own link is.
-async fn browser_for(pairing: &str, session: Option<&str>) -> TestResult<Browser> {
-    let (base, token) = pairing
-        .split_once("/#token=")
-        .ok_or_else(|| io::Error::other("missing pairing fragment"))?;
-    let mut request =
-        format!("{}/ws", base.replacen("http://", "ws://", 1)).into_client_request()?;
-    request.headers_mut().insert("origin", base.parse()?);
-    let (mut socket, _) = connect_async(request).await?;
-    send(
-        &mut socket,
-        &ClientMessage::Authenticate {
-            version: WIRE_VERSION,
-            token: token.to_owned(),
-            session: session.map(str::to_owned),
-        },
-    )
-    .await?;
-    Ok(socket)
-}
-
-/// The next thing the server does with `socket` is close it.
-async fn closes(socket: &mut Browser) -> bool {
-    matches!(
-        tokio::time::timeout(DEADLINE, socket.next()).await,
-        Ok(Some(Ok(Message::Close(_)) | Err(_)) | None)
-    )
-}
-
-async fn send(socket: &mut Browser, message: &ClientMessage) -> TestResult {
-    socket
-        .send(Message::Text(serde_json::to_string(message)?.into()))
-        .await?;
-    Ok(())
-}
-
-async fn receive(socket: &mut Browser) -> TestResult<ServerMessage> {
-    let message = tokio::time::timeout(DEADLINE, socket.next())
-        .await?
-        .ok_or_else(|| io::Error::other("viewer closed before its message"))??;
-    match message {
-        Message::Text(text) => Ok(serde_json::from_str(&text)?),
-        other => Err(io::Error::other(format!("expected application text: {other:?}")).into()),
-    }
-}
-
-fn command(session: &str, generation: &str, request_id: &str, line: &str) -> ClientMessage {
-    ClientMessage::Command {
-        version: WIRE_VERSION,
-        session: session.to_owned(),
-        generation: generation.to_owned(),
-        request_id: request_id.to_owned(),
-        line: line.to_owned(),
-    }
-}
-
-async fn receipt(
-    socket: &mut Browser,
-    expected_id: &str,
-    lines: &mut Vec<StoryLine>,
-) -> TestResult<ReceiptStatus> {
-    tokio::time::timeout(DEADLINE, async {
-        loop {
-            match receive(socket).await? {
-                ServerMessage::Receipt {
-                    request_id, status, ..
-                } if request_id == expected_id => return Ok(status),
-                ServerMessage::Update { lines: new, .. } => lines.extend(new),
-                ServerMessage::Snapshot { story, .. } => *lines = story,
-                ServerMessage::Receipt { .. } => {
-                    return Err(io::Error::other("unexpected command receipt").into());
-                }
-                ServerMessage::Sessions { .. } => {
-                    return Err(io::Error::other("a session's page was sent the hub").into());
-                }
-            }
-        }
-    })
-    .await?
 }
 
 fn line_text(line: &StoryLine) -> String {
@@ -177,7 +89,9 @@ async fn assert_story(socket: &mut Browser, mut lines: Vec<StoryLine>) -> TestRe
             match receive(socket).await? {
                 ServerMessage::Update { lines: new, .. } => lines.extend(new),
                 ServerMessage::Snapshot { story, .. } => lines = story,
-                ServerMessage::Receipt { .. } | ServerMessage::Sessions { .. } => {
+                ServerMessage::Receipt { .. }
+                | ServerMessage::Sessions { .. }
+                | ServerMessage::HubNote { .. } => {
                     return Err(io::Error::other("expected room presentation").into());
                 }
             }
@@ -387,9 +301,7 @@ async fn reconnect_refuses_old_browser_generation_including_quit_without_writing
                 | ServerMessage::Snapshot {
                     generation, view, ..
                 } => (generation, view),
-                other @ (ServerMessage::Receipt { .. } | ServerMessage::Sessions { .. }) => {
-                    panic!("unexpected reconnect message: {other:?}")
-                }
+                other => panic!("unexpected reconnect message: {other:?}"),
             };
             // Invalidated until the new connection's login burst re-teaches
             // it (`plan/12` §5.2). `Ready` is the prompt that ENDS that
@@ -537,27 +449,6 @@ async fn websocket_requires_local_origin_and_auth_before_state_or_native_command
     actor.await.unwrap();
 }
 
-/// Wait until connection `generation` is `Ready`: the first prompt after
-/// `<endSetup/>`, which `AnsweringSource::logged_in` sends on connect.
-async fn await_ready(observer: &SessionObserver, generation: Generation) -> TestResult {
-    let (snapshot, mut events) = observer
-        .subscribe()
-        .await
-        .map_err(|error| io::Error::other(format!("native observation failed: {error:?}")))?;
-    if snapshot.generation == generation && snapshot.lifecycle == State::Ready {
-        return Ok(());
-    }
-    tokio::time::timeout(DEADLINE, async {
-        loop {
-            let event = events.recv().await?;
-            if event.generation == generation && event.event == Event::StateChanged(State::Ready) {
-                return Ok(());
-            }
-        }
-    })
-    .await?
-}
-
 #[tokio::test]
 async fn exhausted_request_budget_refuses_before_close_and_fresh_connection_can_send() {
     let (first, disconnected) = AnsweringSource::new(ROOM);
@@ -664,123 +555,4 @@ async fn exhausted_request_budget_refuses_before_close_and_fresh_connection_can_
     web.await.unwrap().unwrap();
     stop_session.cancel();
     actor.await.unwrap();
-}
-
-/// `plan/29` step 5: one listener serves every character, each on its own
-/// page. A page names its session; one that names none, with two attached,
-/// is refused rather than shown either -- a command typed there would have
-/// no character to go to.
-#[tokio::test]
-async fn one_listener_serves_each_session_on_its_own_page() {
-    let (a_source, a_transcript) = AnsweringSource::logged_in(ROOM);
-    let (b_source, b_transcript) = AnsweringSource::logged_in(ROOM);
-    let a = Session::numbered(SessionId(0), a_source);
-    let b = Session::numbered(SessionId(1), b_source);
-    let (a_handle, a_observer, a_stop) = (a.handle(), a.observer(), a.cancel_token());
-    let (b_handle, b_observer, b_stop) = (b.handle(), b.observer(), b.cancel_token());
-    let a_actor = tokio::spawn(a.into_actor().run());
-    let b_actor = tokio::spawn(b.into_actor().run());
-    await_ready(&a_observer, Generation::FIRST).await.unwrap();
-    await_ready(&b_observer, Generation::FIRST).await.unwrap();
-
-    let server = WebServer::open().await.unwrap();
-    let sessions = server.sessions();
-    sessions.attach("Nisugi", a_observer, a_handle);
-    let b_handle_for_hurt = b_handle.clone();
-    sessions.attach("Nerten", b_observer, b_handle);
-    let pairing = server.pairing_url();
-    let stop_web = CancellationToken::new();
-    let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
-
-    // Naming none, with two running, is the hub: every character's card.
-    let mut hub = browser(&pairing).await.unwrap();
-    let ServerMessage::Sessions {
-        sessions: cards, ..
-    } = receive(&mut hub).await.unwrap()
-    else {
-        panic!("two sessions and none named opens the hub");
-    };
-    let named: Vec<(&str, &str)> = cards
-        .iter()
-        .map(|card| (card.session.as_str(), card.name.as_str()))
-        .collect();
-    assert_eq!(named, [("0", "Nisugi"), ("1", "Nerten")]);
-    assert!(
-        cards
-            .iter()
-            .all(|card| card.lifecycle == LifecycleView::Ready),
-        "each card reads its session's own view: {cards:?}"
-    );
-    // A card follows its character: a change in Nerten's health reaches the
-    // hub without the hub being asked.
-    b_transcript.answer(
-        "hurt",
-        b"You wince.\n<progressBar id='health' value='42'/><prompt time='1'>&gt;</prompt>\n",
-    );
-    assert!(matches!(
-        b_handle_for_hurt
-            .send_manual_at(Generation::FIRST, "hurt", DEADLINE)
-            .await,
-        Outcome::Confirmed(_)
-    ));
-    let updated = tokio::time::timeout(DEADLINE, async {
-        loop {
-            if let Ok(ServerMessage::Sessions {
-                sessions: cards, ..
-            }) = receive(&mut hub).await
-                && let Some(health) = cards[1].vitals.health.as_ref()
-                && health.percent == 42
-            {
-                return true;
-            }
-        }
-    })
-    .await;
-    assert!(updated.is_ok(), "the hub's card for Nerten never showed 42");
-
-    // The hub takes no commands: a command belongs to one character's page.
-    send(&mut hub, &command("0", "0", "from-hub", "look"))
-        .await
-        .unwrap();
-    assert!(
-        closes(&mut hub).await,
-        "a command sent to the hub is refused"
-    );
-    assert!(a_transcript.lines().is_empty());
-    assert_eq!(b_transcript.lines(), ["hurt"], "only Nerten's own command");
-
-    let mut page = browser_for(&pairing, Some("1")).await.unwrap();
-    let ServerMessage::Snapshot {
-        session,
-        generation,
-        ..
-    } = receive(&mut page).await.unwrap()
-    else {
-        panic!("a named session's page opens on its snapshot");
-    };
-    assert_eq!(session, "1");
-    send(&mut page, &command(&session, &generation, "look-1", "look"))
-        .await
-        .unwrap();
-    assert_eq!(
-        receipt(&mut page, "look-1", &mut Vec::new()).await.unwrap(),
-        ReceiptStatus::Sent
-    );
-    assert_eq!(
-        b_transcript.lines(),
-        ["hurt", "look"],
-        "the page's own session"
-    );
-    assert!(a_transcript.lines().is_empty(), "and no other");
-
-    // Detached, its page is closed; the session itself runs on.
-    sessions.detach(SessionId(1));
-    assert!(closes(&mut page).await, "a detached session's page closes");
-    assert!(!b_actor.is_finished());
-
-    stop_web.cancel();
-    web.await.unwrap().unwrap();
-    a_stop.cancel();
-    b_stop.cancel();
-    let _ = (a_actor.await, b_actor.await);
 }

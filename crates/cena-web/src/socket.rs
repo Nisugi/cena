@@ -2,7 +2,7 @@
 //! a bounded duplicate set, and no command outbox or retry path.
 
 use crate::presentation::encode;
-use crate::server::{Asked, Choice, Shared, Viewed};
+use crate::server::{Asked, Choice, HubRequest, Shared, Viewed};
 use axum::extract::ws::{CloseFrame, Message, WebSocket};
 use cena_session::{Generation, Outcome, SessionId};
 use cena_ui::{ClientMessage, ReceiptStatus, ServerMessage, WIRE_VERSION, validate_command};
@@ -139,6 +139,31 @@ pub(crate) async fn serve(
     }
 }
 
+/// A hub page's add or remove request, or `None` for anything else -- which
+/// includes a character name that is empty or too long, and a session id
+/// that is not canonical.
+fn hub_request(text: &str) -> Option<HubRequest> {
+    match serde_json::from_str(text).ok()? {
+        ClientMessage::AddCharacter { version, character } => {
+            let named = !character.trim().is_empty() && character.len() <= 64;
+            (version == WIRE_VERSION && named).then_some(HubRequest::Add(character))
+        }
+        ClientMessage::RemoveSession { version, session } => {
+            let id = session_id(&session)?;
+            (version == WIRE_VERSION).then_some(HubRequest::Remove(id))
+        }
+        _ => None,
+    }
+}
+
+/// A canonical decimal session id: digits only, no leading zero.
+fn session_id(id: &str) -> Option<SessionId> {
+    let canonical = !id.is_empty()
+        && id.bytes().all(|b| b.is_ascii_digit())
+        && (id == "0" || !id.starts_with('0'));
+    id.parse::<u32>().ok().filter(|_| canonical).map(SessionId)
+}
+
 /// The session a correctly authenticated viewer asked for, or `None` when
 /// authentication failed.
 ///
@@ -166,13 +191,7 @@ fn authenticate(text: &str, expected: &str) -> Option<Asked> {
     }
     match session {
         None => Some(Asked::Only),
-        Some(id) => {
-            let canonical = !id.is_empty()
-                && id.bytes().all(|b| b.is_ascii_digit())
-                && (id == "0" || !id.starts_with('0'));
-            let number = id.parse::<u32>().ok().filter(|_| canonical)?;
-            Some(Asked::Session(SessionId(number)))
-        }
+        Some(id) => Some(Asked::Session(session_id(&id)?)),
     }
 }
 
@@ -195,9 +214,24 @@ async fn serve_hub(mut socket: WebSocket, shared: Arc<Shared>) {
     let mut changed = shared.changed.subscribe();
     let mut last: Option<Arc<str>> = None;
     loop {
+        let available = if shared
+            .control
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_some()
+        {
+            shared
+                .available
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .clone()
+        } else {
+            Vec::new()
+        };
         let cards = ServerMessage::Sessions {
             version: WIRE_VERSION,
             sessions: shared.cards().await,
+            available,
         };
         let Ok(message) = encode(&cards) else {
             close(&mut socket, 1011, "The session list is too large to send").await;
@@ -216,8 +250,26 @@ async fn serve_hub(mut socket: WebSocket, shared: Arc<Shared>) {
             incoming = socket.recv() => match incoming {
                 Some(Ok(Message::Ping(_) | Message::Pong(_))) => {}
                 Some(Ok(Message::Close(_)) | Err(_)) | None => return,
+                Some(Ok(Message::Text(text))) => {
+                    let Some(request) = hub_request(&text) else {
+                        close(&mut socket, 1008, "The hub takes only add and remove requests; commands go to a character's page").await;
+                        return;
+                    };
+                    let control = shared
+                        .control
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .clone();
+                    let detail = match control {
+                        Some(control) => control(request).await,
+                        None => "Adding and removing characters is not offered here.".to_owned(),
+                    };
+                    let note = ServerMessage::HubNote { version: WIRE_VERSION, detail };
+                    let Ok(message) = encode(&note) else { return; };
+                    if !write(&mut socket, &message).await { return; }
+                }
                 Some(Ok(_)) => {
-                    close(&mut socket, 1008, "The hub takes no commands; use a character's page").await;
+                    close(&mut socket, 1008, "Text JSON messages required").await;
                     return;
                 }
             },

@@ -103,6 +103,15 @@ pub(crate) fn find(dir: &Path, name: &str) -> io::Result<Option<Entry>> {
     }
 }
 
+/// Every character the roster knows.
+///
+/// # Errors
+///
+/// The file cannot be read.
+pub(crate) fn all(dir: &Path) -> io::Result<Vec<Entry>> {
+    Ok(load(dir)?.characters.into_values().collect())
+}
+
 /// Remember `entry`, replacing what was known of that character.
 ///
 /// # Errors

@@ -44,6 +44,23 @@ pub enum ClientMessage {
         /// The command text, sent exactly as given (no trimming).
         line: String,
     },
+    /// `kind: "add_character"`, from the hub page: start a character that has
+    /// logged in before -- in the roster, with its password in the keyring
+    /// (`plan/29` step 5c). No credential ever crosses this socket.
+    AddCharacter {
+        /// Must equal `WIRE_VERSION`.
+        version: u16,
+        /// The character, as the hub offered it in `available`.
+        character: String,
+    },
+    /// `kind: "remove_session"`, from the hub page: quit a character and take
+    /// it off the table.
+    RemoveSession {
+        /// Must equal `WIRE_VERSION`.
+        version: u16,
+        /// The session to remove, as a canonical decimal string.
+        session: String,
+    },
 }
 
 /// What the sender can establish. No variant asserts game action completion.
@@ -135,6 +152,17 @@ pub enum ServerMessage {
         version: u16,
         /// One card per session, in the order they were added.
         sessions: Vec<SessionCard>,
+        /// Characters the hub can add: in the roster, with a saved password,
+        /// and not running. Empty when adding is not offered.
+        available: Vec<String>,
+    },
+    /// `kind: "hub_note"`: what became of a hub request, for the page that
+    /// made it.
+    HubNote {
+        /// Always `WIRE_VERSION`.
+        version: u16,
+        /// One line of plain text.
+        detail: String,
     },
 }
 

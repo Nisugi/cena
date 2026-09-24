@@ -114,6 +114,14 @@ pub(crate) fn password(account: &str, at_terminal: bool) -> io::Result<(String, 
     )
 }
 
+/// Whether a password for `account` is saved where Hydra can read it without
+/// asking: the keyring, or the account's environment variable. What the hub
+/// needs to know before it offers to start a character (`plan/29` step 5c).
+pub(crate) fn saved(account: &str) -> bool {
+    from_keyring(account).is_some_and(|p| !p.is_empty())
+        || std::env::var(env_name(account)).is_ok_and(|p| !p.is_empty())
+}
+
 fn entry(account: &str) -> keyring::Result<keyring::Entry> {
     keyring::Entry::new(KEYRING_SERVICE, &account.trim().to_lowercase())
 }
