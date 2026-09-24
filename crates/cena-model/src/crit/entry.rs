@@ -39,13 +39,18 @@ pub const STUN_UNKNOWN: u16 = 999;
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CritEntry {
+    /// Which table this row is from: column 1 of the TSV, Lich's level-1 key.
     pub damage_type: DamageType,
+    /// Where the hit landed: Lich's level-2 key within the table.
     pub location: Location,
     /// Measured 0..=11.
     pub rank: u8,
     /// Extra damage. Measured 0..=88.
     pub damage: u16,
+    /// The posture the crit knocks the target into; `None` when it does not
+    /// change posture, which is the common case.
     pub position: Option<Position>,
+    /// The crit kills the target outright.
     pub fatal: bool,
     /// Rounds of stun. Measured 0..=20, plus `STUN_UNKNOWN`.
     ///
@@ -54,6 +59,8 @@ pub struct CritEntry {
     /// without saying for how long. A caller that treats this as a duration
     /// will wait a very long time, so `stun_is_known` exists to ask.
     pub stunned: u16,
+    /// The crit severs the limb at `location` (Lich: "the LOCATION to be
+    /// severed").
     pub amputated: bool,
     /// **`false` in all 2,394 entries.** Kept because it is part of the schema
     /// Lich documents (`reference/lich-5/lib/gemstone/critranks/generic_critical_table.rb:25`) and a future table may
@@ -61,15 +68,23 @@ pub struct CritEntry {
     /// `cut -f9 crates/cena-model/data/crit_tables.tsv | tail -n +2 | sort -u`
     /// prints `0` and nothing else.
     pub crippled: bool,
+    /// The crit leaves the target unconscious or asleep.
     pub sleeping: bool,
+    /// The crit leaves the target dazed; Lich's template ties this to
+    /// unarmed-combat crits.
     pub dazed: bool,
+    /// The target favors the wounded limb. Lich's template marks the meaning
+    /// "true false or location tbd", so read it as a bare flag only.
     pub limb_favored: bool,
     /// Extra roundtime in seconds. Measured domain {0, 2, 5, 10, 20}.
     pub roundtime: u8,
+    /// The crit prevents the target speaking or casting.
     pub silenced: bool,
+    /// The crit makes the target's actions slower.
     pub slowed: bool,
     /// Rank of the wound at `location`. Measured 0..=3.
     pub wound_rank: u8,
+    /// A second wound at another location; `None` for all but 156 entries.
     pub secondary_wound: Option<SecondaryWound>,
     /// The regex source that matches this crit's message, as Lich writes it.
     ///

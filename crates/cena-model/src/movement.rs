@@ -43,7 +43,10 @@ pub enum MoveFeedback {
     /// A skill roll failed and may succeed next time: a climb lost, a swim
     /// pushed back, vertigo, fog. Remedy: wait out the roundtime, try again.
     /// `fell` is true where the failure leaves the walker on the ground.
-    FailedRoll { fell: bool },
+    FailedRoll {
+        /// True when the message says the walker ended up on the ground.
+        fell: bool,
+    },
     /// The move worked, though the room did not change in the usual way:
     /// the long swims of Sailor's Grief.
     Swam,

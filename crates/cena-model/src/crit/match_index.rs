@@ -184,8 +184,12 @@ pub struct MatchIndex {
 /// A pattern that would not compile, with its index and the regex error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PatternError {
+    /// Position of the failing pattern in the slice passed to `build`.
     pub index: usize,
+    /// The regex source that failed: the entry's own pattern, or the
+    /// `EXCLUSIONS` replacement when it is that half which would not compile.
     pub pattern: String,
+    /// The `regex` crate's error, rendered with `to_string`.
     pub message: String,
 }
 

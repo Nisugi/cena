@@ -362,7 +362,11 @@ pub fn profile_affiliation(line: &str) -> Option<Affiliation> {
 /// What one `profile` affiliation line states.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Affiliation {
+    /// `Master of the X` or `Member of the X`, as a `SocietyEvent::Report`;
+    /// a Master's rank is filled with the society's maximum.
     Society(SocietyEvent),
+    /// `Full citizen of X`: the town name as printed. Other citizenship
+    /// wordings are unmeasured and not read.
     Citizenship(String),
 }
 

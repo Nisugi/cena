@@ -45,12 +45,19 @@ use std::fmt;
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum DeathsSting {
+    /// Printed `None`: no sting at all, the least severe value.
     None,
+    /// Printed `Light`.
     Light,
+    /// Printed `Moderate`.
     Moderate,
+    /// Printed `Sharp`.
     Sharp,
+    /// Printed `Harsh`.
     Harsh,
+    /// Printed `Piercing`.
     Piercing,
+    /// Printed `Crushing`: the most severe value.
     Crushing,
 }
 
@@ -107,8 +114,11 @@ impl fmt::Display for DeathsSting {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum Society {
+    /// Printed `Order of Voln`; a Master holds rank 26.
     OrderOfVoln,
+    /// Printed `Council of Light`; a Master holds rank 20.
     CouncilOfLight,
+    /// Printed `Guardians of Sunfist`; a Master holds rank 20.
     GuardiansOfSunfist,
 }
 
@@ -174,15 +184,25 @@ impl fmt::Display for Society {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum ResourceType {
+    /// Printed `Essence`.
     Essence,
+    /// Printed `Necrotic Energy`.
     NecroticEnergy,
+    /// Printed `Lore Knowledge`.
     LoreKnowledge,
+    /// Printed `Motes of Tranquility`.
     MotesOfTranquility,
+    /// Printed `Devotion`.
     Devotion,
+    /// Printed `Nature's Grace`.
     NaturesGrace,
+    /// Printed `Grit`.
     Grit,
+    /// Printed `Luck Inspiration`.
     LuckInspiration,
+    /// Printed `Guile`.
     Guile,
+    /// Printed `Vitality`.
     Vitality,
 }
 
@@ -249,11 +269,17 @@ impl fmt::Display for ResourceType {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum Warcry {
+    /// Printed `Bertrandt's Bellow`; typed as `bellow`.
     BertrandtsBellow,
+    /// Printed `Yertie's Yowlp`; typed as `yowlp`.
     YertiesYowlp,
+    /// Printed `Gerrelle's Growl`; typed as `growl`.
     GerrellesGrowl,
+    /// Printed `Seanette's Shout`; typed as `shout`.
     SeanettesShout,
+    /// Printed `Carn's Cry`; typed as `cry`.
     CarnsCry,
+    /// Printed `Horland's Holler`; typed as `holler`.
     HorlandsHoller,
 }
 
@@ -331,10 +357,15 @@ impl fmt::Display for Warcry {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum PsmCategory {
+    /// Key prefix `armor`; `list all` heading `Armor Specializations`.
     Armor,
+    /// Key prefix `cman`; `list all` heading `Combat Maneuvers`.
     CombatManeuver,
+    /// Key prefix `feat`; `list all` heading `Feats`.
     Feat,
+    /// Key prefix `shield`; `list all` heading `Shield Specializations`.
     Shield,
+    /// Key prefix `weapon`; `list all` heading `Weapon Techniques`.
     Weapon,
 }
 
@@ -400,10 +431,14 @@ impl fmt::Display for PsmCategory {
 ///
 /// # This is four wire values, not three
 ///
-/// Lich renames on write (`parser.rb:579-580`): `F2P` -> `Free`, `Standard` ->
-/// `Normal`, and **`Platinum` -> `Premium`**, upcased. So `account.type` has
-/// three possible values and a Platinum subscriber is indistinguishable from a
-/// Premium one -- a lossy collapse with no way back.
+/// Lich renames on write (`parser.rb:579-580`): `F2P` -> `Free` and `Standard`
+/// -> `Normal`, upcased, in both places it stores the tier. **`Account.subscription`
+/// also folds `Platinum` into `Premium`** (`:579`), so there a Platinum
+/// subscriber is indistinguishable from a Premium one -- a lossy collapse with
+/// no way back. `account.type` (`:580`) keeps `PLATINUM`.
+///
+/// CORRECTED 2026-09-23: this said `account.type` was the lossy one. It is
+/// `Account.subscription`; `:580` has no `Platinum` substitution.
 ///
 /// Cena keeps all four. Platinum is a different game instance with different
 /// mechanics, so conflating it with Premium loses a fact a behavior may need.
@@ -411,9 +446,14 @@ impl fmt::Display for PsmCategory {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum AccountType {
+    /// Wire `F2P`; Lich stores `FREE`.
     Free,
+    /// Wire `Standard`; Lich stores `NORMAL`.
     Normal,
+    /// Wire `Premium`.
     Premium,
+    /// Wire `Platinum`. Lich's `Account.subscription` collapses it into
+    /// `PREMIUM`; kept distinct here.
     Platinum,
 }
 
@@ -472,22 +512,39 @@ impl fmt::Display for AccountType {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum Che {
+    /// Printed `Argent Aspis`.
     ArgentAspis,
+    /// Printed `Rising Phoenix`.
     RisingPhoenix,
+    /// Printed `Paupers`.
     Paupers,
+    /// Printed `Arcane Masters`.
     ArcaneMasters,
+    /// Printed `Brigatta`.
     Brigatta,
+    /// Printed `Twilight Hall`.
     TwilightHall,
+    /// Printed `Silvergate Inn`.
     SilvergateInn,
+    /// Printed `Sovyn`.
     Sovyn,
+    /// Printed `Sylvanfair`.
     Sylvanfair,
+    /// Printed `Helden Hall`.
     HeldenHall,
+    /// Printed `White Haven`.
     WhiteHaven,
+    /// Printed `Beacon Hall`.
     BeaconHall,
+    /// Printed `Rone Academy`.
     RoneAcademy,
+    /// Printed `Willow Hall`.
     WillowHall,
+    /// Printed `Moonstone Abbey`.
     MoonstoneAbbey,
+    /// Printed `Obsidian Tower`.
     ObsidianTower,
+    /// Printed `Cairnfang Manor`.
     CairnfangManor,
 }
 

@@ -163,15 +163,25 @@ impl Stat {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum StatKind {
+    /// Printed `Strength (STR)`.
     Strength,
+    /// Printed `Constitution (CON)`.
     Constitution,
+    /// Printed `Dexterity (DEX)`.
     Dexterity,
+    /// Printed `Agility (AGI)`.
     Agility,
+    /// Printed `Discipline (DIS)`.
     Discipline,
+    /// Printed `Aura (AUR)`.
     Aura,
+    /// Printed `Logic (LOG)`.
     Logic,
+    /// Printed `Intuition (INT)`.
     Intuition,
+    /// Printed `Wisdom (WIS)`.
     Wisdom,
+    /// Printed `Influence (INF)`.
     Influence,
 }
 

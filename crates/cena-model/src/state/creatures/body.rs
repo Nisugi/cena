@@ -8,21 +8,37 @@ use crate::crit::{Location, WoundLocation};
 /// same ids the character's own injury dialog uses (`leftArm`, `nsys` aside).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BodyPart {
+    /// `abdomen`.
     Abdomen,
+    /// `back`.
     Back,
+    /// `chest`.
     Chest,
+    /// `head`.
     Head,
+    /// `leftArm`.
     LeftArm,
+    /// `leftEye`. A "both eyes" wound lands here and on the right eye.
     LeftEye,
+    /// `leftFoot`. No crit location or secondary wound maps here.
     LeftFoot,
+    /// `leftHand`.
     LeftHand,
+    /// `leftLeg`.
     LeftLeg,
+    /// `neck`.
     Neck,
+    /// `nerves`: the nervous system, which the injury dialog calls `nsys`.
     Nerves,
+    /// `rightArm`.
     RightArm,
+    /// `rightEye`. A "both eyes" wound lands here and on the left eye.
     RightEye,
+    /// `rightFoot`. No crit location or secondary wound maps here.
     RightFoot,
+    /// `rightHand`.
     RightHand,
+    /// `rightLeg`.
     RightLeg,
 }
 

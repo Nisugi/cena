@@ -24,26 +24,47 @@ use std::fmt;
 /// (`reference/lich-5/lib/<game>/critranks/generic_critical_table.rb:7-11`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DamageType {
+    /// `acid_critical_table.rb`.
     Acid,
+    /// `cold_critical_table.rb`.
     Cold,
+    /// `crush_critical_table.rb`.
     Crush,
+    /// `disintegrate_critical_table.rb`.
     Disintegrate,
+    /// `disruption_critical_table.rb`.
     Disruption,
+    /// `fire_critical_table.rb`.
     Fire,
+    /// `generic_critical_table.rb`. One entry, at `Unspecified` rank 0: the bare "is stunned" message.
     Generic,
+    /// `grapple_critical_table.rb`.
     Grapple,
+    /// `impact_critical_table.rb`.
     Impact,
+    /// `lightning_critical_table.rb`.
     Lightning,
+    /// `non_corporeal_critical_table.rb`. Spelled `non-corporeal` in Lich's `:type` field.
     NonCorporeal,
+    /// `plasma_critical_table.rb`.
     Plasma,
+    /// `puncture_critical_table.rb`.
     Puncture,
+    /// `slash_critical_table.rb`.
     Slash,
+    /// `steam_critical_table.rb`.
     Steam,
+    /// `ucs_grapple_critical_table.rb`. Unarmed-combat grapple.
     UcsGrapple,
+    /// `ucs_jab_critical_table.rb`. Unarmed-combat jab.
     UcsJab,
+    /// `ucs_kick_critical_table.rb`. Unarmed-combat kick.
     UcsKick,
+    /// `ucs_punch_critical_table.rb`. Unarmed-combat punch.
     UcsPunch,
+    /// `unbalance_critical_table.rb`.
     Unbalance,
+    /// `vacuum_critical_table.rb`.
     Vacuum,
 }
 
@@ -131,20 +152,35 @@ impl fmt::Display for DamageType {
 /// are locations in the table's sense, which is the one that matters here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Location {
+    /// Key `head`.
     Head,
+    /// Key `neck`.
     Neck,
+    /// Key `left_eye`.
     LeftEye,
+    /// Key `right_eye`.
     RightEye,
+    /// Key `chest`.
     Chest,
+    /// Key `abdomen`.
     Abdomen,
+    /// Key `back`.
     Back,
+    /// Key `left_arm`.
     LeftArm,
+    /// Key `right_arm`.
     RightArm,
+    /// Key `left_hand`.
     LeftHand,
+    /// Key `right_hand`.
     RightHand,
+    /// Key `left_leg`.
     LeftLeg,
+    /// Key `right_leg`.
     RightLeg,
+    /// Key `nerves`. The nervous system rather than a limb; only the `lightning` table has it as a primary location.
     Nerves,
+    /// Key `unspecified`. No location at all; used only by the single `Generic` entry.
     Unspecified,
 }
 
@@ -168,6 +204,7 @@ impl Location {
         Self::Unspecified,
     ];
 
+    /// The spelling used as a Lich hash key and in the TSV; `parse` inverts it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -189,6 +226,7 @@ impl Location {
         }
     }
 
+    /// Parse the spelling `as_str` produces; `None` for anything else.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|l| l.as_str() == text)
@@ -213,13 +251,21 @@ impl fmt::Display for Location {
 /// converts where it can.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum WoundLocation {
+    /// Key `head`.
     Head,
+    /// Key `neck`.
     Neck,
+    /// Key `chest`.
     Chest,
+    /// Key `abdomen`.
     Abdomen,
+    /// Key `back`.
     Back,
+    /// Key `nerves`.
     Nerves,
+    /// Key `right_leg`.
     RightLeg,
+    /// Key `both_eyes`. Once, in `impact_critical_table.rb`; no primary `Location` matches it.
     BothEyes,
 }
 
@@ -236,6 +282,7 @@ impl WoundLocation {
         Self::BothEyes,
     ];
 
+    /// The spelling in the TSV's `secondary_location` column; `parse` inverts it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -250,6 +297,7 @@ impl WoundLocation {
         }
     }
 
+    /// Parse the spelling `as_str` produces; `None` for anything else.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|l| l.as_str() == text)
@@ -287,8 +335,11 @@ impl fmt::Display for WoundLocation {
 /// never states.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Position {
+    /// Lich's `KNEELING`; 13 entries.
     Kneeling,
+    /// Lich's `PRONE`; 319 entries, the common knockdown.
     Prone,
+    /// Lich's `SITTING`; 11 entries.
     Sitting,
 }
 
@@ -296,6 +347,7 @@ impl Position {
     /// Every position. See `DamageType::ALL` for the `const`.
     pub const ALL: [Self; 3] = [Self::Kneeling, Self::Prone, Self::Sitting];
 
+    /// The spelling in the TSV's `position` column; `parse` inverts it.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -305,6 +357,7 @@ impl Position {
         }
     }
 
+    /// Parse the spelling `as_str` produces; `None` for anything else.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|p| p.as_str() == text)
@@ -322,6 +375,7 @@ impl fmt::Display for Position {
 /// 156 of 2,394 entries carry one, in 16 distinct shapes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SecondaryWound {
+    /// Where the second wound lands; TSV column `secondary_location`.
     pub location: WoundLocation,
     /// Measured 1..=3 among the entries that have one.
     pub wound_rank: u8,

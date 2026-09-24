@@ -119,51 +119,97 @@ impl Skill {
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum SkillKind {
+    /// Printed `Two Weapon Combat`.
     TwoWeaponCombat,
+    /// Printed `Armor Use`.
     ArmorUse,
+    /// Printed `Shield Use`.
     ShieldUse,
+    /// Printed `Combat Maneuvers`.
     CombatManeuvers,
+    /// Printed `Edged Weapons`.
     EdgedWeapons,
+    /// Printed `Blunt Weapons`.
     BluntWeapons,
+    /// Printed `Two-Handed Weapons`.
     TwoHandedWeapons,
+    /// Printed `Ranged Weapons`.
     RangedWeapons,
+    /// Printed `Thrown Weapons`.
     ThrownWeapons,
+    /// Printed `Polearm Weapons`.
     PolearmWeapons,
+    /// Printed `Brawling`.
     Brawling,
+    /// Printed `Ambush`.
     Ambush,
+    /// Printed `Multi Opponent Combat`.
     MultiOpponentCombat,
+    /// Printed `Physical Fitness`.
     PhysicalFitness,
+    /// Printed `Dodging`.
     Dodging,
+    /// Printed `Arcane Symbols`.
     ArcaneSymbols,
+    /// Printed `Magic Item Use`.
     MagicItemUse,
+    /// Printed `Spell Aiming`.
     SpellAiming,
+    /// Printed `Harness Power`.
     HarnessPower,
+    /// Printed `Elemental Mana Control`.
     ElementalManaControl,
+    /// Printed `Mental Mana Control`.
     MentalManaControl,
+    /// Printed `Spirit Mana Control`.
     SpiritManaControl,
+    /// Printed `Elemental Lore - Air`.
     ElementalLoreAir,
+    /// Printed `Elemental Lore - Earth`.
     ElementalLoreEarth,
+    /// Printed `Elemental Lore - Fire`.
     ElementalLoreFire,
+    /// Printed `Elemental Lore - Water`.
     ElementalLoreWater,
+    /// Printed `Spiritual Lore - Blessings`.
     SpiritualLoreBlessings,
+    /// Printed `Spiritual Lore - Religion`.
     SpiritualLoreReligion,
+    /// Printed `Spiritual Lore - Summoning`.
     SpiritualLoreSummoning,
+    /// Printed `Sorcerous Lore - Demonology`.
     SorcerousLoreDemonology,
+    /// Printed `Sorcerous Lore - Necromancy`.
     SorcerousLoreNecromancy,
+    /// Printed `Mental Lore - Divination`.
     MentalLoreDivination,
+    /// Printed `Mental Lore - Manipulation`.
     MentalLoreManipulation,
+    /// Printed `Mental Lore - Telepathy`.
     MentalLoreTelepathy,
+    /// Printed `Mental Lore - Transference`.
     MentalLoreTransference,
+    /// Printed `Mental Lore - Transformation`.
     MentalLoreTransformation,
+    /// Printed `Survival`.
     Survival,
+    /// Printed `Disarming Traps`.
     DisarmingTraps,
+    /// Printed `Picking Locks`.
     PickingLocks,
+    /// Printed `Stalking and Hiding`.
     StalkingAndHiding,
+    /// Printed `Perception`.
     Perception,
+    /// Printed `Climbing`.
     Climbing,
+    /// Printed `Swimming`.
     Swimming,
+    /// Printed `First Aid`.
     FirstAid,
+    /// Printed `Trading`.
     Trading,
+    /// Printed `Pickpocketing`.
     Pickpocketing,
 }
 

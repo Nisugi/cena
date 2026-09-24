@@ -83,18 +83,31 @@ impl ItemRef {
 /// match rather than a silent miss.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum StowSlot {
+    /// `box`: boxes.
     Box,
+    /// `gem`: gems.
     Gem,
+    /// `herb`: herbs.
     Herb,
+    /// `skin`: skins.
     Skin,
+    /// `wand`: wands.
     Wand,
+    /// `scroll`: scrolls.
     Scroll,
+    /// `potion`: potions.
     Potion,
+    /// `trinket`: trinkets.
     Trinket,
+    /// `reagent`: reagents.
     Reagent,
+    /// `lockpick`: lockpicks.
     Lockpick,
+    /// `treasure`: treasure.
     Treasure,
+    /// `forageable`: foraged items.
     Forageable,
+    /// `collectible`: collectibles.
     Collectible,
     /// Where anything uncategorised goes -- and what `bank.rb:155` reaches
     /// for when it needs somewhere to put your notes.
@@ -161,14 +174,23 @@ impl StowSlot {
 /// `readylist.rb:6`'s `ORIGINAL_READY_LIST`, ported whole.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ReadySlot {
+    /// `shield`. Has a store-mode.
     Shield,
+    /// `weapon`. Has a store-mode.
     Weapon,
+    /// `secondary weapon`. Has a store-mode.
     SecondaryWeapon,
+    /// `ranged weapon`. Has a store-mode.
     RangedWeapon,
+    /// `ammo bundle`. Has a store-mode.
     AmmoBundle,
+    /// `ammo2 bundle`: a second ammo bundle. No store-mode.
     Ammo2Bundle,
+    /// `sheath`: a place items are stored into. No store-mode.
     Sheath,
+    /// `secondary sheath`: a place items are stored into. No store-mode.
     SecondarySheath,
+    /// `wand`. Has a store-mode.
     Wand,
 }
 

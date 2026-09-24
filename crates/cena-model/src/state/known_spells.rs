@@ -57,7 +57,12 @@ pub enum Row {
     /// `Minor Spiritual:` -- the spells after it belong to this circle.
     Circle(String),
     /// A spell, by the number the wire carries in the link's `noun`.
-    Spell { number: u32, name: String },
+    Spell {
+        /// The link's `noun`, parsed: the spell number, e.g. `101`.
+        number: u32,
+        /// The link's display text.
+        name: String,
+    },
 }
 
 /// What one completed line of the `Spells` stream says, if anything.
@@ -86,6 +91,7 @@ pub fn classify(line: &Runs) -> Option<Row> {
 /// One spell the game lists for this character.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct KnownSpell {
+    /// The spell's name as the `Spells` stream's link text showed it.
     pub name: String,
     /// The circle header it was listed under. `None` if a spell arrived
     /// before any header, which the wire has not been seen to do.

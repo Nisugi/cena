@@ -46,7 +46,10 @@ pub enum Refusal {
     /// `Come back in about N minutes if you want another task.`
     ///
     /// Minutes as stated. The guild says "about", so this is not a deadline.
-    Wait { minutes: u32 },
+    Wait {
+        /// The `N` from the message, parsed as an integer.
+        minutes: u32,
+    },
     /// `I don't have any tasks for you right now` -- `ebounty.lic:2596` waits
     /// on it beside the others.
     NoneAvailable,
