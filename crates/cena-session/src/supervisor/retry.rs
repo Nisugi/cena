@@ -68,6 +68,23 @@ pub const STABLE_CONNECTION: Duration =
 /// than evidence of an abandoned client.
 pub const MAX_UNATTENDED_LOSSES: u32 = 2;
 
+/// How long a connection must stay up to count as **attended** with no person
+/// using it.
+///
+/// Attendance is what a person does (`command/attendance.rs`), and a hunt left
+/// running overnight has none -- so two network blips hours apart would stop
+/// it as an abandoned client. They are told apart by how long each connection
+/// lived. Two clients fighting over one character knock each other off within
+/// seconds of every login (the phone test of `plan/29` §6: 7 ms from `Ready`
+/// to the knock); a network blip ends a connection that had been up for
+/// hours. Five minutes is well clear of both, and ten times the ladder's top
+/// rung.
+///
+/// **Not when the server warned the session was idle.** An abandoned client
+/// is idle-kicked after about thirty minutes, which is long-lived; the warning
+/// is the server saying nobody was there, and it wins.
+pub const LONG_LIVED: Duration = Duration::from_mins(5);
+
 /// Whether a failed connection is worth another attempt.
 ///
 /// **The connector decides this, not the supervisor**, and that split is the

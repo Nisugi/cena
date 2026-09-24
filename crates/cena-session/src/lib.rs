@@ -70,8 +70,8 @@ pub use player_log::writer::PlayerWriter;
 pub use player_log::{LogLine, LogSink, PlayerLog};
 pub use queue::{AuthorityHeld, AuthorityToken, CommandQueue};
 pub use supervisor::{
-    ConnectError, Connector, MAX_UNATTENDED_LOSSES, Retryability, STABLE_CONNECTION, SessionCore,
-    StoppedBecause, SupervisedEnd, SupervisedSession, backoff,
+    ConnectError, Connector, LONG_LIVED, MAX_UNATTENDED_LOSSES, Retryability, STABLE_CONNECTION,
+    SessionCore, StoppedBecause, SupervisedEnd, SupervisedSession, backoff,
 };
 
 /// The wire vocabulary, re-exported for behaviors.

@@ -192,6 +192,8 @@ pub struct SessionHandle {
     /// Who runs the player's own commands, once anything does. Shared
     /// with every clone, as the log is.
     desk: super::claimant::Slot,
+    /// What a person has done through this handle (`attendance.rs`).
+    pub(super) attendance: super::attendance::Attendance,
 }
 
 impl SessionHandle {
@@ -224,7 +226,13 @@ impl SessionHandle {
             events,
             log: crate::player_log::tap::Slot::default(),
             desk: super::claimant::Slot::default(),
+            attendance: super::attendance::Attendance::default(),
         }
+    }
+
+    /// What a person has done through this session, for its supervisor.
+    pub(crate) fn attendance(&self) -> super::attendance::Attendance {
+        self.attendance.clone()
     }
 
     /// The slot this handle and all its clones read the player log from.
@@ -423,6 +431,9 @@ impl SessionHandle {
     ///
     /// Never. Like `send_and_await`, the failure modes are values.
     pub async fn send_now(&self, line: &str, origin: Origin, gate: Gate) -> Sent {
+        if origin == Origin::Manual {
+            self.attendance.mark();
+        }
         let (reply, answer) = oneshot::channel();
         let message = Inbox::SendNow {
             line: line.to_owned(),

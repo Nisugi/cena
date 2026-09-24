@@ -74,6 +74,9 @@ impl SessionHandle {
         matcher: crate::queue::Matcher,
         quiet: bool,
     ) -> Outcome {
+        if origin == Origin::Manual {
+            self.attendance.mark();
+        }
         let (reply, answer) = oneshot::channel();
         let envelope = Envelope {
             id,
@@ -97,6 +100,9 @@ impl SessionHandle {
         line: &str,
         deadline: std::time::Duration,
     ) -> Outcome {
+        // A person typed this, whatever becomes of it -- stale, claimed by
+        // Hydra's command line, or sent (`attendance.rs`).
+        self.attendance.mark();
         // **The generation first, and here rather than only in the actor.**
         // A claimed line never reaches the actor, so the actor's check could
         // not protect it: a `;go2 bank` typed into a browser still showing

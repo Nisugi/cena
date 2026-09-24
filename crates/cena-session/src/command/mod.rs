@@ -11,6 +11,7 @@
 //! one: a behavior imports the vocabulary and reasons in it; only the session
 //! touches the transport.
 
+pub(crate) mod attendance;
 pub mod claimant;
 mod handle;
 mod round_trip;

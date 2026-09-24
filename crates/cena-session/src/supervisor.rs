@@ -54,7 +54,7 @@ mod retry;
 
 pub use connect::{ConnectError, Connector};
 pub use core::SessionCore;
-pub use retry::{MAX_UNATTENDED_LOSSES, Retryability, STABLE_CONNECTION, backoff};
+pub use retry::{LONG_LIVED, MAX_UNATTENDED_LOSSES, Retryability, STABLE_CONNECTION, backoff};
 // Not re-exported: the jitter source is an implementation detail of the
 // ladder, and `backoff` takes the fraction as a parameter precisely so
 // callers never need it.
@@ -73,9 +73,7 @@ use tokio_util::sync::CancellationToken;
 /// adjacent `u64`s are where the wrong one gets passed.
 #[derive(Clone, Copy)]
 struct Connection {
-    /// The recorder's outbound count when the connection opened.
-    sent_before: u64,
-    /// Its inbound count at the same moment.
+    /// The recorder's inbound count when the connection opened.
     received_before: u64,
     /// How long the connection's actor ran.
     lived: std::time::Duration,
@@ -267,11 +265,9 @@ impl<C: Connector> SupervisedSession<C> {
                 }
             };
 
-            // Everything already recorded, so what THIS connection sends can
-            // be told from what earlier ones did. The recorder is durable
-            // across generations, which is what makes this a subtraction
-            // rather than a flag the actor has to carry.
-            let sent_before = self.core.recorder.outbound_count();
+            // Everything already recorded, so what THIS connection receives
+            // can be told from what earlier ones did. The recorder is durable
+            // across generations, which is what makes this a subtraction.
             let received_before = self.core.recorder.inbound_count();
 
             // **Before the new actor sees the channel.** See `sweep_inbox`.
@@ -350,7 +346,6 @@ impl<C: Connector> SupervisedSession<C> {
             // is an abandoned client being idle-kicked in a loop.
             if let Some(stop) = self.after_connection(
                 Connection {
-                    sent_before,
                     received_before,
                     lived: connected_at.elapsed(),
                 },
@@ -444,16 +439,15 @@ impl<C: Connector> SupervisedSession<C> {
         unattended: &mut u32,
     ) -> Option<StoppedBecause> {
         let Connection {
-            sent_before,
             received_before,
             lived,
         } = connection;
-        let attended_while_disconnected =
-            std::mem::take(&mut self.core.attended_while_disconnected);
         // **Two different questions, and they were conflated.**
         //
         // ATTENDED asks "is anyone using this session" and bounds the
-        // unattended cap. A command sent is a person or a behavior present.
+        // unattended cap: a PERSON did something since the last loss, or the
+        // connection lived `LONG_LIVED` without the server calling it idle.
+        // A behavior's traffic is neither (`command/attendance.rs`).
         //
         // WORKED asks "did this connection function" and is the only thing
         // that may reset the ladder. It used to be the same test, which made
@@ -483,10 +477,10 @@ impl<C: Connector> SupervisedSession<C> {
         // (`reference/VellumFE/src/frontend/headless/runtime.rs:948`), which
         // the burst also carries, so it has the same hole.
         //
-        // `|| attended_while_disconnected`: a command the sweep discarded
-        // never reached the recorder, but somebody typed it.
-        let attended =
-            self.core.recorder.outbound_count() > sent_before || attended_while_disconnected;
+        let person = self.core.attendance.count() > self.core.attendance_seen;
+        self.core.attendance_seen = self.core.attendance.count();
+        let long_lived = lived >= LONG_LIVED && !self.core.state.idle_warned();
+        let attended = person || long_lived;
         let worked =
             self.core.recorder.inbound_count() > received_before && lived >= STABLE_CONNECTION;
         if worked {
