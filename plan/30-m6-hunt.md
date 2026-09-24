@@ -445,6 +445,36 @@ engine, so it is cut into sub-milestones that each finish with something the aut
    > **The evaluation is `plan/33`, 2026-09-24: PROPOSED, awaiting the author.** Of the 87
    > words, 38 are kept, 11 renamed, 34 merged, 3 deferred and 1 dropped, with 4 new ones
    > proposed.
+   >
+   > **The format, the chain and the importer are BUILT, 2026-09-24, ahead of the review
+   > and under the held contract** (`crates/cena-behavior/src/hunt/`: `profile.rs`,
+   > `chain.rs`, `import.rs`, with `guard.rs`, `yaml.rs` and `command.rs`; `;hunt import
+   > <yaml> [as <name>]`, `;hunt check <name>` and `;hunt list` on the command line).
+   > Nothing in them depends on a `plan/33` verdict: a bigshot word not yet built imports
+   > **held**, the step kept and the word named, so a verdict only ever adds a word.
+   > - **TOML, one file per profile**, shaped key by key from `ojandhaart.yaml` (§4's
+   >   table): `[rooms]`, `[stance]`, `[rest]` with `until` and the typed `when`,
+   >   `prepare`, `signs`, `[flee]`, `[loot]`, `[wander]`, `targets` each with a routine,
+   >   `[routines]` of steps, `[sequences]`. A step is `verb (guard guard)`; a held step
+   >   is a table `{ step, held }`, so it cannot pass for one that runs. Every table
+   >   refuses an unknown key by name.
+   > - **The chain** is `hunt/global.toml`, then `hunt/profiles/<name>.toml`, then
+   >   `hunt/characters/<instance>_<character>.toml` under the data directory, overlaid as
+   >   TOML tables before typing: tables merge key by key and everything else replaces
+   >   whole, so a character can take a step away as well as add one. Presets are not
+   >   written yet: a profile is the preset until a second wants what the first has.
+   > - **Nisugi's six guards** are built as `plan/33` §5 lands them, with one change:
+   >   `expiring "<name>" N` names the window, and the step that must not fire inside it
+   >   carries the negation, `kweed (!expiring "Tangleweed Vigor" 5)`. Every guard names
+   >   when the step runs, with no exception (§6's question 1, applied to the one word §5
+   >   exempted). Unknown skips, for every word, as bigshot's `thp` does.
+   > - **The importer** carries the acceptance profile whole: 10 routines, 6 targets, zero
+   >   held steps. `script volley` becomes an empty `volley` sequence, named as to be
+   >   written by hand; `monitor_strings` and two others are named as not imported;
+   >   `frozen` is flipped to `!immobilized`, `buff5` is resolved through the verb's buff,
+   >   `thp20` and `empowered30` are re-spelled.
+   > - MEASURED: 28 tests (`hunt_guard` 7, `hunt_profile` 9, `hunt_import` 4, `yaml` 5,
+   >   `command` 3), the acceptance profile itself at `tests/fixtures/ojandhaart.yaml`.
 
 **M6b — Hunt, without the ports.** Engine, Survival, Flee, Engage (Nisugi's verbs and
 guards), Maintain, Wander and Rest, pure, driven by replay fixtures from Nisugi's area (the

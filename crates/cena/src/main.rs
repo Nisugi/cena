@@ -36,6 +36,7 @@ mod ask;
 mod commands;
 mod connector;
 mod frontend;
+mod hunt;
 mod interrupt;
 mod learn;
 mod play;

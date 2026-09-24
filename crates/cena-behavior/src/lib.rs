@@ -9,6 +9,10 @@
 //! Both end with a [`BehaviorError`] when the session, not the behavior,
 //! decided.
 //!
+//! Hunt, M6's behavior (`plan/30`), is being built in [`hunt`]: the profile
+//! it runs on, the guard vocabulary and the bigshot importer are there; the
+//! engine that runs a profile follows (`plan/30` §7, M6b).
+//!
 //! `look`, M1's looping behavior, was retired at M6 (author, 2026-09-24:
 //! *"get rid of any test behaviors, like look"*). It lives on in
 //! `tests/looping/`, where the session's stop and interleave guarantees are
@@ -23,6 +27,7 @@
 //! Hunt (`plan/30` §3) composes its policies as an enum under one holder of
 //! the authority, which is `plan/12` §4.2's shape, not a trait's.
 pub mod error;
+pub mod hunt;
 pub mod stance;
 pub mod sync;
 pub mod travel;

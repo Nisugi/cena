@@ -274,6 +274,10 @@ The reduction is mostly the 21 named-effect words becoming four.
    bigshot's regex?
 4. **`prone` → `down`**, and **`pcs` → `alone`**: good names, or better ones?
 5. **The four new words (§3):** worth building now, or when a profile asks?
+6. **`expiring`'s polarity (§2c, §5).** As built (2026-09-24), `expiring "<name>" N` names
+   the window and the step carries the `!`: `kweed (!expiring "Tangleweed Vigor" 5)`. §5
+   spelled it `expiring "Tangleweed Vigor" 5` with "runs when not expiring" inside the
+   word, the one exception to question 1's rule. Keep the rule, or rename the word?
 
 ---
 
@@ -283,3 +287,9 @@ When the verdicts are agreed, the profile format, the inheritance chain and the 
 designed from them (`plan/30` §5, §7 step 4). The importer's contract is already settled: a
 kept or renamed word translates, a merged word maps to its survivor, and a dropped or later
 word imports **with the step held and named**, never with the guard silently lost.
+
+> **BUILT AHEAD OF THE REVIEW, 2026-09-24.** The format, the chain and the importer exist
+> (`plan/30` §7 step 4's note), with Nisugi's six words built and the other 81 recognised
+> and held. Because every unbuilt word holds its step, no verdict here changes what was
+> built; a verdict adds a word to `cena-behavior/src/hunt/guard.rs` and a translation to
+> `import.rs`, and a rename changes a string.

@@ -1,0 +1,125 @@
+---
+monitor_strings: SEND||POLICY||[Rr]( )*[Ee]( )*[Pp]( )*[Oo]( )*[Rr]( )*[Tt]||speaking
+  to you||unresponsive||taps you||nods to you||lease respond||not in control||violation||lease
+  speak||peak out loud||Y U SHOU D||whispers,||speaking to you||smiles at you||waves
+  to you||grins at you||hugs you||takes hold your hand||grabs your hand||clasps your
+  hand||trying to drag you
+monitor_safe_strings: "[(?!Private)w*]-GS(?:T|IV):||We've noted a troubling increase
+  in bandit activity recently||inviting you to join||Dreavening"
+profile_current: ojandhaart
+save_profile_name: ''
+notes: ''
+return_waypoint_ids: ''
+resting_room_id: '29877'
+resting_commands: store all
+resting_scripts: ''
+fog_return: ''
+fog_optional: false
+custom_fog: ''
+fog_rift: false
+fried: '101'
+overkill: '2'
+lte_boost: ''
+oom: ''
+encumbered: '20'
+wounded_eval: bleeding? || Char.percent_health <= 60 || !Injured.able_to_use_ranged?
+  || !Injured.able_to_cast?
+bounty_eval: ''
+crushing_dread: ''
+creeping_dread: ''
+wot_poison: false
+confusion: false
+box_in_hand: true
+hunting_room_id: '29902'
+rallypoint_room_ids: ''
+hunting_boundaries: 29900, 30115
+rest_till_exp: '100'
+rest_till_mana: '90'
+rest_till_spirit: '9'
+rest_till_percentstamina: '90'
+hunting_stance: Offensive
+wander_stance: Defensive
+stand_stance: Offensive
+hunting_prep_commands: ready weapon, incant 515
+hunting_scripts: ''
+signs: 515, 506, 9708, 9715, 9711, 605 evoke, 650 panther evoke
+loot_script: eloot
+wracking_spirit: ''
+priority: false
+delay_loot: true
+troubadours_rally: false
+sneaky_sneaky: false
+use_wracking: false
+loot_stance: true
+pull: false
+deader: false
+check_favor: false
+ambush: ''
+archery_aim: ''
+flee_count: '100'
+invalid_targets: ''
+always_flee_from: ''
+flee_message: ''
+wander_wait: 0.3
+flee_clouds: false
+flee_vines: false
+flee_webs: false
+flee_voids: false
+lone_targets_only: false
+weapon_reaction: false
+bless: false
+hunting_commands: kweed(buff5), script volley, coupdegrace(thp20 empowered30), fire
+hunting_commands_b: kweed(buff5), script volley, coupdegrace(thp20 empowered30), fire
+hunting_commands_c: kweed(buff5), script volley, coupdegrace(thp20 empowered30), fire
+hunting_commands_d: kweed(buff5), script volley, coupdegrace(thp20 empowered30), fire
+hunting_commands_e: kweed(buff5),  script volley, coupdegrace(thp20 empowered30),
+  incant 611(!frozen), fire
+hunting_commands_f: kweed(buff5),  script volley, coupdegrace(thp20 empowered30),
+  incant 608(!hidden), hide(!hidden), fire(hidden)
+hunting_commands_g: kweed(buff5),  script volley, coupdegrace(thp20 empowered30),
+  incant 608(!hidden), hide(!hidden), fire(hidden)
+hunting_commands_h: kweed(buff5),  script volley, coupdegrace(thp20 empowered30),
+  incant 608(!hidden), hide(!hidden), fire(hidden)
+hunting_commands_i: kweed(buff5),  script volley, coupdegrace(thp20 empowered30),
+  incant 608(!hidden), hide(!hidden), fire(hidden)
+hunting_commands_j: kweed(buff5),  script volley, coupdegrace(thp20 empowered30),
+  incant 611(!frozen), incant 608(!hidden), hide(!hidden), fire(hidden)
+disable_commands: ''
+quick_commands: ''
+targets: mastodon(b), berserker(d), shield-maiden(e), skald(c), warg(a), (?:.+?)(f)
+quickhunt_targets: ''
+boons_all: []
+boons_ignore: []
+boons_flee: []
+immunity: []
+misc: []
+offensive: []
+defensive: []
+tier3: ''
+aim: ''
+uac_smite: false
+uac_mstrike: false
+mstrike_stamina_cooldown: ''
+mstrike_stamina_quickstrike: ''
+mstrike_mob: ''
+mstrike_cooldown: false
+mstrike_quickstrike: false
+ammo_container: ''
+ammo: ''
+fresh_wand_container: ''
+dead_wand_container: ''
+wand: ''
+hide_for_ammo: false
+wand_if_oom: false
+independent_travel: false
+independent_return: false
+group_deader: false
+ma_looter: ''
+never_loot: ''
+random_loot: false
+final_loot: false
+dead_man_switch: false
+depart_switch: false
+quiet_followers: true
+monitor_interaction: false
+ignore_disks: false
