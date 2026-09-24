@@ -58,6 +58,10 @@ const SIGN_RETRY: u32 = 60;
 const REST_BEAT: u32 = 5;
 /// The most steps skipped in one tick before the routine gives up the tick.
 const MAX_SKIPS: usize = 32;
+/// With `loot.delay`, how often a corpse is looted while targets remain:
+/// bigshot's `time_between(:need_to_loot?, 15)` (`bigshot.lic:7824`),
+/// whose first call passes, so the first corpse is looted at once.
+const LOOT_SPACING: u32 = 15;
 
 /// The machine. See the module docs.
 #[derive(Debug)]
@@ -81,6 +85,8 @@ pub struct Hunt {
     /// Kills seen since the mind filled, for `rest.overkill`.
     fried_kills: u32,
     dead_seen: BTreeSet<i64>,
+    /// When a corpse was last looted with targets still here (`loot.delay`).
+    delayed_loot: Option<u32>,
     /// Commands still to send in the current phase (rest, prepare).
     pending: VecDeque<String>,
     /// When each sign was last cast.
@@ -107,6 +113,7 @@ impl Hunt {
             visited: Vec::new(),
             fried_kills: 0,
             dead_seen: BTreeSet::new(),
+            delayed_loot: None,
             pending: VecDeque::new(),
             signs_cast: BTreeMap::new(),
             notes: Vec::new(),
@@ -169,7 +176,7 @@ impl Hunt {
         if let Some(said) = self.flee(state, here, now) {
             return said;
         }
-        if let Some(said) = self.loot(state) {
+        if let Some(said) = self.loot(state, now) {
             return said;
         }
         if let Some(said) = self.maintain(state, now) {
@@ -409,16 +416,16 @@ impl Hunt {
 
     // --- loot -------------------------------------------------------------------
 
-    /// `loot #id` on a corpse not yet looted, unless the profile delays
-    /// looting while targets remain.
-    fn loot(&mut self, state: &GameState) -> Option<Said> {
+    /// `loot #id` on a corpse not yet looted. With `loot.delay` and targets
+    /// still here, no oftener than [`LOOT_SPACING`].
+    fn loot(&mut self, state: &GameState, now: Option<u32>) -> Option<Said> {
         if self.phase != Phase::Hunting {
             return None;
         }
         let corpses: Vec<i64> = state
             .creatures()
             .in_room()
-            .filter(|creature| creature.dead())
+            .filter(|creature| creature.corpse())
             .map(|creature| creature.id)
             .collect();
         for id in &corpses {
@@ -426,10 +433,17 @@ impl Hunt {
                 self.fried_kills = self.fried_kills.saturating_add(1);
             }
         }
-        if self.profile.loot.delay && self.fightable(state).next().is_some() {
-            return None;
-        }
         let corpse = corpses.into_iter().find(|id| !self.looted.contains(id))?;
+        if self.profile.loot.delay && self.fightable(state).next().is_some() {
+            let spaced = self
+                .delayed_loot
+                .zip(now)
+                .is_none_or(|(last, now)| now.saturating_sub(last) >= LOOT_SPACING);
+            if !spaced {
+                return None;
+            }
+            self.delayed_loot = now;
+        }
         self.looted.insert(corpse);
         Some(Said::Send {
             line: format!("loot #{corpse}"),
@@ -451,6 +465,11 @@ impl Hunt {
         for sign in &signs {
             let id = sign.split_whitespace().next()?;
             if id == "650" {
+                // Found by replaying real wire (`tests/hunt_replay.rs`):
+                // before the lists arrive, every aspect reads as down.
+                if !known {
+                    continue;
+                }
                 if let Some(said) = self.assume_aspect(sign, state, now) {
                     return Some(said);
                 }
@@ -482,7 +501,9 @@ impl Hunt {
     /// named is up; the spell first, evoked when the second word is `evoke`
     /// and prepared otherwise; then `assume <aspect>` for each aspect whose
     /// buff is down, once the spell is up. One step a tick, each confirmed
-    /// by the effects list before the next.
+    /// by the effects list before the next, and each with its own retry
+    /// window: a spell that fails to land is asked for again in a minute,
+    /// not at every prompt.
     fn assume_aspect(&mut self, sign: &str, state: &GameState, now: u32) -> Option<Said> {
         let mut words = sign.split_whitespace().skip(1);
         let first = words.next()?.to_ascii_lowercase();
@@ -503,27 +524,23 @@ impl Hunt {
         {
             return None;
         }
+        let spell_up = state.effects.active("650", now) == Some(true) || up("Assume Aspect");
+        let (key, line) = if spell_up {
+            let aspect = aspects.first()?;
+            ("650 assume", format!("assume {aspect}"))
+        } else if evoke {
+            ("650", "incant 650 evoke".to_owned())
+        } else {
+            ("650", "prep 650".to_owned())
+        };
         let recent = self
             .signs_cast
-            .get("650")
+            .get(key)
             .is_some_and(|at| now.saturating_sub(*at) < SIGN_RETRY);
         if recent {
             return None;
         }
-        let spell_up = state.effects.active("650", now) == Some(true) || up("Assume Aspect");
-        let line = if spell_up {
-            let aspect = aspects.first()?;
-            format!("assume {aspect}")
-        } else if evoke {
-            "incant 650 evoke".to_owned()
-        } else {
-            "prep 650".to_owned()
-        };
-        // Every step of the sequence is its own cast, so the retry window
-        // starts after the last one lands, not the first.
-        if spell_up {
-            self.signs_cast.insert("650".to_owned(), now);
-        }
+        self.signs_cast.insert(key.to_owned(), now);
         Some(Said::Send { line, target: None })
     }
 

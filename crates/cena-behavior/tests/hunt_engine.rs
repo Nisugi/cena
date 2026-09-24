@@ -239,7 +239,7 @@ fn the_routine_follows_the_target_list_and_the_catch_all() {
 }
 
 #[test]
-fn loot_once_and_only_when_the_room_is_clear() {
+fn loot_once_per_corpse_with_a_target_standing_or_the_room_clear() {
     let mut hunt = Hunt::new(profile().unwrap(), 1);
     let mut state = state(1_000, "10");
     creature(
@@ -254,11 +254,16 @@ fn loot_once_and_only_when_the_room_is_clear() {
         "mastodon",
         &[("health", "100"), ("maxhealth", "100")],
     );
-    let first = hunt.tick(&state, here(10, NO_EXITS), Some(1_000));
+    // A corpse by hit points, a live target beside it: `loot.delay` takes
+    // the first corpse at once (bigshot's timer passes on its first call,
+    // and Nisugi's log has the search two seconds after the kill), then
+    // the fight goes on.
+    let at = here(10, NO_EXITS);
+    assert_eq!(hunt.tick(&state, at, Some(1_000)), send("loot #42", None));
     assert_eq!(
-        first,
+        hunt.tick(&state, at, Some(1_001)),
         send("target #43", Some(43)),
-        "delay_loot: fight first"
+        "then the live one"
     );
 
     let mut hunt = Hunt::new(profile().unwrap(), 1);
@@ -319,12 +324,22 @@ fn assume_aspect_is_cast_one_step_a_tick_and_confirmed_by_the_buffs() {
     profile.signs = vec!["650 panther evoke".to_owned()];
     let mut hunt = Hunt::new(profile, 1);
     let mut state = state(1_000, "10");
-    state.effects.clear_category("Buffs");
     let at = here(10, NO_EXITS);
+    assert_ne!(
+        hunt.tick(&state, at, Some(999)),
+        send("incant 650 evoke", None),
+        "no list seen yet, so nothing is known to be down (found by `hunt_replay`)"
+    );
+    state.effects.clear_category("Buffs");
     assert_eq!(
         hunt.tick(&state, at, Some(1_000)),
         send("incant 650 evoke", None),
         "the spell first, evoked (`cmd_assume`)"
+    );
+    assert_ne!(
+        hunt.tick(&state, at, Some(1_000)),
+        send("incant 650 evoke", None),
+        "a cast that has not landed is not asked for again within the retry window"
     );
     state.effects.insert(
         "650".to_owned(),
@@ -358,6 +373,25 @@ fn assume_aspect_is_cast_one_step_a_tick_and_confirmed_by_the_buffs() {
         send("incant 650 evoke", None),
         "an aspect up: nothing to cast"
     );
+}
+
+#[test]
+fn delayed_looting_takes_the_first_corpse_at_once_and_spaces_the_rest() {
+    let mut hunt = Hunt::new(profile().unwrap(), 1);
+    let mut state = state(1_000, "10");
+    state.effects.clear_category("Buffs");
+    creature(&mut state, 41, "warg", &[("hostile", "1")]);
+    creature(&mut state, 42, "warg", &[("hostile", "1"), ("dead", "1")]);
+    creature(&mut state, 43, "warg", &[("hostile", "1"), ("dead", "1")]);
+    let at = here(10, NO_EXITS);
+    // bigshot's `time_between(:need_to_loot?, 15)` passes on its first call.
+    assert_eq!(hunt.tick(&state, at, Some(1_000)), send("loot #42", None));
+    assert_ne!(
+        hunt.tick(&state, at, Some(1_010)),
+        send("loot #43", None),
+        "the second corpse waits while the live warg stands"
+    );
+    assert_eq!(hunt.tick(&state, at, Some(1_015)), send("loot #43", None));
 }
 
 #[test]

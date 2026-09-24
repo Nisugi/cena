@@ -1,0 +1,299 @@
+<resource picture="0"/><style id="roomName" />[Ojandhaart, Smithy] (7503308)
+<style id=""/><style id="roomDesc"/>Smoke belches from the rounded chimney of a nearby <a exist="-483342" noun="smithy">smithy</a>.  The stones comprising it are huge blackened blocks of ponderous weight.  Crossed axes and a round, notched shield hang over the high open doorway.  The quality of the work is exceptional, but the weapons and targe are too large to be wielded.  <style id=""/>You also see <crtrStatus exist="242471597" hostile="1" ascended="1"/><pushBold/><pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/><popBold/> and a <a exist="-483356" noun="coal">pile of coal</a>.
+Obvious paths: <a exist="-10966483" coord="2524,1864" noun="southeast">southeast</a>, <a exist="-10966483" coord="2524,1864" noun="northwest">northwest</a>
+<compass><dir value="se"/><dir value="nw"/></compass><prompt time="1789329134">&gt;</prompt>
+<dialogData id='combat'><cmdButton id='cmdTarget' value='target' cmd='target random' tooltip='Select a Random Target' height='20' width='55' top='93' left='0' align='nw'/><cmdButton id='cmdAttack' value='attack' cmd='attack' height='20' width='50' left='0' top='93' tooltip='Attack Current Target' align='ne'/></dialogData>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner" content_value="#242471597" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<dialogData id='combat'><cmdButton id='cmdTarget' value='target' cmd='target random' tooltip='Select a Random Target' height='20' width='55' top='93' left='0' align='nw'/><cmdButton id='cmdAttack' value='attack' cmd='attack' height='20' width='50' left='0' top='93' tooltip='Attack Current Target' align='ne'/></dialogData>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner" content_value="#242471597" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+You are now targeting <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>.
+<prompt time="1789329134">&gt;</prompt>
+<dialogData id='combat'><dropDownBox id='dDBStance' value="offensive" cmd='_stance %dDBStance%' content_text='offensive,advance,forward,neutral,guarded,defensive' content_value='offensive,advance,forward,neutral,guarded,defensive' align='n' top='70' left='0' anchor_left='cmdDefStance' anchor_right='cmdOffStance' height='20' width='80' tooltip='Stance Selection'/></dialogData>
+<dialogData id='combat'><progressBar id='pbarStance' value='0' text='offensive (0%)' top='51' width='130' height='16' left='0' align='n' tooltip='Percent of stance contributing to defense'/></dialogData>
+<dialogData id='stance'><progressBar id='pbarStance' value='0' text='offensive (0%)' top='5' left='-5' height='16' width='160' align='n' tooltip='Percent of stance contributing to defense'/></dialogData>You are now in an offensive stance.
+<prompt time="1789329134">&gt;</prompt>
+<spell exist='spell'>Tangleweed</spell>A haze of black mist gathers around you as you prepare Tangleweed...
+<a exist="spell" noun="spell">Your spell is ready.</a>
+<prompt time="1789329135">&gt;</prompt>
+<dialogData id='Cooldowns' clear='t'></dialogData><dialogData id='Cooldowns'><progressBar id='37594784' value='80' text="Rapid Fire Recovery" left='22%' top='0' width='76%' height='15' time='00:01:37'/><label id='l37594784' value='97s ' top='0' left='0' justify='2' anchor_right=''/><progressBar id='86705824' value='100' text="Multi-Strike" left='22%' top='16' width='76%' height='15' time='00:00:46'/><label id='l86705824' value='46s ' top='16' left='0' justify='2' anchor_right=''/><progressBar id='119818926' value='0' text="Volley" left='22%' top='32' width='76%' height='15' time='00:00:11'/><label id='l119818926' value='11s ' top='32' left='0' justify='2' anchor_right=''/></dialogData>
+<prompt time="1789329135">&gt;</prompt>
+<dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'><progressBar id='115' value='86' text="Fasthr's Reward" left='22%' top='0' width='76%' height='15' time='03:36:36'/><label id='l115' value='3:36 ' top='0' left='0' justify='2' anchor_right=''/><progressBar id='506' value='100' text="Celerity" left='22%' top='16' width='76%' height='15' time='00:01:50'/><label id='l506' value='110s ' top='16' left='0' justify='2' anchor_right=''/><progressBar id='515' value='100' text="Rapid Fire" left='22%' top='32' width='76%' height='15' time='00:01:37'/><label id='l515' value='97s ' top='32' left='0' justify='2' anchor_right=''/><progressBar id='605' value='100' text="Barkskin" left='22%' top='48' width='76%' height='15' time='00:01:43'/><label id='l605' value='103s ' top='48' left='0' justify='2' anchor_right=''/><progressBar id='620' value='86' text="Resist Nature (50%)" left='22%' top='64' width='76%' height='15' time='03:36:48'/><label id='l620' value='3:36 ' top='64' left='0' justify='2' anchor_right=''/><progressBar id='650' value='46' text="Assume Aspect" left='22%' top='80' width='76%' height='15' time='00:04:39'/><label id='l650' value='0:04 ' top='80' left='0' justify='2' anchor_right=''/><progressBar id='5313' value='94' text="Sigil of Offense" left='22%' top='96' width='76%' height='15' time='00:04:42'/><label id='l5313' value='0:04 ' top='96' left='0' justify='2' anchor_right=''/><progressBar id='5316' value='23' text="Sigil of Focus" left='22%' top='112' width='76%' height='15' time='00:00:43'/><label id='l5316' value='43s ' top='112' left='0' justify='2' anchor_right=''/><progressBar id='5320' value='23' text="Sigil of Major Bane" left='22%' top='128' width='76%' height='15' time='00:00:42'/><label id='l5320' value='42s ' top='128' left='0' justify='2' anchor_right=''/><progressBar id='142262' value='46' text="Aspect of the Panther" left='22%' top='144' width='76%' height='15' time='00:04:41'/><label id='l142262' value='0:04 ' top='144' left='0' justify='2' anchor_right=''/><progressBar id='146276' value='87' text="Tangleweed Vigor" left='22%' top='160' width='76%' height='15' time='00:01:45'/><label id='l146276' value='105s ' top='160' left='0' justify='2' anchor_right=''/><progressBar id='1093405544' value='100' text="Breeze Archery Tailwind" left='22%' top='176' width='76%' height='15' time='00:00:13'/><label id='l1093405544' value='13s ' top='176' left='0' justify='2' anchor_right=''/><progressBar id='1094608548' value='80' text="Nature's Touch Arcane Ref" left='22%' top='192' width='76%' height='15' time='00:00:24'/><label id='l1094608548' value='24s ' top='192' left='0' justify='2' anchor_right=''/></dialogData>
+<component id='room objs'>  You also see a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<dialogData id='minivitals'><skin id='manaSkin' name='manaBar' controls='mana' left='25%' top='0%' width='25%' height='100%'/><progressBar id='mana' value='85' text='mana 352/413' left='25%' customText='t' top='0%' width='25%' height='100%'/></dialogData><spell>None</spell><castTime value='1789329136'/>You gesture at <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>.
+The evanescent shield shrouding <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/> fades briefly, then flickers with a pale incandescence.
+
+ ** Fleeting and insubstantial, a mirror image of you shimmers into view at your side, echoing your attack with one of its own! **
+Nothing happens.
+Nature's blessing of vitality departs as your arcane prowess returns to normal.
+Cast Roundtime 1 Second.
+<prompt time="1789329135">&gt;</prompt>
+A <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes suddenly sprouts from the ground and begins to thrash about violently!
+The evanescent shield shrouding <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/> flares to life and thickens to create a substantial buffer around <pushBold/><a exist="242471597" noun="diviner">him</a><popBold/>.
+[SMR result: 0 (Open d100: 59)]
+The <a exist="242512467" noun="briar">lashing emerald briar</a> lashes out at <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>, but is unable to grasp <pushBold/><a exist="242471597" noun="diviner">him</a><popBold/>.
+<prompt time="1789329135">&gt;</prompt>
+<component id='room players'></component>
+<dialogData id='minivitals'><skin id='manaSkin' name='manaBar' controls='mana' left='25%' top='0%' width='25%' height='100%'/><progressBar id='mana' value='83' text='mana 344/413' left='25%' customText='t' top='0%' width='25%' height='100%'/></dialogData><indicator id='IconHIDDEN' visible='y'/><castTime value='1789329137'/>A haze of black mist gathers around you as you prepare Camouflage...
+<a exist="spell" noun="spell">Your spell is ready.</a>
+You gesture.
+You blend into invisibility among the surroundings.
+Cast Roundtime 1 Second.
+<prompt time="1789329136">H&gt;</prompt>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,goliath plunderer" content_value="#242471597,#242512500" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="242512500" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242512500" noun="plunderer">masked goliath plunderer</a><popBold/></b>, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+Shining bars of brilliance streak down from on high, forming a radiant beam that coalesces into the masked form of <pushBold/>a <a exist="242512500" noun="plunderer">masked goliath plunderer</a><popBold/>, <pushBold/><a exist="242512500" noun="plunderer">his</a><popBold/> eyes agleam with residual motes of prismatic light.
+<prompt time="1789329137">H&gt;</prompt>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus,goliath plunderer" content_value="#242471597,#242512530,#242512500" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus,armor-clad pegasus,goliath plunderer" content_value="#242471597,#242512532,#242512530,#242512500" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus,armor-clad pegasus,armor-clad pegasus,goliath plunderer" content_value="#242471597,#242512534,#242512532,#242512530,#242512500" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus,armor-clad pegasus,armor-clad pegasus,goliath plunderer" content_value="#242471597,#242512534,#242512532,#242512530,#242512500" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus,armor-clad pegasus,armor-clad pegasus,goliath plunderer" content_value="#242471597,#242512534,#242512532,#242512530,#242512500" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus,armor-clad pegasus,goliath plunderer" content_value="#242471597,#242512534,#242512530,#242512500" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="242512534" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around,<crtrStatus exist="242512530" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around,<crtrStatus exist="242512500" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242512500" noun="plunderer">masked goliath plunderer</a><popBold/></b>, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<pushBold/>A <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/> soars in on wings aglow with all of the hues of a breaking dawn, throwing back <pushBold/><a exist="242512530" noun="pegasus">its</a><popBold/> majestic head to tousel a mane seeming spun from threads of sunlight.
+<pushBold/>A <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/> soars in on wings aglow with all of the hues of a breaking dawn, throwing back <pushBold/><a exist="242512534" noun="pegasus">its</a><popBold/> majestic head to tousel a mane seeming spun from threads of sunlight.
+<prompt time="1789329137">H&gt;</prompt>
+<dialogData id='Active Spells' clear='t'></dialogData><dialogData id='Active Spells'><progressBar id='101' value='86' text="Spirit Warding I" left='22%' top='0' width='76%' height='15' time='03:36:27'/><label id='l101' value='3:36 ' top='0' left='0' justify='2' anchor_right=''/><progressBar id='102' value='86' text="Spirit Barrier" left='22%' top='16' width='76%' height='15' time='03:36:30'/><label id='l102' value='3:36 ' top='16' left='0' justify='2' anchor_right=''/><progressBar id='103' value='86' text="Spirit Defense" left='22%' top='32' width='76%' height='15' time='03:36:31'/><label id='l103' value='3:36 ' top='32' left='0' justify='2' anchor_right=''/><progressBar id='107' value='86' text="Spirit Warding II" left='22%' top='48' width='76%' height='15' time='03:36:32'/><label id='l107' value='3:36 ' top='48' left='0' justify='2' anchor_right=''/><progressBar id='120' value='86' text="Lesser Shroud" left='22%' top='64' width='76%' height='15' time='03:36:35'/><label id='l120' value='3:36 ' top='64' left='0' justify='2' anchor_right=''/><progressBar id='211' value='51' text="Bravery" left='22%' top='80' width='76%' height='15' time='02:08:30'/><label id='l211' value='2:08 ' top='80' left='0' justify='2' anchor_right=''/><progressBar id='215' value='82' text="Heroism" left='22%' top='96' width='76%' height='15' time='03:26:36'/><label id='l215' value='3:26 ' top='96' left='0' justify='2' anchor_right=''/><progressBar id='509' value='51' text="Strength" left='22%' top='112' width='76%' height='15' time='02:08:26'/><label id='l509' value='2:08 ' top='112' left='0' justify='2' anchor_right=''/><progressBar id='601' value='86' text="Natural Colors" left='22%' top='128' width='76%' height='15' time='03:36:37'/><label id='l601' value='3:36 ' top='128' left='0' justify='2' anchor_right=''/><progressBar id='602' value='86' text="Resist Elements" left='22%' top='144' width='76%' height='15' time='03:36:38'/><label id='l602' value='3:36 ' top='144' left='0' justify='2' anchor_right=''/><progressBar id='604' value='86' text="Nature's Bounty" left='22%' top='160' width='76%' height='15' time='03:36:39'/><label id='l604' value='3:36 ' top='160' left='0' justify='2' anchor_right=''/><progressBar id='606' value='86' text="Phoen's Strength" left='22%' top='176' width='76%' height='15' time='03:36:40'/><label id='l606' value='3:36 ' top='176' left='0' justify='2' anchor_right=''/><progressBar id='608' value='3' text="Camouflage" left='22%' top='192' width='76%' height='15' time='00:09:59'/><label id='l608' value='0:09 ' top='192' left='0' justify='2' anchor_right=''/><progressBar id='612' value='86' text="Breeze" left='22%' top='208' width='76%' height='15' time='03:36:42'/><label id='l612' value='3:36 ' top='208' left='0' justify='2' anchor_right=''/><progressBar id='613' value='86' text="Self Control" left='22%' top='224' width='76%' height='15' time='03:36:43'/><label id='l613' value='3:36 ' top='224' left='0' justify='2' anchor_right=''/><progressBar id='617' value='86' text="Sneaking" left='22%' top='240' width='76%' height='15' time='03:36:44'/><label id='l617' value='3:36 ' top='240' left='0' justify='2' anchor_right=''/><progressBar id='618' value='86' text="Mobility" left='22%' top='256' width='76%' height='15' time='03:36:45'/><label id='l618' value='3:36 ' top='256' left='0' justify='2' anchor_right=''/><progressBar id='625' value='86' text="Nature's Touch" left='22%' top='272' width='76%' height='15' time='03:36:24'/><label id='l625' value='3:36 ' top='272' left='0' justify='2' anchor_right=''/><progressBar id='640' value='86' text="Wall of Thorns" left='22%' top='288' width='76%' height='15' time='03:36:48'/><label id='l640' value='3:36 ' top='288' left='0' justify='2' anchor_right=''/><progressBar id='1109' value='82' text="Empathic Focus" left='22%' top='304' width='76%' height='15' time='03:26:49'/><label id='l1109' value='3:26 ' top='304' left='0' justify='2' anchor_right=''/></dialogData>
+<dialogData id='Debuffs' clear='t'></dialogData><dialogData id='Debuffs'><label id='lblNone' value='No debuffs found.' top='0' left='0' align='center'/></dialogData>
+<dialogData id='Cooldowns' clear='t'></dialogData><dialogData id='Cooldowns'><progressBar id='37594784' value='79' text="Rapid Fire Recovery" left='22%' top='0' width='76%' height='15' time='00:01:35'/><label id='l37594784' value='95s ' top='0' left='0' justify='2' anchor_right=''/><progressBar id='86705824' value='100' text="Multi-Strike" left='22%' top='16' width='76%' height='15' time='00:00:44'/><label id='l86705824' value='44s ' top='16' left='0' justify='2' anchor_right=''/><progressBar id='119818926' value='0' text="Volley" left='22%' top='32' width='76%' height='15' time='00:00:09'/><label id='l119818926' value='9s ' top='32' left='0' justify='2' anchor_right=''/></dialogData>
+<dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'><progressBar id='115' value='86' text="Fasthr's Reward" left='22%' top='0' width='76%' height='15' time='03:36:34'/><label id='l115' value='3:36 ' top='0' left='0' justify='2' anchor_right=''/><progressBar id='506' value='100' text="Celerity" left='22%' top='16' width='76%' height='15' time='00:01:48'/><label id='l506' value='108s ' top='16' left='0' justify='2' anchor_right=''/><progressBar id='515' value='100' text="Rapid Fire" left='22%' top='32' width='76%' height='15' time='00:01:35'/><label id='l515' value='95s ' top='32' left='0' justify='2' anchor_right=''/><progressBar id='605' value='100' text="Barkskin" left='22%' top='48' width='76%' height='15' time='00:01:41'/><label id='l605' value='101s ' top='48' left='0' justify='2' anchor_right=''/><progressBar id='620' value='86' text="Resist Nature (50%)" left='22%' top='64' width='76%' height='15' time='03:36:46'/><label id='l620' value='3:36 ' top='64' left='0' justify='2' anchor_right=''/><progressBar id='650' value='46' text="Assume Aspect" left='22%' top='80' width='76%' height='15' time='00:04:37'/><label id='l650' value='0:04 ' top='80' left='0' justify='2' anchor_right=''/><progressBar id='5313' value='93' text="Sigil of Offense" left='22%' top='96' width='76%' height='15' time='00:04:40'/><label id='l5313' value='0:04 ' top='96' left='0' justify='2' anchor_right=''/><progressBar id='5316' value='22' text="Sigil of Focus" left='22%' top='112' width='76%' height='15' time='00:00:41'/><label id='l5316' value='41s ' top='112' left='0' justify='2' anchor_right=''/><progressBar id='5320' value='22' text="Sigil of Major Bane" left='22%' top='128' width='76%' height='15' time='00:00:40'/><label id='l5320' value='40s ' top='128' left='0' justify='2' anchor_right=''/><progressBar id='142262' value='46' text="Aspect of the Panther" left='22%' top='144' width='76%' height='15' time='00:04:39'/><label id='l142262' value='0:04 ' top='144' left='0' justify='2' anchor_right=''/><progressBar id='146276' value='85' text="Tangleweed Vigor" left='22%' top='160' width='76%' height='15' time='00:01:43'/><label id='l146276' value='103s ' top='160' left='0' justify='2' anchor_right=''/><progressBar id='1093405544' value='100' text="Breeze Archery Tailwind" left='22%' top='176' width='76%' height='15' time='00:00:11'/><label id='l1093405544' value='11s ' top='176' left='0' justify='2' anchor_right=''/></dialogData>
+<prompt time="1789329137">H&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><roundTime value='1789329138'/><dialogData id='combat'><dropDownBox id='dDBAmmo' value="none" cmd="ready AMMO %dDBAmmo%" content_text="none" content_value="clear" align='n' top='139' left='0' height='20' width='80' tooltip='Stance Selection' anchor_left='cmdLoad' anchor_right='cmdFire'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="242512534" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around,<crtrStatus exist="242512530" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around,<crtrStatus exist="242512500" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242512500" noun="plunderer">masked goliath plunderer</a><popBold/></b>, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<component id='room players'></component>
+<clearStream id='inv' ifClosed=''/><pushStream id='inv'/>Your worn items are:
+  a <a exist="241815540" noun="gauntlets">pair of dusky centaur hide gauntlets</a>
+  an <a exist="241815541" noun="band">enruned urglaes band</a>
+  <a exist="241815542" noun="robes">some hooded red velvet robes</a>
+  a <a exist="241815543" noun="urnon">shard of chaotic urnon</a>
+  an <a exist="241815544" noun="sack">elesine treasure sack</a> with a blood crystal clasp
+  a <a exist="241815545" noun="satchel">shaggy dark grey wolf fur satchel</a>
+  a <a exist="241815547" noun="cloak">nacreous plumille cloak</a>
+  a <a exist="241815577" noun="standard">sacrosanct misty white battle standard</a> with a rippling incarnadine sheen
+  a <a exist="241815578" noun="necklace">cloth necklace</a>
+  a <a exist="241815579" noun="vines">ring of thorny tattooed vines</a>
+  a <a exist="241815582" noun="tattoo">pallid jade green dragonfly tattoo</a>
+  a <a exist="241815583" noun="scarab">fused snowflake obsidian and bleached bone scarab</a>
+  an <a exist="241815584" noun="pin">enameled cast iron cannon pin</a>
+  a <a exist="241815585" noun="charm">crystallized silvery fossil charm</a>
+  a <a exist="241815586" noun="insignia">kraken-etched insignia</a>
+  a <a exist="241815587" noun="periapt">small bone periapt</a>
+  <a exist="241815588" noun="puppies">several ebon-inked puppies</a> playing tug-of-war with a floriated vine
+  a <a exist="241815589" noun="badge">veniom-bound witchwood badge</a>
+  a <a exist="241815590" noun="brooch">quintuple orb brooch</a>
+  a <a exist="241815591" noun="satchel">faded leather satchel</a> etched with a vine and leaf pattern
+  a <a exist="241815598" noun="backpack">patchwork dwarf skin backpack</a> bound by interwoven briar vines
+  a <a exist="241815607" noun="bandolier">quilled iron boar hide bandolier</a> shrouded by impaled leaves
+  a <a exist="241815637" noun="tunic">dark green elesine tunic</a> drenched with blood
+  a <a exist="241815638" noun="bracelet">briar and thorn wrotwood bracelet</a>
+  a <a exist="241815639" noun="ring">smooth bone ring</a> pierced by tiny crystal shards
+  a <a exist="241815640" noun="keyring">ruby-inlaid carved obsidian keyring</a>
+  a <a exist="241815644" noun="locus">gilded locus</a>
+  a <a exist="241815645" noun="kit">cire leather herb kit</a> scuffed at the corners
+  a <a exist="241815679" noun="anklet">spiderweb-patterned nightshade anklet</a> caught with bloodwood spiders
+  a <a exist="241815680" noun="arcarium">dark sapphire aversaris arcarium</a>
+  a <a exist="241815681" noun="arcarium">dark sapphire vangaris arcarium</a>
+<dialogData id='minivitals'><skin id='staminaSkin' name='staminaBar' controls='stamina' left='50%' top='0%' width='25%' height='100%'/><progressBar id='stamina' value='67' text='stamina 107/159' left='50%' customText='t' top='0%' width='25%' height='100%'/></dialogData>You nock a faewood <a exist="242512562" noun="arrow">arrow</a> fletched with plain white feathers in your <a exist="241815539" noun="bow">glowbark long bow</a>.
+You fire a faewood arrow at <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>!
+  AS: +594 vs DS: +559 with AvD: +25 + d100 roll: +74 = +134
+   ... and hit for 19 points of damage!
+   Strike pierces upper arm!
+
+ ** Fleeting and insubstantial, a whisper of shadow coalesces beside you, echoing your attack with one of its own! **
+You fire a faewood arrow at <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>!
+  AS: +594 vs DS: +596 with AvD: +25 + d100 roll: +47 = +70
+   A clean miss.
+
+ ** Necrotic energy from your <a exist="241815539" noun="bow">glowbark long bow</a> overflows into you! **
+   You feel reinvigorated!
+A tenebrous shroud stitches itself into existence around you as you gracefully retreat into the shadows!
+The arrow breaks into tiny fragments.
+Roundtime: 2 sec.
+Roundtime changed to 1 second.
+<prompt time="1789329137">HR&gt;</prompt>
+<crtrStatus exist="242471597" hostile="1" ascended="1" rider="1"/><crtrStatus exist="242512534" hostile="1" flying="1" ascended="1" mount="1"/><pushBold/>A <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/> beckons into the skies to <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/>.  <pushBold/>The <a exist="242512534" noun="pegasus">pegasus</a><popBold/> wheels about and swoops down, allowing <pushBold/>the <a exist="242471597" noun="diviner">diviner</a><popBold/> to leap up onto <pushBold/><a exist="242512534" noun="pegasus">its</a><popBold/> back and grasp <pushBold/><a exist="242512534" noun="pegasus">its</a><popBold/> reins.
+<prompt time="1789329138">H&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><prompt time="1789329138">H&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><roundTime value='1789329140'/><dialogData id='combat'><dropDownBox id='dDBAmmo' value="none" cmd="ready AMMO %dDBAmmo%" content_text="none" content_value="clear" align='n' top='139' left='0' height='20' width='80' tooltip='Stance Selection' anchor_left='cmdLoad' anchor_right='cmdFire'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="242512530" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around,<crtrStatus exist="242512500" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242512500" noun="plunderer">masked goliath plunderer</a><popBold/></b>, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1" rider="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> who is riding <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<clearStream id='inv' ifClosed=''/><pushStream id='inv'/>Your worn items are:
+  a <a exist="241815540" noun="gauntlets">pair of dusky centaur hide gauntlets</a>
+  an <a exist="241815541" noun="band">enruned urglaes band</a>
+  <a exist="241815542" noun="robes">some hooded red velvet robes</a>
+  a <a exist="241815543" noun="urnon">shard of chaotic urnon</a>
+  an <a exist="241815544" noun="sack">elesine treasure sack</a> with a blood crystal clasp
+  a <a exist="241815545" noun="satchel">shaggy dark grey wolf fur satchel</a>
+  a <a exist="241815547" noun="cloak">nacreous plumille cloak</a>
+  a <a exist="241815577" noun="standard">sacrosanct misty white battle standard</a> with a rippling incarnadine sheen
+  a <a exist="241815578" noun="necklace">cloth necklace</a>
+  a <a exist="241815579" noun="vines">ring of thorny tattooed vines</a>
+  a <a exist="241815582" noun="tattoo">pallid jade green dragonfly tattoo</a>
+  a <a exist="241815583" noun="scarab">fused snowflake obsidian and bleached bone scarab</a>
+  an <a exist="241815584" noun="pin">enameled cast iron cannon pin</a>
+  a <a exist="241815585" noun="charm">crystallized silvery fossil charm</a>
+  a <a exist="241815586" noun="insignia">kraken-etched insignia</a>
+  a <a exist="241815587" noun="periapt">small bone periapt</a>
+  <a exist="241815588" noun="puppies">several ebon-inked puppies</a> playing tug-of-war with a floriated vine
+  a <a exist="241815589" noun="badge">veniom-bound witchwood badge</a>
+  a <a exist="241815590" noun="brooch">quintuple orb brooch</a>
+  a <a exist="241815591" noun="satchel">faded leather satchel</a> etched with a vine and leaf pattern
+  a <a exist="241815598" noun="backpack">patchwork dwarf skin backpack</a> bound by interwoven briar vines
+  a <a exist="241815607" noun="bandolier">quilled iron boar hide bandolier</a> shrouded by impaled leaves
+  a <a exist="241815637" noun="tunic">dark green elesine tunic</a> drenched with blood
+  a <a exist="241815638" noun="bracelet">briar and thorn wrotwood bracelet</a>
+  a <a exist="241815639" noun="ring">smooth bone ring</a> pierced by tiny crystal shards
+  a <a exist="241815640" noun="keyring">ruby-inlaid carved obsidian keyring</a>
+  a <a exist="241815644" noun="locus">gilded locus</a>
+  a <a exist="241815645" noun="kit">cire leather herb kit</a> scuffed at the corners
+  a <a exist="241815679" noun="anklet">spiderweb-patterned nightshade anklet</a> caught with bloodwood spiders
+  a <a exist="241815680" noun="arcarium">dark sapphire aversaris arcarium</a>
+  a <a exist="241815681" noun="arcarium">dark sapphire vangaris arcarium</a>
+You nock a faewood <a exist="242512781" noun="arrow">arrow</a> fletched with plain white feathers in your <a exist="241815539" noun="bow">glowbark long bow</a>.
+Effortlessly anticipating your move, <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/> steps aside just as you move to attack <pushBold/><a exist="242471597" noun="diviner">him</a><popBold/>, rendering your assault futile!
+The arrow streaks off into the distance!
+Roundtime: 2 sec.
+Roundtime changed to 1 second.
+<prompt time="1789329139">HR&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><prompt time="1789329139">HR&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><roundTime value='1789329142'/><dialogData id='combat'><dropDownBox id='dDBAmmo' value="none" cmd="ready AMMO %dDBAmmo%" content_text="none" content_value="clear" align='n' top='139' left='0' height='20' width='80' tooltip='Stance Selection' anchor_left='cmdLoad' anchor_right='cmdFire'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="242512530" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around,<crtrStatus exist="242512500" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="242512500" noun="plunderer">masked goliath plunderer</a><popBold/></b>, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1" rider="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> who is riding <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<clearStream id='inv' ifClosed=''/><pushStream id='inv'/>Your worn items are:
+  a <a exist="241815540" noun="gauntlets">pair of dusky centaur hide gauntlets</a>
+  an <a exist="241815541" noun="band">enruned urglaes band</a>
+  <a exist="241815542" noun="robes">some hooded red velvet robes</a>
+  a <a exist="241815543" noun="urnon">shard of chaotic urnon</a>
+  an <a exist="241815544" noun="sack">elesine treasure sack</a> with a blood crystal clasp
+  a <a exist="241815545" noun="satchel">shaggy dark grey wolf fur satchel</a>
+  a <a exist="241815547" noun="cloak">nacreous plumille cloak</a>
+  a <a exist="241815577" noun="standard">sacrosanct misty white battle standard</a> with a rippling incarnadine sheen
+  a <a exist="241815578" noun="necklace">cloth necklace</a>
+  a <a exist="241815579" noun="vines">ring of thorny tattooed vines</a>
+  a <a exist="241815582" noun="tattoo">pallid jade green dragonfly tattoo</a>
+  a <a exist="241815583" noun="scarab">fused snowflake obsidian and bleached bone scarab</a>
+  an <a exist="241815584" noun="pin">enameled cast iron cannon pin</a>
+  a <a exist="241815585" noun="charm">crystallized silvery fossil charm</a>
+  a <a exist="241815586" noun="insignia">kraken-etched insignia</a>
+  a <a exist="241815587" noun="periapt">small bone periapt</a>
+  <a exist="241815588" noun="puppies">several ebon-inked puppies</a> playing tug-of-war with a floriated vine
+  a <a exist="241815589" noun="badge">veniom-bound witchwood badge</a>
+  a <a exist="241815590" noun="brooch">quintuple orb brooch</a>
+  a <a exist="241815591" noun="satchel">faded leather satchel</a> etched with a vine and leaf pattern
+  a <a exist="241815598" noun="backpack">patchwork dwarf skin backpack</a> bound by interwoven briar vines
+  a <a exist="241815607" noun="bandolier">quilled iron boar hide bandolier</a> shrouded by impaled leaves
+  a <a exist="241815637" noun="tunic">dark green elesine tunic</a> drenched with blood
+  a <a exist="241815638" noun="bracelet">briar and thorn wrotwood bracelet</a>
+  a <a exist="241815639" noun="ring">smooth bone ring</a> pierced by tiny crystal shards
+  a <a exist="241815640" noun="keyring">ruby-inlaid carved obsidian keyring</a>
+  a <a exist="241815644" noun="locus">gilded locus</a>
+  a <a exist="241815645" noun="kit">cire leather herb kit</a> scuffed at the corners
+  a <a exist="241815679" noun="anklet">spiderweb-patterned nightshade anklet</a> caught with bloodwood spiders
+  a <a exist="241815680" noun="arcarium">dark sapphire aversaris arcarium</a>
+  a <a exist="241815681" noun="arcarium">dark sapphire vangaris arcarium</a>
+You nock a faewood <a exist="242512881" noun="arrow">arrow</a> fletched with plain white feathers in your <a exist="241815539" noun="bow">glowbark long bow</a>.
+Effortlessly anticipating your move, <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/> steps aside just as you move to attack <pushBold/><a exist="242471597" noun="diviner">him</a><popBold/>, rendering your assault futile!
+The arrow streaks off into the distance!
+Roundtime: 2 sec.
+Roundtime changed to 1 second.
+<prompt time="1789329141">HR&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><prompt time="1789329142">H&gt;</prompt>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus,armor-clad pegasus" content_value="#242471597,#242512534,#242512530" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="242512530" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1" rider="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> who is riding <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<pushBold/>A <a exist="242512500" noun="plunderer">masked goliath plunderer</a><popBold/> just went into a <a exist="-483342" noun="smithy">thatched timber smithy</a>.
+<prompt time="1789329143">H&gt;</prompt>
+[SMR result: 16 (Open d100: -87, Bonus: 1)]
+The <a exist="242512467" noun="briar">lashing emerald briar</a> lashes out at <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>, but is unable to grasp <pushBold/><a exist="242471597" noun="diviner">him</a><popBold/>.
+<prompt time="1789329143">H&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'><progressBar id='115' value='86' text="Fasthr's Reward" left='22%' top='0' width='76%' height='15' time='03:36:28'/><label id='l115' value='3:36 ' top='0' left='0' justify='2' anchor_right='fire'/><progressBar id='506' value='100' text="Celerity" left='22%' top='16' width='76%' height='15' time='00:01:42'/><label id='l506' value='102s ' top='16' left='0' justify='2' anchor_right='fire'/><progressBar id='515' value='100' text="Rapid Fire" left='22%' top='32' width='76%' height='15' time='00:01:29'/><label id='l515' value='89s ' top='32' left='0' justify='2' anchor_right='fire'/><progressBar id='605' value='100' text="Barkskin" left='22%' top='48' width='76%' height='15' time='00:01:35'/><label id='l605' value='95s ' top='48' left='0' justify='2' anchor_right='fire'/><progressBar id='620' value='86' text="Resist Nature (50%)" left='22%' top='64' width='76%' height='15' time='03:36:40'/><label id='l620' value='3:36 ' top='64' left='0' justify='2' anchor_right='fire'/><progressBar id='650' value='45' text="Assume Aspect" left='22%' top='80' width='76%' height='15' time='00:04:31'/><label id='l650' value='0:04 ' top='80' left='0' justify='2' anchor_right='fire'/><progressBar id='5313' value='91' text="Sigil of Offense" left='22%' top='96' width='76%' height='15' time='00:04:34'/><label id='l5313' value='0:04 ' top='96' left='0' justify='2' anchor_right='fire'/><progressBar id='5316' value='19' text="Sigil of Focus" left='22%' top='112' width='76%' height='15' time='00:00:35'/><label id='l5316' value='35s ' top='112' left='0' justify='2' anchor_right='fire'/><progressBar id='5320' value='18' text="Sigil of Major Bane" left='22%' top='128' width='76%' height='15' time='00:00:34'/><label id='l5320' value='34s ' top='128' left='0' justify='2' anchor_right='fire'/><progressBar id='142262' value='45' text="Aspect of the Panther" left='22%' top='144' width='76%' height='15' time='00:04:33'/><label id='l142262' value='0:04 ' top='144' left='0' justify='2' anchor_right='fire'/><progressBar id='146276' value='80' text="Tangleweed Vigor" left='22%' top='160' width='76%' height='15' time='00:01:37'/><label id='l146276' value='97s ' top='160' left='0' justify='2' anchor_right='fire'/><progressBar id='1093405544' value='50' text="Breeze Archery Tailwind" left='22%' top='176' width='76%' height='15' time='00:00:05'/><label id='l1093405544' value='5s ' top='176' left='0' justify='2' anchor_right='fire'/><progressBar id='1094608548' value='100' text="Nature's Touch Arcane Ref" left='22%' top='192' width='76%' height='15' time='00:00:30'/><label id='l1094608548' value='30s ' top='192' left='0' justify='2' anchor_right='fire'/></dialogData>
+<roundTime value='1789329144'/><dialogData id='combat'><dropDownBox id='dDBAmmo' value="none" cmd="ready AMMO %dDBAmmo%" content_text="none" content_value="clear" align='n' top='139' left='0' height='20' width='80' tooltip='Stance Selection' anchor_left='cmdLoad' anchor_right='cmdFire'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="242512530" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1" rider="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> who is riding <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<component id='room players'></component>
+<clearStream id='inv' ifClosed=''/><pushStream id='inv'/>Your worn items are:
+  a <a exist="241815540" noun="gauntlets">pair of dusky centaur hide gauntlets</a>
+  an <a exist="241815541" noun="band">enruned urglaes band</a>
+  <a exist="241815542" noun="robes">some hooded red velvet robes</a>
+  a <a exist="241815543" noun="urnon">shard of chaotic urnon</a>
+  an <a exist="241815544" noun="sack">elesine treasure sack</a> with a blood crystal clasp
+  a <a exist="241815545" noun="satchel">shaggy dark grey wolf fur satchel</a>
+  a <a exist="241815547" noun="cloak">nacreous plumille cloak</a>
+  a <a exist="241815577" noun="standard">sacrosanct misty white battle standard</a> with a rippling incarnadine sheen
+  a <a exist="241815578" noun="necklace">cloth necklace</a>
+  a <a exist="241815579" noun="vines">ring of thorny tattooed vines</a>
+  a <a exist="241815582" noun="tattoo">pallid jade green dragonfly tattoo</a>
+  a <a exist="241815583" noun="scarab">fused snowflake obsidian and bleached bone scarab</a>
+  an <a exist="241815584" noun="pin">enameled cast iron cannon pin</a>
+  a <a exist="241815585" noun="charm">crystallized silvery fossil charm</a>
+  a <a exist="241815586" noun="insignia">kraken-etched insignia</a>
+  a <a exist="241815587" noun="periapt">small bone periapt</a>
+  <a exist="241815588" noun="puppies">several ebon-inked puppies</a> playing tug-of-war with a floriated vine
+  a <a exist="241815589" noun="badge">veniom-bound witchwood badge</a>
+  a <a exist="241815590" noun="brooch">quintuple orb brooch</a>
+  a <a exist="241815591" noun="satchel">faded leather satchel</a> etched with a vine and leaf pattern
+  a <a exist="241815598" noun="backpack">patchwork dwarf skin backpack</a> bound by interwoven briar vines
+  a <a exist="241815607" noun="bandolier">quilled iron boar hide bandolier</a> shrouded by impaled leaves
+  a <a exist="241815637" noun="tunic">dark green elesine tunic</a> drenched with blood
+  a <a exist="241815638" noun="bracelet">briar and thorn wrotwood bracelet</a>
+  a <a exist="241815639" noun="ring">smooth bone ring</a> pierced by tiny crystal shards
+  a <a exist="241815640" noun="keyring">ruby-inlaid carved obsidian keyring</a>
+  a <a exist="241815644" noun="locus">gilded locus</a>
+  a <a exist="241815645" noun="kit">cire leather herb kit</a> scuffed at the corners
+  a <a exist="241815679" noun="anklet">spiderweb-patterned nightshade anklet</a> caught with bloodwood spiders
+  a <a exist="241815680" noun="arcarium">dark sapphire aversaris arcarium</a>
+  a <a exist="241815681" noun="arcarium">dark sapphire vangaris arcarium</a>
+You nock a faewood <a exist="242513191" noun="arrow">arrow</a> fletched with plain white feathers in your <a exist="241815539" noun="bow">glowbark long bow</a>.
+You fire a faewood arrow at <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>!
+  AS: +594 vs DS: +559 with AvD: +25 + d100 roll: +81 = +141
+   ... and hit for 21 points of damage!
+   Shot to the hand slices a finger to the bone!
+An earthy, sweet aroma clings to <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/> in a murky haze, accompanied by soot brown specks of leaf mold.
+Vital energy infuses you, hastening your arcane reflexes!
+The arrow sticks in <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>'s left hand!
+Roundtime: 2 sec.
+Roundtime changed to 1 second.
+<prompt time="1789329143">HR&gt;</prompt>
+<component id='room objs'>  You also see a <a exist="242513195" noun="runestone">pale hovering runestone</a>,<crtrStatus exist="242512530" hostile="1" flying="1" ascended="1"/><b> <pushBold/>a <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/></b> that is flying around, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1" rider="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> who is riding <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<pushBold/>A <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/> raises a clenched fist, opening it to reveal a small rune-etched stone pulsing with inner light.  The stone hovers momentarily over <pushBold/><a exist="242471597" noun="diviner">his</a><popBold/> palm before rising into the air, seeming to expand in every direction until it is a <a exist="242513195" noun="runestone">pale hovering runestone</a> wreathed in glowing colors!
+<prompt time="1789329144">H&gt;</prompt>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus" content_value="#242471597,#242512534" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<component id='room objs'>  You also see a <a exist="242513195" noun="runestone">pale hovering runestone</a>, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="242471597" hostile="1" ascended="1" rider="1"/><b> <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/></b> who is riding <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/> and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+<pushBold/>A <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/> just went into a <a exist="-483342" noun="smithy">thatched timber smithy</a>.
+<prompt time="1789329144">H&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><prompt time="1789329144">H&gt;</prompt>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus" content_value="#242471597,#242512534" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner" content_value="#242471597" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<component id='room objs'>  You also see a <a exist="242513195" noun="runestone">pale hovering runestone</a>, a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+Ridden by <pushBold/>a <a exist="242471597" noun="diviner">branded goliath diviner</a><popBold/>, <pushBold/>a <a exist="242512534" noun="pegasus">tawny armor-clad pegasus</a><popBold/> soars gracefully <d>northwest</d>, wings outstretched and feathers gleaming in the light.
+<prompt time="1789329145">H&gt;</prompt>
+<dialogData id='combat'><dropDownBox id='dDBStance' value="defensive" cmd='_stance %dDBStance%' content_text='offensive,advance,forward,neutral,guarded,defensive' content_value='offensive,advance,forward,neutral,guarded,defensive' align='n' top='70' left='0' anchor_left='cmdDefStance' anchor_right='cmdOffStance' height='20' width='80' tooltip='Stance Selection'/></dialogData>
+<dialogData id='combat'><progressBar id='pbarStance' value='100' text='defensive (100%)' top='51' width='130' height='16' left='0' align='n' tooltip='Percent of stance contributing to defense'/></dialogData>
+<dialogData id='stance'><progressBar id='pbarStance' value='100' text='defensive (100%)' top='5' left='-5' height='16' width='160' align='n' tooltip='Percent of stance contributing to defense'/></dialogData>You are now in a defensive stance.
+<prompt time="1789329146">H&gt;</prompt>
+<dialogData id='Cooldowns' clear='t'></dialogData><dialogData id='Cooldowns'><progressBar id='37594784' value='71' text="Rapid Fire Recovery" left='22%' top='0' width='76%' height='15' time='00:01:26'/><label id='l37594784' value='86s ' top='0' left='0' justify='2' anchor_right=''/><progressBar id='86705824' value='100' text="Multi-Strike" left='22%' top='16' width='76%' height='15' time='00:00:35'/><label id='l86705824' value='35s ' top='16' left='0' justify='2' anchor_right=''/></dialogData>
+Volley is ready for use.
+<prompt time="1789329146">H&gt;</prompt>
+<component id='room objs'>  You also see a <a exist="242512467" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes and a <a exist="-483356" noun="coal">pile of coal</a>.</component>
+Light and hue depart the <a exist="242513195" noun="runestone">hovering runestone</a> in a rainbowed flash.  It crashes to the ground and shatters into pale dust.
+<prompt time="1789329148">H&gt;</prompt>
+<dialogData id='Buffs' clear='t'></dialogData><dialogData id='Buffs'><progressBar id='115' value='86' text="Fasthr's Reward" left='22%' top='0' width='76%' height='15' time='03:36:23'/><label id='l115' value='3:36 ' top='0' left='0' justify='2' anchor_right=''/><progressBar id='506' value='100' text="Celerity" left='22%' top='16' width='76%' height='15' time='00:01:37'/><label id='l506' value='97s ' top='16' left='0' justify='2' anchor_right=''/><progressBar id='515' value='100' text="Rapid Fire" left='22%' top='32' width='76%' height='15' time='00:01:24'/><label id='l515' value='84s ' top='32' left='0' justify='2' anchor_right=''/><progressBar id='605' value='100' text="Barkskin" left='22%' top='48' width='76%' height='15' time='00:01:30'/><label id='l605' value='90s ' top='48' left='0' justify='2' anchor_right=''/><progressBar id='620' value='86' text="Resist Nature (50%)" left='22%' top='64' width='76%' height='15' time='03:36:35'/><label id='l620' value='3:36 ' top='64' left='0' justify='2' anchor_right=''/><progressBar id='650' value='44' text="Assume Aspect" left='22%' top='80' width='76%' height='15' time='00:04:26'/><label id='l650' value='0:04 ' top='80' left='0' justify='2' anchor_right=''/><progressBar id='5313' value='89' text="Sigil of Offense" left='22%' top='96' width='76%' height='15' time='00:04:29'/><label id='l5313' value='0:04 ' top='96' left='0' justify='2' anchor_right=''/><progressBar id='5316' value='16' text="Sigil of Focus" left='22%' top='112' width='76%' height='15' time='00:00:30'/><label id='l5316' value='30s ' top='112' left='0' justify='2' anchor_right=''/><progressBar id='5320' value='16' text="Sigil of Major Bane" left='22%' top='128' width='76%' height='15' time='00:00:29'/><label id='l5320' value='29s ' top='128' left='0' justify='2' anchor_right=''/><progressBar id='142262' value='44' text="Aspect of the Panther" left='22%' top='144' width='76%' height='15' time='00:04:28'/><label id='l142262' value='0:04 ' top='144' left='0' justify='2' anchor_right=''/><progressBar id='146276' value='76' text="Tangleweed Vigor" left='22%' top='160' width='76%' height='15' time='00:01:32'/><label id='l146276' value='92s ' top='160' left='0' justify='2' anchor_right=''/><progressBar id='1094608548' value='83' text="Nature's Touch Arcane Ref" left='22%' top='176' width='76%' height='15' time='00:00:25'/><label id='l1094608548' value='25s ' top='176' left='0' justify='2' anchor_right=''/></dialogData>
+As abruptly as it began, the tailwind embracing you goes still.
+<prompt time="1789329148">H&gt;</prompt>
+The <a exist="242512467" noun="briar">lashing emerald briar</a> lashes out, but is unable to grasp ahold of anything.
+<prompt time="1789329151">H&gt;</prompt>
+<component id='room players'></component>
+<dialogData id='minivitals'><skin id='manaSkin' name='manaBar' controls='mana' left='25%' top='0%' width='25%' height='100%'/><progressBar id='mana' value='81' text='mana 335/413' left='25%' customText='t' top='0%' width='25%' height='100%'/></dialogData><dialogData id='combat'><dropDownBox id='dDBStance' value="guarded" cmd='_stance %dDBStance%' content_text='offensive,advance,forward,neutral,guarded,defensive' content_value='offensive,advance,forward,neutral,guarded,defensive' align='n' top='70' left='0' anchor_left='cmdDefStance' anchor_right='cmdOffStance' height='20' width='80' tooltip='Stance Selection'/></dialogData>
+<dialogData id='combat'><progressBar id='pbarStance' value='80' text='guarded (80%)' top='51' width='130' height='16' left='0' align='n' tooltip='Percent of stance contributing to defense'/></dialogData>
+<dialogData id='stance'><progressBar id='pbarStance' value='80' text='guarded (80%)' top='5' left='-5' height='16' width='160' align='n' tooltip='Percent of stance contributing to defense'/></dialogData><indicator id='IconHIDDEN' visible='n'/><castTime value='1789329152'/>A haze of black mist gathers around you as you prepare Sunburst...
+<a exist="spell" noun="spell">Your spell is ready.</a>
+You come out of hiding.
+You gesture.
+A sudden burst of bright light emanates from your hand!
+Your magic fails to find a target.
+Cast Roundtime 1 Second.
+(Forcing stance down to guarded)
+<prompt time="1789329151">&gt;</prompt>
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="goliath diviner" cmd="target %dDBTarget%" tooltip='Select Target' content_text="goliath diviner,armor-clad pegasus,goliath engineer" content_value="#242471597,#242512530,#242508963" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<nav rm='7503364'/><streamWindow id='main' title='Story' subtitle=" - Ojandhaart, Smithy - 7503364" location='center' target='drop'/><streamWindow id='room' title='Room' subtitle=" - Ojandhaart, Smithy - 7503364" location='center' target='drop' ifClosed='' resident='true'/><clearStream id='room'/><pushStream id='room'/><compDef id='room desc'>The smithy's lofty ceiling is comprised of rough, smoke-darkened tinders.  The cavernous space holds a <a exist="-486139" noun="anvil">man-sized anvil</a> and a forge fed by a low-burning flame that nonetheless fills the smithy with skin-searing heat.  Hafts for gigantic axes and a whalebone pommel meant for an immense sword sit atop a huge worktable of sturdy hoarbeam.</compDef><compDef id='room objs'>  You also see<crtrStatus exist="242508963" hostile="1" ascended="1" rider="1"/><b> <pushBold/>a <a exist="242508963" noun="engineer">burly goliath engineer</a><popBold/></b> who is riding <pushBold/>a <a exist="242512530" noun="pegasus">tawny armor-clad pegasus</a><popBold/> and a <a exist="242442490" noun="runestaff">pale mistwood runestaff</a> capped by a rough multicolored gemstone.</compDef>
+<compDef id='room players'></compDef>
+<compDef id='room exits'>Obvious exits: <d>out</d></compDef>
+<compDef id='sprite'></compDef><popStream id='room'/>
+<roommeta weather="0" bonfire="0" inside="1" water="0" sanctuary="0" realm="15" climate="2" terrain="1"/>
+<component id='room players'></component>

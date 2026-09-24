@@ -511,6 +511,16 @@ impl CreatureInstance {
         self.current_hp() == 0
     }
 
+    /// A corpse: dead by the wire's flag or by hit points. The room list
+    /// carries `dead="1"` for a creature whose health was never reported,
+    /// so [`Self::dead`] alone misses it. MEASURED in a replay of a real
+    /// kill (`cena-behavior/tests/hunt_replay.rs`): the pegasus died with
+    /// no `health=` ever sent, and read as alive until it vanished.
+    #[must_use]
+    pub fn corpse(&self) -> bool {
+        self.flag(Classification::Dead) || self.dead()
+    }
+
     /// Should this be attacked? (`valid_target?`, `creature.rb:642-651`):
     /// not dead by flag or HP, not an animated decoy (slush excepted), not
     /// a bare appendage (kraken tentacles excepted).

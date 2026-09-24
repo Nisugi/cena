@@ -494,7 +494,8 @@ Demonstrated live on a short hunt.
 > - **What each arm does now:** Survival stands or stops on death; Flee leaves a room over
 >   `flee.count` or holding a `flee.from` creature; Rest is the whole cycle (reasons, the
 >   walk, the rest commands, the `until` thresholds, the walk back, the prepare commands);
->   Loot is `loot #id` once per corpse, after the room clears when `loot.delay`; Maintain
+>   Loot is `loot #id` once per corpse, no oftener than every 15 s while targets stand when
+>   `loot.delay` (bigshot's `time_between(:need_to_loot?, 15)`, first call passing); Maintain
 >   casts a sign the effects list says is down, once a minute at most, with no target
 >   present; Engage targets, takes the hunting stance, and runs the routine one step a tick,
 >   skipping held steps and steps whose guards do not hold, expanding sequences; Wander waits
@@ -510,19 +511,35 @@ Demonstrated live on a short hunt.
 >   Assume Aspect is cast as `cmd_assume` casts it (the spell, evoked or prepared, then
 >   `assume <aspect>` once the effects list shows it), and a walk inside a hunt reads and
 >   keeps the character's travel file as travel's own desk does.
-> - **The corpus cut was not made.** The author's condition was *"nothing from
+> - **The corpus cut, and what it found.** The author's first condition was *"nothing from
 >   hinterwilds"*, and MEASURED over every third of Nisugi's 6,570 sessions plus all of the
->   newest 45: every session with a fight is in the Hinterwilds or the Duskruin Arena. The
->   engine is driven by frames built in the test instead (`tests/hunt_engine.rs`, 9 tests
->   over every arm and the rest cycle end to end); a replay fixture needs a log from another
->   character or another area, which is the author's to name.
-> - MEASURED: 29 hunt tests in `cena-behavior` (`hunt_engine` 9, `hunt_guard` 7,
->   `hunt_profile` 9, `hunt_import` 4), plus the `yaml` and `command` unit tests.
+>   newest 45, every session with a fight is in the Hinterwilds or the Duskruin Arena; the
+>   author then named three Ojandhaart logs of 2026-09-13, and two windows of one of them
+>   are `crates/cena-behavior/tests/fixtures/smithy_engage.xml` (299 lines, 59,220 bytes)
+>   and `smithy_kill.xml` (278 lines, 70,502 bytes), scrubbed, provenance in
+>   `crates/cena-behavior/tests/hunt_replay.rs`. That test replays each through a session
+>   and ticks the engine at every prompt against Nisugi's imported profile. **The first
+>   replay found three defects that ten hand-built tests had passed:** Assume Aspect was
+>   cast before any effects list had been seen (the `650` branch ran ahead of maintain's
+>   gate); a corpse was never read as dead, because `dead()` is hit points at zero and the
+>   room list's `dead="1"` was the only thing the wire said of this pegasus (now
+>   `CreatureInstance::corpse`); and `loot.delay` deferred looting while any target stood,
+>   where bigshot loots the first corpse at once and Nisugi's log has the search two seconds
+>   after the kill with the engineer standing. With those fixed, the engine says `fire`
+>   where Nisugi fired, `loot` at the prompt after `drops dead`, then `target`, the stance,
+>   and Camouflage in bigshot's order.
+> - **Seen in the replay and left as is:** the stance setter sends the stance when the bar
+>   has never been seen (the first prompts of a cut), which a live session's login burst
+>   makes moot; `hidden` unknown holds every guarded step (`Wait(1)`) until the game says.
+> - MEASURED: 35 hunt tests in `cena-behavior` (`hunt_engine` 11, `hunt_replay` 4,
+>   `hunt_guard` 7, `hunt_profile` 9, `hunt_import` 4), plus the `yaml` and `command` unit
+>   tests.
 >
 > **Live acceptance is the next thing**, and it is the author's: `;hunt ojandhaart` with the
-> map set, in the hunting ground, with `;hunt stop` at hand. What it will show first is
-> whether the routine's plain verbs (`fire`, `kweed`, `coupdegrace`, `incant 608`) are sent as
-> the game takes them, which no test here can prove.
+> map set, in the hunting ground, with `;hunt stop` at hand. The replay has shown the engine
+> choosing what bigshot chose on real frames; what only a live run can show is the driver's
+> half: that each verb is sent as the game takes it, settled on roundtime, and that a walk
+> inside the hunt lands.
 
 **M6c — eloot.** Its port plan first (`plan/31`), then the halves a hunt calls: loot,
 sort, box in hand. Town errands follow in the same plan's order.

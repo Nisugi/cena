@@ -202,8 +202,9 @@ pub struct Loot {
     /// The looter (`loot_script`): `eloot`, once it is ported (`plan/30` §4).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub script: Option<String>,
-    /// Keep fighting while targets remain; loot when the room is clear
-    /// (`delay_loot`).
+    /// While targets remain, loot no oftener than every fifteen seconds
+    /// (`delay_loot`, bigshot's `time_between(:need_to_loot?, 15)`); the
+    /// first corpse is looted at once, as bigshot's first call passes.
     pub delay: bool,
     /// Go defensive to loot while creatures are present (`loot_stance`).
     pub defensive: bool,
