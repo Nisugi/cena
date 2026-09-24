@@ -550,10 +550,13 @@ Demonstrated live on a short hunt.
 **M6c — eloot.** Its port plan first (`plan/31`), then the halves a hunt calls: loot,
 sort, box in hand. Town errands follow in the same plan's order.
 
-> **`plan/31` PROPOSED 2026-09-24.** eloot measured module by module: the hunt's share is
-> ~1,750 of 8,029 lines (Main, Inventory, Room looting); the rest is a settings window and
-> the town. Four stages, the first two pure planner and driver, and four questions for the
-> author before building.
+> **`plan/31` written and answered 2026-09-24; Stages 1 and 2 BUILT the same day.** eloot
+> measured module by module: the hunt's share is ~1,750 of 8,029 lines (Main, Inventory,
+> Room looting); the rest is a settings window and the town. The pure planner
+> (`cena-behavior/src/loot/`) and the driver's loot loop are in; a hunt with an imported
+> loot profile searches each corpse and takes the floor by eloot's rules, and rests on
+> *too much loot* or a box left in hand, as the author answered. Stage 3 (boxes, dropped
+> bags, the sigil) and Stage 4 (selling during the rest) remain.
 
 **M6d — eherbs.** Its port plan first (`plan/32`), then healing at the rest room.
 

@@ -400,6 +400,41 @@ fn delayed_looting_takes_the_first_corpse_at_once_and_spaces_the_rest() {
 }
 
 #[test]
+fn with_a_loot_profile_corpses_go_to_the_planner_and_full_bags_send_the_hunt_to_rest() {
+    use cena_behavior::loot::{Left, LootProfile};
+    let mut hunt = Hunt::new(profile().unwrap(), 1).with_loot(LootProfile::default());
+    let mut state = state(1_000, "10");
+    state.effects.clear_category("Buffs");
+    creature(&mut state, 42, "warg", &[("hostile", "1"), ("dead", "1")]);
+    creature(&mut state, 43, "warg", &[("hostile", "1"), ("dead", "1")]);
+    let at = here(10, &[RoomId(20)]);
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_000)),
+        Said::Loot(vec![42, 43]),
+        "every corpse here, once, for the planner"
+    );
+    assert!(
+        !matches!(hunt.tick(&state, at, Some(1_001)), Said::Loot(_)),
+        "not asked for again"
+    );
+    hunt.loot_ended(Left::BagsFull);
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_002)),
+        Said::Walk(RoomId(20)),
+        "too much loot: to the resting room"
+    );
+    assert_eq!(
+        hunt.phase(),
+        Phase::ToRest(cena_behavior::hunt::engine::Why::Loaded)
+    );
+    assert!(
+        hunt.take_notes()
+            .iter()
+            .any(|n| n.contains("too much loot"))
+    );
+}
+
+#[test]
 fn wander_waits_then_walks_to_a_fresh_room_inside_the_boundaries() {
     let mut hunt = Hunt::new(profile().unwrap(), 7);
     let mut state = state(1_000, "10");

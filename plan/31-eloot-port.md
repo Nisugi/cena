@@ -1,8 +1,17 @@
 # 31 — The Loot behavior: eloot, measured and ordered
 
-**Status: Stage 1 BUILT 2026-09-24** (`crates/cena-behavior/src/loot/`: profile, importer,
-worth, outcome, planner; 24 tests in `tests/loot_*.rs`, Nisugi's `eloot.yaml` importing
-whole with no notes). Stage 2, the driver, is next. The author's answers to §7 are recorded
+**Status: Stages 1 and 2 BUILT 2026-09-24.** Stage 1 is `crates/cena-behavior/src/loot/`
+(profile, importer, worth, outcome, planner; 24 tests in `tests/loot_*.rs`, Nisugi's
+`eloot.yaml` importing whole with no notes). Stage 2 is the hunt driver's `loot` loop
+(`hunt/drive.rs`): the engine says `Said::Loot(corpses)` when the character has a loot
+profile, the driver runs the planner step by step through the gate, reads each reply
+through the outcome classifier, keeps what it learned for the next room, and hands
+`BagsFull`/`BoxInHand` back as the rest reasons `Why::Loaded`/`Why::BoxInHand`
+(`hunt/rest.rs`, split from the engine). `;hunt import-loot <eloot yaml>` writes the
+character's profile; the desk reads it when a hunt starts and says so either way. Tested
+over a scripted game in `tests/hunt_loot_drive.rs`. **Not yet:** the *at your feet* line
+after a search, and confirming a stow by the bag's contents (the model has no container
+contents; a stow is confirmed by the thing leaving the floor). Stage 3 is next. The author's answers to §7 are recorded
 there and folded into §4 and §6. Claude's staging of M6c (`plan/30` §7: *"M6c — eloot. Its
 port plan first (`plan/31`), then the halves a hunt calls: loot, sort, box in hand. Town
 errands follow in the same plan's order."*). The author's rule that makes eloot part of M6 is

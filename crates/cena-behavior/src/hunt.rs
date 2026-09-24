@@ -47,6 +47,7 @@ pub mod engine;
 pub mod guard;
 pub mod import;
 pub mod profile;
+mod rest;
 pub mod said;
 pub mod yaml;
 

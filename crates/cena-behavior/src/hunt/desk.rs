@@ -27,6 +27,7 @@ use super::command::Command;
 use super::drive::{HuntEnd, hunt};
 use super::engine::Hunt;
 use crate::error::BehaviorError;
+use crate::loot::{self, LootProfile};
 use crate::travel::{Heard, TravelNotes};
 use crate::watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, watch};
 
@@ -128,6 +129,14 @@ impl Desk {
                 say(NoticeKind::Info, format!("hunting on {name}."));
                 let seed = joined.0.state.game_time_now().map_or(1, u64::from);
                 let machine = Hunt::new(loaded.profile, seed);
+                let machine = match self.loot_profile(
+                    handle,
+                    character.instance.as_deref(),
+                    character.name.as_deref(),
+                ) {
+                    Some(profile) => machine.with_loot(profile),
+                    None => machine,
+                };
                 Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
             }
             _ => None,
@@ -169,6 +178,58 @@ impl Desk {
             over.cancel();
             end
         })
+    }
+
+    /// The character's loot profile (`plan/31` §6), when one has been
+    /// imported and reads. Said either way, since it changes what a corpse
+    /// gets.
+    fn loot_profile(
+        &self,
+        handle: &SessionHandle,
+        instance: Option<&str>,
+        name: Option<&str>,
+    ) -> Option<LootProfile> {
+        let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
+        let path = loot::path(&self.dir, instance?, name?)?;
+        let text = match std::fs::read_to_string(&path) {
+            Ok(text) => text,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                say(
+                    NoticeKind::Info,
+                    "no loot profile, so corpses get `loot #id`; `hunt import-loot <eloot yaml>` brings one in.".to_owned(),
+                );
+                return None;
+            }
+            Err(e) => {
+                say(
+                    NoticeKind::Warn,
+                    format!(
+                        "cannot read {}: {e}; corpses get `loot #id`.",
+                        path.display()
+                    ),
+                );
+                return None;
+            }
+        };
+        match LootProfile::parse(&text) {
+            Ok(profile) => {
+                for problem in profile.problems() {
+                    say(NoticeKind::Warn, format!("loot profile: {problem}"));
+                }
+                say(NoticeKind::Info, format!("looting by {}.", path.display()));
+                Some(profile)
+            }
+            Err(why) => {
+                say(
+                    NoticeKind::Error,
+                    format!(
+                        "{} does not read: {why}; corpses get `loot #id`.",
+                        path.display()
+                    ),
+                );
+                None
+            }
+        }
     }
 
     /// Claim, hunt with the watchdog beside it, release.
