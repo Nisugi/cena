@@ -25,6 +25,8 @@
 pub mod error;
 pub mod sync;
 pub mod travel;
+pub mod watchdog;
 
 pub use error::BehaviorError;
 pub use sync::{MAX_AGE, SYNC_DEADLINE, commands_for, plan, sync};
+pub use watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, watch};

@@ -401,6 +401,19 @@ engine, so it is cut into sub-milestones that each finish with something the aut
    - `BEHAVIOR_WATCHDOG` and the forced revoke after `PREEMPT_GRACE`.
 
    Each gets an isolation-style test and a mutation that turns it red.
+   > **BUILT 2026-09-24.**
+   > - **Attendance** (`cf5c9bc`) is what a person does, counted at the handle, or a
+   >   connection that lived `LONG_LIVED` (5 min) without an idle warning.
+   > - **SE-4:** the authority is one cell per session (`command/authority.rs`), shared by
+   >   every connection's queue and answered by the supervisor between connections.
+   > - **§4.3 preemption:** `SessionHandle::preempt` cancels the holder, waits
+   >   `PREEMPT_GRACE`, then revokes; a revoked holder's queued commands are refused.
+   > - **The watchdog is a heartbeat, not traffic** (`cena-behavior/src/watchdog.rs`). A
+   >   resting hunt sends nothing for minutes, so a behavior beats each time its loop turns,
+   >   and a watcher beside it preempts it after `BEHAVIOR_WATCHDOG` (30 s) of silence.
+   >   Preempt and the watchdog get their first real caller in M6b, the hunt's Stop; travel's
+   >   stop stays cooperative because its take-back needs the authority.
+   > - Every piece has a test that a named mutation turns red.
 3. **Acting primitives.**
    - the stance setter and `in_casttime`;
    - the action contract (settle, then check, then send), with its final check as a `Gate`
