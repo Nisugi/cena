@@ -241,7 +241,7 @@ fn empowered_below_reads_the_strongest_empowered_up() {
 }
 
 #[test]
-fn expiring_is_the_named_effects_last_seconds() {
+fn expiring_is_the_named_effect_down_or_in_its_last_seconds() {
     let soon = one("expiring \"Tangleweed Vigor\" 5").unwrap();
     let not_soon = one("!expiring \"Tangleweed Vigor\" 5").unwrap();
     let mut state = at(1_000);
@@ -251,14 +251,18 @@ fn expiring_is_the_named_effects_last_seconds() {
         "nothing listed at all: unknown"
     );
     buff(&mut state, "9015", "Tangleweed Vigor", 1_003);
-    assert_eq!(soon.holds(&state, None), Some(true));
     assert_eq!(
-        not_soon.holds(&state, None),
-        Some(false),
-        "kweed does not fire into the expiry window (`bigshot.lic:4240`)"
+        soon.holds(&state, None),
+        Some(true),
+        "three seconds left: refresh it"
     );
+    assert_eq!(not_soon.holds(&state, None), Some(false));
     buff(&mut state, "9015", "Tangleweed Vigor", 1_030);
-    assert_eq!(soon.holds(&state, None), Some(false));
+    assert_eq!(
+        soon.holds(&state, None),
+        Some(false),
+        "thirty seconds left: leave it"
+    );
     assert_eq!(not_soon.holds(&state, None), Some(true));
     buff(&mut state, "9015", "tangleweed vigor", 1_003);
     assert_eq!(
@@ -268,10 +272,34 @@ fn expiring_is_the_named_effects_last_seconds() {
     );
 
     let mut other = at(1_000);
-    buff(&mut other, "515", "Rapid Fire", 1_002);
+    buff(&mut other, "515", "Rapid Fire", 1_060);
     assert_eq!(
-        not_soon.holds(&other, None),
+        soon.holds(&other, None),
         Some(true),
-        "the buff being down is not expiring, so kweed runs (`plan/30` §5)"
+        "the buff being down is lapsed: kweed runs (the author's `buff5`, not bigshot's `:4263`)"
+    );
+
+    let mut cut = at(1_000);
+    buff(&mut cut, "1094608548", "Nature's Touch Arcane Ref", 1_060);
+    let prefix = one("expiring \"nature's touch\" 5").unwrap();
+    assert_eq!(
+        prefix.holds(&cut, None),
+        Some(false),
+        "a name matches by prefix, because the dialog cuts long names off"
+    );
+    let mut forever = at(1_000);
+    forever.effects.insert(
+        "9016".to_owned(),
+        Effect {
+            category: "Buffs".to_owned(),
+            text: "Tangleweed Vigor".to_owned(),
+            ends_at: None,
+            percent: 100,
+        },
+    );
+    assert_eq!(
+        soon.holds(&forever, None),
+        Some(false),
+        "no end time never lapses"
     );
 }

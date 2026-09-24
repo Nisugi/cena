@@ -24,22 +24,29 @@
 //! | `thp N` | the target's health is **known** and at or below N percent | `hp_percent`, when the game stated the HP or the bestiary knows the creature |
 //! | `empowered_below N` | no Empowered buff of +N or more is up | the `Buffs` dialog, once the game has stated it |
 //! | `immobilized` | the target is immobilized | `has_status(Immobilized)` |
-//! | `expiring "<name>" N` | the named effect is up with N seconds or less left | the effects, by display name, whichever dialog |
+//! | `expiring "<name>" N` | the named effect is down, or up with N seconds or less left | the effects, by display-name prefix, whichever dialog |
 //!
 //! Each takes `!` in front. These are the words Nisugi's profile needs
 //! (`plan/30` §5); the rest of bigshot's are `plan/33`'s rows, built as
 //! profiles need them.
 //!
-//! # `expiring` reads the other way from bigshot's `buff`
+//! # `expiring` means what the author meant by `buff5`, not what bigshot does
 //!
-//! bigshot's `(buff5)` on `kweed` **skips** while Tangleweed Vigor is up
-//! with five seconds or less left: "don't fire into the expiry window"
-//! (`bigshot.lic:4240`). Under the one rule, the word names the window and
-//! the step that must not run inside it carries the negation:
-//! `kweed (!expiring "Tangleweed Vigor" 5)`. `plan/33` §5 spells that step
-//! `expiring "Tangleweed Vigor" 5`, with the polarity inside the word's
-//! meaning; this file keeps the polarity in the `!`, so that the one rule
-//! holds for every word. The author's review of `plan/33` decides the name.
+//! `kweed (expiring "Tangleweed Vigor" 5)` runs kweed when Tangleweed Vigor
+//! is **down, or up with five seconds or less left**: refresh it before it
+//! lapses, and otherwise leave it. That is what the author meant by
+//! `kweed(buff5)` (2026-09-24), and it is the natural reading of the word.
+//!
+//! It is **not** what bigshot does. `bigshot.lic:4263` vetoes the step while
+//! the buff is up with N seconds or less left and runs it otherwise, the
+//! inverse; and the comment beside it (`:4246`) records that before that
+//! commit `buffN` "was always nil and a silent no-op". So the author's
+//! profile never had the guard enforced either way, and the code that now
+//! enforces it enforces the opposite of the intent. Hydra keeps the intent.
+//!
+//! An effect name matches by **prefix, ignoring case** (author, `plan/33`
+//! question 3): the Buffs dialog cuts long names off, so a bar reads
+//! `Nature's Touch Arcane Ref`, and a person writes what they see.
 
 use std::fmt;
 
@@ -68,10 +75,10 @@ pub enum Guard {
     EmpoweredBelow(u32),
     /// `immobilized`: the target is immobilized.
     TargetImmobilized,
-    /// `expiring "<name>" N`: the named effect is up with `N` seconds or
-    /// less left.
+    /// `expiring "<name>" N`: the named effect is down, or up with `N`
+    /// seconds or less left. The name is a prefix of the display name.
     Expiring {
-        /// The effect's display name, as the game lists it.
+        /// The effect's display name, or the start of it, as the game lists it.
         name: String,
         /// Seconds left, at most.
         within: u32,
@@ -89,7 +96,7 @@ pub struct Condition {
 
 impl Condition {
     /// Read one group of guards, the parentheses already gone:
-    /// `thp 20 empowered_below 30`, or `!expiring "Tangleweed Vigor" 5`.
+    /// `thp 20 empowered_below 30`, or `expiring "Tangleweed Vigor" 5`.
     ///
     /// # Errors
     ///
@@ -164,14 +171,21 @@ impl Guard {
                 if state.effects.is_empty() {
                     return None;
                 }
-                Some(state.effects.iter().any(|(id, effect)| {
-                    effect.text.eq_ignore_ascii_case(name)
-                        && state.effects.active(id, now) == Some(true)
-                        && state
-                            .effects
-                            .remaining(id, now)
-                            .is_some_and(|left| left <= *within)
-                }))
+                // Lapsing unless some effect of that name is up with more
+                // than `within` left; one with no end time never lapses.
+                let wanted = name.to_ascii_lowercase();
+                let holding = state
+                    .effects
+                    .iter()
+                    .filter(|(_, effect)| effect.text.to_ascii_lowercase().starts_with(&wanted))
+                    .any(|(id, _)| {
+                        state.effects.active(id, now) == Some(true)
+                            && state
+                                .effects
+                                .remaining(id, now)
+                                .is_none_or(|left| left > *within)
+                    });
+                Some(!holding)
             }
         }
     }

@@ -30,7 +30,7 @@ when = { bleeding = true, health_at_most = 60, cannot_use_ranged = true }
 commands = ["store all"]
 
 [routines]
-b = ["kweed (!expiring \"Tangleweed Vigor\" 5)", "volley", "coupdegrace (thp 20 empowered_below 30)", "fire"]
+b = ["kweed (expiring \"Tangleweed Vigor\" 5)", "volley", "coupdegrace (thp 20 empowered_below 30)", "fire"]
 f = ["hide (!hidden)", "fire (hidden)", { step = "attack(stunned)", held = "guard `stunned` is not built yet" }]
 
 [sequences]
@@ -73,7 +73,10 @@ fn the_example_reads_as_written() {
     assert_eq!(b.len(), 4);
     assert_eq!(b[0].send, "kweed");
     assert_eq!(b[0].when.len(), 1);
-    assert!(b[0].when[0].negated);
+    assert!(
+        !b[0].when[0].negated,
+        "expiring runs the refresh; no ! (plan/33 question 6)"
+    );
     assert_eq!(b[2].when.len(), 2);
     assert!(b[1].when.is_empty() && b[1].held.is_none());
 

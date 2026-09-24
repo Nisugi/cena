@@ -29,7 +29,7 @@
 //! commands = ["store all"]
 //!
 //! [routines]
-//! b = ["kweed (!expiring \"Tangleweed Vigor\" 5)", "volley", "coupdegrace (thp 20 empowered_below 30)", "fire"]
+//! b = ["kweed (expiring \"Tangleweed Vigor\" 5)", "volley", "coupdegrace (thp 20 empowered_below 30)", "fire"]
 //! f = ["hide (!hidden)", "fire (hidden)"]
 //!
 //! [sequences]

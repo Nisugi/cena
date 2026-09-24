@@ -72,7 +72,7 @@ fn nisugis_profile_comes_across_key_by_key() {
     assert_eq!(
         lines(&p.routines["a"]),
         [
-            "kweed (!expiring \"Tangleweed Vigor\" 5)",
+            "kweed (expiring \"Tangleweed Vigor\" 5)",
             "volley",
             "coupdegrace (thp 20 empowered_below 30)",
             "fire",

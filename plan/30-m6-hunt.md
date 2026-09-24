@@ -463,11 +463,12 @@ engine, so it is cut into sub-milestones that each finish with something the aut
    >   TOML tables before typing: tables merge key by key and everything else replaces
    >   whole, so a character can take a step away as well as add one. Presets are not
    >   written yet: a profile is the preset until a second wants what the first has.
-   > - **Nisugi's six guards** are built as `plan/33` §5 lands them, with one change:
-   >   `expiring "<name>" N` names the window, and the step that must not fire inside it
-   >   carries the negation, `kweed (!expiring "Tangleweed Vigor" 5)`. Every guard names
-   >   when the step runs, with no exception (§6's question 1, applied to the one word §5
-   >   exempted). Unknown skips, for every word, as bigshot's `thp` does.
+   > - **Nisugi's six guards** are built as `plan/33` §5 lands them. `expiring "<name>" N`
+   >   runs the step when the effect is **down or has N seconds or less left**, which is
+   >   what the author meant by `kweed(buff5)` and the inverse of what bigshot's code does
+   >   since `7fd0b97` (`plan/33` question 6). Names match by prefix, ignoring case, because
+   >   the Buffs dialog cuts long names off (`Nature's Touch Arcane Ref`). Unknown skips,
+   >   for every word, as bigshot's `thp` does.
    > - **The importer** carries the acceptance profile whole: 10 routines, 6 targets, zero
    >   held steps. `script volley` becomes an empty `volley` sequence, named as to be
    >   written by hand; `monitor_strings` and two others are named as not imported;

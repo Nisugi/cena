@@ -134,7 +134,7 @@ into one of them. Adding an ability then needs no new word.
 | `voidweaver` | `:4388` | **no** Voidweaver buff is up (**inverted**) | **merge** → `!buff "Voidweaver"` |
 | `yowlp` | `:4390` | Yertie's Yowlp | **merge** → `buff` |
 | `justice` | `:4515` | I have a Swift Justice charge. Counted from two game messages (`:2827`) | **later**: needs a classifier for the charge count |
-| `reflex` | `:4517` | Arcane Reflexes is up. Scanned from two messages (`:2760`) | **merge** → `buff "<name>"`. VERIFIED by the author (2026-09-24): it shows in the Buffs list, as does its counterpart Physical Prowess, **with the name cut off** by the dialog. MEASURED in `GSIV-Nisugi/2026/08/xml/2026-08-20_22-46-30.xml`: `<dialogData id='Buffs'>` carries `<progressBar id='1094608548' text="Nature's Touch Arcane Ref" time='00:00:30'/>`, 97 times; the id is not a spell number. Physical Prowess does not appear in a ranger's log and is taken on the author's word. That truncation is why effect names match by prefix (question 3): the importer writes the name as the dialog shows it, `buff "Nature's Touch Arcane Ref"` |
+| `reflex` | `:4517` | Arcane Reflexes is up. Scanned from two messages (`:2760`) | **merge** → `buff "<name>"`. VERIFIED by the author (2026-09-24): it shows in the Buffs list, as does its counterpart Physical Prowess, **with the name cut off** by the dialog. MEASURED in `GSIV-Nisugi/2026/08/xml/2026-08-20_22-46-30.xml`: `<dialogData id='Buffs'>` carries `<progressBar id='1094608548' text="Nature's Touch Arcane Ref" time='00:00:30'/>`, 97 times; the id is not a spell number. Its counterpart is `Nature's Touch Physical Pr` (author; not in a ranger's log). That truncation is why effect names match by prefix (question 3): the importer writes the name as the dialog shows it, `buff "Nature's Touch Arcane Ref"` |
 
 **On `"<name>"`:** bigshot compiles the text into a case-insensitive **regex** (`:4302`).
 Hydra matches **the effect's displayed name, whole, ignoring case**, and does not use a
@@ -314,7 +314,7 @@ The reduction is mostly the 21 named-effect words becoming four.
 | 3 effect names | **starts-with, ignoring case** (below) | the dialog truncates long names, so the written name is a prefix by nature |
 | 4 `down`, `alone` | **agreed**; `alone` sits on the claim system | `Occupants` less the group |
 | 5 the four new words | **build** | `injured`, `stunned_for`, `helpless`, `coup_ready`, plus `nomagic` (§2b) |
-| 6 `expiring` polarity | (open; explained below) | -- |
+| 6 `expiring` polarity | **the author's reading wins** (below) | `expiring "<name>" N`: down, or N s or less left; `buffN` imports without a `!` |
 
 **Question 3, plainly.** An effect guard names a buff, and the game lists buffs by a display
 name. Two ways to say which one: a *pattern* (bigshot's regex, `EB"Empow.*30"`), or the
@@ -328,16 +328,17 @@ cut-off Arcane Reflexes line as written. What is lost against a regex: matching 
 of a name (`buff "Reflex"` would not find `Natures ... Arcane Ref`), and "either of two
 names" in one guard, which two steps can say. `expiring` uses the same rule.
 
-**Question 6, plainly.** Every guard names when the step **runs**: `(hidden)` runs it while
-I am hidden. bigshot's `buff5` on `kweed` means the opposite kind of thing: *don't* run it
-while the buff has five seconds or less left. Two spellings were possible. `plan/33` §5's
-draft made the word itself mean "not expiring", so that `expiring "Tangleweed Vigor" 5`
-runs the step **unless** the buff is about to lapse; short to write, but the one word in the
-vocabulary whose meaning is inverted, which is bigshot's `frozen` trap again. What was
-built makes `expiring` mean what it says, the buff is up with N seconds or less left, and
-puts the "don't" in the `!` like every other word: `kweed (!expiring "Tangleweed Vigor" 5)`.
-The cost is one `!` on every import of `buffN`. The question is whether the extra `!` is
-worth the uniform rule. **Recommendation: keep it as built.**
+**Question 6, resolved (author, 2026-09-24).** The author read `kweed (!expiring
+"Tangleweed Vigor" 5)` as *"it is not running out in 5 seconds or less, so cast it if it's
+above 5s ... that seems backwards"*, and it is: that is what **bigshot's code** does.
+`bigshot.lic:4263` vetoes the step while the buff is up with N s or less left, so kweed
+fires whenever the buff is down or comfortably up, and holds only in the last five seconds.
+The comment beside it (`:4246`) says `buffN` was a silent no-op before that commit, so the
+author's profile never had this guard enforced either way, and the fix enforced the inverse
+of the intent. The intent is the plain one: **refresh the buff when it is down or about to
+lapse, otherwise leave it.** So `expiring "<name>" N` means *the effect is down, or up with
+N seconds or less left*, `kweed (expiring "Tangleweed Vigor" 5)` is the step, §5's spelling
+stands, and every guard names when the step runs. Built and tested the same day.
 
 ## 7. What follows the review
 

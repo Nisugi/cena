@@ -19,7 +19,7 @@
 //! | `!frozen` | `immobilized` | " |
 //! | `thpN`, `!thpN` | `thp N`, `!thp N` | `:4336` |
 //! | `empoweredN` | `empowered_below N` | `:4319` skips when an Empowered of +N or more is up |
-//! | `buffN` on a verb | `!expiring "<its buff>" N` | `:4240`: skip while the verb's own buff has N s or less left; the buff comes from `:3228-3241` |
+//! | `buffN` on a verb | `expiring "<its buff>" N` | `:4240`: skip while the verb's own buff has N s or less left; the buff comes from `:3228-3241` |
 //!
 //! A word bigshot accepts that Hydra has not built **holds the step**: it is
 //! kept, with the word named, and never runs. A word bigshot does not accept
@@ -27,6 +27,10 @@
 //! anything back (`check_state_condition` ends in `else false`, `:4522`).
 //! A lost guard changes when a command fires, and that is worse than a
 //! refusal.
+//!
+//! `buffN` is carried as the author meant it, not as bigshot runs it:
+//! `expiring` runs the step when the buff is down or about to lapse
+//! (`guard.rs`'s module docs have the measurement).
 //!
 //! # `script <name>` becomes a sequence to be written
 //!
@@ -554,7 +558,7 @@ fn translate(verb: &str, token: &str) -> Result<String, String> {
             .unwrap_or("")
             .to_ascii_lowercase();
         return match BUFF_OF.iter().find(|(v, _)| *v == first) {
-            Some((_, buff)) => Ok(format!("!expiring \"{buff}\" {n}")),
+            Some((_, buff)) => Ok(format!("expiring \"{buff}\" {n}")),
             None if first == "coupdegrace" => Err(format!(
                 "`{token}` on `{verb}`: its buff is a pattern, `Empowered (+N)`, and `expiring` takes a name"
             )),
