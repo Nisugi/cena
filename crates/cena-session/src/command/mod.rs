@@ -13,6 +13,7 @@
 
 pub mod claimant;
 mod handle;
+mod round_trip;
 mod verdict;
 
 pub use claimant::{Claimed, DEFAULT_SYMBOL as COMMAND_SYMBOL};

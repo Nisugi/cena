@@ -53,6 +53,17 @@ pub enum Event {
         /// Manual or behavior.
         origin: crate::command::Origin,
     },
+    /// A **quiet** command's window opened (`true`) or ended (`false`).
+    ///
+    /// `true` follows that command's [`Event::Sent`]; `false` follows the
+    /// prompt that closed its window, or comes when the window ended any
+    /// other way. Between the two, the game's main-stream text is that
+    /// command's report, which a frontend leaves out of the story -- Lich's
+    /// `issue_command(..., quiet: true)`, which infomon's sync runs through
+    /// (`reference/lich-5/lib/gemstone/infomon/cli.rb:37`). The frames are
+    /// still published, folded and logged: quiet is a presentation fact,
+    /// never a reason to lose one. See `SessionHandle::send_quietly`.
+    Quiet(bool),
     /// Hydra said something to the player: a route table, why a trip
     /// stopped, what is still stored (`crate::notice`). **Not from the
     /// game**, which is why it is its own event and not a frame.

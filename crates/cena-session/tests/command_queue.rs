@@ -95,6 +95,7 @@ async fn a_manual_command_jumps_the_queue_ahead_of_the_behaviors() {
             reply,
             generation: cena_session::Generation::FIRST,
             matcher: cena_session::queue::any_frame,
+            quiet: false,
         });
     }
 
@@ -134,6 +135,7 @@ async fn a_manual_command_does_not_revoke_the_authority() {
         reply,
         generation: cena_session::Generation::FIRST,
         matcher: cena_session::queue::any_frame,
+        quiet: false,
     });
     let _ = queue.take_next();
 

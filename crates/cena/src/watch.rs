@@ -83,11 +83,8 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
                 "{who}  !! attempt {attempt} failed ({detail}) -- next in {:.1}s",
                 delay.as_secs_f32()
             ),
-            // REPORTED, NOT ACTED ON. Running the sync means sending up to
-            // fifteen commands (`a_full_sync_is_fifteen_commands`), which needs the authority token
-            // (`plan/12` §4.2) that this watcher does not hold -- it renders,
-            // it does not claim. `cena_behavior::sync` is what runs it, and
-            // the character's owner decides whether to spend that traffic.
+            // Reported here; run by `learn.rs` once the login is `Ready`, and
+            // its stage lines arrive as notices.
             Ok(Event::SyncNeeded(groups)) if groups.is_empty() => {
                 eprintln!("{who}  .. character store: up to date");
             }
@@ -102,7 +99,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
             ),
             // Not shown here: the game's text is the browser's to show, and a
             // combat view is a frontend's to build.
-            Ok(Event::Frame(_) | Event::Combat(_)) => {}
+            Ok(Event::Frame(_) | Event::Combat(_) | Event::Quiet(_)) => {}
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and
             // `-> [behavior]` lines for the rest of the run -- and those

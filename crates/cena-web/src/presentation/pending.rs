@@ -15,6 +15,10 @@ pub(super) struct Pending {
     pub(super) cursor: u64,
     pub(super) generation: Generation,
     pub(super) gap: bool,
+    /// Inside a quiet command's window (`Event::Quiet`): its main-stream
+    /// report stays out of the story. Other streams -- a thought, a death
+    /// -- still show; they were not the command's.
+    pub(super) quiet: bool,
 }
 
 impl Pending {
@@ -26,6 +30,7 @@ impl Pending {
             cursor: snapshot.cursor,
             generation: snapshot.generation,
             gap: false,
+            quiet: false,
         }
     }
 
@@ -37,8 +42,17 @@ impl Pending {
         if event.generation != self.generation {
             self.assembler.reset();
             self.generation = event.generation;
+            // A window never outlives its connection.
+            self.quiet = false;
+        }
+        if let Event::Quiet(quiet) = event.event {
+            self.quiet = quiet;
+            return;
         }
         if let Event::Frame(frame) = event.event {
+            if self.quiet && is_report(&frame) {
+                return;
+            }
             let lines = frame_lines(&mut self.assembler, &frame);
             for line in lines {
                 self.bytes += line_bytes(&line);
@@ -85,6 +99,16 @@ impl Pending {
         }
         self.cursor = snapshot.cursor;
         self.generation = snapshot.generation;
+    }
+}
+
+/// Whether a frame inside a quiet window is part of the command's report:
+/// main-stream text, and the prompt that ends it.
+fn is_report(frame: &Frame) -> bool {
+    match frame {
+        Frame::Text(text) => text.stream.is_empty() || text.stream == "main",
+        Frame::Prompt { .. } => true,
+        _ => false,
     }
 }
 
