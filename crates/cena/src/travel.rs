@@ -151,10 +151,31 @@ fn open_desk(
     observer: SessionObserver,
     joined: (Snapshot, Receiver<Event>),
 ) {
+    let state = joined.0.state.clone();
     let Some(map) = load_map(handle) else {
+        // **The desk opens anyway**, answering every command with why it
+        // cannot travel. Returning here left the session with no desk, so
+        // nothing claimed `;` and `;go2 bank` went to the game -- twice, in
+        // the author's first live `--web` run (2026-09-23), with the one
+        // "no map" notice long scrolled away. A command of Hydra's must never
+        // reach the game because a setting is missing.
+        let told = handle.clone();
+        let runner: Runner = Arc::new(move |_: &str| {
+            told.say(Notice::line(
+                NoticeKind::Error,
+                format!(
+                    "Travel has no map, so nothing was sent. Set {MAP_ENV} to your \
+                     combined map file and start Hydra again."
+                ),
+            ));
+            Claimed::Done
+        });
+        let desk = cena_session::command::claimant::Desk::new(symbol(handle, &state), runner);
+        if !handle.set_desk(desk) {
+            eprintln!("  !! [travel] something already runs this session's commands");
+        }
         return;
     };
-    let state = joined.0.state.clone();
     let travel = Desk::new(
         Arc::new(map),
         cena_session::character_store::data_dir(),
