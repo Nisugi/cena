@@ -72,16 +72,27 @@ impl Frontend {
         observer: SessionObserver,
         handle: SessionHandle,
     ) {
-        let (url, tag) = match character {
-            Some(name) => (
-                format!("{}&session={}", self.pairing, handle.session().0),
-                format!("[{name}] "),
-            ),
-            None => (self.pairing.clone(), String::new()),
+        let url = match character {
+            Some(_) => format!("{}&session={}", self.pairing, handle.session().0),
+            None => self.pairing.clone(),
         };
         self.sessions
             .attach(character.unwrap_or_default(), observer.clone(), handle);
-        tokio::spawn(announce(observer, url, tag, self.stop.clone()));
+        tokio::spawn(announce(
+            observer,
+            url,
+            character.map(str::to_owned),
+            self.stop.clone(),
+        ));
+    }
+
+    /// Print the hub page's link, labelled: every character on one page
+    /// (`plan/29` step 5b). Printed once, when several characters run --
+    /// each character's own link is printed, labelled with its name, when it
+    /// is `Ready`. The author asked for both to be printed and labelled
+    /// rather than the hub being a link the operator had to edit by hand.
+    pub(crate) fn announce_hub(&self) {
+        eprintln!("[web] Hub, every character: {}", self.pairing);
     }
 
     /// The sessions it serves, for the hub's control and its offer.
@@ -120,15 +131,24 @@ impl Frontend {
 /// Once per generation: a reconnect earns a fresh reminder, a lagged
 /// resubscription does not. Reads the observer's snapshot first, so a session
 /// that was already Ready when this started is announced too.
-async fn announce(observer: SessionObserver, url: String, tag: String, stop: CancellationToken) {
+async fn announce(
+    observer: SessionObserver,
+    url: String,
+    character: Option<String>,
+    stop: CancellationToken,
+) {
     let mut announced: Option<Generation> = None;
     let mut tell = |generation: Generation| {
         if announced != Some(generation) {
             announced = Some(generation);
-            eprintln!(
-                "{tag}[web] Ready. Play in the browser; the terminal shows only Hydra's own messages."
-            );
-            eprintln!("{tag}[web] Open this private pairing URL: {url}");
+            if let Some(name) = &character {
+                eprintln!("[{name}] [web] Ready. {name}'s page: {url}");
+            } else {
+                eprintln!(
+                    "[web] Ready. Play in the browser; the terminal shows only Hydra's own messages."
+                );
+                eprintln!("[web] Open this private pairing URL: {url}");
+            }
         }
     };
     loop {

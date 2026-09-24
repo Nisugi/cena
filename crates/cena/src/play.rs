@@ -105,6 +105,7 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
         }
     }
     if let Some(web) = &table.web {
+        web.announce_hub();
         let answering = Arc::clone(&table);
         web.sessions().control(Arc::new(move |request| {
             let table = Arc::clone(&answering);
