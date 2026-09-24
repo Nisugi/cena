@@ -2,7 +2,7 @@
 //! a bounded duplicate set, and no command outbox or retry path.
 
 use crate::presentation::encode;
-use crate::server::{Asked, Shared, Viewed};
+use crate::server::{Asked, Choice, Shared, Viewed};
 use axum::extract::ws::{CloseFrame, Message, WebSocket};
 use cena_session::{Generation, Outcome, SessionId};
 use cena_ui::{ClientMessage, ReceiptStatus, ServerMessage, WIRE_VERSION, validate_command};
@@ -17,6 +17,10 @@ const AUTH_TIMEOUT: Duration = Duration::from_secs(5);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(2);
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_REQUESTS: usize = 1024;
+/// The longest the hub page goes without catching up after a change, and the
+/// shortest it waits between two sends -- so N characters' roundtimes
+/// ticking together cost a card list at most four times a second.
+const HUB_REFRESH: Duration = Duration::from_millis(250);
 type Submission = Pin<Box<dyn Future<Output = ServerMessage> + Send>>;
 
 pub(crate) async fn serve(
@@ -35,10 +39,15 @@ pub(crate) async fn serve(
         close(&mut socket, 1008, "Authentication required").await;
         return;
     };
-    // Which session this viewer is for: the one it named, or the only one.
-    let Some(viewed) = shared.choose(asked) else {
-        close(&mut socket, 1008, "No such session; open the page for one").await;
-        return;
+    // Which session this viewer is for: the one it named, or the only one;
+    // naming none with several running is the hub page.
+    let viewed = match shared.choose(asked) {
+        Choice::Session(viewed) => viewed,
+        Choice::Hub => return serve_hub(socket, shared).await,
+        Choice::Missing => {
+            close(&mut socket, 1008, "No such session; open the page for one").await;
+            return;
+        }
     };
     let initial = tokio::select! {
         () = viewed.stop.cancelled() => None,
@@ -176,6 +185,43 @@ async fn attach(viewed: &Viewed) -> (Arc<str>, broadcast::Receiver<Arc<str>>) {
             }
         }
         tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+}
+
+/// The hub page: every session's card (`plan/29` step 5b), sent when a card
+/// changes and never more often than [`HUB_REFRESH`]. It takes no commands:
+/// a command belongs to one character, whose own page sends it.
+async fn serve_hub(mut socket: WebSocket, shared: Arc<Shared>) {
+    let mut changed = shared.changed.subscribe();
+    let mut last: Option<Arc<str>> = None;
+    loop {
+        let cards = ServerMessage::Sessions {
+            version: WIRE_VERSION,
+            sessions: shared.cards().await,
+        };
+        let Ok(message) = encode(&cards) else {
+            close(&mut socket, 1011, "The session list is too large to send").await;
+            return;
+        };
+        if last.as_deref() != Some(&*message) {
+            if !write(&mut socket, &message).await {
+                return;
+            }
+            last = Some(message);
+        }
+        tokio::select! {
+            () = shared.stop.cancelled() => { close(&mut socket, 1001, "Viewer stopped").await; return; }
+            // A lag is only "something changed" said more than once.
+            _ = changed.recv() => tokio::time::sleep(HUB_REFRESH).await,
+            incoming = socket.recv() => match incoming {
+                Some(Ok(Message::Ping(_) | Message::Pong(_))) => {}
+                Some(Ok(Message::Close(_)) | Err(_)) | None => return,
+                Some(Ok(_)) => {
+                    close(&mut socket, 1008, "The hub takes no commands; use a character's page").await;
+                    return;
+                }
+            },
+        }
     }
 }
 

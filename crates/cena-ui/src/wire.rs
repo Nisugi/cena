@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::view::{SessionView, StoryLine};
+use crate::view::{SessionCard, SessionView, StoryLine};
 
 /// The `version` every message in both directions must carry; anything else
 /// is refused by the listener and rejected by the browser.
@@ -126,6 +126,15 @@ pub enum ServerMessage {
         status: ReceiptStatus,
         /// Human-readable explanation, shown after the status label.
         detail: String,
+    },
+    /// `kind: "sessions"`: the hub page -- every character this Hydra runs, at
+    /// a glance (`plan/29` step 5b). Sent to a viewer that named no session
+    /// when there is not exactly one, and again whenever a card changes.
+    Sessions {
+        /// Always `WIRE_VERSION`.
+        version: u16,
+        /// One card per session, in the order they were added.
+        sessions: Vec<SessionCard>,
     },
 }
 

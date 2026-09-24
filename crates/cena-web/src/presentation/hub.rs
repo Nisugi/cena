@@ -62,6 +62,12 @@ impl Hub {
         }
     }
 
+    /// The view last published, for the hub page's card; `None` before the
+    /// first publish.
+    pub(crate) fn view(&self) -> Option<&SessionView> {
+        self.published.as_ref()
+    }
+
     /// Whether the retained history has a hole inside it.
     pub(super) fn gap_retained(&self) -> bool {
         self.lines_before_gap.is_some_and(|before| before > 0)

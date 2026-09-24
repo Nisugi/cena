@@ -77,7 +77,8 @@ impl Frontend {
             ),
             None => (self.pairing.clone(), String::new()),
         };
-        self.sessions.attach(observer.clone(), handle);
+        self.sessions
+            .attach(character.unwrap_or_default(), observer.clone(), handle);
         tokio::spawn(announce(observer, url, tag, self.stop.clone()));
     }
 

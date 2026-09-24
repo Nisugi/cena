@@ -168,7 +168,7 @@ pub struct VitalView {
 }
 
 /// A missing gauge is unknown, never zero.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VitalsView {
     /// Health gauge; `None` until the game reports it.
     pub health: Option<VitalView>,
@@ -181,7 +181,7 @@ pub struct VitalsView {
 }
 
 /// Server epoch seconds and the remainder at the supplied observation time.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RoundtimeView {
     /// Server epoch second the roundtime ends; `None` if none was observed.
     pub ends_at: Option<u32>,
@@ -220,4 +220,50 @@ pub struct SessionView {
     pub prompt: Option<String>,
     /// At most 32 unknown-tag diagnostics sampled from the model's ring.
     pub unknown_tags: Vec<UnknownTagView>,
+}
+
+/// One character on the hub page: who it is, and what a player glances at
+/// across several (`plan/29` §5a R3).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SessionCard {
+    /// Session id, canonical decimal; the character's own page is the
+    /// pairing link with `&session=` this appended.
+    pub session: String,
+    /// The character's name, as the session table knows it; empty when the
+    /// caller gave none.
+    pub name: String,
+    /// Connection state; `Connecting` until the session has a view at all.
+    pub lifecycle: LifecycleView,
+    /// The four gauges, each unknown until the game reports it.
+    pub vitals: VitalsView,
+    /// Roundtime, as the character's own page shows it.
+    pub roundtime: RoundtimeView,
+    /// The room it stands in, when known.
+    pub room: Option<String>,
+}
+
+impl SessionCard {
+    /// The card for session `session`, named `name`, from its current view
+    /// -- or, when it has none yet, a card that says so.
+    #[must_use]
+    pub fn of(session: String, name: String, view: Option<&SessionView>) -> Self {
+        match view {
+            Some(view) => Self {
+                session,
+                name,
+                lifecycle: view.lifecycle.clone(),
+                vitals: view.vitals.clone(),
+                roundtime: view.roundtime.clone(),
+                room: view.room.title.clone(),
+            },
+            None => Self {
+                session,
+                name,
+                lifecycle: LifecycleView::Connecting,
+                vitals: VitalsView::default(),
+                roundtime: RoundtimeView::default(),
+                room: None,
+            },
+        }
+    }
 }

@@ -115,6 +115,9 @@ async fn receipt(
                 ServerMessage::Receipt { .. } => {
                     return Err(io::Error::other("unexpected command receipt").into());
                 }
+                ServerMessage::Sessions { .. } => {
+                    return Err(io::Error::other("a session's page was sent the hub").into());
+                }
             }
         }
     })
@@ -174,7 +177,7 @@ async fn assert_story(socket: &mut Browser, mut lines: Vec<StoryLine>) -> TestRe
             match receive(socket).await? {
                 ServerMessage::Update { lines: new, .. } => lines.extend(new),
                 ServerMessage::Snapshot { story, .. } => lines = story,
-                ServerMessage::Receipt { .. } => {
+                ServerMessage::Receipt { .. } | ServerMessage::Sessions { .. } => {
                     return Err(io::Error::other("expected room presentation").into());
                 }
             }
@@ -384,7 +387,7 @@ async fn reconnect_refuses_old_browser_generation_including_quit_without_writing
                 | ServerMessage::Snapshot {
                     generation, view, ..
                 } => (generation, view),
-                other @ ServerMessage::Receipt { .. } => {
+                other @ (ServerMessage::Receipt { .. } | ServerMessage::Sessions { .. }) => {
                     panic!("unexpected reconnect message: {other:?}")
                 }
             };
@@ -682,14 +685,69 @@ async fn one_listener_serves_each_session_on_its_own_page() {
 
     let server = WebServer::open().await.unwrap();
     let sessions = server.sessions();
-    sessions.attach(a_observer, a_handle);
-    sessions.attach(b_observer, b_handle);
+    sessions.attach("Nisugi", a_observer, a_handle);
+    let b_handle_for_hurt = b_handle.clone();
+    sessions.attach("Nerten", b_observer, b_handle);
     let pairing = server.pairing_url();
     let stop_web = CancellationToken::new();
     let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
 
-    let mut unnamed = browser(&pairing).await.unwrap();
-    assert!(closes(&mut unnamed).await, "two sessions and none named");
+    // Naming none, with two running, is the hub: every character's card.
+    let mut hub = browser(&pairing).await.unwrap();
+    let ServerMessage::Sessions {
+        sessions: cards, ..
+    } = receive(&mut hub).await.unwrap()
+    else {
+        panic!("two sessions and none named opens the hub");
+    };
+    let named: Vec<(&str, &str)> = cards
+        .iter()
+        .map(|card| (card.session.as_str(), card.name.as_str()))
+        .collect();
+    assert_eq!(named, [("0", "Nisugi"), ("1", "Nerten")]);
+    assert!(
+        cards
+            .iter()
+            .all(|card| card.lifecycle == LifecycleView::Ready),
+        "each card reads its session's own view: {cards:?}"
+    );
+    // A card follows its character: a change in Nerten's health reaches the
+    // hub without the hub being asked.
+    b_transcript.answer(
+        "hurt",
+        b"You wince.\n<progressBar id='health' value='42'/><prompt time='1'>&gt;</prompt>\n",
+    );
+    assert!(matches!(
+        b_handle_for_hurt
+            .send_manual_at(Generation::FIRST, "hurt", DEADLINE)
+            .await,
+        Outcome::Confirmed(_)
+    ));
+    let updated = tokio::time::timeout(DEADLINE, async {
+        loop {
+            if let Ok(ServerMessage::Sessions {
+                sessions: cards, ..
+            }) = receive(&mut hub).await
+                && let Some(health) = cards[1].vitals.health.as_ref()
+                && health.percent == 42
+            {
+                return true;
+            }
+        }
+    })
+    .await;
+    assert!(updated.is_ok(), "the hub's card for Nerten never showed 42");
+
+    // The hub takes no commands: a command belongs to one character's page.
+    send(&mut hub, &command("0", "0", "from-hub", "look"))
+        .await
+        .unwrap();
+    assert!(
+        closes(&mut hub).await,
+        "a command sent to the hub is refused"
+    );
+    assert!(a_transcript.lines().is_empty());
+    assert_eq!(b_transcript.lines(), ["hurt"], "only Nerten's own command");
 
     let mut page = browser_for(&pairing, Some("1")).await.unwrap();
     let ServerMessage::Snapshot {
@@ -708,7 +766,11 @@ async fn one_listener_serves_each_session_on_its_own_page() {
         receipt(&mut page, "look-1", &mut Vec::new()).await.unwrap(),
         ReceiptStatus::Sent
     );
-    assert_eq!(b_transcript.lines(), ["look"], "the page's own session");
+    assert_eq!(
+        b_transcript.lines(),
+        ["hurt", "look"],
+        "the page's own session"
+    );
     assert!(a_transcript.lines().is_empty(), "and no other");
 
     // Detached, its page is closed; the session itself runs on.

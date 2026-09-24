@@ -31,23 +31,62 @@ pub(crate) struct Shared {
     /// Every session a viewer can attach to, by id (`plan/29` step 5). One
     /// listener serves them all (`plan/23` §D1a); each has its own hub.
     pub(crate) sessions: std::sync::Mutex<BTreeMap<SessionId, Arc<Viewed>>>,
+    /// Signalled when a session is attached or detached, or publishes a new
+    /// view: the hub page rebuilds its cards on it.
+    pub(crate) changed: tokio::sync::broadcast::Sender<()>,
     pub(crate) clients: Arc<Semaphore>,
     pub(crate) stop: CancellationToken,
 }
 
 impl Shared {
-    /// The session a viewer asked for; or, when it named none, the only one.
-    pub(crate) fn choose(&self, asked: Asked) -> Option<Arc<Viewed>> {
+    /// What a viewer that asked for `asked` is shown.
+    pub(crate) fn choose(&self, asked: Asked) -> Choice {
         let sessions = self
             .sessions
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         match asked {
-            Asked::Session(id) => sessions.get(&id).cloned(),
-            Asked::Only if sessions.len() == 1 => sessions.values().next().cloned(),
-            Asked::Only => None,
+            Asked::Session(id) => sessions.get(&id).map_or(Choice::Missing, |viewed| {
+                Choice::Session(Arc::clone(viewed))
+            }),
+            Asked::Only if sessions.len() == 1 => sessions
+                .values()
+                .next()
+                .map_or(Choice::Hub, |viewed| Choice::Session(Arc::clone(viewed))),
+            Asked::Only => Choice::Hub,
         }
     }
+
+    /// Every session's card, in the order they were added.
+    pub(crate) async fn cards(&self) -> Vec<cena_ui::SessionCard> {
+        let sessions: Vec<(SessionId, Arc<Viewed>)> = self
+            .sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .iter()
+            .map(|(id, viewed)| (*id, Arc::clone(viewed)))
+            .collect();
+        let mut cards = Vec::with_capacity(sessions.len());
+        for (id, viewed) in sessions {
+            let hub = viewed.hub.lock().await;
+            cards.push(cena_ui::SessionCard::of(
+                id.0.to_string(),
+                viewed.name.clone(),
+                hub.view(),
+            ));
+        }
+        cards
+    }
+}
+
+/// What an authenticated viewer is shown.
+pub(crate) enum Choice {
+    /// The session it named, or the only one.
+    Session(Arc<Viewed>),
+    /// It named none and there is not exactly one: every session's card.
+    Hub,
+    /// It named a session that is not served.
+    Missing,
 }
 
 /// Which session an authenticated viewer is for.
@@ -62,10 +101,14 @@ pub(crate) enum Asked {
 /// One session as the web frontend sees it: its presentation hub, the
 /// handle its viewers' commands go through, and the stop for its pump.
 pub(crate) struct Viewed {
+    /// The character's name, for its card on the hub page.
+    pub(crate) name: String,
     pub(crate) hub: Mutex<Hub>,
     pub(crate) handle: SessionHandle,
     /// Cancelled when the session is detached, or the whole server stops.
     pub(crate) stop: CancellationToken,
+    /// The server's hub-page signal, sent after each publish.
+    pub(crate) changed: tokio::sync::broadcast::Sender<()>,
 }
 
 #[cfg(test)]
@@ -79,9 +122,11 @@ impl Viewed {
             tokio::sync::broadcast::channel(1).0,
         );
         Arc::new(Self {
+            name: String::new(),
             hub: Mutex::new(Hub::new()),
             handle,
             stop: CancellationToken::new(),
+            changed: tokio::sync::broadcast::channel(1).0,
         })
     }
 }
@@ -101,14 +146,22 @@ impl fmt::Debug for Sessions {
 }
 
 impl Sessions {
-    /// Serve `handle`'s session to viewers, and start its presentation pump.
-    /// Replaces an earlier attachment of the same session.
-    pub fn attach(&self, observer: SessionObserver, handle: SessionHandle) {
+    /// Serve `handle`'s session to viewers as `name` -- the character, for
+    /// its card on the hub page -- and start its presentation pump. Replaces
+    /// an earlier attachment of the same session.
+    pub fn attach(
+        &self,
+        name: impl Into<String>,
+        observer: SessionObserver,
+        handle: SessionHandle,
+    ) {
         let id = handle.session();
         let viewed = Arc::new(Viewed {
+            name: name.into(),
             hub: Mutex::new(Hub::new()),
             handle,
             stop: self.shared.stop.child_token(),
+            changed: self.shared.changed.clone(),
         });
         let replaced = self
             .shared
@@ -119,6 +172,7 @@ impl Sessions {
         if let Some(old) = replaced {
             old.stop.cancel();
         }
+        let _ = self.shared.changed.send(());
         // The pump's ending is this session's own: an owner gone ends this
         // pump, and its last view stays for any viewer still looking.
         tokio::spawn(pump(observer, viewed));
@@ -136,6 +190,7 @@ impl Sessions {
         if let Some(viewed) = removed {
             viewed.stop.cancel();
         }
+        let _ = self.shared.changed.send(());
     }
 }
 
@@ -161,7 +216,7 @@ impl WebServer {
     /// As [`Self::open`].
     pub async fn bind(observer: SessionObserver, handle: SessionHandle) -> io::Result<Self> {
         let server = Self::open().await?;
-        server.sessions().attach(observer, handle);
+        server.sessions().attach(String::new(), observer, handle);
         Ok(server)
     }
 
@@ -182,6 +237,7 @@ impl WebServer {
             authority,
             csp,
             sessions: std::sync::Mutex::new(BTreeMap::new()),
+            changed: tokio::sync::broadcast::channel(1).0,
             clients: Arc::new(Semaphore::new(MAX_CLIENTS)),
             stop: CancellationToken::new(),
         });

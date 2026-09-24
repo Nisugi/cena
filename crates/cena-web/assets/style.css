@@ -113,3 +113,14 @@ meter::-moz-meter-bar { background: var(--vital-color); }
 .stream-body { max-height: 160px; padding: 6px 8px; }
 /* A styled fall-through with no preset mapping of its own. */
 .text-stream-styled { color: #a9bbf5; }
+/* The hub page (plan/29 step 5b): one card per character, each a link to its page. */
+.hub-mode .hands-strip, .hub-mode .workspace, .hub-mode .vitals-strip { display: none; }
+.hub { flex: 1; padding: 12px; overflow: auto; }
+.hub h2 { margin: 0 0 10px; color: var(--amber); font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; }
+.hub-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.hub-card { padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+.hub-card a { color: #f0eee8; font-weight: 600; text-decoration: none; }
+.hub-card a:hover { color: #f0c674; }
+.hub-status { float: right; color: var(--muted); font-size: .75rem; }
+.hub-summary { margin: 6px 0 0; color: var(--text); font-family: var(--font-text); font-size: .75rem; overflow-wrap: anywhere; }
+

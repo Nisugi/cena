@@ -55,6 +55,16 @@ export function lifecycleText(lifecycle) {
   return `Game reconnecting${attempt}${delay}${lifecycle.detail ? ` — ${lifecycle.detail}` : ""}`;
 }
 
+// One line of a hub card: vitals as percents, roundtime while it runs, the room.
+export function cardSummary(card) {
+  const vital = (key, label) => `${label} ${card.vitals[key] == null ? "?" : `${card.vitals[key].percent}%`}`;
+  const parts = [vital("health", "HP"), vital("mana", "MP"), vital("stamina", "SP"), vital("spirit", "Sp")];
+  const remaining = card.roundtime.remaining_seconds;
+  if (remaining != null && remaining > 0) parts.push(`RT ${remaining}s`);
+  if (card.room) parts.push(card.room);
+  return parts.join(" · ");
+}
+
 export function mount(document, environment) {
   // Read before the token: taking the token removes the whole fragment.
   const sessionId = launchSession(environment.location);
@@ -244,7 +254,40 @@ export function mount(document, environment) {
       : `${Math.ceil(Math.max(0, remaining - (environment.performance.now() - roundtimeReceivedAt) / 1000))}s`);
   }
 
+  // The hub page: a card per character, each linking to its own page. Opened
+  // in a new tab so the hub stays up; the link carries the pairing token, as
+  // the link Hydra printed does.
+  function renderHub(cards) {
+    const list = element("hub-list");
+    list.replaceChildren();
+    for (const card of cards) {
+      const item = document.createElement("li");
+      item.className = "hub-card";
+      const link = document.createElement("a");
+      link.href = `#token=${session.token}&session=${card.session}`;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = card.name || `Session ${card.session}`;
+      const status = document.createElement("span");
+      status.className = "hub-status";
+      status.textContent = lifecycleText(card.lifecycle);
+      const summary = document.createElement("p");
+      summary.className = "hub-summary";
+      summary.textContent = cardSummary(card);
+      item.append(link, status, summary);
+      list.appendChild(item);
+    }
+    element("hub-empty").hidden = cards.length > 0;
+  }
+
   function render(state, ready) {
+    element("hub").hidden = state.hub === null;
+    element("shell").classList.toggle("hub-mode", state.hub !== null);
+    if (state.hub !== null) {
+      text("connection-status", "Characters");
+      renderHub(state.hub);
+      return;
+    }
     const view = state.view;
     if (currentView !== view) roundtimeReceivedAt = environment.performance.now();
     currentView = view;

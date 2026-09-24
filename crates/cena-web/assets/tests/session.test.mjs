@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { HydraSession, MAX_STORY_LINES, commandError, launchSession, takeLaunchToken } from "../session.js";
-import { lifecycleText, mount, placeLine } from "../app.js";
+import { cardSummary, lifecycleText, mount, placeLine } from "../app.js";
 
 // Shared synthetic contract fixture, also round-tripped by Rust cena-ui tests.
 export const fixture = () => JSON.parse(readFileSync(new URL("../../../cena-ui/tests/fixtures/snapshot-v1.json", import.meta.url)));
@@ -406,7 +406,13 @@ class FakeNode {
   constructor(tag) {
     this.tagName = tag; this.children = []; this.parent = null; this.own = "";
     this.classes = []; this.listeners = {}; this.scrollTop = 0; this.clientHeight = 100; this.hidden = false;
-    this.classList = { add: (...names) => this.classes.push(...names) };
+    this.classList = {
+      add: (...names) => this.classes.push(...names),
+      toggle: (name, on) => {
+        this.classes = this.classes.filter((c) => c !== name);
+        if (on) this.classes.push(name);
+      },
+    };
   }
   get scrollHeight() { return this.children.length * 20; }
   get firstChild() { return this.children[0] ?? null; }
@@ -497,4 +503,47 @@ test("a stream pane keeps the reader's place when its own lines have not changed
   body.scrollTop = body.scrollHeight; // back at the bottom: follow new text
   next([said("spoken 31", "speech")]);
   assert.equal(body.scrollTop, body.scrollHeight);
+});
+
+// plan/29 step 5b: the hub page.
+const card = (session, name, health = null) => ({
+  session, name, lifecycle: { kind: "ready" }, room: "Town Square",
+  vitals: { health: health === null ? null : { percent: health, current: null, max: null },
+    mana: null, stamina: null, spirit: null },
+  roundtime: { ends_at: null, remaining_seconds: 3 },
+});
+
+test("the hub lists every character, each linking to its own page", () => {
+  const { session, socket, element } = page();
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi", 80), card("1", "Nerten")] });
+  assert.equal(session.state.connection, "hub");
+  assert.equal(element("hub").hidden, false);
+  assert.ok(element("shell").classes.includes("hub-mode"), "the one-character panes are hidden");
+  const cards = element("hub-list").children;
+  assert.equal(cards.length, 2);
+  const link = cards[1].children[0];
+  assert.equal(link.textContent, "Nerten");
+  assert.equal(link.href, "#token=synthetic-token&session=1");
+  assert.equal(link.target, "_blank");
+  assert.match(cards[0].children[2].textContent, /HP 80%/);
+  // A later list replaces the earlier one whole.
+  socket.message({ kind: "sessions", version: 1, sessions: [card("0", "Nisugi")] });
+  assert.equal(element("hub-list").children.length, 1);
+});
+
+test("a card says what is unknown, and shows roundtime only while it runs", () => {
+  assert.equal(cardSummary(card("0", "Nisugi", 55)), "HP 55% · MP ? · SP ? · Sp ? · RT 3s · Town Square");
+  const idle = card("0", "Nisugi");
+  idle.roundtime.remaining_seconds = 0;
+  idle.room = null;
+  assert.equal(cardSummary(idle), "HP ? · MP ? · SP ? · Sp ?");
+});
+
+test("a malformed session list is a protocol error, not a partial hub", () => {
+  const { session, socket } = page();
+  const bad = card("0", "Nisugi");
+  bad.session = "07";
+  socket.message({ kind: "sessions", version: 1, sessions: [bad] });
+  assert.equal(session.state.hub, null);
+  assert.equal(session.state.connection, "protocol-error");
 });

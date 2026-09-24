@@ -105,6 +105,8 @@ where
     {
         return Err(std::io::Error::other("Presentation sequence exhausted"));
     }
+    // The hub page's cards are read from this view (`socket::serve_hub`).
+    let _ = shared.changed.send(());
     let mut terminal = initial.lifecycle == State::Closed;
     let mut dirty = false;
     let mut ticking = initial.state.in_roundtime() == Some(true);
@@ -151,6 +153,7 @@ where
         {
             return Err(std::io::Error::other("Presentation sequence exhausted"));
         }
+        let _ = shared.changed.send(());
         dirty = false;
         ticking = snapshot.state.in_roundtime() == Some(true);
         terminal = snapshot.lifecycle == State::Closed;

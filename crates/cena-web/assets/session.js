@@ -72,6 +72,16 @@ function validView(view) {
     && typeof tag.name === "string" && typeof tag.raw === "string" && typeof tag.truncated === "boolean");
 }
 
+// A hub card (plan/29 step 5b): one character at a glance.
+const LIFECYCLES = ["connecting", "ready", "reconnecting", "closed"];
+function validCard(card) {
+  return card && decimal(card.session) && typeof card.name === "string"
+    && card.lifecycle && LIFECYCLES.includes(card.lifecycle.kind)
+    && card.vitals && typeof card.vitals === "object"
+    && card.roundtime && typeof card.roundtime === "object"
+    && (card.room === null || typeof card.room === "string");
+}
+
 export class HydraSession {
   constructor({ url, token, sessionId = null, onChange, WebSocketImpl = WebSocket,
     schedule = setTimeout, cancel = clearTimeout }) {
@@ -97,8 +107,10 @@ export class HydraSession {
     this.untouched = true;
     // An upper bound on where the last reported hole sits in the Story.
     this.linesBeforeGap = 0;
+    // `hub`: the character cards, when this page is the hub rather than one
+    // character's page; null otherwise.
     this.state = { connection: "idle", view: null, story: [], session: null,
-      generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…" };
+      generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…", hub: null };
   }
 
   get ready() {
@@ -136,6 +148,7 @@ export class HydraSession {
     this.state.cursor = null;
     this.state.session = null;
     this.state.generation = null;
+    this.state.hub = null;
     this.emit();
     let socket;
     try { socket = new this.WebSocketImpl(this.url); }
@@ -192,6 +205,17 @@ export class HydraSession {
   }
 
   receive(message) {
+    // The hub page: every character's card, replacing the last list whole.
+    if (message && message.kind === "sessions") {
+      if (message.version !== 1 || !Array.isArray(message.sessions) || !message.sessions.every(validCard)) {
+        throw new Error("Invalid session list");
+      }
+      this.state.hub = message.sessions;
+      this.state.connection = "hub";
+      this.state.commandStatus = "Choose a character to play.";
+      this.emit();
+      return;
+    }
     if (!message || message.version !== 1 || !decimal(message.session) || !decimal(message.generation)) {
       throw new Error("Invalid envelope");
     }
