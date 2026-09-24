@@ -71,7 +71,9 @@ fn state(second: u32, room: &str) -> GameState {
     state
 }
 
-/// A creature in the room, with these `<crtrStatus>` attributes.
+/// A creature in the room, with these `<crtrStatus>` attributes, hostile
+/// unless the attributes say otherwise (a status without `hostile="1"` is
+/// a companion's, `hunt_replay.rs`).
 #[expect(
     clippy::default_trait_access,
     reason = "the run's style type is not re-exported for behaviors; only its bold depth matters"
@@ -119,6 +121,9 @@ fn creature(state: &mut GameState, id: i64, noun: &str, attrs: &[(&str, &str)]) 
         .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
         .collect();
     attrs.insert(0, ("exist".to_owned(), id.to_string()));
+    if !attrs.iter().any(|(k, _)| k == "hostile") {
+        attrs.push(("hostile".to_owned(), "1".to_owned()));
+    }
     state.apply(&Frame::CreatureStatus {
         id: id.to_string(),
         attrs,

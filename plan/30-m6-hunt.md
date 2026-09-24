@@ -527,11 +527,17 @@ Demonstrated live on a short hunt.
 >   where bigshot loots the first corpse at once and Nisugi's log has the search two seconds
 >   after the kill with the engineer standing. With those fixed, the engine says `fire`
 >   where Nisugi fired, `loot` at the prompt after `drops dead`, then `target`, the stance,
->   and Camouflage in bigshot's order.
+>   and Camouflage in bigshot's order. **A third window from a health-era log the author
+>   named next** (`arch_kill.xml`, 2026-09-21, 59,250 bytes) found a fourth: the author's own
+>   battle mastodon, whose status carries health and no `hostile`, was targeted under the
+>   any-creature rule. `CreatureInstance::hostile` reads the flag once a status has been
+>   seen, and the engine leaves a creature known not to be hostile alone. On that window
+>   both kills are looted at the prompt after each fell, and routine e's guards read off
+>   real statuses (`rooted` holds `incant 611` back; 738 of 900 holds `coupdegrace` back).
 > - **Seen in the replay and left as is:** the stance setter sends the stance when the bar
 >   has never been seen (the first prompts of a cut), which a live session's login burst
 >   makes moot; `hidden` unknown holds every guarded step (`Wait(1)`) until the game says.
-> - MEASURED: 35 hunt tests in `cena-behavior` (`hunt_engine` 11, `hunt_replay` 4,
+> - MEASURED: 37 hunt tests in `cena-behavior` (`hunt_engine` 11, `hunt_replay` 6,
 >   `hunt_guard` 7, `hunt_profile` 9, `hunt_import` 4), plus the `yaml` and `command` unit
 >   tests.
 >

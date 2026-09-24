@@ -57,6 +57,10 @@ const PSEUDONYMS: &[(&str, &str)] = &[
     ("Nisugi", "Ashryn"),
     // The author's second character, from the `--psm` capture.
     ("Nerten", "Baelor"),
+    // A player passing through the Runed Arch in
+    // `cena-behavior/tests/fixtures/arch_kill.xml`, from
+    // `GSIV-Nisugi/2026/09/2026-09-21_21-49-41.xml:2798`.
+    ("Edrys", "Lorwyn"),
 ];
 
 /// Substrings that must not appear in any committed fixture.
@@ -84,15 +88,25 @@ fn fixture_dir() -> PathBuf {
         .join("fixtures")
 }
 
+/// `cena-behavior`'s wire fixtures, the hunt replays: the same kind of
+/// cut from the same archive, scanned here because this test is where the
+/// pseudonym table lives.
+fn behavior_fixture_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("cena-behavior")
+        .join("tests")
+        .join("fixtures")
+}
+
 fn fixture_files() -> Vec<PathBuf> {
-    let dir = fixture_dir();
-    let Ok(entries) = fs::read_dir(&dir) else {
-        return Vec::new();
-    };
-    let mut out: Vec<PathBuf> = entries
+    let mut out: Vec<PathBuf> = [fixture_dir(), behavior_fixture_dir()]
+        .iter()
+        .filter_map(|dir| fs::read_dir(dir).ok())
+        .flatten()
         .filter_map(Result::ok)
         .map(|e| e.path())
-        .filter(|p| p.is_file())
+        .filter(|p| p.is_file() && p.extension().is_some_and(|x| x == "xml"))
         .collect();
     out.sort();
     out
@@ -192,9 +206,15 @@ fn no_fixture_has_carriage_returns_or_is_empty() {
 fn every_fixture_stays_under_the_size_budget() {
     // Corpus findings: "keep each committed fixture under ~10 KB". A golden
     // that grows into a log is no longer a golden anybody reads.
+    // The budget is a golden's: `cena-behavior`'s replays are minutes of a
+    // hunt by design (`hunt_replay.rs` records each one's size), so only this
+    // crate's own fixtures are held to it.
     const BUDGET: usize = 10 * 1024;
     let mut violations = Vec::new();
-    for path in fixture_files() {
+    for path in fixture_files()
+        .into_iter()
+        .filter(|path| path.starts_with(fixture_dir()))
+    {
         let Ok(meta) = fs::metadata(&path) else {
             continue;
         };

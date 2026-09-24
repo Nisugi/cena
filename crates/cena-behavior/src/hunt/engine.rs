@@ -644,14 +644,16 @@ impl Hunt {
         })
     }
 
-    /// The creatures here worth attacking: alive, not an animate or a bare
-    /// appendage, not ignored, and named by the target list.
+    /// The creatures here worth attacking: alive, not known to be
+    /// unhostile (a companion), not an animate or a bare appendage, not
+    /// ignored, and named by the target list.
     fn fightable<'a>(
         &'a self,
         state: &'a GameState,
     ) -> impl Iterator<Item = &'a cena_session::CreatureInstance> + 'a {
         state.creatures().in_room().filter(move |creature| {
             creature.valid_target()
+                && creature.hostile() != Some(false)
                 && !self
                     .profile
                     .ignore

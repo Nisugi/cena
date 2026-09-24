@@ -27,6 +27,10 @@ const PSEUDONYMS: &[(&str, &str)] = &[
     ("Berean", "Kelmond"),
     ("Nisugi", "Ashryn"),
     ("Nerten", "Baelor"),
+    // A player passing through the Runed Arch in
+    // `cena-behavior/tests/fixtures/arch_kill.xml`, from
+    // `GSIV-Nisugi/2026/09/2026-09-21_21-49-41.xml:2798`.
+    ("Edrys", "Lorwyn"),
 ];
 
 fn main() -> std::io::Result<()> {

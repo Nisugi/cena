@@ -22,20 +22,32 @@
 //!    Nisugi's client searched the corpse two seconds after the kill with
 //!    the engineer standing there.
 //!
+//! The author then named a newer log, from after the server began sending
+//! `health=` on every hostile creature's status, and its replay found a
+//! fourth:
+//!
+//! 4. **The author's own battle mastodon was targeted.** Its status carries
+//!    health and nothing else, and the `(?:.+?)` any-creature rule took it.
+//!    [`CreatureInstance::hostile`] now reads the flag once a status has
+//!    been seen, and the engine leaves a creature known not to be hostile
+//!    alone.
+//!
 //! # Provenance
 //!
-//! Both fixtures are cut from `C:\Gemstone\lich-5\logs\GSIV-Nisugi\2026\09\
-//! 2026-09-13_14-51-55.xml`, a log the author named for this purpose on
-//! 2026-09-24 (the Ojandhaart village, so the *"nothing from hinterwilds"*
-//! condition was lifted by the author for it). Raw wire, no Lich line
-//! prefixes, no `vellumImg`; passed through `cena_protocol::scrub::Scrubber`
-//! (`cargo run -p cena-protocol --example scrub_fixture -- <path>`), which
-//! changed nothing: no player name occurs in either.
+//! All three fixtures are cut from logs the author named for this purpose
+//! on 2026-09-24 (the Ojandhaart village, so the *"nothing from
+//! hinterwilds"* condition was lifted by the author for them). Raw wire, no
+//! Lich line prefixes, no `vellumImg`; passed through
+//! `cena_protocol::scrub::Scrubber` (`cargo run -p cena-protocol --example
+//! scrub_fixture -- <path>`), which pseudonymised one passing player in the
+//! third and changed nothing in the first two.
+//! `cena-protocol/tests/fixtures_are_scrubbed.rs` scans them with its own.
 //!
-//! | Fixture | Lines of the source | Bytes | What it holds |
-//! |---|---|---|---|
-//! | `smithy_engage.xml` | 574-872 | 59,220 | arriving at the Smithy, a goliath diviner already targeted, Tangleweed and Camouflage cast, three shots, the diviner riding off, the sign casts between fights |
-//! | `smithy_kill.xml` | 873-1150 | 70,502 | inside the smithy: a pegasus fought and dropped dead, searched, the engineer taken up next |
+//! | Fixture | Source (`C:\Gemstone\lich-5\logs\GSIV-Nisugi\2026\09\`) | Lines | Bytes | What it holds |
+//! |---|---|---|---|---|
+//! | `smithy_engage.xml` | `2026-09-13_14-51-55.xml` | 574-872 | 59,220 | arriving at the Smithy, a goliath diviner already targeted, Tangleweed and Camouflage cast, three shots, the diviner riding off, the sign casts between fights |
+//! | `smithy_kill.xml` | `2026-09-13_14-51-55.xml` | 873-1150 | 70,502 | inside the smithy: a pegasus fought and dropped dead, searched, the engineer taken up next |
+//! | `arch_kill.xml` | `2026-09-21_21-49-41.xml` | 2700-3048 | 59,250 | the health era: a mastodon and a shield-maiden killed at the Runed Arch with health on every status, the author's own mastodon beside them, a player passing through |
 //!
 //! The cut starts on a room, so the state starts empty: the first prompts
 //! of each fixture are ticked before the buffs, the stance and the room's
@@ -43,6 +55,7 @@
 //! The assertions below say so where it matters.
 //!
 //! [`CreatureInstance::dead`]: cena_session::CreatureInstance::dead
+//! [`CreatureInstance::hostile`]: cena_session::CreatureInstance::hostile
 
 use cena_behavior::hunt::{Here, Hunt, Profile, Said, import};
 use cena_platform::ReplaySource;
@@ -64,6 +77,15 @@ const DIVINER_GONE: u32 = 1_789_329_145;
 const PEGASUS_DEAD: u32 = 1_789_329_159;
 /// The game second at which the dropdown first showed the engineer.
 const ENGINEER_TARGETED: u32 = 1_789_329_162;
+
+/// `arch_kill.xml`: the battle mastodon and the shield-maiden Nisugi
+/// killed, and Nisugi's own battle mastodon, which fought beside them.
+const BATTLE_MASTODON: i64 = 407_474_348;
+const SHIELD_MAIDEN: i64 = 407_446_374;
+const OWN_MASTODON: i64 = 407_520_392;
+/// The game seconds of the prompts after each death's `dead="1"`.
+const MASTODON_DEAD: u32 = 1_790_045_828;
+const SHIELD_MAIDEN_DEAD: u32 = 1_790_045_834;
 
 fn fixture(name: &str) -> std::io::Result<Vec<u8>> {
     std::fs::read(format!(
@@ -304,5 +326,71 @@ async fn after_the_kill_the_engineer_is_taken_up_in_bigshots_order() {
     assert!(
         stance.at(ENGINEER_TARGETED) && stance.hidden == Some(false),
         "{stance:?}"
+    );
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn in_the_health_era_both_corpses_are_looted_and_the_companion_is_left_alone() {
+    let mut hunt = Hunt::new(ojandhaart().unwrap(), 1);
+    let ticks = replay(&fixture("arch_kill.xml").unwrap(), &mut hunt)
+        .await
+        .unwrap();
+    assert_eq!(ticks.len(), 30, "one tick per prompt in the cut");
+    for (corpse, when) in [
+        (BATTLE_MASTODON, MASTODON_DEAD),
+        (SHIELD_MAIDEN, SHIELD_MAIDEN_DEAD),
+    ] {
+        let loot = format!("loot #{corpse}");
+        let looted: Vec<&Tick> = ticks
+            .iter()
+            .filter(|tick| tick.line() == Some(&loot))
+            .collect();
+        // Here `dead="1"` comes with `health="-N"`: both readings of a
+        // corpse agree, and it is looted at the prompt after it fell.
+        assert_eq!(looted.len(), 1, "{loot} once: {looted:?}");
+        assert!(
+            looted[0].at(when),
+            "{loot} at the prompt after the death: {:?}",
+            looted[0]
+        );
+    }
+    // Nisugi's own mastodon has a status with health and no `hostile`, and
+    // the profile's last target rule is any creature. Before the fix the
+    // engine said `target #407520392` six times.
+    let own = format!("#{OWN_MASTODON}");
+    assert!(
+        ticks
+            .iter()
+            .all(|tick| !tick.line().is_some_and(|line| line.contains(&own))),
+        "the companion was targeted or looted"
+    );
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_shield_maiden_gets_routine_e_with_its_guards_read_off_real_statuses() {
+    let mut hunt = Hunt::new(ojandhaart().unwrap(), 1);
+    let ticks = replay(&fixture("arch_kill.xml").unwrap(), &mut hunt)
+        .await
+        .unwrap();
+    let after_mastodon = ticks
+        .iter()
+        .filter(|tick| tick.now.is_some_and(|now| now > MASTODON_DEAD));
+    // Routine e: kweed while Tangleweed Vigor is about to lapse (it had
+    // over a minute), volley (unwritten), coupdegrace at 20% health (she
+    // stood at 738 of 900), `incant 611` unless immobilized (her status
+    // read `rooted`), then fire. So: target her, the hunting stance, fire
+    // until she falls, loot, and the three signs in no list once the room
+    // holds nothing to fight.
+    assert_eq!(
+        distinct_lines(after_mastodon),
+        [
+            format!("target #{SHIELD_MAIDEN}"),
+            "stance offensive".to_owned(),
+            "fire".to_owned(),
+            format!("loot #{SHIELD_MAIDEN}"),
+            "incant 9708".to_owned(),
+            "incant 9715".to_owned(),
+            "incant 9711".to_owned(),
+        ]
     );
 }
