@@ -1,6 +1,9 @@
 # 31 — The Loot behavior: eloot, measured and ordered
 
-**Status: PROPOSED 2026-09-24.** Claude's staging of M6c (`plan/30` §7: *"M6c — eloot. Its
+**Status: Stage 1 BUILT 2026-09-24** (`crates/cena-behavior/src/loot/`: profile, importer,
+worth, outcome, planner; 24 tests in `tests/loot_*.rs`, Nisugi's `eloot.yaml` importing
+whole with no notes). Stage 2, the driver, is next. The author's answers to §7 are recorded
+there and folded into §4 and §6. Claude's staging of M6c (`plan/30` §7: *"M6c — eloot. Its
 port plan first (`plan/31`), then the halves a hunt calls: loot, sort, box in hand. Town
 errands follow in the same plan's order."*). The author's rule that makes eloot part of M6 is
 `plan/30`'s: *"We need to make sure we have eloot and eherbs too, not just eohunter."* A hunt
@@ -8,7 +11,7 @@ that cannot loot fills its hands and pack and rests on encumbrance.
 
 This document orders the port the way `plan/24` ordered go2: what exists, what the script
 does when a hunt calls it, which halves are the hunt's and which are town errands, and the
-stages, each ending in something that runs and is tested. Nothing here is built.
+stages, each ending in something that runs and is tested.
 
 ## 0. Measured
 
@@ -165,8 +168,12 @@ taught, is `None`, and the planner holds rather than guesses (`plan/30` §3's ru
   to keep across corpses and rooms.
 - The hunt engine's Loot arm says `Said::Loot` and the hunt driver runs it as it runs a walk;
   `loot.script` unset keeps today's `loot #id`.
-- The session memory of full bags becomes a **Rest reason** (`Why::Full`) when every bag is
-  full and there is no disk, in place of eloot's pause.
+- The disk as a container (`use_disk`: `wait_for_disk`, `disk_usage`, and the disk's own
+  full state), here rather than in Stage 3 (author, Q2).
+- The session memory of full bags becomes a **Rest reason** (`Why::Full`, *"too much
+  loot"*) when every bag and the disk are full, in place of eloot's pause; a box left in
+  hand that no bag will take is the same reason (author, Q3: *"we don't want to drop it, so
+  we head in to rest"*).
 - Replay fixture: a cut with a search whose reply names an item at your feet, and one with
   `loot room` taking everything. Both exist in Nisugi's 21 September log (116 searches); cut
   when the stage is reached and named by line.
@@ -177,16 +184,18 @@ taught, is `None`, and the planner holds rather than guesses (`plan/30` §3's ru
   (bigshot `:2013`: *"force resting mode if box is left in your hand after looting"*) is a
   Rest reason when a box stays in hand because the box bag is full.
 - Bags dropped by critters (`bag_loot`, `:4980-5025`) and the three uncommon items.
-- The disk as a container (`use_disk`): `wait_for_disk`, and the disk's own full state.
 - Sigil of Determination on `not in any condition`.
 - Skinning stays out until a profile turns it on (Nisugi's does not).
 
-### Stage 4 — town, in eloot's order (`plan/30`: *"Town errands follow"*)
+### Stage 4 — selling, during the rest (author, Q1)
 
-Sell (1,943 lines), Hoard (840), Region (65), silver and notes: each a trip with `travel`
-first and verbs at the counter. They come after M6d, because a hunt that cannot heal cannot
-stop resting either, and they bring `plan/20` §0b's sending halves of stash and bank with
-them. Not staged further here; §5 tables what they are so they are not forgotten.
+*"Sells typically happen during the rest, one reason that triggers the rest is too much
+loot."* So Sell is not a separate errand but a step of the Rest phase: on arriving at the
+resting room with loot to sell, the trip to each shop and back is a walk inside the rest,
+before the rest commands. Sell (1,943 lines), Hoard (840), Region (65), silver and notes come
+after M6d, because a hunt that cannot heal cannot stop resting either, and they bring
+`plan/20` §0b's sending halves of stash and bank with them. Not staged further here; §5
+tables what they are so they are not forgotten.
 
 ## 5. Out of the hunt's share, tabled
 
@@ -202,9 +211,12 @@ them. Not staged further here; §5 tables what they are so they are not forgotte
 
 ## 6. The loot profile
 
-Per character, like eloot's: `<data>/hunt/loot/<instance>_<character>.toml`, imported from
-`eloot.yaml` by `;hunt import-loot <path>`, with the hunt profile's `loot.script = "eloot"`
-meaning *use it*. Proposed shape, the keys carried named for what they do:
+Per character, like eloot's (author, Q4: *"the eloot settings profile is per character
+yes"*): `<data>/hunt/loot/<instance>_<character>.toml`, imported from `eloot.yaml` by
+`;hunt import-loot <path>`. There is no choice of looter (author: *"eloot is it by
+default"*), so the hunt profile's `loot.script` key is carried from bigshot for the record
+and decides nothing: a hunt loots with this profile when the character has one, and with
+`loot #id` alone when not. Shape, the keys carried named for what they do:
 
 ```toml
 take = ["alchemy", "armor", "box", "breakable", "clothing", "collectible", "food", "gem",
@@ -221,13 +233,13 @@ overflow = []
 The `sell_*`, `locksmith_*` and hoarding keys import as a `[town]` table carried verbatim
 for Stage 4, and `;hunt check` says so.
 
-## 7. Questions for the author
+## 7. Questions for the author — answered 2026-09-24
 
-1. **When does a hunt sell?** bigshot never runs `;eloot sell`; the author does, by hand. Does
-   Hydra's hunt need a trigger (bags full, N kills, before resting) or is selling a command
-   the player types, as today?
-2. **The disk in M6c.** Nisugi's profile uses it. Stage 3 as written; is it wanted in Stage 2
-   instead, since a full bag with no disk means resting?
-3. **`box_in_hand` as a Rest reason** is my reading of bigshot's tooltip. Right?
-4. **The loot profile per character, not per hunt profile.** eloot's is per character; the
-   hunt profile's `loot.script` only turns it on. Keep that split?
+1. **When does a hunt sell?** *"Sells typically happen during the rest, one reason that
+   triggers the rest as you mention is too much loot."* Stage 4 is a step of the rest.
+2. **The disk in M6c.** *"Yes"*: Stage 2.
+3. **`box_in_hand` as a Rest reason.** *"Yes, if eloot leaves you with a box in hand it can't
+   do anything with, we don't want to drop it, so we head in to rest."*
+4. **The loot profile per character.** *"There's only one option for a looting script here so
+   eloot is it by default. I mean we don't have scripts ... but the eloot settings profile is
+   per character yes."* One looter, its profile per character.

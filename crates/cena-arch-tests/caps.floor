@@ -50,3 +50,7 @@ crates/cena-web/src/presentation.rs 250
 # parser: M6a step 4). It holds the module docs and the re-exports, 49 lines,
 # so its cap is the rule above: 49 + 50, rounded up to the next 50.
 crates/cena-behavior/src/hunt.rs 100
+# NEW SPLIT PARENT, 2026-09-24. crates/cena-behavior/src/loot.rs is the facade
+# over loot/ (the profile, importer, worth, outcome and planner: plan/31
+# Stage 1), on the same terms as hunt.rs.
+crates/cena-behavior/src/loot.rs 100

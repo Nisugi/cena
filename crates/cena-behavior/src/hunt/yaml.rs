@@ -13,6 +13,14 @@
 //! would read it too, and every other YAML document, which no profile is;
 //! the simplest thing that works is this (`plan/05` §-1).
 //!
+//! # Block lists, for eloot
+//!
+//! eloot's `eloot.yaml` (`plan/31` §6) is the same dump with two more
+//! shapes: keys that are Ruby symbols (`:loot_types:`, kept verbatim) and
+//! **block lists**, a key with nothing after the colon and `- item` lines
+//! beneath it at the same indentation. A block list becomes its items
+//! joined with newlines, so a caller splits on `\n`.
+//!
 //! # What a value becomes
 //!
 //! Text, always. Quotes come off, `''` inside single quotes is one `'`, the
@@ -49,6 +57,10 @@ pub fn read(text: &str) -> Result<BTreeMap<String, String>, String> {
             let (text, next) = block(&lines, i);
             i = next;
             text
+        } else if rest.is_empty() && lines.get(i).is_some_and(|next| next.starts_with("- ")) {
+            let (items, next) = list(&lines, i);
+            i = next;
+            items
         } else {
             let (text, next) = folded(rest, &lines, i);
             i = next;
@@ -59,15 +71,32 @@ pub fn read(text: &str) -> Result<BTreeMap<String, String>, String> {
     Ok(out)
 }
 
-/// `key: value` split at the first colon. The key has no spaces and the
-/// colon is followed by a space or the end of the line.
+/// `key: value` split at the first colon, or at the second when the key is
+/// a Ruby symbol (`:loot_types:`, eloot's files). The key has no spaces and
+/// the colon is followed by a space or the end of the line.
 fn split_key(line: &str) -> Option<(&str, &str)> {
-    let (key, rest) = line.split_once(':')?;
+    let skip = usize::from(line.starts_with(':'));
+    let at = line.get(skip..)?.find(':')? + skip;
+    let (key, rest) = (line.get(..at)?, line.get(at + 1..)?);
     let key = key.trim();
     let well_formed = !key.is_empty()
         && !key.contains(char::is_whitespace)
         && (rest.is_empty() || rest.starts_with(' '));
     well_formed.then(|| (key, rest.trim()))
+}
+
+/// The `- item` lines of a block list, unquoted and joined with newlines.
+/// Returns the text and the next line to read.
+fn list(lines: &[&str], mut i: usize) -> (String, usize) {
+    let mut items: Vec<String> = Vec::new();
+    while let Some(line) = lines.get(i) {
+        let Some(item) = line.strip_prefix("- ") else {
+            break;
+        };
+        items.push(unquote(item.trim()));
+        i += 1;
+    }
+    (items.join("\n"), i)
 }
 
 /// A literal or folded block indicator.
@@ -182,6 +211,18 @@ mod tests {
             "bleeding? || Char.percent_health <= 60 || !Injured.able_to_cast?",
             "a folded plain scalar"
         );
+    }
+
+    #[test]
+    fn eloots_block_lists_and_symbol_keys() {
+        let text = "---\n:loot_types:\n- gem\n- 'lm trap'\n:loot_exclude: []\n:use_disk: true\n";
+        let read = read(text).unwrap();
+        assert_eq!(
+            read[":loot_types"], "gem\nlm trap",
+            "items joined with newlines, quotes off"
+        );
+        assert_eq!(read[":loot_exclude"], "");
+        assert_eq!(read[":use_disk"], "true");
     }
 
     #[test]
