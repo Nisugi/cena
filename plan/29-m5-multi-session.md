@@ -289,7 +289,22 @@ The author on whether an open page should count as attendance: *"I don't think o
 enough, maybe it could be an advanced option."* **Deferred** to the settings taxonomy
 (`28` §7f): an opt-in that lets an attached viewer count as attended. Not built.
 
-## 6. Acceptance (proposed)
+## 6. Acceptance
+
+> **ACCEPTED LIVE, 2026-09-24, author present**, pending only fresh CI on the merged result.
+> Two characters on two accounts, Nisugi and Dicate, in one Hydra with `--character ...
+> --web`. The author confirmed: the hub opens and lists both with live vitals and room; each
+> character's page takes only its own commands; the merged panel shows a shared line once,
+> tagged with both; a phone login knocking one off leaves the other untouched and the hub
+> follows the reconnect; quitting both from the hub leaves the hub up, and both start again
+> from it with no password prompt; refreshing the hub or a page keeps where it was; Ctrl-C
+> quits both cleanly.
+>
+> Four defects were found by the live runs and fixed before acceptance, each with a test:
+> the hub's link was not printed on its own (`d67bab4`); a refresh lost its pairing and a
+> login's lines were untagged (`f140544`); a quit hung on its log flush and blocked the
+> hub's next request, and the hub's link became a character's page with one left
+> (`67e5745`); quitting the last character from the hub shut Hydra down (`6039f68`).
 
 - The isolation tests pass, and each has a recorded mutation that turns it red.
 - Two real characters on two accounts run at once in one Hydra, with the author present:
