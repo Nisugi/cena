@@ -52,6 +52,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 
+pub mod expr;
 pub mod extras;
 
 pub use extras::{Cost, Extras, Shape, Span};

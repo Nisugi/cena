@@ -82,6 +82,7 @@ pub mod resolve;
 mod ring;
 mod room;
 pub mod societies;
+mod spell_time;
 pub mod stream_windows;
 pub mod streams;
 pub mod targeting;

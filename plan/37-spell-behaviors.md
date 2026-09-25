@@ -58,6 +58,13 @@ extractor is not rebuilt: the table it made is committed and correct for what it
 
 ### Stage 2 — durations and costs, evaluated for a character
 
+**BUILT 2026-09-25.** `cena-model/src/spells/expr.rs` (the evaluator, names resolved by the
+caller) and `cena-model/src/state/spell_time.rs` (`GameState::spell_minutes`,
+`spell_cost`, `evaluate`: circle ranks by printed name, skills by Lich's key or short form,
+the level from its label, society rank, `Spell[N].known?`, `.active?`, `.timeleft`).
+MEASURED: all 120 derived durations evaluate; the table's 40 unknown ones (Spellsong,
+`CMan`, scrollback) stay `None`. Tested in `cena-model/tests/spell_expr.rs`.
+
 A small evaluator over the measured vocabulary: numbers, `+ - * /`, parentheses, comparison,
 `?:`, `if/elsif/else` of one line, `.to_i`/`.to_f`/`.min`/`.max`, and the facts the model has
 (circle ranks, skills, level, society rank, known spells, what is active). `None` for anything
