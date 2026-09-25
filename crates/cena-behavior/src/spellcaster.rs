@@ -11,9 +11,12 @@
 //! `stance` takes the offensive stance for what the table marks as wanting
 //! it.
 //!
-//! Here it is `;sc 401 bob 3`: Hydra's command line claims only lines with
-//! its symbol, so catching a bare `401` is the author's call (`plan/37`
-//! Stage 6).
+//! Here it is `;sc 401 bob 3`, and, with the `typed` switch on (the
+//! default), a bare `401 bob 3` or `boom bob` as spellcaster takes it
+//! (`SPELL_RX`, `ALIAS_RX`, `:43-44`; author, 2026-09-25: *"I don't want to
+//! have to type ;sc to cast a spell with just the number"*). Every switch is
+//! the player's, on or off: `;sc set typed off` gives the game its numbers
+//! back.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -36,7 +39,7 @@ const STANCES: &[&str] = &[
 ];
 
 /// How the player set spells up (`CharSettings`, `:20-27`).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 #[expect(
     clippy::struct_excessive_bools,
@@ -57,6 +60,45 @@ pub struct CasterProfile {
     pub safety: bool,
     /// Take the offensive stance for what the table marks as wanting it.
     pub stance_all: bool,
+    /// Cast a typed `401` or alias with no `;sc` before it ([`typed`]).
+    pub typed: bool,
+}
+
+impl Default for CasterProfile {
+    /// Everything empty and off, but `typed`: spellcaster exists to catch
+    /// what is typed.
+    fn default() -> Self {
+        Self {
+            alias: BTreeMap::new(),
+            verbs: BTreeMap::new(),
+            stance: BTreeMap::new(),
+            channel: false,
+            conserve: false,
+            safety: false,
+            stance_all: false,
+            typed: true,
+        }
+    }
+}
+
+/// The words of a line typed without the command symbol, when it is a
+/// spell to cast: its first word is a spell's number (three or four
+/// digits, as `SPELL_RX` has it, and in the spell table) or one of the
+/// player's aliases. `None`: the game's line, and always so with `typed`
+/// off.
+#[must_use]
+pub fn typed(profile: &CasterProfile, line: &str) -> Option<Vec<String>> {
+    if !profile.typed {
+        return None;
+    }
+    let words: Vec<String> = line.split_whitespace().map(str::to_owned).collect();
+    let first = words.first()?;
+    let number = (3..=4).contains(&first.len())
+        && first.bytes().all(|b| b.is_ascii_digit())
+        && first
+            .parse::<u16>()
+            .is_ok_and(|n| cena_session::spells::spell(n).is_some());
+    (number || profile.alias.contains_key(&first.to_ascii_lowercase())).then_some(words)
 }
 
 impl CasterProfile {
@@ -214,7 +256,8 @@ pub fn edit(profile: &mut CasterProfile, words: &[&str]) -> Result<String, Strin
                 "conserve" => profile.conserve = on,
                 "safety" => profile.safety = on,
                 "stance" => profile.stance_all = on,
-                other => return Err(format!("no option {other}: channel, conserve, safety, stance")),
+                "typed" => profile.typed = on,
+                other => return Err(format!("no option {other}: channel, conserve, safety, stance, typed")),
             }
             Ok(format!("{option} {value}"))
         }

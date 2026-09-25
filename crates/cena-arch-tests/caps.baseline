@@ -276,3 +276,9 @@ crates/cena-behavior/src/heal.rs 100
 # spells/extras.rs joins what the table did not keep (plan/37 Stage 1). 639
 # lines at birth: the table, its reader and the cooldown landings.
 crates/cena-model/src/spells.rs 700
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/hunt/drive.rs is the
+# hunt driver (plan/30 §3); it reached 794 of 800, and its errand loops moved
+# down into drive/ as impl blocks of the same Driver, which need its private
+# fields: looting (drive/loot.rs), healing, stocking and waggling
+# (drive/errands.rs), and the selling round (drive/selling.rs). 396 lines left.
+crates/cena-behavior/src/hunt/drive.rs 450

@@ -17,11 +17,12 @@
 
 use std::io;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::commands::Commands;
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
+use cena_behavior::spellcaster::{self, CasterProfile};
 use cena_behavior::travel::Map;
 use cena_session::command::claimant::Claimed;
 use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
@@ -43,6 +44,27 @@ pub(crate) fn open(
         .zip(state.character.name.clone());
     let dir = cena_session::character_store::data_dir();
     let desk = map.map(|map| Desk::new(map, dir.clone(), AuthorityToken(3)));
+    // The spellcaster profile, held so a typed line is judged without a
+    // file read, and read again after `;sc` changes it.
+    let caster = Arc::new(Mutex::new(read_caster(&dir, who.as_ref())));
+    if let Some(desk) = desk.clone() {
+        let (handler, observer, caster) = (handle.clone(), observer.clone(), Arc::clone(&caster));
+        let took = handle.set_bare(Arc::new(move |line: &str| {
+            let words = caster
+                .lock()
+                .ok()
+                .and_then(|profile| spellcaster::typed(&profile, line));
+            words.is_some_and(|words| {
+                start(&desk, &handler, &observer, Command::Sc(words));
+                true
+            })
+        }));
+        if !took {
+            eprintln!(
+                "  !! [hunt] something already takes typed lines; a bare spell number goes to the game"
+            );
+        }
+    }
     let handler = handle.clone();
     commands.hunt(Arc::new(move |line: &str| {
         let command = match parse_command(line)? {
@@ -67,18 +89,7 @@ pub(crate) fn open(
                     ));
                     return Some(Claimed::Done);
                 };
-                let (handle, observer) = (handler.clone(), observer.clone());
-                tokio::spawn(async move {
-                    match observer.subscribe().await {
-                        Ok(joined) => {
-                            desk.run(&handle, joined, command);
-                        }
-                        Err(e) => handle.say(Notice::line(
-                            NoticeKind::Error,
-                            format!("Hunt: I could not read the session -- {e:?}."),
-                        )),
-                    }
-                });
+                start(&desk, &handler, &observer, command);
             }
             Command::Import { .. }
             | Command::ImportLoot { .. }
@@ -87,8 +98,15 @@ pub(crate) fn open(
             | Command::KeepEdit(_)
             | Command::ScEdit(_) => {
                 let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
+                let caster = Arc::clone(&caster);
                 // Files are read and written, so not on the session's own thread.
-                tokio::task::spawn_blocking(move || run(&handle, &dir, who.as_ref(), command));
+                tokio::task::spawn_blocking(move || {
+                    let sc = matches!(command, Command::ScEdit(_));
+                    run(&handle, &dir, who.as_ref(), command);
+                    if sc && let Ok(mut held) = caster.lock() {
+                        *held = read_caster(&dir, who.as_ref());
+                    }
+                });
             }
             Command::Nothing => {}
         }
@@ -97,6 +115,31 @@ pub(crate) fn open(
     eprintln!(
         "[hunt] ready: hunt <name>, hunt stop, hunt import <bigshot yaml>, hunt check <name>, hunt list"
     );
+}
+
+/// Run `command` on the hunt desk, once the session can be read.
+fn start(desk: &Arc<Desk>, handle: &SessionHandle, observer: &SessionObserver, command: Command) {
+    let (desk, handle, observer) = (desk.clone(), handle.clone(), observer.clone());
+    tokio::spawn(async move {
+        match observer.subscribe().await {
+            Ok(joined) => {
+                desk.run(&handle, joined, command);
+            }
+            Err(e) => handle.say(Notice::line(
+                NoticeKind::Error,
+                format!("Hunt: I could not read the session -- {e:?}."),
+            )),
+        }
+    });
+}
+
+/// The character's spellcaster profile, or the default when there is no
+/// file or it does not read.
+fn read_caster(dir: &Path, who: Option<&(String, String)>) -> CasterProfile {
+    who.and_then(|(i, n)| spellcaster::path(dir, i, n))
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .and_then(|text| CasterProfile::parse(&text).ok())
+        .unwrap_or_default()
 }
 
 /// What is said to the player.

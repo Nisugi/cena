@@ -1,6 +1,6 @@
 //! Spellcaster (`plan/37` Stage 6): the typed spell, cast as set up.
 
-use cena_behavior::spellcaster::{CasterProfile, edit, lines};
+use cena_behavior::spellcaster::{CasterProfile, edit, lines, typed};
 use cena_session::GameState;
 
 #[test]
@@ -57,5 +57,26 @@ fn safety_refuses_an_attack_spell_with_nothing_hostile_here() {
     assert!(
         lines(&profile, &state, &["401"]).is_ok(),
         "a defense is not"
+    );
+}
+
+#[test]
+fn a_typed_number_or_alias_is_a_spell_until_switched_off() {
+    let mut profile = CasterProfile::default();
+    assert!(profile.typed, "on unless the player turns it off");
+    assert!(edit(&mut profile, &["alias", "401", "ed"]).is_ok());
+    assert_eq!(
+        typed(&profile, "401 bob 3"),
+        Some(vec!["401".to_owned(), "bob".to_owned(), "3".to_owned()])
+    );
+    assert!(typed(&profile, "Ed").is_some(), "an alias");
+    assert_eq!(typed(&profile, "north"), None);
+    assert_eq!(typed(&profile, "99"), None, "not three or four digits");
+    assert_eq!(typed(&profile, "9999"), None, "not a spell");
+    assert!(edit(&mut profile, &["set", "typed", "off"]).is_ok());
+    assert_eq!(typed(&profile, "401"), None);
+    assert!(
+        CasterProfile::parse("").is_ok_and(|p| p.typed),
+        "a file that does not say keeps it on"
     );
 }

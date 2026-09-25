@@ -16,6 +16,14 @@
 //! game command could begin with it one day and because a player may already
 //! use it for something else.
 //!
+//! # A line without the symbol, taken on purpose
+//!
+//! One exception, and the player's to switch on: a behavior may take a line
+//! that has no symbol ([`Bare`]), as spellcaster takes a typed `401 bob`
+//! (author, 2026-09-25: *"I don't want to have to type ;sc to cast a spell
+//! with just the number"*). It sees the line only after the symbol has
+//! passed on it, and a line it does not take is the game's as before.
+//!
 //! # This crate knows nothing about commands
 //!
 //! It holds the symbol, splits the line, and asks whoever registered. What
@@ -80,6 +88,10 @@ pub enum Claimed {
 /// command's own arguments are its own business.
 pub type Runner = Arc<dyn Fn(&str) -> Claimed + Send + Sync>;
 
+/// Who may take a line typed **without** the symbol: `true` when it took
+/// the line, which then never reaches the game.
+pub type Bare = Arc<dyn Fn(&str) -> bool + Send + Sync>;
+
 /// The symbol, and who runs what it marks. Shared by a handle and all its
 /// clones, filled once the behaviors exist -- the same shape as the player
 /// log's `Slot`, for the same reason: a session is built before the things
@@ -94,6 +106,8 @@ pub struct Desk {
     /// symbol is only known once the login says who it is.
     symbol: Arc<AtomicU32>,
     runner: Runner,
+    /// Who takes a line with no symbol, once registered.
+    bare: Arc<OnceLock<Bare>>,
 }
 
 impl std::fmt::Debug for Desk {
@@ -113,7 +127,15 @@ impl Desk {
         Desk {
             symbol: Arc::new(AtomicU32::new(u32::from(symbol.unwrap_or(DEFAULT_SYMBOL)))),
             runner,
+            bare: Arc::new(OnceLock::new()),
         }
+    }
+
+    /// Let `bare` look at lines typed without the symbol. Once: `false` if
+    /// something already does.
+    #[must_use]
+    pub fn set_bare(&self, bare: Bare) -> bool {
+        self.bare.set(bare).is_ok()
     }
 
     /// The symbol this session marks commands with.
@@ -131,11 +153,17 @@ impl Desk {
 
     /// What to do with a typed line. `None`: it is the game's.
     ///
+    /// A line without the symbol is offered to [`Self::set_bare`]'s taker,
+    /// if one is registered, and is the game's unless it takes it.
+    ///
     /// **Leading whitespace is allowed before the symbol** and nothing else
     /// is: `  ;go2 bank` is a command, `say ;go2 bank` is speech.
     #[must_use]
     pub fn claim(&self, line: &str) -> Option<Claimed> {
-        let rest = line.trim_start().strip_prefix(self.symbol())?;
+        let Some(rest) = line.trim_start().strip_prefix(self.symbol()) else {
+            let taken = self.bare.get().is_some_and(|bare| bare(line.trim()));
+            return taken.then_some(Claimed::Done);
+        };
         // The symbol alone is not a command, and is not the game's either.
         if rest.trim().is_empty() {
             return Some(Claimed::Unknown);
@@ -187,6 +215,19 @@ mod tests {
             assert_eq!(desk.claim(line), None, "{line:?}");
         }
         assert!(seen.lock().unwrap().is_empty());
+    }
+
+    /// A taker for bare lines sees them, and only what it takes leaves the
+    /// game's stream.
+    #[test]
+    fn a_bare_line_is_offered_to_a_taker_and_kept_only_if_taken() {
+        let (desk, seen) = desk(None);
+        assert!(desk.set_bare(Arc::new(|line: &str| line == "401")));
+        assert!(!desk.set_bare(Arc::new(|_: &str| true)), "once");
+        assert_eq!(desk.claim("  401 "), Some(Claimed::Done));
+        assert_eq!(desk.claim("north"), None);
+        assert_eq!(desk.claim(";go2 bank"), Some(Claimed::Done));
+        assert_eq!(*seen.lock().unwrap(), ["go2 bank".to_owned()]);
     }
 
     /// Leading space is a typo, not speech.
