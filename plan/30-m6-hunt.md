@@ -559,8 +559,8 @@ sort, box in hand. Town errands follow in the same plan's order.
 > a critter's bag emptied, the sigil) is BUILT too, and so is skinning (`loot/skin.rs`,
 > 2026-09-24); Stage 4 (selling during the rest) is under way by the author's call to
 > finish eloot before M6d: 4a, the round to the gem shop and the pawnshop inside the rest
-> (`cena-behavior/src/town/`), is BUILT; 4b (furrier, collectibles, Chronomage, bank) and
-> 4c (the locksmith pool) follow. **`plan/34`** stages the author's `loottracker.lic` as the loot ledger: the
+> (`cena-behavior/src/town/`), and 4b (furrier, collectibles, Chronomage, bank) are BUILT;
+> 4c (the locksmith pool) follows. **`plan/34`** stages the author's `loottracker.lic` as the loot ledger: the
 > classifier in the model, the recorder beside combat's, SQLite already embedded. Its
 > All four stages are BUILT: the classifier, the ledger, `;loot` and `;combat`
 > (`cena-model/src/state/ledger.rs`, `cena-session/src/ledger.rs`, `cena/src/loot.rs`,

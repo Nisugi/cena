@@ -28,6 +28,9 @@ pub enum Reply {
     CannotFetch,
     /// `You can't wear that`.
     CannotWear,
+    /// `bundle remove` took the bundle apart: *Those were the last two*,
+    /// one skin in each hand (`furrier`, `eloot.lic:6905`).
+    LastTwo,
 }
 
 /// Read one reply line. `None` when it says nothing this planner acts on.
@@ -67,6 +70,9 @@ pub fn classify(line: &str) -> Option<Reply> {
     }
     if has("You can't wear that") {
         return Some(Reply::CannotWear);
+    }
+    if has("Those were the last two") {
+        return Some(Reply::LastTwo);
     }
     None
 }

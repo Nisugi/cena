@@ -242,7 +242,22 @@ their own.
   no excluded gem, the note read, the sack worn again, then the leftovers item by item;
   `sell_exclude`, `bound`, ready-list items skipped. Back to the resting room. **The silver
   is the ledger's**: no `wealth` before and after.
-- **4b. Furrier, collectibles, the Chronomage and the bank.** Bulk `sell #sack` at the
+- ~~**4b. Furrier, collectibles, the Chronomage and the bank.**~~ **BUILT 2026-09-25**:
+  `town/goods.rs` holds `check_items`' reading (which shop takes an item: a gold ring by
+  eloot's 22 names to the Chronomage, a collectible to its counter by either tag, then the
+  object data's `sellable`) and each shop's lots; `town/plan.rs` gains `Deposit`, `Give`,
+  `Unbundle`, `DepositAll` and `Withdraw`. The furrier's bag sells whole like the gem sack
+  (a bag is sold whole at most once a round, which also closes 4a's loop when a bulk sale
+  leaves something behind); a bundle comes apart with `bundle remove` and each skin sells,
+  a refused skin back to the bag. The bank comes last when the round sold anything or read
+  a note, and first whenever encumbrance is over 80% on the way to a shop; a note waiting
+  in the default bag is a round by itself. `deposit all`, then `withdraw <sell_keep_silver>
+  silver`. Tested in `tests/town_plan.rs` (5 more). **Differs from eloot, deliberately:**
+  eloot goes to the bank whenever `wealth` differs from the keep figure; Hydra's silver
+  figure is only as fresh as the last `wealth`, so a stale one would send every rest to the
+  bank, and the round banks on what it earned instead. **Not built:** the furrier's
+  skin-bounty check that keeps bundles whole, Pinefar's banker, the coin hand.
+  As staged: Bulk `sell #sack` at the
   furrier and bundles unbundled one skin at a time; `deposit #id` at the collectibles
   counter; gold rings given to the Chronomage's clerk (`sell_gold_rings`); `deposit all`
   less `sell_keep_silver` at the bank, notes deposited, and a deposit whenever encumbrance

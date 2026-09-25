@@ -12,13 +12,16 @@
 //! `LootFact`s and hands them to the planner. [`reply`] reads the few lines
 //! that are not loot facts.
 //!
-//! Stage 4a builds the gem shop and the pawnshop; 4b the furrier, the
+//! Stage 4a built the gem shop and the pawnshop; 4b the furrier, the
 //! collectibles counter, the Chronomage and the bank; 4c the locksmith pool.
+//! [`goods`] reads what the bags hold and which shop takes it.
 
+pub mod goods;
 pub mod plan;
 pub mod reply;
 pub mod settings;
 
-pub use plan::{Seller, Shop, Step};
+pub use goods::{Shop, is_gold_ring};
+pub use plan::{Seller, Step};
 pub use reply::{Reply, classify};
 pub use settings::Town;

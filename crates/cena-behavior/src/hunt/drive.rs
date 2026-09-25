@@ -338,6 +338,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                 Errand::Wear(id) => format!("wear #{id}"),
                 Errand::ReadNote(id) => format!("read #{id}"),
                 Errand::Stow { item, bag } => format!("_drag #{item} #{bag}"),
+                Errand::Deposit(id) => format!("deposit #{id}"),
+                Errand::Give { item, to } => format!("give #{item} to #{to}"),
+                Errand::Unbundle => "bundle remove".to_owned(),
+                Errand::DepositAll => "deposit all".to_owned(),
+                Errand::Withdraw(silver) => format!("withdraw {silver} silver"),
             };
             self.transcript.clear();
             self.send(&line, None).await?;
