@@ -143,7 +143,8 @@ impl Hunt {
 
     /// A line the game said, for `flee.messages`: one that holds a phrase
     /// sends the hunt out of the room at the next tick.
-    pub fn heard(&mut self, line: &str) {
+    pub fn heard(&mut self, line: &str, now: Option<u32>) {
+        self.bark_heard(line, now);
         let messages = &self.profile.flee.messages;
         if messages.is_empty() {
             return;

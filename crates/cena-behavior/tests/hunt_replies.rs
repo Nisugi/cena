@@ -364,7 +364,7 @@ fn a_hazard_or_a_message_the_profile_flees_sends_the_hunt_out() {
     let calm = fighting(1_000, "10");
     let mut hunt = Hunt::new(Profile::parse(&fleeing).unwrap(), 1);
     assert_eq!(hunt.tick(&calm, here(10), Some(1_000)), attack());
-    hunt.heard("The Ground Trembles beneath you!");
+    hunt.heard("The Ground Trembles beneath you!", None);
     assert_eq!(
         hunt.tick(&calm, here(10), Some(1_001)),
         Said::Walk(RoomId(11))
