@@ -70,6 +70,7 @@ pub(super) enum Held {
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::aim::{Aimed, Aiming};
+use super::guard::{Facts, Used};
 use super::profile::{Profile, Step, Target};
 use super::react::Reacting;
 use super::replies::Heard;
@@ -173,6 +174,8 @@ pub struct Hunt {
     /// Long-Term Experience Boosts spent this hunt, and whether one is
     /// waiting on its reply.
     pub(super) boosts: (u32, bool),
+    /// The steps sent in this room, for `once` and `every` ([`Used`]).
+    pub(super) used: Used,
 }
 
 impl Hunt {
@@ -219,6 +222,7 @@ impl Hunt {
             boosts: (0, false),
             boons: BTreeMap::new(),
             assessing: None,
+            used: Used::new(),
         }
     }
 
@@ -348,7 +352,7 @@ impl Hunt {
         if let Some(said) = self.maintain(state, now) {
             return said;
         }
-        if let Some(said) = self.engage(state, now) {
+        if let Some(said) = self.engage(state, here, now) {
             return said;
         }
         self.wander(state, here, now).unwrap_or(Said::Nothing)
@@ -365,6 +369,7 @@ impl Hunt {
         self.entered = true;
         self.target = None;
         self.queue.clear();
+        self.used.clear();
     }
 
     // --- survival ----------------------------------------------------------
@@ -535,7 +540,7 @@ impl Hunt {
 
     /// Choose a target, target it, take the hunting stance, and run one step
     /// of its routine.
-    fn engage(&mut self, state: &GameState, now: Option<u32>) -> Option<Said> {
+    fn engage(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {
         if self.phase != Phase::Hunting || !self.may_fight() {
             return None;
         }
@@ -558,13 +563,19 @@ impl Hunt {
                 target: Some(target),
             });
         }
-        self.next_step(state, target)
+        self.next_step(state, here, target, now)
     }
 
     /// The step to send now: the sequence in play first, then the routine
     /// from its cursor, skipping held steps, expanding sequences, and
     /// skipping steps whose guards do not hold.
-    fn next_step(&mut self, state: &GameState, target: i64) -> Option<Said> {
+    fn next_step(
+        &mut self,
+        state: &GameState,
+        here: Here<'_>,
+        target: i64,
+        now: Option<u32>,
+    ) -> Option<Said> {
         let steps = self.profile.routines.get(&self.routine)?.clone();
         if steps.is_empty() {
             return None;
@@ -589,13 +600,19 @@ impl Hunt {
                 self.queue = queued;
                 continue;
             }
-            let runs = step
-                .when
-                .iter()
-                .all(|condition| condition.holds(state, Some(target)) == Some(true));
-            if !runs {
+            let key = step.to_string();
+            let facts = Facts {
+                state,
+                target: Some(target),
+                tags: here.room.map(|_| here.tags),
+                used: Some(&self.used),
+                step: &key,
+            };
+            if !step.when.iter().all(|c| c.holds(&facts) == Some(true)) {
                 continue;
             }
+            // Recorded when the step itself goes, not a line sent before it
+            // while it waits in the queue, or `once` would refuse its return.
             let is_wand = step
                 .send
                 .split_whitespace()
@@ -606,7 +623,9 @@ impl Hunt {
                     continue;
                 };
                 // A get or a put-away comes before the wave: the step waits.
-                if !line.starts_with("wave ") {
+                if line.starts_with("wave ") {
+                    self.used.record(&key, Some(target), now);
+                } else {
                     self.queue.push_front(step);
                 }
                 return Some(Said::Send {
@@ -620,9 +639,13 @@ impl Hunt {
                 Some(Aimed::Instead(line)) => line,
                 Some(Aimed::First(line)) => {
                     self.queue.push_front(step);
-                    line
+                    return Some(Said::Send {
+                        line,
+                        target: Some(target),
+                    });
                 }
             };
+            self.used.record(&key, Some(target), now);
             return Some(Said::Send {
                 line,
                 target: Some(target),

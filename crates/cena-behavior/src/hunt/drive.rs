@@ -184,6 +184,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                         .collect()
                 })
                 .unwrap_or_default();
+            let tags: Vec<String> = here
+                .and_then(|room| self.map.room(room))
+                .map(|room| room.meta.clone())
+                .unwrap_or_default();
             let incidents = self.state.take_incidents();
             if !incidents.is_empty() {
                 self.machine.incidents(&incidents);
@@ -194,6 +198,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Here {
                     room: here,
                     exits: &exits,
+                    tags: &tags,
                 },
                 now,
             );

@@ -32,6 +32,7 @@ fn here() -> Here<'static> {
     Here {
         room: Some(RoomId(10)),
         exits: &[],
+        tags: &[],
     }
 }
 

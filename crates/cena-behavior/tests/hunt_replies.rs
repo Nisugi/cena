@@ -73,6 +73,7 @@ fn here(room: u32) -> Here<'static> {
     Here {
         room: Some(RoomId(room)),
         exits: EXITS,
+        tags: &[],
     }
 }
 

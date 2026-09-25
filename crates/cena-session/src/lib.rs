@@ -56,7 +56,9 @@ pub use cena_model::movement::{self, MoveFeedback};
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
 pub use cena_model::state::creatures::boons;
-pub use cena_model::state::{claim, containers, gameobj, group, hands, incident, stream_windows};
+pub use cena_model::state::{
+    claim, containers, creature, gameobj, group, hands, incident, stream_windows,
+};
 // The loot ledger's facts, for the town planner that reads them from its own
 // fold of the stream (`plan/31` Stage 4).
 pub use cena_model::{Appraiser, Buyer, LootFact};
@@ -65,6 +67,10 @@ pub use cena_model::{ChunkLine, GameState, Room, RoomItem, UnknownTag};
 // section 1's table of what the model answers a hunter with. Beside the
 // other model vocabulary re-exported for behaviors, on the same terms.
 pub use cena_model::{Able, CreatureInstance, Effect, Injuries, StatusName};
+// The rest of what the hunt's guards ask of a creature (`plan/33`): the part
+// a wound is on and the unarmed position. Its `<crtrStatus>` flags are
+// `creature::status::Classification`, reached through `creature` above.
+pub use cena_model::{BodyPart, PositionTier};
 // The bounty's task, for a behavior that narrows its work to it (eloot's
 // `skin_bounty_only`).
 pub use cena_model::{

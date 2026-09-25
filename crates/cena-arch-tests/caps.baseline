@@ -287,3 +287,8 @@ crates/cena-behavior/src/hunt/drive.rs 450
 # and its rest keys (thresholds, fog and waypoints, wounded_eval) moved into
 # import/rest.rs, an impl of the same Job. 712 lines left.
 crates/cena-behavior/src/hunt/import.rs 750
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/hunt/guard.rs is the
+# guard vocabulary (plan/33): its words, parsing and writing. What each word
+# reads moved into guard/read.rs and the room's record of sent steps into
+# guard/used.rs when the vocabulary grew from five words to every survivor.
+crates/cena-behavior/src/hunt/guard.rs 550

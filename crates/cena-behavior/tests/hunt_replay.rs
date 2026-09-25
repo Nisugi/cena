@@ -147,6 +147,7 @@ async fn replay(bytes: &[u8], hunt: &mut Hunt) -> Result<Vec<Tick>, RecvError> {
                     let here = Here {
                         room: None,
                         exits: &[],
+                        tags: &[],
                     };
                     let said = hunt.tick(&state, here, now);
                     ticks.push(Tick {

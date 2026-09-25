@@ -12,6 +12,9 @@ pub struct Here<'a> {
     pub room: Option<RoomId>,
     /// The rooms one crossable exit away.
     pub exits: &'a [RoomId],
+    /// The map's `meta:` tags for the room, prefix removed (`splashy`,
+    /// `nomagic`); empty when the map could not place it.
+    pub tags: &'a [String],
 }
 
 /// One thing for the driver to do.

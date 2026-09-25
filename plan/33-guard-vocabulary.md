@@ -1,11 +1,12 @@
 # 33 — The guard vocabulary: bigshot's 87 words, evaluated
 
-**Status: ANSWERED by the author 2026-09-24 (§6).** Written as PROPOSED for the author's
-review (`plan/30` §7, M6a step 4). Five words are built (`hunt/guard.rs`: `hidden`,
-`immobilized`, `thp`, `empowered_below`, `expiring`); the five new words answer 5 says to
-build (`injured`, `stunned_for`, `helpless`, `coup_ready`, `nomagic`) are not yet, and every
-other word imports held. The profile format and the importer (§7 of this doc) are designed
-from the verdicts, so a verdict changed here changes them.
+**Status: ANSWERED by the author 2026-09-24 (§6); every surviving word BUILT 2026-09-25**
+(`crates/cena-behavior/src/hunt/guard.rs`, what each reads in `guard/read.rs`, the room's
+record of sent steps in `guard/used.rs`; tested in `tests/hunt_guard.rs` and
+`tests/hunt_guard_words.rs`). The two **later** words, `essence` and `justice`, wait on data
+the model does not capture. Written as PROPOSED for the author's review (`plan/30` §7, M6a
+step 4). The profile format and the importer (§7 of this doc) are designed from the
+verdicts, so a verdict changed here changes them.
 
 **Source.** `reference/scripts/scripts/bigshot.lic` at `7fd0b97` (2026-09-17), 10,246 lines.
 Every row cites the line its branch is on. The live install at
@@ -73,7 +74,7 @@ least 50". The plain `!` form is a clean negation for these five, and they keep 
 | `m` | mana ≥ N (points, not %) | `vitals` mana | **rename** `mana_at_least N` |
 | `s` | stamina ≥ N | `vitals` stamina | **rename** `stamina_at_least N` |
 | `v` | spirit ≥ N | `vitals` spirit | **rename** `spirit_at_least N` |
-| `e` | encumbrance % < N | `character.encumbrance_percent` | **rename** `encumbrance_below N` |
+| `e` | encumbrance % ≥ N (**corrected**, below) | `character.encumbrance_percent` | **rename** `encumbrance_at_least N` |
 | `essence` | shadow essence ≥ N | not captured (`CLAUDE.md`: the `resource` capture is an open M6 gap) | **later** `essence_at_least N` |
 | `k` | **I am** kneeling (`!k`: I am not). Takes a number and ignores it | `status.known().kneeling()` | **rename** `self_kneeling`, with no number. Bare `kneeling` is the **target's** (§2d), and sharing it was the trap |
 
@@ -86,6 +87,13 @@ least 50". The plain `!` form is a clean negation for these five, and they keep 
 > followed for this one row, and a wrong polarity on a self-status is the kind of error a
 > test cannot catch because the test would share it. `!k` is kept as well: *"no reason not
 > to support it."*
+
+> **CORRECTED 2026-09-25.** The `e` row read "encumbrance % < N" and named the word
+> `encumbrance_below N`. It is the `k` error again, in the row beside it. `:3205` is
+> `'e' => Char.percent_encumbrance < amount`, and `command_check` **skips** the step when an
+> amount lambda is true (`:4231-4235`: `return true if checker && instance_exec(...)`). So
+> `(e20)` skips below 20% and runs at 20% or more, the reading `h` already had. The word is
+> `encumbrance_at_least N`. Caught while writing the word against the branch, not the row.
 
 ### 2b. Me: conditions and place
 

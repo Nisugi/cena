@@ -135,6 +135,7 @@ fn here(room: u32, exits: &[RoomId]) -> Here<'_> {
     Here {
         room: Some(RoomId(room)),
         exits,
+        tags: &[],
     }
 }
 
