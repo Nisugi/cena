@@ -43,6 +43,7 @@
 //! that wants hunts can join the combat recorder's `sessions` table in the
 //! same file. No `Time.now`: every `at` is the prompt's.
 
+pub mod report;
 pub mod schema;
 pub mod worker;
 mod write;

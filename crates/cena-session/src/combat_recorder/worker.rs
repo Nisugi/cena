@@ -173,15 +173,8 @@ pub fn open_live(
     game: &str,
     character: &str,
 ) -> std::io::Result<(RecorderHandle, JoinHandle<()>, PathBuf)> {
-    use crate::character_store::safe_component;
-    let (game, name) = (safe_component(game), safe_component(character));
-    if game.is_empty() || name.is_empty() {
-        return Err(std::io::Error::other(
-            "no usable game or character name for a combat database",
-        ));
-    }
+    let path = database_path(dir, game, character)?;
     std::fs::create_dir_all(dir)?;
-    let path = dir.join(format!("{game}_{name}_combat.db"));
     let recorder = CombatRecorder::open(
         &path,
         Some(character),
@@ -191,6 +184,24 @@ pub fn open_live(
     .map_err(std::io::Error::other)?;
     let (handle, join) = spawn(recorder)?;
     Ok((handle, join, path))
+}
+
+/// Where a character's database is: `<dir>/<game>_<character>_combat.db`,
+/// the names sanitised as the character store sanitises them. The loot
+/// ledger's tables live in the same file, and `;loot` reads it by this path.
+///
+/// # Errors
+///
+/// A game or character name that sanitises to nothing.
+pub fn database_path(dir: &Path, game: &str, character: &str) -> std::io::Result<PathBuf> {
+    use crate::character_store::safe_component;
+    let (game, name) = (safe_component(game), safe_component(character));
+    if game.is_empty() || name.is_empty() {
+        return Err(std::io::Error::other(
+            "no usable game or character name for a combat database",
+        ));
+    }
+    Ok(dir.join(format!("{game}_{name}_combat.db")))
 }
 
 fn run(mut recorder: CombatRecorder, rx: &Receiver<Msg>, stats: &Stats) {

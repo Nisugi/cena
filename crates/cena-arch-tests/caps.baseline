@@ -233,3 +233,8 @@ crates/cena-model/src/state/ledger.rs 350
 # transaction; the arms are in ledger/write.rs and the thread in
 # ledger/worker.rs. 183 lines at birth; 250 leaves room for a method, not an arm.
 crates/cena-session/src/ledger.rs 250
+# NEW SPLIT PARENT, 2026-09-24. crates/cena/src/loot.rs is `;loot`: the words,
+# the run and the report formatting, with the Eastern-time periods in
+# loot/period.rs (plan/34 Stage 3). About 470 lines at birth, a third of them
+# tests; 520 leaves room for a report's line, not a sixth report.
+crates/cena/src/loot.rs 520

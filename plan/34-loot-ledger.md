@@ -183,7 +183,18 @@ loot cap, estimated against realised, with the town's racial and trading bonuses
    from the inventory model) and `ledger_wiring.rs` (a real session over the hunt fixture
    writes both searches). Not built: `plan/12` §7.2's replay-twice check, which needs the
    replay driver of Stage 3's reader.
-3. **The reader and `;loot`**: `summary`, `recent`, `boxes`, `creatures`, then `cap`.
+3. ~~**The reader and `;loot`**~~ **BUILT 2026-09-24**: `cena-session/src/ledger/report.rs`
+   (a read-only `Reader`; `summary`, `recent`, `boxes`, `creatures`, `cap` as typed rows over a
+   `Period` of server seconds) and `cena/src/loot.rs` (`;loot [summary [today|month|<hours>]]`,
+   `recent [n] [type]`, `boxes [n]`, `creatures [n] [period]`, `cap [last|YYYY-MM]`; the
+   periods in `loot/period.rs`, Eastern midnight and the first of the month by the US daylight
+   rule with no time crate, both transitions pinned by test). Registered at session start
+   from the database's path, so it reads what earlier runs recorded whether or not this one
+   is recording. Two departures from the script, both by earlier decisions: items are typed
+   at read time by `gameobj`, the one table (§3), so `recent gems` and `boxes` cannot
+   disagree with eloot; and `cap` reports silver and items with their appraised and realised
+   values and does no bonus arithmetic (§7.3). Tested in `cena-session/tests/ledger_report.rs`
+   (5) and the binary's unit tests (8: the words, the periods, a missing database).
 4. **Combat's reports** on the same reader, after.
 
 ## 7. Questions for the author
