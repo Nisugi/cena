@@ -229,3 +229,30 @@ fn sleep_waits_and_an_unported_verb_is_skipped_and_named_once() {
     assert_eq!(notes.len(), 1, "said once: {notes:?}");
     assert!(notes[0].contains("eachtarget"), "{notes:?}");
 }
+
+#[test]
+fn a_jewel_is_activated_unless_cooling_or_unknown() {
+    // The command itself is pinned beside it, in the game module
+    // (`src/gemstone/jewel.rs`): its verb is the game's name (Rule 3.4).
+    let (lines, _) = run("jewel spellblade", &fighting(&[]), 1).unwrap();
+    assert!(lines[0].ends_with(" activate spellblade"), "{lines:?}");
+    let mut cooling = fighting(&[]);
+    cooling.effects.clear_category("Cooldowns");
+    cooling.effects.insert(
+        "j".to_owned(),
+        Effect {
+            category: "Cooldowns".to_owned(),
+            text: "Spellblade's Fury".to_owned(),
+            ends_at: Some(1_060),
+            percent: 50,
+        },
+    );
+    let (lines, _) = run("jewel spellblade", &cooling, 1).unwrap();
+    assert_eq!(lines, ["wait 1"]);
+    let (lines, notes) = run("jewel sparkle", &fighting(&[]), 1).unwrap();
+    assert_eq!(lines, ["wait 1"]);
+    assert!(
+        notes.iter().any(|n| n.contains("does not know")),
+        "{notes:?}"
+    );
+}

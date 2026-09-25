@@ -23,6 +23,7 @@
 //! | `shout`, `yowlp`, `holler`, `bellow`, `growl`, `cry` | `warcry <step>`, at the target for bellow, growl and cry alone; not short of stamina | `cmd_warrior_shouts` |
 //! | `fire`, `throw`, `smite`, `sacrifice` | the verb `#id` | `cmd_ranged`, `cmd_throw`, `cmd_volnsmite`, `cmd_sacrifice` |
 //! | `burst`, `surge` | `cman burst`, `cman surge` | `cmd_burst`, `cmd_surge` |
+//! | `jewel <mnemonic>` | the jewel's activation (`src/gemstone/jewel.rs`); not while it is cooling, nor for a mnemonic bigshot does not know | `cmd_jewel` |
 //! | `rapid`, `leech`, `phase` | Rapid Fire (515), 516, Phase (704) at the target | `cmd_rapid`, `cmd_leech`, `cmd_phase` |
 //! | `depress` | `renew 1015` | `cmd_depress` |
 //! | `curse <kind>` | `prep 715` then `curse #id <kind>` | `cmd_curse` |
@@ -44,6 +45,7 @@ use cena_session::{GameState, PsmCategory};
 use super::engine::Hunt;
 use super::said::Said;
 use crate::cast::{self, Casting, NotReady, Verb};
+use crate::gemstone::jewel;
 
 /// What a step sends.
 #[derive(Debug, PartialEq, Eq)]
@@ -234,9 +236,6 @@ pub(super) const UNPORTED: &[&str] = &[
     "wandolier",
     // Needs the worn-items list to choose `remove` or `get` (`cmd_wield`).
     "wield",
-    // Its command word is the game's own name, which Rule 3.4 keeps to a
-    // game module (`plan/05`); where that module goes is the author's call.
-    "jewel",
 ];
 
 /// What `send`, a routine step with its guards gone, puts on the wire
@@ -278,6 +277,13 @@ fn line(send: &str, target: i64, state: &GameState) -> Line {
             ]));
         }
         "caststop" => return caststop(&words, target, state),
+        "jewel" => {
+            return match jewel::activate(&rest) {
+                Some((_, name)) if cooling(state, name) => Line::Skip,
+                Some((line, _)) => one(line),
+                None => Line::Unported("jewel with a mnemonic bigshot does not know"),
+            };
+        }
         "sleep" | "wait" => {
             return rest
                 .split_whitespace()

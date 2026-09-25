@@ -110,3 +110,7 @@ crates/cena-behavior/src/hunt/guard.rs 550
 # re-exports; the words, the picking, the lines, the driver and the desk are in
 # batch/. 41 lines at birth, so its cap is the rule above: 41 + 50, rounded up.
 crates/cena-behavior/src/batch.rs 100
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/gemstone.rs is the
+# game namespace Rule 3.4 prescribes, as cena-platform/src/gemstone.rs is:
+# the jewel command (gemstone/jewel.rs), whose verb is the game's own name.
+crates/cena-behavior/src/gemstone.rs 100

@@ -150,8 +150,9 @@ fn not_unless_it_is_known_and_affordable() {
         sends(&mut unknown, &fighting(1_000, 150, false)).as_deref(),
         Some("fire #42")
     );
-    // Lich's table costs 320 nothing (`spell_extras.tsv`, `mana0`), so it is
-    // the step's own spell the mana must cover: 608 is 8.
+    // 320 costs nothing (Lich's `spell_extras.tsv`, `mana0`, and the wiki,
+    // `reference/wiki_clean/Ethereal Censer _320_.txt:14`), so the mana
+    // must cover only the step's own spell: 608 is 8.
     let mut poor = with_step("incant 608").unwrap();
     assert_eq!(
         sends(&mut poor, &fighting(1_000, 5, true)).as_deref(),

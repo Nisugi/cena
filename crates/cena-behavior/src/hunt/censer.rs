@@ -5,7 +5,11 @@
 //!
 //! bigshot's `handle_censer` (`bigshot.lic:4530-4542`) casts it before a
 //! step when the Ethereal Censer cooldown is not up, 320 is known, and the
-//! mana covers 320 **and** the step's own spell when the step is one. Here
+//! mana covers 320 **and** the step's own spell when the step is one. 320
+//! itself costs nothing: *"Ethereal Censer has no mana cost"*
+//! (`reference/wiki_clean/Ethereal Censer _320_.txt:14`), as Lich's table
+//! has it (`spell_extras.tsv`, `mana0`), so it is the step's cost that
+//! counts; only a cast lost to Spell Hindrance costs 20 (`:42`). Here
 //! the censer goes first and the step waits in the queue for the next
 //! tick, where its guards are asked again. A cast the game did not take is
 //! asked for again no sooner than [`CENSER_RETRY`] seconds later, as a
