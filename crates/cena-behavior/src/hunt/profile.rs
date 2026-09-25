@@ -166,6 +166,9 @@ pub struct Rest {
     /// Hydra's own; bigshot has none.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_after: Option<u32>,
+    /// Fried, spend up to this many Long-Term Experience Boosts (`boost
+    /// longterm`) before resting (`lte_boost`, `bigshot.lic:8826-8846`).
+    pub lte_boost: u32,
     /// Before resting for mana, use a society's mana ability
     /// (`use_wracking`, `hunt/wrack.rs`).
     pub wracking: bool,

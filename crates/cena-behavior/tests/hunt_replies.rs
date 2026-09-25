@@ -485,3 +485,25 @@ fn a_voln_master_uses_symbol_of_mana_before_resting_for_mana() {
         "the symbol answered the need; no rest"
     );
 }
+
+#[test]
+fn fried_the_hunt_spends_its_boosts_before_resting() {
+    let profile = format!("{PROFILE}\n[rest]\nfried = 90\nlte_boost = 1\n");
+    let mut hunt = Hunt::new(Profile::parse(&profile).unwrap(), 1);
+    let mut state = fighting(1_000, "10");
+    state.character.experience.mind_percent = Some(95);
+    let boost = Said::Send {
+        line: "boost longterm".to_owned(),
+        target: None,
+    };
+    assert_eq!(hunt.tick(&state, here(10), Some(1_000)), boost);
+    hunt.replied(
+        ["You have deducted 500 experience points from your field experience."],
+        Some(1_000),
+    );
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_001)),
+        Said::Walk(RoomId(20)),
+        "one boost allowed, spent: rest"
+    );
+}

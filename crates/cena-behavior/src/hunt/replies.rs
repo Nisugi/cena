@@ -49,6 +49,11 @@ pub enum Reply {
     NoMana,
     /// `You spy a ... and recover it!`: a disarmed weapon is back.
     Recovered,
+    /// `You have deducted 500 experience points from your field
+    /// experience`: a Long-Term Experience Boost spent.
+    Boosted,
+    /// `You do not have any Long-Term Experience Boosts to redeem.`
+    NoBoosts,
     /// The part aimed at cannot be hit: `You cannot aim that high!`, `does
     /// not have a head!`, `is already missing that!` (`bigshot.lic:6560`).
     BadAim,
@@ -82,6 +87,12 @@ pub fn read(line: &str) -> Option<Reply> {
         || (text.contains(" does not have a") && text.ends_with('!'))
     {
         return Some(Reply::BadAim);
+    }
+    if text.contains("You have deducted 500 experience points from your field experience") {
+        return Some(Reply::Boosted);
+    }
+    if starts("You do not have any Long-Term Experience Boosts to redeem.") {
+        return Some(Reply::NoBoosts);
     }
     if starts("You spy ") && text.ends_with("and recover it!") {
         return Some(Reply::Recovered);
@@ -130,6 +141,15 @@ impl Hunt {
         let lines: Vec<&str> = lines.into_iter().collect();
         self.wand_replied(&lines);
         let replies: Vec<Reply> = lines.iter().copied().filter_map(read).collect();
+        // A boost the game answered with neither of its lines is not tried
+        // again: treated as none left.
+        if std::mem::take(&mut self.boosts.1)
+            && !replies
+                .iter()
+                .any(|r| matches!(r, Reply::Boosted | Reply::NoBoosts))
+        {
+            self.boosts.0 = self.profile.rest.lte_boost;
+        }
         for reply in replies {
             match reply {
                 Reply::NoTarget => self.target_gone(),
@@ -152,6 +172,11 @@ impl Hunt {
                 Reply::NoMana => self.must_rest = Some(Why::Mana),
                 Reply::Recovered => self.recovered(),
                 Reply::BadAim => self.aiming.refused(),
+                Reply::Boosted => {
+                    self.boosts.0 += 1;
+                    self.fried_kills = 0;
+                }
+                Reply::NoBoosts => self.boosts.0 = self.profile.rest.lte_boost,
             }
         }
     }

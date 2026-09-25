@@ -183,6 +183,16 @@ impl Hunt {
     /// A reason to rest holds: the fog, the waypoints, the walk.
     fn start_rest(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
         let why = self.rest_reason(state)?;
+        if why == Why::Fried && self.boosts.0 < self.profile.rest.lte_boost {
+            // Fried: a boost empties the mind instead (`use_lte_boost`).
+            if std::mem::replace(&mut self.boosts.1, true) {
+                return Some(Said::Wait(1));
+            }
+            return Some(Said::Send {
+                line: "boost longterm".to_owned(),
+                target: None,
+            });
+        }
         if why == Why::Mana
             && let Some(line) = self.wrack(state, state.game_time_now())
         {

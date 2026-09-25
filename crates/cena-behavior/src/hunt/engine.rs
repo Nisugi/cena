@@ -166,6 +166,9 @@ pub struct Hunt {
     pub(super) fogged: bool,
     /// When a society mana ability was last used ([`super::wrack`]).
     pub(super) wracked: Option<u32>,
+    /// Long-Term Experience Boosts spent this hunt, and whether one is
+    /// waiting on its reply.
+    pub(super) boosts: (u32, bool),
 }
 
 impl Hunt {
@@ -209,6 +212,7 @@ impl Hunt {
             waypoints: VecDeque::new(),
             fogged: false,
             wracked: None,
+            boosts: (0, false),
         }
     }
 
