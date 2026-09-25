@@ -150,6 +150,8 @@ pub struct Hunt {
     pub(super) held: Option<Held>,
     /// What incidents left to do ([`super::react`]).
     pub(super) react: Reacting,
+    /// Rests finished, for `rest.stop_after`.
+    pub(super) rests: u32,
 }
 
 impl Hunt {
@@ -186,6 +188,7 @@ impl Hunt {
             heard: Heard::default(),
             held: None,
             react: Reacting::default(),
+            rests: 0,
         }
     }
 

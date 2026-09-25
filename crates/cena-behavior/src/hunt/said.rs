@@ -70,6 +70,8 @@ pub enum Ending {
     /// An injury refused an action again after a rest for it: nothing the
     /// rest did healed it.
     Injured,
+    /// `rest.stop_after` rests were taken.
+    Rested(u32),
     /// Disarmed, and the weapon could not be got back.
     Disarmed,
     /// An attack had no effect: the weapon or ammunition cannot hurt what
@@ -90,6 +92,7 @@ impl fmt::Display for Ending {
             Self::Stocked => f.write_str("stocked"),
             Self::Waggled => f.write_str("waggled"),
             Self::Sent => f.write_str("sent"),
+            Self::Rested(n) => write!(f, "rested {n} times, as rest.stop_after asks"),
             Self::Disarmed => f.write_str("disarmed, and the weapon could not be recovered"),
             Self::Injured => f.write_str("an injury still stops the attack after resting for it"),
             Self::NoEffect => f.write_str(

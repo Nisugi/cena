@@ -84,28 +84,7 @@ impl Hunt {
                     &self.profile.rest.commands.clone(),
                 ))
             }
-            Phase::Resting(why) => {
-                if let Some(line) = self.pending.pop_front() {
-                    return Some(Said::Send { line, target: None });
-                }
-                if let Some(still) = self.still_resting(state) {
-                    let _ = still;
-                    return Some(Said::Wait(REST_BEAT));
-                }
-                self.fried_kills = 0;
-                self.heard.rested_for_injury = why == Why::Injured;
-                let Some(hunting) = self.profile.rooms.hunting else {
-                    return Some(Said::Done(Ending::NoHuntingRoom));
-                };
-                self.phase = Phase::Returning;
-                self.notes.push("rested: walking back.".to_owned());
-                Some(self.step_toward(
-                    RoomId(hunting),
-                    here,
-                    Phase::Preparing,
-                    &self.profile.prepare.clone(),
-                ))
-            }
+            Phase::Resting(why) => Some(self.resting(state, here, why)),
             Phase::Returning => {
                 let hunting = RoomId(self.profile.rooms.hunting?);
                 Some(self.step_toward(
@@ -166,6 +145,40 @@ impl Hunt {
         Said::Walk(goal)
     }
 
+    /// At the rest room: the commands, the wait, then the walk back.
+    fn resting(&mut self, state: &GameState, here: Here<'_>, why: Why) -> Said {
+        if let Some(line) = self.pending.pop_front() {
+            return Said::Send { line, target: None };
+        }
+        if let Some(still) = self.still_resting(state) {
+            let _ = still;
+            return Said::Wait(REST_BEAT);
+        }
+        self.fried_kills = 0;
+        self.heard.rested_for_injury = why == Why::Injured;
+        if let Some(ending) = self.count_rest() {
+            return Said::Done(ending);
+        }
+        let Some(hunting) = self.profile.rooms.hunting else {
+            return Said::Done(Ending::NoHuntingRoom);
+        };
+        self.phase = Phase::Returning;
+        self.notes.push("rested: walking back.".to_owned());
+        self.step_toward(
+            RoomId(hunting),
+            here,
+            Phase::Preparing,
+            &self.profile.prepare.clone(),
+        )
+    }
+
+    /// One more rest done; the hunt's end when `rest.stop_after` is reached.
+    fn count_rest(&mut self) -> Option<Ending> {
+        self.rests = self.rests.saturating_add(1);
+        let limit = self.profile.rest.stop_after?;
+        (self.rests >= limit).then_some(Ending::Rested(self.rests))
+    }
+
     /// Why to rest now, if a reason holds.
     fn rest_reason(&self, state: &GameState) -> Option<Why> {
         if let Some(why) = self.must_rest {
@@ -214,6 +227,14 @@ impl Hunt {
         let injuries = Injuries::new(&state.character.injuries);
         (when.cannot_cast && injuries.able_to_cast() != Able::Yes)
             || (when.cannot_use_ranged && injuries.able_to_use_ranged() != Able::Yes)
+            || when
+                .creeping_dread
+                .is_some_and(|at| debuff_stacks(state, "Creeping Dread").is_some_and(|n| n >= at))
+            || when
+                .crushing_dread
+                .is_some_and(|at| debuff_stacks(state, "Crushing Dread").is_some_and(|n| n >= at))
+            || (when.wot_poison && debuff_stacks(state, "Wall of Thorns Poison").is_some())
+            || (when.confused && debuff_stacks(state, "Confused").is_some())
     }
 
     /// Why the rest is not over, or `None` when it is. A threshold whose
@@ -252,4 +273,22 @@ impl Hunt {
         }
         None
     }
+}
+
+/// A debuff on the character whose name holds `name`, with its stack
+/// count: bigshot's `key.to_s[/\((\d+)\)/, 1].to_i`, so a debuff with no
+/// count is 0 stacks. `None`: not on.
+fn debuff_stacks(state: &GameState, name: &str) -> Option<u32> {
+    state
+        .effects
+        .iter()
+        .find(|(_, effect)| effect.category == "Debuffs" && effect.text.contains(name))
+        .map(|(_, effect)| {
+            effect
+                .text
+                .split_once('(')
+                .and_then(|(_, rest)| rest.split_once(')'))
+                .and_then(|(n, _)| n.trim().parse().ok())
+                .unwrap_or(0)
+        })
 }

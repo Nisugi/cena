@@ -151,6 +151,10 @@ pub struct Rest {
     pub until: Until,
     /// Rest at once when any of these holds (`wounded_eval`, typed).
     pub when: When,
+    /// End the hunt after this many rests: an overnight run's stop.
+    /// Hydra's own; bigshot has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_after: Option<u32>,
     /// Sent on arriving at the rest room (`resting_commands`).
     pub commands: Vec<String>,
 }
@@ -179,6 +183,10 @@ pub struct Until {
 /// holding is enough.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each is one of bigshot's rest switches, carried as it is"
+)]
 pub struct When {
     /// I am bleeding.
     pub bleeding: bool,
@@ -189,6 +197,17 @@ pub struct When {
     pub cannot_cast: bool,
     /// A wound stops me using a ranged weapon (`Injuries::able_to_use_ranged`).
     pub cannot_use_ranged: bool,
+    /// Creeping Dread at or above this many stacks (`creeping_dread`,
+    /// `bigshot.lic:8892-8901`: the debuff's `(N)`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub creeping_dread: Option<u32>,
+    /// Crushing Dread at or above this many stacks (`crushing_dread`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crushing_dread: Option<u32>,
+    /// Wall of Thorns Poison is on me (`wot_poison`).
+    pub wot_poison: bool,
+    /// The Confused debuff is on me (`confusion`).
+    pub confused: bool,
 }
 
 /// When to leave the room.

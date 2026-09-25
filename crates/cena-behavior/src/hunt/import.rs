@@ -362,6 +362,12 @@ impl Job {
     /// that is one of the known shapes becomes a threshold; each that is
     /// not is named, and Hydra will not rest on it.
     fn rest_when(&mut self) {
+        let when = &mut self.profile.rest.when;
+        when.creeping_dread = number(&self.source.take("creeping_dread")).filter(|n| *n > 0);
+        let when = &mut self.profile.rest.when;
+        when.crushing_dread = number(&self.source.take("crushing_dread")).filter(|n| *n > 0);
+        self.profile.rest.when.wot_poison = flag(&self.source.take("wot_poison"));
+        self.profile.rest.when.confused = flag(&self.source.take("confusion"));
         let text = self.take("wounded_eval");
         for term in text.split("||").map(str::trim).filter(|t| !t.is_empty()) {
             let bare = unparenthesised(term);

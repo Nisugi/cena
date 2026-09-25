@@ -267,3 +267,47 @@ fn the_room_is_claimed_on_entry_not_every_tick() {
         "Bob was here first"
     );
 }
+
+#[test]
+fn a_dread_over_its_threshold_sends_the_hunt_to_rest_and_stop_after_ends_it() {
+    let profile = format!("{PROFILE}\n[rest]\nstop_after = 1\n[rest.when]\ncreeping_dread = 5\n");
+    let mut hunt = Hunt::new(Profile::parse(&profile).unwrap(), 1);
+    let mut state = fighting(1_000, "10");
+    state.effects.insert(
+        "cd".to_owned(),
+        cena_session::Effect {
+            category: "Debuffs".to_owned(),
+            text: "Creeping Dread (4)".to_owned(),
+            ends_at: None,
+            percent: 0,
+        },
+    );
+    assert_eq!(hunt.tick(&state, here(10), Some(1_000)), attack(), "4 of 5");
+    state.effects.insert(
+        "cd".to_owned(),
+        cena_session::Effect {
+            category: "Debuffs".to_owned(),
+            text: "Creeping Dread (5)".to_owned(),
+            ends_at: None,
+            percent: 0,
+        },
+    );
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_001)),
+        Said::Walk(RoomId(20))
+    );
+    state.effects.clear();
+    let resting = {
+        let mut s = fighting(1_002, "20");
+        s.effects.clear();
+        s
+    };
+    let mut said = hunt.tick(&resting, here(20), Some(1_002));
+    for second in 1_003..1_010 {
+        if matches!(said, Said::Done(_)) {
+            break;
+        }
+        said = hunt.tick(&resting, here(20), Some(second));
+    }
+    assert_eq!(said, Said::Done(Ending::Rested(1)));
+}
