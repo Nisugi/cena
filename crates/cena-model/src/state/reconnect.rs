@@ -161,6 +161,10 @@ impl GameState {
             stream_windows,
             tally,
             combat,
+            // Queued loot chunks are recorded facts about chunks that DID
+            // close; the gap changes nothing about them, and the actor drains
+            // them on the next prompt.
+            loot: _,
             creatures,
             pending,
             chunk,

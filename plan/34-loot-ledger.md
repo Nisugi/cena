@@ -165,9 +165,24 @@ loot cap, estimated against realised, with the town's racial and trading bonuses
    not recorded; `BUNDLE_ADD_OTHER`, a group member's bundling, is not ported with the proxy
    (§7.1); the rest duplicate module patterns or classify names. Not yet wired into
    `close_chunk`: that is Stage 2's, when there is a consumer.
-2. **The ledger** (`cena-session`): the tables, the worker, the item linking that the
-   processors did in Ruby, fed from `publish_combat`'s sibling once per prompt. Ends with a
-   session's loot in the database and `plan/12` §7.2's replay producing the same rows twice.
+2. ~~**The ledger**~~ **BUILT 2026-09-24**: `cena-session/src/ledger.rs` (the `Ledger`, its
+   `Live` memory of unanswered halves and pool quotes, one transaction per chunk rolled back
+   with the memory), `ledger/schema.rs` (the tables of §4, fresh), `ledger/write.rs` (an arm
+   per fact and the item linking), `ledger/worker.rs` (its own thread and bounded queue, the
+   combat worker's shape). The model queues each classified chunk at `close_chunk` with the
+   wire's room id and every opened box's contents from the inventory
+   (`cena-model/src/state/ledger/pending.rs`, `GameState::take_loot`); the actor drains it
+   beside `publish_combat` and offers each chunk without waiting. The classifier now reports
+   an unanswered `Offered` so the ledger can pair it with the merchant's answer a prompt
+   later. The ledger's tables live **in the combat recorder's file** (`<game>_<name>_combat.db`),
+   opened a second time with WAL and a busy timeout. **Recording is toggleable** (author):
+   `--record` / `--no-record`, on by default in a debug build, off in release
+   (`cena/src/setup.rs`, `recording`); nothing at runtime reads either database. Tested in
+   `cena-session/tests/ledger.rs` (6, including the Red Forest case: a box returned under a
+   new id in the same room links to the box dropped there and its opening's contents come
+   from the inventory model) and `ledger_wiring.rs` (a real session over the hunt fixture
+   writes both searches). Not built: `plan/12` §7.2's replay-twice check, which needs the
+   replay driver of Stage 3's reader.
 3. **The reader and `;loot`**: `summary`, `recent`, `boxes`, `creatures`, then `cap`.
 4. **Combat's reports** on the same reader, after.
 

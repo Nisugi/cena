@@ -106,10 +106,12 @@ impl<S: ByteSource> Session<S> {
                 recorder: Recorder::new(),
                 sink: None,
                 combat: None,
+                ledger: None,
                 menu_dir: None,
                 player_log: None,
                 persistence: Box::default(),
                 combat_refusals_logged: 0,
+                ledger_refusals_logged: 0,
                 cancel: cancel.clone(),
                 generation: generation.get(),
                 // A plain `Session` has nothing above it to reconnect, so a
@@ -198,6 +200,13 @@ impl<S: ByteSource> Session<S> {
         recorder: crate::combat_recorder::worker::RecorderHandle,
     ) -> Self {
         self.actor.combat = Some(recorder);
+        self
+    }
+
+    /// Offer every closed chunk's loot facts to this ledger.
+    #[must_use]
+    pub fn with_ledger(mut self, ledger: crate::ledger::worker::LedgerHandle) -> Self {
+        self.actor.ledger = Some(ledger);
         self
     }
 

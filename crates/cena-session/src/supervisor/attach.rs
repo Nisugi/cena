@@ -52,6 +52,14 @@ impl<C: Connector> SupervisedSession<C> {
         self
     }
 
+    /// Offer every closed chunk's loot facts to this ledger, on every
+    /// connection this session makes.
+    #[must_use]
+    pub fn with_ledger(mut self, ledger: crate::ledger::worker::LedgerHandle) -> Self {
+        self.core.ledger = Some(ledger);
+        self
+    }
+
     /// Keep what the character has learned in this directory, across logins
     /// (`character_store`, and `Session::with_character_store`).
     ///

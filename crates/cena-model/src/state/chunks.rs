@@ -276,6 +276,7 @@ impl super::GameState {
             // `bank account` is a whole-chunk answer: its rows mean nothing
             // without the opener above them.
             self.bank.read_lines(chunk.lines(), &texts);
+            self.queue_loot(&chunk, at);
             self.combat.parse_chunk(&chunk, at)
         };
         // Lich's `process`: parse, persist to the registry, then emit -- and
@@ -283,6 +284,40 @@ impl super::GameState {
         // can flag a death a chunk after the killing blow.
         self.creatures.apply_chunk(&mut facts, at);
         self.combat.publish(facts);
+    }
+
+    /// Classify the chunk's loot and queue it for the ledger, with the room
+    /// and each opened box's contents as they stand at this prompt
+    /// (`ledger/pending.rs`).
+    fn queue_loot(&mut self, chunk: &Chunk, at: Option<u32>) {
+        let facts = super::ledger::classify(chunk);
+        if facts.is_empty() {
+            return;
+        }
+        let mut contents = std::collections::BTreeMap::new();
+        for fact in &facts {
+            if let super::ledger::LootFact::BoxOpened { item, .. } = fact
+                && let Some(inside) = self.inventory.container(&item.id)
+                && !inside.items.is_empty()
+            {
+                let listed = inside
+                    .items
+                    .iter()
+                    .map(|i| super::containers::ItemRef {
+                        id: i.id.clone(),
+                        noun: i.noun.clone(),
+                        text: i.text.clone(),
+                    })
+                    .collect();
+                contents.insert(item.id.clone(), listed);
+            }
+        }
+        self.loot.push(super::ledger::LootChunk {
+            facts,
+            contents,
+            at,
+            room: self.room.id.clone(),
+        });
     }
 
     /// Every per-line reader, for one line of a closing chunk, in a fixed

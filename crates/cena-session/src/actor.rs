@@ -294,6 +294,7 @@ pub struct SessionActor<S: ByteSource> {
     /// The combat recorder's queue, if one is attached. `Option` for the
     /// reason `sink` is: a session without one is otherwise identical.
     combat: Option<crate::combat_recorder::worker::RecorderHandle>,
+    ledger: Option<crate::ledger::worker::LedgerHandle>,
     /// What is waiting to be written, where, and when.
     ///
     /// **Boxed.** One field rather than three, and a session that never
@@ -321,6 +322,7 @@ pub struct SessionActor<S: ByteSource> {
     /// Recorder refusals already written to the log, so the log says when
     /// the count MOVES rather than once per dropped chunk.
     combat_refusals_logged: u64,
+    ledger_refusals_logged: u64,
     cancel: CancellationToken,
     generation: Generation,
     /// What a lost transport means to whoever owns this actor.
@@ -408,6 +410,7 @@ impl<S: ByteSource> SessionActor<S> {
         recorder: Recorder,
         sink: Option<SessionSink>,
         combat: Option<crate::combat_recorder::worker::RecorderHandle>,
+        ledger: Option<crate::ledger::worker::LedgerHandle>,
         cancel: CancellationToken,
         generation: Generation,
     ) -> Self {
@@ -426,10 +429,12 @@ impl<S: ByteSource> SessionActor<S> {
             recorder,
             sink,
             combat,
+            ledger,
             menu_dir: None,
             player_log: None,
             persistence: Box::default(),
             combat_refusals_logged: 0,
+            ledger_refusals_logged: 0,
             cancel,
             generation,
             on_disconnect: crate::command::Outcome::Disconnected,

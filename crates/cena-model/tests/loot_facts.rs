@@ -316,7 +316,14 @@ fn the_gem_shop_furrier_and_chronomage() {
     );
     assert!(matches!(
         one(rejected),
-        Some(LootFact::TooValuable { item }) if item.id == "20230323"
+        Some(LootFact::TooValuable { item: Some(item) }) if item.id == "20230323"
+    ));
+    // The answer is usually a prompt later: the offer alone is reported.
+    let offer = "You offer to sell your <a exist=\"339188773\" noun=\"wand\">bloodwood wand</a> to Bushybrow.
+";
+    assert!(matches!(
+        one(offer),
+        Some(LootFact::Offered { item }) if item.id == "339188773"
     ));
     let furrier = "Delosa takes the <a exist=\"339211582\" noun=\"hide\">hide</a>, scrutinizes it carefully, then hands you 12 silvers.\n";
     assert!(matches!(

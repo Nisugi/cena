@@ -60,3 +60,8 @@ crates/cena-behavior/src/loot.rs 100
 # 298 lines at birth, most of them the documented enum; 350 leaves room for a
 # variant or two and no room for a reader.
 crates/cena-model/src/state/ledger.rs 350
+# NEW SPLIT PARENT, 2026-09-24. crates/cena-session/src/ledger.rs is the loot
+# ledger's facade (plan/34 Stage 2): the Ledger, its Live memory and the
+# transaction; the arms are in ledger/write.rs and the thread in
+# ledger/worker.rs. 183 lines at birth; 250 leaves room for a method, not an arm.
+crates/cena-session/src/ledger.rs 250

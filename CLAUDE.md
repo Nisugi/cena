@@ -37,7 +37,8 @@ If anything else contradicts it, it wins.
 | `plan/30-m6-hunt.md` | **the current milestone**: M6, the first real behavior, step by step with what is built |
 | `plan/33-guard-vocabulary.md` | bigshot's 87 guard words evaluated; PROPOSED, awaiting the author |
 | `plan/31-eloot-port.md` | **M6c**: eloot measured and ordered; Stages 1-3 (the hunt's share) BUILT, Stage 4 (selling during the rest) after M6d |
-| `plan/34-loot-ledger.md` | the loottracker port: 55 patterns as one classifier over the chunk (Stage 1 BUILT, `cena-model/src/state/ledger.rs`), a ledger beside the combat recorder next, the Red Forest uid bug explained; the three questions answered |
+| `plan/34-loot-ledger.md` | the loottracker port: 55 patterns as one classifier over the chunk (Stage 1 BUILT, `cena-model/src/state/ledger.rs`), the ledger beside the combat recorder in one database per character (Stage 2 BUILT, `cena-session/src/ledger.rs`; `--record`/`--no-record`), the Red Forest uid bug explained and fixed; next the reader and `;loot` |
+| `plan/35-m7-agent.md` | **M7, the agent protocol**: MCP on loopback, control levels, takeover, all statuses; PROPOSED, the author's 2026-09-24 decisions quoted, six questions open (§9). Prior art in `reference/lich-agent-bridge` |
 | `crates/cena/src/architecture.rs` | the workspace as rustdoc: crate graph, one line's journey, the three seams, every rule and its test. Link-checked, so it cannot go stale silently |
 | `crates/cena/src/glossary.rs` | **the words**: one per concept, each linked to its item, plus the ones that already mean two things (`claim`, `ladder`, `Desk`, …). Binding (`plan/05` §8) |
 | `research/` | **rationale and evidence only. Never instructions.** Contains superseded designs. |

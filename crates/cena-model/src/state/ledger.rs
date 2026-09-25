@@ -43,11 +43,14 @@
 
 mod boxes;
 mod hunt;
+pub mod pending;
 mod text;
 mod town;
 
 use super::chunks::Chunk;
 use super::containers::ItemRef;
+
+pub use pending::{LootChunk, LootQueue, MAX_PENDING_LOOT};
 
 /// One thing a chunk stated about loot, silver or selling.
 ///
@@ -160,7 +163,15 @@ pub enum LootFact {
     },
     /// The gem shop refused it as too valuable to buy today.
     TooValuable {
-        /// The item asked about.
+        /// The item asked about, when the chunk named it.
+        item: Option<ItemRef>,
+    },
+    /// `You offer to sell your <item> to …` or `You ask <who> … <item>`, with
+    /// no answer in the same chunk. The merchant's answer is usually a prompt
+    /// later, so the ledger holds this and pairs it with the sale, the
+    /// refusal or the chit that follows.
+    Offered {
+        /// The item held out.
         item: ItemRef,
     },
     /// A gem shattered under a purification song.
@@ -272,9 +283,11 @@ impl Cursor {
                 value: None,
                 by: Appraiser::Loresong,
             }),
-            // An offer nobody answered in this chunk, or a gesture that did
-            // not duplicate, is not a loot fact.
-            Some(Pending::Offered(_) | Pending::Gestured(_)) | None => {}
+            // The answer to an offer is usually a prompt later: reported so
+            // the ledger can pair it. A gesture that did not duplicate is not
+            // a loot fact.
+            Some(Pending::Offered(item)) => self.out.push(LootFact::Offered { item }),
+            Some(Pending::Gestured(_)) | None => {}
         }
         self.out
     }

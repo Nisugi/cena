@@ -706,6 +706,7 @@ impl<S: ByteSource> SessionActor<S> {
                 // before the `send_now` early-out below: a chunk closed
                 // whoever the prompt was owed to
                 let combat = self.publish_combat();
+                self.publish_loot();
                 // The chunk is classified, so its lines can be tagged and
                 // written (`player_log/feed.rs`).
                 if let Some(log) = &mut self.player_log {

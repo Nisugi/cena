@@ -262,9 +262,8 @@ fn sales(cursor: &mut Cursor, line: &ChunkLine, text: &str) -> bool {
         return true;
     }
     if p.gemshop_reject.is_match(text) {
-        if let Some(asked) = cursor.take_offered() {
-            cursor.out.push(LootFact::TooValuable { item: asked });
-        }
+        let asked = cursor.take_offered();
+        cursor.out.push(LootFact::TooValuable { item: asked });
         return true;
     }
     if let Some(caps) = p.chronomage.captures(text) {
