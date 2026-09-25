@@ -212,10 +212,16 @@ fn engage_targets_takes_the_stance_and_runs_the_routine() {
         send("weapon volley", Some(42))
     );
     // Step 4 `coupdegrace (thp 20)`: health is 50%, skipped. Step 5 `fire`.
-    assert_eq!(hunt.tick(&state, at, Some(1_000)), send("fire", Some(42)));
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_000)),
+        send("fire #42", Some(42))
+    );
     // Round again: hidden now known, so step 1 runs.
     state.status.set("hidden", true);
-    assert_eq!(hunt.tick(&state, at, Some(1_000)), send("fire", Some(42)));
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_000)),
+        send("fire #42", Some(42))
+    );
 }
 
 #[test]

@@ -198,7 +198,7 @@ fn a_fire_step_aims_first_and_skips_where_an_arrow_is_stuck() {
     kobold(&mut state);
     assert_eq!(hunt.tick(&state, here(), Some(1_000)), at("aim right eye"));
     hunt.incidents(&[Incident::Aiming(Some("right eye".to_owned()))]);
-    assert_eq!(hunt.tick(&state, here(), Some(1_001)), at("fire"));
+    assert_eq!(hunt.tick(&state, here(), Some(1_001)), at("fire #42"));
     hunt.incidents(&[Incident::ArrowStuck {
         creature: None,
         at: "eye".to_owned(),

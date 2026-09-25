@@ -118,7 +118,7 @@ fn the_censer_goes_first_then_the_step_it_waited_for() {
     assert_eq!(sends(&mut hunt, &state).as_deref(), Some("incant 320"));
     assert_eq!(
         sends(&mut hunt, &state).as_deref(),
-        Some("fire"),
+        Some("fire #42"),
         "not again until the retry is out"
     );
     // Eleven seconds on, and the game has not listed the cooldown: again.
@@ -140,7 +140,7 @@ fn not_while_its_cooldown_is_up() {
             percent: 50,
         },
     );
-    assert_eq!(sends(&mut hunt, &state).as_deref(), Some("fire"));
+    assert_eq!(sends(&mut hunt, &state).as_deref(), Some("fire #42"));
 }
 
 #[test]
@@ -148,15 +148,15 @@ fn not_unless_it_is_known_and_affordable() {
     let mut unknown = hunt().unwrap();
     assert_eq!(
         sends(&mut unknown, &fighting(1_000, 150, false)).as_deref(),
-        Some("fire")
+        Some("fire #42")
     );
     // Lich's table costs 320 nothing (`spell_extras.tsv`, `mana0`), so it is
     // the step's own spell the mana must cover: 608 is 8.
     let mut poor = with_step("incant 608").unwrap();
     assert_eq!(
         sends(&mut poor, &fighting(1_000, 5, true)).as_deref(),
-        Some("incant 608"),
-        "5 mana does not cover the censer and 608"
+        None,
+        "5 mana covers neither: no censer, and no 608, which bigshot's cmd_spell does not cast unaffordable"
     );
     let mut enough = with_step("incant 608").unwrap();
     assert_eq!(
@@ -180,6 +180,6 @@ a = ["fire"]
     let mut hunt = Hunt::new(profile, 1);
     assert_eq!(
         sends(&mut hunt, &fighting(1_000, 150, true)).as_deref(),
-        Some("fire")
+        Some("fire #42")
     );
 }

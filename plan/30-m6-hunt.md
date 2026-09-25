@@ -510,6 +510,19 @@ Demonstrated live on a short hunt.
 >   **Since built, 2026-09-25:** `pull` and `deader` (`8b4dfda`), wands (`f074197`) and
 >   boons (`d87a4ae`). Groups are outside M6 (§8). The censer policy is built
 >   (`hunt/censer.rs`, `plan/33` §2h). Ammo remains.
+> - **Found 2026-09-25: the routine's verbs went to the game as written.** §4's table put
+>   `kweed`, `coupdegrace` and `fire` in scope as "an action Hunt can send", and nothing
+>   sent them as bigshot does: `kweed` is not a game command at all (bigshot evokes
+>   Tangleweed at the creature, `cmd_weed`, `bigshot.lic:5750-5765`) and `coupdegrace` is
+>   `cman coupdegrace #id` (`cmd_cmans`). **Built:** `hunt/verbs.rs` sends each bigshot
+>   verb as its handler does, aimed at the creature by id, with the handler's gates the
+>   model can answer (known, affordable, cooling, stamina, a plant already here); a spell
+>   is `prepare N` then `cast #id` through `crate::cast`, a self-cast one `incant N`. A
+>   game command (`store weapon`, `weapon volley`) goes as written. Not ported yet, each
+>   skipped and named once to the player: `eachtarget`, the buff-first forms (`celerity`,
+>   `slayer`, `tonis`), `resonance`, `briar`, `efury`, `tether`, `nudgeweapons`,
+>   `unarmed`, `mstrike`, `wandolier`, `wield` (needs the worn list), and `jewel`, whose
+>   command word is the game's name (Rule 3.4 keeps it to a game module: the author's call).
 >   **Closed the same day, on the author's objection to trying it live with gaps open:**
 >   Assume Aspect is cast as `cmd_assume` casts it (the spell, evoked or prepared, then
 >   `assume <aspect>` once the effects list shows it), and a walk inside a hunt reads and

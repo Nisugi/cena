@@ -731,7 +731,11 @@ a = ["fire (once)", "hide"]
             sent.push(line);
         }
     }
-    assert_eq!(sent, ["fire", "hide", "hide", "hide"], "fire once at #42");
+    assert_eq!(
+        sent,
+        ["fire #42", "hide", "hide", "hide"],
+        "fire once at #42"
+    );
     // The same creature, one room on: the room's record is gone.
     state.room.id = Some("11".to_owned());
     state.targeting.read("#42", None);
@@ -742,7 +746,7 @@ a = ["fire (once)", "hide"]
         }
     }
     assert!(
-        moved.contains(&"fire".to_owned()),
+        moved.contains(&"fire #42".to_owned()),
         "fired again after moving: {moved:?}"
     );
 }

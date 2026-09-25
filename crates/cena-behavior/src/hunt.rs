@@ -56,6 +56,7 @@ mod react;
 pub mod replies;
 mod rest;
 pub mod said;
+mod verbs;
 mod wand;
 mod wander;
 mod wrack;

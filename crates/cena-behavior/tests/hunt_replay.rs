@@ -245,7 +245,10 @@ async fn the_routine_fires_from_hiding_and_skips_what_bigshot_skipped() {
     // 1:45 left and Camouflage had just landed, so only `fire` holds --
     // which is the three `You fire` lines in the log.
     assert!(
-        !routine.is_empty() && routine.iter().all(|tick| tick.line() == Some("fire")),
+        !routine.is_empty()
+            && routine
+                .iter()
+                .all(|tick| tick.line().is_some_and(|line| line.starts_with("fire #"))),
         "with the buff up and hidden, the routine is `fire` and nothing else: {routine:?}"
     );
     // Hidden is unknown until the game says so, and an unknown guard holds
@@ -314,7 +317,7 @@ async fn after_the_kill_the_engineer_is_taken_up_in_bigshots_order() {
     assert_eq!(
         distinct_lines(from_kill()),
         [
-            "fire".to_owned(),
+            format!("fire #{PEGASUS}"),
             format!("loot #{PEGASUS}"),
             format!("target #{ENGINEER}"),
             "stance offensive".to_owned(),
@@ -387,7 +390,7 @@ async fn the_shield_maiden_gets_routine_e_with_its_guards_read_off_real_statuses
         [
             format!("target #{SHIELD_MAIDEN}"),
             "stance offensive".to_owned(),
-            "fire".to_owned(),
+            format!("fire #{SHIELD_MAIDEN}"),
             format!("loot #{SHIELD_MAIDEN}"),
             "incant 9708".to_owned(),
             "incant 9715".to_owned(),

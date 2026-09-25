@@ -75,6 +75,7 @@ use super::profile::{Profile, Step, Target};
 use super::react::Reacting;
 use super::replies::Heard;
 pub use super::said::{Ending, Here, Phase, Said, Why};
+use super::verbs::Go;
 use super::wand::Wanding;
 use crate::heal::HealProfile;
 use crate::keep::KeepProfile;
@@ -175,6 +176,11 @@ pub struct Hunt {
     pub(super) censer_cast: Option<u32>,
     /// Barkskin cannot be cast before this game second ([`super::maintain`]).
     pub(super) bark_until: Option<u32>,
+    /// Lines a step's first line must be followed by: a spell's `cast`
+    /// after its `prepare` ([`super::verbs`]).
+    pub(super) followups: VecDeque<String>,
+    /// bigshot verbs the player was told Hydra does not send yet.
+    pub(super) told_unported: BTreeSet<&'static str>,
 }
 
 impl Hunt {
@@ -224,6 +230,8 @@ impl Hunt {
             used: Used::new(),
             censer_cast: None,
             bark_until: None,
+            followups: VecDeque::new(),
+            told_unported: BTreeSet::new(),
         }
     }
 
@@ -317,6 +325,7 @@ impl Hunt {
     pub fn target_gone(&mut self) {
         self.target = None;
         self.queue.clear();
+        self.followups.clear();
         self.aiming.reset();
     }
 
@@ -370,6 +379,7 @@ impl Hunt {
         self.entered = true;
         self.target = None;
         self.queue.clear();
+        self.followups.clear();
         self.used.clear();
     }
 
@@ -484,6 +494,12 @@ impl Hunt {
         target: i64,
         now: Option<u32>,
     ) -> Option<Said> {
+        if let Some(line) = self.followups.pop_front() {
+            return Some(Said::Send {
+                line,
+                target: Some(target),
+            });
+        }
         let steps = self.profile.routines.get(&self.routine)?.clone();
         if steps.is_empty() {
             return None;
@@ -547,7 +563,11 @@ impl Hunt {
             }
             let hidden = state.status.known().hidden() == Some(true);
             let line = match self.aim(&step.send, target, hidden) {
-                None => step.send.clone(),
+                None => match self.verb_step(&step.send, &key, target, state, now) {
+                    Go::Send(line) => line,
+                    Go::Said(said) => return Some(said),
+                    Go::Skip => continue,
+                },
                 Some(Aimed::Instead(line)) => line,
                 Some(Aimed::First(line)) => {
                     self.queue.push_front(step);
