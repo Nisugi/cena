@@ -77,17 +77,42 @@ fn what_would_change_behavior_is_named_when_dropped() {
                 :loot_keep:\n- blue crystal\n:use_bloodbands: true\n:mystery_key: 7\n";
     let brought = import(yaml).unwrap();
     let notes = brought.notes.join("\n");
-    assert!(notes.contains("skin_enable was on"), "{notes}");
     assert!(
         notes.contains("loot_keep") && notes.contains("blue crystal"),
         "{notes}"
     );
     assert!(notes.contains("use_bloodbands"), "{notes}");
     assert!(notes.contains("mystery_key"), "{notes}");
-    assert!(
-        !notes.contains("skin_weapon"),
-        "one note for skinning, not one per key: {notes}"
+    // Skinning is built: its keys are carried, not noted.
+    assert!(!notes.contains("skin"), "{notes}");
+    assert!(brought.profile.skin.enable);
+    assert_eq!(brought.profile.skin.weapon, "knife");
+}
+
+#[test]
+fn the_skinning_keys_come_across_and_read_back() {
+    let yaml = "---\n:skin_enable: true\n:skin_kneel: true\n:skin_604: false\n:skin_resolve: true\n\
+                :skin_bounty_only: false\n:skin_sheath: sheath\n:skin_weapon: dagger\n\
+                :skin_sheath_blunt: \n:skin_weapon_blunt: cudgel\n:skin_exclude:\n- giant rat\n\
+                :unskinnable:\n- stone golem\n";
+    let brought = import(yaml).unwrap();
+    let skin = &brought.profile.skin;
+    assert!(skin.enable && skin.kneel && skin.resolve && !skin.spell_604);
+    assert_eq!(
+        (skin.weapon.as_str(), skin.sheath.as_str()),
+        ("dagger", "sheath")
     );
+    assert_eq!(
+        (skin.weapon_blunt.as_str(), skin.sheath_blunt.as_str()),
+        ("cudgel", "")
+    );
+    assert_eq!(skin.exclude, ["giant rat"]);
+    assert_eq!(skin.unskinnable, ["stone golem"]);
+    let text = brought.profile.to_toml().unwrap();
+    assert!(text.contains("[skin]"), "{text}");
+    assert_eq!(LootProfile::parse(&text).unwrap(), brought.profile);
+    // Skinning off is left out of the file.
+    assert!(!LootProfile::default().to_toml().unwrap().contains("skin"));
 }
 
 #[test]

@@ -217,6 +217,14 @@ impl Desk {
                     say(NoticeKind::Warn, format!("loot profile: {problem}"));
                 }
                 say(NoticeKind::Info, format!("looting by {}.", path.display()));
+                if profile.skin.enable {
+                    let weapon = if profile.skin.weapon.is_empty() {
+                        "whatever is in the right hand".to_owned()
+                    } else {
+                        format!("the {}", profile.skin.weapon)
+                    };
+                    say(NoticeKind::Info, format!("skinning with {weapon}."));
+                }
                 Some(profile)
             }
             Err(why) => {

@@ -220,7 +220,7 @@ tables what they are so they are not forgotten.
 | `Hoard` | 840 | gem and alchemy hoarding in lockers and caches | Stage 4 |
 | `Region` | 65 | regional bounty selling | Stage 4 |
 | silver deposit, notes, coin hand | ~120 | bank | Stage 4, with `plan/20` §0b bank |
-| skinning (`skin`, `skin_obj_types`) | ~130 | skin corpses by weapon | when a profile turns it on |
+| skinning (`skin`, `skin_obj_types`) | ~130 | skin corpses by weapon | **BUILT 2026-09-24**: `cena-behavior/src/loot/skin.rs`, the planner's first phase when `skin.enable` is on; the profile's `[skin]` table carries eloot's five switches, four names and two lists; the driver sends `get`, `kneel`, `skin #id <hand>`, `stow gem`, `stand`. Not carried: the `rotting chimera` describe, `skin_bounty_only` (imports with a note). A learned unskinnable creature is kept for the hunt, as crumbly names are, and not yet written back to the profile |
 | the GTK window | 1,213 | settings UI | never: the profile is a file, and `;hunt check` reads it |
 | `DebugLogger` | 110 | | never |
 

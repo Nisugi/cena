@@ -60,6 +60,31 @@ fn every_phrase_eloot_acts_on_has_an_outcome() {
             "There doesn't seem to be any way to do that.",
             Outcome::NotAContainer,
         ),
+        // Skinning (`skin_obj_types`'s alternation, `eloot.lic:5823`).
+        (
+            "You skinned the cave troll, yielding a troll hide.",
+            Outcome::Skinned,
+        ),
+        ("You botched the job and ruined the skin.", Outcome::Botched),
+        (
+            "You are unable to break through the crust.",
+            Outcome::Botched,
+        ),
+        ("That has already been skinned.", Outcome::AlreadySkinned),
+        ("You cannot skin that.", Outcome::CannotSkin),
+        (
+            "You must be a member of the Guild to skin that.",
+            Outcome::SkinNotAllowed,
+        ),
+        (
+            "Because your account is free, you may not skin.",
+            Outcome::SkinNotAllowed,
+        ),
+        (
+            "You break through the crust of the golem and withdraw an uncut emerald!",
+            Outcome::BrokeThrough,
+        ),
+        ("You kneel down.", Outcome::Kneeled),
         (
             "You gather up and stow as much treasure as you can manage, but there is more than you can carry.",
             Outcome::TooMuch,

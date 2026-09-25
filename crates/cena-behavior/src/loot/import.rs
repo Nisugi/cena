@@ -122,22 +122,24 @@ pub fn import(yaml_text: &str) -> Result<Import, String> {
     profile.sigil_on_fail = flag("sigil_determination_on_fail", &mut source);
     profile.phase_boxes = flag("loot_phase", &mut source);
 
-    // Skinning is not built: say so once, loudly if it was on.
-    let skin_on = source
-        .remove("skin_enable")
-        .is_some_and(|text| text == "true");
-    let skin_keys: Vec<String> = source
-        .keys()
-        .filter(|key| key.starts_with("skin_") || *key == "unskinnable")
-        .cloned()
-        .collect();
-    for key in &skin_keys {
-        source.remove(key);
-    }
-    if skin_on {
+    // Skinning (`plan/31` §5): the five switches, the four names, the two lists.
+    let text = |key: &str, source: &mut BTreeMap<String, String>| -> String {
+        source.remove(key).unwrap_or_default().trim().to_owned()
+    };
+    profile.skin.enable = flag("skin_enable", &mut source);
+    profile.skin.kneel = flag("skin_kneel", &mut source);
+    profile.skin.spell_604 = flag("skin_604", &mut source);
+    profile.skin.resolve = flag("skin_resolve", &mut source);
+    profile.skin.bounty_only = flag("skin_bounty_only", &mut source);
+    profile.skin.weapon = text("skin_weapon", &mut source);
+    profile.skin.sheath = text("skin_sheath", &mut source);
+    profile.skin.weapon_blunt = text("skin_weapon_blunt", &mut source);
+    profile.skin.sheath_blunt = text("skin_sheath_blunt", &mut source);
+    profile.skin.exclude = list("skin_exclude", &mut source);
+    profile.skin.unskinnable = list("unskinnable", &mut source);
+    if profile.skin.enable && profile.skin.bounty_only {
         notes.push(
-            "skin_enable was on: skinning is not built (plan/31 Stage 3), corpses are searched and not skinned"
-                .to_owned(),
+            "skin_bounty_only was on: not built, every eligible corpse is skinned".to_owned(),
         );
     }
 

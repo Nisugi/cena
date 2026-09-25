@@ -69,10 +69,59 @@ pub struct LootProfile {
     pub unlootable: Vec<String>,
     /// Containers that close themselves; opened before a drag (`auto_close`).
     pub autoclose: Vec<String>,
+    /// Skinning, when the profile turns it on (`skin_enable` and the
+    /// `skin_*` keys; `plan/31` §5).
+    #[serde(default, skip_serializing_if = "Skin::is_off")]
+    pub skin: Skin,
     /// The selling, hoarding and banking keys, carried verbatim for the rest
     /// phase's errands (`plan/31` §4, Stage 4). Nothing reads them yet.
     #[serde(skip_serializing_if = "toml::Table::is_empty")]
     pub town: toml::Table,
+}
+
+/// How corpses are skinned, eloot's Skinning tab (`eloot.lic:937-947`,
+/// `:2061-2072`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "eloot's five switches, carried as they are; a profile is a table of switches"
+)]
+pub struct Skin {
+    /// Skin at all (`skin_enable`).
+    pub enable: bool,
+    /// Kneel before skinning (`skin_kneel`).
+    pub kneel: bool,
+    /// Keep Bravery (604) up while skinning (`skin_604`).
+    pub spell_604: bool,
+    /// Cast Sigil of Resolve before skinning (`skin_resolve`).
+    pub resolve: bool,
+    /// Skin only the bounty's creature (`skin_bounty_only`). Not built:
+    /// carried so the import loses nothing.
+    pub bounty_only: bool,
+    /// The edged skinning weapon, by a word of its name (`skin_weapon`);
+    /// empty means whatever is in the right hand.
+    pub weapon: String,
+    /// Where the edged weapon goes back (`skin_sheath`); empty means the
+    /// default bag.
+    pub sheath: String,
+    /// The blunt skinning weapon (`skin_weapon_blunt`); empty means the
+    /// blunt-skinned creatures are left.
+    pub weapon_blunt: String,
+    /// Where the blunt weapon goes back (`skin_sheath_blunt`).
+    pub sheath_blunt: String,
+    /// Names, or words in names, never skinned (`skin_exclude`).
+    pub exclude: Vec<String>,
+    /// Creatures the game said cannot be skinned, learned (`unskinnable`).
+    pub unskinnable: Vec<String>,
+}
+
+impl Skin {
+    /// Nothing set: the default, left out of the file.
+    #[must_use]
+    pub fn is_off(&self) -> bool {
+        *self == Self::default()
+    }
 }
 
 impl LootProfile {

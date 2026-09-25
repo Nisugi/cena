@@ -255,12 +255,17 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                 Step::Drag { item, bag } => {
                     (format!("_drag #{item} #{bag}"), self.floor_name(item))
                 }
+                Step::Wield(id) => (format!("get #{id}"), None),
+                Step::Kneel => ("kneel".to_owned(), None),
+                Step::Stand => ("stand".to_owned(), None),
+                Step::Skin { corpse, hand } => (format!("skin #{corpse} {hand}"), None),
+                Step::StowGem(id) => (format!("stow gem #{id}"), None),
             };
             self.transcript.clear();
             self.send(&line, None).await?;
             let outcomes: Vec<LootOutcome> = self.transcript.lines().filter_map(classify).collect();
             for outcome in &outcomes {
-                planner.outcome(outcome);
+                planner.outcome_in(outcome, &self.state);
                 if let Some(name) = &touched {
                     planner.learn(outcome, name);
                 }

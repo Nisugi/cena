@@ -42,6 +42,23 @@ pub enum Outcome {
     /// `There doesn't seem to be any way to do that`: the thing opened is
     /// not a container (`bag_loot`, `eloot.lic:4990`).
     NotAContainer,
+    /// `You skinned`: a skin came off (`skin_obj_types`, `eloot.lic:5824`).
+    Skinned,
+    /// `You botched` / `You are unable to break through`: the skin is ruined.
+    Botched,
+    /// `already been`: the corpse was skinned before.
+    AlreadySkinned,
+    /// `You cannot skin`: this creature never yields a skin; learned.
+    CannotSkin,
+    /// `must be a member` / `can only skin` / `Because your account is
+    /// free` / `not possible to get a worthwhile`: the game refuses this
+    /// character's skinning; skinning ends for the visit.
+    SkinNotAllowed,
+    /// `You break through the crust` / `You crack open a portion`: a gem
+    /// came out of the corpse into the left hand.
+    BrokeThrough,
+    /// `You kneel down` / `already kneeling`.
+    Kneeled,
 }
 
 /// Read one reply line. `None` when it says nothing about a loot command.
@@ -78,6 +95,32 @@ pub fn classify(line: &str) -> Option<Outcome> {
     }
     if has("There doesn't seem to be any way to do that") {
         return Some(Outcome::NotAContainer);
+    }
+    // Skinning (`skin_obj_types`'s `skin_match`, `eloot.lic:5823-5840`).
+    if text.starts_with("You skinned") {
+        return Some(Outcome::Skinned);
+    }
+    if text.starts_with("You botched") || has("You are unable to break through") {
+        return Some(Outcome::Botched);
+    }
+    if has("already been") && (has("skin") || has("harvest")) {
+        return Some(Outcome::AlreadySkinned);
+    }
+    if has("You cannot skin") {
+        return Some(Outcome::CannotSkin);
+    }
+    if has("must be a member")
+        || has("can only skin")
+        || has("Because your account is free")
+        || has("not possible to get a worthwhile")
+    {
+        return Some(Outcome::SkinNotAllowed);
+    }
+    if has("You break through the crust") || has("You crack open a portion") {
+        return Some(Outcome::BrokeThrough);
+    }
+    if has("You kneel down") || has("already kneeling") {
+        return Some(Outcome::Kneeled);
     }
     // `loot_all`'s "too much" alternation (`eloot.lic:5185`).
     if (has("up and stow") && has("treasure")) || has("but quickly realize") {

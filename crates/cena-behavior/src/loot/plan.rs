@@ -26,6 +26,7 @@ use cena_session::{GameState, RoomItem};
 
 use super::outcome::Outcome;
 use super::profile::LootProfile;
+use super::skin::Skinning;
 use super::worth::{Verdict, is_special, lootable_by_verb, stow_slot, verdict};
 use crate::stance::{self, Want};
 
@@ -56,6 +57,8 @@ pub struct Memory {
     pub unlootable: BTreeSet<String>,
     /// Critters' bags already opened and emptied, by id.
     pub checked_bags: BTreeSet<String>,
+    /// Creatures the game said cannot be skinned, by name.
+    pub unskinnable: BTreeSet<String>,
 }
 
 /// One command for the driver to send, or the end.
@@ -84,6 +87,21 @@ pub enum Step {
         /// The bag's id.
         bag: String,
     },
+    /// `get #id`: the skinning weapon into a hand (`skin.rs`).
+    Wield(String),
+    /// `kneel`, before skinning.
+    Kneel,
+    /// `stand`, after skinning knelt.
+    Stand,
+    /// `skin #corpse <hand>`: the hand holding the skinner.
+    Skin {
+        /// The corpse's id.
+        corpse: i64,
+        /// `left` or `right`.
+        hand: &'static str,
+    },
+    /// `stow gem #id`: a gem that broke out of a corpse into the left hand.
+    StowGem(String),
     /// Nothing more to do here.
     Done(Left),
 }
@@ -141,6 +159,8 @@ pub struct Planner {
     room_looted: bool,
     /// A search failed for the character's condition; the sigil helps once.
     sigil: Sigil,
+    /// Skinning, before the searches, when the profile turns it on.
+    skinning: Option<Skinning>,
     last: Option<Step>,
     bags_full: bool,
 }
@@ -152,7 +172,11 @@ impl Planner {
         let mut memory = memory;
         memory.crumbly.extend(profile.crumbly.iter().cloned());
         memory.unlootable.extend(profile.unlootable.iter().cloned());
+        memory
+            .unskinnable
+            .extend(profile.skin.unskinnable.iter().cloned());
         Planner {
+            skinning: None,
             profile,
             memory,
             corpses: corpses.iter().copied().collect(),
@@ -193,6 +217,9 @@ impl Planner {
                 return Step::Cast(SIGIL_OF_DETERMINATION.to_owned());
             }
         }
+        if let Some(step) = self.skin(state) {
+            return step;
+        }
         if let Some(corpse) = self.corpses.front().copied() {
             let key = corpse.to_string();
             if *self.tries.get(&key).unwrap_or(&0) >= SEARCH_TRIES {
@@ -229,6 +256,30 @@ impl Planner {
             }
         }
         Step::Done(Self::left(state))
+    }
+
+    /// eloot skins before it searches (`Loot.skin`, `eloot.lic:2504`): the
+    /// phase is built on the first call from the corpses here, and stands
+    /// until it has nothing left to say.
+    fn skin(&mut self, state: &GameState) -> Option<Step> {
+        if !self.profile.skin.enable {
+            return None;
+        }
+        if self.skinning.is_none() {
+            let corpses: Vec<i64> = self.corpses.iter().copied().collect();
+            let unskinnable: Vec<String> = self.memory.unskinnable.iter().cloned().collect();
+            self.skinning = Some(Skinning::new(
+                self.profile.skin.clone(),
+                state,
+                &corpses,
+                &unskinnable,
+            ));
+        }
+        let skinning = self.skinning.as_mut()?;
+        if skinning.is_done() {
+            return None;
+        }
+        skinning.next(state)
     }
 
     /// A critter's bag is opened, looked in and emptied before it is taken
@@ -356,6 +407,17 @@ impl Planner {
         } else {
             Left::Nothing
         }
+    }
+
+    /// What the game said to the last step. `state` is as it stands after
+    /// the reply: the hands, for a gem a skinning broke out.
+    pub fn outcome_in(&mut self, outcome: &Outcome, state: &GameState) {
+        if let (Some(last), Some(skinning)) = (self.last.clone(), self.skinning.as_mut())
+            && let Some(name) = skinning.outcome(&last, outcome, state)
+        {
+            self.memory.unskinnable.insert(name);
+        }
+        self.outcome(outcome);
     }
 
     /// What the game said to the last step.
