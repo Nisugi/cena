@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
-import {nearestRoom} from '../interaction.mjs';
+import {nearestRoom,svgViewport} from '../interaction.mjs';
 const rooms=[{id:1,cell:{x:20,y:20}},{id:2,cell:{x:22,y:20}}],view={x:0,y:0,w:100,h:100},viewport={width:1000,height:1000};
 assert.equal(nearestRoom(rooms,{x:200,y:211},view,viewport)?.id,1,'Click just outside tiny visible dot still works');
 assert.equal(nearestRoom(rooms,{x:218,y:201},view,viewport)?.id,2,'Closest room wins overlapping hit areas');
 assert.equal(nearestRoom([...rooms].reverse(),{x:218,y:201},view,viewport)?.id,2,'SVG paint order must not steal clicks');
 assert.equal(nearestRoom(rooms,{x:200,y:215},view,viewport),null,'Do not capture empty-map clicks beyond hit radius');
 assert.equal(nearestRoom(rooms,{x:100,y:111},{...view,w:200,h:200},viewport)?.id,1,'Hit area stays in pixels when zoomed out');
+const transformed=svgViewport({getScreenCTM:()=>({a:.62,d:.62,e:250,f:640})},{x:-5,y:-48,w:1376,h:403});
+assert.equal(transformed.left,246.9);
+const crowded=[{id:228,cell:{x:1297,y:94}},{id:285,cell:{x:1293,y:94}}],wide={x:-5,y:-48,w:1376,h:403};
+const click={x:1297*.62+250,y:94*.62+640};
+assert.equal(nearestRoom(crowded,{x:click.x-transformed.left,y:click.y-transformed.top},wide,transformed)?.id,228,'Rendered SVG coordinates select TSC, not its neighbor');
+assert.equal(svgViewport({getScreenCTM:()=>null},wide),null);
 console.log('PASS: larger, nearest-room hit targets at multiple zoom levels.');

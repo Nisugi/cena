@@ -40,6 +40,7 @@ pub struct Desk {
     running: Mutex<Option<Running>>,
     ids: Arc<AtomicU64>,
     hunts: AtomicU64,
+    map_sha256: Option<String>,
 }
 
 /// A hunt under way: how to stop it, and how to know it is over.
@@ -62,7 +63,23 @@ impl Desk {
             running: Mutex::new(None),
             ids: Arc::new(AtomicU64::new(1)),
             hunts: AtomicU64::new(0),
+            map_sha256: None,
         })
+    }
+
+    /// Pin map-created profiles to the host's exact loaded bytes.
+    #[must_use]
+    pub fn with_map_sha256(
+        map: Arc<Map>,
+        dir: PathBuf,
+        token: AuthorityToken,
+        hash: String,
+    ) -> Arc<Self> {
+        let mut desk = Self::new(map, dir, token);
+        if let Some(inner) = Arc::get_mut(&mut desk) {
+            inner.map_sha256 = Some(hash);
+        }
+        desk
     }
 
     /// Stop the hunt under way. `false` when there is none.
@@ -114,6 +131,21 @@ impl Desk {
                         return None;
                     }
                 };
+                if loaded
+                    .profile
+                    .map_sha256
+                    .as_ref()
+                    .is_some_and(|hash| Some(hash) != self.map_sha256.as_ref())
+                {
+                    say(NoticeKind::Error, "This hunt was saved against different or unverified map bytes. Review its setup; nothing started.".into());
+                    return None;
+                }
+                if loaded.profile.rooms.allowed.is_some()
+                    && let Err(why) = super::setup::validate_map(&loaded.profile, &self.map)
+                {
+                    say(NoticeKind::Error, why);
+                    return None;
+                }
                 for (place, step) in loaded.profile.held_steps() {
                     say(
                         NoticeKind::Warn,

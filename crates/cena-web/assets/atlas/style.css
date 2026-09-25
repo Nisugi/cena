@@ -43,6 +43,21 @@ input[type=color]{width:26px;height:25px;padding:2px;margin:0;border:1px solid #
 @media(max-width:640px){header{padding:12px;align-items:start}h1{font-size:21px}.status{max-width:130px;font-size:8px}.status small{font-size:10px}.tour{padding:10px;gap:5px}.tour>span{width:100%}.tour #about{margin-left:0}.workspace{display:block}.places{border-right:0;padding:10px}#units{max-height:120px;display:flex;overflow:auto;gap:5px}#units button{min-width:150px}.places .note,.section-label{display:none}input{margin-bottom:6px}#area-tabs{margin-bottom:2px}.map-heading{padding:12px}h2{font-size:19px}.map-tools{padding:0 12px 10px}#canvas{height:52vh;min-height:320px}#transitions{grid-template-columns:1fr 1fr}.connections{padding:14px}.map-key{font-size:8px;padding:5px;gap:4px}.inspector{padding:14px}}
 #canvas.hunt-editing,#canvas.hunt-editing #map{cursor:crosshair}#canvas.hunt-editing #map:active{cursor:grabbing}
 
+/* Native configuration keeps the map and both independently scrolling panels visible. */
+.native-hunt-mode{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+.native-hunt-mode>.tour{display:none}.native-hunt-mode>header{padding:8px 16px}.native-hunt-mode #coverage{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.native-hunt-mode>.workspace{flex:1;min-height:0;overflow:hidden;grid-template-columns:240px minmax(0,1fr) 340px}
+.native-hunt-mode .places,.native-hunt-mode .connections{min-height:0;overflow:auto;grid-column:auto;overscroll-behavior:contain}
+.native-hunt-mode .workspace>main{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.native-hunt-mode #canvas{flex:1;min-height:200px;height:auto}.native-hunt-mode .inspector{max-height:130px;overflow:auto}
+.native-hunt-mode #route-panel{display:none}.native-hunt-mode .map-heading{padding:8px 12px}.native-hunt-mode .map-tools{padding:0 12px 8px;flex-wrap:wrap}.native-hunt-mode .map-tools span{display:none}
+.native-hunt-mode #layout-controls{margin:0 12px 8px;padding:6px 9px}.native-hunt-mode .inspector{padding:8px 12px;flex-shrink:0;max-height:100px}.native-hunt-mode .inspector h3{font-size:14px;margin:2px 0}.native-hunt-mode .inspector p{margin:4px 0}
+.native-hunt-mode #section-focus{display:flex;margin:5px 0 0;max-height:64px;overflow:auto}.native-hunt-mode #layout-note{max-height:3em;overflow:auto}.native-hunt-mode #layout-controls{flex-shrink:0}
+.native-hunt-mode .connections>:not(#native-hunt-setup){display:none}
+#native-hunt-setup label{display:block;margin:10px 0}#native-hunt-setup textarea{display:block;width:100%;min-height:70px;background:var(--bg);color:var(--text)}
+#native-hunt-setup button{margin:4px 0;max-width:100%}#native-setup-toml{white-space:pre-wrap;font-size:11px;overflow-wrap:anywhere}#native-setup-status{color:var(--gold)}
+@media(max-width:1000px){.native-hunt-mode>.workspace{grid-template-columns:170px minmax(240px,1fr) 270px}}
+
 /* Developer workspace: only the side panels scroll, never the map document. */
 .hunting-dev{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
 .hunting-dev>header{padding:8px 16px;flex:0 0 auto}.hunting-dev header h1{font-size:20px;margin:0}.hunting-dev header .brand{font-size:9px}.hunting-dev header .status small{display:none}.hunting-dev #about{font-size:10px;padding:4px 8px;margin-left:12px}

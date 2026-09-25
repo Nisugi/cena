@@ -418,6 +418,19 @@ export function mount(document, environment) {
   const protocol = environment.location.protocol === "https:" ? "wss:" : "ws:";
   const session = new HydraSession({ url: `${protocol}//${environment.location.host}/ws`, token,
     sessionId, onChange: render, WebSocketImpl: environment.WebSocket });
+  const setupLink = document.createElement('button');
+  setupLink.textContent = 'Configure hunt (experimental)';
+  setupLink.id = 'native-hunt-launch';
+  element('minimap').append(setupLink);
+  setupLink.onclick = () => {
+    const explorer = element('minimap').querySelector('[data-map-explorer]');
+    if (!session.state.session || !session.token || explorer.hidden) return;
+    const url = new URL(explorer.href, environment.location.href);
+    const hash = new URLSearchParams(url.hash.slice(1));
+    hash.set('setup_token', session.token); hash.set('setup_session', session.state.session);
+    url.hash = hash.toString();
+    environment.open(url.href, '_blank', 'noopener');
+  };
   const pairFromFragment = () => {
     // A pairing URL opened in this same tab changes only the fragment: mount
     // does not run again. Strip it before rendering or opening another socket.

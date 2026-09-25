@@ -13,6 +13,7 @@ pub(crate) fn get(name: &str) -> Option<(&'static str, &'static str)> {
         "hunting-corrections.mjs" => include_str!("../assets/atlas/hunting-corrections.mjs"),
         "hunting-editor.mjs" => include_str!("../assets/atlas/hunting-editor.mjs"),
         "hunting-files.mjs" => include_str!("../assets/atlas/hunting-files.mjs"),
+        "native-hunt-setup.mjs" => include_str!("../assets/atlas/native-hunt-setup.mjs"),
         "icons.mjs" => include_str!("../assets/atlas/icons.mjs"),
         "index.html" => include_str!("../assets/atlas/index.html"),
         "interaction.mjs" => include_str!("../assets/atlas/interaction.mjs"),

@@ -90,6 +90,16 @@ pub async fn hunt(
     wrote: impl FnMut(&TravelNotes) + Send,
 ) -> HuntEnd {
     let (snapshot, events) = joined;
+    let hunting_map = match super::setup::hunting_map(machine.profile(), map) {
+        Ok(map) => map,
+        Err(why) => {
+            handle.say(Notice::line(
+                NoticeKind::Error,
+                format!("Hunt: invalid membership: {why}"),
+            ));
+            return HuntEnd::Finished(Ending::NoHuntingRoom);
+        }
+    };
     let mut driver = Driver {
         handle,
         cancel,
@@ -102,6 +112,7 @@ pub async fn hunt(
         state: snapshot.state,
         events,
         map,
+        hunting_map,
         machine,
         last_room: None,
         notes,
@@ -120,6 +131,7 @@ pub async fn hunt(
 }
 
 struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> {
+    hunting_map: Option<Map>,
     handle: &'a SessionHandle,
     cancel: &'a CancellationToken,
     token: AuthorityToken,
@@ -153,7 +165,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
             }
             let here = self.locate();
             let exits: Vec<RoomId> = here
-                .and_then(|room| self.map.room(room))
+                .and_then(|room| self.hunting_map.as_ref().unwrap_or(self.map).room(room))
                 .map(|room| {
                     room.exits
                         .iter()
@@ -448,11 +460,18 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
         };
         let listener = self.events.resubscribe();
         let mut notes = std::mem::take(&mut self.notes);
+        let walk_cancel = self.cancel.child_token();
+        let field_trip = self.machine.field_rest;
+        let mut redirect_to_town = false;
         let travelled = {
             let handle = self.handle;
-            let cancel = self.cancel;
+            let cancel = &walk_cancel;
             let token = self.token;
-            let map = self.map;
+            let map = if self.machine.phase() == super::said::Phase::Hunting {
+                self.hunting_map.as_ref().unwrap_or(self.map)
+            } else {
+                self.map
+            };
             let next_id = &mut self.next_id;
             let mut walk = Box::pin(travel_holding(
                 handle,
@@ -480,6 +499,13 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                         if let Err(gone) = fold_into(state, &event) {
                             return Err(HuntEnd::Stopped(gone));
                         }
+                        if field_trip && !Hunt::field_eligible(state) {
+                            // Stop this walk through travel's cancellation path,
+                            // preserving the hunt's authority and latest room.
+                            // Its next tick selects town and drops field commands.
+                            redirect_to_town = true;
+                            walk_cancel.cancel();
+                        }
                     }
                     Err(RecvError::Lagged(_)) => {}
                     Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
@@ -493,6 +519,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
         }
         match travelled.ended {
             Ended::Arrived => Ok(()),
+            Ended::Stopped(BehaviorError::Cancelled)
+                if redirect_to_town && !self.cancel.is_cancelled() =>
+            {
+                Ok(())
+            }
             Ended::Stopped(why) => Err(HuntEnd::Stopped(why)),
             other => {
                 self.handle.say(Notice::line(

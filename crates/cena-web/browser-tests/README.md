@@ -30,6 +30,27 @@ the command handler. The browser regression failed before the hashchange fix.
 It requires local sockets and browser process launch permissions. No package or
 browser download is performed by the runner.
 
+## Native Hunt setup candidate
+
+`native-hunt-setup.mjs` exercises real map clicks, authenticated configuration,
+native TOML preview/save/reload, overwrite refusal and independent scrolling.
+It launches only the offline fixture example; no game session exists.
+
+```sh
+cargo build -p cena --example hunt_setup_preview
+NATIVE_SETUP_MAP=/mounted-storage/matching-gs.map node crates/cena-web/browser-tests/native-hunt-setup.mjs
+```
+
+Use the same Playwright/browser environment variables as above. The map's SHA-256
+must match the bundled explorer catalogue. Set `NATIVE_SETUP_BIN` to test a
+packaged copy of the offline example. Test profiles are intentionally retained
+under `target/native-setup-browser/` for inspection; pairing URLs are not logged.
+Keep the checkout, target and browser temporary directories on mounted storage.
+
+The small native configuration, session and driver fixtures run in ordinary
+`cargo test --workspace` without a private map. The full-map browser rehearsal
+is an additional local acceptance gate, not a claimed hermetic CI fixture.
+
 The `browser-smoke` CI job installs Playwright 1.63.0 and its Chromium before
 running this same fixture test. The dependency-free contract suite remains a
 separate check on both desktop platforms.

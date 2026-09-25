@@ -49,6 +49,7 @@ pub mod import;
 pub mod profile;
 mod rest;
 pub mod said;
+pub mod setup;
 pub mod yaml;
 
 pub use chain::{LoadError, Loaded, load};

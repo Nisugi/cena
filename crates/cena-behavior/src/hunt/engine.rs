@@ -100,6 +100,8 @@ pub struct Hunt {
     pub(super) loot: Option<LootProfile>,
     /// A reason to rest the loot planner handed in, until the rest starts.
     pub(super) must_rest: Option<Why>,
+    /// The current rest cycle uses field settings; escalation only goes to town.
+    pub(super) field_rest: bool,
 }
 
 impl Hunt {
@@ -126,6 +128,7 @@ impl Hunt {
             seed,
             loot: None,
             must_rest: None,
+            field_rest: false,
         }
     }
 
@@ -211,6 +214,22 @@ impl Hunt {
         }
         if let Some(said) = self.rest(state, here) {
             return said;
+        }
+        if self
+            .profile
+            .rooms
+            .allowed
+            .as_ref()
+            .is_some_and(|rooms| here.room.is_none_or(|id| !rooms.contains(&id.0)))
+        {
+            if here.room.is_none() {
+                return Said::Wait(1);
+            }
+            let Some(start) = self.profile.rooms.hunting else {
+                return Said::Done(Ending::NoHuntingRoom);
+            };
+            self.phase = Phase::Returning;
+            return Said::Walk(RoomId(start));
         }
         if let Some(said) = self.flee(state, here, now) {
             return said;
@@ -598,7 +617,16 @@ impl Hunt {
             .exits
             .iter()
             .copied()
-            .filter(|exit| !boundaries.contains(&exit.0) && *exit != room)
+            .filter(|exit| {
+                !boundaries.contains(&exit.0)
+                    && *exit != room
+                    && self
+                        .profile
+                        .rooms
+                        .allowed
+                        .as_ref()
+                        .is_none_or(|ids| ids.contains(&exit.0))
+            })
             .collect();
         if options.is_empty() {
             return None;
