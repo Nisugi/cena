@@ -70,6 +70,7 @@ pub(super) enum Held {
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::aim::{Aimed, Aiming};
+use super::ammo::Ammo;
 use super::guard::{Facts, Used};
 use super::profile::{Profile, Step, Target};
 use super::react::Reacting;
@@ -181,6 +182,8 @@ pub struct Hunt {
     pub(super) followups: VecDeque<String>,
     /// bigshot verbs the player was told Hydra does not send yet.
     pub(super) told_unported: BTreeSet<&'static str>,
+    /// An arrow the game would not fire, being put away ([`super::ammo`]).
+    pub(super) ammo: Ammo,
 }
 
 impl Hunt {
@@ -232,6 +235,7 @@ impl Hunt {
             bark_until: None,
             followups: VecDeque::new(),
             told_unported: BTreeSet::new(),
+            ammo: Ammo::default(),
         }
     }
 
@@ -494,6 +498,9 @@ impl Hunt {
         target: i64,
         now: Option<u32>,
     ) -> Option<Said> {
+        if let Some(line) = self.ammo_line(state) {
+            return Some(Said::Send { line, target: None });
+        }
         if let Some(line) = self.followups.pop_front() {
             return Some(Said::Send {
                 line,

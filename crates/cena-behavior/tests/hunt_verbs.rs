@@ -256,3 +256,71 @@ fn a_jewel_is_activated_unless_cooling_or_unknown() {
         "{notes:?}"
     );
 }
+
+/// A hunt firing at #42 with this `ammo_container`, and an arrow in hand.
+fn archer(container: &str) -> Result<(Hunt, GameState), String> {
+    let aim = if container.is_empty() {
+        String::new()
+    } else {
+        format!("[aim]\nammo_container = \"{container}\"\n")
+    };
+    let profile = Profile::parse(&format!(
+        "targets = [{{ any = true, routine = \"a\" }}]\n{aim}[rooms]\nhunting = 10\n[routines]\na = [\"fire\"]\n"
+    ))?;
+    let mut state = fighting(&[]);
+    state.apply(&Frame::RightHand {
+        item: "iron-tipped arrow".to_owned(),
+        link: Some(Link {
+            kind: LinkKind::Exist {
+                id: "901".to_owned(),
+                noun: "arrow".to_owned(),
+            },
+            text: "iron-tipped arrow".to_owned(),
+            coord: None,
+        }),
+    });
+    Ok((Hunt::new(profile, 1), state))
+}
+
+/// What a tick sends, or "nothing".
+fn tick(hunt: &mut Hunt, state: &GameState) -> String {
+    let here = Here {
+        room: Some(RoomId(10)),
+        exits: &[],
+        tags: &[],
+    };
+    match hunt.tick(state, here, state.game_time_now()) {
+        Said::Send { line, .. } => line,
+        _ => "nothing".to_owned(),
+    }
+}
+
+#[test]
+fn an_arrow_the_game_will_not_fire_is_stowed_and_a_closed_quiver_opened() {
+    let (mut hunt, state) = archer("quiver").unwrap();
+    assert_eq!(tick(&mut hunt, &state), "fire #42");
+    hunt.replied(
+        ["You cannot fire an arrow that is not nocked."],
+        Some(1_000),
+    );
+    assert_eq!(tick(&mut hunt, &state), "stow #901");
+    hunt.replied(["That is closed."], Some(1_000));
+    assert_eq!(tick(&mut hunt, &state), "open my quiver");
+    assert_eq!(tick(&mut hunt, &state), "put #901 in my quiver");
+    assert_eq!(
+        tick(&mut hunt, &state),
+        "fire #42",
+        "and back to the routine"
+    );
+
+    let (mut plain, state) = archer("").unwrap();
+    assert_eq!(tick(&mut plain, &state), "fire #42");
+    plain.replied(["You cannot fire that."], Some(1_000));
+    assert_eq!(tick(&mut plain, &state), "stow #901");
+    plain.replied(["That is closed."], Some(1_000));
+    assert_eq!(
+        tick(&mut plain, &state),
+        "fire #42",
+        "no ammo_container: nothing to open"
+    );
+}

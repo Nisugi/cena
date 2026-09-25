@@ -375,6 +375,10 @@ pub struct Aim {
     pub ambush: Vec<String>,
     /// For a `fire` step (`archery_aim`); empty sends no `aim`.
     pub archery: Vec<String>,
+    /// Where an item the game would not fire goes when the stow container is
+    /// closed (`ammo_container`, `bigshot.lic:6391-6398`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ammo_container: Option<String>,
 }
 
 /// The hunt's answers to incidents.

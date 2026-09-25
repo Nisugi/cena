@@ -140,6 +140,7 @@ impl Hunt {
     pub fn replied<'a>(&mut self, lines: impl IntoIterator<Item = &'a str>, now: Option<u32>) {
         let lines: Vec<&str> = lines.into_iter().collect();
         self.wand_replied(&lines);
+        self.ammo_replied(&lines);
         self.boons_replied(&lines);
         let replies: Vec<Reply> = lines.iter().copied().filter_map(read).collect();
         // A boost the game answered with neither of its lines is not tried

@@ -254,3 +254,23 @@ fn fog_return_becomes_the_lines_it_sends() {
     let custom = import("t", "---\nfog_return: '6'\ncustom_fog: rub my orb\n").unwrap();
     assert_eq!(custom.profile.rest.fog, ["rub my orb"]);
 }
+
+#[test]
+fn ammo_container_is_carried_and_the_other_two_are_explained() {
+    let brought = import(
+        "t",
+        "ammo_container: quiver\nammo: arrow\nhide_for_ammo: true\n",
+    )
+    .unwrap();
+    assert_eq!(
+        brought.profile.aim.ammo_container.as_deref(),
+        Some("quiver")
+    );
+    let notes = brought.notes.join("\n");
+    assert!(notes.contains("ammo: not needed"), "{notes}");
+    assert!(
+        notes.contains("hide_for_ammo: bigshot no longer reads it"),
+        "{notes}"
+    );
+    assert!(!notes.contains("not imported: ammo"), "{notes}");
+}

@@ -40,6 +40,7 @@
 //! fires, and that is worse than a refusal.
 
 mod aim;
+mod ammo;
 mod boons;
 mod censer;
 pub mod chain;

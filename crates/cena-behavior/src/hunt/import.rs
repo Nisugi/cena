@@ -285,6 +285,21 @@ impl Job {
         self.profile.flee.lone_only = flag(&self.take("lone_targets_only"));
         self.profile.aim.ambush = lowercased(list(&self.take("ambush")));
         self.profile.aim.archery = lowercased(list(&self.take("archery_aim")));
+        let container = self.take("ammo_container");
+        self.profile.aim.ammo_container =
+            (!container.trim().is_empty()).then(|| container.trim().to_owned());
+        if !self.take("ammo").trim().is_empty() {
+            self.note(
+                "ammo: not needed. bigshot names the ammunition only to bless it when the game says it                  shrugged off damage (bigshot.lic:2783-2788); Hydra blesses whatever the game says that of"
+                    .to_owned(),
+            );
+        }
+        if flag(&self.take("hide_for_ammo")) {
+            self.note(
+                "hide_for_ammo: bigshot no longer reads it (its changelog, bigshot.lic:106)"
+                    .to_owned(),
+            );
+        }
         self.profile.boons.ignore = lowercased(list(&self.take("boons_ignore")));
         self.profile.boons.flee = lowercased(list(&self.take("boons_flee")));
         self.profile.wand.names = list(&self.take("wand"));
