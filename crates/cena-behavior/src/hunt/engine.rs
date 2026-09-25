@@ -166,6 +166,10 @@ pub struct Hunt {
     pub(super) fogged: bool,
     /// When a society mana ability was last used ([`super::wrack`]).
     pub(super) wracked: Option<u32>,
+    /// Boon creatures assessed, by id, with their traits ([`super::boons`]).
+    pub(super) boons: BTreeMap<i64, Vec<&'static str>>,
+    /// The creature an `assess` was sent for.
+    pub(super) assessing: Option<i64>,
     /// Long-Term Experience Boosts spent this hunt, and whether one is
     /// waiting on its reply.
     pub(super) boosts: (u32, bool),
@@ -213,6 +217,8 @@ impl Hunt {
             fogged: false,
             wracked: None,
             boosts: (0, false),
+            boons: BTreeMap::new(),
+            assessing: None,
         }
     }
 
@@ -536,6 +542,9 @@ impl Hunt {
         if self.paused(now) {
             return Some(Said::Wait(1));
         }
+        if let Some(said) = self.assess_boons(state) {
+            return Some(said);
+        }
         let target = self.choose_target(state)?;
         if state.targeting.current() != Some(target) {
             return Some(Said::Send {
@@ -676,6 +685,7 @@ impl Hunt {
         state.creatures().in_room().filter(move |creature| {
             creature.valid_target()
                 && creature.hostile() != Some(false)
+                && !self.boon_ignored(creature.id)
                 && !listed(&self.profile.never_attack, creature)
         })
     }

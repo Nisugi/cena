@@ -38,7 +38,7 @@ impl Hunt {
             .in_room()
             .any(|creature| listed(&flee.from, creature));
         let told = std::mem::take(&mut self.heard.flee_said);
-        if !(crowd || always || told || self.hazard_here(state)) {
+        if !(crowd || always || told || self.hazard_here(state) || self.boon_to_flee(state)) {
             return None;
         }
         let to = self.next_room(here, now)?;

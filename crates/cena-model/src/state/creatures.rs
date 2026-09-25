@@ -47,6 +47,7 @@
 
 pub mod apply;
 pub mod body;
+pub mod boons;
 pub mod instance;
 
 use std::collections::{BTreeMap, VecDeque};

@@ -98,6 +98,8 @@ pub struct Profile {
     pub aim: Aim,
     /// Wands for a `wand` step (`hunt/wand.rs`).
     pub wand: Wands,
+    /// Boon traits to leave alone or flee from (`hunt/boons.rs`).
+    pub boons: Boons,
     /// What to attack, in order of preference, each with its routine.
     pub targets: Vec<Target>,
     /// Leave the current target for a better-ranked one that appears
@@ -324,6 +326,19 @@ impl Default for Wander {
             ignore_disks: false,
         }
     }
+}
+
+/// Boon traits, by bigshot's names (`blink`, `boosted_hp`, ...,
+/// `cena_session::boons::TRAITS`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Boons {
+    /// A creature with any of these is neither fought nor counted
+    /// (`boons_ignore`).
+    pub ignore: Vec<String>,
+    /// A creature with any of these sends the hunt out of the room
+    /// (`boons_flee`).
+    pub flee: Vec<String>,
 }
 
 /// Wands, and where they are kept (`hunt/wand.rs`).

@@ -402,6 +402,8 @@ impl Job {
         self.profile.flee.lone_only = flag(&self.take("lone_targets_only"));
         self.profile.aim.ambush = lowercased(list(&self.take("ambush")));
         self.profile.aim.archery = lowercased(list(&self.take("archery_aim")));
+        self.profile.boons.ignore = lowercased(list(&self.take("boons_ignore")));
+        self.profile.boons.flee = lowercased(list(&self.take("boons_flee")));
         self.profile.wand.names = list(&self.take("wand"));
         let fresh = self.take("fresh_wand_container");
         self.profile.wand.fresh = (!fresh.trim().is_empty()).then(|| fresh.trim().to_owned());

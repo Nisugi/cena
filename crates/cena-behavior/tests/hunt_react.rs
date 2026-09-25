@@ -314,3 +314,55 @@ fn a_fallen_player_is_pulled_while_something_hostile_is_here_and_a_dead_one_ends
         Said::Done(Ending::Deader)
     );
 }
+
+/// A flickering cougar, `#42`, targeted: a boon creature by the object
+/// table.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors"
+)]
+fn flickering_cougar(state: &mut GameState) {
+    let mut run = cena_session::Run {
+        text: "flickering cougar".to_owned(),
+        style: Default::default(),
+        link: Some(cena_session::Link {
+            kind: cena_session::LinkKind::Exist {
+                id: "42".to_owned(),
+                noun: "cougar".to_owned(),
+            },
+            text: "flickering cougar".to_owned(),
+            coord: None,
+        }),
+        inner_link: None,
+    };
+    run.style.bold_depth = 1;
+    state.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs { runs: vec![run] },
+    });
+    state.apply(&Frame::CreatureStatus {
+        id: "42".to_owned(),
+        attrs: vec![
+            ("exist".to_owned(), "42".to_owned()),
+            ("hostile".to_owned(), "1".to_owned()),
+        ],
+    });
+    state.targeting.read("#42", None);
+}
+
+#[test]
+fn a_boon_creature_is_assessed_once_and_one_with_an_ignored_trait_is_left_alone() {
+    let profile = format!("{PROFILE}\n[boons]\nignore = [\"blink\"]\n");
+    let mut hunt = Hunt::new(Profile::parse(&profile).unwrap(), 1);
+    let mut state = standing(1_000);
+    flickering_cougar(&mut state);
+    assert_eq!(hunt.tick(&state, here(), Some(1_000)), send("assess #42"));
+    hunt.replied(["The cougar appears to be flickering."], Some(1_000));
+    assert_ne!(hunt.tick(&state, here(), Some(1_001)), at("attack"));
+
+    let plain = format!("{PROFILE}\n[boons]\nignore = [\"regen\"]\n");
+    let mut hunt = Hunt::new(Profile::parse(&plain).unwrap(), 1);
+    assert_eq!(hunt.tick(&state, here(), Some(1_000)), send("assess #42"));
+    hunt.replied(["The cougar appears to be flickering."], Some(1_000));
+    assert_eq!(hunt.tick(&state, here(), Some(1_001)), at("attack"));
+}

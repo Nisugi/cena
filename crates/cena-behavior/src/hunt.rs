@@ -40,6 +40,7 @@
 //! fires, and that is worse than a refusal.
 
 mod aim;
+mod boons;
 pub mod chain;
 pub mod command;
 pub mod desk;
