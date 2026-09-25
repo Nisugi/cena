@@ -11,6 +11,7 @@
 //! | a weapon reaction offered | `weapon <reaction>`, when `react.weapon_reaction` | bigshot's `perform_reaction`, `bigshot.lic:8051-8058` |
 //! | too much held to pick up | rest: the bags are full | bigshot's `item_limit` |
 //! | the hive's ground churning | leave the room | ecleanse's `hive_trap` |
+//! | a bless shrugged off or gone, with `react.bless` | `incant 304 #<id>`, else `symbol bless #<id>`, else the hunt ends | bigshot's `cmd_bless`, `bigshot.lic:5553-5581` |
 //! | a curse, an infection, a bless gone, an ambusher | said to the player | |
 //! | swallowed: The Belly of the Beast | `attack wall` until out | bigshot's `creature_escape`, `bigshot.lic:9638-9700` |
 //! | swallowed: Ooze, Innards | `kill organ` until out | " |
@@ -56,6 +57,8 @@ pub(super) struct Reacting {
     leave: bool,
     /// Swallowed or in a rift, and already said so.
     escaping: bool,
+    /// Weapons to bless, by id.
+    bless: Vec<String>,
 }
 
 impl Hunt {
@@ -93,6 +96,13 @@ impl Hunt {
                 Incident::InfectedWound => {
                     self.notes
                         .push("an infected wound: `clean vat` cures it.".to_owned());
+                }
+                Incident::BlessShrugged(Some(weapon)) | Incident::BlessExpired(Some(weapon))
+                    if self.profile.react.bless =>
+                {
+                    if !self.react.bless.contains(&weapon.id) {
+                        self.react.bless.push(weapon.id.clone());
+                    }
                 }
                 Incident::BlessExpired(weapon) => self.notes.push(format!(
                     "the bless on the {} is gone.",
@@ -140,6 +150,19 @@ impl Hunt {
             if let Some(to) = self.next_room(here, now) {
                 return Some(Said::Walk(to));
             }
+        }
+        if let Some(id) = self.react.bless.pop() {
+            let line = if state.known_spells.knows(304) == Some(true)
+                && crate::cast::ready(state, 304, 1, 0).is_ok()
+            {
+                format!("incant 304 #{id}")
+            } else if state.known_spells.knows(9802) == Some(true) {
+                format!("symbol bless #{id}")
+            } else {
+                self.react.bless.clear();
+                return Some(Said::Done(Ending::Unblessed));
+            };
+            return Some(Said::Send { line, target: None });
         }
         let reaction = self.react.reaction.take()?;
         Some(Said::Send {

@@ -204,3 +204,28 @@ fn a_fire_step_aims_first_and_skips_where_an_arrow_is_stuck() {
     }]);
     assert_eq!(hunt.tick(&state, here(), Some(1_002)), at("aim left arm"));
 }
+
+#[test]
+fn a_bless_gone_is_renewed_or_the_hunt_ends_when_nothing_can_bless() {
+    let gone = Incident::BlessExpired(Some(ItemRef {
+        id: "5".to_owned(),
+        noun: "broadsword".to_owned(),
+        text: "steel broadsword".to_owned(),
+    }));
+    let state = standing(1_000);
+    let on = format!("{PROFILE}\n[react]\nbless = true\n");
+    let mut hunt = Hunt::new(Profile::parse(&on).unwrap(), 1);
+    hunt.incidents(std::slice::from_ref(&gone));
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_000)),
+        Said::Done(Ending::Unblessed),
+        "neither 304 nor the symbol is known"
+    );
+    let mut hunt = Hunt::new(Profile::parse(PROFILE).unwrap(), 1);
+    hunt.incidents(&[gone]);
+    assert_ne!(
+        hunt.tick(&state, here(), Some(1_000)),
+        Said::Done(Ending::Unblessed),
+        "bless off: said, not acted on"
+    );
+}

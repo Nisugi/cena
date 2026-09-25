@@ -460,6 +460,7 @@ impl Job {
                 .insert(0, "movement autosneak off".to_owned());
         }
         self.profile.wander.ignore_disks = flag(&self.take("ignore_disks"));
+        self.profile.react.bless = flag(&self.take("bless"));
         // Absent is bigshot's default, on.
         let reaction = self.take("weapon_reaction");
         if !reaction.trim().is_empty() {

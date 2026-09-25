@@ -321,6 +321,9 @@ pub struct React {
     /// Take a weapon reaction when the game offers one
     /// (`weapon_reaction`, on by default in bigshot, `bigshot.lic:1380`).
     pub weapon_reaction: bool,
+    /// Bless a weapon whose blessing is shrugged off or gone, with Bless
+    /// (304) or the Voln symbol (`bless`, `bigshot.lic:5553-5581`).
+    pub bless: bool,
 }
 
 impl Default for React {
@@ -328,6 +331,7 @@ impl Default for React {
         Self {
             recover: true,
             weapon_reaction: true,
+            bless: false,
         }
     }
 }

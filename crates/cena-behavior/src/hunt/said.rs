@@ -72,6 +72,8 @@ pub enum Ending {
     Injured,
     /// `rest.stop_after` rests were taken.
     Rested(u32),
+    /// A weapon needs blessing and nothing known can bless it.
+    Unblessed,
     /// Disarmed, and the weapon could not be got back.
     Disarmed,
     /// An attack had no effect: the weapon or ammunition cannot hurt what
@@ -93,6 +95,9 @@ impl fmt::Display for Ending {
             Self::Waggled => f.write_str("waggled"),
             Self::Sent => f.write_str("sent"),
             Self::Rested(n) => write!(f, "rested {n} times, as rest.stop_after asks"),
+            Self::Unblessed => f.write_str(
+                "the weapon needs blessing, and neither Bless (304) nor the Voln symbol is known",
+            ),
             Self::Disarmed => f.write_str("disarmed, and the weapon could not be recovered"),
             Self::Injured => f.write_str("an injury still stops the attack after resting for it"),
             Self::NoEffect => f.write_str(
