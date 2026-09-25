@@ -111,3 +111,16 @@ fn a_weapon_reaction_is_taken_unless_switched_off() {
         send("weapon TACKLE #77")
     );
 }
+
+#[test]
+fn swallowed_the_hunt_fights_its_way_out() {
+    let mut hunt = Hunt::new(Profile::parse(PROFILE).unwrap(), 1);
+    let mut state = standing(1_000);
+    state.room.title = Some("The Belly of the Beast".to_owned());
+    assert_eq!(hunt.tick(&state, here(), Some(1_000)), send("attack wall"));
+    assert_eq!(hunt.tick(&state, here(), Some(1_001)), send("attack wall"));
+    state.room.title = Some("Ooze, Innards".to_owned());
+    assert_eq!(hunt.tick(&state, here(), Some(1_002)), send("kill organ"));
+    state.room.title = Some("Snowy Ridge".to_owned());
+    assert_ne!(hunt.tick(&state, here(), Some(1_003)), send("kill organ"));
+}

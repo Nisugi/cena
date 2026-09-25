@@ -12,6 +12,13 @@
 //! | too much held to pick up | rest: the bags are full | bigshot's `item_limit` |
 //! | the hive's ground churning | leave the room | ecleanse's `hive_trap` |
 //! | a curse, an infection, a bless gone, an ambusher | said to the player | |
+//! | swallowed: The Belly of the Beast | `attack wall` until out | bigshot's `creature_escape`, `bigshot.lic:9638-9700` |
+//! | swallowed: Ooze, Innards | `kill organ` until out | " |
+//! | a Temporal Rift | an exit, until out | bigshot's `temporal_escape`, `:9706-9713` |
+//!
+//! bigshot also swaps in a dagger for the worm and a blunt weapon for the
+//! ooze from the character's containers. Here the swallowed hunt fights out
+//! with what is in hand, and says which kind of weapon would do it faster.
 //!
 //! ecleanse also casts 213 and 1011 and settles the room before searching,
 //! and tells a spirit servant to fetch; those are its own settings, not
@@ -47,6 +54,8 @@ pub(super) struct Reacting {
     reaction: Option<String>,
     /// Leave this room: the ground is a trap.
     leave: bool,
+    /// Swallowed or in a rift, and already said so.
+    escaping: bool,
 }
 
 impl Hunt {
@@ -112,6 +121,9 @@ impl Hunt {
         here: super::said::Here<'_>,
         now: Option<u32>,
     ) -> Option<Said> {
+        if let Some(said) = self.escape(state) {
+            return Some(said);
+        }
         if let Some(said) = self.recover_step(state) {
             return Some(said);
         }
@@ -132,6 +144,30 @@ impl Hunt {
             line: format!("weapon {reaction}"),
             target: None,
         })
+    }
+
+    /// Swallowed, or in a rift: the one way out, a step a tick.
+    fn escape(&mut self, state: &GameState) -> Option<Said> {
+        let title = state.room.title.as_deref()?;
+        let (line, weapon) = if title.starts_with("The Belly of the Beast") {
+            ("attack wall".to_owned(), "a dagger")
+        } else if title.starts_with("Ooze, Innards") {
+            ("kill organ".to_owned(), "a blunt weapon")
+        } else if title.starts_with("Temporal Rift") {
+            let exit = state.room.exits.as_ref()?.first()?.clone();
+            (exit, "")
+        } else {
+            self.react.escaping = false;
+            return None;
+        };
+        if !std::mem::replace(&mut self.react.escaping, true) {
+            self.notes.push(if weapon.is_empty() {
+                "in a Temporal Rift: walking out.".to_owned()
+            } else {
+                format!("swallowed: fighting out ({weapon} in the right hand is fastest).")
+            });
+        }
+        Some(Said::Send { line, target: None })
     }
 
     /// One step of getting a weapon back.
