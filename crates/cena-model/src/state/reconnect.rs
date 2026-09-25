@@ -142,6 +142,7 @@ impl GameState {
             known_spells,
             bounty,
             doses,
+            kits,
             targeting,
             maneuvers,
             cast_time_ends,
@@ -243,6 +244,9 @@ impl GameState {
         // your own herb sack, which nobody eats from while you are gone, and
         // which no burst restates -- only `measure` and use do.
         let _ = doses;
+        // A kit's tier, extractor and listing are the kit's own, for the
+        // same reason.
+        let _ = kits;
 
         // **The arrival counter is KEPT, and it is not a game fact.** It
         // counts rooms this SESSION has entered, so resetting it would make

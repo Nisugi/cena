@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 use cena_behavior::heal::{HealProfile, Healed, Healer, Mode, Reply, Step, next_kind};
 use cena_session::herbs::{Area, HerbKind, Hurt, Severity};
-use cena_session::{Amount, Frame, GameState, Link, LinkKind, ProgressBar, Run, Runs};
+use cena_session::{Amount, Frame, GameState, Link, LinkKind, ProgressBar, Run, Runs, TextFrame};
 
 fn link(id: &str, noun: &str, text: &str) -> Link {
     Link {
@@ -204,6 +204,7 @@ fn a_wound_is_healed_from_the_pouch_and_the_herb_put_back() {
     ]);
     hurt(&mut state, "leftArm", "Injury1");
     let mut healer = Healer::new(profile(), false, false);
+    assert_eq!(healer.next(&state), Step::Analyze("700".to_owned()));
     assert_eq!(healer.next(&state), Step::Fetch("81".to_owned()));
     hand(
         &mut state,
@@ -237,6 +238,7 @@ fn a_kind_with_no_herb_is_skipped_and_named_and_a_potion_is_drunk() {
     hurt(&mut state, "nsys", "Injury2");
     hurt(&mut state, "head", "Injury1");
     let mut healer = Healer::new(profile(), false, false);
+    assert_eq!(healer.next(&state), Step::Analyze("700".to_owned()));
     // The nerve wound is major: first, and the pouch has bolmara for it.
     assert_eq!(healer.next(&state), Step::Fetch("83".to_owned()));
     hand(&mut state, true, Some(("83", "potion", "bolmara potion")));
@@ -269,6 +271,7 @@ fn yabathilium_first_for_blood_when_asked_and_edible_before_drinkable() {
     ]);
     health(&mut state, 60, 100);
     let mut plain = Healer::new(profile(), false, false);
+    plain.next(&state);
     assert_eq!(
         plain.next(&state),
         Step::Fetch("85".to_owned()),
@@ -279,12 +282,14 @@ fn yabathilium_first_for_blood_when_asked_and_edible_before_drinkable() {
         ..profile()
     };
     let mut healer = Healer::new(yaba, false, false);
+    healer.next(&state);
     assert_eq!(healer.next(&state), Step::Fetch("86".to_owned()));
     let potions = HealProfile {
         potions: true,
         ..profile()
     };
     let mut drinker = Healer::new(potions, false, false);
+    drinker.next(&state);
     assert_eq!(drinker.next(&state), Step::Fetch("84".to_owned()));
 }
 
@@ -311,4 +316,139 @@ fn no_container_and_a_public_herb_eaten_from_enough() {
     assert_eq!(healer.next(&state), Step::Eat("leaf".to_owned()));
     healer.outcome(&[Reply::LeaveSome]);
     assert_eq!(healer.next(&state), Step::Done(Healed::Refused));
+}
+
+/// One line of game text: plain pieces and links, as the parser leaves
+/// them, then a prompt when `close`.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the text's style type is not re-exported for behaviors"
+)]
+fn say(state: &mut GameState, parts: &[(&str, Option<(&str, &str)>)], close: bool) {
+    for (at, (text, object)) in parts.iter().enumerate() {
+        state.apply(&Frame::Text(TextFrame {
+            content: (*text).to_owned(),
+            stream: String::new(),
+            style: Default::default(),
+            link: object.map(|(id, noun)| link(id, noun, text)),
+            inner_link: None,
+            ends_line: at + 1 == parts.len(),
+        }));
+    }
+    if close {
+        state.apply(&Frame::Prompt {
+            time: "1001".into(),
+            text: ">".into(),
+        });
+    }
+}
+
+const KIT: (&str, Option<(&str, &str)>) = ("herb pouch", Some(("700", "kit")));
+
+#[test]
+fn a_survivalists_kit_heals_from_its_listing_and_then_distills() {
+    let mut state = setup(&[]);
+    hurt(&mut state, "leftArm", "Injury1");
+    let mut healer = Healer::new(profile(), false, false);
+    assert_eq!(healer.next(&state), Step::Analyze("700".to_owned()));
+    say(
+        &mut state,
+        &[("You analyze your ", None), KIT, (".", None)],
+        false,
+    );
+    say(
+        &mut state,
+        &[
+            ("Your ", None),
+            KIT,
+            (
+                " is a Survivalist's Kit, which is a specialized container.",
+                None,
+            ),
+        ],
+        false,
+    );
+    say(&mut state, &[("Capacity: 2/5", None)], false);
+    say(
+        &mut state,
+        &[("It has the Liquid Extractor unlock.", None)],
+        true,
+    );
+    assert_eq!(healer.next(&state), Step::Look("#700".to_owned()));
+    say(
+        &mut state,
+        &[
+            ("The ", None),
+            KIT,
+            (" contains DOSEs ", None),
+            ("ambrominas leaf", Some(("91", "leaf"))),
+            (" (12), ", None),
+            ("basal moss", Some(("92", "moss"))),
+            (" (4).", None),
+        ],
+        false,
+    );
+    say(
+        &mut state,
+        &[
+            ("The ", None),
+            KIT,
+            (" contains TINCTUREs ", None),
+            ("ambrominas leaf", Some(("93", "leaf"))),
+            (" (3).", None),
+        ],
+        true,
+    );
+    let listed = state.kits.listing("700").map(<[_]>::len);
+    assert_eq!(listed, Some(3));
+    assert_eq!(
+        healer.next(&state),
+        Step::Fetch("91".to_owned()),
+        "a DOSE: eaten"
+    );
+    hand(&mut state, true, Some(("91", "leaf", "ambrominas leaf")));
+    assert_eq!(healer.next(&state), Step::Eat("leaf".to_owned()));
+    hurt(&mut state, "leftArm", "leftArm");
+    assert_eq!(
+        healer.next(&state),
+        Step::Stow {
+            item: "91".to_owned(),
+            bag: "700".to_owned()
+        }
+    );
+    hand(&mut state, true, None);
+    // Healed: the kit analyzed afresh, then pointed at basal moss, the
+    // solid it has no liquid of.
+    assert_eq!(healer.next(&state), Step::Analyze("700".to_owned()));
+    assert_eq!(
+        healer.next(&state),
+        Step::Point {
+            kit: "700".to_owned(),
+            dose: "basal moss".to_owned()
+        }
+    );
+}
+
+#[test]
+fn the_distiller_picks_the_scarcest_liquid_when_every_solid_has_one() {
+    use cena_behavior::heal::distill_target;
+    use cena_session::containers::ItemRef;
+    use cena_session::kit::KitHerb;
+    let herb = |id: &str, name: &str, count, liquid| KitHerb {
+        item: ItemRef {
+            id: id.to_owned(),
+            noun: "x".to_owned(),
+            text: name.to_owned(),
+        },
+        count,
+        liquid,
+    };
+    let listing = [
+        herb("1", "acantha leaf", 20, false),
+        herb("2", "basal moss", 9, false),
+        herb("3", "acantha leaf", 7, true),
+        herb("4", "basal moss", 2, true),
+    ];
+    assert_eq!(distill_target(&listing), Some("basal moss".to_owned()));
+    assert_eq!(distill_target(&[herb("5", "acantha leaf", 3, true)]), None);
 }

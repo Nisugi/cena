@@ -76,6 +76,7 @@ impl PartialEq for GameState {
             known_spells,
             bounty,
             doses,
+            kits,
             targeting,
             maneuvers,
             cast_time_ends,
@@ -105,6 +106,7 @@ impl PartialEq for GameState {
             && known_spells == &other.known_spells
             && bounty == &other.bounty
             && doses == &other.doses
+            && kits == &other.kits
             && targeting == &other.targeting
             && maneuvers == &other.maneuvers
             && cast_time_ends == &other.cast_time_ends

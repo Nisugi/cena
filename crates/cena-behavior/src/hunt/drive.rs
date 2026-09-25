@@ -361,6 +361,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                     break;
                 }
                 HealStep::Look(target) => format!("look in {target}"),
+                HealStep::Analyze(id) => format!("analyze #{id}"),
+                HealStep::Point { kit, dose } => format!("point #{kit} at dose {dose}"),
                 HealStep::Fetch(id) => format!("get #{id}"),
                 HealStep::Eat(noun) => format!("eat my {noun}"),
                 HealStep::Drink(noun) => format!("drink my {noun}"),

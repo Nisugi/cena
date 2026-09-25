@@ -11,11 +11,13 @@
 //! dose monitor.
 
 pub mod choose;
+pub mod kit;
 pub mod plan;
 pub mod profile;
 pub mod reply;
 
 pub use choose::{Mode, next_kind};
+pub use kit::distill_target;
 pub use plan::{Healed, Healer, Step};
 pub use profile::{HealProfile, path};
 pub use reply::{Reply, classify};

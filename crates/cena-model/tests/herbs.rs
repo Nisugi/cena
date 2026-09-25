@@ -142,3 +142,33 @@ fn a_line_that_is_not_after_a_bite_does_not_count() {
         "the count must follow the bite within the prompt"
     );
 }
+
+const KIT: &str = "<a exist=\"700\" noun=\"kit\">herb pouch</a>";
+
+#[test]
+fn a_kits_analysis_and_listing_are_read_by_the_kits_id() {
+    let mut state = GameState::default();
+    fold(
+        &mut state,
+        &format!(
+            "You analyze your {KIT}.\nYour {KIT} is a Survivalist's Kit, which is a specialized container.\nCapacity: 2/5\nIt has the Liquid Extractor unlock.\nThe extractor is currently targeting <pushBold/>basal moss<popBold/>, with around 3 minutes remaining.\n{PROMPT}"
+        ),
+    );
+    let analysis = state.kits.analysis("700").expect("analyzed");
+    assert!(analysis.is_kit);
+    assert_eq!(analysis.tier, Some(2));
+    assert!(analysis.extractor);
+    assert_eq!(analysis.distilling.as_deref(), Some("basal moss"));
+    fold(
+        &mut state,
+        &format!(
+            "The {KIT} contains DOSEs <a exist=\"91\" noun=\"leaf\">ambrominas leaf</a> (12), <a exist=\"92\" noun=\"moss\">basal moss</a> (4).\nThe {KIT} contains TINCTUREs <a exist=\"93\" noun=\"leaf\">ambrominas leaf</a> (3).\n{PROMPT}"
+        ),
+    );
+    let listing = state.kits.listing("700").expect("listed");
+    let seen: Vec<(&str, u32, bool)> = listing
+        .iter()
+        .map(|h| (h.item.id.as_str(), h.count, h.liquid))
+        .collect();
+    assert_eq!(seen, [("91", 12, false), ("92", 4, false), ("93", 3, true)]);
+}

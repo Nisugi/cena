@@ -65,6 +65,7 @@ pub mod hands;
 mod idle;
 mod inventory;
 pub mod inventory_snapshot;
+pub mod kit;
 pub mod known_spells;
 pub mod ledger;
 pub mod maneuvers;
@@ -155,6 +156,8 @@ pub struct GameState {
     pub bounty: bounty_status::BountyStatus,
     /// Doses left in each herb measured, by item id (`doses.rs`).
     pub doses: doses::Doses,
+    /// Survivalist's Kits, as `analyze` and `look in` describe them (`kit.rs`).
+    pub kits: kit::Kits,
     /// Maneuvers the game has said are on cooldown (`maneuvers.rs`).
     pub maneuvers: maneuvers::Maneuvers,
     /// What the game says you can attack (`targeting.rs`): the `combat`

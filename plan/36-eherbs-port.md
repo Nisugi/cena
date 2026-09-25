@@ -85,6 +85,16 @@ command runs it.
 
 ### Stage 3 — the survival kit and the distiller
 
+**BUILT 2026-09-25.** `cena-model/src/state/kit.rs` (`Kits`, `GameState::kits`): what
+`analyze` says of a container (a kit, its tier, the extractor, what it is distilling) and a
+kit's DOSE and TINCTURE listing with counts and ids, read from the chunk by the kit's id. The
+healer analyzes the container once a run, takes a kit's herbs from its listing (a TINCTURE
+drunk), and after healing analyzes afresh and points the kit at a dose
+(`heal/kit.rs`, `distill_target`: a solid with no liquid yet, else the scarcest liquid),
+unless it is already distilling; `distiller = false` in the profile turns it off, `true`
+tries a kit not known to have the extractor. Tested in `cena-model/tests/herbs.rs` (the
+reader on wire) and `tests/heal_plan.rs` (2). The kit's tier scales the stock (Stage 4).
+
 `analyze` names a Survivalist's Kit, its tier and whether it has the Liquid Extractor; `look
 in` lists its DOSEs and TINCTUREs with counts; the planner reads both. The distiller points
 the kit at the solid herb with no liquid counterpart, else at the liquid it has least of,

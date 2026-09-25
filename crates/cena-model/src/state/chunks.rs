@@ -279,6 +279,7 @@ impl super::GameState {
             self.queue_loot(&chunk, at);
             self.doses
                 .read_chunk(&chunk, self.right_hand.id(), self.left_hand.id());
+            self.kits.read_chunk(&chunk);
             self.combat.parse_chunk(&chunk, at)
         };
         // Lich's `process`: parse, persist to the registry, then emit -- and
