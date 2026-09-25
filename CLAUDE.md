@@ -254,7 +254,18 @@ is the fix; raising the cap is not.**
   **Only `.xml` is wire data.** The 11,862 `.log` files beside them are a different,
   tag-stripped format — never use them as protocol evidence.
 - Reference clones are in `reference/` (gitignored): `lich-5`, `VellumFE`, `scripts`,
-  `dr-scripts`, plus the Saga Discord thread. eohunter is at `C:\Gemstone\eohunter`.
+  `dr-scripts`, `lich-agent-bridge` (M7's prior art), `lich_repo_mirror`, plus the Saga
+  Discord thread. eohunter is at `C:\Gemstone\eohunter`.
+
+  `scripts` is `elanthia-online/scripts` (236 `.lic`: bigshot, eloot, go2, kswole...).
+  `lich_repo_mirror` is <https://github.com/FarFigNewGut/lich_repo_mirror>, the **old Lich
+  repository's** user scripts, mirrored every 3 hours: **2,130 `.lic` in `lib/`, and only 2
+  also in `scripts`** -- a different population, not a copy. Cloned `--depth 1` on
+  2026-09-25; `git pull` it before citing a version. MEASURED:
+  `comm -12 <(ls lib | grep '\.lic$' | sort) <(ls ../scripts/scripts | grep '\.lic$' | sort)`.
+  Its `gs_map/gs_map.json` is older than `reference/mapdb`'s; use the latter. **Surveyed
+  whole** against Cena's captures and data in `inventory/12-lich-repo-mirror.md`; read it
+  before surveying the mirror again.
 
 ## Where the build stands
 

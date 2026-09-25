@@ -388,7 +388,11 @@ impl Job {
     fn lists(&mut self) {
         self.profile.prepare = self.commands("hunting_prep_commands");
         self.profile.signs = list(&self.take("signs"));
-        self.profile.ignore = lowercased(list(&self.take("invalid_targets")));
+        // bigshot's comments on its own settings: `flee_count`, "flee if
+        // enemy count is >"; `invalid_targets`, "but don't count these";
+        // `always_flee_from`, "and always flee from" (`bigshot.lic:3482-3485`).
+        // So `invalid_targets` is a flee setting, not a list never attacked.
+        self.profile.flee.uncounted = lowercased(list(&self.take("invalid_targets")));
         self.profile.flee.from = lowercased(list(&self.take("always_flee_from")));
     }
 

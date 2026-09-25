@@ -488,6 +488,75 @@ fn flee_when_the_room_is_too_crowded() {
     );
 }
 
+/// The profile above with `count = 2` in `[flee]` replaced by `flee`, and
+/// `top` added before the first table.
+fn profile_with(top: &str, flee: &str) -> Result<Profile, String> {
+    Profile::parse(&format!("{top}\n{}", PROFILE.replace("count = 2", flee)))
+}
+
+#[test]
+fn an_uncounted_creature_does_not_crowd_the_room_and_is_still_fought() {
+    // `invalid_targets`, "but don't count these" (`bigshot.lic:3484`).
+    let mut state = state(1_000, "10");
+    creature(&mut state, 1, "rat", &[]);
+    creature(&mut state, 2, "rat", &[]);
+    let exits = [RoomId(11)];
+
+    let mut counted = Hunt::new(profile_with("", "count = 1").unwrap(), 1);
+    assert_eq!(
+        counted.tick(&state, here(10, &exits), Some(1_000)),
+        Said::Walk(RoomId(11)),
+        "two rats counted: more than one, so the room is crowded"
+    );
+
+    let mut hunt = Hunt::new(
+        profile_with("", "count = 1\nuncounted = [\"rat\"]").unwrap(),
+        1,
+    );
+    let said = hunt.tick(&state, here(10, &exits), Some(1_000));
+    assert!(
+        matches!(hunt.target(), Some(1 | 2)),
+        "neither rat counts, so no flight, and the catch-all fights one: {said:?}"
+    );
+}
+
+#[test]
+fn a_never_attack_creature_is_neither_fought_nor_counted() {
+    let mut hunt = Hunt::new(
+        profile_with("never_attack = [\"rat\"]", "count = 1").unwrap(),
+        1,
+    );
+    let mut state = state(1_000, "10");
+    creature(&mut state, 1, "rat", &[]);
+    creature(&mut state, 2, "rat", &[]);
+    let exits = [RoomId(11)];
+    assert_eq!(
+        hunt.tick(&state, here(10, &exits), Some(1_000)),
+        Said::Wait(1),
+        "nothing to fight and nothing crowding: waiting out `wander.wait`, not flight"
+    );
+    assert_eq!(hunt.target(), None);
+}
+
+#[test]
+fn hostile_creatures_off_the_target_list_count_toward_fleeing() {
+    // bigshot counts its whole hostile roster against `flee_count`, not only
+    // what its target list names (`bigshot.lic:8579-8591`).
+    let only_mastodons = PROFILE
+        .replace("  { any = true, routine = \"a\" },\n", "")
+        .replace("count = 2", "count = 1");
+    let mut hunt = Hunt::new(Profile::parse(&only_mastodons).unwrap(), 1);
+    let mut state = state(1_000, "10");
+    creature(&mut state, 1, "mastodon", &[]);
+    creature(&mut state, 2, "kobold", &[]);
+    let exits = [RoomId(11)];
+    assert_eq!(
+        hunt.tick(&state, here(10, &exits), Some(1_000)),
+        Said::Walk(RoomId(11)),
+        "one mastodon to fight, but two hostile creatures here"
+    );
+}
+
 #[test]
 fn the_rest_cycle_end_to_end() {
     let mut hunt = Hunt::new(profile().unwrap(), 1);

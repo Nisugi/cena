@@ -46,7 +46,7 @@ fn nisugis_profile_comes_across_key_by_key() {
     assert_eq!(p.prepare, ["ready weapon", "incant 515"]);
     assert_eq!(p.signs.len(), 7);
     assert_eq!(p.signs[6], "650 panther evoke", "a sign is sent as written");
-    assert!(p.ignore.is_empty() && p.flee.from.is_empty());
+    assert!(p.never_attack.is_empty() && p.flee.uncounted.is_empty() && p.flee.from.is_empty());
 
     assert_eq!(p.loot.script.as_deref(), Some("eloot"));
     assert!(p.loot.delay && p.loot.defensive && p.loot.box_in_hand);
@@ -124,6 +124,21 @@ fn what_is_written_reads_back_the_same() {
     );
     let again = Profile::parse(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(again, brought.profile);
+}
+
+#[test]
+fn invalid_targets_are_left_out_of_the_flee_count_not_never_attacked() {
+    // bigshot's own comment on the setting: "but don't count these" toward
+    // `flee_count` (`bigshot.lic:3484`). It still attacks them. Imported as
+    // "never attacked" until 2026-09-25.
+    let brought = import("flee", "flee_count: 2\ninvalid_targets: Kobold, rat\n").unwrap();
+    let p = &brought.profile;
+    assert_eq!(p.flee.uncounted, ["kobold", "rat"]);
+    assert_eq!(p.flee.count, Some(2));
+    assert!(
+        p.never_attack.is_empty(),
+        "bigshot has no never-attack setting"
+    );
 }
 
 #[test]

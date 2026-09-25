@@ -1,0 +1,40 @@
+{"item": "R0241", "direction": "same floor", "confidence": 70, "reason": "climbing over a rockslide blocking a trail between two trail rooms on the same old Mine Road; both outdoor ground, no level change described"}
+{"item": "R0242", "direction": "down", "confidence": 88, "reason": "leaving a loft (+1) whose ceiling opening is plugged by a grass-covered hillock; the garden is outdoor ground, so the ladder descends from loft to ground"}
+{"item": "R0243", "direction": "up", "confidence": 72, "reason": "left room's only other exit is down to a stair and its floor is broken by a passage leading down; climbing stairs from a landing reaches a higher landing"}
+{"item": "R0244", "direction": "same floor", "confidence": 62, "reason": "arrived ledge says the trail is reachable with a fairly effortless leap, so the ledge clings at roughly trail level; left room's separate 'down' exit handles the real descent"}
+{"item": "R0245", "direction": "same floor", "confidence": 93, "reason": "steps from a courtyard up to a front porch; instructions state steps to a porch are same floor"}
+{"item": "R0246", "direction": "down", "confidence": 88, "reason": "a trapdoor set into the basement floor leads into an underground tunnel, so it drops below the basement"}
+{"item": "R0247", "direction": "down", "confidence": 80, "reason": "left room says silt swirls upward from below and arrived room is a near-vertical crawlway cutting deeper into the volcano with an opening below"}
+{"item": "R0248", "direction": "up", "confidence": 55, "reason": "a trapdoor from a hidden storage room reaching a ground-floor workshop implies the secret room is below; text does not say, so low confidence"}
+{"item": "R0249", "direction": "up", "confidence": 96, "reason": "rope from Ground Level to Platform Level, where the rope disappears below the platform toward the ground far below"}
+{"item": "R0250", "direction": "same floor", "confidence": 78, "reason": "an ordinary oak door among four doors lining one hallway; the hideaway's split level is internal to the room"}
+{"item": "R0251", "direction": "same floor", "confidence": 55, "reason": "steps from a meadow up a wooded bluff slope; outdoors a slope climbing to more open ground is same floor by the rules"}
+{"item": "R0252", "direction": "same floor", "confidence": 90, "reason": "entering a tower's ground-level foyer from the street; the foyer's own circular staircase handles the climb"}
+{"item": "R0253", "direction": "up", "confidence": 85, "reason": "the ladder disappears into the ceiling of the tunnel, reaching a building hallway above"}
+{"item": "R0254", "direction": "down", "confidence": 82, "reason": "left room says the ravine provides a comfortable descent to the marshes below, and the arrived room has the bridge stretching overhead"}
+{"item": "R0255", "direction": "same floor", "confidence": 60, "reason": "a boarding ladder from a ship's foredeck (main deck, floor 0) to an outdoor trail at ground level"}
+{"item": "R0256", "direction": "up", "confidence": 93, "reason": "going into the massive oak's branch crooks, whose only other exit is down to the clearing"}
+{"item": "R0257", "direction": "same floor", "confidence": 78, "reason": "a tunnel branching off to the south from a ledge in the same cavern; the pit below is a separate drop neither room enters"}
+{"item": "R0258", "direction": "same floor", "confidence": 58, "reason": "climbing terraced amphitheatre benches to the adjacent seating room; tiered seating in one amphitheatre reads as one level"}
+{"item": "R0259", "direction": "up", "confidence": 88, "reason": "left room says a slight outcropping just above you, and the arrived room is at trail level looking down a sheer cliff face"}
+{"item": "R0260", "direction": "same floor", "confidence": 60, "reason": "a ramp climbing a ridge to a raised roadway; outdoors a slope up to more open ground is same floor, though the road is fortified above the ridge"}
+{"item": "R0261", "direction": "same floor", "confidence": 65, "reason": "moving a boulder against the southern wall opens into an adjoining cave at the same underground level; no climb or drop described"}
+{"item": "R0262", "direction": "down", "confidence": 80, "reason": "left room is a high promontory with a plank and chain ladder and steep drop-off; the arrived base looks up at ladder rungs above"}
+{"item": "R0263", "direction": "same floor", "confidence": 68, "reason": "climbing over a rockslide blocking a mountain pass between two pass rooms; both outdoor mountain trail"}
+{"item": "R0264", "direction": "same floor", "confidence": 72, "reason": "climbing over a pile of boulders blocking the trail; both rooms are the same winding trail"}
+{"item": "R0265", "direction": "up", "confidence": 72, "reason": "rough stone steps in an alcove lead from the tower's main floor to Instruction, which has its own down exit"}
+{"item": "R0266", "direction": "same floor", "confidence": 55, "reason": "a trail climbing the mountainside to another trail room; outdoors a hill climb is same floor by the rules"}
+{"item": "R0267", "direction": "same floor", "confidence": 74, "reason": "a stone walkway linking two Academy buildings; a span is level with its ends, and the hall it leaves is the main floor"}
+{"item": "R0268", "direction": "same floor", "confidence": 62, "reason": "a hole at your feet leading back into a darkened recess in the tip of the peak; the cavern is still described as at the peak, not below it"}
+{"item": "R0269", "direction": "down", "confidence": 72, "reason": "left room says stone steps lead down into the guts of the keep; the ledge is a landing on stairs spiraling further down"}
+{"item": "R0270", "direction": "up", "confidence": 82, "reason": "the arrived waiting room has stairs leading down into both chapels, so it sits above the white chapel"}
+{"item": "R0271", "direction": "down", "confidence": 70, "reason": "left room describes descending stairs at the archway; both rooms are named Second Floor, so confidence is limited"}
+{"item": "R0272", "direction": "down", "confidence": 85, "reason": "left room has a set of steep stairs leading downward, and the workshop's computed floor is one below the tinkering room"}
+{"item": "R0273", "direction": "same floor", "confidence": 78, "reason": "a hole in the south wall with tracks leading through it into an adjoining lair room; a wall hole is level, not a drop"}
+{"item": "R0274", "direction": "up", "confidence": 93, "reason": "entering the massive oak's branches, whose only other exit is down to the clearing"}
+{"item": "R0275", "direction": "same floor", "confidence": 55, "reason": "a spoken password opens a concealed passage between two catacomb rooms; nothing describes a climb or drop"}
+{"item": "R0276", "direction": "same floor", "confidence": 55, "reason": "steps between two adjoining underground chambers of Cavernfast; short steps between neighbouring spaces are level"}
+{"item": "R0277", "direction": "up", "confidence": 70, "reason": "a wide staircase marked Staff Only leads from the hallway to another hallway with a skylight, suggesting an upper storey"}
+{"item": "R0278", "direction": "up", "confidence": 93, "reason": "entering the massive oak's branch crooks, whose only other exit is down to the clearing"}
+{"item": "R0279", "direction": "same floor", "confidence": 62, "reason": "climbing a sand dune off the beach into the jungle wilds; a dune slope to more open ground is same floor outdoors"}
+{"item": "R0280", "direction": "down", "confidence": 85, "reason": "left room says carved steps plunge to the northwest and all its exits descend; the street below looks up at ice steps winding toward the temple"}

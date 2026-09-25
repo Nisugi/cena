@@ -362,13 +362,15 @@ impl Hunt {
             return None;
         }
         let flee = &self.profile.flee;
-        let fightable = self.fightable(state).count();
-        let crowd = flee.count.is_some_and(|limit| fightable > limit as usize);
-        let always = state.creatures().in_room().any(|creature| {
-            flee.from
-                .iter()
-                .any(|name| named(name, &creature.name, creature.noun.as_deref()))
-        });
+        let counted = self
+            .could_fight(state)
+            .filter(|creature| !listed(&flee.uncounted, creature))
+            .count();
+        let crowd = flee.count.is_some_and(|limit| counted > limit as usize);
+        let always = state
+            .creatures()
+            .in_room()
+            .any(|creature| listed(&flee.from, creature));
         if !(crowd || always) {
             return None;
         }
@@ -619,24 +621,29 @@ impl Hunt {
         })
     }
 
-    /// The creatures here worth attacking: alive, not known to be
-    /// unhostile (a companion), not an animate or a bare appendage, not
-    /// ignored, and named by the target list.
-    fn fightable<'a>(
+    /// The creatures here the hunt could fight: alive, not known to be
+    /// unhostile (a companion), not an animate or a bare appendage, and not
+    /// on the never-attack list. What the flee count counts, whether or not
+    /// the target list names them.
+    fn could_fight<'a>(
         &'a self,
         state: &'a GameState,
     ) -> impl Iterator<Item = &'a cena_session::CreatureInstance> + 'a {
         state.creatures().in_room().filter(move |creature| {
             creature.valid_target()
                 && creature.hostile() != Some(false)
-                && !self
-                    .profile
-                    .ignore
-                    .iter()
-                    .any(|name| named(name, &creature.name, creature.noun.as_deref()))
-                && self
-                    .rank(&creature.name, creature.noun.as_deref())
-                    .is_some()
+                && !listed(&self.profile.never_attack, creature)
+        })
+    }
+
+    /// Those the target list names: the creatures worth attacking.
+    fn fightable<'a>(
+        &'a self,
+        state: &'a GameState,
+    ) -> impl Iterator<Item = &'a cena_session::CreatureInstance> + 'a {
+        self.could_fight(state).filter(move |creature| {
+            self.rank(&creature.name, creature.noun.as_deref())
+                .is_some()
         })
     }
 
@@ -738,4 +745,11 @@ impl Hunt {
 /// case (`bigshot.lic:7170`).
 fn named(wanted: &str, name: &str, noun: Option<&str>) -> bool {
     name.eq_ignore_ascii_case(wanted) || noun.is_some_and(|noun| noun.eq_ignore_ascii_case(wanted))
+}
+
+/// Whether any of `names` names this creature ([`named`]).
+fn listed(names: &[String], creature: &cena_session::CreatureInstance) -> bool {
+    names
+        .iter()
+        .any(|wanted| named(wanted, &creature.name, creature.noun.as_deref()))
 }

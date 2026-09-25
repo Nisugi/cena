@@ -1217,31 +1217,275 @@ its largest level is **9,637 rooms** and holds **100 of its 320 same-level confl
 6. **A bug inherited from `floors.py`, fixed here only:** `go gate` whose way back is a
    literal `down` was classed flat one way and down the other. The way back is now checked
    before the plain-portal default. `floors.py` still has it, so its 452 is inflated.
+7. **Indoors, the literal `up`/`down` is real and the compass way round is the slope**
+   (author's reading; I had proposed the reverse). 62 indoor `up`/`down` exits join two
+   rooms that compass moves also join. Glaes Vein 2240 settles which is which: *"A stark
+   plunge down marks the southern finger ... To the southeast, the route turns down, but
+   does so in a gentle decline."* — the `down` is the plunge, `southeast`→`southwest` the
+   decline, both reach room 2242. MEASURED over the 62: slope wording on the compass
+   route 23, only in the two end rooms 13, none 14, and 12 are MAZES (every room on the
+   loop has one description; Graveyard Under Crypt reaches one room by `east`,`east` and
+   by `west`,`southwest`). `cut_slopes()` cuts one compass move per route — the one whose
+   rooms have slope wording, nearest the far end; the last move when none — and leaves
+   mazes alone. **51 moves cut (37 on wording, 14 by position), 12 mazes left**;
+   written to `results/floor2_slope_cuts.jsonl`. A cut move is not crossed at all. The
+   room in the middle of a slope has no true floor; it lands with the near end.
+8. **The indoor anchoring step repeats until nothing moves.** Run once, a balcony or
+   courtyard took its floor from one building and a SECOND building opening onto it was
+   never anchored from it. MEASURED: in 61 of the then-104 indoor/outdoor mismatches the
+   indoor side sat at a default 0. Conflicts 272 → 209, those mismatches 104 → 41. My
+   guess that they were mostly slopes was wrong: slope wording matched 16 of the 41 and
+   most matches were noise ("walls rise up"); about three are real slopes.
+9. **Steps up to a porch are level** (author: "agree steps are level"). A room named
+   Porch, Veranda or Stoop is on its building's floor, whether the exit was read by
+   Jev/the subagent or is the map's own `down`. All 47 Porch rooms are now at 0 (16 were
+   at +1), and **Pinefar's town centre went to 0** — its +1 was porch steps, as the
+   author suspected. Conflicts 209 → 203. TESTED AND REJECTED as wider: every `go steps`
+   a reader judged, made level (`--steps-flat`) — conflicts rise to 235 and 2,653 rooms
+   move. Steps in general do change floors; porch steps do not.
+10. **The room-name list breaks the tie between a plain door and an `up`/`down`**
+    (`results/name_levels.json`, section 11g). Of the 94 both-indoors conflicts, 43 had
+    BOTH ends anchored at 0 by a plain exit to the outside: the Wayside Inn Garret by `go
+    grate under ashes` to the street, the 120-room Catacombs level by a one-way drop in
+    from the City Stables, the Abbey Cellar by its door to the kitchen garden. An indoor
+    level whose names Jev called below or above ground waits for the `up`/`down` walk
+    and takes a door's floor only if nothing walks to it.
+    - **CORRECTED the same evening.** I first rejected "one off-ground name decides the
+      level" because a sample showed street-level shops at −1 (Solhaven Grocer, Haldrick's
+      Armory, the Temple of Lorminstra entry), and kept a cautious version (half the level
+      named, no ground names). The author asked the right question: *"if there are 3
+      connected rooms on the same level and one of them is called cellar, why would that
+      not make the level -1?"* It should. The shops broke because their "levels" were
+      fake — see rule 11 — not because the rule was wrong.
+    - KEPT (author's rule): more off-ground names than ground-level names, and not both
+      below and above. MEASURED after rule 11, `up`/`down` conflicts: no name rule 153,
+      cautious version 144 (`--names-half`), **author's rule 121**. Shops stay at 0, the
+      Garret is +1. Flat-exit mismatches rise 30 → 62: plain exits now believed to change
+      floor (the Garret's grate), not new errors. `--no-names` turns it off.
+    - THE LIMIT IS COVERAGE. The list classifies 2,744 of the map's 19,561 distinct room
+      names. Of 282 names with an obvious level word (Cellar, Basement, Attic, Garret,
+      Loft, Crypt, Catacomb, Upstairs) only 133 are classified — `[Abbey Cellar]` is not,
+      so it is still at 0. 41 Cellar/Basement rooms and 14 Attic/Garret/Loft rooms sit at
+      floor 0. Classifying the remaining names is the obvious next step.
+    - **DONE, and it changed little.** The author had asked for every name the night
+      before; I had run 2,744 and re-offered the rest as optional. All 20,226 titles are
+      now in `results/name_levels_all.json` (17,479 new calls, **$0.42**, 0 errors; 9,886
+      cannot tell, 5,984 ground, 2,311 below, 2,045 above; 5,536 confident and usable).
+      `floors2.py` uses it by default (`--names-small` for the old list). MEASURED among
+      walkable rooms: conflicts 159 → 162, Cellar/Basement rooms at 0 37 → 35,
+      Attic/Garret/Loft at 0 unchanged at 8. WHY SO LITTLE: rule 10 only makes a cellar
+      level WAIT for an `up`/`down` to reach it. Where the stairs into the cellar are
+      themselves an uncrossed height-word exit, nothing reaches it and it falls back to
+      its door's floor. `[Abbey Cellar]` now reads below ground at 1.0 and still lands at
+      +1, because the map joins it by compass moves to the Abbey Kitchen, whose `down`
+      leads to a Buttery that doors anchor at 0.
+    - Names as a direct decider of uncrossed exits: of the **302 height-word exit pairs
+      still uncrossed among walkable rooms**, the name verdicts of the two LEVELS decide
+      13 (`results/name_decided_exits.json`, not applied; 12 look right on reading, one —
+      Solhaven Inn Upstairs Hall `go steps` to A Concealed Room as "down" — is doubtful),
+      90 have the same verdict at both ends, 199 have a level with no verdict.
+11. **`urchin guide ...` and `ask <npc> about ...` are teleports, not walks, and are not
+    crossed.** Eight Urchin Hideouts have 35–46 `urchin guide` exits each (429 in all), one
+    to every shop in town; crossed as flat moves they glued Solhaven's shops into ONE
+    155-room indoor level and Icemule's into one of 118. Removing them alone took
+    conflicts **205 → 183** and the second-largest indoor level from 205 rooms to 165.
+    `--teleports` puts them back.
+    **Then widened, on the author's word** (*"urchin rooms and other rooms like that we
+    can't actually access should not be touching any of the level stuff"*): WALKABLE =
+    reachable from a town centre without `;e true` placeholders (523 in the map), urchin
+    guides or `ask` exits. **28,810 of 36,838 rooms are walkable**; the other 8,028 are the
+    7,968 no town reaches (Caligos Isle, Evermore Hollow, the Flotilla, event grounds) plus
+    60 reached only through those exits (Urchin Hideouts, guild back rooms, "A Hidden
+    Room"). The **969 exits joining a walkable room to a non-walkable one are dropped**.
+    Non-walkable rooms still get floors among themselves and are marked
+    `walkable: false` in `results/floors2.json`. Conflicts 183 → 171, of which **159 are
+    among walkable rooms** (112 `up`/`down`, 47 flat exits) and 12 among the rest.
+    Other odd verbs still crossed as flat and not examined:
+    `pedal` 578, `swim` 349, `pull` 118, `jump` 66, and 8 `clim ladd` abbreviations the
+    height-word pattern does not recognise.
+    - NOT A FIX FOR MISSING VERTICALS: of the 568 height-word exit pairs still uncrossed,
+      the names on the two ends decide the direction of **7**.
+    - OPEN: 1,202 rooms have a confident off-ground name and a floor that disagrees (531
+      of them outdoor rooms, which rule 1 puts at 0 by definition). Not examined. The
+      comparison is partly circular, since rule 10 uses the same list.
+
+12. **Round two for the subagents (`agent_round2.py`) — little came of it, and that is the
+    finding.** An UNCROSSED exit is a height-word exit (stairs, steps, ladder, hole, ramp,
+    tunnel ...) whose direction nobody has settled: the map has no literal `up`/`down` on
+    either leg, Jev was under 93%, and the first subagent did not pass the gate.
+    `floors2.py` does not cross it at all. Among walkable rooms there are 273, of which 271
+    are on the review list. Those, plus the 70 conflict exits whose direction came from Jev
+    or a subagent, went to nine Opus subagents (343 exits), this time with each room's
+    computed floor and how it was reached, Jev's verdict on the room's name (both labelled
+    fallible), and the author's rulings on porches, hillsides, sloping tunnels and spans.
+    - **Uncrossed: 33 of 273 pass the 93% gate** (confidence 90+, or 80+ and agrees with
+      Jev). Only 5 answers reached 90. Confidence: 50s 45, 60s 86, 70s 92, 80s 45, 90s 5.
+    - **The second reader changed the first reader's direction on 92 of 271 (34%).** Two
+      careful readings of the same text disagree a third of the time: these exits are
+      underdetermined by the text, not under-read. 128 of the 273 came back "same floor".
+    - **Conflict exits re-read: 60 of 70 confirmed as they stand** (48 at 80+), and the 10
+      that differ are all under 80. The exit a reader judged is not the faulty edge in
+      those conflicts; something else on the loop is.
+    - Applied (`results/job1_kept_round2.jsonl`, `--no-round2` to leave out): conflicts
+      among walkable rooms 162 → 169. Only 2 of the 33 are themselves in a conflict — a
+      cliff-face `climb protrusion` and a treetop `go rope`, both between two outdoor rooms
+      that rule 1 holds at 0, and both right on the text. The other 5 are knock-on.
+    - NO ANSWER KEY exists for these, so none of this is scored. All 343 answers with
+      reasons are in `results/job1_round2.jsonl`.
+
+13. **The author's own answers (`apply_author.py`), which outrank everything.** He plays
+    the game and has the in-game map. Three exits, each with his reasoning recorded:
+    Czeroth Caverns `climb rocks` = same floor ("it's a downward slope, not a drop, and
+    there's not many other rooms that would change a level so it would make the area 2
+    levels when it should be one") — that one exit pinned **175 rooms**; Zaerthu `go
+    crevasse` = same floor (the wall is sealed with granite "to prevent anyone from
+    proceeding further down the tunnel", so this is a tunnel entrance through a wall, not
+    a hole in the ground) — 41 rooms; Altar of the Elder `climb steps` = down.
+14. **Outdoors, a step is a slope (`SLOPE_CMD`).** Rule 2 flattened only the map's literal
+    `up`/`down`, so Solhaven's **Tumbledown Lane** — ONE cobbled street down a cliffside,
+    "the uneven, downward sloping cobblestones", 8 rooms — had its `up`/`down` flattened
+    and was then split across floors −1, +1 and +2 by the `go steps` between its segments.
+    The author caught it: *"I'm not sure tumbledown lane is up/down."* Outdoors, a command
+    naming steps, a ramp, a slope, an incline, a path or a trail is the hill. `BUILT` and
+    the dead-end pocket still override. Conflicts among walkable rooms **169 → 152**.
+    - TESTED AND REJECTED first: steps between two rooms sharing a name prefix are level.
+      No separation at all (35.3% level vs 32.3%), because the prefix is a naming
+      convention, not a space: `[Solhaven, Tumbledown Lane]` shares a TOWN name across
+      three floors while `[Felinium's Fur Emporium]` and `[Felinium's Fur, Workroom]` are
+      one shop written two ways.
+    - The 553-exit key says steps change level 43/43 — but the key is BIASED here: it was
+      built from exits whose return leg is a literal `up`/`down` or a compass move, so a
+      step that keeps you level (`go steps` both ways) could never enter it. 119 of the
+      map's 373 step exits are currently level. The key cannot settle this one.
+15. **The outdoor cluster rule, from Simutronics' own layouts** — see section 11o. Two
+    OUTDOOR rooms drawn on one plate are on one floor: 25 exits flattened, conflicts
+    **152 → 148**. It moved one Hanging Gardens room to 0; the author: "don't care about
+    hanging gardens room". `--no-clusters` turns it off.
 
 **Result, MEASURED** (`python floors2.py`, cut 0.93):
 
 | | `floors.py` | `floors2.py` |
 |---|---|---|
-| Conflicts | 452 | **314** |
-| Largest level | 9,637 rooms | 2,415 (outdoor ground); largest indoor 422 |
-| Rooms anchored by default | 11,987 | 4,100 |
-| Town centres not at 0 | 4 | 3 (Pinefar, Hanging Gardens, The Contempt's crow's nest — all +1) |
+| Conflicts among walkable rooms | 452 (all rooms, and its own bug inflates it) | **148** |
+| Largest level | 9,637 rooms | 2,416 outdoor ground; largest indoor 422 |
+| Rooms whose floor is a guess | 11,987 | 1,886 of 28,810 walkable |
+| Town centres not at 0 | 4 | 1 (The Contempt's crow's nest, +1) |
 | Main decks at 0 | not checked | 56 of 56 |
-| Crow's nests at +1 | 4 | 20 of 22 (the other two: a pub, and one default-anchored stack) |
+| Crow's nests at +1 | 4 | 19 of 22 |
 
-Checkpoints that hold: Hanging Gardens +1, Emberthorn Platform +2, Burrow Way −1
-(author: "-1 looks good for burrow way").
+The path: 314 → 272 (7) → 209 (8) → 203 (9) → 171 (10, 11) → 174 (full name list) → 181
+(12) → 169 (13) → 152 (14) → **148** (15). Checkpoints that hold: Emberthorn Platform +2,
+Burrow Way −1, Spitfire cargo hold −2, all 56 main decks at 0.
 
-**The 314, by kind:** 104 doorway (a plain door between an indoor and an outdoor room on
-different floors; 83 of them one floor apart), 136 both-indoors (72 on one level, 60 of
-those the map's own `up`/`down` — loops of compass moves that include a ramp or spiral),
-46 both-outdoors (a cliff with a way around), 28 indoor/outdoor.
+**Known open:** 42 rooms at −9 to −14 are one cave system whose chain of `down`s re-emerges
+on Thurfel's Island at 0. 240 height-word exits are still uncrossed
+(`results/uncrossed_ranked.tsv`, ranked by how many guessed-floor rooms hang on each; 126
+have any, in 115 groups, and the top 5 groups cover 300 rooms). 148 conflicts are listed
+room by room in `results/floor2_conflicts_walkable.tsv`.
 
-**Known open:** 42 rooms at −9 to −14 are one cave system ("the subterranean tunnels",
-Great Cavern) whose chain of `down`s re-emerges on Thurfel's Island at 0 — the old
-"Thurfel at −11" fault, now confined to the caves and two doorway conflicts 12 floors
-apart. Not tried yet: weighing every exit as evidence and solving for the floors that
-break the least weight, which would turn each loop conflict into one named exit.
+## 11o. Simutronics' own map layouts — what they do and do not tell us
+
+`reference/mapdb/map-data/prime/layouts.json` is **123 prebaked render layouts**, generated
+by their `bake-layouts.ts`, "Do not edit by hand". Each holds `pos` (a room's x,y on a
+grid) and `clusters` (which rooms are drawn on one plate, each `main` or `adjacent`).
+14,292 of their rooms match a Lich room by uid; **13,689 are walkable rooms of ours, 48%**
+— and the split is lopsided: **9,065 of 12,854 outdoor rooms (71%) but only 4,624 of
+15,956 indoor (29%)**. It is a wilderness map.
+
+**IT CONTAINS NO FLOOR DATA.** I first reported "official clusters agree with our floors on
+91.5%" — that was wrong and I should have read their README first. A cluster is a DRAWING
+artefact. What makes it useful is indirect, and the author found it: *"why is it
+overlapping? Is it because there's all the cardinal directions and this one is up or
+down?"* MEASURED, exits whose two rooms are in the same layout:
+
+| exit kind | crosses a cluster boundary |
+|---|---|
+| compass move | 94 of 25,596 — **0.4%** |
+| literal `up`/`down` | 800 of 1,179 — **67.9%** |
+| `go door`, `climb stairs`, ... | 4,006 of 4,932 — 81.2% |
+| script exit | 500 of 1,418 — 35.3% |
+
+A plate cannot hold two rooms in one cell and cannot point a compass edge the wrong way, so
+a vertical move — which carries no grid direction at all — usually has nowhere to go and
+forces a new plate. **The correlation with floors is a side effect of that, not floor data.**
+
+**Scored against the 553-exit key** (248 exits have both rooms in a layout):
+
+| both rooms | same cluster -> same floor | different cluster -> changes level |
+|---|---|---|
+| outdoors | **99 of 99 (100%)** | 64 of 67 (95.5%) |
+| indoors | 18 of 49 (36.7%) | 4 of 4, too few to score |
+
+The author predicted the split before it was measured: *"inside and outside are different
+beasts. When we get to interiors we're talking about a huge density in these towns."*
+Outdoors the plate IS the terrain, so leaving it means leaving the ground. Indoors the
+baker packs a dense town onto one plate, storeys and all.
+
+**Their constraints, measured.** Occupancy is exactly 1.00 at both the median and the
+maximum across all 2,762 clusters — no cluster ever puts two rooms in one cell. Of compass
+edges inside a cluster, 22,841 land exactly one grid step in their direction and 1,682
+stretch further in the same direction (891 do neither). **Zero violations in all 123
+layouts.** They would rather strand a room than break a constraint: **1,501 of the 2,762
+clusters hold a single room**, drawn beside the main plate as `adjacent`.
+
+## 11p. A DESIGN PROPOSAL, not a finding: area level and world elevation are two numbers
+
+This is the most important thing the night produced and it is the author's, reached while
+looking at `[Kraken's Fall, Mantle's Landing]` `go stairs` -> `[Kraken's Fall, Beach]`, which
+the cluster rule flattens and which is plainly a level change:
+
+> *"yeah it is a level change but at the same time remember what we're making here. We're
+> making visual representations of the area they're in. and stranding a beach room by itself
+> on a level isn't condusive to that. Some things have to be fudged. Maybe there are no
+> levels inside areas unless there needs to be and it really makes sense. Maybe levels is
+> more of a world thing?"*
+
+And, asked when an area genuinely needs a second plate: *"when it's too crowded on one
+plate."*
+
+**The proposal.** Two numbers, because one number has been asked to do two jobs all night:
+
+- **Area level** — which plate to draw a room on. A RENDER decision. Split only when the
+  plate cannot hold the rooms. A beach below a landing, a cliff top above a trail, a crow's
+  nest above a deck: all one plate. Fewer levels is a better map.
+- **World elevation** — how high the room actually is. Never splits a plate. For travel,
+  for descriptions, for anything that needs real height.
+
+**The evidence that area level should not be precomputed at all.** Simutronics' answer to
+"too crowded" is not a threshold — it is a collision. Their baker splits a cluster the
+moment a room cannot be given an empty cell whose compass edges point the right way. A
+renderer for Hydra will face the same three constraints (cell collision, edge direction,
+and — the author's third — **edges crossing**, which this data cannot confirm because a
+stretched edge passing over an occupied cell is exactly what a crossing looks like) and will
+make the same splits **from the room graph, without any floor number as input**.
+
+**What this means for the numbers in 11n.** They are world elevation, and that is what they
+are good for. The 148 conflicts and 240 uncrossed exits are elevation questions; most are
+not rendering problems, because an exit that does not split a plate needs no direction to
+draw the map. The metric that would matter for rendering is different again: **202 rooms
+currently sit alone on their (location, floor) plate** — 105 isolated by the map's own
+literal `up`/`down`, 59 by a stair word, 38 by something else; 122 indoors, 80 outdoors.
+Some are right (`[The Firebird, Aftercastle]` is genuinely alone atop an airship); the rest
+are a slope counted as storeys, and each is a rendering failure.
+
+**The area unit, if one is wanted.** Official layout where one exists (123 areas, 48% of
+walkable rooms), the mapdb `location` field otherwise (306 locations). They disagree: 66
+official areas span several locations and 53 locations span several official areas, so
+neither alone is right. Cross-referenced against `reference/wiki_clean/List of hunting
+areas.txt` (112 areas): 64 match a location exactly, 29 are sub-areas inside one (Cavernhold
+inside the foothills of Zeltoph, Lava Flows inside the volcano), 19 appear nowhere. Only two
+locations truly hold two hunting areas — **Stone Valley** (Thanatoph + Stronghold, and it
+spans floors −1..+8, so this one matters) and the Yegharren Plains (Orcswold + Black Moor,
+all at 0). 10 areas have no anchor at all and would need an origin set by hand, 493 rooms:
+the Rift (231), Maaghara Tower (61), Reim Fortress Defense (61), the bowels of Thanatoph
+(57), Koar's Shrine (41) and five smaller.
+
+**The Rift is not floors.** Its five official "planes" (202 rooms) are linked only by Ruby
+scripts holding a 55-room list and a compass direction per room: you walk a compass
+direction and which plane you land on depends on which room you were in. The links run
+1->2->3->4->5->**1**. A cycle cannot be a stack of floors. The planes are a dimension of
+their own; all 202 rooms belong at one elevation with the plane recorded as a separate
+field.
 
 ## 12. Suggested next steps
 

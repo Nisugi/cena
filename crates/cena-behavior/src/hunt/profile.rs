@@ -79,8 +79,13 @@ pub struct Profile {
     /// What Maintain keeps up: a spell number, or a number and its words, as
     /// sent (`signs`).
     pub signs: Vec<String>,
-    /// Creatures never attacked (`invalid_targets`), lowercase.
-    pub ignore: Vec<String>,
+    /// Creatures never attacked, and never counted toward fleeing
+    /// (`flee.count`), lowercase. Hydra's own; bigshot has no such setting.
+    /// Its nearest is the `untargetable` list it learns from the game
+    /// refusing `target`, which it uses the same two ways
+    /// (`bigshot.lic:8583`, `:8624-8634`). Not `invalid_targets`, which
+    /// is [`Flee::uncounted`].
+    pub never_attack: Vec<String>,
     /// When to leave the room.
     pub flee: Flee,
     /// How the dead are looted.
@@ -188,9 +193,17 @@ pub struct When {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Flee {
-    /// Leave when this many creatures are here (`flee_count`).
+    /// Leave when more than this many hostile creatures are here
+    /// (`flee_count`). Every creature the hunt could fight counts, whether or
+    /// not the target list names it, as bigshot counts its hostile roster
+    /// (`bigshot.lic:8579-8591`), less [`Flee::uncounted`] and
+    /// [`Profile::never_attack`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<u32>,
+    /// Creatures that do not count toward `count` (`invalid_targets`,
+    /// bigshot's *"but don't count these"*, `bigshot.lic:3484`), lowercase.
+    /// They are still fought when the target list names them.
+    pub uncounted: Vec<String>,
     /// Leave when any of these is here (`always_flee_from`), lowercase.
     pub from: Vec<String>,
 }

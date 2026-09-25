@@ -1,0 +1,40 @@
+{"item": "R0001", "direction": "same floor", "confidence": 68, "reason": "a low stacked stone wall between a vineyard path and a pond-side field, both outdoor ground level"}
+{"item": "R0002", "direction": "up", "confidence": 62, "reason": "climbing an overhang on a steep mountain ridge into a spot described as a respite from the climb"}
+{"item": "R0003", "direction": "down", "confidence": 88, "reason": "room left says the building is half-buried and a wide timber stairway set into the turf descends to the doorway"}
+{"item": "R0004", "direction": "same floor", "confidence": 72, "reason": "a short tunnel between a walkway rise and a storeroom, with all sibling exits on the same rise level"}
+{"item": "R0005", "direction": "same floor", "confidence": 70, "reason": "a trail snakes across a narrow ledge to a redoubt; a ledge trail along the mountain, not a change of level"}
+{"item": "R0006", "direction": "same floor", "confidence": 55, "reason": "temple staircase but the Pool of Thought reads as a ground chamber with high arched ceiling; text does not say which way"}
+{"item": "R0007", "direction": "up", "confidence": 72, "reason": "command climbs a path from the coast, and the arrived room describes travel south as a steeply descending path back down"}
+{"item": "R0008", "direction": "same floor", "confidence": 60, "reason": "climbing over the wall enclosing a garden clearing into adjacent outdoor mire; the garden's separate down exit goes to the burial mounds"}
+{"item": "R0009", "direction": "same floor", "confidence": 72, "reason": "an outdoor forested incline climbing a mountain slope, which the rules call same floor"}
+{"item": "R0010", "direction": "down", "confidence": 60, "reason": "room left stands on a tall earthen cliff above the lake; climbing the ledge leaves that vantage for a cavern floor area"}
+{"item": "R0011", "direction": "up", "confidence": 85, "reason": "the showroom is a basement boutique whose spiral staircase descends from the ceiling, so going up the staircase reaches the tunnel"}
+{"item": "R0012", "direction": "same floor", "confidence": 65, "reason": "short steps into the bath pool within the same bathing chamber, neighbouring spaces on one level"}
+{"item": "R0013", "direction": "down", "confidence": 82, "reason": "the alehouse says a short tunnel leads up and out, so entering it from the oasis goes down"}
+{"item": "R0014", "direction": "same floor", "confidence": 55, "reason": "both are crypt-level chambers of the same vault; a ladder is suggestive but nothing in either text places one above the other"}
+{"item": "R0015", "direction": "up", "confidence": 92, "reason": "the courtyard staircase disappears into the ceiling and the Landing says the staircase winds downward towards the lower levels"}
+{"item": "R0016", "direction": "same floor", "confidence": 55, "reason": "a stairway between two adjoining inn shop rooms with no height language in either description"}
+{"item": "R0017", "direction": "up", "confidence": 60, "reason": "climbing a boulder out of an indoor glacial cavern to an outdoor glade, leaving the underground for surface ground"}
+{"item": "R0018", "direction": "up", "confidence": 93, "reason": "the trail ends in stone stairs leading up to the ridge above, and the ridge says stairs lead down to the south"}
+{"item": "R0019", "direction": "down", "confidence": 70, "reason": "tiers of seats descend toward the stage, so leaving the stage for the hall floor goes down"}
+{"item": "R0020", "direction": "down", "confidence": 62, "reason": "the Eye room is a balcony girding the volcano beneath the dome; a ramp off it leads down to an ordinary gallery room"}
+{"item": "R0021", "direction": "up", "confidence": 90, "reason": "ropes tied to the railing are seen climbing up into higher tree branches overhead and soar into the treetop canopy"}
+{"item": "R0022", "direction": "same floor", "confidence": 52, "reason": "tower office and bunk room; stairs suggest a change but neither text says up or down, and the bunk room has no windows"}
+{"item": "R0023", "direction": "same floor", "confidence": 70, "reason": "the treehouse platform is wedged in the trunk fork and the hollow is entered at that level; both have separate exits to the town square"}
+{"item": "R0024", "direction": "up", "confidence": 60, "reason": "the river edge says a flight of granite stairs rises toward the top of the wall, and the amphitheatre sits on a platform along the retaining wall"}
+{"item": "R0025", "direction": "up", "confidence": 78, "reason": "the road says stone steps lead up to a high platform, and the plaza says down a few steps to the south is the residential section"}
+{"item": "R0026", "direction": "same floor", "confidence": 62, "reason": "climbing over the rockslide pile that blocks the ravine into the next ravine room, both on the ravine floor"}
+{"item": "R0027", "direction": "same floor", "confidence": 55, "reason": "ballroom and conservatory of one manor with no height wording; the conservatory's gravel paths read as ground level"}
+{"item": "R0028", "direction": "down", "confidence": 68, "reason": "a concealed storage room reached from the upstairs hall, and its computed floor is -1 against the hall's +1"}
+{"item": "R0029", "direction": "down", "confidence": 70, "reason": "the crevice gapes in the hillside and the crevice room's only other exit is up to the mountain"}
+{"item": "R0030", "direction": "up", "confidence": 90, "reason": "the arrived room is among the oak's high branches and its other exit is down to the clearing"}
+{"item": "R0031", "direction": "same floor", "confidence": 55, "reason": "both rooms are carved stone chambers each with a sign over a carved stone stairway; nothing says which way the stairway runs"}
+{"item": "R0032", "direction": "same floor", "confidence": 78, "reason": "an oak door off the hallway's end into a bedroom on that same storey; the stairs up to the third floor are a separate exit"}
+{"item": "R0033", "direction": "up", "confidence": 80, "reason": "the arrived room says one could climb over the fallen stone to descend to the grassy area to the south, which is the room left"}
+{"item": "R0034", "direction": "down", "confidence": 60, "reason": "the ledge overhangs a lava river and the fissure chamber is deep, lit only by beams from a fissure far above"}
+{"item": "R0035", "direction": "down", "confidence": 72, "reason": "leaving a raised boardwalk for the sand alongside it, whose linens drape down from the boardwalk above"}
+{"item": "R0036", "direction": "down", "confidence": 55, "reason": "entering a deep sink hole; but the arrived meadow is ordinary outdoor ground with the sink hole in a depression, so this is weak"}
+{"item": "R0037", "direction": "same floor", "confidence": 75, "reason": "a dark tunnel branching off the courtyard path, level passage within the guild"}
+{"item": "R0038", "direction": "same floor", "confidence": 58, "reason": "marble steps curving down and east along the promenade to the agora entry; a short lane connector, not a storey"}
+{"item": "R0039", "direction": "same floor", "confidence": 60, "reason": "a fissure between two chambers of the same underground temple complex, with no rise or drop described"}
+{"item": "R0040", "direction": "down", "confidence": 72, "reason": "the oak door leads out to the shop's outdoor back yard at ground level while the museum's computed floor is +2"}
