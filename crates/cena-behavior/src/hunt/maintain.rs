@@ -10,7 +10,8 @@
 //! declares no cooldown for 605 (`spell_extras.tsv`, its row names none),
 //! so the line is the only notice, and Maintain waits it out.
 
-use cena_session::GameState;
+use cena_session::societies::voln;
+use cena_session::{GameState, spells};
 
 use super::engine::{Hunt, Phase};
 use super::said::Said;
@@ -27,7 +28,58 @@ const BARK_LOCKOUT: u32 = 301;
 /// The start of the absorb line, for the attack or magical energy.
 const BARK_ABSORBS: &str = "The layer of bark on you hardens and absorbs the ";
 
+/// The Voln symbols `check_favor` weighs, by spell number, and the name
+/// the society table knows each by (`bigshot.lic:9264`).
+const FAVOR_SYMBOLS: &[(&str, &str)] = &[
+    ("9805", "courage"),
+    ("9806", "protection"),
+    ("9816", "supremacy"),
+];
+
+/// Whether sign `id`'s own cooldown is listed: the game would refuse it
+/// (`bigshot.lic:9262` skips a sign so, for the spells it names).
+fn cooling(state: &GameState, id: &str, now: u32) -> bool {
+    let Some(name) = id
+        .parse()
+        .ok()
+        .and_then(spells::spell)
+        .map(|spell| spell.name.as_str())
+    else {
+        return false;
+    };
+    state
+        .effects
+        .in_category("Cooldowns")
+        .filter(|(_, effect)| effect.text.eq_ignore_ascii_case(name))
+        .any(|(key, _)| state.effects.active(key, now) == Some(true))
+}
+
 impl Hunt {
+    /// With `check_favor`, a Voln symbol costs more favor than the
+    /// character has, or the cost cannot be known (`bigshot.lic:9264-9271`;
+    /// the cost from the society table, measured, not bigshot's formula).
+    fn short_of_favor(&self, state: &GameState, id: &str) -> bool {
+        if !self.profile.check_favor {
+            return false;
+        }
+        let Some((_, name)) = FAVOR_SYMBOLS.iter().find(|(number, _)| *number == id) else {
+            return false;
+        };
+        let level = state
+            .character
+            .experience
+            .level
+            .as_deref()
+            .and_then(|l| l.parse().ok());
+        let cost = voln::symbol(name)
+            .zip(level)
+            .and_then(|(symbol, level)| voln::favor_cost(&symbol.cost, level));
+        match (cost, state.character.currency.voln_favor) {
+            (Some(cost), Some(have)) => i64::from(cost) > have,
+            _ => true,
+        }
+    }
+
     /// A line of the story at game second `now`: Barkskin absorbing starts
     /// its lockout.
     pub(super) fn bark_heard(&mut self, line: &str, now: Option<u32>) {
@@ -68,7 +120,7 @@ impl Hunt {
                 .get(id)
                 .is_some_and(|at| now.saturating_sub(*at) < SIGN_RETRY);
             let locked = id == BARKSKIN && self.bark_until.is_some_and(|until| now < until);
-            if up || recent || locked {
+            if up || recent || locked || cooling(state, id, now) || self.short_of_favor(state, id) {
                 continue;
             }
             self.signs_cast.insert(id.to_owned(), now);

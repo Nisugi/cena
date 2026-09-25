@@ -232,6 +232,7 @@ impl Job {
     fn lists(&mut self) {
         self.profile.prepare = self.commands("hunting_prep_commands");
         self.profile.signs = list(&self.take("signs"));
+        self.profile.check_favor = flag(&self.take("check_favor"));
         // bigshot's comments on its own settings: `flee_count`, "flee if
         // enemy count is >"; `invalid_targets`, "but don't count these";
         // `always_flee_from`, "and always flee from" (`bigshot.lic:3482-3485`).
