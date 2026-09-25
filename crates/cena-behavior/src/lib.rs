@@ -31,6 +31,7 @@ pub mod hunt;
 pub mod loot;
 pub mod stance;
 pub mod sync;
+pub mod town;
 pub mod travel;
 pub mod watchdog;
 

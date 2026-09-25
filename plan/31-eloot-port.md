@@ -207,10 +207,59 @@ taught, is `None`, and the planner holds rather than guesses (`plan/30` §3's ru
 *"Sells typically happen during the rest, one reason that triggers the rest is too much
 loot."* So Sell is not a separate errand but a step of the Rest phase: on arriving at the
 resting room with loot to sell, the trip to each shop and back is a walk inside the rest,
-before the rest commands. Sell (1,943 lines), Hoard (840), Region (65), silver and notes come
-after M6d, because a hunt that cannot heal cannot stop resting either, and they bring
-`plan/20` §0b's sending halves of stash and bank with them. Not staged further here; §5
-tables what they are so they are not forgotten.
+before the rest commands. The author brought it forward of M6d on 2026-09-24 (*"finish off
+eloot"*), so it is staged here, measured against eloot's Sell (1,943 lines, `:5904-7847`).
+
+**The shape.** The same two layers again. A pure **errand planner** (`cena-behavior/src/
+town/`) reads the state -- the sellable bags' contents by the stow list, the hands, the room
+-- and the profile's `[town]` table, typed, and answers *the next step*: walk to the nearest
+room tagged for a shop (travel's own `Target::Nearest` over the map's tags, as `;go2
+gemshop` already resolves), fetch an item to a hand, `sell`, `appraise`, `analyze`, bulk-sell
+a sack, read a note, `deposit`, `give` to a clerk, and back to the resting room. The driver
+runs it inside the hunt's authority as it runs a loot, walking with travel's driver as the
+hunt walks. **The outcomes are the ledger's facts**: the driver's own fold of the stream
+queues each prompt's `LootFact`s (`state.take_loot()` on its private `GameState`), so a
+sale's silver, an appraisal's figure, a refusal and a note are read by `plan/34`'s one
+classifier, never a second time here; the few replies that are not loot facts (*not quite
+my field*, *already holding as many boxes*, *You hand your*) are a small text classifier of
+their own.
+
+- ~~**4a. The frame, the pawnshop and the gemshop.**~~ **BUILT 2026-09-24**:
+  `cena-behavior/src/town/` (`settings.rs` types the `[town]` table, `plan.rs` is the
+  `Seller`, `reply.rs` the few non-fact replies), `Said::Sell` and `Phase::Selling` in the
+  engine (`hunt/rest.rs`, `wants_to_sell`), the round in `hunt/drive.rs` (`sell`), reading
+  each prompt's `LootFact`s from the driver's own fold. Tested in `tests/town_plan.rs` (6)
+  and `hunt_engine.rs` (the arrival). Left for 4b-4d as staged; also left: eloot's
+  `return_hands` (what was in hand before the round goes back after it), the pawnshop's
+  `read` of scrolls to keep, and a jeweler's *wrong shop* refusal re-queued for the
+  pawnshop. As staged: `Phase::Selling` between the walk to
+  the resting room and the rest commands; `Said::Sell` when a sellable bag holds something;
+  `check_items`' shop list from the bags' typed contents (`gameobj`'s `sellable`); the
+  pawnshop item by item (appraise first for the profile's appraise types and for
+  uncommon/weapon/armor, against `sell_appraise_pawnshop`; over the limit or *too valuable*
+  goes to the appraisal container or back to its bag; `analyze` before selling what could be
+  a transmog when `keep_transmogs`); the gemshop as one bulk `sell #sack` for a gem sack with
+  no excluded gem, the note read, the sack worn again, then the leftovers item by item;
+  `sell_exclude`, `bound`, ready-list items skipped. Back to the resting room. **The silver
+  is the ledger's**: no `wealth` before and after.
+- **4b. Furrier, collectibles, the Chronomage and the bank.** Bulk `sell #sack` at the
+  furrier and bundles unbundled one skin at a time; `deposit #id` at the collectibles
+  counter; gold rings given to the Chronomage's clerk (`sell_gold_rings`); `deposit all`
+  less `sell_keep_silver` at the bank, notes deposited, and a deposit whenever encumbrance
+  passes 80% on the round (`plan/20` §0b's bank sending half, its reply patterns from
+  `bank.rb:22-66`).
+- **4c. Boxes: the locksmith pool.** A box in hand before anything else; every box in the
+  box bag and the disk to the pool with the standard tip (`sell_locksmith_pool_tip`, or the
+  incremental ladder), the worker found by the room's `meta:boxpool:npc` tag or eloot's
+  names; the pool's returns asked for and each returned box opened, looked in, its coins
+  gathered (the charm first when the profile names one) and its contents taken by the loot
+  planner's own `take`. The town locksmith (`sell_locksmith`, off for Nisugi) and the
+  `case` boxes it cannot open are recorded, not built.
+- **4d. Not ported now**, each named so it is not forgotten: **Hoard** (840 lines; off for
+  Nisugi), **Region** (65; regional bounty selling), consignment and alchemy mode, curse
+  removal (315), `sell_keep_scrolls` (a `read` per scroll), `break_rocks` for breakables,
+  `dump_herbs_junk`, FWI routing, the gem-bounty and furrier-bounty checks, the shroud and
+  aspect sell buffs, `sell_share_silvers`, and the free-to-play bank ladder.
 
 ## 5. Out of the hunt's share, tabled
 

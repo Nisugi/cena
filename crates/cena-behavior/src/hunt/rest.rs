@@ -38,6 +38,25 @@ impl Hunt {
             }
             Phase::ToRest(why) => {
                 let resting = RoomId(self.profile.rooms.resting?);
+                // Arrived with loot to sell: the round first, then the rest
+                // (`plan/31` Stage 4; the author: *"sells typically happen
+                // during the rest"*).
+                if here.room == Some(resting) && self.wants_to_sell(state) {
+                    self.phase = Phase::Selling(why);
+                    self.notes.push("selling before resting.".to_owned());
+                    return Some(Said::Sell);
+                }
+                Some(self.step_toward(
+                    resting,
+                    here,
+                    Phase::Resting(why),
+                    &self.profile.rest.commands.clone(),
+                ))
+            }
+            Phase::Selling(why) => {
+                // The round ended where it began; from anywhere else, the
+                // walk back is the rest's first step.
+                let resting = RoomId(self.profile.rooms.resting?);
                 Some(self.step_toward(
                     resting,
                     here,
@@ -84,6 +103,20 @@ impl Hunt {
                 None
             }
         }
+    }
+
+    /// Whether the selling bags hold something a shop buys, by the loot
+    /// profile's town settings; nothing to sell, or no loot profile, means
+    /// straight to the rest.
+    fn wants_to_sell(&self, state: &GameState) -> bool {
+        let Some(profile) = &self.loot else {
+            return false;
+        };
+        let Some(resting) = self.profile.rooms.resting else {
+            return false;
+        };
+        let town = crate::town::Town::from_table(&profile.town);
+        crate::town::Seller::new(town, state, RoomId(resting)).is_some()
     }
 
     /// Walk toward `goal`; on arrival, move to `then` with `commands` to send.

@@ -50,7 +50,8 @@ use tokio_util::sync::CancellationToken;
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
 use crate::loot::{Left, Memory, Outcome as LootOutcome, Planner, Step, classify};
-use crate::travel::{Ended, Heard, TravelNotes, room_of, travel_holding};
+use crate::town::{self, Seller, Step as Errand, Town};
+use crate::travel::{Ended, Heard, TravelNotes, destination, room_of, travel_holding, walker_from};
 use crate::watchdog::Heartbeat;
 
 /// How long a sent line may wait for its prompt.
@@ -61,6 +62,8 @@ const SETTLE_CAP: Duration = Duration::from_secs(15);
 const BEAT: Duration = Duration::from_millis(250);
 /// The most commands one visit's looting sends before it is given up on.
 const LOOT_STEPS: usize = 64;
+/// The most steps one selling round takes before it is given up on.
+const SELL_STEPS: usize = 400;
 
 /// How a hunt ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -178,6 +181,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                 Said::Send { line, target } => self.send(&line, target).await,
                 Said::Walk(to) => self.walk(to).await,
                 Said::Loot(corpses) => self.loot(&corpses).await,
+                Said::Sell => self.sell().await,
                 Said::Done(ending) => return HuntEnd::Finished(ending),
             };
             if let Err(end) = step {
@@ -287,6 +291,77 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
             }
         }
         self.memory = planner.memory().clone();
+        Ok(())
+    }
+
+    /// Sell with the town planner (`plan/31` Stage 4): each shop the nearest
+    /// room tagged for it, walked with travel's driver; each step sent through
+    /// the gate; each reply read as the ledger's facts from this driver's own
+    /// fold of the stream, plus the few replies that are not facts. Ends
+    /// back at the resting room, or wherever the round gave up.
+    async fn sell(&mut self) -> Result<(), HuntEnd> {
+        let Some(profile) = self.machine.loot_profile().cloned() else {
+            return Ok(());
+        };
+        let Some(home) = self.locate() else {
+            return Ok(());
+        };
+        let town = Town::from_table(&profile.town);
+        let Some(mut seller) = Seller::new(town, &self.state, home) else {
+            return Ok(());
+        };
+        // Facts queued before the round are not the round's.
+        let _ = self.state.take_loot();
+        for _ in 0..SELL_STEPS {
+            let here = self.locate();
+            let step = {
+                let now = self.state.game_time_now().unwrap_or(0);
+                let walker = walker_from(&self.state, &self.notes, now);
+                let (map, state) = (self.map, &self.state);
+                let nearest = |tag: &str| {
+                    here.and_then(|from| {
+                        destination(map, &walker, from, tag, &std::collections::BTreeMap::new())
+                    })
+                };
+                seller.next(state, &nearest)
+            };
+            let line = match &step {
+                Errand::Done => break,
+                Errand::Walk(to) => {
+                    self.walk(*to).await?;
+                    continue;
+                }
+                Errand::Fetch(id) => format!("get #{id}"),
+                Errand::Sell(id) | Errand::SellSack(id) => format!("sell #{id}"),
+                Errand::Appraise(id) => format!("appraise #{id}"),
+                Errand::Analyze(id) => format!("analyze #{id}"),
+                Errand::Wear(id) => format!("wear #{id}"),
+                Errand::ReadNote(id) => format!("read #{id}"),
+                Errand::Stow { item, bag } => format!("_drag #{item} #{bag}"),
+            };
+            self.transcript.clear();
+            self.send(&line, None).await?;
+            // The shopkeeper answers a beat after the verb lands.
+            self.hold(BEAT).await?;
+            let facts: Vec<cena_session::LootFact> = self
+                .state
+                .take_loot()
+                .into_iter()
+                .flat_map(|chunk| chunk.facts)
+                .collect();
+            let replies: Vec<town::Reply> =
+                self.transcript.lines().filter_map(town::classify).collect();
+            seller.outcome(&facts, &replies, &self.state);
+        }
+        if !seller.skipped().is_empty() {
+            self.handle.say(Notice::line(
+                NoticeKind::Info,
+                format!(
+                    "Hunt: {} items could not be sold this round.",
+                    seller.skipped().len()
+                ),
+            ));
+        }
         Ok(())
     }
 

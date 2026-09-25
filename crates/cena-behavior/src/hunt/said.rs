@@ -33,6 +33,9 @@ pub enum Said {
     /// Loot these corpses and the floor by the character's loot profile
     /// (`plan/31`): the driver runs the planner until it is done.
     Loot(Vec<i64>),
+    /// Sell what the bags hold, at the shops and back (`plan/31` Stage 4):
+    /// the driver runs the town planner until it is home again.
+    Sell,
     /// Nothing this tick.
     Nothing,
 }
@@ -102,6 +105,8 @@ pub enum Phase {
     Hunting,
     /// Walking to the resting room.
     ToRest(Why),
+    /// Arrived to rest with loot to sell: the selling round, then the rest.
+    Selling(Why),
     /// At the resting room, until the thresholds are met.
     Resting(Why),
     /// Walking back to the hunting room.
@@ -115,6 +120,8 @@ impl fmt::Display for Phase {
         match self {
             Self::Hunting => f.write_str("hunting"),
             Self::ToRest(why) => write!(f, "{why}: walking to the resting room"),
+
+            Self::Selling(why) => write!(f, "selling before resting ({why})"),
             Self::Resting(why) => write!(f, "resting ({why})"),
             Self::Returning => f.write_str("rested: walking back"),
             Self::Preparing => f.write_str("preparing"),
