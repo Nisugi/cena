@@ -64,3 +64,30 @@ fn a_cost_the_table_could_not_read_is_kept_as_written() {
             .is_some_and(|p| p.contains("incant 520"))
     );
 }
+
+#[test]
+fn every_message_is_kept_with_its_type_not_one_per_type() {
+    // MEASURED: the file has 628 <message> elements (REXML, every parent a
+    // <spell>); the duplicated 9052's second copy holds 2, and the first copy
+    // wins. inventory/12 §1.1 found the table keeps one per type.
+    let messages: usize = all().map(|s| s.extras.messages.len()).sum();
+    assert_eq!(messages, 626);
+    let stated = include_str!("../data/spell_extras.tsv")
+        .lines()
+        .find_map(|l| l.strip_prefix("# messages	"))
+        .and_then(|n| n.parse::<usize>().ok());
+    assert_eq!(stated, Some(626));
+    let more_than_one_of_a_type = all()
+        .filter(|s| {
+            let mut kinds: Vec<&str> = s.extras.messages.iter().map(|(k, _)| k.as_str()).collect();
+            let n = kinds.len();
+            kinds.sort_unstable();
+            kinds.dedup();
+            kinds.len() < n
+        })
+        .count();
+    assert_eq!(
+        more_than_one_of_a_type, 43,
+        "the 43 spells whose extra messages the table lost"
+    );
+}

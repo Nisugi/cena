@@ -530,6 +530,10 @@ impl Seller {
                         self.pawnshop_too();
                     }
                 }
+                if replies.contains(&Reply::Again) {
+                    // Sell it again to be sure: the lot stays where it is.
+                    return;
+                }
                 self.sold(&id, sold);
             }
             Step::Deposit(id) | Step::Give { item: id, .. } => {

@@ -66,6 +66,9 @@ pub struct Extras {
     pub costs: Vec<Cost>,
     /// Lich's `<cast-proc>`, when the spell has one.
     pub cast_proc: Option<String>,
+    /// Every `<message>`, by type (`start`, `end`, ...), in the file's
+    /// order: the table keeps one per type.
+    pub messages: Vec<(String, String)>,
 }
 
 impl Default for Extras {
@@ -77,6 +80,7 @@ impl Default for Extras {
             shapes: Vec::new(),
             costs: Vec::new(),
             cast_proc: None,
+            messages: Vec::new(),
         }
     }
 }
@@ -124,6 +128,13 @@ fn read_row(line: &str) -> Option<(u16, Extras)> {
         })
         .collect();
     let cast_proc = field.next().filter(|p| !p.is_empty()).map(str::to_owned);
+    let messages = field
+        .next()
+        .unwrap_or_default()
+        .split(REC)
+        .filter_map(|cell| cell.split_once(UNIT))
+        .map(|(kind, text)| (kind.to_owned(), text.to_owned()))
+        .collect();
     Some((
         number,
         Extras {
@@ -133,6 +144,7 @@ fn read_row(line: &str) -> Option<(u16, Extras)> {
             shapes,
             costs,
             cast_proc,
+            messages,
         },
     ))
 }

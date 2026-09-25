@@ -373,3 +373,26 @@ fn what_the_hands_held_comes_back_after_the_round() {
     seller.outcome(&[], &[], &state);
     assert_eq!(seller.next(&state, &nearest), Step::Walk(HOME));
 }
+
+#[test]
+fn sell_again_to_be_sure_sends_the_sale_again() {
+    let mut state = setup(&[], &[("8", "tunic", "linen tunic")]);
+    let mut seller = Seller::new(town(), &state, HOME).expect("a round");
+    seller.next(&state, &nearest);
+    seller.next(&state, &nearest);
+    hand(&mut state, true, Some(("8", "tunic", "linen tunic")));
+    seller.outcome(&[], &[], &state);
+    seller.next(&state, &nearest);
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Sell("8".to_owned()));
+    seller.outcome(&[], &[Reply::Again], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Sell("8".to_owned()),
+        "the pawnshop asked for it again"
+    );
+    assert_eq!(
+        cena_behavior::town::classify("Not my line, really."),
+        Some(Reply::WrongShop)
+    );
+}

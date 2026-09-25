@@ -566,7 +566,10 @@ sort, box in hand. Town errands follow in the same plan's order.
 > (`cena-model/src/state/ledger.rs`, `cena-session/src/ledger.rs`, `cena/src/loot.rs`,
 > `cena/src/combat.rs`); recording is `--record`/`--no-record`, on in debug builds.
 
-**M6d — eherbs.** Its port plan first (`plan/32`), then healing at the rest room.
+**M6d — eherbs.** ~~Its port plan first (`plan/32`), then healing at the rest room.~~
+**BUILT 2026-09-25 as `plan/36`** (the number `plan/32` was never used): the herb table
+in the model, healing at the rest room and as `;heal`, the Survivalist's Kit and its
+distiller, stocking at the herbalist. The spell scripts followed as `plan/37`.
 
 **M6e — the `;` tools.** `;foreach` and `;multi` on the `;` line, and `;sorter` as a
 projection transform ported from VellumFE. None depends on the hunt, so they can move earlier.

@@ -28,6 +28,10 @@ pub enum Reply {
     CannotFetch,
     /// `You can't wear that`.
     CannotWear,
+    /// The game wants the same command again to be sure: the pawnshop's
+    /// *attempt to resell it again within the next 30 seconds*, and trash's
+    /// *throw the item away again within fifteen seconds* (inventory/12 §3).
+    Again,
     /// The pool will hold no more: *already holding as many boxes*.
     PoolFull,
     /// Too little silver for the tip: *You don't have that much*.
@@ -67,6 +71,7 @@ pub fn classify(line: &str) -> Option<Reply> {
         || has("don't buy trash")
         || has("as if you were a lunatic")
         || has("only deal in gems and jewelry")
+        || has("Not my line, really")
     {
         return Some(Reply::WrongShop);
     }
@@ -93,6 +98,9 @@ pub fn classify(line: &str) -> Option<Reply> {
     }
     if has("You can't wear that") {
         return Some(Reply::CannotWear);
+    }
+    if has("again within the next 30 seconds") || has("again within fifteen seconds") {
+        return Some(Reply::Again);
     }
     if has("already holding as many boxes") {
         return Some(Reply::PoolFull);

@@ -271,9 +271,11 @@ impl Pool {
                 };
             }
             (Step::Trash(_) | Step::Drop(_), Doing::Tossing { id, tries }) => {
+                // Asked to throw it again to be sure: the same step, once more.
+                let again = replies.contains(&Reply::Again) && tries < 2;
                 self.doing = Doing::Tossing {
                     id,
-                    tries: tries + 1,
+                    tries: if again { tries } else { tries + 1 },
                 };
             }
             _ => {}

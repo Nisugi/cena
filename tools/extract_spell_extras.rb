@@ -53,6 +53,12 @@ doc.elements.each('list/spell') do |spell|
     [c.attributes['type'].to_s, clean(c.text), c.attributes['fixme'].to_s].join(UNIT)
   end
   proc_text = spell.get_elements('cast-proc').map { |p| clean(p.text) }.join(REC)
+  # Every message, with its type: the table keeps one per type, and 98 were
+  # overwritten (inventory/12 §1.1).
+  messages = spell.get_elements('message').map do |m|
+    check(m, %w[type], "spell #{number}'s message")
+    [m.attributes['type'].to_s, clean(m.text)].join(UNIT)
+  end
   rows << [
     number,
     spell.attributes['incant'].to_s,
@@ -60,7 +66,8 @@ doc.elements.each('list/spell') do |spell|
     spell.attributes['channel'].to_s,
     durations.join(REC),
     costs.join(REC),
-    proc_text
+    proc_text,
+    messages.join(REC)
   ]
 end
 
@@ -76,7 +83,8 @@ File.open(out, 'w', newline: :lf) do |f|
   f.puts "# spells\t#{rows.length}"
   f.puts "# duration-parts\t#{DURATION_ATTRS.join(' ')}"
   f.puts "# cost-parts\ttype text fixme"
-  f.puts "number\tincant\tstance\tchannel\tdurations\tcosts\tcast_proc"
+  f.puts "# messages\t#{rows.sum { |r| r[7].empty? ? 0 : r[7].split(REC).length }}"
+  f.puts "number\tincant\tstance\tchannel\tdurations\tcosts\tcast_proc\tmessages"
   rows.each { |row| f.puts row.join("\t") }
 end
 puts "#{rows.length} spells -> #{out}"

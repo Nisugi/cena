@@ -5,518 +5,519 @@
 # spells	514
 # duration-parts	cast-type span multicastable max persist-on-death real-time
 # cost-parts	type text fixme
-number	incant	stance	channel	durations	costs	cast_proc
-101				selfstackableyestargetstackableyes	mana1	
-102				selfstackableyestargetstackable	mana2	
-103				selfstackableyestargetrefreshable	mana3	
-104				selfstackableyestargetstackableyes	mana4	
-105				selfstackableyestargetstackableyes	mana5	
-106					mana6	
-107				selfstackableyestargetstackableyes	mana7	
-108					mana3	
-109					mana9	
-110					mana5	
-111		yes			mana11	
-112				selfstackableyestargetstackableyes	mana12	
-113					mana13	
-114					mana14	
-115				selfstackableyestarget	mana15	
-116					mana16	
-117				stackable	mana17	
-118		yes			mana10	
-119					mana19	
-120				selfstackableyestargetrefreshable	mana20	
-125					mana25	
-130					mana30	
-135					mana7	
-140				selfrefreshabletargetrefreshable	mana40	
-201					mana1	
-202				selfstackableyestargetrefreshable	mana2	
-203				stackable	mana3	
-204				selfstackableyestargetrefreshable	mana4	
-205					mana5	
-206				selfrefreshable	mana6	
-207				selfstackableyestargetrefreshable	mana7	
-208					mana8	
-209				stackableyes	mana9	
-210	no			target	mana10	
-211				selfstackableyestargetrefreshable	mana11	
-212					mana2	
-213					mana13	
-214				targetstackableselfstackable	mana5	
-215				selfstackableyestargetrefreshable	mana15	
-216					mana3	
-217	no				mana5	
-218				stackable	mana18	
-219				selfstackableyestargetrefreshable	mana19	
-220					mana20	
-225					mana25	
-230					mana30	
-240				refreshable	mana40	
-301					manahold_cost = 0; [1,3,6,10].each {|n| if Stats.level >= n; hold_cost += 1; end };  hold_cost	
-302			yes		mana4	
-303				selfstackableyestargetrefreshable	mana3	
-304					mana4	
-305					mana5	
-306		yes			mana6	
-307				selfstackableyestargetrefreshable	mana7extra cost when in group	
-308					mana8	
-309					mana9	
-310				selfstackableyestargetrefreshable	mana10	
-311					mana3	
-312			yes		mana12	
-313				stackableyes	mana13	
-314				selfstackableyestargetrefreshable	mana14	
-315					mana15	
-316	no				mana10	
-317			yes		mana17	
-318					manaif Spells.cleric >= 40 then 40 elsif Spells.cleric >= 25 then 25 else 18 endspiritif Spells.cleric >= 40 then 3 elsif Spells.cleric >= 25 then 5 else 8 end	
-319				stackableyes	mana19	
-320				refreshable0.5	mana0	
-335	no				mana35	
-325					mana25	
-330					mana30	
-340					mana40spirit2	
-350					mana50	
-399				0.5		
-401				selfstackableyestargetstackableyes	mana1	
-402				refreshable5	mana2	
-403				stackable	mana3	
-404				stackable	mana4	
-405					mana5	
-406				selfstackableyestargetstackableyes	mana6	
-407					mana7	
-408					mana8	
-409					mana7	
-410	no				mana10	
-411					mana11	
-412					mana2	
-413					mana2	
-414				selfstackableyestargetstackableyes	mana14	
-415					mana15	
-416					mana16	
-417					mana17	
-418					mana18	
-419				stackableyes	mana19	
-420					mana20	
-425				stackableyes	mana25	
-430				stackableyes	mana30	
-435	no				mana20	
-499						
-501					manasleep_cost = 0; [1,3,6,10,15].each {|n| if Stats.level >= n; sleep_cost += 1; end };  sleep_cost	
-502					mana2	
-503				selfstackableyestargetstackableyes	mana3	
-504					mana1	
-505		yes			mana5	
-506				refreshable	mana6	
-507				stackableyes	mana7	
-508				stackableyes	mana8	
-509				selfstackableyestargetstackableyes	mana9	
-510		yes	yes		mana10	
-511					mana11	
-512					mana10	
-513				selfstackableyestargetstackable	mana13	
-514					mana14	
-515					mana15	
-516					mana16	
-517					mana17	
-518	no	yes	yes		mana18	
-519					mana19	
-520				stackableyes	mana20	if target.is_a?(String) && target !~ /^\d$/; cmd = "incant 520 #{target}"; else; cmd="incant 520 #{UserVars.element} #{target}"; end; dothistimeout('release', 5, /^You feel the magic of your spell rush away from you\.$|^You don't have a prepared spell to release!$/) if (checkprep != 'Mage Armor') and (checkprep != 'None'); dothistimeout(cmd, 5, /^A layer of raw elemental energy forms around you|^You already have a different spell readied|^Cast Roundtime [0-9]+ Seconds?\.|^But you don't have any mana!|^\[Spell Hindrance for|keeps? the spell from working\.|^As you focus on your magic, your vision swims with a swirling haze of crimson\.|^Your magic fizzles ineffectually\.|^All you manage to do is cough up some blood\.|^And give yourself away!  Never!|^You are unable to do that right now\.|^You don't seem to be able to move to do that\.|^You can't think clearly enough to prepare a spell!/)
-525	no				mana25	
-530					mana30	
-535				stackableyes	mana35	
-540				stackableyes	mana40	
-597						
-598						
-599						
-601				selfstackableyestargetstackableyes	mana1	
-602				selfstackableyestargetstackableyes	mana2	
-603					mana3	
-604				stackableyes	mana4	
-605				refreshableno	mana5	
-606				stackableyes	mana6	
-607					mana5	
-608					mana8	
-609	no				mana9	
-610					mana5	
-611					mana5	
-612				stackableyes	mana12	
-613				stackableyes	mana13	
-614					mana14	
-615					mana5	
-616					mana16	
-617				stackableyes	mana17	
-618				selfstackableyestargetstackableyes	mana18	
-619	no				mana10	
-620				selfstackable	mana20	cmd = "incant 620 #{UserVars.resist_element}";dothistimeout('release', 5, /^You feel the magic of your spell rush away from you\.$|^You don't have a prepared spell to release!$/) if (checkprep != 'Resist Nature') and (checkprep != 'None'); dothistimeout(cmd, 5, /^Faint (?:green\-gold|red\-gold|frosty white|blue\-violet|misty grey) filaments spiral inward|^You already have a different spell readied|^Cast Roundtime [0-9]+ Seconds?\.|^But you don't have any mana!|^\[Spell Hindrance for|keeps? the spell from working\.|^As you focus on your magic, your vision swims with a swirling haze of crimson\.|^Your magic fizzles ineffectually\.|^All you manage to do is cough up some blood\.|^And give yourself away! Never!|^You are unable to do that right now\.|^You don't seem to be able to move to do that\.|^You can't think clearly enough to prepare a spell!/)
-625				stackableyes	mana25	
-630					mana30	
-635	no				mana35	
-640				stackableyes	mana40	
-650					mana50	
-701					mana1	
-702			yes		mana2	
-703					mana3	
-704				stackableyes	mana4	
-705			yes		mana5	
-706					mana6	
-707				refreshable	mana7	
-708					mana8	
-709					mana9	
-710					mana10	
-711					mana11	
-712				stackableyes	mana12	
-713		yes			mana13	
-714					mana14	
-715					mana15	
-716				stackableyes	mana16	
-717	no				mana17	
-718					mana18	
-719					mana19	
-720	no				mana20	
-725				refreshable	mana25	
-9725						
-730					mana30	
-735					mana35	
-740					mana40	
-901		yes	yes		mana1	
-902					mana2	
-903		yes	yes		mana3	
-904		yes	yes		mana4	
-905				stackableyes	mana5	
-906		yes	yes		mana6	
-907		yes	yes		mana7	
-908		yes	yes		mana8	
-909				refreshableno	mana7	
-910		yes	yes		mana10	
-911				selfstackableyestargetstackableyes	mana11	
-912	no				mana8	
-913				stackableyes	mana13	
-914					mana3	
-915					mana5	
-916				refreshable	mana16	
-917					mana17	
-918					mana18	
-919				refreshable	mana19	
-920				stackablenoyes	mana20	
-925					mana25	
-930					mana30	
-950					mana50	
-996						
-997						
-998						
-999						
-1001					mana1	
-1002					mana2	
-1003					mana3renew1	
-1004					mana4	
-1005					mana5	
-1006					mana6+([Spells.bard-6,0].max/4)renew3+([Spells.bard-6,0].max/8)	
-1007					mana7+[[Spells.bard-7,0].max,13].minrenew2+[[Spells.bard-7,0].max,13].min	
-1008					mana8	
-1009					mana9renew4	
-1010					mana10+((Spells.bard-10)/4)renew3+((Spells.bard-10)/10)	
-1011					mana11renew4	
-1012					mana12renew4	
-1013					mana13	
-1014					mana14renew5	
-1015					mana15renew6	
-1016					mana16	
-1017					mana17renew7	
-1018					mana18renew15	
-1019					mana19+((Spells.bard-19)/5)renew8+((Spells.bard-19)/10)	
-1020					mana20	
-1025					mana25renew15	
-1030					mana30	
-1035					mana35	
-1040					mana40	fput "shout 1040"
-1101					mana1	
-1102					manaif (Wounds.limbs > 1) and (Spells.empath >= 7) then 7 else 2 end	
-1103					manaif (Wounds.nerves > 1) and (Spells.empath >= 8) then 8 else 3 end	
-1104					manaif ([Wounds.head, Wounds.neck].max > 1) and (Spells.empath >= 9) then 9 else 4 end	
-1105					manaif (Wounds.torso > 1) and (Spells.empath >= 10) then 10 else 5 end	
-1106			yes		mana6	
-1107					mana7	
-1108					mana5	
-1109				stackableyes	mana9	
-1110		yes			mana10	
-1111					manaif (Scars.limbs > 1) and (Spells.empath >= 15) then 15 else 11 end	
-1112					manaif (Scars.nerves > 1) and (Spells.empath >= 16) then 16 else 12 end	
-1113					manaif ([Scars.head,Scars.neck].max > 1) and (Spells.empath >= 17) then 17 else 13 end	
-1114					manaif (Scars.torso > 1) and (Spells.empath >= 18) then 18 else 14 end	
-1115					mana15	
-1116					mana16	
-1117					mana8 + (Stats.level/10)	
-1118					mana18	
-1119				stackableyes	mana19	
-1120					mana10	
-1125				stackableyes	mana25	
-1130				stackableyes	mana30	
-1135					mana35	
-1150					mana50	
-1199						
-1201					mana1	
-1202				stackableyes	mana2	
-1203					mana1	
-1204				selfstackableyestargetstackableyes	mana4	
-1205					mana5	
-1206					mana6	
-1207					mana5	
-1208				selfstackableyestargetstackableyes	mana8	
-1209				stackableyes	mana9	
-1210					mana5	
-1211					mana3	
-1212				stackableyes	mana12	
-1213				599	mana13	
-1214				stackableyes	mana14	
-1215				selfstackableyestargetrefreshable	mana15	
-1216				599	mana16	
-1217					mana17	
-1218					mana18	
-1219					mana10	
-1220				stackableyes	mana20	
-1225					mana10	
-1235					mana35	
-1315					mana15	
-1319				refreshable	mana19	
-1408		yes			mana8	
-1409	no				mana9	
-1414					mana14	
-1417					mana17	
-1435	no				mana35	
-1601				selfstackableyestargetrefreshable	mana1	
-1602					mana2	
-1603					mana3	
-1604					mana4	
-1605				selfstackableyestargetstackableyes	mana5	
-1606				stackableyes	mana6	
-1607					mana7	
-1608				stackableyes	mana8	
-1609				599	mana9	
-1610				stackableyes	mana10	
-1611				stackableyes	mana11	
-1612				stackableyes	mana12	
-1613					mana13	
-1614					mana5	
-1615					mana15	
-1616				stackableyes	mana16	
-1617				599	mana17	
-1618				599	mana18	
-1619					mana19	
-1620					mana20	
-1625					mana25	
-1630					mana30	
-1635					mana35	
-1640					mana40	
-1650					mana50	
-1699				refreshable		
-1700						
-1701				refreshable	mana1	
-1704					mana4	
-1705					mana5	
-1706					mana6	
-1707					mana7	
-1708					mana3	
-1709					mana9	
-1710					mana10	
-1711						
-1712				stackable		
-1713	no					
-1714					mana5	
-1715						
-1718						
-1720					mana20	
-1750						
-6666				yes		
-1912				stackableyes	mana12	
-9301				stackable		fput "reim boost attack"
-9302				stackable		fput "reim boost defense"
-9401				refreshableno	stamina20	fput "shield tortoise"
-9501						
-9502						
-9503						
-9504						
-9505						
-9506						
-9507						
-9508						
-9509						
-9510						
-9601					stamina5	fput "cman cmovement"
-9602					stamina5	fput "cman focus"
-9603					staminaif Spell[9604].active? then 60 else 20 end	dothistimeout 'cman smastery', 3, /^You focus your mind on the shadows and gird your body for stealth\.(?:  You find maintaining this mindset to be exceptionally tiring\.)?$|^Your muscles ache much too badly to even think about attempting this maneuver\.$/
-9604						
-9605					stamina(if Spell[9606].active? then 60 else 30 end)*((Spell[1213].active? and defined?(Spell[1213].stamina_reduction)) ? (1-(Spell[1213].stamina_reduction/100.0)) : 1)	dothistimeout 'cman surge', 3, /^You feel (?:significantly|a great deal|a fair amount) stronger\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$/
-9606						
-9607						result = dothistimeout 'berserk', 5, /^Everything around you turns red as you work yourself into a berserker's rage!|^You rage across the battlefield, striking with unrelenting fury!/; if result; done = false; 450.times { sleep 0.1; if clear.any? { |line| line =~ /^The redness fades from the world/ }; done = true; break; end; break unless GameObj.npcs.any? { |npc| npc.status !~ /dead/ } }; unless done; fput 'stop berserk'; end; end
-9620				refreshableno	stamina20	fput "cman krynch"
-9621				refreshableno	stamina20	fput "cman mongoose"
-9622				refreshableno	stamina20	fput "cman slipp"
-9623				refreshableno	stamina30	fput "cman flurry"
-9624				refreshableno	stamina40	fput "cman iharm"
-9625					stamina(if Spell[9051].active?; 60; else; 30; end)*((Spell[1213].active? and defined?(Spell[1213].stamina_reduction)) ? (1-(Spell[1213].stamina_reduction/100.0)) : 1)	dothistimeout 'cman burst', 3, /^You feel (?:significantly|a great deal|a fair amount) more (?:agile|dextrous)\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$/
-9626					stamina20+5+5	dothistimeout 'cman kifocus', 3, /^You summon your inner ki|^You have already summoned your inner ki/
-9627				refreshable	stamina(if Spell[9052].active?; 90; else; 30; end)*((Spell[1213].active? and defined?(Spell[1213].stamina_reduction)) ? (1-(Spell[1213].stamina_reduction/100.0)) : 1)	dothistimeout 'cman weave', 3, /^You balance your posture and narrow your eyes, preparing to misdirect your foes' attacks\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$/
-9628				refreshableno	stamina20	fput "cman griffin"
-9699						
-9701						fput "sigil of recognition"
-9702						fput "sigil of location"
-9703				stackable	mana1	dothistimeout 'sigil of contact', 3, /^You feel your mind open up to the world around you\.$|^The distant thoughts in your mind feel stronger\.$|^The power from your sigil dissipates into the air\.$/
-9704					stamina5	dothistimeout 'sigil of resolve', 3, /^You experience a momentary flash of insight on how to best overcome nature's obstacles\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9705					mana3stamina3	dothistimeout 'sigil of minor bane', 3, /^As you concentrate on your sigil, you become slightly more aware of your foes and the weakest spots in their defenses\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9706					stamina10	dothistimeout 'sigil of bandages', 3, /^Your awareness of your own movements heightens as you begin to act with an unusual fluidity\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9707					mana5stamina5	dothistimeout 'sigil of defense', 3, /^A shimmering aura surrounds you\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9708					mana5stamina5	dothistimeout 'sigil of offense', 3, /^A faint blue glow surrounds your hands, subtly guiding your movements\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9709					mana5stamina10	dothistimeout 'sigil of distraction', 3, /^You carefully school your thoughts, focusing on the thresholds of disorder inherent in your environs, and etch the Sigil of Distraction in the air before you\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9710				stackable3.0	mana5stamina10	dothistimeout 'sigil of minor protection', 3, /^As you concentrate on your sigil, you become slightly more aware of weak spots in your defenses\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9711				stackable3.0	mana5stamina5	dothistimeout 'sigil of focus', 3, /^You feel your mind and body gird themselves against magical interference\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9712					manaif checkpcs.length > 1 then 10 else 5 endstaminaif checkpcs.length > 1 then 15 else 10 end	dothistimeout 'sigil of intimidation', 3, /^You carefully school your thoughts, focusing on the enhancement of your aspect and bearing, and etch the Sigil of Intimidation in the air before you\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9713					mana10stamina15	dothistimeout 'sigil of mending', 3, /^Your heart begins to beat faster as your entire body becomes awash with a pleasantly warm sensation\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9714					stamina30	dothistimeout 'sigil of concentration', 3, /^As you concentrate on your sigil, you feel more attuned to the flows of mana\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9715					mana10stamina10	dothistimeout 'sigil of major bane', 3, /^As you concentrate on your sigil, you become much more aware of your foes and the most vulnerable portions of their bodies\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9716					stamina30	dothistimeout 'sigil of determination', 3, /^You begin to focus sharply upon the task at hand, pushing all thoughts and sensations of pain far from your mind\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9717					mana10stamina20	dothistimeout 'sigil of health', 3, /^As you concentrate on your sigil, you feel a brief surge of vitality course throughout your body\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9718					stamina50	dothistimeout 'sigil of power', 3, /^As you concentrate on your sigil, you feel exceptionally tired as your physical energy rapidly transforms into magical energy\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9719				stackable3.0	mana10stamina15	dothistimeout 'sigil of major protection', 3, /^As you concentrate on your sigil, you become much more aware of vulnerable spots in your defenses\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/
-9720					mana15stamina75	fput "sigil of escape"
-9801						dothistimeout "symbol of recognition", 5, /^There are no undead creatures present\.|^You recognize no fellow members|is and undead creature\.|is a member of the Order of Voln\./
-9802						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of blessing#{target}", 5, /^You must specify something\.|^A wave of power flows outward from you|^You strain to perform the symbol/
-9803						fput ""
-9804						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of diminishment#{target}", 5, /^What were you referring to\?|^You draw a glowing pattern in the air|^You strain to perform the symbol/
-9805				stackable		dothistimeout "symbol of courage", 5, /^You feel more courageous\.|^You strain to perform the symbol/
-9806				stackable		dothistimeout "symbol of protection", 5, /^You feel a layer of protection surround you\.|^You strain to perform the symbol/
-9807						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of submission#{target}", 5, /^What were you referring to\?|^You feel the power of the symbol project|^You strain to perform the symbol/
-9808						fput ""
-9809						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of holiness#{target}", 5, /^What were you referring to\?|^A wave of power flows out of you|^You strain to perform the symbol/
-9810						fput "symbol of recall"
-9811						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of sleep#{target}", 5, /^You draw a glowing pattern in the air|^You strain to perform the symbol/
-9812						dothistimeout "symbol of transcendence#{target}", 5, /^You step into the space between the corporeal and ethereal realms\.|^You have already stepped into the space between the corporeal and ethereal realms\.|^The bonds of the corporeal realm hold fast and you remain fully within its grasp\.|^You strain to perform the symbol/
-9813						dothistimeout 'symbol of mana', 5, /^You call upon a special blessing from Koar.|^You are already at your maximum mana level\.|^You must CONFIRM that you wish to use this symbol during its recovery period\.|^You strain to perform the symbol/
-9814						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of sight#{target}", 5, /^You concentrate|^You strain to perform the symbol/
-9815				stackable		fput "symbol of retribution"
-9816				stackable		dothistimeout 'symbol of supremacy', 5, /^You feel infused with a collective knowledge on the undead and their weaknesses\.|^You strain to perform the symbol/
-9817						dothistimeout 'symbol of restoration', 5, /^The power of the symbol begins to rise in you, but then fades\.|^You feel the power of the symbol course through your body\.|^You strain to perform the symbol/
-9818						fput "symbol of need"
-9819						dothistimeout 'symbol of renewal', 5, /^You are already at your maximum spirit level\.|^You call upon the vitality of nature to renew your soul\.|^You strain to perform the symbol/
-9820				stackable		dothistimeout 'symbol of disruption', 5, /^A churning spectral aura surrounds you|^You strain to perform the symbol/
-9821						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "smite#{target}", 5, /^You currently have no valid target\.  You will need to specify one\.|doesn't appear to be suffering from the curse of undeath\.|^You .*?smite/
-9822						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of turning#{target}", 5, /^You draw a glowing pattern in the air|^You strain to perform the symbol/
-9823						fput "symbol of preservation"
-9824						fput "symbol of dreams"
-9825						fput "symbol of return"
-9826						fput "symbol of seeking"
-9901						dothistimeout 'sign of recognition', 3, /^You (?:touch|scratch|rub|tap|point to) your (?:right|left) (?:eyebrow|nostril|earlobe|shoulder|cheek) with your (?:right|left) (?:pinky|forefinger|thumb|index finger)\.$/
-9903					mana1	dothistimeout 'sign of warding', 3, /^Your dancing fingers weave a web of protection around you!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9904					mana1	dothistimeout 'sign of striking', 3, /^You (?:flex your muscles|grip your .*?) with renewed vigor!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9905					mana1	dothistimeout 'sign of clotting', 3, /^Your veins throb and your blood sings\.$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9906				stackable	mana1	dothistimeout 'sign of thought', 3, /^Your hypnotic gesture makes your mind receptive to the thoughts of others\.  You feel their distant, comforting presence\.$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9907					mana2	dothistimeout 'sign of defending', 3, /^Your dancing fingers weave a web of protection around you!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9908					mana2	dothistimeout 'sign of smiting', 3, /^You (?:flex your muscles|grip your .*?) with renewed vigor!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9909					mana1	dothistimeout 'sign of staunching', 3, /^Your veins throb and your blood sings\.$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9910					mana3	dothistimeout 'sign of deflection', 3, /^You feel magical energies distort and flow around you\.$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9911					spirit1	dothistimeout 'sign of hypnosis' 3, /^You project your will upon your opponents!|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9912					spirit1	dothistimeout 'sign of swords', 3, /^You (?:flex your muscles|grip your .*?) with renewed vigor!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9913					spirit1	dothistimeout 'sign of shields', 3, /^Your dancing fingers weave a web of protection around you!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9914					spirit1	dothistimeout 'sign of dissipation', 3, /^Magic flows towards you, but does not reach you\.$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9915					spirit2	dothistimeout 'sign of healing', 3, /^You shudder as your life force is torn and reshaped!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9916					spirit3	dothistimeout 'sign of madness', 3, /^You are filled with berserk rage!  Attack!  Attack!  Attack!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9917					spirit4	dothistimeout 'sign of possession' 3, /^You project your will upon your opponents!|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9918					spirit5	result = nil; loop {; waitrt?; waitcastrt?; if percentmana == 100; result = true; break; end; unless Spell[9918].affordable?; result = false; break; end; line = dothistimeout 'sign of wracking', 3, /You shudder as your life force is torn and reshaped!|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^I don't think so\.$|^You have not recovered from your last wracking enough to use that sign again\.$/; if line == 'You shudder as your life force is torn and reshaped!'; result = true; break; elsif line.to_s =~ /^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^I don't think so\.$|^You have not recovered from your last wracking enough to use that sign again\.$/; result = false; break; else; dothistimeout 'help no-double-wrack', 2, /^No help files matching that entry were found\.$/; end; }; result
-9919					spirit6	dothistimeout 'sign of darkness', 3, /^Darkness enfolds and surrounds you\.\.\.$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/
-9920					spirit11	echo '.cast called for spell 9920 (Sign of Hopelessness)... what the hell is wrong with you?'
-9003				yesyes		
-9056				yesyes		
-9004						
-9005						
-9006						
-9007						
-9008						
-9009				yes		
-9010						
-9011				yesyes		
-9012				yes		
-9013						
-9014					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume wolf', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9015						
-9016					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume jackal', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9017						
-9018					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume lion', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9019						
-9020					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume panther', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9021						
-9022					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume owl', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9023						
-9024					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume hawk', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9025						
-9026					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume rat', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9027						
-9028					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume porcupine', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9029						
-9030					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume bear', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9031						
-9032					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume serpent', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9033						
-9034					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume burgee', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9035						
-9036					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume mantis', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9037						
-9038					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume yierka', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9039						
-9040					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume spider', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false
-9041						
-9075						
-9044				1440.0yesyes		
-9045				1440.0yesyes		
-9046				1440.0yesyes		
-9047				1440.0yesyes		
-9048				5.0yes		
-9049				yes		
-9050						
-9051						
-9052						
-9053				stackable		
-9054				refreshable		
-9055				refreshableyesyes		
-9057				5760.0yesyes		
-9058				1440.0yesyes		
-9059				refreshable		
-9060				refreshableno		
-9061				refreshableno		
-9062				refreshableno		
-9063				refreshableno		
-9064				refreshableno		
-9065				refreshableno		
-9066				refreshableno		
-9067				refreshableno		
-9068				refreshableno		
-9069				refreshableno		
-9070				refreshableno		
-9071				refreshableno		
-9072				refreshableno		
-9073				refreshableno		
-9074				refreshableno		
-9076						
-9077						
-9078						
-9079						
-9080						
-9081						fput 'boost encumbrance'
-9082						fput 'boost experience'
-9083						fput 'boost luck'
-9084						fput 'boost supercharge'
-9085						fput 'boost enhancive stats'
-9086						fput 'boost enhancive recovery'
-9087						fput 'boost gift eonak'
-9100				yes		fput 'boost loot major'
-9101				yes		fput 'boost loot minor'
-9105						
-9516				stackableyes		
-9655						fput "cman absorb magic"
-9656						
-2001				refreshable2		
-9657						
-9658						
-9659						
-9660						
-9661						
+# messages	626
+number	incant	stance	channel	durations	costs	cast_proc	messages
+101				selfstackableyestargetstackableyes	mana1		startA light blue glow surrounds you\.endThe light blue glow leaves you\.
+102				selfstackableyestargetstackable	mana2		startThe air thickens and begins to swirl around you\.endThe air calms down around you\.
+103				selfstackableyestargetrefreshable	mana3		startYou suddenly feel more powerful\.endThe powerful look leaves you\.
+104				selfstackableyestargetstackableyes	mana4		startYou feel a strengthening of your internal fortitude\.endYou lose your extra internal fortitude\.
+105				selfstackableyestargetstackableyes	mana5		startYou feel a strengthening of your blood flow\.endYou notice your blood flow go back to normal\.
+106					mana6		
+107				selfstackableyestargetstackableyes	mana7		startA deep blue glow surrounds you\.endThe deep blue glow leaves you\.
+108					mana3		
+109					mana9		
+110					mana5		
+111		yes			mana11		
+112				selfstackableyestargetstackableyes	mana12		startA misty halo surrounds you\.endThe misty halo fades from you\.
+113					mana13		
+114					mana14		
+115				selfstackableyestarget	mana15		startA dull golden nimbus surrounds you\.endThe dull golden nimbus fades from around you\.
+116					mana16		
+117				stackable	mana17		startAn invisible force guides you\.endThe guiding force leaves you\.
+118		yes			mana10		
+119					mana19		
+120				selfstackableyestargetrefreshable	mana20		startYou suddenly feel a lot more powerful\.endThe very powerful look leaves you\.
+125					mana25		
+130					mana30		
+135					mana7		
+140				selfrefreshabletargetrefreshable	mana40		startA wall of force surrounds you\.endThe wall of force disappears from around you\.target-startA wall of force surrounds (?<noun>[A-Z][a-z]+)\.
+201					mana1		
+202				selfstackableyestargetrefreshable	mana2		startA dim aura surrounds you\.endThe dim aura fades from around you\.
+203				stackable	mana3		startThe spiritual nourishment has a replenishing effect upon you\.endThe replenishing effect fades, but you are left with a feeling of wellbeing\.
+204				selfstackableyestargetrefreshable	mana4		startYou feel more secure\.endYou feel less secure\.
+205					mana5		
+206				selfrefreshable	mana6		startYou feel a knowledge of the treatment of injuries flow through you\.endYou feel the knowledge of the treatment of injuries dissipate\.
+207				selfstackableyestargetrefreshable	mana7		startYou begin to breathe more deeply\.endYour breathing becomes more shallow\.
+208					mana8		
+209				stackableyes	mana9		startA faint slick sheen makes the air about you visible for the briefest of moments, then sinks into you and disappears\.endThe air shivers about you, glistening faintly before stilling to normalcy\.
+210	no			target	mana10		
+211				selfstackableyestargetrefreshable	mana11		startYou (?:and your group stand tall and )?feel more confident\.endYou feel less confident\.
+212					mana2		endThe distracting force passes away from you\.
+213					mana13		
+214				targetstackableselfstackable	mana5		startAn unseen force envelops you, restricting all movement\.endThe restricting force that envelops you dissolves away\.
+215				selfstackableyestargetrefreshable	mana15		startA brilliant aura surrounds you and (?:sinks into your skin|your group)\.  You feel charged with extra vitality\.endThe brilliant aura fades away from you\.
+216					mana3		
+217	no				mana5		
+218				stackable	mana18		startA bright pulse of soft energy moves away from your hands and beckons a spirit to your aid\.\.\.startYou infuse your .*?spirit with the mana necessary to maintain its corporeal form\.end(?:An?|The).*? spirit fades into ethereal form and wafts away\.
+219				selfstackableyestargetrefreshable	mana19		startAn opalescent aura surrounds you(?: and your group)?\.endThe opalescent aura fades from around you\.
+220					mana20		startA brilliant light bathes you as your surroundings blur for a moment\.\.\.startWhipping winds carry the hot, metallic taste of lightning to you as your surroundings blur\.\.\.startA deep shadow descends upon you and your breath is briefly muffled as your vision blurs with darkness\.\.\.startA shiver of wind touches your breath and you feel your eyelashes grow thick with a coating of snow\.  You lift your eyes to the sky and white blurs your vision\.\.\.endA bright light surrounds you and your visions of sanctuary slowly fade\.\.\.endThe blinding flash of lightning shatters the chamber in a cloud of wind and light, causing it to dissolve around you\.\.\.endSuddenly the candles at the heart of the room go out and you are plunged into a deep darkness that obscures your vision of the world around you\.\.\.endRising suddenly, the chill air sends a flurry of snow towards you and your vision swims with white flakes\.\.\.
+225					mana25		
+230					mana30		
+240				refreshable	mana40		startA small mote of bright white light swirls into existence around you\.startA pulse of bright white light flows from your hand into the mote\.  You feel the spirit's presence grow stronger\.endThe mote of white light next to you disappears\.
+301					manahold_cost = 0; [1,3,6,10].each {|n| if Stats.level >= n; hold_cost += 1; end };  hold_cost		
+302			yes		mana4		
+303				selfstackableyestargetrefreshable	mana3		startA pure white aura sparkles around you\.endA white glow rushes away from you\.
+304					mana4		
+305					mana5		
+306		yes			mana6		
+307				selfstackableyestargetrefreshable	mana7extra cost when in group		startYour spirit is bolstered by a great sense of faith and conviction\.endYour sense of faith and conviction wanes\.(?:  You are less sure of yourself\.)?
+308					mana8		
+309					mana9		
+310				selfstackableyestargetrefreshable	mana10		startYou feel more secure basking in the glow of divine protection\.endYou suddenly feel less protected\.
+311					mana3		
+312			yes		mana12		
+313				stackableyes	mana13		startTurning your thoughts inward\, you ask for the .* of your deity to protect you\.\s+.+, and you sense that your prayer has been granted\.endYou feel the protection of your deity's influence fade\.
+314				selfstackableyestargetrefreshable	mana14		startA glittering golden collection bowl materializes above you\.  It slowly tips upside down, causing a shower of silver sparks to rain down upon your body, then vanishes\.endAn ethereal golden collection bowl drifts out of your body, then vanishes\.
+315					mana15		
+316	no				mana10		
+317			yes		mana17		
+318					manaif Spells.cleric >= 40 then 40 elsif Spells.cleric >= 25 then 25 else 18 endspiritif Spells.cleric >= 40 then 3 elsif Spells.cleric >= 25 then 5 else 8 end		
+319				stackableyes	mana19		startDrawing deep from the well of your soul, you summon forth a thread of your essence and weave it into an evanescent shield to shroud your form\.endThe air about you shimmers momentarily before the evanescent shield surrounding you collapses\.
+320				refreshable0.5	mana0		startMana swirls into the visible spectrum and manifests as an ethereal, [\w\s]+ censer swinging pendulously through the air beside you\.  A [\w\s]+ haze of incense smoke trails in its wake, quickly spreading in sinuous tendrils through the area\.endYour ethereal censer fades away, leaving only a faint lingering scent of incense\.
+335	no				mana35		
+325					mana25		
+330					mana30		
+340					mana40spirit2		
+350					mana50		
+399				0.5			startAs the fragrant haze settles over you, you feel revitalized\.endYou sense the flows of mana around you are once again strong enough to support the manifestation of an ethereal censer\.
+401				selfstackableyestargetstackableyes	mana1		startA silvery luminescence surrounds you\.endThe silvery luminescence fades from around you\.
+402				refreshable5	mana2		startYou continue to feel much more aware of your surroundings\.endYour senses are no longer as sharp\.
+403				stackable	mana3		startA scintillating light surrounds your hands\.endThe scintillating light fades from your hands\.
+404				stackable	mana4		startYou become calm and focused\.endThe focused look leaves you\.
+405					mana5		
+406				selfstackableyestargetstackableyes	mana6		startA bright luminescence surrounds you\.endThe bright luminescence fades from around you\.
+407					mana7		
+408					mana8		
+409					mana7		
+410	no				mana10		
+411					mana11		
+412					mana2		
+413					mana2		
+414				selfstackableyestargetstackableyes	mana14		startA brilliant luminescence surrounds you(?: and your group)?\.endThe brilliant luminescence fades from around you\.
+415					mana15		
+416					mana16		
+417					mana17		
+418					mana18		
+419				stackableyes	mana19		
+420					mana20		
+425				stackableyes	mana25		startYou are filled with a sense of great confidence\.endYou feel less confident than before\.
+430				stackableyes	mana30		startYour skin tingles for a moment and you feel more secure\.endThe tingling sensation and sense of security leaves you\.
+435	no				mana20		
+499							
+501					manasleep_cost = 0; [1,3,6,10,15].each {|n| if Stats.level >= n; sleep_cost += 1; end };  sleep_cost		
+502					mana2		
+503				selfstackableyestargetstackableyes	mana3		startGlowing specks of \w+ \w+ energy begin to spin around you\.endThe glowing specks of energy surrounding you suddenly shoot off in all directions, then quickly fade away\.
+504					mana1		
+505		yes			mana5		
+506				refreshable	mana6		startYou (?:and your group )?suddenly start moving light\-footedly\.endYou suddenly feel less light\-footed\.target-start(?<noun>[A-Z][a-z]+) suddenly starts moving light-footedly\.
+507				stackableyes	mana7		startYou are surrounded by a shimmering field of energy\.endYou feel a slight tingling as the shimmering field fades away\.
+508				stackableyes	mana8		startYou feel more magically aware\.endYou feel your extra magical awareness leave you\.
+509				selfstackableyestargetstackableyes	mana9		startYou feel much stronger\.endYou feel your extra strength departing\.
+510		yes	yes		mana10		
+511					mana11		
+512					mana10		
+513				selfstackableyestargetstackable	mana13		startYou bristle with energy\.endYou no longer bristle with energy\.
+514					mana14		
+515					mana15		startYou feel the magic surge through you\.endYou feel the surge of magic depart\.
+516					mana16		
+517					mana17		
+518	no	yes	yes		mana18		
+519					mana19		
+520				stackableyes	mana20	if target.is_a?(String) && target !~ /^\d$/; cmd = "incant 520 #{target}"; else; cmd="incant 520 #{UserVars.element} #{target}"; end; dothistimeout('release', 5, /^You feel the magic of your spell rush away from you\.$|^You don't have a prepared spell to release!$/) if (checkprep != 'Mage Armor') and (checkprep != 'None'); dothistimeout(cmd, 5, /^A layer of raw elemental energy forms around you|^You already have a different spell readied|^Cast Roundtime [0-9]+ Seconds?\.|^But you don't have any mana!|^\[Spell Hindrance for|keeps? the spell from working\.|^As you focus on your magic, your vision swims with a swirling haze of crimson\.|^Your magic fizzles ineffectually\.|^All you manage to do is cough up some blood\.|^And give yourself away!  Never!|^You are unable to do that right now\.|^You don't seem to be able to move to do that\.|^You can't think clearly enough to prepare a spell!/)	startA layer of raw elemental energy forms around you\.endThe layer of raw elemental energy surrounding you dissipates\.
+525	no				mana25		
+530					mana30		
+535				stackableyes	mana35		startYou begin to notice the world slow down around you\.  Strange\.startThe world stutters around you for a moment, then resumes its slower speed\.endYou notice that things have returned to their normal speed\.
+540				stackableyes	mana40		startFor a moment, everything you hear and see echoes weirdly around you, but then everything seems normal again\.  Your personal temporal reality has been slightly offset from the true flow of time\.endAbruptly, everything you see and hear comes into better focus\.  Your personal temporal reality has rejoined the true flow of time\.
+597							startYou feel the magic surge through you, but the feeling of fatigue lingers\.
+598							startYou suddenly feel less light\-footed and your feet take on a leaden quality\.endThe leaden quality leaves your feet\.
+599							endYou notice the feeling of elemental fatigue fade away\.endMoisture beads on the surface of your skin then evaporates away, taking with it your recent elemental fatigue\.
+601				selfstackableyestargetstackableyes	mana1		startYou(?: and your group)? seem to blend into the surroundings better\.endYou return to normal color\.
+602				selfstackableyestargetstackableyes	mana2		startThe air about you shimmers slightly\.endThe air about you stops shimmering\.
+603					mana3		
+604				stackableyes	mana4		startYou feel your vision sharpen\.|You feel more in tune with the natural surroundings\.endYou feel your vision return to normal\.|You feel less in tune with your natural surroundings\.
+605				refreshableno	mana5		startA knobby layer of bark swiftly forms on you\.endThe knobby layer of bark on you creaks and twists briefly before disintegrating.\.
+606				stackableyes	mana6		startYour body suddenly fills with a warm strength\.endYou feel the inner strength leave you\.
+607					mana5		
+608					mana8		
+609	no				mana9		
+610					mana5		
+611					mana5		
+612				stackableyes	mana12		startA breeze stirs the air about you, swirling and tugging at your clothing\.endThe swirling breeze around you finally settles\.
+613				stackableyes	mana13		startYou feel an aura of natural confidence surrounding you\.endYou feel the aura of confidence leave you\.
+614					mana14		
+615					mana5		
+616					mana16		
+617				stackableyes	mana17		startYou begin to move with cat-like grace\.endYou are no longer moving silently\.
+618				selfstackableyestargetstackableyes	mana18		startYou suddenly feel much more dextrous\.endYou no longer feel so dextrous\.
+619	no				mana10		
+620				selfstackable	mana20	cmd = "incant 620 #{UserVars.resist_element}";dothistimeout('release', 5, /^You feel the magic of your spell rush away from you\.$|^You don't have a prepared spell to release!$/) if (checkprep != 'Resist Nature') and (checkprep != 'None'); dothistimeout(cmd, 5, /^Faint (?:green\-gold|red\-gold|frosty white|blue\-violet|misty grey) filaments spiral inward|^You already have a different spell readied|^Cast Roundtime [0-9]+ Seconds?\.|^But you don't have any mana!|^\[Spell Hindrance for|keeps? the spell from working\.|^As you focus on your magic, your vision swims with a swirling haze of crimson\.|^Your magic fizzles ineffectually\.|^All you manage to do is cough up some blood\.|^And give yourself away! Never!|^You are unable to do that right now\.|^You don't seem to be able to move to do that\.|^You can't think clearly enough to prepare a spell!/)	startYou call upon the natural energies of your surroundings and, with faintly visible (?:green-gold|red-gold|frosty white|blue-violet|misty grey) filaments, weave a web of protection against (?:nature|heat|cold|lightning|steam).endThe (?:green-gold|red-gold|frosty white|blue-violet|misty grey) web of protection against (?:nature|heat|cold|lightning|steam) falls away from you, unraveling as it fades.
+625				stackableyes	mana25		startYou suddenly feel the power of nature surround you\.endYou feel the gathering of nature's power leave you\.
+630					mana30		
+635	no				mana35		
+640				stackableyes	mana40		startYou are surrounded by a (?:dense, )?writhing barrier of sharp thorns\.endYou seem to lose the thorny barrier that surrounds you\.
+650					mana50		startGold-traced pale green ribbons of energy swirl about and coalesce upon you, reinforcing the intense natural prowess that races through every fiber of your being\.endThe green and gold energy fades from around you, bringing your awareness of nature to its original state\.
+701					mana1		
+702			yes		mana2		
+703					mana3		startYou feel weakened as a blood red haze forms around you\.endThe blood red haze dissipates from around you\.
+704				stackableyes	mana4		startA wave of tingling passes across your body, momentarily casting it into semi-transparency\.endYour body pulses momentarily into semi transparency and then returns to normal\.
+705			yes		mana5		
+706					mana6		
+707				refreshable	mana7		startCasually you push your finger into your eye socket and cup it around the throbbing eyeball\.  With a little leverage you pop the eye from your skull and watch as it sprouts little batlike wings and begins to hover before you\.endYou hear a soft hiss as your wandering eye rushes towards you\.  You reach out and catch the squishy globe and quickly press it back into your eye socket\.  After a few blinks it seems to seat itself properly\.  You wipe off some gooey red residue with your sleeve, and feel yourself once again presentable\.
+708					mana8		
+709					mana9		
+710					mana10		
+711					mana11		
+712				stackableyes	mana12		startA shadowy patch of ether rises up through the (?:floor|ground) to encompass you, swiftly sinking into your skin\.endA dark shadow seems to detach itself from your body, swiftly dissipating into the air\.
+713		yes			mana13		
+714					mana14		
+715					mana15		
+716				stackableyes	mana16		startA cankerous ripple of vesicles temporarily disfigures your face and travels down your body, leaving a sickly green miasma as it disappears\.endYou exhale the last of a virulent green mist\.
+717	no				mana17		
+718					mana18		
+719					mana19		
+720	no				mana20		
+725				refreshable	mana25		startYou trace an arcane sigil over your .+ while incanting\.  Your .+ glows momentarily, and you succeed in opening an interplanar rift from which you manage to pull .+\.startYou trace the runes on .+ to strengthen the binding between your .+ and this plane\.  You feel a bit of power leeched from your .+ as a spark follows your finger's path across the .+\.endYou sense that you will not be able to control .+ much longer so you incant arcanely while concentrating upon the .+\.  You gesture vividly causing a small interplanar rift to open.  The .+ is pulled through the rift\.
+9725							startYou shift your gaze to your .+ and focus your energy upon creating the illusion of disguise\.  You move quickly towards .+, feeling your energy focus upon your fist and causing it to radiate with a black essence\.  At the last moment, you plunge your fist into the .+ of your .+\.  .+ suddenly erupts in a shroud of black essence and tries to recoil away from you\.  You focus your will upon the essence and .+, and watch as the creature begins to ripple\.  Piece by piece, the creature's form changes until .+ stands in its place and you withdraw your hand\.startYou glide your hand over .+, leaving rippling motes of color in the wake of your hand as you attempt to strengthen the flows of essence around .+\.  You sense a pulse as the motes disappear within .+, revitalizing the .+ into an impeccable illusion\.endDroplets of inky black ichor begin to drip down from .+ and pool underneath as the veil of an illusion peels back\.  The visage of .+ begins to distort and reveals behind it .+\.  As the last droplet \*plops\* into the pool, it dissolves into mist that .+\.
+730					mana30		
+735					mana35		
+740					mana40		
+901		yes	yes		mana1		
+902					mana2		
+903		yes	yes		mana3		
+904		yes	yes		mana4		
+905				stackableyes	mana5		startMulticolored rays shoot out of your body and flow into (?:the|a) shimmering sphere around you\.endThe shimmering multicolored sphere fades from around you\.
+906		yes	yes		mana6		
+907		yes	yes		mana7		
+908		yes	yes		mana8		
+909				refreshableno	mana7		startFaint ripples in the (?:dirt|floor|ground|ice|muck|sand|snow|soil) form beneath you for a moment\.endFaint ripples in the (?:dirt|floor|ground|ice|muck|sand|snow|soil) beneath you become apparent before quickly dissipating\.
+910		yes	yes		mana10		
+911				selfstackableyestargetstackableyes	mana11		startYour form(?:, as well as your group,)? blurs\.startIf you were visible, your form would have blurred\.endYou become solid again\.
+912	no				mana8		
+913				stackableyes	mana13		startA luminescent aura begins to swirl around you\.endA luminescent aura fades from around you\.
+914					mana3		
+915					mana5		
+916				refreshable	mana16		startYou become invisible\.startYour invisibility is extended\.startYou refresh your invisibility\.endYou (become|are) visible again\.endYou fade into (?:view|sight|visibility)(\.| and strike!)endYour invisibili?ty (falls\.|fails\.|has been dispelled!)endYour startled movement makes you visible again!endYou make so much noise that only the dead would not notice you thrashing about in your unsuccessful search\.|^The driving storm breaks your concentration, leaving you visible again\.|^An? [\w\s]+ discovers you and your invisibility fails!end[A-Z][a-z]+ dispels your invisibility!endBut you are not hidden!endDark, swirling mist billows before you from nothingness, tiny pinpoints of light glimmering from its inky depths\.  Slight crackling can be heard from within and the scent of ozone tickles at your nose\.  Suddenly, a blinding arc of lightning tears through the air and stikes you, causing your invisibility to fade\.endTrying to move through [\w\s]+ reveals you\.$|discovers your hiding place!$|your invisibility fails!
+917					mana17		
+918					mana18		
+919				refreshable	mana19		startA translucent sphere forms around you\.endThe translucent sphere fades from around you\.
+920				stackablenoyes	mana20		startYou (concentrate on the [a-z]+ talisman as you )?cast your conciousness out into the ether in search of a (specific type of )?familiar\.startYou feel the magical link between you and your (?:[\-\w+])[\-\s\w]* (?:grow stronger|strengthen)\.startAs you gaze into the depths of the tiny pool, you notice a faint tickle\.  It is almost as if the ring is drawing energy from your very being\.\.\.endYou sense the link between you and your (?:[\-\w+])[\-\s\w]* weaken and vanish\.
+925					mana25		
+930					mana30		
+950					mana50		
+996							
+997							
+998							
+999							startTapping into the elemental core of Elanthia, you seize part of its energy\.  Swirling ribbons of fiery red, deep blue, earthen brown, and airy white energy rise up from the (?:floor|ground) and surround you\.  They linger for a brief moment, then explode into a shower of sparks!startYou are too exhausted to cast Core Tap right now\.endYour exhaustion from tapping into the elemental core fades\.
+1001					mana1		
+1002					mana2		
+1003					mana3renew1		startYou begin to sing of heroic deeds and bolster your confidence\.endYou no longer feel a sense of confidence\.
+1004					mana4		
+1005					mana5		
+1006					mana6+([Spells.bard-6,0].max/4)renew3+([Spells.bard-6,0].max/8)		startAs (?:you|[A-Z][a-z]+) sings?, the air sparkles briefly (?:with tiny flashing motes of light before returning to normal|around you)\.  You feel strangely lucky!endThe air stops shimmering around you(?: and your group)?\.
+1007					mana7+[[Spells.bard-7,0].max,13].minrenew2+[[Spells.bard-7,0].max,13].min		startYour (?:spirit is|spirits are) lifted by the verses praising Kai\.$|^[A-Z][a-z]+ sings of Kai's many triumphs, lifting your spirits\.endYour (?:spirit is|spirits are|spirits, and those of your group, are) no longer lifted by stories of Kai's Triumphs\.
+1008					mana8		
+1009					mana9renew4		startYou begin singing and focus your voice into a vortex of air centered on your left arm\.endYour(?: sonic)? (?:buckler|kidney|small|targe|heater|knight's|lantern|medium|parma|target|aegis|kite|large|pageant|round|scutum|greatshield|mantlet|pavis|tower|wall|shield|translucent)?(?:\sshield)? dissipates\.
+1010					mana10+((Spells.bard-10)/4)renew3+((Spells.bard-10)/10)		startAs you begin to sing of valiant legends, you feel more protected\.endYou no longer feel a sense of protection\.
+1011					mana11renew4		startThe surroundings respond to the soothing melody of your song, becoming calm and still\.endThe sense of peace and security passes away from the area\.|You stop singing Song of Peace\.
+1012					mana12renew4		startYou begin singing and focus your voice into a (?:vortex of air shaped like a )?sonic (?:[\w\-]+\s?){1,3}(?:,| shaped vortex of air) centered on your (?:right|left) hand\.endYour (?:sonic|twohanded|main) (?!barrier|buckler|kidney|small|targe|heater|knight's|lantern|medium|parma|target|aegis|kite|large|pageant|round|scutum|greatshield|mantlet|pavis|tower|wall|shield|barrier)[\w\s\-]+ dissipates\.|Your sonic weapon is not in your hands\.(?:  You are unable to renew the song\.)?
+1013					mana13		
+1014					mana14renew5		startYou begin singing and focus your voice into a vortex of air centered around your body\.endYour sonic barrier dissipates\.
+1015					mana15renew6		
+1016					mana16		
+1017					mana17renew7		startThe surroundings respond to your piercing voice, disrupting the normal flow of mana\.endThe cacophony of sound finally passes away from the area\.|You stop singing Song of Noise\.
+1018					mana18renew15		startAs you sing, you feel the mana around you begin to swirl and move with a subtle grace\.endThe mana around you slowly returns to its natural state\.
+1019					mana19+((Spells.bard-19)/5)renew8+((Spells.bard-19)/10)		startAs you begin to sing a sibilant melody, shimmering mirror images of you appear in the area\.startThe mirror images surrounding you undulate and grow stronger\.endThe mirror images surrounding you undulate and fade away\.
+1020					mana20		
+1025					mana25renew15		startAn animated .+ appears and hovers near you\.endYour animated .+ dissipates in a shower of sparkling motes of light\.endYou feel the magic of your animated .+ unravel and end\.
+1030					mana30		
+1035					mana35		startAs [A-z]+ sings?, a(?:n invigorating)? squall of wind (?:briefly )?swirls (?:around|about) you(?: and you hear a barely audibl[ey] burst of laughter)?\.(?:  You feel yourself moving (?:a bit )?more smoothly and quickly than before!)?endYou hear a laugh and a clink of coins, and (?:you and your group )?become a bit less nimble\.
+1040					mana40	fput "shout 1040"	
+1101					mana1		
+1102					manaif (Wounds.limbs > 1) and (Spells.empath >= 7) then 7 else 2 end		
+1103					manaif (Wounds.nerves > 1) and (Spells.empath >= 8) then 8 else 3 end		
+1104					manaif ([Wounds.head, Wounds.neck].max > 1) and (Spells.empath >= 9) then 9 else 4 end		
+1105					manaif (Wounds.torso > 1) and (Spells.empath >= 10) then 10 else 5 end		
+1106			yes		mana6		
+1107					mana7		
+1108					mana5		
+1109				stackableyes	mana9		startYou center yourself and (?:focus|renew) your concentration\.endYour mind's keen focus fades away\.
+1110		yes			mana10		
+1111					manaif (Scars.limbs > 1) and (Spells.empath >= 15) then 15 else 11 end		
+1112					manaif (Scars.nerves > 1) and (Spells.empath >= 16) then 16 else 12 end		
+1113					manaif ([Scars.head,Scars.neck].max > 1) and (Spells.empath >= 17) then 17 else 13 end		
+1114					manaif (Scars.torso > 1) and (Spells.empath >= 18) then 18 else 14 end		
+1115					mana15		
+1116					mana16		startYou narrow your focus on your healing energies, stimulating their flow\.
+1117					mana8 + (Stats.level/10)		
+1118					mana18		
+1119				stackableyes	mana19		startYou feel an aura of resolve surround you\.  The exhilarating sensation sends your heart racing and a warm flush tingling through your body\.endYour aura of resolve dissipates\.
+1120					mana10		
+1125				stackableyes	mana25		startDark red droplets coalesce upon your skin before sinking into your flesh\.  (?:Your heart stutters for an instant before settling into a steady, powerful rhythm|Your heart, already beating strongly with Troll's Blood, accelerates with new vigor as your body accepts the new infusion)\.endYour heart staggers briefly before slowing to a more regular speed\.  Dark red droplets seep out of your skin and evaporate as the influence of Troll's Blood leaves you\.
+1130				stackableyes	mana30		startYou feel an intense resolve fill your mind, and concentrate on improving your efforts to guard yourself\.endYour intensity subsides\.
+1135					mana35		
+1150					mana50		
+1199							startYou release your pinpoint focus on your healing energies and allow their stimulated flow to settle to normal rates\.
+1201					mana1		
+1202				stackableyes	mana2		startYou feel your skin grow tight all across your body and your complexion takes on a .*? quality\.endYou feel the tension in your skin ease and notice that your complexion returns to normal\.
+1203					mana1		
+1204				selfstackableyestargetstackableyes	mana4		startOpening your mind's eye to the progression of time, a myriad of possible future events fills your consciousness\.endLike sand through an hourglass, your visions of the future slip away and fade from your mind\.
+1205					mana5		
+1206					mana6		
+1207					mana5		
+1208				selfstackableyestargetstackableyes	mana8		startYou feel your forehead pulse as your mind hardens to deter invading thoughts\.endYou feel your forehead pulse as your mind relaxes\.
+1209				stackableyes	mana9		startYour hands grow hard and scaly\.endThe scales covering your hands turn brittle and flake away\.
+1210					mana5		
+1211					mana3		
+1212				stackableyes	mana12		startYour appearance shimmers briefly\.endYour appearance briefly shimmers\.
+1213				599	mana13		startYour muscles ripple momentarily and you suddenly become aware of a multitude of your body's processes\.  You feel an unnatural control over your breathing, heart rate and muscle tension\.(?:\s+Your group appears similarly affected\.)?endYou feel your muscles begin to strain for an instant\.  The sense of body control has left you\.
+1214				stackableyes	mana14		startThick plates of bone grow from your forearms\.startThe bones surrounding your forearms shift and fortify\.endThe thick plates of bone around your forearms begin to crack, then shatter into a fine white dust\.
+1215				selfstackableyestargetrefreshable	mana15		startA momentary eruption of starlit darkness engulfs you\.  As the shadow thins, double images of the world sway dizzyingly around you before regaining solidity\.$|^A momentary eruption of a flurry of squeaking bats engulfs you, flapping with a frenzy of shrill squeaks and chitters as they cyclone wildly about you. \s?As the bats wing away into the sky, double images of the world sway dizzyingly around you before regaining solidity\.endDarkness punctuated by a constellation of starry pinpoints wells up to the surface of your skin and splinters away with a sound like shattering crystal\.$|^A cloud of bats suddenly appear and wing straight for you, disappearing into a fine mist just before impact\.
+1216				599	mana16		startA barrier of force forms around you(?: and your group)?\.endThe barrier of force around you dissipates\.
+1217					mana17		
+1218					mana18		
+1219					mana10		
+1220				stackableyes	mana20		startA flood of visions fills your mind and you strain to pick out your place amongst the countless blurred images and muted sound\.endThe visions slowly trickle from your mind, and you are left with the world before you once again\.
+1225					mana10		startYou suddenly feel very drained and confused as your memories slip away\.endYou feel less drained as your thoughts come racing back, and you regain clarity and focus\.
+1235					mana35		startYou focus inward, drawing on all of your unrest and unsettled indignation\.  Before you, a ball of blanched fire winks into existence\.  You feed it your anger, your pettiness and your hate, watching it swell and grow\.  Tendrils of white flame extend from the miniature sun, snaking out to lash the air\.  Pouring the last, deepest remnants of your vitriol, you unleash the full power of your rage\.  It spreads like an inferno, overtaking all in its path, battering them with the entirety of your darkest thoughts\.endThe sense of anger in the air, previously hanging like a vitriolic cloud, laced with blanched fire, fades and then disappears\.
+1315					mana15		
+1319				refreshable	mana19		
+1408		yes			mana8		
+1409	no				mana9		
+1414					mana14		
+1417					mana17		
+1435	no				mana35		
+1601				selfstackableyestargetrefreshable	mana1		startA whirl of spiritual energy streaks down from above, creating a dully illuminated mantle around your form\.|^The dully illuminated mantle surrounding your form seems to gain some cohesion\.endThe dully illuminated mantle protecting you begins to falter, then completely fades away\.
+1602					mana2		
+1603					mana3		
+1604					mana4		
+1605				selfstackableyestargetstackableyes	mana5		startYou feel a subdued warmth through your arms and torso, accompanied by a preponderant sense of engagement\.endThe warmth surrounding you fades with the spiritual force that was surrounding your arms\.|The subdued warmth embracing you fades along with the spiritual force surrounding your arms\.
+1606				stackableyes	mana6		startYou are filled with a deeply confident and fearless composure\.|Your confidence and fearlessness is bolstered\.endYour boosted confidence and fearlessness fade\.
+1607					mana7		startGranules of cobalt light coalesce around you and as they begin to seep into your exposed skin, you feel invigorated\.endCobalt light separates itself from your skin and scatters into oblivion\.
+1608				stackableyes	mana8		startMotes of lambent white-gold light appear and begin to swirl around you, coalescing into a radiant aura.|Wisps of lucent silvered ebon smoke appear and begin to twist around you, coalescing into an incandescent veil.|Fingers of fog-hued mist appear and begin to twirl around you, coalescing into a scintillant miasma.endThe (?:aura of lambent white-gold light motes|haze of lucent silvered ebon smoke|miasma of fog-hued mist) surrounding you dissipates slowly, (?:winking out of existence|thinning until nonexistent|waning until completely diminished).
+1609				599	mana9		startThe warmth works its way toward you, and your shield arm feels much more nimble\.endYour skin grows slightly numb for a moment as the warm glow fades from around you\.
+1610				stackableyes	mana10		startVisions of future battles fill your eyes, providing you with knowledge of conflicts yet unfought\.endYou lose a bit of focus as the knowledge of future battles drifts from your mind\.
+1611				stackableyes	mana11		startAn unbridled power surges through you, infusing your body with might and improving your reactions\.endYou feel your abilities diminish as the energy provided by your patron fades from around you\.
+1612				stackableyes	mana12		startThe divine power grants you lucid understanding of the spiritual and you become much more clearly focused\.endYour sense of clarity fades\.
+1613					mana13		
+1614					mana5		
+1615					mana15		
+1616				stackableyes	mana16		startThe blood in your veins thickens and pulses with renewed life!endYou feel slightly weakened as the blood in your veins thins\.
+1617				599	mana17		startA surge of radiant energy coalesces around you and (?:then fades into obscurity|those nearby)\.endYou feel less resolved as the divine urging subsides, fading into obscurity\.
+1618				599	mana18		startYou utter a pious chant and a divine force suddenly radiates around you\.  The intensity of your patron's aid billows out from you in a wave of righteous indignation\!endThe divine force surrounding you slowly fades away\.
+1619					mana19		startA muted pale blue sphere surrounds you\.endThe muted pale blue sphere surrounding you flickers once and shudders before fading completely\.
+1620					mana20		
+1625					mana25		
+1630					mana30		
+1635					mana35		
+1640					mana40		
+1650					mana50		
+1699				refreshable			startYou feel \w+'s protection extend to you as an incandescent veil coalesces around you\.endAn incandescent veil fades from you\.
+1700							
+1701				refreshable	mana1		startA brilliant, rapidly shifting aura swirls around you\.endThe brilliant, rapidly shifting aura around you shimmers and (?:flickers briefly before fading\.|bursts in a bright flash!)
+1704					mana4		
+1705					mana5		startYou feel a wave of strength enter your muscles, and with it a newfound sense of confidence\.endYou are suddenly overcome by anxiety, but it quickly passes, leaving you feeling only slightly weaker and less assured than you were a moment ago\.
+1706					mana6		startThin wisps of blue flame suddenly surround your body!endThe licks of blue flame surrounding you flare up one last time before vanishing with a staticky crackle\.
+1707					mana7		
+1708					mana3		startA dizzying array of golden runes surround and suffuse you before being absorbed into your body\.endGolden runes enscribe themselves upon your body, quickly fading into nothingness\.
+1709					mana9		
+1710					mana10		
+1711							startA sudden clarity of thought comes over you, and you realize that you now understand arcane mysteries that were previously incomprehensible\.endLike a faint wisp of a barely-remembered dream, your brief, enhanced comprehension of arcane mysteries slips away\.
+1712				stackable			startA faint silvery glow surrounds your body\.endA faint silvery glow fades from around you\.
+1713	no						
+1714					mana5		
+1715							
+1718							
+1720					mana20		startA .*? ellipsoid barrier slowly materializes around you and fades through a color spectrum into invisibility\.endYour .*? barrier flashes rapidly and the sound of breaking crystal can be heard as it cascades down around you\.
+1750							
+6666				yes			startThe time left until you decay should never match any game line; it's specifically handled by infomonitor.lic in order to get the duration and effects right\.  So unless it\'s malfunctioning, don\'t change this\.endThe time left until you decay should never match any game line; it's specifically handled by infomonitor.lic in order to get the duration and effects right\.  So unless it\'s malfunctioning, don\'t change this\.
+1912				stackableyes	mana12		startA dim celadon wisp flares briefly about each of your hands, trailing soft pulses of residual light as they move\.endThe dim celadon wisps about your hands flare up once more and fade completely away\.
+9301				stackable		fput "reim boost attack"	startCrackling wisps of ethereal energy surround your body, bolstering your attack\.endThe crackling wisps of ethereal energy surrounding your body fade away\.
+9302				stackable		fput "reim boost defense"	startTendrils of ethereal energy encase your body, bolstering your defense\.endThe tendrils of ethereal energy encasing your body fade away\.
+9401				refreshableno	stamina20	fput "shield tortoise"	startYou (?:assume|re-settle into) the Stance of the Tortoise, holding back your offensive power in order to maximize your defense\.endYou relax from your continuous efforts to maximize your defense\.
+9501							
+9502							
+9503							
+9504							start(?:You adjust|[A-Z][a-z]+ adjusts) your .*?, improving its ability to support the weight of your gear\.
+9505							start(?:You adjust|[A-Z][a-z]+ adjusts) your .*?, improving its comfort and maneuverability\.endYour .*? shifts out of place and feels much less comfortable than before\.
+9506							
+9507							start(?:You adjust|[A-Z][a-z]+ adjusts) your .*?, making it easier for you to cast spells\.endYour .*? shifts out of place and feels somewhat more hindering\.$
+9508							start(?:You adjust|[A-Z][a-z]+ adjusts) your .*? to cushion your movements\.endYour .*? shifts out of place and no longer cushions your movements\.
+9509							start(?:You adjust|[A-Z][a-z]+ adjusts) your .*?, reinforcing weak spots\.
+9510							startAs \w+ prays? over your .*?, you sense that (?:the Arkati's|a) blessing will be granted against magical attacks\.endYou sense the blessing on your .*? slowly passing away\.
+9601					stamina5	fput "cman cmovement"	startYour body becomes tense and ready for action\.endYour close concentration on your movements fades away\.
+9602					stamina5	fput "cman focus"	startYou sharpen your focus on combat and fortify yourself against distractions.endYour singular focus on combat slowly drifts away.
+9603					staminaif Spell[9604].active? then 60 else 20 end	dothistimeout 'cman smastery', 3, /^You focus your mind on the shadows and gird your body for stealth\.(?:  You find maintaining this mindset to be exceptionally tiring\.)?$|^Your muscles ache much too badly to even think about attempting this maneuver\.$/	startYou focus your mind on the shadows and gird your body for stealth\.(?:  You find maintaining this mindset to be exceptionally tiring\.)?endYour body relaxes as your thoughts stray from the shadows\.
+9604							startYour body relaxes as your thoughts stray from the shadows\.endThe residual strain on your mind of such intense focus on the shadows fades away\.
+9605					stamina(if Spell[9606].active? then 60 else 30 end)*((Spell[1213].active? and defined?(Spell[1213].stamina_reduction)) ? (1-(Spell[1213].stamina_reduction/100.0)) : 1)	dothistimeout 'cman surge', 3, /^You feel (?:significantly|a great deal|a fair amount) stronger\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$/	startYou focus deep within yourself, searching for untapped sources of strength[\s\w\.]*endYou begin to lose touch with your internal sources of strength\.
+9606							startYou feel (?:significantly|a great deal|a fair amount) stronger\.endYour internal strength fully recovers from your most recent attempt to tap into it\.
+9607						result = dothistimeout 'berserk', 5, /^Everything around you turns red as you work yourself into a berserker's rage!|^You rage across the battlefield, striking with unrelenting fury!/; if result; done = false; 450.times { sleep 0.1; if clear.any? { |line| line =~ /^The redness fades from the world/ }; done = true; break; end; break unless GameObj.npcs.any? { |npc| npc.status !~ /dead/ } }; unless done; fput 'stop berserk'; end; end	startEverything around you turns red as you work yourself into a berserker's rage!endThe redness fades from the world and you begin to breathe harder\.
+9620				refreshableno	stamina20	fput "cman krynch"	startYou (?:assume|re-settle into) the Rolling Krynch Stance\.endYou relax from the Rolling Krynch Stance\.
+9621				refreshableno	stamina20	fput "cman mongoose"	startYou (?:assume|re-settle into) the Stance of the Mongoose, ready to retaliate instantly against your foes\.endYou relax from the Stance of the Mongoose, no longer ready to retaliate instantly against your foes\.
+9622				refreshableno	stamina20	fput "cman slipp"	startYou focus inward and prepare to blank your mind at a moment's notice\.endYou relax your mind and are no longer prepared to blank it at a moment's notice\.
+9623				refreshableno	stamina30	fput "cman flurry"	startYou (?:assume|re-settle into) a stance suitable to unleash a flurry of blows\.endYou relax from a stance suitable to unleash a flurry of blows\.
+9624				refreshableno	stamina40	fput "cman iharm"	startYou (?:center your mind, body and soul and enter a|continue in your) state of inner harmony\.endYou feel your state of inner harmony slip away\.
+9625					stamina(if Spell[9051].active?; 60; else; 30; end)*((Spell[1213].active? and defined?(Spell[1213].stamina_reduction)) ? (1-(Spell[1213].stamina_reduction/100.0)) : 1)	dothistimeout 'cman burst', 3, /^You feel (?:significantly|a great deal|a fair amount) more (?:agile|dextrous)\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$/	startYou prepare yourself to move swiftly at a moment's notice.*endYou feel less prepared to move as swiftly as before\.
+9626					stamina20+5+5	dothistimeout 'cman kifocus', 3, /^You summon your inner ki|^You have already summoned your inner ki/	startYou summon your inner ki and focus it to enhance your next attack\.startYou have already summoned your inner ki and are ready for a devastating attack\.endYou lose the intense focus of your ki energy\.
+9627				refreshable	stamina(if Spell[9052].active?; 90; else; 30; end)*((Spell[1213].active? and defined?(Spell[1213].stamina_reduction)) ? (1-(Spell[1213].stamina_reduction/100.0)) : 1)	dothistimeout 'cman weave', 3, /^You balance your posture and narrow your eyes, preparing to misdirect your foes' attacks\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$/	startYou balance your posture and narrow your eyes, preparing to misdirect your foes' attacks\.endYou relax your posture and blink to clear your eyes\.
+9628				refreshableno	stamina20	fput "cman griffin"	startYou assume the Griffin's Voice stance, altering your breathing patterns to maximize the efficiency of your warcries\.endYou return to your normal breathing patterns\.
+9699							startYou hear a loud \*POP\* come from your muscles!endYour muscles (?:feel much less strained than|no longer feel as weak as) they did a moment ago\.|The soreness of your overexerted muscles evaporates, leaving you feeling fresh and rested\.
+9701						fput "sigil of recognition"	
+9702						fput "sigil of location"	
+9703				stackable	mana1	dothistimeout 'sigil of contact', 3, /^You feel your mind open up to the world around you\.$|^The distant thoughts in your mind feel stronger\.$|^The power from your sigil dissipates into the air\.$/	startYou concentrate on your sigil\.endYou sense that your attunement to the minds of others has ceased\.
+9704					stamina5	dothistimeout 'sigil of resolve', 3, /^You experience a momentary flash of insight on how to best overcome nature's obstacles\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startYou experience a momentary flash of insight on how to best overcome nature's obstacles\.endYou feel your added insight slip away\.
+9705					mana3stamina3	dothistimeout 'sigil of minor bane', 3, /^As you concentrate on your sigil, you become slightly more aware of your foes and the weakest spots in their defenses\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startAs you concentrate on your sigil, you become slightly more aware of your foes and the weakest spots in their defenses\.endYour heightened awareness of your foes fades away\.
+9706					stamina10	dothistimeout 'sigil of bandages', 3, /^Your awareness of your own movements heightens as you begin to act with an unusual fluidity\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startYour awareness of your own movements heightens as you begin to act with an unusual fluidity\.endYour actions become less fluid as your close concentration on your movements begins to falter\.
+9707					mana5stamina5	dothistimeout 'sigil of defense', 3, /^A shimmering aura surrounds you\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startA shimmering aura surrounds you\.endThe shimmering aura fades from around you\.
+9708					mana5stamina5	dothistimeout 'sigil of offense', 3, /^A faint blue glow surrounds your hands, subtly guiding your movements\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startA faint blue glow surrounds your hands, subtly guiding your movements\.endThe faint blue glow fades from around your hands\.
+9709					mana5stamina10	dothistimeout 'sigil of distraction', 3, /^You carefully school your thoughts, focusing on the thresholds of disorder inherent in your environs, and etch the Sigil of Distraction in the air before you\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	
+9710				stackable3.0	mana5stamina10	dothistimeout 'sigil of minor protection', 3, /^As you concentrate on your sigil, you become slightly more aware of weak spots in your defenses\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startAs you concentrate on your sigil, you become slightly more aware of weak spots in your defenses\.endYour heightened awareness of your own defensive weaknesses fades away\.
+9711				stackable3.0	mana5stamina5	dothistimeout 'sigil of focus', 3, /^You feel your mind and body gird themselves against magical interference\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startYou feel your mind and body gird themselves against magical interference\.endYour mind and body begin to relax after that period of intense focus\.
+9712					manaif checkpcs.length > 1 then 10 else 5 endstaminaif checkpcs.length > 1 then 15 else 10 end	dothistimeout 'sigil of intimidation', 3, /^You carefully school your thoughts, focusing on the enhancement of your aspect and bearing, and etch the Sigil of Intimidation in the air before you\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	
+9713					mana10stamina15	dothistimeout 'sigil of mending', 3, /^Your heart begins to beat faster as your entire body becomes awash with a pleasantly warm sensation\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startYour heart begins to beat faster as your entire body becomes awash with a pleasantly warm sensation\.endThe pleasantly warm sensation fades as your heart beat begins to return to normal\.
+9714					stamina30	dothistimeout 'sigil of concentration', 3, /^As you concentrate on your sigil, you feel more attuned to the flows of mana\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startAs you concentrate on your sigil, you feel more attuned to the flows of mana\.endYour heightened attunement to the flows of mana begins to fade\.
+9715					mana10stamina10	dothistimeout 'sigil of major bane', 3, /^As you concentrate on your sigil, you become much more aware of your foes and the most vulnerable portions of their bodies\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startAs you concentrate on your sigil, you become much more aware of your foes and the most vulnerable portions of their bodies\.endYour heightened awareness of your foes fades away\.
+9716					stamina30	dothistimeout 'sigil of determination', 3, /^You begin to focus sharply upon the task at hand, pushing all thoughts and sensations of pain far from your mind\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startYou begin to focus sharply upon the task at hand, pushing all thoughts and sensations of pain far from your mind\.endYour sharp concentration upon your current task falters as the pain of your injuries rushes back into your mind\.
+9717					mana10stamina20	dothistimeout 'sigil of health', 3, /^As you concentrate on your sigil, you feel a brief surge of vitality course throughout your body\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	
+9718					stamina50	dothistimeout 'sigil of power', 3, /^As you concentrate on your sigil, you feel exceptionally tired as your physical energy rapidly transforms into magical energy\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	
+9719				stackable3.0	mana10stamina15	dothistimeout 'sigil of major protection', 3, /^As you concentrate on your sigil, you become much more aware of vulnerable spots in your defenses\.$|^Your muscles ache much too badly to even think about attempting this maneuver\.$|^The power from your sigil dissipates into the air\.$/	startAs you concentrate on your sigil, you become much more aware of vulnerable spots in your defenses\.endYour heightened awareness of your own vulnerabilities fades away\.
+9720					mana15stamina75	fput "sigil of escape"	
+9801						dothistimeout "symbol of recognition", 5, /^There are no undead creatures present\.|^You recognize no fellow members|is and undead creature\.|is a member of the Order of Voln\./	
+9802						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of blessing#{target}", 5, /^You must specify something\.|^A wave of power flows outward from you|^You strain to perform the symbol/	
+9803						fput ""	
+9804						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of diminishment#{target}", 5, /^What were you referring to\?|^You draw a glowing pattern in the air|^You strain to perform the symbol/	
+9805				stackable		dothistimeout "symbol of courage", 5, /^You feel more courageous\.|^You strain to perform the symbol/	startYou feel more courageous\.endYou feel the extra courage wane\.
+9806				stackable		dothistimeout "symbol of protection", 5, /^You feel a layer of protection surround you\.|^You strain to perform the symbol/	startYou feel a layer of protection surround you\.endThe layer of protection fades away\.
+9807						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of submission#{target}", 5, /^What were you referring to\?|^You feel the power of the symbol project|^You strain to perform the symbol/	
+9808						fput ""	
+9809						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of holiness#{target}", 5, /^What were you referring to\?|^A wave of power flows out of you|^You strain to perform the symbol/	
+9810						fput "symbol of recall"	
+9811						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of sleep#{target}", 5, /^You draw a glowing pattern in the air|^You strain to perform the symbol/	
+9812						dothistimeout "symbol of transcendence#{target}", 5, /^You step into the space between the corporeal and ethereal realms\.|^You have already stepped into the space between the corporeal and ethereal realms\.|^The bonds of the corporeal realm hold fast and you remain fully within its grasp\.|^You strain to perform the symbol/	start(?:With difficulty, you manage to will yourself|You step) into the space between the corporeal and ethereal realms\.
+9813						dothistimeout 'symbol of mana', 5, /^You call upon a special blessing from Koar.|^You are already at your maximum mana level\.|^You must CONFIRM that you wish to use this symbol during its recovery period\.|^You strain to perform the symbol/	
+9814						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of sight#{target}", 5, /^You concentrate|^You strain to perform the symbol/	
+9815				stackable		fput "symbol of retribution"	startYou feel an aura of righteous wrath surround you\.endThe aura of righteous wrath leaves you\.
+9816				stackable		dothistimeout 'symbol of supremacy', 5, /^You feel infused with a collective knowledge on the undead and their weaknesses\.|^You strain to perform the symbol/	startYou feel infused with a collective knowledge on the undead and their weaknesses\.endThe rush of collective knowledge of the undead fades from your mind\.
+9817						dothistimeout 'symbol of restoration', 5, /^The power of the symbol begins to rise in you, but then fades\.|^You feel the power of the symbol course through your body\.|^You strain to perform the symbol/	
+9818						fput "symbol of need"	
+9819						dothistimeout 'symbol of renewal', 5, /^You are already at your maximum spirit level\.|^You call upon the vitality of nature to renew your soul\.|^You strain to perform the symbol/	
+9820				stackable		dothistimeout 'symbol of disruption', 5, /^A churning spectral aura surrounds you|^You strain to perform the symbol/	startA churning spectral aura surrounds you(?: and your group)?\.endThe churning spectral aura suddenly vanishes from around you\.
+9821						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "smite#{target}", 5, /^You currently have no valid target\.  You will need to specify one\.|doesn't appear to be suffering from the curse of undeath\.|^You .*?smite/	
+9822						if defined?(target); if target.is_a?(GameObj); target = " ##{target.id}"; elsif target.is_a?(Numeric); target = " ##{target}"; else; target = " #{target}"; end; else; target = ""; end; dothistimeout "symbol of turning#{target}", 5, /^You draw a glowing pattern in the air|^You strain to perform the symbol/	
+9823						fput "symbol of preservation"	
+9824						fput "symbol of dreams"	startYou feel suddenly tired and lie down for a nap\.endYour sleep is interrupted\.|You wake up from your sleep\.
+9825						fput "symbol of return"	
+9826						fput "symbol of seeking"	
+9901						dothistimeout 'sign of recognition', 3, /^You (?:touch|scratch|rub|tap|point to) your (?:right|left) (?:eyebrow|nostril|earlobe|shoulder|cheek) with your (?:right|left) (?:pinky|forefinger|thumb|index finger)\.$/	
+9903					mana1	dothistimeout 'sign of warding', 3, /^Your dancing fingers weave a web of protection around you!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYour dancing fingers weave a web of protection around you!endYour SIGN OF WARDING is no longer effective\.
+9904					mana1	dothistimeout 'sign of striking', 3, /^You (?:flex your muscles|grip your .*?) with renewed vigor!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYou (?:grip|flex) your [\w\s']+ with renewed vigor!endYour SIGN OF STRIKING is no longer effective\.
+9905					mana1	dothistimeout 'sign of clotting', 3, /^Your veins throb and your blood sings\.$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	
+9906				stackable	mana1	dothistimeout 'sign of thought', 3, /^Your hypnotic gesture makes your mind receptive to the thoughts of others\.  You feel their distant, comforting presence\.$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYour hypnotic gesture makes your mind receptive to the thoughts of others\.  You feel their distant, comforting presence\.endYou sense that your attunement to the minds of others has ceased\.
+9907					mana2	dothistimeout 'sign of defending', 3, /^Your dancing fingers weave a web of protection around you!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYour dancing fingers weave a web of protection around you!endYour SIGN OF DEFENDING is no longer effective\.
+9908					mana2	dothistimeout 'sign of smiting', 3, /^You (?:flex your muscles|grip your .*?) with renewed vigor!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYou (?:grip|flex) your [\w\s']+ with renewed vigor!endYour SIGN OF SMITING is no longer effective\.
+9909					mana1	dothistimeout 'sign of staunching', 3, /^Your veins throb and your blood sings\.$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYour veins throb and your blood sings\.endYour SIGN OF (?:STAUNCHING|CLOTTING) is no longer effective\.
+9910					mana3	dothistimeout 'sign of deflection', 3, /^You feel magical energies distort and flow around you\.$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYou feel magical energies distort and flow around you\.endYour SIGN OF DEFLECTION is no longer effective\.
+9911					spirit1	dothistimeout 'sign of hypnosis' 3, /^You project your will upon your opponents!|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	
+9912					spirit1	dothistimeout 'sign of swords', 3, /^You (?:flex your muscles|grip your .*?) with renewed vigor!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYou (?:grip|flex) your [\w\s']+ with renewed vigor!endYour SIGN OF SWORDS is no longer effective\.
+9913					spirit1	dothistimeout 'sign of shields', 3, /^Your dancing fingers weave a web of protection around you!$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYour dancing fingers weave a web of protection around you!endYour SIGN OF SHIELDS is no longer effective\.
+9914					spirit1	dothistimeout 'sign of dissipation', 3, /^Magic flows towards you, but does not reach you\.$|^Repeating the sign has no effect!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startMagic flows towards you, but does not reach you\.endYour SIGN OF DISSIPATION is no longer effective\.
+9915					spirit2	dothistimeout 'sign of healing', 3, /^You shudder as your life force is torn and reshaped!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	
+9916					spirit3	dothistimeout 'sign of madness', 3, /^You are filled with berserk rage!  Attack!  Attack!  Attack!$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	startYou are filled with berserk rage!  Attack!  Attack!  Attack!endYour SIGN OF MADNESS is no longer effective\.
+9917					spirit4	dothistimeout 'sign of possession' 3, /^You project your will upon your opponents!|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	
+9918					spirit5	result = nil; loop {; waitrt?; waitcastrt?; if percentmana == 100; result = true; break; end; unless Spell[9918].affordable?; result = false; break; end; line = dothistimeout 'sign of wracking', 3, /You shudder as your life force is torn and reshaped!|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^I don't think so\.$|^You have not recovered from your last wracking enough to use that sign again\.$/; if line == 'You shudder as your life force is torn and reshaped!'; result = true; break; elsif line.to_s =~ /^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^I don't think so\.$|^You have not recovered from your last wracking enough to use that sign again\.$/; result = false; break; else; dothistimeout 'help no-double-wrack', 2, /^No help files matching that entry were found\.$/; end; }; result	
+9919					spirit6	dothistimeout 'sign of darkness', 3, /^Darkness enfolds and surrounds you\.\.\.$|^Your punishment does not end for another [0-9]+ minutes?\.$|^The power from your sign dissipates into the air\.$|^You realize your powers would be useless here, and cease your action\.$|^I don't think so\.$/	
+9920					spirit11	echo '.cast called for spell 9920 (Sign of Hopelessness)... what the hell is wrong with you?'	
+9003				yesyes			start[A-Z][a-z]+ says, "Hmm, I've got a task here|^[A-Z][a-z]+ says, "I've got a special mission for you.*startYou reach for the large board and select a posted task at random\.start^You were tasked with (?:hunting|sinking)start^You were tasked with slaying [0-9]+ pirates\.
+9056				yesyes			start[A-Z][a-z]+ turns to you and says, "[A-Z][a-z]+ has signed you up to join (?:him|her) on (?:his|her) task\.  I trust that s?he has adequately informed you of the nature of the task.*
+9004							start[A-Z][a-z]+ nods to you.*?Grimswarm.*
+9005							startYour (?:flurry|series) of (?:strikes|rapid shots)(?: and (?:ripostes|maneuvers))? leaves you (?:off-balance|winded) and out of position\.
+9006							startYou feel more courageous as a \w+ aura appears about you\.endThe sense of courage departs as the \w+ aura fades from about you\.
+9007							startYou are left feeling weakened and feeble\.endThe feeling of weakness fades from you\. You feel ripe to transfer spirit once again\.
+9008							startYour senses tingle, then become awash in a flood of power as the life leaves your hapless foe!endYou feel refreshed enough to sacrifice another animus\.
+9009				yes			startMoisture beads upon your skin and you feel your eyes cloud over with the darkness of a rising storm\.  Power builds upon the air, and when you utter the last syllable of your spell thunder rumbles from your lips\.  The sound ripples upon the air, colliding with [A-Z][a-z]+'s prone form, and a brilliant flash transfers the spiritual energy between you\.startYou have a foreboding sense of darkness enveloping your soul as you realize [A-Z][a-z]+ has died while both of you are still soul linked!  You can sense the tugging of [A-Z][a-z]+'s? soul clinging on to life, pulling you headlong into the long dark\.  It takes every ounce of spiritual energy you have to sever the link and claw yourself back to the world of the living!  You feel empty and torpid, unable to focus your spiritual self\.startYou are unable to gather enough strength to focus your spirit\.  Perhaps you should rest some\.startDeep and resonating, you feel the chant that falls from your lips instill within you with the strength of your faith\.  You crouch beside [A-Z][a-z]+ and gently lift (?:he|she|him|her) into your arms, your muscles swelling with the power of your deity, and cradle (?:him|her) close to your chest\.  Strength and life momentarily seep from your limbs, causing them to feel laden and heavy, and you are overcome with a sudden weakness\.  With a sigh, you are able to lay [A-Z][a-z]+ back down\.startMoisture beads upon your skin and you feel your eyes cloud over with the darkness of a rising storm\.  Power builds upon the air and when you utter the last syllable of your spell thunder rumbles from your lips\.  The sound ripples upon the air, and colling with [A-Z][a-z']+ prone form and a brilliant flash transfers the spiritual energy between you\.startLifting your finger, you begin to chant and draw a series of conjoined circles in the air\.  Each circle turns to mist and takes on a different hue - white, blue, black, red, and green\.  As the last ring is completed, you spread your fingers and gently allow your tips to touch each color before pushing the misty creation towards [A-Z][a-z]+\.  A shock of energy courses through your body as the mist seeps into [A-Z][a-z']+ chest and life is slowly returned to (?:his|her) body\.startCrouching beside the prone form of [A-Z][a-z]+, you softly issue the last syllable of your chant\.  Breathing deeply, you take in the scents around you and let the feel of your surroundings infuse you\.  With only your gaze, you track the area and recreate the circumstances of [A-Z][a-z']+ within your mind\.  Touching [A-Z][a-z]+, you follow the lines of the web that holds (?:his|her) soul in place and force it back into (?:his|her) body\.  Raw energy courses through you and you feel your sense of justice and vengeance filling [A-Z][a-z]+ with life\.startMurmuring softly, you call upon your connection with the Destroyer,? and feel your words twist into an alien, spidery chant\.  Dark shadows laced with crimson swirl before your eyes and at your forceful command sink into the chest of [A-Z][a-z]+\.  The transference of energy is swift and immediate as you bind [A-Z][a-z]+ back into (?:his|her) body\.startRich and lively, the scent of wild flowers suddenly fills the air as you finish your chant, and you feel alive with the energy of spring\.  With renewal at your fingertips, you gently touch [A-Z][a-z]+ on the brow and revel in the sweet rush of energy that passes through you into (?:him|her|his)\.startBreathing slowly, you extend your senses towards the world around you and draw into you the very essence of nature\.  You shift your gaze towards [A-z][a-z]+ and carefully release the energy you've drawn into yourself towards (?:him|her)\.  A rush of energy briefly flows between the two of you as you feel life slowly return to (?:him|her)\.startYour surroundings grow dim\.\.\.you lapse into a state of awareness only, unable to do anything\.\.\.startMurmuring softly, a mournful chant slips from your lips and you feel welts appear upon your wrists\.  Dipping them briefly, you smear the crimson liquid the leaks from these sudden wounds in a thin line down [A-Z][a-z']+ face\.  Tingling with each second that your skin touches (?:his|hers), you feel the transference of your raw energy pass into [A-Z][a-z]+ and momentarily reel with the pain of its release\.  Slowly, the wounds on your wrists heal, though a lingering throb remains\.startEmptying all breathe from your body, you slowly still yourself and close your eyes\.  You reach out with all of your senses and feel a film shift across your vision\.  Opening your eyes, you gaze through a white haze and find images of [A-Z][a-z]+ floating above his prone form\.  Acts of [A-Z][a-z]'s? past, present, and future play out before your clouded vision\.  With conviction and faith, you pluck a future image of [A-Z][a-z]+ from the air and coax (?:he|she|his|her) back into (?:he|she|his|her) body\.  Slowly, the film slips from your eyes and images fade away\.startThin at first, a fine layer of rime tickles your hands and fingertips\.  The hoarfrost smoothly glides between you and [A-Z][a-z]+, turning to a light powder as it traverses the space\.  The white substance clings to [A-Z][a-z]+'s? eyelashes and cheeks for a moment before it becomes charged with spiritual power, then it slowly melts away\.startAs you begin to chant,? you notice the scent of dry, dusty parchment and feel a cool mist cling to your skin somewhere near your feet\.  You sense the ethereal tendrils of the mist as they coil about your body and notice that the world turns to a yellowish hue as the mist settles about your head\.  Focusing on [A-Z][a-z]+, you feel the transfer of energy pass between you as you return (?:him|her) to life\.startWrapped in an aura of chill, you close your eyes and softly begin to chant\.  As the cold air that surrounds you condenses you feel it slowly ripple outward in waves that turn the breath of those nearby into a fine mist\.  This mist swiftly moves to encompass you and you feel a pair of wings arc over your back\.  With the last words of your chant, you open your eyes and watch as foggy wings rise above you and gently brush against [A-Z][a-z]+\.  As they dissipate in a cold rush against [A-Z][a-z]+, you feel a surge of power spill forth from you and into (?:him|her)\.startLow and monotonous, you begin a chant to draw [A-Z][a-z]+ back to life and feel the deep shadows of the area rise to meet you\.  Falling upon you like a cloak of darkness, the twisting, inky blackness transforms into the visage of a jackal from a once-forgotten nightmare\.  Sweeping from your body into [A-Z][a-z]+'s?, the raw energy of your prayer transfers into (?:his|her) prone form\.  Slowly, the shadows recede back into the surrounding area\.endThe feeling of weakness leaves you\.  Your spirits are somewhat rejuvenated\.
+9010							startYou feel a surge of energy that carries you to your feet in a heartbeat, with no sense of effort whatsoever!startYou feel a momentary surge of energy rush through you giving you strength\.startYou feel a surge of energy shoot through you!
+9011				yesyes			startThe High Taskmaster looks at you, consults her notes, and then announces in a loud voice: "[A-Z][a-z]+, I'm rather busy right now\.  I know you have completed the requirements for advancement in rank, but I cannot take the time to instruct you\.  Let me check my schedule\.\.\. Ah, yes, I can squeeze you in in [0-9]+ minutes or so\.  Come back then and I'll take care of you\."
+9012				yes			startpowers for [0-9]+ minutes, so that you might havestartYour punishment does not end for another [0-9]+ minutes?\.endthe fold\.  DO NOT FAIL ME AGAIN!"
+9013							startFog swirls and eddies about the area\.  Wispy grey tendrils writhe as they climb around your form until you are completely enshrouded in the mist\.  You feel confident that no one can see you behind your mask of fog\.endThe fog enshrouding you drifts off your form and gathers with the rest in the area\.
+9014					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume wolf', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Wolf\.  .*Your vision takes on a slightly yellow hue, and you feel a stronger center of coordination and balance\.endThe golden distortion fades from your sight, and your balance returns to normal\.
+9015							
+9016					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume jackal', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Jackal\.  .*A twinge of red passes through your eyes, as your thoughts turn toward waylaying your next quarry\.endThe redness fades from your eyes as your focus of the hunt returns to normal\.
+9017							
+9018					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume lion', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Lion\.  .*You feel yourself infused with a regal air, as a wave of power ripples through your muscles\.endYour regal influence and extra strength swiftly drift away\.
+9019							
+9020					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume panther', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Panther\.  .*A distinct awareness of the shadows surfaces to your thoughts, springing forth with the lucidity of a once-forgotten memory\.endYour extra awareness of the shadows steals away back into the recesses of your subconscious\.
+9021							
+9022					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume owl', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Owl\.  .*A dawn of enlightenment rises over your consciousness, honing your comprehension of the flows of magic around and within you\.endThe moment of enlightenment and magical comprehension fades from your mind\.
+9023							
+9024					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume hawk', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Hawk\.  .*You become more aware of the environs as every nuance of your surroundings comes into focus with sharp clarity\.endThe degree of resolution in your vision diminishes as your perception returns to normal\.
+9025							
+9026					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume rat', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Rat\.  .*Your thoughts drift inward, girding your mind with a strong determination and your body with great agility\.endThe strong sense of determination and agility fades from within you\.
+9027							
+9028					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume porcupine', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Porcupine\.  .*A simple cognition bubbles to the front of your mind, broadening your understanding of events that previously went unnoticed\.endYour increased cognition fades away, returning your comprehension to normal\.
+9029							
+9030					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume bear', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Bear\.  .*You hear a deep bellowing reverberate through your mind, inspiring an invigorating fortitude that spreads to your very core\.endYour ursine fortitude parts, returning your endurance to normal\.
+9031							
+9032					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume serpent', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Serpent\.  .*Your skin suddenly feels a bit more scaled, and you notice a distinctly natural fluidity in your movements\.endThe scaliness of your complexion fades away, taking with it your natural-feeling fluid movements\.
+9033							
+9034					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume burgee', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Burgee\.  .*Grey-green diamond scales form across your skin, and you note that your shield arm feels somehow lighter\.endThe grey-green scales fade away from your skin, with your shield arm,s reflexes returning to normal\.
+9035							
+9036					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume mantis', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Mantis\.  .*A slightly uncomfortable pressure builds behind your eyes as you note an improved eyesight and renewed vigor in your weapon arm\.endYou feel the pressure behind your eyes relent, as the movement in your weapon arm returns to normal\.
+9037							
+9038					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume yierka', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Yierka\.  .*A gruff, yet contenting inspiration courses through your senses, putting you at one with the offerings and spirits of nature\.endYour extra illumination of the natural fades with a final wisp of inspiration\.
+9039							
+9040					manaSpell[650].active ? 25 : 50	Spell[650].cast if not Spell[650].active?; waitcastrt?; (dothistimeout 'assume spider', 3, /^You feel that you will not be able to fully concentrate upon the Aspect|^You concentrate your focus upon the Aspect/) =~ /^You concentrate/ ? true : false	startYou concentrate your focus upon the Aspect of the Spider\.  .*You feel a tingling sensation shiver through your limbs as your field of vision darkens and expands\.endYour field of vision returns to normal as the tingling sensation in your limbs scatters away\.
+9041							
+9075							startYou (?:kneel down and |kneel and )?begin to meditate on your lot in life\.endYour action interrupts your meditation\.endYour meditation is interrupted by .+\.endThe lingering effects of your meditation fade away\.
+9044				1440.0yesyes			startSpidery and incomprehensible words reach you, and are given life by an aged, bodiless voice that carries with it the scent of dusty tomes and candle tallow\.  A point of dark light appears high over your body and expands to form a yellowed eye with a slit pupil\.  With each uttered syllable the eye's iris contracts and the meaning of the words that wrap you become clear\.  "You still have much more to learn," they say, and before you the eye explodes in a blinding, fiery light\.startYou feel a tingling at the edges of your perception and the air comes alive with a feeling of raw power\. You sense something greater than yourself tugging on your spirit\. As the power grows in intensity, you feel it draw you closer to your lifeless body and you marvel as it ushers your spirit forward\. An extremely bright nimbus floods you as your spirit sinks into your body, which begins to fill with life\.startSilence descends upon the room and a double\-headed serpent slithers to you\. Each of its heads moves of its own accord, and slit\-pupiled eyes take in everything as they wind a sinuous path up your prone form\. As it reaches your chest, it lifts its heads up high and begins to sway from side to side in a hypnotic pattern\. "You have learned the ssssacrifice issss everything, now we ssssacrifice oursssselves sssso that you may teach otherssss," the one head says before striking the other head at the neck\. In one swift, painless bite, the head is severed and the open neck falls upon you, its lifeblood draining into your mouth\. Moments pass as the ferric taste of the serpent's sacrifice fills you, and then suddenly it disappears\.startAs the air stirs, you feel your spirit drawn to the heavy scent of the ocean and feel a deep sense of peace\. Clouds move into the area, their murky depths heavy with rain unshed and you can see lightning dancing within them\. The pressure builds all around you until suddenly, the heavens release dozens of slender blue bands of lightning\. The lightning fills your body with its energy and the very air around you seems to tingle with it\. Moments later, the lightning is gone and the clouds soon follow\.startOdd whirls and metallic clangs herald the arrival of a dwarf crafted entirely of bronze\. The strange, mechanical man moves with jerky movements to a position beside the prone form of Cleric and begins to tinker with his appearance and clothing\. At first, nothing seems to come of the strange bronze creature's meddling, but slowly color returns to Cleric's face\. Steam billowing from its ears, the metallic dwarf straightens and teeters from the area, dissipating as it moves\.startStealing all sound as it travels to you, a soft zephyr gently caresses your skin and you sense the frigid brush of final death near at hand\. A tug on your spirit heralds the arrival of impossibly long feathers in shades of white, grey, and black, as they appear before you and coalesce into a beautiful insubstantial being\. It lifts you up into its arms and you feel as if you have found home in its embrace\.startFilling your spirit with a deep anger, a long discordant horn blast drowns your senses and sets your lifeless flesh to vibrating with its wild call\. An enormous hunting hound bearing an angry look of focus bounds towards you\. You feel its front paws forcibly slam into your chest and watch the beast disappear deep within you with the cry of a wild hunt falling from its parted lips\. Slowly, the sound of the horn echoes into silence\.startTime stills around you, and you feel your spirit drawn forward by a pale ethereal light which quickly transforms into a translucent woman\. She moves to your side and withdraws two crimson oak leaves and an acorn from her basket\. You hear her soft prayer as she places the leaves upon your eyes and presses the acorn past your lips\. She turns her eyes to the sky, her arms rising in supplication, and then lays her hands briefly on your chest\. Instantly, warmth floods your limbs and the woman returns to the pale light\.startLarge and ethereal, rectangular talismans rise from the ground to form a ring around your lifeless form\. Each talisman is carved with a different word and glows with a brilliant light\. One by one, the talismans tumble into you\. As the first falls upon you, you are filled with a deep sense of Honor, the second reminds you of Valor in battle, and the third causes your spirit to surge with Hope, while the fourth binds you with the strength of your Faith\. The remaining two tumble into you simultaneously and, in a flash of white light, you absorb them all\.startCreating a myriad of colorful whorls in the air, a flock of small rainbow-winged lizards swirls towards you and you are filled with a deep connection to them\. Diving and darting, they cavort above your corpse in an intricate dance that is breathtaking to behold\. As they dance, their wings shimmer and shed multi-colored sparks that rain down upon your body\. With each spark that alights upon your flesh, you are filled with a tingling sensation that draws your spirit deep into your body\. The aerial display ends in one final loop and the rainbow\-winged lizards dart off into the distance, only to wink out of sight a moment later\.startYour spirit feels a sudden stirring in the air above your lifeless body and moments later a brilliantly white owl appears out of nowhere\. It spreads its wings and you hear the audible crack of the air as they expand, lifting the owl in a lazy spiral above you\. The bird's unblinking gaze falls upon you and you feel a deep connection with it before it gives three mighty beats of its wings and surges high into the sky and disappears\.startDistant and echoing, the sound of keys jingling strikes a familiar chord within you as it precedes the sound of a heavy metal gate slamming shut\. Pale snowflakes drift through the air and settle upon your lifeless body\. As the snow accumulates into a thin, chilling layer, you distinctly hear the somber voice of a female speaking softly in your ear\. "The gates are closed to you for now, my child," she says, and several moments later the snow seeps into your skin, leaving you chilled and damp\.startPunctuating the sudden calm of the area, the sound of slithering is quickly followed by a long, sibilant hiss\. Winding a sinuous pattern to your head, an impossibly large copper-head snake with emerald green eyes begins to hiss at you\. "There are more liessss to sssspread, and deathssss to ssssteal," it says, and then swiftly raises high into the air to gaze down at you\. Faster than the blink of an eye, the serpent dives into your chest and disperses into a shimmering green mist that seeps into your skin\.startDark clouds swirl across your prone form and the area is plunged into darkness\. The hair on your body stands on end and a deep pressure builds around your spirit, threatening to consume it\. Blue lightning lances through the air, heralding an ear-shattering ripple of thunder, and at the edge of your senses you feel the demonic horde surging forward to take you\. Each sizzling bolt strikes your chest repeatedly for several moments and the horde closes in on you until every last one of them is absorbed by your spirit\.startWraithlike mourners suddenly slip free of the shadows and form a tight ring around you\. Silvery tears slip from their faces to splash ineffectively against your lifeless body, and the blood that stains their white garments trickles in a splash across your face\. They kneel in a tight ring about you, obscuring your view of the world beyond, and you feel a deep connection to them\. "There is yet more pain to release," they seem to tell you before their lips part in a deafening keen of anguish that shatters their ethereal forms\.startA playful feeling sweeps over you as a fuzzy pair of otters fills your vision\. Clutched in their teeth are midnight blue mussels, which they hold tightly in place as they comically bounce and leap around you\. They playfully paw at your lifeless chest, begging with their furry faces, and you sense they want you to come and play\. As if sensing you cannot, they curl their sleek, wet forms briefly around your head and nuzzle against your neck for several moments\. Then, they carefully drop the mussels upon your chest\. A brief, child-like joy fills you as the mussels sink into your lifeless body, and the otters turn as one to slide out of sight on their slippery bellies\.startShadows slant across the ground as they slither toward you and a deep chill touches your spirit\. As the shadows writhe in a thick mass of darkness over your body, you distinctly hear a quiet whisper in your ear, "This was not the death I had in mind for you\." A flash of light tears across your vision as it is consumed by the image of a cracked white skull\.startRegal and proud, a broad-shouldered ethereal lion strides towards your lifeless form and you are filled with a sense of power and glory\. As it moves towards you, its mane begins to shimmer with licking flames that resemble the rays of the sun\. It lowers its gaze to you and you feel yourself drawn into their amber depths\. The golden beast lifts a paw to your chest and a wave of warmth floods your limbs\. As the light grows, the lion begins to dissipate into a golden nimbus that sinks into your body\.startThe sounds of night drift to your ears and you feel a deep lassitude flood your spirit\. At the edge of your vision the pale white beautiful image of a unicorn begins to take shape\. It paws at the air, its silver hooves creating sparks of light that twinkle like a thousand stars\. As it lowers the horn to touch your forehead you feel a deep sense of peace that intensifies as a silver nimbus blankets you\. The unicorn and the nimbus disappear at once, and you feel yourself waking slowly from a dream\.startShadows lengthen and grow around you until their edges are sharp and twisted\. Macabre and ungraceful, they slink with jerky movements toward you as their depths are briefly illuminated by countless yellowed eyes set into the faces of a thousand horrors\. They snarl as they writhe across your prone form, their maws snapping ineffectively at your flesh\. One by one, they twist and squirm into your slack jaw and fill you with bitter madness\.startSilver motes of light cavort upon the air, their movements turning into a twisted dance that is punctuated by the sound of dozens of laughing voices\. Deep in your spirit, you feel a binding connection to their mirth\. Converging above you, the light transforms in a slender crescent moon that begins to whirl\. At one moment, full, and then the next, a sliver, the faster the moon spins, the louder the laughter gets\. Suddenly, the light ceases all movement and explodes into a brilliant shower of silver sparks accompanied by laughter for several moments\.
+9045				1440.0yesyes			startYour incapacitation makes it all the more difficult, but as you concentrate \(as best you can\) on your sigil, you feel yourself being whisked away\.\.\.
+9046				1440.0yesyes			startPoints of silvery light begin to flicker around you\. They grow in number, swirling into a bright flash as your injuries heal to scars, then gradually fade completely\. Dimming slowly, the light settles into a shimmering silver cocoon that surrounds you\.
+9047				1440.0yesyes			startThe flame within the lantern builds and brightens, escalating rapidly from bright to blinding\.  A heady rush overcomes you as the charm's radiance suffuses your flesh and falls, like a glowing veil, over your vision\.  Heat blossoms within your core, and a soft voice promises, "While hearth and home are firm in your heart, they cannot be more than a breath away from your lungs\."
+9048				5.0yes			startYou call upon a special blessing from Koar\.endYou feel Koar's blessing return to you\.
+9049				yes			startYou feel yourself being pulled back fully into the corporeal realm\.
+9050							startYou feel a surge of life flow through you\.endYou feel your connection to the vitality of nature renew itself once more\.
+9051							startYou feel (?:significantly|a great deal|a fair amount) more agile\.endYou feel entirely capable of preparing yourself to once again move swiftly at a moment's notice\.
+9052							startYou balance your posture and narrow your eyes, preparing to misdirect your foes' attacks\.endYour recent exploits of weaving through your foes' attacks no longer strains your body and mind\.
+9053				stackable			startYou acquire a certain murky complexion, and you feel more deft\.startYour complexion grows murkier\.endYour murky complexion fades away, and you feel less deft\.
+9054				refreshable			startYou feel a strange, foreboding sensation as your hand touches the black doomstone\.endThe foreboding sensation recedes\.
+9055				refreshableyesyes			startYour surroundings grow dim\.\.\.you lapse into a state of awareness only, unable to do anything\.\.\.
+9057				5760.0yesyes			startShifting your gaze, you use the fragment's influence to pierce the veil between the planes of existence\.  An other-worldly landscape fills your vision, and you sense an object of potential interest within arms reach\.  Without waiting to actually see it, you reach out and yank .+ into your current temporal sphere\.
+9058				1440.0yesyes			startWhen the air around you settles and your mind calms, you realize that your very existence has been catapulted into the past\.  The sand in the hourglass is now in the upper bulb, trickling slowly into the lower chamber\.
+9059				refreshable			startThin tendrils of vine twine around you, instilling you with their strength\.|The vigor of your vine surges through you, imparting the strength leached from your foe\.|A runner from your vine brushes against you and you feel strengthened by the contact\.|Strength surges into you from your vine\!endA few withered tendrils of vine fall away from you, taking their gift of strength with them\.
+9060				refreshableno			startYou assume a meditative posture, .+ (acidic) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9061				refreshableno			startYou assume a meditative posture, .+ (freezing) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9062				refreshableno			startYou assume a meditative posture, .+ (crushing) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9063				refreshableno			startYou assume a meditative posture, .+ (disintegrating) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9064				refreshableno			startYou assume a meditative posture, .+ (disruptive) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9065				refreshableno			startYou assume a meditative posture, .+ (electrical) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9066				refreshableno			startYou assume a meditative posture, .+ (grappling) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9067				refreshableno			startYou assume a meditative posture, .+ (burning) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9068				refreshableno			startYou assume a meditative posture, .+ (impacting) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9069				refreshableno			startYou assume a meditative posture, .+ (plasmatic) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9070				refreshableno			startYou assume a meditative posture, .+ (puncturing) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9071				refreshableno			startYou assume a meditative posture, .+ (slashing) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9072				refreshableno			startYou assume a meditative posture, .+ (scalding) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9073				refreshableno			startYou assume a meditative posture, .+ (unbalancing) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9074				refreshableno			startYou assume a meditative posture, .+ (decompressing) .+\.endYour concentration slips, and you no longer feel prepared to resist \w+ damage.endYou cease concentrating on your preparations to resist \w+ damage.
+9076							startYou carefully study the area, searching for signs of .+ presence\.  Your keen eye spots the beginnings of a trail and you rush to follow it while taking care to remain hidden\.startYou carefully study the area, searching for signs of .+ presence\.  Your keen eye spots the beginnings of a trail and you rush to follow it\.startYou carefully study the area, searching for signs of .+ presence\.  You can tell the .+ is somewhere nearby but the paths all seem to lead in different directions\.  You take a chance on one, but quickly realize you've been led astray\.startYou carefully study the area, searching for signs of .+ presence\.  You can tell the .+ is somewhere nearby but the paths all seem to lead in different directions\.  You take a chance on one while taking care to remain hidden, but quickly realize you've been led astray\.endYou feel refreshed and ready to track again\.
+9077							startYou trace the central orb of white in your brooch and your fingertips begin to tingle as ordered energy flows into you\.  Within seconds, you feel Lumnis' Repose course through your veins\.endYour skin tingles as the ordered energy of Lumnis' Repose slips from you and recedes into your brooch\.
+9078							startElemental energy wraps around you, stabilizing your aura\.endThe elemental energy stabilizing your aura dissipates\.
+9079							startA thin coating of elemental energy sinks into you, keeping minor fluctuations in elemental energy at bay\.endYour thin coating of elemental energy dissipates away\.
+9080							startOddly enough, you feel somewhat more buoyant\.endYou feel somewhat less buoyant\.
+9081						fput 'boost encumbrance'	start\[You have activated an Encumbrance Boost.  Your net encumbrance will be reduced by 50 lbs for 15 minutes\.\]end\[Your Encumbrance Boost has ended\.\]
+9082						fput 'boost experience'	start\[You have activated a Doubled Experience Booster!  You will absorb twice as much experience for 15 minutes\.\]end\[Your Doubled Experience Boost has ended\.\]
+9083						fput 'boost luck'	start\[You have activated a Luck Booster!  Your attack rolls will be a little extra lucky for 15 minutes\.\]end\[Your Luck Boost has ended\.\]
+9084						fput 'boost supercharge'	start\[You have activated an Item Supercharger!  Your combat properties of your items will be super charged for 15 minutes\.\]end\[Your Item Supercharger has ended\.\]
+9085						fput 'boost enhancive stats'	start\[You have activated an Enhancive Stats Boost.  You will be boosted for 15 minutes\.\]end\[Your Enhancive Stats Boost has ended\.\]
+9086						fput 'boost enhancive recovery'	start\[You have activated an Enhancive Recovery Boost.  You will be boosted for 15 minutes\.\]end\[Your Enhancive Recovery Boost has ended\.\]
+9087						fput 'boost gift eonak'	start\[You have activated a Gift of Eonak!  You will have an advantage on crafting skill rolls for 15 minutes\.\]end\[Your Gift of Eonak has ended\.\]
+9100				yes		fput 'boost loot major'	start\[You have activated a Major Loot Boost\.  Your chances for better LOOT will be boosted for 15 minutes\.\]end\[Your Major Loot Boost has ended\.\]
+9101				yes		fput 'boost loot minor'	start\[You have activated a Minor Loot Boost\.  Your chances for better LOOT will be boosted for 15 minutes\.\]end\[Your Minor Loot Boost has ended\.\]
+9105							startAs you begin to raise your [^,]+, the briars imbedded in your flesh release their stored blood in a massive pulse of power that you can feel in the core of your very being.  The vines lose all crimson hues, and strength courses through your blood\.endYou no longer look stronger\.
+9516				stackableyes			startYou feel a sudden rush of power as you absorb [0-9]+ mana!endYou no longer feel the effect of casting mana leech\.
+9655						fput "cman absorb magic"	startYou open yourself to the ravenous void at the core of your being, allowing it to surface\.  Muted veins of metallic grey ripple just beneath your skin\.endThe hunger of the void retreats within you, unsatisfied\.
+9656							startYou open yourself to the ravenous void at the core of your being, allowing it to surface\.  Muted veins of metallic grey ripple just beneath your skin\.endSomething within you loosens, and you can once again feel the hunger of the void within\.
+2001				refreshable2			startYou focus intently on your picking and disarm skill.endYou no longer appear focused.
+9657							startYou rotate your wrist, your .+ executing a casual spin to establish your flow as you advance upon .+!endThe mesmerizing sway of body and blade glides to its inevitable end with one final twirl of your .+\.endDistracted, you hesitate, and your assault is broken\. You give the blade of your .+ a quick, sweeping flick of annoyance as you lower it\.
+9658							startYou rush .+, raising your .+ high to deliver a sound thrashing!endWith a final, explosive breath, you pull your .+ back to a ready position\.endDistracted, you hesitate, and in doing so lose the rhythm of your assault\. You pull your .+ back to a ready position with a wary eye to your environs\.
+9659							startRetaining a defensive profile, you raise your .+ in a hanging guard and prepare to unleash a barrage of guardant thrusts upon a .+!endYou complete your assault, your weight on your rear foot as you snap your .+ back to a defensive angle\.endDistracted, you hesitate, and in doing so lose the rhythm of your assault\. You shift your grip on your .+ to a more neutral position and watch for new opportunities\.
+9660							startWith a percussive snap, you shake out your arms in quick succession and bear down on a .+ in a fury!endYou draw back and take a slow, steady breath, recentering yourself for the fight.endDistracted, you hesitate, and in doing so lose the rhythm of your assault\.  You take a shaky breath and recenter yourself for the fight\.
+9661							startYou take a menacing step toward a .+, sweeping your .+ out low to your side in your advance\.endWith a final snap of your wrist, you sweep your .+ back to the ready, your assault complete\.endDistracted, you hesitate, and in doing so lose the rhythm of your assault\.  You return to the ready with a final, frustrated flick of your .+\.

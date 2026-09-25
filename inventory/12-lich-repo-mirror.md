@@ -81,6 +81,13 @@ These are wrong now. None needs a new feature.
 
 ### 1.1 `spells.tsv` drops data, as the bestiary did
 
+> **FIXED 2026-09-25** by a companion extractor rather than a rebuilt one (`plan/37` Stage 1):
+> `tools/extract_spell_extras.rb` → `spell_extras.tsv` keeps every duration and spell
+> attribute, every cost as written, the cast procedure, and every message with its type
+> (626: the file's 628 less the duplicated 9052's second copy). The 43 spells are pinned in
+> `cena-model/tests/spell_extras.rs`. The Sunfist durations and the Barkskin typo are not
+> touched.
+
 `crates/cena-model/tools/extract_spells.rb` reads **5** of the attribute names that
 `effect-list.xml` uses, and keeps one message per type. MEASURED against
 `C:/Gemstone/lich-5/data/effect-list.xml` (the source its header records, mtime 2026-09-13):
@@ -154,6 +161,10 @@ consumer is `plan/33`'s `cooldown "<name>"` guard. **CONFLICT, HIGH, M6.**
 
 ### 1.5 The selling round: three wordings the ledger misses
 
+> **FIXED 2026-09-25**: the appraisal forms without *silver*, the furrier's *pay you*, the
+> surcharged note, the withdraw's *and then* and Lich's other figures (`bank.rb`), in
+> `ledger/town.rs`; tested in `cena-model/tests/loot_facts.rs`.
+
 - **An appraisal without "silver"** gives no value, so the planner **keeps the item instead of
   selling it** (`town/plan.rs:481-484`, `:504-507`). eloot's own parser accepts
   `N for it if you want to sell` and `N for this if you'd like`
@@ -189,6 +200,8 @@ the text and the percent (`crates/cena-model/src/state/character.rs:460-466`), w
 trigger `Gift`'s doc waits for (`character.rs:173-177`). **PARTIAL/CONFLICT, MEDIUM.**
 
 ### 1.8 The prepared spell is parsed and never stored
+
+> **FIXED 2026-09-25**: `GameState::prepared` (`plan/37` Stage 3).
 
 The parser makes `Frame::Spell` (`crates/cena-protocol/src/parser/thin.rs:49`), and nothing in
 `cena-model` handles it. `plan/18:33` recorded "parsed, no field holds it" at M2. A caster must
