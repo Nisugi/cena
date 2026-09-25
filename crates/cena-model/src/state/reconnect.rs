@@ -141,6 +141,7 @@ impl GameState {
             overwatch,
             known_spells,
             bounty,
+            doses,
             targeting,
             maneuvers,
             cast_time_ends,
@@ -237,6 +238,11 @@ impl GameState {
         // -- clearing would leave a behavior believing the account empty with
         // no event coming to correct it.
         let _ = bank;
+
+        // **Herb doses are KEPT**, for the bank's reason: counts of what is in
+        // your own herb sack, which nobody eats from while you are gone, and
+        // which no burst restates -- only `measure` and use do.
+        let _ = doses;
 
         // **The arrival counter is KEPT, and it is not a game fact.** It
         // counts rooms this SESSION has entered, so resetting it would make

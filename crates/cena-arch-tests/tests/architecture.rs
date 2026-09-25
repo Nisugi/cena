@@ -179,6 +179,19 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
                         immutable after init; still no session state.",
     },
     AllowedStatic {
+        path: "crates/cena-model/src/herbs.rs",
+        name: "TABLE",
+        function: "herbs",
+        justification: "A OnceLock<Vec<Herb>> holding the 247 herbs cut from eherbs' known_herbs \
+                        by tools/extract_herbs.rb, parsed from one include_str! TSV on first use \
+                        and never mutated (plan/36 Stage 1). The same argument as spells.rs's \
+                        TABLE and creature.rs's BESTIARY, and the same caveat: process-wide, made \
+                        safe by holding no session handle and being a pure function of a \
+                        compile-time string. Asked for every item a herb sack lists, so parsing \
+                        per query would be a per-item cost. NOT included: how many doses any \
+                        herb has left, which is per-session and lives in GameState::doses.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/creature.rs",
         name: "BESTIARY",
         function: "bestiary",

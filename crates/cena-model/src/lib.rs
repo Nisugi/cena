@@ -18,6 +18,7 @@
 
 pub mod crit;
 pub mod effects;
+pub mod herbs;
 pub mod movement;
 pub mod spells;
 pub mod state;

@@ -56,6 +56,7 @@ pub mod creature_message;
 pub mod creatures;
 pub mod departure;
 pub mod disk;
+pub mod doses;
 pub mod equality;
 pub mod fog;
 pub mod gameobj;
@@ -152,6 +153,8 @@ pub struct GameState {
     /// next (`bounty_status.rs`). Distinct from [`Self::objectives`], which is
     /// the dialog's row -- this is the task's own description, parsed.
     pub bounty: bounty_status::BountyStatus,
+    /// Doses left in each herb measured, by item id (`doses.rs`).
+    pub doses: doses::Doses,
     /// Maneuvers the game has said are on cooldown (`maneuvers.rs`).
     pub maneuvers: maneuvers::Maneuvers,
     /// What the game says you can attack (`targeting.rs`): the `combat`

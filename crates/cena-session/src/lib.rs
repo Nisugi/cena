@@ -70,6 +70,8 @@ pub use cena_model::{
     PsmCategory, PsmLine, PsmRanks, SkillKind, SkillLine, Society, Vital, spell_named, spells,
 };
 pub use cena_model::{Task, TaskKind};
+// The herbs eherbs knows and where they are sold (`plan/36`).
+pub use cena_model::herbs;
 pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Link, LinkKind, ProgressBar};
 pub use cena_protocol::runs::{Run, Runs};
