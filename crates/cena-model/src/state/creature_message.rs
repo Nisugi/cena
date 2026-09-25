@@ -1,13 +1,21 @@
-//! Matching a game line against the bestiary's messages: **arrival, flee,
-//! death and decay**.
+//! Matching a game line against the bestiary's messages: **every kind** --
+//! arrival, flee, death, decay, and since 2026-09-24 the attacks, the
+//! triggers, the casting preparations, standing up, shaking off a stun,
+//! searching, the description and the ambient flavor.
 //!
 //! # The gap this closes
 //!
-//! `creature_messages.tsv` holds **3,863** lines -- 1,094 death, 1,067 flee,
-//! 991 arrival, 710 decay -- joined onto every creature by
-//! [`Creature::messages_of`](super::creature::Creature::messages_of). MEASURED
-//! 2026-09-21: **nothing called it.** The whole table was loaded and unread, so
-//! `MessageKind::Flee` existed and no line was ever matched against it.
+//! `creature_messages.tsv` holds **7,158** lines, joined onto every creature
+//! by [`Creature::messages_of`](super::creature::Creature::messages_of).
+//! MEASURED 2026-09-21: **nothing called it.** The whole table was loaded and
+//! unread, so `MessageKind::Flee` existed and no line was ever matched against
+//! it. It then held only 3,862 lines of four kinds; the rest were dropped at
+//! extraction until 2026-09-24 (`creature.rs`, "All of it").
+//!
+//! A match of an [`MessageKind::Attack`] or [`MessageKind::Trigger`] line
+//! also says **which**: the attack's name, or the effect -- `bind`, `web`,
+//! `silence` -- the creature is about to land. That is the cause behind a
+//! symptom, available before the symptom.
 //!
 //! # What this is for, and what it is NOT for
 //!
@@ -54,9 +62,9 @@
 //!
 //! # Placeholders, and why matching is a port rather than a compare
 //!
-//! MEASURED: **1,164 of the 3,863 lines carry a placeholder** -- 802 flee, 171
-//! death, 162 arrival, 29 decay -- so two thirds of flee lines cannot be
-//! compared as text:
+//! MEASURED: **2,633 of the 7,158 lines carry a placeholder** -- 1,119 attack,
+//! 802 flee, 171 death, 162 arrival, 121 spell prep, 88 stun break, the rest
+//! scattered -- so two thirds of flee lines cannot be compared as text:
 //!
 //! ```text
 //! An Agresh bear lumbers {direction}.
@@ -78,14 +86,15 @@
 //!
 //! # `{target}` and `{weapon}` are NOT matchable, and Lich's are not either
 //!
-//! MEASURED: 24 lines carry `{target}` and 8 carry `{weapon}`. `{target}` is
+//! MEASURED: 362 lines carry `{target}` and 337 carry `{weapon}`, most of them
+//! attacks (24 and 8 among the four kinds first ported). `{target}` is
 //! **absent from Lich's `PLACEHOLDER_MAP`**, so those lines are unmatchable
 //! there too -- an empty option list makes an empty alternation group.
 //! `{weapon}` is `RAW:.+?`, a wildcard.
 //!
 //! Both are treated here as **wildcards over a single segment**: any run of
 //! text with no line break. That matches more than Lich does for `{target}`,
-//! and the alternative is silently never matching 24 real lines. Recorded
+//! and the alternative is silently never matching 362 real lines. Recorded
 //! because it is a deliberate divergence, not an accident.
 
 use super::creature::MessageKind;
@@ -152,6 +161,9 @@ fn slot_for(name: &str) -> Option<Slot> {
 pub struct Match {
     /// Which kind of message matched.
     pub kind: MessageKind,
+    /// Which attack or which special, for [`MessageKind::Attack`] and
+    /// [`MessageKind::Trigger`]: `claw`, `bind`. `None` for every other kind.
+    pub key: Option<String>,
     /// The direction a `{direction}` placeholder captured, lowercased.
     ///
     /// **`None` for a message with no direction in it**, which is a real case:
@@ -236,10 +248,11 @@ pub fn classify(
     kinds: &[MessageKind],
 ) -> Option<Match> {
     for kind in kinds {
-        for template in creature.messages_of(*kind) {
-            if let Some(direction) = match_template(template, line) {
+        for message in creature.messages_of(*kind) {
+            if let Some(direction) = match_template(&message.text, line) {
                 return Some(Match {
                     kind: *kind,
+                    key: message.key.clone(),
                     direction,
                 });
             }

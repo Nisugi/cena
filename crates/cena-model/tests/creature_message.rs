@@ -157,6 +157,14 @@ fn an_arrival_is_told_from_a_flee() {
 /// Lich's own comment says that happened to it -- so the test renders each
 /// template with *every* form of *every* placeholder it carries, and requires
 /// all of them back.
+/// `he` as it opens a sentence: `He`. Eight attack lines start with one.
+fn capitalised(word: &str) -> String {
+    let mut chars = word.chars();
+    chars.next().map_or_else(String::new, |first| {
+        first.to_uppercase().chain(chars).collect()
+    })
+}
+
 #[test]
 fn every_templated_message_in_the_table_matches_its_own_renderings() {
     const PRONOUN: &[&str] = &[
@@ -194,13 +202,11 @@ fn every_templated_message_in_the_table_matches_its_own_renderings() {
     let mut failures = Vec::new();
 
     for creature in creature::creatures() {
-        for kind in [
-            MessageKind::Arrival,
-            MessageKind::Flee,
-            MessageKind::Death,
-            MessageKind::Decay,
-        ] {
-            for template in creature.messages_of(kind) {
+        // Every kind, since 2026-09-24: attacks, triggers and casting
+        // preparations carry most of the placeholders now in the table.
+        for kind in MessageKind::ALL {
+            for message in creature.messages_of(kind) {
+                let template = message.text.as_str();
                 if !template.contains('{') {
                     // A literal line must match itself exactly.
                     checked += 1;
@@ -224,6 +230,7 @@ fn every_templated_message_in_the_table_matches_its_own_renderings() {
                     let rendered = template
                         .replace("{direction}", DIRECTION[step % DIRECTION.len()])
                         .replace("{pronoun}", PRONOUN[step % PRONOUN.len()])
+                        .replace("{Pronoun}", &capitalised(PRONOUN[step % PRONOUN.len()]))
                         .replace("{reflexive}", REFLEXIVE[step % REFLEXIVE.len()])
                         .replace("{target}", "the warrior")
                         .replace("{weapon}", "a rusty blade");
@@ -240,8 +247,8 @@ fn every_templated_message_in_the_table_matches_its_own_renderings() {
     }
 
     assert!(
-        templated > 1_000,
-        "guard: the table should carry over a thousand templated lines, saw {templated}"
+        templated > 2_500,
+        "guard: the table should carry over 2,500 templated lines, saw {templated}"
     );
     assert!(
         checked > 10_000,

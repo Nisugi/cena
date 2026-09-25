@@ -98,7 +98,25 @@ DEFAULT_MAX_LINES 800
 # file is KNOWN to grow: regenerating it from the live client's copy rather
 # than the 2003 one the reference ships added 514 rows in a single step, with
 # nothing removed. The next regeneration should go red and be looked at.
-MAX_CAP_EXCEPTIONS 5
+#
+# RAISED 5 -> 6 on 2026-09-24, for `creature_lists.tsv` at 3650 (3,309
+# lines), and the creature caps raised with it: messages 4200 -> 7800 (7,126
+# lines) and attacks 1800 -> 3500 (3,175 lines).
+#
+# The cause is a decision, not growth: the author, 2026-09-24, *"The reason it
+# was all there was multiple reasons, one of which is a comprehensive
+# beastiary, the other is the messages have uses just because they haven't
+# been made apparent yet."* The first port kept 4 of 13 message kinds, one of
+# six attack categories and none of the plain lists. Porting the rest roughly
+# doubled two tables and added a third.
+#
+# Same case as the entries above and no new argument: DATA, one row per line,
+# no seam to split on -- splitting messages by kind would put attack lines and
+# flee lines of one creature in two files for no reader's benefit. Headroom is
+# ~10% on each, as before, so the next regeneration that grows the bestiary
+# materially still goes red. The three small new tables (creature_info 51,
+# creature_abilities 80) and creatures.tsv (628) take no exception.
+MAX_CAP_EXCEPTIONS 6
 
 # EACH EXCEPTION'S OWN CAP. Added 2026-09-23 (review finding 3).
 #
@@ -113,8 +131,9 @@ MAX_CAP_EXCEPTIONS 5
 # raised MAX_CAP_EXCEPTIONS); these lines are the ratchet, not a restatement.
 # `the_cap_ratchet_only_turns_down` fails on a raise, on an exception with no
 # line here, and on a line here with no exception.
-exception:crates/cena-model/data/creature_messages.tsv 4200
-exception:crates/cena-model/data/creature_attacks.tsv 1800
+exception:crates/cena-model/data/creature_messages.tsv 7800
+exception:crates/cena-model/data/creature_attacks.tsv 3500
+exception:crates/cena-model/data/creature_lists.tsv 3650
 exception:crates/cena-model/data/creature_areas.tsv 1600
 exception:crates/cena-model/data/menu_commands.tsv 1300
 exception:crates/cena-model/data/crit_tables.tsv 2400

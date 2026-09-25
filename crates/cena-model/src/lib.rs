@@ -60,9 +60,11 @@ pub use state::resolve::{Held, Location, Match, Specificity, match_of};
 // re-exported here: `character::stats::Stat` and `gameobj::Classification`
 // already hold those names at the facade, and three types called `Stat` in
 // one namespace would make every use site ambiguous to a reader rather than
-// only to the compiler. They are reached by their module path.
+// only to the compiler. They are reached by their module path. So are
+// `creature::Message` and `creature::Ability`, for the same reason:
+// `message::Message` and `societies::Ability` hold those names.
 pub use state::creature::status::{CreatureStatus, Status};
-pub use state::creature::{Area, Attack, Creature, MessageKind, Treasure};
+pub use state::creature::{Area, Attack, AttackCategory, Creature, MessageKind, Treasure};
 pub use state::creatures::{BodyPart, CreatureInstance, Creatures};
 pub use state::gameobj::{Classification, ObjectTypes};
 pub use state::menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem, category_path};

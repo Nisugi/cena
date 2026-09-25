@@ -1,0 +1,80 @@
+creature_id	id	name	type	target	typical_duration_s	dispellable	effects	notes
+ashen_patrician_vampire	mystic_impedance	Mystic Impedance (1708)	debuff	opponent	30		blocks_high_level_spells	Warding, CS 389.
+ashen_patrician_vampire	sympathy	Sympathy (1120)	debuff	opponent	19		charmed;cannot_attack_caster	No warding roll seen.
+athletic_dark_eyed_incubus	earthen_fury	Earthen Fury (917)	debuff	opponent	12		repeated_crit_cycles;knockdown	No warding roll seen.
+behemothic_gorefrost_golem	cold_snap	Cold Snap (512)	debuff	opponent	9		cold_damage_cycles;rooted	Warding, CS 444-450.
+bloody_halfling_cannibal	frenzy	Frenzy	buff	self				Two onset lines seen (bloodlust rises; succumbs further). Mechanical effect not measured.
+blubbery_humpbacked_merrow	cold_snap	Cold Snap (512)	debuff	opponent	25		cold_damage_cycles;rooted	Warding, CS 498.
+branded_goliath_diviner	mystic_impedance	Mystic Impedance (1708)	debuff	opponent	30		blocks_spells_at_or_above=15	Follows the finger-flick spell_prep line; no warding roll (autosuccess). Golden runes onset. Blocks PREPARE of spells at or above the threshold; lower spells still work. Threshold is an upper bound: 515 observed blocked, exact floor unconfirmed.
+branded_goliath_diviner	doom_sign	Doom Sign	debuff	opponent				MDR maneuver. On success a Debuffs bar named Doom Sign appears with a 2-4s countdown, and a death was seen at its expiry. Mechanism at expiry not confirmed.
+burly_goliath_engineer	interference	Interference (212)	debuff	opponent	30		as_ds_td_penalty	Tell: snaps fingers, then draws a large sign in the air. Autosuccess. Wiki gives 30s on players. Penalty size not measured.
+burly_goliath_engineer	bombing_run	Bombing Run	debuff	opponent	100		burning_dot=Immolation (519) Debuffs bar	Tell: two fingers on the white stone amulet, airship payload. SMR. On a hit the flames keep burning each cycle; Immolation bar shows 1:40.
+cadaverous_tatterdemalion_ghast	expose_weakness	Expose Weakness	debuff	opponent	20		vulnerable	Maneuver, not a spell. Follows the pin-and-jump-up line with "You are struck by an acute sense of vulnerability." 20s countdown. Penalty not measured.
+darkly_inked_fetish_master	sounds	Sounds (607)	debuff	opponent	22		spell_failure_chance	No warding roll seen.
+darkly_inked_fetish_master	silence	Silence (210)	debuff	opponent	21		silenced	Warding, CS 440-458.
+darkly_inked_fetish_master	sleep	Sleep (501)	debuff	opponent	19		asleep	Warding, CS 429.
+deathsworn_fanatic	corrupt_essence	Corrupt Essence (703)	debuff	opponent	17		spell_failure_chance	Warding, CS 431.
+disfigured_hive_thrall	powersink	Powersink (1203)	debuff	opponent	62		mana_drain	No warding roll seen.
+disfigured_hive_thrall	web	Web (118)	debuff	opponent	11		rooted;webbed	No warding roll seen.
+ethereal_triton_psionicist	confusion	Confusion (1211)	debuff	opponent	15		confused	Warding, CS 433-448.
+ethereal_triton_psionicist	vertigo	Vertigo (1219)	debuff	opponent	101		dizziness	Warding, CS 448-457.
+ethereal_triton_psionicist	mindwipe	Mindwipe (1225)	debuff	opponent			level_loss	Warding (wiki: CS 448, "[You lose 6 levels!]"). Tell is the clawed-finger point shared with Confusion and Thought Lash. The bar renders before any onset text. Duration not measured.
+ethereal_triton_psionicist	thought_lash	Thought Lash (1210)	debuff	opponent	10		crit_padding_penalty	Warding (CS 448 seen). "A crackling whip of energy lashes out at you!" then damage, then "The residual psychic energy from the attack surrounds you." with an 8-10s bar.
+ethereal_triton_sentry	song_of_depression	Song of Depression (1015)	debuff	opponent	30		as_ds_penalty	Warding, CS 491.
+fire_sprite	weapon_deflection	Weapon Deflection (412)	debuff	opponent	22		as_penalty	No warding roll seen.
+flickering_mist_wreathed_banshee	curse	Curse (715)	debuff	opponent	30		ds_penalty	Tell: points unerringly at you, then a thread of swirling gray (or brackish blue) magic issues from the banshee. One sighting had the onset "You shake slightly and feel much less protected!" instead. Penalty size not measured.
+gaudy_phantasmic_conjurer	bind	Bind (214)	debuff	opponent	14		immobilized	Warding, CS 458.
+glistening_cerebralite	bind	Bind (214)	debuff	opponent	16		immobilized	Warding, CS 424-430.
+glistening_cerebralite	frenzy	Frenzy (216)	debuff	opponent	17		anger;forced_attack	Warding, CS 424.
+gnoll_ranger	sounds	Sounds (607)	debuff	opponent	22		spell_failure_chance	No warding roll seen.
+grim_gigas_skald	stunning_shout	Stunning Shout (1008)	debuff	opponent			dizziness;stagger	Warding. On a failed ward the Debuffs bar Dizziness appears with a stack count (5, 2, 1 seen) and 5-15s countdowns. Duration per level not measured.
+grim_gigas_skald	mindwipe	Mindwipe (1225)	debuff	area			level_loss	Mass warding, one CS roll per person in the room (CS 423 seen). A failed ward costs levels ("[You lose 4 levels!]" seen) and shows a Mindwipe bar; 7s and 16s countdowns seen at first read. Mass duration not measured.
+grim_gigas_skald	confusion	Confusion (1211)	debuff	opponent	15		confused	Warding, CS 384-396.
+heavily_armored_battle_mastodon	tremors	Tremors	debuff	area	20		feeble	Foot slam, no roll line. Everyone in the room can be knocked down ("loses her balance and falls over") and gets the Feeble bar (20s) with "You feel weak and feeble, your movements sluggish." Ends with "shakes off his weakness." Stat penalty not measured.
+hisskra_shaman	sounds	Sounds (607)	debuff	opponent	23		spell_failure_chance	No warding roll seen.
+hooded_figure	elemental_saturation	Elemental Saturation (413)	debuff	opponent	22		bolt_ds_penalty	Warding, CS 188.
+horned_basalt_grotesque	stone_fist	Stone Fist (514)	debuff	opponent	42		rooted	Warding, CS 452-467.
+hunch_backed_dogmatist	interference	Interference (212)	debuff	opponent	22		as_ds_td_penalty	No warding roll seen.
+illoke_mystic	sounds	Sounds (607)	debuff	opponent	23		spell_failure_chance	No warding roll seen.
+illoke_shaman	interference	Interference (212)	debuff	opponent	22		as_ds_td_penalty	No warding roll seen.
+infernal_death_knight	corrupt_essence	Corrupt Essence (703)	debuff	opponent	9		spell_failure_chance	Warding, CS 437.
+infernal_death_knight	silencing_strike	Silencing strike	debuff	opponent	30		silenced	Correlation, not a cast: a Silenced Debuffs bar follows the knight's quick strike to the lower back with its black ora sword. Same shape as the triton brawler's fist version. Mechanism unconfirmed.
+ithzir_adept	weapon_fire	Weapon Fire (915)	debuff	opponent			weapon_flares;may_drop_weapon	Warding (CS 408 seen). Tell: thrusts both palms toward you. On a failed ward the target's held weapon is struck and flares with the caster's element on later swings; the wiki says the target may drop it. Number of flares not measured.
+ithzir_herald	elemental_saturation	Elemental Saturation (413)	debuff	opponent	22		bolt_ds_penalty	No warding roll seen.
+ithzir_herald	weapon_deflection	Weapon Deflection (412)	debuff	opponent	23		as_penalty	No warding roll seen.
+ithzir_initiate	interference	Interference (212)	debuff	opponent	23		as_ds_td_penalty	No warding roll seen.
+ithzir_initiate	bind	Bind (214)	debuff	opponent	10		immobilized	Warding, CS 386.
+ithzir_seer	frenzy	Frenzy (216)	debuff	opponent	18		anger;forced_attack	Warding, CS 411-417.
+ithzir_seer	interference	Interference (212)	debuff	opponent	23		as_ds_td_penalty	No warding roll seen.
+ithzir_seer	silence	Silence (210)	debuff	opponent	13		silenced	Warding, CS 431-437.
+jungle_troll_chieftain	sounds	Sounds (607)	debuff	opponent	22		spell_failure_chance	No warding roll seen.
+lesser_vruul	interference	Interference (212)	debuff	opponent	23		as_ds_td_penalty	Warding, CS 224.
+lithe_veiled_sentinel	powersink	Powersink (1203)	debuff	opponent	62		mana_drain	Warding, CS 431.
+lithe_veiled_sentinel	confusion	Confusion (1211)	debuff	opponent	15		confused	Warding, CS 453.
+naisirc	sounds	Sounds (607)	debuff	opponent	22		spell_failure_chance	No warding roll seen.
+nightmare_steed	weapon_deflection	Weapon Deflection (412)	debuff	opponent	22		as_penalty	No warding roll seen.
+putrefied_citadel_herald	interference	Interference (212)	debuff	opponent	23		as_ds_td_penalty	No warding roll seen.
+savage_fork-tongued_wendigo	frenzy	Frenzy (216)	debuff	opponent	11		anger;forced_attack	Warding, CS 438-444.
+shadow_mare	sounds	Sounds (607)	debuff	opponent	23		spell_failure_chance	No warding roll seen.
+shambling_lurk	web	Web (118)	debuff	opponent	23		rooted;webbed	No warding roll seen.
+shan_empath	interference	Interference (212)	debuff	opponent	22		as_ds_td_penalty	No warding roll seen.
+shan_ranger	sounds	Sounds (607)	debuff	opponent	23		spell_failure_chance	No warding roll seen.
+siren	corrupt_essence	Corrupt Essence (703)	debuff	opponent	15		spell_failure_chance	Warding, CS 382-413.
+siren	calm	Calm (201)	debuff	opponent	14		calmed	Warding, CS 419.
+squamous_reptilian_mutant	bind	Bind (214)	debuff	opponent	22		immobilized	Warding, CS 460.
+squamous_reptilian_mutant	vertigo	Vertigo (1219)	debuff	opponent	78		dizziness	Warding, CS 389.
+stone_sentinel	elemental_saturation	Elemental Saturation (413)	debuff	opponent	22		bolt_ds_penalty	No warding roll seen.
+stunted_halfling_bloodspeaker	corrupt_essence	Corrupt Essence (703)	debuff	opponent	17		spell_failure_chance	Warding, CS 461-464.
+tattooed_gigas_berserker	frenzy	Frenzy	buff	self				Two onset lines seen (wild rage; falls deeper into bloodlust). Mechanical effect not measured.
+translucent_kiramon_strandweaver	web	Web (118)	debuff	opponent	30		rooted;webbed	No warding roll seen.
+translucent_kiramon_strandweaver	mystic_impedance	Mystic Impedance (1708)	debuff	opponent	30		blocks_high_level_spells	No warding roll seen.
+translucent_kiramon_strandweaver	sounds	Sounds (607)	debuff	opponent	22		spell_failure_chance	Warding, CS 483.
+translucent_kiramon_strandweaver	bind	Bind (214)	debuff	opponent	22		immobilized	Warding, CS 465-492.
+translucent_kiramon_strandweaver	empathic_link	Empathic Link (1117)	debuff	opponent	60		damage_shared_to_caster	Warding, CS 465-492.
+triton_brawler	silencing_strike	Silencing strike	debuff	opponent	30		silenced	Correlation, not a cast: a Silenced Debuffs bar (30s) follows the brawler's quick fist strike to the lower back, with no spell tell or onset text. Mechanism unconfirmed.
+triton_fanatic	pious_trial	Pious Trial (1602)	debuff	opponent	8		slowed	Warding, CS 433-448.
+triton_magus	sounds	Sounds (607)	debuff	opponent	22		spell_failure_chance	Warding, CS 409.
+triton_radical	frenzy	Frenzy (216)	debuff	opponent	17		anger;forced_attack	Warding, CS 406-421.
+triton_warden	sounds	Sounds (607)	debuff	opponent	23		spell_failure_chance	No warding roll seen.
+winged_viper	sounds	Sounds (607)	debuff	opponent	22		spell_failure_chance	No warding roll seen.
+wood_sprite	sounds	Sounds (607)	debuff	opponent	23		spell_failure_chance	No warding roll seen.
