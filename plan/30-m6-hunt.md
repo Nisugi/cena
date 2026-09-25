@@ -580,6 +580,20 @@ distiller, stocking at the herbalist. The spell scripts followed as `plan/37`.
 **M6e — the `;` tools.** `;foreach` and `;multi` on the `;` line, and `;sorter` as a
 projection transform ported from VellumFE. None depends on the hunt, so they can move earlier.
 
+> **`;sorter` BUILT 2026-09-25, not yet run live.** VellumFE's `src/core/sorter.rs` is
+> `crates/cena-ui/src/sorter.rs`: while sorting is on, the line assembler
+> (`crates/cena-ui/src/lines.rs`) keeps a main-stream line's pieces with each link's noun, and
+> a finished container look becomes a header and a bold-labelled line per `gameobj` category,
+> duplicates counted. The switch is per session in the web pump
+> (`cena_web::Sessions::sort_containers`), flipped by `;sorter [on|off|status]`
+> (`crates/cena/src/sorter.rs`). Off until asked, which is VellumFE's default; not saved,
+> since nothing writes the settings file yet. **Stricter than VellumFE:** a look is sorted
+> only when it is a list end to end. The herb kit's look goes on past its list, and VellumFE's
+> transform drops every dose count (182 of 475 looks in a month of Nisugi's logs). 14 tests:
+> 10 in `cena-ui` (6 over five real looks, `crates/cena-ui/tests/fixtures/container_looks.xml`;
+> 4 synthetic, two of them VellumFE's own), 3 for the command, 1 end to end through the
+> parser and the pump (`crates/cena/tests/web_sorter.rs`). `;foreach` and `;multi` remain.
+
 **M6 live acceptance, author present.** Nisugi runs `ojandhaart` through at least one full
 cycle: hunt, a rest threshold, walk to rest, loot stored, healed, walk back, hunt. It is
 stopped mid-attack from the hub within `PREEMPT_GRACE`. A manual command mid-hunt interleaves.

@@ -158,6 +158,7 @@
 //! | **Hub** | Despana's page for every character: a card each, start, quit, reconnect, and the merged streams. Its requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
 //! | **Character page** | one character's own page. No window shows two characters' story text (`plan/29` §5a) | |
 //! | **Merged streams** | thoughts, speech, logons, deaths and announcements across characters, each line once: [`Merger`] | |
+//! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end shows as one line per category ([`LineAssembler::sort_containers`]) | inventory, which is the `inv` window's feed |
 //!
 //! # Names
 //!
@@ -207,6 +208,7 @@
 //! [`HubRequest`]: cena_web::HubRequest
 //! [`Import`]: cena_behavior::hunt::Import
 //! [`LONG_LIVED`]: cena_session::LONG_LIVED
+//! [`LineAssembler::sort_containers`]: cena_ui::LineAssembler::sort_containers
 //! [`MAX_UNATTENDED_LOSSES`]: cena_session::MAX_UNATTENDED_LOSSES
 //! [`Merger`]: cena_ui::Merger
 //! [`Notice`]: cena_session::Notice

@@ -50,6 +50,7 @@ mod play;
 mod roster;
 mod secrets;
 mod setup;
+mod sorter;
 mod travel;
 mod watch;
 
