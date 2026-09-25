@@ -463,3 +463,25 @@ fn the_walk_back_goes_through_the_rally_points() {
         Said::Walk(RoomId(10))
     );
 }
+
+#[test]
+fn a_voln_master_uses_symbol_of_mana_before_resting_for_mana() {
+    let profile = format!("{PROFILE}\n[rest]\nwracking = true\n");
+    let mut hunt = Hunt::new(Profile::parse(&profile).unwrap(), 1);
+    let mut state = fighting(1_000, "10");
+    state.character.standing.society = Some(Some(cena_session::Society::OrderOfVoln));
+    state.character.standing.society_rank = Some(26);
+    hunt.replied(["But you don't have any mana!"], Some(1_000));
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_000)),
+        Said::Send {
+            line: "symbol of mana".to_owned(),
+            target: None
+        }
+    );
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_001)),
+        attack(),
+        "the symbol answered the need; no rest"
+    );
+}

@@ -183,6 +183,14 @@ impl Hunt {
     /// A reason to rest holds: the fog, the waypoints, the walk.
     fn start_rest(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
         let why = self.rest_reason(state)?;
+        if why == Why::Mana
+            && let Some(line) = self.wrack(state, state.game_time_now())
+        {
+            if self.must_rest == Some(Why::Mana) {
+                self.must_rest = None;
+            }
+            return Some(Said::Send { line, target: None });
+        }
         self.must_rest = None;
         let Some(resting) = self.profile.rooms.resting else {
             return Some(Said::Done(Ending::NoRestingRoom));

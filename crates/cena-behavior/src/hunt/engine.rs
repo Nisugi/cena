@@ -164,6 +164,8 @@ pub struct Hunt {
     pub(super) waypoints: VecDeque<RoomId>,
     /// This rest has fogged once from the rift already.
     pub(super) fogged: bool,
+    /// When a society mana ability was last used ([`super::wrack`]).
+    pub(super) wracked: Option<u32>,
 }
 
 impl Hunt {
@@ -206,6 +208,7 @@ impl Hunt {
             wanding: Wanding::default(),
             waypoints: VecDeque::new(),
             fogged: false,
+            wracked: None,
         }
     }
 

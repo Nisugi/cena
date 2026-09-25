@@ -166,6 +166,11 @@ pub struct Rest {
     /// Hydra's own; bigshot has none.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_after: Option<u32>,
+    /// Before resting for mana, use a society's mana ability
+    /// (`use_wracking`, `hunt/wrack.rs`).
+    pub wracking: bool,
+    /// The least spirit Sign of Wracking is used at (`wracking_spirit`).
+    pub wracking_spirit: u32,
     /// Sent on leaving the hunt for a rest, before any walking: a spell or
     /// symbol that carries the character toward town (`fog_return`,
     /// `custom_fog`, `bigshot.lic:7677-7723`). Empty walks the whole way.

@@ -55,6 +55,7 @@ mod rest;
 pub mod said;
 mod wand;
 mod wander;
+mod wrack;
 pub mod yaml;
 
 pub use chain::{LoadError, Loaded, load};

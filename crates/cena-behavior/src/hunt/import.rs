@@ -356,6 +356,8 @@ impl Job {
         self.profile.rest.until.stamina = number(&self.take("rest_till_percentstamina"));
         self.profile.rest.commands = self.commands("resting_commands");
         self.fog();
+        self.profile.rest.wracking = flag(&self.take("use_wracking"));
+        self.profile.rest.wracking_spirit = number(&self.take("wracking_spirit")).unwrap_or(0);
         self.rest_when();
     }
 
