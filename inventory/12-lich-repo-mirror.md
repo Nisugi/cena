@@ -196,7 +196,7 @@ The `mindState` bar carries `field_exp`, `max_field_exp`, `ascension_exp`, `exp`
 `lumnis`, `rpa` and `fashlonae` while active. Lich reads them all
 (`lich-5/lib/common/xmlparser.rb:725-740`). The frame keeps them, but `apply_bar` takes only
 the text and the percent (`crates/cena-model/src/state/character.rs:460-466`), while
-`plan/27b:64` says `<progressBar>` feeds `field_experience`. A live `lumnis` is the upgrade
+`plan/27b-model-api-character.md:64` says `<progressBar>` feeds `field_experience`. A live `lumnis` is the upgrade
 trigger `Gift`'s doc waits for (`character.rs:173-177`). **PARTIAL/CONFLICT, MEDIUM.**
 
 ### 1.8 The prepared spell is parsed and never stored
