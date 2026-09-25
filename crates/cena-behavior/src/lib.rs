@@ -30,6 +30,7 @@ pub mod cast;
 pub mod error;
 pub mod heal;
 pub mod hunt;
+pub mod keep;
 pub mod loot;
 pub mod stance;
 pub mod sync;

@@ -10,7 +10,11 @@ fn every_spell_has_its_extras_and_the_counts_are_the_files() {
         .lines()
         .find_map(|l| l.strip_prefix("# spells\t"))
         .and_then(|n| n.parse::<usize>().ok());
-    assert_eq!(stated, Some(all().count()), "one row per spell in the table");
+    assert_eq!(
+        stated,
+        Some(all().count()),
+        "one row per spell in the table"
+    );
     let count = |f: &dyn Fn(&cena_model::Spell) -> bool| all().filter(|s| f(s)).count();
     assert_eq!(count(&|s| !s.extras.incant), 17, "incant='no'");
     assert_eq!(count(&|s| s.extras.stance), 16, "stance='yes'");
@@ -47,12 +51,16 @@ fn elemental_defense_stacks_and_multicasts_on_self_and_others() {
 fn a_cost_the_table_could_not_read_is_kept_as_written() {
     let repair = spell(1102).expect("1102");
     assert_eq!(repair.mana, None, "an expression is not a number");
-    assert!(repair
-        .extras
-        .costs
-        .iter()
-        .any(|c| c.kind == "mana" && c.text.contains("Wounds.limbs")));
-    assert!(spell(520)
-        .and_then(|s| s.extras.cast_proc.as_deref())
-        .is_some_and(|p| p.contains("incant 520")));
+    assert!(
+        repair
+            .extras
+            .costs
+            .iter()
+            .any(|c| c.kind == "mana" && c.text.contains("Wounds.limbs"))
+    );
+    assert!(
+        spell(520)
+            .and_then(|s| s.extras.cast_proc.as_deref())
+            .is_some_and(|p| p.contains("incant 520"))
+    );
 }

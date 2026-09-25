@@ -48,6 +48,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use super::profile::{Profile, Step, Target};
 pub use super::said::{Ending, Here, Phase, Said, Why};
 use crate::heal::HealProfile;
+use crate::keep::{self, KeepProfile};
 use crate::loot::{Left, LootProfile};
 use crate::stance::{self, Want};
 
@@ -107,6 +108,9 @@ pub struct Hunt {
     heal_only: Option<bool>,
     /// `;heal stock` / `;heal fill`: no hunt, one round; `fill` beside it.
     stock_only: Option<(bool, bool)>,
+    /// `;keep`: no hunt, the listed spells kept up until stopped, with when
+    /// each was last sent.
+    keep_only: Option<(KeepProfile, BTreeMap<u16, u32>)>,
     /// `--spellcast` and `--ranged` for the heal.
     heal_mode: (bool, bool),
 }
@@ -138,6 +142,7 @@ impl Hunt {
             heal: None,
             heal_only: None,
             stock_only: None,
+            keep_only: None,
             heal_mode: (false, false),
         }
     }
@@ -158,6 +163,15 @@ impl Hunt {
     pub fn stock_only(profile: HealProfile, fill: bool) -> Self {
         let mut machine = Self::new(Profile::default(), 0).with_heal(profile);
         machine.stock_only = Some((false, fill));
+        machine
+    }
+
+    /// `;keep`: a machine that keeps `profile`'s spells up and never ends of
+    /// its own accord (`plan/37` Stage 4).
+    #[must_use]
+    pub fn keep_only(profile: KeepProfile) -> Self {
+        let mut machine = Self::new(Profile::default(), 0);
+        machine.keep_only = Some((profile, BTreeMap::new()));
         machine
     }
 
@@ -256,6 +270,22 @@ impl Hunt {
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
+        if let Some((profile, tried)) = self.keep_only.as_mut() {
+            if let Some(line) = self.pending.pop_front() {
+                return Said::Send { line, target: None };
+            }
+            let room = here.room.map(|r| r.0);
+            return match keep::next(profile, state, room, tried) {
+                Some(lines) => {
+                    self.pending = lines.into();
+                    match self.pending.pop_front() {
+                        Some(line) => Said::Send { line, target: None },
+                        None => Said::Wait(1),
+                    }
+                }
+                None => Said::Wait(2),
+            };
+        }
         if let Some((asked, fill)) = self.stock_only {
             self.stock_only = Some((true, fill));
             return if asked {

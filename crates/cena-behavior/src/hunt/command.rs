@@ -57,6 +57,10 @@ pub enum Command {
         /// eherbs' `fill` rather than `stock`.
         fill: bool,
     },
+    /// `;keep`: keep the keep profile's spells up until stopped.
+    Keep,
+    /// `;keep <words>`: change or show the keep profile.
+    KeepEdit(Vec<String>),
     /// Stop the hunt under way.
     Stop,
     /// Hunt's, and already answered: said wrongly. Nothing to do.
@@ -77,6 +81,14 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
     let first = words.next()?;
     if first.eq_ignore_ascii_case("heal") {
         return Some(heal(words));
+    }
+    if first.eq_ignore_ascii_case("keep") {
+        let rest: Vec<String> = words.map(str::to_ascii_lowercase).collect();
+        return Some(Ok(if rest.is_empty() {
+            Command::Keep
+        } else {
+            Command::KeepEdit(rest)
+        }));
     }
     if !first.eq_ignore_ascii_case("hunt") {
         return None;

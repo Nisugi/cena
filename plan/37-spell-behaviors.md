@@ -84,6 +84,14 @@ whether a spell can be cast now (known, affordable, no cast roundtime, not prepa
 
 ### Stage 4 — spellactive: keep these spells up
 
+**BUILT 2026-09-25.** `cena-behavior/src/keep.rs` (`KeepProfile` at
+`<data>/hunt/keep/<instance>_<character>.toml`, `next`, `edit`); `Hunt::keep_only`, run by
+`;keep` through the hunt's desk and ended by `;hunt stop`; `;keep add|del <spell>`, `;keep
+nocast add|del <room>`, `;keep nocast clear`, `;keep power`, `;keep list`. A spell sent and
+still down is not sent again for thirty seconds. Tested in `tests/keep.rs` (4). **Not built:**
+the sign stagger, combat maneuvers kept by name. The hunt's own Maintain is unchanged: it
+already keeps a profile's signs.
+
 A list of spells kept active, the `nocast` rooms, Sigil of Power when 25 short, spellactive's
 special cases (the Barkskin cooldown, the sign stagger, 606/640 by way of 625, Beacon of
 Courage by 1608). Run as `;keep` by the hunt's desk with a machine that keeps and never

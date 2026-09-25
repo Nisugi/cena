@@ -53,7 +53,11 @@ pub(crate) fn open(
             }
         };
         match command {
-            Command::Run(_) | Command::Stop | Command::Heal { .. } | Command::Stock { .. } => {
+            Command::Run(_)
+            | Command::Stop
+            | Command::Heal { .. }
+            | Command::Stock { .. }
+            | Command::Keep => {
                 let Some(desk) = desk.clone() else {
                     handler.say(Notice::line(
                         NoticeKind::Error,
@@ -74,7 +78,11 @@ pub(crate) fn open(
                     }
                 });
             }
-            Command::Import { .. } | Command::ImportLoot { .. } | Command::Check(_) | Command::List => {
+            Command::Import { .. }
+            | Command::ImportLoot { .. }
+            | Command::Check(_)
+            | Command::List
+            | Command::KeepEdit(_) => {
                 let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
                 // Files are read and written, so not on the session's own thread.
                 tokio::task::spawn_blocking(move || run(&handle, &dir, who.as_ref(), command));
@@ -98,10 +106,12 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         Command::ImportLoot { path } => import_loot(dir, who, &path, &say),
         Command::Check(name) => check(dir, who, &name, &say),
         Command::List => list(dir, &say),
+        Command::KeepEdit(words) => keep_edit(dir, who, &words, &say),
         Command::Run(_)
         | Command::Stop
         | Command::Heal { .. }
         | Command::Stock { .. }
+        | Command::Keep
         | Command::Nothing => {}
     }
 }
@@ -384,5 +394,54 @@ fn list(dir: &Path, say: Say<'_>) {
         );
     } else {
         say(NoticeKind::Info, format!("Hunt: {}", names.join(", ")));
+    }
+}
+
+/// `;keep <words>`: the keep profile changed and written back, or listed.
+fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Say<'_>) {
+    let Some(path) = who.and_then(|(i, n)| cena_behavior::keep::path(dir, i, n)) else {
+        say(
+            NoticeKind::Error,
+            "Keep: who is this? Log in first.".to_owned(),
+        );
+        return;
+    };
+    let mut profile = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| cena_behavior::keep::KeepProfile::parse(&text).ok())
+        .unwrap_or_default();
+    let words: Vec<&str> = words.iter().map(String::as_str).collect();
+    if words == ["list"] {
+        say(
+            NoticeKind::Info,
+            format!(
+                "Keep: {:?}; no-cast rooms {:?}; Sigil of Power {}.",
+                profile.spells,
+                profile.nocast,
+                if profile.power { "on" } else { "off" }
+            ),
+        );
+        return;
+    }
+    match cena_behavior::keep::edit(&mut profile, &words) {
+        Ok(done) => {
+            let written = profile
+                .to_toml()
+                .map_err(io::Error::other)
+                .and_then(|text| {
+                    if let Some(parent) = path.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::write(&path, text)
+                });
+            match written {
+                Ok(()) => say(NoticeKind::Info, format!("Keep: {done}.")),
+                Err(e) => say(
+                    NoticeKind::Error,
+                    format!("Keep: {done}, but not saved -- {e}."),
+                ),
+            }
+        }
+        Err(usage) => say(NoticeKind::Error, format!("Keep: {usage}")),
     }
 }

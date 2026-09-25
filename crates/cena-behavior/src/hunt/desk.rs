@@ -102,6 +102,7 @@ impl Desk {
                 profile.blood_only |= blood;
                 Hunt::heal_only(profile, spellcast, ranged)
             }),
+            Command::Keep => self.keep_spells(handle, joined),
             Command::Stock { fill } => {
                 self.herbs(handle, joined, |profile| Hunt::stock_only(profile, fill))
             }
@@ -258,6 +259,41 @@ impl Desk {
                 None
             }
         }
+    }
+
+    /// `;keep`: the keep profile's spells kept up until stopped.
+    fn keep_spells(
+        self: &Arc<Self>,
+        handle: &SessionHandle,
+        joined: (Snapshot, impl Into<Heard>),
+    ) -> Option<JoinHandle<HuntEnd>> {
+        let character = &joined.0.state.character;
+        let profile = character
+            .instance
+            .as_deref()
+            .zip(character.name.as_deref())
+            .and_then(|(i, n)| crate::keep::path(&self.dir, i, n))
+            .and_then(|path| std::fs::read_to_string(path).ok())
+            .and_then(|text| crate::keep::KeepProfile::parse(&text).ok());
+        let Some(profile) = profile.filter(|p| !p.spells.is_empty()) else {
+            handle.say(Notice::line(
+                NoticeKind::Error,
+                "Hunt: nothing to keep up: `keep add <spell>` first.",
+            ));
+            return None;
+        };
+        handle.say(Notice::line(
+            NoticeKind::Info,
+            format!(
+                "Hunt: keeping up {:?}; `hunt stop` ends it.",
+                profile.spells
+            ),
+        ));
+        Some(self.start(
+            handle.clone(),
+            (joined.0, joined.1.into()),
+            Hunt::keep_only(profile),
+        ))
     }
 
     /// `;heal` and its `stock` and `fill`: the machine `make` builds from the
