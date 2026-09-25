@@ -69,6 +69,7 @@ pub(super) enum Held {
 }
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use super::aim::{Aimed, Aiming};
 use super::profile::{Profile, Step, Target};
 use super::react::Reacting;
 use super::replies::Heard;
@@ -154,6 +155,8 @@ pub struct Hunt {
     pub(super) rests: u32,
     /// The room was entered since flee last looked (`flee.lone_only`).
     pub(super) entered: bool,
+    /// Where the aim lists stand for this target ([`super::aim`]).
+    pub(super) aiming: Aiming,
 }
 
 impl Hunt {
@@ -192,6 +195,7 @@ impl Hunt {
             react: Reacting::default(),
             rests: 0,
             entered: false,
+            aiming: Aiming::default(),
         }
     }
 
@@ -285,6 +289,7 @@ impl Hunt {
     pub fn target_gone(&mut self) {
         self.target = None;
         self.queue.clear();
+        self.aiming.reset();
     }
 
     /// One turn: what to do now, against `state` as it is, standing in
@@ -565,8 +570,17 @@ impl Hunt {
             if !runs {
                 continue;
             }
+            let hidden = state.status.known().hidden() == Some(true);
+            let line = match self.aim(&step.send, target, hidden) {
+                None => step.send.clone(),
+                Some(Aimed::Instead(line)) => line,
+                Some(Aimed::First(line)) => {
+                    self.queue.push_front(step);
+                    line
+                }
+            };
             return Some(Said::Send {
-                line: step.send.clone(),
+                line,
                 target: Some(target),
             });
         }
@@ -602,6 +616,7 @@ impl Hunt {
         }
         let (_, id, routine) = best?;
         self.target = Some(id);
+        self.aiming.reset();
         self.routine = routine;
         self.cursor = 0;
         self.queue.clear();

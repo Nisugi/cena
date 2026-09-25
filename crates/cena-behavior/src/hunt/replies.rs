@@ -49,6 +49,9 @@ pub enum Reply {
     NoMana,
     /// `You spy a ... and recover it!`: a disarmed weapon is back.
     Recovered,
+    /// The part aimed at cannot be hit: `You cannot aim that high!`, `does
+    /// not have a head!`, `is already missing that!` (`bigshot.lic:6560`).
+    BadAim,
 }
 
 /// Read one line. `None`: nothing the hunt acts on.
@@ -73,6 +76,12 @@ pub fn read(line: &str) -> Option<Reply> {
         || starts("You're not in any condition to be searching around!")
     {
         return Some(Reply::Injured);
+    }
+    if starts("You cannot aim that high!")
+        || text.contains("is already missing that!")
+        || (text.contains(" does not have a") && text.ends_with('!'))
+    {
+        return Some(Reply::BadAim);
     }
     if starts("You spy ") && text.ends_with("and recover it!") {
         return Some(Reply::Recovered);
@@ -140,6 +149,7 @@ impl Hunt {
                 }
                 Reply::NoMana => self.must_rest = Some(Why::Mana),
                 Reply::Recovered => self.recovered(),
+                Reply::BadAim => self.aiming.refused(),
             }
         }
     }

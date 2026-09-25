@@ -86,6 +86,8 @@ impl Hunt {
                     self.react.reaction = Some(reaction.clone());
                 }
                 Incident::ItemLimit => self.must_rest = Some(Why::Loaded),
+                Incident::Aiming(at) => self.aiming.aimed.clone_from(at),
+                Incident::ArrowStuck { at, .. } => self.aiming.stuck.push(at.clone()),
                 Incident::HiveTrap(HiveTrap::Ground) => self.react.leave = true,
                 Incident::ItchyCurse => self.notes.push("an itchy curse: see a healer.".to_owned()),
                 Incident::InfectedWound => {

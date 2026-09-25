@@ -39,6 +39,7 @@
 //! the word named, and never run. A lost guard changes when a command
 //! fires, and that is worse than a refusal.
 
+mod aim;
 pub mod chain;
 pub mod command;
 pub mod desk;

@@ -124,3 +124,83 @@ fn swallowed_the_hunt_fights_its_way_out() {
     state.room.title = Some("Snowy Ridge".to_owned());
     assert_ne!(hunt.tick(&state, here(), Some(1_003)), send("kill organ"));
 }
+
+/// One kobold, `#42`, targeted, with this routine.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors"
+)]
+fn kobold(state: &mut GameState) {
+    let mut run = cena_session::Run {
+        text: "kobold".to_owned(),
+        style: Default::default(),
+        link: Some(cena_session::Link {
+            kind: cena_session::LinkKind::Exist {
+                id: "42".to_owned(),
+                noun: "kobold".to_owned(),
+            },
+            text: "kobold".to_owned(),
+            coord: None,
+        }),
+        inner_link: None,
+    };
+    run.style.bold_depth = 1;
+    state.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs { runs: vec![run] },
+    });
+    state.apply(&Frame::CreatureStatus {
+        id: "42".to_owned(),
+        attrs: vec![
+            ("exist".to_owned(), "42".to_owned()),
+            ("hostile".to_owned(), "1".to_owned()),
+        ],
+    });
+    state.targeting.read("#42", None);
+}
+
+fn at(line: &str) -> Said {
+    Said::Send {
+        line: line.to_owned(),
+        target: Some(42),
+    }
+}
+
+#[test]
+fn an_ambush_walks_the_part_list_on_refusals() {
+    let profile = "targets = [{ any = true, routine = \"a\" }]\n[aim]\nambush = [\"head\", \"neck\"]\n[routines]\na = [\"ambush\"]\n";
+    let mut hunt = Hunt::new(Profile::parse(profile).unwrap(), 1);
+    let mut state = standing(1_000);
+    kobold(&mut state);
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_000)),
+        at("attack #42 head")
+    );
+    hunt.replied(["The kobold does not have a head!"], Some(1_000));
+    state.status.set("hidden", true);
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_001)),
+        at("ambush #42 neck")
+    );
+    hunt.replied(["You cannot aim that high!"], Some(1_001));
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_002)),
+        at("ambush #42 chest")
+    );
+}
+
+#[test]
+fn a_fire_step_aims_first_and_skips_where_an_arrow_is_stuck() {
+    let profile = "targets = [{ any = true, routine = \"a\" }]\n[aim]\narchery = [\"right eye\", \"left arm\"]\n[routines]\na = [\"fire\"]\n";
+    let mut hunt = Hunt::new(Profile::parse(profile).unwrap(), 1);
+    let mut state = standing(1_000);
+    kobold(&mut state);
+    assert_eq!(hunt.tick(&state, here(), Some(1_000)), at("aim right eye"));
+    hunt.incidents(&[Incident::Aiming(Some("right eye".to_owned()))]);
+    assert_eq!(hunt.tick(&state, here(), Some(1_001)), at("fire"));
+    hunt.incidents(&[Incident::ArrowStuck {
+        creature: None,
+        at: "eye".to_owned(),
+    }]);
+    assert_eq!(hunt.tick(&state, here(), Some(1_002)), at("aim left arm"));
+}

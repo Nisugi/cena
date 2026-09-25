@@ -94,6 +94,8 @@ pub struct Profile {
     pub wander: Wander,
     /// What the hunt does about the game's incidents (`hunt/react.rs`).
     pub react: React,
+    /// Where attacks are aimed (`hunt/aim.rs`).
+    pub aim: Aim,
     /// What to attack, in order of preference, each with its routine.
     pub targets: Vec<Target>,
     /// Leave the current target for a better-ranked one that appears
@@ -297,6 +299,17 @@ impl Default for Wander {
             ignore_disks: false,
         }
     }
+}
+
+/// Body parts to aim at, in order, each lowercase (`hunt/aim.rs`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Aim {
+    /// For an `ambush` step (`ambush`); empty is bigshot's default, head,
+    /// right leg, left leg, chest.
+    pub ambush: Vec<String>,
+    /// For a `fire` step (`archery_aim`); empty sends no `aim`.
+    pub archery: Vec<String>,
 }
 
 /// The hunt's answers to incidents.

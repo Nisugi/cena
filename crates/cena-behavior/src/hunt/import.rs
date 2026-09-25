@@ -444,6 +444,8 @@ impl Job {
         self.profile.loot.box_in_hand = flag(&self.take("box_in_hand"));
         self.profile.flee.count = number(&self.take("flee_count"));
         self.profile.flee.lone_only = flag(&self.take("lone_targets_only"));
+        self.profile.aim.ambush = lowercased(list(&self.take("ambush")));
+        self.profile.aim.archery = lowercased(list(&self.take("archery_aim")));
         self.profile.priority = flag(&self.take("priority"));
         // bigshot turns autosneak on when it starts attacking and off when
         // it stops (`bigshot.lic:7295-7298`, `:7454-7457`): here, with the
