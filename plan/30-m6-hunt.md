@@ -606,7 +606,7 @@ projection transform ported from VellumFE. None depends on the hunt, so they can
 > transform drops every dose count (182 of 475 looks in a month of Nisugi's logs). 14 tests:
 > 10 in `cena-ui` (6 over five real looks, `crates/cena-ui/tests/fixtures/container_looks.xml`;
 > 4 synthetic, two of them VellumFE's own), 3 for the command, 1 end to end through the
-> parser and the pump (`crates/cena/tests/web_sorter.rs`). `;foreach` and `;multi` remain.
+> parser and the pump (`crates/cena/tests/web_sorter.rs`). `;foreach` and `;multi` followed (`3804678`, the note below).
 
 > **`;multi` and `;foreach` BUILT 2026-09-25, not yet run live.** One behavior, a **batch**
 > (`crates/cena-behavior/src/batch/`; `VellumFE`'s own word for its foreach): a list of lines sent
