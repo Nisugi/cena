@@ -52,6 +52,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 
+pub mod extras;
+
+pub use extras::{Cost, Extras, Shape, Span};
+
 const SPELLS_TSV: &str = include_str!("../data/spells.tsv");
 
 /// Between the parts of one packed value, e.g. cast-type / kind / body.
@@ -251,6 +255,9 @@ pub struct Spell {
     pub target_start: Option<String>,
     /// Seconds a character is locked out, by kind.
     pub cooldowns: Vec<(CooldownKind, u32)>,
+    /// What the table did not keep: each duration's shape, the casting
+    /// flags, the costs as written, the cast procedure (`spells/extras.rs`).
+    pub extras: Extras,
 }
 
 impl Spell {
@@ -388,13 +395,18 @@ struct Landing {
 fn table() -> &'static Tables {
     static TABLE: OnceLock<Tables> = OnceLock::new();
     TABLE.get_or_init(|| {
-        let spells: BTreeMap<u16, Spell> = SPELLS_TSV
+        let mut spells: BTreeMap<u16, Spell> = SPELLS_TSV
             .lines()
             .filter(|line| !line.starts_with('#'))
             .skip(1) // the header
             .filter(|line| !line.trim().is_empty())
             .filter_map(|line| read_row(line).map(|spell| (spell.number, spell)))
             .collect();
+        for (number, extra) in extras::read() {
+            if let Some(spell) = spells.get_mut(&number) {
+                spell.extras = extra;
+            }
+        }
         let landings = spells
             .values()
             .flat_map(|spell| {
@@ -532,6 +544,7 @@ fn read_row(line: &str) -> Option<Spell> {
         message_down,
         target_start,
         cooldowns,
+        extras: Extras::default(),
     })
 }
 

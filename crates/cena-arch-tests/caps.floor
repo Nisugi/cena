@@ -85,3 +85,7 @@ crates/cena-behavior/src/loot/plan.rs 600
 # behavior's facade (plan/36 Stage 2): the module doc and the re-exports; the
 # choice, the planner, the profile and the replies are in heal/. 21 lines at birth.
 crates/cena-behavior/src/heal.rs 100
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-model/src/spells.rs is the spell table;
+# spells/extras.rs joins what the table did not keep (plan/37 Stage 1). 639
+# lines at birth: the table, its reader and the cooldown landings.
+crates/cena-model/src/spells.rs 700
