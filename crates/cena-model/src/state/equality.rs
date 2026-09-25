@@ -60,6 +60,7 @@ impl PartialEq for GameState {
             // Facts already classified and waiting for a recorder, not a
             // fact about the game.
             loot: _,
+            incidents: _,
             creatures,
             pending,
             chunk,

@@ -89,8 +89,8 @@
 //!
 //! # NOT ported, and why
 //!
-//! - **`messages.rb`**: a separate hook the FSM never reads, and each def
-//!   carries a Ruby lambda for its payload. A later pass if a consumer wants it.
+//! - **`messages.rb`**: a separate hook the FSM never reads. Ported on its
+//!   own once the hunt wanted it: `state/incident.rs`.
 //! - **`supplements.rb`**: player-supplied YAML patterns. Whether pattern
 //!   supplements fall under `plan/12`'s no-user-scripting decision is an
 //!   author question, not one to answer by porting them.

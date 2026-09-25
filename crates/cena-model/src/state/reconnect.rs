@@ -169,6 +169,8 @@ impl GameState {
             // close; the gap changes nothing about them, and the actor drains
             // them on the next prompt.
             loot: _,
+            // Incidents likewise: what happened before the gap still happened.
+            incidents: _,
             creatures,
             pending,
             chunk,

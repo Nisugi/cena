@@ -63,6 +63,7 @@ pub mod gameobj;
 pub mod group;
 pub mod hands;
 mod idle;
+pub mod incident;
 mod inventory;
 pub mod inventory_snapshot;
 pub mod kit;
@@ -280,6 +281,9 @@ pub struct GameState {
     /// Loot facts classified at each prompt, waiting for the session's
     /// ledger (`ledger/pending.rs`). Drained by [`GameState::take_loot`].
     loot: ledger::LootQueue,
+    /// The hunt's incidents classified at each prompt (`state/incident.rs`),
+    /// drained by [`GameState::take_incidents`].
+    incidents: incident::Incidents,
     /// Every creature the feed has shown, with what combat did to it.
     /// `state/creatures.rs`.
     creatures: creatures::Creatures,
@@ -298,6 +302,11 @@ impl GameState {
     #[must_use]
     pub const fn combat(&self) -> &combat::CombatTracker {
         &self.combat
+    }
+
+    /// Every incident since the last call, oldest first.
+    pub fn take_incidents(&mut self) -> Vec<incident::Incident> {
+        self.incidents.take()
     }
 
     /// Every classified loot chunk since the last call, oldest first.

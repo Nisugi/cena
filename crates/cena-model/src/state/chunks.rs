@@ -277,6 +277,7 @@ impl super::GameState {
             // without the opener above them.
             self.bank.read_lines(chunk.lines(), &texts);
             self.queue_loot(&chunk, at);
+            self.incidents.push(super::incident::classify(&chunk));
             self.doses
                 .read_chunk(&chunk, self.right_hand.id(), self.left_hand.id());
             self.kits.read_chunk(&chunk);
