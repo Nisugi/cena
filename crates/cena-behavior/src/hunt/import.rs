@@ -446,6 +446,12 @@ impl Job {
         self.profile.flee.lone_only = flag(&self.take("lone_targets_only"));
         self.profile.aim.ambush = lowercased(list(&self.take("ambush")));
         self.profile.aim.archery = lowercased(list(&self.take("archery_aim")));
+        self.profile.wand.names = list(&self.take("wand"));
+        let fresh = self.take("fresh_wand_container");
+        self.profile.wand.fresh = (!fresh.trim().is_empty()).then(|| fresh.trim().to_owned());
+        let dead = self.take("dead_wand_container");
+        self.profile.wand.dead = (!dead.trim().is_empty()).then(|| dead.trim().to_owned());
+        self.profile.wand.if_oom = flag(&self.take("wand_if_oom"));
         self.profile.priority = flag(&self.take("priority"));
         // bigshot turns autosneak on when it starts attacking and off when
         // it stops (`bigshot.lic:7295-7298`, `:7454-7457`): here, with the

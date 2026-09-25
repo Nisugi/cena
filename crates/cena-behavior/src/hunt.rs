@@ -53,6 +53,7 @@ mod react;
 pub mod replies;
 mod rest;
 pub mod said;
+mod wand;
 mod wander;
 pub mod yaml;
 

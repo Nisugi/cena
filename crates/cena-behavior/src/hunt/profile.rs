@@ -96,6 +96,8 @@ pub struct Profile {
     pub react: React,
     /// Where attacks are aimed (`hunt/aim.rs`).
     pub aim: Aim,
+    /// Wands for a `wand` step (`hunt/wand.rs`).
+    pub wand: Wands,
     /// What to attack, in order of preference, each with its routine.
     pub targets: Vec<Target>,
     /// Leave the current target for a better-ranked one that appears
@@ -299,6 +301,24 @@ impl Default for Wander {
             ignore_disks: false,
         }
     }
+}
+
+/// Wands, and where they are kept (`hunt/wand.rs`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Wands {
+    /// The wands to use, in order, by name (`wand`).
+    pub names: Vec<String>,
+    /// The container fresh wands are got from (`fresh_wand_container`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fresh: Option<String>,
+    /// The container a spent wand is put in; none drops it
+    /// (`dead_wand_container`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dead: Option<String>,
+    /// A spell step the character cannot afford waves a wand instead
+    /// (`wand_if_oom`).
+    pub if_oom: bool,
 }
 
 /// Body parts to aim at, in order, each lowercase (`hunt/aim.rs`).

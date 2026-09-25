@@ -72,6 +72,8 @@ pub enum Ending {
     Injured,
     /// `rest.stop_after` rests were taken.
     Rested(u32),
+    /// Every wand on the list is gone from the fresh container.
+    NoWands,
     /// A weapon needs blessing and nothing known can bless it.
     Unblessed,
     /// Disarmed, and the weapon could not be got back.
@@ -95,6 +97,7 @@ impl fmt::Display for Ending {
             Self::Waggled => f.write_str("waggled"),
             Self::Sent => f.write_str("sent"),
             Self::Rested(n) => write!(f, "rested {n} times, as rest.stop_after asks"),
+            Self::NoWands => f.write_str("no fresh wand is left"),
             Self::Unblessed => f.write_str(
                 "the weapon needs blessing, and neither Bless (304) nor the Voln symbol is known",
             ),

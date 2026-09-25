@@ -229,3 +229,37 @@ fn a_bless_gone_is_renewed_or_the_hunt_ends_when_nothing_can_bless() {
         "bless off: said, not acted on"
     );
 }
+
+#[test]
+fn a_wand_step_gets_a_fresh_wand_waves_it_and_ends_when_none_are_left() {
+    let profile = "targets = [{ any = true, routine = \"a\" }]\n[wand]\nnames = [\"oaken wand\", \"iron wand\"]\nfresh = \"satchel\"\n[routines]\na = [\"wand\"]\n";
+    let mut hunt = Hunt::new(Profile::parse(profile).unwrap(), 1);
+    let mut state = standing(1_000);
+    kobold(&mut state);
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_000)),
+        at("get oaken wand from my satchel")
+    );
+    hunt.replied(["Get what?"], Some(1_000));
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_001)),
+        at("get iron wand from my satchel")
+    );
+    state.apply(&Frame::RightHand {
+        item: "polished iron wand".to_owned(),
+        link: None,
+    });
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_002)),
+        at("wave my iron wand at #42")
+    );
+    hunt.replied(
+        ["You wave your wand at the kobold, but nothing happens."],
+        Some(1_002),
+    );
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_003)),
+        at("drop my iron wand"),
+        "spent, and no dead-wand container"
+    );
+}

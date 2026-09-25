@@ -74,6 +74,7 @@ use super::profile::{Profile, Step, Target};
 use super::react::Reacting;
 use super::replies::Heard;
 pub use super::said::{Ending, Here, Phase, Said, Why};
+use super::wand::Wanding;
 use crate::heal::HealProfile;
 use crate::keep::KeepProfile;
 use crate::loot::{Left, LootProfile};
@@ -157,6 +158,8 @@ pub struct Hunt {
     pub(super) entered: bool,
     /// Where the aim lists stand for this target ([`super::aim`]).
     pub(super) aiming: Aiming,
+    /// Where the wand list stands ([`super::wand`]).
+    pub(super) wanding: Wanding,
 }
 
 impl Hunt {
@@ -196,6 +199,7 @@ impl Hunt {
             rests: 0,
             entered: false,
             aiming: Aiming::default(),
+            wanding: Wanding::default(),
         }
     }
 
@@ -569,6 +573,24 @@ impl Hunt {
                 .all(|condition| condition.holds(state, Some(target)) == Some(true));
             if !runs {
                 continue;
+            }
+            let is_wand = step
+                .send
+                .split_whitespace()
+                .next()
+                .is_some_and(|verb| verb.eq_ignore_ascii_case("wand"));
+            if is_wand || self.wand_instead(state, &step.send) {
+                let Some(line) = self.wand_line(state, target) else {
+                    continue;
+                };
+                // A get or a put-away comes before the wave: the step waits.
+                if !line.starts_with("wave ") {
+                    self.queue.push_front(step);
+                }
+                return Some(Said::Send {
+                    line,
+                    target: Some(target),
+                });
             }
             let hidden = state.status.known().hidden() == Some(true);
             let line = match self.aim(&step.send, target, hidden) {

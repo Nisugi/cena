@@ -127,7 +127,9 @@ impl Hunt {
     /// The lines the game answered the last line with, at game second
     /// `now`. What they say is acted on at the next tick.
     pub fn replied<'a>(&mut self, lines: impl IntoIterator<Item = &'a str>, now: Option<u32>) {
-        let replies: Vec<Reply> = lines.into_iter().filter_map(read).collect();
+        let lines: Vec<&str> = lines.into_iter().collect();
+        self.wand_replied(&lines);
+        let replies: Vec<Reply> = lines.iter().copied().filter_map(read).collect();
         for reply in replies {
             match reply {
                 Reply::NoTarget => self.target_gone(),
