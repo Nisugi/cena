@@ -195,7 +195,22 @@ loot cap, estimated against realised, with the town's racial and trading bonuses
    disagree with eloot; and `cap` reports silver and items with their appraised and realised
    values and does no bonus arithmetic (§7.3). Tested in `cena-session/tests/ledger_report.rs`
    (5) and the binary's unit tests (8: the words, the periods, a missing database).
-4. **Combat's reports** on the same reader, after.
+4. ~~**Combat's reports**~~ **BUILT 2026-09-24, the first five**: `cena-session/src/
+   combat_recorder/report.rs` extends the same `Reader` with `combat_stats.lic`'s
+   `list_sessions`, `session_report`, `aggregate_report`, `recount` and `recent_attacks`, the
+   script's ownership predicates (`attacks.ours`, `flares.ours`, a hit that rode our flare, a
+   kill whose crediting attack is ours) kept as they are; `cena/src/combat.rs` puts them on
+   the command line as `;combat [<id>|all|last <n>]`, `;combat hunts [n]`, `;combat
+   abilities [scope]`, `;combat attacks [n]`. Tested in `cena-session/tests/combat_report.rs`
+   (5, two hunts through the real recorder) and the binary's unit tests (4). **Not yet**, and
+   left for when they are wanted: the creature tree, `flare`, `def`, `hp`, and the
+   `blind`/`control`/`aim`/`accuracy`/`ttk`/`compare` analytics -- about 900 of the
+   script's 1,563 lines, each a further report over the same rows.
+
+With that, **plan/34's four stages are built.** What remains of loottracker is the
+cross-character proxy, deferred to multi-session by the author (§7.1), and the type
+filters and reports that depended on its hand-kept noun list, which the `gameobj` table
+replaces.
 
 ## 7. Questions for the author
 

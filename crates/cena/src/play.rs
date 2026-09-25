@@ -30,7 +30,9 @@ use cena_web::HubRequest;
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
-use crate::{connector, frontend, interrupt, learn, loot, roster, secrets, setup, travel, watch};
+use crate::{
+    combat, connector, frontend, interrupt, learn, loot, roster, secrets, setup, travel, watch,
+};
 
 /// The characters named with `--character`, in order. Empty means none was
 /// named, and `main` asks for one at the prompt.
@@ -181,7 +183,10 @@ impl Table {
         let commands = Commands::install(&hosted.handle);
         // The ledger's reports need only the database's path, known now.
         match cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character) {
-            Ok(database) => loot::open(&hosted.handle, &commands, database),
+            Ok(database) => {
+                loot::open(&hosted.handle, &commands, database.clone());
+                combat::open(&hosted.handle, &commands, database);
+            }
             Err(e) => eprintln!("[{character}] no loot reports: {e}"),
         }
         if let Some(web) = &self.web {

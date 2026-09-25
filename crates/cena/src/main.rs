@@ -2,7 +2,8 @@
 //!
 //! One run path. `--character A --character B` names the characters to play,
 //! `--record` / `--no-record` says whether combat and loot go to the
-//! character's database (`setup::recording`), which `;loot` reports on;
+//! character's database (`setup::recording`), which `;loot` and `;combat`
+//! report on;
 //! with none named, Hydra asks for one at the terminal. Either way they go on
 //! the session table (`play.rs`), with the web hub under `--web`.
 //!
@@ -36,6 +37,7 @@
 
 mod architecture;
 mod ask;
+mod combat;
 mod commands;
 mod connector;
 mod frontend;

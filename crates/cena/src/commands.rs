@@ -28,6 +28,7 @@ pub(crate) struct Commands {
     travel: Arc<OnceLock<Handler>>,
     hunt: Arc<OnceLock<Handler>>,
     loot: Arc<OnceLock<Handler>>,
+    combat: Arc<OnceLock<Handler>>,
 }
 
 impl Commands {
@@ -38,11 +39,12 @@ impl Commands {
         let travel = Arc::clone(&commands.travel);
         let hunt = Arc::clone(&commands.hunt);
         let loot = Arc::clone(&commands.loot);
+        let combat = Arc::clone(&commands.combat);
         let told = handle.clone();
         let runner: Runner = Arc::new(move |line: &str| {
             // Each family answers `Some` for its own words and `None` for
             // the rest; the first to answer has the line.
-            for family in [&travel, &hunt, &loot] {
+            for family in [&travel, &hunt, &loot, &combat] {
                 if let Some(handler) = family.get()
                     && let Some(claimed) = handler(line)
                 {
@@ -92,6 +94,13 @@ impl Commands {
     pub(crate) fn loot(&self, handler: Handler) {
         if self.loot.set(handler).is_err() {
             eprintln!("  !! [commands] loot was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;combat` to `handler` from now on. Once, as for travel.
+    pub(crate) fn combat(&self, handler: Handler) {
+        if self.combat.set(handler).is_err() {
+            eprintln!("  !! [commands] combat was registered twice; keeping the first");
         }
     }
 }

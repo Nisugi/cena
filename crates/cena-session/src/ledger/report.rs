@@ -31,7 +31,9 @@ pub type Error = rusqlite::Error;
 /// A read-only view of one character's ledger.
 #[derive(Debug)]
 pub struct Reader {
-    conn: Connection,
+    /// Shared with the combat reports (`combat_recorder/report.rs`), which
+    /// read the same file.
+    pub(crate) conn: Connection,
 }
 
 /// A span of server time, `[since, until)`.
