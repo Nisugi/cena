@@ -1,139 +1,11 @@
 //! The selling round's planner (`plan/31` Stage 4a): the shops from the
-//! bags, the gem sack sold whole, the pawnshop item by item, and what a
-//! reply decides.
+//! bags, the gem sack sold whole, the pawnshop item by item, what a reply
+//! decides; and what the gem shop sends on to the pawnshop, scrolls kept,
+//! and the hands as they were.
 
-use cena_behavior::town::{Reply, Seller, Shop, Step, Town};
-use cena_map::RoomId;
-use cena_session::containers::{ContainerEvent, ItemRef, StowSlot};
-use cena_session::{Appraiser, Buyer, Frame, GameState, Link, LinkKind, LootFact, Run, Runs};
+mod town_support;
 
-fn link(id: &str, noun: &str, text: &str) -> Link {
-    Link {
-        kind: LinkKind::Exist {
-            id: id.to_owned(),
-            noun: noun.to_owned(),
-        },
-        text: text.to_owned(),
-        coord: None,
-    }
-}
-
-#[expect(
-    clippy::default_trait_access,
-    reason = "the run's style type is not re-exported for behaviors; only the link matters"
-)]
-fn inside(state: &mut GameState, container: &str, id: &str, noun: &str, text: &str) {
-    state.apply(&Frame::ContainerItem {
-        container_id: container.to_owned(),
-        content: Runs {
-            runs: vec![Run {
-                text: text.to_owned(),
-                style: Default::default(),
-                link: Some(link(id, noun, text)),
-                inner_link: None,
-            }],
-        },
-    });
-}
-
-fn hand(state: &mut GameState, right: bool, item: Option<(&str, &str, &str)>) {
-    let (text, link) = match item {
-        Some((id, noun, text)) => (text.to_owned(), Some(link(id, noun, text))),
-        None => ("Empty".to_owned(), None),
-    };
-    state.apply(&if right {
-        Frame::RightHand { item: text, link }
-    } else {
-        Frame::LeftHand { item: text, link }
-    });
-}
-
-/// A gem sack (901) and a backpack (902) on the stow list, both declared
-/// containers, with these items inside each; the hands empty.
-fn setup(gems: &[(&str, &str, &str)], pack: &[(&str, &str, &str)]) -> GameState {
-    let mut state = GameState::default();
-    state.apply(&Frame::Prompt {
-        time: "1000".into(),
-        text: ">".into(),
-    });
-    for (id, title) in [("901", "My Sack"), ("902", "My Backpack")] {
-        state.apply(&Frame::Container {
-            id: id.to_owned(),
-            title: Some(title.to_owned()),
-            target: None,
-        });
-    }
-    for (id, noun, text) in gems {
-        inside(&mut state, "901", id, noun, text);
-    }
-    for (id, noun, text) in pack {
-        inside(&mut state, "902", id, noun, text);
-    }
-    state.containers.apply(&ContainerEvent::StowListBegins);
-    state.containers.apply(&ContainerEvent::StowSet {
-        slot: StowSlot::Gem,
-        item: ItemRef {
-            id: "901".to_owned(),
-            noun: "sack".to_owned(),
-            text: "sack".to_owned(),
-        },
-    });
-    state.containers.apply(&ContainerEvent::StowSet {
-        slot: StowSlot::Default,
-        item: ItemRef {
-            id: "902".to_owned(),
-            noun: "backpack".to_owned(),
-            text: "backpack".to_owned(),
-        },
-    });
-    hand(&mut state, true, None);
-    hand(&mut state, false, None);
-    state
-}
-
-fn town() -> Town {
-    Town {
-        sell_types: ["gem", "weapon", "clothing", "jewelry"]
-            .into_iter()
-            .map(str::to_owned)
-            .collect(),
-        containers: ["default", "gem"].into_iter().map(str::to_owned).collect(),
-        appraise_types: vec!["jewelry".to_owned()],
-        appraise_gemshop: 14_999,
-        appraise_pawnshop: 34_999,
-        keep_transmogs: true,
-        ..Town::default()
-    }
-}
-
-const HOME: RoomId = RoomId(20);
-const GEMSHOP: RoomId = RoomId(31);
-const PAWNSHOP: RoomId = RoomId(32);
-
-fn nearest(tag: &str) -> Option<RoomId> {
-    match tag {
-        "gemshop" => Some(GEMSHOP),
-        "pawnshop" => Some(PAWNSHOP),
-        _ => None,
-    }
-}
-
-fn sold(silvers: u64) -> LootFact {
-    LootFact::Sold {
-        item: None,
-        silvers,
-        to: Buyer::Pawn,
-        note: None,
-    }
-}
-
-fn appraised(value: u64) -> LootFact {
-    LootFact::Appraised {
-        item: None,
-        value: Some(value),
-        by: Appraiser::Shop,
-    }
-}
+use town_support::*;
 
 #[test]
 fn nothing_sellable_means_no_round() {
@@ -206,8 +78,14 @@ fn the_pawnshop_appraises_a_weapon_and_sells_it_under_the_limit() {
     seller.outcome(&[], &[], &state);
     assert_eq!(
         seller.next(&state, &nearest),
+        Step::Analyze("5".to_owned()),
+        "the pawnshop analyzes everything, for ALTER 41"
+    );
+    seller.outcome(&[], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
         Step::Appraise("5".to_owned()),
-        "a weapon is always appraised first"
+        "a weapon is always appraised"
     );
     seller.outcome(&[appraised(1_200)], &[], &state);
     assert_eq!(seller.next(&state, &nearest), Step::Sell("5".to_owned()));
@@ -231,6 +109,8 @@ fn over_the_limit_goes_back_to_its_bag_and_a_transmog_is_kept() {
     seller.next(&state, &nearest);
     seller.next(&state, &nearest);
     hand(&mut state, true, Some(("5", "poignard", "steel poignard")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Analyze("5".to_owned()));
     seller.outcome(&[], &[], &state);
     assert_eq!(
         seller.next(&state, &nearest),
@@ -292,6 +172,8 @@ fn a_shop_that_will_not_buy_it_sends_it_back_to_the_bag() {
     assert_eq!(seller.next(&state, &nearest), Step::Fetch("8".to_owned()));
     hand(&mut state, true, Some(("8", "tunic", "linen tunic")));
     seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Analyze("8".to_owned()));
+    seller.outcome(&[], &[], &state);
     assert_eq!(seller.next(&state, &nearest), Step::Sell("8".to_owned()));
     seller.outcome(&[LootFact::Worthless { item: None }], &[], &state);
     assert_eq!(
@@ -319,330 +201,29 @@ fn a_shop_the_map_lacks_is_skipped_and_gems_come_before_the_pawnshop() {
     );
 }
 
-// ---- Stage 4b: the furrier, collectibles, the Chronomage, the bank ----
-
-fn town_4b() -> Town {
-    Town {
-        sell_types: ["gem", "skin"].into_iter().map(str::to_owned).collect(),
-        containers: ["default", "gem"].into_iter().map(str::to_owned).collect(),
-        collectibles: true,
-        gold_rings: true,
-        ..Town::default()
-    }
-}
-
-const FURRIER: RoomId = RoomId(33);
-const COUNTER: RoomId = RoomId(34);
-const CHRONOMAGE: RoomId = RoomId(35);
-const BANK: RoomId = RoomId(36);
-
-fn every(tag: &str) -> Option<RoomId> {
-    match tag {
-        "gemshop" => Some(GEMSHOP),
-        "pawnshop" => Some(PAWNSHOP),
-        "furrier" => Some(FURRIER),
-        "collectible" => Some(COUNTER),
-        "chronomage" => Some(CHRONOMAGE),
-        "bank" => Some(BANK),
-        _ => None,
-    }
-}
-
-/// The room's objects: one unbolded link, a clerk.
-#[expect(
-    clippy::default_trait_access,
-    reason = "the run's style type is not re-exported for behaviors; only the link matters"
-)]
-fn with_clerk(state: &mut GameState) {
-    state.apply(&Frame::Component {
-        id: "room objs".into(),
-        body: Runs {
-            runs: vec![Run {
-                text: "clerk".to_owned(),
-                style: Default::default(),
-                link: Some(link("77", "clerk", "clerk")),
-                inner_link: None,
-            }],
-        },
-    });
-}
-
 #[test]
-fn a_gold_ring_goes_to_the_chronomage_and_a_collectible_to_its_counter() {
-    let mut state = setup(
-        &[],
-        &[
-            ("3", "ring", "braided gold ring"),
-            ("4", "glass", "piece of cloudy glass"),
-        ],
-    );
-    with_clerk(&mut state);
-    let mut seller = Seller::new(town_4b(), &state, HOME).expect("a round");
-    assert_eq!(seller.shops(), [Shop::Chronomage, Shop::Collectibles]);
-    assert_eq!(seller.next(&state, &every), Step::Walk(CHRONOMAGE));
-    assert_eq!(seller.next(&state, &every), Step::Fetch("3".to_owned()));
-    hand(&mut state, true, Some(("3", "ring", "braided gold ring")));
+fn the_jewelers_not_my_field_is_sold_at_the_pawnshop_instead() {
+    let mut state = setup(&[], &[("5", "ring", "etched silver ring")]);
+    let mut seller = Seller::new(town(), &state, HOME).expect("a round");
+    assert_eq!(seller.shops(), [Shop::Gemshop], "jewelry is the jeweler's");
+    seller.next(&state, &nearest);
+    assert_eq!(seller.next(&state, &nearest), Step::Fetch("5".to_owned()));
+    hand(&mut state, true, Some(("5", "ring", "etched silver ring")));
     seller.outcome(&[], &[], &state);
     assert_eq!(
-        seller.next(&state, &every),
-        Step::Give {
-            item: "3".to_owned(),
-            to: "77".to_owned()
-        }
+        seller.next(&state, &nearest),
+        Step::Appraise("5".to_owned())
     );
-    hand(&mut state, true, None);
-    seller.outcome(&[], &[], &state);
+    seller.outcome(&[appraised(200)], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Sell("5".to_owned()));
+    seller.outcome(&[], &[Reply::WrongShop], &state);
     assert_eq!(
-        seller.next(&state, &every),
-        Step::Walk(COUNTER),
-        "the second tag the counter goes by"
+        seller.shops(),
+        [Shop::Gemshop, Shop::Pawnshop],
+        "the pawnshop joins the round"
     );
-    assert_eq!(seller.next(&state, &every), Step::Fetch("4".to_owned()));
-    hand(
-        &mut state,
-        true,
-        Some(("4", "glass", "piece of cloudy glass")),
-    );
-    seller.outcome(&[], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Deposit("4".to_owned()));
-    // Still in hand: the counter would not take it; back to its bag.
-    seller.outcome(&[], &[], &state);
     assert_eq!(
-        seller.next(&state, &every),
-        Step::Stow {
-            item: "4".to_owned(),
-            bag: "902".to_owned()
-        }
-    );
-    hand(&mut state, true, None);
-    seller.outcome(&[], &[], &state);
-    assert_eq!(
-        seller.next(&state, &every),
-        Step::Walk(HOME),
-        "nothing sold: no bank"
-    );
-}
-
-#[test]
-fn a_bundle_comes_apart_a_skin_at_a_time_then_the_bank_takes_the_silver() {
-    let mut state = setup(&[], &[("6", "claws", "bundle of bear claws")]);
-    let town = Town {
-        keep_silver: 500,
-        ..town_4b()
-    };
-    let mut seller = Seller::new(town, &state, HOME).expect("a round");
-    assert_eq!(seller.shops(), [Shop::Furrier]);
-    assert_eq!(seller.next(&state, &every), Step::Walk(FURRIER));
-    // A bag of skins, none excluded, sells whole first.
-    assert_eq!(seller.next(&state, &every), Step::Fetch("902".to_owned()));
-    hand(&mut state, true, Some(("902", "backpack", "backpack")));
-    seller.outcome(&[], &[], &state);
-    assert_eq!(
-        seller.next(&state, &every),
-        Step::SellSack("902".to_owned())
-    );
-    // The furrier would not take the bag whole: back on, and item by item.
-    seller.outcome(&[LootFact::Worthless { item: None }], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Wear("902".to_owned()));
-    hand(&mut state, true, None);
-    seller.outcome(&[], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Fetch("6".to_owned()));
-    hand(
-        &mut state,
-        true,
-        Some(("6", "claws", "bundle of bear claws")),
-    );
-    seller.outcome(&[], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Unbundle);
-    hand(&mut state, false, Some(("8", "claw", "bear claw")));
-    seller.outcome(&[], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Sell("8".to_owned()));
-    hand(&mut state, false, None);
-    seller.outcome(&[sold(40)], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Unbundle);
-    // The last two: one skin in each hand, the bundle gone.
-    hand(&mut state, true, Some(("9", "claw", "bear claw")));
-    hand(&mut state, false, Some(("10", "claw", "bear claw")));
-    seller.outcome(&[], &[Reply::LastTwo], &state);
-    assert_eq!(seller.next(&state, &every), Step::Sell("9".to_owned()));
-    hand(&mut state, true, None);
-    seller.outcome(&[sold(40)], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Sell("10".to_owned()));
-    hand(&mut state, false, None);
-    state.apply(&Frame::ClearContainer {
-        id: "902".to_owned(),
-    });
-    seller.outcome(&[sold(40)], &[], &state);
-    // Silver earned: the bank, the deposit, the keeper silver back out.
-    assert_eq!(seller.next(&state, &every), Step::Walk(BANK));
-    assert_eq!(seller.next(&state, &every), Step::DepositAll);
-    seller.outcome(&[LootFact::Deposited(120)], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Withdraw(500));
-    seller.outcome(&[LootFact::Withdrew(500)], &[], &state);
-    assert_eq!(seller.next(&state, &every), Step::Walk(HOME));
-    assert_eq!(seller.next(&state, &every), Step::Done);
-}
-
-#[test]
-fn over_eighty_percent_encumbered_the_bank_comes_first() {
-    let mut state = setup(&[("1", "pearl", "black pearl")], &[]);
-    state.character.encumbrance_percent = Some(85);
-    let mut seller = Seller::new(town_4b(), &state, HOME).expect("a round");
-    assert_eq!(seller.next(&state, &every), Step::Walk(BANK));
-    assert_eq!(seller.next(&state, &every), Step::DepositAll);
-    seller.outcome(&[], &[], &state);
-    assert_eq!(
-        seller.next(&state, &every),
-        Step::Walk(GEMSHOP),
-        "banked once for the weight, then the shop"
-    );
-}
-
-#[test]
-fn a_note_in_the_default_bag_is_a_round_of_its_own() {
-    let state = setup(&[], &[("7", "note", "promissory note")]);
-    let mut seller = Seller::new(town_4b(), &state, HOME).expect("a round");
-    assert!(seller.shops().is_empty());
-    assert_eq!(seller.next(&state, &every), Step::Walk(BANK));
-    assert_eq!(seller.next(&state, &every), Step::DepositAll);
-}
-
-#[test]
-fn gold_rings_by_eloot_s_names() {
-    use cena_behavior::town::is_gold_ring;
-    assert!(is_gold_ring("gold ring"));
-    assert!(is_gold_ring("dirt-caked gold ring"));
-    assert!(!is_gold_ring("gold-inlaid ring"));
-    assert!(!is_gold_ring("etched gold ring"));
-}
-
-// ---- Stage 4c: the locksmith pool ----
-
-const POOL: RoomId = RoomId(37);
-
-/// A bold NPC in the room: the pool's worker.
-#[expect(
-    clippy::default_trait_access,
-    reason = "the run's style type is not re-exported for behaviors; only the bold depth matters"
-)]
-fn with_worker(state: &mut GameState) {
-    let mut run = Run {
-        text: "worker".to_owned(),
-        style: Default::default(),
-        link: Some(link("88", "worker", "worker")),
-        inner_link: None,
-    };
-    run.style.bold_depth = 1;
-    state.apply(&Frame::Component {
-        id: "room objs".into(),
-        body: Runs { runs: vec![run] },
-    });
-}
-
-fn pool_town() -> Town {
-    Town {
-        pool: true,
-        pool_tip: 300,
-        ..Town::default()
-    }
-}
-
-fn at_pool(tag: &str) -> Option<RoomId> {
-    (tag == "locksmith pool").then_some(POOL)
-}
-
-fn a_box() -> cena_session::containers::ItemRef {
-    cena_session::containers::ItemRef {
-        id: "5".to_owned(),
-        noun: "coffer".to_owned(),
-        text: "iron coffer".to_owned(),
-    }
-}
-
-#[test]
-fn a_box_goes_to_the_pool_with_its_tip_then_comes_back_emptied_and_trashed() {
-    let mut state = setup(&[], &[("5", "coffer", "iron coffer")]);
-    with_worker(&mut state);
-    let mut seller = Seller::new(pool_town(), &state, HOME).expect("a round");
-    assert_eq!(seller.shops(), [Shop::Pool]);
-    assert_eq!(seller.next(&state, &at_pool), Step::Walk(POOL));
-    assert_eq!(seller.next(&state, &at_pool), Step::Fetch("5".to_owned()));
-    hand(&mut state, true, Some(("5", "coffer", "iron coffer")));
-    seller.outcome(&[], &[], &state);
-    let tip = |confirm| Step::Tip {
-        to: "88".to_owned(),
-        amount: 300,
-        percent: false,
-        confirm,
-    };
-    assert_eq!(seller.next(&state, &at_pool), tip(false));
-    let quote = LootFact::PoolQuoted {
-        item: a_box(),
-        tip: 300,
-        fee: 50,
-    };
-    seller.outcome(&[quote], &[], &state);
-    assert_eq!(
-        seller.next(&state, &at_pool),
-        tip(true),
-        "the quote confirmed"
-    );
-    hand(&mut state, true, None);
-    let dropped = LootFact::PoolDropped {
-        noun: "coffer".to_owned(),
-        tip: 300,
-        fee: 50,
-    };
-    seller.outcome(&[dropped], &[], &state);
-    assert_eq!(
-        seller.next(&state, &at_pool),
-        Step::AskReturn("88".to_owned())
-    );
-    // A box the pool finished earlier comes back.
-    hand(&mut state, true, Some(("6", "chest", "iron chest")));
-    let back = LootFact::BoxReturned {
-        item: cena_session::containers::ItemRef {
-            id: "6".to_owned(),
-            noun: "chest".to_owned(),
-            text: "iron chest".to_owned(),
-        },
-    };
-    seller.outcome(&[back], &[], &state);
-    assert_eq!(
-        seller.next(&state, &at_pool),
-        Step::EmptyBox("6".to_owned())
-    );
-    seller.outcome(&[], &[], &state);
-    assert_eq!(seller.next(&state, &at_pool), Step::Trash("6".to_owned()));
-    seller.outcome(&[], &[Reply::NoTrash], &state);
-    assert_eq!(
-        seller.next(&state, &at_pool),
-        Step::Drop("6".to_owned()),
-        "no receptacle here: dropped"
-    );
-    hand(&mut state, true, None);
-    seller.outcome(&[], &[], &state);
-    assert_eq!(
-        seller.next(&state, &at_pool),
-        Step::AskReturn("88".to_owned())
-    );
-    seller.outcome(&[], &[Reply::NoneReady], &state);
-    assert_eq!(seller.next(&state, &at_pool), Step::Walk(HOME));
-}
-
-#[test]
-fn a_full_pool_sends_the_box_back_and_a_locked_return_is_kept() {
-    let mut state = setup(&[], &[("5", "coffer", "iron coffer")]);
-    with_worker(&mut state);
-    let mut seller = Seller::new(pool_town(), &state, HOME).expect("a round");
-    seller.next(&state, &at_pool);
-    seller.next(&state, &at_pool);
-    hand(&mut state, true, Some(("5", "coffer", "iron coffer")));
-    seller.outcome(&[], &[], &state);
-    seller.next(&state, &at_pool);
-    seller.outcome(&[], &[Reply::PoolFull], &state);
-    assert_eq!(
-        seller.next(&state, &at_pool),
+        seller.next(&state, &nearest),
         Step::Stow {
             item: "5".to_owned(),
             bag: "902".to_owned()
@@ -650,32 +231,145 @@ fn a_full_pool_sends_the_box_back_and_a_locked_return_is_kept() {
     );
     hand(&mut state, true, None);
     seller.outcome(&[], &[], &state);
-    assert_eq!(
-        seller.next(&state, &at_pool),
-        Step::AskReturn("88".to_owned()),
-        "full: straight to the returns"
-    );
-    hand(&mut state, true, Some(("6", "chest", "iron chest")));
+    assert_eq!(seller.next(&state, &nearest), Step::Walk(PAWNSHOP));
+    assert_eq!(seller.next(&state, &nearest), Step::Fetch("5".to_owned()));
+    hand(&mut state, true, Some(("5", "ring", "etched silver ring")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Analyze("5".to_owned()));
     seller.outcome(&[], &[], &state);
     assert_eq!(
-        seller.next(&state, &at_pool),
-        Step::EmptyBox("6".to_owned())
-    );
-    seller.outcome(&[], &[Reply::BoxLocked], &state);
-    assert_eq!(
-        seller.next(&state, &at_pool),
-        Step::Stow {
-            item: "6".to_owned(),
-            bag: "902".to_owned()
-        },
-        "a box that would not open goes back in the bag"
+        seller.next(&state, &nearest),
+        Step::Appraise("5".to_owned()),
+        "a real sale there, appraised against the pawnshop's limit"
     );
 }
 
 #[test]
-fn no_worker_in_the_room_passes_the_pool_by() {
-    let state = setup(&[], &[("5", "coffer", "iron coffer")]);
-    let mut seller = Seller::new(pool_town(), &state, HOME).expect("a round");
-    assert_eq!(seller.next(&state, &at_pool), Step::Walk(POOL));
-    assert_eq!(seller.next(&state, &at_pool), Step::Walk(HOME));
+fn too_valuable_for_the_jeweler_is_appraised_at_the_pawnshop_when_asked() {
+    let mut state = setup(&[], &[("5", "ring", "etched silver ring")]);
+    let asks = Town {
+        pawn_recheck: true,
+        ..town()
+    };
+    let mut seller = Seller::new(asks, &state, HOME).expect("a round");
+    seller.next(&state, &nearest);
+    seller.next(&state, &nearest);
+    hand(&mut state, true, Some(("5", "ring", "etched silver ring")));
+    seller.outcome(&[], &[], &state);
+    seller.next(&state, &nearest);
+    seller.outcome(&[appraised(90_000)], &[], &state);
+    assert_eq!(seller.shops(), [Shop::Gemshop, Shop::Pawnshop]);
+    seller.next(&state, &nearest);
+    hand(&mut state, true, None);
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Walk(PAWNSHOP));
+    seller.next(&state, &nearest);
+    hand(&mut state, true, Some(("5", "ring", "etched silver ring")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Appraise("5".to_owned())
+    );
+    seller.outcome(&[appraised(90_000)], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Stow {
+            item: "5".to_owned(),
+            bag: "902".to_owned()
+        },
+        "appraised only, never sold"
+    );
+}
+
+#[test]
+fn a_scroll_holding_a_kept_spell_is_read_and_kept() {
+    let mut state = setup(&[], &[("5", "scroll", "faded vellum scroll")]);
+    let keeps = Town {
+        sell_types: vec!["scroll".to_owned()],
+        keep_scrolls: vec!["215".to_owned(), "240v".to_owned()],
+        ..town()
+    };
+    let mut seller = Seller::new(keeps, &state, HOME).expect("a round");
+    seller.next(&state, &nearest);
+    seller.next(&state, &nearest);
+    hand(
+        &mut state,
+        true,
+        Some(("5", "scroll", "faded vellum scroll")),
+    );
+    seller.outcome(&[], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::ReadScroll("5".to_owned())
+    );
+    let spell = |spell, vibrant| Reply::ScrollSpell { spell, vibrant };
+    seller.outcome(&[], &[spell(240, false)], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Analyze("5".to_owned()),
+        "240 is kept only vibrant: this one sells"
+    );
+
+    let mut state = setup(&[], &[("6", "scroll", "faded vellum scroll")]);
+    let keeps = Town {
+        sell_types: vec!["scroll".to_owned()],
+        keep_scrolls: vec!["215".to_owned()],
+        ..town()
+    };
+    let mut seller = Seller::new(keeps, &state, HOME).expect("a round");
+    seller.next(&state, &nearest);
+    seller.next(&state, &nearest);
+    hand(
+        &mut state,
+        true,
+        Some(("6", "scroll", "faded vellum scroll")),
+    );
+    seller.outcome(&[], &[], &state);
+    seller.next(&state, &nearest);
+    seller.outcome(&[], &[spell(215, false)], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Stow {
+            item: "6".to_owned(),
+            bag: "902".to_owned()
+        }
+    );
+}
+
+#[test]
+fn what_the_hands_held_comes_back_after_the_round() {
+    let mut state = setup(&[], &[("5", "tunic", "linen tunic")]);
+    hand(&mut state, true, Some(("70", "sword", "steel broadsword")));
+    hand(&mut state, false, Some(("71", "shield", "iron buckler")));
+    let mut seller = Seller::new(town(), &state, HOME).expect("a round");
+    assert_eq!(seller.next(&state, &nearest), Step::Walk(PAWNSHOP));
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Stow {
+            item: "70".to_owned(),
+            bag: "902".to_owned()
+        },
+        "both hands full: the right one is emptied to fetch"
+    );
+    hand(&mut state, true, None);
+    seller.outcome(&[], &[], &state);
+    seller.next(&state, &nearest);
+    hand(&mut state, true, Some(("5", "tunic", "linen tunic")));
+    seller.outcome(&[], &[], &state);
+    seller.next(&state, &nearest);
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Sell("5".to_owned()));
+    hand(&mut state, true, None);
+    state.apply(&Frame::ClearContainer {
+        id: "902".to_owned(),
+    });
+    seller.outcome(&[sold(10)], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Fetch("70".to_owned()),
+        "the sword back before home"
+    );
+    hand(&mut state, true, Some(("70", "sword", "steel broadsword")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Walk(HOME));
 }

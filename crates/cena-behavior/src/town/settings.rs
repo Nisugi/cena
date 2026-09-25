@@ -47,6 +47,12 @@ pub struct Town {
     pub pool_tip_percent: bool,
     /// A charm that gathers a box's coins, by its name (`charm_name`).
     pub charm: String,
+    /// Appraise, never sell, at the pawnshop what the gem shop found too
+    /// valuable (`sell_pawn_recheck`).
+    pub pawn_recheck: bool,
+    /// Scrolls kept for these spells (`sell_keep_scrolls`): `215` keeps a
+    /// scroll holding 215 that is not vibrant, `215v` one that is.
+    pub keep_scrolls: Vec<String>,
     /// Boxes on the character's disk go to the pool too: the loot
     /// profile's `use_disk`, set by the driver.
     pub disk: bool,
@@ -70,6 +76,8 @@ impl Default for Town {
             pool_tip: 0,
             pool_tip_percent: false,
             charm: String::new(),
+            pawn_recheck: false,
+            keep_scrolls: Vec::new(),
             disk: false,
         }
     }
@@ -79,8 +87,11 @@ fn list(table: &Table, key: &str) -> Vec<String> {
     match table.get(key) {
         Some(toml::Value::Array(items)) => items
             .iter()
-            .filter_map(|v| v.as_str())
-            .map(str::to_owned)
+            .filter_map(|v| match v {
+                toml::Value::String(s) => Some(s.clone()),
+                toml::Value::Integer(n) => Some(n.to_string()),
+                _ => None,
+            })
             .collect(),
         Some(toml::Value::String(one)) if !one.is_empty() => vec![one.clone()],
         _ => Vec::new(),
@@ -135,6 +146,8 @@ impl Town {
             pool_tip: number(table, "sell_locksmith_pool_tip", 0),
             pool_tip_percent: flag(table, "sell_locksmith_pool_tip_percent"),
             charm: text(table, "charm_name"),
+            pawn_recheck: flag(table, "sell_pawn_recheck"),
+            keep_scrolls: list(table, "sell_keep_scrolls"),
             disk: flag(table, "use_disk"),
         }
     }
@@ -146,6 +159,18 @@ impl Town {
         let mut town = Self::from_table(&profile.town);
         town.disk |= profile.disk;
         town
+    }
+
+    /// Is a scroll that holds `spell` kept? `vibrant` says whether the line
+    /// naming it said so (`no_vib_regex`, `vib_scrolls_regex`,
+    /// `eloot.lic:511-515`).
+    #[must_use]
+    pub fn keeps_scroll(&self, spell: u16, vibrant: bool) -> bool {
+        self.keep_scrolls.iter().any(|entry| {
+            let wants_vibrant = entry.to_ascii_lowercase().contains('v');
+            let number: String = entry.chars().filter(char::is_ascii_digit).collect();
+            number.parse::<u16>() == Ok(spell) && wants_vibrant == vibrant
+        })
     }
 
     /// Is this category sold at all?

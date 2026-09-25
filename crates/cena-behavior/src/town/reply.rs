@@ -43,6 +43,14 @@ pub enum Reply {
     /// Not the game's: the driver says the loot planner found the box
     /// locked, so it goes back to its bag.
     BoxLocked,
+    /// A scroll read names a spell: `(215) Frenzy`, and whether the line
+    /// calls it vibrant.
+    ScrollSpell {
+        /// The spell's number.
+        spell: u16,
+        /// The line says `vibrant`.
+        vibrant: bool,
+    },
     /// `bundle remove` took the bundle apart: *Those were the last two*,
     /// one skin in each hand (`furrier`, `eloot.lic:6905`).
     LastTwo,
@@ -103,6 +111,15 @@ pub fn classify(line: &str) -> Option<Reply> {
     }
     if has("You do not notice a trash receptacle") {
         return Some(Reply::NoTrash);
+    }
+    if let Some(rest) = text.strip_prefix('(')
+        && let Some((number, _)) = rest.split_once(')')
+        && let Ok(spell) = number.parse::<u16>()
+    {
+        return Some(Reply::ScrollSpell {
+            spell,
+            vibrant: has("vibrant"),
+        });
     }
     if has("Those were the last two") {
         return Some(Reply::LastTwo);

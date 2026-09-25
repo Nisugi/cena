@@ -358,7 +358,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                 Errand::Appraise(id) => format!("appraise #{id}"),
                 Errand::Analyze(id) => format!("analyze #{id}"),
                 Errand::Wear(id) => format!("wear #{id}"),
-                Errand::ReadNote(id) => format!("read #{id}"),
+                Errand::ReadNote(id) | Errand::ReadScroll(id) => format!("read #{id}"),
                 Errand::Stow { item, bag } => format!("_drag #{item} #{bag}"),
                 Errand::Deposit(id) => format!("deposit #{id}"),
                 Errand::Give { item, to } => format!("give #{item} to #{to}"),

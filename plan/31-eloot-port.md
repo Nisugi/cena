@@ -229,10 +229,17 @@ their own.
   `Seller`, `reply.rs` the few non-fact replies), `Said::Sell` and `Phase::Selling` in the
   engine (`hunt/rest.rs`, `wants_to_sell`), the round in `hunt/drive.rs` (`sell`), reading
   each prompt's `LootFact`s from the driver's own fold. Tested in `tests/town_plan.rs` (6)
-  and `hunt_engine.rs` (the arrival). Left for 4b-4d as staged; also left: eloot's
-  `return_hands` (what was in hand before the round goes back after it), the pawnshop's
-  `read` of scrolls to keep, and a jeweler's *wrong shop* refusal re-queued for the
-  pawnshop. As staged: `Phase::Selling` between the walk to
+  and `hunt_engine.rs` (the arrival). **Its leftovers BUILT 2026-09-25**: `return_hands`
+  (what the hands held when the round began, a box aside, is fetched back before home, so a
+  weapon stowed to free a hand is in hand for the hunt); the jeweler's *not my field* sold
+  at the pawnshop instead (`retry_wrong_shop_jewelry_at_pawnshop`), and, when
+  `sell_pawn_recheck` is on, what it found too valuable appraised there and put back
+  (`recheck_refused_at_pawnshop`), the pawnshop joining the round for either;
+  `sell_keep_scrolls` (a scroll read first and kept when a line names a kept spell, `215`
+  plain or `215v` vibrant). **Corrected:** the pawnshop analyzes *every* item before
+  selling it, as eloot's `pawnshop` does (`eloot.lic:7539-7547`), so ALTER 41 is caught on
+  anything; 4a analyzed only what could be a transmog. The Stage 4 tests are split by stage:
+  `tests/town_plan.rs`, `town_shops.rs`, `town_pool.rs`, sharing `tests/town_support/`. As staged: `Phase::Selling` between the walk to
   the resting room and the rest commands; `Said::Sell` when a sellable bag holds something;
   `check_items`' shop list from the bags' typed contents (`gameobj`'s `sellable`); the
   pawnshop item by item (appraise first for the profile's appraise types and for
@@ -252,7 +259,7 @@ their own.
   a refused skin back to the bag. The bank comes last when the round sold anything or read
   a note, and first whenever encumbrance is over 80% on the way to a shop; a note waiting
   in the default bag is a round by itself. `deposit all`, then `withdraw <sell_keep_silver>
-  silver`. Tested in `tests/town_plan.rs` (5 more). **Differs from eloot, deliberately:**
+  silver`. Tested in `tests/town_shops.rs`. **Differs from eloot, deliberately:**
   eloot goes to the bank whenever `wealth` differs from the keep figure; Hydra's silver
   figure is only as fresh as the last `wealth`, so a stale one would send every rest to the
   bank, and the round banks on what it earned instead. **Not built:** the furrier's
@@ -275,7 +282,7 @@ their own.
   kept when it is an empty gold, mithril or silver box the profile sells, else `trash`,
   else `drop`; a locked box goes back to its bag. The worker is found by eloot's eight
   names; the drop, the quote and the return are the ledger's facts. Tested in
-  `tests/town_plan.rs` (3) and `tests/loot_plan.rs` (3). **Not built:** the room's
+  `tests/town_pool.rs` (3) and `tests/loot_plan.rs` (3). **Not built:** the room's
   `meta:boxpool:npc` tag (the round has no map tags, only room ids), incremental tipping
   (`use_incremental_tipping`, off for Nisugi), a full pool emptied by returns and filled
   again in the same visit, *lighten your load* answered with a bank trip, the town
@@ -289,7 +296,7 @@ their own.
   `case` boxes it cannot open are recorded, not built.
 - **4d. Not ported now**, each named so it is not forgotten: **Hoard** (840 lines; off for
   Nisugi), **Region** (65; regional bounty selling), consignment and alchemy mode, curse
-  removal (315), `sell_keep_scrolls` (a `read` per scroll), `break_rocks` for breakables,
+  removal (315), `break_rocks` for breakables,
   `dump_herbs_junk`, FWI routing, the gem-bounty and furrier-bounty checks, the shroud and
   aspect sell buffs, `sell_share_silvers`, and the free-to-play bank ladder.
 

@@ -67,6 +67,9 @@ pub(super) enum How {
     Give(String),
     /// A bundle of skins: `bundle remove` and sell each skin.
     Unbundle,
+    /// Appraised for a second opinion and put back, never sold: what the
+    /// gem shop found too valuable (`recheck_refused_at_pawnshop`).
+    Appraise,
 }
 
 /// One item to part with at the current shop.
@@ -77,12 +80,28 @@ pub(super) struct Lot {
     pub(super) bag: String,
     pub(super) appraise: bool,
     pub(super) analyze: bool,
+    /// A scroll read first, for the spells the profile keeps.
+    pub(super) read: bool,
     pub(super) how: How,
 }
 
-/// Which categories eloot analyzes for a transmog (`is_transmog?`,
-/// `eloot.lic:4090`).
-const TRANSMOG_KINDS: &[&str] = &["jewelry", "clothing", "armor", "weapon", "uncommon"];
+/// Items the gem shop sent on to the pawnshop this round.
+#[derive(Clone, Debug, Default)]
+pub(super) struct Onward {
+    /// *Not quite my field*: a real sale at the pawnshop
+    /// (`retry_wrong_shop_jewelry_at_pawnshop`, `eloot.lic:6056`).
+    pub(super) retry: BTreeSet<String>,
+    /// Too valuable: appraised there only, when the profile asks
+    /// (`recheck_refused_at_pawnshop`, `:5993`).
+    pub(super) recheck: BTreeSet<String>,
+}
+
+impl Onward {
+    fn has(&self, id: &str) -> bool {
+        self.retry.contains(id) || self.recheck.contains(id)
+    }
+}
+
 /// Categories the pawnshop appraises whatever the profile says (`:7522`).
 const ALWAYS_APPRAISED: &[&str] = &["uncommon", "weapon", "armor"];
 /// The nouns a Chronomage's clerk goes by (`gold_rings`, `:7130`).
@@ -290,11 +309,13 @@ pub(super) fn lots(
     state: &GameState,
     skipped: &BTreeSet<String>,
     whole: &[String],
+    onward: &Onward,
 ) -> Vec<Lot> {
     let clerk = clerk(state);
     let mut out = Vec::new();
     for (item, types, bag) in goods(town, state) {
-        if skipped.contains(&item.id) || !takes(shop, town, &item, &types) {
+        let sent_on = shop == Shop::Pawnshop && onward.has(&item.id);
+        if skipped.contains(&item.id) || !(sent_on || takes(shop, town, &item, &types)) {
             continue;
         }
         // What a bulk sale takes is left out; what it leaves is sold one by
@@ -309,27 +330,27 @@ pub(super) fn lots(
                 None => continue,
             },
             Shop::Furrier if item.text.contains("bundle") => How::Unbundle,
+            Shop::Pawnshop if onward.recheck.contains(&item.id) => How::Appraise,
             _ => How::Sell,
         };
         let sells = how == How::Sell;
-        let appraise = sells
+        let pawn = sells && shop == Shop::Pawnshop;
+        let appraise = (sells
             && types.types.iter().any(|t| {
                 town.appraises(t)
                     || (shop == Shop::Pawnshop && ALWAYS_APPRAISED.contains(&t.as_str()))
-            });
-        let analyze = sells
-            && shop == Shop::Pawnshop
-            && town.keep_transmogs
-            && item.after.is_some()
-            && types
-                .types
-                .iter()
-                .any(|t| TRANSMOG_KINDS.contains(&t.as_str()));
+            }))
+            || (pawn && onward.retry.contains(&item.id));
+        // The pawnshop analyzes everything it sells, for a transmog and for
+        // ALTER 41 (`pawnshop`, `eloot.lic:7539-7547`).
+        let analyze = pawn;
+        let read = pawn && types.is("scroll") && !town.keep_scrolls.is_empty();
         out.push(Lot {
             item,
             bag,
             appraise,
             analyze,
+            read,
             how,
         });
     }

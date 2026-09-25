@@ -21,6 +21,7 @@ pub mod plan;
 mod pool;
 pub mod reply;
 pub mod settings;
+mod step;
 
 pub use goods::{Shop, is_gold_ring};
 pub use plan::{Seller, Step};
