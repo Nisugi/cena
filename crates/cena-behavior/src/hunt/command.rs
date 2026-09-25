@@ -57,6 +57,9 @@ pub enum Command {
         /// eherbs' `fill` rather than `stock`.
         fill: bool,
     },
+    /// `;waggle [names]`: the waggle profile's spells cast on these people,
+    /// or yourself.
+    Waggle(Vec<String>),
     /// `;keep`: keep the keep profile's spells up until stopped.
     Keep,
     /// `;keep <words>`: change or show the keep profile.
@@ -81,6 +84,9 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
     let first = words.next()?;
     if first.eq_ignore_ascii_case("heal") {
         return Some(heal(words));
+    }
+    if first.eq_ignore_ascii_case("waggle") {
+        return Some(Ok(Command::Waggle(words.map(str::to_owned).collect())));
     }
     if first.eq_ignore_ascii_case("keep") {
         let rest: Vec<String> = words.map(str::to_ascii_lowercase).collect();

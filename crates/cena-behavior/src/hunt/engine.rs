@@ -51,6 +51,7 @@ use crate::heal::HealProfile;
 use crate::keep::{self, KeepProfile};
 use crate::loot::{Left, LootProfile};
 use crate::stance::{self, Want};
+use crate::waggle::WaggleProfile;
 
 /// The dialog signs are listed under when they are up.
 const ACTIVE_SPELLS: &str = "Active Spells";
@@ -111,6 +112,8 @@ pub struct Hunt {
     /// `;keep`: no hunt, the listed spells kept up until stopped, with when
     /// each was last sent.
     keep_only: Option<(KeepProfile, BTreeMap<u16, u32>)>,
+    /// `;waggle`: no hunt, one run over these names; `true` once asked for.
+    waggle_only: Option<(WaggleProfile, Vec<String>, bool)>,
     /// `--spellcast` and `--ranged` for the heal.
     heal_mode: (bool, bool),
 }
@@ -143,6 +146,7 @@ impl Hunt {
             heal_only: None,
             stock_only: None,
             keep_only: None,
+            waggle_only: None,
             heal_mode: (false, false),
         }
     }
@@ -173,6 +177,23 @@ impl Hunt {
         let mut machine = Self::new(Profile::default(), 0);
         machine.keep_only = Some((profile, BTreeMap::new()));
         machine
+    }
+
+    /// `;waggle [names]`: a machine that casts the waggle profile's spells
+    /// on these people once and ends.
+    #[must_use]
+    pub fn waggle_only(profile: WaggleProfile, targets: Vec<String>) -> Self {
+        let mut machine = Self::new(Profile::default(), 0);
+        machine.waggle_only = Some((profile, targets, false));
+        machine
+    }
+
+    /// The waggle run's profile and names, when this machine is one.
+    #[must_use]
+    pub fn waggle(&self) -> Option<(&WaggleProfile, &[String])> {
+        self.waggle_only
+            .as_ref()
+            .map(|(profile, targets, _)| (profile, targets.as_slice()))
     }
 
     /// Heal with herbs by this profile during a rest.
@@ -270,6 +291,13 @@ impl Hunt {
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
+        if let Some((_, targets, asked)) = self.waggle_only.as_mut() {
+            if *asked {
+                return Said::Done(Ending::Waggled);
+            }
+            *asked = true;
+            return Said::Waggle(targets.clone());
+        }
         if let Some((profile, tried)) = self.keep_only.as_mut() {
             if let Some(line) = self.pending.pop_front() {
                 return Said::Send { line, target: None };

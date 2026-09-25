@@ -42,6 +42,8 @@ pub enum Said {
     /// Stock the herb container at the herbalist and come back (`plan/36`
     /// Stage 4); `true` is eherbs' `fill`, one of each kind lacking.
     Stock(bool),
+    /// Cast the waggle profile's spells on these people (`plan/37` Stage 5).
+    Waggle(Vec<String>),
     /// Nothing this tick.
     Nothing,
 }
@@ -61,6 +63,8 @@ pub enum Ending {
     Healed,
     /// `;heal stock` or `;heal fill` ran: there was no hunt, only the round.
     Stocked,
+    /// `;waggle` ran: no hunt, only the spells.
+    Waggled,
 }
 
 impl fmt::Display for Ending {
@@ -74,6 +78,7 @@ impl fmt::Display for Ending {
             Self::Unreachable(room) => write!(f, "there is no way to room {}", room.0),
             Self::Healed => f.write_str("healed"),
             Self::Stocked => f.write_str("stocked"),
+            Self::Waggled => f.write_str("waggled"),
         }
     }
 }

@@ -36,6 +36,7 @@ pub mod stance;
 pub mod sync;
 pub mod town;
 pub mod travel;
+pub mod waggle;
 pub mod watchdog;
 
 pub use error::BehaviorError;

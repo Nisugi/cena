@@ -48,12 +48,14 @@ use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio_util::sync::CancellationToken;
 
 use super::engine::{Ending, Here, Hunt, Said};
+use crate::cast;
 use crate::error::BehaviorError;
 use crate::heal::stock::Step as StockStep;
 use crate::heal::{self, Healed, Healer, Reply as HealReply, Step as HealStep, Stocked, Stocker};
 use crate::loot::{Left, LootProfile, Memory, Outcome as LootOutcome, Planner, Step, classify};
 use crate::town::{self, Seller, Step as Errand, Town};
 use crate::travel::{Ended, Heard, TravelNotes, destination, room_of, travel_holding, walker_from};
+use crate::waggle::{Step as WaggleStep, Waggled, Waggler};
 use crate::watchdog::Heartbeat;
 
 /// How long a sent line may wait for its prompt.
@@ -70,6 +72,8 @@ const SELL_STEPS: usize = 400;
 const HEAL_STEPS: usize = 120;
 /// The most steps one stocking round takes before it is given up on.
 const STOCK_STEPS: usize = 400;
+/// The most steps one waggle run takes before it is given up on.
+const WAGGLE_STEPS: usize = 400;
 
 /// How a hunt ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -203,6 +207,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Said::Sell => self.sell().await,
                 Said::Heal => self.heal().await,
                 Said::Stock(fill) => self.stock(fill).await,
+                Said::Waggle(targets) => self.waggle(&targets).await,
                 Said::Done(ending) => return HuntEnd::Finished(ending),
             };
             if let Err(end) = step {
@@ -482,6 +487,46 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             None => "Heal: stocking gave up after too many steps.".to_owned(),
         };
         say(self, text);
+        Ok(())
+    }
+
+    /// Cast the waggle profile's spells on `targets` (`plan/37` Stage 5):
+    /// each step sent, each reply read, the run's end said.
+    async fn waggle(&mut self, targets: &[String]) -> Result<(), HuntEnd> {
+        let Some((profile, _)) = self.machine.waggle() else {
+            return Ok(());
+        };
+        let mut waggler = Waggler::new(profile.clone(), targets);
+        let mut ended = None;
+        for _ in 0..WAGGLE_STEPS {
+            let lines = match waggler.next(&self.state) {
+                WaggleStep::Done(how) => {
+                    ended = Some(how);
+                    break;
+                }
+                WaggleStep::Wait(secs) => {
+                    self.hold(Duration::from_secs(u64::from(secs))).await?;
+                    continue;
+                }
+                WaggleStep::Ask(name) => vec![format!("spell active {name}")],
+                WaggleStep::Cast(casting) => casting.lines(&self.state),
+            };
+            self.transcript.clear();
+            for line in &lines {
+                self.send(line, None).await?;
+            }
+            self.hold(BEAT).await?;
+            let said: Vec<String> = self.transcript.lines().map(str::to_owned).collect();
+            let answers: Vec<cast::Answer> =
+                said.iter().filter_map(|l| cast::classify(l)).collect();
+            waggler.outcome(&said, &answers, &self.state);
+        }
+        let text = match ended {
+            Some(Waggled::Done(casts)) => format!("Waggle: done; {casts} cast."),
+            Some(Waggled::OutOfMana) => "Waggle: out of mana; stopped.".to_owned(),
+            None => "Waggle: gave up after too many steps.".to_owned(),
+        };
+        self.handle.say(Notice::line(NoticeKind::Info, text));
         Ok(())
     }
 

@@ -103,6 +103,26 @@ impl Desk {
                 Hunt::heal_only(profile, spellcast, ranged)
             }),
             Command::Keep => self.keep_spells(handle, joined),
+            Command::Waggle(targets) => {
+                let character = &joined.0.state.character;
+                let profile = character
+                    .instance
+                    .as_deref()
+                    .zip(character.name.as_deref())
+                    .and_then(|(i, n)| crate::waggle::path(&self.dir, i, n))
+                    .and_then(|path| std::fs::read_to_string(path).ok())
+                    .and_then(|text| crate::waggle::WaggleProfile::parse(&text).ok())
+                    .filter(|p| !p.cast_list.is_empty());
+                let Some(profile) = profile else {
+                    say(
+                        NoticeKind::Error,
+                        "no waggle profile: write one with a `cast_list`.".to_owned(),
+                    );
+                    return None;
+                };
+                let machine = Hunt::waggle_only(profile, targets);
+                Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+            }
             Command::Stock { fill } => {
                 self.herbs(handle, joined, |profile| Hunt::stock_only(profile, fill))
             }

@@ -99,6 +99,11 @@ ends, as `;heal` runs with one that heals once; and as the hunt's own Maintain w
 
 ### Stage 5 — ewaggle: buff these people
 
+**BUILT 2026-09-25.** `cena-behavior/src/waggle.rs` (`WaggleProfile` at
+`<data>/hunt/waggle/<instance>_<character>.toml`, `Waggler`, `read_spell_active`, ewaggle's
+multicast ceiling by profession and circle); `Said::Waggle` and `Hunt::waggle_only`, run by
+`;waggle [names]`. Tested in `tests/waggle.rs` (3).
+
 For each target -- yourself, or anyone by name -- what they have up (`spell active <name>`,
 parsed, or the effects list for yourself), then ewaggle's three passes: stackable spells up to
 `stop_at` minutes, multicast as far as the ranks allow; refreshable spells when under

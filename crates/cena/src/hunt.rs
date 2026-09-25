@@ -57,7 +57,8 @@ pub(crate) fn open(
             | Command::Stop
             | Command::Heal { .. }
             | Command::Stock { .. }
-            | Command::Keep => {
+            | Command::Keep
+            | Command::Waggle(_) => {
                 let Some(desk) = desk.clone() else {
                     handler.say(Notice::line(
                         NoticeKind::Error,
@@ -112,6 +113,7 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         | Command::Heal { .. }
         | Command::Stock { .. }
         | Command::Keep
+        | Command::Waggle(_)
         | Command::Nothing => {}
     }
 }
