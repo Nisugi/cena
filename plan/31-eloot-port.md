@@ -263,7 +263,24 @@ their own.
   less `sell_keep_silver` at the bank, notes deposited, and a deposit whenever encumbrance
   passes 80% on the round (`plan/20` §0b's bank sending half, its reply patterns from
   `bank.rb:22-66`).
-- **4c. Boxes: the locksmith pool.** A box in hand before anything else; every box in the
+- ~~**4c. Boxes: the locksmith pool.**~~ **BUILT 2026-09-25**: `town/pool.rs` is the
+  pool as the round's first stop (`Shop::Pool`, tagged `locksmith pool`): every box in a
+  hand, the selling bags and the disk (`use_disk`) fetched, swapped to the right hand,
+  `give #worker <tip>[ PERCENT]`, the quote confirmed with the same give and ` confirm`;
+  *already holding as many boxes* or *You don't have that much* stops the drop-off and the
+  box goes back to its bag; *already open* empties it on the spot. Then `ask #worker for
+  return` until nothing is ready, each returned box emptied by the loot planner's new box
+  mode (`loot/plan/boxed.rs`, `Planner::for_box`: `open`, `look in`, `point <charm> at
+  #box` or `get coins from #box`, then each wanted thing by the planner's own `take`), then
+  kept when it is an empty gold, mithril or silver box the profile sells, else `trash`,
+  else `drop`; a locked box goes back to its bag. The worker is found by eloot's eight
+  names; the drop, the quote and the return are the ledger's facts. Tested in
+  `tests/town_plan.rs` (3) and `tests/loot_plan.rs` (3). **Not built:** the room's
+  `meta:boxpool:npc` tag (the round has no map tags, only room ids), incremental tipping
+  (`use_incremental_tipping`, off for Nisugi), a full pool emptied by returns and filled
+  again in the same visit, *lighten your load* answered with a bank trip, the town
+  locksmith, and a box's cursed contents kept out of a saved box.
+  As staged: A box in hand before anything else; every box in the
   box bag and the disk to the pool with the standard tip (`sell_locksmith_pool_tip`, or the
   incremental ladder), the worker found by the room's `meta:boxpool:npc` tag or eloot's
   names; the pool's returns asked for and each returned box opened, looked in, its coins

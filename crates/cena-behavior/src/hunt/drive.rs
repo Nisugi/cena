@@ -49,7 +49,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
-use crate::loot::{Left, Memory, Outcome as LootOutcome, Planner, Step, classify};
+use crate::loot::{Left, LootProfile, Memory, Outcome as LootOutcome, Planner, Step, classify};
 use crate::town::{self, Seller, Step as Errand, Town};
 use crate::travel::{Ended, Heard, TravelNotes, destination, room_of, travel_holding, walker_from};
 use crate::watchdog::Heartbeat;
@@ -232,11 +232,31 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
             return Ok(());
         };
         let memory = std::mem::take(&mut self.memory);
-        let mut planner = Planner::new(profile, memory, corpses);
+        let planner = Planner::new(profile, memory, corpses);
+        self.run_loot(planner, true).await.map(|_| ())
+    }
+
+    /// Empty the box in hand with the loot planner (`box_loot`), for the
+    /// selling round. `true` when the box would not open.
+    async fn empty_box(&mut self, profile: &LootProfile, id: &str) -> Result<bool, HuntEnd> {
+        let town = Town::for_profile(profile);
+        let memory = std::mem::take(&mut self.memory);
+        let charm = (!town.charm.is_empty()).then(|| town.charm.clone());
+        let planner = Planner::for_box(profile.clone(), memory, id, charm);
+        let planner = self.run_loot(planner, false).await?;
+        Ok(planner.box_locked())
+    }
+
+    /// Run a loot planner to its end: each step sent, each reply fed back.
+    /// `hunting` says whether the hunt's machine hears how it ended.
+    async fn run_loot(&mut self, mut planner: Planner, hunting: bool) -> Result<Planner, HuntEnd> {
         for _ in 0..LOOT_STEPS {
             let step = planner.next(&self.state);
             let (line, touched) = match &step {
                 Step::Done(left) => {
+                    if !hunting {
+                        break;
+                    }
                     self.machine.loot_ended(*left);
                     if *left != Left::Nothing {
                         self.handle.say(Notice::line(
@@ -264,6 +284,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                 Step::Stand => ("stand".to_owned(), None),
                 Step::Skin { corpse, hand } => (format!("skin #{corpse} {hand}"), None),
                 Step::StowGem(id) => (format!("stow gem #{id}"), None),
+                Step::Coins(id) => (format!("get coins from #{id}"), None),
+                Step::Charm { charm, box_ } => (format!("point {charm} at #{box_}"), None),
             };
             self.transcript.clear();
             self.send(&line, None).await?;
@@ -291,7 +313,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
             }
         }
         self.memory = planner.memory().clone();
-        Ok(())
+        Ok(planner)
     }
 
     /// Sell with the town planner (`plan/31` Stage 4): each shop the nearest
@@ -306,7 +328,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
         let Some(home) = self.locate() else {
             return Ok(());
         };
-        let town = Town::from_table(&profile.town);
+        let town = Town::for_profile(&profile);
         let Some(mut seller) = Seller::new(town, &self.state, home) else {
             return Ok(());
         };
@@ -343,6 +365,36 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                 Errand::Unbundle => "bundle remove".to_owned(),
                 Errand::DepositAll => "deposit all".to_owned(),
                 Errand::Withdraw(silver) => format!("withdraw {silver} silver"),
+                Errand::Swap => "swap".to_owned(),
+                Errand::Tip {
+                    to,
+                    amount,
+                    percent,
+                    confirm,
+                } => format!(
+                    "give #{to} {amount}{}{}",
+                    if *percent { " PERCENT" } else { "" },
+                    if *confirm { " confirm" } else { "" }
+                ),
+                Errand::AskReturn(to) => format!("ask #{to} for return"),
+                Errand::Trash(id) => format!("trash #{id}"),
+                Errand::Drop(id) => format!("drop #{id}"),
+                Errand::EmptyBox(id) => {
+                    let locked = self.empty_box(&profile, id).await?;
+                    let replies = if locked {
+                        vec![town::Reply::BoxLocked]
+                    } else {
+                        Vec::new()
+                    };
+                    let facts: Vec<cena_session::LootFact> = self
+                        .state
+                        .take_loot()
+                        .into_iter()
+                        .flat_map(|chunk| chunk.facts)
+                        .collect();
+                    seller.outcome(&facts, &replies, &self.state);
+                    continue;
+                }
             };
             self.transcript.clear();
             self.send(&line, None).await?;

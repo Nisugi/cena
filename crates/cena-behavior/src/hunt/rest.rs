@@ -115,7 +115,7 @@ impl Hunt {
         let Some(resting) = self.profile.rooms.resting else {
             return false;
         };
-        let town = crate::town::Town::from_table(&profile.town);
+        let town = crate::town::Town::for_profile(profile);
         crate::town::Seller::new(town, state, RoomId(resting)).is_some()
     }
 

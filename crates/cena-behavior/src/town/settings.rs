@@ -45,8 +45,11 @@ pub struct Town {
     pub pool_tip: u64,
     /// The tip is a percent of the box's value (`sell_locksmith_pool_tip_percent`).
     pub pool_tip_percent: bool,
-    /// A charm that gathers a box's coins, by a word of its name (`charm_name`).
+    /// A charm that gathers a box's coins, by its name (`charm_name`).
     pub charm: String,
+    /// Boxes on the character's disk go to the pool too: the loot
+    /// profile's `use_disk`, set by the driver.
+    pub disk: bool,
 }
 
 impl Default for Town {
@@ -67,6 +70,7 @@ impl Default for Town {
             pool_tip: 0,
             pool_tip_percent: false,
             charm: String::new(),
+            disk: false,
         }
     }
 }
@@ -131,7 +135,17 @@ impl Town {
             pool_tip: number(table, "sell_locksmith_pool_tip", 0),
             pool_tip_percent: flag(table, "sell_locksmith_pool_tip_percent"),
             charm: text(table, "charm_name"),
+            disk: flag(table, "use_disk"),
         }
+    }
+
+    /// The settings for a loot profile: its `[town]` table, and the disk
+    /// the loot side uses.
+    #[must_use]
+    pub fn for_profile(profile: &crate::loot::LootProfile) -> Self {
+        let mut town = Self::from_table(&profile.town);
+        town.disk |= profile.disk;
+        town
     }
 
     /// Is this category sold at all?

@@ -3,7 +3,9 @@
 //!
 //! eloot's round (`Sell.sell`, `eloot.lic:7788-7820`, and `go_sell`,
 //! `:7074`): what is in the selling bags decides which shops to visit; each
-//! shop is the nearest room tagged for it. The Chronomage's clerk is given
+//! shop is the nearest room tagged for it. Boxes go to the locksmith pool
+//! first, and what it has ready comes back and is emptied (`super::pool`).
+//! The Chronomage's clerk is given
 //! the gold rings; at the furrier and the gem shop a sack sells whole, the
 //! note is read and the sack worn again, then what is left sells item by
 //! item, a bundle of skins a skin at a time; at the pawnshop everything sells
@@ -26,6 +28,7 @@ use cena_session::containers::StowSlot;
 use cena_session::{GameState, LootFact};
 
 use super::goods::{self, How, Lot, Shop};
+use super::pool::{self, Pool};
 use super::reply::Reply;
 use super::settings::Town;
 
@@ -66,6 +69,29 @@ pub enum Step {
     DepositAll,
     /// `withdraw N silver`: what the profile keeps in hand.
     Withdraw(u64),
+    /// `swap`: the box into the right hand, where the worker takes it.
+    Swap,
+    /// `give #to <amount>[ PERCENT][ confirm]`: a box and its tip to the
+    /// pool's worker.
+    Tip {
+        /// The worker's id.
+        to: String,
+        /// The tip in silver, or a percent of the box's value.
+        amount: u64,
+        /// The tip is a percent.
+        percent: bool,
+        /// The second give, accepting the worker's quote.
+        confirm: bool,
+    },
+    /// `ask #worker for return`: a box the pool has finished.
+    AskReturn(String),
+    /// The box in hand, emptied by the loot planner (`box_loot`); the driver
+    /// runs it and says [`Reply::BoxLocked`] when the box would not open.
+    EmptyBox(String),
+    /// `trash #id`: an emptied box into the room's receptacle.
+    Trash(String),
+    /// `drop #id`: an emptied box, where there is no receptacle.
+    Drop(String),
     /// Put one thing in one bag.
     Stow {
         /// The item's id.
@@ -131,6 +157,8 @@ pub struct Seller {
     /// This shop's lots are built on arrival, after the sacks.
     lots_built: bool,
     bank: Option<Banking>,
+    /// The visit to the locksmith pool, while it lasts.
+    pool: Option<Pool>,
     /// A sale or a note this round: the bank is wanted at the end.
     earned: bool,
     /// The bank was visited since the last shop: no second trip for weight.
@@ -157,6 +185,9 @@ impl Seller {
                 shops.insert(Shop::Pawnshop);
             }
         }
+        if town.pool && !pool::boxes(&town, state).is_empty() {
+            shops.insert(Shop::Pool);
+        }
         let note = goods::note_in_bag(state);
         if shops.is_empty() && !note {
             return None;
@@ -174,6 +205,7 @@ impl Seller {
             skipped: BTreeSet::new(),
             lots_built: false,
             bank: None,
+            pool: None,
             earned: note,
             banked: false,
             going_home: false,
@@ -231,6 +263,18 @@ impl Seller {
         if shop == Shop::Bank {
             self.bank = Some(Banking::Depositing);
             return Step::DepositAll;
+        }
+        if shop == Shop::Pool {
+            if self.pool.is_none() {
+                // No worker in the room: the pool is passed by.
+                self.pool = Pool::new(&self.town, state);
+            }
+            if let Some(step) = self.pool.as_mut().and_then(|pool| pool.next(state)) {
+                return step;
+            }
+            self.pool = None;
+            self.shop = None;
+            return self.decide(state, nearest);
         }
         if !self.lots_built {
             self.lots_built = true;
@@ -418,7 +462,16 @@ impl Seller {
             return;
         };
         let sold = facts.iter().any(|f| matches!(f, LootFact::Sold { .. }));
-        self.earned |= sold;
+        self.earned |= sold
+            || facts
+                .iter()
+                .any(|f| matches!(f, LootFact::BoxOpened { .. }));
+        if self.shop == Some(Shop::Pool)
+            && let Some(pool) = self.pool.as_mut()
+        {
+            pool.outcome(&last, facts, replies, state);
+            return;
+        }
         let refused = facts
             .iter()
             .any(|f| matches!(f, LootFact::Worthless { .. } | LootFact::TooValuable { .. }))

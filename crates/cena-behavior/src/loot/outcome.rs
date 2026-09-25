@@ -59,6 +59,14 @@ pub enum Outcome {
     BrokeThrough,
     /// `You kneel down` / `already kneeling`.
     Kneeled,
+    /// `open` on a box that is still locked (`box_loot`, `eloot.lic:5074`).
+    Locked,
+    /// A box's coins are out: `You gather the remaining`, or a charm's
+    /// swarm `reclaiming them`.
+    Gathered,
+    /// `You can only collect` / `You cannot hold any more silvers`: no more
+    /// coins fit on the character.
+    CoinsFull,
 }
 
 /// Read one reply line. `None` when it says nothing about a loot command.
@@ -121,6 +129,15 @@ pub fn classify(line: &str) -> Option<Outcome> {
     }
     if has("You kneel down") || has("already kneeling") {
         return Some(Outcome::Kneeled);
+    }
+    if has("is locked") || has("seems to be locked") {
+        return Some(Outcome::Locked);
+    }
+    if has("You gather the remaining") || has("reclaiming them") {
+        return Some(Outcome::Gathered);
+    }
+    if has("You can only collect") || has("You cannot hold any more silvers") {
+        return Some(Outcome::CoinsFull);
     }
     // `loot_all`'s "too much" alternation (`eloot.lic:5185`).
     if (has("up and stow") && has("treasure")) || has("but quickly realize") {

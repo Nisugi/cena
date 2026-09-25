@@ -261,3 +261,10 @@ crates/cena/src/loot.rs 520
 # round's facade (plan/31 Stage 4): the module doc and the re-exports; the
 # settings, the planner and the replies are in town/. 25 lines at birth.
 crates/cena-behavior/src/town.rs 100
+
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/loot/plan.rs is the loot
+# planner; plan/boxed.rs, a box in hand emptied (plan/31 Stage 4c), is an impl
+# block of the same Planner and needs its private fields, so it is a child
+# module rather than a sibling. 545 lines at birth; the cap leaves room to move
+# the floor passes down, not to grow.
+crates/cena-behavior/src/loot/plan.rs 600

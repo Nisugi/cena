@@ -28,6 +28,21 @@ pub enum Reply {
     CannotFetch,
     /// `You can't wear that`.
     CannotWear,
+    /// The pool will hold no more: *already holding as many boxes*.
+    PoolFull,
+    /// Too little silver for the tip: *You don't have that much*.
+    NoSilver,
+    /// The box needs no locksmith: *already unlocked* or *already open*.
+    AlreadyOpen,
+    /// *We don't have any boxes ready for you*, or *We don't seem to have
+    /// that box*; also *You need to lighten your load first*, which ends
+    /// the returns the same way.
+    NoneReady,
+    /// *You do not notice a trash receptacle here*: drop it instead.
+    NoTrash,
+    /// Not the game's: the driver says the loot planner found the box
+    /// locked, so it goes back to its bag.
+    BoxLocked,
     /// `bundle remove` took the bundle apart: *Those were the last two*,
     /// one skin in each hand (`furrier`, `eloot.lic:6905`).
     LastTwo,
@@ -70,6 +85,24 @@ pub fn classify(line: &str) -> Option<Reply> {
     }
     if has("You can't wear that") {
         return Some(Reply::CannotWear);
+    }
+    if has("already holding as many boxes") {
+        return Some(Reply::PoolFull);
+    }
+    if has("You don't have that much") {
+        return Some(Reply::NoSilver);
+    }
+    if has("already unlocked") || has("already open") {
+        return Some(Reply::AlreadyOpen);
+    }
+    if has("We don't have any boxes ready for you")
+        || has("We don't seem to have that box")
+        || has("You need to lighten your load first")
+    {
+        return Some(Reply::NoneReady);
+    }
+    if has("You do not notice a trash receptacle") {
+        return Some(Reply::NoTrash);
     }
     if has("Those were the last two") {
         return Some(Reply::LastTwo);

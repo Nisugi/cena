@@ -17,6 +17,9 @@ use super::settings::Town;
 /// A shop a round visits, in the order it visits them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Shop {
+    /// The locksmith pool, first (`process_boxes` before `go_sell`):
+    /// tagged `locksmith pool`.
+    Pool,
     /// The Chronomage's office: gold rings given to its clerk.
     Chronomage,
     /// Skins and reagents: tagged `furrier`.
@@ -42,6 +45,7 @@ impl Shop {
     #[must_use]
     pub const fn tags(self) -> &'static [&'static str] {
         match self {
+            Self::Pool => &["locksmith pool"],
             Self::Chronomage => &["chronomage"],
             Self::Furrier => &["furrier"],
             Self::Gemshop => &["gemshop"],
@@ -191,8 +195,9 @@ pub(super) fn goods(town: &Town, state: &GameState) -> Vec<(RoomItem, ObjectType
                 continue;
             }
             let types = classify(&item.noun, &item.text);
-            // Boxes are the pool's (Stage 4c), not a sale.
-            if types.is("box") || !wanted(town, &item, &types) {
+            // Boxes are the pool's, and sold only when the profile sells
+            // them (`check_items`, `:6503`).
+            if (types.is("box") && !town.sells("box")) || !wanted(town, &item, &types) {
                 continue;
             }
             out.push((item, types, bag.clone()));
@@ -210,6 +215,9 @@ pub(super) fn shop_for(town: &Town, item: &RoomItem, types: &ObjectTypes) -> Opt
     }
     if types.is("collectible") {
         return town.collectibles.then_some(Shop::Collectibles);
+    }
+    if types.is("box") {
+        return town.sells("box").then_some(Shop::Pawnshop);
     }
     if types.sells_to("furrier") {
         return Some(Shop::Furrier);
@@ -326,6 +334,18 @@ pub(super) fn lots(
         });
     }
     out
+}
+
+/// This character's own disk in the room, by id: a `disk` whose name begins
+/// with the character's name.
+pub(super) fn own_disk(state: &GameState) -> Option<String> {
+    let name = state.character.name.as_deref()?;
+    state
+        .room
+        .objects
+        .iter()
+        .find(|item| item.noun == "disk" && item.text.starts_with(name))
+        .map(|item| item.id.clone())
 }
 
 /// A note, scrip or chit in either hand (`read_note`, `:2445`).

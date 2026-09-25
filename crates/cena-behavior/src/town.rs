@@ -18,6 +18,7 @@
 
 pub mod goods;
 pub mod plan;
+mod pool;
 pub mod reply;
 pub mod settings;
 
