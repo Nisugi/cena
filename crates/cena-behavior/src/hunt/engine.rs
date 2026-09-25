@@ -160,6 +160,10 @@ pub struct Hunt {
     pub(super) aiming: Aiming,
     /// Where the wand list stands ([`super::wand`]).
     pub(super) wanding: Wanding,
+    /// Return waypoints still to walk through on the way to rest.
+    pub(super) waypoints: VecDeque<RoomId>,
+    /// This rest has fogged once from the rift already.
+    pub(super) fogged: bool,
 }
 
 impl Hunt {
@@ -200,6 +204,8 @@ impl Hunt {
             entered: false,
             aiming: Aiming::default(),
             wanding: Wanding::default(),
+            waypoints: VecDeque::new(),
+            fogged: false,
         }
     }
 

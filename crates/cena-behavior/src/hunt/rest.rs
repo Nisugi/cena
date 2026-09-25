@@ -13,6 +13,9 @@ use cena_session::{Able, GameState, Injuries};
 use super::engine::{Hunt, REST_BEAT};
 use super::said::{Ending, Here, Phase, Said, Why};
 
+/// The map's Temporal Rift, where a fog can land (`bigshot.lic:7635`).
+const RIFT: RoomId = RoomId(2635);
+
 impl Hunt {
     // --- rest -----------------------------------------------------------------
 
@@ -20,24 +23,15 @@ impl Hunt {
     /// back, and the prepare commands.
     pub(super) fn rest(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
         match self.phase {
-            Phase::Hunting => {
-                let why = self.rest_reason(state)?;
-                self.must_rest = None;
-                let Some(resting) = self.profile.rooms.resting else {
-                    return Some(Said::Done(Ending::NoRestingRoom));
-                };
-                self.phase = Phase::ToRest(why);
-                self.notes
-                    .push(format!("{why}: walking to the resting room."));
-                Some(self.step_toward(
-                    RoomId(resting),
-                    here,
-                    Phase::Resting(why),
-                    &self.profile.rest.commands.clone(),
-                ))
-            }
+            Phase::Hunting => self.start_rest(state, here),
             Phase::ToRest(why) => {
                 let resting = RoomId(self.profile.rooms.resting?);
+                if let Some(said) = self.fog_step(why, here, resting) {
+                    return Some(said);
+                }
+                if let Some(said) = self.next_waypoint(here) {
+                    return Some(said);
+                }
                 // Arrived with loot to sell: the round first, then the rest
                 // (`plan/31` Stage 4; the author: *"sells typically happen
                 // during the rest"*).
@@ -170,6 +164,82 @@ impl Hunt {
             Phase::Preparing,
             &self.profile.prepare.clone(),
         )
+    }
+
+    /// A reason to rest holds: the fog, the waypoints, the walk.
+    fn start_rest(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
+        let why = self.rest_reason(state)?;
+        self.must_rest = None;
+        let Some(resting) = self.profile.rooms.resting else {
+            return Some(Said::Done(Ending::NoRestingRoom));
+        };
+        self.phase = Phase::ToRest(why);
+        self.notes
+            .push(format!("{why}: walking to the resting room."));
+        self.waypoints = self
+            .profile
+            .rest
+            .waypoints
+            .iter()
+            .copied()
+            .map(RoomId)
+            .collect();
+        if self.fogs(why) {
+            self.pending = self.profile.rest.fog.iter().cloned().collect();
+            self.fogged = false;
+            if let Some(line) = self.pending.pop_front() {
+                return Some(Said::Send { line, target: None });
+            }
+        }
+        if let Some(said) = self.next_waypoint(here) {
+            return Some(said);
+        }
+        Some(self.step_toward(
+            RoomId(resting),
+            here,
+            Phase::Resting(why),
+            &self.profile.rest.commands.clone(),
+        ))
+    }
+
+    /// The fog's lines still to send, and a second fog from the rift.
+    fn fog_step(&mut self, why: Why, here: Here<'_>, resting: RoomId) -> Option<Said> {
+        if let Some(line) = self.pending.pop_front() {
+            return Some(Said::Send { line, target: None });
+        }
+        // Landed in the rift: once more (`fog_rift`).
+        if self.profile.rest.fog_rift
+            && self.fogs(why)
+            && here.room == Some(RIFT)
+            && resting != RIFT
+            && !std::mem::replace(&mut self.fogged, true)
+        {
+            self.pending = self.profile.rest.fog.iter().cloned().collect();
+            if let Some(line) = self.pending.pop_front() {
+                return Some(Said::Send { line, target: None });
+            }
+        }
+        None
+    }
+
+    /// Whether this rest fogs: a fog is set, and it is not optional or the
+    /// rest is for wounds or weight (`bigshot.lic:7681`).
+    fn fogs(&self, why: Why) -> bool {
+        let rest = &self.profile.rest;
+        !rest.fog.is_empty()
+            && (!rest.fog_optional || matches!(why, Why::Wounded | Why::Injured | Why::Encumbered))
+    }
+
+    /// The next return waypoint to walk to, dropping those reached.
+    fn next_waypoint(&mut self, here: Here<'_>) -> Option<Said> {
+        while let Some(next) = self.waypoints.front().copied() {
+            if here.room == Some(next) {
+                self.waypoints.pop_front();
+                continue;
+            }
+            return Some(Said::Walk(next));
+        }
+        None
     }
 
     /// One more rest done; the hunt's end when `rest.stop_after` is reached.

@@ -404,3 +404,36 @@ fn lone_targets_only_leaves_a_room_entered_with_two() {
     // The cloud is not a creature: one kobold, stay.
     assert_eq!(hunt.tick(&state, here(10), Some(1_000)), attack());
 }
+
+#[test]
+fn a_rest_fogs_then_walks_the_waypoints_then_the_resting_room() {
+    let profile = format!(
+        "{PROFILE}\n[rest]\nfog = [\"incant 130\"]\nwaypoints = [15]\n[rest.when]\nspirit_at_most = 50\n"
+    );
+    let mut hunt = Hunt::new(Profile::parse(&profile).unwrap(), 1);
+    let mut state = fighting(1_000, "10");
+    state.apply(&Frame::ProgressBar(cena_session::ProgressBar {
+        id: "spirit".to_owned(),
+        dialog: None,
+        percent: 40,
+        text: "spirit 4/10".to_owned(),
+        amount: None,
+        attrs: Vec::new(),
+        time_remaining_secs: None,
+    }));
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_000)),
+        Said::Send {
+            line: "incant 130".to_owned(),
+            target: None
+        }
+    );
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_001)),
+        Said::Walk(RoomId(15))
+    );
+    assert_eq!(
+        hunt.tick(&state, here(15), Some(1_002)),
+        Said::Walk(RoomId(20))
+    );
+}

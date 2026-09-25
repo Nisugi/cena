@@ -249,3 +249,12 @@ fn priority_lone_targets_and_sneaking_are_carried() {
         Some("movement autosneak off")
     );
 }
+
+#[test]
+fn fog_return_becomes_the_lines_it_sends() {
+    let gate = import("t", "---\nfog_return: '5'\nreturn_waypoint_ids: 15, 16\n").unwrap();
+    assert_eq!(gate.profile.rest.fog, ["incant 930", "go portal"]);
+    assert_eq!(gate.profile.rest.waypoints, [15, 16]);
+    let custom = import("t", "---\nfog_return: '6'\ncustom_fog: rub my orb\n").unwrap();
+    assert_eq!(custom.profile.rest.fog, ["rub my orb"]);
+}

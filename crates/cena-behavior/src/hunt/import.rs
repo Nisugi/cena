@@ -355,7 +355,46 @@ impl Job {
         self.profile.rest.until.spirit = number(&self.take("rest_till_spirit"));
         self.profile.rest.until.stamina = number(&self.take("rest_till_percentstamina"));
         self.profile.rest.commands = self.commands("resting_commands");
+        self.fog();
         self.rest_when();
+    }
+
+    /// `fog_return`, bigshot's six choices as the lines each sends
+    /// (`bigshot.lic:7687-7722`), `fog_optional`, `fog_rift`, and
+    /// `return_waypoint_ids`.
+    fn fog(&mut self) {
+        let custom = self.commands("custom_fog");
+        let choice = self.take("fog_return");
+        let choice = choice.trim();
+        let pick = |id: &str, spell: &str| choice == id || choice.contains(spell);
+        let lines: Vec<&str> = if pick("1", "130") {
+            vec!["incant 130"]
+        } else if pick("2", "Symbol of Return") {
+            vec!["symbol of return"]
+        } else if pick("3", "1020") {
+            vec!["incant 1020"]
+        } else if pick("4", "Sigil of Escape") {
+            vec!["sigil of escape"]
+        } else if pick("5", "930") {
+            vec!["incant 930", "go portal"]
+        } else {
+            Vec::new()
+        };
+        self.profile.rest.fog = if pick("6", "Custom") {
+            custom
+        } else {
+            lines.into_iter().map(str::to_owned).collect()
+        };
+        self.profile.rest.fog_optional = flag(&self.take("fog_optional"));
+        self.profile.rest.fog_rift = flag(&self.take("fog_rift"));
+        for entry in list(&self.take("return_waypoint_ids")) {
+            match number(&entry) {
+                Some(id) => self.profile.rest.waypoints.push(id),
+                None => self.note(format!(
+                    "return_waypoint_ids: `{entry}` is not a room number; Hydra's rooms are the map's numbers"
+                )),
+            }
+        }
     }
 
     /// `wounded_eval`: a Ruby expression of terms joined by `||`. Each term

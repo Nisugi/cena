@@ -163,6 +163,18 @@ pub struct Rest {
     /// Hydra's own; bigshot has none.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_after: Option<u32>,
+    /// Sent on leaving the hunt for a rest, before any walking: a spell or
+    /// symbol that carries the character toward town (`fog_return`,
+    /// `custom_fog`, `bigshot.lic:7677-7723`). Empty walks the whole way.
+    pub fog: Vec<String>,
+    /// Fog only when resting wounded or encumbered (`fog_optional`).
+    pub fog_optional: bool,
+    /// Fog again when the first lands in room 2635, the rift
+    /// (`fog_rift`, `:7635`).
+    pub fog_rift: bool,
+    /// Rooms walked through, in order, on the way to rest
+    /// (`return_waypoint_ids`, `:7494-7496`).
+    pub waypoints: Vec<u32>,
     /// Sent on arriving at the rest room (`resting_commands`).
     pub commands: Vec<String>,
 }
