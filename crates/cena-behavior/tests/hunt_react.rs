@@ -263,3 +263,54 @@ fn a_wand_step_gets_a_fresh_wand_waves_it_and_ends_when_none_are_left() {
         "spent, and no dead-wand container"
     );
 }
+
+/// The room's roster: Bob, with this clause after his name.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors"
+)]
+fn bob(state: &mut GameState, clause: &str) {
+    let text = |t: &str| cena_session::Run {
+        text: t.to_owned(),
+        style: Default::default(),
+        link: None,
+        inner_link: None,
+    };
+    let mut name = text("Bob");
+    name.link = Some(cena_session::Link {
+        kind: cena_session::LinkKind::Exist {
+            id: "-9".to_owned(),
+            noun: "Bob".to_owned(),
+        },
+        text: "Bob".to_owned(),
+        coord: None,
+    });
+    state.apply(&Frame::Component {
+        id: "room players".into(),
+        body: Runs {
+            runs: vec![text("Also here: "), name, text(clause)],
+        },
+    });
+}
+
+#[test]
+fn a_fallen_player_is_pulled_while_something_hostile_is_here_and_a_dead_one_ends_it() {
+    let mut state = standing(1_000);
+    kobold(&mut state);
+    bob(&mut state, " who is lying down.");
+    let mut hunt = Hunt::new(Profile::parse(PROFILE).unwrap(), 1);
+    // Bob was here first, so the room is not the hunt's; the pull is still owed.
+    assert_eq!(hunt.tick(&state, here(), Some(1_000)), send("pull Bob"));
+    assert_ne!(
+        hunt.tick(&state, here(), Some(1_001)),
+        send("pull Bob"),
+        "not again at once"
+    );
+    bob(&mut state, " who appears dead.");
+    let deader = format!("{PROFILE}\n[react]\ndeader = true\n");
+    let mut hunt = Hunt::new(Profile::parse(&deader).unwrap(), 1);
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_000)),
+        Said::Done(Ending::Deader)
+    );
+}

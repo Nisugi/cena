@@ -72,6 +72,8 @@ pub enum Ending {
     Injured,
     /// `rest.stop_after` rests were taken.
     Rested(u32),
+    /// A dead player is in the room (`react.deader`).
+    Deader,
     /// Every wand on the list is gone from the fresh container.
     NoWands,
     /// A weapon needs blessing and nothing known can bless it.
@@ -98,6 +100,7 @@ impl fmt::Display for Ending {
             Self::Sent => f.write_str("sent"),
             Self::Rested(n) => write!(f, "rested {n} times, as rest.stop_after asks"),
             Self::NoWands => f.write_str("no fresh wand is left"),
+            Self::Deader => f.write_str("a dead player is here"),
             Self::Unblessed => f.write_str(
                 "the weapon needs blessing, and neither Bless (304) nor the Voln symbol is known",
             ),

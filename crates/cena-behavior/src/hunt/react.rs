@@ -12,6 +12,8 @@
 //! | too much held to pick up | rest: the bags are full | bigshot's `item_limit` |
 //! | the hive's ground churning | leave the room | ecleanse's `hive_trap` |
 //! | a bless shrugged off or gone, with `react.bless` | `incant 304 #<id>`, else `symbol bless #<id>`, else the hunt ends | bigshot's `cmd_bless`, `bigshot.lic:5553-5581` |
+//! | a player down while something hostile is here, or a group member down | `pull <name>`, with `react.pull` | bigshot's `check_for_deaders_prone`, `bigshot.lic:3902-3919` |
+//! | a dead player here, with `react.deader` | the hunt ends | `:3921-3927` (bigshot pauses) |
 //! | a curse, an infection, a bless gone, an ambusher | said to the player | |
 //! | swallowed: The Belly of the Beast | `attack wall` until out | bigshot's `creature_escape`, `bigshot.lic:9638-9700` |
 //! | swallowed: Ooze, Innards | `kill organ` until out | " |
@@ -32,6 +34,9 @@ use cena_session::incident::{Disarm, HiveTrap, Incident};
 
 use super::engine::Hunt;
 use super::said::{Ending, Said, Why};
+
+/// Seconds before the same player is pulled again.
+const PULL_AGAIN: u32 = 5;
 
 /// Tries at a recovery before the hunt gives up (ecleanse's `search_count`).
 const TRIES: u32 = 10;
@@ -59,6 +64,9 @@ pub(super) struct Reacting {
     escaping: bool,
     /// Weapons to bless, by id.
     bless: Vec<String>,
+    /// When each player was last pulled, so a pull that has not landed yet
+    /// is not sent every tick.
+    pulled: std::collections::BTreeMap<String, u32>,
 }
 
 impl Hunt {
@@ -151,6 +159,9 @@ impl Hunt {
                 return Some(Said::Walk(to));
             }
         }
+        if let Some(said) = self.players(state, now) {
+            return Some(said);
+        }
         if let Some(id) = self.react.bless.pop() {
             let line = if state.known_spells.knows(304) == Some(true)
                 && crate::cast::ready(state, 304, 1, 0).is_ok()
@@ -193,6 +204,56 @@ impl Hunt {
             });
         }
         Some(Said::Send { line, target: None })
+    }
+
+    /// A dead player ends the hunt (`react.deader`); a player down is
+    /// pulled up (`react.pull`), at most every few seconds each.
+    fn players(&mut self, state: &GameState, now: Option<u32>) -> Option<Said> {
+        let status = |player: &cena_session::RoomItem| {
+            player
+                .status
+                .as_ref()
+                .map(|s| s.as_str().to_ascii_lowercase())
+                .unwrap_or_default()
+        };
+        if self.profile.react.deader
+            && state
+                .room
+                .players
+                .iter()
+                .any(|p| status(p).contains("dead"))
+        {
+            return Some(Said::Done(Ending::Deader));
+        }
+        if !self.profile.react.pull {
+            return None;
+        }
+        let hostile = self.could_fight(state).next().is_some();
+        let members: Vec<&str> = state
+            .group
+            .members()
+            .iter()
+            .map(|member| member.noun.as_str())
+            .collect();
+        let now = now?;
+        let down = state.room.players.iter().find(|player| {
+            let status = status(player);
+            let fallen = (status.contains("sitting")
+                || status.starts_with("lying")
+                || status.contains("prone"))
+                && !status.contains("dead");
+            let recent = self
+                .react
+                .pulled
+                .get(&player.noun)
+                .is_some_and(|at| now.saturating_sub(*at) < PULL_AGAIN);
+            fallen && !recent && (hostile || members.contains(&player.noun.as_str()))
+        })?;
+        self.react.pulled.insert(down.noun.clone(), now);
+        Some(Said::Send {
+            line: format!("pull {}", down.noun),
+            target: None,
+        })
     }
 
     /// One step of getting a weapon back.

@@ -335,12 +335,23 @@ pub struct Aim {
 /// The hunt's answers to incidents.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bigshot's switches, carried as they are"
+)]
 pub struct React {
     /// Get a weapon back that was knocked, pulled or webbed away.
     pub recover: bool,
     /// Take a weapon reaction when the game offers one
     /// (`weapon_reaction`, on by default in bigshot, `bigshot.lic:1380`).
     pub weapon_reaction: bool,
+    /// Pull a fallen player to their feet while something hostile is
+    /// here; a group member always (`pull`, on by default in bigshot,
+    /// `bigshot.lic:3902-3919`).
+    pub pull: bool,
+    /// End the hunt when a dead player is in the room (`deader`,
+    /// `:3921-3927`; bigshot pauses).
+    pub deader: bool,
     /// Bless a weapon whose blessing is shrugged off or gone, with Bless
     /// (304) or the Voln symbol (`bless`, `bigshot.lic:5553-5581`).
     pub bless: bool,
@@ -351,6 +362,8 @@ impl Default for React {
         Self {
             recover: true,
             weapon_reaction: true,
+            pull: true,
+            deader: false,
             bless: false,
         }
     }
