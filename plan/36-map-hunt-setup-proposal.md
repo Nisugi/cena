@@ -4,6 +4,12 @@ Status: proposed for Nisugi's review, not an accepted upstream contract.
 Baseline: PRs #13 and #14 treated as merged. Existing live behavior remains
 unchanged unless a player explicitly runs a profile using the new settings.
 
+Delivery: one draft integration PR, stacked on #14 while #13/#14 remain open.
+Atari explicitly requested including the proposed field/town recovery behavior
+with the interface. The native changes below remain proposals for Nisugi to
+accept or adapt, not a second hunter. Hydra owns execution, travel, recovery,
+and stopping; the offline example exists only to exercise configuration.
+
 ## Why
 
 The map already answers where a hunt is. Players should select that destination,
@@ -20,20 +26,26 @@ habitat remain independent. A human-edited boundary is not new spawn evidence.
    its review status, source-map fingerprint, creatures, and reference levels.
    Do not claim that level alone makes a hunt safe or suitable for a profession.
 3. Pick a starting room inside the selection. Choose town rest, and optionally
-   field rest, on the map. Selection never moves the character.
+   field rest, by exact room number plus Enter, name search, browser-local
+   favorites, or map selection. Map selection returns to the original hunt
+   camera and preserves the draft. TSC is a suggestion, not a claim of safety
+   or nearest reachable town. Selection never moves the character.
 4. Supply explicit native attack steps for selected creatures and separate rest
    command lists. Do not silently choose attacks, enable a catch-all target, or
    turn arbitrary script names into commands. Native sequences are not Lich scripts.
-5. Preview the effective native TOML, including inherited settings and any
-   conflicts. Refuse stale map identities, unknown rooms, an empty selection,
-   or a starting room outside the selection. Generated membership requires
+5. Click **Save setup**. It validates the effective native TOML internally,
+   including inherited settings and conflicts. Refuse stale map identities,
+   unknown rooms, an empty selection, or a starting room outside the selection.
+   Show missing fields inline and beside Save. Generated membership requires
    explicit acknowledgement; stale corrections require boundary review first.
-6. Save a new named profile, reload it through the same native loader Hunt uses,
-   and show exactly what was saved. No game commands, authority claim, movement,
-   selling, or hunting occur when previewing or saving.
-7. Initial live acceptance uses an operator-issued `;hunt <profile>` and existing
-   stop controls. A future Start button must be a separate deliberate action,
-   generation-pinned through the existing command path, never part of Save.
+6. Save the exact validated configuration as a new named profile and reload it
+   through Hunt's native loader. Edits during validation prevent saving the older
+   draft. Generated TOML and manual readback are optional **Advanced configuration**
+   tools, not mandatory steps. No game commands, authority claim, movement,
+   selling, or hunting occur when validating or saving.
+7. Nisugi decides the final placement in Hydra's hunter workflow. Any future
+   Start action remains a separate deliberate action through existing controls,
+   never part of Save. Live acceptance is deferred until integration is agreed.
 
 ## Small native extensions
 

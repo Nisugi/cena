@@ -399,7 +399,13 @@ try{
   highlight:(ids,paint=true)=>{habitatRooms=ids;if(paint)draw();},
   fit:ids=>{if(ids.length)fitRooms(ids.map(id=>lookup[id]));},openExit:id=>go(id)});
  hunting=huntingView(root,{data:rawData,context:loaded.regionContext,corrections,redraw:()=>draw(),fit:ids=>fitRooms(ids.map(id=>lookup[id])),onSelect:developerHunting?id=>editor?.select(id):nativeSetup?id=>setup?.choose(hunting.catalogue.area(state.area).hunts.find(h=>h.id===id)):null,wasPan:()=>Date.now()-lastMove<=180});
- if(nativeSetup)setup=nativeHuntSetup(root,{data:rawData,connection:nativeSetup,fit:ids=>fitRooms(ids.map(id=>lookup[id]))});
+ if(nativeSetup)setup=nativeHuntSetup(root,{data:rawData,connection:nativeSetup,storage,fit:ids=>fitRooms(ids.map(id=>lookup[id])),
+  mapPicker:id=>{
+   const saved={state:{...state},view:{...view},origin,destination,history:[...history]};
+   if(lookup[id])go(id,{select:false,fit:true,record:false});
+   // Render the hunt's controls before measuring its viewport, not the town's.
+   return ()=>{state=saved.state;view=saved.view;origin=saved.origin;destination=saved.destination;history=saved.history;recalculate();onNavigate(`room=${state.room}&mode=${state.mode}`);render();aspect();draw();};
+  },previewRoute:(from,to)=>{origin=from;destination=to;$('route-metric').value='cost';$('route-scripted').checked=false;recalculate();render();return route;}});
  if(developerHunting)editor=huntingEditor(root,{data:rawData,context:loaded.regionContext,storage,files:huntingFiles,redraw:()=>draw(),fit:ids=>fitRooms(ids.map(id=>lookup[id])),camera:()=>({view,rooms:scene().sheet.rooms}),wasPan:()=>Date.now()-lastMove<=180,signal:cleanup.signal});
  overview=regionOverviewView(root,{data:rawData,context:loaded.regionContext,directory:regional,browse:id=>{go(id,{select:false});fitRooms(scene().sheet.rooms);}});
  const params=new URLSearchParams(initialHash.replace(/^#/,'')),requested=Number(params.get('room')||config.start_room);state=initial(data,lookup,lookup[requested]?requested:config.start_room);if(params.get('mode')==='explorer')state.mode='explorer';if(state.room!==origin&&!params.has('browse')&&!params.has('overview'))destination=state.room;recalculate();view=bounds(scene().sheet.rooms);aspect();render();

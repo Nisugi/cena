@@ -17,6 +17,24 @@ selections, invalid start/rest IDs and conflicting higher-priority settings.
 Existing files are never overwritten. Unrelated settings continue to inherit.
 The original JSON setup prototype is not promoted into a second native store.
 
+The current source also provides a shared town/field rest destination picker:
+search this regional snapshot by name or room ID, choose the Landing TSC
+suggestion, or pick on another local map and return to the hunt camera. Rest
+commands and the hunt draft survive that map excursion. The suggestion is not
+a claim of safety or nearest reachable town. Route previews use eligible
+recorded links only and issue no commands. Favorites/recent destinations are
+browser-local, scoped to character, instance and map fingerprint; they do not
+import or replace native inherited rest settings. This UI follow-up is not yet
+included in the previously archived bundle described below.
+
+The source UI now uses **Save setup** as the normal action: native preview and
+validation happen internally, then the exact validated configuration is saved.
+Missing required fields are shown inline and beside Save. Changes during
+validation prevent saving the older draft. Generated TOML/manual preview and
+readback are optional under **Advanced configuration**. Known rest room IDs
+accept Enter directly; ambiguous names and unknown IDs require correction.
+No draft-only save or existing-profile overwrite has been added.
+
 The shared SVG hit test now accounts for actual SVG scaling/letterboxing. The
 browser regression reproduced TSC selecting a neighboring room before this fix;
 the fixed test selects TSC precisely. An active picker also takes priority over

@@ -1,5 +1,6 @@
 //! Offline native setup harness. No credentials, connector, or session exists.
 //! Requires explicit map and isolated data-directory arguments.
+//! Optional `CENA_HUNTING_CORRECTIONS_DIR` loads reviewed boundaries read-only.
 
 use cena_behavior::{hunt::setup, travel::read_map};
 use serde_json::json;
@@ -23,6 +24,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hash = format!("{:x}", Sha256::digest(&bytes));
     let map = Arc::new(read_map(&bytes)?);
     let server = cena_web::WebServer::open().await?;
+    let server = match std::env::var_os("CENA_HUNTING_CORRECTIONS_DIR") {
+        Some(directory) => server.with_hunting_corrections(directory.into())?,
+        None => server,
+    };
     server.sessions().hunt_setup(cena_session::SessionId(1), Arc::new(move |message| {
         let (map, hash, dir) = (Arc::clone(&map), hash.clone(), dir.clone());
         Box::pin(async move {

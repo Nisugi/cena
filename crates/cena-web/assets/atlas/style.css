@@ -56,6 +56,15 @@ input[type=color]{width:26px;height:25px;padding:2px;margin:0;border:1px solid #
 .native-hunt-mode .connections>:not(#native-hunt-setup){display:none}
 #native-hunt-setup label{display:block;margin:10px 0}#native-hunt-setup textarea{display:block;width:100%;min-height:70px;background:var(--bg);color:var(--text)}
 #native-hunt-setup button{margin:4px 0;max-width:100%}#native-setup-toml{white-space:pre-wrap;font-size:11px;overflow-wrap:anywhere}#native-setup-status{color:var(--gold)}
+.rest-picker{width:min(640px,90vw);max-height:85dvh;overflow:auto;padding:20px;background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.rest-picker::backdrop{background:#0009}.rest-picker input{display:block;width:100%;margin:8px 0;padding:10px}.rest-picker label{font-size:13px}
+#native-rest-close{float:right}.rest-picker button{margin:4px 6px 4px 0}.rest-picker h3{font-size:14px;margin:14px 0 6px}
+#native-rest-results{max-height:30vh;overflow:auto}#native-rest-results button{display:block;width:100%;text-align:left}
+#native-rest-detail{border-top:1px solid var(--line);margin-top:12px}#native-rest-message{color:var(--gold);font-size:13px}
+#native-hunt-setup [hidden]{display:none}
+#native-setup-save-box{border-top:1px solid var(--line);margin:12px 0;padding-top:10px}#native-setup-save{width:100%;border-color:#6bafa1;background:#1e3935}
+#native-save-status,.setup-field-error{color:var(--gold);font-size:12px}#native-hunt-setup [aria-invalid=true]{border-color:#ed9292}.setup-field-error{color:#ffb5b5;margin:4px 0}
+#native-setup-advanced{margin-top:14px}#native-setup-advanced summary{color:var(--muted);font-size:12px;cursor:pointer}
 @media(max-width:1000px){.native-hunt-mode>.workspace{grid-template-columns:170px minmax(240px,1fr) 270px}}
 
 /* Developer workspace: only the side panels scroll, never the map document. */

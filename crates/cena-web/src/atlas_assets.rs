@@ -14,6 +14,7 @@ pub(crate) fn get(name: &str) -> Option<(&'static str, &'static str)> {
         "hunting-editor.mjs" => include_str!("../assets/atlas/hunting-editor.mjs"),
         "hunting-files.mjs" => include_str!("../assets/atlas/hunting-files.mjs"),
         "native-hunt-setup.mjs" => include_str!("../assets/atlas/native-hunt-setup.mjs"),
+        "rest-picker.mjs" => include_str!("../assets/atlas/rest-picker.mjs"),
         "icons.mjs" => include_str!("../assets/atlas/icons.mjs"),
         "index.html" => include_str!("../assets/atlas/index.html"),
         "interaction.mjs" => include_str!("../assets/atlas/interaction.mjs"),
