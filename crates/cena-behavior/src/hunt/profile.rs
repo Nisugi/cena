@@ -92,6 +92,8 @@ pub struct Profile {
     pub loot: Loot,
     /// How the ground is walked between fights.
     pub wander: Wander,
+    /// What the hunt does about the game's incidents (`hunt/react.rs`).
+    pub react: React,
     /// What to attack, in order of preference, each with its routine.
     pub targets: Vec<Target>,
     /// The routines, by name: the steps taken against a target, in order.
@@ -242,6 +244,26 @@ impl Default for Wander {
         Self {
             wait: 0.3,
             ignore_disks: false,
+        }
+    }
+}
+
+/// The hunt's answers to incidents.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct React {
+    /// Get a weapon back that was knocked, pulled or webbed away.
+    pub recover: bool,
+    /// Take a weapon reaction when the game offers one
+    /// (`weapon_reaction`, on by default in bigshot, `bigshot.lic:1380`).
+    pub weapon_reaction: bool,
+}
+
+impl Default for React {
+    fn default() -> Self {
+        Self {
+            recover: true,
+            weapon_reaction: true,
         }
     }
 }

@@ -70,6 +70,7 @@ pub(super) enum Held {
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::profile::{Profile, Step, Target};
+use super::react::Reacting;
 use super::replies::Heard;
 pub use super::said::{Ending, Here, Phase, Said, Why};
 use crate::heal::HealProfile;
@@ -147,6 +148,8 @@ pub struct Hunt {
     pub(super) heard: Heard,
     /// Whose this room is, once the game has said who is in it.
     pub(super) held: Option<Held>,
+    /// What incidents left to do ([`super::react`]).
+    pub(super) react: Reacting,
 }
 
 impl Hunt {
@@ -182,6 +185,7 @@ impl Hunt {
             heal_mode: (false, false),
             heard: Heard::default(),
             held: None,
+            react: Reacting::default(),
         }
     }
 
@@ -290,7 +294,12 @@ impl Hunt {
         if self.held.is_none() {
             self.held = Self::hold_room(state, self.profile.wander.ignore_disks);
         }
-        if let Some(said) = Self::survival(state) {
+        if state.status.known().dead() != Some(true)
+            && let Some(said) = self.react(state, here, now)
+        {
+            return said;
+        }
+        if let Some(said) = Self::survival(state, self.recovering()) {
             return said;
         }
         if let Some(said) = self.rest(state, here) {
@@ -325,8 +334,9 @@ impl Hunt {
 
     // --- survival ----------------------------------------------------------
 
-    /// Dead: the hunt is over. Down, and able to move: stand.
-    fn survival(state: &GameState) -> Option<Said> {
+    /// Dead: the hunt is over. Down, and able to move: stand, unless the
+    /// kneel was a recovery's.
+    fn survival(state: &GameState, recovering: bool) -> Option<Said> {
         let status = state.status.known();
         if status.dead() == Some(true) {
             return Some(Said::Done(Ending::Dead));
@@ -336,7 +346,7 @@ impl Hunt {
             || status.sitting() == Some(true)
             || status.kneeling() == Some(true);
         let held = status.stunned() == Some(true) || status.webbed() == Some(true);
-        (down && !held).then(|| Said::Send {
+        (down && !held && !recovering).then(|| Said::Send {
             line: "stand".to_owned(),
             target: None,
         })
@@ -709,7 +719,7 @@ impl Hunt {
     /// The next room to walk to: a crossable exit not on the boundary, a
     /// fresh one if any, else the one least recently visited (`flee.rb`'s
     /// `Walker`).
-    fn next_room(&mut self, here: Here<'_>, now: Option<u32>) -> Option<RoomId> {
+    pub(super) fn next_room(&mut self, here: Here<'_>, now: Option<u32>) -> Option<RoomId> {
         let room = here.room?;
         if !self.visited.contains(&room) {
             self.visited.push(room);

@@ -184,6 +184,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                         .collect()
                 })
                 .unwrap_or_default();
+            let incidents = self.state.take_incidents();
+            if !incidents.is_empty() {
+                self.machine.incidents(&incidents);
+            }
             let now = self.state.game_time_now();
             let said = self.machine.tick(
                 &self.state,

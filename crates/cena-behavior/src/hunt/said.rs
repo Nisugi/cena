@@ -70,6 +70,8 @@ pub enum Ending {
     /// An injury refused an action again after a rest for it: nothing the
     /// rest did healed it.
     Injured,
+    /// Disarmed, and the weapon could not be got back.
+    Disarmed,
     /// An attack had no effect: the weapon or ammunition cannot hurt what
     /// is here (`bigshot.lic:6398`).
     NoEffect,
@@ -88,6 +90,7 @@ impl fmt::Display for Ending {
             Self::Stocked => f.write_str("stocked"),
             Self::Waggled => f.write_str("waggled"),
             Self::Sent => f.write_str("sent"),
+            Self::Disarmed => f.write_str("disarmed, and the weapon could not be recovered"),
             Self::Injured => f.write_str("an injury still stops the attack after resting for it"),
             Self::NoEffect => f.write_str(
                 "an attack had no effect: this weapon or ammunition cannot hurt what is here",

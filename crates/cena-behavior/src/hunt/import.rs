@@ -421,6 +421,11 @@ impl Job {
         self.profile.loot.box_in_hand = flag(&self.take("box_in_hand"));
         self.profile.flee.count = number(&self.take("flee_count"));
         self.profile.wander.ignore_disks = flag(&self.take("ignore_disks"));
+        // Absent is bigshot's default, on.
+        let reaction = self.take("weapon_reaction");
+        if !reaction.trim().is_empty() {
+            self.profile.react.weapon_reaction = flag(&reaction);
+        }
         let wait = self.take("wander_wait");
         if wait.trim().is_empty() {
             return;

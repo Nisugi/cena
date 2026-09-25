@@ -47,6 +47,8 @@ pub enum Reply {
     Rooted,
     /// `But you don't have any mana!`
     NoMana,
+    /// `You spy a ... and recover it!`: a disarmed weapon is back.
+    Recovered,
 }
 
 /// Read one line. `None`: nothing the hunt acts on.
@@ -68,8 +70,12 @@ pub fn read(line: &str) -> Option<Reply> {
         || starts("You can't think clearly enough to prepare a spell!")
         || starts("The searing pain in your throat makes that impossible")
         || starts("All you manage to do is cough up some blood.")
+        || starts("You're not in any condition to be searching around!")
     {
         return Some(Reply::Injured);
+    }
+    if starts("You spy ") && text.ends_with("and recover it!") {
+        return Some(Reply::Recovered);
     }
     if text.contains("but it has no effect") {
         return Some(Reply::NoEffect);
@@ -131,6 +137,7 @@ impl Hunt {
                     self.heard.paused_until = now.map(|now| now + PAUSE);
                 }
                 Reply::NoMana => self.must_rest = Some(Why::Mana),
+                Reply::Recovered => self.recovered(),
             }
         }
     }

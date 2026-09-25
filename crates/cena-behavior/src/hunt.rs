@@ -48,6 +48,7 @@ mod errands;
 pub mod guard;
 pub mod import;
 pub mod profile;
+mod react;
 pub mod replies;
 mod rest;
 pub mod said;

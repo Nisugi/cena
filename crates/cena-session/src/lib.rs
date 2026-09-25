@@ -55,7 +55,7 @@ pub use cena_model::movement::{self, MoveFeedback};
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
-pub use cena_model::state::{claim, containers, gameobj, group, hands, stream_windows};
+pub use cena_model::state::{claim, containers, gameobj, group, hands, incident, stream_windows};
 // The loot ledger's facts, for the town planner that reads them from its own
 // fold of the stream (`plan/31` Stage 4).
 pub use cena_model::{Appraiser, Buyer, LootFact};

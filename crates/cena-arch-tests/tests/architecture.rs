@@ -291,6 +291,12 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
                         plumbing (Rule -1).",
     },
     AllowedStatic {
+        path: "crates/cena-model/src/state/incident.rs",
+        name: "P",
+        function: "patterns",
+        justification: "A OnceLock<Patterns> holding the 41 compiled patterns of Lich's                         combat/defs/messages.rb, built on first use from string literals in the                         same file and never mutated. Same argument as ledger/hunt.rs's P.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/ledger/hunt.rs",
         name: "P",
         function: "patterns",
