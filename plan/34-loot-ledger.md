@@ -145,10 +145,26 @@ loot cap, estimated against realised, with the town's racial and trading bonuses
 
 ## 6. Stages
 
-1. **The classifier** (`cena-model`): the enum and `classify`, tested on the `# Real:` lines
-   and the three replay fixtures; the hunt's own pieces first (search, box, skin, bundle,
-   bounty), then the town's (sales, appraisals, bank). Ends with every one of loottracker's
-   55 patterns accounted for, as a fact or as deliberately dropped with the reason.
+1. ~~**The classifier**~~ **BUILT 2026-09-24**: `cena-model/src/state/ledger.rs` (the
+   `LootFact`, `Find`, `Appraiser` and `Buyer` enums, `classify(&Chunk)`), with the readers
+   in `ledger/hunt.rs`, `ledger/boxes.rs` and `ledger/town.rs` and the link reading in
+   `ledger/text.rs`. Tested in `cena-model/tests/loot_facts.rs` on the `# Real:` lines
+   (13 tests) and on the three replay fixtures' searches, classifying every chunk as its
+   prompt closes it. **Every pattern matches plain text**; the creature is the first bolded
+   link and the item the first unbolded one, as §2 said, with one exception found by the
+   tests: the gemstone jewel's line arrives bolded whole, link included, so that arm takes
+   the first object regardless. The 55 accounted for (MEASURED: `grep -cE '^\s+[A-Z_]+ = (%r|/)'`
+   over `:538-761` gives 55): **52 read as facts**, several sharing an arm (`SEARCH_KEY` and
+   `SEARCH_LOCK` keyed on the noun; the five `had`/`carried`/`left` shapes as one; the
+   bundle's `QUALITY` trigger through its `VALUE` line, which is all the script did with it;
+   `SELL_JUNK` as `Worthless` with the line's item), and **3 that are frames, not lines**:
+   `BOX_INV_ITEM` and `BOX_LOOK_IN` are `<inv>`/`<container>` the inventory model already
+   holds, so the ledger reads a box's contents there, and `WAND_IN_HAND` is the hands
+   model's. Of the eleven processor-local patterns beyond the 55, `DRACONIC_IDOL` is a
+   search item; `FEEDER_ITEM` and `LEGENDARY_ITEM` are announcements with no item and are
+   not recorded; `BUNDLE_ADD_OTHER`, a group member's bundling, is not ported with the proxy
+   (§7.1); the rest duplicate module patterns or classify names. Not yet wired into
+   `close_chunk`: that is Stage 2's, when there is a consumer.
 2. **The ledger** (`cena-session`): the tables, the worker, the item linking that the
    processors did in Ruby, fed from `publish_combat`'s sibling once per prompt. Ends with a
    session's loot in the database and `plan/12` §7.2's replay producing the same rows twice.
@@ -157,10 +173,17 @@ loot cap, estimated against realised, with the town's racial and trading bonuses
 
 ## 7. Questions for the author
 
-1. **Cross-character proxy** (`;loottracker proxy`, `:4795`: appraisals sung by another
-   character credited to the looter). Keep it, or drop it until multi-session makes it a
-   session-to-session fact rather than a setting?
-2. **The wand duplication stats** (918): hunt-relevant enough to stay in Stage 1, or town?
-3. **`cap`'s bonuses** use race and Trading skill from the character. Hydra has both in
-   `state.character`; is the loot-cap formula still `TRUNC((INF_BONUS + TRADING_SKILL_BONUS)
-   / 12)`, max 28%, as the script says?
+1. ~~**Cross-character proxy**~~ **ANSWERED 2026-09-24** (author): *"can wait until
+   multi-session makes it a session-to-session fact."* Not ported; no `proxy` setting, no
+   `proxy_name` column. When it comes back it is one session crediting another inside
+   `cena-host`, not a name typed into a setting.
+2. ~~**The wand duplication stats**~~ **SETTLED 2026-09-24**: the question was only where in
+   the order it goes; it is small, so it goes with the hunt facts. The classifier gives the
+   donor from the gesture line and the success line; the copy is the wand that appeared in a
+   hand, which is the hands model's fact, not the chunk's, so the ledger reads it there.
+3. ~~**`cap`'s bonuses**~~ **ANSWERED 2026-09-24** (author): that formula is the **trading
+   bonus**, not a loot-cap term: *"when you sell something if you have trading you can get up
+   to 28% extra from the trading skill not to exceed a cap from the shop. If you're in a
+   favorable town to your race you get a further 5% bonus. But it's not really useful these
+   days because of lootcap."* So `cap` reports the day's silver against the cap and stops
+   there; the bonus arithmetic is not ported.

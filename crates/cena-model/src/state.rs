@@ -65,6 +65,7 @@ mod idle;
 mod inventory;
 pub mod inventory_snapshot;
 pub mod known_spells;
+pub mod ledger;
 pub mod maneuvers;
 pub mod menu;
 pub mod message;

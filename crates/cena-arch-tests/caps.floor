@@ -54,3 +54,9 @@ crates/cena-behavior/src/hunt.rs 100
 # over loot/ (the profile, importer, worth, outcome and planner: plan/31
 # Stage 1), on the same terms as hunt.rs.
 crates/cena-behavior/src/loot.rs 100
+# NEW SPLIT PARENT, 2026-09-24. crates/cena-model/src/state/ledger.rs is the
+# loot classifier's facade (plan/34 Stage 1): the LootFact/Find/Appraiser/Buyer
+# enums, `classify` and the per-chunk cursor, with the readers in ledger/. It is
+# 298 lines at birth, most of them the documented enum; 350 leaves room for a
+# variant or two and no room for a reader.
+crates/cena-model/src/state/ledger.rs 350

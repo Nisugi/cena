@@ -558,7 +558,8 @@ sort, box in hand. Town errands follow in the same plan's order.
 > *too much loot* or a box left in hand, as the author answered. Stage 3 (eloot's specials,
 > a critter's bag emptied, the sigil) is BUILT too; Stage 4 (selling during the rest) waits
 > on M6d. **`plan/34`** stages the author's `loottracker.lic` as the loot ledger: the
-> classifier in the model, the recorder beside combat's, SQLite already embedded.
+> classifier in the model, the recorder beside combat's, SQLite already embedded. Its
+> Stage 1, the classifier, is BUILT (`cena-model/src/state/ledger.rs`).
 
 **M6d — eherbs.** Its port plan first (`plan/32`), then healing at the rest room.
 

@@ -278,6 +278,24 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
                         plumbing (Rule -1).",
     },
     AllowedStatic {
+        path: "crates/cena-model/src/state/ledger/hunt.rs",
+        name: "P",
+        function: "patterns",
+        justification: "A OnceLock<Patterns> holding the 14 compiled loot patterns of                         loottracker's hunt-side processors (plan/34 Stage 1), built on first use                         from string literals in the same file and never mutated. Same argument                         as bounty.rs's MATCHERS, same caveat: process-wide, safe because a pure                         function of literals, and the owned-table shape is the better one once                         a second consumer needs these patterns.",
+    },
+    AllowedStatic {
+        path: "crates/cena-model/src/state/ledger/boxes.rs",
+        name: "P",
+        function: "patterns",
+        justification: "A OnceLock<Patterns> holding the 6 compiled loot patterns of                         loottracker's boxes-side processors (plan/34 Stage 1), built on first use                         from string literals in the same file and never mutated. Same argument                         as bounty.rs's MATCHERS, same caveat: process-wide, safe because a pure                         function of literals, and the owned-table shape is the better one once                         a second consumer needs these patterns.",
+    },
+    AllowedStatic {
+        path: "crates/cena-model/src/state/ledger/town.rs",
+        name: "P",
+        function: "patterns",
+        justification: "A OnceLock<Patterns> holding the 27 compiled loot patterns of                         loottracker's town-side processors (plan/34 Stage 1), built on first use                         from string literals in the same file and never mutated. Same argument                         as bounty.rs's MATCHERS, same caveat: process-wide, safe because a pure                         function of literals, and the owned-table shape is the better one once                         a second consumer needs these patterns.",
+    },
+    AllowedStatic {
         path: "crates/cena-protocol/src/tags.rs",
         name: "KNOWN_WIRE_TAGS",
         function: "",
