@@ -32,6 +32,7 @@ pub mod heal;
 pub mod hunt;
 pub mod keep;
 pub mod loot;
+pub mod spellcaster;
 pub mod stance;
 pub mod sync;
 pub mod town;

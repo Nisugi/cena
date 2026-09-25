@@ -44,6 +44,7 @@ pub mod command;
 pub mod desk;
 pub mod drive;
 pub mod engine;
+mod errands;
 pub mod guard;
 pub mod import;
 pub mod profile;

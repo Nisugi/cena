@@ -1,6 +1,6 @@
 # 37 — Spells: spellactive, ewaggle and spellcaster, measured and ordered
 
-**Status: PROPOSED 2026-09-25, stages built in order.** The author, 2026-09-25: *"Then do
+**Status: all six stages BUILT 2026-09-25; one question open (Stage 6).** The author, 2026-09-25: *"Then do
 ewaggle, spellactive, and spellcaster."* Three scripts that cast spells for the player, each
 a different shape: one keeps a list of spells up forever, one buffs a list of people once,
 one turns a typed spell number into the right casting command. They share everything below
@@ -111,6 +111,12 @@ parsed, or the effects list for yourself), then ewaggle's three passes: stackabl
 [name ...]`.
 
 ### Stage 6 — spellcaster: the typed spell
+
+**BUILT 2026-09-25.** `cena-behavior/src/spellcaster.rs` (`CasterProfile` at
+`<data>/hunt/sc/<instance>_<character>.toml`, `lines`, `edit`); `Hunt::send_only`, run by
+`;sc <spell|alias> [target] [count]`; `;sc alias|verb|stance|set` edit the profile. Tested in
+`tests/spellcaster.rs` (3). The errand machines moved to `hunt/errands.rs` when they took
+`engine.rs` past its cap. **Still open for the author:** catching a bare typed number.
 
 `;sc <number|alias> [target] [count]`: the spell cast with the verb, stance and channel the
 player set for it, stance back to guarded after an aimed one; the `conserve` and `safety`

@@ -58,7 +58,8 @@ pub(crate) fn open(
             | Command::Heal { .. }
             | Command::Stock { .. }
             | Command::Keep
-            | Command::Waggle(_) => {
+            | Command::Waggle(_)
+            | Command::Sc(_) => {
                 let Some(desk) = desk.clone() else {
                     handler.say(Notice::line(
                         NoticeKind::Error,
@@ -83,7 +84,8 @@ pub(crate) fn open(
             | Command::ImportLoot { .. }
             | Command::Check(_)
             | Command::List
-            | Command::KeepEdit(_) => {
+            | Command::KeepEdit(_)
+            | Command::ScEdit(_) => {
                 let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
                 // Files are read and written, so not on the session's own thread.
                 tokio::task::spawn_blocking(move || run(&handle, &dir, who.as_ref(), command));
@@ -108,12 +110,14 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         Command::Check(name) => check(dir, who, &name, &say),
         Command::List => list(dir, &say),
         Command::KeepEdit(words) => keep_edit(dir, who, &words, &say),
+        Command::ScEdit(words) => sc_edit(dir, who, &words, &say),
         Command::Run(_)
         | Command::Stop
         | Command::Heal { .. }
         | Command::Stock { .. }
         | Command::Keep
         | Command::Waggle(_)
+        | Command::Sc(_)
         | Command::Nothing => {}
     }
 }
@@ -445,5 +449,44 @@ fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: 
             }
         }
         Err(usage) => say(NoticeKind::Error, format!("Keep: {usage}")),
+    }
+}
+
+/// `;sc alias|verb|stance|set ...`: the spellcaster profile changed and
+/// written back.
+fn sc_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Say<'_>) {
+    let Some(path) = who.and_then(|(i, n)| cena_behavior::spellcaster::path(dir, i, n)) else {
+        say(
+            NoticeKind::Error,
+            "Sc: who is this? Log in first.".to_owned(),
+        );
+        return;
+    };
+    let mut profile = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| cena_behavior::spellcaster::CasterProfile::parse(&text).ok())
+        .unwrap_or_default();
+    let words: Vec<String> = words.iter().map(|w| w.to_ascii_lowercase()).collect();
+    let words: Vec<&str> = words.iter().map(String::as_str).collect();
+    match cena_behavior::spellcaster::edit(&mut profile, &words) {
+        Ok(done) => {
+            let written = profile
+                .to_toml()
+                .map_err(io::Error::other)
+                .and_then(|text| {
+                    if let Some(parent) = path.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::write(&path, text)
+                });
+            match written {
+                Ok(()) => say(NoticeKind::Info, format!("Sc: {done}.")),
+                Err(e) => say(
+                    NoticeKind::Error,
+                    format!("Sc: {done}, but not saved -- {e}."),
+                ),
+            }
+        }
+        Err(usage) => say(NoticeKind::Error, format!("Sc: {usage}")),
     }
 }

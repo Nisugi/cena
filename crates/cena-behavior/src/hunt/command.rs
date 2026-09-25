@@ -57,6 +57,10 @@ pub enum Command {
         /// eherbs' `fill` rather than `stock`.
         fill: bool,
     },
+    /// `;sc <spell|alias> [target] [count]`: one spell, as set up.
+    Sc(Vec<String>),
+    /// `;sc alias|verb|stance|set ...`: change the spellcaster profile.
+    ScEdit(Vec<String>),
     /// `;waggle [names]`: the waggle profile's spells cast on these people,
     /// or yourself.
     Waggle(Vec<String>),
@@ -84,6 +88,17 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
     let first = words.next()?;
     if first.eq_ignore_ascii_case("heal") {
         return Some(heal(words));
+    }
+    if first.eq_ignore_ascii_case("sc") {
+        let rest: Vec<String> = words.map(str::to_owned).collect();
+        let edit = rest.first().is_some_and(|w| {
+            ["alias", "verb", "stance", "set"].contains(&w.to_ascii_lowercase().as_str())
+        });
+        return Some(Ok(if edit {
+            Command::ScEdit(rest)
+        } else {
+            Command::Sc(rest)
+        }));
     }
     if first.eq_ignore_ascii_case("waggle") {
         return Some(Ok(Command::Waggle(words.map(str::to_owned).collect())));

@@ -65,6 +65,8 @@ pub enum Ending {
     Stocked,
     /// `;waggle` ran: no hunt, only the spells.
     Waggled,
+    /// `;sc` sent its lines.
+    Sent,
 }
 
 impl fmt::Display for Ending {
@@ -79,6 +81,7 @@ impl fmt::Display for Ending {
             Self::Healed => f.write_str("healed"),
             Self::Stocked => f.write_str("stocked"),
             Self::Waggled => f.write_str("waggled"),
+            Self::Sent => f.write_str("sent"),
         }
     }
 }

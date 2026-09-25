@@ -48,7 +48,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use super::profile::{Profile, Step, Target};
 pub use super::said::{Ending, Here, Phase, Said, Why};
 use crate::heal::HealProfile;
-use crate::keep::{self, KeepProfile};
+use crate::keep::KeepProfile;
 use crate::loot::{Left, LootProfile};
 use crate::stance::{self, Want};
 use crate::waggle::WaggleProfile;
@@ -106,16 +106,18 @@ pub struct Hunt {
     /// The heal profile, when the character has one (`plan/36`).
     pub(super) heal: Option<HealProfile>,
     /// `;heal`: no hunt, one heal. `Some(false)` until it has been asked for.
-    heal_only: Option<bool>,
+    pub(super) heal_only: Option<bool>,
     /// `;heal stock` / `;heal fill`: no hunt, one round; `fill` beside it.
-    stock_only: Option<(bool, bool)>,
+    pub(super) stock_only: Option<(bool, bool)>,
     /// `;keep`: no hunt, the listed spells kept up until stopped, with when
     /// each was last sent.
-    keep_only: Option<(KeepProfile, BTreeMap<u16, u32>)>,
+    pub(super) keep_only: Option<(KeepProfile, BTreeMap<u16, u32>)>,
     /// `;waggle`: no hunt, one run over these names; `true` once asked for.
-    waggle_only: Option<(WaggleProfile, Vec<String>, bool)>,
+    pub(super) waggle_only: Option<(WaggleProfile, Vec<String>, bool)>,
+    /// `;sc`: no hunt, these lines sent in order, then done.
+    pub(super) send_only: Option<VecDeque<String>>,
     /// `--spellcast` and `--ranged` for the heal.
-    heal_mode: (bool, bool),
+    pub(super) heal_mode: (bool, bool),
 }
 
 impl Hunt {
@@ -147,53 +149,9 @@ impl Hunt {
             stock_only: None,
             keep_only: None,
             waggle_only: None,
+            send_only: None,
             heal_mode: (false, false),
         }
-    }
-
-    /// `;heal`: a machine that heals once by `profile` and ends, with no
-    /// hunt around it. `spellcast` and `ranged` are eherbs' flags.
-    #[must_use]
-    pub fn heal_only(profile: HealProfile, spellcast: bool, ranged: bool) -> Self {
-        let mut machine = Self::new(Profile::default(), 0).with_heal(profile);
-        machine.heal_only = Some(false);
-        machine.heal_mode = (spellcast, ranged);
-        machine
-    }
-
-    /// `;heal stock` (`fill` false) or `;heal fill`: a machine that stocks
-    /// the herb container once and ends.
-    #[must_use]
-    pub fn stock_only(profile: HealProfile, fill: bool) -> Self {
-        let mut machine = Self::new(Profile::default(), 0).with_heal(profile);
-        machine.stock_only = Some((false, fill));
-        machine
-    }
-
-    /// `;keep`: a machine that keeps `profile`'s spells up and never ends of
-    /// its own accord (`plan/37` Stage 4).
-    #[must_use]
-    pub fn keep_only(profile: KeepProfile) -> Self {
-        let mut machine = Self::new(Profile::default(), 0);
-        machine.keep_only = Some((profile, BTreeMap::new()));
-        machine
-    }
-
-    /// `;waggle [names]`: a machine that casts the waggle profile's spells
-    /// on these people once and ends.
-    #[must_use]
-    pub fn waggle_only(profile: WaggleProfile, targets: Vec<String>) -> Self {
-        let mut machine = Self::new(Profile::default(), 0);
-        machine.waggle_only = Some((profile, targets, false));
-        machine
-    }
-
-    /// The waggle run's profile and names, when this machine is one.
-    #[must_use]
-    pub fn waggle(&self) -> Option<(&WaggleProfile, &[String])> {
-        self.waggle_only
-            .as_ref()
-            .map(|(profile, targets, _)| (profile, targets.as_slice()))
     }
 
     /// Heal with herbs by this profile during a rest.
@@ -291,44 +249,8 @@ impl Hunt {
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
-        if let Some((_, targets, asked)) = self.waggle_only.as_mut() {
-            if *asked {
-                return Said::Done(Ending::Waggled);
-            }
-            *asked = true;
-            return Said::Waggle(targets.clone());
-        }
-        if let Some((profile, tried)) = self.keep_only.as_mut() {
-            if let Some(line) = self.pending.pop_front() {
-                return Said::Send { line, target: None };
-            }
-            let room = here.room.map(|r| r.0);
-            return match keep::next(profile, state, room, tried) {
-                Some(lines) => {
-                    self.pending = lines.into();
-                    match self.pending.pop_front() {
-                        Some(line) => Said::Send { line, target: None },
-                        None => Said::Wait(1),
-                    }
-                }
-                None => Said::Wait(2),
-            };
-        }
-        if let Some((asked, fill)) = self.stock_only {
-            self.stock_only = Some((true, fill));
-            return if asked {
-                Said::Done(Ending::Stocked)
-            } else {
-                Said::Stock(fill)
-            };
-        }
-        if let Some(asked) = self.heal_only {
-            self.heal_only = Some(true);
-            return if asked {
-                Said::Done(Ending::Healed)
-            } else {
-                Said::Heal
-            };
+        if let Some(said) = self.errand(state, here) {
+            return said;
         }
         self.note_room(state, now);
         if let Some(said) = Self::survival(state) {
