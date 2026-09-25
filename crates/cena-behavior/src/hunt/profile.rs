@@ -208,6 +208,15 @@ pub struct When {
     pub wot_poison: bool,
     /// The Confused debuff is on me (`confusion`).
     pub confused: bool,
+    /// Spirit at or below this percent. Hydra's own: bigshot rests on
+    /// spirit only through `wounded_eval`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spirit_at_most: Option<u32>,
+    /// A wound or scar of this rank or worse on any part (the rank that
+    /// governs it, `Injuries::effective_rank`: rank-1 scars do not count).
+    /// Hydra's own.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wound_rank: Option<u8>,
 }
 
 /// When to leave the room.

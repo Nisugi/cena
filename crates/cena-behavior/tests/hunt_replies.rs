@@ -369,3 +369,28 @@ fn a_hazard_or_a_message_the_profile_flees_sends_the_hunt_out() {
         Said::Walk(RoomId(11))
     );
 }
+
+#[test]
+fn low_spirit_rests_when_the_profile_says() {
+    let profile = format!("{PROFILE}\n[rest.when]\nspirit_at_most = 50\n");
+    let mut hunt = Hunt::new(Profile::parse(&profile).unwrap(), 1);
+    let mut state = fighting(1_000, "10");
+    let spirit = |percent: u32| {
+        Frame::ProgressBar(cena_session::ProgressBar {
+            id: "spirit".to_owned(),
+            dialog: None,
+            percent,
+            text: format!("spirit {}/10", percent / 10),
+            amount: None,
+            attrs: Vec::new(),
+            time_remaining_secs: None,
+        })
+    };
+    state.apply(&spirit(80));
+    assert_eq!(hunt.tick(&state, here(10), Some(1_000)), attack());
+    state.apply(&spirit(50));
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_001)),
+        Said::Walk(RoomId(20))
+    );
+}

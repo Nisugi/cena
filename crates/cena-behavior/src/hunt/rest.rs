@@ -235,6 +235,17 @@ impl Hunt {
                 .is_some_and(|at| debuff_stacks(state, "Crushing Dread").is_some_and(|n| n >= at))
             || (when.wot_poison && debuff_stacks(state, "Wall of Thorns Poison").is_some())
             || (when.confused && debuff_stacks(state, "Confused").is_some())
+            || when
+                .spirit_at_most
+                .zip(state.spirit())
+                .is_some_and(|(at_most, spirit)| spirit.percent <= at_most)
+            || when.wound_rank.is_some_and(|at| {
+                state
+                    .character
+                    .injuries
+                    .keys()
+                    .any(|part| injuries.effective_rank(part) >= at)
+            })
     }
 
     /// Why the rest is not over, or `None` when it is. A threshold whose
