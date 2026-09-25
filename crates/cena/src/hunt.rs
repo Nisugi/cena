@@ -53,7 +53,7 @@ pub(crate) fn open(
             }
         };
         match command {
-            Command::Run(_) | Command::Stop => {
+            Command::Run(_) | Command::Stop | Command::Heal { .. } => {
                 let Some(desk) = desk.clone() else {
                     handler.say(Notice::line(
                         NoticeKind::Error,
@@ -98,7 +98,7 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         Command::ImportLoot { path } => import_loot(dir, who, &path, &say),
         Command::Check(name) => check(dir, who, &name, &say),
         Command::List => list(dir, &say),
-        Command::Run(_) | Command::Stop | Command::Nothing => {}
+        Command::Run(_) | Command::Stop | Command::Heal { .. } | Command::Nothing => {}
     }
 }
 

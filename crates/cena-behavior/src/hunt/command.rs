@@ -7,7 +7,11 @@
 //! ;hunt list                      the profiles there are
 //! ;hunt <name>                    hunt on that profile, as this character
 //! ;hunt stop                      stop hunting
+//! ;heal [spellcast] [ranged] [blood]   heal with herbs by the heal profile (`plan/36`)
 //! ```
+//!
+//! `;heal` is here rather than beside a desk of its own because it runs in the
+//! hunt's driver, which is where the herbs are eaten during a rest.
 //!
 //! **The symbol is not this module's.** A line reaches here already marked
 //! as Hydra's and stripped of its symbol (`cena_session::command::claimant`),
@@ -37,6 +41,16 @@ pub enum Command {
     List,
     /// Hunt on this profile.
     Run(String),
+    /// `;heal`: heal with herbs once, by the character's heal profile, with
+    /// eherbs' `--spellcast`, `--ranged` and `blood` for this run.
+    Heal {
+        /// Only what stops a cast.
+        spellcast: bool,
+        /// Only what stops a shot.
+        ranged: bool,
+        /// Only blood.
+        blood: bool,
+    },
     /// Stop the hunt under way.
     Stop,
     /// Hunt's, and already answered: said wrongly. Nothing to do.
@@ -54,7 +68,11 @@ pub const USAGE: &str = "hunt <name>, hunt stop, hunt import <bigshot yaml> [as 
 #[must_use]
 pub fn parse(line: &str) -> Option<Result<Command, String>> {
     let mut words = line.split_whitespace();
-    if !words.next()?.eq_ignore_ascii_case("hunt") {
+    let first = words.next()?;
+    if first.eq_ignore_ascii_case("heal") {
+        return Some(heal(words));
+    }
+    if !first.eq_ignore_ascii_case("hunt") {
         return None;
     }
     let rest: Vec<&str> = words.collect();
@@ -81,6 +99,24 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
 }
 
 /// `import <path...> [as <name>]`: everything before `as` is the path.
+/// `;heal`'s flags, with or without eherbs' dashes.
+fn heal<'a>(words: impl Iterator<Item = &'a str>) -> Result<Command, String> {
+    let (mut spellcast, mut ranged, mut blood) = (false, false, false);
+    for word in words {
+        match word.trim_start_matches('-').to_ascii_lowercase().as_str() {
+            "spellcast" => spellcast = true,
+            "ranged" => ranged = true,
+            "blood" => blood = true,
+            _ => return Err("heal, heal spellcast, heal ranged, or heal blood".to_owned()),
+        }
+    }
+    Ok(Command::Heal {
+        spellcast,
+        ranged,
+        blood,
+    })
+}
+
 fn import(args: &[&str]) -> Result<Command, String> {
     let (path, name) = match args.iter().position(|w| w.eq_ignore_ascii_case("as")) {
         Some(at) => {
@@ -146,6 +182,27 @@ mod tests {
         ] {
             assert!(matches!(parse(line), Some(Err(_))), "{line}");
         }
+    }
+
+    #[test]
+    fn heal_and_its_flags() {
+        assert_eq!(
+            parse("heal"),
+            Some(Ok(Command::Heal {
+                spellcast: false,
+                ranged: false,
+                blood: false
+            }))
+        );
+        assert_eq!(
+            parse("heal --spellcast blood"),
+            Some(Ok(Command::Heal {
+                spellcast: true,
+                ranged: false,
+                blood: true
+            }))
+        );
+        assert!(matches!(parse("heal everyone"), Some(Err(_))));
     }
 
     #[test]

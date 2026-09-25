@@ -49,6 +49,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
+use crate::heal::{self, Healed, Healer, Reply as HealReply, Step as HealStep};
 use crate::loot::{Left, LootProfile, Memory, Outcome as LootOutcome, Planner, Step, classify};
 use crate::town::{self, Seller, Step as Errand, Town};
 use crate::travel::{Ended, Heard, TravelNotes, destination, room_of, travel_holding, walker_from};
@@ -64,6 +65,8 @@ const BEAT: Duration = Duration::from_millis(250);
 const LOOT_STEPS: usize = 64;
 /// The most steps one selling round takes before it is given up on.
 const SELL_STEPS: usize = 400;
+/// The most steps one heal takes before it is given up on.
+const HEAL_STEPS: usize = 120;
 
 /// How a hunt ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -195,6 +198,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Said::Walk(to) => self.walk(to).await,
                 Said::Loot(corpses) => self.loot(&corpses).await,
                 Said::Sell => self.sell().await,
+                Said::Heal => self.heal().await,
                 Said::Done(ending) => return HuntEnd::Finished(ending),
             };
             if let Err(end) = step {
@@ -339,6 +343,54 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         }
         self.memory = planner.memory().clone();
         Ok(planner)
+    }
+
+    /// Heal with the healer (`plan/36`): each step sent through the gate,
+    /// each reply read from the transcript. Says how it ended.
+    async fn heal(&mut self) -> Result<(), HuntEnd> {
+        let Some(profile) = self.machine.heal_profile().cloned() else {
+            return Ok(());
+        };
+        let (spellcast, ranged) = self.machine.heal_mode();
+        let mut healer = Healer::new(profile, spellcast, ranged);
+        let mut ended = None;
+        for _ in 0..HEAL_STEPS {
+            let line = match healer.next(&self.state) {
+                HealStep::Done(how) => {
+                    ended = Some(how);
+                    break;
+                }
+                HealStep::Look(target) => format!("look in {target}"),
+                HealStep::Fetch(id) => format!("get #{id}"),
+                HealStep::Eat(noun) => format!("eat my {noun}"),
+                HealStep::Drink(noun) => format!("drink my {noun}"),
+                HealStep::Stow { item, bag } => format!("_drag #{item} #{bag}"),
+            };
+            self.transcript.clear();
+            self.send(&line, None).await?;
+            self.hold(BEAT).await?;
+            let replies: Vec<HealReply> =
+                self.transcript.lines().filter_map(heal::classify).collect();
+            healer.outcome(&replies);
+        }
+        let text = match ended {
+            Some(Healed::Done { missing }) if missing.is_empty() => "Heal: done.".to_owned(),
+            Some(Healed::Done { missing }) => format!(
+                "Heal: done; no herb for {}.",
+                missing
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Some(Healed::NoContainer) => {
+                "Heal: the herb container is not in the inventory; set `container` in the heal profile.".to_owned()
+            }
+            Some(Healed::Refused) => "Heal: the herbs here have been eaten from enough.".to_owned(),
+            None => "Heal: gave up after too many steps.".to_owned(),
+        };
+        self.handle.say(Notice::line(NoticeKind::Info, text));
+        Ok(())
     }
 
     /// Sell with the town planner (`plan/31` Stage 4): each shop the nearest

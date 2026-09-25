@@ -27,6 +27,7 @@ use super::command::Command;
 use super::drive::{HuntEnd, hunt};
 use super::engine::Hunt;
 use crate::error::BehaviorError;
+use crate::heal::{self, HealProfile};
 use crate::loot::{self, LootProfile};
 use crate::travel::{Heard, TravelNotes};
 use crate::watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, watch};
@@ -93,6 +94,27 @@ impl Desk {
                 }
                 None
             }
+            Command::Heal {
+                spellcast,
+                ranged,
+                blood,
+            } => {
+                let character = &joined.0.state.character;
+                let Some(mut profile) = self.heal_profile(
+                    handle,
+                    character.instance.as_deref(),
+                    character.name.as_deref(),
+                ) else {
+                    say(
+                        NoticeKind::Error,
+                        "no heal profile: write one naming the herb `container`.".to_owned(),
+                    );
+                    return None;
+                };
+                profile.blood_only |= blood;
+                let machine = Hunt::heal_only(profile, spellcast, ranged);
+                Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+            }
             Command::Run(name) => {
                 let character = &joined.0.state.character;
                 let loaded = chain::load(
@@ -135,6 +157,14 @@ impl Desk {
                     character.name.as_deref(),
                 ) {
                     Some(profile) => machine.with_loot(profile),
+                    None => machine,
+                };
+                let machine = match self.heal_profile(
+                    handle,
+                    character.instance.as_deref(),
+                    character.name.as_deref(),
+                ) {
+                    Some(profile) => machine.with_heal(profile),
                     None => machine,
                 };
                 Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
@@ -235,6 +265,28 @@ impl Desk {
                         path.display()
                     ),
                 );
+                None
+            }
+        }
+    }
+
+    /// The character's heal profile (`plan/36`), when there is one and it
+    /// reads. Quiet when there is none: most characters rest without herbs.
+    fn heal_profile(
+        &self,
+        handle: &SessionHandle,
+        instance: Option<&str>,
+        name: Option<&str>,
+    ) -> Option<HealProfile> {
+        let path = heal::path(&self.dir, instance?, name?)?;
+        let text = std::fs::read_to_string(&path).ok()?;
+        match HealProfile::parse(&text) {
+            Ok(profile) => Some(profile),
+            Err(why) => {
+                handle.say(Notice::line(
+                    NoticeKind::Error,
+                    format!("Heal: {} does not read: {why}.", path.display()),
+                ));
                 None
             }
         }

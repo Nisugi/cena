@@ -36,6 +36,9 @@ pub enum Said {
     /// Sell what the bags hold, at the shops and back (`plan/31` Stage 4):
     /// the driver runs the town planner until it is home again.
     Sell,
+    /// Heal with herbs by the character's heal profile (`plan/36`): the
+    /// driver runs the healer until it is done.
+    Heal,
     /// Nothing this tick.
     Nothing,
 }
@@ -51,6 +54,8 @@ pub enum Ending {
     NoHuntingRoom,
     /// A walk the hunt depends on could not be made.
     Unreachable(RoomId),
+    /// `;heal` ran: there was no hunt, only the healing.
+    Healed,
 }
 
 impl fmt::Display for Ending {
@@ -62,6 +67,7 @@ impl fmt::Display for Ending {
             }
             Self::NoHuntingRoom => f.write_str("the profile names no hunting room to return to"),
             Self::Unreachable(room) => write!(f, "there is no way to room {}", room.0),
+            Self::Healed => f.write_str("healed"),
         }
     }
 }
@@ -107,6 +113,8 @@ pub enum Phase {
     ToRest(Why),
     /// Arrived to rest with loot to sell: the selling round, then the rest.
     Selling(Why),
+    /// Arrived to rest hurt: the herbs, then the rest.
+    Healing(Why),
     /// At the resting room, until the thresholds are met.
     Resting(Why),
     /// Walking back to the hunting room.
@@ -122,6 +130,7 @@ impl fmt::Display for Phase {
             Self::ToRest(why) => write!(f, "{why}: walking to the resting room"),
 
             Self::Selling(why) => write!(f, "selling before resting ({why})"),
+            Self::Healing(why) => write!(f, "healing before resting ({why})"),
             Self::Resting(why) => write!(f, "resting ({why})"),
             Self::Returning => f.write_str("rested: walking back"),
             Self::Preparing => f.write_str("preparing"),

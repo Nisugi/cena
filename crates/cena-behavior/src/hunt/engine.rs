@@ -47,6 +47,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::profile::{Profile, Step, Target};
 pub use super::said::{Ending, Here, Phase, Said, Why};
+use crate::heal::HealProfile;
 use crate::loot::{Left, LootProfile};
 use crate::stance::{self, Want};
 
@@ -100,6 +101,12 @@ pub struct Hunt {
     pub(super) loot: Option<LootProfile>,
     /// A reason to rest the loot planner handed in, until the rest starts.
     pub(super) must_rest: Option<Why>,
+    /// The heal profile, when the character has one (`plan/36`).
+    pub(super) heal: Option<HealProfile>,
+    /// `;heal`: no hunt, one heal. `Some(false)` until it has been asked for.
+    heal_only: Option<bool>,
+    /// `--spellcast` and `--ranged` for the heal.
+    heal_mode: (bool, bool),
 }
 
 impl Hunt {
@@ -126,7 +133,39 @@ impl Hunt {
             seed,
             loot: None,
             must_rest: None,
+            heal: None,
+            heal_only: None,
+            heal_mode: (false, false),
         }
+    }
+
+    /// `;heal`: a machine that heals once by `profile` and ends, with no
+    /// hunt around it. `spellcast` and `ranged` are eherbs' flags.
+    #[must_use]
+    pub fn heal_only(profile: HealProfile, spellcast: bool, ranged: bool) -> Self {
+        let mut machine = Self::new(Profile::default(), 0).with_heal(profile);
+        machine.heal_only = Some(false);
+        machine.heal_mode = (spellcast, ranged);
+        machine
+    }
+
+    /// Heal with herbs by this profile during a rest.
+    #[must_use]
+    pub fn with_heal(mut self, profile: HealProfile) -> Self {
+        self.heal = Some(profile);
+        self
+    }
+
+    /// The heal profile, when there is one.
+    #[must_use]
+    pub fn heal_profile(&self) -> Option<&HealProfile> {
+        self.heal.as_ref()
+    }
+
+    /// `--spellcast` and `--ranged` for this heal.
+    #[must_use]
+    pub const fn heal_mode(&self) -> (bool, bool) {
+        self.heal_mode
     }
 
     /// The profile being hunted on.
@@ -205,6 +244,14 @@ impl Hunt {
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
+        if let Some(asked) = self.heal_only {
+            self.heal_only = Some(true);
+            return if asked {
+                Said::Done(Ending::Healed)
+            } else {
+                Said::Heal
+            };
+        }
         self.note_room(state, now);
         if let Some(said) = Self::survival(state) {
             return said;

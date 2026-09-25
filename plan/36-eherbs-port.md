@@ -61,6 +61,18 @@ per item id, kept in the model as the doses a herb has left, three-valued like t
 
 ### Stage 2 — the healing
 
+**BUILT 2026-09-25.** `cena-behavior/src/heal/`: `choose.rs` (`next_kind`, eherbs' order
+and its `--spellcast`/`--ranged` order, the severed-limb test that reads the right hand twice
+ported as written), `plan.rs` (`Healer`: the herb in hand, else fetched from the container
+found by its name's words, `eat my`/`drink my`, a kind with no herb skipped and named, a
+kind used twenty times without healing given up on, the herbs put back), `reply.rs`,
+`profile.rs` (`HealProfile`, `<data>/hunt/heal/<instance>_<character>.toml`). In the hunt:
+`Said::Heal` and `Phase::Healing` on arriving at the resting room hurt, after the selling
+round and before the rest commands; `;heal [spellcast] [ranged] [blood]` runs the same
+driver with a machine that heals once (`Hunt::heal_only`). Tested in `tests/heal_plan.rs`
+(7) and `hunt_engine.rs` (2). The profile has no importer: eherbs keeps its settings in
+Lich's per-character store, not a file.
+
 A pure planner, `cena-behavior/src/heal/`: `next_herb_type` over the body, the health and the
 two statuses, with eherbs' order (blood under half health, poison, disease, major wounds by
 area, minor wounds, a severed limb, a missing eye, major scars, minor scars unless skipped,

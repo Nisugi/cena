@@ -46,6 +46,11 @@ impl Hunt {
                     self.notes.push("selling before resting.".to_owned());
                     return Some(Said::Sell);
                 }
+                if here.room == Some(resting) && self.wants_to_heal(state) {
+                    self.phase = Phase::Healing(why);
+                    self.notes.push("healing before resting.".to_owned());
+                    return Some(Said::Heal);
+                }
                 Some(self.step_toward(
                     resting,
                     here,
@@ -55,7 +60,22 @@ impl Hunt {
             }
             Phase::Selling(why) => {
                 // The round ended where it began; from anywhere else, the
-                // walk back is the rest's first step.
+                // walk back is the rest's first step. Hurt, the herbs come
+                // before the rest commands (`plan/36`).
+                let resting = RoomId(self.profile.rooms.resting?);
+                if here.room == Some(resting) && self.wants_to_heal(state) {
+                    self.phase = Phase::Healing(why);
+                    self.notes.push("healing before resting.".to_owned());
+                    return Some(Said::Heal);
+                }
+                Some(self.step_toward(
+                    resting,
+                    here,
+                    Phase::Resting(why),
+                    &self.profile.rest.commands.clone(),
+                ))
+            }
+            Phase::Healing(why) => {
                 let resting = RoomId(self.profile.rooms.resting?);
                 Some(self.step_toward(
                     resting,
@@ -117,6 +137,13 @@ impl Hunt {
         };
         let town = crate::town::Town::for_profile(profile);
         crate::town::Seller::new(town, state, RoomId(resting)).is_some()
+    }
+
+    /// Whether the heal profile has something to treat now.
+    fn wants_to_heal(&self, state: &GameState) -> bool {
+        self.heal
+            .as_ref()
+            .is_some_and(|profile| crate::heal::Healer::wanted(profile, state))
     }
 
     /// Walk toward `goal`; on arrival, move to `then` with `commands` to send.

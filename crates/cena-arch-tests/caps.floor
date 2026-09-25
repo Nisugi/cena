@@ -81,3 +81,7 @@ crates/cena-behavior/src/town.rs 100
 # module rather than a sibling. 545 lines at birth; the cap leaves room to move
 # the floor passes down, not to grow.
 crates/cena-behavior/src/loot/plan.rs 600
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/heal.rs is the Heal
+# behavior's facade (plan/36 Stage 2): the module doc and the re-exports; the
+# choice, the planner, the profile and the replies are in heal/. 21 lines at birth.
+crates/cena-behavior/src/heal.rs 100

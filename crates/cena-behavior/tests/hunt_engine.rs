@@ -647,3 +647,53 @@ fn arriving_to_rest_with_something_to_sell_runs_the_round_first() {
         Phase::Resting(cena_behavior::hunt::engine::Why::Fried)
     );
 }
+
+#[test]
+#[expect(
+    clippy::default_trait_access,
+    reason = "the image's attributes type is not re-exported for behaviors"
+)]
+fn arriving_to_rest_hurt_heals_with_herbs_first() {
+    let heal = cena_behavior::heal::HealProfile {
+        container: "herb pouch".to_owned(),
+        ..cena_behavior::heal::HealProfile::default()
+    };
+    let mut hunt = Hunt::new(profile().unwrap(), 1).with_heal(heal);
+    let mut state = state(1_000, "10");
+    state.character.experience.mind_percent = Some(100);
+    assert_eq!(
+        hunt.tick(&state, here(10, NO_EXITS), Some(1_000)),
+        Said::Walk(RoomId(20))
+    );
+    state.room.id = Some("20".to_owned());
+    state.apply(&Frame::InjuryImage {
+        id: "leftArm".to_owned(),
+        name: "Injury1".to_owned(),
+        dialog: Some("injuries".to_owned()),
+        attrs: Default::default(),
+    });
+    assert_eq!(
+        hunt.tick(&state, here(20, NO_EXITS), Some(1_100)),
+        Said::Heal,
+        "arrived hurt: the herbs before the rest"
+    );
+    assert_eq!(
+        hunt.tick(&state, here(20, NO_EXITS), Some(1_200)),
+        send("store all", None),
+        "then the rest commands"
+    );
+}
+
+#[test]
+fn heal_alone_heals_once_and_ends() {
+    let mut hunt = Hunt::heal_only(cena_behavior::heal::HealProfile::default(), false, false);
+    let state = state(1_000, "10");
+    assert_eq!(
+        hunt.tick(&state, here(10, NO_EXITS), Some(1_000)),
+        Said::Heal
+    );
+    assert_eq!(
+        hunt.tick(&state, here(10, NO_EXITS), Some(1_001)),
+        Said::Done(Ending::Healed)
+    );
+}

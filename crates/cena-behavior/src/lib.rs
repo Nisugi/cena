@@ -27,6 +27,7 @@
 //! Hunt (`plan/30` §3) composes its policies as an enum under one holder of
 //! the authority, which is `plan/12` §4.2's shape, not a trait's.
 pub mod error;
+pub mod heal;
 pub mod hunt;
 pub mod loot;
 pub mod stance;
