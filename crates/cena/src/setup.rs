@@ -26,7 +26,7 @@ pub(crate) fn attach(
     account: &str,
 ) -> (
     SupervisedSession<LiveConnector>,
-    Option<std::thread::JoinHandle<()>>,
+    Vec<std::thread::JoinHandle<()>>,
     tokio::task::JoinHandle<u64>,
 ) {
     let session = match open_log(character, account) {
@@ -55,9 +55,9 @@ pub(crate) fn attach(
     let session = session
         .with_character_store(data.clone())
         .with_menu_store(data);
-    let (session, combat_flush) = attach_combat(session, game, character);
+    let (session, record_flush) = attach_recorders(session, game, character);
     let (session, player_flush) = attach_player_log(session, character);
-    (session, combat_flush, player_flush)
+    (session, record_flush, player_flush)
 }
 
 /// Give the session its player log (`plan/25`): what the player saw and sent,
@@ -120,18 +120,20 @@ pub(crate) async fn flush_player_log(flush: tokio::task::JoinHandle<u64>) {
     }
 }
 
-/// Give the session its crit tables and its combat database.
+/// Give the session its crit tables, and -- when [`recording`] -- its combat
+/// recorder and loot ledger, both writing one database per character.
 ///
-/// Both are optional to a working session and neither may stop one, which is
+/// All are optional to a working session and none may stop one, which is
 /// `open_log`'s rule: say loudly what is missing, then carry on. Without the
 /// tables every hit records no crit; without the database nothing records.
-fn attach_combat(
+/// The returned threads are the recorders' flushes (`flush_records`).
+fn attach_recorders(
     session: SupervisedSession<LiveConnector>,
     game: &str,
     character: &str,
 ) -> (
     SupervisedSession<LiveConnector>,
-    Option<std::thread::JoinHandle<()>>,
+    Vec<std::thread::JoinHandle<()>>,
 ) {
     let session = match cena_session::CritTables::load() {
         Ok(tables) => session.with_crit_tables(Arc::new(tables)),
@@ -140,41 +142,91 @@ fn attach_combat(
             session
         }
     };
+    if !recording() {
+        eprintln!("[record] off (--record turns it on)");
+        return (session, Vec::new());
+    }
     let dir = cena_session::character_store::data_dir();
-    match cena_session::combat_recorder::worker::open_live(&dir, game, character) {
-        Ok((recorder, flush, path)) => {
-            eprintln!("[combat] {}", path.display());
-            (session.with_combat_recorder(recorder), Some(flush))
+    let mut flushes = Vec::new();
+    let (session, path) =
+        match cena_session::combat_recorder::worker::open_live(&dir, game, character) {
+            Ok((recorder, flush, path)) => {
+                eprintln!("[record] {}", path.display());
+                flushes.push(flush);
+                (session.with_combat_recorder(recorder), Some(path))
+            }
+            Err(e) => {
+                eprintln!("[record] combat recorder DISABLED -- {e}");
+                (session, None)
+            }
+        };
+    // The ledger's tables go in the same file, so one character's hunts and
+    // loot are one database (plan/34 section 4).
+    let Some(path) = path else {
+        return (session, flushes);
+    };
+    match cena_session::ledger::worker::open_live(&path, character) {
+        Ok((ledger, flush)) => {
+            flushes.push(flush);
+            (session.with_ledger(ledger), flushes)
         }
         Err(e) => {
-            eprintln!("[combat] recorder DISABLED -- {e}");
-            (session, None)
+            eprintln!("[record] loot ledger DISABLED -- {e}");
+            (session, flushes)
         }
     }
 }
 
-/// Wait, a bounded while ([`FLUSH_WAIT`]), for the recorder to write what is
-/// queued and close its hunt.
+/// Whether this run records combat and loot to the character's database.
 ///
-/// Its thread ends when the last handle drops. Without this wait the process
-/// can exit between the last chunk and its commit.
+/// **On by default in a debug build, off in a release build**, and either
+/// way `--record` or `--no-record` on the command line decides (author,
+/// 2026-09-24: *"on by default during testing, off by default for release"*).
+/// Nothing at runtime reads what the recorders write -- the hunt, the loot
+/// planner and every behavior read the model -- so a run without them is the
+/// same run with no reports afterwards.
+pub(crate) fn recording() -> bool {
+    recording_in(std::env::args().skip(1))
+}
+
+/// [`recording`], over any argument list, so it can be tested. The last
+/// flag given wins.
+fn recording_in(args: impl IntoIterator<Item = String>) -> bool {
+    let mut on = cfg!(debug_assertions);
+    for arg in args {
+        match arg.as_str() {
+            "--record" => on = true,
+            "--no-record" => on = false,
+            _ => {}
+        }
+    }
+    on
+}
+
+/// Wait, a bounded while ([`FLUSH_WAIT`]), for each recorder to write what
+/// is queued and close.
 ///
-/// The join runs on a detached thread of its own: a blocking `join()` here
+/// A recorder's thread ends when the last handle drops. Without this wait the
+/// process can exit between the last chunk and its commit.
+///
+/// The joins run on a detached thread of their own: a blocking `join()` here
 /// held an async worker, and `spawn_blocking` would hold the runtime's
-/// shutdown instead, for as long as the recorder never ends.
-pub(crate) async fn flush_combat(flush: Option<std::thread::JoinHandle<()>>) {
-    let Some(flush) = flush else { return };
+/// shutdown instead, for as long as a recorder never ends.
+pub(crate) async fn flush_records(flushes: Vec<std::thread::JoinHandle<()>>) {
+    if flushes.is_empty() {
+        return;
+    }
     let (joined, done) = tokio::sync::oneshot::channel();
     std::thread::spawn(move || {
-        let _ = joined.send(flush.join().is_ok());
+        let _ = joined.send(flushes.into_iter().all(|f| f.join().is_ok()));
     });
     match tokio::time::timeout(FLUSH_WAIT, done).await {
         Ok(Ok(true)) => {}
         Ok(Ok(false)) => {
-            eprintln!("[combat] the recorder thread panicked; the last hunt may be open");
+            eprintln!("[record] a recorder thread panicked; the last hunt may be open");
         }
         Ok(Err(_)) | Err(_) => eprintln!(
-            "[combat] still recording while something holds the character's handle; \
+            "[record] still recording while something holds the character's handle; \
              its hunt closes when that ends"
         ),
     }
@@ -220,4 +272,30 @@ fn open_log(character: &str, account: &str) -> io::Result<SessionSink> {
     redactions.account(account);
     let dir = cena_platform::log_dir().join(cena_platform::date_dir());
     SessionSink::create(&dir, character, &cena_platform::file_stamp(), redactions)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::recording_in;
+
+    fn args(line: &str) -> Vec<String> {
+        line.split_whitespace().map(str::to_owned).collect()
+    }
+
+    #[test]
+    fn the_flags_decide_and_the_last_one_wins() {
+        assert!(recording_in(args("--record")));
+        assert!(!recording_in(args("--no-record")));
+        assert!(recording_in(args("--no-record --character X --record")));
+        assert!(!recording_in(args("--record --no-record")));
+    }
+
+    #[test]
+    fn without_a_flag_the_build_decides() {
+        assert_eq!(
+            recording_in(args("--character X")),
+            cfg!(debug_assertions),
+            "debug builds record, release builds do not"
+        );
+    }
 }

@@ -4,6 +4,7 @@
 use cena_behavior::hunt::engine::Phase;
 use cena_behavior::hunt::{Ending, Here, Hunt, Profile, Said};
 use cena_map::RoomId;
+use cena_session::containers::{ContainerEvent, ItemRef, StowSlot};
 use cena_session::{Effect, Frame, GameState, Link, LinkKind, ProgressBar, Run, Runs};
 
 const PROFILE: &str = r#"
@@ -400,6 +401,41 @@ fn delayed_looting_takes_the_first_corpse_at_once_and_spaces_the_rest() {
 }
 
 #[test]
+fn with_a_loot_profile_corpses_go_to_the_planner_and_full_bags_send_the_hunt_to_rest() {
+    use cena_behavior::loot::{Left, LootProfile};
+    let mut hunt = Hunt::new(profile().unwrap(), 1).with_loot(LootProfile::default());
+    let mut state = state(1_000, "10");
+    state.effects.clear_category("Buffs");
+    creature(&mut state, 42, "warg", &[("hostile", "1"), ("dead", "1")]);
+    creature(&mut state, 43, "warg", &[("hostile", "1"), ("dead", "1")]);
+    let at = here(10, &[RoomId(20)]);
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_000)),
+        Said::Loot(vec![42, 43]),
+        "every corpse here, once, for the planner"
+    );
+    assert!(
+        !matches!(hunt.tick(&state, at, Some(1_001)), Said::Loot(_)),
+        "not asked for again"
+    );
+    hunt.loot_ended(Left::BagsFull);
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_002)),
+        Said::Walk(RoomId(20)),
+        "too much loot: to the resting room"
+    );
+    assert_eq!(
+        hunt.phase(),
+        Phase::ToRest(cena_behavior::hunt::engine::Why::Loaded)
+    );
+    assert!(
+        hunt.take_notes()
+            .iter()
+            .any(|n| n.contains("too much loot"))
+    );
+}
+
+#[test]
 fn wander_waits_then_walks_to_a_fresh_room_inside_the_boundaries() {
     let mut hunt = Hunt::new(profile().unwrap(), 7);
     let mut state = state(1_000, "10");
@@ -527,5 +563,87 @@ fn a_rest_with_no_resting_room_ends_the_hunt() {
     assert_eq!(
         hunt.tick(&state, here(10, NO_EXITS), Some(1_000)),
         Said::Done(Ending::NoRestingRoom)
+    );
+}
+
+/// Arriving to rest with a gem in the gem sack: the selling round first
+/// (`plan/31` Stage 4), then the rest commands once home again.
+#[test]
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors; only the link matters"
+)]
+fn arriving_to_rest_with_something_to_sell_runs_the_round_first() {
+    let mut town = toml::Table::new();
+    town.insert(
+        "sell_loot_types".to_owned(),
+        toml::Value::Array(vec![toml::Value::String("gem".to_owned())]),
+    );
+    town.insert(
+        "sell_container".to_owned(),
+        toml::Value::Array(vec![toml::Value::String("gem".to_owned())]),
+    );
+    let loot = cena_behavior::loot::LootProfile {
+        town,
+        ..cena_behavior::loot::LootProfile::default()
+    };
+    let mut hunt = Hunt::new(profile().unwrap(), 1).with_loot(loot);
+    let mut state = state(1_000, "10");
+    state.character.experience.mind_percent = Some(100);
+    // A gem sack on the stow list with a pearl in it.
+    state.containers.apply(&ContainerEvent::StowListBegins);
+    state.containers.apply(&ContainerEvent::StowSet {
+        slot: StowSlot::Gem,
+        item: ItemRef {
+            id: "901".to_owned(),
+            noun: "sack".to_owned(),
+            text: "sack".to_owned(),
+        },
+    });
+    state.apply(&Frame::Container {
+        id: "901".to_owned(),
+        title: Some("My Sack".to_owned()),
+        target: None,
+    });
+    state.apply(&Frame::ContainerItem {
+        container_id: "901".to_owned(),
+        content: Runs {
+            runs: vec![Run {
+                text: "black pearl".to_owned(),
+                style: Default::default(),
+                link: Some(Link {
+                    kind: LinkKind::Exist {
+                        id: "1".to_owned(),
+                        noun: "pearl".to_owned(),
+                    },
+                    text: "black pearl".to_owned(),
+                    coord: None,
+                }),
+                inner_link: None,
+            }],
+        },
+    });
+    assert_eq!(
+        hunt.tick(&state, here(10, NO_EXITS), Some(1_000)),
+        Said::Walk(RoomId(20))
+    );
+    state.room.id = Some("20".to_owned());
+    assert_eq!(
+        hunt.tick(&state, here(20, NO_EXITS), Some(1_100)),
+        Said::Sell,
+        "arrived with a gem to sell: the round before the rest"
+    );
+    assert_eq!(
+        hunt.phase(),
+        Phase::Selling(cena_behavior::hunt::engine::Why::Fried)
+    );
+    // Home again after the round: the rest commands.
+    assert_eq!(
+        hunt.tick(&state, here(20, NO_EXITS), Some(1_200)),
+        send("store all", None)
+    );
+    assert_eq!(
+        hunt.phase(),
+        Phase::Resting(cena_behavior::hunt::engine::Why::Fried)
     );
 }

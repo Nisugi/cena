@@ -53,15 +53,18 @@ pub use state::combat::status::{StatusAction, StatusLine, StatusName};
 pub use state::combat::ucs::{PositionTier, UcsAttack, UcsLine};
 pub use state::containers::{ContainerEvent, Containers, ItemRef, ReadySlot, StoreMode, StowSlot};
 pub use state::hands::Hand;
+pub use state::ledger::{Appraiser, Buyer, Find, LootFact};
 pub use state::message::{Channel, Message, Messages};
 pub use state::resolve::{Held, Location, Match, Specificity, match_of};
 // NOTE: `creature::Stat` and `creature::status::Classification` are NOT
 // re-exported here: `character::stats::Stat` and `gameobj::Classification`
 // already hold those names at the facade, and three types called `Stat` in
 // one namespace would make every use site ambiguous to a reader rather than
-// only to the compiler. They are reached by their module path.
+// only to the compiler. They are reached by their module path. So are
+// `creature::Message` and `creature::Ability`, for the same reason:
+// `message::Message` and `societies::Ability` hold those names.
 pub use state::creature::status::{CreatureStatus, Status};
-pub use state::creature::{Area, Attack, Creature, MessageKind, Treasure};
+pub use state::creature::{Area, Attack, AttackCategory, Creature, MessageKind, Treasure};
 pub use state::creatures::{BodyPart, CreatureInstance, Creatures};
 pub use state::gameobj::{Classification, ObjectTypes};
 pub use state::menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem, category_path};

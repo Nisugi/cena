@@ -30,6 +30,12 @@ pub enum Said {
     Wait(u32),
     /// The hunt is over.
     Done(Ending),
+    /// Loot these corpses and the floor by the character's loot profile
+    /// (`plan/31`): the driver runs the planner until it is done.
+    Loot(Vec<i64>),
+    /// Sell what the bags hold, at the shops and back (`plan/31` Stage 4):
+    /// the driver runs the town planner until it is home again.
+    Sell,
     /// Nothing this tick.
     Nothing,
 }
@@ -71,6 +77,12 @@ pub enum Why {
     Encumbered,
     /// Mana is below `rest.mana_below`.
     Mana,
+    /// Every bag is full: something wanted could go nowhere (`plan/31`;
+    /// the author: *"too much loot"*).
+    Loaded,
+    /// A box stayed in hand that no bag would take (`plan/31`; the author:
+    /// *"we don't want to drop it, so we head in to rest"*).
+    BoxInHand,
 }
 
 impl fmt::Display for Why {
@@ -80,6 +92,8 @@ impl fmt::Display for Why {
             Self::Fried => "fried",
             Self::Encumbered => "encumbered",
             Self::Mana => "out of mana",
+            Self::Loaded => "too much loot",
+            Self::BoxInHand => "a box in hand that no bag will take",
         })
     }
 }
@@ -91,6 +105,8 @@ pub enum Phase {
     Hunting,
     /// Walking to the resting room.
     ToRest(Why),
+    /// Arrived to rest with loot to sell: the selling round, then the rest.
+    Selling(Why),
     /// At the resting room, until the thresholds are met.
     Resting(Why),
     /// Walking back to the hunting room.
@@ -104,6 +120,8 @@ impl fmt::Display for Phase {
         match self {
             Self::Hunting => f.write_str("hunting"),
             Self::ToRest(why) => write!(f, "{why}: walking to the resting room"),
+
+            Self::Selling(why) => write!(f, "selling before resting ({why})"),
             Self::Resting(why) => write!(f, "resting ({why})"),
             Self::Returning => f.write_str("rested: walking back"),
             Self::Preparing => f.write_str("preparing"),

@@ -286,6 +286,7 @@ impl<C: Connector> SupervisedSession<C> {
                 std::mem::take(&mut self.core.recorder),
                 self.core.sink.take(),
                 self.core.combat.clone(),
+                self.core.ledger.clone(),
                 // A CHILD token: cancelling the session cancels the running
                 // connection, but a connection ending does not cancel the
                 // session.

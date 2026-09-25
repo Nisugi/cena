@@ -58,6 +58,7 @@ impl<C: Connector> SupervisedSession<C> {
                 recorder: Recorder::new(),
                 sink: None,
                 combat: None,
+                ledger: None,
                 player_log: handle.log_slot(),
                 character_dir: None,
                 menu_dir: None,

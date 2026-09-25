@@ -65,6 +65,7 @@
 //! column NULL for `ucs` rows, so no report reads it wrongly.
 
 mod attack;
+pub mod report;
 pub mod schema;
 mod status;
 pub mod worker;

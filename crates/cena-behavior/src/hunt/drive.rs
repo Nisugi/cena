@@ -49,7 +49,9 @@ use tokio_util::sync::CancellationToken;
 
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
-use crate::travel::{Ended, Heard, TravelNotes, room_of, travel_holding};
+use crate::loot::{Left, Memory, Outcome as LootOutcome, Planner, Step, classify};
+use crate::town::{self, Seller, Step as Errand, Town};
+use crate::travel::{Ended, Heard, TravelNotes, destination, room_of, travel_holding, walker_from};
 use crate::watchdog::Heartbeat;
 
 /// How long a sent line may wait for its prompt.
@@ -58,6 +60,10 @@ const SEND_DEADLINE: Duration = Duration::from_secs(8);
 const SETTLE_CAP: Duration = Duration::from_secs(15);
 /// The idle beat: how often the loop turns with nothing to do.
 const BEAT: Duration = Duration::from_millis(250);
+/// The most commands one visit's looting sends before it is given up on.
+const LOOT_STEPS: usize = 64;
+/// The most steps one selling round takes before it is given up on.
+const SELL_STEPS: usize = 400;
 
 /// How a hunt ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,6 +106,8 @@ pub async fn hunt(
         last_room: None,
         notes,
         wrote,
+        memory: Memory::default(),
+        transcript: String::new(),
     };
     let end = driver.run(heartbeat).await;
     let text = match end {
@@ -129,6 +137,11 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> {
     /// once and kept as a walk changes it.
     notes: TravelNotes,
     wrote: W,
+    /// What looting learned: full bags, autoclosers, crumbly names.
+    memory: Memory,
+    /// The main window's text since the last loot command was sent, for
+    /// reading its reply.
+    transcript: String,
 }
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
@@ -167,6 +180,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                 Said::Wait(seconds) => self.hold(Duration::from_secs(u64::from(seconds))).await,
                 Said::Send { line, target } => self.send(&line, target).await,
                 Said::Walk(to) => self.walk(to).await,
+                Said::Loot(corpses) => self.loot(&corpses).await,
+                Said::Sell => self.sell().await,
                 Said::Done(ending) => return HuntEnd::Finished(ending),
             };
             if let Err(end) = step {
@@ -199,7 +214,165 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
     }
 
     fn fold(&mut self, event: &Event) -> Result<(), BehaviorError> {
+        if let Event::Frame(frame) = event
+            && let Frame::Text(text) = &**frame
+            && text.stream.is_empty()
+        {
+            self.transcript.push_str(&text.content);
+        }
         fold_into(&mut self.state, event)
+    }
+
+    /// Loot with the planner (`plan/31` Stage 2): each step sent through the
+    /// gate, each reply read for what eloot would act on, until the planner
+    /// says it is done. What it learned is kept for the next room, and a
+    /// reason to rest is handed to the machine.
+    async fn loot(&mut self, corpses: &[i64]) -> Result<(), HuntEnd> {
+        let Some(profile) = self.machine.loot_profile().cloned() else {
+            return Ok(());
+        };
+        let memory = std::mem::take(&mut self.memory);
+        let mut planner = Planner::new(profile, memory, corpses);
+        for _ in 0..LOOT_STEPS {
+            let step = planner.next(&self.state);
+            let (line, touched) = match &step {
+                Step::Done(left) => {
+                    self.machine.loot_ended(*left);
+                    if *left != Left::Nothing {
+                        self.handle.say(Notice::line(
+                            NoticeKind::Info,
+                            format!(
+                                "Hunt: looting stopped: {}.",
+                                self.machine.rest_reason_text()
+                            ),
+                        ));
+                    }
+                    break;
+                }
+                Step::Stance(line) | Step::Cast(line) => (line.clone(), None),
+                Step::Ask(what) => ((*what).to_owned(), None),
+                Step::Search(id) => (format!("loot #{id}"), None),
+                Step::LootRoom => ("loot room".to_owned(), None),
+                Step::LootItem(id) => (format!("loot #{id}"), self.floor_name(id)),
+                Step::Open(bag) => (format!("open #{bag}"), self.floor_name(bag)),
+                Step::LookIn(bag) => (format!("look in #{bag}"), None),
+                Step::Drag { item, bag } => {
+                    (format!("_drag #{item} #{bag}"), self.floor_name(item))
+                }
+                Step::Wield(id) => (format!("get #{id}"), None),
+                Step::Kneel => ("kneel".to_owned(), None),
+                Step::Stand => ("stand".to_owned(), None),
+                Step::Skin { corpse, hand } => (format!("skin #{corpse} {hand}"), None),
+                Step::StowGem(id) => (format!("stow gem #{id}"), None),
+            };
+            self.transcript.clear();
+            self.send(&line, None).await?;
+            let outcomes: Vec<LootOutcome> = self.transcript.lines().filter_map(classify).collect();
+            for outcome in &outcomes {
+                planner.outcome_in(outcome, &self.state);
+                if let Some(name) = &touched {
+                    planner.learn(outcome, name);
+                }
+            }
+            if outcomes.is_empty() {
+                // The floor is restated a moment after the verb lands.
+                self.hold(BEAT).await?;
+                // A stow the text did not confirm is confirmed by the bag's
+                // contents, as eloot confirms it (`eloot.lic:4102-4108`).
+                if let Step::Drag { item, bag } = &step
+                    && self
+                        .state
+                        .inventory
+                        .container(bag)
+                        .is_some_and(|held| held.items.iter().any(|thing| thing.id == *item))
+                {
+                    planner.outcome(&LootOutcome::Stored);
+                }
+            }
+        }
+        self.memory = planner.memory().clone();
+        Ok(())
+    }
+
+    /// Sell with the town planner (`plan/31` Stage 4): each shop the nearest
+    /// room tagged for it, walked with travel's driver; each step sent through
+    /// the gate; each reply read as the ledger's facts from this driver's own
+    /// fold of the stream, plus the few replies that are not facts. Ends
+    /// back at the resting room, or wherever the round gave up.
+    async fn sell(&mut self) -> Result<(), HuntEnd> {
+        let Some(profile) = self.machine.loot_profile().cloned() else {
+            return Ok(());
+        };
+        let Some(home) = self.locate() else {
+            return Ok(());
+        };
+        let town = Town::from_table(&profile.town);
+        let Some(mut seller) = Seller::new(town, &self.state, home) else {
+            return Ok(());
+        };
+        // Facts queued before the round are not the round's.
+        let _ = self.state.take_loot();
+        for _ in 0..SELL_STEPS {
+            let here = self.locate();
+            let step = {
+                let now = self.state.game_time_now().unwrap_or(0);
+                let walker = walker_from(&self.state, &self.notes, now);
+                let (map, state) = (self.map, &self.state);
+                let nearest = |tag: &str| {
+                    here.and_then(|from| {
+                        destination(map, &walker, from, tag, &std::collections::BTreeMap::new())
+                    })
+                };
+                seller.next(state, &nearest)
+            };
+            let line = match &step {
+                Errand::Done => break,
+                Errand::Walk(to) => {
+                    self.walk(*to).await?;
+                    continue;
+                }
+                Errand::Fetch(id) => format!("get #{id}"),
+                Errand::Sell(id) | Errand::SellSack(id) => format!("sell #{id}"),
+                Errand::Appraise(id) => format!("appraise #{id}"),
+                Errand::Analyze(id) => format!("analyze #{id}"),
+                Errand::Wear(id) => format!("wear #{id}"),
+                Errand::ReadNote(id) => format!("read #{id}"),
+                Errand::Stow { item, bag } => format!("_drag #{item} #{bag}"),
+            };
+            self.transcript.clear();
+            self.send(&line, None).await?;
+            // The shopkeeper answers a beat after the verb lands.
+            self.hold(BEAT).await?;
+            let facts: Vec<cena_session::LootFact> = self
+                .state
+                .take_loot()
+                .into_iter()
+                .flat_map(|chunk| chunk.facts)
+                .collect();
+            let replies: Vec<town::Reply> =
+                self.transcript.lines().filter_map(town::classify).collect();
+            seller.outcome(&facts, &replies, &self.state);
+        }
+        if !seller.skipped().is_empty() {
+            self.handle.say(Notice::line(
+                NoticeKind::Info,
+                format!(
+                    "Hunt: {} items could not be sold this round.",
+                    seller.skipped().len()
+                ),
+            ));
+        }
+        Ok(())
+    }
+
+    /// The name of a thing on the floor, by id.
+    fn floor_name(&self, id: &str) -> Option<String> {
+        self.state
+            .room
+            .objects
+            .iter()
+            .find(|item| item.id == id)
+            .map(|item| item.text.clone())
     }
 
     /// Fold events for up to `for_`, or until stopped.

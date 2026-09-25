@@ -65,6 +65,7 @@ mod idle;
 mod inventory;
 pub mod inventory_snapshot;
 pub mod known_spells;
+pub mod ledger;
 pub mod maneuvers;
 pub mod menu;
 pub mod message;
@@ -263,6 +264,9 @@ pub struct GameState {
     /// The combat state machine (`state/combat/tracker.rs`). Private: its
     /// inputs are the chunk and the clock, both owned here.
     combat: combat::CombatTracker,
+    /// Loot facts classified at each prompt, waiting for the session's
+    /// ledger (`ledger/pending.rs`). Drained by [`GameState::take_loot`].
+    loot: ledger::LootQueue,
     /// Every creature the feed has shown, with what combat did to it.
     /// `state/creatures.rs`.
     creatures: creatures::Creatures,
@@ -281,6 +285,17 @@ impl GameState {
     #[must_use]
     pub const fn combat(&self) -> &combat::CombatTracker {
         &self.combat
+    }
+
+    /// Every classified loot chunk since the last call, oldest first.
+    pub fn take_loot(&mut self) -> Vec<ledger::LootChunk> {
+        self.loot.take()
+    }
+
+    /// Loot chunks lost to the pending cap before being drained.
+    #[must_use]
+    pub const fn loot_dropped(&self) -> u64 {
+        self.loot.dropped()
     }
 
     /// The combat state machine, to hand it crit tables or drain its facts.

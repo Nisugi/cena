@@ -1,0 +1,3309 @@
+creature_id	list	name	note
+agresh_bear	otherclass	Living	
+agresh_troll_chieftain	otherclass	Living	
+agresh_troll_chieftain	equipment	a flail	
+agresh_troll_chieftain	equipment	a leather helm	
+agresh_troll_chieftain	equipment	a military pick	
+agresh_troll_chieftain	equipment	a visored helm	
+agresh_troll_chieftain	equipment	an augmented breastplate	
+agresh_troll_chieftain	equipment	some brigandine armor	
+agresh_troll_chieftain	defensive_spells	Spirit Warding II (107)	
+agresh_troll_chieftain	treasure_other	Glimmering blue essence shardGlimmering blue mote of essence	
+agresh_troll_scout	otherclass	Living	
+agresh_troll_scout	equipment	a war hammer	
+agresh_troll_scout	equipment	a wooden shield	
+agresh_troll_scout	equipment	some light leather	
+agresh_troll_scout	defensive_spells	Spirit Warding II (107)	
+agresh_troll_warrior	otherclass	Living	
+agresh_troll_warrior	equipment	a chain hauberk	
+agresh_troll_warrior	equipment	a war hammer	
+agresh_troll_warrior	equipment	a wooden shield	
+agresh_troll_warrior	defensive_spells	Spirit Warding II (107)	
+aivren	otherclass	Living	
+aivren	otherclass	Boss	
+albino_tomb_spider	otherclass	Living	
+algae_draped_merrow_oracle	defensive_spells	Wizard's Shield (919)	
+algae_draped_merrow_oracle	special_defenses	-->	
+ancient_ghoul_master	otherclass	Corporeal undead	
+ancient_ghoul_master	equipment	a blackened battle axe	
+ancient_ghoul_master	equipment	some blackened platemail	
+animated_slush	otherclass	Magical	
+animated_slush	treasure_other	Gold Dust	
+animated_slush	treasure_other	essence of water	
+arachne_acolyte	otherclass	Living	
+arachne_acolyte	equipment	a chain hauberk	
+arachne_acolyte	equipment	a war hammer	
+arachne_acolyte	equipment	a wooden shield	
+arachne_acolyte	defensive_spells	Spirit Warding I (101)	
+arachne_acolyte	defensive_spells	Spirit Defense (103)	
+arachne_acolyte	defensive_spells	Spirit Warding II (107)	
+arachne_acolyte	defensive_spells	Spirit Fog (106)	
+arachne_acolyte	treasure_other	glimmering blue essence shard	
+arachne_priest	otherclass	Living	
+arachne_priest	equipment	a reinforced shield	
+arachne_priest	equipment	a scimitar	
+arachne_priest	equipment	a short sword	
+arachne_priest	defensive_spells	Spirit Warding II (107)	
+arachne_priest	defensive_spells	Spell Shield (219)	
+arachne_priest	defensive_spells	Prayer of Protection (303)	
+arachne_priest	defensive_spells	Warding Sphere (310)	
+arachne_priest	defensive_spells	Prayer (313)	
+arachne_priest	treasure_other	Glimmering blue essence shard	
+arachne_servant	otherclass	Living	
+arachne_servant	equipment	a morning star	
+arachne_servant	equipment	a reinforced shield	
+arachne_servant	equipment	a visored helm	
+arachne_servant	equipment	some light leather	
+arachne_servant	defensive_spells	Spirit Warding I (101)	
+arachne_servant	defensive_spells	Spirit Defense (103)	
+arachne_servant	defensive_spells	Spirit Warding II (107)	
+arachne_servant	defensive_spells	Spirit Shield (202)	
+arachne_servant	defensive_spells	Spell Shield (219)	
+arachne_servant	treasure_other	glimmering blue essence shard	
+arch_wight	otherclass	Corporeal undead	
+arch_wight	equipment	a blackened scimitar	
+arch_wight	equipment	a corroded steel scimitar	
+arch_wight	equipment	a scimitar	
+arch_wight	equipment	a war hammer	
+arch_wight	equipment	some cuirbouilli leather	
+arch_wight	equipment	some tattered gilt-edged silk robes	
+arch_wight	defensive_spells	Spirit Warding II (107)	
+arch_wight	defensive_spells	Spell Shield (219)	
+arch_wight	treasure_other	glimmering blue essence shard	
+arctic_manticore	otherclass	Living	
+arctic_manticore	treasure_other	Glimmering blue essence dust	
+arctic_puma	otherclass	Living	
+arctic_titan	otherclass	Living	
+arctic_titan	otherclass	Elemental family	
+arctic_titan	equipment	a handaxe	
+arctic_titan	equipment	a reinforced shield	
+arctic_titan	equipment	some cuirbouilli leather	
+arctic_titan	treasure_other	essence of water	
+arctic_titan	treasure_other	t'ayanad crystal	
+arctic_wolverine	otherclass	Living	
+ash_guardian	otherclass	Living	
+ash_guardian	otherclass	Element-based	
+ash_guardian	equipment	a jagged shard of obsidian	
+ash_guardian	equipment	a smoldering slab of glaes	
+ash_hag	otherclass	Living	
+ash_hag	otherclass	Element-based	
+ash_hag	otherclass	Boss	
+ash_hag	defensive_spells	Elemental Defense II (406)	
+ash_hag	defensive_spells	Elemental Defense III (414)	
+ash_hag	defensive_spells	Thurfel's Ward (503)	
+ash_hag	treasure_other	glimmering blue essence shard	
+ash_hag	treasure_other	essence of fire	
+ash_hag	treasure_other	glimmering blue essence dust	
+ashen_patrician_vampire	otherclass	Corporeal undead	
+ashen_patrician_vampire	equipment	a swept-hilt veil iron rapier adorned with jewels	
+ashen_patrician_vampire	defensive_spells	Mindward (1208)	
+ashen_patrician_vampire	defensive_spells	Blink (1215)	
+ashen_patrician_vampire	special_defenses	Health regeneration	
+ashen_patrician_vampire	armaments	drake greatsword	
+ashen_patrician_vampire	armaments	drake greataxe	
+ashen_patrician_vampire	armaments	drake falchion	
+ashen_patrician_vampire	treasure_other	ayanad crystal	
+ashen_patrician_vampire	treasure_other	n'ayanad crystal	
+ashen_patrician_vampire	treasure_other	petrified mammoth tusk	
+athletic_dark_eyed_incubus	otherclass	Extraplanar	
+athletic_dark_eyed_incubus	equipment	a pair of tight leather trousers	
+athletic_dark_eyed_incubus	treasure_other	ayanad crystal	
+baesrukha	otherclass	Corporeal undead	
+baesrukha	defensive_spells	Elemental Defense I (401)	
+baesrukha	defensive_spells	Elemental Defense II (406)	
+baesrukha	defensive_spells	Elemental Defense III (414)	
+baesrukha	defensive_spells	Thurfel's Ward (503)	
+baesrukha	defensive_spells	Elemental Bias (508)	
+baesrukha	treasure_other	Glowing violet essence dust	
+baesrukha	treasure_other	glowing violet essence shard	
+banded_rattlesnake	otherclass	Living	
+banded_rattlesnake	equipment	a bruised left eye	
+banded_rattlesnake	equipment	a bruised right eye	
+bandit	otherclass	Living	
+banshee	otherclass	Non-corporeal undead	
+banshee	treasure_other	Inky necrotic core	
+banshee	treasure_other	glowing violet mote of essence	
+barbed_cavern_urchin	otherclass	Living	
+barghest	otherclass	Non-corporeal undead	
+barghest	equipment	a bruised left eye	
+behemothic_gorefrost_golem	equipment	a firewheel arrow fletched with plain white feathers	
+behemothic_gorefrost_golem	armaments	feras mattock	
+behemothic_gorefrost_golem	armaments	drake scimitar	
+behemothic_gorefrost_golem	armaments	drake greatsword	
+behemothic_gorefrost_golem	armaments	drake falchion	
+behemothic_gorefrost_golem	armaments	drake mace	
+behemothic_gorefrost_golem	armaments	feras dagger	
+behemothic_gorefrost_golem	armaments	feras falchion	
+behemothic_gorefrost_golem	armaments	feras mace	
+behemothic_gorefrost_golem	armaments	drake greataxe	
+behemothic_gorefrost_golem	treasure_other	gigas artifact	
+behemothic_gorefrost_golem	treasure_other	ayanad crystal	
+behemothic_gorefrost_golem	treasure_other	n'ayanad crystal	
+behemothic_gorefrost_golem	treasure_other	petrified mammoth tusk	
+bent_being	otherclass	Living	
+bent_being	defensive_spells	Elemental Defense I (401)	
+bent_being	defensive_spells	Elemental Defense II (406)	
+bent_being	defensive_spells	Elemental Defense III (414)	
+bent_being	defensive_spells	Mass Blur (911)	
+bent_being	defensive_spells	Prismatic Guard (905)	
+bent_being	defensive_spells	Thurfel's Ward (503)	
+big_ugly_kobold	otherclass	Living	
+big_ugly_kobold	equipment	a short sword	
+big_ugly_kobold	equipment	a wooden shield	
+bighorn_sheep	otherclass	Living	
+black_bear	otherclass	Living	
+black_boar	otherclass	Living	
+black_forest_ogre	otherclass	Living	
+black_forest_ogre	otherclass	Boss	
+black_forest_ogre	equipment	a rust-covered dhara	
+black_forest_ogre	equipment	a rust-covered kite shield	
+black_forest_ogre	equipment	some dusty leather armor	
+black_forest_ogre	defensive_spells	Elemental Defense I (401)	
+black_forest_ogre	defensive_spells	Elemental Defense II (406)	
+black_forest_ogre	defensive_spells	Elemental Defense III (414)	
+black_forest_ogre	defensive_spells	Elemental Barrier (430)	
+black_forest_ogre	defensive_spells	Thurfel's Ward (503)	
+black_forest_ogre	defensive_spells	Prismatic Guard (905)	
+black_forest_ogre	defensive_spells	Mass Blur (911)	
+black_forest_ogre	defensive_spells	Wizard's Shield (919)	
+black_forest_ogre	treasure_other	Glowing violet essence shard	
+black_forest_ogre	treasure_other	tiny golden seed	
+black_forest_viper	otherclass	Living	
+black_forest_viper	equipment	a bruised left eye	
+black_forest_viper	equipment	a bruised right eye	
+black_leopard	otherclass	Living	
+black_panther	otherclass	Living	
+black_rolton	otherclass	Living	
+black_urgh	otherclass	Living	
+black_winged_daggerbeak	otherclass	Living	
+blackened_decaying_tumbleweed	otherclass	corporeal undead	
+blazing_red_phoenix	otherclass	Element-based	
+blazing_red_phoenix	otherclass	Magical	
+blazing_red_phoenix	equipment	a firewheel arrow fletched with plain white feathers	
+blazing_red_phoenix	defensive_spells	Mage Armor (520)	
+blood_eagle	otherclass	Living	
+bloody_halfling_cannibal	equipment	a twisted obsidian dagger	
+bloody_halfling_cannibal	equipment	some frayed armor scraps adorned with glinting blue-white scales	
+bloody_halfling_cannibal	defensive_abilities	unstun	able to break stuns
+bloody_halfling_cannibal	defensive_abilities	vanish	able to evade an attack by hiding in the shadows
+bloody_halfling_cannibal	armaments	drake falchion	
+bloody_halfling_cannibal	armaments	drake greatsword	
+bloody_halfling_cannibal	armaments	drake scimitar	
+bloody_halfling_cannibal	armaments	drake mace	
+bloody_halfling_cannibal	armaments	feras mattock	
+bloody_halfling_cannibal	armaments	drake greataxe	
+bloody_halfling_cannibal	armaments	feras falchion	
+bloody_halfling_cannibal	armaments	feras hammer	
+bloody_halfling_cannibal	armaments	feras mace	
+bloody_halfling_cannibal	treasure_other	gigas artifact	
+bloody_halfling_cannibal	treasure_other	ayanad crystal	
+bloody_halfling_cannibal	treasure_other	n'ayanad crystal	
+bloody_halfling_cannibal	treasure_other	petrified mammoth tusk	
+blubbery_humpbacked_merrow	armaments	drake yierka-spur	
+blubbery_humpbacked_merrow	armaments	feras mattock	
+bobcat	otherclass	Living	
+bog_spectre	otherclass	Non-corporeal undead	
+bog_spectre	equipment	some rotting black leathers	
+bog_spectre	defensive_spells	Elemental Defense I (401)	
+bog_spectre	defensive_spells	Elemental Defense II (406)	
+bog_spectre	defensive_spells	Spirit Defense (103)	
+bog_spectre	defensive_spells	Spirit Warding I (101)	
+bog_spectre	defensive_spells	Spirit Warding II (107)	
+bog_spectre	treasure_other	Glowing violet essence shard	
+bog_troll	otherclass	Living	
+bog_troll	equipment	a thick wooden knurl	
+bog_troll	equipment	some weed-covered brigandine	
+bog_troll	treasure_other	small troll tooth	
+bog_wight	otherclass	Corporeal undead	
+bog_wight	otherclass	Boss	
+bog_wight	equipment	a ragged blackened breastplate	
+bog_wight	treasure_other	Glowing violet mote of essence	
+bog_wraith	otherclass	Non-corporeal undead	
+bog_wraith	equipment	a bruised left eye	
+bone_golem	otherclass	Corporeal undead	
+bone_golem	treasure_other	crystal core	
+bony_tenthsworn_occultist	equipment	a crooked bloodwood runestaff carved with sinuous lines	
+bony_tenthsworn_occultist	equipment	some dark mauve robes threaded with blood red sigils	
+brawny_gigas_shield-maiden	equipment	a gilded steel breastplate adorned with faint scrollwork	
+brawny_gigas_shield-maiden	equipment	a gold-tipped heavy spear	
+brawny_gigas_shield-maiden	equipment	a riveted golden targe	
+brawny_gigas_shield-maiden	defensive_spells	divine shield (1609)	
+brawny_gigas_shield-maiden	defensive_spells	dauntless (1606)	
+brawny_gigas_shield-maiden	defensive_abilities	damage resistance	able to gain resistance to damage type attacked with
+brawny_gigas_shield-maiden	armaments	drake falchion	
+brawny_gigas_shield-maiden	armaments	drake greatsword	
+brawny_gigas_shield-maiden	armaments	drake mace	
+brawny_gigas_shield-maiden	armaments	feras mattock	
+brawny_gigas_shield-maiden	armaments	drake greataxe	
+brawny_gigas_shield-maiden	treasure_other	gigas fragment	
+brawny_gigas_shield-maiden	treasure_other	ayanad crystal	
+brawny_gigas_shield-maiden	treasure_other	n'ayanad crystal	
+brawny_gigas_shield-maiden	treasure_other	petrified mammoth tusk	
+bresnahanini_rolton	otherclass	Living	
+brown_boar	otherclass	Living	
+brown_gak	otherclass	Living	
+brown_spinner	otherclass	Living	
+burly_goliath_engineer	otherclass	Living	
+burly_goliath_engineer	defensive_spells	Mage Armor (520)	
+burly_reiver	otherclass	Living	
+burly_reiver	equipment	a steel dirk	
+burly_reiver	equipment	a steel rimmed shield	
+burly_reiver	equipment	some full plate	
+burly_reiver	treasure_other	glimmering blue essence shard	
+cadaverous_tatterdemalion_ghast	otherclass	Corporeal undead	
+cadaverous_tatterdemalion_ghast	equipment	some faded sackcloth garments	
+cadaverous_tatterdemalion_ghast	treasure_other	ayanad crystal	
+cadaverous_tatterdemalion_ghast	treasure_other	n'ayanad crystal	
+cadaverous_tatterdemalion_ghast	treasure_other	petrified mammoth tusk	
+caedera	otherclass	Living	
+caedera	otherclass	Magical	
+caedera	equipment	a bruised left eye	
+caedera	equipment	a bruised right eye	
+carceris	otherclass	Corporeal undead	
+carceris	equipment	some old tattered armor	
+carceris	equipment	a mangled shield	
+carceris	defensive_spells	Elemental Defense I (401)	
+carceris	defensive_spells	Elemental Defense II (406)	
+carceris	defensive_spells	Prismatic Guard (905)	
+carceris	defensive_spells	Mass Blur (911)	
+carceris	treasure_other	glimmering blue essence dust	
+caribou	otherclass	Living	
+carrion_worm	otherclass	Living	
+cave_bear	otherclass	Living	
+cave_gnoll	otherclass	Living	
+cave_gnoll	equipment	a scimitar	
+cave_gnoll	equipment	a wooden shield	
+cave_gnoll	equipment	some reinforced leather	
+cave_gnome	otherclass	Living	
+cave_gnome	equipment	a handaxe	
+cave_gnome	equipment	a leather breastplate	
+cave_gnome	equipment	a reinforced shield	
+cave_gnome	equipment	a short sword	
+cave_gnome	equipment	a wooden shield	
+cave_gnome	treasure_other	Alchemy (common)	
+cave_gnome	treasure_other	ayanad crystal	
+cave_lizard	otherclass	Living	
+cave_lizard	treasure_other	s'ayanad crystal	
+cave_lizard	treasure_other	ayanad crystal	
+cave_nipper	otherclass	Living	
+cave_troll	otherclass	Living	
+cave_troll	equipment	a short sword	
+cave_troll	equipment	a spear	
+cave_troll	equipment	a war hammer	
+cave_troll	equipment	a wooden shield	
+cave_troll	equipment	some double leather	
+cave_troll	defensive_spells	Spirit Warding II (107)	
+cave_troll	treasure_other	small troll tooth	
+cave_worm	otherclass	Living	
+centaur	otherclass	Living	
+centaur	otherclass	Boss	
+centaur	equipment	a bruised left eye	
+centaur	equipment	a bruised right eye	
+centaur	equipment	a greatsword	
+centaur	equipment	a leather breastplate	
+centaur	equipment	a polished longsword	
+centaur	equipment	a steel-bossed buckler	
+centaur	equipment	some hardened cuirbouilli leather	
+centaur	treasure_other	Glimmering blue essence shard	
+centaur_ranger	otherclass	Living	
+centaur_ranger	equipment	a wooden long bow	
+centaur_ranger	equipment	some chain mail	
+centaur_ranger	defensive_spells	Natural Colors (601)	
+centaur_ranger	defensive_spells	Resist Elements (602)	
+centaur_ranger	defensive_spells	Self Control (613)	
+centaur_ranger	defensive_spells	Spirit Warding I (101)	
+centaur_ranger	defensive_spells	Spirit Defense (103)	
+centaur_ranger	treasure_other	Glimmering blue essence shardGlimmering blue mote of essence	
+chitinous_kiramon_myrmidon	special_defenses	Brace-like effect	
+chitinous_kiramon_myrmidon	special_defenses	Durable carapace	
+cinder_wasp	otherclass	Living	
+cinder_wasp	equipment	a bruised left eye	
+cinder_wasp	equipment	a bruised right eye	
+cinder_wasp	equipment	a completely severed left leg	
+cinereous_chthonian_sybil	defensive_spells	Soul Ward (319)	
+cinereous_chthonian_sybil	defensive_spells	Cloak of Shadows (712)	
+cinereous_chthonian_sybil	defensive_spells	Blink (1215)	
+cloud_sprite_meddler	defensive_spells	Natural Colors (601)	
+cloud_sprite_meddler	defensive_spells	Thurfel's Ward (503)	
+cloud_sprite_meddler	treasure_other	Weapons	
+cobra	otherclass	Living	
+cockatrice	otherclass	Living	
+cold_guardian	treasure_other	Alchemy components, Lockpicks	
+cold_guardian	treasure_other	essence of water	
+colossus_vulture	otherclass	Living	
+cook_s_assistant	defensive_spells	Elemental Defense I (401)	
+cook_s_assistant	defensive_spells	Elemental Defense II (406)	
+cook_s_assistant	defensive_spells	Elemental Defense III (414)	
+cook_s_assistant	defensive_spells	Lesser Shroud (120)	
+cook_s_assistant	defensive_spells	Spirit Defense (103)	
+cook_s_assistant	defensive_spells	Spirit Warding I (101)	
+cook_s_assistant	defensive_spells	Spirit Warding II (107)	
+cougar	otherclass	Living	
+cougar	otherclass	Boss	
+coyote	otherclass	Living	
+crackling_lightning_fiend	defensive_spells	Elemental Defense I (401)	
+crackling_lightning_fiend	defensive_spells	Elemental Defense II (406)	
+crackling_lightning_fiend	defensive_spells	Elemental Defense III (414)	
+crackling_lightning_fiend	defensive_spells	Celerity (506)	
+crazed_canine	otherclass	Living	
+crazed_zombie	otherclass	Corporeal undead	
+crazed_zombie	otherclass	Boss	
+crazed_zombie	treasure_other	Glimmering blue essence shardGlimmering blue mote of essence	
+crested_basilisk	otherclass	Living	
+crested_basilisk	otherclass	Boss	
+crested_basilisk	treasure_other	s'ayanad crystal	
+crocodile	otherclass	Living	
+crystal_crab	otherclass	Living	
+crystal_crab	treasure_other	ayanad crystal	
+crystal_golem	otherclass	Magical	
+crystal_golem	treasure_other	a crystal core	
+csetairi	otherclass	Living	
+csetairi	otherclass	Magical	
+csetairi	equipment	a green-black spiked collar	
+csetairi	equipment	a green-black spiked helm	
+csetairi	equipment	a razor-sharp green-black scimitar	
+csetairi	defensive_spells	Spirit Warding I (101)	
+csetairi	defensive_spells	Spirit Defense (103)	
+csetairi	defensive_spells	Spirit Warding II (107)	
+csetairi	defensive_spells	Lesser Shroud (120)	
+csetairi	defensive_spells	Spirit Shield (202)	
+csetairi	defensive_spells	Spell Shield (219)	
+csetairi	defensive_spells	Heroism (215)	
+csetairi	defensive_spells	Wall of Force (140)	
+csetairi	defensive_spells	Spirit Strike (117)	
+csetairi	treasure_other	tiny golden seed	
+csetairi	treasure_other	n'ayanad crystal	
+cyclops	otherclass	Living	
+cyclops	otherclass	Magical	
+cyclops	equipment	a fetid urgh hide	
+cyclops	equipment	a splintered tree trunk	
+dark_apparition	otherclass	Non-corporeal undead	
+dark_apparition	equipment	a bruised left eye	
+dark_frosty_plant	otherclass	corporeal undead	
+dark_orc	otherclass	Living	
+dark_orc	equipment	a crudely forged iron halberd	
+dark_orc	equipment	a dented iron helm	
+dark_orc	equipment	a falchion	
+dark_orc	equipment	a wooden shield	
+dark_orc	equipment	some augmented chain	
+dark_orc	equipment	some wide-ring double chain	
+dark_panther	otherclass	Living	
+dark_shambler	otherclass	Living	
+dark_shambler	equipment	a blackened twohanded sword	
+dark_shambler	equipment	a broadsword	
+dark_shambler	equipment	a bruised left eye	
+dark_shambler	equipment	a bruised right eye	
+dark_shambler	equipment	a completely severed right arm	
+dark_shambler	equipment	a crude dark visored helm	
+dark_shambler	equipment	a suit of form-fitting night black brigandine	
+dark_shambler	equipment	a twohanded sword	
+dark_shambler	equipment	a visored helm	
+dark_shambler	equipment	a wooden shield	
+dark_shambler	equipment	an immense dark steel bidenhander	
+dark_shambler	equipment	some brigandine armor	
+dark_shambler	treasure_other	s'ayanad crystal	
+dark_shambler	treasure_other	ayanad crystal	
+dark_vortece	otherclass	Magical	
+dark_vortece	otherclass	Boss	
+dark_vortece	immunities	magic	
+dark_vortece	treasure_other	essence of air	
+dark_vysan	otherclass	Living	
+darken	otherclass	non-corporeal undead	
+darken	defensive_abilities	invisibility	naturally invisible; requires 109 or 205 to reveal
+darken	treasure_other	Glimmering blue essence shard	
+darken	treasure_other	glimmering blue mote of essence	
+darkly_inked_fetish_master	otherclass	Extraplanar	
+darkly_inked_fetish_master	otherclass	Living	
+darkly_inked_fetish_master	equipment	a stout rotting wood staff	
+darkly_inked_fetish_master	equipment	some loosely fitted torn ochre robes	
+darkly_inked_fetish_master	defensive_spells	Spirit Warding II (107)	
+darkly_inked_fetish_master	defensive_spells	Lesser Shroud (120)	
+darkly_inked_fetish_master	defensive_spells	Spirit Warding I (101)	
+darkly_inked_fetish_master	defensive_spells	Spirit Defense (103)	
+darkwoode	otherclass	Corporeal undead	
+darkwoode	equipment	a wooden shield	
+death_dirge	otherclass	Corporeal undead	
+death_dirge	equipment	a black scimitar	
+deathsworn_fanatic	otherclass	Living	
+deathsworn_fanatic	equipment	a copper serpent necklace	
+deathsworn_fanatic	equipment	some stained emerald robes	
+deathsworn_fanatic	defensive_spells	Cloak of Shadows (712)	
+deathsworn_fanatic	defensive_spells	Elemental Defense I (401)	
+deathsworn_fanatic	defensive_spells	Elemental Defense II (406)	
+deathsworn_fanatic	defensive_spells	Elemental Defense III (414)	
+deathsworn_fanatic	defensive_spells	Spirit Shield (202)	
+deathsworn_fanatic	defensive_spells	Spirit Warding I (101)	
+deathsworn_fanatic	defensive_spells	Spirit Warding II (107)	
+deathsworn_fanatic	defensive_spells	Elemental Targeting (425)	
+deathsworn_fanatic	defensive_spells	Elemental Barrier (430)	
+decaying_citadel_guardsman	otherclass	corporeal undead	
+decaying_citadel_guardsman	equipment	a tarnished and rusted Hammer of Kai	
+decaying_citadel_guardsman	equipment	some faded buff and blue hauberk	
+decaying_citadel_guardsman	armaments	polished red steel Hammer of Kai	
+decaying_citadel_guardsman	treasure_other	inky necrotic core	
+deranged_sentry	otherclass	Living	
+deranged_sentry	equipment	a pair of unlaced boots	
+deranged_sentry	equipment	a pearlescent abalone-hafted halberd	
+deranged_sentry	equipment	some garish shell-studded leathers	
+desiccated_half_krolvin_strigoi	otherclass	Corporeal undead	
+desiccated_half_krolvin_strigoi	equipment	some tattered hide clothing adorned with bone buttons	
+dhu_goleras	otherclass	Living	
+dhu_goleras	otherclass	Magical	
+dhu_goleras	otherclass	Boss	
+dhu_goleras	equipment	a bone-handled dagger	
+dhu_goleras	treasure_other	tiny golden seed	
+direbear	otherclass	Living	
+disfigured_hive_thrall	equipment	some tattered clothing scraps	
+disfigured_hive_thrall	defensive_spells	Iron Skin (1202)	
+disfigured_hive_thrall	defensive_spells	Foresight (1204)	
+disfigured_hive_thrall	defensive_spells	Focus Barrier (1216)	
+disfigured_hive_thrall	defensive_spells	Spirit Strike (117)	
+dobrem	otherclass	Living	
+dobrem	otherclass	Boss	
+dreadnought_raptor	otherclass	Living	
+dreadnought_raptor	otherclass	Boss	
+dust_beetle	otherclass	Living	
+dybbuk	otherclass	Corporeal undead	
+dybbuk	otherclass	Boss	
+dybbuk	equipment	a length of rusted chain	
+dybbuk	treasure_other	Glowing violet essence dust	
+earth_elemental	otherclass	Extraplanar	
+earth_elemental	otherclass	Magical	
+earth_elemental	equipment	a massive iron-banded greatshield	
+earth_elemental	equipment	a massive pitted iron pavis	
+earth_elemental	special_defenses	30% weapon damage factor reduction	
+earth_elemental	treasure_other	essence of earth	
+eidolon	otherclass	Non-corporeal undead	
+eidolon	equipment	a blackened staff	
+eidolon	equipment	some tattered robes	
+eidolon	defensive_spells	Spirit Warding I (101)	
+eidolon	defensive_spells	Spirit Defense (103)	
+eidolon	defensive_spells	Lesser Shroud (120)	
+eidolon	defensive_spells	Elemental Defense I (401)	
+eidolon	defensive_spells	Elemental Defense II (406)	
+eidolon	defensive_spells	Elemental Defense III (414)	
+eidolon	treasure_other	Glowing violet mote of essence	
+elder_ghoul_master	otherclass	Corporeal undead	
+elder_ghoul_master	equipment	a blackened claidhmore	
+elder_ghoul_master	equipment	some blackened brigandine	
+elder_tree_spirit	otherclass	Non-corporeal undead	
+elder_tree_spirit	treasure_other	Glimmering blue essence dust	
+emaciated_hierophant	otherclass	Living	
+emaciated_hierophant	equipment	a dented iron pavis	
+emaciated_hierophant	equipment	a scorched rune-etched espadon	
+emaciated_hierophant	defensive_spells	Spirit Defense (103)	
+emaciated_hierophant	defensive_spells	Spirit Warding II (107)	
+emaciated_hierophant	defensive_spells	Fasthr's Reward (115)	
+emaciated_hierophant	defensive_spells	Lesser Shroud (120)	
+emaciated_hierophant	defensive_spells	Natural Colors (601)	
+emaciated_hierophant	defensive_spells	Resist Elements (602)	
+emaciated_hierophant	defensive_spells	Mobility (618)	
+emaciated_hierophant	defensive_spells	Spirit Warding I (101)	
+emaciated_hierophant	treasure_other	Glowing violet essence dust	
+emaciated_hierophant	treasure_other	glowing violet essence shard	
+emaciated_hierophant	treasure_other	tiny golden seed	
+emaciated_hierophant	treasure_other	n'ayanad crystal	
+enormous_mosquito	equipment	a blinded left eye	
+enormous_mosquito	equipment	a possible mild concussion	
+enormous_rift_crawler	otherclass	Extraplanar	
+enormous_rift_crawler	otherclass	Living	
+enormous_rift_crawler	otherclass	Magical	
+ethereal_mage_apprentice	otherclass	Non-corporeal undead	
+ethereal_mage_apprentice	equipment	a polished black oak runestaff	
+ethereal_mage_apprentice	equipment	a polished red steel Hammer of Kai	
+ethereal_mage_apprentice	equipment	some simple buff tattered leathers	
+ethereal_mage_apprentice	defensive_spells	Thurfel's Ward (503)	
+ethereal_mage_apprentice	defensive_spells	Elemental Defense III (414)	
+ethereal_mage_apprentice	treasure_other	Glowing violet essence dust	
+ethereal_mage_apprentice	treasure_other	inky necrotic core	
+ethereal_triton_psionicist	otherclass	non-corporeal undead	
+ethereal_triton_psionicist	otherclass	Boss	
+ethereal_triton_psionicist	defensive_spells	Empathic Focus (1109)	
+ethereal_triton_psionicist	defensive_spells	Strength of Will (1119)	
+ethereal_triton_psionicist	defensive_spells	Intensity (1130)	
+ethereal_triton_psionicist	defensive_spells	Iron Skin (1202)	
+ethereal_triton_psionicist	defensive_spells	Foresight (1204)	
+ethereal_triton_psionicist	defensive_spells	Mindward (1208)	
+ethereal_triton_psionicist	defensive_spells	Blink (1215)	
+ethereal_triton_psionicist	defensive_spells	Premonition (1220)	
+ethereal_triton_psionicist	treasure_other	ayanad crystal	
+ethereal_triton_psionicist	treasure_other	n'ayanad crystal	
+ethereal_triton_sentry	otherclass	Non-corporeal undead	
+ethereal_triton_sentry	equipment	a twisted soot black runestaff capped with a gold-caged crystal drop of water	
+ethereal_triton_sentry	defensive_spells	Fasthr's Reward (115)	
+ethereal_triton_sentry	defensive_spells	Elemental Defense II (406)	
+ethereal_triton_sentry	defensive_spells	Elemental Defense III (414)	
+ethereal_triton_sentry	defensive_spells	Spirit Warding II (107)	
+ethereal_triton_sentry	defensive_spells	Elemental Defense I (401)	
+ethereal_triton_sentry	defensive_spells	Spirit Warding I (101)	
+ethereal_triton_sentry	treasure_other	inky necrotic core	
+ethereal_triton_sentry	treasure_other	n'ayanad crystal	
+eyeless_black_valravn	otherclass	Corporeal undead	
+eyeless_black_valravn	treasure_other	ayanad crystal	
+eyeless_black_valravn	treasure_other	n'ayanad crystal	
+eyeless_black_valravn	treasure_other	petrified mammoth tusk	
+fallen_crusader	otherclass	Non-corporeal undead	
+fallen_crusader	otherclass	Extraplanar	
+fallen_crusader	equipment	a gilt-edged steel talon sword	
+fallen_crusader	equipment	a gold-spiked black morning star	
+fallen_crusader	equipment	a pitted golden chain hauberk	
+fallen_crusader	equipment	a reinforced dark steel kite shield	
+fallen_crusader	defensive_spells	Spirit Warding I (101)	
+fallen_crusader	defensive_spells	Spirit Defense (103)	
+fallen_crusader	defensive_spells	Spirit Warding II (107)	
+fallen_crusader	defensive_spells	Fasthr's Reward (115)	
+fallen_crusader	defensive_spells	Lesser Shroud (120)	
+fallen_crusader	defensive_spells	Mantle of Faith (1601)	
+fallen_crusader	defensive_spells	Divine Shield (1609)	
+fallen_crusader	defensive_spells	Spirit Strike (117)	
+fallen_crusader	treasure_other	Inky necrotic core	
+fanged_goblin	otherclass	Living	
+fanged_goblin	equipment	a handaxe	
+fanged_goblin	equipment	a leather breastplate	
+fanged_goblin	equipment	a spear	
+fanged_goblin	equipment	a wooden shield	
+fanged_goblin	equipment	some reinforced leather	
+fanged_rodent	otherclass	Living	
+fanged_viper	otherclass	Living	
+fenghai	otherclass	Living	
+fenghai	otherclass	Magical	
+fenghai	otherclass	Boss	
+fenghai	equipment	a bruised left eye	
+fenghai	equipment	a bruised right eye	
+fenghai	equipment	a greatsword	
+fenghai	equipment	a scimitar	
+fenghai	defensive_spells	Elemental Defense I (401)	
+fenghai	defensive_spells	Elemental Defense II (406)	
+fenghai	defensive_spells	Elemental Defense III (414)	
+fenghai	defensive_spells	Elemental Focus (513)	
+fenghai	defensive_spells	Thurfel's Ward (503)	
+fenghai	defensive_spells	Wizard's Shield (919)	
+fenghai	treasure_other	Glimmering blue essence shard	
+fenghai	treasure_other	s'ayanad crystal	
+fenghai	treasure_other	ayanad crystal	
+festering_taint	otherclass	Living	
+festering_taint	equipment	a possible mild concussion	
+festering_taint	defensive_spells	Lesser Shroud (120)	
+festering_taint	defensive_spells	Spirit Defense (103)	
+festering_taint	defensive_spells	Spirit Warding I (101)	
+festering_taint	defensive_spells	Spirit Warding II (107)	
+festering_taint	defensive_spells	Wall of Force (140)	
+festering_taint	treasure_other	tiny golden seed	
+festering_taint	treasure_other	ayanad crystal	
+fire_ant	otherclass	Living	
+fire_cat	otherclass	Living	
+fire_cat	otherclass	Magical	
+fire_cat	otherclass	Element-based	
+fire_cat	immunities	Fire	
+fire_cat	treasure_other	essence of fire	
+fire_elemental	otherclass	Extraplanar	
+fire_elemental	otherclass	Magical	
+fire_giant	otherclass	Living	
+fire_giant	otherclass	Element-based	
+fire_giant	equipment	a bruised left eye	
+fire_giant	equipment	a bruised right eye	
+fire_giant	equipment	a rusted silver steel war mattock	
+fire_giant	defensive_spells	Elemental Defense I (401)	
+fire_giant	defensive_spells	Elemental Defense II (406)	
+fire_giant	defensive_spells	Elemental Defense III (414)	
+fire_giant	defensive_spells	Resist Elements (602)	
+fire_giant	treasure_other	essence of fire	
+fire_guardian	otherclass	Element-based	
+fire_guardian	treasure_other	Essence of fire	
+fire_mage	otherclass	Living	
+fire_mage	otherclass	Element-based	
+fire_mage	otherclass	Boss	
+fire_mage	equipment	a gnarled black staff	
+fire_mage	equipment	some sooty black robes	
+fire_mage	defensive_spells	Elemental Barrier (430)	
+fire_mage	defensive_spells	Elemental Defense I (401)	
+fire_mage	defensive_spells	Elemental Defense II (406)	
+fire_mage	defensive_spells	Elemental Defense III (414)	
+fire_mage	defensive_spells	Elemental Focus (513)	
+fire_mage	defensive_spells	Elemental Targeting (425)	
+fire_mage	defensive_spells	Mass Blur (911)	
+fire_mage	defensive_spells	Prismatic Guard (905)	
+fire_mage	defensive_spells	Thurfel's Ward (503)	
+fire_mage	defensive_spells	Wizard's Shield (919)	
+fire_mage	treasure_other	essence of fire	
+fire_ogre	otherclass	Living	
+fire_ogre	otherclass	Element-based	
+fire_ogre	equipment	a deep black spiked flail	
+fire_ogre	equipment	a scorched black oak-hafted flail	
+fire_ogre	defensive_spells	Elemental Defense I (401)	
+fire_ogre	defensive_spells	Elemental Defense II (406)	
+fire_ogre	treasure_other	shimmering blue essence shardessence of fire	
+fire_rat	otherclass	Living	
+fire_rat	otherclass	Element-based	
+fire_rat	immunities	Fire	
+fire_salamander	otherclass	Living	
+fire_salamander	otherclass	Element-based	
+fire_sprite	otherclass	Living	
+fire_sprite	otherclass	Element-based	
+fire_sprite	defensive_spells	Elemental Defense I (401)	
+fire_sprite	defensive_spells	Elemental Defense II (406)	
+fire_sprite	defensive_spells	Elemental Defense III (414)	
+fire_sprite	defensive_spells	Thurfel's Ward (503)	
+fire_sprite	special_defenses	Immune to Limb Disruption	
+fire_sprite	treasure_other	Glowing violet mote of essence	
+fire_sprite	treasure_other	essence of fire	
+fire_sprite	treasure_other	pristine sprite's hair	
+firebird	otherclass	Living	
+firebird	otherclass	Element-based	
+firebird	otherclass	Magical	
+firephantom	otherclass	Non-corporeal undead	
+firephantom	otherclass	Element-based	
+firephantom	treasure_other	ayanad crystal	
+firethorn_shoot	treasure_other	glowing violet essence dust	
+flayed_gigas_disciple	equipment	a crude wooden cudgel	
+flayed_gigas_disciple	equipment	a tattered hide cloak painted with dark sigils	
+flayed_gigas_disciple	armaments	feras falchion	
+flayed_gigas_disciple	armaments	drake greatsword	
+flayed_gigas_disciple	armaments	feras mattock	
+flayed_gigas_disciple	treasure_other	ayanad crystal	
+flayed_gigas_disciple	treasure_other	n'ayanad crystal	
+flayed_gigas_disciple	treasure_other	petrified mammoth tusk	
+flesh_golem	otherclass	Corporeal undead	
+flesh_golem	otherclass	Magical	
+flesh_golem	otherclass	Boss	
+flesh_golem	equipment	a pitted wooden shield covered in rusty black iron spikes	
+flesh_golem	equipment	a bruised left eye	
+flesh_golem	equipment	a bruised right eye	
+flesh_golem	equipment	a possible mild concussion	
+flesh_golem	treasure_other	crystal core	
+flickering_mist_wreathed_banshee	otherclass	Non-corporeal undead	
+flickering_mist_wreathed_banshee	equipment	a tattered grey gown	
+flickering_mist_wreathed_banshee	treasure_other	ayanad crystal	
+flickering_mist_wreathed_banshee	treasure_other	n'ayanad crystal	
+flickering_mist_wreathed_banshee	treasure_other	petrified mammoth tusk	
+forest_bendith	otherclass	Living	
+forest_bendith	equipment	a braided vine necklace	
+forest_bendith	equipment	a morning star	
+forest_bendith	equipment	a rusted metal helm	
+forest_bendith	equipment	a scimitar	
+forest_bendith	equipment	a small cracked wooden shield	
+forest_bendith	equipment	a stained leather helm	
+forest_bendith	equipment	a warped wooden shield	
+forest_bendith	special_defenses	Hides when attacked	
+forest_bendith	treasure_other	Glowing violet essence shard	
+forest_bendith	treasure_other	glowing violet essence dust	
+forest_ogre	otherclass	Living	
+forest_ogre	equipment	a falchion	
+forest_ogre	equipment	a metal breastplate	
+forest_ogre	equipment	a wooden shield	
+forest_trali	otherclass	Living	
+forest_trali	equipment	a battered breastplate	
+forest_trali	equipment	a battered shield	
+forest_trali	equipment	a stain-darkened broadsword	
+forest_trali	defensive_spells	Spirit Warding I (101)	
+forest_trali	treasure_other	Glowing violet essence shard	
+forest_trali	treasure_other	tiny golden seed	
+forest_trali_shaman	otherclass	Living	
+forest_trali_shaman	equipment	a battered breastplate	
+forest_trali_shaman	equipment	a battered shield	
+forest_trali_shaman	equipment	a carved wooden talisman	
+forest_trali_shaman	equipment	a metal-banded mace	
+forest_trali_shaman	equipment	a smooth wooden talisman	
+forest_trali_shaman	defensive_spells	Natural Colors (601)	
+forest_trali_shaman	defensive_spells	Spirit Defense (103)	
+forest_trali_shaman	defensive_spells	Spirit Shield (202)	
+forest_trali_shaman	defensive_spells	Spell Shield (219)	
+forest_trali_shaman	defensive_spells	Spirit Warding I (101)	
+forest_trali_shaman	treasure_other	Glowing violet essence dust	
+forest_trali_shaman	treasure_other	glowing violet essence shard	
+forest_troll	otherclass	Living	
+forest_troll	equipment	a bruised left eye	
+forest_troll	equipment	a bruised right eye	
+forest_troll	equipment	a cudgel	
+forest_troll	equipment	a dagger	
+forest_troll	equipment	a flail	
+forest_troll	equipment	a leather breastplate	
+forest_troll	equipment	a mace	
+forest_troll	equipment	a scimitar	
+forest_troll	equipment	a war hammer	
+forest_troll	equipment	a war mattock	
+forest_troll	equipment	a wooden shield	
+forest_troll	equipment	some full leather	
+forest_troll	equipment	some light leather	
+forest_troll	defensive_spells	Spirit Warding II (107)	
+forest_troll	treasure_other	small troll tooth	
+frenzied_monk	otherclass	corporeal undead	
+frenzied_monk	otherclass	Boss	
+frenzied_monk	equipment	some moss-covered leathers	
+frenzied_monk	defensive_spells	Prayer of Protection (303)	
+frenzied_monk	defensive_spells	Prismatic Guard (905)	
+frenzied_monk	defensive_spells	Spirit Shield (202)	
+frenzied_monk	defensive_spells	Spirit Warding I (101)	
+frenzied_monk	defensive_spells	Thurfel's Ward (503)	
+frenzied_monk	treasure_other	Glimmering blue essence shardGlimmering blue mote of essence	
+frost_giant	otherclass	Living	
+frost_giant	otherclass	Element-based	
+frost_giant	equipment	a frost-covered battle axe	
+frost_giant	equipment	a frost-covered battle-axe	
+frost_giant	equipment	a fur-lined horned helm	
+frost_giant	equipment	a horned helm	
+frost_giant	equipment	a massive ice club	
+frost_giant	equipment	a morning star	
+frost_giant	equipment	an ice spear	
+frost_giant	equipment	some brigandine armor	
+frost_giant	defensive_spells	Spirit Defense (103)	
+frost_giant	defensive_spells	Spirit Warding I (101)	
+frost_giant	defensive_spells	Spirit Warding II (107)	
+frost_giant	treasure_other	essence of water	
+frozen_corpse	otherclass	Corporeal undead	
+frozen_corpse	otherclass	Boss	
+frozen_corpse	equipment	a large ice pick	
+frozen_corpse	equipment	a mountaineer's pack	
+frozen_corpse	equipment	some rotted leather	
+frozen_corpse	treasure_other	glowing violet mote of essence	
+fulminating_stormborn_primordial	defensive_spells	Elemental Deflection (507)	
+fulminating_stormborn_primordial	defensive_spells	Mass Blur (911)	
+fulminating_stormborn_primordial	defensive_spells	Melgorehn's Aura (913)	
+fulminating_stormborn_primordial	defensive_spells	Mage Armor (520)	
+fulminating_stormborn_primordial	special_defenses	Galvanic Vengeance	
+fulminating_stormborn_primordial	armaments	drake mace	
+fulminating_stormborn_primordial	treasure_other	ayanad crystal	
+garish_revenant_buccaneer	otherclass	Undead	
+gaudy_phantasmic_conjurer	otherclass	Non-corporeal undead	
+gaudy_phantasmic_conjurer	equipment	a glowing ethereal staff capped with a flickering crystal sphere	
+gaudy_phantasmic_conjurer	defensive_spells	Prismatic Guard (905)	
+gaudy_phantasmic_conjurer	defensive_spells	Melgorehn's Aura (913)	
+gaudy_phantasmic_conjurer	defensive_spells	Wizard's Shield (919)	
+gaudy_phantasmic_conjurer	defensive_spells	Mage Armor (520)	
+gaudy_phantasmic_conjurer	treasure_other	ayanad crystal	
+gaudy_phantasmic_conjurer	treasure_other	n'ayanad crystal	
+gaudy_phantasmic_conjurer	treasure_other	petrified mammoth tusk	
+gaunt_feral_selkie	equipment	a woven twine necklace adorned with yellowed shark teeth	
+gaunt_feral_selkie	defensive_spells	Iron Skin (1202)	
+gaunt_feral_selkie	defensive_spells	Foresight (1204)	
+gaunt_feral_selkie	defensive_spells	Brace (1214)	
+gaunt_spectral_servant	otherclass	Non-corporeal undead	
+gaunt_spectral_servant	equipment	a crooked willow runestaff	
+gaunt_spectral_servant	equipment	some threadbare patched cotton robes	
+gaunt_spectral_servant	treasure_other	Glowing violet mote of essence	
+ghost	otherclass	Non-corporeal undead	
+ghost	equipment	a short sword	
+ghost	equipment	a wooden shield	
+ghost_wolf	otherclass	Non-corporeal undead	
+ghostly_mara	otherclass	Non-corporeal undead	
+ghostly_mara	equipment	a banded steel shield	
+ghostly_mara	equipment	a blackened longsword	
+ghostly_mara	equipment	a dulled falchion	
+ghostly_mara	equipment	a ragged great kilt	
+ghostly_mara	equipment	a reinforced shield	
+ghostly_mara	equipment	a rotting targe	
+ghostly_mara	equipment	a serrated falchion	
+ghostly_mara	equipment	some rotting leather hunts	
+ghostly_mara	equipment	some tattered leather	
+ghostly_mara	defensive_spells	Elemental Defense III (414)	
+ghostly_mara	treasure_other	Glimmering blue essence shard	
+ghostly_mara	treasure_other	glimmering blue mote of essence	
+ghostly_pooka	otherclass	Non-corporeal undead	
+ghostly_pooka	otherclass	Boss	
+ghostly_pooka	equipment	some heavy chains	
+ghostly_pooka	equipment	some torn	
+ghostly_pooka	defensive_spells	Spirit Warding I (101)	
+ghostly_pooka	treasure_other	Alchemy (common)	
+ghostly_warrior	otherclass	Non-corporeal undead	
+ghostly_warrior	equipment	a broadsword	
+ghostly_warrior	equipment	a flail	
+ghostly_warrior	equipment	a morning star	
+ghostly_warrior	equipment	a reinforced shield	
+ghostly_warrior	equipment	some chain mail	
+ghostly_warrior	equipment	some cuirbouilli leather	
+ghostly_warrior	treasure_other	Alchemy (common)	
+ghoul_master	otherclass	Corporeal undead	
+ghoul_master	equipment	a battered wooden shield	
+ghoul_master	equipment	a metal aventail	
+ghoul_master	equipment	a wooden shield	
+ghoul_master	equipment	some black double chain	
+ghoul_master	equipment	some double chain	
+ghoul_master	treasure_other	s'ayanad crystal	
+giant_albino_scorpion	otherclass	Living	
+giant_albino_scorpion	otherclass	Boss	
+giant_albino_tomb_spider	otherclass	Living	
+giant_ant	otherclass	Living	
+giant_ant	treasure_other	ant larva	
+giant_fog_beetle	otherclass	Living	
+giant_fog_beetle	otherclass	Boss	
+giant_hawk_owl	otherclass	Living	
+giant_marmot	otherclass	Living	
+giant_rat	otherclass	Living	
+giant_veaba	otherclass	Living	
+giant_weasel	otherclass	Living	
+giant_weasel	special_defenses	Hides when attacked	
+gigantic_lightning_whelk	treasure_other	ayanad crystal	
+gigantic_lightning_whelk	treasure_other	n'ayanad crystal	
+glacial_morph	otherclass	Magical	
+glacial_morph	special_defenses	Hides when attacked	
+glacial_morph	treasure_other	Gold Dust	
+glacial_morph	treasure_other	essence of water	
+glistening_cerebralite	otherclass	Extraplanar	
+glistening_cerebralite	otherclass	Living	
+glistening_cerebralite	equipment	a bruised left eye	
+glistening_cerebralite	equipment	a bruised right eye	
+glistening_cerebralite	equipment	a reinforced dark steel kite shield	
+glistening_cerebralite	defensive_spells	Cloak of Shadows (712)	
+glistening_cerebralite	defensive_spells	Elemental Defense I (401)	
+glistening_cerebralite	defensive_spells	Elemental Defense II (406)	
+glistening_cerebralite	defensive_spells	Elemental Defense III (414)	
+glistening_cerebralite	defensive_spells	Spirit Shield (202)	
+glistening_cerebralite	defensive_spells	Heroism (215)	
+gnarled_being	otherclass	Living	
+gnarled_being	special_defenses	Hides when attacked	
+gnarled_being	treasure_other	Radiant crimson mote of essence	
+gnoll_guard	otherclass	Living	
+gnoll_guard	equipment	a broadsword	
+gnoll_guard	equipment	a wooden shield	
+gnoll_guard	equipment	some full leather	
+gnoll_guard	special_defenses	Hides when attacked	
+gnoll_jarl	otherclass	Living	
+gnoll_jarl	special_defenses	Hides when attacked	
+gnoll_miner	otherclass	Living	
+gnoll_priest	otherclass	Living	
+gnoll_priest	special_defenses	Hides when attacked	
+gnoll_ranger	otherclass	Living	
+gnoll_ranger	equipment	a handaxe	
+gnoll_ranger	equipment	a wooden shield	
+gnoll_ranger	equipment	some brown	
+gnoll_ranger	defensive_spells	Natural Colors (601)	
+gnoll_ranger	defensive_spells	Resist Elements (602)	
+gnoll_ranger	defensive_spells	Spirit Warding I (101)	
+gnoll_ranger	defensive_spells	Spirit Defense (103)	
+gnoll_ranger	special_defenses	Hides when attacked	
+gnoll_ranger	armaments	green double leather	
+gnoll_thief	otherclass	Living	
+gnoll_thief	equipment	a dark cloth pouch	
+gnoll_thief	equipment	a grey leather bag	
+gnoll_thief	equipment	a grey oilcloth bag	
+gnoll_thief	equipment	a short sword	
+gnoll_thief	equipment	a sooty cloth sack	
+gnoll_thief	equipment	a sooty cotton pouch	
+gnoll_thief	equipment	a sooty oilcloth bag	
+gnoll_thief	equipment	a sooty oilcloth sack	
+gnoll_thief	equipment	a stained brocade pouch	
+gnoll_thief	equipment	a stained brocade sack	
+gnoll_thief	equipment	a stained cloth pouch	
+gnoll_thief	equipment	a stained cotton pouch	
+gnoll_thief	equipment	a stained cotton sack	
+gnoll_thief	equipment	a stained leather sack	
+gnoll_thief	equipment	an ink black leather bag	
+gnoll_thief	equipment	an ink black oilcloth sack	
+gnoll_thief	equipment	some dark full leather	
+gnoll_thief	special_defenses	Hides when attacked	
+gnoll_worker	otherclass	Living	
+gnoll_worker	equipment	a bruised left eye	
+gnoll_worker	equipment	a bruised right eye	
+gnoll_worker	equipment	a hatchet	
+gnoll_worker	equipment	a wooden shield	
+gnoll_worker	equipment	some working leathers	
+gnoll_worker	special_defenses	Hides when attacked	
+gnoll_worker	treasure_other	ayanad crystal	
+goblin	otherclass	Living	
+goblin	equipment	a flail	
+goblin	equipment	a handaxe	
+goblin	equipment	a leather breastplate	
+goblin	equipment	a leather helm	
+goblin	equipment	a morning star	
+goblin	equipment	a scimitar	
+goblin	equipment	a spear	
+goblin	equipment	a wooden shield	
+goblin	equipment	some cuirbouilli leather	
+goblin	equipment	some leather boots	
+goblin	equipment	some light leather	
+goblin	equipment	some reinforced leather	
+goblin	equipment	some studded leather	
+goblin	special_defenses	Hides when attacked	
+goblin	treasure_other	ayanad crystal	
+great_boar	otherclass	Living	
+great_boar	special_defenses	Hides when attacked	
+great_brown_bear	otherclass	Living	
+great_brown_bear	special_defenses	Hides when attacked	
+great_stag	otherclass	Living	
+great_stag	special_defenses	Hides when attacked	
+greater_bog_troll	otherclass	Living	
+greater_bog_troll	otherclass	Boss	
+greater_bog_troll	equipment	a rusted peat axe	
+greater_bog_troll	equipment	some weed-covered brigandine	
+greater_bog_troll	defensive_spells	Mobility (618)	
+greater_bog_troll	defensive_spells	Natural Colors (601)	
+greater_bog_troll	defensive_spells	Self Control (613)	
+greater_bog_troll	defensive_spells	Spirit Defense (103)	
+greater_bog_troll	defensive_spells	Spirit Warding I (101)	
+greater_bog_troll	defensive_spells	Spirit Warding II (107)	
+greater_bog_troll	special_defenses	Hides when attacked	
+greater_bog_troll	treasure_other	small troll tooth	
+greater_bog_troll	treasure_other	large troll tooth	
+greater_bog_troll	treasure_other	glowing violet mote of essence	
+greater_burrow_orc	otherclass	Living	
+greater_burrow_orc	equipment	a short sword	
+greater_burrow_orc	equipment	a wooden shield	
+greater_burrow_orc	equipment	some double leather	
+greater_construct	otherclass	Magical	
+greater_construct	otherclass	Boss	
+greater_construct	equipment	a polished steel shield	
+greater_construct	immunities	magic	
+greater_construct	special_defenses	Antimagic aura	
+greater_construct	treasure_other	crystal core	
+greater_earth_elemental	otherclass	Extraplanar	
+greater_earth_elemental	otherclass	Magical	
+greater_earth_elemental	special_defenses	30% damage factor reduction	
+greater_earth_elemental	treasure_other	radiant crimson essence shard	
+greater_earth_elemental	treasure_other	essence of earth	
+greater_faeroth	otherclass	Living	
+greater_faeroth	otherclass	Boss	
+greater_fetid_corpse	otherclass	Corporeal undead	
+greater_ghoul	otherclass	Corporeal undead	
+greater_ghoul	equipment	a short sword	
+greater_ghoul	equipment	some dry-rotted rags	
+greater_ghoul	treasure_other	ayanad crystal	
+greater_ice_giant	otherclass	Living	
+greater_ice_giant	otherclass	Element-based	
+greater_ice_giant	equipment	a frost-covered battle-axe	
+greater_ice_giant	defensive_spells	Spirit Warding II (107)	
+greater_ice_giant	defensive_spells	Spirit Defense (103)	
+greater_ice_giant	defensive_spells	Spirit Warding I (101)	
+greater_ice_giant	treasure_other	essence of water	
+greater_ice_spider	otherclass	Living	
+greater_kappa	otherclass	Living	
+greater_kappa	equipment	a handaxe	
+greater_krynch	otherclass	Living	
+greater_krynch	equipment	a massive pitted iron pavis	
+greater_krynch	treasure_other	essence of earth	
+greater_moor_wight	otherclass	Corporeal undead	
+greater_moor_wight	equipment	a rusty steel flyssa	
+greater_moor_wight	equipment	a wickedly curved scimitar	
+greater_moor_wight	equipment	a large dual-bit handaxe	
+greater_moor_wight	equipment	some rancid brown brigandine	
+greater_moor_wight	defensive_spells	Haste (506)	
+greater_moor_wight	defensive_spells	Mass Blur (911)	
+greater_moor_wight	defensive_spells	Prismatic Guard (905)	
+greater_moor_wight	defensive_spells	Spirit Defense (103)	
+greater_moor_wight	defensive_spells	Spirit Warding I (101)	
+greater_moor_wight	treasure_other	Glowing violet essence dust	
+greater_orc	otherclass	Living	
+greater_orc	equipment	a chain hauberk	
+greater_orc	equipment	a mace	
+greater_orc	equipment	a scimitar	
+greater_orc	equipment	a short sword	
+greater_orc	equipment	a war mattock	
+greater_orc	equipment	a wooden shield	
+greater_orc	equipment	some cuirbouilli leather	
+greater_orc	equipment	some double chain	
+greater_orc	equipment	some double leather	
+greater_orc	treasure_other	ayanad crystal	
+greater_skayl	otherclass	Magical	
+greater_skayl	otherclass	Element-based	
+greater_skayl	defensive_spells	Thurfel's Ward (503)	
+greater_skayl	defensive_spells	Elemental Bias (508)	
+greater_skayl	defensive_spells	Strength (509)	
+greater_skayl	defensive_spells	Mass Blur (911)	
+greater_skayl	defensive_spells	Mage Armor (520)	
+greater_skayl	special_defenses	Immune to Unbalance (110)	
+greater_skayl	treasure_other	Essence of fire	
+greater_spider	otherclass	Living	
+greater_spider	equipment	a bruised left eye	
+greater_spider	equipment	a bruised right eye	
+greater_spider	equipment	a completely severed left foreleg	
+greater_vruul	otherclass	Corporeal undead	
+greater_vruul	defensive_spells	Bravery (211)	
+greater_vruul	defensive_spells	Heroism (215)	
+greater_vruul	defensive_spells	Lesser Shroud (120)	
+greater_vruul	defensive_spells	Spell Shield (219)	
+greater_vruul	defensive_spells	Spirit Defense (103)	
+greater_vruul	defensive_spells	Spirit Shield (202)	
+greater_vruul	defensive_spells	Spirit Warding I (101)	
+greater_water_elemental	otherclass	Magical	
+greater_water_elemental	defensive_spells	Elemental Defense I (401)	
+greater_water_elemental	defensive_spells	Elemental Defense II (406)	
+greater_water_elemental	defensive_spells	Elemental Defense III (414)	
+greater_water_elemental	defensive_spells	Elemental Targeting (425)	
+greater_water_elemental	defensive_spells	Elemental Barrier (430)	
+greater_water_elemental	defensive_spells	Elemental Bias (508)	
+greater_water_elemental	defensive_spells	Spirit Shield (202)	
+greenwing_hornet	otherclass	Living	
+greenwing_hornet	equipment	a bruised left eye	
+greenwing_hornet	equipment	a bruised right eye	
+greenwing_hornet	equipment	a completely severed left leg	
+gremlock	otherclass	Living	
+gremlock	equipment	a dusty knapsack	
+gremlock	equipment	a filthy knapsack	
+gremlock	equipment	a ragged knapsack	
+gremlock	equipment	a rusted wire garrote	
+gremlock	equipment	a stained knapsack	
+gremlock	equipment	a tattered knapsack	
+gremlock	treasure_other	Radiant crimson essence dust	
+gremlock	treasure_other	tiny golden seed	
+gremlock	treasure_other	ayanad crystal	
+grey_orc	otherclass	Living	
+grey_orc	equipment	a blackened composite bow	
+grey_orc	equipment	a deerskin quiver	
+grey_orc	equipment	a mace	
+grey_orc	equipment	a metal aventail	
+grey_orc	equipment	some double leather	
+grey_orc	equipment	some studded urgh-hide leathers	
+grey_plumed_steelwing_harpy	defensive_spells	Mobility (618)	
+grey_plumed_steelwing_harpy	defensive_spells	Blink (1215)	
+grey_plumed_steelwing_harpy	defensive_spells	Brace (1214)	
+grey_plumed_steelwing_harpy	defensive_spells	Celerity (506)	
+grey_plumed_steelwing_harpy	treasure_other	ayanad crystal	
+grifflet	otherclass	Living	
+grim_gigas_skald	equipment	a ceremonial boarskin garment adorned with semiprecious gems	
+grim_gigas_skald	equipment	an ornate ruic lyre with shimmering silver strings	
+grim_gigas_skald	defensive_spells	Warding Sphere (310)	
+grim_gigas_skald	defensive_spells	Lesser Shroud (120)	
+grim_gigas_skald	defensive_spells	Resist Elements (602)	
+grim_gigas_skald	treasure_other	ayanad crystal	
+grim_gigas_skald	treasure_other	n'ayanad crystal	
+grim_gigas_skald	treasure_other	petrified mammoth tusk	
+grimswarm	otherclass	Living	
+grimswarm	defensive_spells	Fasthr's Reward (115)	
+grimswarm	treasure_other	a crude bone key	
+grimswarm_giant_skirmisher	otherclass	Living	
+grimswarm_giant_skirmisher	otherclass	Grimswarm	
+grimswarm_giant_skirmisher	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_giant_skirmisher	special_notes	Wields conventional weapons.	
+grimswarm_orc_archer	otherclass	Living	
+grimswarm_orc_archer	otherclass	Grimswarm	
+grimswarm_orc_archer	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_orc_archer	special_notes	Wields conventional weapons.	
+grimswarm_orc_hunter	otherclass	Living	
+grimswarm_orc_hunter	otherclass	Grimswarm	
+grimswarm_orc_hunter	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_orc_hunter	special_notes	Wields conventional weapons.	
+grimswarm_orc_pillager	otherclass	Living	
+grimswarm_orc_pillager	otherclass	Grimswarm	
+grimswarm_orc_pillager	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_orc_pillager	special_notes	Wields conventional weapons.	
+grimswarm_orc_raider	otherclass	Living	
+grimswarm_orc_raider	otherclass	Grimswarm	
+grimswarm_orc_raider	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_orc_raider	special_notes	Wields conventional weapons.	
+grimswarm_orc_ranger	otherclass	Living	
+grimswarm_orc_ranger	otherclass	Grimswarm	
+grimswarm_orc_ranger	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_orc_ranger	special_notes	Wields conventional weapons.	
+grimswarm_orc_skirmisher	otherclass	Living	
+grimswarm_orc_skirmisher	otherclass	Grimswarm	
+grimswarm_orc_skirmisher	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_orc_skirmisher	special_notes	Wields conventional weapons.	
+grimswarm_orc_sorceress	otherclass	Living	
+grimswarm_orc_sorceress	otherclass	Grimswarm	
+grimswarm_orc_sorceress	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_orc_sorceress	special_notes	Wields conventional weapons.	
+grimswarm_troll_ranger	otherclass	Living	
+grimswarm_troll_ranger	otherclass	Grimswarm	
+grimswarm_troll_ranger	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_troll_ranger	special_notes	Wields conventional weapons.	
+grimswarm_troll_scourge	otherclass	Living	
+grimswarm_troll_scourge	otherclass	Grimswarm	
+grimswarm_troll_scourge	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_troll_scourge	special_notes	Wields conventional weapons.	
+grimswarm_troll_skirmisher	otherclass	Living	
+grimswarm_troll_skirmisher	otherclass	Grimswarm	
+grimswarm_troll_skirmisher	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_troll_skirmisher	special_notes	Wields conventional weapons.	
+grimswarm_troll_soldier	otherclass	Living	
+grimswarm_troll_soldier	otherclass	Grimswarm	
+grimswarm_troll_soldier	special_notes	Grimswarm spawn in warcamps; level, AS/DS and TDs scale with the camp, so fixed values are not recorded.	
+grimswarm_troll_soldier	special_notes	Wields conventional weapons.	
+grisly_corpse_hulk	otherclass	Corporeal undead	
+grizzly_bear	otherclass	Living	
+grutik_savage	otherclass	Living	
+grutik_savage	equipment	a crude stone axe	
+grutik_savage	equipment	a crude wooden club	
+grutik_savage	equipment	a crude wooden shield	
+grutik_savage	equipment	a crude wooden spear	
+grutik_savage	equipment	some crude leather armor	
+grutik_savage	treasure_other	Glimmering blue essence shard	
+grutik_savage	treasure_other	glimmering blue mote of essence	
+grutik_shaman	otherclass	Living	
+grutik_shaman	equipment	a crude roa'ter-toothed necklace	
+grutik_shaman	equipment	a dirty tattered robe	
+grutik_shaman	equipment	a gnarled wooden staff	
+grutik_shaman	defensive_spells	Prismatic Guard (905)	
+grutik_shaman	defensive_spells	Mass Blur (911)	
+grutik_shaman	defensive_spells	Elemental Bias (508)	
+grutik_shaman	defensive_spells	Elemental Deflection (507)	
+grutik_shaman	defensive_spells	Thurfel's Ward (503)	
+grutik_shaman	defensive_spells	Wizard's Shield (919)	
+grutik_shaman	treasure_other	glimmering blue mote of essence	
+grutik_shaman	treasure_other	glimmering blue essence shard	
+haggard_veiki_herald	otherclass	Living	
+haggard_veiki_herald	equipment	a crude zorchar khopesh	
+haggard_veiki_herald	equipment	a round metal aegis emblazoned with a jagged lightning bolt	
+haggard_veiki_herald	equipment	some hardened hide armor	
+haggard_veiki_herald	defensive_spells	Mantle of Faith (1601)	
+haggard_veiki_herald	defensive_spells	Divine Shield (1609)	
+haggard_veiki_herald	defensive_spells	Faith's Clarity (1612)	
+haggard_veiki_herald	defensive_spells	Soul Ward (319)	
+heavily_armored_battle_mastodon	equipment	some studded leather barding	
+hill_troll	otherclass	Living	
+hill_troll	otherclass	Boss	
+hill_troll	equipment	a cudgel	
+hill_troll	equipment	a reinforced shield	
+hill_troll	equipment	a war hammer	
+hill_troll	equipment	some arm greaves	
+hill_troll	equipment	some full leather	
+hill_troll	equipment	some leather boots	
+hill_troll	equipment	some studded leather	
+hill_troll	defensive_spells	Spirit Warding II (107)	
+hill_troll	treasure_other	small troll tooth	
+hisskra_chieftain	otherclass	Living	
+hisskra_chieftain	otherclass	Boss	
+hisskra_chieftain	equipment	a slimy trident	
+hisskra_shaman	otherclass	Living	
+hisskra_shaman	otherclass	Boss	
+hisskra_shaman	equipment	a slimy trident	
+hisskra_shaman	defensive_spells	Natural Colors (601)	
+hisskra_shaman	defensive_spells	Resist Elements (602)	
+hisskra_shaman	defensive_spells	Spirit Defense (103)	
+hisskra_shaman	defensive_spells	Spirit Warding I (101)	
+hisskra_shaman	defensive_spells	Spirit Warding II (107)	
+hisskra_shaman	treasure_other	glimmering blue essence shard	
+hisskra_warrior	otherclass	Living	
+hisskra_warrior	equipment	a slimy trident	
+hisskra_warrior	treasure_other	t'ayanad crystal	
+hobgoblin	otherclass	Living	
+hobgoblin	equipment	a chain hauberk	
+hobgoblin	equipment	a claidhmore	
+hobgoblin	equipment	a feather decorated bone spear	
+hobgoblin	equipment	a leather breastplate	
+hobgoblin	equipment	a leather helm	
+hobgoblin	equipment	a leather skull cap	
+hobgoblin	equipment	a metal aventail	
+hobgoblin	equipment	a morning star	
+hobgoblin	equipment	a rapier	
+hobgoblin	equipment	a visored helm	
+hobgoblin	equipment	a wooden shield	
+hobgoblin	equipment	an iron battle axe	
+hobgoblin	equipment	some cuirbouilli leather	
+hobgoblin	equipment	some leather boots	
+hobgoblin	equipment	some reinforced leather	
+hobgoblin	equipment	some woven bead armor	
+hobgoblin	treasure_other	ayanad crystal	
+hobgoblin_acolyte	otherclass	Living	
+hobgoblin_acolyte	equipment	a bone vest	
+hobgoblin_acolyte	equipment	a leather whip	
+hobgoblin_acolyte	equipment	a lynx skull	
+hobgoblin_acolyte	defensive_spells	Spirit Warding I (101)	
+hobgoblin_acolyte	defensive_spells	Spirit Defense (103)	
+hobgoblin_acolyte	defensive_spells	Spirit Warding II (107)	
+hobgoblin_acolyte	defensive_spells	Spirit Shield (202)	
+hobgoblin_shaman	otherclass	Living	
+hobgoblin_shaman	equipment	a bone vest	
+hobgoblin_shaman	equipment	a leather whip	
+hobgoblin_shaman	equipment	a lynx skull	
+hobgoblin_shaman	equipment	a twisted modwir short-staff	
+hobgoblin_shaman	defensive_spells	Spirit Defense (103)	
+hobgoblin_shaman	defensive_spells	Spirit Shield (202)	
+hobgoblin_shaman	defensive_spells	Spirit Warding I (101)	
+hobgoblin_shaman	defensive_spells	Spirit Warding II (107)	
+hooded_figure	otherclass	Living	
+hooded_figure	equipment	a broadsword	
+hooded_figure	equipment	a chain hauberk	
+hooded_figure	equipment	a dagger	
+hooded_figure	equipment	a falchion	
+hooded_figure	equipment	a flail	
+hooded_figure	equipment	a hooded cloak	
+hooded_figure	equipment	a leather breastplate	
+hooded_figure	equipment	a mace	
+hooded_figure	equipment	a metal breastplate	
+hooded_figure	equipment	a quarter staff	
+hooded_figure	equipment	a rapier	
+hooded_figure	equipment	a reinforced shield	
+hooded_figure	equipment	a short sword	
+hooded_figure	equipment	a wooden shield	
+hooded_figure	equipment	an augmented breastplate	
+hooded_figure	equipment	some augmented chain	
+hooded_figure	equipment	some brigandine armor	
+hooded_figure	equipment	some chain mail	
+hooded_figure	equipment	some cuirbouilli leather	
+hooded_figure	equipment	some double chain	
+hooded_figure	equipment	some double leather	
+hooded_figure	equipment	some flowing robes	
+hooded_figure	equipment	some full leather	
+hooded_figure	equipment	some light leather	
+hooded_figure	equipment	some reinforced leather	
+hooded_figure	equipment	some studded leather	
+hooded_figure	defensive_spells	Elemental Bias (508)	
+hooded_figure	defensive_spells	Elemental Defense I (401)	
+hooded_figure	defensive_spells	Elemental Defense II (406)	
+hooded_figure	defensive_spells	Elemental Defense III (414)	
+hooded_figure	defensive_spells	Lesser Shroud (120)	
+hooded_figure	defensive_spells	Mass Blur (911)	
+hooded_figure	defensive_spells	Presence (402)	
+hooded_figure	defensive_spells	Prismatic Guard (905)	
+hooded_figure	defensive_spells	Spirit Defense (103)	
+hooded_figure	defensive_spells	Spirit Fog (106)	
+hooded_figure	defensive_spells	Spirit Warding I (101)	
+hooded_figure	defensive_spells	Spirit Warding II (107)	
+hooded_figure	defensive_spells	Thurfel's Ward (503)	
+hooded_figure	defensive_spells	Weapon Deflection (412)	
+hooded_figure	armaments	morning star	
+hooded_figure	treasure_other	glimmering blue essence dust	
+hooded_figure	treasure_other	glowing violet essence dust	
+horned_basalt_grotesque	defensive_spells	Arcane Barrier (1720)	
+horned_basalt_grotesque	defensive_spells	Soul Ward (319)	
+horned_basalt_grotesque	armaments	drake greatsword	
+horned_basalt_grotesque	armaments	drake greataxe	
+horned_basalt_grotesque	armaments	feras hammer	
+horned_basalt_grotesque	armaments	feras mace	
+horned_basalt_grotesque	armaments	feras tiger-claw	
+horned_basalt_grotesque	armaments	drake dagger	
+horned_basalt_grotesque	armaments	feras falchion	
+horned_basalt_grotesque	armaments	feras dagger	
+horned_basalt_grotesque	armaments	drake yierka-spur	
+horned_basalt_grotesque	armaments	drake falchion	
+horned_basalt_grotesque	armaments	feras mattock	
+horned_basalt_grotesque	armaments	drake scimitar	
+horned_basalt_grotesque	armaments	drake mace	
+horned_basalt_grotesque	armaments	feras rapier	
+horned_basalt_grotesque	treasure_other	ayanad crystal	
+horned_basalt_grotesque	treasure_other	n'ayanad crystal	
+horned_basalt_grotesque	treasure_other	petrified mammoth tusk	
+horned_vor_taz	otherclass	Living	
+horned_vor_taz	otherclass	Magical	
+horned_vor_taz	defensive_spells	Natural Colors (601)	
+horned_vor_taz	defensive_spells	Phoen's Strength (606)	
+horned_vor_taz	defensive_spells	Self Control (613)	
+horned_vor_taz	defensive_spells	Spirit Defense (103)	
+horned_vor_taz	defensive_spells	Spirit Warding I (101)	
+horned_vor_taz	defensive_spells	Spirit Warding II (107)	
+horned_vor_taz	treasure_other	Glowing violet essence dust	
+horned_vor_taz	treasure_other	glowing violet essence shard	
+horned_vor_taz	treasure_other	tiny golden seed	
+huge_air_elemental	otherclass	Extraplanar	
+huge_air_elemental	otherclass	Magical	
+huge_air_elemental	defensive_spells	Elemental Barrier (430)	
+huge_air_elemental	defensive_spells	Elemental Bias (508)	
+huge_air_elemental	defensive_spells	Elemental Defense I (401)	
+huge_air_elemental	defensive_spells	Elemental Defense II (406)	
+huge_air_elemental	defensive_spells	Elemental Defense III (414)	
+huge_air_elemental	defensive_spells	Elemental Targeting (425)	
+huge_air_elemental	treasure_other	essence of air	
+huge_earth_elemental	otherclass	Extraplanar	
+huge_earth_elemental	otherclass	Magical	
+huge_earth_elemental	defensive_spells	Elemental Barrier (430)	
+huge_earth_elemental	defensive_spells	Elemental Bias (508)	
+huge_earth_elemental	defensive_spells	Elemental Defense I (401)	
+huge_earth_elemental	defensive_spells	Elemental Defense II (406)	
+huge_earth_elemental	defensive_spells	Elemental Defense III (414)	
+huge_earth_elemental	defensive_spells	Elemental Targeting (425)	
+huge_earth_elemental	treasure_other	essence of earth	
+huge_fire_elemental	otherclass	Extraplanar	
+huge_fire_elemental	otherclass	Magical	
+huge_fire_elemental	defensive_spells	Elemental Barrier (430)	
+huge_fire_elemental	defensive_spells	Elemental Bias (508)	
+huge_fire_elemental	defensive_spells	Elemental Defense I (401)	
+huge_fire_elemental	defensive_spells	Elemental Defense II (406)	
+huge_fire_elemental	defensive_spells	Elemental Defense III (414)	
+huge_fire_elemental	defensive_spells	Elemental Targeting (425)	
+huge_fire_elemental	treasure_other	essence of fire	
+huge_ice_elemental	otherclass	Extraplanar	
+huge_ice_elemental	otherclass	Magical	
+huge_ice_elemental	defensive_spells	Elemental Barrier (430)	
+huge_ice_elemental	defensive_spells	Elemental Bias (508)	
+huge_ice_elemental	defensive_spells	Elemental Defense I (401)	
+huge_ice_elemental	defensive_spells	Elemental Defense II (406)	
+huge_ice_elemental	defensive_spells	Elemental Defense III (414)	
+huge_ice_elemental	defensive_spells	Elemental Targeting (425)	
+huge_ice_elemental	treasure_other	essence of water	
+huge_lava_elemental	otherclass	Extraplanar	
+huge_lava_elemental	otherclass	Magical	
+huge_lava_elemental	defensive_spells	Elemental Barrier (430)	
+huge_lava_elemental	defensive_spells	Elemental Bias (508)	
+huge_lava_elemental	defensive_spells	Elemental Defense I (401)	
+huge_lava_elemental	defensive_spells	Elemental Defense II (406)	
+huge_lava_elemental	defensive_spells	Elemental Defense III (414)	
+huge_lava_elemental	defensive_spells	Elemental Targeting (425)	
+huge_lava_elemental	treasure_other	essence of fire	
+huge_lightning_elemental	otherclass	Extraplanar	
+huge_lightning_elemental	otherclass	Magical	
+huge_lightning_elemental	defensive_spells	Elemental Barrier (430)	
+huge_lightning_elemental	defensive_spells	Elemental Bias (508)	
+huge_lightning_elemental	defensive_spells	Elemental Defense I (401)	
+huge_lightning_elemental	defensive_spells	Elemental Defense II (406)	
+huge_lightning_elemental	defensive_spells	Elemental Defense III (414)	
+huge_lightning_elemental	defensive_spells	Elemental Targeting (425)	
+huge_lightning_elemental	treasure_other	essence of air	
+huge_mein_golem	otherclass	Magical	
+huge_mein_golem	treasure_other	mein shards	
+huge_steam_elemental	otherclass	Extraplanar	
+huge_steam_elemental	otherclass	Magical	
+huge_steam_elemental	defensive_spells	Elemental Barrier (430)	
+huge_steam_elemental	defensive_spells	Elemental Bias (508)	
+huge_steam_elemental	defensive_spells	Elemental Defense I (401)	
+huge_steam_elemental	defensive_spells	Elemental Defense II (406)	
+huge_steam_elemental	defensive_spells	Elemental Defense III (414)	
+huge_steam_elemental	defensive_spells	Elemental Targeting (425)	
+huge_steam_elemental	treasure_other	essence of water	
+huge_water_elemental	otherclass	Extraplanar	
+huge_water_elemental	otherclass	Magical	
+huge_water_elemental	defensive_spells	Elemental Barrier (430)	
+huge_water_elemental	defensive_spells	Elemental Bias (508)	
+huge_water_elemental	defensive_spells	Elemental Defense I (401)	
+huge_water_elemental	defensive_spells	Elemental Defense II (406)	
+huge_water_elemental	defensive_spells	Elemental Defense III (414)	
+huge_water_elemental	defensive_spells	Elemental Targeting (425)	
+huge_water_elemental	treasure_other	essence of water	
+humpbacked_puma	otherclass	Living	
+hunch_backed_dogmatist	otherclass	Living	
+hunch_backed_dogmatist	equipment	a silver-edged black silk sack	
+hunch_backed_dogmatist	equipment	a tarnished invar kaskara	
+hunch_backed_dogmatist	defensive_spells	Wall of Force (140)	
+hunch_backed_dogmatist	defensive_spells	Spell Shield (219)	
+hunch_backed_dogmatist	defensive_spells	Spirit Warding I (101)	
+hunch_backed_dogmatist	treasure_other	Farlook vitreous humor	
+hunch_backed_dogmatist	treasure_other	vial of farlook vitreous humor	
+hunch_backed_dogmatist	treasure_other	radiant crimson mote of essence	
+hunter_troll	otherclass	Living	
+hunter_troll	equipment	a chain hauberk	
+hunter_troll	equipment	a jeddart-axe	
+hunter_troll	defensive_spells	Natural Colors (601)	
+hunter_troll	defensive_spells	Self Control (613)	
+hunter_troll	treasure_other	a small troll tooth	
+hunter_troll	treasure_other	glimmering blue mote of essence	
+hunter_troll	treasure_other	glimmering blue essence shard	
+hunter_troll	treasure_other	large troll tooth	
+ice_elemental	otherclass	Extraplanar	
+ice_elemental	otherclass	Magical	
+ice_golem	otherclass	Magical	
+ice_golem	otherclass	Element-based	
+ice_golem	defensive_spells	Elemental Defense II (406)	
+ice_golem	treasure_other	crystal core	
+ice_hound	otherclass	Living	
+ice_hound	treasure_other	essence of water	
+ice_skeleton	otherclass	Corporeal undead	
+ice_troll	otherclass	Living	
+ice_troll	otherclass	Element-based	
+ice_troll	otherclass	Boss	
+ice_troll	equipment	a badly torn rusted chain hauberk	
+ice_troll	equipment	a massive icicle	
+ice_troll	equipment	an enruned ice-covered battle axe	
+ice_troll	equipment	an ice club	
+ice_troll	equipment	an ice spear	
+ice_troll	equipment	an ice-covered two-handed sword	
+ice_troll	equipment	an ice-crusted steel chain hauberk	
+ice_troll	defensive_spells	Spirit Defense (103)	
+ice_troll	treasure_other	essence of water, small troll tooth	
+ice_troll	treasure_other	glimmering blue essence shard	
+ice_wraith	otherclass	Non-corporeal undead	
+ice_wraith	otherclass	Element-based	
+ice_wraith	equipment	a bruised left eye	
+ice_wraith	equipment	a kaskara	
+ice_wraith	equipment	a rusting horned helm	
+ice_wraith	equipment	a splintered shield	
+ice_wraith	equipment	a steel-tipped whip	
+ice_wraith	equipment	a tattered robe	
+ice_wraith	equipment	some decaying leathers	
+ice_wraith	defensive_spells	Thurfel's Ward (503)	
+ice_wraith	defensive_spells	Elemental Defense I (401)	
+ice_wraith	defensive_spells	Elemental Defense II (406)	
+ice_wraith	defensive_spells	Wizard's Shield (919)	
+ice_wraith	treasure_other	essence of water	
+illoke_elder	otherclass	Living	
+illoke_elder	otherclass	Boss	
+illoke_elder	equipment	a giant granite sledgehammer	
+illoke_elder	equipment	a gleaming ora aegis	
+illoke_elder	equipment	a grey stone crescent symbol	
+illoke_elder	equipment	a heavy stone hammer	
+illoke_elder	equipment	a rusted dark iron aegis	
+illoke_elder	equipment	an enormous stalagmite	
+illoke_elder	defensive_spells	Elemental Defense III (414)	
+illoke_elder	defensive_spells	Elemental Defense II (406)	
+illoke_elder	defensive_spells	Thurfel's Ward (503)	
+illoke_elder	defensive_spells	Elemental Defense I (401)	
+illoke_elder	treasure_other	radiant crimson essence shard	
+illoke_elder	treasure_other	essence of earth	
+illoke_jarl	otherclass	Living	
+illoke_jarl	equipment	a grey stone crescent symbol	
+illoke_jarl	equipment	a heavy black stone hammer	
+illoke_jarl	equipment	a massive iron-banded greatshield	
+illoke_jarl	equipment	a massive pitted iron pavis	
+illoke_jarl	equipment	a slate grey stone hammer	
+illoke_jarl	defensive_spells	Divine Shield (1609)	
+illoke_jarl	defensive_spells	Fasthr's Reward (115)	
+illoke_jarl	defensive_spells	Lesser Shroud (120)	
+illoke_jarl	defensive_spells	Song of Unravelling (1013)	
+illoke_jarl	treasure_other	radiant crimson essence shard	
+illoke_jarl	treasure_other	essence of earth	
+illoke_mystic	otherclass	Living	
+illoke_mystic	equipment	a giant stone hammer	
+illoke_mystic	equipment	a grey stone crescent symbol	
+illoke_mystic	equipment	a heavy stone hammer	
+illoke_mystic	equipment	a massive iron shield	
+illoke_mystic	defensive_spells	Elemental Defense I (401)	
+illoke_mystic	defensive_spells	Elemental Defense II (406)	
+illoke_mystic	defensive_spells	Elemental Defense III (414)	
+illoke_mystic	defensive_spells	Elemental Targeting (425)	
+illoke_mystic	defensive_spells	Natural Colors (601)	
+illoke_mystic	defensive_spells	Resist Elements (602)	
+illoke_mystic	treasure_other	Glowing violet essence dust	
+illoke_mystic	treasure_other	essence of earth	
+illoke_shaman	otherclass	Living	
+illoke_shaman	equipment	a grey stone crescent symbol	
+illoke_shaman	equipment	a huge stone maul	
+illoke_shaman	equipment	a massive granite hammer	
+illoke_shaman	equipment	a massive iron shield	
+illoke_shaman	defensive_spells	Benediction (307)	
+illoke_shaman	defensive_spells	Elemental Defense I (401)	
+illoke_shaman	defensive_spells	Elemental Defense II (406)	
+illoke_shaman	defensive_spells	Elemental Defense III (414)	
+illoke_shaman	defensive_spells	Elemental Targeting (425)	
+illoke_shaman	defensive_spells	Resist Elements (602)	
+illoke_shaman	treasure_other	Glowing violet mote of essence	
+illoke_shaman	treasure_other	essence of earth	
+ilvari_pixie	otherclass	Living	
+ilvari_pixie	otherclass	Magical	
+ilvari_pixie	equipment	a giant bee stinger	
+ilvari_pixie	equipment	a leafy green tunic	
+ilvari_pixie	defensive_spells	Arcane Barrier (1720)	
+ilvari_pixie	defensive_spells	Elemental Defense I (401)	
+ilvari_pixie	defensive_spells	Elemental Defense II (406)	
+ilvari_pixie	defensive_spells	Elemental Defense III (414)	
+ilvari_pixie	defensive_spells	Invisibility (916)	
+ilvari_sprite	otherclass	Living	
+ilvari_sprite	otherclass	Magical	
+ilvari_sprite	equipment	a leafy green tunic	
+ilvari_sprite	defensive_spells	Lesser Shroud (120)	
+ilvari_sprite	defensive_spells	Spirit Warding I (101)	
+ilvari_sprite	defensive_spells	Spirit Warding II (107)	
+ilvari_sprite	defensive_spells	Wall of Force (140)	
+infernal_death_knight	otherclass	Corporeal undead	
+infernal_death_knight	equipment	a massive black ora sword adorned with a trio of blue-black diamonds	
+infernal_death_knight	equipment	some darkly blued steel half-plate	
+infernal_death_knight	defensive_spells	Spirit Strike (117)	
+infernal_death_knight	treasure_other	ayanad crystal	
+infernal_death_knight	treasure_other	n'ayanad crystal	
+infernal_death_knight	treasure_other	petrified mammoth tusk	
+ithzir_adept	otherclass	Living	
+ithzir_adept	otherclass	Extraplanar	
+ithzir_adept	equipment	a curved crystal-edged blade	
+ithzir_adept	equipment	a suit of trimmed leather	
+ithzir_adept	equipment	a twisted crystal-tipped staff	
+ithzir_adept	defensive_spells	Elemental Defense I (401)	
+ithzir_adept	defensive_spells	Elemental Defense II (406)	
+ithzir_adept	defensive_spells	Elemental Defense III (414)	
+ithzir_adept	defensive_spells	Elemental Barrier (430)	
+ithzir_adept	defensive_spells	Thurfel's Ward (503)	
+ithzir_adept	defensive_spells	Elemental Focus (513)	
+ithzir_adept	defensive_spells	Prismatic Guard (905)	
+ithzir_adept	defensive_spells	Mass Blur (911)	
+ithzir_adept	defensive_spells	Wizard's Shield (919)	
+ithzir_adept	armaments	heavy crystal-capped maul	
+ithzir_adept	treasure_other	tiny golden seed	
+ithzir_adept	treasure_other	radiant crimson mote of essence	
+ithzir_champion	otherclass	Living	
+ithzir_champion	otherclass	Extraplanar	
+ithzir_champion	equipment	a gornar flail	
+ithzir_champion	equipment	a jagged steel flamberge	
+ithzir_champion	equipment	a segmented steel breastplate	
+ithzir_champion	equipment	a twisted steel talisman	
+ithzir_champion	equipment	a heavy steel maul	
+ithzir_champion	immunities	stun	
+ithzir_champion	defensive_spells	Spirit Warding I (101)	
+ithzir_champion	defensive_spells	Spirit Defense (103)	
+ithzir_champion	defensive_spells	Mantle of Faith (1601)	
+ithzir_champion	armaments	heavy crystal-capped maul	
+ithzir_champion	treasure_other	crystal weapon	
+ithzir_herald	otherclass	Living	
+ithzir_herald	otherclass	Extraplanar	
+ithzir_herald	equipment	a curved crystal-edged blade	
+ithzir_herald	equipment	a curved silvery blade	
+ithzir_herald	equipment	a gleaming crystal-edged broadsword	
+ithzir_herald	equipment	a polished steel shield	
+ithzir_herald	equipment	some sleek studded leather	
+ithzir_herald	defensive_spells	Elemental Defense I (401)	
+ithzir_herald	defensive_spells	Elemental Defense II (406)	
+ithzir_herald	defensive_spells	Elemental Defense III (414)	
+ithzir_herald	defensive_spells	Elemental Barrier (430)	
+ithzir_herald	treasure_other	crystal-edged weapons	
+ithzir_herald	treasure_other	tiny golden seed	
+ithzir_initiate	otherclass	Living	
+ithzir_initiate	otherclass	Extraplanar	
+ithzir_initiate	equipment	a suit of trimmed leather	
+ithzir_initiate	equipment	a twisted crystal-tipped staff	
+ithzir_initiate	defensive_spells	Lesser Shroud (120)	
+ithzir_initiate	defensive_spells	Minor Sanctuary (213)	
+ithzir_initiate	defensive_spells	Spell Shield (219)	
+ithzir_initiate	defensive_spells	Spirit Defense (103)	
+ithzir_initiate	defensive_spells	Spirit Shield (202)	
+ithzir_initiate	defensive_spells	Spirit Warding I (101)	
+ithzir_initiate	defensive_spells	Spirit Warding II (107)	
+ithzir_initiate	defensive_spells	Wall of Force (140)	
+ithzir_initiate	defensive_spells	Heroism (215)	
+ithzir_initiate	defensive_spells	Spirit Strike (117)	
+ithzir_initiate	treasure_other	tiny golden seed	
+ithzir_janissary	otherclass	Living	
+ithzir_janissary	otherclass	Extraplanar	
+ithzir_janissary	equipment	a blued steel hauberk	
+ithzir_janissary	equipment	a polished steel shield	
+ithzir_janissary	equipment	a spiral-hafted crystal-edged handaxe	
+ithzir_janissary	equipment	a spiral-hafted handaxe	
+ithzir_janissary	treasure_other	crystal-edged weapons	
+ithzir_scout	otherclass	Living	
+ithzir_scout	otherclass	Extraplanar	
+ithzir_scout	equipment	a charcoal grey shield	
+ithzir_scout	equipment	a curved crystal-edged blade	
+ithzir_scout	equipment	a gleaming crystal-edged broadsword	
+ithzir_scout	equipment	a gleaming steel broadsword	
+ithzir_scout	equipment	some sleek grey brigandine	
+ithzir_scout	treasure_other	crystal-edged weapons	
+ithzir_seer	otherclass	Living	
+ithzir_seer	otherclass	Extraplanar	
+ithzir_seer	equipment	a suit of trimmed leather	
+ithzir_seer	equipment	a twisted crystal-tipped staff	
+ithzir_seer	defensive_spells	Minor Sanctuary (213)	
+ithzir_seer	defensive_spells	Self Control (613)	
+ithzir_seer	defensive_spells	Spirit Fog (106)	
+ithzir_seer	defensive_spells	Wall of Force (140)	
+ithzir_seer	defensive_spells	Spirit Warding I (101)	
+ithzir_seer	defensive_spells	Spirit Defense (103)	
+ithzir_seer	defensive_spells	Spirit Warding II (107)	
+ithzir_seer	defensive_spells	Spirit Shield (202)	
+ithzir_seer	defensive_spells	Spell Shield (219)	
+ithzir_seer	defensive_spells	Spirit Strike (117)	
+ithzir_seer	armaments	heavy crystal-capped maul	
+jungle_feyling	equipment	a boiled leather vest	
+jungle_feyling	equipment	a fist-scythe	
+jungle_feyling	equipment	a small buckler	
+jungle_feyling	equipment	an enormous ginko nut shell hat	
+jungle_troll	otherclass	Living	
+jungle_troll	equipment	a bamboo-hilted machete	
+jungle_troll	defensive_spells	Spirit Warding II (107)	
+jungle_troll	treasure_other	small troll tooth	
+jungle_troll	treasure_other	ayanad crystal	
+jungle_troll_chieftain	otherclass	Living	
+jungle_troll_chieftain	equipment	a vine-wrapped rusting bastard sword	
+jungle_troll_chieftain	defensive_spells	Natural Colors (601)	
+jungle_troll_chieftain	defensive_spells	Self Control (613)	
+jungle_troll_chieftain	defensive_spells	Mobility (618)	
+jungle_troll_chieftain	defensive_spells	Spirit Warding I (101)	
+jungle_troll_chieftain	treasure_other	a glimmering blue essence shard	
+kelp_tangled_coral_golem	immunities	Puncture	
+kelp_tangled_coral_golem	special_defenses	-->	
+kelp_tangled_coral_golem	treasure_other	ayanad crystal	
+kiramon_defender	otherclass	Living	
+kiramon_defender	otherclass	Boss	
+kiramon_defender	treasure_other	glowing mineral water	
+kiramon_defender	treasure_other	tiny golden seed	
+kiramon_worker	otherclass	Living	
+kiramon_worker	otherclass	Boss	
+kiramon_worker	treasure_other	corked crystalline globe filled with glowing mineral water	
+kobold	otherclass	Living	
+kobold	equipment	a javelin	
+kobold	equipment	a ratty sack	
+kobold	equipment	a short sword	
+kobold	equipment	a wooden shield	
+kobold	equipment	some light leather	
+kobold	armaments	reinforced shield	
+kobold_shepherd	otherclass	Living	
+kobold_shepherd	equipment	a shepherd's crook	
+kobold_shepherd	equipment	some dirty brown robes	
+kobold_shepherd	equipment	some leather sandals	
+kobold_shepherd	defensive_spells	Elemental Defense I (401)	
+kobold_shepherd	defensive_spells	Elemental Defense II (406)	
+kobold_shepherd	defensive_spells	Spirit Defense (103)	
+kobold_shepherd	defensive_spells	Spirit Warding I (101)	
+kobold_shepherd	defensive_spells	Spirit Warding II (107)	
+krag_dweller	equipment	a bruised left eye	
+krag_dweller	immunities	Dark Catalyst (719)	
+krag_dweller	immunities	Implosion (720)	
+krag_dweller	immunities	Fire	
+krag_dweller	immunities	Web (118)	
+krag_dweller	treasure_other	Essence of earth	
+krag_yeti	otherclass	Living	
+krag_yeti	equipment	a bruised left eye	
+krag_yeti	equipment	a bruised right eye	
+krag_yeti	equipment	a possible mild concussion	
+krag_yeti	treasure_other	Tiny golden seed	
+krolvin_corsair	otherclass	Living	
+krolvin_corsair	otherclass	Boss	
+krolvin_corsair	equipment	a plain steel cutlass	
+krolvin_corsair	equipment	a salt-encrusted knapsack	
+krolvin_corsair	equipment	a suit of chain hauberk	
+krolvin_mercenary	otherclass	Living	
+krolvin_mercenary	equipment	a broadsword	
+krolvin_mercenary	equipment	a handaxe	
+krolvin_mercenary	equipment	a reinforced shield	
+krolvin_mercenary	equipment	some brigandine armor	
+krolvin_mercenary	equipment	some burnished arm greaves	
+krolvin_mercenary	equipment	some double leather	
+krolvin_mercenary	equipment	some studded leather	
+krolvin_mercenary	treasure_other	s'ayanad crystal	
+krolvin_slaver	otherclass	Living	
+krolvin_slaver	equipment	a length of spiked chain	
+krolvin_slaver	equipment	a plain steel scimitar	
+krolvin_slaver	equipment	some double chain armor	
+krolvin_warfarer	otherclass	Living	
+krolvin_warfarer	otherclass	Boss	
+krolvin_warfarer	equipment	a falchion	
+krolvin_warfarer	equipment	a reinforced shield	
+krolvin_warfarer	equipment	some full leather	
+krolvin_warfarer	defensive_spells	Elemental Defense I (401)	
+krolvin_warfarer	defensive_spells	Elemental Defense II (406)	
+krolvin_warfarer	defensive_spells	Spirit Defense (103)	
+krolvin_warfarer	defensive_spells	Spirit Fog (106)	
+krolvin_warfarer	defensive_spells	Spirit Warding I (101)	
+krolvin_warfarer	defensive_spells	Spirit Warding II (107)	
+krolvin_warfarer	treasure_other	Glimmering blue essence shard	
+krolvin_warfarer	treasure_other	t'ayanad crystal	
+krolvin_warrior	otherclass	Living	
+krolvin_warrior	otherclass	Boss	
+krolvin_warrior	equipment	a chain hauberk	
+krolvin_warrior	equipment	a cracked leather belt	
+krolvin_warrior	equipment	a jeddart-axe	
+krolvin_warrior	equipment	a morning star	
+krolvin_warrior	equipment	a reinforced shield	
+krolvin_warrior	equipment	a war mattock	
+krolvin_warrior	equipment	some brigandine armor	
+krolvin_warrior	treasure_other	s'ayanad crystal	
+krynch	otherclass	Living	
+krynch	otherclass	Magical	
+krynch	equipment	a bruised left eye	
+krynch	equipment	a bruised right eye	
+krynch	equipment	a completely severed right arm	
+krynch	defensive_spells	Natural Colors (601)	
+krynch	treasure_other	glimmering blue essence dust	
+krynch	treasure_other	glimmering blue essence shard	
+krynch	treasure_other	essence of earth	
+large_ogre	otherclass	Living	
+large_ogre	equipment	a mace	
+large_ogre	equipment	a spear	
+large_ogre	equipment	a wooden shield	
+large_ogre	equipment	some double chain	
+large_ogre	equipment	some full leather	
+large_ogre	treasure_other	s'ayanad crystal	
+large_thorned_shrub	otherclass	corporeal undead	
+lava_golem	otherclass	Magical	
+lava_golem	otherclass	Element-based	
+lava_golem	equipment	a firewheel arrow fletched with plain white feathers	
+lava_golem	special_defenses	Immune to Unbalance (110)	
+lava_golem	treasure_other	Essence of fire, Crystal core	
+lava_troll	otherclass	Living	
+lava_troll	otherclass	Element-based	
+lava_troll	otherclass	Boss	
+lava_troll	equipment	a leather-wound ruddy steel sledgehammer	
+lava_troll	treasure_other	essence of fire	
+lava_troll	treasure_other	small troll tooth	
+lava_troll	treasure_other	glimmering blue essence shard	
+leaper	otherclass	Living	
+lesser_burrow_orc	otherclass	Living	
+lesser_construct	otherclass	Magical	
+lesser_construct	immunities	magic	
+lesser_construct	treasure_other	crystal core	
+lesser_faeroth	otherclass	Living	
+lesser_faeroth	otherclass	Boss	
+lesser_faeroth	treasure_other	a mottled faeroth crest	
+lesser_frost_shade	otherclass	Non-corporeal undead	
+lesser_frost_shade	otherclass	Element-based	
+lesser_frost_shade	equipment	a handaxe	
+lesser_frost_shade	equipment	some light leather	
+lesser_ghoul	otherclass	Corporeal undead	
+lesser_ghoul	treasure_other	ghoul nail	
+lesser_ghoul	treasure_other	ayanad crystal	
+lesser_griffin	otherclass	Living	
+lesser_griffin	otherclass	Boss	
+lesser_griffin	equipment	a blinded left eye	
+lesser_griffin	equipment	a completely severed left front leg	
+lesser_griffin	treasure_other	Glowing violet essence dust	
+lesser_griffin	treasure_other	glowing violet essence shard	
+lesser_ice_elemental	otherclass	Extraplanar	
+lesser_ice_elemental	otherclass	Magical	
+lesser_ice_elemental	defensive_spells	Elemental Defense I (401)	
+lesser_ice_elemental	defensive_spells	Elemental Defense II (406)	
+lesser_ice_elemental	defensive_spells	Elemental Defense III (414)	
+lesser_ice_elemental	defensive_spells	Prismatic Guard (905)	
+lesser_ice_elemental	treasure_other	essence of water	
+lesser_ice_giant	otherclass	Living	
+lesser_ice_giant	otherclass	Element-based	
+lesser_ice_giant	equipment	a fur-lined horned helm	
+lesser_ice_giant	equipment	a massive icicle	
+lesser_ice_giant	treasure_other	essence of water	
+lesser_minotaur	otherclass	Living	
+lesser_minotaur	equipment	a broad leather-wrapped waraxe	
+lesser_minotaur	equipment	a bruised left eye	
+lesser_minotaur	equipment	a bruised right eye	
+lesser_minotaur	equipment	a curved silvery white greataxe	
+lesser_minotaur	equipment	a reinforced slatted wooden shield	
+lesser_minotaur	equipment	some rough dark grey brigandine armor	
+lesser_minotaur	treasure_other	Tiny golden seed	
+lesser_moor_wight	otherclass	Corporeal undead	
+lesser_moor_wight	otherclass	Boss	
+lesser_moor_wight	equipment	a blackened twisted steel longsword	
+lesser_moor_wight	defensive_spells	Thurfel's Ward (503)	
+lesser_moor_wight	defensive_spells	Spirit Warding I (101)	
+lesser_moor_wight	defensive_spells	Spirit Defense (103)	
+lesser_mummy	otherclass	Corporeal undead	
+lesser_orc	otherclass	Living	
+lesser_orc	equipment	a cudgel	
+lesser_orc	equipment	a flail	
+lesser_orc	equipment	a leather breastplate	
+lesser_orc	equipment	a leather helm	
+lesser_orc	equipment	a metal aventail	
+lesser_orc	equipment	a reinforced shield	
+lesser_orc	equipment	a short sword	
+lesser_orc	equipment	a wooden shield	
+lesser_orc	equipment	some full leather	
+lesser_orc	treasure_other	ayanad crystal	
+lesser_red_orc	otherclass	Living	
+lesser_red_orc	equipment	a leather breastplate	
+lesser_red_orc	equipment	a leather helm	
+lesser_red_orc	equipment	a reinforced shield	
+lesser_red_orc	equipment	a scimitar	
+lesser_red_orc	armaments	steel-banded shield	
+lesser_shade	otherclass	Non-corporeal undead	
+lesser_shade	equipment	a short sword	
+lesser_shade	equipment	an augmented breastplate	
+lesser_shade	armaments	mottled grey falchion	
+lesser_shade	treasure_other	Alchemy (common)	
+lesser_stone_gargoyle	otherclass	Living	
+lesser_stone_gargoyle	treasure_other	crystal core	
+lesser_stone_gargoyle	treasure_other	glimmering blue essence dust	
+lesser_stone_gargoyle	treasure_other	essence of earth	
+lesser_vruul	otherclass	Corporeal undead	
+lesser_vruul	equipment	a battle axe	
+lesser_vruul	equipment	a short sword	
+lesser_vruul	equipment	a wooden shield	
+lesser_vruul	defensive_spells	Bravery (211)	
+lesser_vruul	defensive_spells	Heroism (215)	
+lesser_vruul	defensive_spells	Lesser Shroud (120)	
+lesser_vruul	defensive_spells	Spell Shield (219)	
+lesser_vruul	defensive_spells	Spirit Defense (103)	
+lesser_vruul	defensive_spells	Spirit Shield (202)	
+lesser_vruul	defensive_spells	Spirit Warding I (101)	
+lesser_vruul	treasure_other	glowing violet mote of essence	
+lesser_wood_sprite	otherclass	Living	
+lesser_wood_sprite	otherclass	Magical	
+lesser_wood_sprite	equipment	a pitted iron falchion	
+lesser_wood_sprite	equipment	a pitted iron jeddart-axe	
+lesser_wood_sprite	equipment	a wood buckler	
+lesser_wood_sprite	equipment	a wood composite bow	
+lesser_wood_sprite	equipment	a wood-gripped estoc	
+lesser_wood_sprite	defensive_spells	Lesser Shroud (120)	
+lesser_wood_sprite	defensive_spells	Natural Colors (601)	
+lesser_wood_sprite	defensive_spells	Phoen's Strength (606)	
+lesser_wood_sprite	defensive_spells	Resist Elements (602)	
+lesser_wood_sprite	defensive_spells	Self Control (613)	
+lesser_wood_sprite	defensive_spells	Spirit Defense (103)	
+lesser_wood_sprite	defensive_spells	Spirit Warding I (101)	
+lesser_wood_sprite	defensive_spells	Spirit Warding II (107)	
+lesser_wood_sprite	treasure_other	Pristine sprite's hairGlowing violet essence shard	
+lich	otherclass	Corporeal undead	
+lich	otherclass	Extraplanar	
+lich	equipment	a crystal-set smooth ironwood scepter	
+lich	equipment	an ancient gnarled bone phylactery	
+lich	equipment	some disheveled deep grey robes	
+lich_qyn_arj	otherclass	Corporeal undead	
+lich_qyn_arj	otherclass	Magical	
+lich_qyn_arj	defensive_spells	Lesser Shroud (120)	
+lich_qyn_arj	defensive_spells	Spirit Shield (202)	
+lich_qyn_arj	defensive_spells	Spirit Warding II (107)	
+lich_qyn_arj	defensive_spells	Spirit Defense (103)	
+lithe_veiled_sentinel	otherclass	Living	
+lithe_veiled_sentinel	equipment	a flowing green shroud	
+lithe_veiled_sentinel	equipment	a patterned bronze cutlass	
+lithe_veiled_sentinel	immunities	Stun	
+lithe_veiled_sentinel	defensive_spells	Iron Skin (1202)	
+lithe_veiled_sentinel	defensive_spells	Spirit Warding I (101)	
+lithe_veiled_sentinel	defensive_spells	Spirit Warding II (107)	
+lithe_veiled_sentinel	defensive_spells	Bravery (211)	
+lithe_veiled_sentinel	defensive_spells	Strength (509)	
+lithe_veiled_sentinel	defensive_spells	Foresight (1204)	
+lithe_veiled_sentinel	defensive_spells	Mindward (1208)	
+lithe_veiled_sentinel	defensive_spells	Focus Barrier (1216)	
+lithe_veiled_sentinel	defensive_spells	Spirit Strike (117)	
+lost_soul	otherclass	Non-corporeal undead	
+lost_soul	otherclass	Extraplanar	
+lost_soul	equipment	a gleaming silvery scythe	
+lost_soul	equipment	a scorched black ball	
+lost_soul	equipment	a shimmering black shield	
+lost_soul	defensive_spells	Elemental Defense I (401)	
+lost_soul	defensive_spells	Elemental Defense II (406)	
+lost_soul	defensive_spells	Elemental Defense III (414)	
+lost_soul	defensive_spells	Elemental Barrier (430)	
+lost_soul	treasure_other	inky necrotic core	
+luminous_arachnid	otherclass	Living	
+luminous_arachnid	treasure_other	s'ayanad crystal	
+luminous_worm	otherclass	Living	
+luminous_worm	treasure_other	ayanad crystal	
+luminous_worm	treasure_other	s'ayanad crystal	
+magna_vereri	otherclass	Corporeal undead	
+magna_vereri	equipment	a clinging raw silk shift	
+magna_vereri	treasure_other	ayanad crystal	
+magru	immunities	Fire	
+major_glacei	otherclass	Magical	
+major_glacei	defensive_spells	Elemental Defense III (414)	
+major_glacei	defensive_spells	Elemental Defense II (406)	
+major_glacei	defensive_spells	Elemental Defense I (401)	
+major_glacei	treasure_other	essence of water	
+major_spider	otherclass	Living	
+mammoth_arachnid	otherclass	Living	
+mammoth_arachnid	equipment	a bruised left eye	
+mammoth_arachnid	equipment	a bruised right eye	
+mammoth_arachnid	equipment	a completely severed left foreleg	
+mammoth_arachnid	equipment	a completely severed right foreleg	
+manticore	otherclass	Living	
+manticore	equipment	a bruised left eye	
+manticore	equipment	a bruised right eye	
+manticore	equipment	a completely severed left foreleg	
+manticore	equipment	a completely severed right foreleg	
+martial_eagle	otherclass	Living	
+masked_goliath_plunderer	otherclass	Living	
+massive_black_boar	otherclass	Living	
+massive_grahnk	otherclass	Living	
+massive_grahnk	otherclass	Boss	
+massive_grahnk	equipment	a coral shield	
+massive_grahnk	equipment	a heavy stone club	
+massive_grahnk	equipment	a squid-crested breastplate	
+massive_pyrothag	otherclass	Living	
+massive_pyrothag	otherclass	Magical	
+massive_pyrothag	otherclass	Element-based	
+massive_pyrothag	equipment	a massive glaes club	
+massive_pyrothag	treasure_other	glowing violet mote of essence	
+massive_troll_king	otherclass	Living	
+massive_troll_king	treasure_other	trolls blood, Glowing violet essence dust	
+massive_troll_king	treasure_other	small troll tooth	
+massive_troll_king	treasure_other	large troll tooth	
+mastodonic_leopard	otherclass	Living	
+mastodonic_leopard	otherclass	Boss	
+mezic	otherclass	Living	
+mezic	otherclass	Magical	
+mezic	equipment	a ball	
+mezic	equipment	some tattered rags	
+mezic	equipment	a ball and chain	
+mezic	defensive_spells	Elemental Defense I (401)	
+mezic	defensive_spells	Elemental Defense II (406)	
+mezic	defensive_spells	Elemental Defense III (414)	
+mezic	defensive_spells	Elemental Focus (513)	
+mezic	defensive_spells	Mass Blur (911)	
+mezic	defensive_spells	Thurfel's Ward (503)	
+mezic	treasure_other	Glimmering blue essence shard	
+milky_eyed_drowned_mariner	otherclass	Undead	
+minor_glacei	otherclass	Magical	
+minor_glacei	defensive_spells	Elemental Defense III (414)	
+minor_glacei	defensive_spells	Elemental Defense I (401)	
+minor_glacei	defensive_spells	Elemental Defense II (406)	
+minor_glacei	treasure_other	essence of water	
+minotaur_magus	otherclass	Living	
+minotaur_magus	equipment	an onyx-inset carved wooden runestaff	
+minotaur_magus	equipment	some ebon-hued studded leather	
+minotaur_magus	defensive_spells	Spell Shield (219)	
+minotaur_magus	defensive_spells	Spirit Defense (103)	
+minotaur_magus	defensive_spells	Spirit Shield (202)	
+minotaur_magus	defensive_spells	Spirit Warding I (101)	
+minotaur_magus	defensive_spells	Spirit Warding II (107)	
+minotaur_magus	defensive_spells	Heroism (215)	
+minotaur_magus	treasure_other	Tiny golden seed	
+minotaur_warrior	otherclass	Living	
+minotaur_warrior	equipment	a blackened steel moon axe	
+minotaur_warrior	equipment	a deep blue heater shield	
+minotaur_warrior	equipment	a lustrous steel battle axe	
+minotaur_warrior	equipment	some banded grey brigandine armor	
+minotaur_warrior	treasure_other	Tiny golden seed	
+mist_wraith	otherclass	Non-corporeal undead	
+mist_wraith	treasure_other	ayanad crystal	
+mistydeep_siren	otherclass	Living	
+mistydeep_siren	equipment	a curved bracelet dagger	
+mistydeep_siren	equipment	a pale water silk drape	
+mistydeep_siren	equipment	a wavy silvered dirk	
+mistydeep_siren	equipment	some soft gossamer robes	
+mistydeep_siren	treasure_other	Pristine nymph's hair	
+moaning_phantom	otherclass	Non-corporeal undead	
+moaning_spirit	otherclass	Non-corporeal undead	
+moaning_spirit	equipment	a bruised left eye	
+moaning_spirit	treasure_other	glimmering blue essence dust	
+moaning_spirit	treasure_other	ayanad crystal	
+monastic_lich	otherclass	Corporeal undead	
+monastic_lich	equipment	a blackened shield	
+monastic_lich	equipment	a blackened visor	
+monastic_lich	equipment	a ceremonial kris	
+monastic_lich	equipment	a wickedly barbed leather whip	
+monastic_lich	equipment	some black ora bracers	
+monastic_lich	equipment	some tattered flowing black robes	
+monastic_lich	defensive_spells	Prayer of Protection (303)	
+monastic_lich	defensive_spells	Prismatic Guard (905)	
+monastic_lich	defensive_spells	Spirit Shield (202)	
+monastic_lich	defensive_spells	Spirit Warding I (101)	
+monastic_lich	defensive_spells	Thurfel's Ward (503)	
+monastic_lich	special_defenses	Shake off stuns	
+monastic_lich	treasure_other	glimmering blue essence dust	
+mongrel_hobgoblin	otherclass	Living	
+mongrel_hobgoblin	equipment	a spiked club	
+mongrel_hobgoblin	equipment	some lynx hide armor	
+mongrel_hobgoblin	treasure_other	ayanad crystal	
+mongrel_kobold	otherclass	Living	
+mongrel_kobold	equipment	a handaxe	
+mongrel_kobold	equipment	a short sword	
+mongrel_kobold	equipment	a wooden shield	
+mongrel_kobold	equipment	some reinforced leather	
+mongrel_kobold	treasure_other	ayanad crystal	
+mongrel_troll	otherclass	Living	
+mongrel_troll	equipment	a spear	
+mongrel_troll	equipment	a war mattock	
+mongrel_troll	equipment	a wooden shield	
+mongrel_troll	defensive_spells	Spirit Warding II (107)	
+mongrel_troll	treasure_other	Small troll tooth	
+mongrel_wolfhound	otherclass	Living	
+monkey	otherclass	Living	
+monkey	equipment	a bright gold-buttoned coat	
+monkey	equipment	a jaunty yellow bowtie	
+monkey	equipment	a length of coiled red vine	
+monkey	equipment	a long flowing red evening gown	
+monkey	equipment	a strand of faux pearls	
+monkey	equipment	a striped silver-clasped coat	
+monkey	equipment	a tall dark felt hat	
+monkey	equipment	a thin oaken cudgel	
+monkey	equipment	a vibrant yellow jacket	
+monkey	equipment	a wide-brimmed yellow hat	
+monkey	equipment	an iron-tipped wooden cane	
+monkey	equipment	some sensible red boots	
+monstrous_direwolf	otherclass	Living	
+moor_eagle	otherclass	Living	
+moor_hound	otherclass	Living	
+moor_hound	otherclass	Boss	
+moor_witch	otherclass	Living	
+moor_witch	otherclass	Boss	
+moor_witch	equipment	a diaphanous robe	
+moor_witch	equipment	a twisted dagger	
+moor_witch	defensive_spells	Elemental Defense I (401)	
+moor_witch	defensive_spells	Elemental Defense II (406)	
+moor_witch	defensive_spells	Elemental Defense III (414)	
+moor_witch	defensive_spells	Elemental Targeting (425)	
+moor_witch	defensive_spells	Lesser Shroud (120)	
+moor_witch	defensive_spells	Spirit Defense (103)	
+moor_witch	defensive_spells	Spirit Warding II (107)	
+moor_witch	treasure_other	glimmering blue essence dust	
+mottled_thrak	otherclass	Living	
+moulis	otherclass	Living	
+moulis	otherclass	Magical	
+moulis	otherclass	Boss	
+moulis	defensive_spells	Elemental Bias (508)	
+moulis	defensive_spells	Elemental Deflection (507)	
+moulis	defensive_spells	Strength (509)	
+moulis	defensive_spells	Mage Armor (520)	
+mountain_goat	otherclass	Living	
+mountain_lion	otherclass	Living	
+mountain_ogre	otherclass	Living	
+mountain_ogre	equipment	a crude pine mattock	
+mountain_ogre	equipment	a cudgel	
+mountain_ogre	equipment	some full leather	
+mountain_ogre	equipment	some unevenly stitched pale leathers	
+mountain_rolton	otherclass	Living	
+mountain_snowcat	otherclass	Living	
+mountain_troll	otherclass	Living	
+mountain_troll	equipment	a bruised left eye	
+mountain_troll	equipment	a bruised right eye	
+mountain_troll	equipment	a completely severed left arm	
+mountain_troll	equipment	a flail	
+mountain_troll	equipment	a leather helm	
+mountain_troll	equipment	a sigil-etched glaes flail	
+mountain_troll	equipment	some brigandine armor	
+mountain_troll	defensive_spells	Spirit Warding II (107)	
+mountain_troll	treasure_other	small troll tooth	
+mountain_troll	treasure_other	s'ayanad crystal	
+mountain_troll	treasure_other	ayanad crystal	
+mud_wasp	otherclass	Living	
+mud_wasp	equipment	a bruised left eye	
+mud_wasp	equipment	a bruised right eye	
+mud_wasp	equipment	a completely severed left foreleg	
+mud_wasp	equipment	a completely severed left hind leg	
+mud_wasp	equipment	a completely severed left leg	
+mud_wasp	equipment	a completely severed right leg	
+murky_soul_siphon	otherclass	Corporeal undead	
+murky_soul_siphon	otherclass	Extraplanar	
+murky_soul_siphon	defensive_spells	Elemental Defense II (406)	
+murky_soul_siphon	defensive_spells	Elemental Defense III (414)	
+murky_soul_siphon	defensive_spells	Thurfel's Ward (503)	
+murky_soul_siphon	defensive_spells	Elemental Defense I (401)	
+muscular_supplicant	otherclass	Living	
+muscular_supplicant	otherclass	Boss	
+muscular_supplicant	equipment	a dark steel flamberge	
+muscular_supplicant	treasure_other	Glowing violet essence dust	
+muscular_supplicant	treasure_other	glowing violet essence shard	
+muscular_supplicant	treasure_other	tiny golden seed	
+myklian	otherclass	Living	
+n_ecare	otherclass	Corporeal undead	
+n_ecare	otherclass	Extraplanar	
+n_ecare	equipment	a dark steel shield	
+n_ecare	equipment	a heavy flanged mace	
+n_ecare	equipment	a long blackened jeddart-axe	
+n_ecare	equipment	a spiked leather collar	
+n_ecare	equipment	a splintered wooden buckler	
+n_ecare	equipment	a studded leather scabbard	
+n_ecare	equipment	a tattered black cloak	
+n_ecare	equipment	a wickedly curved falchion	
+n_ecare	equipment	some deep black reinforced leather	
+n_ecare	equipment	some knee-high black boots	
+n_ecare	equipment	some rotting black leather gloves	
+n_ecare	equipment	some rusted chain mail	
+n_ecare	treasure_other	Inky necrotic coreRadiant crimson mote of essence	
+naisirc	otherclass	Non-corporeal undead	
+naisirc	defensive_spells	Elemental Targeting (425)	
+naisirc	defensive_spells	Natural Colors (601)	
+naisirc	defensive_spells	Mobility (618)	
+naisirc	treasure_other	Inky necrotic core	
+nasty_little_gremlin	otherclass	Living	
+nasty_little_gremlin	equipment	a dagger	
+nasty_little_gremlin	equipment	a large blue sack	
+nasty_little_gremlin	equipment	a large orange sack	
+nasty_little_gremlin	equipment	a large yellow sack	
+neartofar_orc	otherclass	Living	
+neartofar_orc	equipment	a cracked leather helm	
+neartofar_orc	equipment	a reinforced shield	
+neartofar_orc	equipment	a rusted morning star	
+neartofar_orc	equipment	some dirt-caked dark iron armor	
+neartofar_orc	treasure_other	ayanad crystal	
+neartofar_troll	otherclass	Living	
+neartofar_troll	equipment	a longsword	
+neartofar_troll	equipment	some weathered cuirbouilli leather	
+neartofar_troll	defensive_spells	Spirit Warding II (107)	
+neartofar_troll	treasure_other	small troll tooth	
+necrotic_snake	otherclass	Corporeal undead	
+nedum_vereri	otherclass	Corporeal undead	
+nedum_vereri	equipment	a gilt-thorned steel spikestar	
+nedum_vereri	equipment	an age-blanched raw silk shift patterned with faded red roses	
+night_golem	treasure_other	crystal core	
+night_hound	otherclass	Corporeal undead	
+night_hound	equipment	a bruised left eye	
+night_hound	equipment	a bruised right eye	
+night_hound	equipment	a completely severed right paw	
+night_mare	otherclass	Corporeal undead	
+night_mare	otherclass	Boss	
+night_mare	equipment	a bruised left eye	
+night_mare	equipment	a bruised right eye	
+night_mare	defensive_spells	Elemental Defense II (406)	
+night_mare	defensive_spells	Spirit Warding II (107)	
+night_mare	defensive_spells	Spirit Defense (103)	
+night_mare	defensive_spells	Spirit Warding I (101)	
+night_mare	treasure_other	Glowing violet mote of essence	
+nightmare_steed	otherclass	Non-corporeal undead	
+niirsha	otherclass	Corporeal undead	
+niirsha	equipment	a corroded iron goupillon	
+niirsha	defensive_spells	Prayer of Protection (303)	
+niirsha	defensive_spells	Spirit Warding I (101)	
+niirsha	defensive_spells	Spirit Warding II (107)	
+niirsha	treasure_other	Reticulated orbsGlimmering blue essence shard	
+niirsha	treasure_other	glimmering blue mote of essence	
+niveous_giant_warg	equipment	a firewheel arrow fletched with plain white feathers	
+nonomino	otherclass	Corporeal undead	
+nonomino	equipment	a corroded steel dagger	
+nonomino	equipment	a rotting wooden shield	
+nonomino	equipment	a wickedly spiked ball & chain	
+nonomino	equipment	some tattered leathers	
+nonomino	defensive_spells	Spirit Warding I (101)	
+nonomino	defensive_spells	Spirit Warding II (107)	
+nonomino	defensive_spells	Prayer of Protection (303)	
+nonomino	treasure_other	glimmering blue essence dust	
+ogre_sentry	otherclass	Living	
+ogre_sentry	equipment	a slatted reinforced wooden shield	
+ogre_sentry	equipment	a thin-bladed steel handaxe	
+ogre_sentry	treasure_other	glimmering blue essence shard	
+ogre_warrior	otherclass	Living	
+ogre_warrior	equipment	a broad-bladed steel hatchet	
+ogre_warrior	equipment	a slatted reinforced wooden shield	
+ogre_warrior	equipment	a black steel shield	
+ogre_warrior	equipment	a red-trimmed black wool cape	
+ogre_warrior	equipment	an iron studded mace	
+ogre_warrior	equipment	some oiled red cuirboulli leather	
+ogre_warrior	equipment	some steel-toed black leather boots	
+ogre_warrior	treasure_other	Glimmering blue essence shard	
+pale_crab	otherclass	Living	
+pale_crab	treasure_other	ayanad crystal	
+pale_scaled_shaper	otherclass	Living	
+pale_scaled_shaper	equipment	a long acacia runestaff capped with a carved ivory serpent	
+pale_scaled_shaper	equipment	some pallid robes	
+pale_scaled_shaper	defensive_spells	Spirit Warding I (101)	
+pale_scaled_shaper	defensive_spells	Spirit Warding II (107)	
+pale_scaled_shaper	defensive_spells	Lesser Shroud (120)	
+pale_scaled_shaper	defensive_spells	Cloak of Shadows (712)	
+pale_scaled_shaper	defensive_spells	Spirit Shield (202)	
+pale_scaled_shaper	defensive_spells	Bravery (211)	
+pale_scaled_shaper	defensive_spells	Thurfel's Ward (503)	
+pale_scaled_shaper	defensive_spells	Wall of Force (140)	
+pale_scaled_shaper	defensive_spells	Fasthr's Reward (115)	
+pallid_fog_cloaked_kelpie	otherclass	Undead	
+pallid_fog_cloaked_kelpie	defensive_spells	Lesser Shroud (120)	
+pallid_fog_cloaked_kelpie	defensive_spells	Wall of Force (140)	
+panther	otherclass	Living	
+patchwork_flesh_monstrosity	otherclass	Corporeal undead	
+patchwork_flesh_monstrosity	defensive_spells	Focus Barrier (1216)	
+phantasma	otherclass	Non-corporeal undead	
+phantasma	equipment	a barbed whip	
+phantasma	equipment	a wickedly curved scimitar	
+phantasma	equipment	some rotted leather	
+phantasma	defensive_spells	Spirit Warding I (101)	
+phantasma	defensive_spells	Spirit Defense (103)	
+phantasma	defensive_spells	Spirit Warding II (107)	
+phantasma	defensive_spells	Elemental Defense I (401)	
+phantasma	defensive_spells	Elemental Defense II (406)	
+phantasma	defensive_spells	Elemental Defense III (414)	
+phantasma	treasure_other	Glowing violet mote of essence	
+phantasmal_bestial_swordsman	otherclass	Non-corporeal undead	
+phantasmal_bestial_swordsman	equipment	a black steel twohanded sword	
+phantasmal_bestial_swordsman	equipment	a filthy loin cloth	
+phantasmal_bestial_swordsman	equipment	a set of black steel augmented plate	
+phantasmal_bestial_swordsman	armaments	polished red steel Hammer of Kai	
+phantasmal_bestial_swordsman	treasure_other	Glowing violet mote of essence	
+phantom	otherclass	Non-corporeal undead	
+phantom	equipment	a woven cloak	
+phantom	equipment	some double leather	
+phosphorescent_worm	otherclass	Living	
+plains_lion	otherclass	Living	
+plains_ogre	otherclass	Living	
+plains_ogre	equipment	a mace	
+plains_ogre	equipment	some full leather	
+plains_ogre	treasure_other	ayanad crystal	
+plains_ogre	treasure_other	s'ayanad crystal	
+plains_orc_chieftain	otherclass	Living	
+plains_orc_chieftain	equipment	a bone-hilted iron machete	
+plains_orc_chieftain	equipment	a crude hound's tooth talisman	
+plains_orc_chieftain	equipment	a crude iron morning star	
+plains_orc_chieftain	equipment	some rough iron half plate	
+plains_orc_chieftain	treasure_other	Glimmering blue essence shardGlimmering blue mote of essence	
+plains_orc_scout	otherclass	Living	
+plains_orc_scout	equipment	a bone-hilted iron longsword	
+plains_orc_scout	equipment	a crude feather talisman	
+plains_orc_scout	equipment	some rough iron-scaled leathers	
+plains_orc_scout	defensive_spells	Natural Colors (601)	
+plains_orc_scout	defensive_spells	Self Control (613)	
+plains_orc_scout	treasure_other	s'ayanad crystal	
+plains_orc_shaman	otherclass	Living	
+plains_orc_shaman	equipment	a bone-hafted spiked mace	
+plains_orc_shaman	equipment	a bone-handled kris	
+plains_orc_shaman	equipment	a string of carved bone beads	
+plains_orc_shaman	equipment	a tattered leather tunic	
+plains_orc_shaman	defensive_spells	Elemental Defense I (401)	
+plains_orc_shaman	defensive_spells	Elemental Defense II (406)	
+plains_orc_shaman	defensive_spells	Elemental Defense III (414)	
+plains_orc_shaman	defensive_spells	Thurfel's Ward (503)	
+plains_orc_shaman	defensive_spells	Prismatic Guard (905)	
+plains_orc_shaman	defensive_spells	Mass Blur (911)	
+plains_orc_warrior	otherclass	Living	
+plains_orc_warrior	equipment	a crude iron morning star	
+plains_orc_warrior	equipment	a crude leather helm	
+plains_orc_warrior	equipment	a heavy iron handaxe	
+plains_orc_warrior	equipment	some heavy iron chainmail	
+plains_orc_warrior	treasure_other	ayanad crystal	
+plumed_cockatrice	otherclass	Living	
+polar_bear	otherclass	Living	
+pra_eda	otherclass	Living	
+pra_eda	equipment	a bruised left eye	
+pra_eda	equipment	a bruised right eye	
+pra_eda	equipment	a completely severed left arm	
+pra_eda	equipment	a completely severed right arm	
+pra_eda	defensive_spells	Elemental Defense III (414)	
+pra_eda	defensive_spells	Spirit Defense (103)	
+pra_eda	defensive_spells	Spirit Warding I (101)	
+pra_eda	defensive_spells	Spirit Warding II (107)	
+pra_eda	defensive_spells	Elemental Defense I (401)	
+pra_eda	defensive_spells	Elemental Defense II (406)	
+pra_eda	treasure_other	Glimmering blue essence shard	
+pra_eda	treasure_other	t'ayanad crystal	
+pra_eda	treasure_other	ayanad crystal	
+puma	otherclass	Living	
+putrefied_citadel_herald	otherclass	corporeal undead	
+putrefied_citadel_herald	equipment	a polished red steel Hammer of Kai	
+putrefied_citadel_herald	equipment	an elongated star-topped runestaff	
+putrefied_citadel_herald	equipment	some worn dark opulent leather robes	
+putrefied_citadel_herald	defensive_spells	Fasthr's Reward (115)	
+putrefied_citadel_herald	defensive_spells	Lesser Shroud (120)	
+putrefied_citadel_herald	defensive_spells	Prayer of Protection (303)	
+putrefied_citadel_herald	defensive_spells	Spirit Shield (202)	
+putrefied_citadel_herald	treasure_other	inky necrotic core	
+quivering_sanguine_ooze	treasure_other	ayanad crystal	
+quivering_sanguine_ooze	treasure_other	petrified mammoth tusk	
+rabid_guard_dog	otherclass	Living	
+rabid_squirrel	otherclass	Living	
+radiant_eyed_goliath_auramancer	otherclass	Living	
+radiant_eyed_goliath_auramancer	defensive_spells	Prayer of Protection (303)	
+raider_orc	otherclass	Living	
+raider_orc	equipment	a metal breastplate	
+raider_orc	equipment	a ragged sack	
+raider_orc	equipment	a twohanded sword	
+raider_orc	treasure_other	ayanad crystal	
+raving_lunatic	otherclass	Living	
+raving_lunatic	otherclass	Extraplanar	
+raving_lunatic	otherclass	Boss	
+raving_lunatic	equipment	a twisted kris	
+raving_lunatic	equipment	some tattered rags	
+raving_lunatic	treasure_other	Tiny golden seed	
+raving_lunatic	treasure_other	radiant crimson essence shard	
+red_bear	otherclass	Living	
+red_scaled_thrak	otherclass	Living	
+red_scaled_thrak	otherclass	Element-based	
+red_scaled_thrak	equipment	a bruised left eye	
+red_scaled_thrak	equipment	a bruised right eye	
+red_scaled_thrak	equipment	a completely severed left foreleg	
+red_scaled_thrak	equipment	a blinded left eye	
+red_scaled_thrak	equipment	a completely severed right foreleg	
+red_scaled_thrak	treasure_other	ayanad crystal	
+red_tsark	otherclass	Living	
+red_tsark	otherclass	Element-based	
+red_tsark	otherclass	Boss	
+reiver	otherclass	Living	
+reiver	equipment	a broadsword	
+reiver	equipment	a falchion	
+reiver	equipment	a gleaming chain hauberk	
+reiver	equipment	a handaxe	
+reiver	equipment	a reinforced shield	
+reiver	equipment	a threadbare green tartan cloak	
+reiver	equipment	a threadbare tartan cloak	
+reiver	equipment	a wooden shield	
+reiver	equipment	some augmented chain	
+reiver	equipment	some double chain	
+reiver	equipment	some half plate	
+reiver	equipment	some steel leg greaves	
+reiver	treasure_other	glimmering blue essence shard	
+reiver	treasure_other	s'ayanad crystal	
+relnak	otherclass	Living	
+revenant	otherclass	Non-corporeal undead	
+revenant	equipment	a broadsword	
+revenant	equipment	a wooden shield	
+revenant	equipment	some reinforced leather	
+ridge_orc	otherclass	Living	
+ridge_orc	equipment	a handaxe	
+ridge_orc	equipment	some light leather	
+ridgeback_boar	otherclass	Living	
+roa_ter	otherclass	Living	
+roa_ter_wormling	otherclass	Living	
+rock_troll_zombie	otherclass	Corporeal undead	
+rock_troll_zombie	otherclass	Boss	
+rock_troll_zombie	equipment	a granite greathelm	
+rock_troll_zombie	equipment	some granite bracers	
+rock_troll_zombie	equipment	some granite leg guards	
+roiling_crimson_angargeist	otherclass	Non Corporeal undead	
+roiling_crimson_angargeist	treasure_other	ayanad crystal	
+roiling_crimson_angargeist	treasure_other	n'ayanad crystal	
+roiling_crimson_angargeist	treasure_other	petrified mammoth tusk	
+rolton	otherclass	Living	
+rotting_chimera	otherclass	Corporeal undead	
+rotting_chimera	treasure_other	glowing violet essence dust	
+rotting_citadel_arbalester	otherclass	Corporeal undead	
+rotting_citadel_arbalester	equipment	a dusty black oak and steel arbalest	
+rotting_citadel_arbalester	equipment	some rotting buff and blue brigandine	
+rotting_citadel_arbalester	treasure_other	inky necrotic core	
+rotting_corpse	otherclass	Corporeal undead	
+rotting_corpse	equipment	a rusted wheat scythe	
+rotting_corpse	equipment	some tattered rags	
+rotting_corpse	treasure_other	Glimmering blue essence dust	
+rotting_farmhand	otherclass	Corporeal undead	
+rotting_farmhand	equipment	a ragged straw hat	
+rotting_farmhand	equipment	a rusted pitchfork	
+rotting_farmhand	equipment	a torn plaid shirt	
+rotting_farmhand	equipment	some threadbare coveralls	
+rotting_farmhand	treasure_other	Glimmering blue essence dust	
+rotting_krolvin_pirate	otherclass	Corporeal undead	
+rotting_krolvin_pirate	equipment	a corroded long-handled gaff	
+rotting_krolvin_pirate	equipment	some rotting studded leather	
+rotting_krolvin_pirate	armaments	warped wooden shield	
+rotting_krolvin_pirate	armaments	weathered boarding axe	
+rotting_woodsman	otherclass	Corporeal undead	
+rotting_woodsman	otherclass	Boss	
+rotting_woodsman	equipment	a huge logging axe	
+rotting_woodsman	equipment	some tattered rags	
+rotting_woodsman	treasure_other	glimmering blue essence dust	
+sabre_tooth_tiger	otherclass	Living	
+sabre_tooth_tiger	otherclass	Boss	
+sacristan_spirit	otherclass	Non-corporeal undead	
+sacristan_spirit	equipment	a twisted black steel half moon	
+sacristan_spirit	equipment	some tanned dark grey leathers	
+sacristan_spirit	defensive_spells	Prayer of Protection (303)	
+sacristan_spirit	defensive_spells	Prismatic Guard (905)	
+sacristan_spirit	defensive_spells	Spirit Shield (202)	
+sacristan_spirit	defensive_spells	Spirit Warding I (101)	
+sacristan_spirit	defensive_spells	Thurfel's Ward (503)	
+sacristan_spirit	treasure_other	Glimmering blue essence shardGlimmering blue mote of essence	
+sand_beetle	otherclass	Living	
+sand_devil	otherclass	Living	
+sand_devil	equipment	a crystal wand	
+sand_devil	equipment	a giant clamshell shield	
+sand_devil	equipment	a metal wand	
+sand_devil	equipment	a slender blue wand	
+sand_devil	equipment	some dirty turquoise robes	
+sand_devil	equipment	some dusty green robes	
+sand_devil	equipment	some ripped blue robes	
+sand_devil	equipment	some tattered ochre robes	
+sand_devil	defensive_spells	Spirit Warding II (107)	
+sand_devil	defensive_spells	Lesser Shroud (120)	
+sand_devil	defensive_spells	Wall of Force (140)	
+sand_devil	defensive_spells	Elemental Defense II (406)	
+sand_devil	defensive_spells	Elemental Defense III (414)	
+sand_devil	defensive_spells	Elemental Targeting (425)	
+sand_devil	defensive_spells	Elemental Barrier (430)	
+sand_devil	defensive_spells	Mobility (618)	
+sand_devil	treasure_other	glowing violet essence dust	
+savage_fork-tongued_wendigo	equipment	a firewheel arrow fletched with plain white feathers	
+savage_fork-tongued_wendigo	equipment	a twisted obsidian dagger	
+savage_fork-tongued_wendigo	equipment	a riveted golden targe	
+savage_fork-tongued_wendigo	armaments	drake greatsword	
+savage_fork-tongued_wendigo	armaments	drake falchion	
+savage_fork-tongued_wendigo	armaments	drake scimitar	
+savage_fork-tongued_wendigo	armaments	drake mace	
+savage_fork-tongued_wendigo	armaments	feras mattock	
+savage_fork-tongued_wendigo	armaments	feras falchion	
+savage_fork-tongued_wendigo	armaments	drake yierka-spur	
+savage_fork-tongued_wendigo	armaments	drake greataxe	
+savage_fork-tongued_wendigo	armaments	feras mace	
+savage_fork-tongued_wendigo	armaments	feras dagger	
+savage_fork-tongued_wendigo	armaments	feras hammer	
+savage_fork-tongued_wendigo	armaments	feras rapier	
+savage_fork-tongued_wendigo	armaments	drake dagger	
+savage_fork-tongued_wendigo	armaments	feras tiger-claw	
+savage_fork-tongued_wendigo	treasure_other	ayanad crystal	
+savage_fork-tongued_wendigo	treasure_other	n'ayanad crystal	
+savage_fork-tongued_wendigo	treasure_other	petrified mammoth tusk	
+scaly_burgee	otherclass	Living	
+scaly_needle_toothed_trenchling	armaments	drake mace	
+scaly_needle_toothed_trenchling	treasure_other	ayanad crystal	
+sea_nymph	otherclass	Living	
+sea_nymph	equipment	a blue-tasseled white steel spear	
+sea_nymph	equipment	a dagger	
+sea_nymph	equipment	a flowing white robe	
+sea_nymph	equipment	a quartz-hilted sea blue steel knife	
+sea_nymph	equipment	some flowing robes	
+sea_nymph	treasure_other	pristine nymph's hair	
+seeker	otherclass	Corporeal undead	
+seeker	equipment	a rotting tattered robe	
+seeker	equipment	an ancient walking stick	
+seeker	defensive_spells	Elemental Defense I (401)	
+seeker	defensive_spells	Elemental Defense II (406)	
+seeker	defensive_spells	Elemental Defense III (414)	
+seeker	defensive_spells	Mass Blur (911)	
+seeker	defensive_spells	Prismatic Guard (905)	
+seeker	treasure_other	Glowing violet mote of essence	
+seething_pestilent_vision	otherclass	Non-corporeal undead	
+seething_pestilent_vision	defensive_spells	Elemental Barrier (430)	
+seraceris	otherclass	Non-corporeal undead	
+seraceris	equipment	some tattered flowing robes	
+seraceris	defensive_spells	Elemental Defense I (401)	
+seraceris	defensive_spells	Elemental Defense II (406)	
+seraceris	defensive_spells	Elemental Defense III (414)	
+seraceris	defensive_spells	Spirit Warding II (107)	
+seraceris	defensive_spells	Lesser Shroud (120)	
+seraceris	defensive_spells	Wall of Force (140)	
+shadow_mare	otherclass	Non-corporeal undead	
+shadow_mare	equipment	a bruised left eye	
+shadow_mare	defensive_spells	Elemental Defense II (406)	
+shadow_steed	otherclass	Non-corporeal undead	
+shadow_steed	equipment	a bruised left eye	
+shadow_steed	defensive_spells	Thurfel's Ward (503)	
+shadow_steed	defensive_spells	Elemental Defense II (406)	
+shadow_steed	defensive_spells	Elemental Defense I (401)	
+shadow_steed	treasure_other	Glowing violet essence dust	
+shadow_steed	treasure_other	ayanad crystal	
+shambling_lurk	otherclass	Corporeal undead	
+shambling_lurk	equipment	a case of sporadic convulsions	
+shambling_lurk	equipment	some rotting sun-bleached garb	
+shan_bardess	otherclass	Living	
+shan_bardess	equipment	a set of blue-edged jazerant	
+shan_bardess	equipment	a sonic lance	
+shan_cleric	otherclass	Living	
+shan_cleric	equipment	a small silver roundshield	
+shan_cleric	equipment	a spiked holy-water sprinkler	
+shan_cleric	equipment	some dark braided leathers	
+shan_cleric	defensive_spells	Lesser Shroud (120)	
+shan_cleric	defensive_spells	Prayer (313)	
+shan_cleric	defensive_spells	Spirit Defense (103)	
+shan_cleric	defensive_spells	Spirit Warding I (101)	
+shan_cleric	defensive_spells	Spirit Warding II (107)	
+shan_cleric	defensive_spells	Heroism (215)	
+shan_cleric	defensive_spells	Spirit Strike (117)	
+shan_cleric	treasure_other	Tiny golden seed	
+shan_cleric	treasure_other	glowing violet essence dust	
+shan_empath	otherclass	Living	
+shan_empath	equipment	a modwir-hafted mace	
+shan_empath	equipment	an engraved parma	
+shan_empath	equipment	some torn leathers	
+shan_empath	defensive_spells	Troll's Blood (1125)	
+shan_empath	defensive_spells	Spirit Warding II (107)	
+shan_empath	defensive_spells	Spirit Strike (117)	
+shan_empath	defensive_spells	Heroism (215)	
+shan_empath	treasure_other	n'ayanad crystal	
+shan_empath	treasure_other	ayanad crystal	
+shan_ranger	otherclass	Living	
+shan_ranger	equipment	a diamond-hilted longsword	
+shan_ranger	equipment	a leather skullcap	
+shan_ranger	equipment	a silvery longsword	
+shan_ranger	equipment	a small steel buckler	
+shan_ranger	equipment	a square lantern shield	
+shan_ranger	equipment	some forest green leathers	
+shan_ranger	equipment	some studded green leathers	
+shan_ranger	defensive_spells	Mobility (618)	
+shan_ranger	defensive_spells	Natural Colors (601)	
+shan_ranger	defensive_spells	Self Control (613)	
+shan_ranger	defensive_spells	Spirit Warding I (101)	
+shan_ranger	defensive_spells	Spirit Defense (103)	
+shan_ranger	defensive_spells	Spirit Warding II (107)	
+shan_ranger	defensive_spells	Spirit Strike (117)	
+shan_ranger	defensive_spells	Wizard's Shield (919)	
+shan_ranger	treasure_other	Tiny golden seed	
+shan_rogue	otherclass	Living	
+shan_rogue	equipment	a bronze-edged targe	
+shan_rogue	equipment	a bruised left eye	
+shan_rogue	equipment	a bruised right eye	
+shan_rogue	equipment	a slender kris	
+shan_rogue	equipment	some faded brigandine armor	
+shan_shaman	otherclass	Living	
+shan_shaman	equipment	an enruned parma	
+shan_shaman	equipment	an ivory-hilted khopesh	
+shan_shaman	equipment	some bone-adorned leathers	
+shan_shaman	defensive_spells	Spirit Warding II (107)	
+shan_shaman	defensive_spells	Prayer of Protection (303)	
+shan_shaman	defensive_spells	Spirit Defense (103)	
+shan_shaman	defensive_spells	Spirit Strike (117)	
+shan_shaman	defensive_spells	Spirit Warding I (101)	
+shan_shaman	defensive_spells	Wall of Force (140)	
+shan_sorceress	otherclass	Living	
+shan_sorceress	equipment	an oak runestaff	
+shan_sorceress	equipment	some dark grey robes	
+shan_warrior	otherclass	Living	
+shan_warrior	equipment	a dented chain hauberk	
+shan_warrior	equipment	a gleaming silver flamberge	
+shan_warrior	equipment	a gleaming silver longsword	
+shan_warrior	equipment	a plumed helm	
+shan_warrior	equipment	a spiked tower shield	
+shan_warrior	equipment	a visored helm	
+shan_warrior	equipment	a winged helm	
+shan_warrior	equipment	an over-sized jeddart-axe	
+shan_warrior	equipment	some nicked double chainmail	
+shan_warrior	equipment	some polished full platemail	
+shan_warrior	treasure_other	Tiny golden seed	
+shan_wizard	otherclass	Living	
+shan_wizard	equipment	a flowing grey robe	
+shan_wizard	equipment	a long dagger	
+shan_wizard	equipment	a spiked tower shield	
+shan_wizard	defensive_spells	Elemental Defense II (406)	
+shan_wizard	defensive_spells	Elemental Defense III (414)	
+shan_wizard	defensive_spells	Elemental Defense I (401)	
+shan_wizard	defensive_spells	Wizard's Shield (919)	
+shan_wizard	treasure_other	glowing violet mote of essence	
+shan_wizard	treasure_other	tiny golden seed	
+shelfae_chieftain	otherclass	Living	
+shelfae_chieftain	equipment	a halberd	
+shelfae_chieftain	treasure_other	ayanad crystal	
+shelfae_guard	treasure_other	ayanad crystal	
+shelfae_soldier	otherclass	Living	
+shelfae_soldier	equipment	a trident	
+shelfae_soldier	treasure_other	ayanad crystal	
+shelfae_warlord	otherclass	Living	
+shelfae_warlord	equipment	a falchion	
+shelfae_warlord	equipment	a wooden shield	
+sheruvian_harbinger	equipment	a black metal breastplate	
+sheruvian_harbinger	equipment	a black steel broadsword	
+sheruvian_harbinger	equipment	a reinforced shield	
+sheruvian_harbinger	equipment	a wooden shield	
+sheruvian_harbinger	defensive_spells	Lesser Shroud (120)	
+sheruvian_harbinger	defensive_spells	Spirit Shield (202)	
+sheruvian_harbinger	defensive_spells	Spirit Warding I (101)	
+sheruvian_harbinger	defensive_spells	Spirit Warding II (107)	
+sheruvian_harbinger	defensive_spells	Heroism (215)	
+sheruvian_harbinger	defensive_spells	Spirit Strike (117)	
+sheruvian_harbinger	treasure_other	Glowing violet essence dust	
+sheruvian_initiate	otherclass	Living	
+sheruvian_initiate	equipment	a black steel jeddart-axe	
+sheruvian_initiate	equipment	some black velvet robes	
+sheruvian_monk	otherclass	Living	
+sheruvian_monk	equipment	a black steel jeddart-axe	
+sheruvian_monk	equipment	some black velvet robes	
+sheruvian_monk	treasure_other	Glowing violet essence dust	
+sheruvian_monk	treasure_other	tiny golden seed	
+shining_winged_disir	equipment	a gleaming golden aegis	
+shining_winged_disir	equipment	a shining metallic spear	
+shining_winged_disir	equipment	a shroud of radiant golden mist	
+shining_winged_disir	treasure_other	ayanad crystal	
+shining_winged_disir	treasure_other	n'ayanad crystal	
+shining_winged_disir	treasure_other	petrified mammoth tusk	
+shrickhen	otherclass	Corporeal undead	
+shrickhen	otherclass	Magical	
+shrickhen	defensive_spells	Elemental Defense II (406)	
+shrickhen	defensive_spells	Elemental Defense III (414)	
+shrickhen	defensive_spells	Elemental Targeting (425)	
+shrickhen	treasure_other	inky necrotic core	
+shriveled_icy_creeper	otherclass	corporeal undead	
+sidewinder	otherclass	Living	
+silverback_orc	otherclass	Living	
+silverback_orc	equipment	a falchion	
+silverback_orc	equipment	a leather breastplate	
+silverback_orc	equipment	a silver falchion	
+silverback_orc	treasure_other	Alchemy common	
+siren	otherclass	Living	
+siren	otherclass	Boss	
+siren	equipment	a pearlescent oyster shell shield	
+siren	equipment	a sienna-banded scallop shell shield	
+siren	equipment	an oak-shafted silvery blue trident	
+siren	defensive_spells	Elemental Defense I (401)	
+siren	defensive_spells	Elemental Defense II (406)	
+siren	defensive_spells	Elemental Defense III (414)	
+siren	defensive_spells	Song of Mirrors (1019)	
+siren	defensive_spells	Song of Tonis (1035)	
+siren	armaments	feras dagger	
+siren	armaments	feras falchion	
+siren	armaments	feras rapier	
+siren	armaments	drake scimitar	
+siren	armaments	feras mattock	
+siren	armaments	feras tiger-claw	
+siren	armaments	feras hammer	
+siren	armaments	drake falchion	
+siren	armaments	feras mace	
+siren	armaments	drake yierka-spur	
+siren	armaments	drake dagger	
+siren	armaments	black ora jeddart-axe	
+siren	armaments	drake greataxe	
+siren	armaments	drake greatsword	
+siren	armaments	faenor-tipped black ora broadsword	
+siren	armaments	drake mace	
+siren	armaments	black ora pilum	
+siren	treasure_other	pristine siren's hair	
+siren	treasure_other	ayanad crystal	
+siren	treasure_other	n'ayanad crystal	
+siren	treasure_other	tiny golden seed	
+siren	treasure_other	radiant crimson essence shard	
+siren_lizard	otherclass	Living	
+skayl	otherclass	Element-based	
+skayl	otherclass	Magical	
+skayl	otherclass	Boss	
+skayl	defensive_spells	Elemental Bias (508)	
+skayl	defensive_spells	Strength (509)	
+skayl	defensive_spells	Mass Blur (911)	
+skayl	defensive_spells	Thurfel's Ward (503)	
+skayl	treasure_other	a heart of smooth black glaes (cursed)	
+skayl	treasure_other	essence of fire	
+skeletal_giant	otherclass	Corporeal undead	
+skeletal_ice_troll	otherclass	Corporeal undead	
+skeletal_ice_troll	otherclass	Element-based	
+skeletal_ice_troll	equipment	a badly torn rusted chain hauberk	
+skeletal_ice_troll	equipment	an enruned ice-covered battle axe	
+skeletal_ice_troll	treasure_other	essence of water	
+skeletal_lord	otherclass	corporeal undead	
+skeletal_lord	equipment	a splintered lance	
+skeletal_lord	equipment	a tarnished visored helm	
+skeletal_lord	equipment	a tattered flowing cloak	
+skeletal_lord	equipment	some rusting chain mail	
+skeletal_lord	equipment	some tattered riding boots	
+skeletal_soldier	otherclass	Corporeal undead	
+skeletal_soldier	equipment	a crude black iron morning star	
+skeletal_soldier	equipment	some decaying grey-hued leathers	
+skeletal_warhorse	otherclass	Corporeal undead	
+skeletal_warhorse	equipment	a rusted steel chanfron	
+skeletal_warhorse	equipment	some rotting studded leather barding	
+skeletal_warhorse	equipment	some rusted steel barding	
+skeleton	otherclass	Corporeal undead	
+skeleton	equipment	a dagger	
+skeleton	equipment	a woven cloak	
+skeleton	equipment	some light leather	
+skeleton	treasure_other	ayanad crystal	
+slimy_little_grub	otherclass	Living	
+smouldering_skeletal_dreadsteed	otherclass	Corporeal undead	
+smouldering_skeletal_dreadsteed	equipment	some black steel chain barding	
+smouldering_skeletal_dreadsteed	treasure_other	ayanad crystal	
+smouldering_skeletal_dreadsteed	treasure_other	n'ayanad crystal	
+smouldering_skeletal_dreadsteed	treasure_other	petrified mammoth tusk	
+snow_crone	otherclass	Living	
+snow_crone	otherclass	Element-based	
+snow_crone	equipment	a flowing white robe	
+snow_crone	equipment	an ice-white palache	
+snow_crone	equipment	an icy dagger	
+snow_crone	equipment	some tattered white robes	
+snow_crone	defensive_spells	Spirit Defense (103)	
+snow_crone	defensive_spells	Spirit Warding I (101)	
+snow_crone	defensive_spells	Elemental Defense II (406)	
+snow_crone	defensive_spells	Elemental Defense I (401)	
+snow_crone	treasure_other	essence of water	
+snow_crone	treasure_other	glowing violet mote of essence	
+snow_leopard	otherclass	Living	
+snow_madrinol	otherclass	Living	
+snow_madrinol	treasure_other	Glowing violet essence dust	
+snow_madrinol	treasure_other	glowing violet essence shard	
+snow_spectre	otherclass	Non-corporeal undead	
+snow_spectre	otherclass	Element-based	
+snow_spectre	equipment	a leather helm	
+snow_spectre	equipment	a woven cloak	
+snow_spectre	treasure_other	ayanad crystal	
+snowy_cockatrice	otherclass	Living	
+soldier_ant	otherclass	Living	
+soul_golem	otherclass	Corporeal undead	
+spectral_fisherman	otherclass	Non-corporeal undead	
+spectral_fisherman	equipment	a leather fisherman's apron	
+spectral_fisherman	equipment	a trident	
+spectral_lord	otherclass	Non-corporeal undead	
+spectral_lord	equipment	a battered	
+spectral_lord	equipment	a black steel ball & chain	
+spectral_lord	equipment	a modwir hafted morning star	
+spectral_lord	equipment	a reinforced shield	
+spectral_lord	equipment	a rotting leather breastplate	
+spectral_lord	equipment	some rusted double chain	
+spectral_lord	treasure_other	Glowing violet essence shard	
+spectral_miner	otherclass	Non-corporeal undead	
+spectral_miner	otherclass	Boss	
+spectral_miner	equipment	a mining pick	
+spectral_miner	equipment	some ragged leather work clothing	
+spectral_miner	defensive_spells	Spirit Warding I (101)	
+spectral_miner	defensive_spells	Spirit Warding II (107)	
+spectral_miner	defensive_spells	Spirit Defense (103)	
+spectral_miner	defensive_spells	Spirit Shield (202)	
+spectral_miner	treasure_other	glowing violet essence dust	
+spectral_monk	otherclass	Non-corporeal undead	
+spectral_monk	equipment	a black skull-cap	
+spectral_monk	equipment	a long blackened scythe	
+spectral_monk	equipment	a rusty claidhmore	
+spectral_monk	equipment	some black coiled prayer beads	
+spectral_monk	equipment	some burnished black leathers	
+spectral_monk	defensive_spells	Spirit Warding I (101)	
+spectral_monk	defensive_spells	Spirit Shield (202)	
+spectral_monk	defensive_spells	Prismatic Guard (905)	
+spectral_monk	defensive_spells	Prayer of Protection (303)	
+spectral_monk	defensive_spells	Thurfel's Ward (503)	
+spectral_monk	treasure_other	glimmering blue essence dust	
+spectral_shade	otherclass	Non-corporeal undead	
+spectral_shade	equipment	a blackened scythe	
+spectral_shade	equipment	a bruised left eye	
+spectral_shade	equipment	some tattered rags	
+spectral_shade	defensive_spells	Thurfel's Ward (503)	
+spectral_shade	defensive_spells	Elemental Defense II (406)	
+spectral_shade	defensive_spells	Elemental Defense I (401)	
+spectral_shade	treasure_other	glowing violet mote of essence	
+spectral_triton_defender	otherclass	Non-corporeal undead	
+spectral_triton_defender	equipment	a lackluster blue steel harpoon	
+spectral_triton_defender	equipment	a thick canvas sling	
+spectral_triton_defender	equipment	a bronze-bound large driftwood shield	
+spectral_triton_defender	equipment	a tarnished dark silver harpoon	
+spectral_triton_defender	armaments	drake greataxe	
+spectral_triton_defender	armaments	drake greatsword	
+spectral_triton_defender	armaments	black ora jeddart-axe	
+spectral_triton_defender	armaments	beech-handled black ora halberd	
+spectral_triton_defender	armaments	corroded black ora awl-pike	
+spectral_triton_defender	treasure_other	ayanad crystal	
+spectral_triton_defender	treasure_other	n'ayanad crystal	
+spectral_triton_defender	treasure_other	inky necrotic core	
+spectral_triton_protector	otherclass	non-corporeal undead	
+spectral_triton_protector	otherclass	Boss	
+spectral_triton_protector	equipment	a bronze-bound driftwood greatshield	
+spectral_triton_protector	equipment	a coral-hilted heavy ball and chain	
+spectral_triton_protector	armaments	drake greatsword	
+spectral_triton_protector	armaments	drake falchion	
+spectral_triton_protector	armaments	black ora morning star	
+spectral_triton_protector	armaments	drake greataxe	
+spectral_triton_protector	treasure_other	ayanad crystal	
+spectral_triton_protector	treasure_other	n'ayanad crystal	
+spectral_warrior	otherclass	Non-corporeal undead	
+spectral_warrior	equipment	a battered steel shield	
+spectral_warrior	equipment	a rusted broadsword	
+spectral_warrior	equipment	a tarnished flail	
+spectral_warrior	equipment	an old pitted halberd	
+spectral_warrior	equipment	some dented augmented chain	
+spectral_warrior	equipment	some rotting brigandine armor	
+spectral_warrior	equipment	some rusted steel half plate	
+spectral_warrior	special_defenses	Immune to Unbalance	
+spectral_woodsman	otherclass	Non-corporeal undead	
+spectral_woodsman	equipment	a bruised left eye	
+spectral_woodsman	equipment	a rusty woodsman's axe	
+spectral_woodsman	equipment	a tattered plaid flannel shirt	
+spectral_woodsman	equipment	a weathered plaid flannel cap	
+spectral_woodsman	equipment	some heavy leather boots	
+spectral_woodsman	equipment	some torn woodsman's leathers	
+spectral_woodsman	defensive_spells	Elemental Defense I (401)	
+spectral_woodsman	defensive_spells	Presence (402)	
+spectral_woodsman	defensive_spells	Elemental Defense II (406)	
+spectral_woodsman	defensive_spells	Thurfel's Ward (503)	
+spectral_woodsman	defensive_spells	Celerity (506)	
+spectral_woodsman	treasure_other	Glowing violet essence dust	
+spectre	otherclass	Non-corporeal undead	
+spectre	equipment	a pitted battle axe	
+spectre	equipment	a rusty metal breastplate	
+spectre	equipment	a halberd	
+spectre	equipment	some double leather	
+spectre	treasure_other	Alchemy (common)	
+spiked_cavern_urchin	otherclass	Living	
+spiked_cavern_urchin	otherclass	Boss	
+spotted_gak	otherclass	Living	
+spotted_gnarp	otherclass	Living	
+spotted_leaper	otherclass	Living	
+spotted_lynx	otherclass	Living	
+spotted_velnalin	otherclass	Living	
+squamous_reptilian_mutant	equipment	a yellowed brittle bone cudgel	
+squamous_reptilian_mutant	equipment	some greying corroded rags	
+squamous_reptilian_mutant	armaments	feras mattock	
+squamous_reptilian_mutant	armaments	drake greatsword	
+squamous_reptilian_mutant	treasure_other	ayanad crystal	
+squamous_reptilian_mutant	treasure_other	n'ayanad crystal	
+squamous_reptilian_mutant	treasure_other	petrified mammoth tusk	
+steam_dervish	otherclass	Living	
+steam_dervish	otherclass	Element-based	
+steam_dervish	otherclass	Magical	
+steam_dervish	equipment	a dripping glaes chain hauberk	
+steam_dervish	equipment	a steaming glaes longsword	
+steam_dervish	equipment	a warped glaes buckler	
+steam_dervish	treasure_other	Essence of water	
+steel_golem	treasure_other	crystal core (alchemy)	
+steel_golem	treasure_other	glimmering blue essence dust	
+stone_gargoyle	otherclass	Living	
+stone_gargoyle	treasure_other	Essence of earth	
+stone_gargoyle	treasure_other	crystal core	
+stone_gargoyle	treasure_other	glimmering blue essence dust	
+stone_giant	otherclass	Living	
+stone_giant	equipment	a war mattock	
+stone_giant	defensive_spells	Natural Colors (601)	
+stone_giant	defensive_spells	Resist Elements (602)	
+stone_giant	defensive_spells	Self Control (613)	
+stone_giant	defensive_spells	Spirit Defense (103)	
+stone_giant	treasure_other	essence of earth	
+stone_giant	treasure_other	glowing violet mote of essence	
+stone_mastiff	otherclass	Living	
+stone_mastiff	otherclass	Magical	
+stone_mastiff	equipment	a bruised left eye	
+stone_mastiff	equipment	a bruised right eye	
+stone_mastiff	treasure_other	essence of earth	
+stone_sentinel	otherclass	Magical	
+stone_sentinel	equipment	a blinded left eye	
+stone_sentinel	equipment	a bruised right eye	
+stone_sentinel	immunities	Stun	
+stone_sentinel	defensive_spells	Elemental Defense III (414)	
+stone_sentinel	defensive_spells	Spirit Warding II (107)	
+stone_sentinel	defensive_spells	Lesser Shroud (120)	
+stone_sentinel	defensive_spells	Fasthr's Reward (115)	
+stone_sentinel	defensive_spells	Spirit Warding I (101)	
+stone_sentinel	treasure_other	crystal core	
+stone_sentinel	treasure_other	essence of earth	
+stone_troll	otherclass	Living	
+stone_troll	otherclass	Boss	
+stone_troll	equipment	a flail	
+stone_troll	equipment	a reinforced shield	
+stone_troll	equipment	a war hammer	
+stone_troll	treasure_other	small troll tooth, large troll tooth	
+stone_troll	treasure_other	essence of earth	
+stooped_being	otherclass	Living	
+stooped_titan_stormcaller	otherclass	Living	
+stooped_titan_stormcaller	equipment	a burnt modwir staff inlaid with jagged brass lightning bolts	
+stooped_titan_stormcaller	equipment	a cream-colored homespun robe stitched with tiny disks of crude brass	
+stooped_titan_stormcaller	defensive_spells	Elemental Defense III (414)	
+stooped_titan_stormcaller	defensive_spells	Elemental Barrier (430)	
+stooped_titan_stormcaller	defensive_spells	Mage Armor (520)	
+stooped_titan_stormcaller	defensive_spells	Mass Blur (911)	
+storm_giant	otherclass	Living	
+storm_giant	otherclass	Element-based	
+storm_giant	equipment	a morning star	
+storm_giant	equipment	a reinforced shield	
+storm_giant	equipment	a spear	
+storm_giant	equipment	a weathered huge zorchar maul	
+storm_giant	defensive_spells	Spirit Defense (103)	
+storm_giant	defensive_spells	Spirit Warding I (101)	
+storm_giant	treasure_other	essence of air	
+storm_griffin	otherclass	Living	
+storm_griffin	otherclass	Magical	
+storm_hound	otherclass	Living	
+storm_hound	special_defenses	Shakes off stuns	
+storm_hound	treasure_other	Essence of air	
+striped_gak	otherclass	Living	
+striped_relnak	otherclass	Living	
+striped_warcat	otherclass	Living	
+stunted_halfling_bloodspeaker	equipment	a gnarled dark wooden crook adorned with sinuous patterns	
+stunted_halfling_bloodspeaker	equipment	some dark homespun robes patterned with serpentine symbols	
+stunted_halfling_bloodspeaker	defensive_spells	prayer (313)	
+stunted_halfling_bloodspeaker	defensive_spells	foresight (1204)	
+stunted_halfling_bloodspeaker	defensive_spells	mindward (1208)	
+stunted_halfling_bloodspeaker	defensive_abilities	health regen	similar to trolls blood or regeneration?
+stunted_halfling_bloodspeaker	defensive_abilities	unstun	able to break stuns
+stunted_halfling_bloodspeaker	treasure_other	herbs	
+stunted_halfling_bloodspeaker	treasure_other	gigas fragments	
+stunted_halfling_bloodspeaker	treasure_other	ayanad crystal	
+stunted_halfling_bloodspeaker	treasure_other	n'ayanad crystal	
+stunted_halfling_bloodspeaker	treasure_other	petrified mammoth tusk	
+supple_ivasian_inciter	equipment	a green leather whip	
+supple_ivasian_inciter	equipment	a pair of tight leather armbands	
+supple_ivasian_inciter	defensive_spells	Pestilence (716)	
+supple_ivasian_inciter	treasure_other	ayanad crystal	
+supple_ivasian_inciter	treasure_other	n'ayanad crystal	
+swamp_hag	otherclass	Living	
+swamp_hag	otherclass	Element-based	
+swamp_hag	equipment	some torn	
+swamp_hag	defensive_spells	Elemental Defense I (401)	
+swamp_hag	defensive_spells	Elemental Defense II (406)	
+swamp_hag	defensive_spells	Elemental Defense III (414)	
+swamp_hag	defensive_spells	Elemental Focus (513)	
+swamp_hag	defensive_spells	Prismatic Guard (905)	
+swamp_hag	defensive_spells	Strength (509)	
+swamp_hag	defensive_spells	Thurfel's Ward (503)	
+swamp_hag	defensive_spells	Wizard Shield (919)	
+swamp_troll	otherclass	Living	
+swamp_troll	equipment	a cudgel	
+swamp_troll	defensive_spells	Spirit Warding II (107)	
+swamp_troll	treasure_other	small troll tooth	
+swirling_spectre	otherclass	Non-corporeal undead	
+swirling_spectre	defensive_spells	Spirit Warding I (101)	
+swirling_spectre	defensive_spells	Spirit Barrier (102)	
+swirling_spectre	defensive_spells	Spirit Defense (103)	
+swirling_spectre	defensive_spells	Spirit Warding II (107)	
+swirling_spectre	defensive_spells	Elemental Defense I (401)	
+swirling_spectre	defensive_spells	Elemental Defense II (406)	
+swirling_spectre	defensive_spells	Blink (1215)	
+tattooed_gigas_berserker	equipment	a suit of tanned boarhide adorned with crudely etched bronze disks	
+tattooed_gigas_berserker	equipment	an immense fel-hafted handaxe	
+tattooed_gigas_berserker	armaments	drake greatsword	
+tattooed_gigas_berserker	armaments	drake greataxe	
+tattooed_gigas_berserker	treasure_other	gigas fragments	
+tattooed_gigas_berserker	treasure_other	ayanad crystal	
+tattooed_gigas_berserker	treasure_other	n'ayanad crystal	
+tattooed_gigas_berserker	treasure_other	petrified mammoth tusk	
+tawny_armor_clad_pegasus	otherclass	Living	
+tawny_brindlecat	otherclass	Living	
+tegursh_sentry	otherclass	Living	
+tegursh_sentry	equipment	a belt pack	
+tegursh_sentry	equipment	a bruised left eye	
+tegursh_sentry	equipment	a bruised right eye	
+tegursh_sentry	equipment	a completely severed left arm	
+tegursh_sentry	equipment	a pitted iron falchion	
+tegursh_sentry	equipment	a pitted iron jeddart-axe	
+tegursh_sentry	equipment	a spiraled ram's horn	
+tegursh_sentry	equipment	a wood buckler	
+tegursh_sentry	treasure_other	ayanad crystal	
+tenebrific_wraith_shark	otherclass	Non-corporeal undead	
+thrak	otherclass	Living	
+three_toed_tegu	otherclass	Living	
+thunder_troll	otherclass	Living	
+thunder_troll	otherclass	Element-based	
+thunder_troll	equipment	a crude steel maul with forking lightning etchings	
+thunder_troll	equipment	a flamberge	
+thunder_troll	defensive_spells	Elemental Defense I (401)	
+thunder_troll	defensive_spells	Elemental Defense II (406)	
+thunder_troll	defensive_spells	Spirit Defense (103)	
+thunder_troll	defensive_spells	Spirit Warding I (101)	
+thunder_troll	defensive_spells	Spirit Warding II (107)	
+thunder_troll	special_defenses	Shake off stuns	
+thunder_troll	treasure_other	essence of air	
+thunder_troll	treasure_other	small troll tooth	
+thyril	otherclass	Living	
+thyril	equipment	a leather helm	
+thyril	equipment	a scimitar	
+thyril	equipment	a wooden shield	
+thyril	equipment	some full leather	
+thyril	treasure_other	Alchemy (common)	
+thyril	treasure_other	ayanad crystal	
+titan_tempest_tyrant	otherclass	Living	
+titan_tempest_tyrant	equipment	a crude feras morning star	
+titan_tempest_tyrant	equipment	a crude zorchar khopesh	
+titan_tempest_tyrant	equipment	a jagged feras spikestar	
+titan_tempest_tyrant	equipment	some ornate brass scalemail	
+titan_tempest_tyrant	defensive_spells	Spirit Warding I (101)	
+titan_tempest_tyrant	defensive_spells	Spirit Barrier (102)	
+titan_tempest_tyrant	defensive_spells	Spirit Defense (103)	
+titan_tempest_tyrant	defensive_spells	Spirit Warding II (107)	
+titan_tempest_tyrant	defensive_spells	Elemental Defense I (401)	
+titan_tempest_tyrant	defensive_spells	Elemental Defense II (406)	
+titan_tempest_tyrant	defensive_spells	Blink (1215)	
+tomb_troll	otherclass	Living	
+tomb_troll	otherclass	Boss	
+tomb_troll	equipment	a bone-hafted black iron morning star	
+tomb_troll	equipment	a pitted wooden shield covered in rusty black iron spikes	
+tomb_troll	equipment	a small glaes morning star	
+tomb_troll	treasure_other	small troll tooth	
+tomb_troll	treasure_other	large troll tooth	
+tomb_troll_necromancer	otherclass	Living	
+tomb_troll_necromancer	equipment	a slime-covered willow runestaff	
+tomb_troll_necromancer	defensive_spells	Elemental Defense II (406)	
+tomb_troll_necromancer	defensive_spells	Fasthr's Reward (115)	
+tomb_troll_necromancer	defensive_spells	Mass Elemental Defense (419)	
+tomb_troll_necromancer	defensive_spells	Spirit Warding II (107)	
+tomb_troll_necromancer	defensive_spells	Elemental Defense III (414)	
+tomb_troll_necromancer	treasure_other	small troll tooth	
+tomb_troll_necromancer	treasure_other	large troll tooth	
+tomb_wight	otherclass	Corporeal undead	
+tomb_wight	equipment	a broadsword	
+tomb_wight	equipment	a metal breastplate	
+tomb_wight	equipment	a twohanded sword	
+tomb_wight	equipment	a wooden shield	
+tomb_wight	equipment	an augmented breastplate	
+tomb_wight	treasure_other	s'ayanad crystal	
+tomb_wight	treasure_other	ayanad crystal	
+translucent_kiramon_strandweaver	defensive_spells	Empathic Focus (1109)	
+translucent_kiramon_strandweaver	defensive_spells	Strength of Will (1119)	
+tree_spirit	otherclass	Non-corporeal undead	
+tree_spirit	treasure_other	Glimmering blue essence shard	
+tree_spirit	treasure_other	glimmering blue essence dust	
+tree_spirit	treasure_other	ayanad crystal	
+tree_viper	otherclass	Living	
+treekin_druid	otherclass	Living	
+treekin_druid	otherclass	Magical	
+treekin_druid	defensive_spells	Barkskin (605)	
+treekin_druid	defensive_spells	Natural Colors (601)	
+treekin_druid	defensive_spells	Resist Elements (602)	
+treekin_warrior	otherclass	Living	
+treekin_warrior	otherclass	Magical	
+treekin_warrior	immunities	Stun	
+triton_assassin	otherclass	Living	
+triton_assassin	otherclass	Boss	
+triton_assassin	equipment	a twisted soot black runestaff capped with a gold-caged crystal drop of water	
+triton_assassin	treasure_other	ayanad crystal	
+triton_assassin	treasure_other	n'ayanad crystal	
+triton_brawler	otherclass	Living	
+triton_brawler	otherclass	Boss	
+triton_brawler	defensive_spells	Iron Skin (1202)	
+triton_brawler	defensive_spells	Mindward (1208)	
+triton_brawler	defensive_spells	Brace (1214)	
+triton_brawler	defensive_spells	Premonition (1220)	
+triton_brawler	special_defenses	Slippery Mind	
+triton_brawler	treasure_other	ayanad crystal	
+triton_brawler	treasure_other	n'ayanad crystal	
+triton_combatant	otherclass	Living	
+triton_combatant	equipment	a reinforced canvas bandolier	
+triton_combatant	equipment	an elliptical brine-stained parma	
+triton_combatant	equipment	an oak-shafted silvery blue trident	
+triton_combatant	equipment	a razor-tined pale green trident	
+triton_combatant	armaments	drake greataxe	
+triton_combatant	armaments	drake greatsword	
+triton_combatant	armaments	corroded black ora awl-pike	
+triton_combatant	treasure_other	ayanad crystal	
+triton_combatant	treasure_other	n'ayanad crystal	
+triton_combatant	treasure_other	tiny golden seed	
+triton_combatant	treasure_other	radiant crimson essence shard	
+triton_dissembler	otherclass	Living	
+triton_dissembler	equipment	a fine-grained deep cerulean runestaff	
+triton_dissembler	defensive_spells	Cloak of Shadows (712)	
+triton_dissembler	defensive_spells	Fasthr's Reward (115)	
+triton_dissembler	defensive_spells	Spirit Defense (103)	
+triton_dissembler	defensive_spells	Spirit Warding I (101)	
+triton_dissembler	defensive_spells	Spirit Warding II (107)	
+triton_dissembler	treasure_other	ayanad crystal	
+triton_dissembler	treasure_other	tiny golden seed	
+triton_dissembler	treasure_other	n'ayanad crystal	
+triton_dissembler	treasure_other	radiant crimson essence shard	
+triton_executioner	otherclass	Living	
+triton_executioner	equipment	a coral-hilted sharply tapered longsword	
+triton_executioner	equipment	a crested thick leather harness	
+triton_executioner	equipment	a navy-banded slate grey targe	
+triton_executioner	equipment	a rough ashen heavy crossbow	
+triton_executioner	equipment	a sharply curved black handaxe	
+triton_executioner	equipment	a short-prodded heavy arbalest	
+triton_executioner	equipment	a silver-rimmed black steel buckler	
+triton_executioner	equipment	a teardrop-clasped dark leather harness	
+triton_executioner	armaments	black ora jeddart-axe	
+triton_executioner	armaments	drake greatsword	
+triton_executioner	armaments	drake greataxe	
+triton_executioner	armaments	drake falchion	
+triton_executioner	armaments	corroded black ora awl-pike	
+triton_executioner	treasure_other	ayanad crystal	
+triton_executioner	treasure_other	n'ayanad crystal	
+triton_executioner	treasure_other	tiny golden seed	
+triton_executioner	treasure_other	radiant crimson essence shard	
+triton_fanatic	otherclass	Living	
+triton_fanatic	otherclass	Boss	
+triton_fanatic	equipment	a corroded bronze Hammer of Kai	
+triton_fanatic	defensive_spells	Mantle of Faith (1601)	
+triton_fanatic	defensive_spells	Higher Vision (1610)	
+triton_fanatic	defensive_spells	Patron's Blessing (1611)	
+triton_fanatic	defensive_spells	Faith Shield (1619)	
+triton_fanatic	defensive_spells	Spirit Strike (117)	
+triton_fanatic	armaments	drake greatsword	
+triton_fanatic	treasure_other	ayanad crystal	
+triton_fanatic	treasure_other	n'ayanad crystal	
+triton_magus	otherclass	Living	
+triton_magus	equipment	a dried seaweed-wrapped longbow	
+triton_magus	equipment	a mildewed rough leather quiver	
+triton_magus	defensive_spells	Elemental Defense I (401)	
+triton_magus	defensive_spells	Elemental Defense II (406)	
+triton_magus	defensive_spells	Elemental Defense III (414)	
+triton_magus	defensive_spells	Natural Colors (601)	
+triton_magus	defensive_spells	Resist Elements (602)	
+triton_magus	defensive_spells	Self Control (613)	
+triton_magus	defensive_spells	Sneaking (617)	
+triton_magus	defensive_spells	Spirit Defense (103)	
+triton_magus	treasure_other	a bundle of arrows	
+triton_magus	treasure_other	tiny golden seed	
+triton_radical	otherclass	Living	
+triton_radical	equipment	a corroded bronze scaling fork	
+triton_radical	equipment	a spike-studded silvery blue round shield	
+triton_radical	equipment	a wide silvery green trident	
+triton_radical	defensive_spells	Divine Shield (1609)	
+triton_radical	defensive_spells	Fasthr's Reward (115)	
+triton_radical	defensive_spells	Lesser Shroud (120)	
+triton_radical	defensive_spells	Mantle of Faith (1601)	
+triton_radical	defensive_spells	Warding Sphere (310)	
+triton_radical	defensive_spells	Heroism (215)	
+triton_radical	defensive_spells	Prayer of Protection (303)	
+triton_radical	defensive_spells	Spirit Strike (117)	
+triton_radical	armaments	drake greataxe	
+triton_radical	treasure_other	ayanad crystal	
+triton_radical	treasure_other	n'ayanad crystal	
+triton_radical	treasure_other	tiny golden seed	
+triton_radical	treasure_other	radiant crimson essence shard	
+triton_warden	otherclass	Living	
+triton_warden	otherclass	Boss	
+triton_warden	equipment	a dried seaweed-wrapped longbow	
+triton_warden	equipment	a mildewed rough leather quiver	
+triton_warden	defensive_spells	Spirit Warding I (101)	
+triton_warden	defensive_spells	Spirit Defense (103)	
+triton_warden	defensive_spells	Spirit Warding II (107)	
+triton_warden	defensive_spells	Natural Colors (601)	
+triton_warden	defensive_spells	Resist Elements (602)	
+triton_warden	defensive_spells	Self Control (613)	
+triton_warden	defensive_spells	Sneaking (617)	
+triton_warden	defensive_spells	Nature's Touch (625)	
+triton_warden	defensive_spells	Wall of Thorns (640)	
+triton_warden	treasure_other	ayanad crystal	
+triton_warden	treasure_other	n'ayanad crystal	
+triton_warlock	otherclass	Living	
+triton_warlock	otherclass	Boss	
+triton_warlock	equipment	a twisted soot black runestaff capped with a gold-caged crystal drop of water	
+triton_warlock	defensive_spells	Spirit Warding I (101)	
+triton_warlock	defensive_spells	Spirit Defense (103)	
+triton_warlock	defensive_spells	Spirit Warding II (107)	
+triton_warlock	defensive_spells	Lesser Shroud (120)	
+triton_warlock	defensive_spells	Elemental Defense I (401)	
+triton_warlock	defensive_spells	Elemental Defense II (406)	
+triton_warlock	defensive_spells	Elemental Defense III (414)	
+triton_warlock	treasure_other	ayanad crystal	
+triton_warlock	treasure_other	n'ayanad crystal	
+troglodyte	otherclass	Living	
+troglodyte	equipment	a cudgel	
+troglodyte	equipment	a wooden shield	
+troglodyte	equipment	some light leather	
+troll_chieftain	otherclass	Living	
+troll_chieftain	equipment	a battle axe	
+troll_chieftain	equipment	a flail	
+troll_chieftain	equipment	a leather helm	
+troll_chieftain	equipment	a military pick	
+troll_chieftain	equipment	a vine-wrapped rusting bastard sword	
+troll_chieftain	equipment	a visored helm	
+troll_chieftain	equipment	an augmented breastplate	
+troll_chieftain	equipment	some brigandine armor	
+troll_chieftain	equipment	some chain mail	
+troll_chieftain	treasure_other	glimmering blue essence shard	
+troll_chieftain	treasure_other	glimmering blue mote of essence	
+troll_chieftain	treasure_other	t'ayanad crystal	
+troll_wraith	otherclass	Non-corporeal undead	
+troll_wraith	otherclass	Boss	
+troll_wraith	equipment	some blackened steel gauntlets	
+troll_wraith	defensive_spells	Elemental Defense I (401)	
+troll_wraith	defensive_spells	Elemental Defense III (414)	
+troll_wraith	treasure_other	Glowing Violet Essence Dust	
+troll_wraith	treasure_other	glowing violet mote of essence	
+tundra_giant	otherclass	Living	
+tundra_giant	otherclass	Element-based	
+tundra_giant	defensive_spells	Spirit Warding I (101)	
+tundra_giant	defensive_spells	Spirit Defense (103)	
+tundra_giant	defensive_spells	Spirit Warding II (107)	
+tundra_giant	treasure_other	Glimmering blue essence shard	
+tundra_giant	treasure_other	essence of water	
+tusked_ursian	otherclass	Living	
+twisted_being	otherclass	Living	
+twisted_being	defensive_spells	Spirit Defense (103)	
+twisted_being	defensive_spells	Spirit Warding I (101)	
+twisted_being	defensive_spells	Spirit Warding II (107)	
+twisted_being	defensive_spells	Lesser Shroud (120)	
+twisted_being	defensive_spells	Prismatic Guard (905)	
+twisted_being	defensive_spells	Mass Blur (911)	
+undertaker_bat	otherclass	Living	
+urgh	otherclass	Living	
+vaespilon	otherclass	Corporeal undead	
+vaespilon	otherclass	Extraplanar	
+vaespilon	equipment	a blackened wooden staff	
+vaespilon	equipment	a scorched black pendant	
+vaespilon	equipment	a twisted black ring	
+vaespilon	equipment	some decaying black robes	
+vaespilon	equipment	some rotting black robes	
+vaespilon	defensive_spells	Spirit Warding I (101)	
+vaespilon	defensive_spells	Spirit Defense (103)	
+vaespilon	defensive_spells	Spirit Warding II (107)	
+vaespilon	defensive_spells	Lesser Shroud (120)	
+vaespilon	defensive_spells	Wall of Force (140)	
+vaespilon	defensive_spells	Elemental Defense I (401)	
+vaespilon	defensive_spells	Elemental Defense II (406)	
+vaespilon	defensive_spells	Elemental Defense III (414)	
+vaespilon	defensive_spells	Elemental Barrier (430)	
+vaespilon	defensive_spells	Spirit Strike (117)	
+vaespilon	treasure_other	Inky necrotic core	
+vapor_hound	otherclass	Corporeal undead	
+vapor_hound	equipment	a bruised left eye	
+vapor_hound	equipment	a bruised right eye	
+vapor_hound	equipment	a completely severed right foreleg	
+vapor_hound	special_defenses	Shakes off stuns	
+vapor_hound	treasure_other	Essence of air	
+vapor_hound	treasure_other	elemental core	
+velnalin	otherclass	Living	
+vesperti	otherclass	Anti-mana	
+vesperti	equipment	a barbed whip	
+vesperti	equipment	a blackened cutlass	
+vesperti	equipment	a spiked flail	
+vesperti	equipment	a spiked shield	
+vesperti	immunities	magic	
+vesperti	defensive_spells	Spirit Warding II (107)	
+vesperti	defensive_spells	Spirit Warding I (101)	
+vesperti	defensive_spells	Elemental Defense I (401)	
+vesperti	defensive_spells	Elemental Defense II (406)	
+vesperti	defensive_spells	Spirit Defense (103)	
+vesperti	treasure_other	Glowing violet essence dust	
+veteran_reiver	otherclass	Living	
+veteran_reiver	equipment	a threadbare dun tartan cloak	
+veteran_reiver	equipment	an old claidhmore	
+veteran_reiver	equipment	some full plate	
+veteran_reiver	treasure_other	glimmering blue essence shard	
+vourkha	otherclass	Corporeal undead	
+vourkha	equipment	a bruised left eye	
+vourkha	equipment	a bruised right eye	
+vourkha	equipment	a completely severed left arm	
+vourkha	equipment	a completely severed left hand	
+vourkha	defensive_spells	Elemental Bias (508)	
+vourkha	defensive_spells	Thurfel's Ward (503)	
+vourkha	treasure_other	Glowing violet essence dust	
+vourkha	treasure_other	glowing violet essence shard	
+vvrael_destroyer	otherclass	Extraplanar	
+vvrael_destroyer	otherclass	Anti-mana	
+vvrael_destroyer	equipment	a crackling black steel maul	
+vvrael_destroyer	equipment	some acid-pitted black steel full plate	
+vvrael_warlock	otherclass	Extraplanar	
+vvrael_warlock	otherclass	Anti-mana	
+vvrael_warlock	otherclass	Boss	
+vvrael_warlock	equipment	a midnight black longsword	
+vvrael_warlock	equipment	a midnight black ora choker	
+vvrael_warlock	equipment	a midnight black spiked whip	
+vvrael_warlock	equipment	a midnight black tower shield	
+vvrael_warlock	equipment	some flowing midnight-black robes	
+vvrael_warlock	immunities	magic	
+vvrael_warlock	defensive_spells	Spirit Warding I (101)	
+vvrael_warlock	defensive_spells	Spirit Warding II (107)	
+vvrael_warlock	defensive_spells	Lesser Shroud (120)	
+vvrael_warlock	defensive_spells	Wall of Force (140)	
+vvrael_warlock	defensive_spells	Elemental Defense II (406)	
+vvrael_warlock	defensive_spells	Elemental Defense III (414)	
+vvrael_warlock	defensive_spells	Elemental Barrier (430)	
+vvrael_warlock	defensive_spells	Spirit Strike (117)	
+vvrael_warlock	treasure_other	Radiant crimson essence shard	
+vvrael_witch	otherclass	Extraplanar	
+vvrael_witch	otherclass	Anti-mana	
+vvrael_witch	otherclass	Boss	
+vvrael_witch	equipment	a midnight black curved dagger	
+vvrael_witch	equipment	a midnight black morning star	
+vvrael_witch	equipment	a midnight black ora choker	
+vvrael_witch	equipment	a midnight black spiked whip	
+vvrael_witch	equipment	a midnight black tower shield	
+vvrael_witch	equipment	some flowing midnight-black robes	
+vvrael_witch	immunities	magic	
+vvrael_witch	defensive_spells	Elemental Defense I (401)	
+vvrael_witch	defensive_spells	Elemental Defense II (406)	
+vvrael_witch	defensive_spells	Elemental Defense III (414)	
+vvrael_witch	defensive_spells	Elemental Targeting (425)	
+vvrael_witch	defensive_spells	Elemental Barrier (430)	
+vvrael_witch	defensive_spells	Elemental Bias (508)	
+vvrael_witch	defensive_spells	Elemental Focus (513)	
+vvrael_witch	defensive_spells	Mass Blur (911)	
+vvrael_witch	treasure_other	Radiant crimson essence shardTiny golden seed	
+waern	otherclass	Corporeal undead	
+waern	otherclass	Boss	
+wall_guardian	otherclass	Living	
+wall_guardian	equipment	a coral-shafted military pick	
+wall_guardian	equipment	a salt-stained chain hauberk	
+war_griffin	otherclass	Living	
+war_griffin	treasure_other	Alchemy	
+war_troll	otherclass	Living	
+war_troll	equipment	a chain hauberk	
+war_troll	equipment	a leather helm	
+war_troll	equipment	a twohanded sword	
+war_troll	equipment	a war hammer	
+war_troll	equipment	a wooden shield	
+war_troll	equipment	some studded leather	
+war_troll	defensive_spells	Spirit Warding II (107)	
+war_troll	treasure_other	small troll tooth	
+warped_tree_spirit	otherclass	Non-corporeal undead	
+warrior_shade	otherclass	Non-corporeal undead	
+warrior_shade	otherclass	Boss	
+warrior_shade	equipment	a twisted modwir-shafted halberd	
+warrior_shade	treasure_other	glowing violet essence shard	
+warthog	otherclass	Living	
+wasp_nest	treasure_other	reticulated orbs	
+water_elemental	otherclass	Extraplanar	
+water_elemental	otherclass	Magical	
+water_elemental	equipment	a navy-banded slate grey targe	
+water_elemental	equipment	a spike-studded silvery blue round shield	
+water_elemental	equipment	a pearlescent oyster shell shield	
+water_elemental	defensive_spells	Elemental Barrier (430)	
+water_elemental	defensive_spells	Elemental Defense II (406)	
+water_elemental	defensive_spells	Elemental Defense III (414)	
+water_elemental	defensive_spells	Elemental Defense I (401)	
+water_hound	otherclass	Living	
+water_hound	equipment	a case of sporadic convulsions	
+water_hound	special_defenses	Shakes off stuns	
+water_hound	treasure_other	Essence of water	
+water_moccasin	otherclass	Living	
+water_witch	otherclass	Living	
+water_witch	otherclass	Element-based	
+water_witch	equipment	a spear	
+water_witch	equipment	a wooden shield	
+water_wyrd	otherclass	Magical	
+water_wyrd	otherclass	Element-based	
+water_wyrd	equipment	a translucent green trident	
+water_wyrd	defensive_spells	Elemental Defense I (401)	
+water_wyrd	defensive_spells	Elemental Defense II (406)	
+werebear	otherclass	Corporeal undead	
+whiptail	otherclass	Living	
+white_vysan	otherclass	Living	
+wild_hound	otherclass	Living	
+wind_witch	otherclass	Living	
+wind_witch	otherclass	Element-based	
+wind_witch	equipment	a bolt-etched bone knife	
+wind_witch	equipment	a long knife	
+wind_witch	equipment	a razor-sharp wavy dagger	
+wind_witch	equipment	some flowing robes	
+wind_witch	defensive_spells	Elemental Defense I (401)	
+wind_witch	defensive_spells	Elemental Defense II (406)	
+wind_witch	defensive_spells	Thurfel's Ward (503)	
+wind_witch	special_defenses	Shake off stuns	
+wind_witch	treasure_other	essence of air	
+wind_witch	treasure_other	s'ayanad crystal	
+wind_wraith	otherclass	Non-corporeal undead	
+wind_wraith	otherclass	Boss	
+wind_wraith	equipment	a bruised left eye	
+wind_wraith	treasure_other	a small glowing vial	
+wind_wraith	treasure_other	essence of air	
+winged_viper	otherclass	Living	
+winged_viper	defensive_spells	Elemental Barrier (430)	
+winged_viper	defensive_spells	Elemental Defense III (414)	
+withered_shadow-cloaked_draugr	otherclass	Corporeal undead	
+withered_shadow-cloaked_draugr	equipment	a huge black alloy greatsword	
+withered_shadow-cloaked_draugr	equipment	some dark decaying leathers	
+withered_shadow-cloaked_draugr	armaments	drake greataxe	
+withered_shadow-cloaked_draugr	armaments	drake greatsword	
+withered_shadow-cloaked_draugr	treasure_other	ayanad crystal	
+withered_shadow-cloaked_draugr	treasure_other	n'ayanad crystal	
+withered_shadow-cloaked_draugr	treasure_other	petrified mammoth tusk	
+wolfshade	otherclass	Non-corporeal undead	
+wolfshade	equipment	a bruised left eye	
+wolverine	otherclass	Living	
+wood_sprite	otherclass	Living	
+wood_sprite	otherclass	Magical	
+wood_sprite	equipment	a battered helm	
+wood_sprite	equipment	a frayed leather helm	
+wood_sprite	equipment	a jeddart-axe	
+wood_sprite	equipment	a quarter staff	
+wood_sprite	equipment	a spear	
+wood_sprite	equipment	a torn leather bracers	
+wood_sprite	equipment	some tattered bracers	
+wood_sprite	defensive_spells	Natural Colors (601)	
+wood_sprite	defensive_spells	Phoen's Strength (606)	
+wood_sprite	defensive_spells	Resist Elements (602)	
+wood_sprite	defensive_spells	Self Control (613)	
+wood_sprite	defensive_spells	Spirit Defense (103)	
+wood_sprite	defensive_spells	Spirit Warding I (101)	
+wood_sprite	defensive_spells	Spirit Warding II (107)	
+wood_sprite	defensive_spells	Lesser Shroud (120)	
+wood_sprite	treasure_other	Glowing violet essence shardPristine sprite's hair	
+wood_wight	otherclass	Corporeal undead	
+wood_wight	treasure_other	glimmering blue essence dust	
+wooly_mammoth	otherclass	Living	
+wraith	otherclass	Non-corporeal undead	
+wraith	equipment	a broadsword	
+wraith	equipment	a handaxe	
+wraith	equipment	a short sword	
+wraith	equipment	some brigandine armor	
+wraith	equipment	some double leather	
+wraith	treasure_other	s'ayanad crystal	
+writhing_frost_glazed_vine	otherclass	Corporeal undead	
+writhing_icy_bush	otherclass	Corporeal undead	
+yeti	otherclass	Living	
+yeti	otherclass	Boss	
+yeti	treasure_other	tiny golden seed	
+young_grass_snake	otherclass	Living	
+zombie	otherclass	Corporeal undead	
+zombie	otherclass	Boss	
+zombie	equipment	some tattered rags	
+zombie_rolton	otherclass	Corporeal undead	

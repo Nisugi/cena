@@ -550,6 +550,22 @@ Demonstrated live on a short hunt.
 **M6c — eloot.** Its port plan first (`plan/31`), then the halves a hunt calls: loot,
 sort, box in hand. Town errands follow in the same plan's order.
 
+> **`plan/31` written and answered 2026-09-24; Stages 1 and 2 BUILT the same day.** eloot
+> measured module by module: the hunt's share is ~1,750 of 8,029 lines (Main, Inventory,
+> Room looting); the rest is a settings window and the town. The pure planner
+> (`cena-behavior/src/loot/`) and the driver's loot loop are in; a hunt with an imported
+> loot profile searches each corpse and takes the floor by eloot's rules, and rests on
+> *too much loot* or a box left in hand, as the author answered. Stage 3 (eloot's specials,
+> a critter's bag emptied, the sigil) is BUILT too, and so is skinning (`loot/skin.rs`,
+> 2026-09-24); Stage 4 (selling during the rest) is under way by the author's call to
+> finish eloot before M6d: 4a, the round to the gem shop and the pawnshop inside the rest
+> (`cena-behavior/src/town/`), is BUILT; 4b (furrier, collectibles, Chronomage, bank) and
+> 4c (the locksmith pool) follow. **`plan/34`** stages the author's `loottracker.lic` as the loot ledger: the
+> classifier in the model, the recorder beside combat's, SQLite already embedded. Its
+> All four stages are BUILT: the classifier, the ledger, `;loot` and `;combat`
+> (`cena-model/src/state/ledger.rs`, `cena-session/src/ledger.rs`, `cena/src/loot.rs`,
+> `cena/src/combat.rs`); recording is `--record`/`--no-record`, on in debug builds.
+
 **M6d — eherbs.** Its port plan first (`plan/32`), then healing at the rest room.
 
 **M6e — the `;` tools.** `;foreach` and `;multi` on the `;` line, and `;sorter` as a

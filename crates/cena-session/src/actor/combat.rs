@@ -45,6 +45,33 @@ impl<S: ByteSource> SessionActor<S> {
         true
     }
 
+    /// Drain the model's loot queue after a prompt and offer each chunk to
+    /// the ledger. No broadcast event: nothing observes loot facts yet, and a
+    /// ring nobody reads is a cost with no reader (Rule -1).
+    pub(super) fn publish_loot(&mut self) {
+        let chunks = self.state.take_loot();
+        let Some(ledger) = &self.ledger else {
+            return;
+        };
+        for chunk in chunks {
+            // the refusal is counted by the handle; reported below
+            let _ = ledger.offer(Arc::new(chunk));
+        }
+        let stats = ledger.stats();
+        let total = stats.dropped() + stats.untimed() + stats.failed() + self.state.loot_dropped();
+        if total != self.ledger_refusals_logged {
+            self.ledger_refusals_logged = total;
+            let detail = stats.last_error().unwrap_or_default();
+            self.log(&format!(
+                "loot ledger: {} chunks dropped (queue full), {} untimed, {} writes failed,                  {} lost before the drain {detail}",
+                stats.dropped(),
+                stats.untimed(),
+                stats.failed(),
+                self.state.loot_dropped()
+            ));
+        }
+    }
+
     /// Say so in the session log when the recorder's refusal count moves.
     /// Once per movement, not once per chunk: a stalled disk during a hunt
     /// would otherwise write a line per prompt.

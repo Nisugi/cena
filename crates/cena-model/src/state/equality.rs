@@ -57,6 +57,9 @@ impl PartialEq for GameState {
             // about the game. What it knows of the game -- a held cast, an
             // open assault -- is re-derived from the same chunks.
             combat: _,
+            // Facts already classified and waiting for a recorder, not a
+            // fact about the game.
+            loot: _,
             creatures,
             pending,
             chunk,

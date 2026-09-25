@@ -1,5 +1,6 @@
 //! Hunt, wired to this binary: `;hunt <name>`, `;hunt stop`, `;hunt import`,
-//! `;hunt check` and `;hunt list` on Hydra's command line (`crate::commands`).
+//! `;hunt import-loot`, `;hunt check` and `;hunt list` on Hydra's command
+//! line (`crate::commands`).
 //!
 //! The join only, as `travel.rs` is for travel: what a command means and
 //! what it does are `cena_behavior::hunt`'s; where the data directory is,
@@ -20,6 +21,7 @@ use std::sync::Arc;
 
 use crate::commands::Commands;
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
+use cena_behavior::loot;
 use cena_behavior::travel::Map;
 use cena_session::command::claimant::Claimed;
 use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
@@ -72,7 +74,7 @@ pub(crate) fn open(
                     }
                 });
             }
-            Command::Import { .. } | Command::Check(_) | Command::List => {
+            Command::Import { .. } | Command::ImportLoot { .. } | Command::Check(_) | Command::List => {
                 let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
                 // Files are read and written, so not on the session's own thread.
                 tokio::task::spawn_blocking(move || run(&handle, &dir, who.as_ref(), command));
@@ -93,6 +95,7 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
     let say = |kind: NoticeKind, text: String| handle.say(Notice::line(kind, text));
     match command {
         Command::Import { path, name } => import(dir, &path, name.as_deref(), &say),
+        Command::ImportLoot { path } => import_loot(dir, who, &path, &say),
         Command::Check(name) => check(dir, who, &name, &say),
         Command::List => list(dir, &say),
         Command::Run(_) | Command::Stop | Command::Nothing => {}
@@ -186,6 +189,79 @@ fn import(dir: &Path, path: &str, name: Option<&str>, say: Say<'_>) {
     }
 }
 
+/// Read eloot's settings and write them as this character's loot profile
+/// (`plan/31` §6), never over one that is already there.
+fn import_loot(dir: &Path, who: Option<&(String, String)>, path: &str, say: Say<'_>) {
+    let Some((instance, character)) = who else {
+        say(
+            NoticeKind::Error,
+            "Hunt: the game has not said who this is yet; the loot profile is per character, so wait for the login."
+                .to_owned(),
+        );
+        return;
+    };
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) => {
+            say(NoticeKind::Error, format!("Hunt: cannot read {path}: {e}"));
+            return;
+        }
+    };
+    let brought = match loot::import(&text) {
+        Ok(brought) => brought,
+        Err(why) => {
+            say(
+                NoticeKind::Error,
+                format!("Hunt: {path} is not an eloot settings file: {why}"),
+            );
+            return;
+        }
+    };
+    let rendered = match brought.render() {
+        Ok(rendered) => rendered,
+        Err(why) => {
+            say(
+                NoticeKind::Error,
+                format!("Hunt: could not write the loot profile: {why}"),
+            );
+            return;
+        }
+    };
+    let Some(target) = loot::path(dir, instance, character) else {
+        say(
+            NoticeKind::Error,
+            format!("Hunt: {instance} {character} is not a name a file can have."),
+        );
+        return;
+    };
+    match hunt::chain::write_new(&target, &rendered) {
+        Ok(()) => say(
+            NoticeKind::Info,
+            format!("Hunt: loot profile written to {}", target.display()),
+        ),
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+            say(
+                NoticeKind::Error,
+                format!(
+                    "Hunt: {} is already there. Delete it first to import again.",
+                    target.display()
+                ),
+            );
+            return;
+        }
+        Err(e) => {
+            say(
+                NoticeKind::Error,
+                format!("Hunt: cannot write {}: {e}", target.display()),
+            );
+            return;
+        }
+    }
+    for note in &brought.notes {
+        say(NoticeKind::Warn, format!("Hunt: {note}"));
+    }
+}
+
 /// Read a profile as this character would run it, and say what is held.
 fn check(dir: &Path, who: Option<&(String, String)>, name: &str, say: Say<'_>) {
     let (instance, character) = who.map_or((None, None), |(instance, character)| {
@@ -250,6 +326,20 @@ fn check(dir: &Path, who: Option<&(String, String)>, name: &str, say: Say<'_>) {
             NoticeKind::Warn,
             format!("Hunt: sequence {sequence} has no steps yet; the routine skips it."),
         );
+    }
+    let loot_file = instance
+        .zip(character)
+        .and_then(|(instance, character)| loot::path(dir, instance, character));
+    match loot_file {
+        Some(file) if file.is_file() => say(
+            NoticeKind::Info,
+            format!("Hunt: corpses are looted by {}", file.display()),
+        ),
+        _ => say(
+            NoticeKind::Info,
+            "Hunt: no loot profile for this character: corpses get `loot #id`. `hunt import-loot <eloot yaml>` brings one in."
+                .to_owned(),
+        ),
     }
 }
 

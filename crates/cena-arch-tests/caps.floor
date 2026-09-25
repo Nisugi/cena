@@ -50,3 +50,27 @@ crates/cena-web/src/presentation.rs 250
 # parser: M6a step 4). It holds the module docs and the re-exports, 49 lines,
 # so its cap is the rule above: 49 + 50, rounded up to the next 50.
 crates/cena-behavior/src/hunt.rs 100
+# NEW SPLIT PARENT, 2026-09-24. crates/cena-behavior/src/loot.rs is the facade
+# over loot/ (the profile, importer, worth, outcome and planner: plan/31
+# Stage 1), on the same terms as hunt.rs.
+crates/cena-behavior/src/loot.rs 100
+# NEW SPLIT PARENT, 2026-09-24. crates/cena-model/src/state/ledger.rs is the
+# loot classifier's facade (plan/34 Stage 1): the LootFact/Find/Appraiser/Buyer
+# enums, `classify` and the per-chunk cursor, with the readers in ledger/. It is
+# 298 lines at birth, most of them the documented enum; 350 leaves room for a
+# variant or two and no room for a reader.
+crates/cena-model/src/state/ledger.rs 350
+# NEW SPLIT PARENT, 2026-09-24. crates/cena-session/src/ledger.rs is the loot
+# ledger's facade (plan/34 Stage 2): the Ledger, its Live memory and the
+# transaction; the arms are in ledger/write.rs and the thread in
+# ledger/worker.rs. 183 lines at birth; 250 leaves room for a method, not an arm.
+crates/cena-session/src/ledger.rs 250
+# NEW SPLIT PARENT, 2026-09-24. crates/cena/src/loot.rs is `;loot`: the words,
+# the run and the report formatting, with the Eastern-time periods in
+# loot/period.rs (plan/34 Stage 3). About 470 lines at birth, a third of them
+# tests; 520 leaves room for a report's line, not a sixth report.
+crates/cena/src/loot.rs 520
+# NEW SPLIT PARENT, 2026-09-24. crates/cena-behavior/src/town.rs is the selling
+# round's facade (plan/31 Stage 4): the module doc and the re-exports; the
+# settings, the planner and the replies are in town/. 25 lines at birth.
+crates/cena-behavior/src/town.rs 100

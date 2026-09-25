@@ -137,8 +137,23 @@ roster**, which owns the facts it reasons over (Rule 2.2a).
 
 ## Creature messages — `state/creature_message.rs`
 
-The bestiary's 3,863 lines: 1,094 death, 1,067 flee, 991 arrival, 710 decay,
-joined onto every creature by `Creature::messages_of`.
+The bestiary's 7,125 lines of twelve kinds, joined onto every creature by
+`Creature::messages_of`: 1,972 attack, 1,094 death, 1,067 flee, 991 arrival,
+710 decay, 559 description, 281 spell prep, 162 trigger, 113 stun break,
+101 search, 68 stand, 7 ambient. A match of an attack or a trigger also names
+which attack, or which effect (`bind`, `web`) is coming.
+
+> **CORRECTED 2026-09-24.** This read *"The bestiary's 3,863 lines: 1,094
+> death, 1,067 flee, 991 arrival, 710 decay"*. That was the whole table because
+> the first port dropped the other eight kinds at extraction, with attack
+> messaging dropped on the grounds that nothing read it. The author: *"The
+> reason it was all there was multiple reasons, one of which is a
+> comprehensive beastiary, the other is the messages have uses just because
+> they haven't been made apparent yet. For example when get to implementing
+> kswole's behaviors that requires their casting prep line."* The extractor
+> now keeps everything and aborts on a key it does not read
+> (`crates/cena-model/tools/extract_creatures.rb`). The counts below are the
+> first port's, kept as its record.
 
 **NOT WIRED, and deliberately named as such.** Nothing calls it. The
 arrival/departure job it was built for belongs to `departure.rs` (the table

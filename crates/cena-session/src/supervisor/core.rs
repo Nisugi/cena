@@ -75,6 +75,8 @@ pub struct SessionCore {
     pub(super) sink: Option<SessionSink>,
     /// Cloned into each connection's actor, so one hunt spans a reconnect.
     pub(super) combat: Option<crate::combat_recorder::worker::RecorderHandle>,
+    /// Cloned into each connection's actor, as `combat` is.
+    pub(super) ledger: Option<crate::ledger::worker::LedgerHandle>,
     /// Cloned into each connection's actor, so one log spans a reconnect.
     /// The handle's own slot, so `say` and the actor write to one log.
     pub(super) player_log: crate::player_log::tap::Slot,

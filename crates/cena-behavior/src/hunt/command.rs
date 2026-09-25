@@ -25,6 +25,12 @@ pub enum Command {
         /// The Hydra name, when one was given after `as`.
         name: Option<String>,
     },
+    /// `import-loot <path>`: eloot's settings in, the character's loot
+    /// profile out (`plan/31` §6).
+    ImportLoot {
+        /// The `eloot.yaml`, as typed. It may hold spaces.
+        path: String,
+    },
     /// Read a profile through the chain and report on it.
     Check(String),
     /// List the profiles.
@@ -38,10 +44,10 @@ pub enum Command {
 }
 
 /// The words that are hunt's own, and so never a profile's name.
-const RESERVED: &[&str] = &["import", "check", "list", "stop"];
+const RESERVED: &[&str] = &["import", "import-loot", "check", "list", "stop"];
 
 /// What a wrongly said command is answered with.
-pub const USAGE: &str = "hunt <name>, hunt stop, hunt import <bigshot yaml> [as <name>], hunt check <name>, or hunt list";
+pub const USAGE: &str = "hunt <name>, hunt stop, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>, hunt check <name>, or hunt list";
 
 /// The hunt command a line is, **the command symbol already gone**. `None`:
 /// not hunt's. `Some(Err(_))`: hunt's, said wrongly.
@@ -54,6 +60,11 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
     let rest: Vec<&str> = words.collect();
     Some(match rest.split_first() {
         Some((word, args)) if word.eq_ignore_ascii_case("import") => import(args),
+        Some((word, args)) if word.eq_ignore_ascii_case("import-loot") && !args.is_empty() => {
+            Ok(Command::ImportLoot {
+                path: args.join(" "),
+            })
+        }
         Some((word, [name])) if word.eq_ignore_ascii_case("check") => {
             Ok(Command::Check((*name).to_owned()))
         }

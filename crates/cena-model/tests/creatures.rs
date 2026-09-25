@@ -16,7 +16,7 @@
 //! # Why spot checks rather than a full parity digest
 //!
 //! `crit_parity.rs` digests its table because 2,394 entries are one shape.
-//! These are 627 rows across four tables with optional everything, and a
+//! These are 627 creatures across seven tables with optional everything, and a
 //! digest would assert "the bytes did not change" rather than "the values
 //! mean what they should". The checks below are chosen to fail on the
 //! mistakes the extractor could plausibly make: a tri-state collapsed to
@@ -24,7 +24,8 @@
 //! silently not joined.
 
 use cena_model::state::creature::{
-    MessageKind, Stat, by_name, by_noun, creature, creatures, in_room, unparsed_attack_strengths,
+    MessageKind, Stat, by_name, by_noun, creature, creatures, in_room, load_problems,
+    unparsed_attack_strengths,
 };
 
 /// Every table loads, with the counts the extractor reported.
@@ -49,16 +50,38 @@ fn every_table_loads() {
     );
     assert_eq!(
         creatures().map(|c| c.attacks.len()).sum::<usize>(),
-        1603,
-        "1,603 physical attacks"
+        3174,
+        "3,174 attacks across the six categories"
     );
     assert_eq!(
         creatures()
             .flat_map(|c| MessageKind::ALL.map(|k| c.messages_of(k).len()))
             .sum::<usize>(),
-        3862,
-        "3,862 death/flee/arrival/decay lines"
+        7125,
+        "7,125 message lines of twelve kinds"
     );
+    assert_eq!(
+        creatures()
+            .map(|c| c.info.values().map(Vec::len).sum::<usize>())
+            .sum::<usize>(),
+        50,
+        "50 tips"
+    );
+    assert_eq!(
+        creatures().map(|c| c.abilities.len()).sum::<usize>(),
+        79,
+        "79 declared abilities"
+    );
+}
+
+/// **Nothing shipped goes unread.**
+///
+/// The first port extracted `height`, `speed` and `bcs` into `creatures.tsv`
+/// and never read them here, with nothing to say so. The loader now reports
+/// every column no field takes and every row it cannot place.
+#[test]
+fn every_column_and_row_is_read() {
+    assert!(load_problems().is_empty(), "{:#?}", load_problems());
 }
 
 /// One creature's scalars match the Ruby.
@@ -78,7 +101,8 @@ fn a_creature_carries_its_stats() {
         spider.treasure.skin.as_deref(),
         Some("multi-faceted tomb spider eye")
     );
-    assert!(spider.treasure.coins, "it drops coins");
+    assert_eq!(spider.treasure.coins, Some(true), "it drops coins");
+    assert_eq!(spider.treasure.boxes, Some(false), "measured: no boxes");
     assert!(!spider.treasure.is_empty());
     assert!(!spider.boss);
 }
@@ -210,17 +234,18 @@ fn attacks_carry_their_strength() {
     assert_eq!(spider.max_attack_strength(), Some(116));
 }
 
-/// **Six attack strengths are malformed IN THE SOURCE and are kept.**
+/// **Fourteen strengths are malformed IN THE SOURCE and are kept.**
 ///
-/// `"566 to"`, `"(lunge) 245-276"`, `"390 UAF"`, `""`. Data-entry damage in
-/// Lich's bestiary rather than a shape worth modelling -- so the text is kept
-/// verbatim, the number is `None`, and the count is reportable rather than
-/// silent (Rule 2.2).
+/// `"566 to"`, `"(lunge) 245-276"`, `"390 UAF"`, `"???"`, `""`. Data-entry
+/// damage in Lich's bestiary rather than a shape worth modelling -- so the
+/// text is kept verbatim, the number is `None`, and the count is reportable
+/// rather than silent (Rule 2.2). Six are physical attacks; the other eight
+/// are in the spell categories, which were not carried before 2026-09-24.
 #[test]
 fn a_malformed_attack_strength_is_kept_not_dropped() {
     assert_eq!(
         unparsed_attack_strengths(),
-        6,
+        14,
         "more means the source changed or the parse regressed"
     );
 
@@ -251,14 +276,14 @@ fn a_creature_knows_what_it_says_when_it_dies() {
     assert!(
         deaths
             .iter()
-            .any(|line| line == "The tomb spider collapses to the ground and dies."),
+            .any(|m| m.text == "The tomb spider collapses to the ground and dies."),
         "got {deaths:?}"
     );
 
     let flees = spider.messages_of(MessageKind::Flee);
     assert_eq!(flees.len(), 2);
     assert!(
-        flees.iter().all(|line| line.contains("{direction}")),
+        flees.iter().all(|m| m.text.contains("{direction}")),
         "flee lines carry a direction placeholder: {flees:?}"
     );
 

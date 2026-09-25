@@ -35,6 +35,7 @@ pub mod character_store;
 pub mod combat_recorder;
 pub mod command;
 pub mod dirty_groups;
+pub mod ledger;
 pub mod lifecycle;
 pub mod menu_store;
 pub mod notice;
@@ -55,6 +56,9 @@ pub use cena_model::movement::{self, MoveFeedback};
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
 pub use cena_model::state::{claim, containers, gameobj, group, hands, stream_windows};
+// The loot ledger's facts, for the town planner that reads them from its own
+// fold of the stream (`plan/31` Stage 4).
+pub use cena_model::{Appraiser, Buyer, LootFact};
 pub use cena_model::{ChunkLine, GameState, Room, RoomItem, UnknownTag};
 // The creature a hunt reads and the status words it asks about: `plan/30`
 // section 1's table of what the model answers a hunter with. Beside the

@@ -30,7 +30,9 @@ use cena_web::HubRequest;
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
-use crate::{connector, frontend, interrupt, learn, roster, secrets, setup, travel, watch};
+use crate::{
+    combat, connector, frontend, interrupt, learn, loot, roster, secrets, setup, travel, watch,
+};
 
 /// The characters named with `--character`, in order. Empty means none was
 /// named, and `main` asks for one at the prompt.
@@ -61,7 +63,8 @@ struct Started {
     /// hub.
     login: String,
     watcher: tokio::task::JoinHandle<()>,
-    combat: Option<std::thread::JoinHandle<()>>,
+    /// The combat recorder's and the loot ledger's flushes, when recording.
+    records: Vec<std::thread::JoinHandle<()>>,
     player: tokio::task::JoinHandle<u64>,
 }
 
@@ -138,7 +141,7 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
         web.shutdown().await;
     }
     eprintln!("\n[disconnect] quitting every session");
-    let (stopped, refused) = table.stop_everything().await;
+    let (stopped, refused) = Box::pin(table.stop_everything()).await;
     if refused > 0 && refused == stopped {
         return Err("every login was refused".into());
     }
@@ -165,18 +168,27 @@ impl Table {
                 // login, and the sync hears the store's report mid-burst.
                 let (_, events) = session.subscribe();
                 let (_, learning) = session.subscribe();
-                let (session, combat, player) = setup::attach(session, &character, &game, &account);
-                attached = Some((events, learning, combat, player));
+                let (session, records, player) =
+                    setup::attach(session, &character, &game, &account);
+                attached = Some((events, learning, records, player));
                 session
             })
             .map_err(|e| format!("[{character}] not started: {e}"))?;
-        let (Some((events, learning, combat, player)), Some(hosted)) = (attached, host.get(id))
+        let (Some((events, learning, records, player)), Some(hosted)) = (attached, host.get(id))
         else {
             return Err(format!(
                 "[{character}] not started: it left the table at once"
             ));
         };
         let commands = Commands::install(&hosted.handle);
+        // The ledger's reports need only the database's path, known now.
+        match cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character) {
+            Ok(database) => {
+                loot::open(&hosted.handle, &commands, database.clone());
+                combat::open(&hosted.handle, &commands, database);
+            }
+            Err(e) => eprintln!("[{character}] no loot reports: {e}"),
+        }
         if let Some(web) = &self.web {
             web.attach(
                 Some(&character),
@@ -202,7 +214,7 @@ impl Table {
                     character,
                     login,
                     watcher,
-                    combat,
+                    records,
                     player,
                 },
             );
@@ -370,7 +382,7 @@ impl Table {
 /// Close one stopped session's loose ends, and say how it ended.
 async fn finish(one: Started, end: Option<cena_session::SupervisedEnd>) {
     one.watcher.abort();
-    setup::flush_combat(one.combat).await;
+    setup::flush_records(one.records).await;
     setup::flush_player_log(one.player).await;
     let character = &one.character;
     match end.map(|end| end.stopped_because) {
