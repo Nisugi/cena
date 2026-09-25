@@ -176,6 +176,9 @@ pub struct GameState {
     /// expire independently, so one field could not answer either. `Option`,
     /// never `0`, for the reason `roundtime_ends` gives.
     pub cast_time_ends: Option<u32>,
+    /// `<spell>`: the spell prepared, verbatim, `None` from the game when
+    /// nothing is (Lich's `checkprep`). `None` here is *not told*.
+    pub prepared: Option<String>,
     /// Who is grouped with you, by `exist` id.
     pub group: Group,
     /// The stow and ready lists: which container holds what, and which
@@ -431,6 +434,7 @@ impl GameState {
             // with the rest of it on a reconnect.
             // A cast's hard roundtime, which is not the action roundtime.
             Frame::CastTime { value } => self.cast_time_ends = Some(*value),
+            Frame::Spell { text } => self.prepared = Some(text.trim().to_owned()),
             // The `combat` dialog's target dropdown. MEASURED the noisiest
             // widget on the wire and read by nothing until 2026-09-21; see
             // `targeting.rs` for why a display widget is a model fact.

@@ -72,6 +72,11 @@ else, never a guess.
 
 ### Stage 3 — the casting step
 
+**BUILT 2026-09-25.** `cena-behavior/src/cast.rs` (`Casting::lines`, `classify` into
+`Answer`, `ready` into `NotReady`), and `GameState::prepared`, the wire's `<spell>`, which
+nothing kept before. Tested in `tests/cast.rs`. The `cast-proc`s are not run: they are
+carried (Stage 1) for a spell that turns out to need one.
+
 One casting primitive for the three: the command (`incant N`, `prepare N` + `cast <target>`,
 `channel`, `evoke`, a multicast count, a `cast-proc`'s verb where it only differs in words),
 the answers as a closed set (cast, fizzled, hindered, no mana, bad target, not here), and

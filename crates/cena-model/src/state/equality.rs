@@ -81,6 +81,7 @@ impl PartialEq for GameState {
             targeting,
             maneuvers,
             cast_time_ends,
+            prepared,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -112,6 +113,7 @@ impl PartialEq for GameState {
             && targeting == &other.targeting
             && maneuvers == &other.maneuvers
             && cast_time_ends == &other.cast_time_ends
+            && prepared == &other.prepared
             // `arrivals` is NOT compared: it counts how many rooms this
             // session has entered, which is bookkeeping about the session
             // rather than a fact about the world. Two states that have been
