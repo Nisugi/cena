@@ -24,7 +24,15 @@ impl Frontend {
         if !requested() {
             return None;
         }
-        match cena_web::WebServer::open().await {
+        let opened = async {
+            let server = cena_web::WebServer::open().await?;
+            match std::env::var_os("CENA_HUNTING_CORRECTIONS_DIR") {
+                Some(directory) => server.with_hunting_corrections(directory.into()),
+                None => Ok(server),
+            }
+        }
+        .await;
+        match opened {
             Ok(server) => {
                 let stop = CancellationToken::new();
                 let sessions = server.sessions();

@@ -1,4 +1,4 @@
-// Freeze reference data separately from map ownership and exact UID matches.
+// Freeze reference data separately from map ownership and room-level matches.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -13,6 +13,8 @@ if(mode==='freeze'){
  fs.writeFileSync(output,JSON.stringify(catalogue)+'\n',{flag:'wx'});
 }else if(mode==='match'){
  const catalogue=JSON.parse(fs.readFileSync(input,'utf8'));
+ const inventoryPath=path.join(output,'inventory.json');
+ const inventory=fs.existsSync(inventoryPath)?JSON.parse(fs.readFileSync(inventoryPath,'utf8')):null;
  for(const slug of fs.readdirSync(output).sort()){
   const directory=path.join(output,slug),dataPath=path.join(directory,'data.json');
   if(!fs.existsSync(dataPath))continue;
@@ -26,6 +28,9 @@ if(mode==='freeze'){
   const sidecar={schema:'hydra-region-context-v1',data_sha256:crypto.createHash('sha256').update(bytes).digest('hex'),
    engine_revision:data.provenance.engine_revision,note:'Offline habitat reference. Does not alter topology, area assignments or travel.',
    coverage:result.coverage,creatures:result.creatures.map(({id,record,source,associations})=>({id,...record,areas:undefined,source,associations}))};
-  fs.writeFileSync(path.join(directory,'region-data.json'),JSON.stringify(sidecar)+'\n');
+  const content=JSON.stringify(sidecar)+'\n';
+  fs.writeFileSync(path.join(directory,'region-data.json'),content);
+  if(inventory)inventory.files[slug+'/region-data.json']={sha256:crypto.createHash('sha256').update(content).digest('hex'),bytes:Buffer.byteLength(content)};
  }
+ if(inventory)fs.writeFileSync(inventoryPath,JSON.stringify(inventory)+'\n');
 }else throw Error('Usage: context.mjs freeze TEMPLATE_DIR NEW_CATALOGUE | match CATALOGUE BUNDLE_DIR');

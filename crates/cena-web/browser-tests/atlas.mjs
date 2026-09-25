@@ -75,6 +75,21 @@ try{
  await page.locator('#exits button').filter({hasText:'#'+outside.to}).click();
  await page.locator('#room-name').filter({hasText:'#'+outside.to}).waitFor({timeout:60000});
  assert.ok(!new URL(page.url()).pathname.includes('/landing/'));
+ // Room-tag evidence reaches the real browser once, without broadening the
+ // creature's room-level evidence to the whole Deep Mist place.
+ await page.goto(base+'/atlas/landing/#room=3817&browse=1');
+ await page.locator('#room-name').filter({hasText:'#3817'}).waitFor({timeout:60000});
+ await page.locator('#habitat-panel > summary').click();
+ assert.equal(await page.locator('[data-creature="nightmare_steed"]').count(),1);
+ await page.getByRole('button',{name:'Reference details for nightmare steed',exact:true}).click();
+ assert.match(await page.locator('#dialog-body').textContent(),/Exact room tags · 11 matched rooms/);
+ assert.match(await page.locator('#dialog-body').textContent(),/Room-tag source/);
+ await page.locator('#close-dialog').click();
+ const mist=page.locator('[data-hunting-section="mist"]');
+ assert.match(await mist.textContent(),/55–63/);
+ await page.locator('#layout-mode').selectOption('reference');
+ await mkdir('target/atlas-evidence',{recursive:true});
+ await page.screenshot({path:'target/atlas-evidence/darkstone-room-tags.png',fullPage:true});
  for(const slug of ['mist-harbor','icemule']){
   await page.goto(base+`/atlas/${slug}/`);
   await page.waitForFunction(()=>document.getElementById('room-name').textContent.includes('#'),null,{timeout:60000});

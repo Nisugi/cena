@@ -6,11 +6,12 @@ export function regionModel(data,context=null){
   membership.set(r.id,key);
  }
  for(const c of context?.creatures||[]){
-  const rooms=new Set();
+  const rooms=new Set(),groups=new Map();
   for(const a of c.associations){
    for(const id of a.roomIds){if(membership.get(Number(id))!==a.group)throw Error(`Stale habitat association ${id}`);rooms.add(Number(id));}
-   const list=byArea.get(a.group)||[];list.push({...c,roomIds:a.roomIds.map(Number)});byArea.set(a.group,list);
+   const ids=groups.get(a.group)||new Set();for(const id of a.roomIds)ids.add(Number(id));groups.set(a.group,ids);
   }
+  for(const [group,ids] of groups){const list=byArea.get(group)||[];list.push({...c,roomIds:[...ids]});byArea.set(group,list);}
   creatures.set(c.id,{...c,rooms});
  }
  const areas=Object.entries(data.scenes).map(([key,s])=>{
