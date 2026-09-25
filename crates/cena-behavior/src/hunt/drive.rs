@@ -200,7 +200,13 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             let step = match said {
                 Said::Nothing => self.hold(BEAT).await,
                 Said::Wait(seconds) => self.hold(Duration::from_secs(u64::from(seconds))).await,
-                Said::Send { line, target } => self.send(&line, target).await,
+                Said::Send { line, target } => {
+                    self.transcript.clear();
+                    let sent = self.send(&line, target).await;
+                    let now = self.state.game_time_now();
+                    self.machine.replied(self.transcript.lines(), now);
+                    sent
+                }
                 Said::Walk(to) => self.walk(to).await,
                 Said::Loot(corpses) => self.loot(&corpses).await,
                 Said::Sell => self.sell().await,

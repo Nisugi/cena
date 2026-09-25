@@ -84,7 +84,7 @@ impl Hunt {
                     &self.profile.rest.commands.clone(),
                 ))
             }
-            Phase::Resting(_) => {
+            Phase::Resting(why) => {
                 if let Some(line) = self.pending.pop_front() {
                     return Some(Said::Send { line, target: None });
                 }
@@ -93,6 +93,7 @@ impl Hunt {
                     return Some(Said::Wait(REST_BEAT));
                 }
                 self.fried_kills = 0;
+                self.heard.rested_for_injury = why == Why::Injured;
                 let Some(hunting) = self.profile.rooms.hunting else {
                     return Some(Said::Done(Ending::NoHuntingRoom));
                 };

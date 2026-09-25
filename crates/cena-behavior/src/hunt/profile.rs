@@ -231,11 +231,18 @@ pub struct Loot {
 pub struct Wander {
     /// Seconds to wait in each room before moving on (`wander_wait`).
     pub wait: f64,
+    /// A stranger's floating disk does not make a room theirs
+    /// (`ignore_disks`, `bigshot.lic:7097`). Off, a room entered with one
+    /// in it is not fought in, as bigshot does.
+    pub ignore_disks: bool,
 }
 
 impl Default for Wander {
     fn default() -> Self {
-        Self { wait: 0.3 }
+        Self {
+            wait: 0.3,
+            ignore_disks: false,
+        }
     }
 }
 

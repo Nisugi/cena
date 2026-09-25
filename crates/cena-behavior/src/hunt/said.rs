@@ -67,6 +67,12 @@ pub enum Ending {
     Waggled,
     /// `;sc` sent its lines.
     Sent,
+    /// An injury refused an action again after a rest for it: nothing the
+    /// rest did healed it.
+    Injured,
+    /// An attack had no effect: the weapon or ammunition cannot hurt what
+    /// is here (`bigshot.lic:6398`).
+    NoEffect,
 }
 
 impl fmt::Display for Ending {
@@ -82,6 +88,10 @@ impl fmt::Display for Ending {
             Self::Stocked => f.write_str("stocked"),
             Self::Waggled => f.write_str("waggled"),
             Self::Sent => f.write_str("sent"),
+            Self::Injured => f.write_str("an injury still stops the attack after resting for it"),
+            Self::NoEffect => f.write_str(
+                "an attack had no effect: this weapon or ammunition cannot hurt what is here",
+            ),
         }
     }
 }
@@ -100,6 +110,8 @@ pub enum Why {
     /// Every bag is full: something wanted could go nowhere (`plan/31`;
     /// the author: *"too much loot"*).
     Loaded,
+    /// The game refused an action for an injury.
+    Injured,
     /// A box stayed in hand that no bag would take (`plan/31`; the author:
     /// *"we don't want to drop it, so we head in to rest"*).
     BoxInHand,
@@ -114,6 +126,7 @@ impl fmt::Display for Why {
             Self::Mana => "out of mana",
             Self::Loaded => "too much loot",
             Self::BoxInHand => "a box in hand that no bag will take",
+            Self::Injured => "too injured to fight",
         })
     }
 }

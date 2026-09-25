@@ -25,6 +25,18 @@
 //! | 50 | Engage | `Hunt::engage` | choose a target, target it, take the hunting stance, run its routine one step a tick |
 //! | 60 | Wander | `Hunt::wander` | nothing to fight: wait, then walk to a fresh room inside the boundaries |
 //!
+//! # The room is claimed on arrival
+//!
+//! Whether a room is the hunt's is decided **once, when it is entered**, as
+//! Lich's `Claim` decides it from the room the character walked into
+//! (`claim.rb:87-107`, run as the room loads): nobody else there, and no
+//! stranger's disk unless `wander.ignore_disks` (`bigshot.lic:7091-7099`).
+//! Read every tick instead, another player walking in stalled the hunt in
+//! place: engage refused the room, and wander would not leave a room with
+//! creatures in it (`inventory/12` §2). A room entered claimed stays the
+//! hunt's; a room entered contested is neither fought in nor looted
+//! (`bigshot.lic:7808`), and is walked on from.
+//!
 //! No arm keeps position: intent is re-derived from the state each tick
 //! (`behavior.rb:10-13`). What the machine remembers is only what the state
 //! cannot say -- which corpses it has looted, which step of the routine is
@@ -43,9 +55,22 @@
 use cena_map::RoomId;
 use cena_session::GameState;
 use cena_session::claim::{Claim, claim_room};
+
+/// Whose the room is, decided on entering it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Held {
+    /// Nobody else was here.
+    Mine,
+    /// Nobody else, but a stranger's disk: looted, not fought in, unless
+    /// the profile ignores disks.
+    Disk,
+    /// Someone else was here first.
+    Theirs,
+}
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::profile::{Profile, Step, Target};
+use super::replies::Heard;
 pub use super::said::{Ending, Here, Phase, Said, Why};
 use crate::heal::HealProfile;
 use crate::keep::KeepProfile;
@@ -118,6 +143,10 @@ pub struct Hunt {
     pub(super) send_only: Option<VecDeque<String>>,
     /// `--spellcast` and `--ranged` for the heal.
     pub(super) heal_mode: (bool, bool),
+    /// What the game's replies taught ([`super::replies`]).
+    pub(super) heard: Heard,
+    /// Whose this room is, once the game has said who is in it.
+    pub(super) held: Option<Held>,
 }
 
 impl Hunt {
@@ -151,6 +180,8 @@ impl Hunt {
             waggle_only: None,
             send_only: None,
             heal_mode: (false, false),
+            heard: Heard::default(),
+            held: None,
         }
     }
 
@@ -252,7 +283,13 @@ impl Hunt {
         if let Some(said) = self.errand(state, here) {
             return said;
         }
+        if let Some(ending) = self.heard.ending.take() {
+            return Said::Done(ending);
+        }
         self.note_room(state, now);
+        if self.held.is_none() {
+            self.held = Self::hold_room(state, self.profile.wander.ignore_disks);
+        }
         if let Some(said) = Self::survival(state) {
             return said;
         }
@@ -281,6 +318,7 @@ impl Hunt {
         }
         self.room.clone_from(&state.room.id);
         self.arrived = now;
+        self.held = None;
         self.target = None;
         self.queue.clear();
     }
@@ -333,7 +371,7 @@ impl Hunt {
     /// `loot #id` on a corpse not yet looted. With `loot.delay` and targets
     /// still here, no oftener than [`LOOT_SPACING`].
     fn loot(&mut self, state: &GameState, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting {
+        if self.phase != Phase::Hunting || self.held == Some(Held::Theirs) {
             return None;
         }
         let corpses: Vec<i64> = state
@@ -345,6 +383,7 @@ impl Hunt {
         for id in &corpses {
             if self.dead_seen.insert(*id) {
                 self.fried_kills = self.fried_kills.saturating_add(1);
+                self.heard.rested_for_injury = false;
             }
         }
         let corpse = corpses
@@ -476,8 +515,11 @@ impl Hunt {
     /// Choose a target, target it, take the hunting stance, and run one step
     /// of its routine.
     fn engage(&mut self, state: &GameState, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting || !Self::room_is_mine(state) {
+        if self.phase != Phase::Hunting || !self.may_fight() {
             return None;
+        }
+        if self.paused(now) {
+            return Some(Said::Wait(1));
         }
         let target = self.choose_target(state)?;
         if state.targeting.current() != Some(target) {
@@ -492,7 +534,6 @@ impl Hunt {
                 target: Some(target),
             });
         }
-        let _ = now;
         self.next_step(state, target)
     }
 
@@ -597,15 +638,38 @@ impl Hunt {
         })
     }
 
-    /// The room is this character's to fight in (`claim::claim_room`).
-    fn room_is_mine(state: &GameState) -> bool {
+    /// Whose the room is, as it stands (`claim::claim_room`), and whether a
+    /// stranger's disk is in it. `None` while the game has not said who is
+    /// here.
+    fn hold_room(state: &GameState, ignore_disks: bool) -> Option<Held> {
         let with_me: Vec<String> = state
             .group
             .members()
             .iter()
             .map(|member| member.noun.clone())
+            .chain(state.character.name.clone())
             .collect();
-        matches!(claim_room(&state.room, &with_me), Claim::Mine)
+        match claim_room(&state.room, &with_me) {
+            Claim::Mine => {
+                let stranger = state
+                    .room
+                    .disks()
+                    .any(|disk| !with_me.contains(&disk.owner));
+                Some(if stranger && !ignore_disks {
+                    Held::Disk
+                } else {
+                    Held::Mine
+                })
+            }
+            Claim::Contested { .. } => Some(Held::Theirs),
+            Claim::Unknown => None,
+        }
+    }
+
+    /// The room is the hunt's to fight in: claimed on entry, and not a
+    /// sanctuary.
+    fn may_fight(&self) -> bool {
+        self.held == Some(Held::Mine) && !self.in_sanctuary()
     }
 
     /// The stance command to send, if the profile names one for this phase
@@ -623,7 +687,10 @@ impl Hunt {
     /// Nothing to fight: wait the profile's moment, take the wander stance,
     /// then walk to a fresh room.
     fn wander(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting || self.fightable(state).next().is_some() {
+        // Unknown who is here: stay until the game says.
+        let stay = self.fightable(state).next().is_some()
+            && (self.held.is_none() && !self.in_sanctuary() || self.may_fight());
+        if self.phase != Phase::Hunting || stay {
             return None;
         }
         let waited = self.arrived.zip(now).is_none_or(|(arrived, now)| {

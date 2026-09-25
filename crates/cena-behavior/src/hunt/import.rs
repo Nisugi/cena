@@ -420,6 +420,7 @@ impl Job {
         self.profile.loot.defensive = flag(&self.take("loot_stance"));
         self.profile.loot.box_in_hand = flag(&self.take("box_in_hand"));
         self.profile.flee.count = number(&self.take("flee_count"));
+        self.profile.wander.ignore_disks = flag(&self.take("ignore_disks"));
         let wait = self.take("wander_wait");
         if wait.trim().is_empty() {
             return;
