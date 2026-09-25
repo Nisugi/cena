@@ -35,11 +35,11 @@ If anything else contradicts it, it wins.
 | `plan/15-wrayth-protocol.md` | **the game stream** — the XML protocol after login |
 | `plan/13-greenfield-vs-evolution.md` | why this is a new codebase, not a Vellum fork |
 | `plan/30-m6-hunt.md` | **the current milestone**: M6, the first real behavior, step by step with what is built |
-| `plan/33-guard-vocabulary.md` | bigshot's 87 guard words evaluated; PROPOSED, awaiting the author |
+| `plan/33-guard-vocabulary.md` | bigshot's 87 guard words evaluated; ANSWERED by the author 2026-09-24 (§6). Five words built (`cena-behavior/src/hunt/guard.rs`); the five new words answer 5 says to build are not; every other word imports **held** |
 | `plan/31-eloot-port.md` | **M6c**: eloot measured and ordered; Stages 1-3 (the hunt's share), skinning and Stages 4a-4c (the selling round during the rest: locksmith pool, gem shop, pawnshop, furrier, collectibles, Chronomage, bank) BUILT, with 4a's leftovers (the hands restored, the jeweler's refusals onward to the pawnshop, scrolls kept), and skinning's last gaps (bounty-only, the chimera, learned names saved) closed |
 | `plan/34-loot-ledger.md` | the loottracker port: 55 patterns as one classifier over the chunk (Stage 1 BUILT, `cena-model/src/state/ledger.rs`), the ledger beside the combat recorder in one database per character (Stage 2 BUILT, `cena-session/src/ledger.rs`; `--record`/`--no-record`), `;loot`'s five reports (Stage 3 BUILT, `cena/src/loot.rs`), combat's first five on the same reader (Stage 4 BUILT, `;combat`, `cena/src/combat.rs`), the Red Forest uid bug explained and fixed. All four stages BUILT |
 | `plan/36-eherbs-port.md` | **the Heal behavior**: eherbs measured and staged; Stages 1-2 BUILT (the 247-herb table in `cena-model/src/herbs.rs`, the dose monitor `state/doses.rs`; the healing in `cena-behavior/src/heal/`, during a rest and as `;heal`), Stage 3 (the Survivalist's Kit and its distiller, `state/kit.rs`) and Stage 4 (stocking at the herbalist, `;heal stock`/`fill`, `state/order_menu.rs`) BUILT |
-| `plan/37-spell-behaviors.md` | **spellactive, ewaggle, spellcaster**: measured and staged; Stages 1-2 BUILT (what the spell table dropped, joined back: `cena-model/src/spells/extras.rs`; durations and costs evaluated for the character: `spells/expr.rs`, `state/spell_time.rs`), Stage 3 (the casting step, `cena-behavior/src/cast.rs`), Stage 4 (spellactive as `;keep`, `keep.rs`), Stage 5 (ewaggle as `;waggle`, `waggle.rs`), Stage 6 (spellcaster as `;sc`, `spellcaster.rs`); open: catching a bare typed spell number |
+| `plan/37-spell-behaviors.md` | **spellactive, ewaggle, spellcaster**: measured and staged; Stages 1-2 BUILT (what the spell table dropped, joined back: `cena-model/src/spells/extras.rs`; durations and costs evaluated for the character: `spells/expr.rs`, `state/spell_time.rs`), Stage 3 (the casting step, `cena-behavior/src/cast.rs`), Stage 4 (spellactive as `;keep`, `keep.rs`), Stage 5 (ewaggle as `;waggle`, `waggle.rs`), Stage 6 (spellcaster as `;sc`, `spellcaster.rs`), and a bare typed spell number caught without `;sc` (`014256d`; `;sc set typed off` stops it) |
 | `plan/35-m7-agent.md` | **M7, the agent protocol**: MCP on loopback, control levels, takeover, all statuses; PROPOSED, the author's 2026-09-24 decisions quoted, four questions open (§9). Prior art in `reference/lich-agent-bridge` |
 | `plan/38-scripting-bridge.md` | **scripts in any language, through M7's connection**: a bridge per language, Ruby first (familiar Lich names, data from Hydra), nothing embedded; the Lich relay set aside on measured memory (466 MB committed, the map 100 MB of it). PROPOSED 2026-09-25, not scheduled; it would change the settled "users do not author scripts" line, which only the author changes (§1, §11) |
 | `crates/cena/src/architecture.rs` | the workspace as rustdoc: crate graph, one line's journey, the three seams, every rule and its test. Link-checked, so it cannot go stale silently |
@@ -310,13 +310,15 @@ counts a person, the authority survives a reconnect, preempt and the behavior wa
 the acting primitives (the stance setter, cast roundtime, the write-time `Gate`,
 `travel_holding`); and step 4's profile format, inheritance chain and bigshot importer
 (`cena-behavior/src/hunt/`, `;hunt import|check|list`). Nisugi's `ojandhaart.yaml`
-imports whole. **Open for the author:** `plan/33`'s six questions on the guard vocabulary;
-until a word is built, a step carrying it imports **held**, never silently lost.
+imports whole. `plan/33`'s six questions were answered on 2026-09-24; five guard words are
+built, and a step carrying any other imports **held**, never silently lost.
 **M6b, the engine, is built and not yet run live** (`cena-behavior/src/hunt/engine.rs`).
 **M6c** (eloot, `plan/31`, with the loot ledger `plan/34`) and **M6d** (eherbs, `plan/36`)
-are built, and the spell behaviors (`plan/37`) followed. **Next:** M6's live acceptance,
-which is the author's to run, and M6e, the `;` tools (`;foreach`, `;multi`, `;sorter`),
-which does not depend on the hunt. (Re-read from `plan/30` §7, 2026-09-25.)
+are built, and the spell behaviors (`plan/37`) followed. **The live run is last** (author,
+2026-09-25: *"The live run is at the end! We gotta get all the other m6 stuff so I can test
+it in the live run!!"*). **Next, in any order:** M6e, the `;` tools (`;foreach`, `;multi`,
+`;sorter`); the five guard words `plan/33` answer 5 says to build; `inventory/12` §2's open
+hunt gaps; ammo and the censer policy (`plan/30` §7, M6b). (Re-read 2026-09-25.)
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.

@@ -270,9 +270,10 @@ Pile reports, not re-checked here:
 > attack, injury and cast refusals (`replies.rs`); four of the rest triggers (dread, Wall of
 > Thorns poison, confusion, and a rest count, `rest.rs`); environmental flight (`flee.clouds`,
 > `vines`, `webs`, `voids`, `messages`, `wander.rs`); the contested room, now claimed on entry
-> (`engine.rs`); and being swallowed (`react.rs`). Still open from this table: spirit and
-> wound-rank rest triggers, the two hazard creatures, familiars, Barkskin, creature statuses in
-> room prose, flares for `;combat`, boons, and boss phases.
+> (`engine.rs`); and being swallowed (`react.rs`). Since fixed: the spirit and wound-rank
+> rest triggers (`07d7f36`) and boons (`d87a4ae`). Still open from this table: the two hazard
+> creatures, familiars, Barkskin, creature statuses in room prose, flares for `;combat`, and
+> boss phases.
 
 Lines the hunt needs, which the scripts match and Cena does not. All are GAP unless marked.
 

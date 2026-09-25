@@ -1,8 +1,11 @@
 # 33 — The guard vocabulary: bigshot's 87 words, evaluated
 
-**Status: PROPOSED — for the author's review** (`plan/30` §7, M6a step 4). Nothing here is
-built. The profile format and the importer (§7 of this doc) are designed from the verdicts, so
-a verdict changed here changes them.
+**Status: ANSWERED by the author 2026-09-24 (§6).** Written as PROPOSED for the author's
+review (`plan/30` §7, M6a step 4). Five words are built (`hunt/guard.rs`: `hidden`,
+`immobilized`, `thp`, `empowered_below`, `expiring`); the five new words answer 5 says to
+build (`injured`, `stunned_for`, `helpless`, `coup_ready`, `nomagic`) are not yet, and every
+other word imports held. The profile format and the importer (§7 of this doc) are designed
+from the verdicts, so a verdict changed here changes them.
 
 **Source.** `reference/scripts/scripts/bigshot.lic` at `7fd0b97` (2026-09-17), 10,246 lines.
 Every row cites the line its branch is on. The live install at

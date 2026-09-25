@@ -507,6 +507,8 @@ Demonstrated live on a short hunt.
 > - **Stand-ins and gaps, each said to the player where it bites:** loot is `loot #id` and
 >   healing is waiting (the plan's stand-ins, until M6c and M6d); groups, `pull`, `deader`,
 >   ammo, wands, boons and the `censer_between_actions` policy (`plan/33`) are not built.
+>   **Since built, 2026-09-25:** `pull` and `deader` (`8b4dfda`), wands (`f074197`) and
+>   boons (`d87a4ae`). Groups are outside M6 (§8). Ammo and the censer policy remain.
 >   **Closed the same day, on the author's objection to trying it live with gaps open:**
 >   Assume Aspect is cast as `cmd_assume` casts it (the spell, evoked or prepared, then
 >   `assume <aspect>` once the effects list shows it), and a walk inside a hunt reads and
@@ -546,6 +548,10 @@ Demonstrated live on a short hunt.
 > choosing what bigshot chose on real frames; what only a live run can show is the driver's
 > half: that each verb is sent as the game takes it, settled on roundtime, and that a walk
 > inside the hunt lands.
+>
+> **ORDER, the author, 2026-09-25:** *"The live run is at the end! We gotta get all the other
+> m6 stuff so I can test it in the live run!!"* The live run is not next: everything else in
+> M6 is built first, and one live run tests all of it.
 
 **M6c — eloot.** Its port plan first (`plan/31`), then the halves a hunt calls: loot,
 sort, box in hand. Town errands follow in the same plan's order.

@@ -116,7 +116,7 @@ parsed, or the effects list for yourself), then ewaggle's three passes: stackabl
 `<data>/hunt/sc/<instance>_<character>.toml`, `lines`, `edit`); `Hunt::send_only`, run by
 `;sc <spell|alias> [target] [count]`; `;sc alias|verb|stance|set` edit the profile. Tested in
 `tests/spellcaster.rs` (3). The errand machines moved to `hunt/errands.rs` when they took
-`engine.rs` past its cap. **Still open for the author:** catching a bare typed number.
+`engine.rs` past its cap. A bare typed number is caught too (`014256d`, below).
 
 `;sc <number|alias> [target] [count]`: the spell cast with the verb, stance and channel the
 player set for it, stance back to guarded after an aimed one; the `conserve` and `safety`
@@ -124,6 +124,11 @@ checks. **Open for the author:** spellcaster's point is that a bare `401` typed 
 is caught before it reaches the game. Hydra's command line only claims lines with the command
 symbol, so a bare number going to the game is today's behavior; catching it is a change to
 what the player's own lines do, and is the author's call.
+
+> **CLOSED 2026-09-25** (`014256d`). The command desk offers a line without the command
+> symbol to one registered taker (`claimant::Bare`), and spellcaster's `typed` switch, on by
+> default, takes a bare three- or four-digit spell number or an alias, as spellcaster's
+> `SPELL_RX`/`ALIAS_RX` do. `;sc set typed off` sends such a line to the game as before.
 
 ## 2. Not ported, named
 
