@@ -355,30 +355,6 @@ impl Hunt {
         })
     }
 
-    // --- flee ---------------------------------------------------------------
-
-    /// Too many fightable creatures, or one the profile always flees from.
-    fn flee(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting {
-            return None;
-        }
-        let flee = &self.profile.flee;
-        let counted = self
-            .could_fight(state)
-            .filter(|creature| !listed(&flee.uncounted, creature))
-            .count();
-        let crowd = flee.count.is_some_and(|limit| counted > limit as usize);
-        let always = state
-            .creatures()
-            .in_room()
-            .any(|creature| listed(&flee.from, creature));
-        if !(crowd || always) {
-            return None;
-        }
-        let to = self.next_room(here, now)?;
-        Some(Said::Walk(to))
-    }
-
     // --- loot -------------------------------------------------------------------
 
     /// `loot #id` on a corpse not yet looted. With `loot.delay` and targets
@@ -629,7 +605,7 @@ impl Hunt {
     /// unhostile (a companion), not an animate or a bare appendage, and not
     /// on the never-attack list. What the flee count counts, whether or not
     /// the target list names them.
-    fn could_fight<'a>(
+    pub(super) fn could_fight<'a>(
         &'a self,
         state: &'a GameState,
     ) -> impl Iterator<Item = &'a cena_session::CreatureInstance> + 'a {
@@ -641,7 +617,7 @@ impl Hunt {
     }
 
     /// Those the target list names: the creatures worth attacking.
-    fn fightable<'a>(
+    pub(super) fn fightable<'a>(
         &'a self,
         state: &'a GameState,
     ) -> impl Iterator<Item = &'a cena_session::CreatureInstance> + 'a {
@@ -681,93 +657,18 @@ impl Hunt {
 
     /// The room is the hunt's to fight in: claimed on entry, and not a
     /// sanctuary.
-    fn may_fight(&self) -> bool {
+    pub(super) fn may_fight(&self) -> bool {
         self.held == Some(Held::Mine) && !self.in_sanctuary()
     }
 
     /// The stance command to send, if the profile names one for this phase
     /// and the bar does not show it yet.
-    fn stance_for(want: Option<&str>, state: &GameState) -> Option<String> {
+    pub(super) fn stance_for(want: Option<&str>, state: &GameState) -> Option<String> {
         let want = Want::parse(want?).ok()?;
         if stance::landed(want, state) {
             return None;
         }
         stance::command(want, state)
-    }
-
-    // --- wander -------------------------------------------------------------------
-
-    /// Nothing to fight: wait the profile's moment, take the wander stance,
-    /// then walk to a fresh room.
-    fn wander(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {
-        // Unknown who is here: stay until the game says.
-        let stay = self.fightable(state).next().is_some()
-            && (self.held.is_none() && !self.in_sanctuary() || self.may_fight());
-        if self.phase != Phase::Hunting || stay {
-            return None;
-        }
-        let waited = self.arrived.zip(now).is_none_or(|(arrived, now)| {
-            f64::from(now.saturating_sub(arrived)) >= self.profile.wander.wait
-        });
-        if !waited {
-            return Some(Said::Wait(1));
-        }
-        if let Some(line) = Self::stance_for(self.profile.stance.wander.as_deref(), state) {
-            return Some(Said::Send { line, target: None });
-        }
-        let to = self.next_room(here, now)?;
-        Some(Said::Walk(to))
-    }
-
-    /// The next room to walk to: a crossable exit not on the boundary, a
-    /// fresh one if any, else the one least recently visited (`flee.rb`'s
-    /// `Walker`).
-    pub(super) fn next_room(&mut self, here: Here<'_>, now: Option<u32>) -> Option<RoomId> {
-        let room = here.room?;
-        if !self.visited.contains(&room) {
-            self.visited.push(room);
-        }
-        let boundaries = &self.profile.rooms.boundaries;
-        let options: Vec<RoomId> = here
-            .exits
-            .iter()
-            .copied()
-            .filter(|exit| !boundaries.contains(&exit.0) && *exit != room)
-            .collect();
-        if options.is_empty() {
-            return None;
-        }
-        let fresh: Vec<RoomId> = options
-            .iter()
-            .copied()
-            .filter(|exit| !self.visited.contains(exit))
-            .collect();
-        let chosen = if fresh.is_empty() {
-            self.visited
-                .iter()
-                .copied()
-                .find(|seen| options.contains(seen))?
-        } else {
-            let roll = self.roll(now);
-            let at = usize::try_from(roll % fresh.len() as u64).unwrap_or(0);
-            fresh[at]
-        };
-        self.visited.retain(|seen| *seen != chosen);
-        self.visited.push(chosen);
-        Some(chosen)
-    }
-
-    /// The next number from the seed, mixed with the clock so two hunts on
-    /// one seed do not walk in step.
-    fn roll(&mut self, now: Option<u32>) -> u64 {
-        let mut x = self.seed ^ u64::from(now.unwrap_or(0));
-        x ^= x >> 33;
-        x = x.wrapping_mul(0xff51_afd7_ed55_8ccd);
-        x ^= x >> 33;
-        x = x.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
-        x ^= x >> 33;
-        self.seed = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
-        x
     }
 }
 
@@ -778,7 +679,7 @@ fn named(wanted: &str, name: &str, noun: Option<&str>) -> bool {
 }
 
 /// Whether any of `names` names this creature ([`named`]).
-fn listed(names: &[String], creature: &cena_session::CreatureInstance) -> bool {
+pub(super) fn listed(names: &[String], creature: &cena_session::CreatureInstance) -> bool {
     names
         .iter()
         .any(|wanted| named(wanted, &creature.name, creature.noun.as_deref()))

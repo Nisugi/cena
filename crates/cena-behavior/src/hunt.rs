@@ -52,6 +52,7 @@ mod react;
 pub mod replies;
 mod rest;
 pub mod said;
+mod wander;
 pub mod yaml;
 
 pub use chain::{LoadError, Loaded, load};
