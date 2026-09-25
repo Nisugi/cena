@@ -254,6 +254,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             && text.stream.is_empty()
         {
             self.transcript.push_str(&text.content);
+            self.machine.heard(&text.content);
         }
         fold_into(&mut self.state, event)
     }

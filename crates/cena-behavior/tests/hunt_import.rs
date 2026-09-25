@@ -216,3 +216,21 @@ fn what_cannot_be_carried_is_held_and_named() {
 fn not_the_dialect_is_refused() {
     assert!(import("x", "just words\n").is_err());
 }
+
+#[test]
+fn hazard_flight_and_a_plain_flee_message_are_carried_and_a_regex_is_named() {
+    let carried = import(
+        "t",
+        "---\nflee_clouds: true\nflee_webs: true\nflee_message: The ground trembles|a gas forms\n",
+    )
+    .unwrap();
+    assert!(carried.profile.flee.clouds && carried.profile.flee.webs);
+    assert!(!carried.profile.flee.vines);
+    assert_eq!(
+        carried.profile.flee.messages,
+        ["the ground trembles", "a gas forms"]
+    );
+    let regex = import("t", "---\nflee_message: ground (?:trembles|shakes)\n").unwrap();
+    assert!(regex.profile.flee.messages.is_empty());
+    assert!(regex.notes.iter().any(|n| n.starts_with("flee_message")));
+}

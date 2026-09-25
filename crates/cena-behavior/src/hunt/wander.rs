@@ -32,7 +32,8 @@ impl Hunt {
             .creatures()
             .in_room()
             .any(|creature| listed(&flee.from, creature));
-        if !(crowd || always) {
+        let told = std::mem::take(&mut self.heard.flee_said);
+        if !(crowd || always || told || self.hazard_here(state)) {
             return None;
         }
         let to = self.next_room(here, now)?;
@@ -117,5 +118,34 @@ impl Hunt {
         x ^= x >> 33;
         self.seed = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
         x
+    }
+
+    /// A hazard the profile flees lies in the room (`bigshot.lic:8555-8560`).
+    fn hazard_here(&self, state: &GameState) -> bool {
+        let flee = &self.profile.flee;
+        state.room.objects.iter().any(|object| {
+            let noun = object.noun.to_ascii_lowercase();
+            let text = object.text.to_ascii_lowercase();
+            (flee.clouds
+                && (noun.contains("cloud")
+                    || noun.contains("breath")
+                    || text == "intense shimmering circle"))
+                || (flee.vines && noun.contains("vine"))
+                || (flee.webs && noun.contains("web"))
+                || (flee.voids && text.contains("black void"))
+        })
+    }
+
+    /// A line the game said, for `flee.messages`: one that holds a phrase
+    /// sends the hunt out of the room at the next tick.
+    pub fn heard(&mut self, line: &str) {
+        let messages = &self.profile.flee.messages;
+        if messages.is_empty() {
+            return;
+        }
+        let line = line.to_ascii_lowercase();
+        if messages.iter().any(|m| line.contains(m.as_str())) {
+            self.heard.flee_said = true;
+        }
     }
 }

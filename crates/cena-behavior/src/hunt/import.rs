@@ -400,6 +400,23 @@ impl Job {
         // So `invalid_targets` is a flee setting, not a list never attacked.
         self.profile.flee.uncounted = lowercased(list(&self.take("invalid_targets")));
         self.profile.flee.from = lowercased(list(&self.take("always_flee_from")));
+        self.profile.flee.clouds = flag(&self.take("flee_clouds"));
+        self.profile.flee.vines = flag(&self.take("flee_vines"));
+        self.profile.flee.webs = flag(&self.take("flee_webs"));
+        self.profile.flee.voids = flag(&self.take("flee_voids"));
+        let message = self.take("flee_message");
+        let message = message.trim();
+        if message.chars().any(|c| ".*+?[](){}^$\\".contains(c)) {
+            self.note(format!(
+                "flee_message: `{message}` is a regex; Hydra matches plain phrases, so it was not carried"
+            ));
+        } else if !message.is_empty() {
+            self.profile.flee.messages = message
+                .split('|')
+                .map(|m| m.trim().to_ascii_lowercase())
+                .filter(|m| !m.is_empty())
+                .collect();
+        }
     }
 
     /// A command list (`split_xx`): repeats expanded, and `a and b`, which

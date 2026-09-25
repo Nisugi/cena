@@ -311,3 +311,61 @@ fn a_dread_over_its_threshold_sends_the_hunt_to_rest_and_stop_after_ends_it() {
     }
     assert_eq!(said, Said::Done(Ending::Rested(1)));
 }
+
+/// A cloud in the room, beside the kobold.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors"
+)]
+fn clouded(state: &mut GameState) {
+    let run = |id: &str, noun: &str, bold: u16| {
+        let mut run = Run {
+            text: noun.to_owned(),
+            style: Default::default(),
+            link: Some(Link {
+                kind: LinkKind::Exist {
+                    id: id.to_owned(),
+                    noun: noun.to_owned(),
+                },
+                text: noun.to_owned(),
+                coord: None,
+            }),
+            inner_link: None,
+        };
+        run.style.bold_depth = bold;
+        run
+    };
+    state.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs {
+            runs: vec![run("42", "kobold", 1), run("88", "cloud", 0)],
+        },
+    });
+}
+
+#[test]
+fn a_hazard_or_a_message_the_profile_flees_sends_the_hunt_out() {
+    let mut state = fighting(1_000, "10");
+    clouded(&mut state);
+    let mut hunt = Hunt::new(Profile::parse(PROFILE).unwrap(), 1);
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_000)),
+        attack(),
+        "clouds not fled"
+    );
+    let fleeing =
+        format!("{PROFILE}\n[flee]\nclouds = true\nmessages = [\"the ground trembles\"]\n");
+    let mut hunt = Hunt::new(Profile::parse(&fleeing).unwrap(), 1);
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_000)),
+        Said::Walk(RoomId(11))
+    );
+    let calm = fighting(1_000, "10");
+    let mut hunt = Hunt::new(Profile::parse(&fleeing).unwrap(), 1);
+    assert_eq!(hunt.tick(&calm, here(10), Some(1_000)), attack());
+    hunt.heard("The Ground Trembles beneath you!");
+    assert_eq!(
+        hunt.tick(&calm, here(10), Some(1_001)),
+        Said::Walk(RoomId(11))
+    );
+}

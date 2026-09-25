@@ -110,6 +110,8 @@ pub(super) struct Heard {
     pub(super) paused_until: Option<u32>,
     /// The hunt is over, said at the next tick.
     pub(super) ending: Option<Ending>,
+    /// The game said a `flee.messages` phrase: leave at the next tick.
+    pub(super) flee_said: bool,
 }
 
 impl Hunt {

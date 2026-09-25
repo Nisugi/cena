@@ -213,6 +213,10 @@ pub struct When {
 /// When to leave the room.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bigshot's four hazard switches, carried as they are"
+)]
 pub struct Flee {
     /// Leave when more than this many hostile creatures are here
     /// (`flee_count`). Every creature the hunt could fight counts, whether or
@@ -227,6 +231,18 @@ pub struct Flee {
     pub uncounted: Vec<String>,
     /// Leave when any of these is here (`always_flee_from`), lowercase.
     pub from: Vec<String>,
+    /// Leave a room with a cloud or a breath in it, or an intense
+    /// shimmering circle (`flee_clouds`, `bigshot.lic:8556`).
+    pub clouds: bool,
+    /// ... a vine (`flee_vines`).
+    pub vines: bool,
+    /// ... a web (`flee_webs`).
+    pub webs: bool,
+    /// ... a black void (`flee_voids`).
+    pub voids: bool,
+    /// Leave when the game says any of these, ignoring case
+    /// (`flee_message`, a regex in bigshot; its `|` alternatives here).
+    pub messages: Vec<String>,
 }
 
 /// How the dead are looted.
