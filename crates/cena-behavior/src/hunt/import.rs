@@ -387,6 +387,14 @@ impl Job {
         };
         self.profile.rest.fog_optional = flag(&self.take("fog_optional"));
         self.profile.rest.fog_rift = flag(&self.take("fog_rift"));
+        for entry in list(&self.take("rallypoint_room_ids")) {
+            match number(&entry) {
+                Some(id) => self.profile.rooms.rally.push(id),
+                None => self.note(format!(
+                    "rallypoint_room_ids: `{entry}` is not a room number; Hydra's rooms are the map's numbers"
+                )),
+            }
+        }
         for entry in list(&self.take("return_waypoint_ids")) {
             match number(&entry) {
                 Some(id) => self.profile.rest.waypoints.push(id),

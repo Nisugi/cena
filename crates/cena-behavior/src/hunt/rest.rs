@@ -81,6 +81,9 @@ impl Hunt {
             Phase::Resting(why) => Some(self.resting(state, here, why)),
             Phase::Returning => {
                 let hunting = RoomId(self.profile.rooms.hunting?);
+                if let Some(said) = self.next_waypoint(here) {
+                    return Some(said);
+                }
                 Some(self.step_toward(
                     hunting,
                     here,
@@ -158,6 +161,17 @@ impl Hunt {
         };
         self.phase = Phase::Returning;
         self.notes.push("rested: walking back.".to_owned());
+        self.waypoints = self
+            .profile
+            .rooms
+            .rally
+            .iter()
+            .copied()
+            .map(RoomId)
+            .collect();
+        if let Some(said) = self.next_waypoint(here) {
+            return said;
+        }
         self.step_toward(
             RoomId(hunting),
             here,

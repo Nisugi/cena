@@ -437,3 +437,29 @@ fn a_rest_fogs_then_walks_the_waypoints_then_the_resting_room() {
         Said::Walk(RoomId(20))
     );
 }
+
+#[test]
+fn the_walk_back_goes_through_the_rally_points() {
+    let profile = PROFILE.replace("resting = 20", "resting = 20\nrally = [30]");
+    let mut hunt = Hunt::new(Profile::parse(&profile).unwrap(), 1);
+    hunt.replied(["But you don't have any mana!"], Some(1_000));
+    let state = fighting(1_000, "10");
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(1_000)),
+        Said::Walk(RoomId(20))
+    );
+    let resting = fighting(1_001, "20");
+    let mut said = hunt.tick(&resting, here(20), Some(1_001));
+    for second in 1_002..1_010 {
+        if matches!(said, Said::Walk(_)) {
+            break;
+        }
+        said = hunt.tick(&resting, here(20), Some(second));
+    }
+    assert_eq!(said, Said::Walk(RoomId(30)), "the rally point first");
+    let rally = fighting(1_020, "30");
+    assert_eq!(
+        hunt.tick(&rally, here(30), Some(1_020)),
+        Said::Walk(RoomId(10))
+    );
+}

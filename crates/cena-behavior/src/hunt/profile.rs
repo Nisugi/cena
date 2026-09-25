@@ -119,6 +119,9 @@ pub struct Rooms {
     pub hunting: Option<u32>,
     /// The rooms Wander stays within (`hunting_boundaries`).
     pub boundaries: Vec<u32>,
+    /// Rooms walked through, in order, on the way back to hunt
+    /// (`rallypoint_room_ids`, `bigshot.lic:7253-7262`).
+    pub rally: Vec<u32>,
     /// Where to rest (`resting_room_id`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resting: Option<u32>,
