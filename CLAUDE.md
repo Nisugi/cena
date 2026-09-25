@@ -135,6 +135,19 @@ cargo doc --workspace --no-deps                    # rustdoc link lints are DENY
 node crates/cena-web/browser-tests/smoke.mjs       # Despana browser smoke (CI job `browser-smoke`)
 ```
 
+**One target directory, debug profile** (author, 2026-09-25): *"You build to 1 target. You
+build to debug for your testing."* Every build and test writes to `target/`: no
+`--target-dir`, no `CARGO_TARGET_DIR`. No `--release` for testing. `.gitignore` still lists
+`target-pr1-review/` and `target-alt/` from before this was the rule.
+
+**Worktrees are allowed; whoever makes one removes it** (author, 2026-09-25: *"they can do
+what they want but they need to clean up after themselves"*). Take or discard the work, then
+`git worktree remove <path>`: it deletes the worktree's own `target/` with it, and refuses
+while there is uncommitted work. `.claude/hooks/worktrees.mjs` enforces this. At session
+start it records and reports what already exists; at stop it blocks once on any worktree or
+`target-*` folder made since. A worktree locked with `git worktree lock` is kept on purpose
+and never flagged.
+
 `/check` runs the full set and reports what failed. Use it before any commit, and after any
 agent claims the tree is green. The other project commands: `/where` (milestone, HEAD,
 uncommitted work, what is next), `/corpus` (query the log archive; ask the author first),
@@ -158,7 +171,12 @@ either build breaks `plan/12` §1a.
 author runs it (see Credentials). Run options are arguments, not env vars: an env var set
 once in a shell drove the character on every later run. M1's `--demo` and the measurement
 probes were removed at M6 (`plan/30` §2).
-`CENA_MAP` points travel at a converted map file.
+The environment variables that remain are paths and secrets, not run options: `CENA_MAP`
+(travel's converted map file, `crates/cena/src/travel.rs:47`), `CENA_DATA_DIR` (character
+stores, `crates/cena-session/src/character_store.rs:62`), `CENA_LOG_DIR`, `CENA_LOG_LINES`
+and `CENA_LOG_TIMESTAMPS` (the log sink, `crates/cena-platform/src/sink/config.rs`), and
+`CENA_PASSWORD_<ACCOUNT>`, the password ladder's rung between the OS keyring and the prompt
+(`crates/cena/src/secrets.rs:46`).
 
 `spike/eaccess-spike` and `rtest/` are excluded from the workspace. The spike has its own
 lockfile; run cargo inside it only for the spike.
@@ -197,7 +215,11 @@ a local WebSocket.
 holds the allowed crate edges (`ALLOWED_EDGES`, the table that *is* the architecture);
 `file_rules.rs` caps every source file at **800 lines** by default, with facade files capped
 lower and explicit, justified exceptions in `CAP_EXCEPTIONS`; `citations.rs` checks that
-every path cited in `plan/` resolves. When a file hits its cap, split it. **Moving code down
+every path cited in `plan/` resolves; `single_owner.rs` holds Rule 4.3 (one owning field per
+shared value), `raw_text_escapes.rs` Rule 2.1 (nothing above `cena-protocol` sees raw text),
+and `lints_are_inherited.rs` that every crate takes `[lints] workspace = true`. The rest
+(`architecture.rs`, `include_ban.rs`, `ratchet.rs`, `lexer_gaps.rs`) guard the scans
+themselves. Each file's `//!` header names its rule. When a file hits its cap, split it. **Moving code down
 is the fix; raising the cap is not.**
 
 ## Working in this repo
@@ -290,7 +312,11 @@ the acting primitives (the stance setter, cast roundtime, the write-time `Gate`,
 (`cena-behavior/src/hunt/`, `;hunt import|check|list`). Nisugi's `ojandhaart.yaml`
 imports whole. **Open for the author:** `plan/33`'s six questions on the guard vocabulary;
 until a word is built, a step carrying it imports **held**, never silently lost.
-**Next:** M6b, the engine (`plan/30` §3, §7).
+**M6b, the engine, is built and not yet run live** (`cena-behavior/src/hunt/engine.rs`).
+**M6c** (eloot, `plan/31`, with the loot ledger `plan/34`) and **M6d** (eherbs, `plan/36`)
+are built, and the spell behaviors (`plan/37`) followed. **Next:** M6's live acceptance,
+which is the author's to run, and M6e, the `;` tools (`;foreach`, `;multi`, `;sorter`),
+which does not depend on the hunt. (Re-read from `plan/30` §7, 2026-09-25.)
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.
