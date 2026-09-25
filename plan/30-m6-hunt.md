@@ -555,8 +555,10 @@ sort, box in hand. Town errands follow in the same plan's order.
 > Room looting); the rest is a settings window and the town. The pure planner
 > (`cena-behavior/src/loot/`) and the driver's loot loop are in; a hunt with an imported
 > loot profile searches each corpse and takes the floor by eloot's rules, and rests on
-> *too much loot* or a box left in hand, as the author answered. Stage 3 (boxes, dropped
-> bags, the sigil) and Stage 4 (selling during the rest) remain.
+> *too much loot* or a box left in hand, as the author answered. Stage 3 (eloot's specials,
+> a critter's bag emptied, the sigil) is BUILT too; Stage 4 (selling during the rest) waits
+> on M6d. **`plan/34`** stages the author's `loottracker.lic` as the loot ledger: the
+> classifier in the model, the recorder beside combat's, SQLite already embedded.
 
 **M6d — eherbs.** Its port plan first (`plan/32`), then healing at the rest room.
 
