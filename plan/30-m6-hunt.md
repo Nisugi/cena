@@ -508,7 +508,8 @@ Demonstrated live on a short hunt.
 >   healing is waiting (the plan's stand-ins, until M6c and M6d); groups, `pull`, `deader`,
 >   ammo, wands, boons and the `censer_between_actions` policy (`plan/33`) are not built.
 >   **Since built, 2026-09-25:** `pull` and `deader` (`8b4dfda`), wands (`f074197`) and
->   boons (`d87a4ae`). Groups are outside M6 (§8). Ammo and the censer policy remain.
+>   boons (`d87a4ae`). Groups are outside M6 (§8). The censer policy is built
+>   (`hunt/censer.rs`, `plan/33` §2h). Ammo remains.
 >   **Closed the same day, on the author's objection to trying it live with gaps open:**
 >   Assume Aspect is cast as `cmd_assume` casts it (the spell, evoked or prepared, then
 >   `assume <aspect>` once the effects list shows it), and a walk inside a hunt reads and

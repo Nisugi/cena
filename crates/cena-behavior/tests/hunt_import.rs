@@ -143,8 +143,8 @@ fn invalid_targets_are_left_out_of_the_flee_count_not_never_attacked() {
 
 #[test]
 fn what_cannot_be_carried_is_held_and_named() {
-    let yaml = "hunting_commands: attack(stunned), kweed(buff5 hiden), coupdegrace(buff5), \
-                fire(x2), kweed and fire, incant 911(!frozen once)\n\
+    let yaml = "hunting_commands: attack(justice), kweed(buff5 hiden), coupdegrace(buff5), \
+                fire(x2), kweed and fire, incant 911(!frozen !506)\n\
                 targets: (?:.+?)(a)\n\
                 wounded_eval: bleeding? || Char.percent_health < 40 || foo? || (a && b)\n\
                 hunting_room_id: u1234\n\
@@ -160,12 +160,8 @@ fn what_cannot_be_carried_is_held_and_named() {
             .as_deref()
             .unwrap_or_else(|| panic!("step {i} runs: {}", a[i]))
     };
-    assert_eq!(a[0].send, "attack(stunned)");
-    assert!(
-        held(0).contains("guard `stunned` is not built yet"),
-        "{}",
-        held(0)
-    );
+    assert_eq!(a[0].send, "attack(justice)");
+    assert!(held(0).contains("does not capture yet"), "{}", held(0));
     assert!(
         held(1).contains("`hiden` is not a guard bigshot knows either"),
         "{}",
@@ -183,7 +179,7 @@ fn what_cannot_be_carried_is_held_and_named() {
     );
     assert!(held(5).contains("`and`"), "{}", held(5));
     assert!(
-        held(6).contains("guard `once` is not built yet"),
+        held(6).contains("Celerity's last three seconds"),
         "one guard held holds the step, whatever else translated: {}",
         held(6)
     );

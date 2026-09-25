@@ -41,6 +41,7 @@
 
 mod aim;
 mod boons;
+mod censer;
 pub mod chain;
 pub mod command;
 pub mod desk;

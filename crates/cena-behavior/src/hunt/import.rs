@@ -10,27 +10,16 @@
 //! # Guards: translate, hold, never lose
 //!
 //! A step's guards go through bigshot's own reading of them (`plan/33`
-//! §1), word by word:
+//! §1), word by word, in `import/words.rs`, whose module docs table every
+//! word and the branch it was read from.
 //!
-//! | bigshot | becomes | because |
-//! |---|---|---|
-//! | `hidden`, `!hidden` | the same | `bigshot.lic:4396` |
-//! | `frozen` | `!immobilized` | `frozen` **skips** when the target is frozen (`:4418`), and Hydra's guards name when the step runs |
-//! | `!frozen` | `immobilized` | " |
-//! | `thpN`, `!thpN` | `thp N`, `!thp N` | `:4336` |
-//! | `empoweredN` | `empowered_below N` | `:4319` skips when an Empowered of +N or more is up |
-//! | `buffN` on a verb | `expiring "<its buff>" N` | `:4240`: skip while the verb's own buff has N s or less left; the buff comes from `:3228-3241` |
-//!
-//! A word bigshot accepts that Hydra has not built **holds the step**: it is
-//! kept, with the word named, and never runs. A word bigshot does not accept
-//! either holds the step too, and says so, because in bigshot it never held
-//! anything back (`check_state_condition` ends in `else false`, `:4522`).
-//! A lost guard changes when a command fires, and that is worse than a
-//! refusal.
-//!
-//! `buffN` is carried as the author meant it, not as bigshot runs it:
-//! `expiring` runs the step when the buff is down or about to lapse
-//! (`guard.rs`'s module docs have the measurement).
+//! A word that cannot be translated **holds the step**: it is kept, with
+//! the word named, and never runs. That covers the two words the model
+//! cannot answer yet, the forms no single guard says, and the words that
+//! never held anything back in bigshot (`check_state_condition` ends in
+//! `else false`, `:4522`). A lost guard changes when a command fires, and
+//! that is worse than a refusal. `censer` is no guard: it turns on the
+//! profile's `censer_between_actions`.
 //!
 //! # `script <name>` becomes a sequence to be written
 //!
@@ -56,120 +45,13 @@ use crate::stance::Want;
 /// bigshot's own bookkeeping, never policy.
 const BOOKKEEPING: &[&str] = &["profile_current", "save_profile_name", "notes"];
 
-/// Every guard word bigshot accepts (`bigshot.lic:3197`), bare: without
-/// `!`, without the number an amount word takes, without the quoted text
-/// an `E?"…"` word takes. MEASURED: 87 (`plan/33`).
-const BIGSHOT_WORDS: &[&str] = &[
-    "506",
-    "ancient",
-    "animate",
-    "ascended",
-    "ascension_boss",
-    "barrage",
-    "bearhug",
-    "buff",
-    "burst",
-    "calm",
-    "celerity",
-    "censer",
-    "challenging",
-    "coupdegrace",
-    "disease",
-    "disengaged",
-    "disoriented",
-    "EB",
-    "EC",
-    "ED",
-    "ES",
-    "empowered",
-    "e",
-    "essence",
-    "fatalcrit",
-    "frozen",
-    "flurry",
-    "flying",
-    "fury",
-    "garrote",
-    "h",
-    "hidden",
-    "holler",
-    "hovering",
-    "immobilized",
-    "inferior",
-    "justice",
-    "k",
-    "kneeling",
-    "m",
-    "mini_boss",
-    "mob",
-    "momentum",
-    "mount",
-    "noncorporeal",
-    "once",
-    "outside",
-    "pcs",
-    "poison",
-    "prone",
-    "pummel",
-    "rapid",
-    "rebuke",
-    "reflex",
-    "repeatdelay",
-    "rider",
-    "room",
-    "rooted",
-    "s",
-    "scourge",
-    "shout",
-    "sitting",
-    "sleeping",
-    "smote",
-    "splashy",
-    "stunned",
-    "surge",
-    "sympathetic",
-    "tailwind",
-    "tier",
-    "tier1",
-    "tier2",
-    "tier3",
-    "thp",
-    "thrash",
-    "ucsdecent",
-    "ucsexcellent",
-    "ucsgood",
-    "ucstierup",
-    "undead",
-    "v",
-    "valid",
-    "vigor",
-    "voidweaver",
-    "webbed",
-    "wounded",
-    "yowlp",
-];
-
-/// The buff each verb grants, for `buffN` (`bigshot.lic:3228-3241`).
-/// `coupdegrace`'s is a pattern, `Empowered (+N)`, and is not here: a
-/// pattern is not a name.
-const BUFF_OF: &[(&str, &str)] = &[
-    ("barrage", "Enh. Dexterity (+10)"),
-    ("bearhug", "Enh. Strength (+10)"),
-    ("flurry", "Slashing Strikes"),
-    ("fury", "Enh. Constitution (+10)"),
-    ("garrote", "Enh. Agility (+10)"),
-    ("kweed", "Tangleweed Vigor"),
-    ("pummel", "Concussive Blows"),
-    ("shout", "Empowered (+20)"),
-    ("thrash", "Forceful Blows"),
-    ("weed", "Tangleweed Vigor"),
-    ("yowlp", "Yertie's Yowlp"),
-];
-
 /// The catch-all patterns bigshot profiles use for "any creature".
 const ANY: &[&str] = &["(?:.+?)", "(?:.+)", "(?:.*)", ".+?", ".+", ".*"];
 
 mod rest;
+mod words;
+
+use words::{Word, translate};
 
 /// A profile brought in from bigshot, and what the bringing cost.
 #[derive(Debug, Clone, PartialEq)]
@@ -525,15 +407,33 @@ impl Job {
         let mut held = Vec::new();
         for token in &tokens {
             match translate(&verb, token) {
-                Ok(guard) => guards.push(guard),
+                Ok(Word::Guard(guard)) => guards.push(guard),
+                Ok(Word::Censer) => self.censer(),
                 Err(why) => held.push(why),
             }
         }
         if !held.is_empty() {
             return Step::held(entry, &held.join("; "));
         }
+        if guards.is_empty() {
+            return Step::parse(&verb).unwrap_or_else(|why| Step::held(entry, &why));
+        }
         let line = format!("{verb} ({})", guards.join(" "));
         Step::parse(&line).unwrap_or_else(|why| Step::held(entry, &why))
+    }
+
+    /// A routine carried `censer`: the censer is cast between every step
+    /// (`plan/33` §2h), noted once.
+    fn censer(&mut self) {
+        if self.profile.censer_between_actions {
+            return;
+        }
+        self.profile.censer_between_actions = true;
+        self.note(
+            "`censer` became censer_between_actions: Ethereal Censer is cast between routine steps \
+             whenever it is off cooldown and affordable, as the word meant for the whole routine"
+                .to_owned(),
+        );
     }
 
     /// An empty sequence for `script <name>`, noted once.
@@ -547,69 +447,6 @@ impl Job {
              Write its steps under [sequences] {name}; until then the routine skips it"
         ));
     }
-}
-
-/// One bigshot guard word as Hydra's, or why it cannot be.
-fn translate(verb: &str, token: &str) -> Result<String, String> {
-    let (bang, word) = token
-        .strip_prefix('!')
-        .map_or(("", token), |word| ("!", word));
-    let flipped = if bang.is_empty() { "!" } else { "" };
-    let lower = word.to_ascii_lowercase();
-    if lower == "hidden" {
-        return Ok(format!("{bang}hidden"));
-    }
-    if lower == "frozen" {
-        return Ok(format!("{flipped}immobilized"));
-    }
-    if let Some(n) = numbered(&lower, "thp") {
-        return Ok(format!("{bang}thp {n}"));
-    }
-    if let Some(n) = numbered(&lower, "empowered") {
-        return Ok(format!("{bang}empowered_below {n}"));
-    }
-    if let Some(n) = numbered(&lower, "buff") {
-        if !bang.is_empty() {
-            return Err(format!("`{token}`: bigshot has no negated buff guard"));
-        }
-        let first = verb
-            .split_whitespace()
-            .next()
-            .unwrap_or("")
-            .to_ascii_lowercase();
-        return match BUFF_OF.iter().find(|(v, _)| *v == first) {
-            Some((_, buff)) => Ok(format!("expiring \"{buff}\" {n}")),
-            None if first == "coupdegrace" => Err(format!(
-                "`{token}` on `{verb}`: its buff is a pattern, `Empowered (+N)`, and `expiring` takes a name"
-            )),
-            None => Err(format!(
-                "`{token}` on `{verb}`: bigshot knows no buff for that verb, so the guard never held in bigshot either"
-            )),
-        };
-    }
-    if bigshot_knows(word) {
-        return Err(format!("guard `{token}` is not built yet (`plan/33`)"));
-    }
-    Err(format!(
-        "`{token}` is not a guard bigshot knows either; it never held this step back"
-    ))
-}
-
-/// `thp20` with `thp` is 20.
-fn numbered(lower: &str, word: &str) -> Option<u32> {
-    lower.strip_prefix(word)?.parse().ok()
-}
-
-/// Whether bigshot's `:3197` alternation accepts the word: as written, or
-/// with its number or quoted text removed. Case does not matter (`/i`).
-fn bigshot_knows(word: &str) -> bool {
-    let bare = word.split('"').next().unwrap_or(word);
-    let known = |w: &str| BIGSHOT_WORDS.iter().any(|k| k.eq_ignore_ascii_case(w));
-    if known(bare) {
-        return true;
-    }
-    let stem = bare.trim_end_matches(|c: char| c.is_ascii_digit());
-    !stem.is_empty() && known(stem)
 }
 
 /// The verb and the guard group of a bigshot routine entry: bigshot's

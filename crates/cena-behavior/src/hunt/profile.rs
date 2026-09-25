@@ -79,6 +79,10 @@ pub struct Profile {
     /// What Maintain keeps up: a spell number, or a number and its words, as
     /// sent (`signs`).
     pub signs: Vec<String>,
+    /// Cast Ethereal Censer (320) between routine steps whenever it is off
+    /// cooldown and affordable: bigshot's `censer` word, which the author
+    /// meant for the whole routine (`plan/33` §2h).
+    pub censer_between_actions: bool,
     /// Creatures never attacked, and never counted toward fleeing
     /// (`flee.count`), lowercase. Hydra's own; bigshot has no such setting.
     /// Its nearest is the `untargetable` list it learns from the game

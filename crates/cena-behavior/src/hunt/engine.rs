@@ -176,6 +176,8 @@ pub struct Hunt {
     pub(super) boosts: (u32, bool),
     /// The steps sent in this room, for `once` and `every` ([`Used`]).
     pub(super) used: Used,
+    /// When the censer was last cast ([`super::censer`]).
+    pub(super) censer_cast: Option<u32>,
 }
 
 impl Hunt {
@@ -223,6 +225,7 @@ impl Hunt {
             boons: BTreeMap::new(),
             assessing: None,
             used: Used::new(),
+            censer_cast: None,
         }
     }
 
@@ -610,6 +613,10 @@ impl Hunt {
             };
             if !step.when.iter().all(|c| c.holds(&facts) == Some(true)) {
                 continue;
+            }
+            if let Some(line) = self.censer_first(state, &step.send, now) {
+                self.queue.push_front(step);
+                return Some(Said::Send { line, target: None });
             }
             // Recorded when the step itself goes, not a line sent before it
             // while it waits in the queue, or `once` would refuse its return.

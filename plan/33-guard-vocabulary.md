@@ -242,7 +242,9 @@ on" would have cast it before one step; the shorthand meant every step. **Verdic
 an engine behavior**, `censer_between_actions` (the author's name), a profile flag under
 Maintain that the engine honours between routine steps, `cooldown`- and mana-guarded. The
 importer sets the flag when any routine carries `censer` and drops the word from the step,
-saying so. Built in M6b, where the engine is.
+saying so. **BUILT 2026-09-25**: `crates/cena-behavior/src/hunt/censer.rs` casts 320 ahead
+of a routine step as `handle_censer` does (`bigshot.lic:4530-4542`), the step waiting in the
+queue; the importer's translation of every other word is `hunt/import/words.rs`.
 
 ---
 

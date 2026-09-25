@@ -316,10 +316,10 @@ built; a step the importer cannot translate imports **held**, never silently los
 **M6c** (eloot, `plan/31`, with the loot ledger `plan/34`) and **M6d** (eherbs, `plan/36`)
 are built, and the spell behaviors (`plan/37`) followed. **The live run is last** (author,
 2026-09-25: *"The live run is at the end! We gotta get all the other m6 stuff so I can test
-it in the live run!!"*). **Next, in any order:** M6e, the `;` tools (`;foreach`, `;multi`,
-`;sorter`); the importer's translation of bigshot's guard words into `plan/33`'s;
-`inventory/12` §2's open hunt gaps; ammo and the censer policy (`plan/30` §7, M6b); the
-bigshot settings the importer still names as not imported. (Re-read 2026-09-25.)
+it in the live run!!"*). **Next, in any order:** M6e's `;foreach` and `;multi` (`;sorter`
+is built); `inventory/12` §2's open hunt gaps; ammo (`plan/30` §7, M6b); bigshot's routine
+verbs the engine does not handle; the bigshot settings the importer still names as not
+imported. (Re-read 2026-09-25.)
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.
