@@ -27,7 +27,12 @@ impl Hunt {
             .could_fight(state)
             .filter(|creature| !listed(&flee.uncounted, creature))
             .count();
-        let crowd = flee.count.is_some_and(|limit| counted > limit as usize);
+        let limit = if std::mem::take(&mut self.entered) && flee.lone_only {
+            Some(1)
+        } else {
+            flee.count
+        };
+        let crowd = limit.is_some_and(|limit| counted > limit as usize);
         let always = state
             .creatures()
             .in_room()

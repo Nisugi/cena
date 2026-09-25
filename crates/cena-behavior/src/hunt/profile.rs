@@ -96,6 +96,10 @@ pub struct Profile {
     pub react: React,
     /// What to attack, in order of preference, each with its routine.
     pub targets: Vec<Target>,
+    /// Leave the current target for a better-ranked one that appears
+    /// (`priority`, `bigshot.lic:8703-8720`). Off, the current target is
+    /// fought until it dies or goes.
+    pub priority: bool,
     /// The routines, by name: the steps taken against a target, in order.
     pub routines: BTreeMap<String, Vec<Step>>,
     /// Named lists of steps a routine step may stand for, such as `volley`.
@@ -249,6 +253,9 @@ pub struct Flee {
     pub webs: bool,
     /// ... a black void (`flee_voids`).
     pub voids: bool,
+    /// On entering a room, leave if more than one creature could be fought
+    /// (`lone_targets_only`, `bigshot.lic:8590`).
+    pub lone_only: bool,
     /// Leave when the game says any of these, ignoring case
     /// (`flee_message`, a regex in bigshot; its `|` alternatives here).
     pub messages: Vec<String>,

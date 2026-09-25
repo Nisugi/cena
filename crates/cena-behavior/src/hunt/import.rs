@@ -443,6 +443,20 @@ impl Job {
         self.profile.loot.defensive = flag(&self.take("loot_stance"));
         self.profile.loot.box_in_hand = flag(&self.take("box_in_hand"));
         self.profile.flee.count = number(&self.take("flee_count"));
+        self.profile.flee.lone_only = flag(&self.take("lone_targets_only"));
+        self.profile.priority = flag(&self.take("priority"));
+        // bigshot turns autosneak on when it starts attacking and off when
+        // it stops (`bigshot.lic:7295-7298`, `:7454-7457`): here, with the
+        // commands sent on returning to hunt and on arriving to rest.
+        if flag(&self.take("sneaky_sneaky")) {
+            self.profile
+                .prepare
+                .push("movement autosneak on".to_owned());
+            self.profile
+                .rest
+                .commands
+                .insert(0, "movement autosneak off".to_owned());
+        }
         self.profile.wander.ignore_disks = flag(&self.take("ignore_disks"));
         // Absent is bigshot's default, on.
         let reaction = self.take("weapon_reaction");

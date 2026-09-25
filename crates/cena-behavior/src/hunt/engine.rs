@@ -152,6 +152,8 @@ pub struct Hunt {
     pub(super) react: Reacting,
     /// Rests finished, for `rest.stop_after`.
     pub(super) rests: u32,
+    /// The room was entered since flee last looked (`flee.lone_only`).
+    pub(super) entered: bool,
 }
 
 impl Hunt {
@@ -189,6 +191,7 @@ impl Hunt {
             held: None,
             react: Reacting::default(),
             rests: 0,
+            entered: false,
         }
     }
 
@@ -331,6 +334,7 @@ impl Hunt {
         self.room.clone_from(&state.room.id);
         self.arrived = now;
         self.held = None;
+        self.entered = true;
         self.target = None;
         self.queue.clear();
     }
@@ -573,9 +577,19 @@ impl Hunt {
     /// attacking, else the best by the profile's order.
     fn choose_target(&mut self, state: &GameState) -> Option<i64> {
         if let Some(current) = self.target
-            && self.fightable(state).any(|creature| creature.id == current)
+            && let Some(here) = self
+                .fightable(state)
+                .find(|creature| creature.id == current)
         {
-            return Some(current);
+            let rank = |name: &str, noun: Option<&str>| self.rank(name, noun).map(|(at, _)| at);
+            let held = rank(&here.name, here.noun.as_deref());
+            let outranked = self.profile.priority
+                && self
+                    .fightable(state)
+                    .any(|creature| rank(&creature.name, creature.noun.as_deref()) < held);
+            if !outranked {
+                return Some(current);
+            }
         }
         let mut best: Option<(usize, i64, String)> = None;
         for creature in self.fightable(state) {

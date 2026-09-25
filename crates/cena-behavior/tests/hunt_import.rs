@@ -234,3 +234,18 @@ fn hazard_flight_and_a_plain_flee_message_are_carried_and_a_regex_is_named() {
     assert!(regex.profile.flee.messages.is_empty());
     assert!(regex.notes.iter().any(|n| n.starts_with("flee_message")));
 }
+
+#[test]
+fn priority_lone_targets_and_sneaking_are_carried() {
+    let carried = import(
+        "t",
+        "---\npriority: true\nlone_targets_only: true\nsneaky_sneaky: true\nresting_commands: store all\n",
+    )
+    .unwrap();
+    assert!(carried.profile.priority && carried.profile.flee.lone_only);
+    assert_eq!(carried.profile.prepare, ["movement autosneak on"]);
+    assert_eq!(
+        carried.profile.rest.commands.first().map(String::as_str),
+        Some("movement autosneak off")
+    );
+}

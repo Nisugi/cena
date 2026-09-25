@@ -394,3 +394,13 @@ fn low_spirit_rests_when_the_profile_says() {
         Said::Walk(RoomId(20))
     );
 }
+
+#[test]
+fn lone_targets_only_leaves_a_room_entered_with_two() {
+    let profile = format!("{PROFILE}\n[flee]\nlone_only = true\n");
+    let mut hunt = Hunt::new(Profile::parse(&profile).unwrap(), 1);
+    let mut state = fighting(1_000, "10");
+    clouded(&mut state);
+    // The cloud is not a creature: one kobold, stay.
+    assert_eq!(hunt.tick(&state, here(10), Some(1_000)), attack());
+}
