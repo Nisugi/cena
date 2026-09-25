@@ -1,6 +1,6 @@
 # 36 — The Heal behavior: eherbs, measured and ordered
 
-**Status: PROPOSED 2026-09-25, stages built in order.** The author, 2026-09-25: *"port
+**Status: all four stages BUILT 2026-09-25.** The author, 2026-09-25: *"port
 eherbs, the healing, the survivalist/distiller stuff, the stock (means adding all the shop
 data into the model crate)"*. This is the record of what eherbs does, what Hydra already
 has for it, and the order it is built in. The rules of `plan/31` apply unchanged: a pure
@@ -101,6 +101,18 @@ the kit at the solid herb with no liquid counterpart, else at the liquid it has 
 unless the extractor is already busy.
 
 ### Stage 4 — stocking
+
+**BUILT 2026-09-25.** `cena-behavior/src/heal/stock.rs` (`Stocker`): eherbs' minimum-dose
+table scaled by `stock`, or a kit's `tier * 25 + 25`; unmeasured herbs fetched, measured and
+put back; the kinds short, with the first herb the table says the nearest herbalist's town
+sells, `(minimum - held) / store doses` purchases; `order` read once
+(`cena-model/src/state/order_menu.rs`, `GameState::order_menu`, from the `<d cmd='order N'>`
+links); `order <n> <number>` ten at a time and `buy`; a package opened, emptied into the
+container and thrown away; *not enough silver* sends the round to the nearest bank for the
+price and a tenth again (8,000 when the price is unknown), and back. A kit is stocked once
+per form. `fill` buys one of each kind the container has none of. `;heal stock` and `;heal
+fill` run it (`Hunt::stock_only`). Tested in `tests/heal_stock.rs` (5). **Not built:**
+bundling what was bought (`bundle_all`), eherbs' price cache, depositing afterwards.
 
 The herb container counted per kind against eherbs' minimum doses (scaled by the stock
 percent, or the kit's tier); a shopping list priced from the herbalist's menu (`order`,

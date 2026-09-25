@@ -15,9 +15,11 @@ pub mod kit;
 pub mod plan;
 pub mod profile;
 pub mod reply;
+pub mod stock;
 
 pub use choose::{Mode, next_kind};
 pub use kit::distill_target;
-pub use plan::{Healed, Healer, Step};
+pub use plan::{Healed, Healer, Step, container_named};
 pub use profile::{HealProfile, path};
 pub use reply::{Reply, classify};
+pub use stock::{Stocked, Stocker, Want};

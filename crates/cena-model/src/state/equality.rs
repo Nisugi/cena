@@ -77,6 +77,7 @@ impl PartialEq for GameState {
             bounty,
             doses,
             kits,
+            order_menu,
             targeting,
             maneuvers,
             cast_time_ends,
@@ -107,6 +108,7 @@ impl PartialEq for GameState {
             && bounty == &other.bounty
             && doses == &other.doses
             && kits == &other.kits
+            && order_menu == &other.order_menu
             && targeting == &other.targeting
             && maneuvers == &other.maneuvers
             && cast_time_ends == &other.cast_time_ends

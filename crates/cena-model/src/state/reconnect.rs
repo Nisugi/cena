@@ -143,6 +143,7 @@ impl GameState {
             bounty,
             doses,
             kits,
+            order_menu,
             targeting,
             maneuvers,
             cast_time_ends,
@@ -247,6 +248,8 @@ impl GameState {
         // A kit's tier, extractor and listing are the kit's own, for the
         // same reason.
         let _ = kits;
+        // A shop's menu is the shop's; a reconnect does not change it.
+        let _ = order_menu;
 
         // **The arrival counter is KEPT, and it is not a game fact.** It
         // counts rooms this SESSION has entered, so resetting it would make

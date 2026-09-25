@@ -105,6 +105,8 @@ pub struct Hunt {
     pub(super) heal: Option<HealProfile>,
     /// `;heal`: no hunt, one heal. `Some(false)` until it has been asked for.
     heal_only: Option<bool>,
+    /// `;heal stock` / `;heal fill`: no hunt, one round; `fill` beside it.
+    stock_only: Option<(bool, bool)>,
     /// `--spellcast` and `--ranged` for the heal.
     heal_mode: (bool, bool),
 }
@@ -135,6 +137,7 @@ impl Hunt {
             must_rest: None,
             heal: None,
             heal_only: None,
+            stock_only: None,
             heal_mode: (false, false),
         }
     }
@@ -146,6 +149,15 @@ impl Hunt {
         let mut machine = Self::new(Profile::default(), 0).with_heal(profile);
         machine.heal_only = Some(false);
         machine.heal_mode = (spellcast, ranged);
+        machine
+    }
+
+    /// `;heal stock` (`fill` false) or `;heal fill`: a machine that stocks
+    /// the herb container once and ends.
+    #[must_use]
+    pub fn stock_only(profile: HealProfile, fill: bool) -> Self {
+        let mut machine = Self::new(Profile::default(), 0).with_heal(profile);
+        machine.stock_only = Some((false, fill));
         machine
     }
 
@@ -244,6 +256,14 @@ impl Hunt {
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
+        if let Some((asked, fill)) = self.stock_only {
+            self.stock_only = Some((true, fill));
+            return if asked {
+                Said::Done(Ending::Stocked)
+            } else {
+                Said::Stock(fill)
+            };
+        }
         if let Some(asked) = self.heal_only {
             self.heal_only = Some(true);
             return if asked {

@@ -14,8 +14,16 @@ pub enum Reply {
     MustPick,
     /// *Get what?* or *I could not find*: the herb is not there.
     Gone,
-    /// *You need a free hand*.
+    /// *You need a free hand*, *You will need a free hand*, *You're going
+    /// to need a free hand*.
     NeedHand,
+    /// The herbalist sold it: *Sold for N silver* (`buy_herb`, `:1260`).
+    Sold,
+    /// *But you do not have enough silver!*
+    NotEnough,
+    /// What an `order` said it costs: the first *N silver* in the answer
+    /// (`check_prices`, `:1318`).
+    Price(u64),
 }
 
 /// Read one line. `None` when it says nothing a herb step acts on.
@@ -40,8 +48,30 @@ pub fn classify(line: &str) -> Option<Reply> {
     if text.starts_with("Get what") || has("I could not find what you were referring to") {
         return Some(Reply::Gone);
     }
-    if has("You need a free hand") {
+    if has("need a free hand") {
         return Some(Reply::NeedHand);
     }
-    None
+    if has("Sold for ") && has(" silver") {
+        return Some(Reply::Sold);
+    }
+    if text.starts_with("But you do not have enough silver") {
+        return Some(Reply::NotEnough);
+    }
+    price(text).map(Reply::Price)
+}
+
+/// The first `N silver` or `N silvers` on a line, commas allowed.
+fn price(text: &str) -> Option<u64> {
+    let words: Vec<&str> = text.split_whitespace().collect();
+    words.windows(2).find_map(|pair| {
+        let unit = pair[1].trim_end_matches(|c: char| !c.is_alphanumeric());
+        if unit != "silver" && unit != "silvers" {
+            return None;
+        }
+        let number = pair[0].replace(',', "");
+        if number.is_empty() || !number.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        number.parse().ok()
+    })
 }

@@ -39,6 +39,9 @@ pub enum Said {
     /// Heal with herbs by the character's heal profile (`plan/36`): the
     /// driver runs the healer until it is done.
     Heal,
+    /// Stock the herb container at the herbalist and come back (`plan/36`
+    /// Stage 4); `true` is eherbs' `fill`, one of each kind lacking.
+    Stock(bool),
     /// Nothing this tick.
     Nothing,
 }
@@ -56,6 +59,8 @@ pub enum Ending {
     Unreachable(RoomId),
     /// `;heal` ran: there was no hunt, only the healing.
     Healed,
+    /// `;heal stock` or `;heal fill` ran: there was no hunt, only the round.
+    Stocked,
 }
 
 impl fmt::Display for Ending {
@@ -68,6 +73,7 @@ impl fmt::Display for Ending {
             Self::NoHuntingRoom => f.write_str("the profile names no hunting room to return to"),
             Self::Unreachable(room) => write!(f, "there is no way to room {}", room.0),
             Self::Healed => f.write_str("healed"),
+            Self::Stocked => f.write_str("stocked"),
         }
     }
 }

@@ -75,6 +75,7 @@ pub mod movement;
 mod nouns;
 mod numbers;
 pub mod objectives;
+pub mod order_menu;
 pub mod overwatch;
 mod reconnect;
 pub mod resolve;
@@ -158,6 +159,8 @@ pub struct GameState {
     pub doses: doses::Doses,
     /// Survivalist's Kits, as `analyze` and `look in` describe them (`kit.rs`).
     pub kits: kit::Kits,
+    /// The last shop `order` menu seen (`order_menu.rs`).
+    pub order_menu: order_menu::OrderMenu,
     /// Maneuvers the game has said are on cooldown (`maneuvers.rs`).
     pub maneuvers: maneuvers::Maneuvers,
     /// What the game says you can attack (`targeting.rs`): the `combat`

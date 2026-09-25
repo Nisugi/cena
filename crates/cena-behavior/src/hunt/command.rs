@@ -51,6 +51,12 @@ pub enum Command {
         /// Only blood.
         blood: bool,
     },
+    /// `;heal stock` or `;heal fill`: stock the herb container at the
+    /// herbalist; `fill` buys one of each kind it lacks.
+    Stock {
+        /// eherbs' `fill` rather than `stock`.
+        fill: bool,
+    },
     /// Stop the hunt under way.
     Stop,
     /// Hunt's, and already answered: said wrongly. Nothing to do.
@@ -102,12 +108,23 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
 /// `;heal`'s flags, with or without eherbs' dashes.
 fn heal<'a>(words: impl Iterator<Item = &'a str>) -> Result<Command, String> {
     let (mut spellcast, mut ranged, mut blood) = (false, false, false);
+    let words: Vec<&str> = words.collect();
+    match words.as_slice() {
+        [word] if word.eq_ignore_ascii_case("stock") => return Ok(Command::Stock { fill: false }),
+        [word] if word.eq_ignore_ascii_case("fill") => return Ok(Command::Stock { fill: true }),
+        _ => {}
+    }
     for word in words {
         match word.trim_start_matches('-').to_ascii_lowercase().as_str() {
             "spellcast" => spellcast = true,
             "ranged" => ranged = true,
             "blood" => blood = true,
-            _ => return Err("heal, heal spellcast, heal ranged, or heal blood".to_owned()),
+            _ => {
+                return Err(
+                    "heal, heal spellcast, heal ranged, heal blood, heal stock or heal fill"
+                        .to_owned(),
+                );
+            }
         }
     }
     Ok(Command::Heal {
@@ -203,6 +220,11 @@ mod tests {
             }))
         );
         assert!(matches!(parse("heal everyone"), Some(Err(_))));
+        assert_eq!(
+            parse("heal stock"),
+            Some(Ok(Command::Stock { fill: false }))
+        );
+        assert_eq!(parse("heal fill"), Some(Ok(Command::Stock { fill: true })));
     }
 
     #[test]

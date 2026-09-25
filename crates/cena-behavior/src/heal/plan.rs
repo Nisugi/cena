@@ -310,29 +310,7 @@ impl Healer {
         if let Some(sack) = &self.sack {
             return Some(sack.clone());
         }
-        let words: Vec<String> = self
-            .profile
-            .container
-            .split_whitespace()
-            .map(str::to_ascii_lowercase)
-            .collect();
-        if words.is_empty() {
-            return None;
-        }
-        let found = state
-            .inventory
-            .containers()
-            .find(|(_, container)| {
-                container.title.as_deref().is_some_and(|title| {
-                    let title = title.to_ascii_lowercase();
-                    words.iter().all(|w| {
-                        title
-                            .split(|c: char| !c.is_alphanumeric() && c != '-' && c != '\'')
-                            .any(|t| t == w)
-                    })
-                })
-            })
-            .map(|(id, _)| id.to_owned());
+        let found = container_named(state, &self.profile.container);
         self.sack.clone_from(&found);
         found
     }
@@ -420,6 +398,33 @@ fn contents(state: &GameState, sack: &str) -> Option<Vec<(RoomItem, bool)>> {
             .map(|item| (item.clone(), herbs::is_drinkable(&item.text)))
             .collect(),
     )
+}
+
+/// The container whose title holds every word of `name`, by id
+/// (`find_herbsack`, `:3078`).
+#[must_use]
+pub fn container_named(state: &GameState, name: &str) -> Option<String> {
+    let words: Vec<String> = name
+        .split_whitespace()
+        .map(str::to_ascii_lowercase)
+        .collect();
+    if words.is_empty() {
+        return None;
+    }
+    state
+        .inventory
+        .containers()
+        .find(|(_, container)| {
+            container.title.as_deref().is_some_and(|title| {
+                let title = title.to_ascii_lowercase();
+                words.iter().all(|w| {
+                    title
+                        .split(|c: char| !c.is_alphanumeric() && c != '-' && c != '\'')
+                        .any(|t| t == w)
+                })
+            })
+        })
+        .map(|(id, _)| id.to_owned())
 }
 
 /// Is what a hand holds a herb eherbs knows?

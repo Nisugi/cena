@@ -98,22 +98,12 @@ impl Desk {
                 spellcast,
                 ranged,
                 blood,
-            } => {
-                let character = &joined.0.state.character;
-                let Some(mut profile) = self.heal_profile(
-                    handle,
-                    character.instance.as_deref(),
-                    character.name.as_deref(),
-                ) else {
-                    say(
-                        NoticeKind::Error,
-                        "no heal profile: write one naming the herb `container`.".to_owned(),
-                    );
-                    return None;
-                };
+            } => self.herbs(handle, joined, |mut profile| {
                 profile.blood_only |= blood;
-                let machine = Hunt::heal_only(profile, spellcast, ranged);
-                Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+                Hunt::heal_only(profile, spellcast, ranged)
+            }),
+            Command::Stock { fill } => {
+                self.herbs(handle, joined, |profile| Hunt::stock_only(profile, fill))
             }
             Command::Run(name) => {
                 let character = &joined.0.state.character;
@@ -268,6 +258,29 @@ impl Desk {
                 None
             }
         }
+    }
+
+    /// `;heal` and its `stock` and `fill`: the machine `make` builds from the
+    /// character's heal profile, started; said and refused when there is none.
+    fn herbs(
+        self: &Arc<Self>,
+        handle: &SessionHandle,
+        joined: (Snapshot, impl Into<Heard>),
+        make: impl FnOnce(HealProfile) -> Hunt,
+    ) -> Option<JoinHandle<HuntEnd>> {
+        let character = &joined.0.state.character;
+        let Some(profile) = self.heal_profile(
+            handle,
+            character.instance.as_deref(),
+            character.name.as_deref(),
+        ) else {
+            handle.say(Notice::line(
+                NoticeKind::Error,
+                "Hunt: no heal profile: write one naming the herb `container`.",
+            ));
+            return None;
+        };
+        Some(self.start(handle.clone(), (joined.0, joined.1.into()), make(profile)))
     }
 
     /// The character's heal profile (`plan/36`), when there is one and it
