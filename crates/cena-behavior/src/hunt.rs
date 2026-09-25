@@ -45,6 +45,7 @@ mod boons;
 mod censer;
 pub mod chain;
 pub mod command;
+mod death;
 pub mod desk;
 pub mod drive;
 pub mod engine;

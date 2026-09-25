@@ -404,6 +404,12 @@ pub struct React {
     /// Bless a weapon whose blessing is shrugged off or gone, with Bless
     /// (304) or the Voln symbol (`bless`, `bigshot.lic:5553-5581`).
     pub bless: bool,
+    /// On Shattered, quit the game when dead or below 40 percent health
+    /// (`dead_man_switch`, `bigshot.lic:6760-6768`; `hunt/death.rs`).
+    pub dead_man_switch: bool,
+    /// Dead: depart, recover, and hunt again (`depart_switch`,
+    /// `bigshot.lic:6770-6784`; `hunt/death.rs`).
+    pub depart_switch: bool,
 }
 
 impl Default for React {
@@ -414,6 +420,8 @@ impl Default for React {
             pull: true,
             deader: false,
             bless: false,
+            dead_man_switch: false,
+            depart_switch: false,
         }
     }
 }

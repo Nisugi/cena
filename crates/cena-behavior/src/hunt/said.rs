@@ -86,6 +86,9 @@ pub enum Ending {
     /// An attack had no effect: the weapon or ammunition cannot hurt what
     /// is here (`bigshot.lic:6398`).
     NoEffect,
+    /// The dead man's switch: dead or badly hurt on Shattered, so the
+    /// character quits (`hunt/death.rs`).
+    Trouble,
 }
 
 impl fmt::Display for Ending {
@@ -111,6 +114,9 @@ impl fmt::Display for Ending {
             Self::Injured => f.write_str("an injury still stops the attack after resting for it"),
             Self::NoEffect => f.write_str(
                 "an attack had no effect: this weapon or ammunition cannot hurt what is here",
+            ),
+            Self::Trouble => f.write_str(
+                "the dead man's switch: dead or below 40% health on Shattered, so quitting",
             ),
         }
     }

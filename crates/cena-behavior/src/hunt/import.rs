@@ -324,6 +324,8 @@ impl Job {
         self.profile.wander.ignore_disks = flag(&self.take("ignore_disks"));
         self.profile.react.bless = flag(&self.take("bless"));
         self.profile.react.deader = flag(&self.take("deader"));
+        self.profile.react.dead_man_switch = flag(&self.take("dead_man_switch"));
+        self.profile.react.depart_switch = flag(&self.take("depart_switch"));
         // Absent is bigshot's default, on.
         let pull = self.take("pull");
         if !pull.trim().is_empty() {

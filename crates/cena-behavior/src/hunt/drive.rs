@@ -61,6 +61,8 @@ use crate::watchdog::Heartbeat;
 const SEND_DEADLINE: Duration = Duration::from_secs(8);
 /// How long roundtime is waited out before the tick is given up.
 const SETTLE_CAP: Duration = Duration::from_secs(15);
+/// How long the dead man's switch waits for the quit to be answered.
+const QUIT_DEADLINE: Duration = Duration::from_secs(10);
 /// The idle beat: how often the loop turns with nothing to do.
 const BEAT: Duration = Duration::from_millis(250);
 /// The most commands one visit's looting sends before it is given up on.
@@ -222,6 +224,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Said::Heal => self.heal().await,
                 Said::Stock(fill) => self.stock(fill).await,
                 Said::Waggle(targets) => self.waggle(&targets).await,
+                Said::Done(Ending::Trouble) => {
+                    // The dead man's switch: out of the game, saved first.
+                    self.handle.quit(QUIT_DEADLINE).await;
+                    return HuntEnd::Finished(Ending::Trouble);
+                }
                 Said::Done(ending) => return HuntEnd::Finished(ending),
             };
             if let Err(end) = step {

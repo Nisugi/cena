@@ -71,6 +71,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::aim::{Aimed, Aiming};
 use super::ammo::Ammo;
+use super::death::Mourning;
 use super::guard::{Facts, Used};
 use super::profile::{Profile, Step, Target};
 use super::react::Reacting;
@@ -184,6 +185,10 @@ pub struct Hunt {
     pub(super) told_unported: BTreeSet<&'static str>,
     /// An arrow the game would not fire, being put away ([`super::ammo`]).
     pub(super) ammo: Ammo,
+    /// Recovering from a death ([`super::death`]).
+    pub(super) mourning: Mourning,
+    /// The character's waggle profile, for a waggle after departing.
+    pub(super) waggle_profile: Option<WaggleProfile>,
 }
 
 impl Hunt {
@@ -236,6 +241,8 @@ impl Hunt {
             followups: VecDeque::new(),
             told_unported: BTreeSet::new(),
             ammo: Ammo::default(),
+            mourning: Mourning::default(),
+            waggle_profile: None,
         }
     }
 
@@ -341,6 +348,9 @@ impl Hunt {
         }
         if let Some(ending) = self.heard.ending.take() {
             return Said::Done(ending);
+        }
+        if let Some(said) = self.death(state, now) {
+            return said;
         }
         self.note_room(state, now);
         if self.held.is_none() {

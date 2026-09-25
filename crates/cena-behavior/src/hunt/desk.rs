@@ -160,6 +160,20 @@ impl Desk {
                     Some(profile) => machine.with_heal(profile),
                     None => machine,
                 };
+                // For the waggle after a death, when `react.depart_switch`
+                // asks for one (`hunt/death.rs`).
+                let waggle = character
+                    .instance
+                    .as_deref()
+                    .zip(character.name.as_deref())
+                    .and_then(|(i, n)| crate::waggle::path(&self.dir, i, n))
+                    .and_then(|path| std::fs::read_to_string(path).ok())
+                    .and_then(|text| crate::waggle::WaggleProfile::parse(&text).ok())
+                    .filter(|p| !p.cast_list.is_empty());
+                let machine = match waggle {
+                    Some(profile) => machine.with_waggle(profile),
+                    None => machine,
+                };
                 Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
             }
             _ => None,

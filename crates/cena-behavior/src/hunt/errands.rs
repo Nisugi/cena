@@ -61,12 +61,25 @@ impl Hunt {
         machine
     }
 
-    /// The waggle run's profile and names, when this machine is one.
+    /// The waggle run's profile and names, when this machine is one; else
+    /// the hunt's own waggle profile, for the waggle after a death.
     #[must_use]
     pub fn waggle(&self) -> Option<(&WaggleProfile, &[String])> {
         self.waggle_only
             .as_ref()
             .map(|(profile, targets, _)| (profile, targets.as_slice()))
+            .or_else(|| {
+                self.waggle_profile
+                    .as_ref()
+                    .map(|profile| (profile, &[][..]))
+            })
+    }
+
+    /// Waggle by this profile after a death (`react.depart_switch`).
+    #[must_use]
+    pub fn with_waggle(mut self, profile: WaggleProfile) -> Self {
+        self.waggle_profile = Some(profile);
+        self
     }
 
     /// The errand's next thing to do, when this machine is one.
