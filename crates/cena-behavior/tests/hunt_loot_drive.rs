@@ -144,6 +144,7 @@ fn set_out(
             &heartbeat,
             TravelNotes::default(),
             |_| {},
+            |_| {},
         ))
         .await;
         Some(end)

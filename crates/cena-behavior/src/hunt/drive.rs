@@ -88,8 +88,15 @@ pub async fn hunt(
     heartbeat: &Heartbeat,
     notes: TravelNotes,
     wrote: impl FnMut(&TravelNotes) + Send,
+    learned: impl FnMut(&[String]) + Send,
 ) -> HuntEnd {
     let (snapshot, events) = joined;
+    // What the profile already says cannot be skinned; a name learned beyond
+    // it is written back.
+    let saved_unskinnable = machine
+        .loot_profile()
+        .map(|profile| profile.skin.unskinnable.iter().cloned().collect())
+        .unwrap_or_default();
     let mut driver = Driver {
         handle,
         cancel,
@@ -106,6 +113,8 @@ pub async fn hunt(
         last_room: None,
         notes,
         wrote,
+        learned,
+        saved_unskinnable,
         memory: Memory::default(),
         transcript: String::new(),
     };
@@ -119,7 +128,7 @@ pub async fn hunt(
     end
 }
 
-struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> {
+struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> {
     handle: &'a SessionHandle,
     cancel: &'a CancellationToken,
     token: AuthorityToken,
@@ -137,6 +146,10 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> {
     /// once and kept as a walk changes it.
     notes: TravelNotes,
     wrote: W,
+    /// Told the creatures learned unskinnable, to write into the profile.
+    learned: L,
+    /// The unskinnable names the profile holds, and those already told.
+    saved_unskinnable: std::collections::BTreeSet<String>,
     /// What looting learned: full bags, autoclosers, crumbly names.
     memory: Memory,
     /// The main window's text since the last loot command was sent, for
@@ -144,7 +157,7 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> {
     transcript: String,
 }
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
     async fn run(&mut self, heartbeat: &Heartbeat) -> HuntEnd {
         loop {
             heartbeat.beat();
@@ -233,7 +246,18 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
         };
         let memory = std::mem::take(&mut self.memory);
         let planner = Planner::new(profile, memory, corpses);
-        self.run_loot(planner, true).await.map(|_| ())
+        self.run_loot(planner, true).await?;
+        let fresh: Vec<String> = self
+            .memory
+            .unskinnable
+            .difference(&self.saved_unskinnable)
+            .cloned()
+            .collect();
+        if !fresh.is_empty() {
+            self.saved_unskinnable.extend(fresh.iter().cloned());
+            (self.learned)(&fresh);
+        }
+        Ok(())
     }
 
     /// Empty the box in hand with the loot planner (`box_loot`), for the
@@ -285,6 +309,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                 Step::Skin { corpse, hand } => (format!("skin #{corpse} {hand}"), None),
                 Step::StowGem(id) => (format!("stow gem #{id}"), None),
                 Step::Coins(id) => (format!("get coins from #{id}"), None),
+                Step::Describe(what) => (format!("describe {what}"), None),
                 Step::Charm { charm, box_ } => (format!("point {charm} at #{box_}"), None),
             };
             self.transcript.clear();

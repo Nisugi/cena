@@ -64,9 +64,12 @@ pub use cena_model::{ChunkLine, GameState, Room, RoomItem, UnknownTag};
 // section 1's table of what the model answers a hunter with. Beside the
 // other model vocabulary re-exported for behaviors, on the same terms.
 pub use cena_model::{Able, CreatureInstance, Effect, Injuries, StatusName};
+// The bounty's task, for a behavior that narrows its work to it (eloot's
+// `skin_bounty_only`).
 pub use cena_model::{
     PsmCategory, PsmLine, PsmRanks, SkillKind, SkillLine, Society, Vital, spell_named, spells,
 };
+pub use cena_model::{Task, TaskKind};
 pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Link, LinkKind, ProgressBar};
 pub use cena_protocol::runs::{Run, Runs};

@@ -105,6 +105,8 @@ pub enum Step {
     },
     /// `stow gem #id`: a gem that broke out of a corpse into the left hand.
     StowGem(String),
+    /// `describe <noun>`: a creature whose form decides whether it skins.
+    Describe(String),
     /// `get coins from #box`: a box's coins, by hand.
     Coins(String),
     /// `point <charm> at #box`: a box's coins, by the profile's charm.

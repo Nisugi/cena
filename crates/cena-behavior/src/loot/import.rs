@@ -137,11 +137,6 @@ pub fn import(yaml_text: &str) -> Result<Import, String> {
     profile.skin.sheath_blunt = text("skin_sheath_blunt", &mut source);
     profile.skin.exclude = list("skin_exclude", &mut source);
     profile.skin.unskinnable = list("unskinnable", &mut source);
-    if profile.skin.enable && profile.skin.bounty_only {
-        notes.push(
-            "skin_bounty_only was on: not built, every eligible corpse is skinned".to_owned(),
-        );
-    }
 
     for (key, what) in [
         ("loot_keep", "names kept whatever their kind"),
