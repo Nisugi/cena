@@ -149,6 +149,9 @@ Cena's own fixture: `Volley is ready for use.`
 it. `Combatical.lic:4553-4556` reads `^(\w[\w\s]+?) is ready for use\.$` as the end. The
 consumer is `plan/33`'s `cooldown "<name>"` guard. **CONFLICT, HIGH, M6.**
 
+> **FIXED 2026-09-25**: `maneuvers::ready_line` and `Maneuvers::note_ready`
+> (`crates/cena-model/src/state/maneuvers.rs`). The guard still waits on `plan/33`.
+
 ### 1.4 Bounty status
 
 - `Come back in about a minute if you want another task.` returns `None`: `classify_refusal`
@@ -260,6 +263,16 @@ Pile reports, not re-checked here:
 ---
 
 ## 2. M6, the hunt
+
+> **FIXED 2026-09-25**, each in `crates/cena-behavior/src/hunt/`: `messages.rb` whole
+> (`crates/cena-model/src/state/incident.rs`) and the hunt's answers to it (`react.rs`:
+> disarm recovery, weapon reactions, the sanctum snake, item limit, the hive's ground); the
+> attack, injury and cast refusals (`replies.rs`); four of the rest triggers (dread, Wall of
+> Thorns poison, confusion, and a rest count, `rest.rs`); environmental flight (`flee.clouds`,
+> `vines`, `webs`, `voids`, `messages`, `wander.rs`); the contested room, now claimed on entry
+> (`engine.rs`); and being swallowed (`react.rs`). Still open from this table: spirit and
+> wound-rank rest triggers, the two hazard creatures, familiars, Barkskin, creature statuses in
+> room prose, flares for `;combat`, boons, and boss phases.
 
 Lines the hunt needs, which the scripts match and Cena does not. All are GAP unless marked.
 

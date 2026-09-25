@@ -337,6 +337,9 @@ impl super::GameState {
         }
         // `<Name> is still in cooldown.` -- a fact about the character
         // rather than an answer to a command (`maneuvers.rs`).
+        if let Some(name) = super::maneuvers::ready_line(text) {
+            self.maneuvers.note_ready(name);
+        }
         if let Some(name) = super::maneuvers::cooldown_refusal(text) {
             self.maneuvers.note_cooling(name, at);
         }
