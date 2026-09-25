@@ -19,12 +19,11 @@ use std::io;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use crate::commands::Commands;
+use crate::commands::{Commands, Took};
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
 use cena_behavior::spellcaster::{self, CasterProfile};
 use cena_behavior::travel::Map;
-use cena_session::command::claimant::Claimed;
 use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Register hunt's words. The character's instance and name, when the login
@@ -55,7 +54,8 @@ pub(crate) fn open(
                 .ok()
                 .and_then(|profile| spellcaster::typed(&profile, line));
             words.is_some_and(|words| {
-                start(&desk, &handler, &observer, Command::Sc(words));
+                // Typed at the prompt: nobody waits for it.
+                drop(start(&desk, &handler, &observer, Command::Sc(words)));
                 true
             })
         }));
@@ -71,10 +71,12 @@ pub(crate) fn open(
             Ok(command) => command,
             Err(why) => {
                 handler.say(Notice::line(NoticeKind::Error, format!("Hunt: {why}")));
-                return Some(Claimed::Done);
+                return Some(Took::Done);
             }
         };
-        match command {
+        // What was started is handed back, so `;multi` can wait for it
+        // (`crate::commands`).
+        let took = match command {
             Command::Run(_)
             | Command::Stop
             | Command::Heal { .. }
@@ -87,9 +89,9 @@ pub(crate) fn open(
                         NoticeKind::Error,
                         "Hunt: there is no map, so there is no hunting. Set the map and start Hydra again.",
                     ));
-                    return Some(Claimed::Done);
+                    return Some(Took::Done);
                 };
-                start(&desk, &handler, &observer, command);
+                Took::Started(start(&desk, &handler, &observer, command))
             }
             Command::Import { .. }
             | Command::ImportLoot { .. }
@@ -100,37 +102,45 @@ pub(crate) fn open(
                 let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
                 let caster = Arc::clone(&caster);
                 // Files are read and written, so not on the session's own thread.
-                tokio::task::spawn_blocking(move || {
+                Took::Started(tokio::task::spawn_blocking(move || {
                     let sc = matches!(command, Command::ScEdit(_));
                     run(&handle, &dir, who.as_ref(), command);
                     if sc && let Ok(mut held) = caster.lock() {
                         *held = read_caster(&dir, who.as_ref());
                     }
-                });
+                }))
             }
-            Command::Nothing => {}
-        }
-        Some(Claimed::Done)
+            Command::Nothing => Took::Done,
+        };
+        Some(took)
     }));
     eprintln!(
         "[hunt] ready: hunt <name>, hunt stop, hunt import <bigshot yaml>, hunt check <name>, hunt list"
     );
 }
 
-/// Run `command` on the hunt desk, once the session can be read.
-fn start(desk: &Arc<Desk>, handle: &SessionHandle, observer: &SessionObserver, command: Command) {
+/// Run `command` on the hunt desk, once the session can be read. The task
+/// is over when what the desk started is: a heal, a cast, a hunt.
+fn start(
+    desk: &Arc<Desk>,
+    handle: &SessionHandle,
+    observer: &SessionObserver,
+    command: Command,
+) -> tokio::task::JoinHandle<()> {
     let (desk, handle, observer) = (desk.clone(), handle.clone(), observer.clone());
     tokio::spawn(async move {
         match observer.subscribe().await {
             Ok(joined) => {
-                desk.run(&handle, joined, command);
+                if let Some(run) = desk.run(&handle, joined, command) {
+                    let _ = run.await;
+                }
             }
             Err(e) => handle.say(Notice::line(
                 NoticeKind::Error,
                 format!("Hunt: I could not read the session -- {e:?}."),
             )),
         }
-    });
+    })
 }
 
 /// The character's spellcaster profile, or the default when there is no

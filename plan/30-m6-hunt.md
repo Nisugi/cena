@@ -608,6 +608,69 @@ projection transform ported from VellumFE. None depends on the hunt, so they can
 > 4 synthetic, two of them VellumFE's own), 3 for the command, 1 end to end through the
 > parser and the pump (`crates/cena/tests/web_sorter.rs`). `;foreach` and `;multi` remain.
 
+> **`;multi` and `;foreach` BUILT 2026-09-25, not yet run live.** One behavior, a **batch**
+> (`crates/cena-behavior/src/batch/`; `VellumFE`'s own word for its foreach): a list of lines sent
+> in order by one driver that sends as the hunt sends -- roundtime and cast roundtime settled,
+> through `Gate::Act`, the prompt taken -- with Lich's `fput` answer to a refusal added, since a
+> list has no next tick to decide again: a gate refusal is waited out and the line tried again
+> (given up after 60 s), and the game's `...wait N` is waited out and the line resent (five times
+> at most). One of each kind at a time per session (`batch/desk.rs`, authority tokens 4 and 5); a
+> second is refused, as Lich and `VellumFE` refuse it. `;multi stop`, `;foreach stop`.
+>
+> **A Hydra command in a batch** -- `;multi 2,get gem,;sc 401,put gem in sack` -- is run through
+> the binary's own command table and waited for until what it started is over. The families that
+> start something (travel, the hunt desk, batches) now hand back its task (`Took::Started`,
+> `crates/cena/src/commands.rs`); the batch gives the authority back while it runs and takes it
+> again after. Typed at the prompt, nothing changes.
+>
+> **`;multi` is multi.lic whole** (65 lines): the count first or last, semicolons when there is
+> no comma, an entry with the symbol run and waited for. On purpose: entries are trimmed and a
+> blank skipped; a count neither first nor last is refused (multi.lic ran zero times, silently);
+> a `;multi` inside a `;multi` is refused.
+>
+> **`;foreach`, MEASURED** (`wc -l`; `grep -n "^class\|^module\|^  def " foreach.lic`): 2,192
+> lines. 166 are header and changelog; 504 the `ItemMatcher` (73 of them reading `inventory
+> full`, 95 the locker, 56 marked and registered, 70 `finalize`); 177 the Stormfront status bar;
+> about 490 setup, changelog, help and formatting; and 625 `run` -- 79 options, 27 filter, 112
+> rewriting the commands, 116 targets, 217 running them, 20 listing. The core is built: the line,
+> the matching and ordering, named containers, the rewrites and the running. What reads
+> `inventory full`, the locker, the status bar and Lich's own plumbing is not, and **every word
+> left out is refused by name**, never ignored: a dropped `marked` would act on every item.
+>
+> | foreach.lic | Where | Here |
+> |---|---|---|
+> | `[attr=]value in\|on\|under\|behind <targets>[; commands]`, separators `;` `/` `\|` | `:1546`, `:862` | BUILT, `batch/foreach.rs` |
+> | type (the default), sellable, noun, name, fullname, quick; `*`, `a,b`, `/pattern/`, `type=none` | `:1436-1486` | BUILT, on the model's `gameobj` table |
+> | `all`, `any`, `everything` | `:1645` | BUILT, anchored: Lich's test is not, so `small` meant everything |
+> | unique, first N (or N), after N (skip), sorted, nsorted, reversed | `:1553-1630`, `:609-678` | BUILT, `batch/pick.rs`; unique before reversed, as Lich has it (`VellumFE` reverses first) |
+> | marked, unmarked, registered, unregistered | `:244-283`, `:508-523` | refused: they read `inventory full`'s notes |
+> | a named container, several, a trailing `?` | `:524-576`, `:1870-1885` | BUILT: a quiet `look in`, the contents off the `<inv>` feed Lich's `GameObj.containers` reads; `stow` found by its target |
+> | `floor`, `ground`, `room`; `loot` | `:463-479`, `:1836-1867` | BUILT |
+> | `inv`, `fastinv`/`qinv`, `worn` | `:284-443`, `:481-486` | refused: `inventory full` is not read -- there is no committed capture of it, and the corpus is the author's -- and the worn list is not kept |
+> | `locker` | `:304-390`, `:1495-1520` | refused: the locker's manifest, bins and door are not modelled |
+> | `desc`, `previous`/`last` | `:468-473`, `:487-492` | refused: small, and not asked for |
+> | a collective container (`Looking at the mannequins`) | `:553-560` | not read: said as an answer foreach does not know |
+> | `item`, `noun`, `name`, `container` filled in | `:1936-1941` | BUILT |
+> | verbs completed, a bare verb on the item, `get` before a first `sell`, `return` after a lone `appraise`, a first `drop` as `_drag` | `:1693-1760` | BUILT |
+> | a script among the commands | `:1673-1680`, `:1963-1969` | BUILT, as a Hydra command |
+> | `move`/`fastmove`, `return`, `unmark`, `echo`, `sleep`, `waitrt(?)`, `waitcastrt(?)`, `waitfor`, `waitre`, `waitmana`/`hp`/`spirit`/`stamina` | `:1970-2121` | BUILT; `move` does not learn the container's id from its first `put` (`:2002-2005`), and `fastmove` is `move` |
+> | `stash`, `giveitem`, `pause` | `:2027-2049`, `:2088-2104` | refused: Lich's lootsack settings; a give is `give item to X; waitfor X has accepted`; Hydra has no pause |
+> | the `!` prefix | `:1669` | accepted and ignored: every line waits for its prompt |
+> | no commands, the list; `Item N of M` every tenth | `:2132-2149`, `:1924-1925` | BUILT |
+> | status bar, first-time setup, changelog, help formatting, stopping `;sorter` | `:680-856`, `:937-1346`, `:1391-1404` | not ported: Lich's plumbing |
+>
+> **Decisions the author may want back**, each the simplest this plan allows: a second batch of a
+> kind is refused where the hunt and travel desks replace; a `;` entry nobody knows stops the
+> list where Lich went on; the looks are quiet, as the sync's commands are; `all` is anchored.
+> `cena-behavior` takes `regex` directly -- the crate `cena-model` already builds -- for the
+> player's `/patterns/`.
+>
+> MEASURED: 47 tests -- `batch_multi` 17, `batch_foreach` 18, `batch_foreach_run` 10 (over the
+> real looks in `crates/cena-ui/tests/fixtures/container_looks.xml`), and 2 in
+> `crates/cena/src/batch.rs`, a typed `;multi` waiting on the `;go2` it started, through the real
+> command table. Eighteen mutations each turned a test red; the one that did not at first -- a
+> gate refusal skipped instead of retried -- was a gap, now two tests.
+
 **M6 live acceptance, author present.** Nisugi runs `ojandhaart` through at least one full
 cycle: hunt, a rest threshold, walk to rest, loot stored, healed, walk back, hunt. It is
 stopped mid-attack from the hub within `PREEMPT_GRACE`. A manual command mid-hunt interleaves.

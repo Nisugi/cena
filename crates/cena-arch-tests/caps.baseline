@@ -292,3 +292,8 @@ crates/cena-behavior/src/hunt/import.rs 750
 # reads moved into guard/read.rs and the room's record of sent steps into
 # guard/used.rs when the vocabulary grew from five words to every survivor.
 crates/cena-behavior/src/hunt/guard.rs 550
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/batch.rs is the facade
+# over batch/ (`;multi` and `;foreach`, plan/30 §7 M6e): the module doc and the
+# re-exports; the words, the picking, the lines, the driver and the desk are in
+# batch/. 41 lines at birth, so its cap is the rule above: 41 + 50, rounded up.
+crates/cena-behavior/src/batch.rs 100

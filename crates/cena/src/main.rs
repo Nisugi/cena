@@ -37,6 +37,7 @@
 
 mod architecture;
 mod ask;
+mod batch;
 mod combat;
 mod commands;
 mod connector;

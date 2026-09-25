@@ -31,8 +31,8 @@ use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
 use crate::{
-    combat, connector, frontend, interrupt, learn, loot, roster, secrets, setup, sorter, travel,
-    watch,
+    batch, combat, connector, frontend, interrupt, learn, loot, roster, secrets, setup, sorter,
+    travel, watch,
 };
 
 /// The characters named with `--character`, in order. Empty means none was
@@ -187,6 +187,7 @@ impl Table {
             &commands,
             self.web.as_ref().map(|web| web.sessions().clone()),
         );
+        batch::open(&hosted.handle, &hosted.observer, &commands);
         // The ledger's reports need only the database's path, known now.
         match cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character) {
             Ok(database) => {

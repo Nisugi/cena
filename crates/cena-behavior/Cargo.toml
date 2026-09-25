@@ -13,6 +13,10 @@ cena-session.workspace = true
 # written to TOML; the bigshot importer writes one.
 serde.workspace = true
 toml.workspace = true
+# `;foreach`'s filters and `waitre` are the player's patterns: `*` wildcards
+# and `/regex/`, as foreach.lic takes them (`batch/foreach.rs`). The same
+# crate `cena-model` already builds, so nothing new is compiled.
+regex = "1"
 tokio = { version = "1", features = ["macros", "rt", "time"] }
 # CancellationToken: plan/12 section 4.3's PREEMPT_GRACE is measured against
 # it, and section 5.5 names it as the mechanism for "every behavior is
