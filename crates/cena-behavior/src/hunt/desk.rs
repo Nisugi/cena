@@ -87,9 +87,10 @@ impl Desk {
         command: Command,
     ) -> Option<JoinHandle<HuntEnd>> {
         let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
-        let (command, quick) = match command {
-            Command::Quick(name) => (Command::Run(name), true),
-            other => (other, false),
+        let (command, quick, bounty) = match command {
+            Command::Quick(name) => (Command::Run(name), true, false),
+            Command::Bounty(name) => (Command::Run(name), false, true),
+            other => (other, false, false),
         };
         match command {
             Command::Stop => {
@@ -149,6 +150,7 @@ impl Desk {
                 let seed = joined.0.state.game_time_now().map_or(1, u64::from);
                 let machine = Hunt::new(loaded.profile, seed);
                 let machine = if quick { machine.quick() } else { machine };
+                let machine = if bounty { machine.bounty() } else { machine };
                 let machine = match self.loot_profile(
                     handle,
                     character.instance.as_deref(),

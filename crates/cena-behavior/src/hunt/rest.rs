@@ -156,6 +156,10 @@ impl Hunt {
         }
         self.fried_kills = 0;
         self.heard.rested_for_injury = why == Why::Injured;
+        // `should_hunt?` ends bounty mode at the rest (`:8982-8986`).
+        if self.bounty_done(state) {
+            return Said::Done(Ending::Bounty);
+        }
         if let Some(ending) = self.count_rest() {
             return Said::Done(ending);
         }
@@ -285,9 +289,13 @@ impl Hunt {
     }
 
     /// Why to rest now, if a reason holds.
-    fn rest_reason(&self, state: &GameState) -> Option<Why> {
+    fn rest_reason(&mut self, state: &GameState) -> Option<Why> {
         if let Some(why) = self.must_rest {
             return Some(why);
+        }
+        // bigshot rests on it after each kill (`:7850-7853`).
+        if self.bounty_done(state) {
+            return Some(Why::Bounty);
         }
         let rest = &self.profile.rest;
         if self.wounded(state) {

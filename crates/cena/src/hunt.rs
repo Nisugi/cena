@@ -79,6 +79,7 @@ pub(crate) fn open(
         let took = match command {
             Command::Run(_)
             | Command::Quick(_)
+            | Command::Bounty(_)
             | Command::Stop
             | Command::Heal { .. }
             | Command::Stock { .. }
@@ -167,6 +168,7 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         Command::ScEdit(words) => sc_edit(dir, who, &words, &say),
         Command::Run(_)
         | Command::Quick(_)
+        | Command::Bounty(_)
         | Command::Stop
         | Command::Heal { .. }
         | Command::Stock { .. }

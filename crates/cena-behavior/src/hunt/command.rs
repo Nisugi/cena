@@ -43,6 +43,9 @@ pub enum Command {
     Run(String),
     /// `hunt <name> quick`: this room, on the profile, until it is clear.
     Quick(String),
+    /// `hunt <name> bounty`: hunt until the bounty is done or a new one is
+    /// ready, then rest and end (`hunt/bounty.rs`).
+    Bounty(String),
     /// `;heal`: heal with herbs once, by the character's heal profile, with
     /// eherbs' `--spellcast`, `--ranged` and `blood` for this run.
     Heal {
@@ -80,7 +83,7 @@ pub enum Command {
 const RESERVED: &[&str] = &["import", "import-loot", "check", "list", "stop"];
 
 /// What a wrongly said command is answered with.
-pub const USAGE: &str = "hunt <name> [quick], hunt stop, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>, hunt check <name>, or hunt list";
+pub const USAGE: &str = "hunt <name> [quick|bounty], hunt stop, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>, hunt check <name>, or hunt list";
 
 /// The hunt command a line is, **the command symbol already gone**. `None`:
 /// not hunt's. `Some(Err(_))`: hunt's, said wrongly.
@@ -137,6 +140,9 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
         Some((name, [])) => Ok(Command::Run((*name).to_owned())),
         Some((name, [quick])) if quick.eq_ignore_ascii_case("quick") => {
             Ok(Command::Quick((*name).to_owned()))
+        }
+        Some((name, [bounty])) if bounty.eq_ignore_ascii_case("bounty") => {
+            Ok(Command::Bounty((*name).to_owned()))
         }
         _ => Err(USAGE.to_owned()),
     })

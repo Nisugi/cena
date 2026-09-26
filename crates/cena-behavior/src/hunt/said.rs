@@ -91,6 +91,8 @@ pub enum Ending {
     Trouble,
     /// A quick hunt found nothing more to fight here (`hunt/quick.rs`).
     Cleared,
+    /// Bounty mode: rested, with the bounty done or a new one ready.
+    Bounty,
 }
 
 impl fmt::Display for Ending {
@@ -121,6 +123,7 @@ impl fmt::Display for Ending {
                 "the dead man's switch: dead or below 40% health on Shattered, so quitting",
             ),
             Self::Cleared => f.write_str("the room is clear"),
+            Self::Bounty => f.write_str("the bounty is done or a new one is ready"),
         }
     }
 }
@@ -136,6 +139,8 @@ pub enum Why {
     Encumbered,
     /// Mana is below `rest.mana_below`.
     Mana,
+    /// Bounty mode: the bounty is done, or a new one is ready.
+    Bounty,
     /// Every bag is full: something wanted could go nowhere (`plan/31`;
     /// the author: *"too much loot"*).
     Loaded,
@@ -153,6 +158,7 @@ impl fmt::Display for Why {
             Self::Fried => "fried",
             Self::Encumbered => "encumbered",
             Self::Mana => "out of mana",
+            Self::Bounty => "the bounty is done or ready",
             Self::Loaded => "too much loot",
             Self::BoxInHand => "a box in hand that no bag will take",
             Self::Injured => "too injured to fight",

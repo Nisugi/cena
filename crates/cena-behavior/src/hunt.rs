@@ -42,6 +42,7 @@
 mod aim;
 mod ammo;
 mod boons;
+mod bounty;
 mod censer;
 pub mod chain;
 pub mod command;

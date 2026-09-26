@@ -573,6 +573,10 @@ Demonstrated live on a short hunt.
 >   unarmed attack by the creature's positioning and the follow-up the game offered. **Of
 >   bigshot's verbs only `nudgeweapons` is not ported**: it walks out of the room and back
 >   mid-fight, which the engine's room change undoes.
+>   And bounty mode, `;hunt <name> bounty` (bigshot's `;bigshot bounty`, `hunt/bounty.rs`,
+>   `tests/hunt_bounty.rs`): hunt until the guild's task is done, failed or a new one is
+>   ready, rest, and end at the rest; not while bandits are here on a bandit bounty.
+>   bigshot's skin and gem counts, which look in every container, are not built.
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,

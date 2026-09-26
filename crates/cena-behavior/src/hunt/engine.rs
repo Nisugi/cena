@@ -71,6 +71,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use super::aim::{Aimed, Aiming};
 use super::ammo::Ammo;
+use super::bounty::BountyMode;
 use super::death::Mourning;
 use super::follow::Follow;
 use super::guard::{Facts, Used};
@@ -202,6 +203,8 @@ pub struct Hunt {
     pub(super) repeats: Repeats,
     /// A step's hold or awaited answer, and the character rooted.
     pub(super) follow: Follow,
+    /// `;hunt <name> bounty`.
+    pub(super) bounty_mode: BountyMode,
 }
 
 /// The steps that do not take the hunting stance first, by their first
@@ -273,6 +276,7 @@ impl Hunt {
             quick: false,
             repeats: Repeats::default(),
             follow: Follow::default(),
+            bounty_mode: BountyMode::default(),
         }
     }
 
