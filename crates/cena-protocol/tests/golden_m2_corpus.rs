@@ -450,12 +450,11 @@ fn the_login_burst_identifies_the_character_and_the_instance() {
     // burst omits went unchallenged for months against a fixture that could
     // not have exhibited it either way.
     let frames = parse_fixture("login_burst.xml");
+    // Typed since 2026-09-26: the model's "is that link me?" keys on it.
     assert!(
-        frames.iter().any(|f| matches!(
-            f,
-            Frame::WindowHints { id, attrs }
-                if id == "playerID" && attrs.iter().any(|(k, v)| k == "id" && v == "966483")
-        )),
+        frames
+            .iter()
+            .any(|f| matches!(f, Frame::PlayerId { id } if id == "966483")),
         "the playerID is in the burst: {frames:#?}"
     );
     // The instance name is assembled rather than spelled, because Rule 3.4's

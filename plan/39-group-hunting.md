@@ -1,7 +1,7 @@
 # 39 — Group hunting: bigshot's head and tail, measured and staged
 
 **Status: PROPOSED 2026-09-25; ten of §7's eleven questions ANSWERED 2026-09-26 (§8).
-Stage 0 is built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
+Stages 0 and 1 are built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
 and has several characters and a test server to run a group on. `plan/30` §4 recorded the
 author's group design and §8 put groups after M6; **the author moved them before the live run**
 (§8, question 1). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
@@ -223,14 +223,14 @@ named so the lines can drift):
    mapped `StateChanged(Reconnecting)` to `BehaviorError::Disconnected`, and the desk released
    the authority. SE-4 keeps the authority across a reconnect, but no hunt was alive to use it,
    and M6's own acceptance says *"A reconnect mid-hunt keeps the hunt"* (`plan/30:677`).
-2. **"Am I the leader?" has no answer.** `designates you as the new leader` and `You are
-   leading` set the leader to `None` (`crates/cena-model/src/state/group.rs:316`, `:324-333`),
-   which also means nobody has said.
-3. **Lines Lich reads that the model does not:** `Your group status is currently
-   open|closed` (Lich's `STATUS`), `X's group status is closed` (the refusal `Group.add`
-   reads), `X joins Y's group.`, `You have no group to disband.`
-   (`reference/lich-5/lib/gemstone/group.rb:307-309`, `:509-525`), and the eight
-   `HOLD_*_SECOND`/`_THIRD` the port set aside (`crates/cena-model/src/state/group.rs:129-132`).
+2. ~~**"Am I the leader?" has no answer.**~~ **CLOSED 2026-09-26** (Stage 1 below).
+   `designates you as the new leader` and `You are leading` set the leader to `None`, which
+   also meant nobody had said. The leader is now `Leader::Unknown`, `You` or `Other(Member)`.
+3. ~~**Lines Lich reads that the model does not.**~~ **CLOSED 2026-09-26** (Stage 1 below).
+   `Your group status is currently open|closed` (Lich's `STATUS`), `X's group status is
+   closed` (the refusal `Group.add` reads), `X joins Y's group.`, `You have no group to
+   disband.` (`reference/lich-5/lib/gemstone/group.rb:307-309`, `:509-525`), and the eight
+   `HOLD_*_SECOND`/`_THIRD` the port had set aside. All are read now.
 4. `react.deader` ends the hunt for any member; bigshot pauses the leader only (`:3921`).
 5. Every group key with a value imports as *not imported*
    (`crates/cena-behavior/src/hunt/import.rs:118`). Troubadour's Rally is not built.
@@ -289,7 +289,45 @@ mutations KILLED: the drop ending the hunt, and the hunt sending while away.
 **Stage 1 — the model's group gaps** (`cena-model`). Leading as a three-valued fact; group
 open or closed; the closed refusal; `X joins Y's group`; `no group to disband`; the `HOLD`
 lines. Tests on wire lines, and one fixture cut by the author from a group session (the corpus
-is the author's to cut).
+is the author's to cut). **BUILT 2026-09-26, but for the fixture.** *Am I the leader* is
+`Group::leader()`, a `Leader`: `Unknown` (a new session, and after a reconnect), `You`
+(`designates you`, `You are leading`, and an emptied group, Lich's `:self`) or
+`Other(Member)` (`crates/cena-model/src/state/group.rs`). The character's own `exist` id is
+`Character::exist_id` (`crates/cena-model/src/state/character.rs`), from `<playerID>`, which
+the parser now types as `Frame::PlayerId` rather than a `WindowHints` bag, for `EndSetup`'s
+reason; a link that is you reads as `You` and is never a member. The new events: `Status`
+(`Group::status()`, `None` until `group` says), `Refused` (`X's group status is closed`,
+which deletes X, as `Group.add` does), `JoinedOther` (`X joins Y's group`, a member when Y is
+ours) and `NoGroupToDisband`. Lich's `checked?` is `Group::checked()`: the `STATUS` line
+sets it; joining a group, being added to one, having your hand taken and `no group to
+disband` clear it; so does a reconnect. The eight `HOLD_*_SECOND`/`_THIRD` read as the lines
+Lich handles them like: someone taking your hand as `AddedToGroup`, a third person's as
+`LeaderAdded`. Tests: `crates/cena-model/tests/group_leader.rs` (14),
+`crates/cena-model/tests/group_lines.rs` (25), and `crates/cena-model/tests/group.rs` (22,
+updated for the three values). **41 hand mutations, all KILLED**: each new branch of the
+leader, the id, the parser's `playerID`, the four new events, `checked`, and each of the eight
+`HOLD` rows broken in turn.
+
+UNVERIFIED, for the author's fixture to settle: whether the game sends the refusal's name as
+a link (Lich reads it on stripped text; it is read here only as a link, as its sibling
+`joins <Y's> group` is sent); whether `You are grouped with` lists you; that `STATUS` is the
+last line of `group`'s answer (INFERRED from `Group.check` waiting on it,
+`reference/lich-5/lib/gemstone/group.rb:152-157`); and `exist_id`'s rule,
+`-(10,000,000 + playerID)`, VERIFIED on one character only (two fixtures cut from one log:
+`crates/cena-protocol/tests/fixtures/login_burst.xml:3`,
+`crates/cena-protocol/tests/fixtures/character_info.xml:3`). Lich stores the number and never
+compares it with a link, so no source states the rule.
+
+**Changed from Lich, because roles now read the leader** (§8, question 2): `X designates Y as
+the new leader` set the leader whoever X and Y were, as Lich does
+(`reference/lich-5/lib/gemstone/group.rb:632-635`), while `X adds Y` counts only when X is in
+our group. If the game sends the swap to the whole room, as the model's comment says it sends
+`adds`, a stranger's swap would make a stranger our leader, and the role would read *follow*.
+The swap now counts only when X or Y is in our group, the guard Lich already puts on the
+push beside it, and pushes both, as Lich does; `You designate Y` pushes Y (`:626`). Who
+receives the swap is UNVERIFIED; the guard costs nothing if only the group does. Tests in
+`crates/cena-model/tests/group.rs` (`leadership::`); five mutations KILLED (the guard
+dropped, on X alone, on Y alone, either push dropped).
 
 **Stage 2 — the party's rules, pure** (`cena-behavior/src/group/`). The report and the
 leader's state; the looter (`ma_looter`, `never_loot`, `random_loot`, in bigshot's order); the
@@ -498,6 +536,7 @@ That needs the author's leave to query.
 - **Stage 1** (the model) adds: *"am I the leader"* as a three-valued fact, which needs the
   character's own `exist` id (question 8); the eight `HOLD_*_SECOND`/`_THIRD` lines
   (question 10); and, once question 6 is answered, `has disconnected` from the logons feed.
+  **BUILT 2026-09-26** (§6), all but `has disconnected`, which still waits on question 6.
 - **Stage 2** (the rules, pure) adds: the successor (`successors`, else the healthiest); the
   lost member's reason and what each reason asks (question 7's table); `lost_wait`.
 - **Stage 3** (leader and follower on the engine) adds: the role read off the game's group

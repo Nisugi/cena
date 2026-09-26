@@ -95,7 +95,7 @@ pub mod worn;
 
 pub use character::{Character, Experience, Injury};
 pub use disk::{DISK_NOUNS, Disk};
-pub use group::{Group, GroupEvent, Member};
+pub use group::{Group, GroupEvent, GroupStatus, Leader, Member};
 pub use inventory::{Container, Inventory};
 pub use inventory_snapshot::InventorySnapshot;
 pub use menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem};
@@ -418,7 +418,7 @@ impl GameState {
                     self.effects.clear_category(id);
                 }
             }
-            Frame::AppInfo { .. } => self.character.identify(frame),
+            Frame::AppInfo { .. } | Frame::PlayerId { .. } => self.character.identify(frame),
             Frame::LeftHand { item, link } => {
                 self.left_hand = hands::Hand::read(item, link.as_ref());
             }

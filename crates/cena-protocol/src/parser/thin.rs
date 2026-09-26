@@ -272,8 +272,12 @@ fn known_fallback(name: &str, tag: &str) -> Frame {
         // Typed, not a bag: the session's readiness gate keys on it, and
         // matching a `WindowHints` by its id string is re-reading markup.
         "endSetup" => Frame::EndSetup,
-        "playerID" | "settings" | "settingsInfo" | "sentSettings" | "presets" | "palette"
-        | "macros" | "mode" | "FEVersion" | "LichWebUI" => Frame::WindowHints {
+        // Typed for the same reason: the model's "is that link me?" keys on it.
+        "playerID" => Frame::PlayerId {
+            id: text::attribute(tag, "id").unwrap_or_default(),
+        },
+        "settings" | "settingsInfo" | "sentSettings" | "presets" | "palette" | "macros"
+        | "mode" | "FEVersion" | "LichWebUI" => Frame::WindowHints {
             id: name.to_owned(),
             attrs,
         },

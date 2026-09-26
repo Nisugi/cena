@@ -46,11 +46,11 @@
 //!
 //! # The arithmetic, stated so it can be checked
 //!
-//! This enum has **54** variants:
+//! This enum has **55** variants:
 //!
 //! ```text
 //! $ awk '/^pub enum Frame \{/,/^\}/' src/frame/vocabulary.rs | grep -oE '^    [A-Z][A-Za-z0-9]*' | sort -u | wc -l
-//! 54
+//! 55
 //! ```
 //!
 //! (`sort -u` is load-bearing: `ActiveEffect` is both a variant name and the
@@ -61,7 +61,7 @@
 //! PR-13). The missing one is `Structural`, a Cena addition the arithmetic
 //! below never counted (`grep -c Structural` over Vellum's parser: 0).
 //!
-//! `63 - 5 - 5 - 7 + 8 = 54`, where:
+//! `63 - 5 - 5 - 7 + 9 = 55`, where:
 //!
 //! - **-5 not-wire variants**, each named above: `VellumImage`,
 //!   `VellumCommand`, `VellumTimer`, `Event`, `LichWebUI`.
@@ -94,9 +94,10 @@
 //!   puts it above this crate; `ClearActiveEffects` is what
 //!   [`Frame::ClearDialogData`] already emits now that `clear='t'` is read on
 //!   the open tag.
-//! - **+8 Cena adds** ([`Frame::EndSetup`], typed 2026-09-23 because readiness
-//!   keys on it, is the eighth): [`Frame::UnknownTag`] and [`Frame::MalformedTag`], both
-//!   mandated by Rule 2.2; [`Frame::ClientCommand`] and
+//! - **+9 Cena adds** ([`Frame::EndSetup`], typed 2026-09-23 because readiness
+//!   keys on it, is the eighth; [`Frame::PlayerId`], typed 2026-09-26 because
+//!   the group's leader keys on it, the ninth): [`Frame::UnknownTag`] and
+//!   [`Frame::MalformedTag`], both mandated by Rule 2.2; [`Frame::ClientCommand`] and
 //!   [`Frame::ClientSettings`], which the gated corpus replay found in real
 //!   traffic that Vellum's vocabulary does not name; and
 //!   [`Frame::Structural`], which types the tags that carry no payload of

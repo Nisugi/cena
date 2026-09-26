@@ -189,10 +189,22 @@ pub enum Frame {
     /// Placement attrs riding a `<streamWindow>`/`<openDialog>`/`<container>`.
     WindowHints {
         /// `id=`, or the tag name when absent. Always the tag name for
-        /// client-configuration tags such as `playerID` and `mode`.
+        /// client-configuration tags such as `mode` and `settingsInfo`.
         id: String,
         /// Every attribute, in wire order.
         attrs: Attrs,
+    },
+    /// `<playerID id=>`: the game's number for this character, sent once in
+    /// every login burst (`plan/15` §2b, 7 of 7 logins).
+    ///
+    /// Typed for [`Frame::EndSetup`]'s reason: a consumer keys on it (the
+    /// model's "is that link me?", for the group's leader), and matching a
+    /// `WindowHints` bag by its id string is re-reading markup. `id` is the
+    /// tag's one attribute (`Wrayth protocol.txt:17`, "Key Attributes: id
+    /// (numeric)"), so nothing the bag carried is lost.
+    PlayerId {
+        /// `id=`, verbatim; empty when absent.
+        id: String,
     },
     /// `<endSetup/>`: the login setup is over. The session keys `Ready` on the
     /// first `<prompt>` after it (`cena-session`, `actor/readiness.rs`). It

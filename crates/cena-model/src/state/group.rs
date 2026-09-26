@@ -28,6 +28,22 @@
 //! A group holds `exist` ids. Two characters can display the same name -- the
 //! possessive pronoun in `adds you to <a>his</a> group` is itself a link, with
 //! the leader's id -- so the id is the identity and the name is decoration.
+//!
+//! # Who leads is three answers, not two
+//!
+//! Lich's `@@leader` is `nil` until something is said, `:self` when you lead,
+//! and a `GameObj` when someone else does (`group.rb:21`, `:266-286`). This
+//! model spelled both `nil` and `:self` as `None`, so "am I the leader?" had
+//! no answer (`plan/39` §4, gap 2), and every group role is read off it
+//! (`plan/39` §8, questions 2 and 8). [`Leader`] keeps the three apart.
+//!
+//! "You" is prose, not a link, in every line Lich reads (`designates you`,
+//! `You are leading`), so the classifier needs no id to find it. The
+//! character's own id ([`Character::exist_id`]) is for a line that names you
+//! by a link anyway: [`Group::apply`] reads that link as you, never as a
+//! member.
+//!
+//! [`Character::exist_id`]: crate::state::Character::exist_id
 
 use cena_protocol::frame::LinkKind;
 
@@ -65,7 +81,9 @@ pub enum GroupEvent {
     Joined(Member),
     /// `<X> leaves your group.`
     Left(Member),
-    /// `You add <X> to your group.`
+    /// `You add <X> to your group.`, and `You grab <X's> hand.` in each
+    /// demeanor (`HOLD_*_FIRST`), which Lich answers alike (`group.rb:642`,
+    /// `:646-647`).
     Added(Member),
     /// `You remove <X> from the group.`
     Removed(Member),
@@ -86,16 +104,29 @@ pub enum GroupEvent {
     },
     /// `You designate <X> as the new leader of the group.`
     GaveLeadership(Member),
-    /// `<X> adds you to <X's> group.`
+    /// `<X> adds you to <X's> group.`, and `<X> grabs your hand.` in each
+    /// demeanor (`HOLD_*_SECOND`, `group.rb:481-492`), which Lich answers
+    /// alike (`:628-631`, `:648-651`): X leads you now.
     AddedToGroup(Member),
     /// `You join <X>.`
     JoinedGroup(Member),
-    /// `<X> adds <Y> to <X's> group.`
+    /// `<X> adds <Y> to <X's> group.`, and `<X> grabs <Y's> hand.` in each
+    /// demeanor (`HOLD_*_THIRD`, `group.rb:494-505`), which Lich answers alike
+    /// (`:636-638`, `:652-654`).
     LeaderAdded {
         /// The leader.
         leader: Member,
         /// Who was added.
         member: Member,
+    },
+    /// `<X> joins <Y's> group.` -- `OTHER_JOINED_GROUP` (`group.rb:509`),
+    /// someone joining a group you do not lead. The joiner is named first,
+    /// the other way round from `adds`.
+    JoinedOther {
+        /// Who joined.
+        member: Member,
+        /// Whose group it is.
+        leader: Member,
     },
     /// `<X> removes <Y> from the group.`
     LeaderRemoved {
@@ -110,6 +141,22 @@ pub enum GroupEvent {
     /// the `group` command's answer when there is nothing to list. Lich
     /// clears on it exactly as on a disband (`:617-619`).
     NotInGroup,
+    /// `You have no group to disband.` -- `NO_GROUP_TO_DISBAND`
+    /// (`group.rb:516`): you lead no group, which a follower hears too.
+    NoGroupToDisband,
+    /// `Your group status is currently open.` (or `closed`) -- `STATUS`
+    /// (`group.rb:525`).
+    Status(GroupStatus),
+    /// `<X>'s group status is closed`: the game refusing `group #<id>` or
+    /// `join #<id>` (`group.rb:307-309`, `:349-351`). Lich's observer has no
+    /// pattern for it; `Group.add` and `Group.join` read it as the answer to
+    /// their own command.
+    ///
+    /// UNVERIFIED that the game sends the name as a link: Lich matches this
+    /// one on stripped text. Its sibling `<X> joins <Y's> group.` links the
+    /// possessive name (`group.rb:508`), so it is read as a link here, with
+    /// or without the `'s` inside it, and a line with no link is not read.
+    Refused(Member),
     /// `You are leading <X>, <Y>.` or `You are grouped with <X>, <Y>.` --
     /// `MEMBER` (`group.rb:521`), the `group` command's roster.
     ///
@@ -125,16 +172,29 @@ pub enum GroupEvent {
 
 /// `HOLD_*_FIRST` (`group.rb:468-479`): you take someone's hand, as the prose
 /// either side of their name. Reserved, neutral, friendly, warm.
-///
-/// **Not ported: the eight `HOLD_*_SECOND` and `_THIRD`.** Someone taking
-/// *your* hand also makes them the leader (`group.rb:648-651`), and someone
-/// taking a third person's hand is `LeaderAdded` by another route; both want
-/// their own captures before they are written.
 const YOU_HOLD: [(&str, &str); 4] = [
     ("You grab ", " hand."),
     ("You reach out and hold ", " hand."),
     ("You gently take hold of ", " hand."),
     ("You clasp ", " hand tenderly."),
+];
+
+/// `HOLD_*_SECOND` (`group.rb:481-492`): someone takes YOUR hand, as the
+/// prose after their name. Not anchored at the start, as Lich's are not.
+const HOLDS_YOURS: [&str; 4] = [
+    " grabs your hand.",
+    " reaches out and holds your hand.",
+    " gently takes hold of your hand.",
+    " clasps your hand tenderly.",
+];
+
+/// `HOLD_*_THIRD` (`group.rb:494-505`): someone takes a third person's hand,
+/// as the prose between the two names and after the second.
+const HOLDS_ANOTHERS: [(&str, &str); 4] = [
+    (" grabs ", " hand."),
+    (" reaches out and holds ", " hand."),
+    (" gently takes hold of ", " hand."),
+    (" clasps ", " hand tenderly."),
 ];
 
 /// Read a line as a group event, or `None` if it is not one.
@@ -164,15 +224,8 @@ pub(crate) fn classify_text(line: &ChunkLine, text: &str) -> Option<GroupEvent> 
         .collect();
     let trimmed = text.trim();
 
-    // No participants needed.
-    if trimmed.starts_with("You disband your group") {
-        return Some(GroupEvent::Disbanded);
-    }
-    // `^You are not currently in a group` (`group.rb:512`), anchored as Lich
-    // anchors it (after `consume`'s `line.strip`, `group.rb:587`): a player
-    // SAYING it puts their own name first.
-    if trimmed.starts_with("You are not currently in a group") {
-        return Some(GroupEvent::NotInGroup);
+    if let Some(event) = unlinked(trimmed) {
+        return Some(event);
     }
     // `^You are (?:leading|grouped with) (.*)` (`group.rb:521`). Before the
     // `first` guard, because the members ARE the event, however many.
@@ -182,42 +235,108 @@ pub(crate) fn classify_text(line: &ChunkLine, text: &str) -> Option<GroupEvent> 
         }
     }
     let first = members.first()?;
+    about_one(trimmed, first, members.len())
+        .or_else(|| hands(trimmed, &members))
+        .or_else(|| about_two(trimmed, &members))
+}
 
-    // One participant, the game speaking about them.
-    if trimmed.ends_with(" joins your group.") {
-        return Some(GroupEvent::Joined(first.clone()));
+/// The lines that name nobody, each anchored at the start as Lich anchors it
+/// (after `consume`'s `line.strip`, `group.rb:587`): a player SAYING one puts
+/// their own name first.
+fn unlinked(trimmed: &str) -> Option<GroupEvent> {
+    if trimmed.starts_with("You disband your group") {
+        return Some(GroupEvent::Disbanded);
     }
-    if trimmed.ends_with(" leaves your group.") {
-        return Some(GroupEvent::Left(first.clone()));
+    // `^You are not currently in a group` (`group.rb:512`).
+    if trimmed.starts_with("You are not currently in a group") {
+        return Some(GroupEvent::NotInGroup);
     }
-    if trimmed.starts_with("You add ") && trimmed.ends_with(" to your group.") {
-        return Some(GroupEvent::Added(first.clone()));
+    // `^You have no group to disband\.` (`group.rb:516`).
+    if trimmed.starts_with("You have no group to disband.") {
+        return Some(GroupEvent::NoGroupToDisband);
     }
-    // Taking someone's hand adds them, as `You add` does: Lich answers both
-    // with `Group.push` (`group.rb:642`, `:646`). One line in four demeanors.
-    if members.len() == 1
-        && YOU_HOLD
-            .iter()
-            .any(|(start, end)| trimmed.starts_with(start) && trimmed.ends_with(end))
+    // `^Your group status is currently (?<status>open|closed)\.`
+    // (`group.rb:525`).
+    let status = trimmed.strip_prefix("Your group status is currently ")?;
+    if status.starts_with("open.") {
+        Some(GroupEvent::Status(GroupStatus::Open))
+    } else if status.starts_with("closed.") {
+        Some(GroupEvent::Status(GroupStatus::Closed))
+    } else {
+        None
+    }
+}
+
+/// One participant, the game speaking about them.
+fn about_one(trimmed: &str, first: &Member, count: usize) -> Option<GroupEvent> {
+    let event = if trimmed.ends_with(" joins your group.") {
+        GroupEvent::Joined(first.clone())
+    } else if trimmed.ends_with(" leaves your group.") {
+        GroupEvent::Left(first.clone())
+    } else if trimmed.starts_with("You add ") && trimmed.ends_with(" to your group.") {
+        GroupEvent::Added(first.clone())
+    } else if trimmed.starts_with("You remove ") && trimmed.ends_with(" from the group.") {
+        GroupEvent::Removed(first.clone())
+    } else if trimmed.starts_with("But ")
+        && trimmed.ends_with(" is already a member of your group!")
     {
-        // The link's text is possessive here -- `Dicate's` -- and a member's
-        // name is not.
-        let mut held = first.clone();
-        if let Some(name) = held.text.strip_suffix("'s") {
-            held.text = name.to_owned();
-        }
-        return Some(GroupEvent::Added(held));
-    }
-    if trimmed.starts_with("You remove ") && trimmed.ends_with(" from the group.") {
-        return Some(GroupEvent::Removed(first.clone()));
-    }
-    if trimmed.starts_with("But ") && trimmed.ends_with(" is already a member of your group!") {
-        return Some(GroupEvent::AlreadyMember(first.clone()));
-    }
-    if trimmed.starts_with("You join ") && trimmed.ends_with('.') && members.len() == 1 {
-        return Some(GroupEvent::JoinedGroup(first.clone()));
-    }
+        GroupEvent::AlreadyMember(first.clone())
+    } else if count == 1 && trimmed.starts_with("You join ") && trimmed.ends_with('.') {
+        GroupEvent::JoinedGroup(first.clone())
+    } else if refused(trimmed, first) {
+        GroupEvent::Refused(named(first))
+    } else {
+        return None;
+    };
+    Some(event)
+}
 
+/// Whether the line is `<X>'s group status is closed`, the name first, as
+/// `Group.join` anchors it (`group.rb:351`): a player saying it puts their
+/// own name first, and theirs is not the link that follows.
+fn refused(trimmed: &str, first: &Member) -> bool {
+    trimmed
+        .strip_prefix(first.text.as_str())
+        .map(|rest| rest.strip_prefix("'s").unwrap_or(rest))
+        .is_some_and(|rest| rest.starts_with(" group status is closed"))
+}
+
+/// Someone's hand taken: by you, from you, or between two others. Lich
+/// answers each as the adding line it resembles (`group.rb:646-654`).
+fn hands(trimmed: &str, members: &[Member]) -> Option<GroupEvent> {
+    match members {
+        [held]
+            if YOU_HOLD
+                .iter()
+                .any(|(start, end)| trimmed.starts_with(start) && trimmed.ends_with(end)) =>
+        {
+            Some(GroupEvent::Added(named(held)))
+        }
+        [taker]
+            if HOLDS_YOURS
+                .iter()
+                .any(|end| trimmed.ends_with(&format!("{}{end}", taker.text))) =>
+        {
+            Some(GroupEvent::AddedToGroup(taker.clone()))
+        }
+        // Anchored at both ends, as Lich's `^...$` is.
+        [taker, held]
+            if HOLDS_ANOTHERS.iter().any(|(verb, end)| {
+                trimmed == format!("{}{verb}{}{end}", taker.text, held.text)
+            }) =>
+        {
+            Some(GroupEvent::LeaderAdded {
+                leader: taker.clone(),
+                member: named(held),
+            })
+        }
+        _ => None,
+    }
+}
+
+/// Leadership, and a leader adding, removing or being joined.
+fn about_two(trimmed: &str, members: &[Member]) -> Option<GroupEvent> {
+    let first = members.first()?;
     // Leadership. `designates you` and `designates <Y>` differ by participant
     // count, because "you" is not a link.
     if trimmed.ends_with(" as the new leader of the group.") {
@@ -253,8 +372,67 @@ pub(crate) fn classify_text(line: &ChunkLine, text: &str) -> Option<GroupEvent> 
             member: members.get(1)?.clone(),
         });
     }
-
+    // `^<X> joins <Y's> group.$` (`group.rb:509`), whole.
+    if let [member, leader] = members
+        && trimmed == format!("{} joins {} group.", member.text, leader.text)
+    {
+        return Some(GroupEvent::JoinedOther {
+            member: member.clone(),
+            leader: named(leader),
+        });
+    }
     None
+}
+
+/// A member named by a possessive link -- `Dicate's` -- with the name as its
+/// text, since a member's name is not possessive.
+fn named(member: &Member) -> Member {
+    let mut named = member.clone();
+    if let Some(name) = named.text.strip_suffix("'s") {
+        named.text = name.to_owned();
+    }
+    named
+}
+
+/// Who leads the group, as far as the game has said.
+///
+/// Lich's `@@leader`: `nil`, `:self` or a `GameObj` (`group.rb:21`,
+/// `:266-286`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum Leader {
+    /// Nobody has said: a new session, or one a reconnect invalidated.
+    #[default]
+    Unknown,
+    /// You. Also what a group of one is: Lich sets `:self` when the group
+    /// empties (`group.rb:603-605`, `:617-619`), so you leading nobody is
+    /// being in no group.
+    You,
+    /// Someone else, by the link the game sent.
+    Other(Member),
+}
+
+impl Leader {
+    /// `member` as the leader: [`Leader::You`] when the link is you.
+    fn of(member: &Member, me: Option<&str>) -> Self {
+        if me == Some(member.id.as_str()) {
+            Leader::You
+        } else {
+            Leader::Other(member.clone())
+        }
+    }
+}
+
+/// Whether your group takes new members, as `group` last reported it.
+///
+/// [`Group::status`] is `None` until then. Lich starts at `:closed`
+/// (`group.rb:23`), which is a default and not something the game said
+/// (`plan/12` §5.2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GroupStatus {
+    /// Others may join.
+    Open,
+    /// Others may not.
+    Closed,
 }
 
 /// Who is grouped with you, by `exist` id.
@@ -265,27 +443,37 @@ pub(crate) fn classify_text(line: &ChunkLine, text: &str) -> Option<GroupEvent> 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Group {
     members: Vec<Member>,
-    leader: Option<Member>,
+    leader: Leader,
+    status: Option<GroupStatus>,
+    checked: bool,
 }
 
 impl Group {
     /// Apply one event.
     ///
+    /// `me` is the character's own `exist` id
+    /// ([`Character::exist_id`](crate::state::Character::exist_id)), once the
+    /// login burst has said it: a link that is you becomes [`Leader::You`],
+    /// and is never a member of your own group.
+    ///
     /// Returns whether anything changed.
-    pub fn apply(&mut self, event: &GroupEvent) -> bool {
+    pub fn apply(&mut self, event: &GroupEvent, me: Option<&str>) -> bool {
         let before = self.clone();
         match event {
             GroupEvent::Joined(m) | GroupEvent::Added(m) | GroupEvent::AlreadyMember(m) => {
-                self.push(m);
+                self.push(m, me);
             }
             // **Only if the leader is in OUR group** (`group.rb:636-638`,
             // `Group.push(added) if Group.include?(leader)`). The line is
             // broadcast to everyone in the room, so `<X> adds <Y> to his
             // group` is as often news about someone else's group as ours --
-            // and pushing unconditionally put strangers on our roster.
-            GroupEvent::LeaderAdded { leader, member } => {
+            // and pushing unconditionally put strangers on our roster. `<Y>
+            // joins <X's> group` and `<X> grabs <Y's> hand` take the same
+            // guard (`:652-657`).
+            GroupEvent::LeaderAdded { leader, member }
+            | GroupEvent::JoinedOther { member, leader } => {
                 if self.contains(&leader.id) {
-                    self.push(member);
+                    self.push(member, me);
                 }
             }
             // The same guard, on removal (`group.rb:639-641`): a leader of
@@ -295,41 +483,70 @@ impl Group {
                     self.members.retain(|held| held.id != member.id);
                 }
             }
-            GroupEvent::Left(m) | GroupEvent::Removed(m) => {
+            // A refusal deletes, as `Group.add` does on it (`group.rb:317-319`):
+            // whoever the game would not group you with is not in your group.
+            GroupEvent::Left(m) | GroupEvent::Removed(m) | GroupEvent::Refused(m) => {
                 self.members.retain(|held| held.id != m.id);
             }
             // Joining someone's group replaces whatever was held: you are in
             // THEIR group now, and its other members are unknown until the
-            // game names them.
+            // game names them -- which is why Lich stops trusting its roster
+            // here (`checked = false`, `group.rb:629`, `:649`).
             GroupEvent::AddedToGroup(leader) | GroupEvent::JoinedGroup(leader) => {
                 self.members.clear();
-                self.push(leader);
-                self.leader = Some(leader.clone());
+                self.push(leader, me);
+                self.leader = Leader::of(leader, me);
+                self.checked = false;
             }
-            GroupEvent::LeaderChanged { to, .. } => self.leader = Some(to.clone()),
-            GroupEvent::GaveLeadership(m) => self.leader = Some(m.clone()),
-            // The game named YOU as leader, and "you" is not a link -- so the
-            // leader becomes unknown rather than being set to the person who
-            // gave it away. A consumer asking "who leads" gets `None`, which
-            // is honest; asking "is it me" is a different question this model
-            // cannot answer without knowing its own id.
-            GroupEvent::LeaderIsYou(_) => self.leader = None,
+            // **Only if either is in OUR group**, the guard Lich puts on the
+            // push (`group.rb:632-635`) and here on the leader too: Lich sets
+            // the leader whatever the two are, so a swap in a stranger's
+            // group, if the room hears it as it hears `adds`, would make a
+            // stranger our leader -- and every group role is read off it
+            // (`plan/39` §8).
+            GroupEvent::LeaderChanged { from, to } => {
+                if self.contains(&from.id) || self.contains(&to.id) {
+                    self.push(from, me);
+                    self.push(to, me);
+                    self.leader = Leader::of(to, me);
+                }
+            }
+            // `GAVE_LEADER_AWAY` (`group.rb:625-627`): the new leader is a
+            // member, as they must be to take it.
+            GroupEvent::GaveLeadership(m) => {
+                self.push(m, me);
+                self.leader = Leader::of(m, me);
+            }
+            // `GIVEN_LEADERSHIP` (`group.rb:598-600`): "you" is prose, so the
+            // line itself says who, and no id is needed.
+            GroupEvent::LeaderIsYou(_) => self.leader = Leader::You,
             GroupEvent::Disbanded | GroupEvent::NotInGroup => {
                 self.emptied();
             }
+            // You lead no group -- but a follower hears it too, so it cannot
+            // clear the members; it only puts the roster in doubt
+            // (`group.rb:514-516`, `:620-621`).
+            GroupEvent::NoGroupToDisband => self.checked = false,
+            // The `group` command's last line: `Group.check` waits for it
+            // (`group.rb:152-157`, `:622-624`), so the roster before it is the
+            // game's own answer.
+            GroupEvent::Status(status) => {
+                self.status = Some(*status);
+                self.checked = true;
+            }
             // `Group.refresh(*people)` (`group.rb:644-645`): the whole list, as
-            // named. `You are leading` makes the leader you, which this model
-            // spells `None` (see `LeaderIsYou`); `grouped with` names the
-            // leader first (`:610-614`, `Group.leader = people.first`).
+            // named. `You are leading` makes the leader you; `grouped with`
+            // names the leader first (`:610-614`, `Group.leader =
+            // people.first`), and a roster naming nobody names no leader.
             GroupEvent::Listed { leading, members } => {
                 self.members.clear();
                 for member in members {
-                    self.push(member);
+                    self.push(member, me);
                 }
-                self.leader = if *leading {
-                    None
-                } else {
-                    members.first().cloned()
+                self.leader = match (leading, members.first()) {
+                    (true, _) => Leader::You,
+                    (false, Some(first)) => Leader::of(first, me),
+                    (false, None) => Leader::Unknown,
                 };
             }
         }
@@ -343,29 +560,51 @@ impl Group {
     /// same two things in Lich: `Group.leader = :self` and clear the members.
     /// Returns whether anything changed.
     pub fn emptied(&mut self) -> bool {
-        let changed = !self.members.is_empty() || self.leader.is_some();
+        let changed = !self.members.is_empty() || self.leader != Leader::You;
         self.members.clear();
-        self.leader = None;
+        self.leader = Leader::You;
         changed
     }
 
-    /// Add, without duplicating an id already held.
-    fn push(&mut self, member: &Member) {
-        if !self.members.iter().any(|held| held.id == member.id) {
+    /// Add, without duplicating an id already held -- and never you, who are
+    /// not grouped with yourself.
+    fn push(&mut self, member: &Member, me: Option<&str>) {
+        if me != Some(member.id.as_str()) && !self.contains(&member.id) {
             self.members.push(member.clone());
         }
     }
 
-    /// Everyone in the group, in the order the game named them.
+    /// Everyone in the group, in the order the game named them. Not you.
     #[must_use]
     pub fn members(&self) -> &[Member] {
         &self.members
     }
 
-    /// The leader, if the game has named one.
+    /// Who leads: unknown, you, or someone else. **"Am I the leader?"** is
+    /// `*leader() == Leader::You`, and [`Leader::Unknown`] is not "no".
     #[must_use]
-    pub fn leader(&self) -> Option<&Member> {
-        self.leader.as_ref()
+    pub fn leader(&self) -> &Leader {
+        &self.leader
+    }
+
+    /// Whether your group is open, or `None` until `group` has said.
+    #[must_use]
+    pub fn status(&self) -> Option<GroupStatus> {
+        self.status
+    }
+
+    /// Whether the game's answer to `group` has been read since anything
+    /// last put the roster in doubt: Lich's `checked?` (`group.rb:38-40`).
+    ///
+    /// Set by the answer's last line ([`GroupEvent::Status`]); cleared by
+    /// joining or being taken into someone's group, whose other members are
+    /// not named, and by `You have no group to disband.`; `false` in a new
+    /// session and after a reconnect. Lich answers `false` by sending `group`
+    /// before it reads the roster (`maybe_check`, `:163-165`). This model
+    /// sends nothing, so a consumer that needs the roster sends it.
+    #[must_use]
+    pub fn checked(&self) -> bool {
+        self.checked
     }
 
     /// Whether this id is in the group.

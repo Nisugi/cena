@@ -126,6 +126,45 @@ impl ExperienceReport {
     }
 }
 
+impl super::Experience {
+    /// Fold an `experience` report: each number it stated replaces the one
+    /// held, and one it did not state is left alone.
+    ///
+    /// Nothing is persisted, so nothing is marked taught -- see
+    /// `Character::consume_chunk`. Moved down from `character.rs` under Rule
+    /// 4.1 when the character's `<playerID>` took that file to its cap.
+    pub(super) fn absorb(&mut self, report: &ExperienceReport) {
+        if let Some(fame) = report.fame {
+            self.fame = Some(fame);
+        }
+        if let Some(value) = report.experience {
+            self.experience = Some(value);
+        }
+        if let Some((current, max)) = report.field_experience {
+            self.field_experience = Some(current);
+            self.field_experience_max = Some(max);
+        }
+        if let Some(value) = report.ascension_experience {
+            self.ascension_experience = Some(value);
+        }
+        if let Some(value) = report.recent_deaths {
+            self.recent_deaths = Some(value);
+        }
+        if let Some(value) = report.total_experience {
+            self.total_experience = Some(value);
+        }
+        if let Some(sting) = report.deaths_sting {
+            self.deaths_sting = Some(sting);
+        }
+        if let Some(value) = report.long_term_experience {
+            self.long_term_experience = Some(value);
+        }
+        if let Some(value) = report.deeds {
+            self.deeds = Some(value);
+        }
+    }
+}
+
 /// The value after `<label>: `, up to the next column or the line's end.
 ///
 /// The report is two columns of `Label: value` separated by runs of spaces, so

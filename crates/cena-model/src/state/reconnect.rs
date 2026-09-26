@@ -221,6 +221,11 @@ impl GameState {
         // -- which `GameState::apply` already stores -- says whether you are
         // grouped at all. So the burst answers "are you in a group" and only a
         // command answers "with whom".
+        //
+        // **Who leads goes back to `Leader::Unknown`, not `You`**, and the
+        // open/closed status to unstated: the group can change hands while we
+        // are gone, and only `group` restates either. The indicator going dark
+        // says `You` again (`Group::emptied`).
         *group = Group::default();
 
         // **The stow and ready lists are KEPT**, and the contrast with the
