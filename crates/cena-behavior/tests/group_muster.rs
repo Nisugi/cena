@@ -6,7 +6,7 @@
 use std::time::{Duration, Instant};
 
 use cena_behavior::group::{
-    Hindrance, LOST_WAIT, Muster, Report, Settings, muster, recoverer, successor,
+    Hindrance, LOST_WAIT, Muster, Report, Settings, Standing, muster, recoverer, successor,
 };
 use cena_map::RoomId;
 use cena_session::State;
@@ -65,8 +65,21 @@ fn healthy(name: &str, health: u32) -> Report {
 fn after(report: &Report, seconds: u64) -> (Option<Muster>, Instant) {
     let since = Instant::now();
     let now = since + Duration::from_secs(seconds);
-    let answer = muster(report, HERE, since, now, &Settings::default());
+    let answer = muster(report, HERE, None, since, now, &Settings::default());
     (answer, since + LOST_WAIT)
+}
+
+/// What muster answers for a connection given up, with the leader's room
+/// reading `standing` of it.
+fn given_up(standing: Option<Standing>) -> Option<Muster> {
+    let now = Instant::now();
+    let closed = linked("Kiyna", State::Closed);
+    muster(&closed, HERE, standing, now, now, &Settings::default())
+}
+
+/// Standing in the leader's room, link-dead.
+fn standing(grouped: bool, hindrance: Option<Hindrance>) -> Standing {
+    Standing { grouped, hindrance }
 }
 
 // --- question 7's table ---------------------------------------------------------
@@ -160,6 +173,7 @@ fn neither_room_known_is_not_together() {
     let answer = muster(
         &away("Kiyna", None),
         None,
+        None,
         since,
         since,
         &Settings::default(),
@@ -195,6 +209,63 @@ fn a_connection_given_up_is_handed_over_at_once() {
         after(&linked("Kiyna", State::Closed), 0).0,
         Some(Muster::Gone)
     );
+}
+
+/// `plan/39` §8a, the author: *"hydra says closed and character is standing
+/// in the room ... take character back to town to rest, either walk if
+/// they're still in your group and ok, fog if you can"*.
+#[test]
+fn given_up_but_standing_here_grouped_and_ok_is_taken_home() {
+    assert_eq!(given_up(Some(standing(true, None))), Some(Muster::TakeHome));
+}
+
+/// §8a: *"or drag em if something happened to them"*, grouped or not.
+#[test]
+fn given_up_standing_here_and_hindered_is_dragged() {
+    for hindrance in [Hindrance::Down, Hindrance::Stuck] {
+        for grouped in [true, false] {
+            assert_eq!(
+                given_up(Some(standing(grouped, Some(hindrance)))),
+                Some(Muster::Drag),
+                "{hindrance:?}, grouped {grouped}"
+            );
+        }
+    }
+}
+
+/// §8a with question 10: dead there, the dead member's recovery, whose third
+/// step is the drag.
+#[test]
+fn given_up_standing_here_and_dead_is_recovered() {
+    assert_eq!(
+        given_up(Some(standing(true, Some(Hindrance::Dead)))),
+        Some(Muster::Dead)
+    );
+}
+
+/// §8a: not in the room, out of the game: the handover. And the case the
+/// answer does not cover, there and fine but not grouped, stays the handover.
+#[test]
+fn given_up_and_not_standing_here_is_handed_over() {
+    assert_eq!(given_up(None), Some(Muster::Gone));
+    assert_eq!(given_up(Some(standing(false, None))), Some(Muster::Gone));
+}
+
+/// `group/muster.rs`, INFERRED: the lost wait run out reads the leader's
+/// room as `Closed` does.
+#[test]
+fn a_lost_wait_run_out_reads_the_room_as_closed_does() {
+    let since = Instant::now();
+    let lost = linked("Kiyna", State::Reconnecting);
+    let answer = muster(
+        &lost,
+        HERE,
+        Some(standing(true, None)),
+        since,
+        since + LOST_WAIT,
+        &Settings::default(),
+    );
+    assert_eq!(answer, Some(Muster::TakeHome));
 }
 
 /// `plan/12` §5.2: a member not connected is read for nothing else; its

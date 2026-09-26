@@ -370,7 +370,8 @@ no I/O, no clock, no randomness. Time is an `Instant` the caller passes and a ra
   a member rests wounded, and a follower begins once `Leading::prepared` names **this** rest,
   which is §0e's race closed by a number.
 - **Muster** (`group/muster.rs`): question 7's table, read in order: the connection
-  (`Reconnecting` and the steps back: `Lost`, then `Gone`; `Closed`: `Gone` at once), dead,
+  (`Reconnecting` and the steps back: `Lost`; `Closed` at once, or the wait run out: by the
+  leader's room, §8a's `TakeHome`, `Drag` or `Dead`, else the handover `Gone`), dead,
   left the group, then here and hindered `Hold`, elsewhere and able `Await`, elsewhere and stuck
   `Fetch`. Every wait ends `lost_wait` (90 s) after the member was first seen apart: `Await`
   becomes `Fetch`, and `Hold` or a member the map cannot place becomes `Overdue`, which rests
@@ -512,7 +513,7 @@ Each answer is quoted as given. What follows it is PROPOSED unless labelled.
 5. **The wait.** *"60-120 seconds? While still keeping the room safe. Configurable ..."*.
    One key, `lost_wait`, default **90 s**. While it runs, the members still here fight what
    comes in and nothing else: no wander, no walk to rest (Stage 6 as written).
-6. **In game or out.** Not answered: the author asked for the context the question lacked
+6. **In game or out.** Answered in §8a, after the author asked for the context the question lacked
    (*"how do you know their having problems? They stop responding? What stops responding?
    Their hydra info stops updating? They stop sending commands?"*). The context is below
    (§8a). The question is asked again there.
@@ -599,12 +600,44 @@ connection drops or when the game removes the character? UNVERIFIED by any sourc
 corpus could measure it: two of the author's characters in one room, one of them dropped.
 That needs the author's leave to query.
 
+**ANSWERED (AUTHOR, 2026-09-26):** *"if a character goes linkdead ... hydra says closed and
+character is standing in the room ... take character back to town to rest, either walk if
+they're still in your group and ok, fog if you can and they're still in your group, or drag em
+if something happened to them."*
+
+*Still in game* is read off the **leader's own room**: the lost member still listed among its
+players, link-dead. Then the group does not hand over and hunt on; it takes the character
+home to rest. **BUILT 2026-09-26** in Stage 2's muster (`group/muster.rs`, `Standing`, five
+tests in `crates/cena-behavior/tests/group_muster.rs`). Once Hydra has given the member up
+(`Closed`; or the lost wait run out, INFERRED to read the same, as both were `Gone` before):
+
+| The leader's room says | The group |
+|---|---|
+| not there | the handover (`Gone`), Stage 6 |
+| there, in the group, nothing wrong | rests now and takes it along (`TakeHome`): the leader's own way to rest, the fog when it fogs and can, else the walk; the game carries a grouped member with the leader (§3) |
+| there, something wrong (down, stunned, webbed) | dragged home (`Drag`) |
+| there, dead | question 10's recovery (`Dead`), whose third step is the drag |
+
+What the answer leaves:
+
+- **There and fine, but not in the group**: not covered, so it stays the handover. Whether a
+  leader can add a link-dead character (`group #<id>`, or holding its hand) is UNVERIFIED.
+- INFERRED: *"fog if you can"* is the leader's own rest fog (`rest.fog`). That a fog carries a
+  grouped link-dead member is UNVERIFIED, as Spirit Guide's is for question 10.
+- Whether the game lets a character who is not dead (lying down, stunned) be dragged is
+  UNVERIFIED, the same open item as question 10's `drag`.
+- Reading the room's status text into a `Hindrance` (`appears dead`, `stunned`, `lying down`,
+  `crates/cena-model/src/state/room.rs:97-114`) is Stage 3's, with the rest of the reports.
+- How long a link-dead character stands, and when `has disconnected` is sent: still
+  unmeasured, and the rule no longer needs either, since it reads the room.
+
 ### 8b. The stages, revised
 
 - **Stage 1** (the model) adds: *"am I the leader"* as a three-valued fact, which needs the
   character's own `exist` id (question 8); the eight `HOLD_*_SECOND`/`_THIRD` lines
   (question 10); and, once question 6 is answered, `has disconnected` from the logons feed.
-  **BUILT 2026-09-26** (§6), all but `has disconnected`, which still waits on question 6.
+  **BUILT 2026-09-26** (§6), all but `has disconnected`, which §8a's answer does not need: it
+  reads the room.
 - **Stage 2** (the rules, pure) adds: the successor (`successors`, else the healthiest); the
   lost member's reason and what each reason asks (question 7's table); `lost_wait`.
   **BUILT 2026-09-26** (§6), with *rest first* after everyone dropped (question 9) and the
@@ -618,7 +651,9 @@ That needs the author's leave to query.
   and a follower's stop (question 3).
 - **Stage 5** (the settings) adds `successors`, `lost_wait` and `quiet_followers`.
 - **Stage 6** (the handover) adds: the successor by Stage 2's rule, and *rest first* when
-  every member dropped (question 9). It waits on question 6.
+  every member dropped (question 9). Since §8a's answer, the handover is only for a member
+  given up and **not** standing in the leader's room; one still there is taken home or
+  dragged (`TakeHome`, `Drag`), which Stage 3 acts on beside the rest and Stage 7's drag.
 - **Stage 7, new: a dead member** (question 10): the hunts ended, the hand taken, Spirit
   Guide, the drag, the alert. It is tested over scripted sessions, one branch per step, a
   mutation each. It is live on the test server, where the author can make a character die.
