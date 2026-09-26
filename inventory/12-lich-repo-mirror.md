@@ -73,6 +73,11 @@ capture or one corpus query, and the corpus needs the author's permission first.
 scripts; most carry no licence line. What is recommended for porting is **game facts** (message
 text, tables of game data), not code. Each report names the author of every HIGH item.
 
+> **SETTLED by the author, 2026-09-26:** a missing licence line is not a question to raise.
+> Asked whether `flare_patterns.rb`'s table could ship inside Hydra (`ca944bf`): *"it's a lich
+> script, they don't get protections. In fact the author of that script cannibalized lots of
+> my scripts."* Porting from these scripts needs no licence check.
+
 ---
 
 ## 1. Fix first: defects in what Cena already has
