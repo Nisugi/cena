@@ -405,7 +405,7 @@ impl Hunt {
         {
             return said;
         }
-        if let Some(said) = Self::survival(state, self.recovering()) {
+        if let Some(said) = self.survival(state) {
             return said;
         }
         if let Some(said) = self.rest(state, here) {
@@ -443,9 +443,12 @@ impl Hunt {
 
     // --- survival ----------------------------------------------------------
 
-    /// Dead: the hunt is over. Down, and able to move: stand, unless the
-    /// kneel was a recovery's.
-    fn survival(state: &GameState, recovering: bool) -> Option<Said> {
+    /// Dead: the hunt is over. Down, and able to move: stand, in the stand
+    /// stance first when the profile names one (bigshot's `stand`,
+    /// `bigshot.lic:7064-7077`), unless the kneel was a recovery's or an
+    /// archer's with a crossbow ([`crossbow_kneel`]).
+    fn survival(&self, state: &GameState) -> Option<Said> {
+        let recovering = self.recovering();
         let status = state.status.known();
         if status.dead() == Some(true) {
             return Some(Said::Done(Ending::Dead));
@@ -455,10 +458,12 @@ impl Hunt {
             || status.sitting() == Some(true)
             || status.kneeling() == Some(true);
         let held = status.stunned() == Some(true) || status.webbed() == Some(true);
-        (down && !held && !recovering).then(|| Said::Send {
-            line: "stand".to_owned(),
-            target: None,
-        })
+        if !down || held || recovering || crossbow_kneel(state) {
+            return None;
+        }
+        let line = Self::stance_for(self.profile.stance.stand.as_deref(), state)
+            .unwrap_or_else(|| "stand".to_owned());
+        Some(Said::Send { line, target: None })
     }
 
     // --- loot -------------------------------------------------------------------
@@ -702,6 +707,13 @@ impl Hunt {
         target: i64,
         now: Option<u32>,
     ) -> Option<Said> {
+        // Kneeling with a crossbow is kept only for what wants it.
+        if crossbow_kneel(state) && !keeps_kneeling(send) {
+            return Some(Said::Send {
+                line: "stand".to_owned(),
+                target: None,
+            });
+        }
         if let Some(line) = self.stance_before(send, state) {
             return Some(Said::Send {
                 line,
@@ -734,4 +746,28 @@ impl Hunt {
         }
         stance::command(want, state)
     }
+}
+
+/// Kneeling with a crossbow in the left hand, as an archer kneels to fire:
+/// bigshot does not stand for `fire`, `kneel`, `hide` or 608 then
+/// (`stand`, `bigshot.lic:7067`).
+fn crossbow_kneel(state: &GameState) -> bool {
+    state.status.known().kneeling() == Some(true)
+        && state.left_hand.noun().is_some_and(|noun| {
+            ["arbalest", "kut'ziko", "crossbow", "kut'zikokra"]
+                .iter()
+                .any(|bow| noun.eq_ignore_ascii_case(bow))
+        })
+}
+
+/// A step bigshot sends kneeling with a crossbow: `fire`, `kneel`, `hide`,
+/// or 608.
+fn keeps_kneeling(send: &str) -> bool {
+    let lower = send.trim().to_ascii_lowercase();
+    ["fire", "kneel", "hide"]
+        .iter()
+        .any(|word| lower.starts_with(word))
+        || lower == "608"
+        || lower.starts_with("608 ")
+        || lower.starts_with("incant 608")
 }

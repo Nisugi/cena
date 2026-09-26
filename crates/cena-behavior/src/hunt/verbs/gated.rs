@@ -11,7 +11,7 @@
 
 use std::collections::VecDeque;
 
-use cena_session::{GameState, StatusName, gameobj};
+use cena_session::{GameState, PsmCategory, StatusName, gameobj};
 
 use super::super::engine::Hunt;
 use super::super::follow::{Answer, EFURY_ENDS, End, Hold, Next, TETHER_ENDS};
@@ -391,4 +391,19 @@ impl Hunt {
             }),
         )
     }
+}
+
+/// bigshot's last-moment coup gate (`cmd_cmans`, `:4967-4979`): trained,
+/// the creature's health known, and not eligible now.
+pub(super) fn coup_refused(target: i64, state: &GameState) -> bool {
+    let rank = state
+        .character
+        .psms
+        .get(PsmCategory::CombatManeuver, "coupdegrace")
+        .map_or(0, |ranks| u32::from(ranks.ranks));
+    let Some(creature) = state.creatures().get(target) else {
+        return false;
+    };
+    let known = creature.hp_is_stated() || creature.has_template();
+    rank > 0 && known && !creature.coup_eligible(rank, state.game_time_now())
 }

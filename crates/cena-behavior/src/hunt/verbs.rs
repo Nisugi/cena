@@ -43,13 +43,16 @@ mod tables;
 
 use std::collections::VecDeque;
 
-use cena_session::{GameState, PsmCategory};
+use cena_session::GameState;
 
-use self::spell::{Spell, buff_first, caststop, resonance, spell_step, weed};
+use self::gated::coup_refused;
+use self::spell::{
+    NO_REST_SPELLS, Spell, buff_first, caststop, resonance, soothe, spell_step, weed,
+};
 use self::tables::{CMANS, SHIELD_MOVES, UNPORTED, WARCRIES, WEAPONS};
 use super::engine::Hunt;
 use super::follow::Next;
-use super::said::Said;
+use super::said::{Said, Why};
 use crate::gemstone::jewel;
 
 /// What a step sends.
@@ -63,6 +66,8 @@ pub(super) enum Line {
     Said(Said),
     /// Not now: bigshot's handler would return without sending.
     Skip,
+    /// A routine spell the character cannot afford (`cmd_spell`'s rest).
+    Unaffordable(u16),
     /// A bigshot verb Hydra does not send yet: skipped, and said once.
     Unported(&'static str),
 }
@@ -102,6 +107,17 @@ impl Hunt {
         } else {
             line(&send, target, state)
         };
+        let line = match (line, soothe(state)) {
+            (Line::Send(mut lines), Some(first)) => {
+                lines.push_front(first);
+                Line::Send(lines)
+            }
+            (Line::Then(mut lines, next), Some(first)) => {
+                lines.push_front(first);
+                Line::Then(lines, next)
+            }
+            (line, _) => line,
+        };
         match line {
             Line::Send(mut lines) => match lines.pop_front() {
                 None => Go::Skip,
@@ -125,6 +141,12 @@ impl Hunt {
             }
             Line::Said(said) => Go::Said(said),
             Line::Skip => Go::Skip,
+            Line::Unaffordable(spell) => {
+                if self.profile.rest.when.unaffordable && !NO_REST_SPELLS.contains(&spell) {
+                    self.must_rest = Some(Why::Mana);
+                }
+                Go::Skip
+            }
             Line::Unported(verb) => {
                 if self.told_unported.insert(verb) {
                     self.notes.push(format!(
@@ -171,7 +193,7 @@ pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
         return buffed;
     }
     if let Some(spell) = spell_step(&first, &words) {
-        return spell.cast(target, state);
+        return spell.cast_step(target, state);
     }
     match first.as_str() {
         "kweed" | "weed" => return weed(first == "kweed", target, state),
@@ -248,21 +270,6 @@ pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
 /// game refused it and has not said it is ready.
 fn cooling(state: &GameState, name: &str) -> bool {
     up_in(state, "Cooldowns", name) || state.maneuvers.said_at(name).is_some()
-}
-
-/// bigshot's last-moment coup gate (`cmd_cmans`, `:4967-4979`): trained,
-/// the creature's health known, and not eligible now.
-fn coup_refused(target: i64, state: &GameState) -> bool {
-    let rank = state
-        .character
-        .psms
-        .get(PsmCategory::CombatManeuver, "coupdegrace")
-        .map_or(0, |ranks| u32::from(ranks.ranks));
-    let Some(creature) = state.creatures().get(target) else {
-        return false;
-    };
-    let known = creature.hp_is_stated() || creature.has_template();
-    rank > 0 && known && !creature.coup_eligible(rank, state.game_time_now())
 }
 
 /// Whether an effect whose name starts `name` is up in the dialog `title`.

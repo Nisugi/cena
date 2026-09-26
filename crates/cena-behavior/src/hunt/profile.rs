@@ -262,6 +262,11 @@ pub struct When {
     /// Hydra's own.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wound_rank: Option<u8>,
+    /// A routine spell I cannot afford (`cmd_spell`, `bigshot.lic:5875`:
+    /// bigshot rests on it unless `oom` is negative, and `oom` is 0 when
+    /// blank). Not for 9605, 506, 902 or 411, nor a handler that checks
+    /// its own spell (`kweed`, `leech`, ...), as bigshot's do not.
+    pub unaffordable: bool,
 }
 
 /// When to leave the room.

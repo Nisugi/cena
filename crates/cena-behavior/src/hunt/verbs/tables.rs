@@ -113,6 +113,10 @@ pub(super) const SELF_CAST: &[u16] = &[
     1613, 1616, 1617, 1618, 1619, 1635,
 ];
 
+/// Short buffs `cmd_spell` does not cast while their name is cooling
+/// (`bigshot.lic:5864`).
+pub(super) const SHORT_BUFFS: &[u16] = &[140, 211, 215, 219, 919, 1619, 1650];
+
 /// Cast with no target whatever the step says: Celerity and 902.
 pub(super) const UNAIMED: &[u16] = &[506, 902];
 

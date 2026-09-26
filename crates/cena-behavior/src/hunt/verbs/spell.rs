@@ -7,7 +7,7 @@ use cena_session::{GameState, Stance};
 
 use super::super::engine::Hunt;
 use super::super::maintain::ACTIVE_SPELLS;
-use super::tables::{PLANTS, SELF_CAST, UNAIMED};
+use super::tables::{PLANTS, SELF_CAST, SHORT_BUFFS, UNAIMED};
 use super::{Line, line, up_in};
 use crate::cast::{self, Casting, NotReady, Verb};
 
@@ -41,7 +41,7 @@ impl Hunt {
         self.repeats.resonance = Some(pick);
         let mut spell = Spell::bare(pick);
         spell.incanted = true;
-        spell.cast(target, state)
+        spell.cast_step(target, state)
     }
 }
 
@@ -145,6 +145,48 @@ impl Spell {
             extra: String::new(),
             aimed: true,
             incanted: false,
+        }
+    }
+
+    /// A spell step, as `cmd_spell` casts it (`bigshot.lic:5839-5910`): its
+    /// early returns, and a spell it cannot afford said so, for the rest
+    /// bigshot takes on it. The other handlers cast through [`Self::cast`],
+    /// which only skips.
+    pub(super) fn cast_step(&self, target: i64, state: &GameState) -> Line {
+        if self.refused(state) {
+            return Line::Skip;
+        }
+        // Mana Leech's recovery (597) costs 5 mana more (`:5849`).
+        let penalty = state
+            .game_time_now()
+            .is_some_and(|now| state.effects.active("597", now) == Some(true));
+        match cast::ready(state, self.number, 1, if penalty { 5 } else { 0 }) {
+            Err(NotReady::Mana(..) | NotReady::Spirit | NotReady::Stamina) => {
+                Line::Unaffordable(self.number)
+            }
+            _ => self.cast(target, state),
+        }
+    }
+
+    /// `cmd_spell`'s returns for one spell at a time (`:5854-5864`):
+    /// Celerity while it is up, five cooldowns, the short buffs' shared
+    /// cooldowns, and Camouflage while hidden.
+    fn refused(&self, state: &GameState) -> bool {
+        let Some(now) = state.game_time_now() else {
+            return false;
+        };
+        let cooling = |name: &str| up_in(state, "Cooldowns", name);
+        let named =
+            || cena_session::spells::spell(self.number).is_some_and(|spell| cooling(&spell.name));
+        match self.number {
+            506 => state.effects.active("506", now) == Some(true),
+            9605 => cooling("Surge of Strength"),
+            9625 => cooling("Burst of Swiftness"),
+            335 => state.effects.active_in("Cooldowns", "335", now) == Some(true),
+            720 => cooling("Implosion"),
+            608 => state.status.known().hidden() == Some(true),
+            n if SHORT_BUFFS.contains(&n) => named(),
+            _ => false,
         }
     }
 
@@ -268,4 +310,20 @@ pub(super) fn caststop(words: &[&str], target: i64, state: &GameState) -> Line {
         }
         other => other,
     }
+}
+
+/// Spells whose cost does not send bigshot to rest (`cmd_spell`, `:5875`).
+pub(super) const NO_REST_SPELLS: &[u16] = &[9605, 506, 902, 411];
+
+/// Soothe (1201) before a command while a spell that calms the character
+/// is on it (`cmd`, `bigshot.lic:4003-4010`), when 1201 is known and
+/// affordable.
+pub(super) fn soothe(state: &GameState) -> Option<String> {
+    let now = state.game_time_now()?;
+    let calmed = [201, 216, 1015, 1016, 1108, 1120]
+        .iter()
+        .any(|spell| state.effects.active(&spell.to_string(), now) == Some(true));
+    let ready =
+        state.known_spells.knows(1201) == Some(true) && cast::ready(state, 1201, 1, 0).is_ok();
+    (calmed && ready).then(|| "incant 1201".to_owned())
 }

@@ -9,7 +9,11 @@ impl Job {
         self.profile.rest.fried = number(&self.take("fried"));
         self.profile.rest.overkill = number(&self.take("overkill")).unwrap_or(0);
         self.profile.rest.encumbered = number(&self.take("encumbered"));
-        self.profile.rest.mana_below = number(&self.take("oom"));
+        let oom = self.take("oom");
+        self.profile.rest.mana_below = number(&oom);
+        // bigshot reads a blank `oom` as 0, and only a negative one turns
+        // the rest on an unaffordable spell off (`bigshot.lic:3439`, `:5875`).
+        self.profile.rest.when.unaffordable = !oom.trim().starts_with('-');
         self.profile.rest.until.experience = number(&self.take("rest_till_exp"));
         self.profile.rest.until.mana = number(&self.take("rest_till_mana"));
         self.profile.rest.until.spirit = number(&self.take("rest_till_spirit"));

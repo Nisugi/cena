@@ -552,8 +552,15 @@ Demonstrated live on a short hunt.
 >   begins the song, `unravel` stops it, `efury`/`tether`/`wait`/`sleep`/`berserk` hold,
 >   `hide N` retries, `dhurl` recovers, `dislodge` frees a lodged part, `ambush <part>`
 >   aims at the creature, and `kick` is `punch` while rooted. `verbs.rs` split: its
->   spells and tables moved into `verbs/`. Not yet: PSM costs and availability, `mstrike`,
->   `unarmed`, `nudgeweapons`, `wield`, `briar`, `wandolier`.
+>   spells and tables moved into `verbs/`. And `cmd_spell`'s own rules
+>   (`tests/hunt_spell_rules.rs`): a routine spell the character cannot afford sends the
+>   hunt to rest unless bigshot's `oom` is negative (a blank one is 0, so on:
+>   `rest.when.unaffordable`), Celerity is not recast while up nor Camouflage while
+>   hidden, five cooldowns and the short buffs' are respected, Mana Leech's recovery adds
+>   its 5; Soothe goes first while a calming spell is on the character; the hunter stands
+>   in the stand stance, and a crossbow archer stays kneeling to fire. Not yet: PSM
+>   availability (the model's `psm_availability`, `a392b77`), `mstrike` (needs the skills
+>   the model never reads), `unarmed`, `nudgeweapons`, `wield`, `briar`, `wandolier`.
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,
