@@ -20,12 +20,43 @@
 //! flare names its weapon as a link, and the id is the join key for claiming
 //! pre-flares by weapon. Hand-ported (`defs::HAND_PORTED`): the weapon is the
 //! first link whose run follows the text `Your `.
+//!
+//! # `flare_patterns.rb`, after the shipped defs
+//!
+//! Lich's `flares.rb` misses most custom and festival flare texts, purified
+//! metals, lore-flare repeats, weapon and armor scripts, Covert Arts poisons,
+//! the `_GS` jewel properties and ensorcell: 353 of the 465 message
+//! alternatives in the old Lich repository's `lib/flare_patterns.rb` had no
+//! pattern here (`inventory/12` §2). That table is family `flare_mirror`
+//! (`data/combat_flare_mirror.tsv`, cut by `tools/extract_flare_mirror.rb`),
+//! read only when no shipped flare matches -- where Lich puts flare patterns
+//! it did not ship (`flares.rb`'s `FLARE_LOOKUP`: *"Shipped defs first, then
+//! player supplements"*). A row that reuses a shipped name carries the
+//! shipped flags, so a custom acid text is an `acid` flare. Six rows are not
+//! ported: ensorcell's benefit and the spirit animal's prefix are lines of a
+//! proc a shipped flare already counts, and read here too each proc was two
+//! flares on Lich's own replay fixtures (the extractor's `NOT_PORTED`).
+//!
+//! **Not on an attack or a damage line.** `flare_patterns.rb` was written for
+//! scripts with no attack or damage grammar, and three of its rows re-read a
+//! line Lich's shipped defs own: the Wither lore benefit is the `wither`
+//! initiation, the flaming aura's lash is `flaming_aura`, and Sanguine
+//! Sacrifice's *"X suffers an additional N damage!"* is `damage.rb:41`'s bleed
+//! tick (`tests/combat_flare_mirror.rs`). Read as a flare as well, the attack
+//! claims its own announce as a pre-flare, and the tick is counted twice --
+//! once as the flare's inline damage and once as the damage line -- which the
+//! replay blob `weapon_cast 47a49e78552be40a` caught. So a `flare_mirror` row
+//! never classifies a line that [`AttackLine`] or [`DamageLine`] reads: every
+//! line the shipped grammar read before, it reads the same way now.
 
+use super::attack::AttackLine;
+use super::damage::DamageLine;
 use super::defs::defs;
 use super::target::{self, Actor, Pick};
 use crate::state::chunks::ChunkLine;
 
 /// One flare announce line, classified.
+#[allow(clippy::struct_excessive_bools)] // see `event::Crit`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FlareLine {
     /// The def name: `acid`, `ensorcell`, `blink`, `dispel_flux`, ...
@@ -44,6 +75,10 @@ pub struct FlareLine {
     pub attacker: Option<Actor>,
     /// The flaring weapon, when the line links it (2p forms).
     pub weapon: Option<Actor>,
+    /// Read by Lich's shipped flares rather than `flare_patterns.rb`'s: only
+    /// these resume a swing a creature's attack interrupted
+    /// (`parse/flares.rs`).
+    pub shipped: bool,
 }
 
 /// The link whose run follows `Your ` -- the weapon a 2p flare names.
@@ -64,11 +99,17 @@ fn weapon_link(line: &ChunkLine) -> Option<Actor> {
 }
 
 impl FlareLine {
-    /// Classify one line as a flare announcement.
+    /// Classify one line as a flare announcement: the shipped flares first,
+    /// then `flare_patterns.rb`'s on a line that is neither an attack nor
+    /// damage (see the module doc).
     #[must_use]
     pub fn classify(line: &ChunkLine) -> Option<Self> {
         let text = line.text();
-        let (def, caps) = defs().first_match("flare", &text)?;
+        let (def, caps) = defs().first_match("flare", &text).or_else(|| {
+            defs().first_match("flare_mirror", &text).filter(|_| {
+                AttackLine::classify(line).is_none() && DamageLine::classify(line).is_none()
+            })
+        })?;
         // A lazy attacker capture can land on the FIRST-PERSON form ("from
         // your hands", boil_blood): that is ours, not an attacker.
         let attacker = caps.name("attacker").and_then(|m| {
@@ -96,6 +137,7 @@ impl FlareLine {
                 .and_then(|m| target::link_in(line, m.range(), Pick::First)),
             attacker,
             weapon,
+            shipped: def.family == "flare",
         })
     }
 

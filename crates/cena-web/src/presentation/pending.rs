@@ -3,7 +3,7 @@
 
 use super::hub::line_bytes;
 use super::{MAX_DRAIN, MAX_HISTORY_BYTES, MAX_HISTORY_LINES};
-use cena_session::{Event, Frame, Generation, ObservedEvent, Snapshot};
+use cena_session::{Event, Frame, Generation, LinkKind, ObservedEvent, Snapshot};
 use cena_ui::{LineAssembler, StoryLine, StyledRun};
 use std::collections::VecDeque;
 use tokio::sync::broadcast;
@@ -114,7 +114,8 @@ fn is_report(frame: &Frame) -> bool {
 
 fn frame_lines(assembler: &mut LineAssembler, frame: &Frame) -> Vec<StoryLine> {
     match frame {
-        Frame::Text(text) => assembler.push(
+        // The noun of the object the text names goes with it, for `;sorter`.
+        Frame::Text(text) => assembler.push_naming(
             &text.stream,
             &StyledRun {
                 text: text.content.clone(),
@@ -122,6 +123,10 @@ fn frame_lines(assembler: &mut LineAssembler, frame: &Frame) -> Vec<StoryLine> {
                 monospace: text.style.mono,
                 preset: text.style.preset.clone(),
             },
+            text.object().and_then(|link| match &link.kind {
+                LinkKind::Exist { noun, .. } => Some(noun.as_str()),
+                _ => None,
+            }),
             text.ends_line,
         ),
         Frame::Prompt { .. } => assembler.flush(),

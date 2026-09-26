@@ -347,6 +347,35 @@ impl Effects {
         self.saw_category(category).then_some(false)
     }
 
+    /// Whether an effect **named** `name` is active in `category`: the
+    /// three answers of [`Self::active_in`], found by name rather than id.
+    ///
+    /// Lich's `normalize_lookup` (`lib/util/util.rb:27-32`), which
+    /// `PSMS.available?` asks of `Cooldowns` and `Debuffs` (`psms.rb:142-145`):
+    /// both sides folded, then compared whole. Several listed under one name
+    /// answer `Some(true)` if any is live.
+    ///
+    /// **The folding goes one step past Lich's.** `normalize_lookup` lowercases
+    /// and turns `:` and `_` into spaces; this also drops `'` and turns `-`
+    /// into a space, which is what Lich's other folder, `normalize_name`
+    /// (`util.rb:59-66`), does to the long names in its PSM tables. A long name
+    /// has already lost its apostrophe, so the dialog's text must lose it too
+    /// to meet it. VERIFIED the two meet for one row: the Cooldowns dialog
+    /// lists `Volley` (`crates/cena-behavior/tests/fixtures/arch_kill.xml:155`), and
+    /// the weapon table's long name is `volley` (`psms/weapon.rb:167`).
+    #[must_use]
+    pub fn active_named(&self, category: &str, name: &str, now_server: u32) -> Option<bool> {
+        let name = fold_name(name);
+        let mut found = self
+            .in_category(category)
+            .filter(|(_, effect)| fold_name(&effect.text) == name)
+            .peekable();
+        if found.peek().is_none() {
+            return self.saw_category(category).then_some(false);
+        }
+        Some(found.any(|(id, effect)| self.live(id, effect, now_server)))
+    }
+
     /// Seconds left on this effect at `now_server`, saturating at zero.
     ///
     /// `None` when the effect is unlisted or has no end time. A duration not
@@ -416,6 +445,16 @@ impl Effects {
 /// (`lib/gemstone/effects.rb`: `Registry.new("Active Spells")`, `"Buffs"`,
 /// `"Debuffs"`, `"Cooldowns"`).
 pub const EFFECT_DIALOGS: [&str; 4] = ["Active Spells", "Buffs", "Debuffs", "Cooldowns"];
+
+/// An effect's name folded for comparison: [`Effects::active_named`].
+fn fold_name(name: &str) -> String {
+    name.to_lowercase()
+        .replace('\'', "")
+        .replace([':', '_', '-'], " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
 
 /// Whether a dialog id carries effects rather than something else.
 ///

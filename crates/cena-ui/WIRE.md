@@ -91,3 +91,9 @@ calls `clear_stream`. Limits are 16 KiB text and 256 runs per unfinished line,
 32 pending streams, and 128 bytes per stream/preset token. Overflow is marked
 as `truncated`, and oversized stream keys are never joined by a shortened key.
 The caller owns bounds for completed history and transport queues.
+
+`;sorter` changes lines, never their shape. `push_naming` is `push` plus the
+noun of the object a run names; with `sort_containers(true)`, a main-stream
+container look that is a list end to end finishes as a header and one line per
+category, each an ordinary story line. Every other line, and every line with
+sorting off, finishes exactly as `push` would finish it.

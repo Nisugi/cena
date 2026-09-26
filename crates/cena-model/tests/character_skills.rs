@@ -1,4 +1,5 @@
-//! The skill classifier, against the real `skills full` table.
+//! The skill classifier, against the real `skills full` table, and the table
+//! folded into `character.skills` at the prompt (`skills::read_table`).
 //!
 //! M3 step 5. The fixture is `character_skills.xml`, cut from
 //! `GSIV-Nisugi/2026/09/2026-09-18_15-49-13.xml:11197-11266` and scrubbed
@@ -333,5 +334,204 @@ fn no_two_skills_share_a_key() {
 fn display_names_round_trip() {
     for kind in SkillKind::ALL {
         assert_eq!(SkillKind::parse(kind.display_name()), Some(kind));
+    }
+}
+
+// --- the table, folded from the wire (`read_table`, `SkillSet::replace`) -----
+//
+// The full table is the committed capture. The plain `skills` table is
+// SYNTHETIC: no committed fixture carries one, so it is the wiki's own example
+// (`reference/wiki_clean/Verb_SKILLS.txt:21-48`, the MediaWiki leading space
+// on its header kept), which is Lich's shape too (`infomon/parser.rb:22-25`).
+
+const SKILLS_FULL: &str = include_str!("../../cena-protocol/tests/fixtures/character_skills.xml");
+
+/// `Verb_SKILLS.txt:21-48`, verbatim, then a prompt to close the chunk.
+const SKILLS_PLAIN: &str =
+    " Person (at level 100), your current skill bonuses and ranks (including all modifiers) are:
+  Skill Name                         | Current Current
+                                     |   Bonus   Ranks
+  Armor Use..........................|      40       8
+  Combat Maneuvers...................|     147      47
+  Ranged Weapons.....................|     249     149
+  Physical Fitness...................|     201     101
+  Dodging............................|     136      38
+  Arcane Symbols.....................|     204     104
+  Magic Item Use.....................|     202     102
+  Harness Power......................|     207     107
+  Elemental Mana Control.............|     202     102
+  Elemental Lore - Air...............|     150      50
+  Elemental Lore - Water.............|     113      27
+  Perception.........................|     185      85
+  Climbing...........................|     155      55
+  Swimming...........................|     155      55
+
+Spell Lists
+  Major Elemental....................|              66
+
+Spell Lists
+  Minor Elemental....................|              75
+
+Spell Lists
+  Wizard.............................|              93
+
+Training Points: 59 Phy 0 Mnt (1458 Phy converted to Mnt)
+<prompt time=\"2\">&gt;</prompt>
+";
+
+fn feed(state: &mut cena_model::GameState, wire: &str) {
+    let mut parser = Parser::new();
+    for frame in parser.push_bytes(wire.as_bytes()) {
+        state.apply(&frame);
+    }
+}
+
+/// Feed `wire`, then report what the model holds for Multi Opponent Combat.
+fn moc_after(wire: &str) -> Option<u16> {
+    let mut state = cena_model::GameState::default();
+    feed(&mut state, wire);
+    state.character.skills.ranks(SkillKind::MultiOpponentCombat)
+}
+
+#[test]
+fn the_real_skills_full_table_is_folded_into_the_model() {
+    use cena_model::state::character::snapshot::Group;
+    let mut state = cena_model::GameState::default();
+    let skills = &state.character.skills;
+    assert_eq!(
+        skills.ranks(SkillKind::MultiOpponentCombat),
+        None,
+        "guard: nothing is known before the table"
+    );
+
+    feed(&mut state, SKILLS_FULL);
+
+    let skills = &state.character.skills;
+    assert_eq!(skills.known_count(), 46);
+    // bigshot's two (`bigshot.lic:6147-6201`): ranks, not bonus.
+    assert_eq!(skills.ranks(SkillKind::MultiOpponentCombat), Some(101));
+    assert_eq!(skills.ranks(SkillKind::SpiritualLoreBlessings), Some(122));
+    // Bonus first on the wire, and the bold cell carried through the chunk.
+    let twc = skills.get(SkillKind::TwoWeaponCombat).copied();
+    assert_eq!(
+        twc.map(|s| (s.bonus, s.ranks, s.enhanced)),
+        Some((Some(312), Some(212), true))
+    );
+    assert_eq!(
+        skills.get(SkillKind::EdgedWeapons).map(|s| s.enhanced),
+        Some(false)
+    );
+    assert_eq!(
+        skills.ranks(SkillKind::ArmorUse),
+        Some(0),
+        "an untrained row is zero"
+    );
+    assert_eq!(skills.circle("Ranger"), Some(162));
+    assert_eq!(skills.circle("Minor Spiritual"), Some(40));
+    assert!(state.character.take_taught().contains(&Group::Skills));
+
+    // A later prompt with no table teaches nothing and changes nothing.
+    feed(
+        &mut state,
+        "You look around.\n<prompt time=\"3\">&gt;</prompt>\n",
+    );
+    assert!(!state.character.take_taught().contains(&Group::Skills));
+    assert_eq!(
+        state.character.skills.ranks(SkillKind::MultiOpponentCombat),
+        Some(101)
+    );
+}
+
+#[test]
+fn a_plain_table_records_what_it_omits_as_untrained() {
+    let mut state = cena_model::GameState::default();
+    feed(&mut state, SKILLS_FULL);
+    assert_eq!(
+        state.character.skills.ranks(SkillKind::MultiOpponentCombat),
+        Some(101),
+        "guard: the full table was read"
+    );
+
+    feed(&mut state, SKILLS_PLAIN);
+
+    let skills = &state.character.skills;
+    assert_eq!(
+        skills.known_count(),
+        46,
+        "every skill answers after a table"
+    );
+    assert_eq!(
+        skills.get(SkillKind::ArmorUse).map(|s| (s.bonus, s.ranks)),
+        Some((Some(40), Some(8)))
+    );
+    // Listed in the full table, left out of this one: untrained now, and no
+    // longer enhanced -- not a stale 101 carried over.
+    let moc = skills.get(SkillKind::MultiOpponentCombat).copied();
+    assert_eq!(moc.map(|s| (s.ranks, s.bonus)), Some((Some(0), Some(0))));
+    assert_eq!(
+        skills.get(SkillKind::TwoWeaponCombat).map(|s| s.enhanced),
+        Some(false)
+    );
+    assert_eq!(skills.circle("Wizard"), Some(93));
+    assert_eq!(skills.circle("Ranger"), None, "the old circles are gone");
+}
+
+#[test]
+fn a_table_is_folded_only_with_its_footer() {
+    let unclosed = SKILLS_PLAIN.replace("Training Points: 59 Phy 0 Mnt", "Training Points:");
+    assert_eq!(moc_after(&unclosed), None, "no footer, nothing known");
+    assert_eq!(
+        moc_after(SKILLS_PLAIN),
+        Some(0),
+        "guard: the same table closed"
+    );
+}
+
+#[test]
+fn a_spoken_or_base_header_opens_nothing() {
+    // SYNTHETIC: a player saying the header, with a real table's body after.
+    let spoken = SKILLS_PLAIN.replace(
+        " Person (at level 100)",
+        "Bob says, \"Person (at level 100)",
+    );
+    assert_eq!(moc_after(&spoken), None);
+    // `SKILLS BASE`'s header (`Verb_SKILLS.txt:61`) over the same body.
+    let base = SKILLS_PLAIN.replace(
+        "your current skill bonuses and ranks (including all modifiers) are:",
+        "your base skill bonuses, ranks and goals are:",
+    );
+    assert_eq!(moc_after(&base), None);
+}
+
+#[test]
+fn the_header_and_footer_shapes() {
+    use cena_model::state::character::skills::{is_table_end, is_table_header};
+    let header = "Ashryn (at level 100), your current skill bonuses and ranks (including all modifiers) are:";
+    assert!(is_table_header(header));
+    assert!(
+        is_table_header(&format!(" {header}")),
+        "Lich's leading space"
+    );
+    assert!(!is_table_header(
+        "Ashryn (at level ten), your current skill bonuses and ranks"
+    ));
+    assert!(!is_table_header(
+        "Ashryn (at level ), your current skill bonuses and ranks"
+    ));
+
+    assert!(is_table_end(
+        "Training Points: 3673 Phy 0 Mnt (2866 Phy converted to Mnt)"
+    ));
+    for line in [
+        "Training Points: many Phy 0 Mnt",
+        "Training Points: 3673 Mnt 0 Phy",
+        // Only the `Phy` word is wrong: the case the Phy check alone refuses
+        // (found by mutation; the line above is also refused by `Mnt`).
+        "Training Points: 3673 Ptp 0 Mnt",
+        "Training Points: 3673 Phy lots Mnt",
+        "Training Points: 3673 Phy 0",
+        "  Training Points: 3673 Phy 0 Mnt",
+    ] {
+        assert!(!is_table_end(line), "not a footer: {line}");
     }
 }

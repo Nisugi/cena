@@ -1,0 +1,80 @@
+[
+{
+"from": "30276",
+"to": "30279",
+"command": "go ramp",
+"direction": "up"
+},
+{
+"from": "4880",
+"to": "4882",
+"command": "climb cleft",
+"direction": "up"
+},
+{
+"from": "13243",
+"to": "17931",
+"command": "go steps",
+"direction": "down"
+},
+{
+"from": "36396",
+"to": "36397",
+"command": "go hole",
+"direction": "up"
+},
+{
+"from": "30425",
+"to": "30426",
+"command": "climb ladder",
+"direction": "down"
+},
+{
+"from": "16497",
+"to": "16498",
+"command": "go ladder",
+"direction": "up"
+},
+{
+"from": "27394",
+"to": "27758",
+"command": "climb odd boulder",
+"direction": "up"
+},
+{
+"from": "6132",
+"to": "8608",
+"command": "go fissure",
+"direction": "down"
+},
+{
+"from": "1789",
+"to": "1791",
+"command": "climb rocks",
+"direction": "down"
+},
+{
+"from": "12984",
+"to": "14824",
+"command": "climb ladder",
+"direction": "down"
+},
+{
+"from": "33756",
+"to": "33765",
+"command": "go slope",
+"direction": "up"
+},
+{
+"from": "1787",
+"to": "1788",
+"command": "climb boulder",
+"direction": "up"
+},
+{
+"from": "883",
+"to": "884",
+"command": "climb boulders",
+"direction": "down"
+}
+]

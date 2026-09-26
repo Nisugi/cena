@@ -23,7 +23,7 @@
 //! # A walk inside the hunt
 //!
 //! Rest and wander walk. The walk is travel's own driver, run through
-//! [`travel_holding`] under the hunt's token, given a second listener on the
+//! [`travel_holding`](crate::travel::travel_holding) under the hunt's token, given a second listener on the
 //! same stream ([`Heard::resubscribe`]) and a copy of the state. The hunt
 //! keeps folding its own stream meanwhile, so that when the walk returns the
 //! hunt's state is as current as the walk's, and nothing was missed. The
@@ -37,6 +37,11 @@
 //! beats the [`Heartbeat`] once a turn, and a turn that never comes round is
 //! what the watchdog preempts.
 
+mod errands;
+mod loot;
+mod selling;
+mod walk;
+
 use std::time::Duration;
 
 use cena_map::{Map, Origin as Whence, RoomId};
@@ -49,21 +54,28 @@ use tokio_util::sync::CancellationToken;
 
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
-use crate::loot::{Left, Memory, Outcome as LootOutcome, Planner, Step, classify};
-use crate::town::{self, Seller, Step as Errand, Town};
-use crate::travel::{Ended, Heard, TravelNotes, destination, room_of, travel_holding, walker_from};
+use crate::loot::Memory;
+use crate::travel::{Heard, TravelNotes, room_of};
 use crate::watchdog::Heartbeat;
 
 /// How long a sent line may wait for its prompt.
 const SEND_DEADLINE: Duration = Duration::from_secs(8);
 /// How long roundtime is waited out before the tick is given up.
 const SETTLE_CAP: Duration = Duration::from_secs(15);
+/// How long the dead man's switch waits for the quit to be answered.
+const QUIT_DEADLINE: Duration = Duration::from_secs(10);
 /// The idle beat: how often the loop turns with nothing to do.
 const BEAT: Duration = Duration::from_millis(250);
 /// The most commands one visit's looting sends before it is given up on.
 const LOOT_STEPS: usize = 64;
 /// The most steps one selling round takes before it is given up on.
 const SELL_STEPS: usize = 400;
+/// The most steps one heal takes before it is given up on.
+const HEAL_STEPS: usize = 120;
+/// The most steps one stocking round takes before it is given up on.
+const STOCK_STEPS: usize = 400;
+/// The most steps one waggle run takes before it is given up on.
+const WAGGLE_STEPS: usize = 400;
 
 /// How a hunt ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -88,6 +100,7 @@ pub async fn hunt(
     heartbeat: &Heartbeat,
     notes: TravelNotes,
     wrote: impl FnMut(&TravelNotes) + Send,
+    learned: impl FnMut(&[String]) + Send,
 ) -> HuntEnd {
     let (snapshot, events) = joined;
     let hunting_map = match super::setup::hunting_map(machine.profile(), map) {
@@ -100,6 +113,12 @@ pub async fn hunt(
             return HuntEnd::Finished(Ending::NoHuntingRoom);
         }
     };
+    // What the profile already says cannot be skinned; a name learned beyond
+    // it is written back.
+    let saved_unskinnable = machine
+        .loot_profile()
+        .map(|profile| profile.skin.unskinnable.iter().cloned().collect())
+        .unwrap_or_default();
     let mut driver = Driver {
         handle,
         cancel,
@@ -117,8 +136,12 @@ pub async fn hunt(
         last_room: None,
         notes,
         wrote,
+        learned,
+        saved_unskinnable,
         memory: Memory::default(),
         transcript: String::new(),
+        line: String::new(),
+        down: false,
     };
     let end = driver.run(heartbeat).await;
     let text = match end {
@@ -130,7 +153,7 @@ pub async fn hunt(
     end
 }
 
-struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> {
+struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> {
     hunting_map: Option<Map>,
     handle: &'a SessionHandle,
     cancel: &'a CancellationToken,
@@ -149,19 +172,34 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> {
     /// once and kept as a walk changes it.
     notes: TravelNotes,
     wrote: W,
+    /// Told the creatures learned unskinnable, to write into the profile.
+    learned: L,
+    /// The unskinnable names the profile holds, and those already told.
+    saved_unskinnable: std::collections::BTreeSet<String>,
     /// What looting learned: full bags, autoclosers, crumbly names.
     memory: Memory,
     /// The main window's text since the last loot command was sent, for
     /// reading its reply.
     transcript: String,
+    /// The line being read, any window, for the interaction monitor.
+    line: String,
+    /// The connection dropped and the session is reconnecting: the hunt
+    /// waits, holding its authority (SE-4 (c)), until the session is ready.
+    down: bool,
 }
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
     async fn run(&mut self, heartbeat: &Heartbeat) -> HuntEnd {
         loop {
             heartbeat.beat();
             if let Err(gone) = self.drain() {
                 return HuntEnd::Stopped(gone);
+            }
+            if self.down {
+                if let Err(end) = self.hold(BEAT).await {
+                    return end;
+                }
+                continue;
             }
             let here = self.locate();
             let exits: Vec<RoomId> = here
@@ -174,12 +212,21 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
                         .collect()
                 })
                 .unwrap_or_default();
+            let tags: Vec<String> = here
+                .and_then(|room| self.map.room(room))
+                .map(|room| room.meta.clone())
+                .unwrap_or_default();
+            let incidents = self.state.take_incidents();
+            if !incidents.is_empty() {
+                self.machine.incidents(&incidents);
+            }
             let now = self.state.game_time_now();
             let said = self.machine.tick(
                 &self.state,
                 Here {
                     room: here,
                     exits: &exits,
+                    tags: &tags,
                 },
                 now,
             );
@@ -190,10 +237,24 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
             let step = match said {
                 Said::Nothing => self.hold(BEAT).await,
                 Said::Wait(seconds) => self.hold(Duration::from_secs(u64::from(seconds))).await,
-                Said::Send { line, target } => self.send(&line, target).await,
+                Said::Send { line, target } => {
+                    self.transcript.clear();
+                    let sent = self.send(&line, target).await;
+                    let now = self.state.game_time_now();
+                    self.machine.replied(self.transcript.lines(), now);
+                    sent
+                }
                 Said::Walk(to) => self.walk(to).await,
                 Said::Loot(corpses) => self.loot(&corpses).await,
                 Said::Sell => self.sell().await,
+                Said::Heal => self.heal().await,
+                Said::Stock(fill) => self.stock(fill).await,
+                Said::Waggle(targets) => self.waggle(&targets).await,
+                Said::Done(Ending::Trouble) => {
+                    // The dead man's switch: out of the game, saved first.
+                    self.handle.quit(QUIT_DEADLINE).await;
+                    return HuntEnd::Finished(Ending::Trouble);
+                }
                 Said::Done(ending) => return HuntEnd::Finished(ending),
             };
             if let Err(end) = step {
@@ -226,165 +287,55 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
     }
 
     fn fold(&mut self, event: &Event) -> Result<(), BehaviorError> {
+        match event {
+            Event::StateChanged(State::Reconnecting) => self.link_lost(),
+            Event::StateChanged(State::Ready) if self.down => {
+                self.down = false;
+                self.handle.say(Notice::line(
+                    NoticeKind::Info,
+                    "Hunt: reconnected; hunting on.".to_owned(),
+                ));
+            }
+            _ => {}
+        }
         if let Event::Frame(frame) = event
             && let Frame::Text(text) = &**frame
-            && text.stream.is_empty()
         {
-            self.transcript.push_str(&text.content);
+            if text.stream.is_empty() {
+                self.transcript.push_str(&text.content);
+                let now = self.state.game_time_now();
+                self.machine.heard(&text.content, now);
+            }
+            // The monitor reads whole lines, from every window.
+            self.line.push_str(&text.content);
+            if text.ends_line {
+                self.machine.watched(&self.line);
+                self.line.clear();
+                for alert in self.machine.take_alerts() {
+                    self.handle.say(Notice::line(
+                        NoticeKind::Warn,
+                        format!("Hunt alert: {alert}"),
+                    ));
+                }
+            }
         }
         fold_into(&mut self.state, event)
     }
 
-    /// Loot with the planner (`plan/31` Stage 2): each step sent through the
-    /// gate, each reply read for what eloot would act on, until the planner
-    /// says it is done. What it learned is kept for the next room, and a
-    /// reason to rest is handed to the machine.
-    async fn loot(&mut self, corpses: &[i64]) -> Result<(), HuntEnd> {
-        let Some(profile) = self.machine.loot_profile().cloned() else {
-            return Ok(());
-        };
-        let memory = std::mem::take(&mut self.memory);
-        let mut planner = Planner::new(profile, memory, corpses);
-        for _ in 0..LOOT_STEPS {
-            let step = planner.next(&self.state);
-            let (line, touched) = match &step {
-                Step::Done(left) => {
-                    self.machine.loot_ended(*left);
-                    if *left != Left::Nothing {
-                        self.handle.say(Notice::line(
-                            NoticeKind::Info,
-                            format!(
-                                "Hunt: looting stopped: {}.",
-                                self.machine.rest_reason_text()
-                            ),
-                        ));
-                    }
-                    break;
-                }
-                Step::Stance(line) | Step::Cast(line) => (line.clone(), None),
-                Step::Ask(what) => ((*what).to_owned(), None),
-                Step::Search(id) => (format!("loot #{id}"), None),
-                Step::LootRoom => ("loot room".to_owned(), None),
-                Step::LootItem(id) => (format!("loot #{id}"), self.floor_name(id)),
-                Step::Open(bag) => (format!("open #{bag}"), self.floor_name(bag)),
-                Step::LookIn(bag) => (format!("look in #{bag}"), None),
-                Step::Drag { item, bag } => {
-                    (format!("_drag #{item} #{bag}"), self.floor_name(item))
-                }
-                Step::Wield(id) => (format!("get #{id}"), None),
-                Step::Kneel => ("kneel".to_owned(), None),
-                Step::Stand => ("stand".to_owned(), None),
-                Step::Skin { corpse, hand } => (format!("skin #{corpse} {hand}"), None),
-                Step::StowGem(id) => (format!("stow gem #{id}"), None),
-            };
-            self.transcript.clear();
-            self.send(&line, None).await?;
-            let outcomes: Vec<LootOutcome> = self.transcript.lines().filter_map(classify).collect();
-            for outcome in &outcomes {
-                planner.outcome_in(outcome, &self.state);
-                if let Some(name) = &touched {
-                    planner.learn(outcome, name);
-                }
-            }
-            if outcomes.is_empty() {
-                // The floor is restated a moment after the verb lands.
-                self.hold(BEAT).await?;
-                // A stow the text did not confirm is confirmed by the bag's
-                // contents, as eloot confirms it (`eloot.lic:4102-4108`).
-                if let Step::Drag { item, bag } = &step
-                    && self
-                        .state
-                        .inventory
-                        .container(bag)
-                        .is_some_and(|held| held.items.iter().any(|thing| thing.id == *item))
-                {
-                    planner.outcome(&LootOutcome::Stored);
-                }
-            }
+    /// The connection dropped: what it made stale is forgotten, and the
+    /// hunt waits for the session to be ready again (`plan/30` §7: "a
+    /// reconnect mid-hunt keeps the hunt").
+    fn link_lost(&mut self) {
+        if self.down {
+            return;
         }
-        self.memory = planner.memory().clone();
-        Ok(())
-    }
-
-    /// Sell with the town planner (`plan/31` Stage 4): each shop the nearest
-    /// room tagged for it, walked with travel's driver; each step sent through
-    /// the gate; each reply read as the ledger's facts from this driver's own
-    /// fold of the stream, plus the few replies that are not facts. Ends
-    /// back at the resting room, or wherever the round gave up.
-    async fn sell(&mut self) -> Result<(), HuntEnd> {
-        let Some(profile) = self.machine.loot_profile().cloned() else {
-            return Ok(());
-        };
-        let Some(home) = self.locate() else {
-            return Ok(());
-        };
-        let town = Town::from_table(&profile.town);
-        let Some(mut seller) = Seller::new(town, &self.state, home) else {
-            return Ok(());
-        };
-        // Facts queued before the round are not the round's.
-        let _ = self.state.take_loot();
-        for _ in 0..SELL_STEPS {
-            let here = self.locate();
-            let step = {
-                let now = self.state.game_time_now().unwrap_or(0);
-                let walker = walker_from(&self.state, &self.notes, now);
-                let (map, state) = (self.map, &self.state);
-                let nearest = |tag: &str| {
-                    here.and_then(|from| {
-                        destination(map, &walker, from, tag, &std::collections::BTreeMap::new())
-                    })
-                };
-                seller.next(state, &nearest)
-            };
-            let line = match &step {
-                Errand::Done => break,
-                Errand::Walk(to) => {
-                    self.walk(*to).await?;
-                    continue;
-                }
-                Errand::Fetch(id) => format!("get #{id}"),
-                Errand::Sell(id) | Errand::SellSack(id) => format!("sell #{id}"),
-                Errand::Appraise(id) => format!("appraise #{id}"),
-                Errand::Analyze(id) => format!("analyze #{id}"),
-                Errand::Wear(id) => format!("wear #{id}"),
-                Errand::ReadNote(id) => format!("read #{id}"),
-                Errand::Stow { item, bag } => format!("_drag #{item} #{bag}"),
-            };
-            self.transcript.clear();
-            self.send(&line, None).await?;
-            // The shopkeeper answers a beat after the verb lands.
-            self.hold(BEAT).await?;
-            let facts: Vec<cena_session::LootFact> = self
-                .state
-                .take_loot()
-                .into_iter()
-                .flat_map(|chunk| chunk.facts)
-                .collect();
-            let replies: Vec<town::Reply> =
-                self.transcript.lines().filter_map(town::classify).collect();
-            seller.outcome(&facts, &replies, &self.state);
-        }
-        if !seller.skipped().is_empty() {
-            self.handle.say(Notice::line(
-                NoticeKind::Info,
-                format!(
-                    "Hunt: {} items could not be sold this round.",
-                    seller.skipped().len()
-                ),
-            ));
-        }
-        Ok(())
-    }
-
-    /// The name of a thing on the floor, by id.
-    fn floor_name(&self, id: &str) -> Option<String> {
-        self.state
-            .room
-            .objects
-            .iter()
-            .find(|item| item.id == id)
-            .map(|item| item.text.clone())
+        self.down = true;
+        self.state.invalidate_for_reconnect();
+        self.machine.link_lost();
+        self.handle.say(Notice::line(
+            NoticeKind::Info,
+            "Hunt: the connection dropped; waiting for it to come back.".to_owned(),
+        ));
     }
 
     /// Fold events for up to `for_`, or until stopped.
@@ -446,108 +397,22 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes)> Driver<'_, F, W> {
         }
         self.drain().map_err(HuntEnd::Stopped)
     }
-
-    /// Walk to `to` with travel's driver under this authority, folding this
-    /// hunt's own stream meanwhile.
-    async fn walk(&mut self, to: RoomId) -> Result<(), HuntEnd> {
-        let snapshot = Snapshot {
-            session: self.session,
-            state: self.state.clone(),
-            lifecycle: self.lifecycle,
-            generation: self.generation,
-            cursor: self.cursor,
-            retry: None,
-        };
-        let listener = self.events.resubscribe();
-        let mut notes = std::mem::take(&mut self.notes);
-        let walk_cancel = self.cancel.child_token();
-        let field_trip = self.machine.field_rest;
-        let mut redirect_to_town = false;
-        let travelled = {
-            let handle = self.handle;
-            let cancel = &walk_cancel;
-            let token = self.token;
-            let map = if self.machine.phase() == super::said::Phase::Hunting {
-                self.hunting_map.as_ref().unwrap_or(self.map)
-            } else {
-                self.map
-            };
-            let next_id = &mut self.next_id;
-            let mut walk = Box::pin(travel_holding(
-                handle,
-                cancel,
-                next_id,
-                token,
-                (snapshot, listener),
-                map,
-                to,
-                &mut notes,
-                |_| {},
-            ));
-            // The walk holds `next_id`; this loop touches only the stream
-            // and the state, so both borrows stand.
-            let events = &mut self.events;
-            let state = &mut self.state;
-            loop {
-                let event = tokio::select! {
-                    biased;
-                    travelled = &mut walk => break travelled,
-                    event = events.recv() => event,
-                };
-                match event {
-                    Ok(event) => {
-                        if let Err(gone) = fold_into(state, &event) {
-                            return Err(HuntEnd::Stopped(gone));
-                        }
-                        if field_trip && !Hunt::field_eligible(state) {
-                            // Stop this walk through travel's cancellation path,
-                            // preserving the hunt's authority and latest room.
-                            // Its next tick selects town and drops field commands.
-                            redirect_to_town = true;
-                            walk_cancel.cancel();
-                        }
-                    }
-                    Err(RecvError::Lagged(_)) => {}
-                    Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
-                }
-            }
-        };
-        self.notes = notes;
-        (self.wrote)(&self.notes);
-        if let Some(room) = travelled.last_room {
-            self.last_room = Some(room);
-        }
-        match travelled.ended {
-            Ended::Arrived => Ok(()),
-            Ended::Stopped(BehaviorError::Cancelled)
-                if redirect_to_town && !self.cancel.is_cancelled() =>
-            {
-                Ok(())
-            }
-            Ended::Stopped(why) => Err(HuntEnd::Stopped(why)),
-            other => {
-                self.handle.say(Notice::line(
-                    NoticeKind::Warn,
-                    format!("Hunt: could not walk to room {}: {other:?}.", to.0),
-                ));
-                match self.machine.walk_failed(to) {
-                    Some(ending) => Err(HuntEnd::Finished(ending)),
-                    None => Ok(()),
-                }
-            }
-        }
-    }
 }
 
-/// Fold one event into a state: a frame is applied; a reconnect or a close
-/// ends the behavior.
+/// Fold one event into a state: a frame is applied; a reconnect invalidates
+/// what a reconnect invalidates and is waited out; a close ends the behavior.
 fn fold_into(state: &mut GameState, event: &Event) -> Result<(), BehaviorError> {
     match event {
         Event::Frame(frame) => {
             state.apply(frame);
             Ok(())
         }
-        Event::StateChanged(State::Reconnecting) => Err(BehaviorError::Disconnected),
+        // A drop is waited out, holding the authority (SE-4 (c)); the
+        // driver marks it. Invalidating twice is harmless.
+        Event::StateChanged(State::Reconnecting) => {
+            state.invalidate_for_reconnect();
+            Ok(())
+        }
         Event::StateChanged(State::Closed) => Err(BehaviorError::Dead),
         _ => Ok(()),
     }

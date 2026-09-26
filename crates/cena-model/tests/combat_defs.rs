@@ -44,6 +44,8 @@ fn every_family_loads_with_its_count() {
         ("redirect_prefix", 1),
         ("crit_rider", 1),
         ("flare_weapon_link", 1),
+        // `extract_flare_mirror.rb`, a fourth file: `tests/combat_flare_mirror.rs`
+        ("flare_mirror", 277),
     ];
     for (family, count) in expected {
         assert_eq!(
@@ -53,7 +55,11 @@ fn every_family_loads_with_its_count() {
         );
     }
     let total: usize = table.families().map(|f| table.family(f).len()).sum();
-    assert_eq!(total, 954, "954 rows across the three files");
+    assert_eq!(
+        total,
+        954 + 277,
+        "954 rows across Lich's three files, 277 mirror flares"
+    );
 }
 
 /// **Every pattern compiles under this crate's `regex`.**

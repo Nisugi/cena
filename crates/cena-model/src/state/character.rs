@@ -573,8 +573,8 @@ impl Character {
     /// Read whatever command reports a completed chunk carries.
     ///
     /// Called once per prompt from `GameState::close_chunk`. Each report type
-    /// is a pure function of the chunk (`blocks::InfoReport::read` and, later,
-    /// the `skill` reader), so this is dispatch and nothing else.
+    /// is a pure function of the chunk (`blocks::InfoReport::read`,
+    /// `skills::read_table`, ...), so this is dispatch and nothing else.
     pub(crate) fn consume_chunk(&mut self, chunk: &crate::state::chunks::Chunk) {
         if let Some(report) = blocks::InfoReport::read(chunk) {
             self.apply_info(&report);
@@ -598,6 +598,9 @@ impl Character {
         if self.currency.absorb_chunk(chunk) {
             self.taught.insert(snapshot::Group::Currency);
         }
+        self.consume_psms(chunk);
+        self.consume_skills(chunk);
+        self.consume_enhancives(&lines);
         // NOT MARKED TAUGHT, and there is no `Group::Experience`.
         // `reconnect_invalidation.rs` records why: experience changes
         // continuously and `<dialogData id='expr'>` is the live authority, so
@@ -723,22 +726,6 @@ impl Character {
         changed
     }
 
-    ///
-    /// # Identity is not taken while Shroud of Deception is up
-    ///
-    /// Spell **1212** falsifies race, profession, gender and age in `info`
-    /// output. Lich refuses to store those four while it is active
-    /// (`infomon/parser.rb:243`, `:249`) and `Infomon.sync` force-STOPs the
-    /// spell before scraping, warning `TEND TO YOUR SHROUD!` afterwards
-    /// (`infomon/cli.rb:11-18`, `:41`).
-    ///
-    /// **The numbers are stored regardless**, because the shroud does not touch
-    /// them -- which is why this is a partial refusal rather than dropping the
-    /// report.
-    ///
-    /// Persisting a shrouded identity is permanent damage: nothing later says
-    /// "that was a lie", so the wrong race stays until someone runs `info`
-    /// again unshrouded.
     /// Fold an `info` report into the typed stats.
     ///
     /// # Identity is not taken while Shroud of Deception is up

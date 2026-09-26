@@ -17,12 +17,12 @@
 
 use std::io;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use crate::commands::Commands;
+use crate::commands::{Commands, Took};
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
-use cena_session::command::claimant::Claimed;
+use cena_behavior::spellcaster::{self, CasterProfile};
 use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Register hunt's words. The character's instance and name, when the login
@@ -49,49 +49,115 @@ pub(crate) fn open(
             context.sha256.clone(),
         )
     });
+    // The spellcaster profile, held so a typed line is judged without a
+    // file read, and read again after `;sc` changes it.
+    let caster = Arc::new(Mutex::new(read_caster(&dir, who.as_ref())));
+    if let Some(desk) = desk.clone() {
+        let (handler, observer, caster) = (handle.clone(), observer.clone(), Arc::clone(&caster));
+        let took = handle.set_bare(Arc::new(move |line: &str| {
+            let words = caster
+                .lock()
+                .ok()
+                .and_then(|profile| spellcaster::typed(&profile, line));
+            words.is_some_and(|words| {
+                // Typed at the prompt: nobody waits for it.
+                drop(start(&desk, &handler, &observer, Command::Sc(words)));
+                true
+            })
+        }));
+        if !took {
+            eprintln!(
+                "  !! [hunt] something already takes typed lines; a bare spell number goes to the game"
+            );
+        }
+    }
     let handler = handle.clone();
     commands.hunt(Arc::new(move |line: &str| {
         let command = match parse_command(line)? {
             Ok(command) => command,
             Err(why) => {
                 handler.say(Notice::line(NoticeKind::Error, format!("Hunt: {why}")));
-                return Some(Claimed::Done);
+                return Some(Took::Done);
             }
         };
-        match command {
-            Command::Run(_) | Command::Stop => {
+        // What was started is handed back, so `;multi` can wait for it
+        // (`crate::commands`).
+        let took = match command {
+            Command::Run(_)
+            | Command::Quick(_)
+            | Command::Bounty(_)
+            | Command::Stop
+            | Command::Heal { .. }
+            | Command::Stock { .. }
+            | Command::Keep
+            | Command::Waggle(_)
+            | Command::Sc(_) => {
                 let Some(desk) = desk.clone() else {
                     handler.say(Notice::line(
                         NoticeKind::Error,
                         "Hunt: there is no map, so there is no hunting. Set the map and start Hydra again.",
                     ));
-                    return Some(Claimed::Done);
+                    return Some(Took::Done);
                 };
-                let (handle, observer) = (handler.clone(), observer.clone());
-                tokio::spawn(async move {
-                    match observer.subscribe().await {
-                        Ok(joined) => {
-                            desk.run(&handle, joined, command);
-                        }
-                        Err(e) => handle.say(Notice::line(
-                            NoticeKind::Error,
-                            format!("Hunt: I could not read the session -- {e:?}."),
-                        )),
-                    }
-                });
+                Took::Started(start(&desk, &handler, &observer, command))
             }
-            Command::Import { .. } | Command::ImportLoot { .. } | Command::Check(_) | Command::List => {
+            Command::Import { .. }
+            | Command::ImportLoot { .. }
+            | Command::Check(_)
+            | Command::List
+            | Command::KeepEdit(_)
+            | Command::ScEdit(_) => {
                 let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
+                let caster = Arc::clone(&caster);
                 // Files are read and written, so not on the session's own thread.
-                tokio::task::spawn_blocking(move || run(&handle, &dir, who.as_ref(), command));
+                Took::Started(tokio::task::spawn_blocking(move || {
+                    let sc = matches!(command, Command::ScEdit(_));
+                    run(&handle, &dir, who.as_ref(), command);
+                    if sc && let Ok(mut held) = caster.lock() {
+                        *held = read_caster(&dir, who.as_ref());
+                    }
+                }))
             }
-            Command::Nothing => {}
-        }
-        Some(Claimed::Done)
+            Command::Nothing => Took::Done,
+        };
+        Some(took)
     }));
     eprintln!(
         "[hunt] ready: hunt <name>, hunt stop, hunt import <bigshot yaml>, hunt check <name>, hunt list"
     );
+}
+
+/// Run `command` on the hunt desk, once the session can be read. The task
+/// is over when what the desk started is: a heal, a cast, a hunt.
+fn start(
+    desk: &Arc<Desk>,
+    handle: &SessionHandle,
+    observer: &SessionObserver,
+    command: Command,
+) -> tokio::task::JoinHandle<()> {
+    let (desk, handle, observer) = (desk.clone(), handle.clone(), observer.clone());
+    tokio::spawn(async move {
+        match observer.subscribe().await {
+            Ok(joined) => {
+                if let Some(run) = desk.run(&handle, joined, command) {
+                    let _ = run.await;
+                }
+            }
+            Err(e) => handle.say(Notice::line(
+                NoticeKind::Error,
+                format!("Hunt: I could not read the session -- {e:?}."),
+            )),
+        }
+    })
+}
+
+/// The character's spellcaster profile, or the default when there is no
+/// file or it does not read.
+fn read_caster(dir: &Path, who: Option<&(String, String)>) -> CasterProfile {
+    who.and_then(|(i, n)| spellcaster::path(dir, i, n))
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .and_then(|text| CasterProfile::parse(&text).ok())
+        .unwrap_or_default()
 }
 
 /// What is said to the player.
@@ -104,7 +170,18 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         Command::ImportLoot { path } => import_loot(dir, who, &path, &say),
         Command::Check(name) => check(dir, who, &name, &say),
         Command::List => list(dir, &say),
-        Command::Run(_) | Command::Stop | Command::Nothing => {}
+        Command::KeepEdit(words) => keep_edit(dir, who, &words, &say),
+        Command::ScEdit(words) => sc_edit(dir, who, &words, &say),
+        Command::Run(_)
+        | Command::Quick(_)
+        | Command::Bounty(_)
+        | Command::Stop
+        | Command::Heal { .. }
+        | Command::Stock { .. }
+        | Command::Keep
+        | Command::Waggle(_)
+        | Command::Sc(_)
+        | Command::Nothing => {}
     }
 }
 
@@ -386,5 +463,93 @@ fn list(dir: &Path, say: Say<'_>) {
         );
     } else {
         say(NoticeKind::Info, format!("Hunt: {}", names.join(", ")));
+    }
+}
+
+/// `;keep <words>`: the keep profile changed and written back, or listed.
+fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Say<'_>) {
+    let Some(path) = who.and_then(|(i, n)| cena_behavior::keep::path(dir, i, n)) else {
+        say(
+            NoticeKind::Error,
+            "Keep: who is this? Log in first.".to_owned(),
+        );
+        return;
+    };
+    let mut profile = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| cena_behavior::keep::KeepProfile::parse(&text).ok())
+        .unwrap_or_default();
+    let words: Vec<&str> = words.iter().map(String::as_str).collect();
+    if words == ["list"] {
+        say(
+            NoticeKind::Info,
+            format!(
+                "Keep: {:?}; no-cast rooms {:?}; Sigil of Power {}.",
+                profile.spells,
+                profile.nocast,
+                if profile.power { "on" } else { "off" }
+            ),
+        );
+        return;
+    }
+    match cena_behavior::keep::edit(&mut profile, &words) {
+        Ok(done) => {
+            let written = profile
+                .to_toml()
+                .map_err(io::Error::other)
+                .and_then(|text| {
+                    if let Some(parent) = path.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::write(&path, text)
+                });
+            match written {
+                Ok(()) => say(NoticeKind::Info, format!("Keep: {done}.")),
+                Err(e) => say(
+                    NoticeKind::Error,
+                    format!("Keep: {done}, but not saved -- {e}."),
+                ),
+            }
+        }
+        Err(usage) => say(NoticeKind::Error, format!("Keep: {usage}")),
+    }
+}
+
+/// `;sc alias|verb|stance|set ...`: the spellcaster profile changed and
+/// written back.
+fn sc_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Say<'_>) {
+    let Some(path) = who.and_then(|(i, n)| cena_behavior::spellcaster::path(dir, i, n)) else {
+        say(
+            NoticeKind::Error,
+            "Sc: who is this? Log in first.".to_owned(),
+        );
+        return;
+    };
+    let mut profile = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| cena_behavior::spellcaster::CasterProfile::parse(&text).ok())
+        .unwrap_or_default();
+    let words: Vec<String> = words.iter().map(|w| w.to_ascii_lowercase()).collect();
+    let words: Vec<&str> = words.iter().map(String::as_str).collect();
+    match cena_behavior::spellcaster::edit(&mut profile, &words) {
+        Ok(done) => {
+            let written = profile
+                .to_toml()
+                .map_err(io::Error::other)
+                .and_then(|text| {
+                    if let Some(parent) = path.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::write(&path, text)
+                });
+            match written {
+                Ok(()) => say(NoticeKind::Info, format!("Sc: {done}.")),
+                Err(e) => say(
+                    NoticeKind::Error,
+                    format!("Sc: {done}, but not saved -- {e}."),
+                ),
+            }
+        }
+        Err(usage) => say(NoticeKind::Error, format!("Sc: {usage}")),
     }
 }

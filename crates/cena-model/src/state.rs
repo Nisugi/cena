@@ -56,14 +56,19 @@ pub mod creature_message;
 pub mod creatures;
 pub mod departure;
 pub mod disk;
+pub mod doses;
 pub mod equality;
 pub mod fog;
 pub mod gameobj;
 pub mod group;
 pub mod hands;
+pub mod hazard;
 mod idle;
+pub mod incident;
+pub mod inspect;
 mod inventory;
 pub mod inventory_snapshot;
+pub mod kit;
 pub mod known_spells;
 pub mod ledger;
 pub mod maneuvers;
@@ -73,17 +78,20 @@ pub mod movement;
 mod nouns;
 mod numbers;
 pub mod objectives;
+pub mod order_menu;
 pub mod overwatch;
 mod reconnect;
 pub mod resolve;
 mod ring;
 mod room;
 pub mod societies;
+mod spell_time;
 pub mod stream_windows;
 pub mod streams;
 pub mod targeting;
 mod unknown;
 pub mod vitals;
+pub mod worn;
 
 pub use character::{Character, Experience, Injury};
 pub use disk::{DISK_NOUNS, Disk};
@@ -152,6 +160,12 @@ pub struct GameState {
     /// next (`bounty_status.rs`). Distinct from [`Self::objectives`], which is
     /// the dialog's row -- this is the task's own description, parsed.
     pub bounty: bounty_status::BountyStatus,
+    /// Doses left in each herb measured, by item id (`doses.rs`).
+    pub doses: doses::Doses,
+    /// Survivalist's Kits, as `analyze` and `look in` describe them (`kit.rs`).
+    pub kits: kit::Kits,
+    /// The last shop `order` menu seen (`order_menu.rs`).
+    pub order_menu: order_menu::OrderMenu,
     /// Maneuvers the game has said are on cooldown (`maneuvers.rs`).
     pub maneuvers: maneuvers::Maneuvers,
     /// What the game says you can attack (`targeting.rs`): the `combat`
@@ -166,6 +180,9 @@ pub struct GameState {
     /// expire independently, so one field could not answer either. `Option`,
     /// never `0`, for the reason `roundtime_ends` gives.
     pub cast_time_ends: Option<u32>,
+    /// `<spell>`: the spell prepared, verbatim, `None` from the game when
+    /// nothing is (Lich's `checkprep`). `None` here is *not told*.
+    pub prepared: Option<String>,
     /// Who is grouped with you, by `exist` id.
     pub group: Group,
     /// The stow and ready lists: which container holds what, and which
@@ -181,6 +198,10 @@ pub struct GameState {
     pub overwatch: overwatch::Overwatch,
     /// The spells the game lists for this character (the `Spells` stream).
     pub known_spells: known_spells::KnownSpells,
+    /// What the character wears (the `inv` stream, `worn.rs`).
+    pub worn: worn::Worn,
+    /// What the wandolier holds in reserve (the `reserve` stream, `worn.rs`).
+    pub reserve: worn::Reserve,
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,
@@ -267,6 +288,9 @@ pub struct GameState {
     /// Loot facts classified at each prompt, waiting for the session's
     /// ledger (`ledger/pending.rs`). Drained by [`GameState::take_loot`].
     loot: ledger::LootQueue,
+    /// The hunt's incidents classified at each prompt (`state/incident.rs`),
+    /// drained by [`GameState::take_incidents`].
+    incidents: incident::Incidents,
     /// Every creature the feed has shown, with what combat did to it.
     /// `state/creatures.rs`.
     creatures: creatures::Creatures,
@@ -285,6 +309,11 @@ impl GameState {
     #[must_use]
     pub const fn combat(&self) -> &combat::CombatTracker {
         &self.combat
+    }
+
+    /// Every incident since the last call, oldest first.
+    pub fn take_incidents(&mut self) -> Vec<incident::Incident> {
+        self.incidents.take()
     }
 
     /// Every classified loot chunk since the last call, oldest first.
@@ -361,6 +390,8 @@ impl GameState {
                     // (`effects.rs`, `Effects::pending`).
                     self.effects.anchor(t);
                 }
+                // The worn and reserve lists end here, popped or not (`worn.rs`).
+                self.close_lists();
                 // **The chunk closes here**, and this is the only place it
                 // does. See `state/chunks.rs`: Lich closes container fills,
                 // combat chunks and its own parser FSM on the prompt, for the
@@ -421,6 +452,7 @@ impl GameState {
             // with the rest of it on a reconnect.
             // A cast's hard roundtime, which is not the action roundtime.
             Frame::CastTime { value } => self.cast_time_ends = Some(*value),
+            Frame::Spell { text } => self.prepared = Some(text.trim().to_owned()),
             // The `combat` dialog's target dropdown. MEASURED the noisiest
             // widget on the wire and read by nothing until 2026-09-21; see
             // `targeting.rs` for why a display widget is a model fact.
@@ -447,6 +479,10 @@ impl GameState {
                 }
             }
             Frame::UnknownTag { name, raw } => self.record_unknown_tag(name, raw),
+            // The `inv` and `reserve` lists open at their push; the prompt
+            // closing one nobody popped matters to the reserve (`worn.rs`).
+            Frame::StreamPush { id } => self.list_opened(id),
+            Frame::StreamPopForced { id } => self.list_torn(id),
             // Every other frame is published to observers without changing
             // state. `plan/12` §7.1 scopes GameState to room/hands/
             // roundtime/vitals; a frame this slice does not model is not

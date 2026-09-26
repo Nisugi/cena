@@ -1,7 +1,8 @@
 //! The PSM tables: an **open set**, per C21.
 //!
 //! M3 step 6. The five categories -- `cman`, `feat`, `armor`, `shield`,
-//! `weapon` -- each print a table of mnemonics and ranks.
+//! `weapon` -- each print a table of mnemonics and ranks. What each costs, and
+//! Lich's `available?` over the ranks, the gauges and the effects, is [`cost`].
 //!
 //! > **AUTHOR, 2026-09-19:** *"there's a few .. cman, shield, weapon, armor,
 //! > feat are psms"*
@@ -35,7 +36,8 @@
 //!
 //! ## Bold means KNOWN, not maxed
 //!
-//! The finding that shapes this file. MEASURED across the capture's 29 rows:
+//! The finding that shapes this file. MEASURED across the capture's 27 rows
+//! (this said 29; `tests/psm_list.rs:104` records the recount):
 //!
 //! | Bolded | Ranks seen |
 //! |---|---|
@@ -82,6 +84,9 @@
 use std::collections::BTreeMap;
 
 use super::vocabulary::PsmCategory;
+use crate::state::chunks::Chunk;
+
+pub mod cost;
 
 /// One PSM's ranks, as the table printed them.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -240,6 +245,54 @@ impl PsmLine {
         let mut parsed = Self::classify(line)?;
         parsed.ranks.known_by_bold = bolded;
         Some(parsed)
+    }
+}
+
+/// Every PSM table one chunk holds: its header, then its rows, until the
+/// `Subcategory:` footer or the chunk's end (the `INFO` form has no footer).
+///
+/// **Nothing folded these into the model before 2026-09-25.** The classifiers
+/// above were built and tested in M3, and the sync sends every
+/// `<category> list all all` (`snapshot.rs`, `Group::sync_commands`), but no
+/// consumer called [`PsmSet::replace_category`]: `Character::consume_chunk`
+/// read `info`, the profile, standing, currency and experience, and the PSM
+/// ranks reached the model only by restoring a stored snapshot that nothing
+/// had filled. Found building `cost.rs`, whose `known` read `None` forever.
+#[must_use]
+pub fn read_tables(chunk: &Chunk) -> Vec<(PsmCategory, Vec<PsmLine>)> {
+    let mut tables: Vec<(PsmCategory, Vec<PsmLine>)> = Vec::new();
+    let mut open = false;
+    for line in chunk.lines() {
+        let text = line.text();
+        if let Some(category) = classify_header(&text) {
+            tables.push((category, Vec::new()));
+            open = true;
+        } else if open && is_table_end(&text) {
+            open = false;
+        } else if open && let Some((_, rows)) = tables.last_mut() {
+            // A row's bold may be only its padding when a span wraps
+            // (`tests/psm_list.rs`), so only bold with text in it counts.
+            let bolded = line.bold().iter().any(|f| !f.trim().is_empty());
+            rows.extend(PsmLine::classify_with_bold(&text, bolded));
+        }
+    }
+    tables
+}
+
+impl super::Character {
+    /// Fold the PSM tables a chunk holds, one category at a time.
+    ///
+    /// The group is marked taught only once all five categories are held:
+    /// `Group::sync_commands` records that stamping it on one table would
+    /// leave four empty and call them fresh.
+    pub(super) fn consume_psms(&mut self, chunk: &Chunk) {
+        let tables = read_tables(chunk);
+        for (category, rows) in &tables {
+            self.psms.replace_category(*category, rows);
+        }
+        if !tables.is_empty() && PsmCategory::ALL.iter().all(|c| self.psms.has_table(*c)) {
+            self.taught.insert(super::snapshot::Group::Psms);
+        }
     }
 }
 

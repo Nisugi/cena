@@ -70,6 +70,7 @@ fn here(id: u32) -> Here<'static> {
     Here {
         room: Some(RoomId(id)),
         exits: &[],
+        tags: &[],
     }
 }
 
@@ -277,7 +278,8 @@ fn membership_is_not_exclusion_and_routes_cannot_detour_outside_it() {
             &s,
             Here {
                 room: Some(RoomId(1)),
-                exits: &[RoomId(2), RoomId(3)]
+                exits: &[RoomId(2), RoomId(3)],
+                tags: &[],
             },
             Some(1)
         ),

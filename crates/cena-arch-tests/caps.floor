@@ -74,3 +74,55 @@ crates/cena/src/loot.rs 520
 # round's facade (plan/31 Stage 4): the module doc and the re-exports; the
 # settings, the planner and the replies are in town/. 25 lines at birth.
 crates/cena-behavior/src/town.rs 100
+
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/loot/plan.rs is the loot
+# planner; plan/boxed.rs, a box in hand emptied (plan/31 Stage 4c), is an impl
+# block of the same Planner and needs its private fields, so it is a child
+# module rather than a sibling. 545 lines at birth; the cap leaves room to move
+# the floor passes down, not to grow.
+crates/cena-behavior/src/loot/plan.rs 600
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/heal.rs is the Heal
+# behavior's facade (plan/36 Stage 2): the module doc and the re-exports; the
+# choice, the planner, the profile and the replies are in heal/. 21 lines at birth.
+crates/cena-behavior/src/heal.rs 100
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-model/src/spells.rs is the spell table;
+# spells/extras.rs joins what the table did not keep (plan/37 Stage 1). 639
+# lines at birth: the table, its reader and the cooldown landings.
+crates/cena-model/src/spells.rs 700
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/hunt/drive.rs is the
+# hunt driver (plan/30 §3); it reached 794 of 800, and its errand loops moved
+# down into drive/ as impl blocks of the same Driver, which need its private
+# fields: looting (drive/loot.rs), healing, stocking and waggling
+# (drive/errands.rs), and the selling round (drive/selling.rs). 396 lines left.
+crates/cena-behavior/src/hunt/drive.rs 450
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/hunt/import.rs is the
+# bigshot importer; it reached 806 of 800 as bigshot's settings were carried,
+# and its rest keys (thresholds, fog and waypoints, wounded_eval) moved into
+# import/rest.rs, an impl of the same Job. 712 lines left.
+crates/cena-behavior/src/hunt/import.rs 750
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/hunt/guard.rs is the
+# guard vocabulary (plan/33): its words, parsing and writing. What each word
+# reads moved into guard/read.rs and the room's record of sent steps into
+# guard/used.rs when the vocabulary grew from five words to every survivor.
+crates/cena-behavior/src/hunt/guard.rs 550
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/batch.rs is the facade
+# over batch/ (`;multi` and `;foreach`, plan/30 §7 M6e): the module doc and the
+# re-exports; the words, the picking, the lines, the driver and the desk are in
+# batch/. 41 lines at birth, so its cap is the rule above: 41 + 50, rounded up.
+crates/cena-behavior/src/batch.rs 100
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/gemstone.rs is the
+# game namespace Rule 3.4 prescribes, as cena-platform/src/gemstone.rs is:
+# the jewel command (gemstone/jewel.rs), whose verb is the game's own name.
+crates/cena-behavior/src/gemstone.rs 100
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/hunt/verbs.rs is the
+# dispatch from a bigshot verb to its handler (plan/30 §7, M6b): the table in
+# its module doc, the Line a handler returns, and the dispatch itself. The
+# spells moved into verbs/spell.rs and the tables into verbs/tables.rs when
+# the audit's missing gates and handlers were ported. 247 lines at birth:
+# 247 + 50, rounded up.
+crates/cena-behavior/src/hunt/verbs.rs 300
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-model/src/state/character/psm.rs is
+# the PSM list reader, and now its fold into the model; psm/cost.rs is what each
+# PSM costs and Lich's `available?` (Lich's :cost tables, for the hunt's PSM
+# steps). 397 lines at birth: 397 + 50, rounded up.
+crates/cena-model/src/state/character/psm.rs 450

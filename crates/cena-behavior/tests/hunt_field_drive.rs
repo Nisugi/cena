@@ -80,6 +80,7 @@ async fn injury_en_route_cancels_field_trip_and_walks_to_town_without_field_comm
             &Heartbeat::default(),
             TravelNotes::default(),
             |_| {},
+            |_| {},
         ))
         .await
     });

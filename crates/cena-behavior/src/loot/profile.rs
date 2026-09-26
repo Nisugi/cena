@@ -96,8 +96,8 @@ pub struct Skin {
     pub spell_604: bool,
     /// Cast Sigil of Resolve before skinning (`skin_resolve`).
     pub resolve: bool,
-    /// Skin only the bounty's creature (`skin_bounty_only`). Not built:
-    /// carried so the import loses nothing.
+    /// Skin only the creature a skinning bounty names, and nothing without
+    /// one (`skin_bounty_only`).
     pub bounty_only: bool,
     /// The edged skinning weapon, by a word of its name (`skin_weapon`);
     /// empty means whatever is in the right hand.
@@ -162,6 +162,27 @@ impl LootProfile {
     pub fn takes(&self, category: &str) -> bool {
         self.take.iter().any(|word| word == category)
     }
+}
+
+/// The profile file's text with these creatures added to what it has learned
+/// cannot be skinned, as eloot saves its profile on *You cannot skin*
+/// (`eloot.lic:5846`). `Ok(None)` when every name is already there.
+///
+/// # Errors
+///
+/// The text is not a loot profile, or cannot be written back as one.
+pub fn remember_unskinnable(text: &str, names: &[String]) -> Result<Option<String>, String> {
+    let mut profile = LootProfile::parse(text)?;
+    let before = profile.skin.unskinnable.len();
+    for name in names {
+        if !profile.skin.unskinnable.contains(name) {
+            profile.skin.unskinnable.push(name.clone());
+        }
+    }
+    if profile.skin.unskinnable.len() == before {
+        return Ok(None);
+    }
+    profile.to_toml().map(Some)
 }
 
 /// The character's loot profile: `<data>/hunt/loot/<instance>_<character>.toml`,

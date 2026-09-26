@@ -16,6 +16,7 @@ use std::future::{Future, IntoFuture};
 use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::net::TcpListener;
 use tokio::sync::{Mutex, Semaphore};
 use tokio_util::sync::CancellationToken;
@@ -147,6 +148,9 @@ pub(crate) struct Viewed {
     pub(crate) changed: tokio::sync::broadcast::Sender<()>,
     /// Where this session's shared-stream lines are merged with the others'.
     pub(crate) merged: Arc<crate::merged::MergedFeed>,
+    /// `;sorter`: this session's container looks show one line per category
+    /// ([`Sessions::sort_containers`]). Off until asked, `VellumFE`'s default.
+    pub(crate) sorting: AtomicBool,
 }
 
 impl Viewed {
@@ -179,6 +183,7 @@ impl Viewed {
             stop: CancellationToken::new(),
             changed: tokio::sync::broadcast::channel(1).0,
             merged: Arc::new(crate::merged::MergedFeed::new()),
+            sorting: AtomicBool::new(false),
         })
     }
 }
@@ -231,6 +236,8 @@ impl Sessions {
         let id = handle.session();
         let mut hub = Hub::new();
         hub.map_projection = map_projection;
+        // A replaced attachment keeps the player's `;sorter` choice.
+        let sorting = self.sorts_containers(id).unwrap_or(false);
         let viewed = Arc::new(Viewed {
             id,
             name: name.into(),
@@ -239,6 +246,7 @@ impl Sessions {
             stop: self.shared.stop.child_token(),
             changed: self.shared.changed.clone(),
             merged: Arc::clone(&self.shared.merged),
+            sorting: AtomicBool::new(sorting),
         });
         let replaced = self
             .shared
@@ -294,6 +302,34 @@ impl Sessions {
             viewed.stop.cancel();
         }
         let _ = self.shared.changed.send(());
+    }
+
+    /// Turn `;sorter` on or off for session `id`'s story: from its next
+    /// container look on, a look shows as one line per category
+    /// ([`cena_ui::LineAssembler::sort_containers`]). `false` when `id` is
+    /// not served, so there is no story to sort.
+    pub fn sort_containers(&self, id: SessionId, on: bool) -> bool {
+        let sessions = self
+            .shared
+            .sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let Some(viewed) = sessions.get(&id) else {
+            return false;
+        };
+        viewed.sorting.store(on, Ordering::Relaxed);
+        true
+    }
+
+    /// Whether session `id`'s container looks are sorted; `None` when it is
+    /// not served.
+    pub fn sorts_containers(&self, id: SessionId) -> Option<bool> {
+        self.shared
+            .sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&id)
+            .map(|viewed| viewed.sorting.load(Ordering::Relaxed))
     }
 }
 

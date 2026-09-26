@@ -37,6 +37,7 @@
 
 mod architecture;
 mod ask;
+mod batch;
 mod combat;
 mod commands;
 mod connector;
@@ -52,6 +53,7 @@ mod play;
 mod roster;
 mod secrets;
 mod setup;
+mod sorter;
 mod travel;
 mod watch;
 

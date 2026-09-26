@@ -25,6 +25,18 @@
 //! | 50 | Engage | `Hunt::engage` | choose a target, target it, take the hunting stance, run its routine one step a tick |
 //! | 60 | Wander | `Hunt::wander` | nothing to fight: wait, then walk to a fresh room inside the boundaries |
 //!
+//! # The room is claimed on arrival
+//!
+//! Whether a room is the hunt's is decided **once, when it is entered**, as
+//! Lich's `Claim` decides it from the room the character walked into
+//! (`claim.rb:87-107`, run as the room loads): nobody else there, and no
+//! stranger's disk unless `wander.ignore_disks` (`bigshot.lic:7091-7099`).
+//! Read every tick instead, another player walking in stalled the hunt in
+//! place: engage refused the room, and wander would not leave a room with
+//! creatures in it (`inventory/12` §2). A room entered claimed stays the
+//! hunt's; a room entered contested is neither fought in nor looted
+//! (`bigshot.lic:7808`), and is walked on from.
+//!
 //! No arm keeps position: intent is re-derived from the state each tick
 //! (`behavior.rb:10-13`). What the machine remembers is only what the state
 //! cannot say -- which corpses it has looted, which step of the routine is
@@ -43,18 +55,40 @@
 use cena_map::RoomId;
 use cena_session::GameState;
 use cena_session::claim::{Claim, claim_room};
+
+/// Whose the room is, decided on entering it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Held {
+    /// Nobody else was here.
+    Mine,
+    /// Nobody else, but a stranger's disk: looted, not fought in, unless
+    /// the profile ignores disks.
+    Disk,
+    /// Someone else was here first.
+    Theirs,
+}
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use super::profile::{Profile, Step, Target};
+use super::aim::{Aimed, Aiming};
+use super::ammo::Ammo;
+use super::bounty::BountyMode;
+use super::death::Mourning;
+use super::follow::{Follow, Resend};
+use super::guard::{Facts, Used};
+use super::monitor::Watch;
+use super::profile::{Profile, Step};
+use super::react::Reacting;
+use super::repeat::Repeats;
+use super::replies::Heard;
 pub use super::said::{Ending, Here, Phase, Said, Why};
+use super::verbs::Go;
+use super::wand::Wanding;
+use crate::heal::HealProfile;
+use crate::keep::KeepProfile;
 use crate::loot::{Left, LootProfile};
 use crate::stance::{self, Want};
+use crate::waggle::WaggleProfile;
 
-/// The dialog signs are listed under when they are up.
-const ACTIVE_SPELLS: &str = "Active Spells";
-/// Seconds between two casts of the same sign, so a sign the game refused
-/// is not asked for every tick.
-const SIGN_RETRY: u32 = 60;
 /// Seconds to rest before asking the state again.
 pub(super) const REST_BEAT: u32 = 5;
 /// The most steps skipped in one tick before the routine gives up the tick.
@@ -66,6 +100,10 @@ const LOOT_SPACING: u32 = 15;
 
 /// The machine. See the module docs.
 #[derive(Debug)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts the machine carries between ticks"
+)]
 pub struct Hunt {
     pub(super) profile: Profile,
     pub(super) phase: Phase,
@@ -102,6 +140,77 @@ pub struct Hunt {
     pub(super) must_rest: Option<Why>,
     /// The current rest cycle uses field settings; escalation only goes to town.
     pub(super) field_rest: bool,
+    /// The heal profile, when the character has one (`plan/36`).
+    pub(super) heal: Option<HealProfile>,
+    /// `;heal`: no hunt, one heal. `Some(false)` until it has been asked for.
+    pub(super) heal_only: Option<bool>,
+    /// `;heal stock` / `;heal fill`: no hunt, one round; `fill` beside it.
+    pub(super) stock_only: Option<(bool, bool)>,
+    /// `;keep`: no hunt, the listed spells kept up until stopped, with when
+    /// each was last sent.
+    pub(super) keep_only: Option<(KeepProfile, BTreeMap<u16, u32>)>,
+    /// `;waggle`: no hunt, one run over these names; `true` once asked for.
+    pub(super) waggle_only: Option<(WaggleProfile, Vec<String>, bool)>,
+    /// `;sc`: no hunt, these lines sent in order, then done.
+    pub(super) send_only: Option<VecDeque<String>>,
+    /// `--spellcast` and `--ranged` for the heal.
+    pub(super) heal_mode: (bool, bool),
+    /// What the game's replies taught ([`super::replies`]).
+    pub(super) heard: Heard,
+    /// Whose this room is, once the game has said who is in it.
+    pub(super) held: Option<Held>,
+    /// What incidents left to do ([`super::react`]).
+    pub(super) react: Reacting,
+    /// Rests finished, for `rest.stop_after`.
+    pub(super) rests: u32,
+    /// The room was entered since flee last looked (`flee.lone_only`).
+    pub(super) entered: bool,
+    /// Where the aim lists stand for this target ([`super::aim`]).
+    pub(super) aiming: Aiming,
+    /// Where the wand list stands ([`super::wand`]).
+    pub(super) wanding: Wanding,
+    /// Return waypoints still to walk through on the way to rest.
+    pub(super) waypoints: VecDeque<RoomId>,
+    /// This rest has fogged once from the rift already.
+    pub(super) fogged: bool,
+    /// When a society mana ability was last used ([`super::wrack`]).
+    pub(super) wracked: Option<u32>,
+    /// Boon creatures assessed, by id, with their traits ([`super::boons`]).
+    pub(super) boons: BTreeMap<i64, Vec<&'static str>>,
+    /// The creature an `assess` was sent for.
+    pub(super) assessing: Option<i64>,
+    /// Long-Term Experience Boosts spent this hunt, and whether one is
+    /// waiting on its reply.
+    pub(super) boosts: (u32, bool),
+    /// The steps sent in this room, for `once` and `every` ([`Used`]).
+    pub(super) used: Used,
+    /// When the censer was last cast ([`super::censer`]).
+    pub(super) censer_cast: Option<u32>,
+    /// Barkskin cannot be cast before this game second ([`super::maintain`]).
+    pub(super) bark_until: Option<u32>,
+    /// Lines a step's first line must be followed by: a spell's `cast`
+    /// after its `prepare` ([`super::verbs`]).
+    pub(super) followups: VecDeque<String>,
+    /// bigshot verbs the player was told Hydra does not send yet.
+    pub(super) told_unported: BTreeSet<&'static str>,
+    /// An arrow the game would not fire, being put away ([`super::ammo`]).
+    pub(super) ammo: Ammo,
+    /// Recovering from a death ([`super::death`]).
+    pub(super) mourning: Mourning,
+    /// The character's waggle profile, for a waggle after departing.
+    pub(super) waggle_profile: Option<WaggleProfile>,
+    /// The interaction monitor's patterns ([`super::monitor`]).
+    pub(super) watch: Watch,
+    /// Lines the monitor wants put in front of the player.
+    pub(super) alerts: Vec<String>,
+    /// A quick hunt: this room, until it is clear ([`super::quick`]).
+    pub(super) quick: bool,
+    /// `eachtarget` and `force`, and `resonance`'s last spell.
+    pub(super) repeats: Repeats,
+    /// A step's hold or awaited answer, and the character rooted.
+    pub(super) follow: Follow,
+    /// `;hunt <name> bounty`.
+    pub(super) bounty_mode: BountyMode,
 }
 
 impl Hunt {
@@ -129,7 +238,60 @@ impl Hunt {
             loot: None,
             must_rest: None,
             field_rest: false,
+            heal: None,
+            heal_only: None,
+            stock_only: None,
+            keep_only: None,
+            waggle_only: None,
+            send_only: None,
+            heal_mode: (false, false),
+            heard: Heard::default(),
+            held: None,
+            react: Reacting::default(),
+            rests: 0,
+            entered: false,
+            aiming: Aiming::default(),
+            wanding: Wanding::default(),
+            waypoints: VecDeque::new(),
+            fogged: false,
+            wracked: None,
+            boosts: (0, false),
+            boons: BTreeMap::new(),
+            assessing: None,
+            used: Used::new(),
+            censer_cast: None,
+            bark_until: None,
+            followups: VecDeque::new(),
+            told_unported: BTreeSet::new(),
+            ammo: Ammo::default(),
+            mourning: Mourning::default(),
+            waggle_profile: None,
+            watch: Watch::default(),
+            alerts: Vec::new(),
+            quick: false,
+            repeats: Repeats::default(),
+            follow: Follow::default(),
+            bounty_mode: BountyMode::default(),
         }
+    }
+
+    /// Heal with herbs by this profile during a rest.
+    #[must_use]
+    pub fn with_heal(mut self, profile: HealProfile) -> Self {
+        self.heal = Some(profile);
+        self
+    }
+
+    /// The heal profile, when there is one.
+    #[must_use]
+    pub fn heal_profile(&self) -> Option<&HealProfile> {
+        self.heal.as_ref()
+    }
+
+    /// `--spellcast` and `--ranged` for this heal.
+    #[must_use]
+    pub const fn heal_mode(&self) -> (bool, bool) {
+        self.heal_mode
     }
 
     /// The profile being hunted on.
@@ -199,17 +361,53 @@ impl Hunt {
         }
     }
 
+    /// The connection dropped: the target, the room's claim and the room
+    /// itself are asked again once the session is back.
+    pub fn link_lost(&mut self) {
+        self.target_gone();
+        self.repeats_gone();
+        self.follow_gone();
+        self.held = None;
+        self.room = None;
+    }
+
     /// The gate refused the target: it is gone.
     pub fn target_gone(&mut self) {
         self.target = None;
         self.queue.clear();
+        self.followups.clear();
+        self.aiming.reset();
     }
 
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
+        if let Some(said) = self.errand_line() {
+            return said;
+        }
+        if let Some(said) = self.errand(state, here) {
+            return said;
+        }
+        if let Some(ending) = self.heard.ending.take() {
+            return Said::Done(ending);
+        }
+        if let Some(said) = self.death(state, now) {
+            return said;
+        }
         self.note_room(state, now);
-        if let Some(said) = Self::survival(state) {
+        if self.held.is_none() {
+            self.held = if self.quick {
+                Some(Held::Mine)
+            } else {
+                Self::hold_room(state, self.profile.wander.ignore_disks)
+            };
+        }
+        if state.status.known().dead() != Some(true)
+            && let Some(said) = self.react(state, here, now)
+        {
+            return said;
+        }
+        if let Some(said) = self.survival(state) {
             return said;
         }
         if let Some(said) = self.rest(state, here) {
@@ -240,7 +438,7 @@ impl Hunt {
         if let Some(said) = self.maintain(state, now) {
             return said;
         }
-        if let Some(said) = self.engage(state, now) {
+        if let Some(said) = self.engage(state, here, now) {
             return said;
         }
         self.wander(state, here, now).unwrap_or(Said::Nothing)
@@ -253,57 +451,22 @@ impl Hunt {
         }
         self.room.clone_from(&state.room.id);
         self.arrived = now;
+        self.held = None;
+        self.entered = true;
         self.target = None;
         self.queue.clear();
+        self.followups.clear();
+        self.used.clear();
     }
 
     // --- survival ----------------------------------------------------------
-
-    /// Dead: the hunt is over. Down, and able to move: stand.
-    fn survival(state: &GameState) -> Option<Said> {
-        let status = state.status.known();
-        if status.dead() == Some(true) {
-            return Some(Said::Done(Ending::Dead));
-        }
-        let down = status.standing() == Some(false)
-            || status.prone() == Some(true)
-            || status.sitting() == Some(true)
-            || status.kneeling() == Some(true);
-        let held = status.stunned() == Some(true) || status.webbed() == Some(true);
-        (down && !held).then(|| Said::Send {
-            line: "stand".to_owned(),
-            target: None,
-        })
-    }
-
-    // --- flee ---------------------------------------------------------------
-
-    /// Too many fightable creatures, or one the profile always flees from.
-    fn flee(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting {
-            return None;
-        }
-        let flee = &self.profile.flee;
-        let fightable = self.fightable(state).count();
-        let crowd = flee.count.is_some_and(|limit| fightable > limit as usize);
-        let always = state.creatures().in_room().any(|creature| {
-            flee.from
-                .iter()
-                .any(|name| named(name, &creature.name, creature.noun.as_deref()))
-        });
-        if !(crowd || always) {
-            return None;
-        }
-        let to = self.next_room(here, now)?;
-        Some(Said::Walk(to))
-    }
 
     // --- loot -------------------------------------------------------------------
 
     /// `loot #id` on a corpse not yet looted. With `loot.delay` and targets
     /// still here, no oftener than [`LOOT_SPACING`].
     fn loot(&mut self, state: &GameState, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting {
+        if self.phase != Phase::Hunting || self.held == Some(Held::Theirs) {
             return None;
         }
         let corpses: Vec<i64> = state
@@ -312,9 +475,16 @@ impl Hunt {
             .filter(|creature| creature.corpse())
             .map(|creature| creature.id)
             .collect();
-        for id in &corpses {
-            if self.dead_seen.insert(*id) {
+        // A kill that left no corpse (vaporized, faded) counts as one.
+        let gone = state
+            .creatures()
+            .in_room()
+            .filter(|creature| creature.ending().is_some_and(cena_session::Ending::killed))
+            .map(|creature| creature.id);
+        for id in corpses.iter().copied().chain(gone) {
+            if self.dead_seen.insert(id) {
                 self.fried_kills = self.fried_kills.saturating_add(1);
+                self.heard.rested_for_injury = false;
             }
         }
         let corpse = corpses
@@ -348,128 +518,56 @@ impl Hunt {
         })
     }
 
-    // --- maintain -------------------------------------------------------------
-
-    /// A sign the effects list says is down, cast when nothing is here to fight.
-    fn maintain(&mut self, state: &GameState, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting || self.fightable(state).next().is_some() {
-            return None;
-        }
-        let now = now?;
-        let effects = &state.effects;
-        let known = effects.saw_category(ACTIVE_SPELLS) || effects.saw_category("Buffs");
-        let signs = self.profile.signs.clone();
-        for sign in &signs {
-            let id = sign.split_whitespace().next()?;
-            if id == "650" {
-                // Found by replaying real wire (`tests/hunt_replay.rs`):
-                // before the lists arrive, every aspect reads as down.
-                if !known {
-                    continue;
-                }
-                if let Some(said) = self.assume_aspect(sign, state, now) {
-                    return Some(said);
-                }
-                continue;
-            }
-            let up = match effects.active(id, now) {
-                Some(up) => up,
-                None if known => false,
-                None => continue,
-            };
-            let recent = self
-                .signs_cast
-                .get(id)
-                .is_some_and(|at| now.saturating_sub(*at) < SIGN_RETRY);
-            if up || recent {
-                continue;
-            }
-            self.signs_cast.insert(id.to_owned(), now);
-            return Some(Said::Send {
-                line: format!("incant {sign}"),
-                target: None,
-            });
-        }
-        None
-    }
-
-    /// Assume Aspect (`650 <aspect> <aspect|evoke>`), as bigshot casts it
-    /// (`cmd_assume`, `bigshot.lic:5588-5645`): nothing while an aspect
-    /// named is up; the spell first, evoked when the second word is `evoke`
-    /// and prepared otherwise; then `assume <aspect>` for each aspect whose
-    /// buff is down, once the spell is up. One step a tick, each confirmed
-    /// by the effects list before the next, and each with its own retry
-    /// window: a spell that fails to land is asked for again in a minute,
-    /// not at every prompt.
-    fn assume_aspect(&mut self, sign: &str, state: &GameState, now: u32) -> Option<Said> {
-        let mut words = sign.split_whitespace().skip(1);
-        let first = words.next()?.to_ascii_lowercase();
-        let second = words.next().map(str::to_ascii_lowercase);
-        let evoke = second.as_deref() == Some("evoke");
-        let aspects: Vec<String> = std::iter::once(first)
-            .chain(second.filter(|word| word != "evoke"))
-            .collect();
-        let up = |text: &str| {
-            state.effects.iter().any(|(id, effect)| {
-                effect.text.eq_ignore_ascii_case(text)
-                    && state.effects.active(id, now) == Some(true)
-            })
-        };
-        if aspects
-            .iter()
-            .any(|aspect| up(&format!("Aspect of the {aspect}")))
-        {
-            return None;
-        }
-        let spell_up = state.effects.active("650", now) == Some(true) || up("Assume Aspect");
-        let (key, line) = if spell_up {
-            let aspect = aspects.first()?;
-            ("650 assume", format!("assume {aspect}"))
-        } else if evoke {
-            ("650", "incant 650 evoke".to_owned())
-        } else {
-            ("650", "prep 650".to_owned())
-        };
-        let recent = self
-            .signs_cast
-            .get(key)
-            .is_some_and(|at| now.saturating_sub(*at) < SIGN_RETRY);
-        if recent {
-            return None;
-        }
-        self.signs_cast.insert(key.to_owned(), now);
-        Some(Said::Send { line, target: None })
-    }
-
     // --- engage -----------------------------------------------------------------
 
     /// Choose a target, target it, take the hunting stance, and run one step
     /// of its routine.
-    fn engage(&mut self, state: &GameState, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting || !Self::room_is_mine(state) {
+    fn engage(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {
+        if self.phase != Phase::Hunting || !self.may_fight() {
             return None;
         }
+        if self.paused(now) {
+            return Some(Said::Wait(1));
+        }
+        if let Some(said) = self.assess_boons(state) {
+            return Some(said);
+        }
         let target = self.choose_target(state)?;
+        if let Some(said) = self.repeating(state, here, now) {
+            return Some(said);
+        }
         if state.targeting.current() != Some(target) {
             return Some(Said::Send {
                 line: format!("target #{target}"),
                 target: Some(target),
             });
         }
-        if let Some(line) = Self::stance_for(self.profile.stance.hunting.as_deref(), state) {
-            return Some(Said::Send {
-                line,
-                target: Some(target),
-            });
-        }
-        let _ = now;
-        self.next_step(state, target)
+        self.next_step(state, here, target, now)
     }
 
     /// The step to send now: the sequence in play first, then the routine
     /// from its cursor, skipping held steps, expanding sequences, and
     /// skipping steps whose guards do not hold.
-    fn next_step(&mut self, state: &GameState, target: i64) -> Option<Said> {
+    fn next_step(
+        &mut self,
+        state: &GameState,
+        here: Here<'_>,
+        target: i64,
+        now: Option<u32>,
+    ) -> Option<Said> {
+        if let Some(line) = self.ammo_line(state) {
+            return Some(Said::Send { line, target: None });
+        }
+        if let Some(line) = self.followups.pop_front() {
+            self.follow.resend = Some(Resend::Line(line.clone()));
+            return Some(Said::Send {
+                line,
+                target: Some(target),
+            });
+        }
+        if let Some(said) = self.holding(state, now) {
+            return Some(said);
+        }
         let steps = self.profile.routines.get(&self.routine)?.clone();
         if steps.is_empty() {
             return None;
@@ -494,179 +592,99 @@ impl Hunt {
                 self.queue = queued;
                 continue;
             }
-            let runs = step
-                .when
-                .iter()
-                .all(|condition| condition.holds(state, Some(target)) == Some(true));
-            if !runs {
+            let key = step.to_string();
+            let facts = Facts {
+                state,
+                target: Some(target),
+                tags: here.room.map(|_| here.tags),
+                used: Some(&self.used),
+                step: &key,
+            };
+            if !step.when.iter().all(|c| c.holds(&facts) == Some(true)) {
                 continue;
             }
+            if let Some(said) = self.waits_behind(&step.send, state, target, now) {
+                self.queue.push_front(step);
+                return Some(said);
+            }
+            if self.repeat(&step, state, target, now) {
+                match self.repeating(state, here, now) {
+                    Some(said) => return Some(said),
+                    None => continue,
+                }
+            }
+            match self.wand_step(&step, &key, state, target, now) {
+                Some(Go::Said(said)) => return Some(said),
+                Some(_) => continue,
+                None => {}
+            }
+            let hidden = state.status.known().hidden() == Some(true);
+            let line = match self.aim(&step.send, target, hidden) {
+                None => match self.verb_step(&step.send, &key, target, state, now) {
+                    Go::Send(line) => line,
+                    Go::Said(said) => return Some(said),
+                    Go::Skip => continue,
+                },
+                Some(Aimed::Instead(line)) => line,
+                Some(Aimed::First(line)) => {
+                    self.queue.push_front(step);
+                    return Some(Said::Send {
+                        line,
+                        target: Some(target),
+                    });
+                }
+            };
+            self.used.record(&key, Some(target), now);
+            self.follow.resend = Some(Resend::Step(step));
             return Some(Said::Send {
-                line: step.send.clone(),
+                line,
                 target: Some(target),
             });
         }
         Some(Said::Wait(1))
     }
 
-    /// The target: the current one while it is still here and worth
-    /// attacking, else the best by the profile's order.
-    fn choose_target(&mut self, state: &GameState) -> Option<i64> {
-        if let Some(current) = self.target
-            && self.fightable(state).any(|creature| creature.id == current)
-        {
-            return Some(current);
-        }
-        let mut best: Option<(usize, i64, String)> = None;
-        for creature in self.fightable(state) {
-            let Some((rank, target)) = self.rank(&creature.name, creature.noun.as_deref()) else {
-                continue;
-            };
-            if best.as_ref().is_none_or(|(at, _, _)| rank < *at) {
-                best = Some((rank, creature.id, target.routine.clone()));
-            }
-        }
-        let (_, id, routine) = best?;
-        self.target = Some(id);
-        self.routine = routine;
-        self.cursor = 0;
-        self.queue.clear();
-        Some(id)
-    }
-
-    /// The first target entry that fits a creature, with its place.
-    fn rank(&self, name: &str, noun: Option<&str>) -> Option<(usize, &Target)> {
-        self.profile.targets.iter().enumerate().find(|(_, target)| {
-            target.any || target.name.as_deref().is_some_and(|n| named(n, name, noun))
-        })
-    }
-
-    /// The creatures here worth attacking: alive, not known to be
-    /// unhostile (a companion), not an animate or a bare appendage, not
-    /// ignored, and named by the target list.
-    fn fightable<'a>(
-        &'a self,
-        state: &'a GameState,
-    ) -> impl Iterator<Item = &'a cena_session::CreatureInstance> + 'a {
-        state.creatures().in_room().filter(move |creature| {
-            creature.valid_target()
-                && creature.hostile() != Some(false)
-                && !self
-                    .profile
-                    .ignore
-                    .iter()
-                    .any(|name| named(name, &creature.name, creature.noun.as_deref()))
-                && self
-                    .rank(&creature.name, creature.noun.as_deref())
-                    .is_some()
-        })
-    }
-
-    /// The room is this character's to fight in (`claim::claim_room`).
-    fn room_is_mine(state: &GameState) -> bool {
+    /// Whose the room is, as it stands (`claim::claim_room`), and whether a
+    /// stranger's disk is in it. `None` while the game has not said who is
+    /// here.
+    fn hold_room(state: &GameState, ignore_disks: bool) -> Option<Held> {
         let with_me: Vec<String> = state
             .group
             .members()
             .iter()
             .map(|member| member.noun.clone())
+            .chain(state.character.name.clone())
             .collect();
-        matches!(claim_room(&state.room, &with_me), Claim::Mine)
+        match claim_room(&state.room, &with_me) {
+            Claim::Mine => {
+                let stranger = state
+                    .room
+                    .disks()
+                    .any(|disk| !with_me.contains(&disk.owner));
+                Some(if stranger && !ignore_disks {
+                    Held::Disk
+                } else {
+                    Held::Mine
+                })
+            }
+            Claim::Contested { .. } => Some(Held::Theirs),
+            Claim::Unknown => None,
+        }
+    }
+
+    /// The room is the hunt's to fight in: claimed on entry, and not a
+    /// sanctuary.
+    pub(super) fn may_fight(&self) -> bool {
+        self.held == Some(Held::Mine) && !self.in_sanctuary()
     }
 
     /// The stance command to send, if the profile names one for this phase
     /// and the bar does not show it yet.
-    fn stance_for(want: Option<&str>, state: &GameState) -> Option<String> {
+    pub(super) fn stance_for(want: Option<&str>, state: &GameState) -> Option<String> {
         let want = Want::parse(want?).ok()?;
         if stance::landed(want, state) {
             return None;
         }
         stance::command(want, state)
     }
-
-    // --- wander -------------------------------------------------------------------
-
-    /// Nothing to fight: wait the profile's moment, take the wander stance,
-    /// then walk to a fresh room.
-    fn wander(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {
-        if self.phase != Phase::Hunting || self.fightable(state).next().is_some() {
-            return None;
-        }
-        let waited = self.arrived.zip(now).is_none_or(|(arrived, now)| {
-            f64::from(now.saturating_sub(arrived)) >= self.profile.wander.wait
-        });
-        if !waited {
-            return Some(Said::Wait(1));
-        }
-        if let Some(line) = Self::stance_for(self.profile.stance.wander.as_deref(), state) {
-            return Some(Said::Send { line, target: None });
-        }
-        let to = self.next_room(here, now)?;
-        Some(Said::Walk(to))
-    }
-
-    /// The next room to walk to: a crossable exit not on the boundary, a
-    /// fresh one if any, else the one least recently visited (`flee.rb`'s
-    /// `Walker`).
-    fn next_room(&mut self, here: Here<'_>, now: Option<u32>) -> Option<RoomId> {
-        let room = here.room?;
-        if !self.visited.contains(&room) {
-            self.visited.push(room);
-        }
-        let boundaries = &self.profile.rooms.boundaries;
-        let options: Vec<RoomId> = here
-            .exits
-            .iter()
-            .copied()
-            .filter(|exit| {
-                !boundaries.contains(&exit.0)
-                    && *exit != room
-                    && self
-                        .profile
-                        .rooms
-                        .allowed
-                        .as_ref()
-                        .is_none_or(|ids| ids.contains(&exit.0))
-            })
-            .collect();
-        if options.is_empty() {
-            return None;
-        }
-        let fresh: Vec<RoomId> = options
-            .iter()
-            .copied()
-            .filter(|exit| !self.visited.contains(exit))
-            .collect();
-        let chosen = if fresh.is_empty() {
-            self.visited
-                .iter()
-                .copied()
-                .find(|seen| options.contains(seen))?
-        } else {
-            let roll = self.roll(now);
-            let at = usize::try_from(roll % fresh.len() as u64).unwrap_or(0);
-            fresh[at]
-        };
-        self.visited.retain(|seen| *seen != chosen);
-        self.visited.push(chosen);
-        Some(chosen)
-    }
-
-    /// The next number from the seed, mixed with the clock so two hunts on
-    /// one seed do not walk in step.
-    fn roll(&mut self, now: Option<u32>) -> u64 {
-        let mut x = self.seed ^ u64::from(now.unwrap_or(0));
-        x ^= x >> 33;
-        x = x.wrapping_mul(0xff51_afd7_ed55_8ccd);
-        x ^= x >> 33;
-        x = x.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
-        x ^= x >> 33;
-        self.seed = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
-        x
-    }
-}
-
-/// Whether `wanted` names a creature: its noun, or its whole name, ignoring
-/// case (`bigshot.lic:7170`).
-fn named(wanted: &str, name: &str, noun: Option<&str>) -> bool {
-    name.eq_ignore_ascii_case(wanted) || noun.is_some_and(|noun| noun.eq_ignore_ascii_case(wanted))
 }

@@ -222,11 +222,15 @@ impl GameState {
                 if let Some(event) = super::group::classify_text(&chunk_line, &rendered) {
                     self.group.apply(&event);
                 }
+                // A kill with no corpse, a portal, a boss's phase: here for
+                // order, so a later `room objs` still outranks it (`prose.rs`).
+                self.creatures.read_prose(&chunk_line, &rendered);
                 self.chunk.push_line(chunk_line);
             }
             if text.stream == super::known_spells::STREAM {
                 self.known_spells.read_line(&line);
             }
+            self.list_line(&text.stream, &line);
             let buffer = self.streams.entry(text.stream.clone()).or_default();
             // **Bounded.** Found by review: every completed line was retained
             // forever, including ordinary main-window output, and nothing ever

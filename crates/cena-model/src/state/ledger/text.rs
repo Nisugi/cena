@@ -13,7 +13,7 @@ use crate::state::containers::ItemRef;
 ///
 /// `Run::object`, not `Run::link`: the thing the text names, even inside a
 /// clickable command (`containers.rs`, `ItemRef::first_on`).
-pub(super) fn objects(line: &ChunkLine) -> Vec<(ItemRef, bool)> {
+pub(crate) fn objects(line: &ChunkLine) -> Vec<(ItemRef, bool)> {
     line.runs
         .runs
         .iter()
@@ -37,14 +37,14 @@ pub(super) fn objects(line: &ChunkLine) -> Vec<(ItemRef, bool)> {
 /// The creature on the line: the first **bolded** object. Bold is the wire's
 /// mark for a creature (`state/room.rs:207`); the pronoun forms (`He`, `her`)
 /// carry the same id and the same bold.
-pub(super) fn creature(line: &ChunkLine) -> Option<ItemRef> {
+pub(crate) fn creature(line: &ChunkLine) -> Option<ItemRef> {
     objects(line)
         .into_iter()
         .find_map(|(item, bold)| bold.then_some(item))
 }
 
 /// The item on the line: the first object that is **not** bolded.
-pub(super) fn item(line: &ChunkLine) -> Option<ItemRef> {
+pub(crate) fn item(line: &ChunkLine) -> Option<ItemRef> {
     objects(line)
         .into_iter()
         .find_map(|(item, bold)| (!bold).then_some(item))
@@ -82,23 +82,23 @@ pub(super) fn group_silvers(caps: &regex::Captures<'_>, n: usize) -> Option<u64>
 /// The literals are checked by a test per module ([`compiled`]), so a typo is
 /// a red test rather than a panic at first use or -- `bounty.rs`'s choice -- a
 /// silent miss.
-pub(super) struct Pat(Option<Regex>);
+pub(crate) struct Pat(Option<Regex>);
 
 impl Pat {
-    pub(super) fn new(pattern: &str) -> Self {
+    pub(crate) fn new(pattern: &str) -> Self {
         Self(Regex::new(pattern).ok())
     }
 
-    pub(super) fn is_match(&self, text: &str) -> bool {
+    pub(crate) fn is_match(&self, text: &str) -> bool {
         self.0.as_ref().is_some_and(|re| re.is_match(text))
     }
 
-    pub(super) fn captures<'t>(&self, text: &'t str) -> Option<regex::Captures<'t>> {
+    pub(crate) fn captures<'t>(&self, text: &'t str) -> Option<regex::Captures<'t>> {
         self.0.as_ref()?.captures(text)
     }
 
     #[cfg(test)]
-    pub(super) const fn compiled(&self) -> bool {
+    pub(crate) const fn compiled(&self) -> bool {
         self.0.is_some()
     }
 }

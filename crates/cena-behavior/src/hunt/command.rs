@@ -7,7 +7,11 @@
 //! ;hunt list                      the profiles there are
 //! ;hunt <name>                    hunt on that profile, as this character
 //! ;hunt stop                      stop hunting
+//! ;heal [spellcast] [ranged] [blood]   heal with herbs by the heal profile (`plan/36`)
 //! ```
+//!
+//! `;heal` is here rather than beside a desk of its own because it runs in the
+//! hunt's driver, which is where the herbs are eaten during a rest.
 //!
 //! **The symbol is not this module's.** A line reaches here already marked
 //! as Hydra's and stripped of its symbol (`cena_session::command::claimant`),
@@ -37,6 +41,38 @@ pub enum Command {
     List,
     /// Hunt on this profile.
     Run(String),
+    /// `hunt <name> quick`: this room, on the profile, until it is clear.
+    Quick(String),
+    /// `hunt <name> bounty`: hunt until the bounty is done or a new one is
+    /// ready, then rest and end (`hunt/bounty.rs`).
+    Bounty(String),
+    /// `;heal`: heal with herbs once, by the character's heal profile, with
+    /// eherbs' `--spellcast`, `--ranged` and `blood` for this run.
+    Heal {
+        /// Only what stops a cast.
+        spellcast: bool,
+        /// Only what stops a shot.
+        ranged: bool,
+        /// Only blood.
+        blood: bool,
+    },
+    /// `;heal stock` or `;heal fill`: stock the herb container at the
+    /// herbalist; `fill` buys one of each kind it lacks.
+    Stock {
+        /// eherbs' `fill` rather than `stock`.
+        fill: bool,
+    },
+    /// `;sc <spell|alias> [target] [count]`: one spell, as set up.
+    Sc(Vec<String>),
+    /// `;sc alias|verb|stance|set ...`: change the spellcaster profile.
+    ScEdit(Vec<String>),
+    /// `;waggle [names]`: the waggle profile's spells cast on these people,
+    /// or yourself.
+    Waggle(Vec<String>),
+    /// `;keep`: keep the keep profile's spells up until stopped.
+    Keep,
+    /// `;keep <words>`: change or show the keep profile.
+    KeepEdit(Vec<String>),
     /// Stop the hunt under way.
     Stop,
     /// Hunt's, and already answered: said wrongly. Nothing to do.
@@ -47,14 +83,40 @@ pub enum Command {
 const RESERVED: &[&str] = &["import", "import-loot", "check", "list", "stop"];
 
 /// What a wrongly said command is answered with.
-pub const USAGE: &str = "hunt <name>, hunt stop, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>, hunt check <name>, or hunt list";
+pub const USAGE: &str = "hunt <name> [quick|bounty], hunt stop, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>, hunt check <name>, or hunt list";
 
 /// The hunt command a line is, **the command symbol already gone**. `None`:
 /// not hunt's. `Some(Err(_))`: hunt's, said wrongly.
 #[must_use]
 pub fn parse(line: &str) -> Option<Result<Command, String>> {
     let mut words = line.split_whitespace();
-    if !words.next()?.eq_ignore_ascii_case("hunt") {
+    let first = words.next()?;
+    if first.eq_ignore_ascii_case("heal") {
+        return Some(heal(words));
+    }
+    if first.eq_ignore_ascii_case("sc") {
+        let rest: Vec<String> = words.map(str::to_owned).collect();
+        let edit = rest.first().is_some_and(|w| {
+            ["alias", "verb", "stance", "set"].contains(&w.to_ascii_lowercase().as_str())
+        });
+        return Some(Ok(if edit {
+            Command::ScEdit(rest)
+        } else {
+            Command::Sc(rest)
+        }));
+    }
+    if first.eq_ignore_ascii_case("waggle") {
+        return Some(Ok(Command::Waggle(words.map(str::to_owned).collect())));
+    }
+    if first.eq_ignore_ascii_case("keep") {
+        let rest: Vec<String> = words.map(str::to_ascii_lowercase).collect();
+        return Some(Ok(if rest.is_empty() {
+            Command::Keep
+        } else {
+            Command::KeepEdit(rest)
+        }));
+    }
+    if !first.eq_ignore_ascii_case("hunt") {
         return None;
     }
     let rest: Vec<&str> = words.collect();
@@ -76,11 +138,46 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
             Err(USAGE.to_owned())
         }
         Some((name, [])) => Ok(Command::Run((*name).to_owned())),
+        Some((name, [quick])) if quick.eq_ignore_ascii_case("quick") => {
+            Ok(Command::Quick((*name).to_owned()))
+        }
+        Some((name, [bounty])) if bounty.eq_ignore_ascii_case("bounty") => {
+            Ok(Command::Bounty((*name).to_owned()))
+        }
         _ => Err(USAGE.to_owned()),
     })
 }
 
 /// `import <path...> [as <name>]`: everything before `as` is the path.
+/// `;heal`'s flags, with or without eherbs' dashes.
+fn heal<'a>(words: impl Iterator<Item = &'a str>) -> Result<Command, String> {
+    let (mut spellcast, mut ranged, mut blood) = (false, false, false);
+    let words: Vec<&str> = words.collect();
+    match words.as_slice() {
+        [word] if word.eq_ignore_ascii_case("stock") => return Ok(Command::Stock { fill: false }),
+        [word] if word.eq_ignore_ascii_case("fill") => return Ok(Command::Stock { fill: true }),
+        _ => {}
+    }
+    for word in words {
+        match word.trim_start_matches('-').to_ascii_lowercase().as_str() {
+            "spellcast" => spellcast = true,
+            "ranged" => ranged = true,
+            "blood" => blood = true,
+            _ => {
+                return Err(
+                    "heal, heal spellcast, heal ranged, heal blood, heal stock or heal fill"
+                        .to_owned(),
+                );
+            }
+        }
+    }
+    Ok(Command::Heal {
+        spellcast,
+        ranged,
+        blood,
+    })
+}
+
 fn import(args: &[&str]) -> Result<Command, String> {
     let (path, name) = match args.iter().position(|w| w.eq_ignore_ascii_case("as")) {
         Some(at) => {
@@ -146,6 +243,32 @@ mod tests {
         ] {
             assert!(matches!(parse(line), Some(Err(_))), "{line}");
         }
+    }
+
+    #[test]
+    fn heal_and_its_flags() {
+        assert_eq!(
+            parse("heal"),
+            Some(Ok(Command::Heal {
+                spellcast: false,
+                ranged: false,
+                blood: false
+            }))
+        );
+        assert_eq!(
+            parse("heal --spellcast blood"),
+            Some(Ok(Command::Heal {
+                spellcast: true,
+                ranged: false,
+                blood: true
+            }))
+        );
+        assert!(matches!(parse("heal everyone"), Some(Err(_))));
+        assert_eq!(
+            parse("heal stock"),
+            Some(Ok(Command::Stock { fill: false }))
+        );
+        assert_eq!(parse("heal fill"), Some(Ok(Command::Stock { fill: true })));
     }
 
     #[test]
