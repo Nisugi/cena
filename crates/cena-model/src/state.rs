@@ -62,6 +62,7 @@ pub mod fog;
 pub mod gameobj;
 pub mod group;
 pub mod hands;
+pub mod hazard;
 mod idle;
 pub mod incident;
 mod inventory;

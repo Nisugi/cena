@@ -272,8 +272,11 @@ Pile reports, not re-checked here:
 > `vines`, `webs`, `voids`, `messages`, `wander.rs`); the contested room, now claimed on entry
 > (`engine.rs`); and being swallowed (`react.rs`). Since fixed: the spirit and wound-rank
 > rest triggers (`07d7f36`), boons (`d87a4ae`), and Barkskin's lockout
-> (`hunt/maintain.rs`). Still open from this table: the two hazard creatures, familiars,
-> creature statuses in room prose, flares for `;combat`, and boss phases.
+> (`hunt/maintain.rs`). Fixed on the model side, for the hunt to read: the two hazard
+> creatures and the 13 hazard objects (`crates/cena-model/src/state/hazard.rs`), familiars,
+> companions and summons (`state/creatures/ally.rs`), and kills that leave no corpse and the
+> cold wyrm's phases (`state/creatures/prose.rs`). Still open from this table: the hunt
+> reading those three, creature statuses in room prose, and flares for `;combat`.
 
 Lines the hunt needs, which the scripts match and Cena does not. All are GAP unless marked.
 

@@ -71,6 +71,8 @@ pub use cena_model::{Able, CreatureInstance, Effect, Injuries, StatusName};
 // a wound is on and the unarmed position. Its `<crtrStatus>` flags are
 // `creature::status::Classification`, reached through `creature` above.
 pub use cena_model::{BodyPart, PositionTier};
+// Whose a creature is, how it ended with no corpse, a boss's phase (`inventory/12` §2).
+pub use cena_model::{Ally, BossPhase, Ending};
 // The bounty's task, for a behavior that narrows its work to it (eloot's
 // `skin_bounty_only`).
 pub use cena_model::{

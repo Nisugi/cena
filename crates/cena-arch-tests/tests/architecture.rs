@@ -297,6 +297,39 @@ const ALLOWED_STATICS: &[AllowedStatic] = &[
         justification: "A OnceLock<Patterns> holding the 41 compiled patterns of Lich's                         combat/defs/messages.rb, built on first use from string literals in the                         same file and never mutated. Same argument as ledger/hunt.rs's P.",
     },
     AllowedStatic {
+        path: "crates/cena-model/src/state/creatures/prose.rs",
+        name: "P",
+        function: "patterns",
+        justification: "A OnceLock<Patterns> holding the 7 compiled patterns of the no-corpse \
+                        kills and boss phases (killcounter.lic:223, creaturewindow.lic:293-294 \
+                        and :1470-1474), built on first use from string literals in the same \
+                        file and never mutated. Same argument as incident.rs's P: process-wide, \
+                        safe because a pure function of literals. The ending and phase each \
+                        creature carries are per-session and live on CreatureInstance.",
+    },
+    AllowedStatic {
+        path: "crates/cena-model/src/state/creatures/ally.rs",
+        name: "T",
+        function: "tables",
+        justification: "A OnceLock<Tables> holding the compiled familiar, demon, illusion and \
+                        hostile-exception patterns of xmlpatch.lic and recolor.lic, built on \
+                        first use from string literals in the same file and never mutated. The \
+                        familiar pattern alone is 34 alternatives, and it is asked once per \
+                        creature registered in every session, so compiling it per call is not \
+                        a tradeoff worth making. Same argument as incident.rs's P. The verdict \
+                        for a creature is per-session and cached on its CreatureInstance.",
+    },
+    AllowedStatic {
+        path: "crates/cena-model/src/state/hazard.rs",
+        name: "P",
+        function: "objects",
+        justification: "A OnceLock<Pat> holding ONE compiled pattern, the 13 hazard object \
+                        names of creaturewindow.lic:784 as a whole-word alternation, built on \
+                        first use from the OBJECTS literal in the same file and never mutated. \
+                        Same argument as membership.rs's STANDING: a pure function of literals \
+                        with no session handle, asked of every object in the room.",
+    },
+    AllowedStatic {
         path: "crates/cena-model/src/state/ledger/hunt.rs",
         name: "P",
         function: "patterns",

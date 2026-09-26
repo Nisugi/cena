@@ -130,11 +130,18 @@ fn template_max_hp(name: &str) -> Option<u32> {
     if let Some(h) = hp(name) {
         return Some(h);
     }
+    hp(&without_boon(name)?)
+}
+
+/// The name lowercased with its leading boon adjective removed, as the
+/// bestiary retries a lookup (`creature.rb:151-162`). `None`: it carries
+/// none. Shared with the hazard and ally tables, which retry the same way.
+pub(crate) fn without_boon(name: &str) -> Option<String> {
     let lower = name.to_ascii_lowercase();
-    let stripped = BOON_ADJECTIVES
+    BOON_ADJECTIVES
         .iter()
-        .find_map(|adj| lower.strip_prefix(adj).and_then(|r| r.strip_prefix(' ')))?;
-    hp(stripped.trim())
+        .find_map(|adj| lower.strip_prefix(adj).and_then(|r| r.strip_prefix(' ')))
+        .map(|rest| rest.trim().to_owned())
 }
 
 /// One tracked creature.
@@ -177,6 +184,13 @@ pub struct CreatureInstance {
     /// `<crtrStatus maxhealth=>`: maximum hit points, as the server last
     /// stated. `Some(0)` means the creature has no HP model.
     stated_max_health: Option<u32>,
+    /// Whose it is by its name and noun, looked up once (`ally.rs`). Read
+    /// through [`Self::ally`], which lets the server's `hostile` outrank it.
+    pub(super) ally: Option<super::ally::Ally>,
+    /// How it left the fight, when a line of prose said so (`prose.rs`).
+    pub(super) ending: Option<super::prose::Ending>,
+    /// The boss phase the last line of prose stated (`prose.rs`).
+    pub(super) phase: Option<super::prose::BossPhase>,
     /// When the feed first and last showed it.
     pub first_seen_at: Option<u32>,
     /// Game-time second of the most recent sighting; `touch_seen` advances it
@@ -208,6 +222,9 @@ impl CreatureInstance {
             template_max_hp: template_max_hp(name),
             stated_health: None,
             stated_max_health: None,
+            ally: super::ally::classify(name, noun),
+            ending: None,
+            phase: None,
             first_seen_at: now,
             last_seen_at: now,
         }
@@ -516,9 +533,16 @@ impl CreatureInstance {
     /// so [`Self::dead`] alone misses it. MEASURED in a replay of a real
     /// kill (`cena-behavior/tests/hunt_replay.rs`): the pegasus died with
     /// no `health=` ever sent, and read as alive until it vanished.
+    ///
+    /// **An ending a line stated outranks both** (`prose.rs`): a creature
+    /// vaporized, faded or gone by portal left nothing to loot, whatever its
+    /// last flags said, until a room listing names it again.
     #[must_use]
     pub fn corpse(&self) -> bool {
-        self.flag(Classification::Dead) || self.dead()
+        match self.ending {
+            Some(ending) => ending.leaves_corpse(),
+            None => self.flag(Classification::Dead) || self.dead(),
+        }
     }
 
     /// Is it hostile? `None` until a `<crtrStatus>` has been seen for it
@@ -537,10 +561,12 @@ impl CreatureInstance {
 
     /// Should this be attacked? (`valid_target?`, `creature.rb:642-651`):
     /// not dead by flag or HP, not an animated decoy (slush excepted), not
-    /// a bare appendage (kraken tentacles excepted).
+    /// a bare appendage (kraken tentacles excepted). Nor ended by a line
+    /// (`prose.rs`): dead or gone, as Lich's `GameObj.targets` drops a
+    /// `dead|gone` status (`gameobj.rb:1159`).
     #[must_use]
     pub fn valid_target(&self) -> bool {
-        if self.flag(Classification::Dead) || self.dead() {
+        if self.flag(Classification::Dead) || self.dead() || self.ending.is_some() {
             return false;
         }
         let lower = self.name.to_ascii_lowercase();

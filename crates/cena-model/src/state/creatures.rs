@@ -45,15 +45,19 @@
 //! live roster or the roster just replaced (the mid-refresh shelter,
 //! `creature_base.rb:314-323`). Evictions and refusals are counted.
 
+pub mod ally;
 pub mod apply;
 pub mod body;
 pub mod boons;
 pub mod instance;
+pub mod prose;
 
 use std::collections::{BTreeMap, VecDeque};
 
+pub use ally::Ally;
 pub use body::BodyPart;
 pub use instance::CreatureInstance;
+pub use prose::{BossPhase, Ending};
 
 use crate::state::combat::target::Actor;
 use crate::state::creature::status::{Classification, CreatureStatus};
@@ -304,11 +308,12 @@ impl Creatures {
     /// certainly hiding".
     pub fn vanished_unaccounted(&self) -> impl Iterator<Item = i64> + '_ {
         self.departed().filter(move |id| {
+            // An ending a line stated (`prose.rs`) accounts for it too.
             self.fled(*id).is_none()
                 && !self
                     .instances
                     .get(id)
-                    .is_some_and(instance::CreatureInstance::dead)
+                    .is_some_and(|c| c.dead() || c.ending().is_some())
         })
     }
 
@@ -356,7 +361,10 @@ impl Creatures {
                 continue;
             };
             if self.instances.contains_key(&id) {
-                self.register(id, &item.text, Some(&item.noun), now);
+                // Listed, so here: whatever a line said (`prose.rs`).
+                if let Some(c) = self.register(id, &item.text, Some(&item.noun), now) {
+                    c.relisted();
+                }
             } else if let Some(status) = self.pending_status.remove(&id) {
                 if let Some(c) = self.register(id, &item.text, Some(&item.noun), now) {
                     c.sync_crtr_status(&status, now);
@@ -488,7 +496,8 @@ impl Creatures {
                 self.death_watch.retain(|&w| w != id);
                 continue;
             };
-            if !c.flag(Classification::Dead) {
+            // A kill a line stated (`prose.rs`) may never be flagged.
+            if !(c.flag(Classification::Dead) || c.ending().is_some_and(Ending::killed)) {
                 continue;
             }
             self.death_watch.retain(|&w| w != id);

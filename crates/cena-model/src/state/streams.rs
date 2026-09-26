@@ -222,6 +222,9 @@ impl GameState {
                 if let Some(event) = super::group::classify_text(&chunk_line, &rendered) {
                     self.group.apply(&event);
                 }
+                // A kill with no corpse, a portal, a boss's phase: here for
+                // order, so a later `room objs` still outranks it (`prose.rs`).
+                self.creatures.read_prose(&chunk_line, &rendered);
                 self.chunk.push_line(chunk_line);
             }
             if text.stream == super::known_spells::STREAM {

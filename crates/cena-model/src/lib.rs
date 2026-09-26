@@ -66,7 +66,7 @@ pub use state::resolve::{Held, Location, Match, Specificity, match_of};
 // `message::Message` and `societies::Ability` hold those names.
 pub use state::creature::status::{CreatureStatus, Status};
 pub use state::creature::{Area, Attack, AttackCategory, Creature, MessageKind, Treasure};
-pub use state::creatures::{BodyPart, CreatureInstance, Creatures};
+pub use state::creatures::{Ally, BodyPart, BossPhase, CreatureInstance, Creatures, Ending};
 pub use state::gameobj::{Classification, ObjectTypes};
 pub use state::menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem, category_path};
 pub use state::societies::membership::MembershipLine;
