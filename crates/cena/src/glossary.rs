@@ -113,7 +113,7 @@
 //! |---|---|---|
 //! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream: [`Snapshot`] | view, handle, ref |
 //! | **Event** | something the session saw or did, published to observers: [`Event`] (a frame, a combat chunk, a command sent, a notice) | signal, trigger, hook |
-//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a) | display line, story line |
+//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into | display line, story line |
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
 //! | **Lagged** | what an observer that fell behind is told instead of meeting a silent hole; the recovery is to subscribe again | |
 //! | **Notice** | Hydra speaking to the player, not the game: [`Notice`], the port of `Lich::Messaging` | message |
@@ -183,7 +183,7 @@
 //! | **Hub** | Despana's page for every character: a card each, start, quit, reconnect, and the merged streams. Its requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
 //! | **Character page** | one character's own page. No window shows two characters' story text (`plan/29` §5a) | |
 //! | **Merged streams** | thoughts, speech, logons, deaths and announcements across characters, each line once: [`Merger`] | |
-//! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end shows as one line per category ([`story_lines`], switched by [`Sessions::sort_containers`]) | inventory, which is the `inv` window's feed |
+//! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end is published as one line per category ([`SessionHandle::sort_containers`]); the model and the player log keep it whole | inventory, which is the `inv` window's feed |
 //!
 //! # Names
 //!
@@ -281,9 +281,9 @@
 //! [`SessionHandle::send_and_await`]: cena_session::SessionHandle::send_and_await
 //! [`SessionHandle::send_now`]: cena_session::SessionHandle::send_now
 //! [`SessionHandle`]: cena_session::SessionHandle
+//! [`SessionHandle::sort_containers`]: cena_session::SessionHandle::sort_containers
 //! [`SessionId`]: cena_session::SessionId
 //! [`SessionObserver::subscribe`]: cena_session::SessionObserver::subscribe
-//! [`Sessions::sort_containers`]: cena_web::Sessions::sort_containers
 //! [`SessionView::project`]: cena_ui::SessionView::project
 //! [`Snapshot`]: cena_session::Snapshot
 //! [`spells::Role`]: cena_session::spells::Role
@@ -294,7 +294,6 @@
 //! [`Step::held`]: field@cena_behavior::hunt::Step::held
 //! [`Step`]: cena_behavior::hunt::Step
 //! [`stop_all`]: cena_host::stop_all
-//! [`story_lines`]: cena_ui::story_lines
 //! [`stream_windows`]: cena_session::stream_windows
 //! [`SupervisedSession`]: cena_session::SupervisedSession
 //! [`sync()`]: fn@cena_behavior::sync::sync

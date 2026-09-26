@@ -699,7 +699,7 @@ impl<S: ByteSource> SessionActor<S> {
             let completes_burst = self.completes_burst(&frame);
             let _ = self.events.send(Event::Frame(Box::new(frame)));
             if let Some(line) = line {
-                let _ = self.events.send(Event::Line(line));
+                self.publish_line(line);
             }
             if terminator {
                 // before the `send_now` early-out below: a chunk closed

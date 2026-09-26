@@ -4,12 +4,13 @@
 //! The session publishes each finished line ([`Event::Line`]), the model's
 //! own, so this draws those rather than assembling lines from text frames
 //! (`plan/45` §4a). It keeps no partial line: the model does, and clears it
-//! on a reconnect. Room components are not lines in the model, so their
-//! bodies are still drawn from their frames here.
+//! on a reconnect. It sorts nothing: with `;sorter` on, the session publishes
+//! a container look already sorted. Room components are not lines in the
+//! model, so their bodies are still drawn from their frames here.
 
 use super::hub::line_bytes;
 use super::{MAX_DRAIN, MAX_HISTORY_BYTES, MAX_HISTORY_LINES};
-use cena_session::{Event, Frame, Generation, Line, LinkKind, ObservedEvent, Run, Snapshot};
+use cena_session::{Event, Frame, Generation, ObservedEvent, Run, Snapshot};
 use cena_ui::{StoryLine, StyledRun, story_lines};
 use std::collections::VecDeque;
 use tokio::sync::broadcast;
@@ -24,8 +25,6 @@ pub(super) struct Pending {
     /// report stays out of the story. Other streams -- a thought, a death
     /// -- still show; they were not the command's.
     pub(super) quiet: bool,
-    /// `;sorter` as the player last set it (`Sessions::sort_containers`).
-    pub(super) sorting: bool,
 }
 
 impl Pending {
@@ -37,7 +36,6 @@ impl Pending {
             generation: snapshot.generation,
             gap: false,
             quiet: false,
-            sorting: false,
         }
     }
 
@@ -57,11 +55,9 @@ impl Pending {
                 return;
             }
             Event::Line(line) if self.quiet && is_main(&line.stream) => return,
-            Event::Line(line) => drawn(&line, self.sorting),
+            Event::Line(line) => story_lines(&line.stream, line.runs.runs.iter().map(styled)),
             Event::Frame(frame) => match *frame {
-                Frame::Component { id, body } => {
-                    story_lines(&id, body.runs.iter().map(piece), false)
-                }
+                Frame::Component { id, body } => story_lines(&id, body.runs.iter().map(styled)),
                 _ => return,
             },
             _ => return,
@@ -115,23 +111,12 @@ fn is_main(stream: &str) -> bool {
     stream.is_empty() || stream == "main"
 }
 
-/// A published line as the story lines this viewer draws.
-fn drawn(line: &Line, sorting: bool) -> Vec<StoryLine> {
-    story_lines(&line.stream, line.runs.runs.iter().map(piece), sorting)
-}
-
-/// One run as the story draws it, with the noun of the object it names:
-/// what `;sorter` reads.
-fn piece(run: &Run) -> (StyledRun, Option<String>) {
-    let noun = run.object().and_then(|link| match &link.kind {
-        LinkKind::Exist { noun, .. } => Some(noun.clone()),
-        _ => None,
-    });
-    let styled = StyledRun {
+/// One run as the story draws it.
+fn styled(run: &Run) -> StyledRun {
+    StyledRun {
         text: run.text.clone(),
         bold: run.style.bold_depth > 0,
         monospace: run.style.mono,
         preset: run.style.preset.clone(),
-    };
-    (styled, noun)
+    }
 }

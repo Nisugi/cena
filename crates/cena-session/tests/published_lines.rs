@@ -134,6 +134,65 @@ async fn the_viewers_line_is_the_one_the_player_log_writes() {
     );
 }
 
+/// Five container looks from the author's logs; their provenance is in
+/// `crates/cena-model/tests/sorter.rs`.
+const LOOKS: &str = include_str!("../../cena-model/tests/fixtures/container_looks.xml");
+
+/// The mahogany box, as the game sends it.
+fn the_box() -> String {
+    format!("{}\n", LOOKS.lines().next().unwrap_or_default())
+}
+
+/// The lines published over `wire`, and what the model kept on `stream`.
+async fn run(wire: &str, sorting: bool, stream: &str) -> (Vec<String>, Option<String>) {
+    let session = Session::new(ReplaySource::from_bytes(wire.as_bytes()));
+    session.handle().sort_containers(sorting);
+    let (_, mut events) = session.subscribe();
+    let end = Box::pin(session.into_actor().run()).await;
+    let events: Vec<Event> = std::iter::from_fn(|| events.try_recv().ok()).collect();
+    let shown = lines(&events).iter().map(|line| line.text()).collect();
+    let kept = end
+        .state
+        .stream(stream)
+        .last()
+        .map(cena_session::Runs::plain);
+    (shown, kept)
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn with_sorter_on_a_look_is_published_sorted_and_the_model_keeps_it_whole() {
+    // Sorted in the session, before any viewer, so M8's triggers will match
+    // each sorted line (`plan/45` section 4a). The record stays the game's.
+    let whole = "In the mahogany box you see a bright gold ingot, some silver coins, \
+                 a smooth amber wand, a piece of brown jade, a steel lockpick, \
+                 a pinch of electrum dust and a tar black tourmaline.";
+    let (shown, kept) = run(&the_box(), true, "").await;
+    assert_eq!(
+        shown,
+        [
+            "In the mahogany box:",
+            "  valuable (1): bright gold ingot",
+            "  other (1): some silver coins",
+            "  wand (1): smooth amber wand",
+            "  gem (3): pinch of electrum dust, piece of brown jade, tar black tourmaline",
+            "  lockpick (1): steel lockpick",
+        ]
+    );
+    assert_eq!(kept.as_deref(), Some(whole));
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn off_or_off_the_main_stream_a_look_is_published_as_it_came() {
+    let (off, _) = run(&the_box(), false, "").await;
+    assert_eq!(off.len(), 1, "{off:?}");
+    assert!(off[0].starts_with("In the mahogany box you see"), "{off:?}");
+
+    // The same look on another stream is not a look at a container.
+    let pushed = format!("<pushStream id='thoughts'/>{}<popStream/>", the_box());
+    let (elsewhere, _) = run(&pushed, true, "thoughts").await;
+    assert_eq!(elsewhere.len(), 1, "{elsewhere:?}");
+}
+
 fn drain(sink: &mut LogSink) -> Vec<String> {
     std::iter::from_fn(|| sink.try_recv())
         .map(|line| line.text)

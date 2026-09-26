@@ -27,8 +27,10 @@ pub enum Event {
     ///
     /// Published right AFTER the [`Event::Frame`] that finished it. A viewer
     /// draws this rather than assembling lines from text frames, so every
-    /// viewer agrees on where a line ends (`plan/45` §4a). `Arc` because every
-    /// subscriber shares one allocation.
+    /// viewer agrees on where a line ends (`plan/45` §4a). With `;sorter` on,
+    /// a container look is published as the lines it sorts into, one event
+    /// each ([`SessionHandle::sort_containers`](crate::SessionHandle::sort_containers)).
+    /// `Arc` because every subscriber shares one allocation.
     Line(std::sync::Arc<super::line::Line>),
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.

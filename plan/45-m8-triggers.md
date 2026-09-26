@@ -232,13 +232,14 @@ differences, and what happens to each:
 | Boundary | `ends_line`, which the parser sets on exactly one text frame per wire line (`crates/cena-protocol/src/parser/emit.rs:27`) | `ends_line`, **plus** a flush at every prompt, **plus** a split at embedded `\n` | **MEASURED 2026-09-26 on the 23 committed fixtures: 0 lines open at a prompt, 0 newlines in a text frame** (`crates/cena-protocol/tests/lines_at_the_prompt.rs`, which also shows the check can fail). The same check over real traffic is the gated `no_line_is_left_open_at_a_prompt_on_real_traffic` in `corpus_replay.rs`, **not yet run**. Until it is, the fixtures say the two agree on text. |
 | Room components | room state, not stream lines | lines on stream `id` | stay a rendering of room state; whether triggers see component bodies is an open item (§8) |
 | Bounds | none per line; 2,000 lines per stream | 16 KB, 256 runs, 32 pending streams | the bounds move to the published line |
-| `;sorter` | -- | a Despana switch (`crates/cena-web/src/server.rs:311`) | **moves down into the session**, before the matcher: VellumFE sorts before it highlights, so each sorted line is matched |
+| `;sorter` | -- | a Despana switch | **moved into the session**, before the matcher: VellumFE sorts before it highlights, so each sorted line is matched. BUILT: `crates/cena-model/src/sorter.rs`, applied in `crates/cena-session/src/actor/line.rs` |
 | Quiet windows | -- | `Event::Quiet` hides a quiet command's report | unchanged; the viewer still tracks `Event::Quiet` |
 | `ifClosed` | declared (`stream_windows`) | stamped by the pump | unchanged |
 
-When nothing reads `LineAssembler`, it goes. The frontend wire changes (a story line gains
-its responses), so `WIRE_VERSION` moves from 1 (`crates/cena-ui/src/wire.rs:10`) and
-`crates/cena-ui/WIRE.md` records it.
+`LineAssembler` has gone; what is left of it is `cena_ui::story_lines`, one finished line to
+the story lines a viewer draws. The wire has not changed yet: a story line is as it was. It
+changes when a line gains its responses (Stage 1 step 4), and then `WIRE_VERSION` moves from
+1 (`crates/cena-ui/src/wire.rs:10`) and `crates/cena-ui/WIRE.md` records it.
 
 ---
 
@@ -301,7 +302,9 @@ Each ends in something demonstrable without a live login.
 
 1. **One line assembly** (§4a): the session publishes each finished line; the equivalence
    diff over the golden corpus comes first; Despana reads the published line; `;sorter`
-   moves into the session; `LineAssembler` retires.
+   moves into the session; `LineAssembler` retires. **BUILT 2026-09-26** in three commits:
+   the published line (`7fdcf74`), Despana drawing it (`b190f61`), and `;sorter` in the
+   session (the commit after). The corpus half of the equivalence check has not run.
 2. **The rule type and the file** (§5): load, validate, refuse by name; categories, master
    switches, `characters`, `for.<name>`.
 3. **The matcher** in `cena-model` (§4): two automata and a `RegexSet`, deterministic order.

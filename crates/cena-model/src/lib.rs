@@ -20,6 +20,7 @@ pub mod crit;
 pub mod effects;
 pub mod herbs;
 pub mod movement;
+pub mod sorter;
 pub mod spells;
 pub mod state;
 pub mod status;

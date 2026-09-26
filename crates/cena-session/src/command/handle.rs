@@ -261,6 +261,20 @@ impl SessionHandle {
         self.attendance.let_pages_attend(on);
     }
 
+    /// `;sorter`: publish this session's container looks one line per
+    /// category, or as the game sent them (`cena_model::sorter`). Every
+    /// viewer gets what is published, and it holds across a reconnect; the
+    /// model and the player log keep the look whole either way.
+    pub fn sort_containers(&self, on: bool) {
+        self.events.sort_containers(on);
+    }
+
+    /// Whether this session's container looks are published sorted.
+    #[must_use]
+    pub fn sorts_containers(&self) -> bool {
+        self.events.sorts_containers()
+    }
+
     /// The slot this handle and all its clones read the player log from.
     pub(crate) fn log_slot(&self) -> crate::player_log::tap::Slot {
         std::sync::Arc::clone(&self.log)

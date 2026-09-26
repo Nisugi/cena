@@ -3,12 +3,11 @@
 //! This used to assemble lines itself, frame by frame, and so it kept what
 //! the model already keeps: a partial line per stream, flushed at a prompt,
 //! reset on a new connection. The session now publishes each finished line,
-//! the model's own (`plan/45` §4a), so what is left here is per line and
-//! holds no state: bound it, split it at any embedded newline, and sort it
-//! when `;sorter` is on.
+//! the model's own (`plan/45` §4a), already sorted when `;sorter` is on, so
+//! what is left here is per line and holds no state: bound it, and split it
+//! at any embedded newline.
 
 use crate::projection::bounded_text;
-use crate::sorter::{self, Piece};
 use crate::view::Closed;
 use crate::{StoryLine, StyledRun};
 
@@ -18,51 +17,38 @@ pub const MAX_LINE_BYTES: usize = 16 * 1024;
 pub const MAX_LINE_RUNS: usize = 256;
 const MAX_STREAM_BYTES: usize = 128;
 const MAX_PRESET_BYTES: usize = 128;
-/// Pieces kept for the sorter per line; past it the line is shown unsorted.
-/// MEASURED: the longest container look in a month of the author's logs
-/// names 108 items, which is 217 pieces (`crate::sorter`).
-const MAX_SORTED_PIECES: usize = 4 * MAX_LINE_RUNS;
 
 /// The story lines for one finished line on `stream`.
 ///
-/// `pieces` is the line in wire order: each run's text and style, and the
-/// `noun=` of the object it names, which only the sorter reads. `sorting` is
-/// `;sorter`: a main-stream container look then finishes as one line per
-/// category.
+/// `runs` is the line in wire order, each run's text and style.
 ///
-/// Usually one line. None when there are no pieces at all (an empty
-/// component body). More when the text carries a newline (a component body
-/// can), or when the sorter rewrote a look. An oversized stream name is
-/// shortened and every line marked `truncated`, so shortened names can never
-/// pass for each other.
-pub fn story_lines<I>(stream: &str, pieces: I, sorting: bool) -> Vec<StoryLine>
+/// Usually one line. None when there are no runs at all (an empty component
+/// body). More when the text carries a newline (a component body can). An
+/// oversized stream name is shortened and every line marked `truncated`, so
+/// shortened names can never pass for each other.
+pub fn story_lines<I>(stream: &str, runs: I) -> Vec<StoryLine>
 where
-    I: IntoIterator<Item = (StyledRun, Option<String>)>,
+    I: IntoIterator<Item = StyledRun>,
 {
-    let sorts = sorting && (stream.is_empty() || stream == "main");
-    let fresh = || Building {
-        pieces: sorts.then(Vec::new),
-        ..Building::default()
-    };
-    let mut pieces = pieces.into_iter().peekable();
-    if pieces.peek().is_none() {
+    let mut runs = runs.into_iter().peekable();
+    if runs.peek().is_none() {
         return Vec::new();
     }
     let key = bounded_text(stream, MAX_STREAM_BYTES).to_owned();
     let mut lines = Vec::new();
-    let mut line = fresh();
-    for (run, noun) in pieces {
+    let mut line = Building::default();
+    for run in runs {
         for (index, piece) in run.text.split('\n').enumerate() {
             if index > 0 {
-                std::mem::replace(&mut line, fresh()).finish_into(key.clone(), &mut lines);
+                lines.push(std::mem::take(&mut line).finish(key.clone()));
             }
-            line.append(piece, &run, noun.as_deref());
+            line.append(piece, &run);
         }
     }
     if stream.len() > MAX_STREAM_BYTES {
         line.truncated = true;
     }
-    line.finish_into(key, &mut lines);
+    lines.push(line.finish(key));
     if stream.len() > MAX_STREAM_BYTES {
         for line in &mut lines {
             line.truncated = true;
@@ -77,14 +63,10 @@ struct Building {
     runs: Vec<StyledRun>,
     bytes: usize,
     truncated: bool,
-    /// The line piece by piece, with the object each names: what the sorter
-    /// reads, since merging same-style runs loses where a link began. `None`
-    /// unless the line may be sorted, so no other line pays for it.
-    pieces: Option<Vec<Piece>>,
 }
 
 impl Building {
-    fn append(&mut self, text: &str, style: &StyledRun, noun: Option<&str>) {
+    fn append(&mut self, text: &str, style: &StyledRun) {
         if text.is_empty() || self.truncated {
             return;
         }
@@ -119,39 +101,6 @@ impl Building {
             return;
         }
         self.bytes += piece.len();
-        if let Some(pieces) = &mut self.pieces {
-            if pieces.len() < MAX_SORTED_PIECES && !self.truncated {
-                pieces.push(Piece {
-                    run: StyledRun {
-                        text: piece.to_owned(),
-                        bold: style.bold,
-                        monospace: style.monospace,
-                        preset: style.preset.clone(),
-                    },
-                    noun: noun.map(str::to_owned),
-                });
-            } else {
-                self.pieces = None;
-            }
-        }
-    }
-
-    /// Finish into `lines`: sorted, when this is a whole container look the
-    /// sorter takes (`crate::sorter`), and otherwise as it came.
-    fn finish_into(self, stream: String, lines: &mut Vec<StoryLine>) {
-        if !self.truncated
-            && let Some(sorted) = self.pieces.as_deref().and_then(sorter::sort)
-        {
-            for runs in sorted {
-                let mut line = Self::default();
-                for run in &runs {
-                    line.append(&run.text, run, None);
-                }
-                lines.push(line.finish(stream.clone()));
-            }
-            return;
-        }
-        lines.push(self.finish(stream));
     }
 
     /// **`closed` is left as [`Closed::Main`] here, deliberately.**
@@ -185,10 +134,6 @@ mod tests {
         }
     }
 
-    fn line(stream: &str, runs: Vec<StyledRun>) -> Vec<StoryLine> {
-        story_lines(stream, runs.into_iter().map(|run| (run, None)), false)
-    }
-
     fn plain(line: &StoryLine) -> String {
         line.runs.iter().map(|run| run.text.as_str()).collect()
     }
@@ -197,7 +142,7 @@ mod tests {
     fn a_line_split_at_markup_is_drawn_as_one_line() {
         let mut bold = run("leather doublet");
         bold.bold = true;
-        let lines = line("", vec![run("  a "), bold, run(".")]);
+        let lines = story_lines("", vec![run("  a "), bold, run(".")]);
         assert_eq!(lines.len(), 1);
         assert_eq!(plain(&lines[0]), "  a leather doublet.");
         assert_eq!(lines[0].runs.len(), 3);
@@ -205,14 +150,14 @@ mod tests {
     }
 
     #[test]
-    fn no_pieces_draw_no_line_and_empty_text_draws_an_empty_one() {
-        assert!(line("room objs", Vec::new()).is_empty());
-        assert_eq!(line("", vec![run("")]).len(), 1);
+    fn no_runs_draw_no_line_and_empty_text_draws_an_empty_one() {
+        assert!(story_lines("room objs", Vec::new()).is_empty());
+        assert_eq!(story_lines("", vec![run("")]).len(), 1);
     }
 
     #[test]
     fn embedded_newlines_and_blank_lines_are_real_boundaries() {
-        let lines = line("", vec![run("one\n\nthree")]);
+        let lines = story_lines("", vec![run("one\n\nthree")]);
         assert_eq!(
             lines.iter().map(plain).collect::<Vec<_>>(),
             ["one", "", "three"]
@@ -221,7 +166,7 @@ mod tests {
 
     #[test]
     fn long_lines_truncate_at_utf8_boundaries() {
-        let lines = line(
+        let lines = story_lines(
             "",
             vec![run(&"🦀".repeat(MAX_LINE_BYTES)), run("discarded tail")],
         );
@@ -231,19 +176,19 @@ mod tests {
 
     #[test]
     fn run_and_preset_limits_bound_a_line() {
-        let runs = (0..=MAX_LINE_RUNS)
+        let runs: Vec<StyledRun> = (0..=MAX_LINE_RUNS)
             .map(|index| {
                 let mut fragment = run("x");
                 fragment.bold = index % 2 == 0;
                 fragment
             })
             .collect();
-        let lines = line("", runs);
+        let lines = story_lines("", runs);
         assert_eq!(lines[0].runs.len(), MAX_LINE_RUNS);
         assert!(lines[0].truncated);
         let mut long_preset = run("styled");
         long_preset.preset = Some("x".repeat(MAX_PRESET_BYTES + 1));
-        let lines = line("", vec![long_preset]);
+        let lines = story_lines("", vec![long_preset]);
         assert!(lines[0].truncated);
         assert_eq!(
             lines[0].runs[0].preset.as_ref().unwrap().len(),
@@ -254,8 +199,8 @@ mod tests {
     #[test]
     fn oversized_stream_names_are_marked_and_kept_apart() {
         let prefix = "a".repeat(MAX_STREAM_BYTES);
-        let a = line(&format!("{prefix}one"), vec![run("first")]);
-        let b = line(&format!("{prefix}two"), vec![run("second")]);
+        let a = story_lines(&format!("{prefix}one"), vec![run("first")]);
+        let b = story_lines(&format!("{prefix}two"), vec![run("second")]);
         assert_eq!(plain(&a[0]), "first");
         assert_eq!(plain(&b[0]), "second");
         assert!(a[0].truncated && b[0].truncated);

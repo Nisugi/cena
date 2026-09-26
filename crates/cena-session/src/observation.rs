@@ -4,7 +4,7 @@
 use crate::{Event, GameState, Generation, GenerationCell, SessionId, Snapshot, State};
 use std::sync::{
     Arc, Mutex,
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
@@ -164,6 +164,11 @@ pub(crate) struct EventPublisher {
     /// Held while a cursor is taken and its event sent, and while a snapshot
     /// is paired with a subscription. See the type's docs.
     fence: Arc<Mutex<()>>,
+    /// `;sorter`: whether a container look is published sorted
+    /// (`cena_model::sorter`). Here because this is what every viewer is
+    /// given, and because every connection's actor shares this publisher, so
+    /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
+    sorting: Arc<AtomicBool>,
 }
 
 impl EventPublisher {
@@ -176,7 +181,18 @@ impl EventPublisher {
             session,
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
+            sorting: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    /// Publish container looks sorted, or as the game sent them.
+    pub(crate) fn sort_containers(&self, on: bool) {
+        self.sorting.store(on, Ordering::Relaxed);
+    }
+
+    /// Whether container looks are published sorted.
+    pub(crate) fn sorts_containers(&self) -> bool {
+        self.sorting.load(Ordering::Relaxed)
     }
 
     /// A publisher over a caller's own legacy channel, with a fenced stream

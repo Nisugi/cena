@@ -17,7 +17,7 @@ use cena_platform::ByteSource;
 use cena_protocol::Frame;
 use cena_protocol::runs::Runs;
 
-use super::SessionActor;
+use super::{Event, SessionActor};
 
 /// A finished line of game text, as the model completed it.
 ///
@@ -58,5 +58,29 @@ impl<S: ByteSource> SessionActor<S> {
             stream: text.stream.clone(),
             runs: runs.clone(),
         }))
+    }
+
+    /// Publish a finished line to every viewer: as it came, or, with
+    /// `;sorter` on and a main-stream container look, as the lines it sorts
+    /// into (`cena_model::sorter`), one [`Event::Line`] each.
+    ///
+    /// Sorting here and not in a viewer is what lets M8's triggers match each
+    /// sorted line, as `VellumFE` sorts before it highlights (`plan/45` §4a).
+    /// The model's scrollback and the player log keep the look whole.
+    pub(super) fn publish_line(&self, line: Arc<Line>) {
+        let main = line.stream.is_empty() || line.stream == "main";
+        if main
+            && self.events.sorts_containers()
+            && let Some(sorted) = cena_model::sorter::sort(&line.runs)
+        {
+            for runs in sorted {
+                let stream = line.stream.clone();
+                let _ = self
+                    .events
+                    .send(Event::Line(Arc::new(Line { stream, runs })));
+            }
+            return;
+        }
+        let _ = self.events.send(Event::Line(line));
     }
 }

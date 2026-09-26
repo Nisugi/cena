@@ -185,11 +185,7 @@ impl Table {
             ));
         };
         let commands = Commands::install(&hosted.handle);
-        sorter::open(
-            &hosted.handle,
-            &commands,
-            self.web.as_ref().map(|web| web.sessions().clone()),
-        );
+        sorter::open(&hosted.handle, &commands);
         batch::open(&hosted.handle, &hosted.observer, &commands);
         // The ledger's reports need only the database's path, known now.
         match cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character) {
