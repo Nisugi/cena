@@ -14,3 +14,4 @@ target-pr1-review/
 # crates/cena-model/data/, which is source, stays tracked.
 /logs/
 /data/
+target-alt/

@@ -60,6 +60,7 @@ impl PartialEq for GameState {
             // Facts already classified and waiting for a recorder, not a
             // fact about the game.
             loot: _,
+            incidents: _,
             creatures,
             pending,
             chunk,
@@ -74,10 +75,16 @@ impl PartialEq for GameState {
             messages,
             overwatch,
             known_spells,
+            worn,
+            reserve,
             bounty,
+            doses,
+            kits,
+            order_menu,
             targeting,
             maneuvers,
             cast_time_ends,
+            prepared,
         } = self;
         creatures == &other.creatures
             && inventory == &other.inventory
@@ -102,10 +109,16 @@ impl PartialEq for GameState {
             && messages == &other.messages
             && overwatch == &other.overwatch
             && known_spells == &other.known_spells
+            && worn == &other.worn
+            && reserve == &other.reserve
             && bounty == &other.bounty
+            && doses == &other.doses
+            && kits == &other.kits
+            && order_menu == &other.order_menu
             && targeting == &other.targeting
             && maneuvers == &other.maneuvers
             && cast_time_ends == &other.cast_time_ends
+            && prepared == &other.prepared
             // `arrivals` is NOT compared: it counts how many rooms this
             // session has entered, which is bookkeeping about the session
             // rather than a fact about the world. Two states that have been

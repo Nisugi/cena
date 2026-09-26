@@ -13,31 +13,30 @@ use cena_session::{Able, GameState, Injuries};
 use super::engine::{Hunt, REST_BEAT};
 use super::said::{Ending, Here, Phase, Said, Why};
 
+/// The map's Temporal Rift, where a fog can land (`bigshot.lic:7635`).
+const RIFT: RoomId = RoomId(2635);
+
 impl Hunt {
     // --- rest -----------------------------------------------------------------
 
     /// The rest cycle: reasons to go, the walk there, the wait, the walk
     /// back, and the prepare commands.
     pub(super) fn rest(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
+        if self.quick {
+            return None;
+        }
         match self.phase {
-            Phase::Hunting => {
-                let why = self.rest_reason(state)?;
-                self.must_rest = None;
-                let Some(resting) = self.profile.rooms.resting else {
-                    return Some(Said::Done(Ending::NoRestingRoom));
-                };
-                self.phase = Phase::ToRest(why);
-                self.notes
-                    .push(format!("{why}: walking to the resting room."));
-                Some(self.step_toward(
-                    RoomId(resting),
-                    here,
-                    Phase::Resting(why),
-                    &self.profile.rest.commands.clone(),
-                ))
-            }
+            Phase::Hunting => self
+                .bounty_measure(state)
+                .or_else(|| self.start_rest(state, here)),
             Phase::ToRest(why) => {
                 let resting = RoomId(self.profile.rooms.resting?);
+                if let Some(said) = self.fog_step(why, here, resting) {
+                    return Some(said);
+                }
+                if let Some(said) = self.next_waypoint(here) {
+                    return Some(said);
+                }
                 // Arrived with loot to sell: the round first, then the rest
                 // (`plan/31` Stage 4; the author: *"sells typically happen
                 // during the rest"*).
@@ -45,6 +44,11 @@ impl Hunt {
                     self.phase = Phase::Selling(why);
                     self.notes.push("selling before resting.".to_owned());
                     return Some(Said::Sell);
+                }
+                if here.room == Some(resting) && self.wants_to_heal(state) {
+                    self.phase = Phase::Healing(why);
+                    self.notes.push("healing before resting.".to_owned());
+                    return Some(Said::Heal);
                 }
                 Some(self.step_toward(
                     resting,
@@ -55,7 +59,22 @@ impl Hunt {
             }
             Phase::Selling(why) => {
                 // The round ended where it began; from anywhere else, the
-                // walk back is the rest's first step.
+                // walk back is the rest's first step. Hurt, the herbs come
+                // before the rest commands (`plan/36`).
+                let resting = RoomId(self.profile.rooms.resting?);
+                if here.room == Some(resting) && self.wants_to_heal(state) {
+                    self.phase = Phase::Healing(why);
+                    self.notes.push("healing before resting.".to_owned());
+                    return Some(Said::Heal);
+                }
+                Some(self.step_toward(
+                    resting,
+                    here,
+                    Phase::Resting(why),
+                    &self.profile.rest.commands.clone(),
+                ))
+            }
+            Phase::Healing(why) => {
                 let resting = RoomId(self.profile.rooms.resting?);
                 Some(self.step_toward(
                     resting,
@@ -64,29 +83,12 @@ impl Hunt {
                     &self.profile.rest.commands.clone(),
                 ))
             }
-            Phase::Resting(_) => {
-                if let Some(line) = self.pending.pop_front() {
-                    return Some(Said::Send { line, target: None });
-                }
-                if let Some(still) = self.still_resting(state) {
-                    let _ = still;
-                    return Some(Said::Wait(REST_BEAT));
-                }
-                self.fried_kills = 0;
-                let Some(hunting) = self.profile.rooms.hunting else {
-                    return Some(Said::Done(Ending::NoHuntingRoom));
-                };
-                self.phase = Phase::Returning;
-                self.notes.push("rested: walking back.".to_owned());
-                Some(self.step_toward(
-                    RoomId(hunting),
-                    here,
-                    Phase::Preparing,
-                    &self.profile.prepare.clone(),
-                ))
-            }
+            Phase::Resting(why) => Some(self.resting(state, here, why)),
             Phase::Returning => {
                 let hunting = RoomId(self.profile.rooms.hunting?);
+                if let Some(said) = self.next_waypoint(here) {
+                    return Some(said);
+                }
                 Some(self.step_toward(
                     hunting,
                     here,
@@ -115,8 +117,15 @@ impl Hunt {
         let Some(resting) = self.profile.rooms.resting else {
             return false;
         };
-        let town = crate::town::Town::from_table(&profile.town);
+        let town = crate::town::Town::for_profile(profile);
         crate::town::Seller::new(town, state, RoomId(resting)).is_some()
+    }
+
+    /// Whether the heal profile has something to treat now.
+    fn wants_to_heal(&self, state: &GameState) -> bool {
+        self.heal
+            .as_ref()
+            .is_some_and(|profile| crate::heal::Healer::wanted(profile, state))
     }
 
     /// Walk toward `goal`; on arrival, move to `then` with `commands` to send.
@@ -130,6 +139,11 @@ impl Hunt {
         if here.room == Some(goal) {
             self.phase = then;
             self.pending = commands.iter().cloned().collect();
+            if matches!(then, Phase::Resting(_))
+                && let Some(said) = self.rest_waggle()
+            {
+                return said;
+            }
             return match self.pending.pop_front() {
                 Some(line) => Said::Send { line, target: None },
                 None => Said::Wait(1),
@@ -138,10 +152,170 @@ impl Hunt {
         Said::Walk(goal)
     }
 
+    /// The waggle profile run as the rest begins, once (`rest.waggle`):
+    /// bigshot runs its `resting_scripts` there, and the waggle is the one
+    /// Hydra has built in.
+    fn rest_waggle(&mut self) -> Option<Said> {
+        let wanted = self.profile.rest.waggle && self.waggle_profile.is_some();
+        (wanted && !std::mem::replace(&mut self.follow.rest_waggled, true))
+            .then(|| Said::Waggle(Vec::new()))
+    }
+
+    /// At the rest room: the commands, the wait, then the walk back.
+    fn resting(&mut self, state: &GameState, here: Here<'_>, why: Why) -> Said {
+        if let Some(said) = self.rest_waggle() {
+            return said;
+        }
+        if let Some(line) = self.pending.pop_front() {
+            return Said::Send { line, target: None };
+        }
+        if let Some(still) = self.still_resting(state) {
+            let _ = still;
+            return Said::Wait(REST_BEAT);
+        }
+        self.fried_kills = 0;
+        self.heard.rested_for_injury = why == Why::Injured;
+        // `should_hunt?` ends bounty mode at the rest (`:8982-8986`).
+        if self.bounty_done(state) {
+            return Said::Done(Ending::Bounty);
+        }
+        if let Some(ending) = self.count_rest() {
+            return Said::Done(ending);
+        }
+        let Some(hunting) = self.profile.rooms.hunting else {
+            return Said::Done(Ending::NoHuntingRoom);
+        };
+        self.phase = Phase::Returning;
+        self.notes.push("rested: walking back.".to_owned());
+        self.waypoints = self
+            .profile
+            .rooms
+            .rally
+            .iter()
+            .copied()
+            .map(RoomId)
+            .collect();
+        if let Some(said) = self.next_waypoint(here) {
+            return said;
+        }
+        self.step_toward(
+            RoomId(hunting),
+            here,
+            Phase::Preparing,
+            &self.profile.prepare.clone(),
+        )
+    }
+
+    /// A reason to rest holds: the fog, the waypoints, the walk.
+    fn start_rest(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
+        let why = self.rest_reason(state)?;
+        if why == Why::Fried && self.boosts.0 < self.profile.rest.lte_boost {
+            // Fried: a boost empties the mind instead (`use_lte_boost`).
+            if std::mem::replace(&mut self.boosts.1, true) {
+                return Some(Said::Wait(1));
+            }
+            return Some(Said::Send {
+                line: "boost longterm".to_owned(),
+                target: None,
+            });
+        }
+        if why == Why::Mana
+            && let Some(line) = self.wrack(state, state.game_time_now())
+        {
+            if self.must_rest == Some(Why::Mana) {
+                self.must_rest = None;
+            }
+            return Some(Said::Send { line, target: None });
+        }
+        self.must_rest = None;
+        let Some(resting) = self.profile.rooms.resting else {
+            return Some(Said::Done(Ending::NoRestingRoom));
+        };
+        self.follow.rest_waggled = false;
+        self.phase = Phase::ToRest(why);
+        self.notes
+            .push(format!("{why}: walking to the resting room."));
+        self.waypoints = self
+            .profile
+            .rest
+            .waypoints
+            .iter()
+            .copied()
+            .map(RoomId)
+            .collect();
+        if self.fogs(why) {
+            self.pending = self.profile.rest.fog.iter().cloned().collect();
+            self.fogged = false;
+            if let Some(line) = self.pending.pop_front() {
+                return Some(Said::Send { line, target: None });
+            }
+        }
+        if let Some(said) = self.next_waypoint(here) {
+            return Some(said);
+        }
+        Some(self.step_toward(
+            RoomId(resting),
+            here,
+            Phase::Resting(why),
+            &self.profile.rest.commands.clone(),
+        ))
+    }
+
+    /// The fog's lines still to send, and a second fog from the rift.
+    fn fog_step(&mut self, why: Why, here: Here<'_>, resting: RoomId) -> Option<Said> {
+        if let Some(line) = self.pending.pop_front() {
+            return Some(Said::Send { line, target: None });
+        }
+        // Landed in the rift: once more (`fog_rift`).
+        if self.profile.rest.fog_rift
+            && self.fogs(why)
+            && here.room == Some(RIFT)
+            && resting != RIFT
+            && !std::mem::replace(&mut self.fogged, true)
+        {
+            self.pending = self.profile.rest.fog.iter().cloned().collect();
+            if let Some(line) = self.pending.pop_front() {
+                return Some(Said::Send { line, target: None });
+            }
+        }
+        None
+    }
+
+    /// Whether this rest fogs: a fog is set, and it is not optional or the
+    /// rest is for wounds or weight (`bigshot.lic:7681`).
+    fn fogs(&self, why: Why) -> bool {
+        let rest = &self.profile.rest;
+        !rest.fog.is_empty()
+            && (!rest.fog_optional || matches!(why, Why::Wounded | Why::Injured | Why::Encumbered))
+    }
+
+    /// The next return waypoint to walk to, dropping those reached.
+    fn next_waypoint(&mut self, here: Here<'_>) -> Option<Said> {
+        while let Some(next) = self.waypoints.front().copied() {
+            if here.room == Some(next) {
+                self.waypoints.pop_front();
+                continue;
+            }
+            return Some(Said::Walk(next));
+        }
+        None
+    }
+
+    /// One more rest done; the hunt's end when `rest.stop_after` is reached.
+    fn count_rest(&mut self) -> Option<Ending> {
+        self.rests = self.rests.saturating_add(1);
+        let limit = self.profile.rest.stop_after?;
+        (self.rests >= limit).then_some(Ending::Rested(self.rests))
+    }
+
     /// Why to rest now, if a reason holds.
-    fn rest_reason(&self, state: &GameState) -> Option<Why> {
+    fn rest_reason(&mut self, state: &GameState) -> Option<Why> {
         if let Some(why) = self.must_rest {
             return Some(why);
+        }
+        // bigshot rests on it after each kill (`:7850-7853`).
+        if self.bounty_done(state) {
+            return Some(Why::Bounty);
         }
         let rest = &self.profile.rest;
         if self.wounded(state) {
@@ -186,6 +360,25 @@ impl Hunt {
         let injuries = Injuries::new(&state.character.injuries);
         (when.cannot_cast && injuries.able_to_cast() != Able::Yes)
             || (when.cannot_use_ranged && injuries.able_to_use_ranged() != Able::Yes)
+            || when
+                .creeping_dread
+                .is_some_and(|at| debuff_stacks(state, "Creeping Dread").is_some_and(|n| n >= at))
+            || when
+                .crushing_dread
+                .is_some_and(|at| debuff_stacks(state, "Crushing Dread").is_some_and(|n| n >= at))
+            || (when.wot_poison && debuff_stacks(state, "Wall of Thorns Poison").is_some())
+            || (when.confused && debuff_stacks(state, "Confused").is_some())
+            || when
+                .spirit_at_most
+                .zip(state.spirit())
+                .is_some_and(|(at_most, spirit)| spirit.percent <= at_most)
+            || when.wound_rank.is_some_and(|at| {
+                state
+                    .character
+                    .injuries
+                    .keys()
+                    .any(|part| injuries.effective_rank(part) >= at)
+            })
     }
 
     /// Why the rest is not over, or `None` when it is. A threshold whose
@@ -224,4 +417,22 @@ impl Hunt {
         }
         None
     }
+}
+
+/// A debuff on the character whose name holds `name`, with its stack
+/// count: bigshot's `key.to_s[/\((\d+)\)/, 1].to_i`, so a debuff with no
+/// count is 0 stacks. `None`: not on.
+fn debuff_stacks(state: &GameState, name: &str) -> Option<u32> {
+    state
+        .effects
+        .iter()
+        .find(|(_, effect)| effect.category == "Debuffs" && effect.text.contains(name))
+        .map(|(_, effect)| {
+            effect
+                .text
+                .split_once('(')
+                .and_then(|(_, rest)| rest.split_once(')'))
+                .and_then(|(n, _)| n.trim().parse().ok())
+                .unwrap_or(0)
+        })
 }

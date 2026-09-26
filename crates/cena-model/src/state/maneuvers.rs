@@ -38,10 +38,18 @@
 //! reading it will trust; inventing a duration here would be the
 //! `plan/18` `pbarStance` mistake, an interface over data nobody has measured.
 //!
-//! **That it has ENDED.** Nothing says so. A maneuver is off cooldown when the
-//! game stops refusing it, which only a send can discover. So there is no
-//! `clear` for one maneuver, and `is_cooling` is deliberately absent:
-//! the honest question is *"when was I last told"*, not *"is it ready"*.
+//! # That it has ended: the game does say so
+//!
+//! > **CORRECTED 2026-09-25** (`inventory/12` §1.3). This said *"Nothing
+//! > says so"*, and the workspace's own fixture refutes it: `Volley is ready
+//! > for use.` (`cena-behavior/tests/fixtures/smithy_engage.xml:271`), which
+//! > `Combatical.lic:4553-4556` reads as the end, `^(\w[\w\s]+?) is ready
+//! > for use\.$`. [`ready_line`] reads it, and [`Maneuvers::note_ready`]
+//! > forgets the refusal: a maneuver the game has said is ready is no longer
+//! > listed as cooling.
+//!
+//! Still no `is_cooling`: a refusal with no ready line after it may be
+//! stale, and *"when was I last told"* stays the honest question.
 
 use std::collections::BTreeMap;
 
@@ -67,6 +75,12 @@ impl Maneuvers {
     /// Returns whether this changed anything.
     pub fn note_cooling(&mut self, name: &str, now: Option<u32>) -> bool {
         self.cooling.insert(name.to_owned(), now) != Some(now)
+    }
+
+    /// The game said this maneuver is ready for use: forget its refusal.
+    /// Returns whether one was held.
+    pub fn note_ready(&mut self, name: &str) -> bool {
+        self.cooling.remove(name).is_some()
     }
 
     /// When the game last said this maneuver was cooling.
@@ -103,6 +117,17 @@ impl Maneuvers {
     pub fn clear(&mut self) {
         self.cooling.clear();
     }
+}
+
+/// The maneuver a `<Name> is ready for use.` line names, if the line is one
+/// (`Combatical.lic:4553-4556`: a word, then words and spaces).
+#[must_use]
+pub fn ready_line(line: &str) -> Option<&str> {
+    let name = line.trim().strip_suffix(" is ready for use.")?;
+    let mut chars = name.chars();
+    let first = chars.next()?;
+    let wordy = |c: char| c.is_alphanumeric() || c == '_';
+    (wordy(first) && chars.all(|c| wordy(c) || c.is_whitespace())).then_some(name)
 }
 
 /// The maneuver named by a cooldown refusal, if the line is one.

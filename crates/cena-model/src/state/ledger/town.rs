@@ -30,6 +30,7 @@ struct Patterns {
     junk: Pat,
     shop_looking: Pat,
     shop_offer: Pat,
+    shop_bare: Pat,
     jeweler_offer: Pat,
     shop_worth: Pat,
     gemshop_paid: Pat,
@@ -65,11 +66,18 @@ fn patterns() -> &'static Patterns {
         offer: re(r"^You offer to sell your .+ to "),
         ask: re(r"^You ask \S+ (?:if \S+ would like to buy|to appraise) an? .+\.$"),
         pawn_paid: re(r"takes your .+, glances at it briefly, then hands you ([\d,]+) silver coins\."),
-        pawn_note: re(r"scribbles out an? .+ for ([\d,]+) silvers? and hands it to you\."),
+        // The Elven Nations' surcharge (`duskrunner_support.lic:23`; inventory/12 §1.5).
+        pawn_note: re(
+            r"scribbles out an? .+? for ([\d,]+)(?: silvers?)?(?: \(minus a small [\d,]+ silvers? surcharge\))? and hands it to you\.",
+        ),
         worthless: re(r#"says, "That's basically worthless here,"#),
         junk: re(r"Where do you find this junk\?"),
         shop_looking: re(r"turns the .+ over in (?:his|her) hands"),
-        shop_offer: re(r"I(?:'ll| will) (?:give|offer) you ([\d,]+) silver"),
+        // `pay` is the furrier's (`appskin.lic:74-75`; inventory/12 §3).
+        shop_offer: re(r"I(?:'ll| will) (?:give|offer|pay) you ([\d,]+) silver"),
+        // An appraisal that names no coin (eloot's `parse_appraisal`,
+        // `eloot.lic:5910`; inventory/12 §1.5).
+        shop_bare: re(r"([\d,]+) for (?:it if you want to sell|this if you'd like)"),
         jeweler_offer: re(
             r#"takes the .+ and inspects it carefully before saying, "I'll give you ([\d,]+) silvers? for it"#,
         ),
@@ -93,8 +101,14 @@ fn patterns() -> &'static Patterns {
             r"takes the .+, inspects the contents carefully and removes the items?.+hands it back to you, along with ([\d,]+) silver\.",
         ),
         deposit: re(r"^You deposit ([\d,]+) silvers? into your account\."),
-        withdraw: re(r"teller carefully records the transaction,? (?:and )?hands you ([\d,]+) silvers?"),
-        note_deposit: re(r"That's a total of ([\d,]+) silvers, bringing your balance to"),
+        // Lich's `WITHDRAW_RESULT` shapes that carry a figure (`bank.rb:34-37`).
+        withdraw: re(
+            r"teller carefully records the transaction,? (?:and then |and )?hands you ([\d,]+) silvers?|teller scribbles the transaction into a book and hands you ([\d,]+) silvers?|^Very well, a withdrawal of ([\d,]+) silvers?",
+        ),
+        // Lich's `DEPOSIT` note shapes (`bank.rb:22-30`).
+        note_deposit: re(
+            r"That's a total of ([\d,]+) silvers, bringing your balance to|^You deposit your note worth ([\d,]+) into your account|They add up to ([\d,]+) silvers?",
+        ),
     })
 }
 
@@ -175,7 +189,11 @@ fn appraisals(cursor: &mut Cursor, line: &ChunkLine, text: &str) -> bool {
         }
         return true;
     }
-    if let Some(caps) = p.shop_offer.captures(text) {
+    if let Some(caps) = p
+        .shop_offer
+        .captures(text)
+        .or_else(|| p.shop_bare.captures(text))
+    {
         let looked = match cursor.pending.take() {
             Some(Pending::ShopLooking(looked)) => Some(looked),
             other => {
@@ -291,7 +309,9 @@ fn sales(cursor: &mut Cursor, line: &ChunkLine, text: &str) -> bool {
 
 fn bank(cursor: &mut Cursor, text: &str) -> bool {
     let p = patterns();
-    let figure = |caps: regex::Captures<'_>| group_silvers(&caps, 1);
+    // The first group that matched: the withdraw and note patterns are
+    // alternations with the figure in a different group in each.
+    let figure = |caps: regex::Captures<'_>| (1..caps.len()).find_map(|g| group_silvers(&caps, g));
     if let Some(silvers) = p.deposit.captures(text).and_then(figure) {
         cursor.out.push(LootFact::Deposited(silvers));
         return true;

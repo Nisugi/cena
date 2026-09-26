@@ -3,98 +3,62 @@
 //!
 //! eloot's round (`Sell.sell`, `eloot.lic:7788-7820`, and `go_sell`,
 //! `:7074`): what is in the selling bags decides which shops to visit; each
-//! shop is the nearest room tagged for it; at the gem shop a sack of gems
-//! sells in one `sell #sack`, the note is read and the sack worn again, then
-//! what is left sells item by item; at the pawnshop everything sells item by
-//! item, appraised first when the profile says so and kept when it appraises
-//! over the limit or analyzes as a transmog. Then home.
+//! shop is the nearest room tagged for it. Boxes go to the locksmith pool
+//! first, and what it has ready comes back and is emptied (`super::pool`).
+//! The Chronomage's clerk is given
+//! the gold rings; at the furrier and the gem shop a sack sells whole, the
+//! note is read and the sack worn again, then what is left sells item by
+//! item, a bundle of skins a skin at a time; at the pawnshop everything sells
+//! item by item, appraised first when the profile says so and kept when it
+//! appraises over the limit or analyzes as a transmog; collectibles are
+//! deposited at their counter. Last the bank, when the round earned anything
+//! or a note waits in the default bag (`finish_sell_run`, `:6094`); and the
+//! bank first, whenever the character is over 80% encumbered on the way to
+//! a shop (`go_sell`, `:7106`). Then home.
 //!
 //! What the game answers arrives two ways: as the ledger's [`LootFact`]s --
-//! a sale, an appraisal, a refusal, a note -- and as the few [`Reply`]s that
-//! are not loot facts. The planner is fed both after every step.
+//! a sale, an appraisal, a refusal, a note, a deposit -- and as the few
+//! [`Reply`]s that are not loot facts. The planner is fed both after every
+//! step.
+//!
+//! What the jeweler calls *not my field* is sold at the pawnshop instead, and
+//! what it calls too valuable is appraised there when the profile asks; the
+//! pawnshop is added to the round for either. Last, what the hands held when
+//! the round began is fetched back (`return_hands`, `eloot.lic:3912`), so a
+//! weapon stowed to free a hand is in hand again for the hunt.
 
 use std::collections::{BTreeSet, VecDeque};
 
 use cena_map::RoomId;
 use cena_session::containers::StowSlot;
-use cena_session::gameobj::{ObjectTypes, classify};
-use cena_session::{GameState, LootFact, RoomItem};
+use cena_session::{GameState, LootFact};
 
+use super::goods::{self, How, Lot, Onward, Shop};
+use super::pool::{self, Pool};
 use super::reply::Reply;
 use super::settings::Town;
+pub use super::step::Step;
 
-/// The shops of the first stage.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Shop {
-    /// Gems, and what the jeweler buys: tagged `gemshop`.
-    Gemshop,
-    /// Everything else: tagged `pawnshop`.
-    Pawnshop,
-}
-
-impl Shop {
-    /// The map tag the room carries.
-    #[must_use]
-    pub const fn tag(self) -> &'static str {
-        match self {
-            Self::Gemshop => "gemshop",
-            Self::Pawnshop => "pawnshop",
-        }
-    }
-}
-
-/// One command for the driver to send, or the end.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Step {
-    /// Walk there.
-    Walk(RoomId),
-    /// `get #id`: into a hand.
-    Fetch(String),
-    /// `sell #id`.
-    Sell(String),
-    /// `appraise #id`.
-    Appraise(String),
-    /// `analyze #id`, for a possible transmog.
-    Analyze(String),
-    /// `sell #sack`: the whole sack of gems at once.
-    SellSack(String),
-    /// `wear #sack`: the sack back on after its bulk sale.
-    Wear(String),
-    /// `read #note`: the note a bulk sale paid with.
-    ReadNote(String),
-    /// Put one thing in one bag.
-    Stow {
-        /// The item's id.
-        item: String,
-        /// The bag's id.
-        bag: String,
-    },
-    /// The round is over; the driver is home.
-    Done,
-}
-
-/// One item to sell at the current shop.
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct Lot {
-    item: RoomItem,
-    /// The bag it came from, to go back to.
-    bag: String,
-    appraise: bool,
-    analyze: bool,
-}
+/// Over this encumbrance, the bank comes before the next shop.
+const HEAVY: u32 = 80;
 
 /// Where the item in hand is in its selling.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Doing {
     Fetching,
+    /// A scroll read for the spells it holds.
+    Reading,
     Analyzing,
     Appraising,
-    Selling,
+    /// Selling, depositing or giving, by the lot's `how`.
+    Parting,
+    /// A bundle in hand, taken apart a skin at a time.
+    Unbundling,
     /// Waiting for a stow to be confirmed.
     Stowing,
 }
 
-/// A sack sold whole at the gem shop.
+/// A sack sold whole.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SackPhase {
     Fetching,
@@ -104,135 +68,115 @@ enum SackPhase {
     StowingNote(String),
 }
 
+/// Where the bank visit is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Banking {
+    Depositing,
+    Withdrawing,
+}
+
 /// The planner for one round.
 #[derive(Clone, Debug)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "four independent facts about the round, each read in one place"
+)]
 pub struct Seller {
     town: Town,
     home: RoomId,
     shops: VecDeque<Shop>,
     shop: Option<Shop>,
-    arrived: bool,
-    /// The gem sacks still to sell whole at the gem shop, by id.
+    /// The bags still to sell whole at this shop, by id.
     sacks: VecDeque<String>,
     sack: Option<(String, SackPhase)>,
+    /// Bags already sold whole this round.
+    sold_whole: BTreeSet<String>,
     lots: VecDeque<Lot>,
     lot: Option<(Lot, Doing)>,
     /// Items given up on this round.
     skipped: BTreeSet<String>,
-    /// The gem shop's lots are built when it is reached, after the sacks.
+    /// This shop's lots are built on arrival, after the sacks.
     lots_built: bool,
+    bank: Option<Banking>,
+    /// The visit to the locksmith pool, while it lasts.
+    pool: Option<Pool>,
+    /// What the gem shop sent on to the pawnshop.
+    onward: Onward,
+    /// What the hands held when the round began, to fetch back at its end.
+    restore: Vec<String>,
+    /// A sale or a note this round: the bank is wanted at the end.
+    earned: bool,
+    /// The bank was visited since the last shop: no second trip for weight.
+    banked: bool,
     going_home: bool,
     last: Option<Step>,
 }
 
-/// Which categories eloot analyzes for a transmog (`is_transmog?`,
-/// `eloot.lic:4090`).
-const TRANSMOG_KINDS: &[&str] = &["jewelry", "clothing", "armor", "weapon", "uncommon"];
-/// Categories the pawnshop appraises whatever the profile says (`:7522`).
-const ALWAYS_APPRAISED: &[&str] = &["uncommon", "weapon", "armor"];
-
 impl Seller {
     /// A round for what the selling bags hold, or `None` when there is
-    /// nothing to sell, the stow list is not known, or no shop has anything.
+    /// nothing to sell and no note to deposit, or the stow list is not known.
     #[must_use]
     pub fn new(town: Town, state: &GameState, home: RoomId) -> Option<Self> {
         if !state.containers.stow_checked() {
             return None;
         }
         let mut shops = BTreeSet::new();
-        for (item, types, _) in Self::goods(&town, state) {
-            if types.sells_to("gemshop") || (types.is("gem") && is_thorn_or_berry(&item)) {
-                shops.insert(Shop::Gemshop);
+        for (item, types, _) in goods::goods(&town, state) {
+            if let Some(shop) = goods::shop_for(&town, &item, &types) {
+                shops.insert(shop);
             }
-            if (types.sells_to("pawnshop") && !types.sells_to("gemshop")) || types.is("clothing") {
+            // Clothing both shops buy is offered at the pawnshop too.
+            if types.is("clothing") {
                 shops.insert(Shop::Pawnshop);
             }
         }
-        if shops.is_empty() {
+        if town.pool && !pool::boxes(&town, state).is_empty() {
+            shops.insert(Shop::Pool);
+        }
+        let note = goods::note_in_bag(state);
+        if shops.is_empty() && !note {
             return None;
         }
+        // A box in hand goes to the pool; anything else comes back.
+        let restore = [&state.right_hand, &state.left_hand]
+            .into_iter()
+            .filter(|hand| {
+                !hand.noun().zip(hand.name()).is_some_and(|(noun, name)| {
+                    cena_session::gameobj::classify(noun, name).is("box")
+                })
+            })
+            .filter_map(|hand| hand.id().map(str::to_owned))
+            .collect();
         Some(Seller {
             town,
             home,
             shops: shops.into_iter().collect(),
             shop: None,
-            arrived: false,
             sacks: VecDeque::new(),
             sack: None,
+            sold_whole: BTreeSet::new(),
             lots: VecDeque::new(),
             lot: None,
             skipped: BTreeSet::new(),
             lots_built: false,
+            bank: None,
+            pool: None,
+            onward: Onward::default(),
+            restore,
+            earned: note,
+            banked: false,
             going_home: false,
             last: None,
         })
     }
 
-    /// The shops this round visits, in order.
+    /// The shops this round visits, in order, before the bank.
     #[must_use]
     pub fn shops(&self) -> Vec<Shop> {
         self.shop
             .into_iter()
             .chain(self.shops.iter().copied())
             .collect()
-    }
-
-    /// The bags sold from, by the profile's `sell_container` slots, with
-    /// their contents as the inventory lists them.
-    fn bags(town: &Town, state: &GameState) -> Vec<(String, Vec<RoomItem>)> {
-        let mut seen = BTreeSet::new();
-        let mut out = Vec::new();
-        for word in &town.containers {
-            let slot = match word.as_str() {
-                "default" => Some(StowSlot::Default),
-                "overflow" => None,
-                other => StowSlot::parse(other),
-            };
-            let Some(bag) = slot.and_then(|slot| state.containers.stow(slot)) else {
-                continue;
-            };
-            if !seen.insert(bag.id.clone()) {
-                continue;
-            }
-            let items = state
-                .inventory
-                .container(&bag.id)
-                .map(|c| c.items.clone())
-                .unwrap_or_default();
-            out.push((bag.id.clone(), items));
-        }
-        out
-    }
-
-    /// Everything sellable in the selling bags: the item, its types, its bag.
-    fn goods(town: &Town, state: &GameState) -> Vec<(RoomItem, ObjectTypes, String)> {
-        let ready: BTreeSet<String> = cena_session::containers::ReadySlot::ALL
-            .iter()
-            .filter_map(|slot| state.containers.ready(*slot))
-            .map(|item| item.id.clone())
-            .collect();
-        let mut out = Vec::new();
-        for (bag, items) in Self::bags(town, state) {
-            for item in items {
-                if ready.contains(&item.id)
-                    || town.excludes(&item.text)
-                    || item.text.split(' ').any(|w| w == "bound")
-                    || (item.text.starts_with("shimmering ") && item.text.ends_with(" orb"))
-                {
-                    continue;
-                }
-                let types = classify(&item.noun, &item.text);
-                // Boxes are the pool's (Stage 4c), not a sale.
-                if types.is("box") {
-                    continue;
-                }
-                if !types.types.iter().any(|t| town.sells(t)) {
-                    continue;
-                }
-                out.push((item, types, bag.clone()));
-            }
-        }
-        out
     }
 
     /// The next step.
@@ -252,27 +196,56 @@ impl Seller {
         if let Some(step) = self.continue_sack(state) {
             return step;
         }
+        if let Some(step) = self.continue_bank() {
+            return step;
+        }
         if self.shop.is_none() {
-            let Some(shop) = self.shops.pop_front() else {
+            let Some(shop) = self.pick_shop(state) else {
+                if let Some(step) = self.restore_hands(state) {
+                    return step;
+                }
                 self.going_home = true;
                 return Step::Walk(self.home);
             };
             // A shop the map does not have here is skipped, as eloot skips it.
-            let Some(room) = nearest(shop.tag()) else {
+            let Some(room) = shop.tags().iter().find_map(|tag| nearest(tag)) else {
+                if shop == Shop::Bank {
+                    self.banked = true;
+                    self.earned = false;
+                }
                 return self.decide(state, nearest);
             };
             self.shop = Some(shop);
-            self.arrived = false;
             self.lots_built = false;
             return Step::Walk(room);
         }
         let shop = self.shop.unwrap_or(Shop::Pawnshop);
+        if shop == Shop::Bank {
+            self.bank = Some(Banking::Depositing);
+            return Step::DepositAll;
+        }
+        if shop == Shop::Pool {
+            if self.pool.is_none() {
+                // No worker in the room: the pool is passed by.
+                self.pool = Pool::new(&self.town, state);
+            }
+            if let Some(step) = self.pool.as_mut().and_then(|pool| pool.next(state)) {
+                return step;
+            }
+            self.pool = None;
+            self.shop = None;
+            return self.decide(state, nearest);
+        }
         if !self.lots_built {
-            self.arrived = true;
-            self.build(shop, state);
+            self.lots_built = true;
+            self.sacks = goods::sacks(shop, &self.town, state, &self.sold_whole).into();
+            let whole: Vec<String> = self.sacks.iter().cloned().collect();
+            self.lots =
+                goods::lots(shop, &self.town, state, &self.skipped, &whole, &self.onward).into();
         }
         if let Some(sack) = self.sacks.pop_front() {
-            let phase = if state.right_hand.holds(&sack) || state.left_hand.holds(&sack) {
+            self.sold_whole.insert(sack.clone());
+            let phase = if holds(state, &sack) {
                 SackPhase::Selling
             } else {
                 SackPhase::Fetching
@@ -281,7 +254,7 @@ impl Seller {
             return self.continue_sack(state).unwrap_or(Step::Done);
         }
         if let Some(lot) = self.lots.pop_front() {
-            if let Some(free) = Self::free_a_hand(state) {
+            if let Some(free) = free_a_hand(state) {
                 self.lots.push_front(lot);
                 return free;
             }
@@ -290,94 +263,37 @@ impl Seller {
         }
         // This shop is done.
         self.shop = None;
+        self.banked = false;
         self.decide(state, nearest)
     }
 
-    /// What to sell at `shop`, from the bags as they stand now.
-    fn build(&mut self, shop: Shop, state: &GameState) {
-        self.lots_built = true;
-        let goods = Self::goods(&self.town, state);
-        match shop {
-            Shop::Gemshop => {
-                // A sack of gems sells whole when it has gems and none is
-                // excluded (`gemshop`, `eloot.lic:6938`).
-                if self.town.sells("gem") {
-                    for (bag, items) in Self::bags(&self.town, state) {
-                        let gems: Vec<&RoomItem> = items
-                            .iter()
-                            .filter(|i| classify(&i.noun, &i.text).is("gem"))
-                            .collect();
-                        if !gems.is_empty() && !gems.iter().any(|g| self.town.excludes(&g.text)) {
-                            self.sacks.push_back(bag);
-                        }
-                    }
-                }
-                for (item, types, bag) in goods {
-                    if self.skipped.contains(&item.id) {
-                        continue;
-                    }
-                    // What a bulk sale takes is left out; what it leaves is
-                    // sold one by one when the shop is reached again.
-                    if types.is("gem") && self.sacks.contains(&bag) {
-                        continue;
-                    }
-                    if !(types.sells_to("gemshop") || is_thorn_or_berry(&item)) {
-                        continue;
-                    }
-                    let appraise = types.types.iter().any(|t| self.town.appraises(t));
-                    self.lots.push_back(Lot {
-                        item,
-                        bag,
-                        appraise,
-                        analyze: false,
-                    });
-                }
-            }
-            Shop::Pawnshop => {
-                for (item, types, bag) in goods {
-                    if self.skipped.contains(&item.id) {
-                        continue;
-                    }
-                    let pawn_only = types.sells_to("pawnshop") && !types.sells_to("gemshop");
-                    if !(pawn_only || types.is("clothing")) {
-                        continue;
-                    }
-                    let appraise = types
-                        .types
-                        .iter()
-                        .any(|t| self.town.appraises(t) || ALWAYS_APPRAISED.contains(&t.as_str()));
-                    let analyze = self.town.keep_transmogs
-                        && item.after.is_some()
-                        && types
-                            .types
-                            .iter()
-                            .any(|t| TRANSMOG_KINDS.contains(&t.as_str()));
-                    self.lots.push_back(Lot {
-                        item,
-                        bag,
-                        appraise,
-                        analyze,
-                    });
-                }
-            }
+    /// The next shop: the bank first when heavy, the queue, the bank last
+    /// when the round earned anything.
+    fn pick_shop(&mut self, state: &GameState) -> Option<Shop> {
+        let heavy = state
+            .character
+            .encumbrance_percent
+            .is_some_and(|now| now > HEAVY);
+        if heavy && !self.banked && !self.shops.is_empty() {
+            return Some(Shop::Bank);
         }
+        if let Some(shop) = self.shops.pop_front() {
+            return Some(shop);
+        }
+        (self.earned && !self.banked).then_some(Shop::Bank)
     }
 
-    /// A hand to fetch into: `None` when one is free, else the stow that
-    /// frees the right hand into the default bag (`free_hands`, `:3960`).
-    fn free_a_hand(state: &GameState) -> Option<Step> {
-        if !(state.right_hand.is_holding() && state.left_hand.is_holding()) {
-            return None;
+    fn continue_bank(&mut self) -> Option<Step> {
+        match self.bank? {
+            Banking::Depositing => Some(Step::DepositAll),
+            Banking::Withdrawing => Some(Step::Withdraw(self.town.keep_silver)),
         }
-        let item = state.right_hand.id()?.to_owned();
-        let bag = state.containers.stow(StowSlot::Default)?.id.clone();
-        Some(Step::Stow { item, bag })
     }
 
     fn continue_lot(&mut self, state: &GameState) -> Option<Step> {
         let (lot, doing) = self.lot.clone()?;
         let id = lot.item.id.clone();
-        let in_hand = state.right_hand.holds(&id) || state.left_hand.holds(&id);
+        let in_hand = holds(state, &id);
         match doing {
             Doing::Fetching => {
                 if !in_hand {
@@ -387,9 +303,28 @@ impl Seller {
                 }
                 Some(self.after_fetch(lot))
             }
+            Doing::Reading => Some(Step::ReadScroll(id)),
             Doing::Analyzing => Some(Step::Analyze(id)),
             Doing::Appraising => Some(Step::Appraise(id)),
-            Doing::Selling => Some(Step::Sell(id)),
+            Doing::Parting => Some(part(&lot)),
+            Doing::Unbundling => {
+                // A skin out of the bundle: sell it, or back to the bag when
+                // the furrier would not have it.
+                if let Some(skin) = other_hand(state, &id) {
+                    if self.skipped.contains(&skin) {
+                        return Some(Step::Stow {
+                            item: skin,
+                            bag: lot.bag,
+                        });
+                    }
+                    return Some(Step::Sell(skin));
+                }
+                if in_hand {
+                    return Some(Step::Unbundle);
+                }
+                self.lot = None;
+                None
+            }
             Doing::Stowing => {
                 if in_hand {
                     return Some(Step::Stow {
@@ -403,23 +338,61 @@ impl Seller {
         }
     }
 
-    /// The item is in hand: analyze, appraise or sell, in eloot's order.
+    /// The item is in hand: analyze, appraise, part with it or take it
+    /// apart, in eloot's order.
     fn after_fetch(&mut self, lot: Lot) -> Step {
         let id = lot.item.id.clone();
-        let doing = if lot.analyze {
-            Doing::Analyzing
-        } else if lot.appraise {
-            Doing::Appraising
+        let (doing, step) = if lot.how == How::Unbundle {
+            (Doing::Unbundling, Step::Unbundle)
+        } else if lot.how == How::Appraise {
+            (Doing::Appraising, Step::Appraise(id))
+        } else if lot.read {
+            (Doing::Reading, Step::ReadScroll(id))
         } else {
-            Doing::Selling
-        };
-        let step = match doing {
-            Doing::Analyzing => Step::Analyze(id),
-            Doing::Appraising => Step::Appraise(id),
-            _ => Step::Sell(id),
+            return self.after_read(lot);
         };
         self.lot = Some((lot, doing));
         step
+    }
+
+    /// Analyze, appraise or part with it, in eloot's order.
+    fn after_read(&mut self, lot: Lot) -> Step {
+        let id = lot.item.id.clone();
+        let (doing, step) = if lot.analyze {
+            (Doing::Analyzing, Step::Analyze(id))
+        } else if lot.appraise {
+            (Doing::Appraising, Step::Appraise(id))
+        } else {
+            (Doing::Parting, part(&lot))
+        };
+        self.lot = Some((lot, doing));
+        step
+    }
+
+    /// The hands as they were: each thing held when the round began and not
+    /// held now is fetched, once; a thing the round left in both hands is
+    /// stowed first.
+    fn restore_hands(&mut self, state: &GameState) -> Option<Step> {
+        self.restore.retain(|id| !holds(state, id));
+        let id = self.restore.first()?.clone();
+        if let Some(free) = free_a_hand(state) {
+            return Some(free);
+        }
+        self.restore.remove(0);
+        Some(Step::Fetch(id))
+    }
+
+    /// The gem shop sent something on: the pawnshop is in the round.
+    fn pawnshop_too(&mut self) {
+        if self.shop == Some(Shop::Pawnshop) || self.shops.contains(&Shop::Pawnshop) {
+            return;
+        }
+        let at = self
+            .shops
+            .iter()
+            .position(|shop| *shop > Shop::Pawnshop)
+            .unwrap_or(self.shops.len());
+        self.shops.insert(at, Shop::Pawnshop);
     }
 
     /// Where a kept item goes: the appraisal container by name, else the
@@ -441,14 +414,14 @@ impl Seller {
 
     fn continue_sack(&mut self, state: &GameState) -> Option<Step> {
         let (sack, phase) = self.sack.clone()?;
-        let in_hand = state.right_hand.holds(&sack) || state.left_hand.holds(&sack);
+        let in_hand = holds(state, &sack);
         match phase {
             SackPhase::Fetching => {
                 if in_hand {
                     self.sack = Some((sack.clone(), SackPhase::Selling));
                     return Some(Step::SellSack(sack));
                 }
-                if let Some(free) = Self::free_a_hand(state) {
+                if let Some(free) = free_a_hand(state) {
                     return Some(free);
                 }
                 Some(Step::Fetch(sack))
@@ -459,7 +432,7 @@ impl Seller {
                     return Some(Step::Wear(sack));
                 }
                 // Worn again. A note in a hand is the bulk sale's payment.
-                if let Some(note) = note_in_hand(state) {
+                if let Some(note) = goods::note_in_hand(state) {
                     self.sack = Some((sack, SackPhase::Reading(note.clone())));
                     return Some(Step::ReadNote(note));
                 }
@@ -470,7 +443,7 @@ impl Seller {
             }
             SackPhase::Reading(note) => Some(Step::ReadNote(note)),
             SackPhase::StowingNote(note) => {
-                if state.right_hand.holds(&note) || state.left_hand.holds(&note) {
+                if holds(state, &note) {
                     let bag = state
                         .containers
                         .stow(StowSlot::Default)
@@ -491,6 +464,16 @@ impl Seller {
             return;
         };
         let sold = facts.iter().any(|f| matches!(f, LootFact::Sold { .. }));
+        self.earned |= sold
+            || facts
+                .iter()
+                .any(|f| matches!(f, LootFact::BoxOpened { .. }));
+        if self.shop == Some(Shop::Pool)
+            && let Some(pool) = self.pool.as_mut()
+        {
+            pool.outcome(&last, facts, replies, state);
+            return;
+        }
         let refused = facts
             .iter()
             .any(|f| matches!(f, LootFact::Worthless { .. } | LootFact::TooValuable { .. }))
@@ -511,20 +494,7 @@ impl Seller {
                     }
                 }
             }
-            Step::Analyze(_) => {
-                if let Some((lot, _)) = self.lot.clone() {
-                    let keep =
-                        replies.contains(&Reply::Transmog) || replies.contains(&Reply::Alter41);
-                    let doing = if keep {
-                        Doing::Stowing
-                    } else if lot.appraise {
-                        Doing::Appraising
-                    } else {
-                        Doing::Selling
-                    };
-                    self.lot = Some((lot, doing));
-                }
-            }
+            Step::ReadScroll(_) | Step::Analyze(_) => self.examined(&last, replies),
             Step::Appraise(_) => {
                 if let Some((lot, _)) = self.lot.clone() {
                     let limit = match self.shop {
@@ -532,25 +502,120 @@ impl Seller {
                         _ => self.town.appraise_pawnshop,
                     };
                     let doing = match appraised {
-                        Some(value) if value > 0 && value <= limit && !refused => Doing::Selling,
+                        _ if lot.how == How::Appraise => Doing::Stowing,
+                        Some(value) if value > 0 && value <= limit && !refused => Doing::Parting,
                         _ => Doing::Stowing,
                     };
+                    if doing == Doing::Stowing
+                        && self.shop == Some(Shop::Gemshop)
+                        && self.town.pawn_recheck
+                    {
+                        self.onward.recheck.insert(lot.item.id.clone());
+                        self.pawnshop_too();
+                    }
                     self.lot = Some((lot, doing));
                 }
             }
-            Step::Sell(_) => {
-                if let Some((lot, _)) = self.lot.clone() {
-                    if sold {
-                        self.lot = None;
-                    } else if refused {
-                        self.lot = Some((lot, Doing::Stowing));
-                    } else {
-                        // No answer read: the hands decide on the next turn.
-                        self.lot = Some((lot, Doing::Stowing));
+            Step::Sell(id) => {
+                if self.shop == Some(Shop::Gemshop) && self.lot.is_some() {
+                    if replies.contains(&Reply::WrongShop) {
+                        self.onward.retry.insert(id.clone());
+                        self.pawnshop_too();
+                    } else if self.town.pawn_recheck
+                        && facts
+                            .iter()
+                            .any(|f| matches!(f, LootFact::TooValuable { .. }))
+                    {
+                        self.onward.recheck.insert(id.clone());
+                        self.pawnshop_too();
                     }
                 }
+                if replies.contains(&Reply::Again) {
+                    // Sell it again to be sure: the lot stays where it is.
+                    return;
+                }
+                self.sold(&id, sold);
+            }
+            Step::Deposit(id) | Step::Give { item: id, .. } => {
+                // Handed over when it has left the hands; else back it goes.
+                if let Some((lot, _)) = self.lot.clone() {
+                    self.lot = holds(state, &id).then_some((lot, Doing::Stowing));
+                }
+            }
+            Step::Unbundle => {
+                // Nothing came out: the bundle goes back to its bag.
+                if let Some((lot, Doing::Unbundling)) = self.lot.clone()
+                    && other_hand(state, &lot.item.id).is_none()
+                    && !replies.contains(&Reply::LastTwo)
+                {
+                    self.lot = Some((lot, Doing::Stowing));
+                }
+            }
+            Step::DepositAll => {
+                self.bank = (self.town.keep_silver > 0).then_some(Banking::Withdrawing);
+                self.close_bank();
+            }
+            Step::Withdraw(_) => {
+                self.bank = None;
+                self.close_bank();
             }
             other => self.sack_outcome(&other, sold, refused, replies, state),
+        }
+    }
+
+    /// A scroll read, or an item analyzed: kept, or on to its sale.
+    fn examined(&mut self, last: &Step, replies: &[Reply]) {
+        let Some((lot, _)) = self.lot.clone() else {
+            return;
+        };
+        if matches!(last, Step::ReadScroll(_)) {
+            let keep = replies.iter().any(|reply| match reply {
+                Reply::ScrollSpell { spell, vibrant } => self.town.keeps_scroll(*spell, *vibrant),
+                _ => false,
+            });
+            if keep {
+                self.lot = Some((lot, Doing::Stowing));
+            } else {
+                self.after_read(lot);
+            }
+            return;
+        }
+        // ALTER 41 is always kept; a transmog when the profile keeps them
+        // (`pawnshop`, `eloot.lic:7541-7547`).
+        let keep = replies.contains(&Reply::Alter41)
+            || (self.town.keep_transmogs && replies.contains(&Reply::Transmog));
+        let doing = if keep {
+            Doing::Stowing
+        } else if lot.appraise {
+            Doing::Appraising
+        } else {
+            Doing::Parting
+        };
+        self.lot = Some((lot, doing));
+    }
+
+    /// A `sell`'s answer: the lot is done, or it is kept; a skin out of a
+    /// bundle the furrier would not take is put back.
+    fn sold(&mut self, id: &str, sold: bool) {
+        let Some((lot, doing)) = self.lot.clone() else {
+            return;
+        };
+        if doing == Doing::Unbundling {
+            if !sold {
+                self.skipped.insert(id.to_owned());
+            }
+            return;
+        }
+        // Refused, or no answer read: kept, and the hands decide next turn.
+        self.lot = (!sold).then_some((lot, Doing::Stowing));
+    }
+
+    /// The bank visit is over when no withdrawal is left.
+    fn close_bank(&mut self) {
+        if self.bank.is_none() {
+            self.shop = None;
+            self.banked = true;
+            self.earned = false;
         }
     }
 
@@ -565,10 +630,9 @@ impl Seller {
     ) {
         match last.clone() {
             Step::SellSack(sack) => {
-                if sold || replies.contains(&Reply::SackInspected) {
-                    self.sack = Some((sack, SackPhase::Wearing));
-                } else if refused {
-                    // Nothing in it the shop wants whole: item by item then.
+                // Sold, or nothing in it the shop wants whole: item by item
+                // then. Either way the sack goes back on.
+                if sold || refused || replies.contains(&Reply::SackInspected) {
                     self.sack = Some((sack, SackPhase::Wearing));
                 }
             }
@@ -579,28 +643,25 @@ impl Seller {
                 }
             }
             Step::ReadNote(note) => {
+                self.earned = true;
                 self.sack = self
                     .sack
                     .take()
                     .map(|(sack, _)| (sack, SackPhase::StowingNote(note)));
             }
-            Step::Stow { item, .. } => {
-                let gone = !(state.right_hand.holds(&item) || state.left_hand.holds(&item));
-                if gone {
-                    if self
-                        .lot
-                        .as_ref()
-                        .is_some_and(|(lot, _)| lot.item.id == item)
-                    {
-                        self.lot = None;
-                    }
-                    if let Some((sack, SackPhase::StowingNote(_))) = &self.sack {
-                        let sack = sack.clone();
-                        if !(state.right_hand.holds(&sack) || state.left_hand.holds(&sack)) {
-                            self.sack = None;
-                            self.lots_built = false;
-                        }
-                    }
+            Step::Stow { item, .. } if !holds(state, &item) => {
+                if self
+                    .lot
+                    .as_ref()
+                    .is_some_and(|(lot, _)| lot.item.id == item)
+                {
+                    self.lot = None;
+                }
+                if let Some((sack, SackPhase::StowingNote(_))) = &self.sack
+                    && !holds(state, sack)
+                {
+                    self.sack = None;
+                    self.lots_built = false;
                 }
             }
             _ => {}
@@ -614,18 +675,41 @@ impl Seller {
     }
 }
 
-/// eloot's thorn-and-berry gems the jeweler takes (`:6963`).
-fn is_thorn_or_berry(item: &RoomItem) -> bool {
-    item.noun.contains("thorn") || item.noun.contains("berry")
+/// The command that parts with a lot in hand.
+fn part(lot: &Lot) -> Step {
+    let id = lot.item.id.clone();
+    match &lot.how {
+        How::Deposit => Step::Deposit(id),
+        How::Give(to) => Step::Give {
+            item: id,
+            to: to.clone(),
+        },
+        How::Appraise => Step::Appraise(id),
+        How::Sell | How::Unbundle => Step::Sell(id),
+    }
 }
 
-/// A note, scrip or chit in either hand (`read_note`, `:2445`).
-fn note_in_hand(state: &GameState) -> Option<String> {
+/// Either hand holds this id.
+fn holds(state: &GameState, id: &str) -> bool {
+    state.right_hand.holds(id) || state.left_hand.holds(id)
+}
+
+/// What the other hand holds, when it is not `id`.
+fn other_hand(state: &GameState, id: &str) -> Option<String> {
     [&state.right_hand, &state.left_hand]
         .into_iter()
-        .find(|hand| {
-            hand.noun()
-                .is_some_and(|noun| matches!(noun, "note" | "scrip" | "chit"))
-        })
-        .and_then(|hand| hand.id().map(str::to_owned))
+        .filter_map(|hand| hand.id())
+        .find(|held| *held != id)
+        .map(str::to_owned)
+}
+
+/// A hand to fetch into: `None` when one is free, else the stow that frees
+/// the right hand into the default bag (`free_hands`, `:3960`).
+fn free_a_hand(state: &GameState) -> Option<Step> {
+    if !(state.right_hand.is_holding() && state.left_hand.is_holding()) {
+        return None;
+    }
+    let item = state.right_hand.id()?.to_owned();
+    let bag = state.containers.stow(StowSlot::Default)?.id.clone();
+    Some(Step::Stow { item, bag })
 }

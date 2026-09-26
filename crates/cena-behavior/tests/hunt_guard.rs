@@ -1,7 +1,7 @@
 //! The guard vocabulary: how each word is written, what it reads, and that
 //! unknown skips (`plan/30` §5, `plan/33`).
 
-use cena_behavior::hunt::{Condition, Guard};
+use cena_behavior::hunt::{Condition, Facts, Guard, Measure};
 use cena_session::{Effect, Frame, GameState, Link, LinkKind, Run, Runs};
 
 /// One guard, parsed. `None` is a broken fixture, which every test unwraps
@@ -88,7 +88,7 @@ fn every_word_reads_back_as_written() {
     }
     let group = Condition::parse_group("thp 20 empowered_below 30").unwrap();
     assert_eq!(group.len(), 2);
-    assert_eq!(group[1].guard, Guard::EmpoweredBelow(30));
+    assert_eq!(group[1].guard, Guard::Amount(Measure::EmpoweredBelow, 30));
     assert!(!group[1].negated);
 }
 
@@ -132,18 +132,22 @@ fn hidden_is_the_status_the_game_reported() {
     let mut state = GameState::default();
     let hidden = one("hidden").unwrap();
     let not = one("!hidden").unwrap();
-    assert_eq!(hidden.holds(&state, None), None, "never reported: unknown");
     assert_eq!(
-        not.holds(&state, None),
+        hidden.holds(&Facts::new(&state, None)),
+        None,
+        "never reported: unknown"
+    );
+    assert_eq!(
+        not.holds(&Facts::new(&state, None)),
         None,
         "and the negation is as unknown"
     );
     state.status.set("hidden", true);
-    assert_eq!(hidden.holds(&state, None), Some(true));
-    assert_eq!(not.holds(&state, None), Some(false));
+    assert_eq!(hidden.holds(&Facts::new(&state, None)), Some(true));
+    assert_eq!(not.holds(&Facts::new(&state, None)), Some(false));
     state.status.set("hidden", false);
-    assert_eq!(hidden.holds(&state, None), Some(false));
-    assert_eq!(not.holds(&state, None), Some(true));
+    assert_eq!(hidden.holds(&Facts::new(&state, None)), Some(false));
+    assert_eq!(not.holds(&Facts::new(&state, None)), Some(true));
 }
 
 #[test]
@@ -154,28 +158,41 @@ fn thp_needs_the_targets_health_to_be_known() {
         "mastodon",
         &[("health", "10"), ("maxhealth", "100")],
     );
-    assert_eq!(one("thp 20").unwrap().holds(&stated, Some(42)), Some(true));
-    assert_eq!(one("thp 5").unwrap().holds(&stated, Some(42)), Some(false));
-    assert_eq!(one("!thp 5").unwrap().holds(&stated, Some(42)), Some(true));
+    assert_eq!(
+        one("thp 20").unwrap().holds(&Facts::new(&stated, Some(42))),
+        Some(true)
+    );
+    assert_eq!(
+        one("thp 5").unwrap().holds(&Facts::new(&stated, Some(42))),
+        Some(false)
+    );
+    assert_eq!(
+        one("!thp 5").unwrap().holds(&Facts::new(&stated, Some(42))),
+        Some(true)
+    );
 
     let unknown = with_creature(at(1_000), 43, "zzyzx wobbler", &[]);
     assert_eq!(
-        one("thp 20").unwrap().holds(&unknown, Some(43)),
+        one("thp 20")
+            .unwrap()
+            .holds(&Facts::new(&unknown, Some(43))),
         None,
         "no stated HP and no bestiary template: unknown, not full health"
     );
     assert_eq!(
-        one("!thp 20").unwrap().holds(&unknown, Some(43)),
+        one("!thp 20")
+            .unwrap()
+            .holds(&Facts::new(&unknown, Some(43))),
         None,
         "unknown skips both readings, as bigshot's does (`:4336`)"
     );
     assert_eq!(
-        one("thp 20").unwrap().holds(&stated, None),
+        one("thp 20").unwrap().holds(&Facts::new(&stated, None)),
         None,
         "no target chosen"
     );
     assert_eq!(
-        one("thp 20").unwrap().holds(&stated, Some(99)),
+        one("thp 20").unwrap().holds(&Facts::new(&stated, Some(99))),
         None,
         "no such creature here"
     );
@@ -185,24 +202,32 @@ fn thp_needs_the_targets_health_to_be_known() {
 fn immobilized_is_the_targets_flag() {
     let free = with_creature(at(1_000), 42, "mastodon", &[]);
     assert_eq!(
-        one("immobilized").unwrap().holds(&free, Some(42)),
+        one("immobilized")
+            .unwrap()
+            .holds(&Facts::new(&free, Some(42))),
         Some(false)
     );
     assert_eq!(
-        one("!immobilized").unwrap().holds(&free, Some(42)),
+        one("!immobilized")
+            .unwrap()
+            .holds(&Facts::new(&free, Some(42))),
         Some(true)
     );
     let held = with_creature(at(1_000), 42, "mastodon", &[("immobile", "1")]);
     assert_eq!(
-        one("immobilized").unwrap().holds(&held, Some(42)),
+        one("immobilized")
+            .unwrap()
+            .holds(&Facts::new(&held, Some(42))),
         Some(true)
     );
     assert_eq!(
-        one("!immobilized").unwrap().holds(&held, Some(42)),
+        one("!immobilized")
+            .unwrap()
+            .holds(&Facts::new(&held, Some(42))),
         Some(false)
     );
     assert_eq!(
-        one("immobilized").unwrap().holds(&held, None),
+        one("immobilized").unwrap().holds(&Facts::new(&held, None)),
         None,
         "no target chosen"
     );
@@ -211,30 +236,36 @@ fn immobilized_is_the_targets_flag() {
 #[test]
 fn empowered_below_reads_the_strongest_empowered_up() {
     let below = one("empowered_below 30").unwrap();
-    assert_eq!(below.holds(&GameState::default(), None), None, "no clock");
+    assert_eq!(
+        below.holds(&Facts::new(&GameState::default(), None)),
+        None,
+        "no clock"
+    );
     let mut state = at(1_000);
     assert_eq!(
-        below.holds(&state, None),
+        below.holds(&Facts::new(&state, None)),
         None,
         "the Buffs dialog has not been stated"
     );
     state.effects.clear_category("Buffs");
     assert_eq!(
-        below.holds(&state, None),
+        below.holds(&Facts::new(&state, None)),
         Some(true),
         "stated, and nothing is up"
     );
     buff(&mut state, "9005", "Empowered (+20)", 1_060);
-    assert_eq!(below.holds(&state, None), Some(true));
+    assert_eq!(below.holds(&Facts::new(&state, None)), Some(true));
     buff(&mut state, "9006", "Empowered (+30)", 1_060);
-    assert_eq!(below.holds(&state, None), Some(false));
+    assert_eq!(below.holds(&Facts::new(&state, None)), Some(false));
     assert_eq!(
-        one("!empowered_below 30").unwrap().holds(&state, None),
+        one("!empowered_below 30")
+            .unwrap()
+            .holds(&Facts::new(&state, None)),
         Some(true)
     );
     buff(&mut state, "9006", "Empowered (+30)", 999);
     assert_eq!(
-        below.holds(&state, None),
+        below.holds(&Facts::new(&state, None)),
         Some(true),
         "an expired buff is not up"
     );
@@ -246,27 +277,27 @@ fn expiring_is_the_named_effect_down_or_in_its_last_seconds() {
     let not_soon = one("!expiring \"Tangleweed Vigor\" 5").unwrap();
     let mut state = at(1_000);
     assert_eq!(
-        soon.holds(&state, None),
+        soon.holds(&Facts::new(&state, None)),
         None,
         "nothing listed at all: unknown"
     );
     buff(&mut state, "9015", "Tangleweed Vigor", 1_003);
     assert_eq!(
-        soon.holds(&state, None),
+        soon.holds(&Facts::new(&state, None)),
         Some(true),
         "three seconds left: refresh it"
     );
-    assert_eq!(not_soon.holds(&state, None), Some(false));
+    assert_eq!(not_soon.holds(&Facts::new(&state, None)), Some(false));
     buff(&mut state, "9015", "Tangleweed Vigor", 1_030);
     assert_eq!(
-        soon.holds(&state, None),
+        soon.holds(&Facts::new(&state, None)),
         Some(false),
         "thirty seconds left: leave it"
     );
-    assert_eq!(not_soon.holds(&state, None), Some(true));
+    assert_eq!(not_soon.holds(&Facts::new(&state, None)), Some(true));
     buff(&mut state, "9015", "tangleweed vigor", 1_003);
     assert_eq!(
-        soon.holds(&state, None),
+        soon.holds(&Facts::new(&state, None)),
         Some(true),
         "the name is matched ignoring case"
     );
@@ -274,7 +305,7 @@ fn expiring_is_the_named_effect_down_or_in_its_last_seconds() {
     let mut other = at(1_000);
     buff(&mut other, "515", "Rapid Fire", 1_060);
     assert_eq!(
-        soon.holds(&other, None),
+        soon.holds(&Facts::new(&other, None)),
         Some(true),
         "the buff being down is lapsed: kweed runs (the author's `buff5`, not bigshot's `:4263`)"
     );
@@ -283,7 +314,7 @@ fn expiring_is_the_named_effect_down_or_in_its_last_seconds() {
     buff(&mut cut, "1094608548", "Nature's Touch Arcane Ref", 1_060);
     let prefix = one("expiring \"nature's touch\" 5").unwrap();
     assert_eq!(
-        prefix.holds(&cut, None),
+        prefix.holds(&Facts::new(&cut, None)),
         Some(false),
         "a name matches by prefix, because the dialog cuts long names off"
     );
@@ -298,7 +329,7 @@ fn expiring_is_the_named_effect_down_or_in_its_last_seconds() {
         },
     );
     assert_eq!(
-        soon.holds(&forever, None),
+        soon.holds(&Facts::new(&forever, None)),
         Some(false),
         "no end time never lapses"
     );

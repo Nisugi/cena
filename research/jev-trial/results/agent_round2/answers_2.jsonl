@@ -1,0 +1,40 @@
+{"item": "R0041", "direction": "down", "confidence": 60, "reason": "a staircase from a ground-floor guild hallway into a dark chamber with sawdust and an apothecary reads as a lower level, but neither text states the direction"}
+{"item": "R0042", "direction": "same floor", "confidence": 55, "reason": "the arrived room says the jagged crevice is simply 'in the shadows' at ground level, and both rooms are caverns with no stated drop or rise"}
+{"item": "R0043", "direction": "down", "confidence": 88, "reason": "the room left says long steps descend into a wide courtyard, and the courtyard is the outdoor room arrived in"}
+{"item": "R0044", "direction": "down", "confidence": 90, "reason": "both descriptions say the ramp descends from the gallery above into the grotto plaza below"}
+{"item": "R0045", "direction": "down", "confidence": 92, "reason": "the road room says stone stairs descend to the beach and the beach says the stairs rise back up the cliff face to the road above"}
+{"item": "R0046", "direction": "same floor", "confidence": 55, "reason": "the embankment top is a catwalk of boulders bordering the plateau, and the plateau description says the broken stones simply border it; outdoors this reads as one level"}
+{"item": "R0047", "direction": "same floor", "confidence": 55, "reason": "the shaft joins two chambers cut in the mountain with no stated rise or drop in either description"}
+{"item": "R0048", "direction": "same floor", "confidence": 65, "reason": "outdoors, a forested incline climbing to more forest is a hillside, which the instructions call same floor"}
+{"item": "R0049", "direction": "down", "confidence": 78, "reason": "the room left describes loose shale as a downward slide whose decline disappears into the gloom, and the arrived room says a steep slope ends at the raised path"}
+{"item": "R0050", "direction": "down", "confidence": 82, "reason": "a pitch-black hole gaping in the floor, and the arrived cramped space notes an impression of space above"}
+{"item": "R0051", "direction": "up", "confidence": 72, "reason": "the corridor is explicitly a juncture between floors with a separate 'down' exit to the Cavern, so the climbed stairs go up to the Shrine"}
+{"item": "R0052", "direction": "up", "confidence": 88, "reason": "the chain room says the hawse hole is a few feet above you and the forecastle is inside the hull with a ladder leading further down to the hold"}
+{"item": "R0053", "direction": "same floor", "confidence": 70, "reason": "the oak door is one of three doors in the same circular room, side by side with the ironbound door; no stairs mentioned"}
+{"item": "R0054", "direction": "same floor", "confidence": 78, "reason": "outdoors, a hillside climb between two identical bramble-patch rooms is a slope, not a change of level"}
+{"item": "R0055", "direction": "down", "confidence": 80, "reason": "the library says the steps ascend to one side, and the dining room says some gently descending steps reside to one side, so leaving the library by them goes down"}
+{"item": "R0056", "direction": "up", "confidence": 62, "reason": "a ladder from a shop entry to an office whose other exits are Roofs and Ceilings suggests an upper level"}
+{"item": "R0057", "direction": "down", "confidence": 92, "reason": "the bonfire plain says the staircase leads to the beach below and the beach says it climbs the cliff face to the grassy plain"}
+{"item": "R0058", "direction": "down", "confidence": 62, "reason": "a ladder from a pier on raised pillars into a dim compact bar with a hatch to Control reads as descending into a submersible below the dock"}
+{"item": "R0059", "direction": "same floor", "confidence": 72, "reason": "the small stage door is beside the steps up to the stage, and backstage is level with the stage area it serves"}
+{"item": "R0060", "direction": "up", "confidence": 85, "reason": "the street says the ice ramp leads up and to the east toward the temple, and the arrived junction says the ramp descends westward"}
+{"item": "R0061", "direction": "same floor", "confidence": 65, "reason": "both are subterranean caverns and the tunnel is described as simply leading west with no drop or climb"}
+{"item": "R0062", "direction": "same floor", "confidence": 72, "reason": "both rooms are crypt-level passages of the same hall with no stairs or drop described"}
+{"item": "R0063", "direction": "same floor", "confidence": 60, "reason": "outdoors, an icy incline from a ledge up to a forested shelf is a slope up a hillside, which counts as same floor"}
+{"item": "R0064", "direction": "up", "confidence": 80, "reason": "the room left is a tower cellar below ground and the hole leads out to an outdoor mountain trail beside the tower"}
+{"item": "R0065", "direction": "down", "confidence": 85, "reason": "the garden says stone slab steps descend to the beach through a break in the fencing, and the beach says they give access to the plateau garden on an outcropping"}
+{"item": "R0066", "direction": "same floor", "confidence": 70, "reason": "the cave's rivulet tumbles out onto the trail just outside, so the crack entrance is level with the trail"}
+{"item": "R0067", "direction": "up", "confidence": 60, "reason": "the basin is at the cliff's base with a computed floor of -1, and climbing the ringing outcroppings reaches a pool hidden above the basin"}
+{"item": "R0068", "direction": "same floor", "confidence": 62, "reason": "topping a river bank onto the road above is a riverbank slope, not a storey, and both computed floors are 0"}
+{"item": "R0069", "direction": "same floor", "confidence": 78, "reason": "the boulders form a shallow tunnel between two jungle floor rooms, both outdoor ground"}
+{"item": "R0070", "direction": "up", "confidence": 60, "reason": "a small flight of stairs to the backstage/green room area; stairs plus the green room's own staircase exit suggest a different level, though the text does not say which way"}
+{"item": "R0071", "direction": "up", "confidence": 55, "reason": "the arrived room says the tree once grew right below this path, so the root is climbed to reach a higher trail segment, but on a cliff trail this may be one level"}
+{"item": "R0072", "direction": "up", "confidence": 58, "reason": "the cliff rises overhead with the ridge slanting across its face, and the arrived path overlooks a precipitous dropoff, so climbing gains a level"}
+{"item": "R0073", "direction": "down", "confidence": 72, "reason": "the mausoleum ingress leads to an Entry Vault that is dank, damp and below, with a ladder onward to a crypt"}
+{"item": "R0074", "direction": "up", "confidence": 90, "reason": "the front desk says the guest rooms are at the top of the creaky wooden stairs, and the hallway is those guest rooms"}
+{"item": "R0075", "direction": "up", "confidence": 65, "reason": "the lobby mentions dwarves jostling toward the stairs and the corridor of offices is a separate level above the shop floor"}
+{"item": "R0076", "direction": "down", "confidence": 60, "reason": "the dyeing room says the steps lead deeper into the shop and has its own 'up' exit to a private room, so it sits below the workroom platform"}
+{"item": "R0077", "direction": "same floor", "confidence": 62, "reason": "outdoors, tracks disappearing up a fairly steep incline to a forest clearing is a hillside climb, which counts as same floor"}
+{"item": "R0078", "direction": "down", "confidence": 68, "reason": "the park says a pair of short stone steps leads down toward the wishing well, though short steps between neighbouring outdoor spaces may be level"}
+{"item": "R0079", "direction": "down", "confidence": 70, "reason": "the arrived room says the rubble pile is beneath you and water flows eastward and down the rubble pile, so climbing it from the pool side descends"}
+{"item": "R0080", "direction": "same floor", "confidence": 58, "reason": "a tunnel under the lake to the west connecting two flat outdoor-style training areas; the computed floors are both guesses and the text describes no stairs"}

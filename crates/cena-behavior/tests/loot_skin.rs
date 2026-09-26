@@ -325,3 +325,84 @@ fn skinning_off_means_no_skinning_steps() {
     let mut plan = Planner::new(LootProfile::default(), Memory::default(), &[41]);
     assert_eq!(plan.next(&state), Step::Search(41));
 }
+
+const MADRINOL_TASK: &str = "You have been tasked to retrieve 8 madrinol skins of at least fair quality for Gaedrein in Ta'Illistim.  You can SKIN them off the corpse of a snow madrinol or purchase them from another adventurer.  You can SELL the skins to the furrier as you collect them.";
+
+#[test]
+fn bounty_only_skins_the_bountys_creature_and_nothing_without_one() {
+    let mut skin = skinning();
+    skin.bounty_only = true;
+    let dagger = Some(("77", "dagger", "curved skinning dagger"));
+
+    let mut world = state(dagger);
+    corpse(&mut world, 41, "troll", "cave troll");
+    corpse(&mut world, 42, "madrinol", "snow madrinol");
+    world.bounty.read_line(MADRINOL_TASK);
+    let mut plan = Planner::new(profile(skin.clone()), Memory::default(), &[41, 42]);
+    assert_eq!(
+        plan.next(&world),
+        Step::Skin {
+            corpse: 42,
+            hand: "right"
+        },
+        "the madrinol, not the troll"
+    );
+    plan.outcome_in(&Outcome::Skinned, &world);
+    assert_eq!(plan.next(&world), Step::Search(41), "no second skin");
+
+    let mut world = state(dagger);
+    corpse(&mut world, 42, "madrinol", "snow madrinol");
+    let mut plan = Planner::new(profile(skin), Memory::default(), &[42]);
+    assert_eq!(
+        plan.next(&world),
+        Step::Search(42),
+        "no skinning bounty: no skinning"
+    );
+}
+
+#[test]
+fn a_rotting_chimera_learned_unskinnable_is_described_and_skinned_when_scorpion_tailed() {
+    let dagger = Some(("77", "dagger", "curved skinning dagger"));
+    let mut skin = skinning();
+    skin.unskinnable = vec!["rotting chimera".to_owned()];
+
+    let mut world = state(dagger);
+    corpse(&mut world, 43, "chimera", "rotting chimera");
+    let mut plan = Planner::new(profile(skin.clone()), Memory::default(), &[43]);
+    assert_eq!(plan.next(&world), Step::Describe("chimera".to_owned()));
+    plan.outcome_in(&Outcome::ScorpionTail, &world);
+    assert_eq!(
+        plan.next(&world),
+        Step::Skin {
+            corpse: 43,
+            hand: "right"
+        }
+    );
+
+    let mut world = state(dagger);
+    corpse(&mut world, 43, "chimera", "rotting chimera");
+    let mut plan = Planner::new(profile(skin), Memory::default(), &[43]);
+    assert_eq!(plan.next(&world), Step::Describe("chimera".to_owned()));
+    plan.outcome_in(&Outcome::Stored, &world);
+    assert_eq!(
+        plan.next(&world),
+        Step::Search(43),
+        "any other form stays unskinnable"
+    );
+}
+
+#[test]
+fn a_learned_unskinnable_creature_is_written_into_the_profile_once() {
+    let text = profile(skinning()).to_toml().expect("a profile writes");
+    let names = vec!["cave troll".to_owned()];
+    let written = cena_behavior::loot::remember_unskinnable(&text, &names)
+        .expect("reads")
+        .expect("a new name");
+    let back = LootProfile::parse(&written).expect("reads back");
+    assert_eq!(back.skin.unskinnable, names);
+    assert_eq!(
+        cena_behavior::loot::remember_unskinnable(&written, &names),
+        Ok(None),
+        "already there: nothing to write"
+    );
+}

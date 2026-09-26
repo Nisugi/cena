@@ -1,0 +1,74 @@
+You are taking part in a reading task about a text game's map (GemStone IV). Your job is
+to read room descriptions and judge, for each exit, whether taking it moves a character UP a
+floor, DOWN a floor, or keeps them on the SAME FLOOR.
+
+These are the HARD cases: every exit here was already read once and nobody was confident.
+Expect a fair share to be "same floor". Do not force an answer the text does not support -
+an honest low confidence is more useful than a confident guess.
+
+STRICT RULES ABOUT FILES (breaking these invalidates the work):
+- Read ONLY this INSTRUCTIONS.txt and your one batch file, batch_N.txt, in this folder
+  (about 1,100 lines; read it all, in chunks if needed).
+- Do NOT open, search, grep or list ANY other file or directory. In particular do not open
+  key.json, any .jsonl file, any other batch, any map file, or anything under
+  E:\Cena\reference. Do not use web search. Do not write or run scripts to decide answers.
+  Judge each exit yourself by reading.
+- Write ONLY your one output file, answers_N.jsonl, in this folder.
+
+THE FILE FORMAT
+Each block starts with a line like "=== R0001 ===" and describes one exit: the command the
+character types, then ROOM LEFT and ROOM ARRIVED IN. Each room has its name (in the form
+[Area, Room]), sometimes an area, a setting (indoors/outdoors), sometimes the game's own
+terrain label, one or more descriptions, and the room's OTHER ways out with the room each
+leads to. The exit being judged has been deliberately removed from both rooms' lists.
+
+TWO LINES ARE NEW, AND BOTH CAN BE WRONG. Treat them as hints, never as the answer:
+- "computed floor": the floor a program gave this room WITHOUT using the exit you are
+  judging, and how it got there. "outdoor ground ... floor 0 by definition" is reliable for
+  ordinary ground but says nothing about a cliff top, a rooftop or a gully. "a plain door
+  ... joins its level to an outdoor room" is often wrong for cellars and upper floors that
+  happen to have a back door, a window or a chute. "A GUESS" means ignore the number.
+  If the two rooms' computed floors differ and the text agrees, that is good evidence. If
+  they are equal but the text plainly describes going up or down, trust the text.
+- "what the room's NAME suggests": another model's verdict on the name alone.
+
+WHAT "FLOOR" MEANS HERE (the map author's definitions, which matter more than physical
+height):
+- Answer "up" or "down" only when the character ends on a genuinely different LEVEL:
+  another storey of a building, a treetop or platform in a tree, a roof or tower top, a
+  cellar, crypt or tunnel below, the floor of a ravine or pit, a crow's nest, and so on.
+- Answer "same floor" when the two rooms are on one level, side by side. This INCLUDES
+  walking out onto a bridge, footbridge, plank, pier, dock, walkway, catwalk or causeway: a
+  span is level with the ground at either end. It includes a path, trail, road, tunnel or
+  alley that merely leads somewhere else on the same level.
+- STEPS UP TO A PORCH, VERANDA OR STOOP ARE "same floor". A porch is on its building's
+  ground floor. Short steps between two neighbouring spaces on one level are also level.
+- OUTDOORS, a hillside is not a floor. A trail, slope or stair that simply climbs a hill to
+  more open ground is "same floor". Outdoors, answer "up" or "down" only for a real change
+  of level: up a tree, onto a roof, wall, tower or rigging, up or down a cliff face, down
+  into a pit, ravine, gully or hole.
+- Underground, a tunnel that slopes is still one level; a shaft, a plunge, a ladder or a
+  stair to a named lower or upper level is a change.
+- The game terrain "subterranean" means a room is underground. Going from a
+  non-subterranean room into a subterranean one is normally down; two subterranean rooms can
+  still be on different levels.
+- Use everything: what the room LEFT says about the feature (is it overhead and rising, or
+  a pit, drop or something you peer down into?), what the room ARRIVED IN says (does it
+  describe looking down on where you came from, or up at it?), the room names, and the other
+  exits (a room whose other exit is "down -> Cellar" is above the cellar; a room at the end
+  of a chain of staircases is high). Other exits are hints, not proof.
+- Watch for the common trap of assuming "up" by default. Many exits go down, and many are
+  flat. Decide from the text.
+
+OUTPUT
+Write one JSON object per line to answers_N.jsonl, one line for EVERY block in your batch
+file, in the same order, like:
+{"item": "R0001", "direction": "up", "confidence": 85, "reason": "arrived room says steps descend through the floor back to where we came from"}
+- "direction" must be exactly one of: "up", "down", "same floor".
+- "confidence" is your honest 0-100 estimate that the direction is right. Use the whole
+  range. Use 50-65 when the text genuinely does not say, 90+ only when the text is explicit.
+- "reason" is one short sentence naming the evidence you used. If a computed floor or a name
+  verdict decided it for you, say so.
+
+When you have written the file, reply with just: the number of items answered, and how
+many of each direction you gave.

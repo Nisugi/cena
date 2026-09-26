@@ -36,17 +36,21 @@
 //! meaning changes between `info` and `info full`; the header line is in the
 //! fixture so the order is under test rather than in a comment.
 //!
-//! **2. All 46 skills always arrive, zeros included.** `Armor Use....| 0 0` is
-//! present for a character who has never trained it. An untrained skill is a
-//! *zero*, not an absence -- which is what makes [`SkillSet::clear`] before
-//! applying a table safe, and necessary: it is the only way a skill that
-//! *dropped* to zero is ever recorded.
+//! **2. In `skills full`, all 46 skills arrive, zeros included.**
+//! `Armor Use....| 0 0` is present for a character who has never trained it.
+//! An untrained skill is a *zero*, not an absence -- which is what makes
+//! [`SkillSet::clear`] before applying a table safe, and necessary: it is the
+//! only way a skill that *dropped* to zero is ever recorded.
 //!
 //! > This corrects a recommendation made before the capture was read. I argued
 //! > absent rows should be left alone, reasoning from `InfoReport::merge_into`'s
 //! > `normal` column. The author chose clear-before-apply; the capture shows why
 //! > that is right and the analogy was wrong. `info` genuinely omits a column;
-//! > `skills` omits nothing.
+//! > `skills full` omits nothing.
+//! >
+//! > **CORRECTED 2026-09-25:** this said `skills` omits nothing. Plain `skills`
+//! > omits the untrained ones -- see the last section -- so
+//! > [`SkillSet::replace`] records every skill a table left out as zero.
 //!
 //! **3. Bold marks enhancement per CELL, not per row.** Both numbers are
 //! individually wrapped, and the fragments arrive with their leading spaces
@@ -75,13 +79,40 @@
 //! `tests/character_skills.rs` asserts every one of the 46 appears in the real
 //! capture -- so a typo is a test failure, not a skill that silently never
 //! parses.
+//!
+//! # Folded from the wire by [`read_table`], since 2026-09-25
+//!
+//! **Nothing folded a table into the model before then.** The classifier was
+//! built and tested in M3 and the sync sends `skills full`, but every
+//! [`SkillSet::apply`] call was in a test: `Character::consume_chunk` read
+//! `info`, the profile, standing, currency, the PSMs and experience, and
+//! `character.skills` stayed empty in live play. Found for the hunt, whose
+//! `mstrike` reads `Skills.multiopponentcombat` (`bigshot.lic:6184`, `:6201`).
+//!
+//! A table is Lich's three lines (`infomon/parser.rb:22-25`): the header
+//! `<Name> (at level N), your current skill bonuses and ranks`, the rows, and
+//! the `Training Points: N Phy N Mnt` footer that commits them. Only a table
+//! with both ends is folded, because the next point needs a complete one.
+//!
+//! **`skills` and `skills full` print the same header and differ in the rows.**
+//! `SKILLS - Display your current skills known`; `SKILLS FULL - Display
+//! current value of all skills`, *"including those not trained in"*
+//! (`reference/wiki_clean/Verb_SKILLS.txt:9-11`, `:97`; its plain example,
+//! `:21-37`, has 14 rows and no zero). So a skill a complete plain table does
+//! not list is recorded untrained -- `Some(0)` -- rather than left unknown:
+//! INFERRED from the wiki, and Lich's reading too, since its `Skills.x` is
+//! `Infomon.get(...).to_i` and a skill no table wrote reads 0. `SKILLS BASE`
+//! has its own header (`your base skill bonuses, ranks and goals are:`,
+//! `:61`) and is never read as this table.
 
 use std::collections::BTreeMap;
+
+use crate::state::chunks::Chunk;
 
 /// One skill's two numbers, and whether the wire bolded them.
 ///
 /// Both are `Option` for the reason [`stats`](super::stats) gives: a column the
-/// wire did not carry is *unknown*, which is not the same as zero. A `skills`
+/// wire did not carry is *unknown*, which is not the same as zero. A `skills full`
 /// table does carry both for all 46, but `skills base` (referenced by the
 /// capture's own footer, `(Use SKILLS BASE to display unmodified ranks...)`) is
 /// a second form this type must not misreport when it is implemented.
@@ -508,6 +539,17 @@ impl SkillSet {
         self.skills.get(&kind)
     }
 
+    /// Ranks in one skill, with every modifier the table included: Lich's
+    /// `Skills.<name>` (`attributes/skills.rb:42-46`).
+    ///
+    /// **`None` means no `skills` table has been read**; after one, every skill
+    /// answers, an untrained one `Some(0)`. Lich cannot tell those apart: its
+    /// accessor is `.to_i`, so "never synced" reads 0.
+    #[must_use]
+    pub fn ranks(&self, kind: SkillKind) -> Option<u16> {
+        self.skills.get(&kind)?.ranks
+    }
+
     /// Ranks in a spell circle, by its printed name.
     #[must_use]
     pub fn circle(&self, name: &str) -> Option<u16> {
@@ -542,6 +584,26 @@ impl SkillSet {
         self.circles.clear();
     }
 
+    /// Replace everything with one complete table's rows, from [`read_table`].
+    ///
+    /// Clears first, per [`Self::clear`], then records every skill the rows
+    /// did not name as **untrained**: a complete `skills` table omits exactly
+    /// those (the module docs cite the wiki), and `skills full` names all 46,
+    /// so for it the fill does nothing.
+    pub fn replace(&mut self, rows: &[(SkillLine, bool)]) {
+        self.clear();
+        for (row, bolded) in rows {
+            self.apply(row, *bolded);
+        }
+        for kind in SkillKind::ALL {
+            self.skills.entry(kind).or_insert(Skill {
+                ranks: Some(0),
+                bonus: Some(0),
+                enhanced: false,
+            });
+        }
+    }
+
     /// Record one classified row.
     pub fn apply(&mut self, line: &SkillLine, bolded: bool) {
         match line {
@@ -558,6 +620,85 @@ impl SkillSet {
             SkillLine::SpellCircle { name, ranks } => {
                 self.circles.insert(name.clone(), *ranks);
             }
+        }
+    }
+}
+
+/// The line that opens a `skills` or `skills full` table.
+///
+/// ```text
+/// Ashryn (at level 100), your current skill bonuses and ranks (including all modifiers) are:
+/// ```
+///
+/// Lich's `SkillStart` (`infomon/parser.rb:22`): one word, then
+/// `(at level N)`, then the phrase. The name must be one word, so a player
+/// who *says* the line (`Bob says, "Ashryn (at level ...`) opens nothing.
+/// Leading whitespace is allowed: Lich's pattern requires one, and the
+/// committed capture's header was cut from the front of a longer line
+/// (`crates/cena-protocol/tests/FIXTURES.md`), so which is true is UNVERIFIED.
+#[must_use]
+pub fn is_table_header(line: &str) -> bool {
+    let Some((before, _)) = line
+        .trim_start()
+        .split_once("), your current skill bonuses and ranks")
+    else {
+        return false;
+    };
+    let Some((name, level)) = before.split_once(" (at level ") else {
+        return false;
+    };
+    let word = |s: &str| !s.is_empty() && s.chars().all(char::is_alphanumeric);
+    word(name) && !level.is_empty() && level.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// The line that closes a table: `Training Points: 3673 Phy 0 Mnt ...`.
+///
+/// Lich's `SkillEnd` (`infomon/parser.rb:25`), which is where it commits the
+/// rows it held. Both forms print it (`Verb_SKILLS.txt:48`, and the capture).
+#[must_use]
+pub fn is_table_end(line: &str) -> bool {
+    let Some(rest) = line.strip_prefix("Training Points: ") else {
+        return false;
+    };
+    let number = |s: Option<&str>| s.is_some_and(|s| s.bytes().all(|b| b.is_ascii_digit()));
+    let mut words = rest.split_whitespace();
+    number(words.next())
+        && words.next() == Some("Phy")
+        && number(words.next())
+        && words.next() == Some("Mnt")
+}
+
+/// The last complete `skills` table in a chunk: every row between a header
+/// and its `Training Points:` footer, each with whether it arrived bolded.
+///
+/// `None` when the chunk holds no header, or a header with no footer after it
+/// -- an incomplete table cannot say which skills it left out. `Some` of no
+/// rows is a real answer: a table that lists nothing trained.
+#[must_use]
+pub fn read_table(chunk: &Chunk) -> Option<Vec<(SkillLine, bool)>> {
+    let mut open: Option<Vec<(SkillLine, bool)>> = None;
+    let mut complete = None;
+    for line in chunk.lines() {
+        let text = line.text();
+        if is_table_header(&text) {
+            open = Some(Vec::new());
+        } else if let Some(rows) = open.as_mut() {
+            if is_table_end(&text) {
+                complete = open.take();
+            } else {
+                rows.extend(SkillLine::classify_with_bold(&text, &line.bold_refs()));
+            }
+        }
+    }
+    complete
+}
+
+impl super::Character {
+    /// Fold a chunk's `skills` table, and mark the group taught.
+    pub(super) fn consume_skills(&mut self, chunk: &Chunk) {
+        if let Some(rows) = read_table(chunk) {
+            self.skills.replace(&rows);
+            self.taught.insert(super::snapshot::Group::Skills);
         }
     }
 }

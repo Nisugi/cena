@@ -1,4 +1,4 @@
-//! The definition tables: three TSVs, compiled once, matched in Lich's order.
+//! The definition tables: four TSVs, compiled once, matched in Lich's order.
 //!
 //! See the parent module for what the files are and how they were cut. This
 //! file owns loading them, substituting the hand-ported patterns, and the one
@@ -37,6 +37,9 @@ use regex::{Captures, Regex, RegexSet, RegexSetBuilder};
 const ATTACKS_TSV: &str = include_str!("../../../data/combat_attacks.tsv");
 const RESULTS_TSV: &str = include_str!("../../../data/combat_results.tsv");
 const EFFECTS_TSV: &str = include_str!("../../../data/combat_effects.tsv");
+/// `flare_patterns.rb`'s table, family `flare_mirror`: read only when no
+/// shipped flare matches (`flare.rs`).
+const FLARE_MIRROR_TSV: &str = include_str!("../../../data/combat_flare_mirror.tsv");
 
 /// A pattern re-expressed by hand, replacing the data's row at `(family, order)`.
 #[derive(Debug, Clone, Copy)]
@@ -314,7 +317,7 @@ fn column<'a>(cols: &[&'a str], index: usize) -> Option<&'a str> {
 
 fn build() -> Defs {
     let mut out = Defs::default();
-    for tsv in [ATTACKS_TSV, RESULTS_TSV, EFFECTS_TSV] {
+    for tsv in [ATTACKS_TSV, RESULTS_TSV, EFFECTS_TSV, FLARE_MIRROR_TSV] {
         for line in tsv.lines().skip(1).filter(|l| !l.is_empty()) {
             let cols: Vec<&str> = line.splitn(7, '\t').collect();
             let (Some(family), Some(name)) = (column(&cols, 0), column(&cols, 1)) else {

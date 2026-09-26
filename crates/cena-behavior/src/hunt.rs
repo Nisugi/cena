@@ -39,16 +39,36 @@
 //! the word named, and never run. A lost guard changes when a command
 //! fires, and that is worse than a refusal.
 
+mod aim;
+mod ammo;
+mod boons;
+mod bounty;
+mod censer;
 pub mod chain;
 pub mod command;
+mod death;
 pub mod desk;
 pub mod drive;
 pub mod engine;
+mod errands;
+mod follow;
 pub mod guard;
 pub mod import;
+mod maintain;
+mod monitor;
+mod posture;
 pub mod profile;
+mod quick;
+mod react;
+mod repeat;
+pub mod replies;
 mod rest;
 pub mod said;
+mod targets;
+mod verbs;
+mod wand;
+mod wander;
+mod wrack;
 pub mod yaml;
 
 pub use chain::{LoadError, Loaded, load};
@@ -56,6 +76,6 @@ pub use command::{Command, parse as parse_command};
 pub use desk::Desk;
 pub use drive::{HuntEnd, hunt};
 pub use engine::{Ending, Here, Hunt, Said};
-pub use guard::{Condition, Guard};
+pub use guard::{Condition, Dialog, Fact, Facts, Guard, Measure, Used};
 pub use import::{Import, import};
 pub use profile::{Profile, Step};

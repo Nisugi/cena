@@ -507,10 +507,92 @@ Demonstrated live on a short hunt.
 > - **Stand-ins and gaps, each said to the player where it bites:** loot is `loot #id` and
 >   healing is waiting (the plan's stand-ins, until M6c and M6d); groups, `pull`, `deader`,
 >   ammo, wands, boons and the `censer_between_actions` policy (`plan/33`) are not built.
+>   **Since built, 2026-09-25:** `pull` and `deader` (`8b4dfda`), wands (`f074197`) and
+>   boons (`d87a4ae`). Groups are outside M6 (§8). The censer policy is built
+>   (`hunt/censer.rs`, `plan/33` §2h), and so is ammo (below).
+> - **Found 2026-09-25: the routine's verbs went to the game as written.** §4's table put
+>   `kweed`, `coupdegrace` and `fire` in scope as "an action Hunt can send", and nothing
+>   sent them as bigshot does: `kweed` is not a game command at all (bigshot evokes
+>   Tangleweed at the creature, `cmd_weed`, `bigshot.lic:5750-5765`) and `coupdegrace` is
+>   `cman coupdegrace #id` (`cmd_cmans`). **Built:** `hunt/verbs.rs` sends each bigshot
+>   verb as its handler does, aimed at the creature by id, with the handler's gates the
+>   model can answer (known, affordable, cooling, stamina, a plant already here); a spell
+>   is `prepare N` then `cast #id` through `crate::cast`, a self-cast one `incant N`. A
+>   game command (`store weapon`, `weapon volley`) goes as written. Not ported yet, each
+>   skipped and named once to the player: `eachtarget`, the buff-first forms (`celerity`,
+>   `slayer`, `tonis`), `resonance`, `briar`, `efury`, `tether`, `nudgeweapons`,
+>   `unarmed`, `mstrike`, `wandolier` and `wield` (needs the worn list); `jewel` followed
+>   (below).
 >   **Closed the same day, on the author's objection to trying it live with gaps open:**
 >   Assume Aspect is cast as `cmd_assume` casts it (the spell, evoked or prepared, then
 >   `assume <aspect>` once the effects list shows it), and a walk inside a hunt reads and
 >   keeps the character's travel file as travel's own desk does.
+> - **Since built, on the author's *"all of bigshot"* (2026-09-25):** `jewel`, sent from
+>   `cena-behavior/src/gemstone/` as Rule 3.4 asks (`4102b60`); ammo, an arrow the game will
+>   not fire stowed or put in `ammo_container` (`d4540da`); the dead man's switch and the
+>   depart switch (`35afb9a`, `hunt/death.rs`); the interaction monitor, bigshot's
+>   `monitor_*` keys raised as warnings, off unless the profile turns it on (`hunt/monitor.rs`,
+>   `tests/hunt_monitor.rs`); quick hunting, `;hunt <name> quick`, this room until it is clear
+>   on `quickhunt_targets` and `quick_commands` (`hunt/quick.rs`, `tests/hunt_quick.rs`).
+>   Then the verbs that run more than once or carry a buff: `eachtarget` and `force <step>
+>   till N` (`hunt/repeat.rs`), `resonance`, and `celerity`/`slayer`/`tonis` before a step
+>   (`hunt/verbs.rs`); `tests/hunt_repeat.rs`, 8 tests, 11 mutations each turned one red.
+>   And the creature facts from `inventory/12` §2 are read (`hunt/targets.rs`): allies are
+>   never fought, hazard creatures are not `any` targets, and a no-corpse kill is counted.
+>   Stance as bigshot takes it: the hunting stance before each step but a bare spell number,
+>   `wait`, `sleep`, `wand`, `berserk`, `script`, `hide`, `nudgeweapon` (`bigshot.lic:4051`),
+>   and a stance spell cast offensive and put back as Lich's `Spell#cast` does
+>   (`tests/hunt_stance.rs`); Celerity and 902 cast untargeted.
+>   Then the rest of an audit of every handler bigshot dispatches against what Hydra sent
+>   (2026-09-25): the gates it skipped and the handlers that wait or read the answer
+>   (`hunt/verbs/gated.rs`, `hunt/follow.rs`, `tests/hunt_gated.rs`, 16 tests, 31 mutations
+>   each turned one red): `stomp` channels Tremors, `leech` and `rapid` wait on their
+>   cooldowns, `burst`/`surge` on stamina and buff, `smite` only the undead, `throw` not
+>   the prone, `curse` releases and prepares once, `sacrifice` appraises first, `depress`
+>   begins the song, `unravel` stops it, `efury`/`tether`/`wait`/`sleep`/`berserk` hold,
+>   `hide N` retries, `dhurl` recovers, `dislodge` frees a lodged part, `ambush <part>`
+>   aims at the creature, and `kick` is `punch` while rooted. `verbs.rs` split: its
+>   spells and tables moved into `verbs/`. And `cmd_spell`'s own rules
+>   (`tests/hunt_spell_rules.rs`): a routine spell the character cannot afford sends the
+>   hunt to rest unless bigshot's `oom` is negative (a blank one is 0, so on:
+>   `rest.when.unaffordable`), Celerity is not recast while up nor Camouflage while
+>   hidden, five cooldowns and the short buffs' are respected, Mana Leech's recovery adds
+>   its 5; Soothe goes first while a calming spell is on the character; the hunter stands
+>   in the stand stance, and a crossbow archer stays kneeling to fire. And Lich's
+>   `available?` before every maneuver, technique, shield move and feat (the model's
+>   `psm_availability`, `a392b77`: trained, affordable, not cooling, not overexerted;
+>   unknown lets it go), `shield bash` as the Shield Bash maneuver when that is available,
+>   703 and 1614 not cast at a creature they already hold, and the frail read off the
+>   appraise reply's last line (`tests/hunt_psm.rs`). **The model read no PSM ranks
+>   before `a392b77`,** so the coup gate never fired live; it does now. Then `wield` and
+>   `briar` on the model's worn list, `wandolier` on its reserve (`5a56feb`, `b05378f`), and
+>   `mstrike` and `unarmed` with bigshot's UAC and Mstrike tabs imported (`[unarmed]`,
+>   `[mstrike]`; `hunt/verbs/ucs.rs`, `tests/hunt_ucs.rs`): Multi-Opponent Combat's ranks
+>   (read since `cf32e5d`; before it, as in Lich unsynced, 0), no nest, the cooldown,
+>   `quickstrike 1`, unfocused at the mob, a Paladin's or Empath's 1607/1107 first; the
+>   unarmed attack by the creature's positioning and the follow-up the game offered. And
+>   `nudgeweapons`, each weapon on the ground carried out an exit and dropped, its lines
+>   served ahead of the room change that would otherwise clear them: **every verb bigshot
+>   dispatches is now sent**, the unported list gone. An assault and a bearhug are waited
+>   out as bigshot waits them (12 s, 17 s), and a line the game answers `...wait` goes again.
+>   And bounty mode, `;hunt <name> bounty` (bigshot's `;bigshot bounty`, `hunt/bounty.rs`,
+>   `tests/hunt_bounty.rs`): hunt until the guild's task is done, failed or a new one is
+>   ready, rest, and end at the rest; not while bandits are here on a bandit bounty.
+>   The gem and skin counts followed on 2026-09-26, from the containers the model keeps
+>   (`state.inventory`, Lich's `GameObj.containers`): gems held, loose skins, and each skin
+>   bundle measured once, the two skin counts apart as bigshot keeps them. So did the last
+>   three gaps: `throw` empties the hands and takes them back whatever it meets, an assault
+>   the attack type refuses swaps once and goes again, and Fury at tier 3 carries the tier 3
+>   attack; the model now folds the enhancive totals report (`0bdced7`).
+>   `hunting_scripts` and `resting_scripts` are named script by script: Hydra runs no Lich
+>   script, and says where a script's work is built in (heal, loot, `;keep`, `;waggle`); a
+>   resting `ewaggle` becomes `rest.waggle`, the waggle profile run as each rest begins
+>   (`tests/hunt_rest_scripts.rs`).
+> - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
+>   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
+>   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,
+>   forgets the target and the held room, and hunts on after `Ready`; a walk the drop cuts
+>   short is walked again (`plan/39` Stage 0, `tests/hunt_reconnect.rs`).
 > - **The corpus cut, and what it found.** The author's first condition was *"nothing from
 >   hinterwilds"*, and MEASURED over every third of Nisugi's 6,570 sessions plus all of the
 >   newest 45, every session with a fight is in the Hinterwilds or the Duskruin Arena; the
@@ -546,6 +628,10 @@ Demonstrated live on a short hunt.
 > choosing what bigshot chose on real frames; what only a live run can show is the driver's
 > half: that each verb is sent as the game takes it, settled on roundtime, and that a walk
 > inside the hunt lands.
+>
+> **ORDER, the author, 2026-09-25:** *"The live run is at the end! We gotta get all the other
+> m6 stuff so I can test it in the live run!!"* The live run is not next: everything else in
+> M6 is built first, and one live run tests all of it.
 
 **M6c — eloot.** Its port plan first (`plan/31`), then the halves a hunt calls: loot,
 sort, box in hand. Town errands follow in the same plan's order.
@@ -559,17 +645,97 @@ sort, box in hand. Town errands follow in the same plan's order.
 > a critter's bag emptied, the sigil) is BUILT too, and so is skinning (`loot/skin.rs`,
 > 2026-09-24); Stage 4 (selling during the rest) is under way by the author's call to
 > finish eloot before M6d: 4a, the round to the gem shop and the pawnshop inside the rest
-> (`cena-behavior/src/town/`), is BUILT; 4b (furrier, collectibles, Chronomage, bank) and
-> 4c (the locksmith pool) follow. **`plan/34`** stages the author's `loottracker.lic` as the loot ledger: the
+> (`cena-behavior/src/town/`), 4b (furrier, collectibles, Chronomage, bank) and 4c (the
+> locksmith pool, boxes emptied by the loot planner) are BUILT. **`plan/34`** stages the author's `loottracker.lic` as the loot ledger: the
 > classifier in the model, the recorder beside combat's, SQLite already embedded. Its
 > All four stages are BUILT: the classifier, the ledger, `;loot` and `;combat`
 > (`cena-model/src/state/ledger.rs`, `cena-session/src/ledger.rs`, `cena/src/loot.rs`,
 > `cena/src/combat.rs`); recording is `--record`/`--no-record`, on in debug builds.
 
-**M6d — eherbs.** Its port plan first (`plan/32`), then healing at the rest room.
+**M6d — eherbs.** ~~Its port plan first (`plan/32`), then healing at the rest room.~~
+**BUILT 2026-09-25 as `plan/36`** (the number `plan/32` was never used): the herb table
+in the model, healing at the rest room and as `;heal`, the Survivalist's Kit and its
+distiller, stocking at the herbalist. The spell scripts followed as `plan/37`.
 
 **M6e — the `;` tools.** `;foreach` and `;multi` on the `;` line, and `;sorter` as a
 projection transform ported from VellumFE. None depends on the hunt, so they can move earlier.
+
+> **`;sorter` BUILT 2026-09-25, not yet run live.** VellumFE's `src/core/sorter.rs` is
+> `crates/cena-ui/src/sorter.rs`: while sorting is on, the line assembler
+> (`crates/cena-ui/src/lines.rs`) keeps a main-stream line's pieces with each link's noun, and
+> a finished container look becomes a header and a bold-labelled line per `gameobj` category,
+> duplicates counted. The switch is per session in the web pump
+> (`cena_web::Sessions::sort_containers`), flipped by `;sorter [on|off|status]`
+> (`crates/cena/src/sorter.rs`). Off until asked, which is VellumFE's default; not saved,
+> since nothing writes the settings file yet. **Stricter than VellumFE:** a look is sorted
+> only when it is a list end to end. The herb kit's look goes on past its list, and VellumFE's
+> transform drops every dose count (182 of 475 looks in a month of Nisugi's logs). 14 tests:
+> 10 in `cena-ui` (6 over five real looks, `crates/cena-ui/tests/fixtures/container_looks.xml`;
+> 4 synthetic, two of them VellumFE's own), 3 for the command, 1 end to end through the
+> parser and the pump (`crates/cena/tests/web_sorter.rs`). `;foreach` and `;multi` followed (`3804678`, the note below).
+
+> **`;multi` and `;foreach` BUILT 2026-09-25, not yet run live.** One behavior, a **batch**
+> (`crates/cena-behavior/src/batch/`; `VellumFE`'s own word for its foreach): a list of lines sent
+> in order by one driver that sends as the hunt sends -- roundtime and cast roundtime settled,
+> through `Gate::Act`, the prompt taken -- with Lich's `fput` answer to a refusal added, since a
+> list has no next tick to decide again: a gate refusal is waited out and the line tried again
+> (given up after 60 s), and the game's `...wait N` is waited out and the line resent (five times
+> at most). One of each kind at a time per session (`batch/desk.rs`, authority tokens 4 and 5); a
+> second is refused, as Lich and `VellumFE` refuse it. `;multi stop`, `;foreach stop`.
+>
+> **A Hydra command in a batch** -- `;multi 2,get gem,;sc 401,put gem in sack` -- is run through
+> the binary's own command table and waited for until what it started is over. The families that
+> start something (travel, the hunt desk, batches) now hand back its task (`Took::Started`,
+> `crates/cena/src/commands.rs`); the batch gives the authority back while it runs and takes it
+> again after. Typed at the prompt, nothing changes.
+>
+> **`;multi` is multi.lic whole** (65 lines): the count first or last, semicolons when there is
+> no comma, an entry with the symbol run and waited for. On purpose: entries are trimmed and a
+> blank skipped; a count neither first nor last is refused (multi.lic ran zero times, silently);
+> a `;multi` inside a `;multi` is refused.
+>
+> **`;foreach`, MEASURED** (`wc -l`; `grep -n "^class\|^module\|^  def " foreach.lic`): 2,192
+> lines. 166 are header and changelog; 504 the `ItemMatcher` (73 of them reading `inventory
+> full`, 95 the locker, 56 marked and registered, 70 `finalize`); 177 the Stormfront status bar;
+> about 490 setup, changelog, help and formatting; and 625 `run` -- 79 options, 27 filter, 112
+> rewriting the commands, 116 targets, 217 running them, 20 listing. The core is built: the line,
+> the matching and ordering, named containers, the rewrites and the running. What reads
+> `inventory full`, the locker, the status bar and Lich's own plumbing is not, and **every word
+> left out is refused by name**, never ignored: a dropped `marked` would act on every item.
+>
+> | foreach.lic | Where | Here |
+> |---|---|---|
+> | `[attr=]value in\|on\|under\|behind <targets>[; commands]`, separators `;` `/` `\|` | `:1546`, `:862` | BUILT, `batch/foreach.rs` |
+> | type (the default), sellable, noun, name, fullname, quick; `*`, `a,b`, `/pattern/`, `type=none` | `:1436-1486` | BUILT, on the model's `gameobj` table |
+> | `all`, `any`, `everything` | `:1645` | BUILT, anchored: Lich's test is not, so `small` meant everything |
+> | unique, first N (or N), after N (skip), sorted, nsorted, reversed | `:1553-1630`, `:609-678` | BUILT, `batch/pick.rs`; unique before reversed, as Lich has it (`VellumFE` reverses first) |
+> | marked, unmarked, registered, unregistered | `:244-283`, `:508-523` | refused: they read `inventory full`'s notes |
+> | a named container, several, a trailing `?` | `:524-576`, `:1870-1885` | BUILT: a quiet `look in`, the contents off the `<inv>` feed Lich's `GameObj.containers` reads; `stow` found by its target |
+> | `floor`, `ground`, `room`; `loot` | `:463-479`, `:1836-1867` | BUILT |
+> | `inv`, `fastinv`/`qinv`, `worn` | `:284-443`, `:481-486` | refused: `inventory full` is not read -- there is no committed capture of it, and the corpus is the author's -- and the worn list is not kept |
+> | `locker` | `:304-390`, `:1495-1520` | refused: the locker's manifest, bins and door are not modelled |
+> | `desc`, `previous`/`last` | `:468-473`, `:487-492` | refused: small, and not asked for |
+> | a collective container (`Looking at the mannequins`) | `:553-560` | not read: said as an answer foreach does not know |
+> | `item`, `noun`, `name`, `container` filled in | `:1936-1941` | BUILT |
+> | verbs completed, a bare verb on the item, `get` before a first `sell`, `return` after a lone `appraise`, a first `drop` as `_drag` | `:1693-1760` | BUILT |
+> | a script among the commands | `:1673-1680`, `:1963-1969` | BUILT, as a Hydra command |
+> | `move`/`fastmove`, `return`, `unmark`, `echo`, `sleep`, `waitrt(?)`, `waitcastrt(?)`, `waitfor`, `waitre`, `waitmana`/`hp`/`spirit`/`stamina` | `:1970-2121` | BUILT; `move` does not learn the container's id from its first `put` (`:2002-2005`), and `fastmove` is `move` |
+> | `stash`, `giveitem`, `pause` | `:2027-2049`, `:2088-2104` | refused: Lich's lootsack settings; a give is `give item to X; waitfor X has accepted`; Hydra has no pause |
+> | the `!` prefix | `:1669` | accepted and ignored: every line waits for its prompt |
+> | no commands, the list; `Item N of M` every tenth | `:2132-2149`, `:1924-1925` | BUILT |
+> | status bar, first-time setup, changelog, help formatting, stopping `;sorter` | `:680-856`, `:937-1346`, `:1391-1404` | not ported: Lich's plumbing |
+>
+> **Decisions the author may want back**, each the simplest this plan allows: a second batch of a
+> kind is refused where the hunt and travel desks replace; a `;` entry nobody knows stops the
+> list where Lich went on; the looks are quiet, as the sync's commands are; `all` is anchored.
+> `cena-behavior` takes `regex` directly -- the crate `cena-model` already builds -- for the
+> player's `/patterns/`.
+>
+> MEASURED: 47 tests -- `batch_multi` 17, `batch_foreach` 18, `batch_foreach_run` 10 (over the
+> real looks in `crates/cena-ui/tests/fixtures/container_looks.xml`), and 2 in
+> `crates/cena/src/batch.rs`, a typed `;multi` waiting on the `;go2` it started, through the real
+> command table. Eighteen mutations each turned a test red; the one that did not at first -- a
+> gate refusal skipped instead of retried -- was a gap, now two tests.
 
 **M6 live acceptance, author present.** Nisugi runs `ojandhaart` through at least one full
 cycle: hunt, a rest threshold, walk to rest, loot stored, healed, walk back, hunt. It is

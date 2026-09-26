@@ -259,6 +259,13 @@ impl SessionHandle {
         self.desk.set(desk).is_ok()
     }
 
+    /// Let `bare` take lines typed without the symbol (`Desk::set_bare`);
+    /// `false` if no desk is registered or something already does.
+    #[must_use]
+    pub fn set_bare(&self, bare: super::claimant::Bare) -> bool {
+        self.desk.get().is_some_and(|desk| desk.set_bare(bare))
+    }
+
     /// Change the command symbol of the desk already registered; `false` if
     /// none is. See `Desk::set_symbol`.
     #[must_use]

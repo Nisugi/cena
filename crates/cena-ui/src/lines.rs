@@ -3,6 +3,7 @@
 use std::collections::VecDeque;
 
 use crate::projection::bounded_text;
+use crate::sorter::{self, Piece};
 use crate::view::Closed;
 use crate::{StoryLine, StyledRun};
 
@@ -15,15 +16,24 @@ pub const MAX_LINE_RUNS: usize = 256;
 pub const MAX_PENDING_STREAMS: usize = 32;
 const MAX_STREAM_BYTES: usize = 128;
 const MAX_PRESET_BYTES: usize = 128;
+/// Pieces kept for the sorter per unfinished line; past it the line is shown
+/// unsorted. MEASURED: the longest container look in a month of the author's
+/// logs names 108 items, which is 217 pieces (`crate::sorter`).
+const MAX_SORTED_PIECES: usize = 4 * MAX_LINE_RUNS;
 
 /// Bounded unfinished lines, independent per stream and ordered by recent use.
 ///
 /// A stream switch does not end its line: the enclosing stream can resume after
 /// an interleaved thought. A prompt calls `flush`; generation changes and lag
 /// recovery call `reset` so text from different histories is never joined.
+///
+/// With [`Self::sort_containers`] on, a main-stream container look finishes
+/// as one line per category (`;sorter`).
 #[derive(Debug, Default)]
 pub struct LineAssembler {
     pending: VecDeque<(String, Pending)>,
+    /// `;sorter`, for lines begun from now on. Off until the session asks.
+    sorting: bool,
 }
 
 #[derive(Debug, Default)]
@@ -31,6 +41,11 @@ struct Pending {
     runs: Vec<StyledRun>,
     bytes: usize,
     truncated: bool,
+    /// The line piece by piece, as pushed, with the object each names: what
+    /// the sorter reads, since merging same-style runs loses where a link
+    /// began. `None` unless sorting was on when a main-stream line began, so
+    /// no other line pays for it.
+    pieces: Option<Vec<Piece>>,
 }
 
 impl LineAssembler {
@@ -42,6 +57,19 @@ impl LineAssembler {
     /// truncation flag. Oversized stream names are emitted immediately, marked
     /// truncated, so shortened keys can never merge unrelated streams.
     pub fn push(&mut self, stream: &str, run: &StyledRun, ends_line: bool) -> Vec<StoryLine> {
+        self.push_naming(stream, run, None, ends_line)
+    }
+
+    /// [`Self::push`] for a run that names a game object: the `noun=` of the
+    /// `<a exist= noun=>` link it sits in (`TextFrame::object`). Only the
+    /// sorter reads it; a line's runs are the same either way.
+    pub fn push_naming(
+        &mut self,
+        stream: &str,
+        run: &StyledRun,
+        noun: Option<&str>,
+        ends_line: bool,
+    ) -> Vec<StoryLine> {
         let mut lines = Vec::new();
         let mut pending =
             if let Some(index) = self.pending.iter().position(|(key, _)| key == stream) {
@@ -54,39 +82,48 @@ impl LineAssembler {
                     && let Some((key, mut old)) = self.pending.pop_front()
                 {
                     old.truncated = true;
-                    lines.push(old.finish(key));
+                    old.finish_into(key, &mut lines);
                 }
-                Pending::default()
+                self.fresh(stream)
             };
         let key = bounded_text(stream, MAX_STREAM_BYTES).to_owned();
         for (index, piece) in run.text.split('\n').enumerate() {
             if index > 0 {
-                lines.push(std::mem::take(&mut pending).finish(key.clone()));
+                let next = self.fresh(stream);
+                std::mem::replace(&mut pending, next).finish_into(key.clone(), &mut lines);
             }
-            pending.append(piece, run);
+            pending.append(piece, run, noun);
         }
         if stream.len() > MAX_STREAM_BYTES {
             pending.truncated = true;
-            lines.push(pending.finish(key));
+            pending.finish_into(key, &mut lines);
             // Even complete lines preceding the tail have a shortened stream.
             for line in &mut lines {
                 line.truncated = true;
             }
         } else if ends_line {
-            lines.push(pending.finish(key));
+            pending.finish_into(key, &mut lines);
         } else {
             self.pending.push_back((key, pending));
         }
         lines
     }
 
+    /// Turn `;sorter` on or off: a main-stream container look begun from now
+    /// on finishes as one line per category, or as it came.
+    pub fn sort_containers(&mut self, on: bool) {
+        self.sorting = on;
+    }
+
     /// Close nonempty partial lines at a prompt or clean stream end.
     pub fn flush(&mut self) -> Vec<StoryLine> {
-        self.pending
-            .drain(..)
-            .filter(|(_, pending)| !pending.runs.is_empty() || pending.truncated)
-            .map(|(stream, pending)| pending.finish(stream))
-            .collect()
+        let mut lines = Vec::new();
+        for (stream, pending) in self.pending.drain(..) {
+            if !pending.runs.is_empty() || pending.truncated {
+                pending.finish_into(stream, &mut lines);
+            }
+        }
+        lines
     }
 
     /// Discard fragments after native invalidation or a lost event interval.
@@ -98,10 +135,20 @@ impl LineAssembler {
     pub fn clear_stream(&mut self, stream: &str) {
         self.pending.retain(|(key, _)| key != stream);
     }
+
+    /// A new line on `stream`, keeping pieces for the sorter only when it
+    /// will read them: sorting is on, and this is the main stream, where a
+    /// look arrives (`VellumFE` sorts `main` only, `flush_line.rs:426`).
+    fn fresh(&self, stream: &str) -> Pending {
+        Pending {
+            pieces: (self.sorting && (stream.is_empty() || stream == "main")).then(Vec::new),
+            ..Pending::default()
+        }
+    }
 }
 
 impl Pending {
-    fn append(&mut self, text: &str, style: &StyledRun) {
+    fn append(&mut self, text: &str, style: &StyledRun, noun: Option<&str>) {
         if text.is_empty() || self.truncated {
             return;
         }
@@ -136,6 +183,39 @@ impl Pending {
             return;
         }
         self.bytes += piece.len();
+        if let Some(pieces) = &mut self.pieces {
+            if pieces.len() < MAX_SORTED_PIECES && !self.truncated {
+                pieces.push(Piece {
+                    run: StyledRun {
+                        text: piece.to_owned(),
+                        bold: style.bold,
+                        monospace: style.monospace,
+                        preset: style.preset.clone(),
+                    },
+                    noun: noun.map(str::to_owned),
+                });
+            } else {
+                self.pieces = None;
+            }
+        }
+    }
+
+    /// Finish into `lines`: sorted, when this is a whole container look the
+    /// sorter takes (`crate::sorter`), and otherwise as it came.
+    fn finish_into(self, stream: String, lines: &mut Vec<StoryLine>) {
+        if !self.truncated
+            && let Some(sorted) = self.pieces.as_deref().and_then(sorter::sort)
+        {
+            for runs in sorted {
+                let mut line = Self::default();
+                for run in &runs {
+                    line.append(&run.text, run, None);
+                }
+                lines.push(line.finish(stream.clone()));
+            }
+            return;
+        }
+        lines.push(self.finish(stream));
     }
 
     /// **`closed` is left as [`Closed::Main`] here, deliberately.**
