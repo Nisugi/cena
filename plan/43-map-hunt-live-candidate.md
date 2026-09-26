@@ -3,7 +3,7 @@
 Prepared 2026-09-25. Local branch: `feat/despana-native-hunt-setup`.
 Base: `924a080`, treating PRs #13 and #14 as merged. This does not merge them,
 publish another PR, or establish Nisugi's acceptance of the proposed extensions.
-Contract proposal: [36-map-hunt-setup-proposal.md](36-map-hunt-setup-proposal.md).
+Contract proposal: [42-map-hunt-setup-proposal.md](42-map-hunt-setup-proposal.md).
 
 ## What is ready
 
