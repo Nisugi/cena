@@ -103,6 +103,16 @@ pub async fn hunt(
     learned: impl FnMut(&[String]) + Send,
 ) -> HuntEnd {
     let (snapshot, events) = joined;
+    let hunting_map = match super::setup::hunting_map(machine.profile(), map) {
+        Ok(map) => map,
+        Err(why) => {
+            handle.say(Notice::line(
+                NoticeKind::Error,
+                format!("Hunt: invalid membership: {why}"),
+            ));
+            return HuntEnd::Finished(Ending::NoHuntingRoom);
+        }
+    };
     // What the profile already says cannot be skinned; a name learned beyond
     // it is written back.
     let saved_unskinnable = machine
@@ -121,6 +131,7 @@ pub async fn hunt(
         state: snapshot.state,
         events,
         map,
+        hunting_map,
         machine,
         last_room: None,
         notes,
@@ -143,6 +154,7 @@ pub async fn hunt(
 }
 
 struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> {
+    hunting_map: Option<Map>,
     handle: &'a SessionHandle,
     cancel: &'a CancellationToken,
     token: AuthorityToken,
@@ -191,7 +203,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             }
             let here = self.locate();
             let exits: Vec<RoomId> = here
-                .and_then(|room| self.map.room(room))
+                .and_then(|room| self.hunting_map.as_ref().unwrap_or(self.map).room(room))
                 .map(|room| {
                     room.exits
                         .iter()

@@ -37,6 +37,42 @@ use std::collections::BTreeMap;
 
 use super::Injury;
 
+/// Keep injury folding and observation coverage together. An unrecognized
+/// image preserves legacy injury behavior but cannot prove this part healthy.
+pub(super) fn apply_image(character: &mut super::Character, part: &str, name: &str) {
+    if let Some(index) = ALL_PARTS.iter().position(|id| *id == part) {
+        if name == part
+            || matches!(
+                name,
+                "Injury1" | "Injury2" | "Injury3" | "Scar1" | "Scar2" | "Scar3"
+            )
+        {
+            character.observed_body_parts |= 1 << index;
+        } else {
+            character.observed_body_parts &= !(1 << index);
+        }
+    }
+    let rank = |prefix: &str| -> Option<u8> { name.strip_prefix(prefix)?.parse().ok() };
+    let known = character.injuries.get(part).copied().unwrap_or_default();
+    let injury = if let Some(wound) = rank("Injury") {
+        // A wound covers a scar; it is not evidence the old scar healed.
+        Injury {
+            wound,
+            scar: known.scar,
+        }
+    } else if let Some(scar) = rank("Scar") {
+        // A scar image means no wound remains over it.
+        Injury { wound: 0, scar }
+    } else {
+        Injury::default()
+    };
+    if injury.is_hurt() {
+        character.injuries.insert(part.to_owned(), injury);
+    } else {
+        character.injuries.remove(part);
+    }
+}
+
 /// The sixteen body parts the `injuries` dialog names.
 ///
 /// Wire spelling, which is what the dialog's `id` attribute carries and what

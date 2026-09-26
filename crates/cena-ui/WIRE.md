@@ -12,6 +12,15 @@ Every message has `kind` and `version: 1`. Session-bearing messages contain
 and update `cursor` values use the same encoding. They number presentation
 updates, not game events. Never convert these fields to JavaScript Number.
 
+`view.map_location` is an optional additive projection. Older servers omit it.
+When supplied it contains `map_sha256` (64 lowercase hex characters: the SHA-256
+of the exact native combined-map bytes) and `room` (a u32 map node ID or null).
+This is **not** `view.room.id`, which remains the observed game UID. Null means
+unresolved, including ambiguity. Only a Ready native snapshot supplies this
+projection; reconnecting/closed/connecting and degraded views omit it. The
+browser must also clear the marker when its viewer connection is lost, even if
+it retains the last room description. This field grants no command authority.
+
 | Kind | Other fields | Meaning |
 | --- | --- | --- |
 | `authenticate` | `token`, optional `session` | First client message; no state before authentication. `session` names the character this page is for; absent, the hub is served -- except by a server built for one session (`WebServer::bind`), which serves that session. |

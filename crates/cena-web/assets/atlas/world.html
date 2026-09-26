@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hydra · World map</title><link rel="stylesheet" href="world.css"></head>
+<body><header><span class="brand">HYDRA / FIELD ATLAS</span><h1>World map</h1>
+<p>Choose a region → explore its Map or Places → open an area map.</p></header>
+<main><div class="toolbar"><label>Search all regions <input id="world-query" type="search" placeholder="Region, area, place or room number…"></label>
+<label><input id="world-special" type="checkbox" checked> Include scripted / special connections</label>
+<label><input id="world-buckets" type="checkbox"> Include non-geographical buckets</label></div>
+<p id="world-status" role="status">Loading world connections…</p>
+<section class="world-body"><div><div class="camera"><button id="world-in" aria-label="Zoom in">+</button><button id="world-out" aria-label="Zoom out">−</button><button id="world-fit">Fit world</button></div><div class="world-viewport"><svg id="world-map" role="group" aria-label="Recorded connections between regions"></svg></div></div>
+<aside id="world-detail" aria-live="polite"><h2>Select a region</h2></aside></section>
+<p class="hint">Schematic, not geographical positions or travel distances. Arrowheads show recorded direction; crossings are not junctions. Blue = plain exits; gold dashed = scripted/special only. Direct cross-region exits only: travel through Transport routes or unassigned rooms is not collapsed into a guessed link. Enable non-geographical buckets to inspect those boundary records. This does not confirm accessibility or a usable route.</p>
+<details id="world-undrawn"><summary>Connections without a clear schematic line</summary><div></div></details>
+<section><h2 id="results-heading">Regions</h2><div id="world-results"></div><p id="search-status" role="status"></p></section>
+</main><footer>Read-only reference atlas · no game commands. Keep your character tab open separately. Missing area assignments remain provisional. <a href="manifest.json">Build inventory</a> · Creature reference data: Elanthia Online / Lich5, <a href="LICH-LICENSE.txt">BSD 3-Clause license</a>. Game room content remains attributed to GemStone IV / Simutronics.</footer>
+<script type="module" src="world-view.mjs"></script></body></html>

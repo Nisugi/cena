@@ -11,6 +11,7 @@ axum = { version = "0.8", features = ["ws"] }
 tokio = { version = "1", features = ["macros", "rt", "sync", "time", "net"] }
 tokio-util = "0.7"
 serde_json.workspace = true
+serde.workspace = true
 getrandom = "0.3"
 
 [dev-dependencies]

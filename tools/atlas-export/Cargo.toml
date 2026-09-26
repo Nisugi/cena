@@ -1,0 +1,12 @@
+[package]
+name = "hydra-atlas-export"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+cena-map = { git = "https://github.com/Nisugi/cena", branch = "main" }
+cena-map-layout = { git = "https://github.com/Nisugi/hydra-mapper", rev = "e98f669" }
+serde_json = "1"

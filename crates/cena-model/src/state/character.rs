@@ -218,6 +218,9 @@ pub struct Character {
     /// `BTreeMap` for criterion 7: a replay iterating a `HashMap` would be
     /// non-deterministic.
     pub injuries: BTreeMap<String, Injury>,
+    /// Parts explicitly observed in this connection, for conservative recovery.
+    /// Not persisted: an empty injury map alone cannot prove a healthy body.
+    pub observed_body_parts: u16,
     /// `<progressBar id='pbarStance' text='defensive (100%)'>`.
     pub stance: Option<String>,
     /// `pbarStance`'s `value=`: percent of stance contributing to defense.
@@ -383,6 +386,7 @@ impl Character {
         let Self {
             experience,
             injuries,
+            observed_body_parts,
             stance,
             stance_percent,
             encumbrance,
@@ -405,6 +409,7 @@ impl Character {
 
         // --- Cleared: a suppression flag whose evidence is gone ------------
         *shrouded = false;
+        *observed_body_parts = 0;
 
         // `profile` must be run again to be true again: a title or an
         // achievement can change while a character is logged out, and nothing
@@ -545,28 +550,7 @@ impl Character {
     /// therefore the best available answer rather than a complete one; see
     /// [`injured`] for what that costs.
     pub(super) fn apply_injury_image(&mut self, part: &str, name: &str) {
-        let rank = |prefix: &str| -> Option<u8> { name.strip_prefix(prefix)?.parse().ok() };
-        let known = self.injuries.get(part).copied().unwrap_or_default();
-        let injury = if let Some(wound) = rank("Injury") {
-            // **The scar is retained.** A wound image is not evidence that a
-            // previously-reported scar healed; it is the wound covering it.
-            Injury {
-                wound,
-                scar: known.scar,
-            }
-        } else if let Some(scar) = rank("Scar") {
-            // A scar image means no wound remains over it.
-            Injury { wound: 0, scar }
-        } else {
-            // `name == id`, or anything else the game sends: whole.
-            Injury::default()
-        };
-
-        if injury.is_hurt() {
-            self.injuries.insert(part.to_owned(), injury);
-        } else {
-            self.injuries.remove(part);
-        }
+        body::apply_image(self, part, name);
     }
 }
 

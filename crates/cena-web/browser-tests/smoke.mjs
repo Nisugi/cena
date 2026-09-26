@@ -20,7 +20,9 @@ const assets = new URL("../assets/", import.meta.url);
 const output = await mkdtemp(join(tmpdir(), "hydra-browser-smoke-"));
 const server = createServer(async (request, response) => {
   const name = request.url === "/" ? "index.html" : request.url.slice(1);
-  if (!["index.html", "app.js", "session.js", "style.css"].includes(name)) {
+  if (!["index.html", "app.js", "session.js", "style.css", ...[
+    'minimap', 'model', 'display-layout', 'profile', 'town-layout', 'reference-layout',
+  ].map(module => `atlas/${module}.mjs`)].includes(name)) {
     response.writeHead(404).end();
     return;
   }

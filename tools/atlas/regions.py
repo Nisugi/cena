@@ -1,0 +1,18 @@
+REGIONS = {
+    'unassigned-region': ('', None, ''),
+    'consultation': ('Consultation Rooms and Cells', None, 'special-'),
+    'events': ('Events', None, 'special-'),
+    'icemule': ('Icemule Trace', 'icemule-trace-town', 'icemule-trace-'),
+    'instanced': ('Instanced', None, ''),
+    'mist-harbor': ('Mist Harbor / Four Winds Isle', 'isle-of-the-four-winds-mist-harbor-town', 'isle-of-the-four-winds-'),
+    'open-sea': ('Open Sea Adventures', 'krakens-fall-town', ''),
+    'rivers-rest': ("River's Rest / Torre", 'rivers-rest-town', 'rivers-rest-'),
+    'solhaven': ('Solhaven / Vornavis', 'vornavis-solhaven-town', 'vornavis-'),
+    'taillistim': ("Ta'Illistim", 'taillistim-town', 'elven-nations-'),
+    'tavaalor': ("Ta'Vaalor", 'elven-nations-tavaalor-town', 'elven-nations-'),
+    'teras': ('Teras / Kharam Dzu', 'teras-isle-kharam-dzu-town', 'teras-isle-'),
+    'transport': ('Transport routes', None, ''),
+    'landing': ("Wehnimer's Landing", 'wehnimers-landing-town', 'wehnimers-landing-'),
+    'crystal': ('Within the Crystal (ALAE)', None, ''),
+    'zul-logoth': ("Zul Logoth / Kharag 'doth Dzulthu", 'zul-logoth-town', 'zul-logoth-'),
+}

@@ -25,12 +25,22 @@ impl Hunt {
         if self.quick {
             return None;
         }
+        if self.field_rest && !Self::field_eligible(state) {
+            self.field_rest = false;
+            self.pending.clear();
+            self.phase = Phase::ToRest(Why::Wounded);
+            self.notes
+                .push("field recovery no longer eligible: switching to town.".into());
+            if let Some(said) = self.set_out(Why::Wounded) {
+                return Some(said);
+            }
+        }
         match self.phase {
             Phase::Hunting => self
                 .bounty_measure(state)
                 .or_else(|| self.start_rest(state, here)),
             Phase::ToRest(why) => {
-                let resting = RoomId(self.profile.rooms.resting?);
+                let resting = RoomId(self.rest_room()?);
                 if let Some(said) = self.fog_step(why, here, resting) {
                     return Some(said);
                 }
@@ -40,7 +50,7 @@ impl Hunt {
                 // Arrived with loot to sell: the round first, then the rest
                 // (`plan/31` Stage 4; the author: *"sells typically happen
                 // during the rest"*).
-                if here.room == Some(resting) && self.wants_to_sell(state) {
+                if !self.field_rest && here.room == Some(resting) && self.wants_to_sell(state) {
                     self.phase = Phase::Selling(why);
                     self.notes.push("selling before resting.".to_owned());
                     return Some(Said::Sell);
@@ -50,12 +60,7 @@ impl Hunt {
                     self.notes.push("healing before resting.".to_owned());
                     return Some(Said::Heal);
                 }
-                Some(self.step_toward(
-                    resting,
-                    here,
-                    Phase::Resting(why),
-                    &self.profile.rest.commands.clone(),
-                ))
+                Some(self.step_toward(resting, here, Phase::Resting(why), &self.rest_commands()))
             }
             Phase::Selling(why) => {
                 // The round ended where it began; from anywhere else, the
@@ -75,13 +80,8 @@ impl Hunt {
                 ))
             }
             Phase::Healing(why) => {
-                let resting = RoomId(self.profile.rooms.resting?);
-                Some(self.step_toward(
-                    resting,
-                    here,
-                    Phase::Resting(why),
-                    &self.profile.rest.commands.clone(),
-                ))
+                let resting = RoomId(self.rest_room()?);
+                Some(self.step_toward(resting, here, Phase::Resting(why), &self.rest_commands()))
             }
             Phase::Resting(why) => Some(self.resting(state, here, why)),
             Phase::Returning => {
@@ -104,6 +104,36 @@ impl Hunt {
                 self.notes.push("hunting.".to_owned());
                 None
             }
+        }
+    }
+
+    /// Conservative opt-in eligibility. A sparse empty injury map is not
+    /// enough: all sixteen body parts must have been observed this connection.
+    pub(super) fn field_eligible(state: &GameState) -> bool {
+        state.character.observed_body_parts == u16::MAX
+            && state.character.injuries.is_empty()
+            && state.status.known().bleeding() == Some(false)
+            && state.health().is_some_and(|v| v.percent == 100)
+            && state.character.encumbrance_percent == Some(0)
+    }
+
+    fn rest_room(&self) -> Option<u32> {
+        if self.field_rest {
+            self.profile.rest.field.as_ref().map(|field| field.room)
+        } else {
+            self.profile.rooms.resting
+        }
+    }
+
+    fn rest_commands(&self) -> Vec<String> {
+        if self.field_rest {
+            self.profile
+                .rest
+                .field
+                .as_ref()
+                .map_or_else(Vec::new, |field| field.commands.clone())
+        } else {
+            self.profile.rest.commands.clone()
         }
     }
 
@@ -174,6 +204,7 @@ impl Hunt {
             return Said::Wait(REST_BEAT);
         }
         self.fried_kills = 0;
+        self.field_rest = false;
         self.heard.rested_for_injury = why == Why::Injured;
         // `should_hunt?` ends bounty mode at the rest (`:8982-8986`).
         if self.bounty_done(state) {
@@ -228,27 +259,21 @@ impl Hunt {
             return Some(Said::Send { line, target: None });
         }
         self.must_rest = None;
-        let Some(resting) = self.profile.rooms.resting else {
+        self.field_rest = self.profile.rest.field.is_some()
+            && matches!(why, Why::Fried | Why::Mana)
+            && Self::field_eligible(state);
+        let Some(resting) = self.rest_room() else {
             return Some(Said::Done(Ending::NoRestingRoom));
         };
         self.follow.rest_waggled = false;
         self.phase = Phase::ToRest(why);
         self.notes
             .push(format!("{why}: walking to the resting room."));
-        self.waypoints = self
-            .profile
-            .rest
-            .waypoints
-            .iter()
-            .copied()
-            .map(RoomId)
-            .collect();
-        if self.fogs(why) {
-            self.pending = self.profile.rest.fog.iter().cloned().collect();
-            self.fogged = false;
-            if let Some(line) = self.pending.pop_front() {
-                return Some(Said::Send { line, target: None });
-            }
+        if self.field_rest {
+            // The waypoints and the fog are the way to town's rest room.
+            self.waypoints.clear();
+        } else if let Some(said) = self.set_out(why) {
+            return Some(said);
         }
         if let Some(said) = self.next_waypoint(here) {
             return Some(said);
@@ -257,8 +282,29 @@ impl Hunt {
             RoomId(resting),
             here,
             Phase::Resting(why),
-            &self.profile.rest.commands.clone(),
+            &self.rest_commands(),
         ))
+    }
+
+    /// The way to town's rest room: its waypoints, and the fog's first line
+    /// when this rest fogs.
+    fn set_out(&mut self, why: Why) -> Option<Said> {
+        self.waypoints = self
+            .profile
+            .rest
+            .waypoints
+            .iter()
+            .copied()
+            .map(RoomId)
+            .collect();
+        if !self.fogs(why) {
+            return None;
+        }
+        self.pending = self.profile.rest.fog.iter().cloned().collect();
+        self.fogged = false;
+        self.pending
+            .pop_front()
+            .map(|line| Said::Send { line, target: None })
     }
 
     /// The fog's lines still to send, and a second fog from the rift.
@@ -387,7 +433,21 @@ impl Hunt {
         if self.wounded(state) {
             return Some("wounded");
         }
-        let until = &self.profile.rest.until;
+        if self.profile.rooms.allowed.is_some()
+            && self.profile.rest.encumbered.is_some_and(|at| {
+                state
+                    .character
+                    .encumbrance_percent
+                    .is_none_or(|now| now >= at)
+            })
+        {
+            return Some("encumbrance not yet cleared or known");
+        }
+        let until = if self.field_rest {
+            &self.profile.rest.field.as_ref()?.until
+        } else {
+            &self.profile.rest.until
+        };
         let mind = state.character.experience.mind_percent;
         if until
             .experience

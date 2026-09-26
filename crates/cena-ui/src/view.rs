@@ -201,9 +201,22 @@ pub struct UnknownTagView {
     pub truncated: bool,
 }
 
+/// Native map identity, separate from the game's room UID. No travel authority.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MapLocationView {
+    /// SHA-256 of the exact combined map bytes used by the native resolver.
+    pub map_sha256: String,
+    /// Map node id; unknown or ambiguous sightings remain `None`.
+    pub room: Option<u32>,
+}
+
 /// State needed by Story, room, hands, vitals, roundtime and connection status.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SessionView {
+    /// Supplied by the host's native map resolver, not by model projection.
+    /// Absent in older servers, without a map, or outside Ready.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map_location: Option<MapLocationView>,
     /// The current room as far as it has been observed.
     pub room: RoomView,
     /// What the left hand holds, or that it is unknown.

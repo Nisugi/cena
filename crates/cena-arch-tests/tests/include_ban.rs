@@ -153,6 +153,14 @@ fn escaping_paths(sources: &[(PathBuf, String)]) -> Vec<String> {
 /// unexamined.
 const INERT_EXTENSIONS: &[(&str, &str)] = &[
     (
+        "mjs",
+        "cena-web's explorer ES modules, served as browser code, never compiled as Rust items",
+    ),
+    (
+        "txt",
+        "cena-web's third-party license notices, served verbatim as plain text, never evaluated",
+    ),
+    (
         "html",
         "cena-web's page shell, served verbatim; markup a browser renders, never Rust",
     ),
@@ -166,7 +174,7 @@ const INERT_EXTENSIONS: &[(&str, &str)] = &[
     ),
     (
         "json",
-        "a serialized fixture a test compares against; the wire shape IS the assertion",
+        "serialized fixtures and explorer reference snapshots; parsed as data, never as Rust code",
     ),
     (
         "xml",
@@ -310,7 +318,7 @@ fn a_path_through_cfg_attr_is_read() {
 
 #[test]
 fn an_embed_of_an_unexamined_extension_is_flagged() {
-    let new_kind = "const W: &str = include_str!(\"../assets/app.wasm.txt\");\n";
+    let new_kind = "const W: &str = include_str!(\"../assets/app.wasm.unexamined\");\n";
     assert_eq!(unexamined_embeds(&fixture(new_kind)).len(), 1);
     let known = "const A: &str = include_str!(\"../assets/app.js\");\n";
     assert!(unexamined_embeds(&fixture(known)).is_empty());

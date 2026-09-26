@@ -136,4 +136,17 @@ meter::-moz-meter-bar { background: var(--vital-color); }
 .hub-top h2 { margin: 0; }
 .hub-shutdown { font-size: .75rem; padding: 3px 10px; border-color: #7a3b3b; }
 .hub-shutdown:hover { border-color: #c96b6b; color: #e8a3a3; }
-
+/* The minimap shares the theme and never overlays the story or command bar. */
+.minimap { margin-block: .8rem; border-block: 1px solid var(--line); padding-block: .5rem; }
+.minimap svg { display: block; width: 100%; aspect-ratio: 10 / 7; background: var(--surface-inset); }
+.minimap svg[hidden] { display: none; }
+.minimap p, .minimap small { font-size: .8rem; }
+.minimap ul { max-height: 12rem; overflow: auto; padding-left: 1rem; }
+.minimap a { color: var(--amber); }
+.mini-edge { fill: none; stroke: var(--map-edge, #587383); stroke-width: 1; }
+.mini-room { fill: var(--map-room, #8dc0df); }
+.mini-context { fill: var(--map-context, #617580); }
+.mini-hit { fill: transparent; }
+.mini-transition { fill: none; stroke: var(--amber); stroke-width: 2; pointer-events: none; }
+.mini-current { fill: none; stroke: var(--text); stroke-width: 2.5; pointer-events: none; }
+.minimap a:focus .mini-hit, .minimap a:hover .mini-hit { fill: var(--amber); fill-opacity: .4; }

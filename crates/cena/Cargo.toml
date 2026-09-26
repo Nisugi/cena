@@ -17,6 +17,8 @@ cena-web.workspace = true
 cena-host.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# Fingerprint the exact map shared by travel and the read-only minimap.
+sha2 = "0.10"
 
 # `signal` for Ctrl-C. Without it the only early exit was killing the process,
 # which skips BOTH the `quit` (plan/16 5b) and the sink flush -- so the run that
