@@ -318,11 +318,16 @@ built; a step the importer cannot translate imports **held**, never silently los
 are built, and the spell behaviors (`plan/37`) followed. **The live run is last** (author,
 2026-09-25: *"The live run is at the end! We gotta get all the other m6 stuff so I can test
 it in the live run!!"*). **M6e is built** (`;sorter`, `;foreach`, `;multi`, `plan/30` §7).
-The author asked for **all of bigshot** (2026-09-25); since then ammo, `jewel`, the death
-switches, the interaction monitor, quick hunting and a hunt that survives a reconnect are
-built (`plan/30` §7, M6b). **Next, in any order:** `inventory/12` §2's open hunt gaps; the
-bigshot verbs `hunt/verbs.rs` does not send yet (`UNPORTED`); the bigshot settings the
-importer still names as not imported. Groups are `plan/39`, awaiting the author.
+The author asked for **all of bigshot** (2026-09-25), and the solo hunt now has it
+(`plan/30` §7, M6b, records each piece): every verb bigshot dispatches is sent, gated,
+held and answered as its handler does -- including `mstrike`, `unarmed`, `force`,
+`eachtarget`, `wandolier`, `nudgeweapons` -- with `cmd_spell`'s rules, Lich's `available?`
+before every PSM, its stances, quick and bounty modes, the monitor, the death switches, and
+a hunt that survives a reconnect. The model reads what that needed and did not before: PSM
+ranks and costs, skills, the worn and reserve lists (`a392b77`, `cf32e5d`).
+**Not built, each said where it lives:** bigshot's skin and gem counts for bounty mode,
+`throw`'s emptying of the hands, the Barrage `swap`; enhancive totals are still not read
+into the model. **Groups are `plan/39`, awaiting the author's answers.** Then the live run.
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.

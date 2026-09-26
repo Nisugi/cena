@@ -306,7 +306,7 @@ Lines the hunt needs, which the scripts match and Cena does not. All are GAP unl
 | **Disarmed**: `[Use the RECOVER ITEM command while in the appropriate room to regain your item.]` | `disarmbond.lic:8` | MEDIUM |
 | **Reactive weapon techniques**: `You could use this opportunity to <X>!`, then `weapon <x>` | `reflex.lic:20-25`, `weaponreact.lic:23-30` | MEDIUM |
 | **Barkskin (605)**: a 301 s cooldown after an absorb | the author's `cab.lic:85-88` | HIGH |
-| **Creature statuses outside `crtrStatus`**: `frozen`, `held in place`, `entangled`, which only room prose states. Cena reads that clause for players only (`state/room.rs:341-430`) | 8 scripts; `creaturewindow.lic:1486-1503` | MEDIUM |
+| **Creature statuses outside `crtrStatus`**: `frozen`, `held in place`, `entangled`, which only room prose states. Cena reads that clause for players only (`state/room.rs:341-430`). **Answered for the hunt, 2026-09-25, by one corpus query the author allowed** (a 1-in-40 stratified sample, 271 `.xml` files, `ls */*/*/xml/*.xml \| awk 'NR%40==1'`): `that appears to be frozen in place` is common (on the order of 3,500 lines; the counts were not kept, so they are approximate), `held` and `entangled` rare; and in a 2026-09 log the frozen creature's own `<crtrStatus>` carries `immobile="1"` (22 of its 25 tags). So the hunt's `immobilized` guard, which reads that flag, already sees a frozen creature: VERIFIED for that one file, INFERRED beyond it | 8 scripts; `creaturewindow.lic:1486-1503` | MEDIUM |
 | **Flares for `;combat`**: 353 of `flare_patterns.rb`'s 465 message alternatives (2024-2026) match no Cena pattern: custom and festival flares, purified metals, Covert Arts poisons, ensorcell. Several weapon flares match only one verb number | pile 2 §3, §8 | HIGH for `;combat` |
 | **Boon creatures**: 65 adjectives mapped to 38 traits and 3 tiers. Cena has the adjective list only, to strip names | `boon_appraise.lic:20-121` | MEDIUM |
 | **Boss phases and kills that leave no corpse**: Gem Onslaught captain, cold wyrm grounded, airborne or shielded, and implosions ("Rather abrupt decompression causes X to explode") | `creaturewindow.lic:293-294,1470-1474`, `killcounter.lic:223` | MEDIUM |
@@ -513,7 +513,8 @@ everything around the task:**
    - Does `profile <another player>` arrive on the stream `absorb_profile` reads (§1.11)?
    - Does every `bounty`-stream push also print in the main window (§7.1)?
    - The full wording of `for it if you want to sell` (§1.5), and a two-word skin quality (§3).
-   - `frozen`, `held` or `entangled` in a creature's room prose (§2).
+   - ~~`frozen`, `held` or `entangled` in a creature's room prose (§2).~~ Run 2026-09-25 with
+     the author's go-ahead; answered in §2's row.
    - A fatal slash/back/8 crit, whose first sentence matches rank 3 (§1.12).
 
 ## 10. Data Cena lacks, with no milestone yet
