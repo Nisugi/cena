@@ -553,6 +553,9 @@ impl Hunt {
                 target: Some(target),
             });
         }
+        if let Some(said) = self.rally(state) {
+            return Some(said);
+        }
         self.next_step(state, here, target, now)
     }
 
@@ -579,7 +582,7 @@ impl Hunt {
         if let Some(said) = self.holding(state, now) {
             return Some(said);
         }
-        let steps = self.profile.routines.get(&self.routine)?.clone();
+        let steps = self.routine_steps(state)?;
         if steps.is_empty() {
             return None;
         }

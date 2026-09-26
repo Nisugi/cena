@@ -80,6 +80,9 @@ impl Hunt {
         if let Some(line) = Self::stance_for(self.profile.stance.wander.as_deref(), state) {
             return Some(Said::Send { line, target: None });
         }
+        if let Some(said) = self.final_loot() {
+            return Some(said);
+        }
         let to = self.next_room(here, now)?;
         Some(Said::Walk(to))
     }

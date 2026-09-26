@@ -303,7 +303,7 @@ impl Desk {
             if let Some(before) = before {
                 before.over.cancelled().await;
             }
-            let end = desk.hunt_once(&handle, &stop, joined, machine, place).await;
+            let end = Box::pin(desk.hunt_once(&handle, &stop, joined, machine, place)).await;
             let mut slot = desk.running.lock().unwrap_or_else(PoisonError::into_inner);
             if slot.as_ref().is_some_and(|hunt| hunt.number == number) {
                 *slot = None;

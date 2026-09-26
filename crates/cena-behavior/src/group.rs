@@ -42,7 +42,7 @@ pub use board::{Board, Boards, Place};
 pub use looter::looter;
 pub use muster::{Muster, Standing, muster, recoverer};
 pub use party::{Party, hindrance, hindrance_of, in_group, standing};
-pub use report::{Hindrance, Leading, Report, Role, role};
+pub use report::{Hindrance, Leading, Report, Role, Rooms, role};
 pub use rest::{PrepOrder, RestCall, all_dropped, prep_order, should_rest, unready};
 pub use settings::{FriedTrigger, LOST_WAIT, Settings, looter_pattern};
 pub use successor::successor;

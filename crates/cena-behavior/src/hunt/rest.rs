@@ -100,6 +100,10 @@ impl Hunt {
                 if let Some(line) = self.pending.pop_front() {
                     return Some(Said::Send { line, target: None });
                 }
+                // A leader gathers its group before it hunts (`hunt/party.rs`).
+                if let Some(said) = self.gather_to_hunt(state, here) {
+                    return Some(said);
+                }
                 self.phase = Phase::Hunting;
                 self.notes.push("hunting.".to_owned());
                 None
@@ -117,7 +121,7 @@ impl Hunt {
             && state.character.encumbrance_percent == Some(0)
     }
 
-    fn rest_room(&self) -> Option<u32> {
+    pub(super) fn rest_room(&self) -> Option<u32> {
         if self.field_rest {
             self.profile.rest.field.as_ref().map(|field| field.room)
         } else {
@@ -338,7 +342,7 @@ impl Hunt {
 
     /// Whether this rest fogs: a fog is set, and it is not optional or the
     /// rest is for wounds or weight (`bigshot.lic:7681`).
-    fn fogs(&self, why: Why) -> bool {
+    pub(super) fn fogs(&self, why: Why) -> bool {
         let rest = &self.profile.rest;
         !rest.fog.is_empty()
             && (!rest.fog_optional
@@ -349,7 +353,7 @@ impl Hunt {
     }
 
     /// The next return waypoint to walk to, dropping those reached.
-    fn next_waypoint(&mut self, here: Here<'_>) -> Option<Said> {
+    pub(super) fn next_waypoint(&mut self, here: Here<'_>) -> Option<Said> {
         while let Some(next) = self.waypoints.front().copied() {
             if here.room == Some(next) {
                 self.waypoints.pop_front();

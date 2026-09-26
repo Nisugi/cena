@@ -164,4 +164,25 @@ pub struct Leading {
     pub looter: Option<String>,
     /// Who preps first at this rest ([`super::prep_order`]).
     pub order: Option<PrepOrder>,
+    /// The leader's rooms, which its followers take (`group.hunting_id`
+    /// and its siblings, `bigshot.lic:1098-1116`): read when they travel on
+    /// their own.
+    pub rooms: Rooms,
+    /// Its followers walk out on their own (`independent_travel`).
+    pub independent_travel: bool,
+    /// Its followers walk home on their own (`independent_return`).
+    pub independent_return: bool,
+}
+
+/// The leader's rooms, by the map's numbers.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Rooms {
+    /// Where the hunt starts.
+    pub hunting: Option<RoomId>,
+    /// Where it rests.
+    pub resting: Option<RoomId>,
+    /// Walked through on the way out, in order.
+    pub rally: Vec<RoomId>,
+    /// Walked through on the way home, in order.
+    pub waypoints: Vec<RoomId>,
 }

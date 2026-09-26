@@ -49,6 +49,7 @@ const BOOKKEEPING: &[&str] = &["profile_current", "save_profile_name", "notes"];
 /// The catch-all patterns bigshot profiles use for "any creature".
 const ANY: &[&str] = &["(?:.+?)", "(?:.+)", "(?:.*)", ".+?", ".+", ".*"];
 
+mod group;
 mod rest;
 mod words;
 
@@ -114,6 +115,7 @@ pub fn import(name: &str, yaml_text: &str) -> Result<Import, String> {
     job.loot_flee_wander();
     job.targets();
     job.routines();
+    job.group();
     for (key, value) in job.source.left() {
         job.notes
             .push(format!("not imported: {key} = {}", shorten(&value)));

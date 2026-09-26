@@ -14,6 +14,9 @@
 //! Survival, react, maintain and flee stay each member's own, but a
 //! follower does not flee or wander: where it goes is where the leader is.
 
+mod alone;
+mod keys;
+
 use cena_map::RoomId;
 use cena_session::{GameState, State};
 
@@ -77,6 +80,12 @@ pub(super) struct Grouping {
     awaited: Vec<String>,
     /// Lead: `group open` sent while awaiting them.
     opened: bool,
+    /// Lead: the leg (rest, walking back) the group was disbanded for.
+    disbanded: Option<(u32, bool)>,
+    /// Follow: the leg it has set out on alone.
+    walking: Option<(u32, bool)>,
+    /// The room `final_loot` last looted.
+    final_looted: Option<String>,
 }
 
 /// A follower's share of the leader's rest.
@@ -156,6 +165,8 @@ impl Hunt {
     /// placing of it.
     #[must_use]
     pub fn leading(&self, room: Option<RoomId>) -> Leading {
+        let rooms = |ids: &[u32]| ids.iter().copied().map(RoomId).collect();
+        let table = &self.profile.group;
         Leading {
             rest: self.grouping.rest,
             prepared: self.grouping.prepared,
@@ -164,6 +175,14 @@ impl Hunt {
             target: self.target,
             looter: self.grouping.looter.clone(),
             order: self.grouping.order,
+            rooms: group::Rooms {
+                hunting: self.profile.rooms.hunting.map(RoomId),
+                resting: self.rest_room().map(RoomId),
+                rally: rooms(&self.profile.rooms.rally),
+                waypoints: rooms(&self.profile.rest.waypoints),
+            },
+            independent_travel: table.independent_travel,
+            independent_return: table.independent_return,
         }
     }
 
@@ -262,6 +281,9 @@ impl Hunt {
                 } else if self.grouping.holding {
                     // A member being waited for: no walk to rest (question 5).
                     self.grouping.hold_rest = true;
+                } else if let Some(said) = self.disband(state, self.grouping.rest + 1, false) {
+                    // Home apart: disbanded before the walk (`:7478-7486`).
+                    return Some(said);
                 } else {
                     self.must_rest = Some(why);
                 }
@@ -435,6 +457,42 @@ impl Hunt {
             return Some(Said::Wait(REST_BEAT));
         }
         self.grouping.shown.clear();
+        if let Some(said) = self.gather(state, here, now, &counted) {
+            return Some(said);
+        }
+        // Out apart: disbanded once gathered (`:7246-7252`).
+        self.disband(state, self.grouping.rest, true)
+    }
+
+    /// Before it hunts, the leader gathers its group: everyone who walked
+    /// out on its own, or fell behind (`pre_hunt`, `bigshot.lic:7266-7275`).
+    pub(super) fn gather_to_hunt(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
+        let party = self.grouping.party.clone()?;
+        if party.role != Role::Lead {
+            return None;
+        }
+        let counted: Vec<&Report> = party
+            .followers
+            .iter()
+            .filter(|follower| {
+                follower.link == State::Ready
+                    && !party.musters.iter().any(|(n, m)| {
+                        *n == follower.name && matches!(m, Muster::Gone | Muster::Left)
+                    })
+            })
+            .collect();
+        self.gather(state, here, state.game_time_now(), &counted)
+    }
+
+    /// The gather: every counted follower here and in the group, `group
+    /// open` sent once for it, within `lost_wait` (`:7556-7562`).
+    fn gather(
+        &mut self,
+        state: &GameState,
+        here: Here<'_>,
+        now: Option<u32>,
+        counted: &[&Report],
+    ) -> Option<Said> {
         let now = now.unwrap_or(0);
         let (since, opened) = *self.grouping.gather.get_or_insert((now, false));
         let limit = u32::try_from(self.group_settings().lost_wait.as_secs()).unwrap_or(u32::MAX);
@@ -474,6 +532,23 @@ impl Hunt {
         self.grouping.told_alone = false;
         let now_s = now.unwrap_or(0);
         let grouped = group::in_group(state, &party.leader);
+        // Walking apart (`party/alone.rs`): no catching up on the way.
+        if Self::apart(&leading) {
+            self.phase = match leading.phase {
+                Some(Phase::Returning) => Phase::Returning,
+                Some(Phase::ToRest(why) | Phase::Selling(why) | Phase::Healing(why)) => {
+                    Phase::ToRest(why)
+                }
+                _ => self.phase,
+            };
+            if let Some(said) = self.walk_apart(here, &leading) {
+                return Some(said);
+            }
+            // At the far end: it waits for the leader there, and joins.
+            if grouped || here.room.is_none() || here.room != leading.room {
+                return Some(Said::Wait(1));
+            }
+        }
         if let (Some(mine), Some(theirs)) = (here.room, leading.room)
             && mine != theirs
         {

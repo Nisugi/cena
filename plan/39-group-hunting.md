@@ -1,7 +1,7 @@
 # 39 — Group hunting: bigshot's head and tail, measured and staged
 
 **Status: PROPOSED 2026-09-25; §7's eleven questions ANSWERED 2026-09-26 (§8, §8a).
-Stages 0 to 4 are built, but for Stage 4's live run.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
+Stages 0 to 5 are built, but for Stage 4's live run.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
 and has several characters and a test server to run a group on. `plan/30` §4 recorded the
 author's group design and §8 put groups after M6; **the author moved them before the live run**
 (§8, question 1). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
@@ -485,6 +485,27 @@ run, which is the author's.
 for it: independent travel and return, quiet followers, the three loot keys and final loot,
 group deader, `disable_commands`, and Troubadour's Rally (1040) for self and group. A test per
 key; `;hunt import` of a profile that sets them.
+**BUILT 2026-09-26.** `[group]` is `hunt/profile/group.rs` (`GroupTable`): the Stage 2 keys
+(`ma_looter`, `never_loot`, `random_loot`, `fried_trigger`, `successors`, `lost_wait`,
+`quiet_followers`) and bigshot's others. The importer reads them (`hunt/import/group.rs`).
+
+- **`independent_return` / `independent_travel`** (`hunt/party/alone.rs`): the leader sends
+  `disband group` right before the walk its members take apart; each follower walks on its
+  own: home by its own fog, the leader's waypoints and resting room; out by the leader's rally
+  rooms and hunting room. The leader publishes its rooms (`Leading::rooms`). They join again
+  at the far end: the gather at the rest, and a new gather **before it hunts** (`pre_hunt`,
+  `bigshot.lic:7266-7275`), which the default travel passes at once.
+- **`final_loot`, `disable_commands`, `troubadours_rally`** (`hunt/party/keys.rs`): the
+  leader, or a hunt alone, loots the room once with the loot profile before it wanders on;
+  fried in a group, `disable_commands` replaces the target's routine; with 1040 known,
+  `incant 1040` before a routine step when stuck or a member of the group here is
+  (`mana pulse` when it cannot afford it, as `cmd_1040` does). The last two are **each
+  member's own**, read where it attacks (§0b).
+- **`group_deader`** is not a key: the author replaced its pause with the dead member's
+  recovery (question 10). The importer says so rather than dropping it silently.
+
+Tests: `crates/cena-behavior/tests/group_settings.rs` (8: the import, the default, and each
+key on the engine).
 
 **Stage 6 — the author's handover.** A lost member is held for: the others keep the room clear,
 with no wander and no walk to rest. After the wait, the successor leads. Out of game: take
