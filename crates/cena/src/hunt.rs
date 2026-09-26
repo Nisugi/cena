@@ -285,10 +285,9 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         } => settings::set(dir, who, &profile, &key, &value, &say),
         Command::Unset { profile, key } => settings::unset(dir, who, &profile, &key, &say),
         Command::Show { profile, key } => settings::show(dir, who, &profile, key.as_deref(), &say),
-        Command::HealSet { key, value } => settings::heal_set(dir, who, &key, &value, &say),
-        Command::HealUnset(key) => settings::heal_unset(dir, who, &key, &say),
-        Command::HealShow => settings::heal_show(dir, who, &say),
-        Command::Help => settings::help(&say),
+        Command::Settings(of, setting) => settings::profile(dir, who, of, &setting, &say),
+        Command::Help(topic) => settings::help(topic, &say),
+        Command::Setup => settings::setup(&say),
         Command::Run(_)
         | Command::Quick(_)
         | Command::Bounty(_)
@@ -577,7 +576,7 @@ fn list(dir: &Path, say: Say<'_>) {
         say(
             NoticeKind::Info,
             format!(
-                "Hunt: no profiles yet under {}. `hunt import <bigshot yaml>` brings one in.",
+                "Hunt: no profiles yet under {}. `hunt import <bigshot yaml>` brings one in; `hunt setup` says how to make one on the map.",
                 profiles.display()
             ),
         );
@@ -595,10 +594,17 @@ fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: 
         );
         return;
     };
-    let mut profile = std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|text| cena_behavior::keep::KeepProfile::parse(&text).ok())
-        .unwrap_or_default();
+    // A file that is there and does not read is said, never written over
+    // with the defaults (`plan/44` Q05).
+    let mut profile = match settings::stored(&path, cena_behavior::keep::KeepProfile::parse) {
+        Ok(profile) => profile,
+        Err(why) => {
+            return say(
+                NoticeKind::Error,
+                format!("Keep: nothing was changed: {why}"),
+            );
+        }
+    };
     let words: Vec<&str> = words.iter().map(String::as_str).collect();
     if words == ["list"] {
         say(
@@ -617,12 +623,7 @@ fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: 
             let written = profile
                 .to_toml()
                 .map_err(io::Error::other)
-                .and_then(|text| {
-                    if let Some(parent) = path.parent() {
-                        std::fs::create_dir_all(parent)?;
-                    }
-                    std::fs::write(&path, text)
-                });
+                .and_then(|text| cena_behavior::settings::save(&path, &text));
             match written {
                 Ok(()) => say(NoticeKind::Info, format!("Keep: {done}.")),
                 Err(e) => say(
@@ -645,10 +646,11 @@ fn sc_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Sa
         );
         return;
     };
-    let mut profile = std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|text| cena_behavior::spellcaster::CasterProfile::parse(&text).ok())
-        .unwrap_or_default();
+    let mut profile =
+        match settings::stored(&path, cena_behavior::spellcaster::CasterProfile::parse) {
+            Ok(profile) => profile,
+            Err(why) => return say(NoticeKind::Error, format!("Sc: nothing was changed: {why}")),
+        };
     let words: Vec<String> = words.iter().map(|w| w.to_ascii_lowercase()).collect();
     let words: Vec<&str> = words.iter().map(String::as_str).collect();
     match cena_behavior::spellcaster::edit(&mut profile, &words) {
@@ -656,12 +658,7 @@ fn sc_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Sa
             let written = profile
                 .to_toml()
                 .map_err(io::Error::other)
-                .and_then(|text| {
-                    if let Some(parent) = path.parent() {
-                        std::fs::create_dir_all(parent)?;
-                    }
-                    std::fs::write(&path, text)
-                });
+                .and_then(|text| cena_behavior::settings::save(&path, &text));
             match written {
                 Ok(()) => say(NoticeKind::Info, format!("Sc: {done}.")),
                 Err(e) => say(

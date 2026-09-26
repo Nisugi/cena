@@ -54,7 +54,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                     .join(", ")
             ),
             Some(Healed::NoContainer) => {
-                "Heal: the herb container is not in the inventory; set `container` in the heal profile.".to_owned()
+                "Heal: the herb container the heal profile names is not worn or carried. `heal show` says which it names; `heal set container <a word of its name>` changes it.".to_owned()
             }
             Some(Healed::Refused) => "Heal: the herbs here have been eaten from enough.".to_owned(),
             None => "Heal: gave up after too many steps.".to_owned(),
@@ -74,7 +74,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         let Some(sack) = heal::container_named(&self.state, &profile.container) else {
             say(
                 self,
-                "Heal: the herb container is not in the inventory; set `container` in the heal profile.".to_owned(),
+                format!(
+                    "Heal: no {:?} is worn or carried. `heal set container <a word of its name>` names the right one.",
+                    profile.container
+                ),
             );
             return Ok(());
         };

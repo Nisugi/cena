@@ -68,7 +68,7 @@ export function nativeHuntSetup(root,{data,connection,fit,storage=null,mapPicker
    if(operation!=='load'&&revision!==submittedRevision)throw Error('Setup changed while checking. Nothing saved; click Save setup again when ready.');
    if(operation==='save')reply=await call({action:'configure',generation:identity.generation,config:{...request,operation:'save',preview:reply.toml}});
    output.textContent=reply.toml;
-   const message=operation==='preview'?'Generated configuration shown below. No file saved and nothing started.':reply.saved?`Saved ${reply.name}. ${revision===submittedRevision?'Nothing started.':'Newer edits are not saved. Nothing started.'}`:`Reloaded ${reply.name}. This readback does not replace your draft selections. Nothing started.`;
+   const message=operation==='preview'?'Generated configuration shown below. No file saved and nothing started.':reply.saved?`Saved ${reply.name}. ${revision===submittedRevision?'Nothing started.':'Newer edits are not saved. Nothing started.'} Next, in the character's command box: ;hunt check ${reply.name} to check it, ;hunt ${reply.name} to start, ;hunt stop to stop; ;hunt show ${reply.name} and ;hunt set ${reply.name} <setting> <value> to change it later.`:`Reloaded ${reply.name}. This readback does not replace your draft selections. Nothing started.`;
    status.textContent=saveStatus.textContent=message;
   }catch(error){status.textContent=saveStatus.textContent=error.message;}finally{busy=false;previewButton.disabled=save.disabled=reload.disabled=false;save.textContent='Save setup';}
  }

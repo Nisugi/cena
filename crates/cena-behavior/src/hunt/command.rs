@@ -10,9 +10,11 @@
 //! ;hunt show <name> [setting]     the settings, as this character runs them
 //! ;hunt set <name> <setting> <value>   change one, in the profile's file (`settings.rs`)
 //! ;hunt unset <name> <setting>    take one out, so the level below decides it
-//! ;hunt help, or ;hunt alone      all of these ([`HELP`])
+//! ;hunt help, or ;hunt alone      all of these ([`help`])
+//! ;hunt setup                     where the map's setup page is
 //! ;heal [spellcast] [ranged] [blood]   heal with herbs by the heal profile (`plan/36`)
-//! ;heal show | set <setting> <value> | unset <setting>   the heal profile
+//! ;heal show | set <setting> <value> | unset <setting> | help   the heal profile
+//! ;waggle show | set <setting> <value> | unset <setting> | help   the waggle profile
 //! ```
 //!
 //! `;heal` is here rather than beside a desk of its own because it runs in the
@@ -116,22 +118,64 @@ pub enum Command {
         /// Only this setting, or the ones under it.
         key: Option<String>,
     },
-    /// `hunt help`, or `hunt` alone: every command, and how a setting is
-    /// changed.
-    Help,
-    /// `heal set <setting> <value>`: one heal setting changed.
-    HealSet {
-        /// The setting: `container`.
-        key: String,
-        /// The value, as typed.
-        value: String,
-    },
-    /// `heal unset <setting>`: one heal setting back to its default.
-    HealUnset(String),
-    /// `heal show`: the heal settings.
-    HealShow,
+    /// `hunt help` (or `hunt` alone), `heal help`, `waggle help`: that
+    /// family's commands, and how a setting is changed. Read-only.
+    Help(Topic),
+    /// `hunt setup`: where the map's setup page is, and what else edits a
+    /// profile. Read-only.
+    Setup,
+    /// `heal set|unset|show`, `waggle set|unset|show`: this character's
+    /// profile for `Of`, changed or listed.
+    Settings(Of, Setting),
     /// Hunt's, and already answered: said wrongly. Nothing to do.
     Nothing,
+}
+
+/// A family with help of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Topic {
+    /// `hunt help`.
+    Hunt,
+    /// `heal help`.
+    Heal,
+    /// `waggle help`.
+    Waggle,
+}
+
+/// A character's own profile, changed from the game line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Of {
+    /// The heal profile (`heal/profile.rs`).
+    Heal,
+    /// The waggle profile (`waggle.rs`).
+    Waggle,
+}
+
+impl Of {
+    /// The word it is typed as.
+    #[must_use]
+    pub const fn word(self) -> &'static str {
+        match self {
+            Self::Heal => "heal",
+            Self::Waggle => "waggle",
+        }
+    }
+}
+
+/// What is done to a setting.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Setting {
+    /// `set <setting> <value>`.
+    Set {
+        /// The setting, dotted.
+        key: String,
+        /// The value, as typed (`crate::settings::typed`).
+        value: String,
+    },
+    /// `unset <setting>`: back to its default.
+    Unset(String),
+    /// `show`: every setting, the defaults included.
+    Show,
 }
 
 /// The words that are hunt's own, and so never a profile's name.
@@ -145,13 +189,23 @@ const RESERVED: &[&str] = &[
     "unset",
     "show",
     "help",
+    "setup",
 ];
 
 /// What a wrongly said command is answered with.
 pub const USAGE: &str = "hunt <name> [quick|bounty], hunt <name> with <character>..., hunt stop, hunt list, hunt check <name>, hunt show <name> [setting], hunt set <name> <setting> <value>, hunt unset <name> <setting>, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>. `hunt help` says more.";
 
-/// What `hunt help` says, a line each.
-pub const HELP: &[&str] = &[
+/// What `hunt help`, `heal help` and `waggle help` say, a line each.
+#[must_use]
+pub const fn help(topic: Topic) -> &'static [&'static str] {
+    match topic {
+        Topic::Hunt => HUNT_HELP,
+        Topic::Heal => HEAL_HELP,
+        Topic::Waggle => WAGGLE_HELP,
+    }
+}
+
+const HUNT_HELP: &[&str] = &[
     "hunt <profile>                         hunt on a profile",
     "hunt <profile> quick | bounty          clear this room | hunt until the bounty is done",
     "hunt <profile> with <name> <name>...   lead these characters, each hunting its own <profile>",
@@ -163,12 +217,27 @@ pub const HELP: &[&str] = &[
     "hunt unset <profile> <setting>         take one out, so the default decides it",
     "hunt import <bigshot yaml> [as <name>] bring in a bigshot profile",
     "hunt import-loot <eloot yaml>          bring in eloot's settings as this character's loot profile",
-    "heal [spellcast] [ranged] [blood]      heal with herbs",
-    "heal show                              the heal settings",
-    "heal set <setting> <value>             change one: heal set container herb pouch",
-    "heal stock | fill                      stock the herb container at the herbalist",
+    "hunt setup                             where the map's setup page is",
     "A value is on or off, a number, a list [\"a\", \"b\"], a table { name = \"warg\", routine = \"a\" }, or words.",
     "A setting in a list is picked by number from 1: hunt set ojandhaart targets.2.routine c",
+    "heal help, waggle help, keep list, go2 help: the other behaviors. `help` lists everything.",
+];
+
+const HEAL_HELP: &[&str] = &[
+    "heal [spellcast] [ranged] [blood]      heal with herbs: everything, or only what stops a cast, a shot, or the blood",
+    "heal show                              the heal settings, the defaults included",
+    "heal set <setting> <value>             change one: heal set container herb pouch",
+    "heal unset <setting>                   back to its default",
+    "heal stock | fill                      stock the herb container at the herbalist | buy one of each herb it lacks",
+    "A hunt heals at every rest once a container is set. `hunt stop` stops a heal under way.",
+];
+
+const WAGGLE_HELP: &[&str] = &[
+    "waggle [name] [name]...                cast the waggle spells on these people, or yourself",
+    "waggle show                            the waggle settings, the defaults included",
+    "waggle set <setting> <value>           change one: waggle set cast_list [101, 107, 401]",
+    "waggle unset <setting>                 back to its default",
+    "`hunt stop` stops a waggle under way.",
 ];
 
 /// The hunt command a line is, **the command symbol already gone**. `None`:
@@ -192,7 +261,12 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
         }));
     }
     if first.eq_ignore_ascii_case("waggle") {
-        return Some(Ok(Command::Waggle(words.map(str::to_owned).collect())));
+        let rest: Vec<&str> = words.collect();
+        return Some(settings_words(Of::Waggle, line, &rest).unwrap_or_else(|| {
+            Ok(Command::Waggle(
+                rest.iter().map(|w| (*w).to_owned()).collect(),
+            ))
+        }));
     }
     if first.eq_ignore_ascii_case("keep") {
         let rest: Vec<String> = words.map(str::to_ascii_lowercase).collect();
@@ -207,8 +281,9 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
     }
     let rest: Vec<&str> = words.collect();
     Some(match rest.split_first() {
-        None => Ok(Command::Help),
-        Some((word, [])) if word.eq_ignore_ascii_case("help") => Ok(Command::Help),
+        None => Ok(Command::Help(Topic::Hunt)),
+        Some((word, [])) if word.eq_ignore_ascii_case("help") => Ok(Command::Help(Topic::Hunt)),
+        Some((word, [])) if word.eq_ignore_ascii_case("setup") => Ok(Command::Setup),
         Some((word, [profile, key, _, ..])) if word.eq_ignore_ascii_case("set") => {
             Ok(Command::Set {
                 profile: (*profile).to_owned(),
@@ -301,27 +376,39 @@ fn heal<'a>(words: impl Iterator<Item = &'a str>) -> Result<Command, String> {
     })
 }
 
-/// `heal` and what follows: its settings, or its flags.
+/// `heal` and what follows: its settings and help, or its flags.
 fn heal_words<'a>(line: &str, words: impl Iterator<Item = &'a str>) -> Result<Command, String> {
     let words: Vec<&str> = words.collect();
-    match words.as_slice() {
-        [word] if word.eq_ignore_ascii_case("show") => Ok(Command::HealShow),
-        [word, key, _, ..] if word.eq_ignore_ascii_case("set") => Ok(Command::HealSet {
-            key: (*key).to_owned(),
-            value: after_words(line, 3).to_owned(),
-        }),
-        [word, key] if word.eq_ignore_ascii_case("unset") => {
-            Ok(Command::HealUnset((*key).to_owned()))
+    settings_words(Of::Heal, line, &words).unwrap_or_else(|| heal(words.into_iter()))
+}
+
+/// `help`, `show`, `set <setting> <value>` or `unset <setting>` after the
+/// family's word; `None` when the words are something else of the family's.
+fn settings_words(of: Of, line: &str, words: &[&str]) -> Option<Result<Command, String>> {
+    let first = words.first()?.to_ascii_lowercase();
+    let topic = match of {
+        Of::Heal => Topic::Heal,
+        Of::Waggle => Topic::Waggle,
+    };
+    Some(match (first.as_str(), words) {
+        ("help", [_]) => Ok(Command::Help(topic)),
+        ("show", [_]) => Ok(Command::Settings(of, Setting::Show)),
+        ("set", [_, key, _, ..]) => Ok(Command::Settings(
+            of,
+            Setting::Set {
+                key: (*key).to_owned(),
+                value: after_words(line, 3).to_owned(),
+            },
+        )),
+        ("unset", [_, key]) => Ok(Command::Settings(of, Setting::Unset((*key).to_owned()))),
+        ("help" | "show" | "set" | "unset", _) => {
+            let w = of.word();
+            Err(format!(
+                "{w} show, {w} set <setting> <value>, {w} unset <setting>, or {w} help"
+            ))
         }
-        [word, ..]
-            if ["set", "unset", "show"]
-                .iter()
-                .any(|w| word.eq_ignore_ascii_case(w)) =>
-        {
-            Err("heal show, heal set <setting> <value>, or heal unset <setting>".to_owned())
-        }
-        _ => heal(words.into_iter()),
-    }
+        _ => return None,
+    })
 }
 
 /// What follows the first `n` words of `line`, as typed: a value keeps its
@@ -368,7 +455,7 @@ fn unquoted(path: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{Command, parse};
+    use super::{Command, Of, Setting, Topic, parse};
 
     #[test]
     fn the_words() {
@@ -440,8 +527,28 @@ mod tests {
 
     #[test]
     fn settings_are_hunts_and_keep_the_value_as_typed() {
-        assert_eq!(parse("hunt"), Some(Ok(Command::Help)));
-        assert_eq!(parse("hunt help"), Some(Ok(Command::Help)));
+        assert_eq!(parse("hunt"), Some(Ok(Command::Help(Topic::Hunt))));
+        assert_eq!(parse("hunt help"), Some(Ok(Command::Help(Topic::Hunt))));
+        assert_eq!(parse("hunt setup"), Some(Ok(Command::Setup)));
+        assert_eq!(parse("heal help"), Some(Ok(Command::Help(Topic::Heal))));
+        assert_eq!(parse("waggle help"), Some(Ok(Command::Help(Topic::Waggle))));
+        assert_eq!(
+            parse("waggle Kiyna Dicate"),
+            Some(Ok(Command::Waggle(vec![
+                "Kiyna".to_owned(),
+                "Dicate".to_owned()
+            ])))
+        );
+        assert_eq!(
+            parse("waggle set cast_list [101, 107]"),
+            Some(Ok(Command::Settings(
+                Of::Waggle,
+                Setting::Set {
+                    key: "cast_list".to_owned(),
+                    value: "[101, 107]".to_owned(),
+                }
+            )))
+        );
         assert_eq!(
             parse("hunt set ojandhaart sequences.volley.when expiring \"Briar Betrayer\" 7"),
             Some(Ok(Command::Set {
@@ -470,15 +577,24 @@ mod tests {
         ));
         assert_eq!(
             parse("heal set container  herb pouch "),
-            Some(Ok(Command::HealSet {
-                key: "container".to_owned(),
-                value: "herb pouch".to_owned(),
-            }))
+            Some(Ok(Command::Settings(
+                Of::Heal,
+                Setting::Set {
+                    key: "container".to_owned(),
+                    value: "herb pouch".to_owned(),
+                }
+            )))
         );
-        assert_eq!(parse("heal show"), Some(Ok(Command::HealShow)));
+        assert_eq!(
+            parse("heal show"),
+            Some(Ok(Command::Settings(Of::Heal, Setting::Show)))
+        );
         assert_eq!(
             parse("heal unset stock"),
-            Some(Ok(Command::HealUnset("stock".to_owned())))
+            Some(Ok(Command::Settings(
+                Of::Heal,
+                Setting::Unset("stock".to_owned())
+            )))
         );
         assert!(matches!(parse("heal set container"), Some(Err(_))));
     }

@@ -43,6 +43,28 @@ pub(crate) enum Took {
     Started(tokio::task::JoinHandle<()>),
 }
 
+/// What `;help` says: every family, and the word that says more of it
+/// (`plan/44` Q04). Answered before any family is ready, since it needs
+/// nothing but this list.
+pub(crate) const HELP: &[&str] = &[
+    "Hydra's commands start with your command symbol: ; unless you changed it. None of them reaches the game.",
+    "hunt help        hunt on a profile, see and change its settings, lead a group, stop",
+    "heal help        heal with herbs: name the herb container, heal, stock it",
+    "waggle help      cast a list of spells on people",
+    "keep list        spells kept up: keep add <spell>, then keep; hunt stop ends it",
+    "sc <spell>       cast one spell as set up; sc alias, sc verb, sc stance and sc set change how",
+    "go2 help         walk to a place or a room, save places, stop",
+    "loot, combat     reports on what was recorded: loot summary, combat hunts",
+    "sorter           show a container's contents one line per category: sorter on, off or status",
+    "multi help, foreach help   run commands several times, or once for each item",
+];
+
+/// Whether a line, without its symbol, asks for [`HELP`].
+fn asks_for_help(line: &str) -> bool {
+    let line = line.trim();
+    line.eq_ignore_ascii_case("help") || line == "?"
+}
+
 /// The handlers the command line routes to, filled as each becomes ready.
 #[derive(Clone, Default)]
 pub(crate) struct Commands {
@@ -62,6 +84,11 @@ impl Commands {
         let routes = commands.clone();
         let told = handle.clone();
         let runner: Runner = Arc::new(move |line: &str| {
+            if asks_for_help(line) {
+                let lines = HELP.iter().map(|&line| line.to_owned()).collect();
+                told.say(Notice::table(NoticeKind::Info, lines));
+                return Claimed::Done;
+            }
             // A task it started runs on by itself: nobody typing waits.
             if routes.route(line).is_some() {
                 return Claimed::Done;
@@ -206,6 +233,20 @@ mod tests {
         assert_eq!(
             handle.send_manual_at(generation, ";nosuch", DEADLINE).await,
             Outcome::Handled
+        );
+        assert!(
+            told(&mut events).iter().any(|s| s.contains(";help")),
+            "a word nobody knows points at ;help"
+        );
+
+        // Help, before anything else is ready, and nothing sent.
+        assert_eq!(
+            handle.send_manual_at(generation, ";help", DEADLINE).await,
+            Outcome::Handled
+        );
+        assert!(
+            told(&mut events).iter().any(|s| s.contains("hunt help")),
+            ";help lists the families"
         );
 
         commands.travel(Arc::new(|line: &str| {

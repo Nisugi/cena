@@ -133,6 +133,11 @@ impl Desk {
                 }
                 return None;
             }
+            Command::Help => {
+                let lines = super::command::HELP.iter().map(|&l| l.to_owned()).collect();
+                handle.say(Notice::table(NoticeKind::Info, lines));
+                return None;
+            }
             Command::Places => {
                 let lines = places(&self.map, &walker, &traveller.notes.targets);
                 handle.say(Notice::table(NoticeKind::Info, lines));

@@ -1,14 +1,16 @@
-//! `;hunt set|unset|show|help` and `;heal set|unset|show`: a setting changed
-//! from the game line, and read back the way the behavior will read it, so
-//! a bad value is refused by name rather than saved
-//! (`cena_behavior::settings`).
+//! `;hunt set|unset|show|help|setup`, and `set|unset|show|help` for `;heal`
+//! and `;waggle`: a setting changed from the game line, and read back the
+//! way the behavior will read it, so a bad value is refused by name rather
+//! than saved (`cena_behavior::settings`). A file that is there and does
+//! not read is never written over (`plan/44` Q05).
 
-use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use cena_behavior::heal::{self, HealProfile};
-use cena_behavior::hunt::{self, LoadError, command::HELP};
-use cena_behavior::settings;
+use cena_behavior::hunt::command::{Of, Setting, Topic, help as help_for};
+use cena_behavior::hunt::{self, LoadError};
+use cena_behavior::settings::{self, Stored};
+use cena_behavior::waggle::{self, WaggleProfile};
 use cena_session::NoticeKind;
 
 use super::Say;
@@ -16,11 +18,28 @@ use super::Say;
 /// The instance and character, when the game has said them.
 type Who<'a> = Option<&'a (String, String)>;
 
-/// `;hunt help`, or `;hunt` alone.
-pub(super) fn help(say: Say<'_>) {
-    for line in HELP {
-        say(NoticeKind::Info, format!("Hunt: {line}"));
+/// `;hunt help` (or `;hunt` alone), `;heal help`, `;waggle help`.
+pub(super) fn help(topic: Topic, say: Say<'_>) {
+    let label = match topic {
+        Topic::Hunt => "Hunt",
+        Topic::Heal => "Heal",
+        Topic::Waggle => "Waggle",
+    };
+    for line in help_for(topic) {
+        say(NoticeKind::Info, format!("{label}: {line}"));
     }
+}
+
+/// `;hunt setup`: where the map's setup page is, and what else there is.
+pub(super) fn setup(say: Say<'_>) {
+    say(
+        NoticeKind::Info,
+        "Hunt: the setup page makes a new profile by picking rooms on the map: the \"Configure hunt\" button under the character page's map. It is there when Hydra is started with --web --hunt-setup and a map (CENA_MAP).".to_owned(),
+    );
+    say(
+        NoticeKind::Info,
+        "Hunt: from here, `hunt import <bigshot yaml>` brings a profile in, and `hunt show <profile>` / `hunt set <profile> <setting> <value>` see and change one.".to_owned(),
+    );
 }
 
 /// `;hunt set <profile> <setting> <value>`: changed in the profile's file.
@@ -61,9 +80,9 @@ fn edit(
         );
         return;
     };
-    let old = match std::fs::read_to_string(&path) {
-        Ok(text) => text,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+    let old = match settings::read_text(&path) {
+        Stored::Found(text) => text,
+        Stored::Missing => {
             say(
                 NoticeKind::Error,
                 format!(
@@ -72,10 +91,10 @@ fn edit(
             );
             return;
         }
-        Err(e) => {
+        Stored::Broken(why) => {
             say(
                 NoticeKind::Error,
-                format!("Hunt: cannot read {profile}: {e}"),
+                format!("Hunt: nothing was changed: {why}"),
             );
             return;
         }
@@ -87,7 +106,7 @@ fn edit(
             return;
         }
     };
-    if let Err(e) = std::fs::write(&path, &text) {
+    if let Err(e) = settings::save(&path, &text) {
         say(
             NoticeKind::Error,
             format!("Hunt: {profile}: not saved: {e}"),
@@ -107,7 +126,7 @@ fn edit(
             }
         }
         Err(e) => {
-            let back = std::fs::write(&path, &old).map_or_else(
+            let back = settings::save(&path, &old).map_or_else(
                 |e| format!(" (and the old file could not be put back: {e})"),
                 |()| String::new(),
             );
@@ -143,85 +162,115 @@ pub(super) fn show(dir: &Path, who: Who<'_>, profile: &str, key: Option<&str>, s
     }
 }
 
-/// `;heal set <setting> <value>`: changed in this character's heal profile.
-pub(super) fn heal_set(dir: &Path, who: Who<'_>, key: &str, value: &str, say: Say<'_>) {
-    heal_edit(dir, who, say, |text| {
-        let (text, _) = settings::set(text, key, settings::typed(value))?;
-        let now = settings::text_lines(&text, Some(key))?.join(", ");
-        Ok((text, now))
-    });
+/// The profile at `path` read with `parse`, or its defaults when there is
+/// no file; the reason when the file is there and does not read, so the
+/// caller changes nothing (`keep_edit`, `sc_edit`).
+pub(super) fn stored<T: Default>(
+    path: &Path,
+    parse: impl FnOnce(&str) -> Result<T, String>,
+) -> Result<T, String> {
+    match settings::read(path, parse) {
+        Stored::Found(value) => Ok(value),
+        Stored::Missing => Ok(T::default()),
+        Stored::Broken(why) => Err(why),
+    }
 }
 
-/// `;heal unset <setting>`: back to its default.
-pub(super) fn heal_unset(dir: &Path, who: Who<'_>, key: &str, say: Say<'_>) {
-    heal_edit(dir, who, say, |text| {
-        let (text, _) = settings::unset(text, key)?;
-        Ok((text, format!("{key} is back to its default")))
-    });
+/// A character's own profile: what it is called, where it is, and how the
+/// behavior reads it.
+struct Kind {
+    label: &'static str,
+    path: fn(&Path, &str, &str) -> Option<PathBuf>,
+    /// The file's text read as the behavior reads it and written back whole:
+    /// every setting, the defaults included.
+    canonical: fn(&str) -> Result<String, String>,
+    keys: &'static [&'static str],
 }
 
-fn heal_edit(
-    dir: &Path,
-    who: Who<'_>,
-    say: Say<'_>,
-    change: impl FnOnce(&str) -> Result<(String, String), String>,
-) {
-    let Some(path) = who.and_then(|(i, n)| heal::path(dir, i, n)) else {
+fn kind(of: Of) -> Kind {
+    match of {
+        Of::Heal => Kind {
+            label: "Heal",
+            path: heal::path,
+            canonical: |text| HealProfile::parse(text)?.to_toml(),
+            keys: heal::profile::KEYS,
+        },
+        Of::Waggle => Kind {
+            label: "Waggle",
+            path: waggle::path,
+            canonical: |text| WaggleProfile::parse(text)?.to_toml(),
+            keys: waggle::KEYS,
+        },
+    }
+}
+
+/// `;heal set|unset|show`, `;waggle set|unset|show`: this character's
+/// profile, changed or listed. The first `set` makes it.
+pub(super) fn profile(dir: &Path, who: Who<'_>, of: Of, setting: &Setting, say: Say<'_>) {
+    let kind = kind(of);
+    let label = kind.label;
+    let Some(path) = who.and_then(|(i, n)| (kind.path)(dir, i, n)) else {
         say(
             NoticeKind::Error,
-            "Heal: the game has not said who this is yet.".to_owned(),
+            format!("{label}: the game has not said who this is yet."),
         );
         return;
     };
-    let old = std::fs::read_to_string(&path).unwrap_or_default();
-    let changed = change(&old).and_then(|(text, done)| {
-        // Read as the heal will read it before anything is saved.
-        HealProfile::parse(&text).map(|_| (text, done))
-    });
-    let (text, done) = match changed {
-        Ok(changed) => changed,
-        Err(why) => {
+    let old = match settings::read_text(&path) {
+        Stored::Found(text) => text,
+        Stored::Missing => String::new(),
+        Stored::Broken(why) => {
             say(
                 NoticeKind::Error,
-                format!(
-                    "Heal: not saved: {why}. The settings are {}.",
-                    heal::profile::KEYS.join(", ")
-                ),
+                format!("{label}: nothing was changed: {why}"),
             );
             return;
         }
     };
-    let written = path
-        .parent()
-        .map_or(Ok(()), std::fs::create_dir_all)
-        .and_then(|()| std::fs::write(&path, text));
-    match written {
-        Ok(()) => say(NoticeKind::Info, format!("Heal: {done}.")),
-        Err(e) => say(
+    let changed = match setting {
+        Setting::Show => return show_profile(&kind, &old, say),
+        Setting::Set { key, value } => {
+            settings::set(&old, key, settings::typed(value)).and_then(|(text, _)| {
+                let now = settings::text_lines(&text, Some(key))?.join(", ");
+                Ok((text, now))
+            })
+        }
+        Setting::Unset(key) => settings::unset(&old, key)
+            .map(|(text, _)| (text, format!("{key} is back to its default"))),
+    };
+    // Read as the behavior will read it before anything is saved.
+    let checked = changed.and_then(|(text, done)| (kind.canonical)(&text).map(|_| (text, done)));
+    match checked {
+        Err(why) => say(
             NoticeKind::Error,
-            format!("Heal: {done}, but not saved: {e}"),
+            format!(
+                "{label}: not saved: {why}. The settings are {}.",
+                kind.keys.join(", ")
+            ),
         ),
+        Ok((text, done)) => match settings::save(&path, &text) {
+            Ok(()) => say(NoticeKind::Info, format!("{label}: {done}.")),
+            Err(e) => say(
+                NoticeKind::Error,
+                format!("{label}: {done}, but not saved: {e}"),
+            ),
+        },
     }
 }
 
-/// `;heal show`: this character's heal settings, and the ones not set.
-pub(super) fn heal_show(dir: &Path, who: Who<'_>, say: Say<'_>) {
-    let profile = who
-        .and_then(|(i, n)| heal::path(dir, i, n))
-        .and_then(|path| std::fs::read_to_string(path).ok())
-        .map_or_else(
-            || Ok(HealProfile::default()),
-            |text| HealProfile::parse(&text),
-        );
-    let lines = profile.and_then(|p| p.to_toml()).and_then(|text| {
-        let unset = settings::not_set(&text, heal::profile::KEYS)?;
-        settings::text_lines(&text, None).map(|lines| (lines, unset))
+/// Every setting, the defaults included, and the ones not set.
+fn show_profile(kind: &Kind, text: &str, say: Say<'_>) {
+    let label = kind.label;
+    let shown = (kind.canonical)(text).and_then(|canonical| {
+        let unset = settings::not_set(&canonical, kind.keys)?;
+        settings::text_lines(&canonical, None).map(|lines| (lines, unset))
     });
-    match lines {
+    match shown {
         Ok((lines, unset)) => {
+            let word = label.to_ascii_lowercase();
             say(
                 NoticeKind::Info,
-                "Heal: change one with `heal set <setting> <value>`.".to_owned(),
+                format!("{label}: change one with `{word} set <setting> <value>`."),
             );
             for line in lines {
                 say(NoticeKind::Info, format!("  {line}"));
@@ -230,7 +279,7 @@ pub(super) fn heal_show(dir: &Path, who: Who<'_>, say: Say<'_>) {
                 say(NoticeKind::Info, format!("  not set: {}", unset.join(", ")));
             }
         }
-        Err(why) => say(NoticeKind::Error, format!("Heal: {why}")),
+        Err(why) => say(NoticeKind::Error, format!("{label}: {why}")),
     }
 }
 
@@ -249,7 +298,23 @@ mod tests {
     use cena_behavior::hunt;
     use cena_session::NoticeKind;
 
-    use super::{heal_set, heal_show, set, show};
+    use cena_behavior::hunt::command::{Of, Setting};
+
+    use super::{profile, set, show};
+
+    fn heal_set(
+        dir: &Path,
+        who: Option<&(String, String)>,
+        key: &str,
+        value: &str,
+        say: super::Say<'_>,
+    ) {
+        let setting = Setting::Set {
+            key: key.to_owned(),
+            value: value.to_owned(),
+        };
+        profile(dir, who, Of::Heal, &setting, say);
+    }
 
     const PROFILE: &str = "# imported\n\ntargets = [{ any = true, routine = \"a\" }]\n\n[rooms]\nhunting = 10\nresting = 20\n\n[routines]\na = [\"volley\", \"fire\"]\n\n[sequences]\nvolley = []\n";
 
@@ -340,18 +405,18 @@ mod tests {
         heal_set(&dir, Some(&who), "potions", "on", &say);
         heal_set(&dir, Some(&who), "herbs", "lots", &say);
         let path = cena_behavior::heal::path(&dir, "prime", "Nisugi").unwrap();
-        let profile =
+        let saved =
             cena_behavior::heal::HealProfile::parse(&std::fs::read_to_string(path).unwrap())
                 .unwrap();
-        assert_eq!(profile.container, "herb pouch");
-        assert!(profile.potions);
+        assert_eq!(saved.container, "herb pouch");
+        assert!(saved.potions);
         assert_eq!(
             said.borrow().last().map(|(kind, _)| *kind),
             Some(NoticeKind::Error),
             "an unknown setting is refused"
         );
         said.borrow_mut().clear();
-        heal_show(&dir, Some(&who), &say);
+        profile(&dir, Some(&who), Of::Heal, &Setting::Show, &say);
         let shown: Vec<String> = said.borrow().iter().map(|(_, t)| t.clone()).collect();
         assert!(
             shown
@@ -363,6 +428,44 @@ mod tests {
             shown.iter().any(|t| t.contains("not set: stock")),
             "{shown:?}"
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// `plan/44` Q05's acceptance: a malformed file is left byte for byte,
+    /// and the error names it; a missing one is made.
+    #[test]
+    fn a_broken_profile_is_never_written_over() {
+        let dir = dir().unwrap();
+        let who = ("prime".to_owned(), "Nisugi".to_owned());
+        let said = RefCell::new(Vec::new());
+        let say = |kind: NoticeKind, text: String| said.borrow_mut().push((kind, text));
+        let path = cena_behavior::waggle::path(&dir, "prime", "Nisugi").unwrap();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let broken = "cast_list = [101,
+start_at = 90
+";
+        std::fs::write(&path, broken).unwrap();
+
+        let setting = Setting::Set {
+            key: "bail".to_owned(),
+            value: "on".to_owned(),
+        };
+        profile(&dir, Some(&who), Of::Waggle, &setting, &say);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), broken);
+        let last = said.borrow().last().cloned().unwrap();
+        assert_eq!(last.0, NoticeKind::Error);
+        assert!(last.1.contains("waggle"), "names the file: {}", last.1);
+
+        std::fs::remove_file(&path).unwrap();
+        let setting = Setting::Set {
+            key: "cast_list".to_owned(),
+            value: "[101, 107, 401]".to_owned(),
+        };
+        profile(&dir, Some(&who), Of::Waggle, &setting, &say);
+        let made =
+            cena_behavior::waggle::WaggleProfile::parse(&std::fs::read_to_string(&path).unwrap())
+                .unwrap();
+        assert_eq!(made.cast_list, [101, 107, 401]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
