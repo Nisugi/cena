@@ -748,3 +748,25 @@ fn a_nudge_goes_on_in_the_next_room_and_the_hunt_resumes_where_it_was() {
     );
     assert_eq!(tick(&mut h, &here), "kick", "back, and hunting");
 }
+
+#[test]
+fn an_assault_the_attack_type_refuses_swaps_once_and_goes_again() {
+    let state = kobold(1_000);
+    let refusal = "Barrage can not be used with attack as the attack type.";
+    let mut h = hunt(&["barrage", "kick"]).unwrap();
+    assert_eq!(tick(&mut h, &state), "weapon barrage #42");
+    h.heard(refusal, Some(1_000));
+    h.replied([refusal], Some(1_000));
+    assert_eq!(
+        ticks(&mut h, &state, 2),
+        ["swap", "weapon barrage #42"],
+        "the bow to the other hand, and the assault again"
+    );
+    h.heard(refusal, Some(1_001));
+    h.replied([refusal], Some(1_001));
+    assert_eq!(
+        tick(&mut h, &state),
+        "kick",
+        "refused again: not swapped back"
+    );
+}

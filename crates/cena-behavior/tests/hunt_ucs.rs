@@ -378,3 +378,17 @@ fn spell_run(name: &str, number: &str) -> Run {
         inner_link: None,
     }
 }
+
+#[test]
+fn fury_at_tier_3_carries_the_tier_3_attack() {
+    let tier3 = after_jab("excellent", None);
+    assert_eq!(first("fury", "", &tier3), "weapon fury punch #42");
+    assert_eq!(
+        first("fury", "[unarmed]\ntier3 = \"kick\"\n", &tier3),
+        "weapon fury kick #42"
+    );
+    assert_eq!(
+        first("fury", "", &after_jab("good", None)),
+        "weapon fury #42"
+    );
+}

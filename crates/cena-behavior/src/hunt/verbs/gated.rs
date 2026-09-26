@@ -11,10 +11,10 @@
 
 use std::collections::VecDeque;
 
-use cena_session::{GameState, PsmCategory, StatusName, gameobj};
+use cena_session::{GameState, PositionTier, PsmCategory, StatusName, gameobj};
 
 use super::super::engine::Hunt;
-use super::super::follow::{Answer, EFURY_ENDS, End, Hold, Next, TETHER_ENDS};
+use super::super::follow::{ASSAULT_ENDS, Answer, EFURY_ENDS, End, Hold, Next, TETHER_ENDS};
 use super::super::wand;
 use super::spell::Spell;
 use super::tables::SHIELD_MOVES;
@@ -449,6 +449,7 @@ impl Hunt {
             }
             "dhurl" => self.dhurl(rest, target),
             "wandolier" => self.wandolier(rest, state),
+            "fury" if tier3_against(target, state, now) => self.fury(target, state),
             "nudgeweapon" | "nudgeweapons" => self.nudge(state),
             "mstrike" => {
                 let (mut lines, strike) =
@@ -676,4 +677,26 @@ impl Hunt {
         self.repeats.nudging = lines;
         one(first)
     }
+}
+
+impl Hunt {
+    /// Fury at tier 3 carries the tier 3 attack (`cmd_assault`,
+    /// `bigshot.lic:4634-4636`), and is waited out as any assault.
+    fn fury(&self, target: i64, state: &GameState) -> Line {
+        if cooling(state, "Fury") || unavailable(state, PsmCategory::Weapon, "fury") {
+            return Line::Skip;
+        }
+        let line = format!("weapon fury {} #{target}", self.profile.unarmed.tier3);
+        let hold = Hold::new(12, target, End::Heard(ASSAULT_ENDS));
+        Line::Then(VecDeque::from([line]), Next::Hold(hold))
+    }
+}
+
+/// The creature is at tier 3 positioning: bigshot's
+/// `$bigshot_unarmed_tier == 3`, per creature here.
+fn tier3_against(target: i64, state: &GameState, now: Option<u32>) -> bool {
+    state
+        .creatures()
+        .get(target)
+        .is_some_and(|creature| creature.ucs_position(now) == Some(PositionTier::Excellent))
 }

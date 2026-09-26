@@ -173,6 +173,10 @@ pub(super) enum Next {
 
 /// A step's hold and answer, and whether the character is rooted.
 #[derive(Debug, Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "four independent facts a hunt remembers between ticks"
+)]
 pub(super) struct Follow {
     hold: Option<Hold>,
     answer: Option<Answer>,
@@ -183,6 +187,9 @@ pub(super) struct Follow {
     /// No Adrenal Surge (1107) before this game second (bigshot's
     /// `$bigshot_adrenal_surge`, 301 s after the last).
     pub(super) adrenal_until: Option<u32>,
+    /// A `swap` was sent for the step now going: a second refusal of the
+    /// attack type does not swap back and forth.
+    swapped: bool,
     /// This rest's waggle has run (`rest.waggle`).
     pub(super) rest_waggled: bool,
     /// What went last, to send again if the game says `...wait`. Every
@@ -272,14 +279,23 @@ impl Hunt {
     }
 
     /// `...wait N seconds.`: the line that met it goes again, after the
-    /// roundtime the driver waits out before every line.
+    /// roundtime the driver waits out before every line. And an assault the
+    /// attack type refuses: `swap`, then the step again, once (`cmd_assault`,
+    /// `bigshot.lic:4648-4651`).
     pub(super) fn resend_replied(&mut self, lines: &[&str]) {
         let waited = lines.iter().any(|line| {
             line.trim()
                 .strip_prefix("...wait ")
                 .is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_digit()))
         });
-        match self.follow.resend.take().filter(|_| waited) {
+        let refused = lines
+            .iter()
+            .any(|line| line.contains("can not be used with attack as the attack type"));
+        let swap = refused && !std::mem::replace(&mut self.follow.swapped, refused);
+        if swap {
+            self.followups.push_back("swap".to_owned());
+        }
+        match self.follow.resend.take().filter(|_| waited || swap) {
             Some(Resend::Line(line)) => self.followups.push_front(line),
             Some(Resend::Step(step)) => self.queue.push_front(step),
             None => {}

@@ -243,9 +243,9 @@ pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
         if cooling(state, name) || gated::unavailable(state, PsmCategory::Weapon, &first) {
             return Line::Skip;
         }
-        // An assault runs for rounds; bigshot waits it out. Not ported: its
-        // `swap` when Barrage refuses the attack type, and Fury with the
-        // tier 3 attack.
+        // An assault runs for rounds; bigshot waits it out. Its `swap` when
+        // the attack type is refused is `follow.rs`'s, and Fury at tier 3
+        // `gated.rs`'s.
         if ASSAULTS.contains(&first.as_str()) {
             let hold = Hold::new(12, target, End::Heard(ASSAULT_ENDS));
             return Line::Then([format!("weapon {send} {at}")].into(), Next::Hold(hold));
