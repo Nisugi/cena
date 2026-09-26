@@ -1,9 +1,11 @@
 # 45 — Milestone 8: triggers
 
-> **STATUS: PLAN, 2026-09-26.** Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
+> **STATUS: PLAN, 2026-09-26; STAGE 1 BUILT the same day** (§6), all but the release run
+> of the bench. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
 > the worktree `G:\dev\Cena-m8` (locked on purpose: M8 spans sessions). The author's
 > decisions are quoted in §1 with the date. **Everything else here is Claude's proposal**,
-> and two of §1's rows are Claude's *reading* of an answer, marked as such.
+> and two of §1's rows are Claude's *reading* of an answer, marked as such. What was decided
+> while building, for the author to confirm, is §5c, §5d and §6a.
 > `plan/12` wins any contradiction, except where §1 records the author changing it.
 
 ---
@@ -387,10 +389,20 @@ Each ends in something demonstrable without a live login.
    (global npm, the projects under `G:\dev`); Chrome is installed.
 7. **A bench**: the golden fixtures against the author's Wrayth set (~220 rules) and a
    synthetic 1,500. The budget is set from the measurement, with VellumFE's ~17 µs a line
-   as the reference point, and 25 sessions in mind.
+   as the reference point, and 25 sessions in mind. **The harness is BUILT**
+   (`crates/cena-model/tests/trigger_bench.rs`, `#[ignore]`d): synthetic sets of 220 and
+   1,500, the author's own waiting for Stage 4's importer. **The budget is NOT set**: that
+   needs a release run, and the author builds debug for testing (`CLAUDE.md`), so it is
+   theirs to run or approve. MEASURED in DEBUG only, for scale and not as a budget, over the
+   438 lines the fixtures finish: 0.54 µs a line with no triggers, 5.2 µs with 220, 10.3 µs
+   with 1,500 (`cargo test -p cena-model --test trigger_bench -- --ignored --nocapture`).
+   `VellumFE`'s 17 µs is a release figure for parse and process together, so not
+   comparable.
 
 **Done when** a scripted two-character session shows a colour, a squelch, a substitute and a
-redirect, one of them limited to one character, in Despana.
+redirect, one of them limited to one character, in Despana. **MET 2026-09-26**:
+`crates/cena/tests/web_triggers.rs`, two characters' pages over one file, the redirect
+Nisugi's alone; without that limit it fails on Dicate's page, checked.
 
 ### 6a. How responses combine -- CLAUDE'S, to confirm
 
