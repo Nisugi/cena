@@ -181,6 +181,8 @@ fn follower_party(leading: Leading) -> Party {
         musters: Vec::new(),
         dropped: false,
         awaiting: Vec::new(),
+        leader_lost: None,
+        recoverer: None,
     }
 }
 
@@ -195,6 +197,8 @@ fn leader_party(followers: Vec<Report>, musters: Vec<(String, Muster)>) -> Party
         musters,
         dropped: false,
         awaiting: Vec::new(),
+        leader_lost: None,
+        recoverer: None,
     }
 }
 
@@ -605,21 +609,42 @@ fn a_leader_holding_for_a_member_neither_wanders_nor_rests() {
     assert_eq!(hunt.phase(), Phase::Hunting);
 }
 
-/// Question 10: a member dead, every hunt ends.
+/// Question 10: a member dead, every hunt ends, and the leader, able,
+/// carries it out first: its hand taken (hands already empty here), then,
+/// without Spirit Guide, dragged to the resting room.
 #[test]
-fn a_dead_member_ends_the_leaders_hunt() {
+fn a_dead_member_is_carried_out_by_the_leader_then_every_hunt_ends() {
     let mut hunt = Hunt::new(profile().unwrap(), 1);
     let state = leading(state(100), "Kiyna");
     let dead = Report {
         hindrance: Some(Hindrance::Dead),
         ..report("Kiyna")
     };
-    hunt.see(leader_party(
-        vec![dead],
-        vec![("Kiyna".to_owned(), Muster::Dead)],
-    ));
+    let party = leader_party(vec![dead], vec![("Kiyna".to_owned(), Muster::Dead)]);
+    hunt.see(party.clone());
     assert_eq!(
         hunt.tick(&state, here(10), Some(100)),
+        send("hold Kiyna", None)
+    );
+    hunt.see(party.clone());
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(101)),
+        Said::Wait(1),
+        "already held: no wait for the hand"
+    );
+    hunt.see(party.clone());
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(102)),
+        send("drag Kiyna", None)
+    );
+    hunt.see(party.clone());
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(103)),
+        Said::Walk(RoomId(20))
+    );
+    hunt.see(party);
+    assert_eq!(
+        hunt.tick(&state, here(20), Some(120)),
         Said::Done(Ending::MemberDied)
     );
 }

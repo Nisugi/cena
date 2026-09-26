@@ -18,7 +18,10 @@ use cena_session::{CommandId, Frame, Gate, Origin, State};
 
 use super::{Driver, HuntEnd};
 use crate::error::BehaviorError;
-use crate::group::{self, Board, Boards, Party, Place, Report, Role, muster};
+use crate::group::{
+    self, Board, Boards, Hindrance, LOST_WAIT, Leading, Muster, Party, Place, Report, Role,
+    Settings, muster,
+};
 use crate::hunt::said::{Ending, Phase};
 use crate::travel::TravelNotes;
 
@@ -45,6 +48,12 @@ pub(super) struct Membership {
     expected: Vec<String>,
     /// Follow: the leader the command named, until the game's group says.
     following: Option<String>,
+    /// Follow: since when the leader has been lost (`plan/39` Stage 6).
+    leader_since: Option<Instant>,
+    /// Lead: a leader this member took over from, and its board, so its
+    /// report is read with the followers' (the handover's *"add the one
+    /// left behind"*).
+    lost: Option<(String, Arc<Board>)>,
 }
 
 impl Membership {
@@ -64,6 +73,8 @@ impl Membership {
             asked: false,
             expected,
             following,
+            leader_since: None,
+            lost: None,
         }
     }
 }
@@ -72,8 +83,9 @@ impl Membership {
 pub(super) enum Seen {
     /// Tick the engine.
     Go,
-    /// Nobody has said who leads: ask the game, then look again.
-    Ask,
+    /// Send this line, then look again: `group`, when nobody has said who
+    /// leads; `leave group`, to leave a lost leader's group.
+    Say(&'static str),
     /// The leader's hunt is over, and so is this follower's (`plan/39` §8,
     /// question 3).
     Over(HuntEnd),
@@ -86,6 +98,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             self.machine.see(None);
             return Seen::Go;
         };
+        if self.membership.is_none() {
+            return Seen::Go;
+        }
+        self.back_after_handover(&name);
         let Some(member) = self.membership.as_mut() else {
             return Seen::Go;
         };
@@ -114,7 +130,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 _ if !member.expected.is_empty() => (Role::Lead, name.clone()),
                 _ if role.is_none() && !member.asked => {
                     member.asked = true;
-                    return Seen::Ask;
+                    return Seen::Say("group");
                 }
                 _ => {
                     member.on = None;
@@ -143,6 +159,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 musters: Vec::new(),
                 dropped: false,
                 awaiting: Vec::new(),
+                leader_lost: None,
+                recoverer: None,
             }));
             return Seen::Go;
         };
@@ -151,20 +169,150 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             member.on = Some((leader.clone(), Arc::clone(&board)));
         }
         let reports = board.reports();
-        let party = match role {
-            Role::Lead => self.leaders_view(&name, here, &reports),
-            _ => Party {
+        let party = if role == Role::Lead {
+            self.leaders_view(&name, here, &reports)
+        } else {
+            let leading = board.leading();
+            let (leader_lost, recoverer) = self.leader_view(&leader, &reports, &leading, here);
+            if matches!(
+                leader_lost,
+                Some(Muster::Gone | Muster::TakeHome | Muster::Drag | Muster::Add)
+            ) {
+                return self.hand_over(&name, &leader, &board, &reports, &leading);
+            }
+            Party {
                 name,
                 role,
                 leader,
-                leading: Some(board.leading()),
+                leading: Some(leading),
                 followers: Vec::new(),
                 musters: Vec::new(),
                 dropped: false,
                 awaiting: Vec::new(),
-            },
+                leader_lost,
+                recoverer,
+            }
         };
         self.machine.see(Some(party));
+        Seen::Go
+    }
+
+    /// Back after the lead passed while it was away (question 8): it follows
+    /// the new leader.
+    fn back_after_handover(&mut self, name: &str) {
+        let Some(member) = self.membership.as_mut() else {
+            return;
+        };
+        if let Some(new) = member.boards.take_handed(name) {
+            member.following = Some(new.clone());
+            member.on = None;
+            member.expected.clear();
+            self.handle.say(cena_session::Notice::line(
+                cena_session::NoticeKind::Info,
+                format!("Hunt: {new} leads now; following."),
+            ));
+        }
+    }
+
+    /// A follower's view of its leader, when the leader is not with the
+    /// group: what muster says of it, with the leader's `lost_wait`, and
+    /// who carries it out if it is dead (`plan/39` Stage 6, question 10).
+    fn leader_view(
+        &mut self,
+        leader: &str,
+        reports: &BTreeMap<String, Report>,
+        leading: &Leading,
+        here: Option<RoomId>,
+    ) -> (Option<Muster>, Option<String>) {
+        let Some(member) = self.membership.as_mut() else {
+            return (None, None);
+        };
+        let Some(report) = reports.get(leader) else {
+            return (None, None);
+        };
+        let dead = report.hindrance == Some(Hindrance::Dead);
+        if report.link == State::Ready && !dead {
+            member.leader_since = None;
+            return (None, None);
+        }
+        let now = tokio::time::Instant::now().into_std();
+        let since = *member.leader_since.get_or_insert(now);
+        let settings = Settings {
+            lost_wait: leading.lost_wait.unwrap_or(LOST_WAIT),
+            successors: leading.successors.clone(),
+            ..Settings::default()
+        };
+        let standing = (report.link != State::Ready)
+            .then(|| group::standing(&self.state, leader))
+            .flatten();
+        let said = muster(report, here, standing, since, now, &settings);
+        let others: Vec<Report> = reports
+            .values()
+            .filter(|r| r.name != leader)
+            .cloned()
+            .collect();
+        let recoverer = (said == Some(Muster::Dead))
+            .then(|| group::recoverer(report, &others).map(str::to_owned))
+            .flatten();
+        (said, recoverer)
+    }
+
+    /// The leader is lost for good: the successor leads, the others follow
+    /// it; anyone still in the lost leader's game group leaves it first
+    /// (`plan/39` §1, the author's handover; question 4's successor).
+    fn hand_over(
+        &mut self,
+        name: &str,
+        old: &str,
+        board: &Arc<Board>,
+        reports: &BTreeMap<String, Report>,
+        leading: &Leading,
+    ) -> Seen {
+        let in_old = matches!(self.state.group.leader(), Leader::Other(l) if l.noun == old);
+        let Some(member) = self.membership.as_mut() else {
+            return Seen::Go;
+        };
+        let settings = Settings {
+            successors: leading.successors.clone(),
+            ..Settings::default()
+        };
+        let members: Vec<Report> = reports
+            .values()
+            .filter(|r| r.name != old)
+            .cloned()
+            .collect();
+        let successor = group::successor(&members, &settings, 0).map(str::to_owned);
+        member.leader_since = None;
+        member.on = None;
+        let text = match &successor {
+            Some(new) if new == name => {
+                member.boards.hand_over(old, name);
+                member.lost = Some((old.to_owned(), Arc::clone(board)));
+                member.following = None;
+                member.expected = members
+                    .iter()
+                    .map(|r| r.name.clone())
+                    .filter(|n| n != name)
+                    .collect();
+                format!("Hunt: {old} is lost; I lead now.")
+            }
+            Some(new) => {
+                member.following = Some(new.clone());
+                format!("Hunt: {old} is lost; {new} leads now.")
+            }
+            None => {
+                member.following = None;
+                format!("Hunt: {old} is lost, and nobody is left to lead; hunting alone.")
+            }
+        };
+        self.handle.say(cena_session::Notice::line(
+            cena_session::NoticeKind::Info,
+            text,
+        ));
+        self.machine.see(None);
+        if in_old {
+            return Seen::Say("leave group");
+        }
         Seen::Go
     }
 
@@ -178,11 +326,23 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
     ) -> Party {
         let settings = self.machine.profile().group.settings();
         let now = tokio::time::Instant::now().into_std();
-        let followers: Vec<Report> = reports
+        let mut followers: Vec<Report> = reports
             .values()
             .filter(|report| report.name != name)
             .cloned()
             .collect();
+        // A leader taken over from, while it is not back with us: read with
+        // the followers, so muster takes it home or hands it on (§8a).
+        if let Some(member) = self.membership.as_mut()
+            && let Some((old, board)) = member.lost.clone()
+        {
+            match board.reports().get(&old) {
+                Some(report) if !followers.iter().any(|f| f.name == old) => {
+                    followers.push(report.clone());
+                }
+                _ => member.lost = None,
+            }
+        }
         let resting = self.machine.phase() != Phase::Hunting;
         let Some(member) = self.membership.as_mut() else {
             return Party {
@@ -194,6 +354,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 musters: Vec::new(),
                 dropped: false,
                 awaiting: Vec::new(),
+                leader_lost: None,
+                recoverer: None,
             };
         };
         if resting {
@@ -265,6 +427,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             musters,
             dropped,
             awaiting,
+            leader_lost: None,
+            recoverer: None,
         }
     }
 
@@ -311,6 +475,13 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         if closed {
             let here = self.last_room;
             self.publish(here, State::Closed);
+            return;
+        }
+        // Dead: its report stays up, dead, for the group to carry it out
+        // (question 10).
+        if end == HuntEnd::Finished(Ending::Dead) {
+            let here = self.last_room;
+            self.publish(here, State::Ready);
             return;
         }
         let Some(member) = self.membership.as_ref() else {

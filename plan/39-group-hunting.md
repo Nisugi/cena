@@ -1,7 +1,7 @@
 # 39 — Group hunting: bigshot's head and tail, measured and staged
 
 **Status: PROPOSED 2026-09-25; §7's eleven questions ANSWERED 2026-09-26 (§8, §8a).
-Stages 0 to 5 are built, but for Stage 4's live run.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
+Stages 0 to 7 are built, but for the live runs.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
 and has several characters and a test server to run a group on. `plan/30` §4 recorded the
 author's group design and §8 put groups after M6; **the author moved them before the live run**
 (§8, question 1). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
@@ -515,6 +515,47 @@ leader adds the one left behind (`group #<id>`, as Lich's `Group.add` sends it,
 rejoins. Tests over scripted sessions with one connection dropped and the clock advanced, a
 mutation per branch. **Live:** one member knocked off by a second login on its account, the
 trigger `plan/29` §5b recorded.
+**BUILT 2026-09-26, but for the live run.** Each follower reads the leader's own report on the
+board (`hunt/drive/party.rs`, `leader_view`) and runs muster on it with the leader's
+`lost_wait` and `successors`, which the leader publishes:
+
+- **Held for** (`Lost`): the follower fights what comes and nothing else: no catching up, no
+  joining, no rest of its own (question 5).
+- **Given up** (`Closed`, or the wait run out): the handover. Every member computes the same
+  successor (`successor`, the leader's list, else the healthiest, a tie by a fixed roll so all
+  agree). A member still in the lost leader's game group sends `leave group` first. The
+  successor leads, waiting for the others as a `hunt ... with` leader does; the others follow
+  it and join. The lost leader's report is read with the new leader's followers, so §8a's
+  rule applies to it: standing there link-dead, it is added and taken home; gone from the
+  game, the group hunts on (or rests, if the merged reasons say so).
+- **The one who comes back** (question 8): `Boards` records who took over from whom; a hunt
+  that comes back from its reconnect to find its lead handed on follows the new leader.
+- **§8a's open row, closed by the author's own handover words:** a member given up, standing
+  here, well, but not in the group is added (`Muster::Add`: `group #<id>`, Lich's
+  `Group.add`, `group.rb:298-309`), then taken home. INFERRED from *"the leader add the
+  disconnected loligagger to their group, then go rest"* (§1), for any member, not only a
+  lost leader. That the game lets a leader add a link-dead character is UNVERIFIED.
+
+Tests: `crates/cena-behavior/tests/group_handover.rs` (the follower's hold and wait, the add)
+and `crates/cena-behavior/tests/group_drive.rs` (`a_leader_given_up_hands_over_to_its_successor`:
+two scripted sessions, the leader `Closed` on the board, `successors = ["Dicate"]`: both
+leave the old group, Dicate opens its own, Kiyna joins Dicate).
+
+**Stage 7 — a dead member** (§8b, question 10). **BUILT 2026-09-26, but for the live run.**
+`hunt/party/recover.rs`. Every member's hunt ends (`Ending::MemberDied`). The recoverer is the
+leader if able, else the first follower able (`recoverer`). The leader carries it out
+itself, or publishes who does (`Leading::recover`) and waits for it within `lost_wait`;
+every other member ends at once. A dead **leader's** report stays up, dead, so its
+followers' muster reads it and the recoverer among them carries it out. The recovery, a
+step a tick: the hands emptied (travel's `store_commands`), `hold <name>` (Lich's `HOLD_*`
+lines, read since Stage 1), then `incant 130` when Spirit Guide is known and affordable, else
+`drag <name>` and the walk to the resting room, else an alert to the player: *"... they need
+you"*. The alert now reaches the player the tick it is raised, before a hunt that ends with
+it. Tests: `crates/cena-behavior/tests/group_handover.rs` (a follower not named ends; the one
+named carries a dead leader out by Spirit Guide; a stuck leader names the follower; nobody
+able alerts), and `group_engine.rs` (the leader carries a member out by drag). UNVERIFIED,
+as §8 already says: where Spirit Guide goes and that it takes the held dead along, and
+`drag`'s conditions and messages.
 
 **Not in this plan:** corpse recovery (designed in eohunter, not built; bigshot has none);
 group bounties (`has_bounty?` is broken, `:1055`); working with a Lich bigshot over DRb

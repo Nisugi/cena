@@ -44,6 +44,9 @@ pub enum Place {
 #[derive(Debug, Default)]
 pub struct Boards {
     boards: Mutex<BTreeMap<String, Arc<Board>>>,
+    /// Leaders lost and who took over from each (`plan/39` Stage 6), for
+    /// the one who comes back to follow (question 8).
+    handed: Mutex<BTreeMap<String, String>>,
 }
 
 impl Boards {
@@ -69,6 +72,19 @@ impl Boards {
     pub fn of(&self, leader: &str) -> Option<Arc<Board>> {
         let boards = self.boards.lock().unwrap_or_else(PoisonError::into_inner);
         boards.get(leader).cloned()
+    }
+
+    /// `new` leads what `old` led: said to `old` when it comes back.
+    pub fn hand_over(&self, old: &str, new: &str) {
+        let mut handed = self.handed.lock().unwrap_or_else(PoisonError::into_inner);
+        handed.insert(old.to_owned(), new.to_owned());
+    }
+
+    /// Who took over from `old`, once: `old` follows them now.
+    #[must_use]
+    pub fn take_handed(&self, old: &str) -> Option<String> {
+        let mut handed = self.handed.lock().unwrap_or_else(PoisonError::into_inner);
+        handed.remove(old)
     }
 
     /// Take down the board `leader` leads: its hunt is over, and so are its

@@ -49,7 +49,12 @@
 //! | there, in the group, nothing wrong | [`Muster::TakeHome`]: the group rests now, the leader's way |
 //! | there, something wrong | [`Muster::Drag`] |
 //! | there, dead | [`Muster::Dead`]: question 10's recovery, whose third step is the drag |
-//! | there, not in the group, nothing wrong | [`Muster::Gone`], which the answer does not cover (`plan/39` §8a) |
+//! | there, not in the group, nothing wrong | [`Muster::Add`]: added (`group #<id>`), then taken home |
+//!
+//! The last row the answer does not cover. It is the author's handover
+//! design's own step (`plan/39` §1: *"the leader add the disconnected
+//! loligagger to their group, then go rest"*), INFERRED to hold for any
+//! member given up here, not only a lost leader.
 //! | walking over ([`Muster::Await`]) | [`Muster::Fetch`]: the group goes to it | *"go to them if they can't come to you immediately"* (question 7) |
 //! | hindered here ([`Muster::Hold`]), or apart where the map cannot place it | [`Muster::Overdue`]: rest, when it can move | eohunter's stated intent for its barrier: *"the leader should go rest and wait rather than hunt on"*, and *"nobody gets left behind"* (`plan/39` §2) |
 
@@ -120,6 +125,9 @@ pub enum Muster {
     /// dragged home (*"drag em if something happened to them"*, `plan/39`
     /// §8a).
     Drag,
+    /// Given up, standing in the leader's room, well, but not in its group:
+    /// added (`group #<id>`, Lich's `Group.add`), then taken home.
+    Add,
     /// Dead: every member's hunt ends, and one member recovers it
     /// ([`recoverer`]; the recovery itself is Stage 7). Question 10.
     Dead,
@@ -187,7 +195,7 @@ fn given_up(standing: Option<Standing>) -> Muster {
         Some(Hindrance::Dead) => Muster::Dead,
         Some(_) => Muster::Drag,
         None if standing.grouped => Muster::TakeHome,
-        None => Muster::Gone,
+        None => Muster::Add,
     }
 }
 

@@ -154,6 +154,8 @@ fn led(followers: Vec<Report>) -> Party {
         musters: Vec::new(),
         dropped: false,
         awaiting: Vec::new(),
+        leader_lost: None,
+        recoverer: None,
     }
 }
 
@@ -167,6 +169,8 @@ fn followed(leading: Leading) -> Party {
         musters: Vec::new(),
         dropped: false,
         awaiting: Vec::new(),
+        leader_lost: None,
+        recoverer: None,
     }
 }
 

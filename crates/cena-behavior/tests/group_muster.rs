@@ -246,12 +246,18 @@ fn given_up_standing_here_and_dead_is_recovered() {
     );
 }
 
-/// §8a: not in the room, out of the game: the handover. And the case the
-/// answer does not cover, there and fine but not grouped, stays the handover.
+/// §8a: not in the room, out of the game: the handover.
 #[test]
 fn given_up_and_not_standing_here_is_handed_over() {
     assert_eq!(given_up(None), Some(Muster::Gone));
-    assert_eq!(given_up(Some(standing(false, None))), Some(Muster::Gone));
+}
+
+/// The case §8a's answer does not cover, there and well but not grouped:
+/// added, as the author's handover adds *"the disconnected loligagger"*
+/// (`plan/39` §1), then taken home.
+#[test]
+fn given_up_standing_here_ungrouped_is_added() {
+    assert_eq!(given_up(Some(standing(false, None))), Some(Muster::Add));
 }
 
 /// `group/muster.rs`, INFERRED: the lost wait run out reads the leader's

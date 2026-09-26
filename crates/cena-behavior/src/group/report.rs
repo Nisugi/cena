@@ -172,6 +172,13 @@ pub struct Leading {
     pub independent_travel: bool,
     /// Its followers walk home on their own (`independent_return`).
     pub independent_return: bool,
+    /// Who leads when it is lost, first present first (its `successors`).
+    pub successors: Vec<String>,
+    /// How long its group waits for a member (its `lost_wait`).
+    pub lost_wait: Option<std::time::Duration>,
+    /// A dead member being carried out, and who carries it (`plan/39` §8,
+    /// question 10): every other member's hunt ends.
+    pub recover: Option<(String, String)>,
 }
 
 /// The leader's rooms, by the map's numbers.

@@ -20,12 +20,17 @@ fn request() -> Result<Request, serde_json::Error> {
      "targets":["warg"],"attacks":["attack"],"until":{"experience":80,"mana":90},"preview":null}),
     )
 }
+/// A fresh directory per test. The counter, not the clock, keeps two tests
+/// running at once apart: Windows' clock can give both the same nanosecond,
+/// and they then shared one directory and failed each other at random.
 fn dir() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .as_nanos();
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
-        "../../target/hunt-setup-tests/{}-{stamp}",
+        "../../target/hunt-setup-tests/{}-{stamp}-{n}",
         std::process::id()
     ));
     std::fs::create_dir_all(&path)?;

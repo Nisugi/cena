@@ -368,3 +368,62 @@ async fn a_followers_stop_leaves_the_group() {
     );
     assert!(!leader.lines().contains(&"leave group".to_owned()));
 }
+
+/// `plan/39` §1 and Stage 6: Hydra gave the leader up and the game no
+/// longer has it here: the successor named by the leader's `successors`
+/// leads; each member leaves the lost leader's group, and Kiyna joins
+/// Dicate.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_leader_given_up_hands_over_to_its_successor() {
+    let boards = Boards::new();
+    let old = boards.lead("Ashryn");
+    let report = |name: &str, link| cena_behavior::group::Report {
+        name: name.to_owned(),
+        link,
+        room: Some(cena_map::RoomId(1)),
+        rest: None,
+        unready: None,
+        hindrance: None,
+        grouped: true,
+        health: Some(100),
+        headroom: None,
+        prepared: None,
+        looted: Vec::new(),
+        dropped: None,
+    };
+    old.publish(report("Ashryn", cena_session::State::Closed));
+    old.publish(report("Kiyna", cena_session::State::Ready));
+    old.publish(report("Dicate", cena_session::State::Ready));
+    old.lead(cena_behavior::group::Leading {
+        phase: Some(cena_behavior::hunt::engine::Phase::Hunting),
+        room: Some(cena_map::RoomId(1)),
+        successors: vec!["Dicate".to_owned()],
+        lost_wait: Some(Duration::from_secs(90)),
+        ..cena_behavior::group::Leading::default()
+    });
+    let stop = CancellationToken::new();
+    let in_old = GroupEvent::JoinedGroup(member("Ashryn"));
+    let (kiyna, kiyna_task, kiyna_session) =
+        member_hunt("Kiyna", FOLLOWER, &in_old, Place::Read, &boards, &stop);
+    let (dicate, dicate_task, dicate_session) =
+        member_hunt("Dicate", FOLLOWER, &in_old, Place::Read, &boards, &stop);
+    // Leaving a group is the indicator going dark (Lich's `GROUP_EMPTIED`).
+    let left = b"<indicator id='IconJOINED' visible='n'/>\n<prompt time=\"1002\">&gt;</prompt>\n";
+    kiyna.answer("leave group", left);
+    dicate.answer("leave group", left);
+    let opened = drive_support::until_written(&dicate, "group open").await;
+    let joined = drive_support::until_written(&kiyna, "join Dicate").await;
+    stop.cancel();
+    let _ = kiyna_task.await;
+    let _ = dicate_task.await;
+    kiyna_session.cancel();
+    dicate_session.cancel();
+    let (by_kiyna, by_dicate) = (kiyna.lines(), dicate.lines());
+    assert!(
+        by_dicate.contains(&"leave group".to_owned()),
+        "{by_dicate:?}"
+    );
+    assert!(opened, "Dicate leads: {by_dicate:?}");
+    assert!(by_kiyna.contains(&"leave group".to_owned()), "{by_kiyna:?}");
+    assert!(joined, "Kiyna follows Dicate: {by_kiyna:?}");
+}

@@ -38,6 +38,11 @@ pub struct Party {
     /// report yet, within `lost_wait`: bigshot's `head` waits for its
     /// followers to register before it hunts (`bigshot.lic:9927-9999`).
     pub awaiting: Vec<String>,
+    /// Follow: what [`super::muster()`] says of the leader, when it is not
+    /// with the group: held for, handed over, or dead (`plan/39` Stage 6).
+    pub leader_lost: Option<Muster>,
+    /// Who carries out a dead member ([`super::recoverer`]).
+    pub recoverer: Option<String>,
 }
 
 /// What keeps the character from acting or moving, off its own state: the

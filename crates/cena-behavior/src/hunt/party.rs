@@ -16,6 +16,9 @@
 
 mod alone;
 mod keys;
+mod recover;
+
+use std::collections::BTreeSet;
 
 use cena_map::RoomId;
 use cena_session::{GameState, State};
@@ -86,6 +89,25 @@ pub(super) struct Grouping {
     walking: Option<(u32, bool)>,
     /// The room `final_loot` last looted.
     final_looted: Option<String>,
+    /// The dead member this member is carrying out (`party/recover.rs`).
+    recovering: Option<String>,
+    /// Where the carrying out stands.
+    recovery: Option<recover::Recovery>,
+    /// Lead: a dead member a follower carries out, and who; and since when.
+    recover: Option<(String, String)>,
+    recover_since: Option<u32>,
+    /// Lead: the lost members added back to the group once.
+    added: BTreeSet<String>,
+}
+
+/// What the leader's absence asks of a follower this tick.
+enum Absent {
+    /// The leader is with the group.
+    Here,
+    /// Held for: the hunting arms act, and nothing walks.
+    Hold,
+    /// This.
+    Act(Said),
 }
 
 /// A follower's share of the leader's rest.
@@ -183,6 +205,9 @@ impl Hunt {
             },
             independent_travel: table.independent_travel,
             independent_return: table.independent_return,
+            successors: table.successors.clone(),
+            lost_wait: Some(self.group_settings().lost_wait),
+            recover: self.grouping.recover.clone(),
         }
     }
 
@@ -213,6 +238,11 @@ impl Hunt {
     ) -> Option<Said> {
         self.grouping.hold_rest = false;
         self.grouping.holding = false;
+        // Carrying out a dead member: nothing else until it is done.
+        if let Some(dead) = self.grouping.recovering.clone() {
+            self.grouping.hold_rest = true;
+            return Some(self.carry_out(state, here, &dead, now));
+        }
         match self.role()? {
             Role::Lead => self.lead(state, here, now),
             Role::Follow => self.follow(state, here, now),
@@ -262,7 +292,7 @@ impl Hunt {
             return None;
         }
         self.grouping.gather = None;
-        if let Some(said) = self.muster(&party) {
+        if let Some(said) = self.muster(state, here, now, &party) {
             return Some(said);
         }
         // Muster's own reason to rest, taken up by the rest arm now.
@@ -294,7 +324,13 @@ impl Hunt {
 
     /// The followers apart from the leader, by what muster said of each
     /// (`plan/39` §8, question 7's table and §8a).
-    fn muster(&mut self, party: &Party) -> Option<Said> {
+    fn muster(
+        &mut self,
+        state: &GameState,
+        here: Here<'_>,
+        now: Option<u32>,
+        party: &Party,
+    ) -> Option<Said> {
         let said = |wanted: fn(&Muster) -> bool| {
             party
                 .musters
@@ -303,8 +339,26 @@ impl Hunt {
                 .map(|(name, muster)| (name.clone(), *muster))
         };
         if let Some((name, _)) = said(|m| *m == Muster::Dead) {
-            self.notes.push(format!("{name} is dead: every hunt ends."));
-            return Some(Said::Done(Ending::MemberDied));
+            return Some(self.member_dead(state, here, now, party, &name));
+        }
+        if let Some((name, _)) = said(|m| *m == Muster::Add)
+            && self.grouping.added.insert(name.clone())
+            && let Some(id) = state
+                .room
+                .players
+                .iter()
+                .find(|player| player.noun == name)
+                .map(|player| player.id.clone())
+        {
+            // The handover's own step (`plan/39` §1): the one left behind is
+            // added to the group, then taken home (`Group.add`, `group.rb:298`).
+            self.notes.push(format!(
+                "{name} is link-dead here: adding them to take them home."
+            ));
+            return Some(Said::Send {
+                line: format!("group #{id}"),
+                target: None,
+            });
         }
         if let Some((name, _)) = said(|m| *m == Muster::Drag) {
             if self.grouping.dragging.as_deref() != Some(name.as_str()) {
@@ -348,6 +402,48 @@ impl Hunt {
             )
         });
         None
+    }
+
+    /// A member dead (question 10): every hunt ends, and the leader, if
+    /// able, carries it out first; else it names the follower that will,
+    /// and waits for it, within `lost_wait`.
+    fn member_dead(
+        &mut self,
+        state: &GameState,
+        here: Here<'_>,
+        now: Option<u32>,
+        party: &Party,
+        dead: &str,
+    ) -> Said {
+        let me = self.report(state, &party.leader, here.room, State::Ready);
+        match group::recoverer(&me, &party.followers) {
+            Some(recoverer) if recoverer == party.leader => {
+                self.grouping.recovering = Some(dead.to_owned());
+                self.carry_out(state, here, dead, now)
+            }
+            Some(recoverer) => {
+                if self.grouping.recover.is_none() {
+                    self.notes
+                        .push(format!("{dead} is dead: {recoverer} carries them out."));
+                }
+                self.grouping.recover = Some((dead.to_owned(), recoverer.to_owned()));
+                let now = now.unwrap_or(0);
+                let since = *self.grouping.recover_since.get_or_insert(now);
+                let limit =
+                    u32::try_from(self.group_settings().lost_wait.as_secs()).unwrap_or(u32::MAX);
+                if now.saturating_sub(since) < limit {
+                    Said::Wait(1)
+                } else {
+                    Said::Done(Ending::MemberDied)
+                }
+            }
+            None => {
+                self.alerts.push(format!(
+                    "{dead} is dead, and no member of the group can carry them out: they need you."
+                ));
+                Said::Done(Ending::MemberDied)
+            }
+        }
     }
 
     /// Whether a corpse here still waits for the looter, within
@@ -520,6 +616,11 @@ impl Hunt {
     fn follow(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {
         let party = self.grouping.party.clone()?;
         self.grouping.hold_rest = true;
+        match self.leader_gone(state, here, now, &party) {
+            Absent::Here => {}
+            Absent::Hold => return None,
+            Absent::Act(said) => return Some(said),
+        }
         let Some(leading) = party.leading.clone().filter(|l| l.phase.is_some()) else {
             if !std::mem::replace(&mut self.grouping.told_alone, true) {
                 self.notes.push(format!(
@@ -606,6 +707,39 @@ impl Hunt {
                 )
             }
         }
+    }
+
+    /// The leader lost (Stage 6): held for, fighting what comes and nothing
+    /// else (question 5); dead, carried out (question 10); handed over,
+    /// placed anew by the driver on its next turn. And a dead member the
+    /// leader named this one to carry out, or not.
+    fn leader_gone(
+        &mut self,
+        state: &GameState,
+        here: Here<'_>,
+        now: Option<u32>,
+        party: &Party,
+    ) -> Absent {
+        match party.leader_lost {
+            Some(Muster::Lost { .. }) => return Absent::Hold,
+            Some(Muster::Dead) => {
+                if party.recoverer.as_deref() != Some(party.name.as_str()) {
+                    return Absent::Act(Said::Done(Ending::MemberDied));
+                }
+                self.grouping.recovering = Some(party.leader.clone());
+                return Absent::Act(self.carry_out(state, here, &party.leader, now));
+            }
+            Some(_) => return Absent::Act(Said::Wait(1)),
+            None => {}
+        }
+        let Some((dead, recoverer)) = party.leading.as_ref().and_then(|l| l.recover.clone()) else {
+            return Absent::Here;
+        };
+        if recoverer != party.name {
+            return Absent::Act(Said::Done(Ending::MemberDied));
+        }
+        self.grouping.recovering = Some(dead.clone());
+        Absent::Act(self.carry_out(state, here, &dead, now))
     }
 
     /// The follower's share of the leader's rest: its prep when the order

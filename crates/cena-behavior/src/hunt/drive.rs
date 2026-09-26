@@ -250,8 +250,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 .unwrap_or_default();
             match self.see_party(here) {
                 Seen::Go => {}
-                Seen::Ask => {
-                    if let Err(end) = self.send("group", None).await {
+                Seen::Say(line) => {
+                    if let Err(end) = self.send(line, None).await {
                         return end;
                     }
                     continue;
@@ -276,6 +276,14 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             for note in self.machine.take_notes() {
                 self.handle
                     .say(Notice::line(NoticeKind::Info, format!("Hunt: {note}")));
+            }
+            // What the tick itself wants in front of the player (a dead
+            // member nobody can carry out), before a hunt that ends with it.
+            for alert in self.machine.take_alerts() {
+                self.handle.say(Notice::line(
+                    NoticeKind::Warn,
+                    format!("Hunt alert: {alert}"),
+                ));
             }
             let step = match said {
                 Said::Nothing => self.hold(BEAT).await,
