@@ -1,10 +1,11 @@
 //! Where a line ends is the same fact for every reader: `plan/45` §4a.
 //!
-//! Two things assemble lines today. The model's `route_text` closes a line on
-//! [`TextFrame::ends_line`] and nothing else; Despana's `LineAssembler`
-//! (`cena-ui`) also closes one at every prompt and splits at an embedded
-//! newline. M8 publishes the model's line to every viewer, with the triggers'
-//! responses attached, so the two must not disagree about where a line is.
+//! Two things assembled lines until M8. The model's `route_text` closes a line
+//! on [`TextFrame::ends_line`] and nothing else; Despana's `LineAssembler`
+//! (`cena-ui`, since retired) also closed one at every prompt and split at an
+//! embedded newline. M8 publishes the model's line to every viewer, with the
+//! triggers' responses attached, so moving Despana onto it had to change no
+//! line -- which is what this measured first.
 //!
 //! On text they disagree in exactly two cases, and both are frame facts:
 //!

@@ -338,19 +338,18 @@ mod tests {
     //! | 7 | a shop's wooden shelf | `2026-09-02_22-34-52.xml:23595` |
     //! | 9 | the herb kit | `2026-09-04_00-48-57.xml:358` |
     //!
-    //! Each test pushes a line's main-stream text through
-    //! [`LineAssembler::push_naming`] as the pump does, a run per text and per
-    //! link with the link's noun, so every assertion passes through the
-    //! assembler's recording and finishing and not only [`sort`]. The same
-    //! bytes go through the real parser and the pump in
-    //! `crates/cena/tests/web_sorter.rs`.
+    //! Each test gives a line's main-stream text to
+    //! [`story_lines`](crate::story_lines) as the pump does, a piece per text
+    //! and per link with the link's noun, so every assertion passes through the
+    //! line's recording and finishing and not only [`sort`]. The same bytes go
+    //! through the real parser and the pump in `crates/cena/tests/web_sorter.rs`.
     //!
     //! The categories asserted are `cena_model`'s `gameobj` table's answers for
     //! these items, not chosen ones: between them the looks file items under a
     //! single type, under two joined (`armor,uncommon`), and under `other`.
 
     use super::*;
-    use crate::{LineAssembler, StoryLine};
+    use crate::{StoryLine, story_lines};
 
     const WIRE: &str = include_str!("../tests/fixtures/container_looks.xml");
 
@@ -397,20 +396,11 @@ mod tests {
         }
     }
 
-    /// Push `text` on `stream`, the last run ending the line.
-    fn assemble(assembler: &mut LineAssembler, stream: &str, text: &str) -> Option<Vec<StoryLine>> {
+    /// `text` as one finished line on `stream`, sorted when `sorting`.
+    fn assemble(stream: &str, text: &str, sorting: bool) -> Option<Vec<StoryLine>> {
         let pieces = pieces(text)?;
-        let last = pieces.len().checked_sub(1)?;
-        let mut lines = Vec::new();
-        for (index, (text, noun)) in pieces.iter().enumerate() {
-            lines.extend(assembler.push_naming(
-                stream,
-                &plain(text),
-                noun.as_deref(),
-                index == last,
-            ));
-        }
-        Some(lines)
+        let pieces = pieces.into_iter().map(|(text, noun)| (plain(&text), noun));
+        Some(story_lines(stream, pieces, sorting))
     }
 
     fn line_text(line: &StoryLine) -> String {
@@ -419,9 +409,7 @@ mod tests {
 
     /// Fixture line `index`'s look, finished with sorting on.
     fn sorted(index: usize) -> Option<Vec<StoryLine>> {
-        let mut assembler = LineAssembler::default();
-        assembler.sort_containers(true);
-        assemble(&mut assembler, "", visible(wire_line(index)?))
+        assemble("", visible(wire_line(index)?), true)
     }
 
     fn texts(lines: &[StoryLine]) -> Vec<String> {
@@ -526,16 +514,10 @@ mod tests {
     #[test]
     fn nothing_is_sorted_until_asked_nor_off_the_main_stream() {
         let look = visible(wire_line(0).unwrap());
-        let mut off = LineAssembler::default();
-        assert_eq!(assemble(&mut off, "", look).unwrap().len(), 1);
-
-        let mut on = LineAssembler::default();
-        on.sort_containers(true);
-        assert_eq!(assemble(&mut on, "thoughts", look).unwrap().len(), 1);
-        assert_eq!(assemble(&mut on, "main", look).unwrap().len(), 6);
-
-        on.sort_containers(false);
-        assert_eq!(assemble(&mut on, "", look).unwrap().len(), 1);
+        assert_eq!(assemble("", look, false).unwrap().len(), 1);
+        assert_eq!(assemble("thoughts", look, true).unwrap().len(), 1);
+        assert_eq!(assemble("main", look, true).unwrap().len(), 6);
+        assert_eq!(assemble("", look, true).unwrap().len(), 6);
     }
 
     /// A sentence after the list is not the last item's own text. SYNTHETIC: no
@@ -543,11 +525,9 @@ mod tests {
     /// without the guard the rod would read `slender wooden rod.  It glows`.
     #[test]
     fn a_sentence_after_the_list_leaves_the_line_alone() {
-        let mut assembler = LineAssembler::default();
-        assembler.sort_containers(true);
         let look = "In the <a exist=\"1\" noun=\"box\">box</a> you see a \
                     <a exist=\"2\" noun=\"rod\">slender wooden rod</a>.  It glows.";
-        let lines = assemble(&mut assembler, "", look).unwrap();
+        let lines = assemble("", look, true).unwrap();
         assert_eq!(
             texts(&lines),
             ["In the box you see a slender wooden rod.  It glows."]
@@ -559,15 +539,13 @@ mod tests {
     /// that test's data pack has two types; Hydra's table has `lockpick`.
     #[test]
     fn vellumfe_categorizes_and_counts() {
-        let mut assembler = LineAssembler::default();
-        assembler.sort_containers(true);
         let look = "In the <a exist=\"77\" noun=\"backpack\">backpack</a> you see a \
                     <a exist=\"1\" noun=\"sapphire\">blue sapphire</a>, a \
                     <a exist=\"2\" noun=\"crystal\">quartz crystal</a>, a \
                     <a exist=\"3\" noun=\"sapphire\">blue sapphire</a> and a \
                     <a exist=\"4\" noun=\"lockpick\">copper lockpick</a>.";
         assert_eq!(
-            texts(&assemble(&mut assembler, "", look).unwrap()),
+            texts(&assemble("", look, true).unwrap()),
             [
                 "In the backpack:",
                 "  gem (3): quartz crystal, blue sapphire (2)",
@@ -581,8 +559,6 @@ mod tests {
     /// and an `On` surface, and a look with nothing in it.
     #[test]
     fn vellumfe_non_looks_pass_through() {
-        let mut assembler = LineAssembler::default();
-        assembler.sort_containers(true);
         for line in [
             "You pick up a rock.",
             "In the <a exist=\"5\" noun=\"counter\">counter</a> you see a \
@@ -591,7 +567,7 @@ mod tests {
              <a exist=\"7\" noun=\"rock\">rock</a>.",
             "In the <a exist=\"9\" noun=\"pouch\">pouch</a> you see nothing.",
         ] {
-            let lines = assemble(&mut assembler, "", line).unwrap();
+            let lines = assemble("", line, true).unwrap();
             assert_eq!(lines.len(), 1, "{line}");
         }
     }
@@ -616,11 +592,9 @@ mod tests {
             line.push('.');
             line
         };
-        let mut assembler = LineAssembler::default();
-        assembler.sort_containers(true);
-        let short = assemble(&mut assembler, "", &look(100)).unwrap();
+        let short = assemble("", &look(100), true).unwrap();
         assert_eq!(texts(&short)[1], "  other (100): rock (100)");
-        let long = assemble(&mut assembler, "", &look(600)).unwrap();
+        let long = assemble("", &look(600), true).unwrap();
         assert_eq!(long.len(), 1);
         assert!(!long[0].truncated);
     }

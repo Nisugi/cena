@@ -172,7 +172,7 @@ impl Hub {
             self.lines_before_gap = Some(self.history.len()).filter(|before| *before > 0);
         }
         // Stamp each line with what its stream does when its window is closed.
-        // Here rather than in `LineAssembler` because this is where the model
+        // Here rather than in `cena_ui::story_lines` because this is where the model
         // is: the declarations come from `<streamWindow ifClosed=>` and the
         // viewer cannot be trusted to know them.
         for line in &mut lines {

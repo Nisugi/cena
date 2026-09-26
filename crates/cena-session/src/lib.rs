@@ -88,7 +88,7 @@ pub use cena_model::herbs;
 pub use cena_model::state::character::body;
 pub use cena_model::state::kit;
 pub use cena_protocol::InventoryItem;
-pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, TextFrame};
+pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, Style, TextFrame};
 pub use cena_protocol::runs::{Run, Runs};
 pub use character_store::MAX_STALE;
 pub use command::attendance::Watching;

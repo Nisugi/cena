@@ -306,7 +306,7 @@ impl Sessions {
 
     /// Turn `;sorter` on or off for session `id`'s story: from its next
     /// container look on, a look shows as one line per category
-    /// ([`cena_ui::LineAssembler::sort_containers`]). `false` when `id` is
+    /// ([`cena_ui::story_lines`]). `false` when `id` is
     /// not served, so there is no story to sort.
     pub fn sort_containers(&self, id: SessionId, on: bool) -> bool {
         let sessions = self

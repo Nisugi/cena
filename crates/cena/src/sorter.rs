@@ -1,8 +1,9 @@
 //! `;sorter`: show this character's container looks one line per category
 //! (`plan/30` §4, M6e).
 //!
-//! The join only. The sorting is `cena_ui`'s, over the lines the web pump
-//! assembles, and the switch is [`cena_web::Sessions::sort_containers`];
+//! The join only. The sorting is `cena_ui`'s ([`cena_ui::story_lines`]), over
+//! the lines the web pump draws, and the switch is
+//! [`cena_web::Sessions::sort_containers`];
 //! this is the word on Hydra's command line that flips it. It sends nothing
 //! to the game.
 //!
