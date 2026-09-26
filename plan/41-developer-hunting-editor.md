@@ -167,5 +167,5 @@ changed by that regeneration.
 Atari approved shipping this editor separately from the setup prototype on
 2026-09-25. Native Hunt now uses TOML, exclusion boundaries and one rest location;
 the prototype selects allowed rooms and separate field/town recovery choices.
-The prototype remains outside this PR. See `plan/30-despana-live-map.md` for the
+The prototype remains outside this PR. See `plan/40-despana-live-map.md` for the
 handoff gap; no browser-owned hunting engine or automatic conversion is added.
