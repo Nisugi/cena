@@ -68,7 +68,7 @@ with no socket.
 | `stash.rb` | 13 functions, ~140 lines | 12 functions, ~460 lines |
 | `bank.rb` | 8 entry points | 10 verbs |
 | `fog.rb` | 13 entry points | 8 senders |
-| `spellsong.rb` | the arithmetic | `timeleft`, `renew_cost` |
+| `spellsong.rb` | the arithmetic | `timeleft`, `renew_cost`: **BUILT 2026-09-26**, as `GameState::spellsong_timeleft` and `spellsong_renew_cost` (`crates/cena-model/src/state/spell_time.rs`), once the spell table existed |
 
 ### 0c. Known gaps, stated rather than hidden
 
@@ -94,11 +94,13 @@ with no socket.
   that a creature died — `<crtrStatus dead="1">` is the authority on that.
 - **40 of 338 spell durations are real Ruby**, five of them scraping the
   scrollback. They read as `Duration::Unknown` with the source kept.
-- **`stance` as an enum.** A verbatim string today; the five stances are a
-  closed vocabulary, so the typed version is half an hour. Nothing needs it
-  until a behavior SETS stance, which is M6.
-- **The `resource` command capture.** Everything else here has wire evidence.
-  This one wants a real sample first.
+- ~~**`stance` as an enum.**~~ **DONE** in M6: `Stance`
+  (`crates/cena-model/src/state/character/stance.rs`), for the stance setter.
+- ~~**The `resource` command capture.**~~ **DONE**: the report's lines are read
+  (`character/standing.rs`: weekly and total, suffused, Covert Arts charges,
+  VERIFIED against the author's live output), Voln favor in `character/currency.rs`,
+  and on 2026-09-26 the last of Lich's patterns, shadow essence
+  (`character/shadow.rs`, `parser.rb:55-62`, `:474-501`).
 
 ---
 

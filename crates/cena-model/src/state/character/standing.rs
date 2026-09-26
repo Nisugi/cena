@@ -73,6 +73,8 @@ pub struct Standing {
     pub suffused: Option<u32>,
     /// Covert Arts charges, out of 200. Signed: the wire can send a negative.
     pub covert_arts_charges: Option<i32>,
+    /// Accumulated shadow essence, 0 to 5 (`character/shadow.rs`).
+    pub shadow_essence: Option<u8>,
 }
 
 impl Standing {
