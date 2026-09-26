@@ -644,3 +644,28 @@ fn a_line_the_game_answers_with_wait_goes_again() {
         "the queued line again"
     );
 }
+
+#[test]
+fn an_assault_and_a_bearhug_are_waited_out() {
+    let state = kobold(1_000);
+    let mut assault = hunt(&["barrage", "kick"]).unwrap();
+    assert_eq!(
+        ticks(&mut assault, &state, 2),
+        ["weapon barrage #42", "wait 1"],
+        "the rounds are not cut into"
+    );
+    assault.heard(
+        "You complete your assault, pulling your weapon back to the ready.",
+        Some(1_004),
+    );
+    assert_eq!(tick(&mut assault, &state), "kick");
+
+    let mut hug = hunt(&["bearhug", "kick"]).unwrap();
+    assert_eq!(ticks(&mut hug, &state, 2), ["cman bearhug #42", "wait 1"]);
+    hug.heard("You release your grip on the kobold.", Some(1_006));
+    assert_eq!(tick(&mut hug, &state), "kick");
+    let mut timed = hunt(&["bearhug", "kick"]).unwrap();
+    assert_eq!(tick(&mut timed, &state), "cman bearhug #42");
+    assert_eq!(tick(&mut timed, &kobold(1_016)), "wait 1");
+    assert_eq!(tick(&mut timed, &kobold(1_017)), "kick", "17 s at most");
+}

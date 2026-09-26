@@ -69,6 +69,10 @@ pub(super) const WEAPONS: &[(&str, &str)] = &[
     ("whirlwind", "Whirlwind"),
 ];
 
+/// The weapon techniques that are assaults, run over rounds (`cmd_assault`,
+/// `:4623-4628`).
+pub(super) const ASSAULTS: &[&str] = &["barrage", "flurry", "fury", "gthrusts", "pummel", "thrash"];
+
 /// The shield moves after `shield` (`:4076`).
 pub(super) const SHIELD_MOVES: &[&str] = &[
     "throw", "bash", "charge", "strike", "pin", "trample", "push",

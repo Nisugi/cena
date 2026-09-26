@@ -6,6 +6,8 @@
 //! | Step | After it is sent | bigshot |
 //! |---|---|---|
 //! | `wait N` | nothing until the creature swings at the character, N s pass, or it is down or gone | `wait_for_swing`, `:6919-6962` |
+//! | `barrage`, `flurry`, `fury`, `gthrusts`, `pummel`, `thrash` | nothing until the assault completes or is refused, 12 s, or the creature is gone | `cmd_assault`, `:4591-4667` |
+//! | `bearhug` | nothing until the hold ends, 17 s, or the creature is gone | `cmd_bearhug`, `:5230-5279` |
 //! | `sleep N` | nothing for N s, or until the creature is gone | `cmd_sleep`, `:6529-6538` |
 //! | `efury` | nothing until the fury ends, 12 s, or the creature is gone | `cmd_efury`, `:6080-6120` |
 //! | `tether` | nothing until the tether completes, breaks or passes on, 12 s, or the creature is gone | `cmd_tether`, `:6630-6693` |
@@ -57,6 +59,48 @@ pub(super) const TETHER_ENDS: &[&str] = &[
     "You struggle to maintain control of the dark force, but you feel it break away!",
     "You feel your connection to the dark presence fade away.",
     "begin to vibrate and emit a sinister thrum that emanates through the surrounding area.",
+];
+
+/// An assault's ends: complete, or refused (`cmd_assault`'s
+/// `complete_regex` and `error_regex`, `bigshot.lic:4595-4618`).
+pub(super) const ASSAULT_ENDS: &[&str] = &[
+    "Distracted, you hesitate",
+    "glides to its inevitable end with one final twirl",
+    "You feel a fair amount more durable.",
+    "With a final snap of your wrist",
+    "You complete your assault",
+    "to the ready, your assault complete.",
+    "Upon firing your last",
+    "With a final, explosive breath",
+    "recentering yourself for the fight",
+    "You don't seem to be able to move your legs to do that",
+    "too injured",
+    "already dead",
+    "little bit late",
+    "could not find",
+    "can not be used with attack as the attack type",
+    "may not be activated within 60 seconds of a Multi-Strike.",
+    "is still in cooldown.",
+    "Your mind clouds with confusion",
+    "You can't reach",
+];
+
+/// A bearhug's ends (`cmd_bearhug`'s `complete_regex`, `:5234-5249`).
+pub(super) const BEARHUG_ENDS: &[&str] = &[
+    "You release your grip",
+    "You feel a fair amount stronger.",
+    "avoids your grasp",
+    "fend off your grasp",
+    "leaving you flailing",
+    "Your concentration lapses",
+    "You don't seem to be able to move your legs to do that",
+    "too injured",
+    "already dead",
+    "little bit late",
+    "could not find",
+    "but you stumble and completely miss",
+    "is out of reach",
+    "You cannot bearhug",
 ];
 
 /// What a hold waits for, besides its time.

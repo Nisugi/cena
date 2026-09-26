@@ -50,9 +50,9 @@ use self::gated::coup_refused;
 use self::spell::{
     NO_REST_SPELLS, Spell, buff_first, caststop, resonance, soothe, spell_step, weed,
 };
-use self::tables::{CMANS, UNPORTED, WARCRIES, WEAPONS};
+use self::tables::{ASSAULTS, CMANS, UNPORTED, WARCRIES, WEAPONS};
 use super::engine::Hunt;
-use super::follow::Next;
+use super::follow::{ASSAULT_ENDS, BEARHUG_ENDS, End, Hold, Next};
 use super::said::{Said, Why};
 use crate::gemstone::jewel;
 
@@ -236,11 +236,22 @@ pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
         {
             return Line::Skip;
         }
+        if first == "bearhug" {
+            let hold = Hold::new(17, target, End::Heard(BEARHUG_ENDS));
+            return Line::Then([format!("cman {send} {at}")].into(), Next::Hold(hold));
+        }
         return one(format!("cman {send} {at}"));
     }
     if let Some((_, name)) = WEAPONS.iter().find(|(w, _)| *w == first) {
         if cooling(state, name) || gated::unavailable(state, PsmCategory::Weapon, &first) {
             return Line::Skip;
+        }
+        // An assault runs for rounds; bigshot waits it out. Not ported: its
+        // `swap` when Barrage refuses the attack type, and Fury with the
+        // tier 3 attack.
+        if ASSAULTS.contains(&first.as_str()) {
+            let hold = Hold::new(12, target, End::Heard(ASSAULT_ENDS));
+            return Line::Then([format!("weapon {send} {at}")].into(), Next::Hold(hold));
         }
         return one(format!("weapon {send} {at}"));
     }
