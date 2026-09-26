@@ -27,12 +27,39 @@
 //! **Case**: a pattern ignores case unless `case_sensitive = true`. Wrayth's
 //! highlights ignore case unless marked `case="y"` (the author's reading,
 //! `plan/45` §1 row 4), and every Wrayth string is a trigger here once
-//! imported. `VellumFE` defaults the other way (`case_insensitive`,
+//! imported. Wizard FE, Wrayth's predecessor, documents the same default: its
+//! "Case Sensitive" box, *"turned on, tells the Wizard to only match with this
+//! string if the incoming text matches exactly"*
+//! (`reference/wiki_clean/Wizard _front end_.txt:575`). `VellumFE` defaults
+//! the other way (`case_insensitive`,
 //! `reference/VellumFE/src/config/highlights.rs:176`); the field is named for
 //! what it turns on, so neither default can be misread.
+//!
+//! **Words**: a literal matches only as whole words unless
+//! `whole_word = false`: `John` does not hit `Johnny`. Wizard FE, Wrayth's
+//! predecessor, has the same default, which its "Not on Word Boundary" box
+//! turns off (`:563-573`), and `VellumFE` checks a boundary for its literals
+//! too (`src/core/highlight_engine.rs:423-437`).
+//!
+//! **The boundary is only needed where the literal's own edge is a letter,
+//! a digit or `_`**, which is where a regex's `\b` would sit. Wizard FE and
+//! `VellumFE` require one on both sides whatever the edge, and that is a
+//! pitfall both have recorded: Wizard FE's own example is `SEND[`, which
+//! misses `SEND[BigWizard]` until the box is ticked, and a Saga player's
+//! imported `[DemsDen] ` -- the trailing space deliberate, to match
+//! `[DemsDen] ...` and not `[DemsDen]No Space` -- stopped matching when
+//! Saga's import turned whole words on
+//! (`reference/discord/saga-thread.txt:21114-21116`, `:21198`). Here both
+//! match as their writers meant, and `whole_word = false` is for matching
+//! inside a word. CLAUDE'S CALL, to confirm (`plan/45` §5d); Wrayth's own
+//! rule is UNVERIFIED. A regex says `\b` itself.
 
 use serde::Deserialize;
 use std::fmt;
+
+mod matcher;
+
+pub use matcher::{Hit, Matcher};
 
 /// A trigger, by its name in the file, and what it does.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,8 +98,13 @@ pub struct Rule {
 /// What a trigger matches in a line's text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pattern {
-    /// These words, anywhere in the line (`text = "…"`).
-    Literal(String),
+    /// These words (`text = "…"`).
+    Literal {
+        /// The words.
+        text: String,
+        /// Only where no letter, digit or `_` touches them (the module docs).
+        whole_word: bool,
+    },
     /// A regular expression (`regex = '…'`), in the `regex` crate's syntax.
     Regex(String),
 }
@@ -206,6 +238,7 @@ struct Raw {
     regex: Option<String>,
     #[serde(default)]
     case_sensitive: bool,
+    whole_word: Option<bool>,
     stream: Option<String>,
     look: Option<Look>,
     #[serde(default)]
@@ -224,7 +257,13 @@ impl TryFrom<Raw> for Rule {
             }
             (None, None) => return Err("it has no `text` or `regex`: nothing to match".into()),
             (Some(text), None) if text.is_empty() => return Err("its `text` is empty".into()),
-            (Some(text), None) => Pattern::Literal(text),
+            (Some(text), None) => Pattern::Literal {
+                text,
+                whole_word: raw.whole_word.unwrap_or(true),
+            },
+            (None, Some(_)) if raw.whole_word.is_some() => {
+                return Err("`whole_word` is for `text`; a regex says `\\b` itself".into());
+            }
             (None, Some(source)) => {
                 let built = regex(&source, raw.case_sensitive)
                     .map_err(|e| format!("its regex cannot be used: {e}"))?;
@@ -240,7 +279,7 @@ impl TryFrom<Raw> for Rule {
             }
         };
         if let Some(look) = &raw.look {
-            if matches!(pattern, Pattern::Literal(_)) && matches!(look.span, Span::Group(_)) {
+            if matches!(pattern, Pattern::Literal { .. }) && matches!(look.span, Span::Group(_)) {
                 return Err("a group's span needs a `regex`; `text` has no groups".into());
             }
             if look.color.is_none() && look.background.is_none() && !look.bold {

@@ -51,7 +51,13 @@ fn a_trigger_is_typed_as_written() {
     assert_eq!(trigger.name, "stunned");
     let rule = trigger.rule;
     assert_eq!(rule.category, "Combat");
-    assert_eq!(rule.pattern, Pattern::Literal("You are stunned".into()));
+    assert_eq!(
+        rule.pattern,
+        Pattern::Literal {
+            text: "You are stunned".into(),
+            whole_word: true,
+        }
+    );
     assert!(!rule.case_sensitive, "case is ignored unless asked for");
     assert_eq!(
         rule.stream.as_deref(),
@@ -101,6 +107,25 @@ fn a_regex_keeps_its_groups_and_the_text_responses_read() {
     );
 }
 
+/// A literal matches whole words unless told otherwise (Wizard FE's "Not on
+/// Word Boundary", `crates/cena-model/src/trigger.rs`).
+#[test]
+fn whole_word_is_the_default_and_can_be_turned_off() {
+    let rule = only(
+        "[trigger.send]\ntext = 'SEND['\nwhole_word = false\nsquelch = true\n",
+        "Nisugi",
+    )
+    .unwrap()
+    .rule;
+    assert_eq!(
+        rule.pattern,
+        Pattern::Literal {
+            text: "SEND[".into(),
+            whole_word: false,
+        }
+    );
+}
+
 /// Each bad trigger beside a good one: it is named, with a reason a player
 /// can act on, and the good one still loads.
 #[test]
@@ -143,6 +168,10 @@ fn a_bad_trigger_is_refused_by_name_and_the_rest_load() {
         (
             "text = 'x'\nsquelch = true\ncharacters = []",
             "names nobody",
+        ),
+        (
+            "regex = 'x'\nwhole_word = false\nsquelch = true",
+            "`whole_word` is for `text`",
         ),
     ];
     for (body, reason) in cases {
@@ -192,7 +221,13 @@ fn an_override_changes_only_the_fields_it_names() {
         look = { color = "#4040ff" }
     "##;
     let dicate = only(file, "dicate").unwrap().rule;
-    assert_eq!(dicate.pattern, Pattern::Literal("You are stunned".into()));
+    assert_eq!(
+        dicate.pattern,
+        Pattern::Literal {
+            text: "You are stunned".into(),
+            whole_word: true,
+        }
+    );
     let look = dicate.look.unwrap();
     assert_eq!(
         look.color.map(|c| c.to_string()).as_deref(),

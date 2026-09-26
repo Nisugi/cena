@@ -303,6 +303,8 @@ function, so the preview is always truthful."*
 | Squelch with a look or a redirect | **Allowed** | a `for.<name>` can add a squelch to a coloured trigger and cannot remove the colour; which one wins is the matcher's rule (step 3) |
 | `stream = "main"` | read as the model's `""` | the player's word for it |
 | `characters = []` | refused | leave it out to mean everyone |
+| Does a literal match only whole words? | **Yes**; `whole_word = false` matches inside words | Wizard FE's default, documented (`reference/wiki_clean/Wizard _front end_.txt:563-573`), and `VellumFE`'s check (`src/core/highlight_engine.rs:423-437`) |
+| Where is the boundary needed? | **Only where the literal's own edge is a letter, digit or `_`**, where a regex's `\b` sits | Wizard FE and `VellumFE` need it on both sides whatever the edge. Wizard FE's own `SEND[` example misses a GM's name for it, and a Saga player's `[DemsDen] `, trailing space deliberate, broke when Saga's import turned whole words on (`reference/discord/saga-thread.txt:21114-21116`, `:21198`). Both match here. Wrayth's rule is UNVERIFIED: that player is *"absolutely certain"* Wrayth had no whole-word setting, and §2d's exports carry no attribute for one |
 
 `regex` cannot do lookaround or backreferences (§8 item 6); such a regex is refused with the
 crate's own message, which says so.
@@ -329,6 +331,13 @@ Each ends in something demonstrable without a live login.
    something to do. Writing it sorted comes with `;trigger add` (step 5), the first thing
    that writes it. §5d records what was decided while building.
 3. **The matcher** in `cena-model` (§4): two automata and a `RegexSet`, deterministic order.
+   **BUILT 2026-09-26**: `crates/cena-model/src/trigger/matcher.rs`, 10 tests in
+   `crates/cena-model/tests/trigger_matcher.rs`. Every place every trigger matches, the
+   automata searched overlapping; triggers ranked by priority, then file order; the set only
+   nominates, with the crit tables' raised DFA budget, and falls back to trying each regex
+   (checked: the same hits with the set disabled). Eight guards mutation-checked, and one
+   survivor closed by a test it had no input for. Which of two overlapping looks wins is
+   step 4's, not the matcher's: it reports both, in rank order.
 4. **Look and text responses**: colour, squelch, substitute, redirect. Tested: the model's
    scrollback, the chunk and the player log see the game's text unchanged.
 5. **`;trigger`** (§5c), including `test`.
@@ -422,7 +431,9 @@ the client asks. If it can be had, import needs no file.
 5. **Wrayth's word boundaries**: Wizard FE's docs have a "Not on Word Boundary" option
    (`reference/wiki_clean/Wizard _front end_.txt:563-575`), implying whole-word by default;
    Saga's import defaulted to whole-word and broke matches. The fixtures and one live look
-   settle it.
+   settle it. **Hydra's own rule is BUILT** (§5d: whole words, the boundary only at an edge
+   that is a letter). What remains is Wrayth's, for the importer: whether `John` highlights
+   inside `Johnny` in Wrayth is one live look.
 6. **Lookaround and backreferences**: the `regex` crate has neither. Lich's scripts use
    lookaround in 486 places across 85 files (`inventory/09-hot-path-measurements.md:66`),
    but highlight sets are overwhelmingly literal. A trigger that needs them is refused by

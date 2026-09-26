@@ -228,6 +228,7 @@ dependencies = [
 name = "cena-model"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "cena-protocol",
  "regex",
  "serde",
