@@ -65,6 +65,13 @@
 //! - **held** is a hunt step imported with a guard Hydra has not built
 //!   ([`Step::held`]). The authority being held by another claimant is
 //!   [`AuthorityHeld`].
+//! - **role** is a group member's part, lead, follow or solo
+//!   ([`group::Role`]), and a spell's kind in the spell table
+//!   ([`spells::Role`]). The combat model's message families have a third
+//!   `Role` (add, remove, start, end).
+//! - **report** is what a group member tells its leader ([`group::Report`]),
+//!   and the `;loot` and `;combat` reports printed for the player
+//!   (`crates/cena/src/loot.rs`, `crates/cena/src/combat.rs`).
 //! - **script** is not a Hydra concept (see **Retired**), and survives in
 //!   three places: the Lich scripts Hydra ports from, bigshot's `script` step
 //!   that the importer turns into a sequence, and the **scripted game**, the
@@ -145,6 +152,20 @@
 //! "Dropped" is the importer's other outcome and a different one: a bigshot
 //! key it does not carry at all. A held step is still in the profile.
 //!
+//! # Hunting as a group
+//!
+//! `plan/39`. The game's own group is [`group::Group`](cena_session::group::Group);
+//! these are Hydra's words for hunting in one.
+//!
+//! | Term | Means | Not |
+//! |---|---|---|
+//! | **Role** | a member's part: lead, follow or solo, read off the game's group and never chosen ([`group::Role`], [`group::role`]) | |
+//! | **Report** | what one member of a group publishes for the leader to read: its connection, room, rest reason and what keeps it ([`group::Report`]); the leader adds [`group::Leading`] | |
+//! | **Muster** | gathering the group: what it does about a member apart from the leader, and until when ([`group::Muster`], [`group::muster`]) | rally |
+//! | **Lost wait** | how long each muster wait lasts before the group stops waiting, 90 seconds by default ([`group::Settings::lost_wait`]) | |
+//! | **Successor** | the member who leads when the leader is lost: the first present on the `successors` list, else the healthiest ([`group::successor`]) | |
+//! | **Rally rooms** | the rooms walked through on the way back to hunt ([`Rooms::rally`]) | rally alone: bigshot's word also names its handshake (`rallying at`) and Troubadour's Rally, which is 1040 by its name (`plan/39` §0e) |
+//!
 //! # Many sessions, and the frontends
 //!
 //! | Term | Means | Not |
@@ -222,6 +243,7 @@
 //! [`Profile::sequences`]: cena_behavior::hunt::Profile::sequences
 //! [`Profile`]: cena_behavior::hunt::Profile
 //! [`Refusal`]: cena_session::Refusal
+//! [`Rooms::rally`]: field@cena_behavior::hunt::profile::Rooms::rally
 //! [`Runs`]: cena_session::Runs
 //! [`ServerMessage`]: cena_ui::ServerMessage
 //! [`Session`]: cena_session::Session
@@ -257,9 +279,18 @@
 //! [`claim`]: cena_session::claim
 //! [`claimant::Desk`]: cena_session::command::claimant::Desk
 //! [`hunt()`]: fn@cena_behavior::hunt::hunt
+//! [`group::Leading`]: cena_behavior::group::Leading
+//! [`group::Muster`]: cena_behavior::group::Muster
+//! [`group::Report`]: cena_behavior::group::Report
+//! [`group::Role`]: cena_behavior::group::Role
+//! [`group::Settings::lost_wait`]: field@cena_behavior::group::Settings::lost_wait
+//! [`group::muster`]: fn@cena_behavior::group::muster
+//! [`group::role`]: fn@cena_behavior::group::role
+//! [`group::successor`]: fn@cena_behavior::group::successor
 //! [`hunt::Desk`]: cena_behavior::hunt::Desk
 //! [`import()`]: fn@cena_behavior::hunt::import
 //! [`movement`]: cena_session::movement
+//! [`spells::Role`]: cena_session::spells::Role
 //! [`stop_all`]: cena_host::stop_all
 //! [`stream_windows`]: cena_session::stream_windows
 //! [`sync()`]: fn@cena_behavior::sync::sync

@@ -1,7 +1,7 @@
 # 39 — Group hunting: bigshot's head and tail, measured and staged
 
 **Status: PROPOSED 2026-09-25; ten of §7's eleven questions ANSWERED 2026-09-26 (§8).
-Stages 0 and 1 are built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
+Stages 0, 1 and 2 are built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
 and has several characters and a test server to run a group on. `plan/30` §4 recorded the
 author's group design and §8 put groups after M6; **the author moved them before the live run**
 (§8, question 1). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
@@ -335,6 +335,74 @@ rest merge (the all-fried rule, the stunned hold, the last loot before a rest th
 wounds); the hunt merge; presence, per member: in the room, and in the game's group; each
 wait's deadline. One test per bigshot rule, cited to its line, each with a mutation that turns
 it red.
+**BUILT 2026-09-26**, with §8b's additions and the role, in `crates/cena-behavior/src/group/`:
+no I/O, no clock, no randomness. Time is an `Instant` the caller passes and a random choice a
+`roll` it passes, so a test holds both.
+
+- **The role** (`group/report.rs`, `role`): leading with members is lead, leading nobody solo,
+  in someone else's group follow. `Leader::Unknown` is **no role** (`None`), never lead and
+  never solo: it is a session before the burst's `IconJOINED`, or one a reconnect cleared while
+  still grouped, and read as solo a follower would hunt off alone after every reconnect. Stage 3
+  sends `group` and holds.
+- **The report and the leader's state** (`Report`, `Leading`), with only the fields a rule here
+  reads: name, the session's lifecycle, room, rest reason (the solo hunt's `Why`), not-ready
+  reason, `Hindrance` (roundtime, down, stuck, dead), grouped, health, encumbrance headroom;
+  the leader adds the rest's number and the rest whose prep it has finished. §5's other fields
+  (hidden and sneaky, looting, a follower's prepared rest, phase, target, looter, rooms) arrive
+  with the Stage 3 rules that read them (`plan/05` §−1).
+- **The looter** (`group/looter.rs`): bigshot's order (solo, `ma_looter`, `random_loot`, the
+  leader unless `never_loot`), among the leader and the followers connected and alive, as
+  eohunter chooses among fresh reports. `ma_looter` is compiled by `looter_pattern`,
+  case-insensitive and **anchored to the whole name**: eohunter's fix after *Bo* took *Bobby*'s
+  loot. bigshot's tie that favours `ma_looter` (`:7125`) is not built, because it cannot happen:
+  the pattern has already returned whenever it matches a member. `random_loot` with nobody to
+  weigh falls back to the leader, as eohunter's does, where bigshot's returns `nil`.
+- **The rest merge** (`group/rest.rs`, `should_rest`): the connected members' reasons with the
+  leader's; fried by `fried_trigger`, bigshot's *all* by default and eohunter's *any* and names
+  as well; a wounded rest `Stunned` while the leader or a member in its room is stuck; one more
+  loot for bounty, fried, mana or encumbered when nobody is wounded; the leader's reason names
+  the rest, else the first follower's (eohunter). **Everyone having dropped** (`all_dropped`,
+  latched by the caller) rests first as `Why::Dropped`, a reason the solo hunt never gives
+  (`hunt/said.rs`).
+- **The hunt merge** (`unready`): each member not ready and why, the leader first; a follower
+  not connected is not ready (question 7).
+- **`quiet_followers`** (`prep_order`, `PrepOrder::follower_may_prep`): the leader first unless
+  a member rests wounded, and a follower begins once `Leading::prepared` names **this** rest,
+  which is §0e's race closed by a number.
+- **Muster** (`group/muster.rs`): question 7's table, read in order: the connection
+  (`Reconnecting` and the steps back: `Lost`, then `Gone`; `Closed`: `Gone` at once), dead,
+  left the group, then here and hindered `Hold`, elsewhere and able `Await`, elsewhere and stuck
+  `Fetch`. Every wait ends `lost_wait` (90 s) after the member was first seen apart: `Await`
+  becomes `Fetch`, and `Hold` or a member the map cannot place becomes `Overdue`, which rests
+  the group when the member can move. `recoverer` (question 10): the leader if able, else the
+  first follower able.
+- **The successor** (`group/successor.rs`, question 4): the first present name on
+  `successors`, else the most health, a tie by the roll.
+
+The glossary gains *role*, *report*, *muster*, *lost wait*, *successor* and *rally rooms*
+(`crates/cena/src/glossary.rs`). Tests: `crates/cena-behavior/tests/group_rules.rs` (38) and
+`crates/cena-behavior/tests/group_muster.rs` (20). **69 hand mutations, all KILLED**, each an
+exact replacement run against both files and restored: every branch of the role, `present`,
+the pattern's anchor and case, each looter step and its order, each rest-merge branch (the
+trigger's three arms, the stunned hold here and for the leader unplaced, wounded only, the
+loot set both ways, the naming reason, everyone dropped), the hunt merge's order and lost
+follower, the rest's order and its rest number, each muster branch in order, the deadline
+doubled and taken as `>`, and the recovery's and successor's choices. Three were planned
+before a test existed that reached them, and each got one (a stunned member holding a rest
+not for wounds, two rooms the map cannot place, the quiet order with a rest that is not for
+wounds): a mutant that survives because no input reaches the branch.
+
+INFERRED, and the author's to confirm: **what each deadline changes** (the table in
+`group/muster.rs`'s docs: *go to them* for a member walking over; eohunter's *"go rest and
+wait rather than hunt on"* for one that cannot move); one clock per member, from when it was
+first seen apart, so a member that walked off and then dropped gets what is left of its wait;
+`ma_looter` anchored, which stops a bare fragment (`Dic`) naming `Dicate` as bigshot's would;
+`recoverer`'s *able* as connected, alive and not stuck; unknown health ranking below any
+stated. **A divergence the solo hunt's types
+cause:** bigshot rests separately for dread, Wall of Thorns poison and confusion, and loots
+first for dread (`:9017-9020`, `:9071`); the solo hunt folds all four into `rest.when`, which
+rests `Why::Wounded`, so a group's dread rest leaves at once and waits for a stunned member.
+Splitting them is a change to the solo hunt's `Why`, not to these rules.
 
 **Stage 3 — leader and follower on the engine, no game.** The role, Muster, Assist, Follow,
 the follower's rest and loot on assignment, the overkill count. Demonstrated by two scripted
@@ -539,6 +607,10 @@ That needs the author's leave to query.
   **BUILT 2026-09-26** (§6), all but `has disconnected`, which still waits on question 6.
 - **Stage 2** (the rules, pure) adds: the successor (`successors`, else the healthiest); the
   lost member's reason and what each reason asks (question 7's table); `lost_wait`.
+  **BUILT 2026-09-26** (§6), with *rest first* after everyone dropped (question 9) and the
+  choice of who recovers a dead member (question 10) built there too. PROPOSED: Stage 5 also
+  reads `fried_trigger`, which Stage 2 built from eohunter; until a profile sets it, the
+  group rests fried by bigshot's rule, every member.
 - **Stage 3** (leader and follower on the engine) adds: the role read off the game's group
   (question 2); joining mid-hunt (question 8); walking the group to a member who cannot
   move (question 7).

@@ -149,6 +149,11 @@ pub enum Why {
     /// A box stayed in hand that no bag would take (`plan/31`; the author:
     /// *"we don't want to drop it, so we head in to rest"*).
     BoxInHand,
+    /// Every member of a group lost its connection at once, and the group
+    /// rests first when they are back (`plan/39` §8, question 9; the author:
+    /// *"rest first. someone probably died."*). Only a group rests for it
+    /// ([`crate::group::should_rest`]).
+    Dropped,
 }
 
 impl fmt::Display for Why {
@@ -162,6 +167,7 @@ impl fmt::Display for Why {
             Self::Loaded => "too much loot",
             Self::BoxInHand => "a box in hand that no bag will take",
             Self::Injured => "too injured to fight",
+            Self::Dropped => "every member's connection dropped",
         })
     }
 }
