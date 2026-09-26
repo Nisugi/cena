@@ -78,6 +78,6 @@ and writes a screenshot under `target/atlas-evidence`. CI runs these tests too.
 
 ## Developer boundary editor
 
-See `plan/31-developer-hunting-editor.md` for the opt-in offline editor and automatic
+See `plan/41-developer-hunting-editor.md` for the opt-in offline editor and automatic
 correction files. The running setup experiment stays a separate prototype; these
 changes do not write native Hunt profiles or execute hunting/recovery behavior.
