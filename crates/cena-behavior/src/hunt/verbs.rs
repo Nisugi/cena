@@ -42,7 +42,7 @@
 
 use std::collections::VecDeque;
 
-use cena_session::{GameState, PsmCategory};
+use cena_session::{GameState, PsmCategory, Stance};
 
 use super::engine::Hunt;
 use super::maintain::ACTIVE_SPELLS;
@@ -141,7 +141,9 @@ impl Hunt {
             return Line::Skip;
         };
         self.repeats.resonance = Some(pick);
-        Spell::bare(pick).cast(target, state)
+        let mut spell = Spell::bare(pick);
+        spell.incanted = true;
+        spell.cast(target, state)
     }
 }
 
@@ -324,6 +326,9 @@ const SELF_CAST: &[u16] = &[
     1613, 1616, 1617, 1618, 1619, 1635,
 ];
 
+/// Cast with no target whatever the step says: Celerity and 902.
+const UNAIMED: &[u16] = &[506, 902];
+
 /// bigshot verbs not sent yet, by their first word.
 pub(super) const UNPORTED: &[&str] = &[
     "briar",
@@ -444,6 +449,8 @@ struct Spell {
     extra: String,
     /// Cast at the creature unless the spell is a self-cast one.
     aimed: bool,
+    /// Written `incant N`: after a stance spell, back to the stance before.
+    incanted: bool,
 }
 
 impl Spell {
@@ -454,6 +461,7 @@ impl Spell {
             verb: Verb::Cast,
             extra: String::new(),
             aimed: false,
+            incanted: false,
         }
     }
 
@@ -464,6 +472,7 @@ impl Spell {
             verb: Verb::Cast,
             extra: String::new(),
             aimed: true,
+            incanted: false,
         }
     }
 
@@ -481,18 +490,48 @@ impl Spell {
                 Verb::Cast => String::new(),
                 other => format!(" {}", other.word()),
             };
-            return Line::Send(VecDeque::from([format!(
-                "incant {}{verb} {}",
-                self.number, self.extra
-            )]));
+            let line = format!("incant {}{verb} {}", self.number, self.extra);
+            return Line::Send(self.stanced(VecDeque::from([line]), state));
         }
+        // Celerity and 902 go untargeted whatever the step says (`cmd_spell`,
+        // `bigshot.lic:5885-5886`).
+        let aimed =
+            self.aimed && !SELF_CAST.contains(&self.number) && !UNAIMED.contains(&self.number);
         let casting = Casting {
             spell: self.number,
-            target: (self.aimed && !SELF_CAST.contains(&self.number)).then(|| format!("#{target}")),
+            target: aimed.then(|| format!("#{target}")),
             count: None,
             verb: self.verb,
         };
-        Line::Send(casting.lines(state).into())
+        Line::Send(self.stanced(casting.lines(state).into(), state))
+    }
+
+    /// Lich's stance for a spell its table marks as wanting one
+    /// (`spell.rb:762-764`, `:786-787`): offensive for the cast, then back.
+    /// Back is the stance before for a step written `incant N` (bigshot's
+    /// own `after_stance`, `bigshot.lic:5899-5904`), and otherwise the
+    /// safest, `guarded` as a cast roundtime runs (`spell.rb:814-827`,
+    /// `stance.rb:84-86`). The hunting stance is taken again at the next
+    /// step that wants it.
+    fn stanced(&self, mut lines: VecDeque<String>, state: &GameState) -> VecDeque<String> {
+        if !cena_session::spells::spell(self.number).is_some_and(|spell| spell.extras.stance) {
+            return lines;
+        }
+        let before = state.character.stance_typed();
+        if before != Some(Stance::Offensive) {
+            // After a `release`, as Lich releases first (`spell.rb:717-724`).
+            let at = usize::from(lines.front().is_some_and(|line| line == "release"));
+            lines.insert(at, "stance offensive".to_owned());
+        }
+        let after = if self.incanted {
+            before.filter(|stance| *stance != Stance::Offensive)
+        } else {
+            Some(Stance::Guarded)
+        };
+        if let Some(after) = after {
+            lines.push_back(format!("stance {}", after.as_str()));
+        }
+        lines
     }
 }
 
@@ -519,6 +558,7 @@ fn spell_step(first: &str, words: &[&str]) -> Option<Spell> {
         verb,
         extra: extra.join(" "),
         aimed: true,
+        incanted: first == "incant",
     })
 }
 

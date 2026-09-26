@@ -201,6 +201,18 @@ pub struct Hunt {
     pub(super) repeats: Repeats,
 }
 
+/// The steps that do not take the hunting stance first, by their first
+/// word's start (`bigshot.lic:4051`).
+const STANCE_EXEMPT: &[&str] = &[
+    "wait",
+    "sleep",
+    "wand",
+    "berserk",
+    "script",
+    "hide",
+    "nudgeweapon",
+];
+
 impl Hunt {
     /// A hunt on `profile`, seeded for wander's choices.
     #[must_use]
@@ -525,12 +537,6 @@ impl Hunt {
                 target: Some(target),
             });
         }
-        if let Some(line) = Self::stance_for(self.profile.stance.hunting.as_deref(), state) {
-            return Some(Said::Send {
-                line,
-                target: Some(target),
-            });
-        }
         self.next_step(state, here, target, now)
     }
 
@@ -588,15 +594,15 @@ impl Hunt {
             if !step.when.iter().all(|c| c.holds(&facts) == Some(true)) {
                 continue;
             }
+            if let Some(said) = self.waits_behind(&step.send, state, target, now) {
+                self.queue.push_front(step);
+                return Some(said);
+            }
             if self.repeat(&step, state, target, now) {
                 match self.repeating(state, here, now) {
                     Some(said) => return Some(said),
                     None => continue,
                 }
-            }
-            if let Some(line) = self.censer_first(state, &step.send, now) {
-                self.queue.push_front(step);
-                return Some(Said::Send { line, target: None });
             }
             // Recorded when the step itself goes, not a line sent before it
             // while it waits in the queue, or `once` would refuse its return.
@@ -677,6 +683,38 @@ impl Hunt {
     /// sanctuary.
     pub(super) fn may_fight(&self) -> bool {
         self.held == Some(Held::Mine) && !self.in_sanctuary()
+    }
+
+    /// A line the step waits behind: the hunting stance, or the censer
+    /// before a spell (`hunt/censer.rs`).
+    fn waits_behind(
+        &mut self,
+        send: &str,
+        state: &GameState,
+        target: i64,
+        now: Option<u32>,
+    ) -> Option<Said> {
+        if let Some(line) = self.stance_before(send, state) {
+            return Some(Said::Send {
+                line,
+                target: Some(target),
+            });
+        }
+        self.censer_first(state, send, now)
+            .map(|line| Said::Send { line, target: None })
+    }
+
+    /// The hunting stance, taken before a step that wants it: every step but
+    /// a bare spell number, `wait`, `sleep`, `wand`, `berserk`, `script`,
+    /// `hide` and `nudgeweapon`, bigshot's prefixes (`bigshot.lic:4051-4053`).
+    fn stance_before(&self, send: &str, state: &GameState) -> Option<String> {
+        let first = send.split_whitespace().next()?.to_ascii_lowercase();
+        let exempt = first.starts_with(|c: char| c.is_ascii_digit())
+            || STANCE_EXEMPT.iter().any(|word| first.starts_with(word));
+        if exempt {
+            return None;
+        }
+        Self::stance_for(self.profile.stance.hunting.as_deref(), state)
     }
 
     /// The stance command to send, if the profile names one for this phase

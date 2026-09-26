@@ -539,6 +539,10 @@ Demonstrated live on a short hunt.
 >   (`hunt/verbs.rs`); `tests/hunt_repeat.rs`, 8 tests, 11 mutations each turned one red.
 >   And the creature facts from `inventory/12` §2 are read (`hunt/targets.rs`): allies are
 >   never fought, hazard creatures are not `any` targets, and a no-corpse kill is counted.
+>   Stance as bigshot takes it: the hunting stance before each step but a bare spell number,
+>   `wait`, `sleep`, `wand`, `berserk`, `script`, `hide`, `nudgeweapon` (`bigshot.lic:4051`),
+>   and a stance spell cast offensive and put back as Lich's `Spell#cast` does
+>   (`tests/hunt_stance.rs`); Celerity and 902 cast untargeted.
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,
