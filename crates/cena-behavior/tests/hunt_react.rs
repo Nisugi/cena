@@ -223,12 +223,67 @@ fn a_bless_gone_is_renewed_or_the_hunt_ends_when_nothing_can_bless() {
         "neither 304 nor the symbol is known"
     );
     let mut hunt = Hunt::new(Profile::parse(PROFILE).unwrap(), 1);
-    hunt.incidents(&[gone]);
+    hunt.incidents(std::slice::from_ref(&gone));
     assert_ne!(
         hunt.tick(&state, here(), Some(1_000)),
         Said::Done(Ending::Unblessed),
         "bless off: said, not acted on"
     );
+    // Bless known: prepared, then cast at the item -- no creature in the
+    // room, so nothing but the reaction sends it.
+    let mut blesser = standing(1_000);
+    blesser.known_spells.begin();
+    blesser.known_spells.read_line(&cena_session::Runs {
+        runs: vec![spell_run("Bless", "304")],
+    });
+    let mut hunt = Hunt::new(Profile::parse(&on).unwrap(), 1);
+    hunt.incidents(&[gone]);
+    let lines: Vec<Said> = (0..2)
+        .map(|_| hunt.tick(&blesser, here(), Some(1_000)))
+        .collect();
+    assert_eq!(lines, [untargeted("prepare 304"), untargeted("cast #5")]);
+    // 1604 known as well: it goes first, as `cmd_bless` tries it first.
+    blesser.known_spells.read_line(&cena_session::Runs {
+        runs: vec![spell_run("Consecrate", "1604")],
+    });
+    let mut hunt = Hunt::new(Profile::parse(&on).unwrap(), 1);
+    hunt.incidents(&[Incident::BlessExpired(Some(ItemRef {
+        id: "5".to_owned(),
+        noun: "broadsword".to_owned(),
+        text: "steel broadsword".to_owned(),
+    }))]);
+    assert_eq!(
+        hunt.tick(&blesser, here(), Some(1_000)),
+        untargeted("prepare 1604")
+    );
+}
+
+fn untargeted(line: &str) -> Said {
+    Said::Send {
+        line: line.to_owned(),
+        target: None,
+    }
+}
+
+/// A spell list's line for spell `number`, as the list links it.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors"
+)]
+fn spell_run(name: &str, number: &str) -> cena_session::Run {
+    cena_session::Run {
+        text: name.to_owned(),
+        style: Default::default(),
+        link: Some(cena_session::Link {
+            kind: cena_session::LinkKind::Exist {
+                id: "x".to_owned(),
+                noun: number.to_owned(),
+            },
+            text: name.to_owned(),
+            coord: None,
+        }),
+        inner_link: None,
+    }
 }
 
 #[test]
@@ -250,6 +305,13 @@ fn a_wand_step_gets_a_fresh_wand_waves_it_and_ends_when_none_are_left() {
         item: "polished iron wand".to_owned(),
         link: None,
     });
+    // bigshot waves in the offensive stance (`cmd_wand`).
+    state.character.stance_percent = Some(100);
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_002)),
+        at("stance offensive")
+    );
+    state.character.stance_percent = Some(0);
     assert_eq!(
         hunt.tick(&state, here(), Some(1_002)),
         at("wave my iron wand at #42")

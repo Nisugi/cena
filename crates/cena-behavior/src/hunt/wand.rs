@@ -14,10 +14,11 @@
 //! bigshot's `wandolier`, which draws from the wandolier's reserve, is a
 //! verb (`hunt/verbs/gated.rs`), sharing the wand list and its matching.
 
-use cena_session::GameState;
+use cena_session::{GameState, Stance};
 
 use super::engine::Hunt;
 use super::said::{Ending, Why};
+use crate::stance::{self, Want};
 
 /// What the last wand line was, to read its reply.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -56,6 +57,13 @@ impl Hunt {
             return None;
         };
         if held(state, &name) {
+            // bigshot waves in the offensive stance (`cmd_wand`, `:5954`); the
+            // hunting stance is taken again at the next step that wants it.
+            let offensive = Want::Named(Stance::Offensive);
+            if let Some(line) = stance::command(offensive, state) {
+                self.wanding.sent = Sent::Nothing;
+                return Some(line);
+            }
             self.wanding.sent = Sent::Wave;
             Some(format!("wave my {name} at #{target}"))
         } else {

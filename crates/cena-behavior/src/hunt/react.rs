@@ -64,6 +64,8 @@ pub(super) struct Reacting {
     escaping: bool,
     /// Weapons to bless, by id.
     bless: Vec<String>,
+    /// The blessing's `cast #id`, after its `prepare`.
+    blessing: std::collections::VecDeque<String>,
     /// When each player was last pulled, so a pull that has not landed yet
     /// is not sent every tick.
     pulled: std::collections::BTreeMap<String, u32>,
@@ -147,6 +149,9 @@ impl Hunt {
         if let Some(said) = self.recover_step(state) {
             return Some(said);
         }
+        if let Some(line) = self.react.blessing.pop_front() {
+            return Some(Said::Send { line, target: None });
+        }
         if let Some(noun) = self.react.clench.take() {
             return Some(Said::Send {
                 line: format!("clench {noun}"),
@@ -163,10 +168,25 @@ impl Hunt {
             return Some(said);
         }
         if let Some(id) = self.react.bless.pop() {
-            let line = if state.known_spells.knows(304) == Some(true)
-                && crate::cast::ready(state, 304, 1, 0).is_ok()
-            {
-                format!("incant 304 #{id}")
+            // `cmd_bless` (`bigshot.lic:5556-5581`): 1604, then Bless (304),
+            // each cast at the item, which is `prepare` then `cast #id`
+            // (`incant` takes no target, `crate::cast`); else the symbol.
+            let ready = |spell: u16| {
+                state.known_spells.knows(u32::from(spell)) == Some(true)
+                    && crate::cast::ready(state, spell, 1, 0).is_ok()
+            };
+            let line = if let Some(spell) = [1604, 304].into_iter().find(|n| ready(*n)) {
+                let mut lines = crate::cast::Casting {
+                    spell,
+                    target: Some(format!("#{id}")),
+                    count: None,
+                    verb: crate::cast::Verb::Cast,
+                }
+                .lines(state)
+                .into_iter();
+                let first = lines.next().unwrap_or_default();
+                self.react.blessing.extend(lines);
+                first
             } else if state.known_spells.knows(9802) == Some(true) {
                 format!("symbol bless #{id}")
             } else {
