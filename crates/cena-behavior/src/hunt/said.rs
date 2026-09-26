@@ -12,6 +12,9 @@ pub struct Here<'a> {
     pub room: Option<RoomId>,
     /// The rooms one crossable exit away.
     pub exits: &'a [RoomId],
+    /// The map's `meta:` tags for the room, prefix removed (`splashy`,
+    /// `nomagic`); empty when the map could not place it.
+    pub tags: &'a [String],
 }
 
 /// One thing for the driver to do.
@@ -36,6 +39,14 @@ pub enum Said {
     /// Sell what the bags hold, at the shops and back (`plan/31` Stage 4):
     /// the driver runs the town planner until it is home again.
     Sell,
+    /// Heal with herbs by the character's heal profile (`plan/36`): the
+    /// driver runs the healer until it is done.
+    Heal,
+    /// Stock the herb container at the herbalist and come back (`plan/36`
+    /// Stage 4); `true` is eherbs' `fill`, one of each kind lacking.
+    Stock(bool),
+    /// Cast the waggle profile's spells on these people (`plan/37` Stage 5).
+    Waggle(Vec<String>),
     /// Nothing this tick.
     Nothing,
 }
@@ -51,6 +62,37 @@ pub enum Ending {
     NoHuntingRoom,
     /// A walk the hunt depends on could not be made.
     Unreachable(RoomId),
+    /// `;heal` ran: there was no hunt, only the healing.
+    Healed,
+    /// `;heal stock` or `;heal fill` ran: there was no hunt, only the round.
+    Stocked,
+    /// `;waggle` ran: no hunt, only the spells.
+    Waggled,
+    /// `;sc` sent its lines.
+    Sent,
+    /// An injury refused an action again after a rest for it: nothing the
+    /// rest did healed it.
+    Injured,
+    /// `rest.stop_after` rests were taken.
+    Rested(u32),
+    /// A dead player is in the room (`react.deader`).
+    Deader,
+    /// Every wand on the list is gone from the fresh container.
+    NoWands,
+    /// A weapon needs blessing and nothing known can bless it.
+    Unblessed,
+    /// Disarmed, and the weapon could not be got back.
+    Disarmed,
+    /// An attack had no effect: the weapon or ammunition cannot hurt what
+    /// is here (`bigshot.lic:6398`).
+    NoEffect,
+    /// The dead man's switch: dead or badly hurt on Shattered, so the
+    /// character quits (`hunt/death.rs`).
+    Trouble,
+    /// A quick hunt found nothing more to fight here (`hunt/quick.rs`).
+    Cleared,
+    /// Bounty mode: rested, with the bounty done or a new one ready.
+    Bounty,
 }
 
 impl fmt::Display for Ending {
@@ -62,6 +104,26 @@ impl fmt::Display for Ending {
             }
             Self::NoHuntingRoom => f.write_str("the profile names no hunting room to return to"),
             Self::Unreachable(room) => write!(f, "there is no way to room {}", room.0),
+            Self::Healed => f.write_str("healed"),
+            Self::Stocked => f.write_str("stocked"),
+            Self::Waggled => f.write_str("waggled"),
+            Self::Sent => f.write_str("sent"),
+            Self::Rested(n) => write!(f, "rested {n} times, as rest.stop_after asks"),
+            Self::NoWands => f.write_str("no fresh wand is left"),
+            Self::Deader => f.write_str("a dead player is here"),
+            Self::Unblessed => f.write_str(
+                "the weapon needs blessing, and neither Bless (304) nor the Voln symbol is known",
+            ),
+            Self::Disarmed => f.write_str("disarmed, and the weapon could not be recovered"),
+            Self::Injured => f.write_str("an injury still stops the attack after resting for it"),
+            Self::NoEffect => f.write_str(
+                "an attack had no effect: this weapon or ammunition cannot hurt what is here",
+            ),
+            Self::Trouble => f.write_str(
+                "the dead man's switch: dead or below 40% health on Shattered, so quitting",
+            ),
+            Self::Cleared => f.write_str("the room is clear"),
+            Self::Bounty => f.write_str("the bounty is done or a new one is ready"),
         }
     }
 }
@@ -77,9 +139,13 @@ pub enum Why {
     Encumbered,
     /// Mana is below `rest.mana_below`.
     Mana,
+    /// Bounty mode: the bounty is done, or a new one is ready.
+    Bounty,
     /// Every bag is full: something wanted could go nowhere (`plan/31`;
     /// the author: *"too much loot"*).
     Loaded,
+    /// The game refused an action for an injury.
+    Injured,
     /// A box stayed in hand that no bag would take (`plan/31`; the author:
     /// *"we don't want to drop it, so we head in to rest"*).
     BoxInHand,
@@ -92,8 +158,10 @@ impl fmt::Display for Why {
             Self::Fried => "fried",
             Self::Encumbered => "encumbered",
             Self::Mana => "out of mana",
+            Self::Bounty => "the bounty is done or ready",
             Self::Loaded => "too much loot",
             Self::BoxInHand => "a box in hand that no bag will take",
+            Self::Injured => "too injured to fight",
         })
     }
 }
@@ -107,6 +175,8 @@ pub enum Phase {
     ToRest(Why),
     /// Arrived to rest with loot to sell: the selling round, then the rest.
     Selling(Why),
+    /// Arrived to rest hurt: the herbs, then the rest.
+    Healing(Why),
     /// At the resting room, until the thresholds are met.
     Resting(Why),
     /// Walking back to the hunting room.
@@ -122,6 +192,7 @@ impl fmt::Display for Phase {
             Self::ToRest(why) => write!(f, "{why}: walking to the resting room"),
 
             Self::Selling(why) => write!(f, "selling before resting ({why})"),
+            Self::Healing(why) => write!(f, "healing before resting ({why})"),
             Self::Resting(why) => write!(f, "resting ({why})"),
             Self::Returning => f.write_str("rested: walking back"),
             Self::Preparing => f.write_str("preparing"),

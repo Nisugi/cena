@@ -1,0 +1,40 @@
+{"item": "R0201", "direction": "same floor", "confidence": 72, "reason": "wagon shop and its back garden are joined by short steps; garden is outdoor ground and a porch-like step out of a wagon is level"}
+{"item": "R0202", "direction": "up", "confidence": 78, "reason": "the nexus says its alcoves house stairways leading to the lower level, and the landing's other exit is down to the tunnel, so climbing the stairway rises to the nexus level"}
+{"item": "R0203", "direction": "same floor", "confidence": 62, "reason": "a narrow tunnel from one cavern to a small adjoining vault cavern with no described drop or climb"}
+{"item": "R0204", "direction": "down", "confidence": 76, "reason": "room left says the ground continues its precipitous decline toward the glowing fissure far ahead, and the cavern lakeshore is at the bottom"}
+{"item": "R0205", "direction": "down", "confidence": 80, "reason": "the forest says a narrow ravine leads down to the old creekbed, and the swale's other exit is up to the scrub"}
+{"item": "R0206", "direction": "same floor", "confidence": 60, "reason": "a burrow running from a tunnel to a glacial cavern with no stated slope, shaft or level change"}
+{"item": "R0207", "direction": "same floor", "confidence": 62, "reason": "a few wide stone slab steps between a flat landing and the beach, described as connecting rather than descending a cliff"}
+{"item": "R0208", "direction": "down", "confidence": 74, "reason": "arrived room is a Basement with faint light spilling in from the top of a narrow staircase, so the kitchen door leads down into cells"}
+{"item": "R0209", "direction": "same floor", "confidence": 68, "reason": "both rooms are banyan climbing spots at the same computed level +1, and the arrived room still has liana and branches above"}
+{"item": "R0210", "direction": "down", "confidence": 55, "reason": "storage room has a dirt floor and a stairway behind which a door sits, but the command says climb; text does not clearly settle it"}
+{"item": "R0211", "direction": "up", "confidence": 70, "reason": "the bedroom is reached by a carved stone staircase from the cottage's ground-floor chamber, an upper storey"}
+{"item": "R0212", "direction": "down", "confidence": 82, "reason": "arrived room is an underground passageway whose stone steps at either end lead up to the courtyards above"}
+{"item": "R0213", "direction": "up", "confidence": 58, "reason": "command is climb steps and the training hall has vaulted windows and a ladder up to a solarium, but the computed floors conflict"}
+{"item": "R0214", "direction": "up", "confidence": 78, "reason": "a Gable is an attic level above the third floor, reached by the wrought iron staircase described in both rooms"}
+{"item": "R0215", "direction": "up", "confidence": 60, "reason": "the catwalk says a wide ramp leads down and away from it, so coming up the ramp from the dock rises to a raised catwalk on posts"}
+{"item": "R0216", "direction": "up", "confidence": 92, "reason": "the great hall says an ornate double stairway curves upward to a balcony overlook, and the balcony looks down on worshipers below"}
+{"item": "R0217", "direction": "down", "confidence": 55, "reason": "a foyer staircase into the theatre's seating area; text gives no direction, and theatre seating commonly sits below the foyer"}
+{"item": "R0218", "direction": "same floor", "confidence": 65, "reason": "climbing over a rubble blockade that nearly seals the eastern passage between two mine rooms; it is a barrier, not a level change"}
+{"item": "R0219", "direction": "same floor", "confidence": 68, "reason": "a narrow crevasse along the wall connecting two tunnels, both subterranean and both computed at 0"}
+{"item": "R0220", "direction": "same floor", "confidence": 72, "reason": "a hole burrowed right into one wall of the corridor, and the cavern shore describes the same hole in its southern wall at floor level"}
+{"item": "R0221", "direction": "up", "confidence": 62, "reason": "the altar chamber waits at the end of the slope, so going back up the slope leaves it toward the tunnel above"}
+{"item": "R0222", "direction": "up", "confidence": 74, "reason": "the arrived room says you climb up some wooden pegs into the darkening hole"}
+{"item": "R0223", "direction": "up", "confidence": 80, "reason": "the chapel is far beneath the roots of the Temple, so the ramp rises to a room set into the Temple's outer wall with an exit out to the square"}
+{"item": "R0224", "direction": "same floor", "confidence": 58, "reason": "two suite hallways at the same computed level; a mithril staircase links them but both are guest-suite corridors"}
+{"item": "R0225", "direction": "same floor", "confidence": 60, "reason": "a flight of stone steps up to a portico at the back of a building; a portico is its building's ground floor and both rooms are outdoor ground"}
+{"item": "R0226", "direction": "same floor", "confidence": 78, "reason": "the bungalows sit on the roof expanse itself, so going through an oak door enters a room on that same roof level"}
+{"item": "R0227", "direction": "up", "confidence": 55, "reason": "a spiral staircase from the foyer to a lounge with a balcony and library off it, suggesting an upper storey, though the text does not say"}
+{"item": "R0228", "direction": "up", "confidence": 58, "reason": "the chapel has a clear crystal ceiling and an onyx staircase, consistent with the black stair rising from the great hall"}
+{"item": "R0229", "direction": "up", "confidence": 62, "reason": "arrived lounge is computed at +1 and reached by a staircase from the entry, with a stage and dressing room above the pub entrance"}
+{"item": "R0230", "direction": "up", "confidence": 76, "reason": "a Gable is the attic above the third floor, and the arrived room has a slanted ceiling and a wrought iron ladder back down"}
+{"item": "R0231", "direction": "down", "confidence": 88, "reason": "the platform says a hemlock tree pokes through the planking and looks sturdy enough to climb down to get to ground level, and the arrival is at that hemlock's base"}
+{"item": "R0232", "direction": "same floor", "confidence": 65, "reason": "a low tunnel burrowing through the wall between two underground tunnel rooms, with no shaft or stair described"}
+{"item": "R0233", "direction": "down", "confidence": 70, "reason": "the amphitheatre's benches slump in uneven rows toward the ground below, so stairs out of it descend to the street level"}
+{"item": "R0234", "direction": "down", "confidence": 76, "reason": "the arena is a sunken chamber with a window near its ceiling looking into the room beyond, so the brick-lined tunnel drops to it"}
+{"item": "R0235", "direction": "up", "confidence": 74, "reason": "the room left says the stone tower looms at the top of the rise and the arrived room is at the tower with slopes descending sharply on three sides, but it is a hillock so this is a modest level change"}
+{"item": "R0236", "direction": "same floor", "confidence": 55, "reason": "command says climb stairs but the backroom reads as an ordinary office off the shop; nothing describes an upper storey"}
+{"item": "R0237", "direction": "up", "confidence": 60, "reason": "leaving a damp, high-pressure lower chamber by a hatch into a dusty passage computed at 0 suggests rising out of the depths"}
+{"item": "R0238", "direction": "same floor", "confidence": 62, "reason": "a hole gaping from a clay wall at the end of the passage, at floor level; the room left already has a separate up exit"}
+{"item": "R0239", "direction": "down", "confidence": 82, "reason": "the forest room says a steep gully leads down from the road with a trail at the foot of the gully"}
+{"item": "R0240", "direction": "up", "confidence": 78, "reason": "tower headquarters at +1 with a stair to barracks that themselves have a ladder climbing further to the roof"}

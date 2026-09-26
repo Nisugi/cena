@@ -277,6 +277,11 @@ impl super::GameState {
             // without the opener above them.
             self.bank.read_lines(chunk.lines(), &texts);
             self.queue_loot(&chunk, at);
+            self.incidents.push(super::incident::classify(&chunk));
+            self.doses
+                .read_chunk(&chunk, self.right_hand.id(), self.left_hand.id());
+            self.kits.read_chunk(&chunk);
+            self.order_menu.read_chunk(&chunk);
             self.combat.parse_chunk(&chunk, at)
         };
         // Lich's `process`: parse, persist to the registry, then emit -- and
@@ -332,6 +337,9 @@ impl super::GameState {
         }
         // `<Name> is still in cooldown.` -- a fact about the character
         // rather than an answer to a command (`maneuvers.rs`).
+        if let Some(name) = super::maneuvers::ready_line(text) {
+            self.maneuvers.note_ready(name);
+        }
         if let Some(name) = super::maneuvers::cooldown_refusal(text) {
             self.maneuvers.note_cooling(name, at);
         }

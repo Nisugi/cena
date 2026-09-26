@@ -1,0 +1,1103 @@
+=== R0001 ===
+  command typed: climb wall
+  ROOM LEFT
+    name: [Vineyard]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.95)
+    area: the grasslands
+    setting: outdoors
+    game terrain: cultivated
+    description 1: Thorn-covered vines have usurped the position of the grapes that once grew on the surrounding trellises, binding the wooden posts
+      and rails in a weave of greenery as tight as a sailor's knot.  The path amongst the vines is blocked by a wall to the east, but continues on to
+      the south and west.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Vineyard]
+      south  ->  [Vineyard]
+  ROOM ARRIVED IN
+    name: [Wildflower Field, Pond]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 1.00)
+    area: the grasslands
+    setting: outdoors
+    game terrain: cultivated
+    description 1: A sparkling stream of water pouring from beneath a small white building to the east feeds into a small clear pond.  Roughly oval in
+      shape, the pond is little more than a stone-lined depression in the ground, surrounded by grass and flowers, with a stacked stone wall to the
+      north and west.
+    other ways out of this room (the exit being judged is left out):
+      climb north wall  ->  [Apple Orchard]
+      south  ->  [Wildflower Field]
+      southeast  ->  [Wildflower Field]
+
+=== R0002 ===
+  command typed: climb overhang
+  ROOM LEFT
+    name: [Masked Hills, Hairline Ridge]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): above ground (confidence 0.90)
+    area: the Emerald Forest
+    setting: outdoors
+    game terrain: mountainous
+    description 1: The trail continues at a cruel angle along the ridge.  The air is noticeably thinner here, causing your heart to struggle to supply
+      your muscles with much-needed oxygen.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Masked Hills, Hairline Ridge]
+  ROOM ARRIVED IN
+    name: [Griffin's Keen, Crossroads]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.56)
+    area: Griffin's Keen
+    setting: outdoors
+    game terrain: mountainous
+    description 1: This mostly level spot is a respite from the climb, but not from the wind that buffets you from all directions.  Packed brown dirt
+      pocked with eruptions of grey marble make the trail tricky in spite of its gentle slope.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Griffin's Keen, Southern Track]
+      west  ->  [Griffin's Keen, Western Track]
+
+=== R0003 ===
+  command typed: climb stairway
+  ROOM LEFT
+    name: [Vornavis Caravansary, The Row]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.72)
+    area: Solhaven
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: A sprawling building built of rough-cut logs, chinked with mud, and roofed with red tiles stands half-buried beneath the ground
+      here.  The peak of the roof rises to waist level, and a wide timber stairway set into the turf descends to an equally wide doorway.  A wooden
+      sign depicting a cluster of barrels, crates, and grainsacks hangs above the door.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Vornavis Caravansary, Back Wall]
+      east  ->  [Vornavis Caravansary, The Row]
+  ROOM ARRIVED IN
+    name: [Caravansary Chandler's Shop]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.97)
+    area: Solhaven
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: Freestanding shelves, stacked barrels and piles of dry goods all arranged in rows divide the shop into a half dozen aisles where
+      caravaners, adventurers and guildsfolk browse.  A Dark Elven woman whose build resembles more that of an overgrown Halfling than any kind of Elf
+      waits on customers at a counter along the back wall.
+
+=== R0004 ===
+  command typed: go tunnel
+  ROOM LEFT
+    name: [Sorcerer Guild, West Rise]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): above ground (confidence 0.99)
+    area: Zul Logoth
+    setting: indoors
+    description 1: Reflective flecks of quartz and mica glimmer along the small tiles lining the web of walkways along the western rise of the cavern.
+      Lacy, glowing bluish-grey moss clings to the edges of the several large holes, highlighting the openings that lead to the guild's alchemical
+      workshops.  A faint odor of sulfur and salt lingers in the air.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Sorcerer Guild, Workshop]
+      northwest  ->  [Sorcerer Guild, Workshop]
+      southwest  ->  [Sorcerer Guild, Workshop]
+      south  ->  [Sorcerer Guild, Workshop]
+      east  ->  [Sorcerer Guild, Shadow Cavern]
+      north  ->  [Sorcerer Guild, Workshop]
+  ROOM ARRIVED IN
+    name: [Sorcerer Guild, Storeroom]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    area: Zul Logoth
+    setting: indoors
+    description 1: Tidy rows of shelving line the walls here, spanning from floor to ceiling and completely stocked with alchemic ingredients.  A pair
+      of giant luminescent toadstools shed a soft white light in opposite corners of the storeroom.  Shadows linger in the area beyond a short tunnel.
+
+=== R0005 ===
+  command typed: go ledge
+  ROOM LEFT
+    name: [Top of the World, Aenatumgana]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): above ground (confidence 1.00)
+    area: the great mountain Aenatumgana
+    setting: outdoors
+    game terrain: mountainous
+    description 1: Clouds merge with blowing snow and an uncertain horizon.  Courageous patches of light randomly filter through the wind, sparkling
+      off the frozen path and then fraying back into the haze as if devoured.  The way curves to the northwest around a wall of stone, encrusted with
+      ice that almost obscures its carved surface.  To the northeast, a trail, little more than packed ice, snakes across a narrow ledge which is
+      almost obscured by a dense shower of blowing snow.
+    description 2: Clouds merge with blowing snow and an uncertain horizon.  Courageous patches of moonlight randomly filter through the wind,
+      sparkling off the frozen path and then fraying back into the haze as if devoured.  The way curves to the northwest around a wall of stone,
+      encrusted with ice that almost obscures its carved surface.  To the northeast, a trail, little more than packed ice, snakes across a narrow
+      ledge which is almost obscured by a dense shower of blowing snow.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Top of the World, Aenatumgana]
+  ROOM ARRIVED IN
+    name: [Top of the World, Aenatumgana]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): above ground (confidence 1.00)
+    area: the great mountain Aenatumgana
+    setting: outdoors
+    game terrain: mountainous
+    description 1: The trail ends in a redoubt created by immense formations of ice.  Snow rains down in sheets, like a frozen waterfall cascading
+      down from above in slow motion.  What remains of the trail meanders down to the northeast, fraught with dangerous patches of ice and irregular
+      outcrops of stone, which wait for an unwary footfall to offer up disaster.
+    other ways out of this room (the exit being judged is left out):
+      northeast  ->  [Top of the World, Aenatumgana]
+
+=== R0006 ===
+  command typed: climb staircase
+  ROOM LEFT
+    name: [Lumnis' Temple, Hall of Light]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    area: Solhaven
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Iron torches, lining the length of the domed hall, bathe the room with a soft, warm glow.  The white marble floor is covered with
+      plush woven rugs and aged silk tapestries hang from golden cords on the rear wall.  Erected in the center of the room, on a slighty raised
+      platform, a golden statue of an intricate luminescent globe rests upon mithril supports.
+    other ways out of this room (the exit being judged is left out):
+      go door  ->  [Lumnis' Temple, Gardens]
+      north  ->  [Lumnis' Temple, Corridor]
+  ROOM ARRIVED IN
+    name: [Lumnis' Temple, Pool of Thought]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    area: Solhaven
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Parallel rows of benches face a large pool edged in white stone.  The pool's design is graceful and pleasing to the eye.  Marble
+      steps surround it, offering different views of its eloquent nuances.  On the armrest of each bench is carved a sphere, the deft carvings
+      accented in gold leaf.  Overhead, on the high, arched ceiling, the image of an ebon drake spreads its wings.  At each corner of the chamber
+      rests a globe astride a carved marble column.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Sanctuary of Journey]
+
+=== R0007 ===
+  command typed: climb path
+  ROOM LEFT
+    name: [Saewehna Jungle, Coast]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.99)
+    area: the environs of the Saewehna Lagoon
+    setting: outdoors
+    game terrain: riparian
+    description 1: The shadows of night provide a dark background to the expanse of sand surrendering to the ocean's grasp as its foamy waves rush
+      forth and retreat rhythmically on the shoreline.  A flock of pelicans rest upon a large boulder, their bodies still but for the occasional shift
+      of feet as they huddle together in the moonlight.  Collections of seaweed cling to the debris cluttering the beach, and moonlight reflects from
+      the dark surface of the ocean as the sound of waves crashing filters in on the evening breeze.
+    description 2: The vibrant plants and trees of the jungle provide an exotic background to the expanse of sand surrendering to the ocean's grasp as
+      its foamy waves rush forth and retreat rhythmically on the shoreline.  A flock of pelicans gather upon a large boulder, only moving from their
+      resting place to dive into the water and retrieve fish in their large gullets before returning to their perch.  Collections of seaweed cling to
+      the debris cluttering the beach, and the cry of seagulls accompanies the crash of waves.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Saewehna Jungle, Coast]
+  ROOM ARRIVED IN
+    name: [Saewehna Jungle, Wilds]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.98)
+    area: the environs of the Saewehna Lagoon
+    setting: outdoors
+    game terrain: tropical
+    description 1: Moonlight highlights the labyrinth of plants and trees punctuated by masses of vines hanging from the dense canopy.  Exotic,
+      nocturnal flowers dot several of the malachite tendrils as they weave their way through the shadows in the vegetation, and the nighttime calls
+      of various creatures are joined by the muted sounds of the ocean.  The gradual change in the terrain is clear as travel further south is
+      restricted to a steeply descending path.
+    other ways out of this room (the exit being judged is left out):
+      northwest  ->  [Saewehna Jungle, Swamp]
+
+=== R0008 ===
+  command typed: climb wall
+  ROOM LEFT
+    name: [Caligos Isle, Boneyard Garden]
+    computed floor (may be wrong): +0 - it is on a level with outdoor ground or a ship's main deck (floor 0)
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.77)
+    area: Caligos Isle
+    setting: outdoors
+    description 1: A solid wall of etched stone surrounds this derelict clearing.  Malignant, low hanging fog creates a ceiling of dripping miasma
+      that coats everything in a noisome mist.  Beneath a malformed cocobolo tree lie the shards of tiny, broken headstones, inscribed not with names,
+      but with crude, childlike drawings of small animals.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Caligos Isle, Courtyard]
+      down  ->  [Boneyard, Burial Mounds]
+  ROOM ARRIVED IN
+    name: [Caligos Isle, Mire]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.70)
+    area: Caligos Isle
+    setting: outdoors
+    description 1: A cloying fog laced with deep indigo tendrils hovers over the rough terrain.  Jagged, lichen-covered boulders block descent to the
+      sea below but create a sufficient breaker for unrelenting waves that threaten to overwhelm the surrounding land.  A crystal clear pool has
+      formed in the shadow of towering rock, and underfoot, slurping sounds of fleshy muck is suggestive that one should not linger.
+
+=== R0009 ===
+  command typed: climb incline
+  ROOM LEFT
+    name: [Northern Slopes, Quiet Forest]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.65)
+    area: the Sleeping Lady Mountains
+    setting: outdoors
+    game terrain: mountainous
+    description 1: The snow here is extremely churned up, and broken branches and pine needles cover the ground. The trees are scarred and damaged,
+      and one pine tree has been splintered almost completely into bits. A path of arboreal wreckage leads up a once heavily forested incline.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Northern Slopes, Quiet Forest]
+  ROOM ARRIVED IN
+    name: [Mountains, Quiet Forest]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.48)
+    area: the Sleeping Lady Mountains
+    setting: outdoors
+    game terrain: mountainous
+    description 1: A mix of broken branches, fallen pine needles and the occasional pinecone are scattered down a steep incline.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Mountains, Quiet Forest]
+
+=== R0010 ===
+  command typed: climb ledge
+  ROOM LEFT
+    name: [Thanatoph Bowels, Cavern]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: the bowels of Thanatoph
+    setting: indoors
+    game terrain: plain dirt
+    description 1: Erosion and time have formed a tall earthen cliff, the lake below still visible from this vantage.  Several crushed pieces of stone
+      lie scattered about the ground, most no bigger than a pebble.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Thanatoph Bowels, Cavern]
+      west  ->  [Thanatoph Bowels, Cavern]
+  ROOM ARRIVED IN
+    name: [Thanatoph Bowels, Cavern]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: the bowels of Thanatoph
+    setting: indoors
+    game terrain: plain dirt
+    description 1: Unlike many of the earthen tunnels near this cavern that appear to be natural in origin, there is clear evidence that this well
+      hidden area is man-made.  A pile of perfectly square stones has been neatly stacked along one wall, each of them placed with complete precision.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Thanatoph Bowels, Cavern]
+      south  ->  [Thanatoph Bowels, Cavern]
+      east  ->  [Thanatoph Bowels, Cavern]
+      north  ->  [Thanatoph Bowels, Cavern]
+
+=== R0011 ===
+  command typed: go staircase
+  ROOM LEFT
+    name: [Subterranean Siegecraft]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: Zul Logoth
+    setting: indoors
+    game terrain: subterranean
+    description 1: A blackened ironwork spiral staircase descends from a wood-paneled ceiling into this luxurious showroom.  Polished mahogany cases
+      with glass windows stand sentinel around the walls, each well lit with brass sconces.  A rich woven carpet rests along a marble floor on which a
+      small desk and chair sit in the center of the room.  Between two of the cases, a marble arch leads to another well-lit chamber of this basement
+      boutique.
+    other ways out of this room (the exit being judged is left out):
+      go arch  ->  [Subterranean Battle Arena]
+  ROOM ARRIVED IN
+    name: [Zul Logoth, Ametrine Tunnel]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: the tunnels and caverns of Zul Logoth
+    setting: indoors
+    game terrain: subterranean
+    description 1: A lone stalactite has been painted with swirls of deep amethyst and streaks of sunny yellow-gold.  Elaborate feats of dwarven
+      masonry stand on display out in front of an expansive storefront.  Idle chatter between shopkeepers, patrons, and neighbors runs together with
+      the heavy footsteps of passersby.  Growing in the shadowed nooks of the tunnel are small clumps of softly glowing blue-green moss.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Zul Logoth, Ametrine Tunnel]
+      southeast  ->  [Zul Logoth, Ametrine Tunnel]
+
+=== R0012 ===
+  command typed: go steps
+  ROOM LEFT
+    name: [Temple, Bathing Chamber]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    area: Wehnimer's Landing
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Water droplets condensing on the hollow-tiled ceiling above the central bath grow gravid in the steamy air and return to their
+      source with a quiet splash.  Silver ewers and vials of scented oil are within easy reach of the communal bath, their tarnished surfaces
+      reflecting the flickering candlelight dimly.  A large window on the western wall appears to serve the dual purpose of allowing bathers to admire
+      the night skies and to put themselves on display.
+    description 2: Water droplets condensing on the hollow-tiled ceiling above the central bath grow gravid in the steamy air and return to their
+      source with a quiet splash.  Silver ewers and vials of scented oil are within easy reach of the communal bath, their tarnished surfaces only
+      dimly reflecting the rippling sunlight on the water's surface.  A large window on the western wall appears to serve the dual purpose of allowing
+      bathers to admire the lush forest outside and to put themselves on display.
+    other ways out of this room (the exit being judged is left out):
+      go door  ->  [Hall of the Marred]
+      northeast  ->  [Hall of the Impure]
+  ROOM ARRIVED IN
+    name: [Temple, Bath]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    area: Wehnimer's Landing
+    setting: indoors
+    game terrain: none set
+    description 1: The bath has apparently been built over a natural hot spring, its murky waters steaming hot but not quite to the point of
+      discomfort.  The cloyingly strong smell of incense doesn't quite conceal the faint mineral tang in the air.
+
+=== R0013 ===
+  command typed: go tunnel
+  ROOM LEFT
+    name: [Griffin's Landing, Hidden Oasis]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.49)
+    area: Ta'Illistim
+    setting: outdoors
+    description 1: An abundance of color fills the land surrounding the calm water disturbed only by a small waterfall that flows over the perimeter
+      wall.  A short, partially concealed tunnel can be seen behind the flow of water.  A large wooden dock extends into the water, providing a dry
+      walkway to a small island in the lake where Blubber's ice cream stand awaits.  A group of wide trees emerging from the water's edge support a
+      small hammock and an oak swing.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Griffin's Landing, Plaza]
+      northwest  ->  [Griffin's Landing, Small Dock]
+  ROOM ARRIVED IN
+    name: [Little Man's Alehouse]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    area: Ta'Illistim
+    setting: indoors
+    description 1: Mushroom lanterns hung along the damp walls light this dark compact room, illuminating the crushed peanut shells littering the
+      floor.  Pint-size mushroom stools are arranged alongside a squatty mithril bar.  Several shelves display a supply of liquor as a severed orc's
+      head, mounted above an invar plaque, glares ominously at the jovial scene.  A fire crackles and pops from a roughly chiseled hole in the far
+      wall, while a short tunnel leads up and out.
+
+=== R0014 ===
+  command typed: go ladder
+  ROOM LEFT
+    name: [The Other Daughter, Entry Vault]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: Evermore Hollow
+    setting: indoors
+    description 1: Dark stone walls are infested along multitudinous cracks with a bright violet luminescence, its glow so vibrant as to faintly
+      illuminate the majority of the dank, damp space.  Dripping down from the decrepit ceiling and oozing across the floor, viscous fluids and goo
+      intermingle with scattered, nondescript bones, broken glass, and, in one corner, a collection of oversized rat's nests.  In the midst of it all,
+      four candle-topped coffins offer a neatly laid out selection of curious oddities.
+    other ways out of this room (the exit being judged is left out):
+      go stairway  ->  [The Other Daughter, Ingress]
+  ROOM ARRIVED IN
+    name: [The Other Daughter, East Crypt]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: Evermore Hollow
+    setting: indoors
+    description 1: The air is moist, its scent so strongly laden with loam and decay that it practically tastes of it.  Formed from the halves of two
+      broken altars, four stone benches are angled in toward each other to face a rocking chair that sits at the dead center of the octagonal chamber.
+      Beneath it, the makings of a ritual circle and its associated runes sprawl outward in imperfect symmetry before abruptly terminating just shy of
+      the violet phosphorescence-riddled walls, each of which houses a tomb in its earthen embrace.
+
+=== R0015 ===
+  command typed: go staircase
+  ROOM LEFT
+    name: [Outpost, Courtyard]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    what the room's NAME suggests (may be wrong): ground level (confidence 1.00)
+    area: Mist Harbor
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Cobalt blue and buttercup yellow tiles mingle upon the round floor to create a sunburst mosaic that is outlined in grey mortar.
+      Directly opposite the entry is a circular golden linden staircase that disappears into a white stucco ceiling, which is hung with several hemp
+      nets housing blown glass orbs.  An alternating pattern of open windows and oak-framed arches finishes the foyer.  One such arch leads to a small
+      offset room.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Guardians of Sunfist, Outpost]
+      go arch  ->  [Outpost, Armory]
+      northwest  ->  [Outpost, Office]
+      northeast  ->  [Outpost, War Room]
+      north  ->  [Outpost, Kitchen]
+  ROOM ARRIVED IN
+    name: [Outpost, Landing]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.88)
+    area: Mist Harbor
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Positioned beneath a domed ceiling, a circular golden linden staircase winds its circular path downward towards the lower levels.
+      Smooth walls, left plain and white, are interrupted only where arches provide egress.  The central arch emits a faint scent of tropical flowers.
+    other ways out of this room (the exit being judged is left out):
+      go arch  ->  [Outpost, Shop]
+      northwest  ->  [Outpost, Western Outlook]
+      northeast  ->  [Outpost, Eastern Outlook]
+      north  ->  [Outpost, Barracks]
+
+=== R0016 ===
+  command typed: go stairway
+  ROOM LEFT
+    name: [Malwith Inn, Casu's Coffee]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    area: Ta'Vaalor Inns
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Warmly lit, the shop is littered with wood scraps, most hidden under thick drifts of sawdust.  A wood stove fills one corner, its
+      metal black as night.  A tool bench is filled with a wide assortment of saws, hammers and other tools.  A shelf, fitted with small bins, holds
+      nails and other fasteners.
+    description 2: Warmly lit, the shop is cozy and smells of fresh coffee.  Several mugs sit atop a wood stove, that fills one corner, its metal
+      black as night.  A mistwood counter is filled with a wide assortment of flavorings and accessories.  A shelf, fitted with small bins, holds
+      several packets of coffee.
+    other ways out of this room (the exit being judged is left out):
+      go door  ->  [Malwith Inn, Storage]
+  ROOM ARRIVED IN
+    name: [Malwith Inn, Casu's Cafe]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.53)
+    area: Ta'Vaalor Inns
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Thick crimson rugs cover the dark wood floors of the cafe.  Nestled in a corner, a wooden basket and a small refuse can sit beside
+      a dark cast iron stove.  Several leather couches and chairs create a comfortable sitting area around a low table in the center of the room.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Malwith Inn, Dining Room]
+      go glass door  ->  [Malwith Inn, Patio]
+
+=== R0017 ===
+  command typed: climb odd boulder
+  ROOM LEFT
+    name: [Glacial Cavern]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: Icemule Trace
+    setting: indoors
+    description 1: A great expanse of glacial rock and ice rises up, the naturally domed structure braced in curved, polished pine beams designed to
+      embrace the frozen stalactites pitching down in crystalline brilliance.  Thin paper lanterns float from glaes-linked suspensions, glowing with
+      pale lilac and blue hues of the phosphorescent orbs nestled within.
+    other ways out of this room (the exit being judged is left out):
+      go narrow burrow  ->  [Underground Tunnel]
+  ROOM ARRIVED IN
+    name: [Faire, Frozen Glade]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.88)
+    area: Icemule Trace
+    setting: outdoors
+    description 1: A jagged glacier looms over an open grassy knoll kissed with glistening frost and bordered by a dense coniferous forest capped in a
+      thick layer of pure white snow.  The fresh scent of pine wafts on a chilled breeze as the surrounding trees sway, their snowy canopy bending to
+      reveal a star-spangled sky.  Several makeshift log benches have been placed around a circular firepit, a crate of wood set into the snowy ground
+      just beside it.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Faire of the North, Footpath]
+      north  ->  [Faire of the North, Footpath]
+
+=== R0018 ===
+  command typed: go stairs
+  ROOM LEFT
+    name: [Canyon, Siren's Path]
+    computed floor (may be wrong): +1 - counted up/down from outdoor ground by a climb
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.52)
+    area: the town of Kharam-Dzu
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: The trail ends in a set of stone stairs carved into the canyon wall, leading up to the ridge above.  A cluster of flowering cactus
+      at the edge of the trail provides a home to several small green lizards which crawl among the spiny plants, searching for insects.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Canyon, Siren's Path]
+  ROOM ARRIVED IN
+    name: [Canyon, Dragon's Ridge]
+    computed floor (may be wrong): +1 - counted up/down from outdoor ground by a climb
+    what the room's NAME suggests (may be wrong): above ground (confidence 0.79)
+    area: the town of Kharam-Dzu
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: A row of small houses are set along the east side of the red stone ridge, facing the view of the mist-shrouded sea far in the
+      distance.  Piles of grey and red boulders line the edge of the canyon where it drops off to the moors below, and a set of stairs carved into the
+      stone lead down to the south.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Canyon, Dragon's Ridge]
+
+=== R0019 ===
+  command typed: go steps
+  ROOM LEFT
+    name: [Bard Guild, Stage]
+    computed floor (may be wrong): -1 - counted up/down from a level placed another way
+    area: Wehnimer's Landing
+    setting: indoors
+    description 1: Large and acoustically well proportioned, the stage opens expectantly to the auditorium -- lights and curtains, tabs and borders,
+      all are cleverly placed to entice the audience's eye.  A semitransparent scrim hangs at the back from the grid of metal framework above.  A wide
+      apron at the front of the stage completes the space, from which every seat in the house can be seen.
+    other ways out of this room (the exit being judged is left out):
+      go left  ->  [Bard Guild, Backstage]
+  ROOM ARRIVED IN
+    name: [Bard Guild, Performance Hall]
+    computed floor (may be wrong): -1 - counted up/down from a level placed another way
+    area: Wehnimer's Landing
+    setting: indoors
+    game terrain: hard, flat
+    description 1: The auditorium is cavernous, and every inch of the curved ceiling appears to be covered in vividly colored frescos.  The walls are
+      a combination of polished mahogany and painted panels that equal the ceiling in decoration.  Tiers of seats descend toward a stage at the hall's
+      far end, their ranks upholstered in crimson velvet that matches red carpet runners traversing the aisles between them.  A row of small lanterns
+      illuminates the front of the stage.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Bard Guild, Theater Lobby]
+
+=== R0020 ===
+  command typed: go ramp
+  ROOM LEFT
+    name: [Gallery, Eye of V'tull]
+    computed floor (may be wrong): +1 - counted up/down from a level placed another way
+    area: Stormbrow Gallery
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Rising out of the center of the floor, a towering model volcano climbs as high as ten giantmen standing atop each others'
+      shoulders.  A circular balcony girds the cone, a torch-lit wreath beneath the domed glass ceiling.  The occasional flicker of torchlight
+      reflects off hundreds of white starstones high overhead.
+    other ways out of this room (the exit being judged is left out):
+      go volcano  ->  [Gallery, Inside the Eye]
+  ROOM ARRIVED IN
+    name: [Gallery, Culture Room]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    area: Stormbrow Gallery
+    setting: indoors
+    game terrain: hard, flat
+    description 1: A carpeted walkway, flanked by a silk-draped podium, leads from the entrance toward the back wall, which is almost entirely covered
+      by a massive bas-relief sculpture.  A clear glass globe hangs from a thin braided invar cable over the head of the mannequin standing in the
+      corner.  A round table has been spread with a bountiful meal, suitable for a hungry dwarven family.  A sparkling crystal ball serves as a center
+      piece.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Gallery, Geology Room]
+
+=== R0021 ===
+  command typed: go rope
+  ROOM LEFT
+    name: [Cysaegir, Treetop Platform]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): above ground (confidence 1.00)
+    area: the village of Cysaegir
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: This side of the tree platform ends here in an open, rounded area.  Set along the south side of the platform is a circular riser
+      elevated to the level of the railing, providing a precarious perch for those wishing to take in the view at this height.  Tied off on one side
+      of the railing are several lengths of rope that can be seen climbing up into higher tree branches overhead.
+    description 2: Perched high in the trees, the platform ends here in an open, rounded area.  Set along the south side of the platform is a circular
+      riser elevated to the level of the railing, providing a precarious perch for those wishing to take in the view at this height.  Tied off on one
+      side of the railing are several lengths of rope that can be seen climbing up into higher tree branches overhead.  A small wooden structure juts
+      out from the decking suspended over the ground below by supports attached to the side of the trunk.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Cysaegir, Treetop Platform]
+      go structure  ->  [Skyhigh Curiosities]
+  ROOM ARRIVED IN
+    name: [Cysaegir, Treetop Platform]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): above ground (confidence 1.00)
+    area: the village of Cysaegir
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: The platform turns sharply here, around the trunk of an ancient tanik tree, and features reinforced railings along both sides.
+      Coming to a stop at a raised section, steps climb up a set of risers that lead to a bar where several lengths of rope have been tied off.  The
+      other end of those hempen cables soar high into the towering treetop canopy.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Cysaegir, Treetop Platform]
+      south  ->  [Gaertira's Herbs]
+
+=== R0022 ===
+  command typed: go stairs
+  ROOM LEFT
+    name: [Sunfist Tower, Office]
+    computed floor (may be wrong): +1 - a plain door or compass move joins its level to an outdoor room on that floor
+    what the room's NAME suggests (may be wrong): above ground (confidence 0.99)
+    area: Kraken's Fall
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Utilitarian and sparse, the room smells strongly of cedar and pipe tobacco.  Maps are pinned to the rough oak walls, covering the
+      space between a dark green chalkboard and a bulletin board filled with parchments.  A small desk and chair in the northeastern corner sit at an
+      angle to take full advantage of the room's two windows.
+    other ways out of this room (the exit being judged is left out):
+      go door  ->  [Logging Colony, Parapet]
+  ROOM ARRIVED IN
+    name: [Sunfist Tower, Bunk Room]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): above ground (confidence 0.93)
+    area: Kraken's Fall
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Devoid of windows, the room is small and austere.  Hooded lanterns rest over a small writing desk in one cramped corner, while a
+      large clothes press mounted in opposition sits partially ajar.  Bunk beds covered with lusterless grey wool blankets clutter the remainder of
+      the space.
+
+=== R0023 ===
+  command typed: go dark hollow
+  ROOM LEFT
+    name: [Wehnimer's, Treehouse]
+    computed floor (may be wrong): +0 - it is on a level with outdoor ground or a ship's main deck (floor 0)
+    what the room's NAME suggests (may be wrong): above ground (confidence 1.00)
+    area: the town of Wehnimer's Landing
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: This sturdy wooden platform, built of planks and wedged into a fork of the oak's trunk, provides a place to sit and rest in the
+      shade of an overhanging branch.  A glance through the foliage affords a bird's-eye view of the town square below.
+    description 2: This sturdy wooden platform, built of planks and wedged into a fork of the oak's trunk, provides a place to sit and rest in the
+      shadow of an overhanging branch.  A glance through the foliage affords a bird's-eye view of the lamplit town square below.
+    other ways out of this room (the exit being judged is left out):
+      down  ->  [Town Square Central]
+  ROOM ARRIVED IN
+    name: [Inside Oak Tree]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    what the room's NAME suggests (may be wrong): above ground (confidence 0.79)
+    area: the town of Wehnimer's Landing
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Deep in the hollow of this ancient tree, a few carved wooden stools are clustered around a fine-grained oak slab that serves as a
+      table.  Soft light streams in through a large knothole, softly illuminating the area.  Sequestered from the hustle and bustle of the town
+      square, this quiet chamber offers a cozy haven for weary caregivers.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Town Square Central]
+
+=== R0024 ===
+  command typed: climb steps
+  ROOM LEFT
+    name: [Old Ta'Faendryl, Amphitheatre]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.63)
+    area: Old Ta'Faendryl
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: Broken stone slabs sliding down a steep incline is all that remains of the tiered benches that once ran along the eastern side of a
+      wide field.  A narrow platform along the edge of a retaining wall leads to the northwest and south.
+    other ways out of this room (the exit being judged is left out):
+      climb slab  ->  [Old Ta'Faendryl, Amphitheater]
+      south  ->  [Old Ta'Faendryl, Amphitheatre]
+      northwest  ->  [Old Ta'Faendryl, Amphitheatre]
+  ROOM ARRIVED IN
+    name: [Old Ta'Faendryl, River Edge]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.91)
+    area: Old Ta'Faendryl
+    setting: outdoors
+    game terrain: plain dirt
+    description 1: A narrow path leading between the edge of the river and a high wall to the south ends at the base of flight of granite stairs that
+      rises up toward the top of the wall.  Spiky bulrush shoves its way between the broken slabs of the stone paving the surface of the path, working
+      toward the wall with a relentless persistence that harbors no thought of failure.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Old Ta'Faendryl, River Bank]
+
+=== R0025 ===
+  command typed: go steps
+  ROOM LEFT
+    name: [Old Ta'Faendryl, Market Road]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.95)
+    area: Old Ta'Faendryl
+    setting: outdoors
+    game terrain: plain dirt
+    description 1: To the northeast, the dark silhouette of a great and spacious building rises into sight.  With the foundation supporting it blocked
+      from view, the shadowed edifice appears to float in brooding silence above the ruined city.  A few stone steps lead up to a high platform that
+      spreads out to the north.
+    description 2: To the northeast, a great and spacious building rises into sight.  With the foundation supporting it blocked from view, the
+      sparkling white edifice appears to float in brooding silence above the ruined city.  A few stone steps lead up to a high platform that spreads
+      out to the north.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Old Ta'Faendryl, East]
+      southeast  ->  [Old Ta'Faendryl, East Market]
+      south  ->  [Old Ta'Faendryl, Market Road]
+  ROOM ARRIVED IN
+    name: [Old Ta'Faendryl, Basilica Plaza]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.98)
+    area: Old Ta'Faendryl
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: The road to the north opens out into a wide plaza that encircles a huge tower of cut granite blocks.  Down a few steps to the south
+      can be seen the collapsing remains of a residential section of the city.  The cracked pieces of what may have once been a green marble pedestal
+      lie in a jumbled heap at the southwestern corner of the plaza.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Old Ta'Faendryl, Basilica Plaza]
+      east  ->  [Old Ta'Faendryl, Basilica Plaza]
+
+=== R0026 ===
+  command typed: climb rocks
+  ROOM LEFT
+    name: [Yegharren Valley, Ravine]
+    computed floor (may be wrong): -1 - counted up/down from outdoor ground by a climb
+    what the room's NAME suggests (may be wrong): below ground (confidence 0.95)
+    area: the Yegharren Plains
+    setting: outdoors
+    game terrain: rough
+    description 1: A huge pile of fallen rocks, left by some long-ago landslide, blocks the entire width of the ravine to the east.  Scraggly bushes
+      grow in the patches of soil that have built up in the sharp nooks and crannies, and the half-dried corpse of what looks like it was once a large
+      dog lies shattered and impaled where it fell.
+    description 2: A huge pile of fallen rocks, left by some long-ago landslide, blocks the entire width of the ravine to the east.  Scraggly bushes
+      grow in the patches of soil that have built up in the sharp nooks and crannies, and the half-dried corpse of what looks like it was once a large
+      dog lies shattered and impaled, its bones glinting in a shard of moonlight.
+    other ways out of this room (the exit being judged is left out):
+      northwest  ->  [Yegharren Valley, Ravine]
+  ROOM ARRIVED IN
+    name: [Yegharren Valley, Ravine]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): below ground (confidence 0.95)
+    area: the Yegharren Plains
+    setting: outdoors
+    game terrain: rough
+    description 1: A lone tree protrudes from a ledge some distance above, its twisted form, grown from a fallen seed many years ago, casting an
+      uneven shadow over the ravine.  A huge pile of fallen rocks blocks the ravine to the west, its sharp and unstable edges forming a treacherous
+      obstacle.
+    description 2: A lone tree protrudes from a ledge some distance above, its twisted form, grown from a fallen seed many years ago, casting a
+      ghostly shadow in the moonlight.  A huge pile of fallen rocks blocks the ravine to the west, its sharp and unstable edges forming a treacherous
+      obstacle.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Yegharren Valley, Ravine]
+
+=== R0027 ===
+  command typed: climb stairs
+  ROOM LEFT
+    name: [Rogue Guild, Ballroom]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    area: Solhaven
+    setting: indoors
+    description 1: The marble floors of the former ballroom are covered with training mats.  Heavy velvet curtains and shuttered windows exclude any
+      light from the outside, but the tinkling glass chandelier provides ample light for the members to work at their tasks.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Rogue Guild, Ballroom]
+  ROOM ARRIVED IN
+    name: [Rogue Guild, Conservatory]
+    computed floor (may be wrong): +0 - counted up/down from a level placed another way
+    area: Solhaven
+    setting: indoors
+    description 1: Neglect has turned this once well-tended conservatory into a jungle.  Birds, finding their way in through the broken windows,
+      flutter in the flora while guild members train on mats laid on the gravel paths below.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Rogue Guild, Conservatory]
+
+=== R0028 ===
+  command typed: go steps
+  ROOM LEFT
+    name: [Solhaven Inn, Upstairs Hall]
+    computed floor (may be wrong): +1 - counted up/down from a level placed another way
+    what the room's NAME suggests (may be wrong): above ground (confidence 1.00)
+    area: the free port of Solhaven
+    setting: indoors
+    game terrain: none set
+    description 1: Brass sconces on either wall light this red carpeted hall.  An incredibly ugly vase sits on a table along the north wall.  Upon the
+      south wall is a hanging depicting the founding of Solhaven.  A wide marble staircase leads to the lower floor of the inn.
+    other ways out of this room (the exit being judged is left out):
+      climb staircase  ->  [Solhaven Inn, Main Hall]
+      go oak door  ->  [Solhaven Inn, Emerald Room]
+      west  ->  [Solhaven Inn, Upstairs Hall]
+      go haon door  ->  [Solhaven Inn, Aquamarine Room]
+  ROOM ARRIVED IN
+    name: [A Concealed Room]
+    computed floor (may be wrong): -1 - counted up/down from a level placed another way
+    area: Solhaven
+    setting: indoors
+    game terrain: hard, flat
+    description 1: Crates, boxes and pieces of dusty, broken furniture are stacked along the walls of this seemingly forgotten storage room.  A simple
+      desk and chair sit next to a narrow door.
+
+=== R0029 ===
+  command typed: climb crevice
+  ROOM LEFT
+    name: [Aillidh Brae, Vale]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.49)
+    area: Liath Bheinn and Aillidh Brae
+    setting: outdoors
+    game terrain: rough
+    description 1: An old rock slide has deposited its remains all across the valley floor.  Rocks of all sizes are strewn everywhere, making hiking
+      quite difficult.  A crevice gapes like a jagged wound in the otherwise pristine hillside.
+    other ways out of this room (the exit being judged is left out):
+      northeast  ->  [Aillidh Brae, Vale]
+      northwest  ->  [Aillidh Brae, Vale]
+  ROOM ARRIVED IN
+    name: [Liath Bheinn, Crevice]
+    computed floor (may be wrong): -1 - counted up/down from outdoor ground by a climb
+    what the room's NAME suggests (may be wrong): below ground (confidence 0.71)
+    area: Liath Bheinn and Aillidh Brae
+    setting: outdoors
+    game terrain: mountainous
+    description 1: Loose rocks and soil make it hard to hike this crevice.  Small, thorny bushes cling desperately to the sandy soil, not making
+      movement any easier at all.
+    other ways out of this room (the exit being judged is left out):
+      up  ->  [Liath Bheinn, Mountain]
+
+=== R0030 ===
+  command typed: go tree
+  ROOM LEFT
+    name: [Ranger Guild, The Circle]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    area: Ta'Illistim
+    setting: outdoors
+    game terrain: plain dirt
+    description 1: Long tendrils of hanging moss drape from the higher branches of the massive oak tree, deep silvery specks hiding within their soft
+      recesses.  Blades of long grass rustle underfoot, their diminutive green forms complemented by random patches of wildflowers and colorful weeds
+      of every type.  Several roots rise high into the air here, allowing one to sit and gaze upon the scenery.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Ranger Guild, The Circle]
+      northwest  ->  [Ranger Guild, The Circle]
+  ROOM ARRIVED IN
+    name: [Massive Oak, Cozy Crooks]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    area: Ta'Illistim
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: The central trunk ascends high into the sky, and a variety of huge branches arc off in all different directions -- each curved and
+      sporting a thick cushion of leaves for relaxing and surveying the surrounding landscape.  Light filters down in soft waves, the harsh glare of
+      the sun broken into refreshing spots of warmth mingled with patches of cool shade.  The faint trill of birds can occasionally be heard as they
+      hop from branch to branch and disappear high up in the bough.
+    other ways out of this room (the exit being judged is left out):
+      down  ->  [Ranger Guild, Clearing]
+
+=== R0031 ===
+  command typed: climb stairway
+  ROOM LEFT
+    name: [Lobby]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.92)
+    area: the old Logging Road
+    setting: indoors
+    game terrain: hard, flat
+    description 1: This square room seems to have been carved out of solid rock, as evidenced by the smooth, hard walls.  A simple, deep brown rug
+      covers the center of the floor.  A mural has been painted on one wall, covering it from floor to ceiling with a detailed image of the Eye of
+      V'Tull.  Two granite benches sit against the adjacent walls, and a refreshment cart stands in the corner.  A sign hangs over a carved stone
+      stairway, and a rounded arch is carved in the fourth wall, nearly hidden by deep blue curtains.
+    other ways out of this room (the exit being judged is left out):
+      out  ->  [Stone Tunnel]
+  ROOM ARRIVED IN
+    name: [Kharam Dzu, Departure Annex]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    area: the old Logging Road
+    setting: indoors
+    game terrain: hard, flat
+    description 1: This room is sparse, having no seating or amenities.  Wall-mounted torches provide illumination for the room's only decoration, a
+      portrait hanging on an otherwise bare wall.  A sign hangs near a carved stone stairway.
+
+=== R0032 ===
+  command typed: go oak door
+  ROOM LEFT
+    name: [House Arcane, Hall's End]
+    computed floor (may be wrong): +1 - counted up/down from a level placed another way
+    area: Wehnimer's Landing
+    setting: indoors
+    description 1: The hallway ends here with a set of steep, wooden stairs which ascend to the third floor.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [House Arcane, Hallway]
+      go wooden stairs  ->  [House Arcane, Landing]
+  ROOM ARRIVED IN
+    name: [House Arcane, Noonga's Room]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    area: Wehnimer's Landing
+    setting: indoors
+    description 1: Tall wooden weapon racks line the southern side of the room along with various armour stands.  Soft furs and a pillows make a
+      comfortable looking bed below a large painting.  Several chests, smashed to pieces, lay scattered nearby.
+
+=== R0033 ===
+  command typed: climb blocks
+  ROOM LEFT
+    name: [Old Ta'Faendryl, Amphitheater]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.59)
+    area: Old Ta'Faendryl
+    setting: outdoors
+    game terrain: grassland
+    description 1: Grass grows in rich abundance across this open field, spreading out in every direction in rippled waves of gold and green.  A pile
+      of granite blocks rises to the north.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Old Ta'Faendryl, Amphitheater]
+      southeast  ->  [Old Ta'Faendryl, Amphitheater]
+  ROOM ARRIVED IN
+    name: [Old Ta'Faendryl, Amphitheatre]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.63)
+    area: Old Ta'Faendryl
+    setting: outdoors
+    game terrain: rough
+    description 1: A narrow path formed by the remains of a long stone bench picks its way between haphazard piles of crumbling granite blocks.  It
+      would be possible, by climbing over the fallen stone, to descend to the grassy area to the south.
+    other ways out of this room (the exit being judged is left out):
+      southeast  ->  [Old Ta'Faendryl, Amphitheatre]
+      southwest  ->  [Old Ta'Faendryl, Basilica Plaza]
+
+=== R0034 ===
+  command typed: go fissure
+  ROOM LEFT
+    name: [Depths of V'Tull, Lower Eye]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: the Eye of V'Tull
+    setting: indoors
+    game terrain: hard, flat
+    description 1: The river of molten lava flows past the narrow ledge of rock like a living thing roiling with suppressed fury.  A rock cliff edges
+      the perilous overhang, and large boulders stand to either side blocking further progress.  Loud pops and hissing from the magma punctuate the
+      tenuous nature of this perch, as if the molten lava is deriding any attempt to find purchase on such a thin projection of safety over the river
+      of death rampaging beneath.
+  ROOM ARRIVED IN
+    name: [Glaes Fissure]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 0.94)
+    area: the Eye of V'Tull
+    setting: indoors
+    game terrain: rough
+    description 1: Violent volcanic upheaval has left a chamber within the black heart of the mountainside.  The shadowy cavern is deep but narrow,
+      and its walls are pocked with crevices and veined with minerals caught in the glaes long ago.  A few beams of light have found their way down
+      into the gloom from a jagged fissure above.  They create a stark spotlight on the rough stone floor.
+    description 2: Violent volcanic upheaval has left a chamber within the black heart of the mountainside.  The shadowy cavern is deep but narrow,
+      and its walls are pocked with crevices and veined with minerals caught in the glaes long ago.  A few beams of moonlight have found their way
+      down into the gloom from a jagged fissure above.  They create a stark spotlight on the rough stone floor.
+    other ways out of this room (the exit being judged is left out):
+      northwest  ->  [Glaes Vein]
+
+=== R0035 ===
+  command typed: go stairs
+  ROOM LEFT
+    name: [Nereid's Cradle, Canopied Walk]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): above ground (confidence 0.79)
+    area: Kraken's Fall
+    setting: outdoors
+    game terrain: hard, flat
+    description 1: Multiple pieces of stitched-together linens cover the area and drape down to the boardwalk's edges, forming a dim tunnel of planks,
+      pillars, and cloth.  Through a few pinned-back sections of this linen canopy, the night sky is visible.  Small, rug-covered squares line the
+      tunnel, offering additional space for market stalls.  This tunnel gives way to an open boardwalk with a wooden fountain at its center,
+      surrounded by several cloth pillows and a series of lanterns.
+    description 2: Multiple pieces of colorful, stitched-together linen cover the area and drape down to the boardwalk's edges, which paints this area
+      in a soft, multihued glow during the day.  Small, rug-covered squares mark the path forward and offer additional space for market stalls.  These
+      stalls give way to an open boardwalk with a wooden fountain at its center, surrounded by several cloth pillows and a series of lanterns.
+    other ways out of this room (the exit being judged is left out):
+      south  ->  [Nereid's Cradle, Canopied Walk]
+      west  ->  [Nereid's Cradle, Canopied Walk]
+  ROOM ARRIVED IN
+    name: [Nereid's Cradle, Aside the Walk]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    area: Kraken's Fall
+    setting: outdoors
+    game terrain: sandy
+    description 1: The sand alongside the boardwalk is cool and flecked with bits of washed ashore seaweed and organic material.  Many pieces of
+      colorful, stitched-together linens drape down over the boardwalk's edges and reach nearly to the sand.  These linens billow in the breeze and
+      are backlit by lights from above.  Fronting these vibrant pieces of cloth and lit by stout candles, a long and battered driftwood table has been
+      placed.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Nereid's Cradle, Aside the Walk]
+      n  ->  [Nereid's Cradle, Aside the Walk]
+
+=== R0036 ===
+  command typed: go hole
+  ROOM LEFT
+    name: [Upper Trollfang]
+    computed floor (may be wrong): +0 - it is on a level with outdoor ground or a ship's main deck (floor 0)
+    what the room's NAME suggests (may be wrong): above ground (confidence 0.95)
+    area: the Upper Trollfang
+    setting: outdoors
+    game terrain: deciduous forest
+    description 1: The stream disappears into a deep sink hole here.  The sound of rushing water and the cloud of fine spray is invigorating and
+      relaxing.  You pause for a moment to look at the sink hole more closely.  It seems wider and deeper than you recall it being.  There are signs
+      of fresh excavations around the opening.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Upper Trollfang]
+      northwest  ->  [Upper Trollfang]
+  ROOM ARRIVED IN
+    name: [Meadow, Wildflower Patch]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 1.00)
+    area: the Upper Trollfang
+    setting: outdoors
+    description 1: A deceptively tranquil and seductive meadow spreads out before your eyes.  You are overwhelmed for a moment by the sweet smell of
+      the wildflowers and the constant hypnotic humming of insects.  A sink hole in a depression gushes forth with a trickling spring to one side,
+      while along the other side of the opening, a small, mud path is evident.
+    other ways out of this room (the exit being judged is left out):
+      east  ->  [Meadow, Ruins]
+
+=== R0037 ===
+  command typed: go tunnel
+  ROOM LEFT
+    name: [Warrior Guild, Courtyard]
+    computed floor (may be wrong): +0 - a plain door or compass move joins its level to an outdoor room on that floor
+    what the room's NAME suggests (may be wrong): ground level (confidence 1.00)
+    area: Zul Logoth
+    setting: indoors
+    description 1: Clashing metal and loud thuds can be heard from beyond a dark tunnel that branches off the path running along the courtyard's
+      perimeter.  Heaps of discarded debris are continuously carted away from amassed piles contained within reinforced bins of iron and steel.
+      Amidst all the noise, the sound of flowing water can be heard from somewhere close by.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Warrior Guild, Courtyard]
+      southeast  ->  [Warrior Guild, Courtyard]
+  ROOM ARRIVED IN
+    name: [Warrior Guild, Tunnel]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: Zul Logoth
+    setting: indoors
+    description 1: Glistening luminescent blue moss clings to the rough ceiling and walls all around, bathing the area in a soothing blue light.
+      Sounds of training and shouting can be heard from beyond a dark tunnel.  Then passageway branches off in two directions, each tunnel lined with
+      doors.
+    other ways out of this room (the exit being judged is left out):
+      go wooden doors  ->  [Warrior Guild, Wood Doors]
+      go metal doors  ->  [Warrior Guild, Metal Doors]
+
+=== R0038 ===
+  command typed: go steps
+  ROOM LEFT
+    name: [Isle of Ornath, Agora Promenade]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.99)
+    area: the Needle of Pentas
+    setting: outdoors
+    game terrain: cultivated
+    description 1: Forming crisscrossing patterns in the thick creeping thyme, travertine pavers sinuously wend their away through the promenade and
+      terminate at some curved white marble steps that lead to the tower above.  Splashes of white pink, rose, and lilac blossoms cling to the woolly
+      groundcover, providing colorful interest from cliff face to guardrail before disappearing over the eastern edge.  Severe and utilitarian, a
+      pillar-framed postal exchange house crafted of marble is flanked by a pair of brightly burning lanterns, while window-dotted storefronts dapple
+      the lane.
+    other ways out of this room (the exit being judged is left out):
+      southwest  ->  [Isle of Ornath, Agora Promenade]
+      go white-washed door  ->  [In Print Condition]
+      go blue-violet door  ->  [The Final Touch, Color]
+      go postal house  ->  [Ornathian Postal Services]
+      go wooden door  ->  [Sweet Delights, Display]
+  ROOM ARRIVED IN
+    name: [Isle of Ornath, Agora Entry]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.99)
+    area: the Needle of Pentas
+    setting: outdoors
+    game terrain: cultivated
+    description 1: Curving down and to the east, marble steps cut through the travertine planters that line the pathway trailing away from Pentas
+      Avenue.  Concentric bands of gold-veined tiles form overlapping knotwork patterns upon the broad expanse, as twinkling lights spill out of blown
+      glass orbs that reside at various places amid succulent plants and white ground-covering pebbles.  Dappling the ground with mottled shadows,
+      starlight filters through nearby cypress trees cooling the area.
+    other ways out of this room (the exit being judged is left out):
+      west  ->  [Isle of Ornath, Pentas Avenue]
+
+=== R0039 ===
+  command typed: go fissure
+  ROOM LEFT
+    name: [Underground Temple, Subdued]
+    computed floor (may be wrong): -1 - counted up/down from a level placed another way
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: Duskruin Arena
+    setting: indoors
+    description 1: A steel-footed iron brazier rests in the center of the room, its hazy glow barely enough to illuminate the area.  Faceless stone
+      idols stand shoulder-to-shoulder in a protective formation before the southerly exits.  Two sizeable spheres, one of fire opal and the other
+      copper-hued, are mounted prominently on the south wall and are unmistakable representations of the Tilaok and Makiri moons.
+    other ways out of this room (the exit being judged is left out):
+      north  ->  [Underground Temple, Threshold]
+      southwest  ->  [Underground Temple, Darkness]
+      southeast  ->  [Underground Temple, Scintillant]
+  ROOM ARRIVED IN
+    name: [Underground Temple, Passage]
+    computed floor (may be wrong): +0 - A GUESS - nothing anchors this part of the map, so treat the number as unknown
+    what the room's NAME suggests (may be wrong): below ground (confidence 1.00)
+    area: Duskruin Arena
+    setting: indoors
+    description 1: Supported by newly constructed wrought iron brackets, torches decorate the uneven and craggy walls of the small chamber.  Fresh air
+      whistles through a jagged fissure at regular intervals causing the flames to splutter and gutter, their erratic behavior casting long shadows
+      upon the ceiling and floor.  Rising like a scar out of the dark earth, a ragged aperture bisects the opposing wall.
+    other ways out of this room (the exit being judged is left out):
+      go aperture  ->  [Hypogeal Cavern, Entrance]
+
+=== R0040 ===
+  command typed: go oak door
+  ROOM LEFT
+    name: [Girvahk's Shop, Museum]
+    computed floor (may be wrong): +2 - a plain door or compass move joins its level to an outdoor room on that floor
+    area: the free port of Solhaven
+    setting: indoors
+    game terrain: none set
+    description 1: Weapons of various types and origins are mounted on the walls to the north, west and east in this magnificent museum.  Shields
+      bearing coats of arms and personal crests from places near and far are on display.  A glaes-bound display case dominates the center of the room.
+    other ways out of this room (the exit being judged is left out):
+      go arch  ->  [Girvahk's Shop, Bar]
+      go dark stairway  ->  [Girvahk's Shop, Dyers]
+      go modwir door  ->  [Girvahk's Shop, Alteration Room]
+      go spiral stairway  ->  [Girvahk's Shop, Upstairs Hall]
+  ROOM ARRIVED IN
+    name: [Girvahk's Shop, Smithy]
+    computed floor (may be wrong): +0 - it is outdoor ground, which is floor 0 by definition
+    what the room's NAME suggests (may be wrong): ground level (confidence 0.69)
+    area: the free port of Solhaven
+    setting: outdoors
+    game terrain: barren scrub
+    description 1: The back yard is not large, and not very well tended.  Long grasses grow near the high pinewood fence that surrounds the yard.  A
+      huge glaes trough, easily as long as a giantman, sits in the middle of the yard.  The ground near the trough sports no grass, and the soil is
+      charred and scorched.  A low, wide barrel of water sits next to the trough.  To the right of the trough is a shining mithril anvil, surrounded
+      by blacksmith tools.

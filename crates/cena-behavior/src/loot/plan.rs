@@ -30,6 +30,9 @@ use super::skin::Skinning;
 use super::worth::{Verdict, is_special, lootable_by_verb, stow_slot, verdict};
 use crate::stance::{self, Want};
 
+mod boxed;
+use boxed::Boxed;
+
 /// How many times a corpse is searched before it is given up on
 /// (`eloot.lic:5670`, `3.times`).
 const SEARCH_TRIES: u8 = 3;
@@ -102,6 +105,17 @@ pub enum Step {
     },
     /// `stow gem #id`: a gem that broke out of a corpse into the left hand.
     StowGem(String),
+    /// `describe <noun>`: a creature whose form decides whether it skins.
+    Describe(String),
+    /// `get coins from #box`: a box's coins, by hand.
+    Coins(String),
+    /// `point <charm> at #box`: a box's coins, by the profile's charm.
+    Charm {
+        /// The charm, by name.
+        charm: String,
+        /// The box's id.
+        box_: String,
+    },
     /// Nothing more to do here.
     Done(Left),
 }
@@ -163,6 +177,8 @@ pub struct Planner {
     skinning: Option<Skinning>,
     last: Option<Step>,
     bags_full: bool,
+    /// A box in hand being emptied, instead of corpses and a floor.
+    boxed: Option<Boxed>,
 }
 
 impl Planner {
@@ -188,7 +204,30 @@ impl Planner {
             sigil: Sigil::NotNeeded,
             last: None,
             bags_full: false,
+            boxed: None,
         }
+    }
+
+    /// A planner that empties the box in hand (`box_loot`): opened, looked
+    /// in, its coins gathered -- by `charm`, a name, when there is one --
+    /// and what it holds taken as the floor's things are.
+    #[must_use]
+    pub fn for_box(
+        profile: LootProfile,
+        memory: Memory,
+        box_id: &str,
+        charm: Option<String>,
+    ) -> Self {
+        let mut planner = Self::new(profile, memory, &[]);
+        planner.boxed = Some(Boxed::new(box_id, charm));
+        planner
+    }
+
+    /// The box emptied by [`Planner::for_box`] said it is locked: it goes
+    /// back in its bag.
+    #[must_use]
+    pub fn box_locked(&self) -> bool {
+        self.boxed.as_ref().is_some_and(Boxed::locked)
     }
 
     /// What was learned, for the next room.
@@ -216,6 +255,9 @@ impl Planner {
             if !sigil_up(state) {
                 return Step::Cast(SIGIL_OF_DETERMINATION.to_owned());
             }
+        }
+        if let Some(step) = self.box_step(state) {
+            return step;
         }
         if let Some(step) = self.skin(state) {
             return step;
@@ -422,6 +464,9 @@ impl Planner {
 
     /// What the game said to the last step.
     pub fn outcome(&mut self, outcome: &Outcome) {
+        if let Some(boxed) = self.boxed.as_mut() {
+            boxed.outcome(outcome);
+        }
         let Some(last) = self.last.clone() else {
             return;
         };

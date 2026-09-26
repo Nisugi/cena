@@ -15,7 +15,7 @@ the session that produced it. This lists what is there, or prints one.
 With no argument, list them:
 
 ```bash
-cd E:/Cena && for f in .workflows/findings/*.md; do
+cd "$(git rev-parse --show-toplevel)" && for f in .workflows/findings/*.md; do
   printf "%-42s %6s lines  " "$(basename "$f")" "$(wc -l < "$f")"
   head -3 "$f" | grep -v '^$' | head -1
 done

@@ -1,0 +1,40 @@
+{"item": "R0161", "direction": "same floor", "confidence": 78, "reason": "hole in a side wall to the north with the arrived room saying a hole opens to the south; both ice rooms level with each other, no descent language"}
+{"item": "R0162", "direction": "up", "confidence": 93, "reason": "arriving in the oak's branches among boles high in the tree, whose only other exit is down to the clearing"}
+{"item": "R0163", "direction": "down", "confidence": 66, "reason": "climb tree leads into a snow cave whose ceiling is held by the tree's lower branches and which is insulated from 'the valley above', so it sits below valley level"}
+{"item": "R0164", "direction": "same floor", "confidence": 70, "reason": "climbing a low garden wall between two adjacent cultivated ground-level fields; neither description mentions a height change"}
+{"item": "R0165", "direction": "same floor", "confidence": 80, "reason": "a forested slope climbed outdoors to more open hilly ground; the rules say a hillside is not a floor"}
+{"item": "R0166", "direction": "same floor", "confidence": 72, "reason": "hatch joins two underground chambers of one chancery, both subterranean and both connecting to the garden"}
+{"item": "R0167", "direction": "down", "confidence": 74, "reason": "room left says marble steps curve DOWN to the west and the promenade says the steps lead to the avenue above"}
+{"item": "R0168", "direction": "down", "confidence": 62, "reason": "a staircase from an arch stairway into a crawlspace inside the bridge that slopes upward away from you, so the passage entrance is below"}
+{"item": "R0169", "direction": "down", "confidence": 82, "reason": "the arrived room states the protrusion is visible just below the trail, so climbing to it descends the cliff face"}
+{"item": "R0170", "direction": "same floor", "confidence": 55, "reason": "the stairway room is itself the stairs; entering the stairwell from a private room does not clearly change level, and the ascent happens through the door above"}
+{"item": "R0171", "direction": "down", "confidence": 80, "reason": "the switchbacks climb upwards from the cavern entry, and the entry says streams flow out and down a series of steps, so going to the entry is descending"}
+{"item": "R0172", "direction": "down", "confidence": 84, "reason": "room left describes a short set of descending stairs to the northeast and the arrived room sits at the top of ascending stairs... the descending stairs lead there, text says descend"}
+{"item": "R0173", "direction": "down", "confidence": 60, "reason": "arrived room's ceiling 'plunges through the layers of bedrock in its descent', suggesting the tunnel drops to a lower level"}
+{"item": "R0174", "direction": "same floor", "confidence": 72, "reason": "the muddy path merely climbs a hill outdoors, and the arrived room still has a separate up exit to Jag Point"}
+{"item": "R0175", "direction": "up", "confidence": 92, "reason": "living room says a spiral staircase leads upstairs, arriving at the upstairs hallway with a balcony"}
+{"item": "R0176", "direction": "up", "confidence": 88, "reason": "arrived room says the stairs connect the first and second floors and its name/level suggests the upper gallery"}
+{"item": "R0177", "direction": "up", "confidence": 92, "reason": "same oak branches room as R0162, whose only other exit is down to the clearing"}
+{"item": "R0178", "direction": "up", "confidence": 68, "reason": "room left mentions an opening at the TOP of the steps and leaves swirling down into the passageway, so going up the steps reaches the courtyard"}
+{"item": "R0179", "direction": "same floor", "confidence": 58, "reason": "climb tree simply moves along the narrow forest trail to an adjacent trail room with a fallen tree; no elevated destination described"}
+{"item": "R0180", "direction": "down", "confidence": 90, "reason": "the platform's rope ladder leads down to the ground, and the wishing well room is grassland at ground level"}
+{"item": "R0181", "direction": "up", "confidence": 76, "reason": "courtyard says a wide stone staircase leads UP to the door giving entrance to the tower"}
+{"item": "R0182", "direction": "down", "confidence": 72, "reason": "the arrived gneiss tunnel says wide stairs lead from the granite quarry above into a lower layer of gneiss"}
+{"item": "R0183", "direction": "down", "confidence": 80, "reason": "the ledge says a steep trail leads DOWN the cliffside and the rocky slope says the trail winds up the cliffside from there"}
+{"item": "R0184", "direction": "up", "confidence": 90, "reason": "the hold says the companionway ladder leads upward to the upper deck, and the deck says a ladder leads down into the hold"}
+{"item": "R0185", "direction": "up", "confidence": 62, "reason": "arrived room says wide sand-stuck stairs lead UP from the distant beach to the promenade"}
+{"item": "R0186", "direction": "down", "confidence": 62, "reason": "arrived track says the stones descend to an expanse of flat tundra, and the plateau's boulders offer egress downward to the forested range"}
+{"item": "R0187", "direction": "same floor", "confidence": 78, "reason": "smooth stone steps between a garden and the adjoining patio of the same villa; short steps between neighbouring spaces are level"}
+{"item": "R0188", "direction": "up", "confidence": 66, "reason": "the granite edge looks down on a valley below and the skyline slope is computed +1 by a climb; the slope rises along the peaks"}
+{"item": "R0189", "direction": "down", "confidence": 68, "reason": "climbing down the bank onto the frozen river surface, which sits below the tree-lined bank"}
+{"item": "R0190", "direction": "same floor", "confidence": 85, "reason": "the hatch is the entrance to a cabin set off the orlop deck walkway, same deck"}
+{"item": "R0191", "direction": "same floor", "confidence": 76, "reason": "a wide ramp between a quay and its catwalk/docking structure; a dock or catwalk is level with the quay"}
+{"item": "R0192", "direction": "same floor", "confidence": 55, "reason": "a stairway between a larder and the inn's lounge room, but nothing states a storey change; the larder connects out to the atrium on one level"}
+{"item": "R0193", "direction": "up", "confidence": 90, "reason": "the gate room says stairs cut into the ice lead UP to the city walls, arriving on the North Wall vantage point"}
+{"item": "R0194", "direction": "down", "confidence": 60, "reason": "the tower entry has steps spiralling up and down; the arrived room's computed floor is -1 and the entry's arched door exits to the street, so the staircase here goes down"}
+{"item": "R0195", "direction": "up", "confidence": 95, "reason": "the arrived room states you are on the landing of the second story of Moot Hall with the staircase sweeping down to the lobby"}
+{"item": "R0196", "direction": "up", "confidence": 80, "reason": "the Hall says a flight of steps leads upwards into the shadows, reaching the clerk's office"}
+{"item": "R0197", "direction": "same floor", "confidence": 70, "reason": "a few scorched wooden steps give access from the hilltop yard to the farmhouse's open foundation, neighbouring spaces on one level"}
+{"item": "R0198", "direction": "down", "confidence": 80, "reason": "room left is ATOP the vast stone steps and the arrived room describes those steps climbing toward the second story, so going down them"}
+{"item": "R0199", "direction": "up", "confidence": 62, "reason": "a staircase from the ground-floor foyer to a lounge with bedchamber attached, the usual upper storey arrangement"}
+{"item": "R0200", "direction": "down", "confidence": 74, "reason": "the arrived pier chamber says the limestone ramp stretches upward and away from it, so taking the ramp from the lair descends to the pier"}

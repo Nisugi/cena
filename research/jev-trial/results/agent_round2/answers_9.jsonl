@@ -1,0 +1,23 @@
+{"item": "R0321", "direction": "same floor", "confidence": 50, "reason": "a ship's foredeck is main-deck level (floor 0) and the trail room is outdoor ground; the ladder link is anomalous and the text gives no level change"}
+{"item": "R0322", "direction": "down", "confidence": 72, "reason": "the Fish Pits describe a knotted hemp rope that 'leads out of the cavern', so arriving by that rope means descending into the pit cavern"}
+{"item": "R0323", "direction": "down", "confidence": 88, "reason": "the wine cellar is 'under the foundations of the house', cooler than 'the rooms above', reached by a narrow stair from the tunnel"}
+{"item": "R0324", "direction": "same floor", "confidence": 82, "reason": "a fallen apple tree spans the ravine and both rooms are outdoor field at floor 0; a span is level with either end"}
+{"item": "R0325", "direction": "down", "confidence": 86, "reason": "the arrived room says log cross-section steps 'proceed down into the gorge' and a steep trail leads up back out"}
+{"item": "R0326", "direction": "down", "confidence": 74, "reason": "the room left says 'from the top of the steps' you see the Port below, and the arrived street snakes down the cliffside"}
+{"item": "R0327", "direction": "same floor", "confidence": 55, "reason": "the Grub Hall opens by archway directly onto the North Dock, so it sits at main-deck level with the deck it ramps onto"}
+{"item": "R0328", "direction": "up", "confidence": 90, "reason": "the arrived room is the 'Upstairs Hall' reached by stairs from the ground-floor hearth room, with a further ladder up to the rooftop"}
+{"item": "R0329", "direction": "up", "confidence": 72, "reason": "the room left has a gaping hole in its ceiling and the arrived room has a hole sundering its floorbeams, so the hole leads to the storey above"}
+{"item": "R0330", "direction": "same floor", "confidence": 80, "reason": "both are outdoor mountain pass rooms at floor 0; climbing over a fallen boulder pile blocking the passage is a level traverse"}
+{"item": "R0331", "direction": "same floor", "confidence": 68, "reason": "both are cavern rooms with no described rise or drop; the tunnel merely leads between the altar chamber and the cavern entry corridor"}
+{"item": "R0332", "direction": "up", "confidence": 70, "reason": "climbing stairs from the member lounge to the library; the computed floors differ by one in the same direction"}
+{"item": "R0333", "direction": "same floor", "confidence": 55, "reason": "both rooms are the floor of the same ravine; the arrived room explicitly describes the ravine floor, with a separate 'up' exit to the ledge"}
+{"item": "R0334", "direction": "down", "confidence": 50, "reason": "a stair implies a level change and the altar room is described as a tunnel opening, but neither text states a direction"}
+{"item": "R0335", "direction": "down", "confidence": 88, "reason": "the sewer says a tunnel 'descended at a sharp dip' leads to a nexus 'on a lower level', and the nexus says only the brick-lined tunnel leads up"}
+{"item": "R0336", "direction": "up", "confidence": 58, "reason": "a spiral staircase from a ground-level meeting hall, and the barracks has its own steps down to a cellar, placing it above ground level"}
+{"item": "R0337", "direction": "down", "confidence": 76, "reason": "the arrived amphitheater is a 'sunken chamber' whose window near the ceiling looks into the room beyond"}
+{"item": "R0338", "direction": "down", "confidence": 70, "reason": "the chamber's water flows 'further down into a small hole', and the arrived room shows those rivulets in a steep drop-off"}
+{"item": "R0339", "direction": "same floor", "confidence": 74, "reason": "a hollow under banyan roots leading to another outdoor jungle room; both are ground-level and no descent is described"}
+{"item": "R0340", "direction": "up", "confidence": 66, "reason": "terraced benches 'rise to the east' and the arrived room is the amphitheatre's 'upper platform' above the ground below"}
+{"item": "R0341", "direction": "up", "confidence": 86, "reason": "climbing the cliff from the outpost shelf to a precipice jutting from the mountainside above a misty valley below"}
+{"item": "R0342", "direction": "same floor", "confidence": 72, "reason": "the Grand Stair room is the foot of the stair, whose seven steps 'lead upwards' to a separate 'up' exit to the landing"}
+{"item": "R0343", "direction": "up", "confidence": 80, "reason": "a ladder from the ground-floor shop to an open-air platform built around a linden tree's trunk, with a walkway out to the copse"}

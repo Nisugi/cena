@@ -24,6 +24,11 @@
 //! it; `attacks.rb:762-777` explains why it is load-bearing (priority defs
 //! before generic swings, second person before third).
 //!
+//! A fourth file is not Lich's shipped grammar: `combat_flare_mirror.tsv`
+//! (277 rows, family `flare_mirror`), cut by `tools/extract_flare_mirror.rb`
+//! from the old Lich repository's `flare_patterns.rb` and read by [`flare`]
+//! only after the shipped flares.
+//!
 //! # The one transformation: patterns run against PLAIN text
 //!
 //! Lich's patterns run against the raw XML feed, so 178 of them carry
@@ -89,8 +94,8 @@
 //!
 //! # NOT ported, and why
 //!
-//! - **`messages.rb`**: a separate hook the FSM never reads, and each def
-//!   carries a Ruby lambda for its payload. A later pass if a consumer wants it.
+//! - **`messages.rb`**: a separate hook the FSM never reads. Ported on its
+//!   own once the hunt wanted it: `state/incident.rs`.
 //! - **`supplements.rb`**: player-supplied YAML patterns. Whether pattern
 //!   supplements fall under `plan/12`'s no-user-scripting decision is an
 //!   author question, not one to answer by porting them.

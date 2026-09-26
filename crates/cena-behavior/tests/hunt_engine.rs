@@ -135,6 +135,7 @@ fn here(room: u32, exits: &[RoomId]) -> Here<'_> {
     Here {
         room: Some(RoomId(room)),
         exits,
+        tags: &[],
     }
 }
 
@@ -211,10 +212,16 @@ fn engage_targets_takes_the_stance_and_runs_the_routine() {
         send("weapon volley", Some(42))
     );
     // Step 4 `coupdegrace (thp 20)`: health is 50%, skipped. Step 5 `fire`.
-    assert_eq!(hunt.tick(&state, at, Some(1_000)), send("fire", Some(42)));
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_000)),
+        send("fire #42", Some(42))
+    );
     // Round again: hidden now known, so step 1 runs.
     state.status.set("hidden", true);
-    assert_eq!(hunt.tick(&state, at, Some(1_000)), send("fire", Some(42)));
+    assert_eq!(
+        hunt.tick(&state, at, Some(1_000)),
+        send("fire #42", Some(42))
+    );
 }
 
 #[test]
@@ -488,6 +495,75 @@ fn flee_when_the_room_is_too_crowded() {
     );
 }
 
+/// The profile above with `count = 2` in `[flee]` replaced by `flee`, and
+/// `top` added before the first table.
+fn profile_with(top: &str, flee: &str) -> Result<Profile, String> {
+    Profile::parse(&format!("{top}\n{}", PROFILE.replace("count = 2", flee)))
+}
+
+#[test]
+fn an_uncounted_creature_does_not_crowd_the_room_and_is_still_fought() {
+    // `invalid_targets`, "but don't count these" (`bigshot.lic:3484`).
+    let mut state = state(1_000, "10");
+    creature(&mut state, 1, "rat", &[]);
+    creature(&mut state, 2, "rat", &[]);
+    let exits = [RoomId(11)];
+
+    let mut counted = Hunt::new(profile_with("", "count = 1").unwrap(), 1);
+    assert_eq!(
+        counted.tick(&state, here(10, &exits), Some(1_000)),
+        Said::Walk(RoomId(11)),
+        "two rats counted: more than one, so the room is crowded"
+    );
+
+    let mut hunt = Hunt::new(
+        profile_with("", "count = 1\nuncounted = [\"rat\"]").unwrap(),
+        1,
+    );
+    let said = hunt.tick(&state, here(10, &exits), Some(1_000));
+    assert!(
+        matches!(hunt.target(), Some(1 | 2)),
+        "neither rat counts, so no flight, and the catch-all fights one: {said:?}"
+    );
+}
+
+#[test]
+fn a_never_attack_creature_is_neither_fought_nor_counted() {
+    let mut hunt = Hunt::new(
+        profile_with("never_attack = [\"rat\"]", "count = 1").unwrap(),
+        1,
+    );
+    let mut state = state(1_000, "10");
+    creature(&mut state, 1, "rat", &[]);
+    creature(&mut state, 2, "rat", &[]);
+    let exits = [RoomId(11)];
+    assert_eq!(
+        hunt.tick(&state, here(10, &exits), Some(1_000)),
+        Said::Wait(1),
+        "nothing to fight and nothing crowding: waiting out `wander.wait`, not flight"
+    );
+    assert_eq!(hunt.target(), None);
+}
+
+#[test]
+fn hostile_creatures_off_the_target_list_count_toward_fleeing() {
+    // bigshot counts its whole hostile roster against `flee_count`, not only
+    // what its target list names (`bigshot.lic:8579-8591`).
+    let only_mastodons = PROFILE
+        .replace("  { any = true, routine = \"a\" },\n", "")
+        .replace("count = 2", "count = 1");
+    let mut hunt = Hunt::new(Profile::parse(&only_mastodons).unwrap(), 1);
+    let mut state = state(1_000, "10");
+    creature(&mut state, 1, "mastodon", &[]);
+    creature(&mut state, 2, "kobold", &[]);
+    let exits = [RoomId(11)];
+    assert_eq!(
+        hunt.tick(&state, here(10, &exits), Some(1_000)),
+        Said::Walk(RoomId(11)),
+        "one mastodon to fight, but two hostile creatures here"
+    );
+}
+
 #[test]
 fn the_rest_cycle_end_to_end() {
     let mut hunt = Hunt::new(profile().unwrap(), 1);
@@ -645,5 +721,55 @@ fn arriving_to_rest_with_something_to_sell_runs_the_round_first() {
     assert_eq!(
         hunt.phase(),
         Phase::Resting(cena_behavior::hunt::engine::Why::Fried)
+    );
+}
+
+#[test]
+#[expect(
+    clippy::default_trait_access,
+    reason = "the image's attributes type is not re-exported for behaviors"
+)]
+fn arriving_to_rest_hurt_heals_with_herbs_first() {
+    let heal = cena_behavior::heal::HealProfile {
+        container: "herb pouch".to_owned(),
+        ..cena_behavior::heal::HealProfile::default()
+    };
+    let mut hunt = Hunt::new(profile().unwrap(), 1).with_heal(heal);
+    let mut state = state(1_000, "10");
+    state.character.experience.mind_percent = Some(100);
+    assert_eq!(
+        hunt.tick(&state, here(10, NO_EXITS), Some(1_000)),
+        Said::Walk(RoomId(20))
+    );
+    state.room.id = Some("20".to_owned());
+    state.apply(&Frame::InjuryImage {
+        id: "leftArm".to_owned(),
+        name: "Injury1".to_owned(),
+        dialog: Some("injuries".to_owned()),
+        attrs: Default::default(),
+    });
+    assert_eq!(
+        hunt.tick(&state, here(20, NO_EXITS), Some(1_100)),
+        Said::Heal,
+        "arrived hurt: the herbs before the rest"
+    );
+    assert_eq!(
+        hunt.tick(&state, here(20, NO_EXITS), Some(1_200)),
+        send("store all", None),
+        "then the rest commands"
+    );
+}
+
+#[test]
+fn heal_alone_heals_once_and_ends() {
+    let mut hunt = Hunt::heal_only(cena_behavior::heal::HealProfile::default(), false, false);
+    let state = state(1_000, "10");
+    assert_eq!(
+        hunt.tick(&state, here(10, NO_EXITS), Some(1_000)),
+        Said::Heal
+    );
+    assert_eq!(
+        hunt.tick(&state, here(10, NO_EXITS), Some(1_001)),
+        Said::Done(Ending::Healed)
     );
 }

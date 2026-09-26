@@ -423,6 +423,10 @@ from LAB's; an agent's single command interleaves; in-game questions stay a door
 2. **The three escalation signals (§4)**: a status Hunt does not read, a move Hunt did not
    make, no progress. PROPOSED, not yet seen by the author.
 3. **`records` takes SQL (§6).** PROPOSED, on a read-only connection.
+4. **The connection as a scripting surface.** The author, 2026-09-25: *"not the agent, the
+   connection"*. Scripts in any language, through bridges, with Ruby first:
+   [`plan/38-scripting-bridge.md`](38-scripting-bridge.md) (PROPOSED). It asks this plan
+   for push beside `wait`, send-and-wait, lines, script output and stores (its §4).
 
 `12` §8's M9, *"DragonRealms adapter"*, contradicts `12` §9d and the settled decision
 against a `GameAdapter`, and should go from the table.

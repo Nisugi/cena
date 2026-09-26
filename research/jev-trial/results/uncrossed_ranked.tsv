@@ -1,0 +1,260 @@
+rooms_that_depend_on_it	which_side_is_a_guess	group	area	from_id	from_room	from_floor_now	command	way_back	to_id	to_room	to_floor_now	jev_says	jev_estimate	subagent_1	subagent_1_conf	subagent_2	subagent_2_conf	YOUR_ANSWER
+175	to side	33934	the Czeroth Caverns	9579	[Czeroth Caverns, Tunnel]	0	climb rocks	climb rocks	9580	[Czeroth Caverns, Tunnel]	1	down	0.73	down	60	up	62	
+41	from side	5822	the Zaerthu Tunnels	5822	[Zaerthu Tunnels, Wide Tunnel]	0	go crevasse	go crevasse	5823	[Zul Logoth, Ruby Tunnel]	0	down	0.88	same floor	62	same floor	68	
+31	both sides (neither is anchored)	2657	Koar's Shrine	2647	[Altar of the Elder]	-4	climb steps	";e clear
+put 'look'
+loop {
+line = get
+if line =~ /a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall, a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall and a flight of (ascending|descending) steps (curving along|leading straight through) the (northern|eastern|southern|western) wall\./
+if $3 == 'northern'
+move 'climb steps'
+elsif $6 == 'northern'
+move 'climb second steps'
+elsif $9 == 'northern'
+move 'climb third steps'
+elsif $12 == 'northern'
+move 'climb fourth steps'
+else
+echo ""error: unique_map_movements can't find the right steps""
+exit
+end
+break
+end
+}"	2658	[Stairs of Ice]	1	down	0.82	down	68	down	60	
+27	to side	7711	the Coastal Cliffs	7706	[Underground, Small Cavern]	-1	go tunnel	go tunnel	7707	[Caverns, Tunnel]	0	same floor	0.82	same floor	70	same floor	65	
+26	to side	25294	Rone Academy	24407	[Rone Academy, Alumni Hall West]	0	go stairway	go stairway	24472	[Rone Academy, Walkway]	0	same floor	0.66	same floor	78	same floor	74	
+22	to side	20810	Wehnimer's Landing	20788	[House Sovyn, Foyer]	0	go stairs	go stone staircase	20791	[House Sovyn, 1st Floor Hallway]	-1	up	0.88	same floor	60	up	60	
+22	to side	7753	the Coastal Cliffs	7694	[Underground Ruin, Excavation]	-1	go hole	go hole	7734	[Mossy Caverns, Small Room]	0	down	0.87	same floor	78	same floor	68	
+18	both sides (neither is anchored)	6247	The Hidden Plateau	6240	[Labyrinth, The Forge]	0	go stair	go stair	6245	[Labyrinth, The Dark Altar]	0	down	0.78	down	55	down	50	
+18	both sides (neither is anchored)	6292	the Lower Dragonsclaw	6292	[Dirt Mines, Archaeological Dig]	-1	go hole	go hole	6293	[Dirt Mines, Archaeological Dig]	0	same floor	0.82	same floor	72	same floor	62	
+18	to side	9092	the subterranean tunnels	9074	[Underground Tunnel]	-2	go boulder	go boulder	9075	[Infested Tunnels, Rat's Nest]	-1	same floor	0.88	same floor	72	same floor	75	
+17	both sides (neither is anchored)	20822	Wehnimer's Landing	20818	[House Sovyn, Cavern]	0	go narrow tunnel	go narrow tunnel	20822	[House Sovyn, Underground Vault]	0	down	0.81	same floor	65	same floor	62	
+16	to side	30571	Kharam-Dzu	30557	[Relaxation Island]	-1	go tunnel	go eastwardly tunnel	30558	[Training Area]	1	same floor	0.67	same floor	55	same floor	58	
+16	to side	9766	Ta'Illistim	9750	[Maaghara Tower, Landing]	7	climb stairs	climb stairs	9751	[Maaghara Tower, Landing]	-1	down	0.75	up	85	up	72	
+16	to side	20834	Wehnimer's Landing	20793	[House Sovyn, Hallway]	1	go mithril staircase	go mithril staircase	20811	[House Sovyn, Hallway]	1	same floor	0.63	up	55	same floor	58	
+16	both sides (neither is anchored)	18984	Zul Logoth	18983	[Sorcerer Guild, West Rise]	0	go tunnel	go tunnel	18984	[Sorcerer Guild, Storeroom]	0	down	0.57	same floor	80	same floor	72	
+15	from side	18992	Zul Logoth	18979	[Sorcerer Guild, Landing]	1	climb stairway	climb stairway	18981	[Sorcerer Guild, Tunnel Nexus]	0	down	0.61	up	88	up	78	
+14	to side	19772	Zul Logoth	19759	[Empath Guild, Corridor]	0	climb stairway	climb stairway	19760	[Empath Guild, Annex]	0	up	0.82	up	72	up	60	
+14	to side	12787	the Eye of V'Tull	12771	[Eye of V'Tull, Inner Circle]	0	climb rubble	climb rubble	12774	[Eye of V'Tull, Circle of Stone]	0	up	0.53	up	72	same floor	55	
+14	to side	3328	the Glacier	3317	[Ice Tunnel, Winding Passage]	-1	go hole	go hole	3318	[Icemule, Ruins]	0	up	0.64	same floor	88	same floor	78	
+14	to side	12761	the Ruined Temple	12708	[Ruined Temple, Second Floor]	-1	go stairs	go stairs	12749	[Ruined Temple, Second Floor]	0	down	0.71	same floor	60	down	70	
+12	to side	29790	Kraken's Fall	29776	[Tower of Knowledge]	0	go steps	go steps	29778	[Tower of Knowledge, Instruction]	1	up	0.86	up	78	up	72	
+11	to side	17923	Zul Logoth	17912	[Rogue Guild, Lower Hall]	-2	climb stairway	climb stairway	17913	[Rogue Guild, Descent]	0	down	0.85	down	72	up	60	
+11	to side	6405	the Lysierian Hills	6394	[Smokey Cave, Cavern]	-1	climb crevice	climb crevice	6395	[Blackened Cave, Cavern]	0	down	0.83	down	70	same floor	55	
+10	to side	6620	Castle Anwyn	6610	[Dim Recess]	-1	climb steps	climb stairs	6611	[Stone Ledge]	1	up	0.76	down	85	down	72	
+10	to side	18645	Solhaven	18631	[Cleric Guild, Training Foyer]	0	climb staircase	climb staircase	18632	[Cleric Guild, Study Hall]	0	up	0.8	up	68	up	55	
+9	to side	4157	the Graveyard	4150	[Hall of the Dead, Tunnel]	-1	go tunnel	go tunnel	4151	[Hall of the Dead, Common Crypt]	0	up	0.74	same floor	68	same floor	72	
+8	to side	27577	Caligos Isle	26590	[Caligos Isle, Maze of Columns]	-2	go rope	go rope	26591	[Caligos Isle, Fish Pits]	1	down	0.8	same floor	50	down	72	
+8	to side	2957	the Abbey	2952	[Abbey, Great Hall]	0	go stairs	go stone stairs	2953	[Abbey, Grand Stair]	-1	up	0.78	same floor	70	same floor	72	
+8	both sides (neither is anchored)	2229	the Eye of V'Tull	2229	[Depths of V'Tull, Lower Eye]	0	go fissure	go fissure	2230	[Glaes Fissure]	0	up	0.8	up	58	down	60	
+8	to side	31262	the town of Kharam-Dzu	1884	[The Company Store, Lobby]	0	go staircase	go staircase	1892	[Company Store, Corridor]	0	up	0.86	up	78	up	65	
+7	to side	8184	the crystal caves	4337	[Mine]	0	go fissure	go fissure	8163	[Mine, Crystal Caves]	0	down	0.83	same floor	60	same floor	62	
+7	to side	8184	the crystal caves	8180	[Mine]	1	go fissure	go fissure	8181	[Mine, Crystal Caves]	1	down	0.59	same floor	58	same floor	55	
+6	both sides (neither is anchored)	26610	Caligos Isle	26610	[Caligos Isle, Chamber of Tears]	0	go hole	go hole	26611	[Caligos Isle, Abandoned Pier]	1	down	0.8	down	75	down	70	
+6	both sides (neither is anchored)	26618	Caligos Isle	26618	[Caligos Isle, Arachnid's Lair]	0	go ramp	go ramp	26619	[Caligos Isle, Hazy Chamber]	0	down	0.76	down	75	down	74	
+6	to side	28351	Duskruin Arena	24547	[Underground Temple, Subdued]	-1	go fissure	go fissure	28346	[Underground Temple, Passage]	0	same floor	0.84	same floor	75	same floor	60	
+6	to side	16692	Mist Harbor	16497	[Isle Designs, Entry]	0	go ladder	go ladder	16498	[Isle Designs, Permit Office]	0	up	0.9	up	78	up	62	
+6	to side	9463	the Mraent Caverns	5778	[Mraent Cavern, Waterfall Quarry]	-3	climb stairs	climb stairs	9459	[Mraent Cavern, Gneiss Tunnel]	0	up	0.64	down	88	down	72	
+6	to side	9671	the village of Cysaegir	4680	[Cysaegir, Cave]	-2	climb tunnel	climb tunnel	4682	[Cysaegir, Cave]	0	down	0.56	up	78	up	60	
+5	to side	7866	Glatoph	7861	[Glatoph, Glacier]	0	go hole	go hole	7862	[Inside the Glacier]	0	down	0.75	down	70	down	65	
+5	from side	25596	Pan's Place, inside the frontier town of Wehnimer's Landing	23976	[Cooper's, Secret Room]	0	go trapdoor	;e multifput 'search', 'go trapdoor'	384	[Cooper's Shop, Workshop]	0	up	0.68	up	60	up	55	
+5	to side	14222	Solhaven	13207	[Lumnis' Temple, Hall of Light]	0	climb staircase	climb staircase	14219	[Lumnis' Temple, Pool of Thought]	0	down	0.8	up	62	same floor	55	
+5	both sides (neither is anchored)	24047	Wehnimer's Landing	24046	[Alabaster Spire, Lounge]	0	climb steps	climb steps	24048	[Alabaster Spire, Training Hall]	-1	up	0.88	up	72	up	58	
+4	both sides (neither is anchored)	26744	Caligos Isle	26744	[Hideaway Cavern, Passage]	0	go slope	go slope	26745	[Hideaway Cavern, Skyfall]	0	down	0.85	down	78	down	72	
+4	to side	30900	Solhaven	25675	[Bard Guild, Backstage Entry]	0	go stairs	go stairs	25678	[Bard Guild, Green Room]	0	up	0.76	up	72	up	60	
+4	from side	30900	Solhaven	25678	[Bard Guild, Green Room]	0	go staircase	go staircase	27817	[Cholen's Temple, Costume Hall]	0	down	0.77	up	52	up	55	
+4	to side	13701	Ta'Vaalor Inns	10384	[Malwith Inn, Entry]	0	go stairway	go stairway	13312	[Malwith Inn, Landing]	1	up	0.82	up	72	down	60	
+4	from side	13701	Ta'Vaalor Inns	13701	[Malwith Inn, Casu's Coffee]	0	go stairway	go stairway	21223	[Malwith Inn, Casu's Cafe]	0	down	0.73	up	58	same floor	55	
+3	to side	27589	Caligos Isle	26440	[Caligos Isle, Eastern Slope]	0	go craggy fissure	go craggy fissure	27533	[A Dark and Damp Grotto]	1	down	0.87	same floor	65	same floor	65	
+3	to side	34948	Kraken's Fall	29106	[The Peaceful Porpoise, Portico]	0	go steps	go steps	29108	[The Peaceful Porpoise, Passage]	1	down	0.78	up	72	up	78	
+3	to side	14625	Moonshine Manor	14622	[Moonshine Manor, Foyer]	0	go staircase	go staircase	14623	[Moonshine Manor, 'Shiner Lounge]	0	up	0.9	up	65	up	55	
+3	to side	34446	Solhaven	26834	[Journey's End, Foyer]	0	go staircase	go staircase	36470	[Journey's End, Lounge]	0	up	0.88	up	62	up	62	
+3	to side	31262	Stormbrow Gallery	35442	[Gallery, Ghorsa's Balloon]	1	go ramp	go ramp	35447	[Gallery, Bestiary]	0	same floor	0.9	same floor	55	same floor	52	
+3	to side	31262	Stormbrow Gallery	35444	[Gallery, Eye of V'tull]	1	go ramp	go ramp	35445	[Gallery, Culture Room]	0	same floor	0.89	same floor	62	down	62	
+3	to side	13996	Ta'Vaalor	10421	[Stockade, Cell Corridor]	0	climb stairway	climb stairway	13993	[Stockade, Storage Room]	0	down	0.88	up	65	down	55	
+3	to side	24047	Wehnimer's Landing	23521	[Alabaster Spire, Foyer]	0	climb stairway	go stairway	24046	[Alabaster Spire, Lounge]	0	up	0.87	up	78	up	68	
+3	to side	26059	Wehnimer's Landing	26055	[Gryphon Holding, Open Courtyard]	-1	go oak door	go oak door	26059	[Gryphon Holding, First Floor]	0	up	0.8	up	78	up	76	
+3	to side	20677	Zul Logoth	20674	[Warrior Guild, Courtyard]	0	go tunnel	go tunnel	20675	[Warrior Guild, Tunnel]	0	down	0.88	same floor	85	same floor	75	
+3	to side	8610	the Krag slopes	6132	[Krag Slopes]	0	go fissure	go fissure	8608	[Krag Slopes, Freshwater Cavern]	0	down	0.92	same floor	70	same floor	62	
+2	both sides (neither is anchored)	27487	Caligos Isle	27487	[The Pleco, Dive Bar]	0	go hatch	go hatch	27588	[The Pleco, Control]	0	up	0.63	up	60	same floor	55	
+2	both sides (neither is anchored)	31927	Evermore Hollow	31927	[The Other Daughter, Entry Vault]	0	go ladder	go ladder	32105	[The Other Daughter, East Crypt]	0	up	0.73	down	72	same floor	55	
+2	to side	34848	Evermore Hollow	34846	[Tanglemist Mansion, Hallway]	0	go stairway	go stairway	34847	[Tanglemist Mansion, Workroom]	0	up	0.67	down	55	same floor	54	
+2	to side	34868	Evermore Hollow	34858	[Murky Tunnel]	-2	go fissure	go fissure	34859	[Starlit Cavern, Lakeshore]	0	up	0.82	down	80	down	76	
+2	to side	30427	Mist Harbor	30425	[Looter's Lair, Docks]	0	climb ladder	(none)	30426	[Looter's Lair, Depths]	0	down	0.73	up	82	up	65	
+2	to side	17740	River's Rest	17731	[Empath Guild, Alchemy Lobby]	0	go stairs	climb stairs	17732	[Empath Guild, Storage Room]	0	down	0.92	down	78	down	74	
+2	to side	30651	Solhaven	30649	[Solhaven Hall, Larder]	0	go stairway	go stairway	30650	[Solhaven Hall, The Stumble Inn]	0	up	0.81	up	55	same floor	55	
+2	to side	26797	Ta'Illistim	26795	[Artificer Tower]	0	go staircase	go staircase	26796	[Artificer Tower]	-1	down	0.52	up	62	down	60	
+2	from side	25625	Ta'Vaalor	25625	[Annatto Arch, Stairway]	0	go staircase	go staircase	25626	[Annatto Bridge Tunnel, Passage]	0	down	0.7	up	60	down	62	
+2	to side	6356	Wehnimer's Landing	6332	[Wizard Guild, Study Room]	1	go stairs	go stairs	6355	[Wizard Guild, Stairway SW]	0	down	0.82	same floor	60	up	66	
+2	to side	6335	Wehnimer's Landing	6333	[Wizard Guild, Private Room]	1	go stairs	go stairs	6334	[Wizard Guild, Stairway SE]	0	down	0.82	up	85	same floor	55	
+2	to side	30897	Zul Logoth	30895	[Bard Guild, Quartz Walk]	0	go staircase	go staircase	30896	[Bard Guild, Hall of Inspiration]	0	up	0.77	same floor	55	same floor	55	
+2	from side	31076	Zul Logoth	31075	[Subterranean Siegecraft]	0	go staircase	go staircase	9433	[Zul Logoth, Ametrine Tunnel]	0	down	0.62	up	85	up	85	
+2	both sides (neither is anchored)	7704	the Coastal Cliffs	26060	[Shrine of Transformation, Altar]	0	go slope	go slope	7704	[Dark Tunnel]	0	down	0.66	up	55	up	62	
+2	to side	12627	the Dark Palisade	12625	[Temple of Luukos, Damp Valve]	-1	go hatch	go hatch	12626	[Temple of Luukos, Dusty Passage]	0	same floor	0.88	same floor	60	up	60	
+2	to side	7516	the catacombs	7508	[Catacombs, East-West Tunnel]	-1	say well	say well	7515	[Catacombs, Narrow Corridor]	0	same floor	0.9	same floor	55	same floor	55	
+2	from side	7516	the catacombs	7516	[Catacombs, Blank Passage]	0	go hole	go hole	7517	[Catacombs, Dank Cellar]	-1	down	0.85	down	62	down	65	
+1	to side	13027	Bonespear Tower	13026	[Bonespear Tower, Kitchen]	1	climb stairs	climb stairs	13027	[Bonespear Tower, Storage Area]	0	down	0.81	up	60	up	70	
+1	to side	26616	Caligos Isle	26615	[Caligos Isle, Shadowed Grotto]	-5	go stairway	go stairway	26616	[Caligos Isle, Narrow Chamber]	0	up	0.83	up	78	up	74	
+1	to side	26618	Caligos Isle	26617	[Caligos Isle, Wall of Despair]	-6	go hole	go hole	26618	[Caligos Isle, Arachnid's Lair]	0	down	0.8	up	68	same floor	60	
+1	to side	31530	Cormorant's Roost, inside the pirate paradise of Kraken's Fall	31527	[Cormorant's Roost, Observatory]	1	go wood staircase	go wood staircase	31530	[Cormorant's Roost, Chamber]	0	down	0.71	up	70	down	62	
+1	to side	17142	Cysaegir	17141	[Reformatory, Office]	0	go stairwell	go stairwell	17142	[Reformatory, Tribunal Chamber]	0	up	0.68	same floor	55	same floor	58	
+1	to side	27487	Damsel of the Deep	26421	[Caligos Island, Pier]	0	go ladder	go ladder	27487	[The Pleco, Dive Bar]	0	down	0.87	down	78	down	62	
+1	to side	35803	Epilogue, inside the dwarven caverns of Zul Logoth	35802	[Epilogue, Chamber]	0	go staircase	go staircase	35803	[Epilogue, Bedroom]	0	up	0.79	up	65	up	70	
+1	to side	31801	Evermore Hollow	31800	[Third Floor, West]	2	go staircase	go staircase	31801	[Gable of the Finch]	0	down	0.81	up	78	up	72	
+1	to side	31802	Evermore Hollow	31800	[Third Floor, West]	2	go ladder	go ladder	31802	[Gable of the Grackle]	0	down	0.81	up	75	up	76	
+1	to side	31806	Evermore Hollow	31805	[Third Floor, East]	2	go ladder	go ladder	31806	[Gable of the Rook]	0	down	0.81	up	72	up	76	
+1	to side	31807	Evermore Hollow	31805	[Third Floor, East]	2	go staircase	go staircase	31807	[Gable of the Wren]	0	down	0.81	up	82	up	78	
+1	to side	31927	Evermore Hollow	31926	[The Other Daughter, Ingress]	0	go stairway	go stairway	31927	[The Other Daughter, Entry Vault]	0	down	0.9	down	75	down	72	
+1	to side	31954	Evermore Hollow	31953	[Fiendish Phantomes, Athenaeum]	1	go ladder	go ladder	31954	[Fiendish Phantomes, Study]	0	down	0.77	up	78	up	62	
+1	to side	3999	Griffin's Keen	3998	[Griffin's Keen, Onyx Point]	0	go fissure	go fissure	3999	[Griffin's Keen, Protected Lee]	0	down	0.9	same floor	72	same floor	65	
+1	from side	4603	Griffin's Keen	17008	[Griffin's Keen, Wet Cave]	0	climb crack	climb crack	4602	[Griffin's Keen, Inner Trail]	0	up	0.9	same floor	72	same floor	70	
+1	to side	15827	Icemule Trace	15826	[Our Colorful Place, Dye Room]	0	climb stairs	climb stairs	15827	[Our Colorful Place, Backroom]	0	down	0.78	up	60	same floor	55	
+1	to side	27394	Icemule Trace	27055	[Underground Tunnel]	-1	go long burrow	go narrow burrow	27394	[Glacial Cavern]	0	up	0.64	same floor	65	same floor	60	
+1	from side	27394	Icemule Trace	27394	[Glacial Cavern]	0	climb odd boulder	climb odd boulder	27758	[Faire, Frozen Glade]	0	up	0.54	up	70	up	60	
+1	to side	17259	Kharam-Dzu	17258	[Guild Hall, West Hallway]	0	go staircase	go staircase	17259	[Guild Hall, Dark Chamber]	0	down	0.88	down	60	down	60	
+1	to side	20039	Kharam-Dzu	20038	[Cleric Guild, Prayer Room]	0	go tunnel	go tunnel	20039	[Cleric Guild, Lava Room]	0	down	0.74	same floor	58	same floor	62	
+1	to side	29088	Kraken's Fall	29083	[Sunfist Tower, Office]	1	go stairs	go stairs	29088	[Sunfist Tower, Bunk Room]	0	down	0.84	up	55	same floor	52	
+1	to side	21189	Mist Harbor	21188	[Rogue Guild, Sewers]	-1	go tunnel	go tunnel	21189	[Rogue Guild, Training Nexus]	0	up	0.8	down	88	down	88	
+1	to side	32461	Moonsedge	32460	[Moonsedge Castle, Stage]	1	go stage door	go stage door	32461	[Moonsedge Castle, Backstage]	0	same floor	0.77	same floor	70	same floor	72	
+1	to side	35842	Naidem	31794	[Evermore Hotel, Stairs]	0	go rope	(none)	35967	[A Carpeted Landing]	0	up	0.9	up	68	up	60	
+1	to side	35601	Sailor's Grief	35589	[The Contempt, Orlop Deck]	-1	go hatch	go hatch	35602	[The Contempt, Trader's Cabin]	0	up	0.71	same floor	88	same floor	85	
+1	to side	21737	Ta'Illistim	21736	[Griffin's Landing, Hidden Oasis]	0	go tunnel	go tunnel	21737	[Little Man's Alehouse]	0					down	82	
+1	to side	10437	Ta'Vaalor	10435	[Theatre Andaire, Foyer]	0	go staircase	go staircase	10437	[Theatre Andaire]	0	up	0.71	same floor	60	down	55	
+1	to side	24038	Ta'Vaalor	24029	[Coliseum, Southwest Corridor]	0	go tunnel	(none)	24038	[Amphitheater of Kings]	0	down	0.76	down	72	down	70	
+1	to side	24040	Ta'Vaalor	24032	[Coliseum, Southeast Corridor]	0	go brick-lined tunnel	(none)	24040	[Amphitheater of the Fallen]	0	down	0.73	down	72	down	76	
+1	to side	24039	Ta'Vaalor	24034	[Coliseum, Northeast Corridor]	0	go tunnel	(none)	24039	[Amphitheater of the Arkati]	0	down	0.73	down	75	down	76	
+1	to side	31536	The Retreat, inside the island town of Mist Harbor	31533	[The Retreat, Lounge]	0	go stone steps	go stone steps	31536	[The Retreat, Workroom]	0	same floor	0.63	down	60	same floor	58	
+1	from side	15930	Thurfel's Island	15930	[Vault]	0	go hole	go hole	9224	[Thurfel's Cellar]	-2	down	0.65	same floor	55	down	70	
+1	to side	9639	Wehnimer's Landing	9638	[Temple, Bathing Chamber]	0	go steps	go steps	9639	[Temple, Bath]	0	same floor	0.93	same floor	70	same floor	65	
+1	to side	13848	Wehnimer's Landing	13847	[Cavernfast, Grotto]	0	go steps	go steps	13848	[Cavernfast, Hot Springs]	0	same floor	0.61	down	60	same floor	55	
+1	to side	16455	Wehnimer's Landing	16454	[Misty Isle Exteriors, Akaelos']	0	go stairs	go stairs	16455	[Misty Isle Exteriors, Nazgir's]	0	down	0.74	same floor	55	same floor	55	
+1	to side	20858	Wehnimer's Landing	20857	[Obsidian Tower, Council Room]	1	go dais	go steps	20858	[Chamber of the Obsidian Council]	0	up	0.81	up	78	same floor	75	
+1	to side	24759	Wehnimer's Landing	24749	[Helden, 2nd Floor Corridor]	2	go oak door	go oak door	24759	[Helden, Anduril Family]	0	down	0.7	same floor	82	same floor	75	
+1	to side	24788	Wehnimer's Landing	24786	[Oaken Room, Southern Corridor]	2	go oak door	go oak door	24788	[Helden Hall, Welan's Room]	0	same floor	0.87	same floor	78	same floor	70	
+1	to side	35985	Wehnimer's Landing	24792	[Helden Hall, Cavernous Corridor]	-1	go boulder	go boulder	35985	[Helden Hall, Bladegirt's Den]	0	same floor	0.88	same floor	70	same floor	65	
+1	from side	26229	Wehnimer's Landing	26229	[Silvergate Inn, Art Studio]	0	go steps	go steps	3736	[Silvergate, Foyer]	0	down	0.88	down	72	down	76	
+1	to side	31213	Wehnimer's Landing	31209	[House Aspis, Roundhouse]	-1	go steps	go tiled steps	31213	[House Aspis, Pool]	0	same floor	0.73	same floor	75	same floor	68	
+1	to side	31219	Wehnimer's Landing	31214	[House Aspis, Hallway]	-1	go oak door	go oak door	31219	[House Aspis, Dragon Hideaway]	0	up	0.72	same floor	85	same floor	78	
+1	to side	36103	Wehnimer's Landing	36100	[House Arcane, Hall's End]	1	go oak door	go oak door	36103	[House Arcane, Noonga's Room]	0	same floor	0.71	same floor	75	same floor	78	
+1	to side	19294	Willow Hall	19290	[Willow Hall, Garden]	0	go fieldstone steps	go fieldstone steps	19294	[Willow Hall, Veranda]	0	up	0.91	up	70	same floor	80	
+1	to side	19329	Willow Hall	19325	[Willow Hall, North Wing Roof]	0	go oak door	go oak door	19329	[Willow Hall, Genysis' Room]	0	down	0.88	same floor	85	same floor	78	
+1	to side	16923	Zul Logoth	13163	[Wizard Guild, West Quadrant]	-2	go tunnel	go tunnel	16923	[Wizard Guild, Storeroom]	0	same floor	0.72	same floor	68	same floor	70	
+1	to side	19792	Zul Logoth	19791	[Cleric Guild, Corridor]	0	climb stairs	climb stairs	19792	[Cleric Guild, Shrine]	0	down	0.82	up	80	up	72	
+1	to side	32599	the Coastal Cliffs	15995	[Onoir, Great Hall]	0	go black stair	go black stair	32599	[Onoir, Brother Sartarius Chapel]	0	up	0.88	up	62	up	58	
+1	to side	5545	the Outlands	5544	[Destroyed Temple]	0	go hole	go hole	5545	[Egg Room]	0	down	0.72	same floor	78	same floor	78	
+1	to side	36397	the Upper Trollfang	36396	[Dungeon, Corridor]	0	go hole	go hole	36397	[Sea of Sacrifice, Shore]	0	down	0.83	same floor	75	same floor	72	
+1	to side	12791	the old Logging Road	12790	[Lobby]	0	climb stairway	climb stairway	12791	[Kharam Dzu, Departure Annex]	0	up	0.8	same floor	52	same floor	55	
+0			Caligos Isle	26454	[Caligos Isle, Rockslide]	0	go boulder	go boulder	26650	[Caligos Isle, Rocky Recess]	0	up	0.6	same floor	75	same floor	75	
+0			Caligos Isle	26507	[Caligos Isle, Boneyard Garden]	0	climb wall	climb wall	26508	[Caligos Isle, Mire]	0	down	0.77	same floor	62	same floor	60	
+0			Cysaegir	17159	[Fluttering Myriad, Workroom]	1	climb steps	climb steps	17160	[Fluttering Myriad, Dyeing Room]	0	up	0.88	up	60	down	60	
+0			Darkstone Castle	6980	[Behind the Waterfall]	-2	go narrow ledge	go narrow ledge	6981	[Gorge, Waterfall]	0	down	0.69	same floor	80	same floor	70	
+0			Evermore Hollow	31967	[A. B. Witching, Tinkering]	1	go stairs	go stairs	32085	[A. B. Witching, Workshop]	-1	up	0.76	down	82	down	85	
+0			Fearling Pass	10166	[Fearling Pass, Crevasse]	0	go crevasse	go crevasse	10167	[Fearling Pass, Forest Trail]	0	up	0.75	same floor	85	same floor	82	
+0			Grey Wind Manor	32368	[Grey Wind Manor, Porch]	0	go steps	go steps	6322	[Grey Wind Manor, Front Steps]	0	down	0.9	down	75	same floor	80	
+0			Griffin's Keen	4566	[Griffin's Keen, Emerald Point]	0	go hole	go hole	9879	[Griffin's Keen, Foul Cavern]	0	down	0.92	down	78	same floor	62	
+0			Griffin's Keen	4572	[Griffin's Keen, Valley of Peace]	0	climb tree	climb tree	9881	[Griffin's Keen, Valley Cave]	0	down	0.7	down	78	down	66	
+0			Gyldemar Forest	4880	[Gyldemar Forest, Clearing]	0	climb cleft	climb steps	4882	[Gyldemar Forest, Cliffside]	0	down	0.6	up	72	up	72	
+0			Icemule Trace	2389	[The Nightowl Pub, Entry]	0	go staircase	go staircase	3424	[The Nightowl Pub, Lounge]	1	up	0.91	up	60	up	62	
+0			Kraken's Fall	34944	[Nereid's Cradle, Canopied Walk]	0	go stairs	go stair	35234	[Nereid's Cradle, Aside the Walk]	0	down	0.87	down	78	down	72	
+0			Kraken's Fall	35237	[Nereid's Cradle, Aside the Walk]	0	go stairs	go stairs	36724	[Salty's Services, Exterior]	0	up	0.79	up	75	up	62	
+0			Liath Bheinn and Aillidh Brae	8044	[Aillidh Brae, Vale]	0	climb crevice	climb crevice	8045	[Liath Bheinn, Crevice]	-1	up	0.77	up	78	down	70	
+0			McKyren's End	12776	[The Edge]	0	climb slide	climb slide	12787	[McKyren's Road]	0	up	0.5	down	88	down	78	
+0			Melgorehn's Reach	18185	[Melgorehn's Reach, Moon Chamber]	0	go shaft	go shaft	18186	[Melgorehn's Reach, Hot Spring]	0	down	0.77	down	60	same floor	55	
+0			Mist Harbor	19594	[Ceiluir Glade, Small Park]	0	go steps	go steps	19595	[Ceiluir Glade, Wishing Well]	0	down	0.77	down	72	down	68	
+0			Mist Harbor	19607	[Great Hall, White Chapel]	0	go staircase	go staircase	19608	[Groom's Waiting Room]	1	down	0.74	up	85	up	82	
+0			Mist Harbor	21098	[Monastery Grounds, Ruined Entry]	1	go steps	go steps	21099	[Monastery Ruins, Courtyard]	0	up	0.78	down	85	down	88	
+0			Mist Harbor	23673	[Bathhouse, Atrium]	0	go steps	go step	23674	[Tanglevine Hall, Northeast Lawn]	0	up	0.75	same floor	58	same floor	80	
+0			Mist Harbor	23850	[Aeia's Aromas]	0	go steps	go steps	23851	[Aeia's Aromas, Garden]	0	same floor	0.81	same floor	68	same floor	72	
+0			Mist Harbor	28620	[Cavern, Altar Room]	0	go tunnel	go tunnel	4013	[Mist Harbor, Cavern Entry]	0	same floor	0.77	same floor	75	same floor	68	
+0			Mist Harbor	34546	[Strings And Things, Showroom]	1	go ladder	go ladder	34547	[Strings And Things, Workroom]	0	up	0.92	up	72	up	60	
+0			Mist Harbor	36270	[Militia Keep, Meeting Hall]	0	go spiral staircase	go spiral staircase	36273	[Militia Keep, Barracks]	0	down	0.73	down	55	up	58	
+0			Old Ta'Faendryl	11846	[Old Ta'Faendryl, Market Road]	0	go steps	go steps	11850	[Old Ta'Faendryl, Basilica Plaza]	0	same floor	0.74	up	85	up	78	
+0			Old Ta'Faendryl	12017	[Old Ta'Faendryl, Amphitheater]	0	climb benches	climb benches	12022	[Old Ta'Faendryl, Amphitheatre]	0	up	0.78	up	78	same floor	58	
+0			Old Ta'Faendryl	12021	[Old Ta'Faendryl, Amphitheater]	0	climb benches	climb slab	12024	[Old Ta'Faendryl, Amphitheatre]	0	up	0.63	up	75	same floor	60	
+0			Old Ta'Faendryl	12023	[Old Ta'Faendryl, Amphitheatre]	0	go stairs	go stairs	12041	[Old Ta'Faendryl, Southeast]	0	same floor	0.87	down	70	down	70	
+0			Old Ta'Faendryl	12024	[Old Ta'Faendryl, Amphitheatre]	0	climb steps	climb stairs	12045	[Old Ta'Faendryl, River Edge]	0	down	0.76	down	78	up	60	
+0			Seethe Naedal	1275	[Ta'Illistim, Rocky Trail]	0	go ladder	go ladder	36158	[The Black Rose, Foredeck]	0	down	0.79	same floor	55	same floor	50	
+0			Seethe Naedal	4956	[Seethe Naedal, Hot Springs]	0	go steps	go steps	4989	[Seethe Naedal, Hot Springs]	0	down	0.72	down	75	same floor	74	
+0			Solhaven	5585	[Vornavis Caravansary, The Row]	0	climb stairway	climb stairway	5588	[Caravansary Chandler's Shop]	0	up	0.83	down	88	down	88	
+0			Solhaven	9010	[Solhaven, Spiral Passageway]	-1	go steps	go steps	9011	[Solhaven, Spiral Passageway]	1	down	0.9	same floor	60	up	68	
+0			Solhaven	9015	[Solhaven, Spiral Passageway]	0	go steps	go steps	9016	[Solhaven, Spiral Passageway]	1	up	0.86	same floor	60	up	74	
+0			Solhaven	17949	[Rogue Guild, Ballroom]	0	climb stairs	climb stairs	17950	[Rogue Guild, Conservatory]	0	up	0.79	up	60	same floor	55	
+0			Solhaven	19734	[Courtyard]	0	climb stairway	climb short stairway	19737	[Hub]	0	down	0.9	down	68	down	68	
+0			Stormpeak	34283	[Stormpeak Base, Shimmer Cove]	-1	go ramp	go ramp	34287	[Giant's Ridge, Landing]	0	up	0.91	up	70	up	70	
+0			Stormpeak	34292	[Giant's Ridge, Juncture]	0	climb ledge	climb trail	34293	[Giant's Ridge, Rocky Ledge]	0	up	0.77	same floor	65	same floor	62	
+0			Ta'Illistim	18681	[Meazernis Villa, Garden]	0	go steps	go steps	18720	[Meazernis Villa, Patio]	0	up	0.85	up	68	same floor	78	
+0			Ta'Illistim	28253	[Under the Moat]	-1	crawl up	(none)	28254	[Under the Walls]	0	up	0.79	up	78	up	70	
+0			Ta'Illistim Embassies	22380	[Burghal Chancery, Hall]	0	go hatch	go hatch	22417	[Burghal Chancery, Office]	0	same floor	0.8	same floor	76	same floor	72	
+0			Ta'Vaalor	26015	[Burghal Enclave, Gem Passage]	0	go tunnel	go tunnel	26016	[Burghal Enclave, Shimeraern Var]	0	up	0.79	down	70	down	60	
+0			Talador	33756	[Luinne Bheinn, Granite Edge]	0	go slope	go slope	33765	[Luinne Bheinn, Skyline Slope]	1	down	0.84	down	72	up	66	
+0			The Falcon, inside the seaside town of Solhaven	26036	[The Falcon, Foredeck]	0	go ladder	go ladder	752	[Ta'Illistim, Rocky Trail]	0	down	0.73	same floor	50	same floor	60	
+0			Wehnimer's Landing	1246	[River Tower East, Headquarters]	1	go stair	go stair	1247	[River Tower East, Barracks]	3	down	0.58	up	70	up	78	
+0			Wehnimer's Landing	9633	[Temple Steps]	0	go steps	go steps	9634	[Temple Entrance]	0	down	0.77	up	78	same floor	72	
+0			Wehnimer's Landing	14650	[Museum Member's Suite]	0	climb stairs	";e fput ""search"";fput ""climb stone stairs"""	19967	[Hall of Knowledge, Library]	1	down	0.81	up	60	up	70	
+0			Wehnimer's Landing	14853	[Halcyon Hills, Meadow's Edge]	0	go steps	go steps	14854	[Halcyon Hills, Wooded Bluff]	0	up	0.88	down	78	same floor	55	
+0			Wehnimer's Landing	30882	[Bard Guild, Stage]	-1	go steps	(none)	8663	[Bard Guild, Performance Hall]	-1	same floor	0.73	down	80	down	70	
+0			Wehnimer's Landing	33441	[Underground, Narrow Tunnel]	-1	go narrow stair	(none)	33442	[House Aspis, Wine Cellar]	-2	up	0.85	down	60	down	88	
+0			Whistler's Pass	74	[Whistler's Pass, Hills]	1	climb wall	climb wall	75	[Whistler's Pass, Hills]	0	same floor	0.84	same floor	78	same floor	64	
+0			Whistler's Pass	883	[Whistler's Pass]	0	climb boulders	climb boulders	884	[Whistler's Pass]	0	same floor	0.69	same floor	70	same floor	70	
+0			Whistler's Pass	920	[Whistler's Pass, Cavern]	0	go tunnel	go cavern	921	[Whistler's Pass, Tunnel]	0	down	0.61	same floor	70	same floor	78	
+0			Wraithenmist	1787	[Wraithenmist, Winding Trail]	0	climb boulder	(none)	1788	[Wraithenmist, Winding Trail]	0	same floor	0.75	up	72	same floor	72	
+0			Wraithenmist	1789	[Wraithenmist, Winding Trail]	0	climb rocks	(none)	1791	[Wraithenmist, Winding Trail]	0	same floor	0.88	same floor	70	same floor	68	
+0			Wraithenmist	1826	[Wraithenmist, Lakeside Trail]	0	climb trunk	climb trunk	1827	[Wraithenmist, Fishing Hut]	0	down	0.72	same floor	55	same floor	55	
+0			Wraithenmist	1832	[Wraithenmist, Narrow Trail]	0	climb tree	climb tree	1833	[Wraithenmist, Narrow Trail]	0	same floor	0.89	same floor	70	same floor	58	
+0			the Abandoned Farm	3125	[Abandoned Farm, Field]	0	go tree	go tree	3126	[Abandoned Farm, Field]	0	up	0.71	same floor	80	same floor	82	
+0			the Abandoned Farm	24526	[Frozen Bramble Patch]	0	climb hillside	climb hillside	24533	[Frozen Bramble Patch]	0	same floor	0.89	same floor	62	same floor	78	
+0			the Abandoned Mine	2278	[Abandoned Mine, Ruined Cavern]	0	climb rubble	climb rubble	2279	[Abandoned Mine]	0	same floor	0.63	same floor	70	same floor	65	
+0			the Cairnfang	9374	[Cairnfang Falls, Basin]	-1	climb outcroppings	climb outcropping	9375	[Cairnfang Falls, Hidden Pool]	0	up	0.91	same floor	60	up	60	
+0			the Central Caravansary	1343	[Zortahg's Spine, Ramp]	0	go ramp	go ramp	1344	[Zortahg's Spine, Highroad]	0	down	0.81	up	85	same floor	60	
+0			the Citadel	11145	[River Tunnels, Dead End]	-1	go trapdoor	go trapdoor	11146	[Citadel Stables]	0	up	0.87	up	70	up	78	
+0			the Citadel	11230	[Infirmary, Hallway]	0	go staircase	go staircase	11231	[Infirmary, Hallway]	0	down	0.71	up	60	up	70	
+0			the Citadel	11298	[Alchemist, Hallway]	0	go hole	go hole	11319	[Alchemist, Hallway]	1	up	0.74	down	70	up	72	
+0			the Emerald Forest	189	[Gorget Trails, West Cliff Face]	0	climb root	climb root	190	[Gorget Trails, West Cliff Face]	0	up	0.72	up	70	up	55	
+0			the Emerald Forest	1778	[Masked Hills, Hairline Ridge]	0	climb overhang	climb outcropping	3980	[Griffin's Keen, Crossroads]	0	down	0.83	same floor	55	up	62	
+0			the Graveyard	7221	[Underbarrow, Tunnels]	-1	go tunnel	go tunnel	7225	[Under Crypt, Tunnels]	-7	same floor	0.76	same floor	78	same floor	65	
+0			the Icemule Trail	2509	[Icemule Trail, Tundra]	0	climb bank	climb bank	2510	[Icemule Trail, Icy River]	0	down	0.82	down	70	down	68	
+0			the Icemule Trail	2523	[Blue Glacier, Mountain Pass]	0	climb rockslide	climb rockslide	2524	[Blue Glacier, Mountain Pass]	0	up	0.66	up	70	same floor	68	
+0			the Monsoon Jungle	20904	[Monsoon Jungle, Interior]	0	go boulders	go boulders	20905	[Monsoon Jungle, Banyan Base]	0	same floor	0.9	same floor	78	same floor	78	
+0			the Neartofar Road	10497	[Neartofar Road]	0	climb bank	climb bank	10499	[The Toadwort, Muddy Path]	0	down	0.89	down	60	same floor	60	
+0			the Needle of Pentas	30972	[Isle of Ornath, Agora Promenade]	0	go steps	go steps	30973	[Isle of Ornath, Agora Entry]	0	up	0.78	down	80	same floor	58	
+0			the Pinefar forests	2762	[Arctic Embankment]	0	climb stones	climb stones	2763	[Northern Slopes, Arctic Plateau]	0	down	0.77	same floor	62	same floor	55	
+0			the Pinefar forests	2765	[Northern Slopes, Arctic Plateau]	0	climb rocks	climb rocks	2766	[Northern Slopes, Arctic Track]	0	down	0.73	down	72	down	62	
+0			the Rambling Meadows	10482	[Rambling Meadows, Farmhouse]	0	go steps	go steps	5999	[Rambling Meadows, Hilltop]	0	up	0.74	same floor	58	same floor	70	
+0			the Sleeping Lady Mountains	2835	[Northern Slopes, Snowy Drifts]	0	climb slope	climb slope	2836	[Northern Slopes, Timberline]	0	up	0.78	up	78	same floor	80	
+0			the Sleeping Lady Mountains	2838	[Northern Slopes, Quiet Forest]	0	climb incline	climb inc	2839	[Northern Slopes, Quiet Forest]	0	down	0.72	up	70	same floor	62	
+0			the Sleeping Lady Mountains	2840	[Northern Slopes, Quiet Forest]	0	climb slope	climb slope	2871	[Northern Slopes, Quiet Forest]	0	down	0.79	up	82	same floor	60	
+0			the Sleeping Lady Mountains	2842	[Northern Slopes, Quiet Forest]	0	climb incline	climb incline	2847	[Mountains, Quiet Forest]	0	down	0.77	up	62	same floor	65	
+0			the Sleeping Lady Mountains	2843	[Northern Slopes, Quiet Forest]	0	climb incline	climb inc	2844	[Mountains, Quiet Forest]	0	down	0.78	up	80	same floor	72	
+0			the Sleeping Lady Mountains	2898	[Southern Slopes, Treeline]	0	go stairway	go stairway	2901	[Southern Slopes, Alpine Ridge]	0	up	0.68	down	60	same floor	60	
+0			the Upper Trollfang	8440	[Upper Trollfang, Sentoph]	0	climb trail	climb trail	8443	[Upper Trollfang, Sentoph]	0	down	0.57	up	88	same floor	55	
+0			the Yegharren Plains	9989	[Yegharren Valley, Ravine]	-1	climb rocks	climb rocks	9990	[Yegharren Valley, Ravine]	0	up	0.79	same floor	72	same floor	62	
+0			the Yegharren Plains	9991	[Yegharren Valley, Ravine]	0	climb slope	climb slope	9992	[Yegharren Valley, Ravine]	0	down	0.8	same floor	60	same floor	55	
+0			the Yegharren Plains	9996	[Yegharren Valley, Ravine]	0	climb slope	climb mound	9997	[Yegharren Valley, Ravine]	-2	down	0.62	down	78	down	75	
+0			the bowels of Thanatoph	8427	[Thanatoph Bowels, Cavern]	0	climb ledge	climb ledge	8430	[Thanatoph Bowels, Cavern]	0	down	0.79	up	80	down	60	
+0			the catacombs	3932	[Wehnimer's, Tunnel]	0	go hole	go hole	3933	[Catacombs, Rat's Nest]	-1	same floor	0.81	same floor	68	same floor	68	
+0			the catacombs	7536	[Catacombs, Twisting Tunnels]	-1	climb rubble	climb rubble	7543	[Catacombs, Muddy Bend]	-1	up	0.9	up	68	down	70	
+0			the environs of the Saewehna Lagoon	18265	[Saewehna Jungle, Coast]	0	go steps	go steps	18266	[Saewehna Jungle, Small Clearing]	-1	up	0.74	up	62	same floor	65	
+0			the environs of the Saewehna Lagoon	18288	[Saewehna Jungle, Coast]	0	climb dune	climb decline	18289	[Saewehna Jungle, Wilds]	0	up	0.92	up	78	same floor	62	
+0			the environs of the Saewehna Lagoon	18294	[Saewehna Jungle, Clearing]	0	go hollow	(none)	18295	[Saewehna Jungle, Mushroom Bed]	0	same floor	0.91	down	55	same floor	74	
+0			the environs of the Saewehna Lagoon	18343	[Saewehna Jungle, Coast]	0	climb path	climb path	18344	[Saewehna Jungle, Wilds]	0	up	0.85	up	68	up	72	
+0			the free port of Solhaven	1427	[Solhaven, Tumbledown Lane]	-1	go steps	go steps	1428	[Solhaven, Tumbledown Lane]	2	down	0.93	down	78	down	74	
+0			the free port of Solhaven	1484	[Solhaven, North 'Haven Quay]	0	go ramp	go ramp	30213	[North 'Haven Quay, Catwalk]	0	up	0.74	same floor	82	same floor	76	
+0			the free port of Solhaven	13243	[Solhaven Inn, Upstairs Hall]	1	go steps	go steps	17931	[A Concealed Room]	-1	down	0.57	same floor	62	down	68	
+0			the free port of Solhaven	13975	[Girvahk's Shop, Museum]	2	go oak door	go oak door	14580	[Girvahk's Shop, Smithy]	0	same floor	0.92	same floor	75	down	72	
+0			the grasslands	10242	[Vineyard]	0	climb wall	climb west wall	10262	[Wildflower Field, Pond]	0	down	0.67	same floor	65	same floor	68	
+0			the grasslands	10243	[Vineyard]	0	climb wall	climb wall	10263	[Wildflower Field]	0	down	0.68	same floor	62	same floor	70	
+0			the grasslands	10258	[Apple Orchard]	0	climb wall	climb north wall	10262	[Wildflower Field, Pond]	0	down	0.69	same floor	65	same floor	66	
+0			the great mountain Aenatumgana	2678	[Top of the World, Aenatumgana]	0	go ledge	;e 8.times { if celerity = Spell[506] and celerity.known? and celerity.affordable? and not celerity.active?; celerity.cast; end; dothistimeout 'search', 3, /You make a careful search of the area and discover a narrow icy ledge!|You don't find anything of interest here./; break if move 'go ledge' }	2679	[Top of the World, Aenatumgana]	0	same floor	0.72	same floor	78	same floor	70	
+0			the great mountain Aenatumgana	2681	[Top of the World, Aenatumgana]	0	climb slope	climb slope	2682	[Top of the World, Aenatumgana]	0	down	0.85	down	62	down	76	
+0			the great mountain Aenatumgana	2689	[Top of the World, Aenatumgana]	0	climb slope	climb slope	2690	[Top of the World, Aenatumgana]	2	down	0.92	down	78	up	74	
+0			the lowlands of Marshtown	5045	[Marshtown, Jag Hill]	0	climb path	climb path	5046	[Marshtown, Jag Hill]	0	up	0.77	up	75	same floor	72	
+0			the old Mine Road	4208	[Upper Trollfang]	0	climb rockslide	climb rockslide	4209	[Upper Trollfang]	0	same floor	0.53	up	62	same floor	70	
+0			the southern part of Solhaven	1500	[Solhaven, Eastbridge Lane]	0	climb wall	climb wall	4583	[Kraken Manor, Courtyard]	0	up	0.72	same floor	60	same floor	70	
+0			the southern part of Solhaven	14234	[Solhaven, Beacon Tower]	0	go ramp	climb ramp	1568	[Solhaven, Beacon Ring]	0	down	0.85	down	70	down	70	
+0			the town of Icemule Trace	18959	[Sorcerer Guild, Meeting Cavern]	-1	climb west staircase	climb staircase	18960	[Sorcerer Guild, Den]	0	down	0.79	up	62	up	82	
+0			the town of Wehnimer's Landing	250	[Wehnimer's, North Dock]	0	go ramp	go ramp	29631	[North Dock, Catwalk]	0	up	0.91	up	62	up	60	
+0			the town of Wehnimer's Landing	20606	[Wehnimer's, Burrow Way]	-1	go fissure	go fissure	20607	[Wehnimer's, Burrow Way]	0	same floor	0.84	same floor	68	same floor	72	
+0			the town of Wehnimer's Landing	21688	[Town Barracks, Inner Courtyard]	0	climb walls	(none)	279	[Wehnimer's, The Mews]	0	same floor	0.93	same floor	60	same floor	65	
+0			the town of Wehnimer's Landing	30276	[Rusty Cutlass, Grub Hall]	0	go ramp	go ramp	30279	[Rusty Cutlass, Main Deck]	0	up	0.86	same floor	60	same floor	55	
+0			the village of Cysaegir	4662	[Cysaegir, Pond]	0	climb stones	climb stones	4665	[Cysaegir, Pond]	0	same floor	0.86	down	72	same floor	72	
+0			the volcano	2166	[Basalt Hillock, Precipice]	1	climb trail	climb trail	2167	[Basalt Plateau, Second Tier]	0	up	0.91	down	88	down	85	

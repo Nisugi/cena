@@ -64,6 +64,7 @@
 //! | `streams`, `pending`, `chunk` | **cleared** | half a sentence nobody will finish; the next connection's bytes are not a continuation |
 //! | `stream_windows` | **cleared** | MEASURED: 15 of 16 declarations arrive before the first prompt, so the burst re-teaches them; and a stale `ifClosed` drops text rather than showing it stale |
 //! | `inventory` | **cleared** | see its own comment: container CONTENTS are not re-sent, and Lich drops them for the same reason |
+//! | `worn`, `reserve` | kept | a logged-off character neither dons nor stows; a list half-arrived is dropped (`worn.rs`) |
 //! | `inventory_snapshot` | kept | a logged-off character gains and loses nothing; it is not in the login burst, and it is point-in-time by contract either way |
 //! | `learned_commands` | kept | what a menu coordinate MEANS is a fact about the game, and the push is not repeated on reconnect |
 //!
@@ -140,10 +141,16 @@ impl GameState {
             messages,
             overwatch,
             known_spells,
+            worn,
+            reserve,
             bounty,
+            doses,
+            kits,
+            order_menu,
             targeting,
             maneuvers,
             cast_time_ends,
+            prepared,
             prompt,
             left_hand,
             right_hand,
@@ -165,6 +172,8 @@ impl GameState {
             // close; the gap changes nothing about them, and the actor drains
             // them on the next prompt.
             loot: _,
+            // Incidents likewise: what happened before the gap still happened.
+            incidents: _,
             creatures,
             pending,
             chunk,
@@ -238,6 +247,16 @@ impl GameState {
         // no event coming to correct it.
         let _ = bank;
 
+        // **Herb doses are KEPT**, for the bank's reason: counts of what is in
+        // your own herb sack, which nobody eats from while you are gone, and
+        // which no burst restates -- only `measure` and use do.
+        let _ = doses;
+        // A kit's tier, extractor and listing are the kit's own, for the
+        // same reason.
+        let _ = kits;
+        // A shop's menu is the shop's; a reconnect does not change it.
+        let _ = order_menu;
+
         // **The arrival counter is KEPT, and it is not a game fact.** It
         // counts rooms this SESSION has entered, so resetting it would make
         // the first arrival after a reconnect compare equal to a count taken
@@ -300,6 +319,8 @@ impl GameState {
         // gap of unknown length (`maneuvers.rs`).
         maneuvers.clear();
         *cast_time_ends = None;
+        // The prepared spell goes with the cast: the burst restates `<spell>`.
+        *prepared = None;
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,
@@ -356,6 +377,12 @@ impl GameState {
         // Contrast `inventory`, the passive container model, which IS
         // cleared: it mirrors windows the server reopens on login.
         let _ = inventory_snapshot;
+
+        // What is worn and what the wandolier holds: kept, for the snapshot's
+        // reason, a logged-off character neither dons nor stows. A list still
+        // arriving is dropped: the connection that was sending it is gone.
+        worn.drop_partial();
+        reserve.drop_partial();
 
         // Dictionary rows the server taught us. A fact about the GAME -- what
         // the coordinate 2524,12785 means -- not about the connection, and

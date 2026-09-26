@@ -1,0 +1,292 @@
+# Cena baseline: what it captures and defines (generated 2026-09-25, HEAD 9d37985)
+
+## Model: crates/cena-model/src (state = classifiers and typed state; first doc line)
+- crates/cena-model/src/crit.rs (233 lines): Critical-hit tables: what a crit did, and the message that announces it.
+- crates/cena-model/src/crit/entry.rs (111 lines): `CritEntry`: one row of one critical-hit table.
+- crates/cena-model/src/crit/load.rs (239 lines): Parsing `data/crit_tables.tsv` into `CritEntry` values.
+- crates/cena-model/src/crit/match_index.rs (422 lines): The first-word bucket index that makes matching 2,394 patterns per line
+- crates/cena-model/src/crit/types.rs (382 lines): The typed shape of one critical-hit table entry.
+- crates/cena-model/src/effects.rs (428 lines): Active effects: spells, buffs, debuffs and cooldowns, with when they end.
+- crates/cena-model/src/lib.rs (79 lines): cena-model: typed game state, events, and game data.
+- crates/cena-model/src/movement.rs (321 lines): What the game says when a move does not simply work: a **stateless
+- crates/cena-model/src/spells.rs (626 lines): The spell table: what each spell is, costs, says, and locks out.
+- crates/cena-model/src/state.rs (478 lines): [`GameState`]: what the session knows, built **only** from typed frames.
+- crates/cena-model/src/state/afflictions.rs (254 lines): The six statuses that arrive only as **text**, never as an indicator.
+- crates/cena-model/src/state/armaments.rs (431 lines): Weapons, armor and shields: the stat tables, and the aliases that name them.
+- crates/cena-model/src/state/bank.rs (363 lines): What the bank says you have.
+- crates/cena-model/src/state/bounty.rs (531 lines): Bounty tasks: what the Adventurer's Guild has asked for.
+- crates/cena-model/src/state/bounty_status.rs (162 lines): The bounty a character is on, and what the guild will do next.
+- crates/cena-model/src/state/character.rs (797 lines): Experience, injuries, stance and encumbrance: **M2 step 3**, `plan/18` §2b.
+- crates/cena-model/src/state/character/blocks.rs (168 lines): Reading a command report out of a completed chunk.
+- crates/cena-model/src/state/character/body.rs (202 lines): Body parts, and the wound/scar accessors over them.
+- crates/cena-model/src/state/character/currency.rs (202 lines): Silver, notes, and the eleven event currencies.
+- crates/cena-model/src/state/character/enhancive.rs (558 lines): Enhancive totals: six sections, a clique, and a static key space.
+- crates/cena-model/src/state/character/experience_report.rs (166 lines): The `experience` command's report.
+- crates/cena-model/src/state/character/injured.rs (344 lines): Can this character act? The four injury predicates.
+- crates/cena-model/src/state/character/profile.rs (270 lines): The `charprofile` stream: what `profile` shows, typed.
+- crates/cena-model/src/state/character/psm.rs (344 lines): The PSM tables: an **open set**, per C21.
+- crates/cena-model/src/state/character/skills.rs (563 lines): The 46 skills and the 12 spell circles, and the classifier that reads a
+- crates/cena-model/src/state/character/snapshot.rs (361 lines): What persists between sessions, and how it goes stale.
+- crates/cena-model/src/state/character/spellsong.rs (342 lines): A bard's song: how long it lasts, what it costs, what it is worth.
+- crates/cena-model/src/state/character/stance.rs (168 lines): The six combat stances, and the percent bands they occupy.
+- crates/cena-model/src/state/character/standing.rs (544 lines): Society, citizenship, warcries and resources: the facts one line teaches.
+- crates/cena-model/src/state/character/stats.rs (453 lines): The ten statistics, and the classifier that reads an `info` line.
+- crates/cena-model/src/state/character/training.rs (74 lines): Training points: the four `expr` labels, moved down under Rule 4.1.
+- crates/cena-model/src/state/character/vocabulary.rs (608 lines): The closed vocabularies of a character sheet.
+- crates/cena-model/src/state/chunks.rs (380 lines): The prompt-bounded chunk: one command's output, buffered and handed on.
+- crates/cena-model/src/state/claim.rs (265 lines): Is this room mine? Room claiming for hunting groups.
+- crates/cena-model/src/state/clock.rs (221 lines): The server clock, and what is derived from it.
+- crates/cena-model/src/state/combat.rs (123 lines): Combat: the classifiers over one chunk line.
+- crates/cena-model/src/state/combat/attack.rs (342 lines): Attack initiations: *who is attacking whom, with what*.
+- crates/cena-model/src/state/combat/bracket.rs (172 lines): Brackets: the lines that open and close a multi-part action.
+- crates/cena-model/src/state/combat/damage.rs (48 lines): Damage lines: `... and hit for 20 points of damage!` and its many shapes.
+- crates/cena-model/src/state/combat/defs.rs (554 lines): The definition tables: three TSVs, compiled once, matched in Lich's order.
+- crates/cena-model/src/state/combat/event.rs (506 lines): What a chunk of combat yields: attack events and the facts beside them.
+- crates/cena-model/src/state/combat/flare.rs (107 lines): Flare announce lines: weapon scripts, enchants, GEFs, flourishes.
+- crates/cena-model/src/state/combat/outcome.rs (140 lines): Outcome lines: why a swing produced nothing, or that it landed.
+- crates/cena-model/src/state/combat/parse.rs (239 lines): The combat state machine over one chunk: Lich's `parse_events`.
+- crates/cena-model/src/state/combat/parse/attack.rs (475 lines): Attack initiations: the branch that opens events.
+- crates/cena-model/src/state/combat/parse/cursor.rs (342 lines): The chunk-local state of the state machine, and its predicates.
+- crates/cena-model/src/state/combat/parse/damage.rs (91 lines): Damage lines, the coup kill line, and the crit lookahead.
+- crates/cena-model/src/state/combat/parse/facts.rs (194 lines): The always-on fact handlers: statuses, spell losses, UCS.
+- crates/cena-model/src/state/combat/parse/finish.rs (143 lines): End of chunk: the hold, the orphan sinks, the emit.
+- crates/cena-model/src/state/combat/parse/flares.rs (160 lines): Flare announces, sequence brackets, assault brackets.
+- crates/cena-model/src/state/combat/parse/rolls.rs (183 lines): Roll lines and outcome lines.
+- crates/cena-model/src/state/combat/parse/switch.rs (77 lines): Target switching, for multi-target attacks.
+- crates/cena-model/src/state/combat/resolution.rs (172 lines): Roll lines: the numbers that decide an attack.
+- crates/cena-model/src/state/combat/spell_loss.rs (59 lines): Spell wear-off lines, pinned to a spell number.
+- crates/cena-model/src/state/combat/status.rs (277 lines): Status lines: a condition beginning or ending.
+- crates/cena-model/src/state/combat/target.rs (196 lines): Who a line is about: resolving captures to links, by position.
+- crates/cena-model/src/state/combat/tracker.rs (212 lines): The combat consumer: what survives between chunks, and the entry point.
+- crates/cena-model/src/state/combat/ucs.rs (182 lines): Unarmed Combat System lines: position tier, tierup, smite.
+- crates/cena-model/src/state/containers.rs (594 lines): Which container holds what, and which weapon comes to hand.
+- crates/cena-model/src/state/cooldowns.rs (201 lines): Which characters a spell has locked out.
+- crates/cena-model/src/state/creature.rs (375 lines): The bestiary: what a creature is, and what the wire says it is doing.
+- crates/cena-model/src/state/creature/load.rs (458 lines): Reading the bestiary's seven TSVs into [`Creature`]s.
+- crates/cena-model/src/state/creature/parts.rs (266 lines): The parts of a creature: its attacks, what it drops, the lines it prints
+- crates/cena-model/src/state/creature/status.rs (434 lines): `<crtrStatus>`: what the wire says a creature is doing right now.
+- crates/cena-model/src/state/creature_message.rs (262 lines): Matching a game line against the bestiary's messages: **every kind** --
+- crates/cena-model/src/state/creatures.rs (556 lines): The creature registry: every creature the feed has shown, keyed by
+- crates/cena-model/src/state/creatures/apply.rs (324 lines): Apply a chunk's combat facts to the registry: Lich's `persist_event`,
+- crates/cena-model/src/state/creatures/body.rs (135 lines): A creature's body, as the crit tables and the injury model name it.
+- crates/cena-model/src/state/creatures/instance.rs (698 lines): One creature the feed has shown: its statuses, wounds, damage and UCS
+- crates/cena-model/src/state/departure.rs (132 lines): A creature seen to leave: **read off the markup, not matched against prose.**
+- crates/cena-model/src/state/disk.rs (107 lines): Floating disks: whose they are, and what they are called.
+- crates/cena-model/src/state/equality.rs (122 lines): When two game states are equal.
+- crates/cena-model/src/state/fog.rs (337 lines): The ways home: which are available, and whether one worked.
+- crates/cena-model/src/state/gameobj.rs (269 lines): What kind of thing is this? Type and sellable classification.
+- crates/cena-model/src/state/group.rs (382 lines): Who is grouped with you.
+- crates/cena-model/src/state/hands.rs (142 lines): What is in each hand.
+- crates/cena-model/src/state/idle.rs (134 lines): The server's idle warning: reading it, and clearing it.
+- crates/cena-model/src/state/inventory.rs (213 lines): Containers and what is in them: **M2 step 4**, `plan/18` §2d.
+- crates/cena-model/src/state/inventory_snapshot.rs (222 lines): The whole-inventory snapshot: `<inventoryManager>` and the item detail
+- crates/cena-model/src/state/known_spells.rs (176 lines): The spells this character knows: the `Spells` stream, typed.
+- crates/cena-model/src/state/ledger.rs (311 lines): The loot ledger's classifier: what a chunk says about loot, silver and
+- crates/cena-model/src/state/ledger/boxes.rs (131 lines): Boxes: coins gathered from one, the locksmith pool's quote, drop and
+- crates/cena-model/src/state/ledger/hunt.rs (251 lines): The hunt's loot lines: searching, skinning, bundling, the bounty reward and
+- crates/cena-model/src/state/ledger/pending.rs (87 lines): Classified chunks waiting for the session's ledger.
+- crates/cena-model/src/state/ledger/text.rs (104 lines): Reading a line's objects and figures for the loot classifier.
+- crates/cena-model/src/state/ledger/town.rs (349 lines): Town: appraisals, sales, the bank, and a gem lost to a song.
+- crates/cena-model/src/state/maneuvers.rs (140 lines): Maneuvers the game says are on cooldown.
+- crates/cena-model/src/state/menu.rs (526 lines): Context menus: turning a `<menu>` of bare coordinates into labelled
+- crates/cena-model/src/state/message.rs (226 lines): Who said what, and on which channel.
+- crates/cena-model/src/state/movement.rs (387 lines): Why a move did not happen.
+- crates/cena-model/src/state/nouns.rs (112 lines): Resolving a noun to a thing: **M2 step 5**, `plan/18` §2e.
+- crates/cena-model/src/state/numbers.rs (73 lines): The one reader for a comma-grouped integer the game printed.
+- crates/cena-model/src/state/objectives.rs (92 lines): The quest and bounty list: `<objectives>` and its `<objective>` rows.
+- crates/cena-model/src/state/overwatch.rs (374 lines): Creatures that hide, and the ones the game forgets to give back.
+- crates/cena-model/src/state/reconnect.rs (464 lines): What a new connection has not been told: `plan/12` §5.2's invalidation.
+- crates/cena-model/src/state/resolve.rs (280 lines): What does a name mean? Turning `"kron"` into an item the game will accept.
+- crates/cena-model/src/state/ring.rs (109 lines): A bounded, oldest-first buffer that can still be read as one slice.
+- crates/cena-model/src/state/room.rs (567 lines): Room contents: **M2 step 2**, `plan/18` §2c.
+- crates/cena-model/src/state/societies.rs (280 lines): Society abilities: Voln symbols, Council signs, Sunfist sigils.
+- crates/cena-model/src/state/societies/col.rs (308 lines): The Council of Light: 20 signs, powered by spirit and mana.
+- crates/cena-model/src/state/societies/membership.rs (297 lines): What the wire says about society membership: joining, advancing, leaving.
+- crates/cena-model/src/state/societies/sunfist.rs (292 lines): The Guardians of Sunfist: 20 sigils, powered by stamina and mana.
+- crates/cena-model/src/state/societies/voln.rs (424 lines): The Order of Voln: 26 symbols, powered by favor.
+- crates/cena-model/src/state/stream_windows.rs (251 lines): What a stream's text does when its window is **closed**: the wire's own
+- crates/cena-model/src/state/streams.rs (261 lines): Per-stream text buffers: **M2 step 1**, `plan/18` §2a.
+- crates/cena-model/src/state/targeting.rs (202 lines): What the game says you can attack: the `dDBTarget` dropdown.
+- crates/cena-model/src/state/unknown.rs (71 lines): Unknown tags: criterion 8's evidence, bounded.
+- crates/cena-model/src/state/vitals.rs (241 lines): The vitals gauges: health, mana, stamina, spirit.
+- crates/cena-model/src/status.rs (234 lines): Character status indicators: what the game says is true of you right now.
+
+## Data tables: crates/cena-model/data (lines, header)
+- crates/cena-model/data/armament_aliases.tsv (707 lines): kind	alias	id	category
+- crates/cena-model/data/armor.tsv (21 lines): type	base_name	armor_group	armor_sub_group	base_weight	min_rt	action_penalty	normal_cva	magical_cva	hindrances_0_to_19	hindrance_max	training_reqs_0_to_19
+- crates/cena-model/data/combat_attacks.tsv (377 lines): family	name	role	order	flags	extra	pattern
+- crates/cena-model/data/combat_effects.tsv (357 lines): family	name	role	order	flags	extra	pattern
+- crates/cena-model/data/combat_results.tsv (223 lines): family	name	role	order	flags	extra	pattern
+- crates/cena-model/data/creature_abilities.tsv (80 lines): creature_id	id	name	type	target	typical_duration_s	dispellable	effects	notes
+- crates/cena-model/data/creature_areas.tsv (1395 lines): creature_id	area	uid_lo	uid_hi
+- crates/cena-model/data/creature_attacks.tsv (3175 lines): creature_id	category	name	as	as_raw	cs	cs_raw	note	type
+- crates/cena-model/data/creature_info.tsv (51 lines): creature_id	section	text
+- crates/cena-model/data/creature_lists.tsv (3309 lines): creature_id	list	name	note
+- crates/cena-model/data/creature_messages.tsv (7126 lines): creature_id	kind	key	text
+- crates/cena-model/data/creatures.tsv (628 lines): id	name	noun	level	max_hp	family	type	size	height	speed	undead	blood	bones	limbs	witherable	sympathy	muggable	sleepable	bcs	boss	boss_type	asg	melee	ranged	bolt	udf	bar_td	cle_td	emp_td	pal_td	ran_td	
+- crates/cena-model/data/crit_tables.tsv (2395 lines): type	location	rank	damage	position	fatal	stunned	amputated	crippled	sleeping	dazed	limb_favored	roundtime	silenced	slowed	wound_rank	secondary_location	secondary_wound_rank	pattern
+- crates/cena-model/data/gameobj-data.tsv (114 lines): kind	category	field	pattern
+- crates/cena-model/data/menu_commands.tsv (1108 lines): coord	label	command	category
+- crates/cena-model/data/shields.tsv (5 lines): id	category	base_name	size_modifier	evade_modifier	base_weight
+- crates/cena-model/data/spells.tsv (523 lines): number	name	type	availability	mana_cost	spirit_cost	stamina_cost	renew_cost	durations	bonuses	msg_start	msg_end	msg_target_start	cooldown_group	cooldown_target
+- crates/cena-model/data/weapons.tsv (97 lines): category	id	base_name	damage_factor_by_ag_0_to_5	base_rt	min_rt	slash	crush	puncture	special	avd_by_asg_1_to_20	weighting_type	weighting_amount
+
+## cena-session: crates/cena-session/src (first doc line)
+- crates/cena-session/src/actor.rs (650 lines): The session actor: one task, one select loop, one socket.
+- crates/cena-session/src/actor/combat.rs (95 lines): Combat facts leave the model here: once per prompt, to everyone.
+- crates/cena-session/src/actor/ending.rs (411 lines): [`EndReason`]: why one connection ended, and whether to reconnect.
+- crates/cena-session/src/actor/event.rs (93 lines): [`Event`]: what a session publishes to whoever is watching.
+- crates/cena-session/src/actor/gate.rs (74 lines): The last check before an action's bytes go out (`plan/30` §3).
+- crates/cena-session/src/actor/handle.rs (289 lines): [`Session`] and [`Snapshot`]: what a caller holds, as against what the
+- crates/cena-session/src/actor/io.rs (761 lines): The actor's I/O: sending the queue to the wire, and folding what comes
+- crates/cena-session/src/actor/owed.rs (177 lines): Whose prompt arrives next: the in-flight command's, or an instant action's.
+- crates/cena-session/src/actor/readiness.rs (105 lines): When a connection becomes [`State::Ready`](crate::State::Ready).
+- crates/cena-session/src/character_store.rs (225 lines): Reading and writing a character's snapshot.
+- crates/cena-session/src/combat_recorder.rs (450 lines): The combat recorder: a chunk's facts, persisted to `SQLite`.
+- crates/cena-session/src/combat_recorder/attack.rs (316 lines): One attack event: its row, and the resolutions, flares and hits under it
+- crates/cena-session/src/combat_recorder/report.rs (498 lines): Reading the combat recorder: hunts, one hunt, the aggregate, the
+- crates/cena-session/src/combat_recorder/schema.rs (158 lines): The seven tables, verbatim from `recorder.rb:110-243`.
+- crates/cena-session/src/combat_recorder/status.rs (389 lines): The status stream: statuses, stuns, roundtimes, spell losses, UCS facts
+- crates/cena-session/src/combat_recorder/worker.rs (239 lines): The recorder's own thread, and the handle a session feeds it through.
+- crates/cena-session/src/command/attendance.rs (35 lines): Whether a **person** is using a session: the supervisor's question when a
+- crates/cena-session/src/command/authority.rs (133 lines): The command authority (`plan/12` §4.2): who may run a sequence, held by
+- crates/cena-session/src/command/claimant.rs (226 lines): Lines the player types **for Hydra, not for the game** (author,
+- crates/cena-session/src/command/handle.rs (684 lines): The transport: [`SessionHandle`], [`Envelope`], [`Inbox`].
+- crates/cena-session/src/command/mod.rs (24 lines): What a command is, how it travels, and what comes back.
+- crates/cena-session/src/command/round_trip.rs (232 lines): The round trip: send a command and wait for its [`Outcome`], as **one
+- crates/cena-session/src/command/verdict.rs (361 lines): The command vocabulary: where a command came from, and what came back.
+- crates/cena-session/src/dirty_groups.rs (136 lines): When a character's facts get written to disk.
+- crates/cena-session/src/ledger.rs (184 lines): The loot ledger: a chunk's loot facts, persisted to `SQLite`.
+- crates/cena-session/src/ledger/report.rs (444 lines): Reading the ledger: the first reports, as typed rows.
+- crates/cena-session/src/ledger/schema.rs (124 lines): The ledger's tables: loottracker's six, reshaped as `plan/34` §4 records.
+- crates/cena-session/src/ledger/worker.rs (152 lines): The ledger's own thread, and the handle a session feeds it through.
+- crates/cena-session/src/ledger/write.rs (471 lines): One chunk's facts, written: an arm per [`LootFact`], and the item linking
+- crates/cena-session/src/lib.rs (97 lines): cena-session
+- crates/cena-session/src/lifecycle.rs (278 lines): Session lifecycle: the states a session can reach, [`Generation`], and the
+- crates/cena-session/src/menu_store.rs (279 lines): The learned menu dictionary on disk: one global supplemental TSV.
+- crates/cena-session/src/notice.rs (111 lines): Hydra speaking to the player: the port of `Lich::Messaging`
+- crates/cena-session/src/observation.rs (280 lines): Detached read access. Requests are answered by the current state owner in
+- crates/cena-session/src/player_log/channel.rs (187 lines): The record and the bounded channel: **`plan/25` step 1**.
+- crates/cena-session/src/player_log/feed.rs (269 lines): One connection's feed into the player log: what is captured, and what a
+- crates/cena-session/src/player_log/mod.rs (53 lines): The player log's record and its channel: **`plan/25` step 1**.
+- crates/cena-session/src/player_log/tap.rs (161 lines): What the actor holds, and the rule for what is history: **`plan/25` step 2b**.
+- crates/cena-session/src/player_log/writer.rs (409 lines): The player log's writer: **`plan/25` step 2**.
+- crates/cena-session/src/queue.rs (369 lines): The command queue and the authority token: `plan/12` §4, and the one
+- crates/cena-session/src/settings_store.rs (209 lines): A character's settings: **one file, a section per system**.
+- crates/cena-session/src/store.rs (153 lines): What the three per-character stores share: a filename, and an atomic write.
+- crates/cena-session/src/supervisor.rs (600 lines): [`SupervisedSession`]: a session that outlives its connections.
+- crates/cena-session/src/supervisor/attach.rs (104 lines): What a supervised session can be given before it runs: its log, its
+- crates/cena-session/src/supervisor/connect.rs (132 lines): [`Connector`]: how a new connection is obtained.
+- crates/cena-session/src/supervisor/construct.rs (75 lines): Building a supervised session: [`SupervisedSession::new`] and
+- crates/cena-session/src/supervisor/core.rs (226 lines): [`SessionCore`]: everything that survives a reconnect.
+- crates/cena-session/src/supervisor/observation.rs (47 lines): Keep the read seam available while a connector or retry timer is waiting
+- crates/cena-session/src/supervisor/retry.rs (325 lines): The backoff ladder, and the two things that stop it.
+- crates/cena-session/src/travel_store.rs (465 lines): Reading and writing the travel file (`plan/24` §5).
+
+## cena-behavior: crates/cena-behavior/src (first doc line)
+- crates/cena-behavior/src/error.rs (118 lines): Why a behavior stopped, shared by every behavior in this crate.
+- crates/cena-behavior/src/hunt.rs (61 lines): Hunt: the profile a hunt runs on, and how one gets in (`plan/30` §5 and
+- crates/cena-behavior/src/hunt/chain.rs (255 lines): Where profiles live, and how a key resolves (`plan/12` §6a.2, binding:
+- crates/cena-behavior/src/hunt/command.rs (156 lines): What a player types about hunt profiles, while playing.
+- crates/cena-behavior/src/hunt/desk.rs (332 lines): The hunt desk: `;hunt <name>` and `;hunt stop` for one session, while it
+- crates/cena-behavior/src/hunt/drive.rs (580 lines): The thin `async` layer round [`Hunt`] (`plan/30` §3): what has the socket
+- crates/cena-behavior/src/hunt/engine.rs (644 lines): The hunt as a pure state machine (`plan/30` §3): the profile and the
+- crates/cena-behavior/src/hunt/guard.rs (274 lines): The guard vocabulary: the preconditions a routine step may carry
+- crates/cena-behavior/src/hunt/import.rs (694 lines): A bigshot profile in, a Hydra profile out (`plan/30` §4 and §5).
+- crates/cena-behavior/src/hunt/profile.rs (471 lines): The hunt profile: one TOML file, the policy for one kind of hunt
+- crates/cena-behavior/src/hunt/rest.rs (227 lines): The rest arm of the hunt machine: the reasons to go, the walk there,
+- crates/cena-behavior/src/hunt/said.rs (130 lines): What the hunt machine says and where it stands: the vocabulary of
+- crates/cena-behavior/src/hunt/yaml.rs (260 lines): The flat YAML bigshot writes, read without a YAML library.
+- crates/cena-behavior/src/lib.rs (40 lines): cena-behavior
+- crates/cena-behavior/src/loot.rs (32 lines): Loot: what a hunt does with a corpse and a floor full of treasure
+- crates/cena-behavior/src/loot/import.rs (206 lines): eloot's `eloot.yaml` in, a [`LootProfile`] out, with what it could not
+- crates/cena-behavior/src/loot/outcome.rs (159 lines): What the game said back to a search, a `loot` or a drag, as a closed set.
+- crates/cena-behavior/src/loot/plan.rs (545 lines): The loot planner: the next command, given the state and what was
+- crates/cena-behavior/src/loot/plan/boxed.rs (138 lines): A box in hand, emptied: eloot's `box_loot` (`eloot.lic:5071-5127`).
+- crates/cena-behavior/src/loot/profile.rs (174 lines): The loot profile: one TOML file per character, as eloot's `eloot.yaml`
+- crates/cena-behavior/src/loot/skin.rs (362 lines): Skinning: eloot's `Loot.skin` and `skin_obj_types` (`eloot.lic:5757-5895`),
+- crates/cena-behavior/src/loot/worth.rs (205 lines): Is this thing on the floor worth taking?
+- crates/cena-behavior/src/stance.rs (119 lines): Setting the combat stance: the sending half of Lich's `stance.rb`
+- crates/cena-behavior/src/sync.rs (241 lines): Teaching the client a character it has never seen.
+- crates/cena-behavior/src/town.rs (29 lines): Town: selling during the rest (`plan/31` Stage 4).
+- crates/cena-behavior/src/town/goods.rs (391 lines): What the selling bags hold, and what each shop takes of it.
+- crates/cena-behavior/src/town/plan.rs (711 lines): The errand planner: the next step of a selling round, given the state.
+- crates/cena-behavior/src/town/pool.rs (353 lines): The locksmith pool (`plan/31` Stage 4c): eloot's `locksmith_pool`,
+- crates/cena-behavior/src/town/reply.rs (137 lines): What a shopkeeper or the game says to a selling step that is not a loot
+- crates/cena-behavior/src/town/settings.rs (195 lines): The selling settings, typed out of the loot profile's `[town]` table.
+- crates/cena-behavior/src/town/step.rs (77 lines): The selling round's commands: what the planner asks the driver to send.
+- crates/cena-behavior/src/travel.rs (669 lines): Travel: the walk, as a **pure state machine** (`plan/24`, `plan/21` §4.0).
+- crates/cena-behavior/src/travel/command.rs (189 lines): What a player types to travel, while playing.
+- crates/cena-behavior/src/travel/desk.rs (442 lines): The travel desk: what does a [`Command`] for one session, **while it is
+- crates/cena-behavior/src/travel/drive.rs (737 lines): The thin `async` layer round [`Trip`] (`plan/24` stage 4c).
+- crates/cena-behavior/src/travel/drive/deeds.rs (251 lines): The deeds: what the trip hands the driver because it cannot spell them
+- crates/cena-behavior/src/travel/drive/preflight.rs (289 lines): Asking what a trip must know before it is priced, and fetching the silver
+- crates/cena-behavior/src/travel/drive/solve.rs (196 lines): The one loop that runs every named routine (`super::super::routines`):
+- crates/cena-behavior/src/travel/facts.rs (388 lines): Filling [`Walker`] from the model (`plan/24` stage 4).
+- crates/cena-behavior/src/travel/hands.rs (220 lines): What the driver sends for the deeds the trip cannot spell (`plan/24`
+- crates/cena-behavior/src/travel/heard.rs (66 lines): What a walk listens to. A session hands out its events two ways: plain,
+- crates/cena-behavior/src/travel/itinerary.rs (489 lines): The route, shown and not walked: the port of `route2.lic`.
+- crates/cena-behavior/src/travel/kept.rs (114 lines): What the driver reads for the deeds that keep something to give back: the
+- crates/cena-behavior/src/travel/knows.rs (134 lines): Which spells the walker knows, and which it can pay for now: Lich's
+- crates/cena-behavior/src/travel/mover.rs (185 lines): The two ways a crossing sends (`super::steps` has the why): a **move**,
+- crates/cena-behavior/src/travel/preflight.rs (108 lines): What must be known before a trip is priced (`plan/24` stage 5,
+- crates/cena-behavior/src/travel/recovery.rs (446 lines): What to do when a move does not simply work (`plan/24` stage 2).
+- crates/cena-behavior/src/travel/replies.rs (64 lines): What a crossing reads out of the game's answer: a word, a number.
+- crates/cena-behavior/src/travel/routines.rs (299 lines): The named routines (`cena_map::Routine`, `plan/24` stage 6): crossings
+- crates/cena-behavior/src/travel/routines/altar_levers.rs (247 lines): `Puzzle::AltarLevers`: the altar of room 18893.
+- crates/cena-behavior/src/travel/routines/bridge_wheel.rs (274 lines): `Puzzle::BridgeWheel`: the drawbridge and its wheel (room 14726).
+- crates/cena-behavior/src/travel/routines/bronze_gate.rs (253 lines): `Routine::BronzeGate`: the Graveyard's bronze gate, rooms 4140 and 4141.
+- crates/cena-behavior/src/travel/routines/casting.rs (253 lines): Casting a spell at a thing **and staying put**, which six routines do.
+- crates/cena-behavior/src/travel/routines/colour_barrier.rs (223 lines): `Routine::ColourBarrier`: the barrier of room 30850.
+- crates/cena-behavior/src/travel/routines/confluence.rs (421 lines): `Routine::Confluence`: the Elemental Confluence (3,234 exits).
+- crates/cena-behavior/src/travel/routines/crown_door.rs (375 lines): `Puzzle::CrownDoor`: the stone crown and its door (room 2677).
+- crates/cena-behavior/src/travel/routines/cutter.rs (516 lines): `Errand::CutterFromMarshtown` and `Errand::CutterFromRiversRest`: the
+- crates/cena-behavior/src/travel/routines/cutter_tests.rs (353 lines): Table tests for [`super::Cutter`], beside it so the solver's file stays
+- crates/cena-behavior/src/travel/routines/day_pass.rs (612 lines): `Routine::DayPass`: a Chronomage day pass between two towns (6 exits).
+- crates/cena-behavior/src/travel/routines/day_pass/tests.rs (460 lines): Table tests for the day pass, and for the pre-flight readers.
+- crates/cena-behavior/src/travel/routines/eye_spy_runes.rs (266 lines): `Puzzle::EyeSpyRunes`: the two rune panels an eye reads, room 18748.
+- crates/cena-behavior/src/travel/routines/familiar_doors.rs (531 lines): `Puzzle::FamiliarDoors`: the stone doors a familiar opens, room 6486.
+- crates/cena-behavior/src/travel/routines/flight_of_steps.rs (189 lines): `Routine::FlightOfSteps`: a round tower room whose four flights of steps
+- crates/cena-behavior/src/travel/routines/giant.rs (458 lines): `Errand::GiantToRiversRest` and `Errand::GiantFromRiversRest`: the giant
+- crates/cena-behavior/src/travel/routines/guild_password.rs (83 lines): `Routine::GuildPassword`: a rogue guild's door (9 exits).
+- crates/cena-behavior/src/travel/routines/labyrinth_entry.rs (181 lines): `Puzzle::LabyrinthEntry`: the mural's leaves (room 9767).
+- crates/cena-behavior/src/travel/routines/minotaur_maze.rs (362 lines): `Routine::MinotaurMaze`: the minotaur maze beneath the Landing.
+- crates/cena-behavior/src/travel/routines/mirror.rs (146 lines): `Routine::Mirror`: the oak-framed mirror of room 16165.
+- crates/cena-behavior/src/travel/routines/mural_of_deities.rs (389 lines): `Puzzle::MuralOfDeities`: the mural of room 6897.
+- crates/cena-behavior/src/travel/routines/patrol.rs (219 lines): `Routine::Patrol`: the Rift's ways out (570 exits).
+- crates/cena-behavior/src/travel/routines/ring_wedges.rs (180 lines): `Routine::RingWedges`: the stone ring of room 8373.
+- crates/cena-behavior/src/travel/routines/rolaren_gate.rs (333 lines): `Puzzle::RolarenGate`: the rolaren gate, rooms 3239 and 3264.
+- crates/cena-behavior/src/travel/routines/rune_staircase.rs (314 lines): `Puzzle::RuneStaircase`: the dwarven runes of room 18178.
+- crates/cena-behavior/src/travel/routines/search_rooms.rs (176 lines): `Routine::SearchRooms`: a portal or a doorframe that wanders.
+- crates/cena-behavior/src/travel/routines/seeking.rs (297 lines): `Routine::Seeking`: the Order of Voln's symbol of seeking.
+- crates/cena-behavior/src/travel/routines/shopping.rs (536 lines): What the errands share (`giant`, `sword_gorge`): finding a thing the
+- crates/cena-behavior/src/travel/routines/signposts.rs (124 lines): `Routine::Signposts`: the underwater route off River's Rest (75 exits).
+- crates/cena-behavior/src/travel/routines/sword_gorge.rs (466 lines): `Errand::SwordInTheGorge`: the gorge's rim, reached through a pool by
+- crates/cena-behavior/src/travel/routines/three_pillars.rs (184 lines): `Puzzle::ThreePillars`: the sorcerers' three pillars, room 10781.
+- crates/cena-behavior/src/travel/routines/trinket.rs (361 lines): `Routine::Trinket`: the Mist Harbor trinket (31 exits).
+- crates/cena-behavior/src/travel/routines/vaalorn_door.rs (129 lines): `Puzzle::VaalornDoor`: the door that wants a gem (room 14060).
+- crates/cena-behavior/src/travel/routines/workshop_pillars.rs (169 lines): `Puzzle::WorkshopPillars`: the wizards' workshop, room 15571.
+- crates/cena-behavior/src/travel/standing.rs (115 lines): Standing up before a move (Vellum's `tick_prepare` and `AwaitStand`,
+- crates/cena-behavior/src/travel/steps.rs (716 lines): Crossing one exit: a flat list of guarded steps, run one at a time
+- crates/cena-behavior/src/watchdog.rs (97 lines): A wedged behavior is detectable (`plan/12` §5.5), and taken off the
+
+## cena: crates/cena/src (first doc line)
+- crates/cena/src/architecture.rs (387 lines): How Hydra is put together: the crate graph, the flow of one line of game
+- crates/cena/src/ask.rs (283 lines): Asking the human at the keyboard for what a login needs, and refusing to
+- crates/cena/src/combat.rs (404 lines): `;combat`, the combat recorder's reports on Hydra's command line: the
+- crates/cena/src/commands.rs (181 lines): Hydra's own command line: every line that starts with the command symbol.
+- crates/cena/src/connector.rs (241 lines): [`LiveConnector`]: the real login, behind the [`Connector`] trait.
+- crates/cena/src/frontend.rs (174 lines): Optional embedded presentation; neither opening nor closing a viewer owns
+- crates/cena/src/glossary.rs (263 lines): The words Hydra's code and documents use: one word per concept, and what
+- crates/cena/src/hunt.rs (384 lines): Hunt, wired to this binary: `;hunt <name>`, `;hunt stop`, `;hunt import`,
+- crates/cena/src/interrupt.rs (56 lines): Ctrl-C, routed through the orderly shutdown from every phase of a run.
+- crates/cena/src/learn.rs (56 lines): The character sync, run once a login is `Ready` (`plan/30` §2).
+- crates/cena/src/loot.rs (495 lines): `;loot`, the ledger's reports on Hydra's command line: `summary`,
+- crates/cena/src/loot/period.rs (234 lines): Report periods in Eastern time, from server seconds, with no time crate.
+- crates/cena/src/main.rs (113 lines): The `cena` binary: Hydra.
+- crates/cena/src/play.rs (540 lines): `--character Nisugi --character Nerten`: several characters in one Hydra
+- crates/cena/src/roster.rs (181 lines): Which account each character is on, and which game.
+- crates/cena/src/secrets.rs (254 lines): Where a login password comes from: the credential ladder (`plan/29` Q2,
+- crates/cena/src/setup.rs (301 lines): What every session is given before it runs: its wire log, its stores, its
+- crates/cena/src/travel.rs (278 lines): Travel, wired to this binary: load the map, build the desk, and register
+- crates/cena/src/watch.rs (114 lines): The terminal's view of one session: Hydra's own lines, each tagged with

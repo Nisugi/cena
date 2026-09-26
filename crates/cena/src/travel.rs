@@ -34,9 +34,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::commands::Commands;
+use crate::commands::{Commands, Took};
 use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command, read_map};
-use cena_session::command::claimant::{self, Claimed};
+use cena_session::command::claimant;
 use cena_session::{AuthorityToken, Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Where the combined map is. No default: a wrong map is worse than none.
@@ -123,7 +123,7 @@ fn open_travel(
                      combined map file and start Hydra again."
                 ),
             ));
-            Some(Claimed::Done)
+            Some(Took::Done)
         }));
         return;
     };
@@ -137,8 +137,10 @@ fn open_travel(
         let command = travel_command(&handler, line)?;
         let (travel, handle) = (Arc::clone(&travel), handler.clone());
         let observer = observer.clone();
-        tokio::spawn(async move { run_fresh(&travel, &handle, &observer, command).await });
-        Some(Claimed::Done)
+        // Over when the walk is: `;multi` waits for it (`crate::commands`).
+        Some(Took::Started(tokio::spawn(async move {
+            run_fresh(&travel, &handle, &observer, command).await;
+        })))
     }));
     let symbol = handle.command_symbol().unwrap_or(claimant::DEFAULT_SYMBOL);
     eprintln!("[travel] ready: {symbol}go2 bank, {symbol}go2 targets, {symbol}route2 bank");

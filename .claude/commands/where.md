@@ -12,7 +12,7 @@ Orientation after a break or a compaction. Facts from the repo, not from memory.
 ## What to do
 
 ```bash
-cd E:/Cena
+cd "$(git rev-parse --show-toplevel)"
 echo "=== commits ==="
 git --no-pager log --oneline -5
 echo "=== uncommitted ==="

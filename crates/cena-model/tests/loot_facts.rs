@@ -388,3 +388,45 @@ fn the_replay_fixtures_searches_are_read() {
     );
     assert_eq!(searches_in("smithy_engage.xml"), []);
 }
+
+// ---- Wordings found by inventory/12 (§1.5, §3) ----
+
+#[test]
+fn the_selling_wordings_the_survey_found() {
+    let silvers = |wire: &str| match one(wire) {
+        Some(LootFact::Sold { silvers, .. }) => Some(silvers),
+        other => panic!("{wire}: {other:?}"),
+    };
+    // The Elven Nations' note, with its surcharge (duskrunner_support.lic:23).
+    assert_eq!(
+        silvers(
+            "The clerk scribbles out a City-States promissory note for 35000 (minus a small 72 silver surcharge) and hands it to you.\n"
+        ),
+        Some(35_000)
+    );
+    let appraised = |wire: &str| match one(wire) {
+        Some(LootFact::Appraised { value, .. }) => value,
+        other => panic!("{wire}: {other:?}"),
+    };
+    // eloot's forms without "silver" (eloot.lic:5910), and the furrier's pay.
+    assert_eq!(
+        appraised("\"I'd give you 1,250 for it if you want to sell,\" says the pawnbroker.\n"),
+        Some(1_250)
+    );
+    assert_eq!(
+        appraised("\"I'll pay you 300 silvers for it,\" says the furrier.\n"),
+        Some(300)
+    );
+    let withdrew = |wire: &str| match one(wire) {
+        Some(LootFact::Withdrew(n)) => Some(n),
+        other => panic!("{wire}: {other:?}"),
+    };
+    assert_eq!(
+        withdrew("The teller carefully records the transaction, and then hands you 500 silvers.\n"),
+        Some(500)
+    );
+    assert_eq!(
+        withdrew("Very well, a withdrawal of 2,000 silvers.\n"),
+        Some(2_000)
+    );
+}

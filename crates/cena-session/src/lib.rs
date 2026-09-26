@@ -55,7 +55,11 @@ pub use cena_model::movement::{self, MoveFeedback};
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
-pub use cena_model::state::{claim, containers, gameobj, group, hands, stream_windows};
+pub use cena_model::state::creatures::boons;
+pub use cena_model::state::{
+    claim, containers, creature, gameobj, group, hands, incident, inspect, societies,
+    stream_windows, worn,
+};
 // The loot ledger's facts, for the town planner that reads them from its own
 // fold of the stream (`plan/31` Stage 4).
 pub use cena_model::{Appraiser, Buyer, LootFact};
@@ -64,11 +68,27 @@ pub use cena_model::{ChunkLine, GameState, Room, RoomItem, UnknownTag};
 // section 1's table of what the model answers a hunter with. Beside the
 // other model vocabulary re-exported for behaviors, on the same terms.
 pub use cena_model::{Able, CreatureInstance, Effect, Injuries, StatusName};
+// The rest of what the hunt's guards ask of a creature (`plan/33`): the part
+// a wound is on and the unarmed position. Its `<crtrStatus>` flags are
+// `creature::status::Classification`, reached through `creature` above.
+pub use cena_model::{BodyPart, PositionTier};
+// Whose a creature is, how it ended with no corpse, a boss's phase (`inventory/12` §2).
+pub use cena_model::{Ally, BossPhase, Ending, SpellMark};
+// What a PSM costs and Lich's `available?` over it, for the hunt (`psm/cost.rs`).
+pub use cena_model::{Gauge, PsmAvailability, PsmCost, Warcry, every_cost, psm_cost, warcry_cost};
+// The bounty's task, for a behavior that narrows its work to it (eloot's
+// `skin_bounty_only`).
 pub use cena_model::{
     PsmCategory, PsmLine, PsmRanks, SkillKind, SkillLine, Society, Vital, spell_named, spells,
 };
+pub use cena_model::{Task, TaskKind};
+// The herbs eherbs knows and where they are sold (`plan/36`), and the
+// wound and scar reader the healing chooses by.
+pub use cena_model::herbs;
+pub use cena_model::state::character::body;
+pub use cena_model::state::kit;
 pub use cena_protocol::InventoryItem;
-pub use cena_protocol::frame::{Link, LinkKind, ProgressBar};
+pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, TextFrame};
 pub use cena_protocol::runs::{Run, Runs};
 pub use character_store::MAX_STALE;
 pub use command::{

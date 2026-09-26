@@ -26,13 +26,20 @@
 //! different. Nothing holds "a behavior" without knowing which one it is.
 //! Hunt (`plan/30` §3) composes its policies as an enum under one holder of
 //! the authority, which is `plan/12` §4.2's shape, not a trait's.
+pub mod batch;
+pub mod cast;
 pub mod error;
+pub(crate) mod gemstone;
+pub mod heal;
 pub mod hunt;
+pub mod keep;
 pub mod loot;
+pub mod spellcaster;
 pub mod stance;
 pub mod sync;
 pub mod town;
 pub mod travel;
+pub mod waggle;
 pub mod watchdog;
 
 pub use error::BehaviorError;

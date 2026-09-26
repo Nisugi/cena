@@ -79,20 +79,112 @@ pub struct Profile {
     /// What Maintain keeps up: a spell number, or a number and its words, as
     /// sent (`signs`).
     pub signs: Vec<String>,
-    /// Creatures never attacked (`invalid_targets`), lowercase.
-    pub ignore: Vec<String>,
+    /// Cast Ethereal Censer (320) between routine steps whenever it is off
+    /// cooldown and affordable: bigshot's `censer` word, which the author
+    /// meant for the whole routine (`plan/33` §2h).
+    pub censer_between_actions: bool,
+    /// Cast a Voln symbol sign (Courage, Protection, Supremacy) only when
+    /// the favor it costs is there (`check_favor`, `bigshot.lic:9264`).
+    pub check_favor: bool,
+    /// Creatures never attacked, and never counted toward fleeing
+    /// (`flee.count`), lowercase. Hydra's own; bigshot has no such setting.
+    /// Its nearest is the `untargetable` list it learns from the game
+    /// refusing `target`, which it uses the same two ways
+    /// (`bigshot.lic:8583`, `:8624-8634`). Not `invalid_targets`, which
+    /// is [`Flee::uncounted`].
+    pub never_attack: Vec<String>,
     /// When to leave the room.
     pub flee: Flee,
     /// How the dead are looted.
     pub loot: Loot,
     /// How the ground is walked between fights.
     pub wander: Wander,
+    /// What the hunt does about the game's incidents (`hunt/react.rs`).
+    pub react: React,
+    /// Where attacks are aimed (`hunt/aim.rs`).
+    pub aim: Aim,
+    /// Wands for a `wand` step (`hunt/wand.rs`).
+    pub wand: Wands,
+    /// Boon traits to leave alone or flee from (`hunt/boons.rs`).
+    pub boons: Boons,
+    /// Lines to put in front of the player (`hunt/monitor.rs`).
+    pub monitor: Monitor,
+    /// Unarmed combat, for an `unarmed` step (bigshot's UAC tab).
+    pub unarmed: Unarmed,
+    /// Multi-Strike, for an `mstrike` step (bigshot's Mstrike tab).
+    pub mstrike: Mstrike,
     /// What to attack, in order of preference, each with its routine.
     pub targets: Vec<Target>,
+    /// What a quick hunt attacks (`quickhunt_targets`, `hunt/quick.rs`);
+    /// empty is every hostile creature.
+    pub quick_targets: Vec<Target>,
+    /// Leave the current target for a better-ranked one that appears
+    /// (`priority`, `bigshot.lic:8703-8720`). Off, the current target is
+    /// fought until it dies or goes.
+    pub priority: bool,
     /// The routines, by name: the steps taken against a target, in order.
     pub routines: BTreeMap<String, Vec<Step>>,
     /// Named lists of steps a routine step may stand for, such as `volley`.
     pub sequences: BTreeMap<String, Vec<Step>>,
+}
+
+/// Unarmed combat (`cmd_unarmed`, `bigshot.lic:5455-5551`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Unarmed {
+    /// Where the attacks are aimed, in order (`aim`); empty aims nowhere.
+    pub aim: Vec<String>,
+    /// The attack at tier 3 positioning, and the one Multi-Strike uses
+    /// (`tier3`, bigshot's default `punch`).
+    pub tier3: String,
+    /// Smite a noncorporeal creature at tier 3 first (`uac_smite`).
+    pub smite: bool,
+    /// Never Multi-Strike from an `unarmed` step (`uac_mstrike`).
+    pub no_mstrike: bool,
+}
+
+impl Default for Unarmed {
+    fn default() -> Self {
+        Self {
+            aim: Vec::new(),
+            tier3: "punch".to_owned(),
+            smite: false,
+            no_mstrike: false,
+        }
+    }
+}
+
+/// Multi-Strike (`cmd_mstrike`, `bigshot.lic:6175-6211`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Mstrike {
+    /// Strike while it cools, given this much stamina (`mstrike_cooldown`).
+    pub cooldown: bool,
+    /// The stamina a strike while cooling needs; none is the maximum
+    /// (`mstrike_stamina_cooldown`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stamina_cooldown: Option<u32>,
+    /// `quickstrike 1` before it (`mstrike_quickstrike`).
+    pub quickstrike: bool,
+    /// The stamina `quickstrike` needs; none is the maximum
+    /// (`mstrike_stamina_quickstrike`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stamina_quickstrike: Option<u32>,
+    /// Unfocused, at no one, when this many creatures are here
+    /// (`mstrike_mob`, bigshot's default 2).
+    pub mob: u32,
+}
+
+impl Default for Mstrike {
+    fn default() -> Self {
+        Self {
+            cooldown: false,
+            stamina_cooldown: None,
+            quickstrike: false,
+            stamina_quickstrike: None,
+            mob: 2,
+        }
+    }
 }
 
 /// Rooms, by the map's numbers (`cena_map::RoomId`).
@@ -104,6 +196,9 @@ pub struct Rooms {
     pub hunting: Option<u32>,
     /// The rooms Wander stays within (`hunting_boundaries`).
     pub boundaries: Vec<u32>,
+    /// Rooms walked through, in order, on the way back to hunt
+    /// (`rallypoint_room_ids`, `bigshot.lic:7253-7262`).
+    pub rally: Vec<u32>,
     /// Where to rest (`resting_room_id`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resting: Option<u32>,
@@ -128,6 +223,10 @@ pub struct Stances {
 /// When to stop hunting and go rest, and when to come back.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bigshot's rest switches, carried as they are"
+)]
 pub struct Rest {
     /// Rest when the mind is at or above this percent (`fried`); 101 never.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -144,6 +243,33 @@ pub struct Rest {
     pub until: Until,
     /// Rest at once when any of these holds (`wounded_eval`, typed).
     pub when: When,
+    /// End the hunt after this many rests: an overnight run's stop.
+    /// Hydra's own; bigshot has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_after: Option<u32>,
+    /// Fried, spend up to this many Long-Term Experience Boosts (`boost
+    /// longterm`) before resting (`lte_boost`, `bigshot.lic:8826-8846`).
+    pub lte_boost: u32,
+    /// Before resting for mana, use a society's mana ability
+    /// (`use_wracking`, `hunt/wrack.rs`).
+    pub wracking: bool,
+    /// The least spirit Sign of Wracking is used at (`wracking_spirit`).
+    pub wracking_spirit: u32,
+    /// Run the waggle profile at the start of each rest (bigshot's
+    /// `resting_scripts: ewaggle`, run as the rest begins, `bigshot.lic:7539`).
+    pub waggle: bool,
+    /// Sent on leaving the hunt for a rest, before any walking: a spell or
+    /// symbol that carries the character toward town (`fog_return`,
+    /// `custom_fog`, `bigshot.lic:7677-7723`). Empty walks the whole way.
+    pub fog: Vec<String>,
+    /// Fog only when resting wounded or encumbered (`fog_optional`).
+    pub fog_optional: bool,
+    /// Fog again when the first lands in room 2635, the rift
+    /// (`fog_rift`, `:7635`).
+    pub fog_rift: bool,
+    /// Rooms walked through, in order, on the way to rest
+    /// (`return_waypoint_ids`, `:7494-7496`).
+    pub waypoints: Vec<u32>,
     /// Sent on arriving at the rest room (`resting_commands`).
     pub commands: Vec<String>,
 }
@@ -172,6 +298,10 @@ pub struct Until {
 /// holding is enough.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each is one of bigshot's rest switches, carried as it is"
+)]
 pub struct When {
     /// I am bleeding.
     pub bleeding: bool,
@@ -182,17 +312,69 @@ pub struct When {
     pub cannot_cast: bool,
     /// A wound stops me using a ranged weapon (`Injuries::able_to_use_ranged`).
     pub cannot_use_ranged: bool,
+    /// Creeping Dread at or above this many stacks (`creeping_dread`,
+    /// `bigshot.lic:8892-8901`: the debuff's `(N)`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub creeping_dread: Option<u32>,
+    /// Crushing Dread at or above this many stacks (`crushing_dread`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crushing_dread: Option<u32>,
+    /// Wall of Thorns Poison is on me (`wot_poison`).
+    pub wot_poison: bool,
+    /// The Confused debuff is on me (`confusion`).
+    pub confused: bool,
+    /// Spirit at or below this percent. Hydra's own: bigshot rests on
+    /// spirit only through `wounded_eval`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spirit_at_most: Option<u32>,
+    /// A wound or scar of this rank or worse on any part (the rank that
+    /// governs it, `Injuries::effective_rank`: rank-1 scars do not count).
+    /// Hydra's own.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wound_rank: Option<u8>,
+    /// A routine spell I cannot afford (`cmd_spell`, `bigshot.lic:5875`:
+    /// bigshot rests on it unless `oom` is negative, and `oom` is 0 when
+    /// blank). Not for 9605, 506, 902 or 411, nor a handler that checks
+    /// its own spell (`kweed`, `leech`, ...), as bigshot's do not.
+    pub unaffordable: bool,
 }
 
 /// When to leave the room.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bigshot's four hazard switches, carried as they are"
+)]
 pub struct Flee {
-    /// Leave when this many creatures are here (`flee_count`).
+    /// Leave when more than this many hostile creatures are here
+    /// (`flee_count`). Every creature the hunt could fight counts, whether or
+    /// not the target list names it, as bigshot counts its hostile roster
+    /// (`bigshot.lic:8579-8591`), less [`Flee::uncounted`] and
+    /// [`Profile::never_attack`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub count: Option<u32>,
+    /// Creatures that do not count toward `count` (`invalid_targets`,
+    /// bigshot's *"but don't count these"*, `bigshot.lic:3484`), lowercase.
+    /// They are still fought when the target list names them.
+    pub uncounted: Vec<String>,
     /// Leave when any of these is here (`always_flee_from`), lowercase.
     pub from: Vec<String>,
+    /// Leave a room with a cloud or a breath in it, or an intense
+    /// shimmering circle (`flee_clouds`, `bigshot.lic:8556`).
+    pub clouds: bool,
+    /// ... a vine (`flee_vines`).
+    pub vines: bool,
+    /// ... a web (`flee_webs`).
+    pub webs: bool,
+    /// ... a black void (`flee_voids`).
+    pub voids: bool,
+    /// On entering a room, leave if more than one creature could be fought
+    /// (`lone_targets_only`, `bigshot.lic:8590`).
+    pub lone_only: bool,
+    /// Leave when the game says any of these, ignoring case
+    /// (`flee_message`, a regex in bigshot; its `|` alternatives here).
+    pub messages: Vec<String>,
 }
 
 /// How the dead are looted.
@@ -218,12 +400,123 @@ pub struct Loot {
 pub struct Wander {
     /// Seconds to wait in each room before moving on (`wander_wait`).
     pub wait: f64,
+    /// A stranger's floating disk does not make a room theirs
+    /// (`ignore_disks`, `bigshot.lic:7097`). Off, a room entered with one
+    /// in it is not fought in, as bigshot does.
+    pub ignore_disks: bool,
 }
 
 impl Default for Wander {
     fn default() -> Self {
-        Self { wait: 0.3 }
+        Self {
+            wait: 0.3,
+            ignore_disks: false,
+        }
     }
+}
+
+/// Boon traits, by bigshot's names (`blink`, `boosted_hp`, ...,
+/// `cena_session::boons::TRAITS`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Boons {
+    /// A creature with any of these is neither fought nor counted
+    /// (`boons_ignore`).
+    pub ignore: Vec<String>,
+    /// A creature with any of these sends the hunt out of the room
+    /// (`boons_flee`).
+    pub flee: Vec<String>,
+}
+
+/// Wands, and where they are kept (`hunt/wand.rs`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Wands {
+    /// The wands to use, in order, by name (`wand`).
+    pub names: Vec<String>,
+    /// The container fresh wands are got from (`fresh_wand_container`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fresh: Option<String>,
+    /// The container a spent wand is put in; none drops it
+    /// (`dead_wand_container`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dead: Option<String>,
+    /// A spell step the character cannot afford waves a wand instead
+    /// (`wand_if_oom`).
+    pub if_oom: bool,
+}
+
+/// Body parts to aim at, in order, each lowercase (`hunt/aim.rs`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Aim {
+    /// For an `ambush` step (`ambush`); empty is bigshot's default, head,
+    /// right leg, left leg, chest.
+    pub ambush: Vec<String>,
+    /// For a `fire` step (`archery_aim`); empty sends no `aim`.
+    pub archery: Vec<String>,
+    /// Where an item the game would not fire goes when the stow container is
+    /// closed (`ammo_container`, `bigshot.lic:6391-6398`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ammo_container: Option<String>,
+}
+
+/// The hunt's answers to incidents.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bigshot's switches, carried as they are"
+)]
+pub struct React {
+    /// Get a weapon back that was knocked, pulled or webbed away.
+    pub recover: bool,
+    /// Take a weapon reaction when the game offers one
+    /// (`weapon_reaction`, on by default in bigshot, `bigshot.lic:1380`).
+    pub weapon_reaction: bool,
+    /// Pull a fallen player to their feet while something hostile is
+    /// here; a group member always (`pull`, on by default in bigshot,
+    /// `bigshot.lic:3902-3919`).
+    pub pull: bool,
+    /// End the hunt when a dead player is in the room (`deader`,
+    /// `:3921-3927`; bigshot pauses).
+    pub deader: bool,
+    /// Bless a weapon whose blessing is shrugged off or gone, with Bless
+    /// (304) or the Voln symbol (`bless`, `bigshot.lic:5553-5581`).
+    pub bless: bool,
+    /// On Shattered, quit the game when dead or below 40 percent health
+    /// (`dead_man_switch`, `bigshot.lic:6760-6768`; `hunt/death.rs`).
+    pub dead_man_switch: bool,
+    /// Dead: depart, recover, and hunt again (`depart_switch`,
+    /// `bigshot.lic:6770-6784`; `hunt/death.rs`).
+    pub depart_switch: bool,
+}
+
+impl Default for React {
+    fn default() -> Self {
+        Self {
+            recover: true,
+            weapon_reaction: true,
+            pull: true,
+            deader: false,
+            bless: false,
+            dead_man_switch: false,
+            depart_switch: false,
+        }
+    }
+}
+
+/// The interaction monitor (`monitor_interaction`, `hunt/monitor.rs`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Monitor {
+    /// Watch for lines that ask for the player (`monitor_interaction`).
+    pub interaction: bool,
+    /// Patterns that raise an alert; empty is bigshot's default list
+    /// (`monitor_strings`).
+    pub strings: Vec<String>,
+    /// Patterns that exempt a line from the alert (`monitor_safe_strings`).
+    pub safe: Vec<String>,
 }
 
 /// One entry in the target list. Matched against a creature's noun or

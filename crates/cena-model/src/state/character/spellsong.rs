@@ -85,8 +85,7 @@ impl<'a> Spellsong<'a> {
     pub fn duration(&self, logic_bonus: i16, influence_bonus: i16) -> u32 {
         let telepathy = self
             .skills
-            .get(SkillKind::MentalLoreTelepathy)
-            .and_then(|s| s.ranks)
+            .ranks(SkillKind::MentalLoreTelepathy)
             .unwrap_or(0);
         let base = i32::try_from(base_duration(self.level)).unwrap_or(i32::MAX);
         let total = base
@@ -98,10 +97,7 @@ impl<'a> Spellsong<'a> {
 
     /// Ranks in Elemental Lore - Air, 0 when the table has not been read.
     fn air(&self) -> u16 {
-        self.skills
-            .get(SkillKind::ElementalLoreAir)
-            .and_then(|s| s.ranks)
-            .unwrap_or(0)
+        self.skills.ranks(SkillKind::ElementalLoreAir).unwrap_or(0)
     }
 
     /// The bonus Air ranks confer.
@@ -166,8 +162,7 @@ impl<'a> Spellsong<'a> {
     pub fn depression_pushdown(&self) -> u16 {
         20 + self
             .skills
-            .get(SkillKind::MentalLoreTelepathy)
-            .and_then(|s| s.ranks)
+            .ranks(SkillKind::MentalLoreTelepathy)
             .unwrap_or(0)
     }
 
@@ -177,8 +172,7 @@ impl<'a> Spellsong<'a> {
         const THRESHOLDS: [u16; 5] = [10, 25, 45, 70, 100];
         let telepathy = self
             .skills
-            .get(SkillKind::MentalLoreTelepathy)
-            .and_then(|s| s.ranks)
+            .ranks(SkillKind::MentalLoreTelepathy)
             .unwrap_or(0);
         -2 - i16::try_from(THRESHOLDS.iter().filter(|&&t| telepathy >= t).count()).unwrap_or(0)
     }
