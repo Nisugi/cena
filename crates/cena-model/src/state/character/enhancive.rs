@@ -556,3 +556,14 @@ impl EnhanciveTotals {
         (!totals.is_empty()).then_some(totals)
     }
 }
+
+impl super::Character {
+    /// Fold a chunk's `inventory enhancive totals` report, and mark the group
+    /// taught: the whole set, as the report states the whole set.
+    pub(super) fn consume_enhancives(&mut self, lines: &[String]) {
+        if let Some(totals) = EnhanciveTotals::read(lines.iter().map(String::as_str)) {
+            self.enhancives = totals;
+            self.taught.insert(super::snapshot::Group::Enhancives);
+        }
+    }
+}

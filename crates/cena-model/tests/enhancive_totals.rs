@@ -338,3 +338,35 @@ fn an_unknown_statistic_is_refused() {
         None
     );
 }
+
+/// The report, folded by the model where the game sends it: nothing called
+/// `EnhanciveTotals::read` outside this file before 2026-09-26, so a live
+/// session never held its enhancives.
+#[test]
+fn the_report_fills_the_character_and_marks_it_taught() {
+    use cena_model::state::character::snapshot::Group;
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../cena-protocol/tests/fixtures/enhancive_totals.xml");
+    let bytes = std::fs::read(path).unwrap_or_default();
+    let mut state = cena_model::GameState::default();
+    let mut parser = Parser::new();
+    for frame in parser.push_bytes(&bytes) {
+        state.apply(&frame);
+    }
+    let held = &state.character.enhancives;
+    assert_eq!(
+        held.skill_bonus(SkillKind::TwoWeaponCombat)
+            .map(|b| b.value),
+        Some(10)
+    );
+    assert_eq!(held.spells(), &[215, 506, 515, 1109]);
+    assert!(state.character.take_taught().contains(&Group::Enhancives));
+
+    // Another chunk is no report: what is held stays.
+    for frame in
+        parser.push_bytes(b"You glance around.\n<prompt time=\"1789873290\">&gt;</prompt>\n")
+    {
+        state.apply(&frame);
+    }
+    assert_eq!(state.character.enhancives.spells(), &[215, 506, 515, 1109]);
+}
