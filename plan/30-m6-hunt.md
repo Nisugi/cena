@@ -578,7 +578,12 @@ Demonstrated live on a short hunt.
 >   And bounty mode, `;hunt <name> bounty` (bigshot's `;bigshot bounty`, `hunt/bounty.rs`,
 >   `tests/hunt_bounty.rs`): hunt until the guild's task is done, failed or a new one is
 >   ready, rest, and end at the rest; not while bandits are here on a bandit bounty.
->   bigshot's skin and gem counts, which look in every container, are not built.
+>   The gem and skin counts followed on 2026-09-26, from the containers the model keeps
+>   (`state.inventory`, Lich's `GameObj.containers`): gems held, loose skins, and each skin
+>   bundle measured once, the two skin counts apart as bigshot keeps them. So did the last
+>   three gaps: `throw` empties the hands and takes them back whatever it meets, an assault
+>   the attack type refuses swaps once and goes again, and Fury at tier 3 carries the tier 3
+>   attack; the model now folds the enhancive totals report (`0bdced7`).
 >   `hunting_scripts` and `resting_scripts` are named script by script: Hydra runs no Lich
 >   script, and says where a script's work is built in (heal, loot, `;keep`, `;waggle`); a
 >   resting `ewaggle` becomes `rest.waggle`, the waggle profile run as each rest begins

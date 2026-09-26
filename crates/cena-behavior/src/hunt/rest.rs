@@ -26,7 +26,9 @@ impl Hunt {
             return None;
         }
         match self.phase {
-            Phase::Hunting => self.start_rest(state, here),
+            Phase::Hunting => self
+                .bounty_measure(state)
+                .or_else(|| self.start_rest(state, here)),
             Phase::ToRest(why) => {
                 let resting = RoomId(self.profile.rooms.resting?);
                 if let Some(said) = self.fog_step(why, here, resting) {

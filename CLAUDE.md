@@ -325,9 +325,9 @@ held and answered as its handler does -- including `mstrike`, `unarmed`, `force`
 before every PSM, its stances, quick and bounty modes, the monitor, the death switches, and
 a hunt that survives a reconnect. The model reads what that needed and did not before: PSM
 ranks and costs, skills, the worn and reserve lists (`a392b77`, `cf32e5d`).
-**Not built, each said where it lives:** bigshot's skin and gem counts for bounty mode,
-`throw`'s emptying of the hands, the Barrage `swap`; enhancive totals are still not read
-into the model. **Groups are `plan/39`, awaiting the author's answers.** Then the live run.
+The gaps left after that were closed on 2026-09-26: bounty mode's gem and skin counts,
+`throw`'s hands, Barrage's `swap`, Fury at tier 3, and the enhancive totals read into the
+model. **Groups are `plan/39`, awaiting the author's answers.** Then the live run.
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.
