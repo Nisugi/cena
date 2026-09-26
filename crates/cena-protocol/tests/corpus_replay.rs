@@ -393,6 +393,72 @@ fn the_prompt_barrier_drains_the_stream_stack_on_real_traffic() {
 }
 
 #[test]
+#[ignore = "Tier 2: needs CENA_CORPUS; run with --ignored"]
+fn no_line_is_left_open_at_a_prompt_on_real_traffic() {
+    // `lines_at_the_prompt.rs` asserts this over the committed fixtures: the
+    // model's line ends only at `ends_line`, Despana's also at a prompt and
+    // at an embedded newline, and M8 publishes the model's line to every
+    // viewer (`plan/45` §4a). This is the same check over real traffic, where
+    // a push interrupting a line -- the case that would break it -- is not
+    // rare (the barrier test above records two unpopped pushes).
+    let Some(root) = corpus_root() else {
+        skipped();
+        return;
+    };
+    let files = xml_files(&root);
+    let chosen = stratified(&files, file_budget().max(1));
+    let (mut prompts, mut open, mut newlines) = (0usize, Vec::new(), Vec::new());
+    for path in chosen {
+        let Ok(bytes) = std::fs::read(path) else {
+            continue;
+        };
+        let mut parser = Parser::new();
+        let mut frames = parser.push_bytes(&bytes);
+        frames.extend(parser.push_bytes(b"\n"));
+        let mut lines = std::collections::BTreeMap::<String, String>::new();
+        for frame in &frames {
+            match frame {
+                Frame::Text(text) => {
+                    if text.content.contains('\n') {
+                        newlines.push(format!("{}: {:?}", path.display(), text.content));
+                    }
+                    lines
+                        .entry(text.stream.clone())
+                        .or_default()
+                        .push_str(&text.content);
+                    if text.ends_line {
+                        lines.remove(&text.stream);
+                    }
+                }
+                Frame::Prompt { .. } => {
+                    prompts += 1;
+                    for (stream, line) in std::mem::take(&mut lines) {
+                        open.push(format!("{}: {stream:?}: {line:?}", path.display()));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    println!(
+        "lines at the prompt: {prompts} prompts, {} lines open at one, {} newlines",
+        open.len(),
+        newlines.len()
+    );
+    assert!(
+        prompts > 0,
+        "no prompt was seen, so this test proved nothing"
+    );
+    assert!(
+        open.is_empty() && newlines.is_empty(),
+        "the model and Despana would draw different lines here. Open at a \
+         prompt, first few: {:#?}\nNewlines, first few: {:#?}",
+        open.iter().take(10).collect::<Vec<_>>(),
+        newlines.iter().take(10).collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn the_gate_itself_is_wired_correctly() {
     // Proves the SKIP path is a real branch rather than a test that always
     // passes: the two states are distinguishable and this says which one ran.
