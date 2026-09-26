@@ -770,3 +770,62 @@ fn an_assault_the_attack_type_refuses_swaps_once_and_goes_again() {
         "refused again: not swapped back"
     );
 }
+
+/// `kobold(1_000)` holding a steel sword (#5) and a kite shield (#6).
+fn armed() -> GameState {
+    let mut state = kobold(1_000);
+    let held = |id: &str, noun: &str, name: &str| {
+        Some(Link {
+            kind: LinkKind::Exist {
+                id: id.to_owned(),
+                noun: noun.to_owned(),
+            },
+            text: name.to_owned(),
+            coord: None,
+        })
+    };
+    state.apply(&Frame::RightHand {
+        item: "steel sword".to_owned(),
+        link: held("5", "sword", "steel sword"),
+    });
+    state.apply(&Frame::LeftHand {
+        item: "kite shield".to_owned(),
+        link: held("6", "shield", "kite shield"),
+    });
+    state
+}
+
+#[test]
+fn throw_empties_the_hands_first_and_takes_them_back_after() {
+    let state = armed();
+    let mut h = hunt(&["throw", "kick"]).unwrap();
+    let lines = ticks(&mut h, &state, 3);
+    assert_eq!(lines[2], "throw #42", "{lines:?}");
+    h.replied(["You attempt to throw a kobold!"], Some(1_000));
+    let back = ticks(&mut h, &state, 3);
+    assert_eq!(
+        (lines[..2].to_vec(), back),
+        (
+            vec!["store right".to_owned(), "store left".to_owned()],
+            vec!["get #6".to_owned(), "get #5".to_owned(), "kick".to_owned()]
+        ),
+        "stored right then left, taken back left then right"
+    );
+}
+
+#[test]
+fn a_throw_refused_for_a_creature_gone_still_takes_the_hands_back() {
+    let state = armed();
+    let mut h = hunt(&["throw"]).unwrap();
+    assert_eq!(ticks(&mut h, &state, 3)[2], "throw #42");
+    // The gate refused it: the creature left. The driver says so, then
+    // hands on whatever the game answered (nothing).
+    h.target_gone();
+    h.replied([], Some(1_000));
+    let mut gone = fighting(1_001, "kobold", &[]);
+    gone.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs { runs: Vec::new() },
+    });
+    assert_eq!(ticks(&mut h, &gone, 2), ["get #6", "get #5"]);
+}

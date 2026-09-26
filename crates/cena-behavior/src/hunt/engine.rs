@@ -375,7 +375,7 @@ impl Hunt {
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
-        if let Some(said) = self.nudging() {
+        if let Some(said) = self.errand_line() {
             return said;
         }
         if let Some(said) = self.errand(state, here) {

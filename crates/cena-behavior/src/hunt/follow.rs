@@ -16,6 +16,7 @@
 //! | `unravel` | `stop 1013` once the song resonates or gains mana; `stop 1013` and again when already singing or the tendril wends on, five tries; `release` when there is no target | `cmd_unravel`, `:4915-4957` |
 //! | `sacrifice` | `sacrifice #id` when `appraise #id` reads enticingly frail | `cmd_sacrifice`, `:6611-6622` |
 //! | `dhurl` | `recover hurl`, again while the weapon is around here somewhere, ten tries | `cmd_dhurl`, `cmd_recover`, `:6280-6354` |
+//! | `throw` | the hands it emptied taken back, whatever the throw met | `cmd_throw`, `:5680-5689` |
 //! | `briar` | `raise #id` when `measure #id` reads 100 percent, then the next weapon | `cmd_briar`, `:5650-5673` |
 //! | `wandolier` | `rub my <fresh>` when it has no wand to give; the rest for an injury, `reserve list` when the wand is not found | `cmd_wandolier`, `:5980-6021` |
 //!
@@ -154,6 +155,8 @@ pub(super) enum Answer {
     Recovering { tries: u8 },
     /// `cman dislodge #id <part>`: that part is free once it works.
     Dislodged { part: String },
+    /// `throw #id`: the hands it emptied, taken back.
+    Thrown { back: VecDeque<String> },
     /// `get <wand> from my <fresh>`: rubbed when it has none.
     WandGot { fresh: String },
     /// `wave #id` from the wandolier.
@@ -367,6 +370,8 @@ impl Hunt {
                     self.follow.answer = Some(Answer::Measured { id: next, rest });
                 }
             }
+            // Whatever the throw met: the hands are filled again.
+            Answer::Thrown { back } => self.repeats.errand.extend(back),
             Answer::WandGot { fresh } => {
                 if said("Get what?") {
                     self.followups.push_back(format!("rub my {fresh}"));

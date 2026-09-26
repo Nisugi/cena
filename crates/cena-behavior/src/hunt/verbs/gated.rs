@@ -2,9 +2,7 @@
 //! and those that hold or read the answer ([`super::super::follow`]), each
 //! as bigshot's does, cited per function.
 //!
-//! Left out, and said here: `throw` does not empty the hands and fill them
-//! again after (`empty_hands`/`fill_hands` are Lich's stash settings);
-//! `tether recast` does not follow the tether to the next creature; and a
+//! Left out, and said here: `tether recast` does not follow the tether to the next creature; and a
 //! `store` naming something other than a hand goes as written, where bigshot
 //! sends `store both` (`cmd_store`'s `nil` hand, `:4570-4584`), since
 //! `store weapon` is a game command a profile means.
@@ -21,6 +19,7 @@ use super::tables::SHIELD_MOVES;
 use super::{Line, cooling, up_in};
 use crate::cast::{self, NotReady};
 use crate::stance::{self, Want};
+use crate::travel::{store_commands, take_back};
 
 /// The curses `curse` takes (`bigshot.lic:4144`); another is sent as written.
 const CURSES: &[&str] = &[
@@ -265,16 +264,29 @@ pub(super) fn smite(target: i64, state: &GameState) -> Line {
     one(format!("smite #{target}"))
 }
 
-/// `throw` (`cmd_throw`, `:5680-5689`): not at a creature lying down.
+/// `throw` (`cmd_throw`, `:5680-5689`): not at a creature lying down; the
+/// hands emptied first and filled again after, as Lich's `empty_hands` and
+/// `fill_hands` do, with travel's own commands for it (`travel/hands.rs`).
 pub(super) fn throw(target: i64, state: &GameState) -> Line {
     let down = state
         .creatures()
         .get(target)
         .is_some_and(|creature| creature.has_status(StatusName::Prone, state.game_time_now()));
     if down {
-        Line::Skip
+        return Line::Skip;
+    }
+    let stored = store_commands(state);
+    let back: VecDeque<String> = stored
+        .iter()
+        .rev()
+        .map(|(item, _)| take_back(state, item))
+        .collect();
+    let mut lines: VecDeque<String> = stored.into_iter().map(|(_, command)| command).collect();
+    lines.push_back(format!("throw #{target}"));
+    if back.is_empty() {
+        Line::Send(lines)
     } else {
-        one(format!("throw #{target}"))
+        Line::Then(lines, Next::Answer(Answer::Thrown { back }))
     }
 }
 
@@ -674,7 +686,7 @@ impl Hunt {
             return Line::Skip;
         }
         let first = lines.pop_front().unwrap_or_default();
-        self.repeats.nudging = lines;
+        self.repeats.errand = lines;
         one(first)
     }
 }

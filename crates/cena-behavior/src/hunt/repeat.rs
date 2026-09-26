@@ -57,9 +57,10 @@ pub(super) struct Repeats {
     pub(super) resonance: Option<u16>,
     /// `hide N`: the tries left after the first (`cmd_hide`, `:6126-6137`).
     hiding: Option<u32>,
-    /// `nudgeweapons`: the lines still to go, which leave the room and come
-    /// back, so they go before anything that notes a room change.
-    pub(super) nudging: VecDeque<String>,
+    /// Lines an errand still owes, whatever the target does: `nudgeweapons`,
+    /// which leaves the room and comes back, so they go before anything that
+    /// notes a room change; and the hands `throw` emptied, taken back.
+    pub(super) errand: VecDeque<String>,
 }
 
 #[derive(Debug)]
@@ -129,11 +130,11 @@ impl Hunt {
         self.forcing(state, now)
     }
 
-    /// The next `nudgeweapons` line, before anything else in the tick: the
-    /// errand steps out of the room and back, and the room it leaves is the
-    /// one it returns to.
-    pub(super) fn nudging(&mut self) -> Option<Said> {
-        let line = self.repeats.nudging.pop_front()?;
+    /// The next errand line, before anything else in the tick: a nudge
+    /// steps out of the room and back, and a thrower's hands are taken back
+    /// whether or not the creature is still there.
+    pub(super) fn errand_line(&mut self) -> Option<Said> {
+        let line = self.repeats.errand.pop_front()?;
         Some(Said::Send { line, target: None })
     }
 
