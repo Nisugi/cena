@@ -24,6 +24,7 @@ pub mod sorter;
 pub mod spells;
 pub mod state;
 pub mod status;
+pub mod trigger;
 
 pub use effects::{Effect, Effects};
 pub use spells::{CastType, CooldownKind, Duration, Role, Spell, circle_name, spell, spell_named};

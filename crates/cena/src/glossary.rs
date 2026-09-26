@@ -72,6 +72,9 @@
 //! - **report** is what a group member tells its leader ([`group::Report`]),
 //!   and the `;loot` and `;combat` reports printed for the player
 //!   (`crates/cena/src/loot.rs`, `crates/cena/src/combat.rs`).
+//! - **category** is the sorter's item type, `gem` or `wand` in a sorted
+//!   container look ([`SessionHandle::sort_containers`]), and a trigger's group in the triggers file,
+//!   the author's word for what the editor sets (`plan/45` §1 row 3).
 //! - **script** is not a Hydra concept (see **Retired**), and survives in
 //!   three places: the Lich scripts Hydra ports from, bigshot's `script` step
 //!   that the importer turns into a sequence, and the **scripted game**, the
@@ -185,6 +188,18 @@
 //! | **Merged streams** | thoughts, speech, logons, deaths and announcements across characters, each line once: [`Merger`] | |
 //! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end is published as one line per category ([`SessionHandle::sort_containers`]); the model and the player log keep it whole | inventory, which is the `inv` window's feed |
 //!
+//! # Triggers
+//!
+//! `plan/45`, M8. What a trigger does is not an **effect**: that word is the
+//! model's spell and buff effects.
+//!
+//! | Term | Means | Not |
+//! |---|---|---|
+//! | **Trigger** | when a finished line matches, do something with it, for everyone or the characters it names: [`Trigger`]. Every trigger is in one file, by name ([`triggers`]) | highlight, which is one thing a trigger can do; event |
+//! | **Response** | what a trigger does: in Stage 1 a look, a squelch, a substitute or a redirect. PROPOSED (`plan/45` §3d): the author may choose another word | effect, which is [`Effect`]; action |
+//! | **Look** | a response's colour, background and bold, over the match, a capture group or the line: [`Look`] | style, which is the wire's [`Style`] |
+//! | **Master switch** | a category, or one kind of response, turned off for every trigger: the file's `[categories]` and `[responses]` | |
+//!
 //! # Names
 //!
 //! | Term | Means | Not |
@@ -223,6 +238,7 @@
 //! [`CritTables`]: cena_session::CritTables
 //! [`Event::Combat`]: cena_session::Event::Combat
 //! [`Event::Line`]: cena_session::Event::Line
+//! [`Effect`]: cena_session::Effect
 //! [`Event`]: cena_session::Event
 //! [`Farewell`]: cena_session::Farewell
 //! [`Frame::UnknownTag`]: cena_session::Frame::UnknownTag
@@ -253,6 +269,7 @@
 //! [`Hunt`]: cena_behavior::hunt::Hunt
 //! [`import()`]: fn@cena_behavior::hunt::import
 //! [`Import`]: cena_behavior::hunt::Import
+//! [`Look`]: cena_session::trigger::Look
 //! [`Line`]: cena_session::Line
 //! [`LONG_LIVED`]: cena_session::LONG_LIVED
 //! [`MAX_UNATTENDED_LOSSES`]: cena_session::MAX_UNATTENDED_LOSSES
@@ -294,12 +311,15 @@
 //! [`Step::held`]: field@cena_behavior::hunt::Step::held
 //! [`Step`]: cena_behavior::hunt::Step
 //! [`stop_all`]: cena_host::stop_all
+//! [`Style`]: cena_session::Style
 //! [`stream_windows`]: cena_session::stream_windows
 //! [`SupervisedSession`]: cena_session::SupervisedSession
 //! [`sync()`]: fn@cena_behavior::sync::sync
 //! [`travel()`]: fn@cena_behavior::travel::travel
 //! [`travel::Desk`]: cena_behavior::travel::Desk
 //! [`Trip::tick`]: cena_behavior::travel::Trip::tick
+//! [`Trigger`]: cena_session::trigger::Trigger
+//! [`triggers`]: mod@cena_behavior::triggers
 //! [`Trip`]: cena_behavior::travel::Trip
 //! [`UnknownTag`]: cena_session::UnknownTag
 //! [`watch`]: cena_behavior::watch

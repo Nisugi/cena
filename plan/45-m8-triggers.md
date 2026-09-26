@@ -292,6 +292,21 @@ and **`test "<line>"`**, which runs a line through the real matcher and says wha
 fire -- VellumFE's `.testline`, and its sorter's rule that *"the transform is a pure
 function, so the preview is always truthful."*
 
+### 5d. Decided while building step 2 -- CLAUDE'S, to confirm
+
+| Question | Built | Why |
+|---|---|---|
+| Does a pattern ignore case by default? | **Yes**; `case_sensitive = true` turns it on | Wrayth's default, on the author's reading of `case="y"` (§1 row 4), and Wrayth is the first import. `VellumFE` defaults the other way, so the field is named for what it turns on |
+| One bad trigger among many | **Left out and named; the rest load** | 1,500 highlights should not all go for one regex; `VellumFE`'s silent skip is what §5a refuses |
+| A bad `for.<name>` | **Refuses the whole trigger, for everyone** | the alternative runs that character on the copy the player was changing |
+| A bad `[categories]` or `[responses]` | refused by name; **every switch on** until fixed | a switch cannot be half-read |
+| Squelch with a look or a redirect | **Allowed** | a `for.<name>` can add a squelch to a coloured trigger and cannot remove the colour; which one wins is the matcher's rule (step 3) |
+| `stream = "main"` | read as the model's `""` | the player's word for it |
+| `characters = []` | refused | leave it out to mean everyone |
+
+`regex` cannot do lookaround or backreferences (§8 item 6); such a regex is refused with the
+crate's own message, which says so.
+
 ---
 
 ## 6. Stages
@@ -304,9 +319,15 @@ Each ends in something demonstrable without a live login.
    diff over the golden corpus comes first; Despana reads the published line; `;sorter`
    moves into the session; `LineAssembler` retires. **BUILT 2026-09-26** in three commits:
    the published line (`7fdcf74`), Despana drawing it (`b190f61`), and `;sorter` in the
-   session (the commit after). The corpus half of the equivalence check has not run.
+   session (`1badb6e`). The corpus half of the equivalence check has not run.
 2. **The rule type and the file** (§5): load, validate, refuse by name; categories, master
-   switches, `characters`, `for.<name>`.
+   switches, `characters`, `for.<name>`. **BUILT 2026-09-26**: the rule in
+   `crates/cena-model/src/trigger.rs`, the file in `crates/cena-behavior/src/triggers.rs`,
+   12 tests in `crates/cena-behavior/tests/triggers_file.rs` (six guards mutation-checked:
+   the field-by-field override, names ignoring case, both switches, the order, the group
+   bound). Nothing reads the file at startup yet: that comes with step 4, when a trigger has
+   something to do. Writing it sorted comes with `;trigger add` (step 5), the first thing
+   that writes it. §5d records what was decided while building.
 3. **The matcher** in `cena-model` (§4): two automata and a `RegexSet`, deterministic order.
 4. **Look and text responses**: colour, squelch, substitute, redirect. Tested: the model's
    scrollback, the chunk and the player log see the game's text unchanged.
