@@ -91,6 +91,7 @@ pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, TextFrame};
 pub use cena_protocol::runs::{Run, Runs};
 pub use character_store::MAX_STALE;
+pub use command::attendance::Watching;
 pub use command::{
     CommandId, Envelope, Farewell, Gate, Origin, Outcome, PREEMPT_GRACE, Preempted, Refusal, Sent,
     SessionHandle,

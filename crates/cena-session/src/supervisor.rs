@@ -481,7 +481,10 @@ impl<C: Connector> SupervisedSession<C> {
         // (`reference/VellumFE/src/frontend/headless/runtime.rs:948`), which
         // the burst also carries, so it has the same hole.
         //
-        let person = self.core.attendance.count() > self.core.attendance_seen;
+        // A person typed, or a page is open and allowed to count
+        // (`command/attendance.rs`).
+        let person = self.core.attendance.count() > self.core.attendance_seen
+            || self.core.attendance.watched();
         self.core.attendance_seen = self.core.attendance.count();
         let long_lived = lived >= LONG_LIVED && !self.core.state.idle_warned();
         let attended = person || long_lived;

@@ -166,3 +166,51 @@ async fn a_long_lived_connection_counts_as_attended() {
     let _ = task.await;
     assert_eq!(lines.made(), 4);
 }
+
+/// `plan/29` §5b: with `--pages-attend`, an open page is someone there, and
+/// the fight goes on as if a person were typing.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_open_page_counts_when_allowed() {
+    let lines = Lines::default();
+    let (session, handle) = SupervisedSession::new(HangUps(lines.clone()));
+    let (_, mut events) = session.subscribe();
+    let cancel = session.cancel_token();
+    handle.let_pages_attend(true);
+    let page = handle.watching();
+    let task = tokio::spawn(session.run());
+
+    for _ in 0..4 {
+        assert!(ready(&mut events).await, "the open page was there");
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        lines.latest().expect("a connection").hang_up();
+    }
+    assert!(ready(&mut events).await);
+    assert!(!task.is_finished(), "an allowed open page is attendance");
+    drop(page);
+    cancel.cancel();
+    let _ = task.await;
+}
+
+/// The author's default: *"I don't think open page is enough"*. Open but
+/// not allowed, the session is given up as unattended.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_open_page_is_not_enough_by_default() {
+    let lines = Lines::default();
+    let (session, handle) = SupervisedSession::new(HangUps(lines.clone()));
+    let (_, mut events) = session.subscribe();
+    let _page = handle.watching();
+    let task = tokio::spawn(session.run());
+
+    for _ in 0..5 {
+        if !ready(&mut events).await {
+            break;
+        }
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        lines.latest().expect("a connection").hang_up();
+    }
+    let end = tokio::time::timeout(Duration::from_hours(1), task)
+        .await
+        .expect("the session must stop")
+        .expect("no panic");
+    assert_eq!(end.stopped_because, StoppedBecause::Unattended);
+}

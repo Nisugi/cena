@@ -82,6 +82,7 @@ impl Frontend {
             None => self.pairing.clone(),
         };
         let id = handle.session();
+        handle.let_pages_attend(pages_attend());
         self.sessions.attach_with_map(
             character.unwrap_or_default(),
             observer.clone(),
@@ -202,4 +203,12 @@ async fn announce(
 /// No implicit frontend for existing command-line users.
 pub(crate) fn requested() -> bool {
     std::env::args().skip(1).any(|arg| arg == "--web")
+}
+
+/// `--pages-attend`: a character's open page counts as a person present when
+/// its connection is lost, so Hydra keeps reconnecting it rather than giving
+/// it up as unattended. Off by default: the author, *"I don't think open page
+/// is enough, maybe it could be an advanced option"* (`plan/29` §5b).
+fn pages_attend() -> bool {
+    std::env::args().skip(1).any(|arg| arg == "--pages-attend")
 }

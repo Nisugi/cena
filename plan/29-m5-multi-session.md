@@ -104,9 +104,9 @@ Each must go red when isolation is broken on purpose, for example by sharing one
 between two sessions, or it tests nothing.
 
 > **BUILT 2026-09-23** as `crates/cena-session/tests/isolation.rs`, five tests. Two rows
-> changed on contact. A wedged **behavior** needs `BEHAVIOR_WATCHDOG`, which is not built and
-> belongs with behaviors (M6); the session-level wedge -- a game that stops answering -- is
-> tested instead. A failing **store write** needs a filesystem fault and moves to step 3,
+> changed on contact. A wedged **behavior** needs `BEHAVIOR_WATCHDOG`, which was not built
+> then and belonged with behaviors; M6a built it (`crates/cena-behavior/src/watchdog.rs`).
+> The session-level wedge -- a game that stops answering -- is tested here instead. A failing **store write** needs a filesystem fault and moves to step 3,
 > where the session table owns the stores. Two mutations were verified: a shared event ring
 > turns the lag test red, and a shared generation counter turns the reconnect test red.
 
@@ -265,6 +265,12 @@ between two sessions is exactly what §3a's isolation tests exist to catch.
 - **Directed variants come later.** A thought, speech or whisper directed at a character
   reads slightly differently to each recipient; accounting for that is deferred. A private
   thought or whisper reaches only one character, so it never needs merging.
+  **BUILT 2026-09-26** (`crates/cena-ui/src/merge.rs`, `addressed`): each copy said to its
+  recipient is put in the form everyone else reads (`Kiyna says to you, "hi"` to Nisugi is
+  `Kiyna says to Nisugi, "hi"`) before it is matched, and that form is what the panel shows.
+  The rule is the line's shape (the `you` just before the comma that opens the quote), not a
+  list of verbs: `says to you,` and `yells at you,` are the forms Lich's scripts read; the
+  others are UNVERIFIED against the log archive.
 - **Whose was it: a character tag at the front of the line**, configurable, so a user who
   does not want the name can choose something else.
 - **Own speech stays as two lines.** Nisugi's `say hi` is `You say, "hi"` to Nisugi and
@@ -288,6 +294,14 @@ from the timing, which matches VellumFE's 1 s first rung; nothing in the logs co
 The author on whether an open page should count as attendance: *"I don't think open page is
 enough, maybe it could be an advanced option."* **Deferred** to the settings taxonomy
 (`28` §7f): an opt-in that lets an attached viewer count as attended. Not built.
+**BUILT 2026-09-26** as a run option, since the taxonomy is still the GUI's to decide and
+run options are arguments (`CLAUDE.md`): `--pages-attend`. Each character's page open holds
+a `Watching` on its session (`crates/cena-session/src/command/attendance.rs`); with the
+option on, the supervisor counts an open page as a person present when a connection is
+lost. Off, which is the default, an open page changes nothing and two clients fighting over
+one character still end with Hydra giving it up. Tests:
+`crates/cena-session/tests/attendance.rs` (`an_open_page_counts_when_allowed`,
+`an_open_page_is_not_enough_by_default`).
 
 ## 6. Acceptance
 

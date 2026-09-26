@@ -33,17 +33,17 @@ impl MergedFeed {
         }
     }
 
-    /// Offer the lines `session` -- tagged `tag` -- just published. Those on a
-    /// merged stream reach every hub page: new, or as an earlier line gaining
-    /// this character.
-    pub(crate) fn offer(&self, session: SessionId, tag: &str, lines: &[StoryLine]) {
+    /// Offer the lines `session` -- tagged `tag`, the character named `name`
+    /// -- just published. Those on a merged stream reach every hub page: new,
+    /// or as an earlier line gaining this character.
+    pub(crate) fn offer(&self, session: SessionId, tag: &str, name: &str, lines: &[StoryLine]) {
         let now = Instant::now();
         let id = session.0.to_string();
         let merged: Vec<MergedLine> = {
             let mut merger = self.merger.lock().unwrap_or_else(PoisonError::into_inner);
             lines
                 .iter()
-                .filter_map(|line| merger.offer(now, &id, tag, line))
+                .filter_map(|line| merger.offer(now, &id, tag, name, line))
                 .collect()
         };
         if merged.is_empty() {

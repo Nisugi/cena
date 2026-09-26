@@ -41,14 +41,20 @@ pub(crate) async fn serve(
     };
     // Which session this viewer is for: the one it named, or the only one;
     // naming none with several running is the hub page.
-    let viewed = match shared.choose(asked) {
-        Choice::Session(viewed) => viewed,
-        Choice::Hub => return serve_hub(socket, shared).await,
+    match shared.choose(asked) {
+        Choice::Session(viewed) => serve_session(socket, viewed).await,
+        Choice::Hub => serve_hub(socket, shared).await,
         Choice::Missing => {
             close(&mut socket, 1008, "No such session; open the page for one").await;
-            return;
         }
-    };
+    }
+}
+
+/// One character's page, for as long as its socket is open.
+async fn serve_session(mut socket: WebSocket, viewed: Arc<Viewed>) {
+    // The page is open while this socket is: a person present, if the player
+    // allowed pages to count (`--pages-attend`, `plan/29` §5b).
+    let _watching = viewed.handle.watching();
     let initial = tokio::select! {
         () = viewed.stop.cancelled() => None,
         result = tokio::time::timeout(AUTH_TIMEOUT, attach(&viewed)) => result.ok(),

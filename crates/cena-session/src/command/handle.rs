@@ -246,6 +246,21 @@ impl SessionHandle {
         self.attendance.clone()
     }
 
+    /// A page is showing this session: hold what this returns for as long
+    /// as it is open. It counts as a person using the session only once
+    /// [`Self::let_pages_attend`] allows it (`command/attendance.rs`).
+    #[must_use]
+    pub fn watching(&self) -> super::attendance::Watching {
+        self.attendance.open_page()
+    }
+
+    /// Whether an open page counts as a person using the session, when the
+    /// connection is lost: off by default, the author's *"maybe it could be
+    /// an advanced option"* (`plan/29` §5b).
+    pub fn let_pages_attend(&self, on: bool) {
+        self.attendance.let_pages_attend(on);
+    }
+
     /// The slot this handle and all its clones read the player log from.
     pub(crate) fn log_slot(&self) -> crate::player_log::tap::Slot {
         std::sync::Arc::clone(&self.log)
