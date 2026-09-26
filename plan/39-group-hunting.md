@@ -1,7 +1,7 @@
 # 39 — Group hunting: bigshot's head and tail, measured and staged
 
-**Status: PROPOSED 2026-09-25; ten of §7's eleven questions ANSWERED 2026-09-26 (§8).
-Stages 0, 1 and 2 are built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
+**Status: PROPOSED 2026-09-25; §7's eleven questions ANSWERED 2026-09-26 (§8, §8a).
+Stages 0 to 3 are built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
 and has several characters and a test server to run a group on. `plan/30` §4 recorded the
 author's group design and §8 put groups after M6; **the author moved them before the live run**
 (§8, question 1). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
@@ -410,6 +410,43 @@ the follower's rest and loot on assignment, the overkill count. Demonstrated by 
 sessions, two desks and one board in one test, through a full cycle: the follower attacks the
 leader's target, the named looter loots, both walk to rest, the leader waits for the
 follower's prep **for this rest**, and both walk back.
+**BUILT 2026-09-26.** The board is `group/board.rs` (`Boards`, one set per process, found by
+the leader's name; per member a `watch` of its `Report`, and one of the leader's `Leading`).
+The driver reads it each turn and hands the pure engine a `Party` (`group/party.rs`,
+`hunt/drive/party.rs`); the engine's arms are `hunt/party.rs`, run between survival and rest.
+
+- **Lead:** muster first (`Dead` ends every hunt; `Drag` sends `drag <name>` then rests;
+  `TakeHome` rests for `Why::Linkdead`, which fogs; `Fetch` walks; `Overdue` rests for
+  `Why::Straggler` once the member can move; `Hold`, `Await` and `Lost` stop the wander and the
+  walk to rest), then `should_rest` over every report instead of its own reason, one more loot
+  first when it says so, and the looter named by `looter`. At the rest it waits for each
+  follower's `unready` and `prepared == this rest`, saying who and why as bigshot does
+  (`:7577-7593`), then gathers (`group open`, everyone here and grouped, within `lost_wait`)
+  and walks back.
+- **Follow:** apart from the leader it walks there (at once when out of the group, after
+  3 game seconds when grouped, since the game carries it); with the leader and out of the
+  group it sends `join <leader>`; it takes the leader's target while that stands, with its
+  own routine for it; it loots only when named; it never flees, wanders or starts a rest. At
+  the leader's rest, once `follower_may_prep`, its selling, herbs and resting commands, then
+  its own thresholds; when the leader starts back, its prepare commands.
+- **Both:** every member counts the kills it sees, so the overkill count needs no order
+  (bigshot's `FOLLOWER_OVERKILL`). A member whose connection drops publishes `Reconnecting`
+  at once and when it dropped, so question 9's *everyone dropped* is read afterwards. A
+  leader's hunt that ends takes its board down, which ends its followers' hunts
+  (`Ending::LeaderStopped`, question 3); a session Hydra gave up leaves its report `Closed`.
+
+Tests: `crates/cena-behavior/tests/group_engine.rs` (20, one per rule) and
+`crates/cena-behavior/tests/group_drive.rs` (2: two scripted sessions and one board, the
+follower taking the leader's target and the loot it is named for; the leader's stop ending
+the follower's hunt). The full rest cycle is proved rule by rule in `group_engine.rs`, not yet
+in one two-session run.
+
+INFERRED, the author's to confirm: the 3-second grace before a grouped follower walks
+itself; the leader waiting up to `lost_wait` at the start for the game group's members to
+report, as bigshot's `head` waits for them to register (`:9927-9999`); a corpse waited for
+up to 20 seconds for the looter; a follower that walks off (to catch up, or on its own
+selling round) staying that leader's follower while the leader's board stands; a session
+whose group is `Unknown` asking `group` once and then hunting on what it is told.
 
 **Stage 4 — the command and the hub.** The leader's command starts the group: `group open`,
 and each follower `join #<leader's id>` (Lich's `Group.join`,

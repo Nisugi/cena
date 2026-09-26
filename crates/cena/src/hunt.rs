@@ -17,9 +17,10 @@
 
 use std::io;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::commands::{Commands, Took};
+use cena_behavior::group::Boards;
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
 use cena_behavior::spellcaster::{self, CasterProfile};
@@ -42,12 +43,14 @@ pub(crate) fn open(
         .zip(state.character.name.clone());
     let dir = cena_session::character_store::data_dir();
     let desk = map.map(|context| {
-        Desk::with_map_sha256(
+        let desk = Desk::with_map_sha256(
             Arc::clone(&context.map),
             dir.clone(),
             AuthorityToken(3),
             context.sha256.clone(),
-        )
+        );
+        desk.group_on(boards());
+        desk
     });
     // The spellcaster profile, held so a typed line is judged without a
     // file read, and read again after `;sc` changes it.
@@ -125,6 +128,13 @@ pub(crate) fn open(
     eprintln!(
         "[hunt] ready: hunt <name>, hunt stop, hunt import <bigshot yaml>, hunt check <name>, hunt list"
     );
+}
+
+/// Every group's board in this Hydra: one set for every character, so a
+/// leader's hunt and its followers' meet (`plan/39` §5).
+pub(crate) fn boards() -> Arc<Boards> {
+    static BOARDS: OnceLock<Arc<Boards>> = OnceLock::new();
+    Arc::clone(BOARDS.get_or_init(Boards::new))
 }
 
 /// Run `command` on the hunt desk, once the session can be read. The task

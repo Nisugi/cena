@@ -29,15 +29,19 @@
 //! ([`Muster::Overdue`]). The rest merge's hold for a stunned member is the
 //! same member's [`Muster::Hold`], so it has one deadline, not two.
 
+pub mod board;
 pub mod looter;
 pub mod muster;
+pub mod party;
 pub mod report;
 pub mod rest;
 pub mod settings;
 pub mod successor;
 
+pub use board::{Board, Boards};
 pub use looter::looter;
 pub use muster::{Muster, Standing, muster, recoverer};
+pub use party::{Party, hindrance, hindrance_of, in_group, standing};
 pub use report::{Hindrance, Leading, Report, Role, role};
 pub use rest::{PrepOrder, RestCall, all_dropped, prep_order, should_rest, unready};
 pub use settings::{FriedTrigger, LOST_WAIT, Settings, looter_pattern};

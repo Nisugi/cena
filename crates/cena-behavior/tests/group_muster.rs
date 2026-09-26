@@ -26,6 +26,9 @@ fn member(name: &str) -> Report {
         grouped: true,
         health: None,
         headroom: None,
+        prepared: None,
+        looted: Vec::new(),
+        dropped: None,
     }
 }
 

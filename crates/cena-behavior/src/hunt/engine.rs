@@ -76,6 +76,7 @@ use super::death::Mourning;
 use super::follow::{Follow, Resend};
 use super::guard::{Facts, Used};
 use super::monitor::Watch;
+use super::party::Grouping;
 use super::profile::{Profile, Step};
 use super::react::Reacting;
 use super::repeat::Repeats;
@@ -211,6 +212,8 @@ pub struct Hunt {
     pub(super) follow: Follow,
     /// `;hunt <name> bounty`.
     pub(super) bounty_mode: BountyMode,
+    /// The group, when this hunt is in one ([`super::party`]).
+    pub(super) grouping: Grouping,
 }
 
 impl Hunt {
@@ -272,6 +275,7 @@ impl Hunt {
             repeats: Repeats::default(),
             follow: Follow::default(),
             bounty_mode: BountyMode::default(),
+            grouping: Grouping::default(),
         }
     }
 
@@ -410,6 +414,9 @@ impl Hunt {
         if let Some(said) = self.survival(state) {
             return said;
         }
+        if let Some(said) = self.group_arm(state, here, now) {
+            return said;
+        }
         if let Some(said) = self.rest(state, here) {
             return said;
         }
@@ -486,6 +493,10 @@ impl Hunt {
                 self.fried_kills = self.fried_kills.saturating_add(1);
                 self.heard.rested_for_injury = false;
             }
+        }
+        // Every member counts the kills it sees; only the looter loots.
+        if !self.loots_here() {
+            return None;
         }
         let corpse = corpses
             .iter()

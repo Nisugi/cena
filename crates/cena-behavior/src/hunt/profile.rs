@@ -64,6 +64,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use super::guard::Condition;
 use crate::stance::Want;
 
+mod group;
+pub use group::{Fried, GroupTable};
+
 /// Everything a hunt is told. See the module docs for the shape.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -130,6 +133,9 @@ pub struct Profile {
     pub routines: BTreeMap<String, Vec<Step>>,
     /// Named lists of steps a routine step may stand for, such as `volley`.
     pub sequences: BTreeMap<String, Vec<Step>>,
+    /// The group's settings, read when this profile's hunt leads
+    /// (`plan/39` §0b).
+    pub group: GroupTable,
 }
 
 /// Unarmed combat (`cmd_unarmed`, `bigshot.lic:5455-5551`).
@@ -708,7 +714,7 @@ impl Profile {
     /// routine is not written, a routine with no steps. Empty when nothing is.
     #[must_use]
     pub fn problems(&self) -> Vec<String> {
-        let mut out = Vec::new();
+        let mut out = self.group.problems();
         if let Some(allowed) = &self.rooms.allowed {
             if allowed.is_empty() {
                 out.push("rooms.allowed must not be empty".into());

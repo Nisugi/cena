@@ -3,7 +3,7 @@
 //!
 //! One desk per session, the map shared between them all. It loads the
 //! profile the way this character would run it ([`chain::load`]), claims
-//! the authority, runs the [`hunt`] with a [`watch`] beside it, and releases
+//! the authority, runs the [`hunt_in`] with a [`watch`] beside it, and releases
 //! on every exit. **One hunt at a time**: a second `;hunt <name>` stops the
 //! first and starts when it has let go, as travel's desk does for walks.
 //!
@@ -12,7 +12,7 @@
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use cena_map::Map;
 use cena_session::travel_store::{self, TravelFile};
@@ -24,9 +24,10 @@ use tokio_util::sync::CancellationToken;
 
 use super::chain;
 use super::command::Command;
-use super::drive::{HuntEnd, hunt};
+use super::drive::{HuntEnd, hunt_in};
 use super::engine::Hunt;
 use crate::error::BehaviorError;
+use crate::group::Boards;
 use crate::heal::{self, HealProfile};
 use crate::loot::{self, LootProfile};
 use crate::travel::{Heard, TravelNotes};
@@ -42,6 +43,9 @@ pub struct Desk {
     ids: Arc<AtomicU64>,
     hunts: AtomicU64,
     map_sha256: Option<String>,
+    /// Every group's board in this Hydra, when hunts here may group
+    /// (`plan/39` §5).
+    boards: OnceLock<Arc<Boards>>,
 }
 
 /// A hunt under way: how to stop it, and how to know it is over.
@@ -65,7 +69,15 @@ impl Desk {
             ids: Arc::new(AtomicU64::new(1)),
             hunts: AtomicU64::new(0),
             map_sha256: None,
+            boards: OnceLock::new(),
         })
+    }
+
+    /// Let this desk's hunts hunt in a group, on `boards`: one set for every
+    /// session in the process, so a leader's and its followers' hunts meet.
+    /// Set once; a second call is ignored.
+    pub fn group_on(&self, boards: Arc<Boards>) {
+        let _ = self.boards.set(boards);
     }
 
     /// Pin map-created profiles to the host's exact loaded bytes.
@@ -496,9 +508,19 @@ impl Desk {
         let end = {
             let wrote = |notes: &TravelNotes| self.keep(handle, file.as_mut(), notes);
             let learned = |names: &[String]| unskinnable(handle, loot_file.as_deref(), names);
-            let run = Box::pin(hunt(
-                handle, stop, ids, self.token, joined, &self.map, machine, &heartbeat, notes,
-                wrote, learned,
+            let run = Box::pin(hunt_in(
+                handle,
+                stop,
+                ids,
+                self.token,
+                joined,
+                &self.map,
+                machine,
+                &heartbeat,
+                notes,
+                wrote,
+                learned,
+                self.boards.get().cloned(),
             ));
             tokio::select! {
                 end = run => end,

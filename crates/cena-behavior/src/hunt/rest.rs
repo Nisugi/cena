@@ -140,7 +140,7 @@ impl Hunt {
     /// Whether the selling bags hold something a shop buys, by the loot
     /// profile's town settings; nothing to sell, or no loot profile, means
     /// straight to the rest.
-    fn wants_to_sell(&self, state: &GameState) -> bool {
+    pub(super) fn wants_to_sell(&self, state: &GameState) -> bool {
         let Some(profile) = &self.loot else {
             return false;
         };
@@ -152,7 +152,7 @@ impl Hunt {
     }
 
     /// Whether the heal profile has something to treat now.
-    fn wants_to_heal(&self, state: &GameState) -> bool {
+    pub(super) fn wants_to_heal(&self, state: &GameState) -> bool {
         self.heal
             .as_ref()
             .is_some_and(|profile| crate::heal::Healer::wanted(profile, state))
@@ -203,6 +203,10 @@ impl Hunt {
             let _ = still;
             return Said::Wait(REST_BEAT);
         }
+        // A leader waits for its followers, then gathers them (`hunt/party.rs`).
+        if let Some(said) = self.hold_for_group(state, here, state.game_time_now()) {
+            return said;
+        }
         self.fried_kills = 0;
         self.field_rest = false;
         self.heard.rested_for_injury = why == Why::Injured;
@@ -239,6 +243,10 @@ impl Hunt {
 
     /// A reason to rest holds: the fog, the waypoints, the walk.
     fn start_rest(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
+        // In a group, the leader's merged reasons decide (`hunt/party.rs`).
+        if self.grouping.hold_rest {
+            return None;
+        }
         let why = self.rest_reason(state)?;
         if why == Why::Fried && self.boosts.0 < self.profile.rest.lte_boost {
             // Fried: a boost empties the mind instead (`use_lte_boost`).
@@ -267,6 +275,7 @@ impl Hunt {
         };
         self.follow.rest_waggled = false;
         self.phase = Phase::ToRest(why);
+        self.grouping.rest = self.grouping.rest.saturating_add(1);
         self.notes
             .push(format!("{why}: walking to the resting room."));
         if self.field_rest {
@@ -332,7 +341,11 @@ impl Hunt {
     fn fogs(&self, why: Why) -> bool {
         let rest = &self.profile.rest;
         !rest.fog.is_empty()
-            && (!rest.fog_optional || matches!(why, Why::Wounded | Why::Injured | Why::Encumbered))
+            && (!rest.fog_optional
+                || matches!(
+                    why,
+                    Why::Wounded | Why::Injured | Why::Encumbered | Why::Linkdead
+                ))
     }
 
     /// The next return waypoint to walk to, dropping those reached.
@@ -355,7 +368,7 @@ impl Hunt {
     }
 
     /// Why to rest now, if a reason holds.
-    fn rest_reason(&mut self, state: &GameState) -> Option<Why> {
+    pub(super) fn rest_reason(&mut self, state: &GameState) -> Option<Why> {
         if let Some(why) = self.must_rest {
             return Some(why);
         }
@@ -429,7 +442,7 @@ impl Hunt {
 
     /// Why the rest is not over, or `None` when it is. A threshold whose
     /// vital the game has not stated keeps resting.
-    fn still_resting(&self, state: &GameState) -> Option<&'static str> {
+    pub(super) fn still_resting(&self, state: &GameState) -> Option<&'static str> {
         if self.wounded(state) {
             return Some("wounded");
         }

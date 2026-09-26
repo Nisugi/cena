@@ -93,6 +93,12 @@ pub enum Ending {
     Cleared,
     /// Bounty mode: rested, with the bounty done or a new one ready.
     Bounty,
+    /// A member of the group died: every member's hunt ends (`plan/39` §8,
+    /// question 10).
+    MemberDied,
+    /// The leader's hunt ended while it led, and so does its followers'
+    /// (`plan/39` §8, question 3).
+    LeaderStopped,
 }
 
 impl fmt::Display for Ending {
@@ -124,6 +130,8 @@ impl fmt::Display for Ending {
             ),
             Self::Cleared => f.write_str("the room is clear"),
             Self::Bounty => f.write_str("the bounty is done or a new one is ready"),
+            Self::MemberDied => f.write_str("a member of the group died"),
+            Self::LeaderStopped => f.write_str("the leader's hunt is over"),
         }
     }
 }
@@ -154,6 +162,12 @@ pub enum Why {
     /// *"rest first. someone probably died."*). Only a group rests for it
     /// ([`crate::group::should_rest`]).
     Dropped,
+    /// A member Hydra gave up is standing here link-dead: the group takes it
+    /// home (`plan/39` §8a).
+    Linkdead,
+    /// A member waited for past `lost_wait` still could not rejoin
+    /// ([`crate::group::Muster::Overdue`]).
+    Straggler,
 }
 
 impl fmt::Display for Why {
@@ -168,6 +182,8 @@ impl fmt::Display for Why {
             Self::BoxInHand => "a box in hand that no bag will take",
             Self::Injured => "too injured to fight",
             Self::Dropped => "every member's connection dropped",
+            Self::Linkdead => "a member is link-dead",
+            Self::Straggler => "a member could not rejoin",
         })
     }
 }

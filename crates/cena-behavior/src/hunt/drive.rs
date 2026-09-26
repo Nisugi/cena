@@ -39,9 +39,11 @@
 
 mod errands;
 mod loot;
+mod party;
 mod selling;
 mod walk;
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use cena_map::{Map, Origin as Whence, RoomId};
@@ -52,8 +54,10 @@ use cena_session::{
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio_util::sync::CancellationToken;
 
+use self::party::{Membership, Seen};
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
+use crate::group::Boards;
 use crate::loot::Memory;
 use crate::travel::{Heard, TravelNotes, room_of};
 use crate::watchdog::Heartbeat;
@@ -102,6 +106,30 @@ pub async fn hunt(
     wrote: impl FnMut(&TravelNotes) + Send,
     learned: impl FnMut(&[String]) + Send,
 ) -> HuntEnd {
+    Box::pin(hunt_in(
+        handle, cancel, next_id, token, joined, map, machine, heartbeat, notes, wrote, learned,
+        None,
+    ))
+    .await
+}
+
+/// [`hunt`], able to hunt in a group: the member reads the role the game's
+/// group gives it and takes its place on `boards` (`plan/39` §5).
+#[allow(clippy::too_many_arguments)]
+pub async fn hunt_in(
+    handle: &SessionHandle,
+    cancel: &CancellationToken,
+    next_id: impl FnMut() -> CommandId,
+    token: AuthorityToken,
+    joined: (Snapshot, Heard),
+    map: &Map,
+    machine: Hunt,
+    heartbeat: &Heartbeat,
+    notes: TravelNotes,
+    wrote: impl FnMut(&TravelNotes) + Send,
+    learned: impl FnMut(&[String]) + Send,
+    boards: Option<Arc<Boards>>,
+) -> HuntEnd {
     let (snapshot, events) = joined;
     let hunting_map = match super::setup::hunting_map(machine.profile(), map) {
         Ok(map) => map,
@@ -142,8 +170,10 @@ pub async fn hunt(
         transcript: String::new(),
         line: String::new(),
         down: false,
+        membership: boards.map(Membership::new),
     };
     let end = driver.run(heartbeat).await;
+    driver.leave_party(end);
     let text = match end {
         HuntEnd::Finished(ending) => format!("Hunt: over: {ending}."),
         HuntEnd::Stopped(BehaviorError::Cancelled) => "Hunt: stopped.".to_owned(),
@@ -186,6 +216,8 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     /// The connection dropped and the session is reconnecting: the hunt
     /// waits, holding its authority (SE-4 (c)), until the session is ready.
     down: bool,
+    /// Its place in a group, when it can hunt in one (`drive/party.rs`).
+    membership: Option<Membership>,
 }
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
@@ -216,6 +248,16 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 .and_then(|room| self.map.room(room))
                 .map(|room| room.meta.clone())
                 .unwrap_or_default();
+            match self.see_party(here) {
+                Seen::Go => {}
+                Seen::Ask => {
+                    if let Err(end) = self.send("group", None).await {
+                        return end;
+                    }
+                    continue;
+                }
+                Seen::Over(end) => return end,
+            }
             let incidents = self.state.take_incidents();
             if !incidents.is_empty() {
                 self.machine.incidents(&incidents);
@@ -230,6 +272,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 },
                 now,
             );
+            self.publish(here, State::Ready);
             for note in self.machine.take_notes() {
                 self.handle
                     .say(Notice::line(NoticeKind::Info, format!("Hunt: {note}")));
@@ -332,6 +375,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         self.down = true;
         self.state.invalidate_for_reconnect();
         self.machine.link_lost();
+        self.party_link_lost();
         self.handle.say(Notice::line(
             NoticeKind::Info,
             "Hunt: the connection dropped; waiting for it to come back.".to_owned(),
