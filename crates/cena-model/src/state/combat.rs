@@ -24,6 +24,11 @@
 //! it; `attacks.rb:762-777` explains why it is load-bearing (priority defs
 //! before generic swings, second person before third).
 //!
+//! A fourth file is not Lich's shipped grammar: `combat_flare_mirror.tsv`
+//! (277 rows, family `flare_mirror`), cut by `tools/extract_flare_mirror.rb`
+//! from the old Lich repository's `flare_patterns.rb` and read by [`flare`]
+//! only after the shipped flares.
+//!
 //! # The one transformation: patterns run against PLAIN text
 //!
 //! Lich's patterns run against the raw XML feed, so 178 of them carry

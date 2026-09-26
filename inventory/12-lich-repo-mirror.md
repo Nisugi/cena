@@ -271,12 +271,19 @@ Pile reports, not re-checked here:
 > Thorns poison, confusion, and a rest count, `rest.rs`); environmental flight (`flee.clouds`,
 > `vines`, `webs`, `voids`, `messages`, `wander.rs`); the contested room, now claimed on entry
 > (`engine.rs`); and being swallowed (`react.rs`). Since fixed: the spirit and wound-rank
-> rest triggers (`07d7f36`), boons (`d87a4ae`), and Barkskin's lockout
-> (`hunt/maintain.rs`). Fixed on the model side, for the hunt to read: the two hazard
+> rest triggers (`07d7f36`), boons (`d87a4ae`), Barkskin's lockout (`hunt/maintain.rs`),
+> and flares for `;combat`: `flare_patterns.rb` whole, as the `flare_mirror` table
+> (`crates/cena-model/data/combat_flare_mirror.tsv`, cut by
+> `crates/cena-model/tools/extract_flare_mirror.rb`) that
+> `crates/cena-model/src/state/combat/flare.rs` reads after Lich's shipped flares. 7 of the
+> 465 alternatives are left without a pattern, where 353 were (pile 2's `flarecmp.py`): the
+> one the scripts never run, and six lines of a proc a shipped flare already counts
+> (ensorcell's benefit, the spirit animal's prefix), which read too would count it twice.
+> Both verb numbers read. Fixed on the model side, for the hunt to read: the two hazard
 > creatures and the 13 hazard objects (`crates/cena-model/src/state/hazard.rs`), familiars,
 > companions and summons (`state/creatures/ally.rs`), and kills that leave no corpse and the
 > cold wyrm's phases (`state/creatures/prose.rs`). Still open from this table: the hunt
-> reading those three, creature statuses in room prose, and flares for `;combat`.
+> reading those three, and creature statuses in room prose.
 
 Lines the hunt needs, which the scripts match and Cena does not. All are GAP unless marked.
 
