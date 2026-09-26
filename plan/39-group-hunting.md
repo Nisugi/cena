@@ -1,9 +1,10 @@
 # 39 — Group hunting: bigshot's head and tail, measured and staged
 
-**Status: PROPOSED 2026-09-25. Nothing here is built.** The author asked for *"all of
-bigshot"* before M6's live run (2026-09-25), and has several characters and a test server to
-run a group on. `plan/30` §4 recorded the author's group design and §8 put groups after M6
-(`plan/30:686`). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
+**Status: PROPOSED 2026-09-25; ten of §7's eleven questions ANSWERED 2026-09-26 (§8).
+Stage 0 is built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
+and has several characters and a test server to run a group on. `plan/30` §4 recorded the
+author's group design and §8 put groups after M6; **the author moved them before the live run**
+(§8, question 1). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
 and stages it. `plan/12` wins any contradiction.
 
 Labels: **AUTHOR** is quoted and dated. **MEASURED** gives the line or the command.
@@ -272,7 +273,8 @@ named so the lines can drift):
 
 ## 6. Stages
 
-Each ends green, committed, and demonstrable on its own.
+Each ends green, committed, and demonstrable on its own. **§8 revises these with the
+author's answers**; where the two disagree, §8 wins.
 
 **Stage 0 — a hunt that survives a reconnect** (M6's own, named here because Stage 6 cannot
 start without it). **BUILT 2026-09-25.** On `Reconnecting` the driver holds instead of ending
@@ -361,3 +363,151 @@ here depends on it.
 10. **A dead member:** bigshot's `group_deader` pauses until the player says go; `react.deader`
     now ends the hunt. Which, and is eohunter's corpse recovery wanted in this port?
 11. **`quiet_followers`:** keep bigshot's default of on?
+
+---
+
+## 8. Answers (AUTHOR, 2026-09-26), and what they change
+
+Each answer is quoted as given. What follows it is PROPOSED unless labelled.
+
+1. **When.** *"before"*. Groups are **M6f**, built before the live run.
+2. **Starting.** *"I think support both?"* Both starts are supported. What makes that
+   simple is question 8's answer, that passing the game's group lead passes the hunt's
+   lead. **So a member's role is read off the game's group, never chosen:** leading a group
+   with members is *lead*, in a group someone else leads is *follow*, anything else is
+   *solo* (bigshot's roles are readings too, §0a item 5). `;hunt <profile> with A B` on the
+   leader forms the group (`group open`, each named character `join #<id>` and starts its
+   own hunt); `;hunt <profile>` typed on a character already in a group takes the role the
+   game gives it. Each member hunts with its own profile (§5); which one a named follower
+   runs, when the leader's command names only the character, is Stage 4's to settle. The hub
+   start is Stage 4's too.
+3. **Stopping.** *"if the leader does hunt stop and is still the leader of the group then
+   everyone should stop and ride back to town with the leader unless the option to have
+   followers travel indepenedently from bigshot was implemented and is enabled, then they
+   would all get back to the rest room on their own. If the leader transfers group
+   leadership to another member and then stops, then the group continues hunting with the
+   new leader."*
+   - The leader's stop, while leading, ends every member's hunt. Without
+     `independent_return`, the followers stay grouped and go where the leader goes: the game
+     carries a group along the leader's moves (§3). With it, each leaves the group and walks
+     to its own resting room, as bigshot's lost follower does (`:10231-10240`).
+   - INFERRED, to confirm: the leader's own stop stays immediate (`plan/12`'s stop
+     contract), and *"ride back to town with the leader"* is the game carrying the followers
+     while the leader's player takes it home. If the author means the stop itself walks the
+     leader home, that is a different command from a stop.
+   - Lead passed, then stop: the new leader's hunt leads (question 2's reading), and the old
+     leader is now a follower whose stop is the next bullet.
+   - A follower's stop (not asked directly): it **leaves the game's group**, and the rest
+     hunt on without it, by question 7's *"Don't just continue hunting unless they leave the
+     group"*.
+4. **Who takes over.** *"a priority list or random if one not set up (the healthiest?)"*. A
+   `successors` list in the leader's profile, first present member first. With none: the
+   member with the most health, a tie at random.
+5. **The wait.** *"60-120 seconds? While still keeping the room safe. Configurable ..."*.
+   One key, `lost_wait`, default **90 s**. While it runs, the members still here fight what
+   comes in and nothing else: no wander, no walk to rest (Stage 6 as written).
+6. **In game or out.** Not answered: the author asked for the context the question lacked
+   (*"how do you know their having problems? They stop responding? What stops responding?
+   Their hydra info stops updating? They stop sending commands?"*). The context is below
+   (§8a). The question is asked again there.
+7. **A lost follower.** *"I think a lost follower depends ... are they incapacitated? In
+   roundtime? why did they get lost or more accurately, why did they get left behind? If
+   they are near by (you should know their room number) then probably go to them if they
+   can't come to you immediately? Don't just continue hunting unless they leave the group.
+   But if they leave the group because they died well ...."*
+   **Muster learns why a member is not with the leader**, from the member's own state, which
+   the board carries, and acts on the reason. bigshot and eohunter both drop a lost follower
+   and hunt on (§0c, §2). The author's answer is not to.
+
+   | Why the member is not with the leader | What the group does |
+   |---|---|
+   | in roundtime, stunned, webbed, prone or sitting, **in the leader's room** | holds and keeps the room clear; a sitter is pulled up (`hunt/react.rs`, as now) |
+   | in another room, able to move | it walks to the leader's room and rejoins (Follow) |
+   | in another room, **unable to move** (stunned, webbed, bound, and whatever else its own state says) | the leader walks the group to it, by its room id on the board (travel's walk); then as the first row |
+   | its connection is lost | §8a |
+   | dead | question 10 |
+   | it left the game's group (its own stop, or a player's `leave`) | the group hunts on without it |
+
+8. **The one who comes back.** *"if they come back, they'll have to find you, join your
+   group again, ect. If we are allowing people to join up mid hunt, then probably let them
+   follow unless they are given lead by the other person. So passing group lead is like
+   passing the leader."* Joining mid-hunt is allowed: a member not in the group walks to the
+   leader's room (on the board) and joins; it follows unless given the lead. The role rule of
+   question 2 is this answer. **§4's gap 2, "am I the leader?", becomes the first thing
+   Stage 1 builds**: every role now depends on it.
+9. **Everyone drops together.** *"rest first. someone probably died."* Once every member is
+   `Ready`: the group formed again, then the walk to rest, whatever the thresholds say.
+10. **A dead member.** *"end the hunt, add the dead person to your group (have to empty
+    hands), cast 130 to teleport away after adding them to your group, or drag them if you
+    can't, if you can't drag them probably try to alert the human?"* This replaces bigshot's
+    `group_deader` pause (§0b), and it is the corpse recovery eohunter designed and never
+    built (§2). Every member's hunt ends. Then one member (the leader if able, else any
+    member who can) takes the recovery:
+    1. empties its hands, and takes the dead member's hand. That adds the dead member to its
+       group: Lich's `HOLD_*` lines (`reference/lich-5/lib/gemstone/group.rb:468-505`), the
+       eight that §4 gap 3 says the model set aside;
+    2. casts Spirit Guide (130: `crates/cena-model/data/spells.tsv:30`) when it knows it and
+       can afford it, and goes with the group;
+    3. else drags the dead member;
+    4. else alerts the player: the hub card, and the hub's merged feed.
+
+    UNVERIFIED, for the stage that builds it: where Spirit Guide goes from a hunting ground,
+    that it takes a held dead member along (the author's answer says it does), and `drag`'s
+    command, conditions and messages. All three are game behaviour. Lich scripts and the
+    corpus come before asking.
+11. **`quiet_followers`.** *"sure, and toggleable."* On by default, a key in `[group]`.
+
+### 8a. Question 6, with the context it lacked
+
+Every member runs in the same Hydra process, so the group does not have to infer a lost
+member from silence. bigshot infers it from a remote call failing (`:954-966`); eohunter
+from 10 s without a report (§2). Hydra reads each member directly. A member can be "not
+with the group" in five ways, and each has its own signal:
+
+| What happened | How Hydra knows | Where |
+|---|---|---|
+| the member's **connection** dropped | its session publishes `Reconnecting` the moment the socket goes; its game state stops changing because nothing arrives | `crates/cena-session/src/lifecycle.rs:255` |
+| Hydra **gave up** reconnecting it | `Closed`: after two losses with nothing sent between them, a fatal login error, or a stop | `lifecycle.rs:265`; `crates/cena-session/src/supervisor/retry.rs:69` (`MAX_UNATTENDED_LOSSES = 2`) |
+| its **hunt is stuck**, the connection fine | the watchdog preempts a hunt whose loop has not turned in 30 s | `crates/cena-behavior/src/watchdog.rs:34`; `hunt/desk.rs:462` |
+| it is connected and hunting, but **cannot act** (roundtime, stunned, webbed, dead) | its own game state; the others also see it in their room's player list (`who appears dead`, `stunned`, `lying down`) | `crates/cena-model/src/state/room.rs:97-114` |
+| it is fine, but **somewhere else** | its own room id against the leader's | each session's room |
+
+The first four are Hydra's side. **Question 6 is about the game's side of the first row.**
+When Hydra's connection to a character drops, the game may keep the character standing in
+the room for a while: link-dead, still attackable, still in the group. That is why the
+author's design splits *out of game* (take over, hunt on or rest) from *still in game* (keep
+the room clear, regroup, add the lost one, rest). Hydra's session says *our* connection is
+gone. It does not say whether the game has removed the character. Two things could tell
+the others:
+
+- **The room's player list**: whether the lost member's name is still in it.
+- **The logons feed**: `* <name> has disconnected.`, which Lich's `messaging.lic` reads as
+  a logoff (`reference/scripts/scripts/messaging.lic:329`). Hydra carries the `logons`
+  stream (`crates/cena-model/src/state/stream_windows.rs:41`), but nothing reads that line
+  yet.
+
+**Asked again:** is *"still in the room's player list"* the right test for *still in game*,
+and *"gone from it, or `has disconnected` announced"* the right test for *out of game*? How
+long does a link-dead character stand in the room, and is `has disconnected` sent when the
+connection drops or when the game removes the character? UNVERIFIED by any source here. The
+corpus could measure it: two of the author's characters in one room, one of them dropped.
+That needs the author's leave to query.
+
+### 8b. The stages, revised
+
+- **Stage 1** (the model) adds: *"am I the leader"* as a three-valued fact, which needs the
+  character's own `exist` id (question 8); the eight `HOLD_*_SECOND`/`_THIRD` lines
+  (question 10); and, once question 6 is answered, `has disconnected` from the logons feed.
+- **Stage 2** (the rules, pure) adds: the successor (`successors`, else the healthiest); the
+  lost member's reason and what each reason asks (question 7's table); `lost_wait`.
+- **Stage 3** (leader and follower on the engine) adds: the role read off the game's group
+  (question 2); joining mid-hunt (question 8); walking the group to a member who cannot
+  move (question 7).
+- **Stage 4** (the command and the hub) adds: both starts (question 2); the leader's stop
+  and a follower's stop (question 3).
+- **Stage 5** (the settings) adds `successors`, `lost_wait` and `quiet_followers`.
+- **Stage 6** (the handover) adds: the successor by Stage 2's rule, and *rest first* when
+  every member dropped (question 9). It waits on question 6.
+- **Stage 7, new: a dead member** (question 10): the hunts ended, the hand taken, Spirit
+  Guide, the drag, the alert. It is tested over scripted sessions, one branch per step, a
+  mutation each. It is live on the test server, where the author can make a character die.

@@ -42,7 +42,7 @@ If anything else contradicts it, it wins.
 | `plan/37-spell-behaviors.md` | **spellactive, ewaggle, spellcaster**: measured and staged; Stages 1-2 BUILT (what the spell table dropped, joined back: `cena-model/src/spells/extras.rs`; durations and costs evaluated for the character: `spells/expr.rs`, `state/spell_time.rs`), Stage 3 (the casting step, `cena-behavior/src/cast.rs`), Stage 4 (spellactive as `;keep`, `keep.rs`), Stage 5 (ewaggle as `;waggle`, `waggle.rs`), Stage 6 (spellcaster as `;sc`, `spellcaster.rs`), and a bare typed spell number caught without `;sc` (`014256d`; `;sc set typed off` stops it) |
 | `plan/35-m7-agent.md` | **M7, the agent protocol**: MCP on loopback, control levels, takeover, all statuses; PROPOSED, the author's 2026-09-24 decisions quoted, four questions open (§9). Prior art in `reference/lich-agent-bridge` |
 | `plan/38-scripting-bridge.md` | **scripts in any language, through M7's connection**: a bridge per language, Ruby first (familiar Lich names, data from Hydra), nothing embedded; the Lich relay set aside on measured memory (466 MB committed, the map 100 MB of it). PROPOSED 2026-09-25, not scheduled; it would change the settled "users do not author scripts" line, which only the author changes (§1, §11) |
-| `plan/39-group-hunting.md` | **bigshot's group hunting**: head and tail measured (DRb, not LNet; 31 order types, 21 lines that branch on a role, 20 waits on followers with no deadline, no handover), eohunter's Hub-and-Report port as the reference, the author's disconnect handover (`plan/30` §4) mapped onto sessions in one process: each member keeps its own authority, the leader publishes state and never sends on a follower's session. PROPOSED 2026-09-25, seven stages, eleven questions (§7); blocked first on a hunt that survives a reconnect (§4) |
+| `plan/39-group-hunting.md` | **bigshot's group hunting**: head and tail measured (DRb, not LNet; 31 order types, 21 lines that branch on a role, 20 waits on followers with no deadline, no handover), eohunter's Hub-and-Report port as the reference, the author's disconnect handover (`plan/30` §4) mapped onto sessions in one process: each member keeps its own authority, the leader publishes state and never sends on a follower's session. PROPOSED 2026-09-25; M6f, before the live run. Ten of eleven questions ANSWERED 2026-09-26 (§8: the role read off the game's group, a lost member's reason decides, a dead member carried out by Spirit Guide or a drag); in-game-or-out asked again with context (§8a). Stage 0 (the hunt survives a reconnect) BUILT |
 | `crates/cena/src/architecture.rs` | the workspace as rustdoc: crate graph, one line's journey, the three seams, every rule and its test. Link-checked, so it cannot go stale silently |
 | `crates/cena/src/glossary.rs` | **the words**: one per concept, each linked to its item, plus the ones that already mean two things (`claim`, `ladder`, `Desk`, …). Binding (`plan/05` §8) |
 | `research/` | **rationale and evidence only. Never instructions.** Contains superseded designs. |
@@ -327,7 +327,9 @@ a hunt that survives a reconnect. The model reads what that needed and did not b
 ranks and costs, skills, the worn and reserve lists (`a392b77`, `cf32e5d`).
 The gaps left after that were closed on 2026-09-26: bounty mode's gem and skin counts,
 `throw`'s hands, Barrage's `swap`, Fury at tier 3, and the enhancive totals read into the
-model. **Groups are `plan/39`, awaiting the author's answers.** Then the live run.
+model. **Groups are M6f, before the live run** (author, 2026-09-26): `plan/39`, ten of its
+eleven questions answered (§8), the eleventh asked again with context (§8a). Then the live
+run.
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.
