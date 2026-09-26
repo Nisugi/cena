@@ -3,12 +3,20 @@ import {offlineSource} from './offline-source.mjs';
 import {huntingFiles} from './hunting-files.mjs';
 import {loadHuntingCorrections} from './hunting-catalogue.mjs';
 
-// Explorer-only host. No session tokens, WebSocket, or movement commands.
+// Explorer host with optional configuration pairing. No WebSocket or movement.
 let storage=null;try{storage=localStorage;}catch{/* Persistence is optional. */}
 const lifetime=new AbortController();
+const launch=new URLSearchParams(location.hash.slice(1));
+let nativeSetup=null;
+if(launch.has('setup_token')){
+ const token=launch.get('setup_token'),session=launch.get('setup_session');
+ launch.delete('setup_token');history.replaceState(null,'',location.pathname+'#'+launch);
+ try{sessionStorage.setItem('hydra-hunt-setup',JSON.stringify({token,session}));}catch{}
+ nativeSetup={token,session};
+}else if(launch.has('setup_session')){try{const kept=JSON.parse(sessionStorage.getItem('hydra-hunt-setup'));if(kept?.session===launch.get('setup_session'))nativeSetup=kept;}catch{}}
 // Explicit opt-in, not a game capability or an authorization boundary.
-const developerHunting=new URLSearchParams(location.hash.slice(1)).get('devhunt')==='1';
-const devSuffix=()=>(developerHunting?'&devhunt=1':'');
+const developerHunting=!nativeSetup&&new URLSearchParams(location.hash.slice(1)).get('devhunt')==='1';
+const devSuffix=()=>(developerHunting?'&devhunt=1':'')+(nativeSetup?'&setup_session='+encodeURIComponent(nativeSetup.session):'');
 let atlas=null,search=null;
 async function outside(id){
  try{
@@ -29,7 +37,7 @@ try{
  if(developerHunting){try{files=await huntingFiles({signal:lifetime.signal});}catch(error){files={error:error.message};}}
  const corrections=await loadHuntingCorrections({signal:lifetime.signal});
  atlas=await mountAtlas(document.body,{source:offlineSource(new URL('.',location.href)),storage,
-  initialHash:location.hash,developerHunting,huntingFiles:files,corrections,onNavigate:hash=>{history.replaceState(null,'',location.pathname+'#'+hash+devSuffix());},onOutside:outside});
+  initialHash:location.hash,developerHunting,huntingFiles:files,corrections,nativeSetup,onNavigate:hash=>{history.replaceState(null,'',location.pathname+'#'+hash+devSuffix());},onOutside:outside});
  document.title=`Hydra · ${document.querySelector('h1').textContent} map explorer`;
  window.addEventListener('hashchange',()=>{
   const params=new URLSearchParams(location.hash.slice(1));

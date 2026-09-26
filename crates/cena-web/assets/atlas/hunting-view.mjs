@@ -20,7 +20,7 @@ export function huntingView(root,{data,context,redraw,fit,onSelect=null,correcti
  const warnings=doc.createElement('details');warnings.id='hunting-boundary-warnings';warnings.hidden=true;list.before(warnings);
  const detail=doc.createElement('div');detail.id='hunting-detail';detail.setAttribute('aria-live','polite');section.append(detail);
  $('legend').before(section);
- function choose(s){if(onSelect){onSelect(s.id);return;}selected=s.id;for(const b of list.querySelectorAll('[data-hunting-section]'))b.setAttribute('aria-pressed',b.dataset.huntingSection===s.id);detail.replaceChildren();
+ function choose(s){selected=s.id;for(const b of list.querySelectorAll('[data-hunting-section]'))b.setAttribute('aria-pressed',b.dataset.huntingSection===s.id);if(onSelect){onSelect(s.id);redraw();return;}detail.replaceChildren();
   const p=doc.createElement('p');p.textContent=`${s.name} · ${s.roomIds.length} boundary rooms · ${s.boundaryStatus||'editing preview'}. ${s.inheritedCorrections?'Includes saved member boundaries; the combined destination has not yet been reviewed. ':''}${s.evidence}`;detail.append(p);
   const b=doc.createElement('button');b.textContent='Fit this place';b.onclick=()=>fit(s.roomIds);detail.append(b);redraw();
  }

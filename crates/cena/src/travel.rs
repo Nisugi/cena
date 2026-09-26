@@ -108,7 +108,13 @@ fn open_travel(
     }
     let map = load_map(handle, configured);
     // Hunt walks with travel's driver, so it takes the same map, or none.
-    crate::hunt::open(handle, observer.clone(), state, commands, map.clone());
+    crate::hunt::open(
+        handle,
+        observer.clone(),
+        state,
+        commands,
+        configured.as_ref().ok().cloned(),
+    );
     let Some(map) = map else {
         // Travel's words are answered with why it cannot travel, and nothing
         // is sent. Every other word is the command line's to route.

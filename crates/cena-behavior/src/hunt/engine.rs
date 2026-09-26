@@ -100,6 +100,10 @@ const LOOT_SPACING: u32 = 15;
 
 /// The machine. See the module docs.
 #[derive(Debug)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts the machine carries between ticks"
+)]
 pub struct Hunt {
     pub(super) profile: Profile,
     pub(super) phase: Phase,
@@ -134,6 +138,8 @@ pub struct Hunt {
     pub(super) loot: Option<LootProfile>,
     /// A reason to rest the loot planner handed in, until the rest starts.
     pub(super) must_rest: Option<Why>,
+    /// The current rest cycle uses field settings; escalation only goes to town.
+    pub(super) field_rest: bool,
     /// The heal profile, when the character has one (`plan/36`).
     pub(super) heal: Option<HealProfile>,
     /// `;heal`: no hunt, one heal. `Some(false)` until it has been asked for.
@@ -231,6 +237,7 @@ impl Hunt {
             seed,
             loot: None,
             must_rest: None,
+            field_rest: false,
             heal: None,
             heal_only: None,
             stock_only: None,
@@ -405,6 +412,22 @@ impl Hunt {
         }
         if let Some(said) = self.rest(state, here) {
             return said;
+        }
+        if self
+            .profile
+            .rooms
+            .allowed
+            .as_ref()
+            .is_some_and(|rooms| here.room.is_none_or(|id| !rooms.contains(&id.0)))
+        {
+            if here.room.is_none() {
+                return Said::Wait(1);
+            }
+            let Some(start) = self.profile.rooms.hunting else {
+                return Said::Done(Ending::NoHuntingRoom);
+            };
+            self.phase = Phase::Returning;
+            return Said::Walk(RoomId(start));
         }
         if let Some(said) = self.flee(state, here, now) {
             return said;

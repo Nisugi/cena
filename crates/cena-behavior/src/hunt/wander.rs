@@ -91,7 +91,16 @@ impl Hunt {
             .exits
             .iter()
             .copied()
-            .filter(|exit| !boundaries.contains(&exit.0) && *exit != room)
+            .filter(|exit| {
+                !boundaries.contains(&exit.0)
+                    && *exit != room
+                    && self
+                        .profile
+                        .rooms
+                        .allowed
+                        .as_ref()
+                        .is_none_or(|ids| ids.contains(&exit.0))
+            })
             .collect();
         if options.is_empty() {
             return None;

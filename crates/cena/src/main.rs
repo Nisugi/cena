@@ -44,6 +44,7 @@ mod connector;
 mod frontend;
 mod glossary;
 mod hunt;
+mod hunt_setup;
 mod interrupt;
 mod learn;
 mod loot;

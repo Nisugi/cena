@@ -4,6 +4,7 @@
 mod atlas;
 mod atlas_assets;
 mod atlas_data;
+mod hunt_setup;
 mod hunting_files;
 mod listener;
 mod merged;
@@ -11,6 +12,7 @@ mod presentation;
 mod server;
 mod socket;
 
+pub use hunt_setup::HuntSetup;
 pub use server::{HubControl, HubRequest, Sessions, WebServer};
 
 /// Pure, bounded host projection over the same snapshot as the room pane.

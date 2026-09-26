@@ -10,7 +10,7 @@ pub(crate) type ConfiguredMap = Result<Arc<MapContext>, String>;
 
 pub(crate) struct MapContext {
     pub(crate) map: Arc<Map>,
-    sha256: String,
+    pub(crate) sha256: String,
 }
 
 impl MapContext {

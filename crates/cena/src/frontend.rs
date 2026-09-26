@@ -15,6 +15,7 @@ pub(crate) struct Frontend {
     sessions: cena_web::Sessions,
     pairing: String,
     map_projection: Option<cena_web::MapProjection>,
+    hunt_map: Option<std::sync::Arc<crate::map_context::MapContext>>,
 }
 
 impl Frontend {
@@ -46,6 +47,11 @@ impl Frontend {
                     sessions,
                     pairing,
                     map_projection: crate::map_context::projection(map),
+                    hunt_map: if std::env::args().any(|arg| arg == "--hunt-setup") {
+                        map.as_ref().ok().cloned()
+                    } else {
+                        None
+                    },
                 })
             }
             Err(error) => {
@@ -75,12 +81,23 @@ impl Frontend {
             Some(_) => format!("{}&session={}", self.pairing, handle.session().0),
             None => self.pairing.clone(),
         };
+        let id = handle.session();
         self.sessions.attach_with_map(
             character.unwrap_or_default(),
             observer.clone(),
             handle,
             self.map_projection.clone(),
         );
+        if let Some(context) = &self.hunt_map {
+            self.sessions.hunt_setup(
+                id,
+                crate::hunt_setup::native(
+                    observer.clone(),
+                    std::sync::Arc::clone(context),
+                    cena_session::character_store::data_dir(),
+                ),
+            );
+        }
         tokio::spawn(announce(
             observer,
             url,

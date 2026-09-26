@@ -25,6 +25,7 @@ pub(crate) const MAX_CLIENTS: usize = 8;
 pub(crate) const MAX_MESSAGE_BYTES: usize = 16 * 1024;
 
 pub(crate) struct Shared {
+    pub(crate) hunt_setup: crate::hunt_setup::Handlers,
     pub(crate) hunting_corrections: Option<std::path::PathBuf>,
     pub(crate) hunting_files: Option<crate::hunting_files::Store>,
     pub(crate) token: String,
@@ -202,6 +203,15 @@ impl fmt::Debug for Sessions {
 }
 
 impl Sessions {
+    /// Install configuration for one session. This grants no game-command
+    /// capability; the host owns identity, validation, and native storage.
+    pub fn hunt_setup(&self, id: SessionId, handler: crate::HuntSetup) {
+        self.shared
+            .hunt_setup
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(id, handler);
+    }
     /// Serve `handle`'s session to viewers as `name` -- the character, for
     /// its card on the hub page -- and start its presentation pump. Replaces
     /// an earlier attachment of the same session.
@@ -277,6 +287,11 @@ impl Sessions {
     /// Stop serving session `id`. Its viewers are closed; the session itself
     /// is not touched -- the session table owns its lifetime.
     pub fn detach(&self, id: SessionId) {
+        self.shared
+            .hunt_setup
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(&id);
         let removed = self
             .shared
             .sessions
@@ -360,6 +375,7 @@ impl WebServer {
             "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' ws://{authority}; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
         )).map_err(io::Error::other)?;
         let shared = Arc::new(Shared {
+            hunt_setup: std::sync::Mutex::new(BTreeMap::new()),
             hunting_corrections: None,
             hunting_files: None,
             token: fresh_token()?,
@@ -515,6 +531,10 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
             }),
         )
         .route("/atlas", get(crate::atlas::home))
+        .route(
+            "/hunt/setup",
+            axum::routing::post(crate::hunt_setup::configure).layer(crate::hunt_setup::limit()),
+        )
         .route("/atlas/", get(crate::atlas::home))
         .route("/atlas/{*path}", get(crate::atlas::asset))
         .route(

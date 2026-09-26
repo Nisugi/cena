@@ -5,10 +5,11 @@ import {placeLabel} from './labels.mjs';
 import {icon} from './icons.mjs';
 import {presentation,layoutMode} from './profile.mjs';
 import {preparePresentation,passagePoints,cameraDrawing} from './display-layout.mjs';
-import {nearestRoom} from './interaction.mjs';
+import {nearestRoom,svgViewport} from './interaction.mjs';
 import {regionalBrowser} from './region-view.mjs';
 import {huntingView} from './hunting-view.mjs';
 import {huntingEditor} from './hunting-editor.mjs';
+import {nativeHuntSetup} from './native-hunt-setup.mjs';
 import {regionOverviewView} from './region-overview-view.mjs';
 
 export function supportsRegionOverview(data){
@@ -16,7 +17,7 @@ export function supportsRegionOverview(data){
  return Object.values(data?.scenes||{}).some(s=>!!s.assignment_kind&&s.assignment_kind!=='region-only'&&s.sheet?.rooms?.length>0);
 }
 // Mount-local state. The host owns loading, persistence and navigation.
-export async function mountAtlas(root,{source,storage=null,initialHash='',onNavigate=()=>{},onOutside=null,developerHunting=false,huntingFiles=null,corrections}={}){
+export async function mountAtlas(root,{source,storage=null,initialHash='',onNavigate=()=>{},onOutside=null,developerHunting=false,huntingFiles=null,corrections,nativeSetup=null}={}){
  if(!source?.load||!source?.previewRoute)throw Error('Atlas requires an explicit data/route adapter');
  const document=root.ownerDocument||root,window=document.defaultView;
  const cleanup=new AbortController();let destroyed=false,resizeObserver;
@@ -37,7 +38,7 @@ function markersFor(id){
  if(!placeCache.has(id))placeCache.set(id,placeMarkers(hints[id]?.features||[]).map(m=>resolvePlaceMarker(data,lookup,hints,m)));
  return placeCache.get(id);
 }
-let regional,overview,hunting,editor,habitatRooms=new Set();
+let regional,overview,hunting,editor,setup,habitatRooms=new Set();
 const preferenceKey='hydra.map.preferences.v1';
 try{prefs=cleanPreferences(JSON.parse(storage?.getItem(preferenceKey)));}catch{/* Storage is optional. */}
 function savePreferences(){try{storage?.setItem(preferenceKey,JSON.stringify(prefs));}catch{}draw();}
@@ -106,6 +107,7 @@ function resizeCanvas(){
 }
 function remember(){history.push({state:{...state},view:{...view}});if(history.length>80)history.shift();}
 function go(id,{record=true,fit=false,select=true}={}){
+ if(select&&setup?.room(Number(id)))return;
  const next=visit(state,lookup,Number(id));
  if(!next){outside(Number(id));return;}
  if(record)remember();
@@ -376,9 +378,9 @@ function showAbout(){
 }
 try{
  const loaded=await source.load({signal:cleanup.signal});if(destroyed)return;rawData=loaded.data;config=presentation(rawData);
- const layoutKey=`hydra.map.layout.v1.${developerHunting?'editor':'explorer'}.${config.key||config.region||config.title}`;
+ const layoutKey=`hydra.map.layout.v1.${nativeSetup?'setup':developerHunting?'editor':'explorer'}.${config.key||config.region||config.title}`;
  let savedLayout=null;try{savedLayout=storage?.getItem(layoutKey);}catch{/* Storage is optional. */}
- const selectedLayout=layoutMode(rawData,{developerHunting,saved:savedLayout});
+ const selectedLayout=layoutMode(rawData,{developerHunting:developerHunting||!!nativeSetup,saved:savedLayout});
  data=preparePresentation(rawData,{layout:selectedLayout,classic:selectedLayout==='classic'});lookup=index(data);origin=config.start_room;
  root.querySelector('h1').textContent=config.title;
  if(data.presentation){
@@ -396,7 +398,14 @@ try{
   browse:id=>{go(id,{select:false});fitRooms(scene().sheet.rooms);},
   highlight:(ids,paint=true)=>{habitatRooms=ids;if(paint)draw();},
   fit:ids=>{if(ids.length)fitRooms(ids.map(id=>lookup[id]));},openExit:id=>go(id)});
- hunting=huntingView(root,{data:rawData,context:loaded.regionContext,corrections,redraw:()=>draw(),fit:ids=>fitRooms(ids.map(id=>lookup[id])),onSelect:developerHunting?id=>editor?.select(id):null,wasPan:()=>Date.now()-lastMove<=180});
+ hunting=huntingView(root,{data:rawData,context:loaded.regionContext,corrections,redraw:()=>draw(),fit:ids=>fitRooms(ids.map(id=>lookup[id])),onSelect:developerHunting?id=>editor?.select(id):nativeSetup?id=>setup?.choose(hunting.catalogue.area(state.area).hunts.find(h=>h.id===id)):null,wasPan:()=>Date.now()-lastMove<=180});
+ if(nativeSetup)setup=nativeHuntSetup(root,{data:rawData,connection:nativeSetup,storage,fit:ids=>fitRooms(ids.map(id=>lookup[id])),
+  mapPicker:id=>{
+   const saved={state:{...state},view:{...view},origin,destination,history:[...history]};
+   if(lookup[id])go(id,{select:false,fit:true,record:false});
+   // Render the hunt's controls before measuring its viewport, not the town's.
+   return ()=>{state=saved.state;view=saved.view;origin=saved.origin;destination=saved.destination;history=saved.history;recalculate();onNavigate(`room=${state.room}&mode=${state.mode}`);render();aspect();draw();};
+  },previewRoute:(from,to)=>{origin=from;destination=to;$('route-metric').value='cost';$('route-scripted').checked=false;recalculate();render();return route;}});
  if(developerHunting)editor=huntingEditor(root,{data:rawData,context:loaded.regionContext,storage,files:huntingFiles,redraw:()=>draw(),fit:ids=>fitRooms(ids.map(id=>lookup[id])),camera:()=>({view,rooms:scene().sheet.rooms}),wasPan:()=>Date.now()-lastMove<=180,signal:cleanup.signal});
  overview=regionOverviewView(root,{data:rawData,context:loaded.regionContext,directory:regional,browse:id=>{go(id,{select:false});fitRooms(scene().sheet.rooms);}});
  const params=new URLSearchParams(initialHash.replace(/^#/,'')),requested=Number(params.get('room')||config.start_room);state=initial(data,lookup,lookup[requested]?requested:config.start_room);if(params.get('mode')==='explorer')state.mode='explorer';if(state.room!==origin&&!params.has('browse')&&!params.has('overview'))destination=state.room;recalculate();view=bounds(scene().sheet.rooms);aspect();render();
@@ -425,7 +434,10 @@ try{
  $('town-context').onclick=()=>{go(config.start_room,{select:false});fitRooms(scene().sheet.rooms);};$('search').oninput=search;$('about').onclick=showAbout;$('close-dialog').onclick=()=>$('dialog').close();$('unbundled-markers').onchange=draw;
  on($('canvas'),'wheel',e=>{e.preventDefault();const r=canvasBox||$('canvas').getBoundingClientRect();zoom(Math.exp(e.deltaY*.001),(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height,true);},{passive:false});
  on(window,'scroll',()=>{canvasBox=null;},{capture:true});on(window,'resize',()=>{canvasBox=null;});
- const hit=e=>{const rect=$('canvas').getBoundingClientRect();return nearestRoom(scene().sheet.rooms,{x:e.clientX-rect.left,y:e.clientY-rect.top},view,rect);};
+ const hit=e=>{const rect=svgViewport($('map'),view);return rect?nearestRoom(scene().sheet.rooms,{x:e.clientX-rect.left,y:e.clientY-rect.top},view,rect):null;};
+ // Picking a setup room takes precedence over that room's service/exit marker.
+ // Otherwise e.g. TSC opens its destination menu instead of choosing town rest.
+ on($('canvas'),'click',e=>{if(!setup||e.target.closest('button')||Date.now()-lastMove<=180)return;const r=hit(e);if(r&&setup.room(r.id)){e.preventDefault();e.stopImmediatePropagation();}},{capture:true});
  on($('canvas'),'click',e=>{if(e.target.closest('button')||Date.now()-lastMove<=180)return;const r=hit(e);if(r)go(r.id);});
  const rightClick=e=>{if(destination===null)return;const r=hit(e),label=e.target.closest('[data-transition-label],[data-transition-source],[data-route-destination]');if(r?.id===destination||Number(label?.dataset.transitionLabel||label?.dataset.transitionSource||label?.dataset.routeDestination)===destination)clearRoute();};
  // Right-drag is always camera movement, including when a boundary tool is active.
@@ -441,7 +453,7 @@ try{
  // Read-only diagnostic surface for regression tests, not a movement API.
  const snapshot=()=>({state:{...state},view:{...view},roomCount:scene().sheet.rooms.length,origin,destination,route:structuredClone(route),preferences:structuredClone(prefs),layout:structuredClone(scene().display_layout||scene().reference_layout||{kind:'native'}),regional:regional.snapshot(),hunting:hunting.snapshot(),editor:editor?.snapshot()});
  return {snapshot,inspect(id){if(!destroyed&&lookup[id]&&Number(id)!==state.room)go(Number(id));},destroy(){
-  destroyed=true;cleanup.abort();resizeObserver?.disconnect();if(pendingFrame)cancelAnimationFrame(pendingFrame);clearTimeout(toastTimer);root.replaceChildren();
+  destroyed=true;setup?.destroy();cleanup.abort();resizeObserver?.disconnect();if(pendingFrame)cancelAnimationFrame(pendingFrame);clearTimeout(toastTimer);root.replaceChildren();
  }};
 }catch(error){$('focus-name').textContent='Preview could not load';$('empty').hidden=false;$('empty').textContent=error.message;cleanup.abort();resizeObserver?.disconnect();throw error;}
 }

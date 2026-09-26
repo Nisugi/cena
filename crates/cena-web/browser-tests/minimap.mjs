@@ -63,6 +63,18 @@ try {
   await popup.waitForLoadState();
   assert.ok(new URL(popup.url()).pathname.startsWith('/atlas/'));
   await popup.close();
+  // Setup opens from the same character's minimap, never a typed identity.
+  // This fixture token is deliberately not the HTTP server's real pairing.
+  const setupEvent = page.waitForEvent('popup');
+  await page.locator('#native-hunt-launch').click();
+  const setup = await setupEvent;
+  await setup.waitForLoadState();
+  await setup.locator('#native-setup-status').filter({hasText:'Pairing and same-origin authorization required'}).waitFor();
+  assert.ok(!setup.url().includes('setup_token='));
+  const paired = await setup.evaluate(() => JSON.parse(sessionStorage.getItem('hydra-hunt-setup')));
+  assert.equal(paired.token, 'synthetic-no-game');
+  assert.equal(paired.session, String(ready.session));
+  await setup.close();
   assert.deepEqual(await page.evaluate(() => window.sent.map(m => m.kind)), ['authenticate']);
   await mkdir('target/atlas-evidence', {recursive: true});
   await page.screenshot({path: 'target/atlas-evidence/live-minimap.png', fullPage: true});

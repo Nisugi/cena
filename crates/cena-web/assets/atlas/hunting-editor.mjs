@@ -1,5 +1,5 @@
 import {huntingCatalogue} from './hunting-catalogue.mjs';
-import {nearestRoom} from './interaction.mjs';
+import {nearestRoom,svgViewport} from './interaction.mjs';
 import {correctionDate} from './hunting-files.mjs';
 import {correctionStore,correctionSchema,selectionKey,selectionDraft,parseCorrections,rectangleRooms,maxCorrectionBytes} from './hunting-corrections.mjs';
 
@@ -149,7 +149,7 @@ export function huntingEditor(root,{data,context,storage,files=null,redraw,fit,c
  on(canvas,'pointerdown',e=>{
   if(!editing()||!e.shiftKey||e.button!==0||!e.isPrimary&&e.pointerType||e.target.closest('[data-hunting-label],button'))return;
   e.preventDefault();e.stopImmediatePropagation();
-  const c=camera(),box=canvas.getBoundingClientRect();gesture={start:point(e,box),end:point(e,box),box,view:{...c.view},rooms:c.rooms,pointer:e.pointerId,draft:current,operation:mode};
+  const c=camera(),box=svgViewport(root.querySelector('#map'),c.view);if(!box)return;gesture={start:point(e,box),end:point(e,box),box,view:{...c.view},rooms:c.rooms,pointer:e.pointerId,draft:current,operation:mode};
  },{capture:true});
  on(win,'pointermove',e=>{if(!gesture||e.pointerId!==gesture.pointer)return;e.preventDefault();e.stopImmediatePropagation();gesture.end=point(e,gesture.box);paintBox();},{capture:true});
  on(win,'pointerup',e=>{
@@ -163,7 +163,7 @@ export function huntingEditor(root,{data,context,storage,files=null,redraw,fit,c
  // Capture before route, place-label or transition click handlers.
  on(canvas,'click',e=>{
   if(e.target.closest('[data-hunting-label]'))return;
-  if(editing()){e.preventDefault();e.stopImmediatePropagation();if(e.shiftKey||wasPan()||e.target.closest('#labels,button'))return;const c=camera(),box=canvas.getBoundingClientRect(),r=nearestRoom(c.rooms,point(e,box),c.view,box);if(r)run(()=>editRooms([r.id]));}
+  if(editing()){e.preventDefault();e.stopImmediatePropagation();if(e.shiftKey||wasPan()||e.target.closest('#labels,button'))return;const c=camera(),box=svgViewport(root.querySelector('#map'),c.view);if(!box)return;const r=nearestRoom(c.rooms,point(e,box),c.view,box);if(r)run(()=>editRooms([r.id]));}
  },{capture:true});
  on(canvas,'dblclick',e=>{if(editing()){e.preventDefault();e.stopImmediatePropagation();}},{capture:true});
  on(canvas,'wheel',e=>{if(gesture){e.preventDefault();e.stopImmediatePropagation();}},{capture:true,passive:false});
@@ -174,9 +174,11 @@ export function huntingEditor(root,{data,context,storage,files=null,redraw,fit,c
  signal.addEventListener('abort',()=>{destroyed=true;win.clearTimeout(saveTimer);root.classList.remove('hunting-dev');},{once:true});
  function paintBox(){
   root.querySelector('[data-hunt-edit-box]')?.remove();if(!gesture)return;
-  const {start:a,end:b}=gesture,n=doc.createElementNS('http://www.w3.org/2000/svg','rect');
+  const labels=root.querySelector('#labels'),m=labels.getScreenCTM();if(!m)return;
+  const local=p=>({x:(p.x+gesture.box.left-m.e)/m.a,y:(p.y+gesture.box.top-m.f)/m.d});
+  const a=local(gesture.start),b=local(gesture.end),n=doc.createElementNS('http://www.w3.org/2000/svg','rect');
   for(const [k,v] of Object.entries({'data-hunt-edit-box':'true',x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y),fill:'#73dfca','fill-opacity':.15,stroke:'#73dfca','stroke-dasharray':'4 3','pointer-events':'none'}))n.setAttribute(k,v);
-  root.querySelector('#labels').append(n);
+  labels.append(n);
  }
  return {
   select(id){if(importing||!model?.hunts.some(h=>h.id===id))return;run(()=>selectDraft(id));},
