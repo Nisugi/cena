@@ -223,6 +223,10 @@ pub struct Stances {
 /// When to stop hunting and go rest, and when to come back.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bigshot's rest switches, carried as they are"
+)]
 pub struct Rest {
     /// Rest when the mind is at or above this percent (`fried`); 101 never.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -251,6 +255,9 @@ pub struct Rest {
     pub wracking: bool,
     /// The least spirit Sign of Wracking is used at (`wracking_spirit`).
     pub wracking_spirit: u32,
+    /// Run the waggle profile at the start of each rest (bigshot's
+    /// `resting_scripts: ewaggle`, run as the rest begins, `bigshot.lic:7539`).
+    pub waggle: bool,
     /// Sent on leaving the hunt for a rest, before any walking: a spell or
     /// symbol that carries the character toward town (`fog_return`,
     /// `custom_fog`, `bigshot.lic:7677-7723`). Empty walks the whole way.

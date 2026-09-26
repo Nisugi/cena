@@ -139,6 +139,8 @@ pub(super) struct Follow {
     /// No Adrenal Surge (1107) before this game second (bigshot's
     /// `$bigshot_adrenal_surge`, 301 s after the last).
     pub(super) adrenal_until: Option<u32>,
+    /// This rest's waggle has run (`rest.waggle`).
+    pub(super) rest_waggled: bool,
     /// What went last, to send again if the game says `...wait`. Every
     /// line sent is answered (`Hunt::replied`), which takes it.
     pub(super) resend: Option<Resend>,

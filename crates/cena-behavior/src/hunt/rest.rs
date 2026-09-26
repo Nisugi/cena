@@ -137,6 +137,11 @@ impl Hunt {
         if here.room == Some(goal) {
             self.phase = then;
             self.pending = commands.iter().cloned().collect();
+            if matches!(then, Phase::Resting(_))
+                && let Some(said) = self.rest_waggle()
+            {
+                return said;
+            }
             return match self.pending.pop_front() {
                 Some(line) => Said::Send { line, target: None },
                 None => Said::Wait(1),
@@ -145,8 +150,20 @@ impl Hunt {
         Said::Walk(goal)
     }
 
+    /// The waggle profile run as the rest begins, once (`rest.waggle`):
+    /// bigshot runs its `resting_scripts` there, and the waggle is the one
+    /// Hydra has built in.
+    fn rest_waggle(&mut self) -> Option<Said> {
+        let wanted = self.profile.rest.waggle && self.waggle_profile.is_some();
+        (wanted && !std::mem::replace(&mut self.follow.rest_waggled, true))
+            .then(|| Said::Waggle(Vec::new()))
+    }
+
     /// At the rest room: the commands, the wait, then the walk back.
     fn resting(&mut self, state: &GameState, here: Here<'_>, why: Why) -> Said {
+        if let Some(said) = self.rest_waggle() {
+            return said;
+        }
         if let Some(line) = self.pending.pop_front() {
             return Said::Send { line, target: None };
         }
@@ -212,6 +229,7 @@ impl Hunt {
         let Some(resting) = self.profile.rooms.resting else {
             return Some(Said::Done(Ending::NoRestingRoom));
         };
+        self.follow.rest_waggled = false;
         self.phase = Phase::ToRest(why);
         self.notes
             .push(format!("{why}: walking to the resting room."));

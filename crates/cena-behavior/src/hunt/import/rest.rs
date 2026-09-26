@@ -24,6 +24,38 @@ impl Job {
         self.profile.rest.lte_boost = number(&self.take("lte_boost")).unwrap_or(0);
         self.profile.rest.wracking_spirit = number(&self.take("wracking_spirit")).unwrap_or(0);
         self.rest_when();
+        self.scripts();
+    }
+
+    /// `hunting_scripts` and `resting_scripts`: Lich scripts bigshot starts
+    /// with the hunt and at each rest (`bigshot.lic:7278`, `:7539`). Hydra
+    /// runs none; each is named, with where its work is built in when it is.
+    fn scripts(&mut self) {
+        for key in ["hunting_scripts", "resting_scripts"] {
+            for script in list(&self.take(key)) {
+                let name = script.split_whitespace().next().unwrap_or_default();
+                let name = name.to_ascii_lowercase();
+                let built = match name.as_str() {
+                    "ewaggle" | "waggle" if key == "resting_scripts" => {
+                        self.profile.rest.waggle = true;
+                        Some("the waggle profile runs at each rest (`rest.waggle`)")
+                    }
+                    "eherbs" | "useherbs" => {
+                        Some("the heal profile heals at each rest when one is set (`;heal`)")
+                    }
+                    "eloot" => Some("the loot profile loots and sells (`hunt import-loot`)"),
+                    "spellactive" => Some("`;keep` holds the spells up"),
+                    "ewaggle" | "waggle" => Some("`;waggle`"),
+                    _ => None,
+                };
+                self.note(match built {
+                    Some(what) => format!("{key}: `{script}` is built in: {what}"),
+                    None => format!(
+                        "{key}: `{script}` is a Lich script; Hydra runs none, and nothing stands in for it"
+                    ),
+                });
+            }
+        }
     }
 
     /// `fog_return`, bigshot's six choices as the lines each sends

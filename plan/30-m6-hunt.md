@@ -577,6 +577,10 @@ Demonstrated live on a short hunt.
 >   `tests/hunt_bounty.rs`): hunt until the guild's task is done, failed or a new one is
 >   ready, rest, and end at the rest; not while bandits are here on a bandit bounty.
 >   bigshot's skin and gem counts, which look in every container, are not built.
+>   `hunting_scripts` and `resting_scripts` are named script by script: Hydra runs no Lich
+>   script, and says where a script's work is built in (heal, loot, `;keep`, `;waggle`); a
+>   resting `ewaggle` becomes `rest.waggle`, the waggle profile run as each rest begins
+>   (`tests/hunt_rest_scripts.rs`).
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,
