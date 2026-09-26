@@ -25,6 +25,8 @@ pub(crate) const MAX_CLIENTS: usize = 8;
 pub(crate) const MAX_MESSAGE_BYTES: usize = 16 * 1024;
 
 pub(crate) struct Shared {
+    pub(crate) hunting_corrections: Option<std::path::PathBuf>,
+    pub(crate) hunting_files: Option<crate::hunting_files::Store>,
     pub(crate) token: String,
     pub(crate) authority: String,
     pub(crate) origin: String,
@@ -358,6 +360,8 @@ impl WebServer {
             "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' ws://{authority}; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
         )).map_err(io::Error::other)?;
         let shared = Arc::new(Shared {
+            hunting_corrections: None,
+            hunting_files: None,
             token: fresh_token()?,
             origin: format!("http://{authority}"),
             authority,
@@ -372,6 +376,41 @@ impl WebServer {
             stop: CancellationToken::new(),
         });
         Ok(Self { listener, shared })
+    }
+
+    /// Open an offline developer viewer with automatic hunting-correction files.
+    /// Ordinary [`Self::open`] does not permit file writes. The directory is
+    /// explicit, absolute, and exclusively locked for this server's lifetime.
+    ///
+    /// # Errors
+    /// Returns binding, folder, lock, or existing correction validation errors.
+    pub async fn open_hunting_editor(directory: &std::path::Path) -> io::Result<Self> {
+        let mut server = Self::open().await?;
+        let directory = directory.to_owned();
+        let files =
+            tokio::task::spawn_blocking(move || crate::hunting_files::Files::open(&directory))
+                .await
+                .map_err(io::Error::other)??;
+        Arc::get_mut(&mut server.shared)
+            .ok_or_else(|| io::Error::other("Server already shared"))?
+            .hunting_files = Some(Arc::new(std::sync::Mutex::new(files)));
+        Ok(server)
+    }
+
+    /// Read correction files for presentation without granting editor writes.
+    /// Validation errors are reported when the catalogue is requested, rather
+    /// than preventing the rest of the frontend from opening.
+    ///
+    /// # Errors
+    /// The directory is not absolute or the server has already been shared.
+    pub fn with_hunting_corrections(mut self, directory: std::path::PathBuf) -> io::Result<Self> {
+        if !directory.is_absolute() {
+            return Err(io::Error::other("Correction directory must be absolute"));
+        }
+        Arc::get_mut(&mut self.shared)
+            .ok_or_else(|| io::Error::other("Server already shared"))?
+            .hunting_corrections = Some(directory);
+        Ok(self)
     }
 
     /// Attach and detach sessions, now or after `run` has taken the server.
@@ -478,6 +517,16 @@ pub(crate) fn router(shared: Arc<Shared>) -> Router {
         .route("/atlas", get(crate::atlas::home))
         .route("/atlas/", get(crate::atlas::home))
         .route("/atlas/{*path}", get(crate::atlas::asset))
+        .route(
+            "/atlas/hunting-corrections",
+            get(crate::hunting_files::boundaries),
+        )
+        .route(
+            "/dev/hunting-corrections",
+            get(crate::hunting_files::load)
+                .post(crate::hunting_files::save)
+                .layer(crate::hunting_files::limit()),
+        )
         .route("/ws", get(upgrade))
         .layer(middleware::from_fn_with_state(Arc::clone(&shared), guard))
         .with_state(shared)
@@ -543,6 +592,59 @@ async fn upgrade(State(shared): State<Arc<Shared>>, ws: WebSocketUpgrade) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn correction_reader_never_grants_the_developer_writer() {
+        let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target");
+        let server = WebServer::open()
+            .await
+            .expect("loopback")
+            .with_hunting_corrections(directory.clone())
+            .expect("read-only corrections");
+        assert_eq!(server.shared.hunting_corrections.as_ref(), Some(&directory));
+        assert!(server.shared.hunting_files.is_none());
+        assert_eq!(
+            crate::hunting_files::load(State(Arc::clone(&server.shared)))
+                .await
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        let request = serde_json::from_value(serde_json::json!({
+            "revision": 0, "date": "2026-09-25", "record": {
+                "area": "test", "hunt": "test", "name": "Test",
+                "mapSha256": "a".repeat(64), "baseRooms": [1],
+                "creatures": [], "added": [], "removed": [], "notes": ""
+            }
+        }))
+        .expect("valid write request");
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "host",
+            HeaderValue::from_str(&server.shared.authority).unwrap(),
+        );
+        headers.insert(
+            "origin",
+            HeaderValue::from_str(&server.shared.origin).unwrap(),
+        );
+        assert_eq!(
+            crate::hunting_files::save(
+                State(Arc::clone(&server.shared)),
+                headers,
+                axum::Json(request)
+            )
+            .await
+            .status(),
+            StatusCode::NOT_FOUND,
+            "even a same-origin valid write has no writer"
+        );
+        assert!(
+            WebServer::open()
+                .await
+                .unwrap()
+                .with_hunting_corrections("relative".into())
+                .is_err()
+        );
+    }
 
     #[test]
     fn tokens_are_full_length_fresh_os_random_values() {

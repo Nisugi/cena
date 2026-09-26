@@ -13,8 +13,11 @@ export function regionalBrowser(root,{data,context,warning='',browse,highlight,f
  function details(c){
   $('dialog-title').textContent=c.name+' · installed reference';const body=$('dialog-body');body.replaceChildren();
   body.append(node('p',[`Level ${c.level??'unknown'}`,c.family,c.type,c.undead?'Undead':null,c.max_hp?`HP ${c.max_hp}`:null,c.size,c.boss?'Boss':null].filter(Boolean).join(' · ')));
-  body.append(node('p','Exact habitat UID matches only—not live occupants, guaranteed spawns, a safe route, or an approved hunting selection. Unknown rooms are not creature-free.'));
-  for(const a of c.associations){const s=data.scenes[a.group];body.append(button(`${s.label} · ${a.roomIds.length} matched rooms`,()=>{$('dialog').close();browse(model.areas.find(x=>x.key===a.group).entryRoom);activate(c.id);fit([...model.habitat(c.id,current)]);}));}
+  body.append(node('p','Habitat UID matches and exact creature-name room tags are separate reference sources—not live occupants, guaranteed spawns, a safe route, or an approved hunting selection. A room can match both sources. Unknown rooms are not creature-free.'));
+  for(const a of c.associations){const s=data.scenes[a.group],basis=a.basis==='room_tag_match'?'Exact room tags':a.basis==='room_uid_match'?'Habitat UIDs':'Unknown evidence';
+   body.append(button(`${s.label} · ${basis} · ${a.roomIds.length} matched rooms`,()=>{$('dialog').close();browse(model.areas.find(x=>x.key===a.group).entryRoom);activate(c.id);fit(a.roomIds.map(Number));}),node('p',a.note,'hint'));
+  }
+  if(c.associations.some(a=>a.basis==='room_tag_match'))body.append(node('p',`Room-tag source: bundled native rooms · data SHA-256: ${context.data_sha256}`,'source-note'));
   if(c.url){try{const url=new URL(c.url);if(url.protocol==='https:'&&url.hostname==='gswiki.play.net'){const a=node('a','Open wiki reference (not freshly verified)');a.href=url.href;a.target='_blank';a.rel='noopener';body.append(a);}}catch{}}
   body.append(node('p',`Source: ${c.source.path}\nSHA-256: ${c.source.sha256}`,'source-note'));
   $('dialog').showModal();
@@ -22,7 +25,7 @@ export function regionalBrowser(root,{data,context,warning='',browse,highlight,f
  function updateReferences(){
   const list=model.byArea.get(current)||[],target=refs.lastElementChild;target.replaceChildren();
   refs.firstElementChild.textContent=`Creature references · ${list.length} matched types${selected?' · highlighting '+(model.creatures.get(selected)?.name||selected):''}`;
-  target.append(node('p',warning||(!context?'No creature reference sidecar for this region yet.':list.length?'Select a creature to outline its matched rooms in violet. Other rooms and all connections stay visible.':'No habitat UID matches in the installed reference data for this frame. This is unknown, not a creature-free area.'),'hint'));
+  target.append(node('p',warning||(!context?'No creature reference sidecar for this region yet.':list.length?'Select a creature to outline its matched rooms in violet. Other rooms and all connections stay visible.':'No habitat UID or exact creature-name room-tag matches for this frame. This is unknown, not a creature-free area.'),'hint'));
   if(selected){target.append(button('Clear habitat highlight',()=>activate(null)),button('Fit matched rooms',()=>fit([...model.habitat(selected,current)])));}
   const chips=node('div',null,'creature-chips');
   for(const c of list){const wrap=node('span'),b=button(`${c.name} · Lv ${c.level??'?'}${c.undead?' · undead':''} · ${c.roomIds.length} rooms`,()=>activate(selected===c.id?null:c.id));b.dataset.creature=c.id;b.setAttribute('aria-pressed',selected===c.id);wrap.append(b,button('ⓘ',()=>details(c)));wrap.lastElementChild.setAttribute('aria-label',`Reference details for ${c.name}`);chips.append(wrap);}
@@ -31,7 +34,7 @@ export function regionalBrowser(root,{data,context,warning='',browse,highlight,f
  function mountDirectory(body,{controlsHost=body,close,select,onFilter=()=>{}}){
   const c=context?.coverage,assigned=model.areas.filter(a=>!a.provisional).length;
   body.append(node('p',`${Object.keys(data.rooms).length.toLocaleString()} bundled rooms · ${assigned} assigned/context frames · ${model.areas.length-assigned} provisional frames. Browse changes the viewed map, not your route destination.`));
-  body.append(node('p',c?`${c.matchedCreatures} creature references match ${c.matchedRooms.toLocaleString()} rooms by game UID. ${c.roomsWithoutAssociation.toLocaleString()} rooms have unknown habitat coverage. Levels are installed reference values. Geography, hunting selections and map plates remain independent.`:warning||'Creature reference data is not bundled for this region.','hint'));
+  body.append(node('p',c?`${c.matchedCreatures} creature references match ${c.matchedRooms.toLocaleString()} rooms through habitat UIDs or exact room tags${c.tagOnlyRooms!==undefined?` (${c.tagOnlyRooms} rooms covered only by tags)`:''}. ${c.roomsWithoutAssociation.toLocaleString()} rooms have unknown habitat coverage. Levels are installed reference values. Geography, hunting selections and map plates remain independent.`:warning||'Creature reference data is not bundled for this region.','hint'));
   const controls=node('div',null,'region-controls'),q=node('input'),kind=node('select'),min=node('input'),max=node('input');
   q.type='search';q.placeholder='Area, place, creature or room number…';q.id='directory-query';q.setAttribute('aria-label','Search region');
   for(const [value,label] of [['assigned','Assigned / context areas'],['habitat','Any frame with creature references'],['provisional','Provisional · unassigned areas'],['all','All display frames']]){const o=node('option',label);o.value=value;kind.append(o);}kind.id='directory-kind';kind.setAttribute('aria-label','Area classification');

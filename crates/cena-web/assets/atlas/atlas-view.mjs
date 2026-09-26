@@ -3,11 +3,12 @@ import {routeVisits,routeOnMap} from './navigation.mjs';
 import {categories,defaults,cleanPreferences,preset,annotations,placeMarkers,resolvePlaceMarker} from './preferences.mjs';
 import {placeLabel} from './labels.mjs';
 import {icon} from './icons.mjs';
-import {presentation} from './profile.mjs';
+import {presentation,layoutMode} from './profile.mjs';
 import {preparePresentation,passagePoints,cameraDrawing} from './display-layout.mjs';
 import {nearestRoom} from './interaction.mjs';
 import {regionalBrowser} from './region-view.mjs';
 import {huntingView} from './hunting-view.mjs';
+import {huntingEditor} from './hunting-editor.mjs';
 import {regionOverviewView} from './region-overview-view.mjs';
 
 export function supportsRegionOverview(data){
@@ -15,7 +16,7 @@ export function supportsRegionOverview(data){
  return Object.values(data?.scenes||{}).some(s=>!!s.assignment_kind&&s.assignment_kind!=='region-only'&&s.sheet?.rooms?.length>0);
 }
 // Mount-local state. The host owns loading, persistence and navigation.
-export async function mountAtlas(root,{source,storage=null,initialHash='',onNavigate=()=>{},onOutside=null}={}){
+export async function mountAtlas(root,{source,storage=null,initialHash='',onNavigate=()=>{},onOutside=null,developerHunting=false,huntingFiles=null,corrections}={}){
  if(!source?.load||!source?.previewRoute)throw Error('Atlas requires an explicit data/route adapter');
  const document=root.ownerDocument||root,window=document.defaultView;
  const cleanup=new AbortController();let destroyed=false,resizeObserver;
@@ -36,7 +37,7 @@ function markersFor(id){
  if(!placeCache.has(id))placeCache.set(id,placeMarkers(hints[id]?.features||[]).map(m=>resolvePlaceMarker(data,lookup,hints,m)));
  return placeCache.get(id);
 }
-let regional,overview,hunting,habitatRooms=new Set();
+let regional,overview,hunting,editor,habitatRooms=new Set();
 const preferenceKey='hydra.map.preferences.v1';
 try{prefs=cleanPreferences(JSON.parse(storage?.getItem(preferenceKey)));}catch{/* Storage is optional. */}
 function savePreferences(){try{storage?.setItem(preferenceKey,JSON.stringify(prefs));}catch{}draw();}
@@ -136,6 +137,7 @@ function activateLabel(node,links,place=null){
 }
 function render(){
  hunting?.update(state.area);
+ editor?.update(state.area);
  root.querySelector('h1').textContent=state.area==='town'?config.title:hunting?.active?scene().label:config.title;
  $('layout-controls').hidden=!data.presentation&&state.area!=='catacombs'&&!scene().reference_layout;
  $('layout-mode').parentElement.hidden=!data.presentation&&state.area!=='catacombs';
@@ -199,6 +201,7 @@ function render(){
 }
 function draw(cameraOnly=false){
  if(!view||!data)return;
+ hunting?.setEditing(editor?.preview()||null);
  if(pendingFrame){cancelAnimationFrame(pendingFrame);pendingFrame=0;}
  const svg=$('map'),overlay=$('labels'),box=$('canvas').getBoundingClientRect();
  canvasBox=box;
@@ -355,6 +358,7 @@ function draw(cameraOnly=false){
  hunting?.paint({svg:rebuild?svg:null,overlay,el,scene:scene(),drawing,lookup,view,px,box,occupied,textWidth,hideLabels:prefs.hideLabels});
  for(const id of scene().display_layout?.insets||[]){const p=lookup[id].cell;offsetLabel('Schematic inset · '+title(data.rooms[id]),(p.x-view.x)/px,(p.y-view.y)/px,{'data-layout-inset':id},'#d7b3ee');}
  if(prefs.numbers)for(const r of scene().sheet.rooms){const x=(r.cell.x-view.x)/px,y=(r.cell.y-view.y)/px;if(x>=0&&y>=0&&x<=box.width&&y<=box.height)offsetLabel(String(r.id),x,y,{'data-room-number':r.id},'#a9c3d4');}
+ editor?.paint({overlay,el,lookup,view,px});
 }
 function zoom(factor,cx=.5,cy=.5,defer=false){const w=Math.max(4,Math.min(2000,view.w*factor)),f=w/view.w;view.x+=view.w*cx*(1-f);view.y+=view.h*cy*(1-f);view.w=w;view.h*=f;if(defer)requestDraw();else draw(true);}
 function search(){const q=$('search').value.trim().toLowerCase();$('search-results').replaceChildren();if(!q)return;const hits=Object.values(data.rooms).filter(r=>String(r.id)===q||`${title(r)} ${hints[r.id]?.features.map(f=>`${f.name} ${categories[f.key].name}`).join(' ')}`.toLowerCase().includes(q)).slice(0,20);for(const r of hits)$('search-results').append(button(`${title(r)} #${r.id}`,()=>{go(r.id,{fit:true});$('search').value='';search();}));if(!hits.length)$('search-results').textContent='No bundled rooms match. This demo is incomplete.';}
@@ -371,8 +375,11 @@ function showAbout(){
  const a=document.createElement('a');a.href='data.json';a.textContent='Open data and source hashes';a.target='_blank';a.rel='noopener';$('dialog-body').append(a);$('dialog').showModal();
 }
 try{
- const loaded=await source.load({signal:cleanup.signal});if(destroyed)return;rawData=loaded.data;data=preparePresentation(rawData);lookup=index(data);
- config=presentation(data);origin=config.start_room;
+ const loaded=await source.load({signal:cleanup.signal});if(destroyed)return;rawData=loaded.data;config=presentation(rawData);
+ const layoutKey=`hydra.map.layout.v1.${developerHunting?'editor':'explorer'}.${config.key||config.region||config.title}`;
+ let savedLayout=null;try{savedLayout=storage?.getItem(layoutKey);}catch{/* Storage is optional. */}
+ const selectedLayout=layoutMode(rawData,{developerHunting,saved:savedLayout});
+ data=preparePresentation(rawData,{layout:selectedLayout,classic:selectedLayout==='classic'});lookup=index(data);origin=config.start_room;
  root.querySelector('h1').textContent=config.title;
  if(data.presentation){
   root.querySelector('#region-browser summary').textContent=config.title+' region · areas & unassigned';
@@ -381,14 +388,16 @@ try{
   $('reset-start').textContent='Reset start to '+title(data.rooms[config.start_room]);
   root.querySelectorAll('[data-demo]').forEach(b=>b.remove());
   for(const [i,tour] of config.tours.entries()){const b=button(`${i+1} · ${tour.name}`,()=>go(tour.room,{fit:true}));b.dataset.demo=tour.room;$('about').before(b);}
-  $('layout-mode').replaceChildren(...[['native','Pinned engine positions'],['reference','Artwork comparison']].map(([value,label])=>{const o=document.createElement('option');o.value=value;o.textContent=label;return o;}));$('layout-mode').value=config.layout_policy;
+  $('layout-mode').replaceChildren(...[['native','Pinned engine positions'],['reference','Artwork-guided layout']].map(([value,label])=>{const o=document.createElement('option');o.value=value;o.textContent=label;return o;}));
  }
+ $('layout-mode').value=selectedLayout;
  hints=annotations(data,lookup);buildSettings();buildRegionBrowser();$('region-filter').oninput=buildRegionBrowser;
  regional=regionalBrowser(root,{data:rawData,context:loaded.regionContext,warning:loaded.contextWarning,
   browse:id=>{go(id,{select:false});fitRooms(scene().sheet.rooms);},
   highlight:(ids,paint=true)=>{habitatRooms=ids;if(paint)draw();},
   fit:ids=>{if(ids.length)fitRooms(ids.map(id=>lookup[id]));},openExit:id=>go(id)});
- hunting=huntingView(root,{data:rawData,context:loaded.regionContext,redraw:()=>draw(),fit:ids=>fitRooms(ids.map(id=>lookup[id]))});
+ hunting=huntingView(root,{data:rawData,context:loaded.regionContext,corrections,redraw:()=>draw(),fit:ids=>fitRooms(ids.map(id=>lookup[id])),onSelect:developerHunting?id=>editor?.select(id):null,wasPan:()=>Date.now()-lastMove<=180});
+ if(developerHunting)editor=huntingEditor(root,{data:rawData,context:loaded.regionContext,storage,files:huntingFiles,redraw:()=>draw(),fit:ids=>fitRooms(ids.map(id=>lookup[id])),camera:()=>({view,rooms:scene().sheet.rooms}),wasPan:()=>Date.now()-lastMove<=180,signal:cleanup.signal});
  overview=regionOverviewView(root,{data:rawData,context:loaded.regionContext,directory:regional,browse:id=>{go(id,{select:false});fitRooms(scene().sheet.rooms);}});
  const params=new URLSearchParams(initialHash.replace(/^#/,'')),requested=Number(params.get('room')||config.start_room);state=initial(data,lookup,lookup[requested]?requested:config.start_room);if(params.get('mode')==='explorer')state.mode='explorer';if(state.room!==origin&&!params.has('browse')&&!params.has('overview'))destination=state.room;recalculate();view=bounds(scene().sheet.rooms);aspect();render();
  if(params.has('overview')){overview.select(state.area);overview.open(params.get('overview')==='places'?'places':'map');}
@@ -398,7 +407,12 @@ try{
  $('route-metric').onchange=$('route-scripted').onchange=()=>{recalculate();render();};
  $('clear-route').onclick=clearRoute;
  $('route-status').title='Right-click to clear this route';$('route-status').oncontextmenu=e=>{if(destination!==null){e.preventDefault();clearRoute();}};
- $('layout-mode').onchange=()=>{data=preparePresentation(rawData,data.presentation?{layout:$('layout-mode').value}:{classic:$('layout-mode').value==='classic'});lookup=index(data);hints=annotations(data,lookup);placeCache.clear();history=[];views={};view=bounds(scene().sheet.rooms);aspect();render();};
+ $('layout-mode').onchange=()=>{
+  const mode=$('layout-mode').value;
+  savedLayout=mode;
+  data=preparePresentation(rawData,data.presentation?{layout:mode}:{classic:mode==='classic'});lookup=index(data);hints=annotations(data,lookup);placeCache.clear();history=[];views={};view=bounds(scene().sheet.rooms);aspect();render();
+  try{storage?.setItem(layoutKey,mode);}catch{/* Rendering does not depend on storage. */}
+ };
  $('next-step').onclick=()=>{if(route.ids.length>1){origin=route.ids[1];recalculate();go(origin,{select:false});}};
  $('start-here').onclick=()=>{origin=state.room;recalculate();render();};
  $('reset-start').onclick=()=>{origin=config.start_room;recalculate();go(config.start_room,{select:false});};
@@ -413,15 +427,19 @@ try{
  on(window,'scroll',()=>{canvasBox=null;},{capture:true});on(window,'resize',()=>{canvasBox=null;});
  const hit=e=>{const rect=$('canvas').getBoundingClientRect();return nearestRoom(scene().sheet.rooms,{x:e.clientX-rect.left,y:e.clientY-rect.top},view,rect);};
  on($('canvas'),'click',e=>{if(e.target.closest('button')||Date.now()-lastMove<=180)return;const r=hit(e);if(r)go(r.id);});
- on($('canvas'),'contextmenu',e=>{if(destination===null)return;const r=hit(e),label=e.target.closest('[data-transition-label],[data-transition-source]');if(r?.id===destination||Number(label?.dataset.transitionLabel||label?.dataset.transitionSource)===destination){e.preventDefault();e.stopPropagation();clearRoute();}});
- on($('canvas'),'pointerdown',e=>{if(e.button!==0||e.target.closest('button'))return;drag={x:e.clientX,y:e.clientY,view:{...view},moved:false};});
+ const rightClick=e=>{if(destination===null)return;const r=hit(e),label=e.target.closest('[data-transition-label],[data-transition-source],[data-route-destination]');if(r?.id===destination||Number(label?.dataset.transitionLabel||label?.dataset.transitionSource||label?.dataset.routeDestination)===destination)clearRoute();};
+ // Right-drag is always camera movement, including when a boundary tool is active.
+ // Some browsers emit contextmenu on press, before a right-drag can be known.
+ // Defer mouse right-click actions to release; keyboard context menus still work.
+ on($('canvas'),'contextmenu',e=>{e.preventDefault();e.stopImmediatePropagation();if(e.button!==2&&!drag)rightClick(e);},{capture:true});
+ on($('canvas'),'pointerdown',e=>{if(![0,2].includes(e.button)||e.target.closest('button'))return;drag={x:e.clientX,y:e.clientY,view:{...view},moved:false,button:e.button,press:e};});
  on(window,'pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>4){drag.moved=true;lastMove=Date.now();view.x=drag.view.x-dx*view.w/lastViewport.width;view.y=drag.view.y-dy*view.h/lastViewport.height;requestDraw();}});
- const endDrag=()=>{const moved=drag?.moved;drag=null;if(moved)requestDraw();};
- on(window,'pointerup',endDrag);on(window,'blur',endDrag);
+ const endDrag=e=>{const finished=drag;drag=null;if(finished?.moved)requestDraw();else if(finished?.button===2&&e.type==='pointerup')rightClick(finished.press);};
+ on(window,'pointerup',endDrag);on(window,'pointercancel',endDrag);on(window,'blur',endDrag);
  resizeObserver=new window.ResizeObserver(resizeCanvas);resizeObserver.observe($('canvas'));
 
  // Read-only diagnostic surface for regression tests, not a movement API.
- const snapshot=()=>({state:{...state},view:{...view},roomCount:scene().sheet.rooms.length,origin,destination,route:structuredClone(route),preferences:structuredClone(prefs),layout:structuredClone(scene().display_layout||scene().reference_layout||{kind:'native'}),regional:regional.snapshot(),hunting:hunting.snapshot()});
+ const snapshot=()=>({state:{...state},view:{...view},roomCount:scene().sheet.rooms.length,origin,destination,route:structuredClone(route),preferences:structuredClone(prefs),layout:structuredClone(scene().display_layout||scene().reference_layout||{kind:'native'}),regional:regional.snapshot(),hunting:hunting.snapshot(),editor:editor?.snapshot()});
  return {snapshot,inspect(id){if(!destroyed&&lookup[id]&&Number(id)!==state.room)go(Number(id));},destroy(){
   destroyed=true;cleanup.abort();resizeObserver?.disconnect();if(pendingFrame)cancelAnimationFrame(pendingFrame);clearTimeout(toastTimer);root.replaceChildren();
  }};

@@ -4,6 +4,7 @@
 mod atlas;
 mod atlas_assets;
 mod atlas_data;
+mod hunting_files;
 mod listener;
 mod merged;
 mod presentation;

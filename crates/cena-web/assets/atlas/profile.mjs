@@ -4,6 +4,15 @@ const landing={title:'Wehnimer’s Landing',region:"Wehnimer's Landing",start_ro
  primary_tabs:['town','catacombs','access'],tab_rooms:{town:228,catacombs:7501}};
 
 const hasRoom=(scene,id)=>scene?.sheet?.rooms?.some(r=>r.id===id);
+// Editing needs the readable reference geometry by default. This is a display
+// preference only; maps with no artwork keep their native geometry.
+export function layoutMode(data,{developerHunting=false,saved=null}={}){
+ const allowed=data.presentation?['native','reference']:['native','classic'];
+ if(allowed.includes(saved))return saved;
+ if(!data.presentation)return 'classic';
+ if(developerHunting)return 'reference';
+ return allowed.includes(data.presentation.layout_policy)?data.presentation.layout_policy:'native';
+}
 export function presentation(data){
  if(!data.presentation){
   if(!data.rooms?.[landing.start_room]||!hasRoom(data.scenes?.town,landing.start_room))throw Error('Invalid Landing presentation start_room');

@@ -1,6 +1,7 @@
 """Checks the actual shipped corpus, including every room and habitat match."""
 import hashlib
 import json
+from collections import Counter
 from pathlib import Path
 import unittest
 
@@ -26,6 +27,9 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(len(canonical), manifest['eligible_unique_rooms'])
         self.assertEqual(sum(r['source_rooms'] for r in manifest['regions']), len(canonical))
         records, seen = {}, set()
+        catalogue = json.loads((ROOT / 'tools/atlas/creature-catalogue.json').read_text())
+        templates = {c['id']: c['record'] for c in catalogue['entries']}
+        names = Counter(c['record']['name'].strip().lower() for c in catalogue['entries'])
         for region in manifest['regions']:
             slug = region['slug']
             bundle = read(slug+'/data.json')
@@ -49,10 +53,18 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(context['data_sha256'], inventory['files'][slug+'/data.json']['sha256'])
             for creature in context['creatures']:
                 for association in creature['associations']:
-                    self.assertEqual(association['basis'],'room_uid_match')
+                    self.assertIn(association['basis'],('room_uid_match','room_tag_match'))
                     for rid in association['roomIds']:
                         self.assertEqual(rooms[int(rid)]['area'],association['group'])
-                        self.assertTrue(rooms[int(rid)].get('uid'))
+                        if association['basis'] == 'room_tag_match':
+                            name = templates[creature['id']]['name'].strip().lower()
+                            self.assertEqual(names[name], 1)
+                            self.assertIn(name, [t.strip().lower() for t in rooms[int(rid)].get('tags', [])])
+                        else:
+                            spans = [s for a in templates[creature['id']]['areas'] for s in a.get('uids', [])]
+                            self.assertTrue(any(
+                                s == uid if isinstance(s, int) else s['min'] <= uid <= s['max']
+                                for uid in rooms[int(rid)].get('uid', []) for s in spans))
         self.assertEqual(seen, set(canonical))
         # Each world connection is an actual directed exit, not a guessed bridge.
         world = read('corpus/world.json')

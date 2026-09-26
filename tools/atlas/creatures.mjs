@@ -27,39 +27,54 @@ export function loadCreatureCatalogue(directory){
     scope:'Sorted template filename/content-hash inventory. Individual records retain their own hashes.'}};
 }
 
-// Membership comes only from UID overlap. Area labels are display text, not keys:
-// they cannot establish exact rooms and are deliberately not used as a fallback.
+// Two independent room-level sources, never area-name or adjacency guesses.
+// Tags must equal a unique catalogue name (case/outer whitespace aside).
+const normalizedName=s=>typeof s==='string'?s.trim().toLowerCase():'';
 export function creaturesForRegion(catalogue,nativeRooms,displayRooms){
+  const names=new Map();
+  for(const e of catalogue.entries){const name=normalizedName(e.record.name);if(name)names.set(name,(names.get(name)||0)+1);}
   const native=new Map(nativeRooms.map(r=>[String(r.id),r]));
   const rooms=displayRooms.map(r=>{
     const raw=native.get(r.id);if(!raw)throw Error(`Missing native room for creature association: ${r.id}`);
-    return {id:r.id,group:r.group,uids:(raw.uid||[]).filter(validUid)};
+    return {id:r.id,group:r.group,uids:(raw.uid||[]).filter(validUid),tags:new Set((raw.tags||[]).map(normalizedName).filter(Boolean))};
   });
   const creatures=[],covered=new Set(),groups=new Map();
+  const byBasis={room_uid_match:new Set(),room_tag_match:new Set()};
   for(const r of rooms){const g=groups.get(r.group)||{id:r.group,rooms:0,matchedRooms:0,creatures:0,roomsWithoutUid:0};
     g.rooms++;if(!r.uids.length)g.roomsWithoutUid++;groups.set(r.group,g);}
   let recordsWithoutHabitatUids=0,invalidHabitatEntries=0;
   for(const entry of catalogue.entries){
     const all=(entry.record.areas||[]).flatMap(a=>Array.isArray(a.uids)?a.uids:[]);
     const spans=all.filter(validSpan);invalidHabitatEntries+=all.length-spans.length;
-    if(!spans.length){recordsWithoutHabitatUids++;continue;}
-    const byGroup=new Map();
+    if(!spans.length)recordsWithoutHabitatUids++;
+    const name=normalizedName(entry.record.name),byGroup=new Map();
     for(const r of rooms){
-      if(!r.uids.some(uid=>spans.some(span=>rangeContains(span,uid))))continue;
-      const ids=byGroup.get(r.group)||[];ids.push(r.id);byGroup.set(r.group,ids);covered.add(r.id);
+      const uid=r.uids.some(uid=>spans.some(span=>rangeContains(span,uid)));
+      const tag=names.get(name)===1&&r.tags.has(name);
+      if(!uid&&!tag)continue;
+      const evidence=byGroup.get(r.group)||{room_uid_match:[],room_tag_match:[]};
+      for(const [basis,matched] of [['room_uid_match',uid],['room_tag_match',tag]])if(matched){
+        evidence[basis].push(r.id);byBasis[basis].add(r.id);
+      }
+      byGroup.set(r.group,evidence);covered.add(r.id);
     }
     if(!byGroup.size)continue;
-    const associations=[...byGroup].map(([group,roomIds])=>{
+    const associations=[...byGroup].flatMap(([group,evidence])=>{
       groups.get(group).creatures++;
-      return {group,roomIds,basis:'room_uid_match',note:'Installed creature-template habitat UIDs overlap these native room records. Reference habitat evidence only; not live occupants, guaranteed spawns, or a complete list.'};
+      return Object.entries(evidence).filter(([,ids])=>ids.length).map(([basis,roomIds])=>({group,roomIds,basis,
+        note:(basis==='room_uid_match'?'Installed creature-template habitat UIDs overlap these native room records.':
+          'Native room tags exactly match a unique creature-template name, ignoring case and outer whitespace; not a habitat UID match.')+
+          ' Reference habitat evidence only; not live occupants, guaranteed spawns, or a complete list.'}));
     });
     creatures.push({...entry,associations,wiki:null});
   }
   for(const r of rooms)if(covered.has(r.id))groups.get(r.group).matchedRooms++;
-  return {creatures,coverage:{basis:'room_uid_match',source:catalogue.source,
+  return {creatures,coverage:{basis:'room_uid_or_tag_match',source:catalogue.source,
+    matchedRoomsByBasis:Object.fromEntries(Object.entries(byBasis).map(([basis,ids])=>[basis,ids.size])),
+    tagOnlyRooms:[...byBasis.room_tag_match].filter(id=>!byBasis.room_uid_match.has(id)).length,
     matchedCreatures:creatures.length,matchedRooms:covered.size,totalRooms:rooms.length,
     roomsWithoutUid:rooms.filter(r=>!r.uids.length).length,roomsWithoutAssociation:rooms.length-covered.size,
     groups:[...groups.values()],catalogue:{parsedRecords:catalogue.entries.length,
-      recordsWithoutHabitatUids,invalidHabitatEntries,unsupportedRecords:catalogue.failures},
-    note:'No association means unknown, not creature-free. Missing habitat UIDs and unsupported templates are not filled by area-name guesses. Levels and stats are installed reference values; wiki links are provided, not represented as fresh verification.'}};
+      recordsWithoutHabitatUids,invalidHabitatEntries,ambiguousTagNames:[...names].filter(([,count])=>count>1).map(([name])=>name),unsupportedRecords:catalogue.failures},
+    note:'No association means unknown, not creature-free. UID overlap and exact unique creature-name room tags are separate evidence sources; counts can overlap. No area-name, fuzzy-name or adjacency guesses. Levels and stats are installed reference values; wiki links are provided, not represented as fresh verification.'}};
 }
