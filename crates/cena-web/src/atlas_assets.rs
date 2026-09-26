@@ -13,6 +13,7 @@ pub(crate) fn get(name: &str) -> Option<(&'static str, &'static str)> {
         "interaction.mjs" => include_str!("../assets/atlas/interaction.mjs"),
         "labels.mjs" => include_str!("../assets/atlas/labels.mjs"),
         "model.mjs" => include_str!("../assets/atlas/model.mjs"),
+        "minimap.mjs" => include_str!("../assets/atlas/minimap.mjs"),
         "navigation.mjs" => include_str!("../assets/atlas/navigation.mjs"),
         "offline-source.mjs" => include_str!("../assets/atlas/offline-source.mjs"),
         "preferences.mjs" => include_str!("../assets/atlas/preferences.mjs"),

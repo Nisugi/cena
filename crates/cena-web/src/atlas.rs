@@ -20,6 +20,11 @@ fn response(path: &str) -> Response {
         return ([("content-type", "application/json")], bytes).into_response();
     }
     let Some((region, name)) = path.split_once('/') else {
+        // Shared modules are also imported by the character page. Still a
+        // literal allowlist, never a filesystem lookup.
+        if let Some((mime, text)) = crate::atlas_assets::get(path) {
+            return ([("content-type", mime)], text).into_response();
+        }
         return StatusCode::NOT_FOUND.into_response();
     };
     if region != "corpus" && !crate::atlas_data::region(region) {

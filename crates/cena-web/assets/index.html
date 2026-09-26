@@ -39,6 +39,14 @@
         <header class="pane-header"><h2 id="room-heading">Room</h2><output id="room-id"></output></header>
         <div class="room-content">
           <h3 id="room-title">Room unknown</h3>
+          <section id="minimap" class="minimap" aria-label="Local map">
+            <h3>Local map</h3>
+            <p data-map-status role="status">Waiting for native location.</p>
+            <svg viewBox="0 0 80 56" role="group" aria-label="Local rooms; links inspect, never walk" hidden></svg>
+            <a data-map-explorer target="_blank" rel="noopener" hidden>Explore this location ↗</a>
+            <details><summary>Transitions · inspect destinations</summary><ul data-map-transitions hidden></ul></details>
+            <small>Blue: active rooms · dim: context · gold: transitions · white ring: you. Click to inspect, not walk.</small>
+          </section>
           <div id="room-description" class="room-description">Description unknown</div>
           <dl class="room-details">
             <dt>Exits</dt><dd id="room-exits">Unknown</dd>

@@ -209,13 +209,27 @@ impl Sessions {
         observer: SessionObserver,
         handle: SessionHandle,
     ) {
+        self.attach_with_map(name, observer, handle, None);
+    }
+
+    /// Attach with an optional native location projection. Resolution stays
+    /// in the host; this crate neither loads a map nor interprets room UIDs.
+    pub fn attach_with_map(
+        &self,
+        name: impl Into<String>,
+        observer: SessionObserver,
+        handle: SessionHandle,
+        map_projection: Option<crate::MapProjection>,
+    ) {
         let id = handle.session();
+        let mut hub = Hub::new();
+        hub.map_projection = map_projection;
         // A replaced attachment keeps the player's `;sorter` choice.
         let sorting = self.sorts_containers(id).unwrap_or(false);
         let viewed = Arc::new(Viewed {
             id,
             name: name.into(),
-            hub: Mutex::new(Hub::new()),
+            hub: Mutex::new(hub),
             handle,
             stop: self.shared.stop.child_token(),
             changed: self.shared.changed.clone(),

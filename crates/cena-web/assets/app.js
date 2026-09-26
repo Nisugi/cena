@@ -1,4 +1,5 @@
 import { HydraSession, launchSession, takeLaunchToken } from "./session.js";
+import { mountMinimap } from "./atlas/minimap.mjs";
 
 // Despana presentation adapted from VellumFE's despana/app.js and app.css.
 // Hydra uses its own DTOs, and never interprets game text or presets as HTML/CSS.
@@ -73,6 +74,7 @@ export function mount(document, environment) {
   const element = (id) => document.getElementById(id);
   const input = element("command-input");
   const story = element("story-output");
+  const minimap = mountMinimap(element("minimap"));
   let renderedLines = [];
   let renderedGeneration = null;
   let currentView = null;
@@ -341,6 +343,7 @@ export function mount(document, environment) {
   }
 
   function render(state, ready) {
+    minimap.update(state);
     element("hub").hidden = state.hub === null;
     element("shell").classList.toggle("hub-mode", state.hub !== null);
     if (state.hub !== null) {
@@ -443,6 +446,7 @@ export function mount(document, environment) {
     environment.removeEventListener("hashchange", pairFromFragment);
     environment.clearInterval(timer);
     session.close();
+    minimap.destroy();
   }, { once: true });
   session.connect();
   return session;

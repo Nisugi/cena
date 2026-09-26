@@ -47,6 +47,7 @@ mod hunt;
 mod interrupt;
 mod learn;
 mod loot;
+mod map_context;
 mod play;
 mod roster;
 mod secrets;
