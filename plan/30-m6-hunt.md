@@ -558,9 +558,15 @@ Demonstrated live on a short hunt.
 >   `rest.when.unaffordable`), Celerity is not recast while up nor Camouflage while
 >   hidden, five cooldowns and the short buffs' are respected, Mana Leech's recovery adds
 >   its 5; Soothe goes first while a calming spell is on the character; the hunter stands
->   in the stand stance, and a crossbow archer stays kneeling to fire. Not yet: PSM
->   availability (the model's `psm_availability`, `a392b77`), `mstrike` (needs the skills
->   the model never reads), `unarmed`, `nudgeweapons`, `wield`, `briar`, `wandolier`.
+>   in the stand stance, and a crossbow archer stays kneeling to fire. And Lich's
+>   `available?` before every maneuver, technique, shield move and feat (the model's
+>   `psm_availability`, `a392b77`: trained, affordable, not cooling, not overexerted;
+>   unknown lets it go), `shield bash` as the Shield Bash maneuver when that is available,
+>   703 and 1614 not cast at a creature they already hold, and the frail read off the
+>   appraise reply's last line (`tests/hunt_psm.rs`). **The model read no PSM ranks
+>   before `a392b77`,** so the coup gate never fired live; it does now. Not yet: `mstrike`
+>   (needs the skills the model never reads), `unarmed`, `nudgeweapons`, `wield`,
+>   `briar`, `wandolier`.
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,

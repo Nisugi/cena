@@ -16,6 +16,7 @@ use cena_session::{GameState, PsmCategory, StatusName, gameobj};
 use super::super::engine::Hunt;
 use super::super::follow::{Answer, EFURY_ENDS, End, Hold, Next, TETHER_ENDS};
 use super::spell::Spell;
+use super::tables::SHIELD_MOVES;
 use super::{Line, cooling, up_in};
 use crate::cast::{self, NotReady};
 use crate::stance::{self, Want};
@@ -69,6 +70,46 @@ fn below(vital: Option<cena_session::Vital>, points: i32) -> bool {
         .is_some_and(|have| have < points)
 }
 
+/// Lich's `available?` says no (`psms.rb:142-145`): not trained, not
+/// affordable, cooling or overexerted. Unknown lets it go, as the game
+/// says so if it is wrong.
+pub(super) fn unavailable(state: &GameState, category: PsmCategory, mnemonic: &str) -> bool {
+    state.psm_availability(category, mnemonic).available() == Some(false)
+}
+
+/// A shield move (`cmd_shields`, `bigshot.lic:4779-4846`): `shield bash` as
+/// the Shield Bash maneuver when that is available, otherwise the shield
+/// specialization, each only when available; a word that is not a move goes
+/// as written.
+pub(super) fn shield(rest: &str, send: &str, target: i64, state: &GameState) -> Line {
+    let mv = rest
+        .split_whitespace()
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if !SHIELD_MOVES.contains(&mv.as_str()) {
+        return one(send);
+    }
+    let sbash = state
+        .psm_availability(PsmCategory::CombatManeuver, "sbash")
+        .available();
+    if mv == "bash" && sbash == Some(true) {
+        return one(format!("cman sbash #{target}"));
+    }
+    if unavailable(state, PsmCategory::Shield, &mv) {
+        return Line::Skip;
+    }
+    one(format!("shield {mv} #{target}"))
+}
+
+/// A feat (`cmd_feats`, `bigshot.lic:5104-5143`): only when available.
+pub(super) fn feat(which: &str, send: &str, target: i64, state: &GameState) -> Line {
+    if unavailable(state, PsmCategory::Feat, which) {
+        return Line::Skip;
+    }
+    one(format!("feat {send} #{target}"))
+}
+
 /// `stomp` (`cmd_stomp`, `:6026-6040`): Tremors known; `stomp` while it is
 /// up and 5 mana are left; channelled first when it is down.
 pub(super) fn stomp(state: &GameState) -> Line {
@@ -120,6 +161,13 @@ pub(super) fn rapid(ignore: bool, target: i64, state: &GameState) -> Line {
 /// `burst`, `surge` (`cmd_burst`, `cmd_surge`, `:6449-6490`): not while
 /// the enhancement it gives is up; 30 stamina, or 60 while it cools.
 pub(super) fn burst_or_surge(which: &str, state: &GameState) -> Line {
+    // `CMan.known?`, the one test of Lich's `available?` bigshot makes here.
+    let known = state
+        .psm_availability(PsmCategory::CombatManeuver, which)
+        .known;
+    if known == Some(false) {
+        return Line::Skip;
+    }
     let (name, buff) = if which == "burst" {
         ("Burst of Swiftness", "Enh. Dexterity")
     } else {
@@ -373,7 +421,8 @@ impl Hunt {
     /// named that an arrow is lodged in on this creature; not while the
     /// maneuver cools.
     fn dislodge(&self, rest: &str, target: i64, state: &GameState) -> Line {
-        if cooling(state, "Dislodge") {
+        if cooling(state, "Dislodge") || unavailable(state, PsmCategory::CombatManeuver, "dislodge")
+        {
             return Line::Skip;
         }
         let lodged = &self.aiming.stuck;

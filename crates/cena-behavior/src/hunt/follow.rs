@@ -237,7 +237,7 @@ impl Hunt {
                 }
             }
             Answer::Appraised { target } => {
-                if said("enticingly frail") {
+                if cena_session::inspect::appraised_frail(lines.iter().copied()) == Some(true) {
                     self.followups.push_back(format!("sacrifice #{target}"));
                 }
             }

@@ -43,13 +43,13 @@ mod tables;
 
 use std::collections::VecDeque;
 
-use cena_session::GameState;
+use cena_session::{GameState, PsmCategory};
 
 use self::gated::coup_refused;
 use self::spell::{
     NO_REST_SPELLS, Spell, buff_first, caststop, resonance, soothe, spell_step, weed,
 };
-use self::tables::{CMANS, SHIELD_MOVES, UNPORTED, WARCRIES, WEAPONS};
+use self::tables::{CMANS, UNPORTED, WARCRIES, WEAPONS};
 use super::engine::Hunt;
 use super::follow::Next;
 use super::said::{Said, Why};
@@ -202,7 +202,7 @@ pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
         "smite" => return gated::smite(target, state),
         "sacrifice" => return gated::sacrifice(target, state),
         "burst" | "surge" => return gated::burst_or_surge(&first, state),
-        "chastise" | "excoriate" => return one(format!("feat {send} {at}")),
+        "chastise" | "excoriate" => return gated::feat(&first, send, target, state),
         "depress" => return gated::depress(state),
         "rapid" => return gated::rapid(rest.starts_with("ignore"), target, state),
         "leech" => return gated::leech(target, state),
@@ -222,26 +222,21 @@ pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
                 None => Line::Unported("jewel with a mnemonic bigshot does not know"),
             };
         }
-        "shield" => {
-            let known = words
-                .get(1)
-                .is_some_and(|m| SHIELD_MOVES.contains(&m.to_ascii_lowercase().as_str()));
-            return if known {
-                one(format!("{send} {at}"))
-            } else {
-                one(send.to_owned())
-            };
-        }
+        "shield" => return gated::shield(&rest, send, target, state),
         _ => {}
     }
     if let Some((_, name)) = CMANS.iter().find(|(w, _)| *w == first) {
-        if cooling(state, name) || (first == "coupdegrace" && coup_refused(target, state)) {
+        let unavailable = gated::unavailable(state, PsmCategory::CombatManeuver, &first);
+        if cooling(state, name)
+            || unavailable
+            || (first == "coupdegrace" && coup_refused(target, state))
+        {
             return Line::Skip;
         }
         return one(format!("cman {send} {at}"));
     }
     if let Some((_, name)) = WEAPONS.iter().find(|(w, _)| *w == first) {
-        if cooling(state, name) {
+        if cooling(state, name) || gated::unavailable(state, PsmCategory::Weapon, &first) {
             return Line::Skip;
         }
         return one(format!("weapon {send} {at}"));

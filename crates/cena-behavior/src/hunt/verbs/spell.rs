@@ -3,7 +3,7 @@
 
 use std::collections::VecDeque;
 
-use cena_session::{GameState, Stance};
+use cena_session::{GameState, SpellMark, Stance};
 
 use super::super::engine::Hunt;
 use super::super::maintain::ACTIVE_SPELLS;
@@ -153,7 +153,7 @@ impl Spell {
     /// bigshot takes on it. The other handlers cast through [`Self::cast`],
     /// which only skips.
     pub(super) fn cast_step(&self, target: i64, state: &GameState) -> Line {
-        if self.refused(state) {
+        if self.refused(state) || self.marked(target, state) {
             return Line::Skip;
         }
         // Mana Leech's recovery (597) costs 5 mana more (`:5849`).
@@ -188,6 +188,20 @@ impl Spell {
             n if SHORT_BUFFS.contains(&n) => named(),
             _ => false,
         }
+    }
+
+    /// Corrupt Essence (703) and Aura of the Arkati (1614) are not cast at a
+    /// creature they already hold (`cmd_spell`, `:5859-5860`).
+    fn marked(&self, target: i64, state: &GameState) -> bool {
+        let mark = match self.number {
+            703 => SpellMark::BloodRedHaze,
+            1614 => SpellMark::Rebuked,
+            _ => return false,
+        };
+        state
+            .creatures()
+            .get(target)
+            .is_some_and(|creature| creature.marked(mark))
     }
 
     /// The lines, or a skip when the spell is not known or not affordable
