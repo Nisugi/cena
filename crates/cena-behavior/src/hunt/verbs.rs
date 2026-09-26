@@ -16,47 +16,51 @@
 //! |---|---|---|
 //! | `incant N [verb]`, `N [verb]` | `prepare N` then `cast #id`; a self-cast spell `incant N` | `cmd_spell`, Lich's `Spell#cast`, via [`crate::cast`] |
 //! | `kweed`, `weed` | Tangleweed evoked, or cast, at the target; not while a plant is already here | `cmd_weed` |
-//! | a combat maneuver, `bearhug`, `dislodge` | `cman <step> #id`; not while it is cooling | `cmd_cmans`, `cmd_rogue_cmans`, `cmd_bearhug` |
+//! | a combat maneuver, `bearhug` | `cman <step> #id`; not while it is cooling | `cmd_cmans`, `cmd_rogue_cmans`, `cmd_bearhug` |
 //! | a weapon technique | `weapon <step> #id`; not while it is cooling | `cmd_weapons`, `cmd_assault` |
 //! | `shield bash` and the other shield moves | `shield <move> #id` | `cmd_shields` |
 //! | `chastise`, `excoriate` | `feat <step> #id` | `cmd_feats` |
 //! | `shout`, `yowlp`, `holler`, `bellow`, `growl`, `cry` | `warcry <step>`, at the target for bellow, growl and cry alone; not short of stamina | `cmd_warrior_shouts` |
-//! | `fire`, `throw`, `smite`, `sacrifice` | the verb `#id` | `cmd_ranged`, `cmd_throw`, `cmd_volnsmite`, `cmd_sacrifice` |
-//! | `burst`, `surge` | `cman burst`, `cman surge` | `cmd_burst`, `cmd_surge` |
+//! | `fire` | `fire #id` | `cmd_ranged` |
 //! | `jewel <mnemonic>` | the jewel's activation (`src/gemstone/jewel.rs`); not while it is cooling, nor for a mnemonic bigshot does not know | `cmd_jewel` |
-//! | `rapid`, `leech`, `phase` | Rapid Fire (515), 516, Phase (704) at the target | `cmd_rapid`, `cmd_leech`, `cmd_phase` |
-//! | `depress` | `renew 1015` | `cmd_depress` |
-//! | `curse <kind>` | `prep 715` then `curse #id <kind>` | `cmd_curse` |
+//! | `phase` | Phase (704) at the target | `cmd_phase` |
 //! | `caststop N` | N at the target, then `stop N` | `cmd_caststop` |
-//! | `unravel`, `barddispel` | 1013 at the target | `cmd_unravel` |
-//! | `dhurl <part>` | `hurl #id <part>` | `cmd_dhurl` |
-//! | `sleep N`, `wait N` | nothing for N seconds | `cmd_sleep`, `wait_for_swing` |
 //! | `celerity`, `haste`, `506`; `slayer`, `240`; `tonis`, `1035`, each before a step | the buff first when it is down or has three seconds or less (Celerity only when down), then the step | `cmd`, `:4014-4046` |
 //! | `resonance N N ...` | one of the spells, at random but never the last one twice running, incanted at the game's target | `cmd_resonance_bolt` |
+//! | `throw`, `smite`, `sacrifice`, `burst`, `surge`, `rapid`, `leech`, `stomp`, `curse`, `store`, `stance`, `depress`, `unravel`, `efury`, `tether` | gated as bigshot gates them, holding or reading the answer where it does | [`gated`], [`super::follow`] |
+//! | `wait N`, `sleep N`, `berserk`, `hide [N]`, `dhurl`, `dislodge`, `assume` | the same, with the hunt's own settings: the wander stance, the ambush list, the parts an arrow is lodged in | [`gated`] |
 //!
-//! `hide`, `stance <name>`, `store <anything>`, `assume`, `berserk` and
-//! `stomp` are game commands as written and go as written. `ambush`, `wand`
-//! and `script` are the engine's own ([`super::aim`], [`super::wand`], the
-//! importer), and so are `eachtarget` and `force` ([`super::repeat`]). The forms not ported yet ([`UNPORTED`]) are skipped, and the
-//! player is told once.
+//! Before any of it, as bigshot's `cmd` does (`:3974-4001`): `kick` is
+//! `punch` while the character is rooted, and the word `target` is the
+//! creature's `#id`. `ambush`, `wand` and `script` are the engine's own
+//! ([`super::aim`], [`super::wand`], the importer), and so are `eachtarget`
+//! and `force` ([`super::repeat`]). The forms not ported yet
+//! ([`tables::UNPORTED`]) are skipped, and the player is told once.
+
+mod gated;
+mod spell;
+mod tables;
 
 use std::collections::VecDeque;
 
-use cena_session::{GameState, PsmCategory, Stance};
+use cena_session::{GameState, PsmCategory};
 
+use self::spell::{Spell, buff_first, caststop, resonance, spell_step, weed};
+use self::tables::{CMANS, SHIELD_MOVES, UNPORTED, WARCRIES, WEAPONS};
 use super::engine::Hunt;
-use super::maintain::ACTIVE_SPELLS;
+use super::follow::Next;
 use super::said::Said;
-use crate::cast::{self, Casting, NotReady, Verb};
 use crate::gemstone::jewel;
 
 /// What a step sends.
-#[derive(Debug, PartialEq, Eq)]
-enum Line {
+#[derive(Debug)]
+pub(super) enum Line {
     /// These lines, in order: the first now, the rest right after it.
     Send(VecDeque<String>),
-    /// Nothing for this many seconds.
-    Wait(u32),
+    /// These lines, then a hold or an answer ([`super::follow`]).
+    Then(VecDeque<String>, Next),
+    /// Say this instead of sending.
+    Said(Said),
     /// Not now: bigshot's handler would return without sending.
     Skip,
     /// A bigshot verb Hydra does not send yet: skipped, and said once.
@@ -84,9 +88,19 @@ impl Hunt {
         state: &GameState,
         now: Option<u32>,
     ) -> Go {
-        let line = match resonance(send) {
-            Some(spells) => self.resonance(&spells, target, state, now),
-            None => line(send, target, state),
+        let send = self.before_dispatch(send, target);
+        let words: Vec<&str> = send.split_whitespace().collect();
+        let first = words
+            .first()
+            .map(|w| w.to_ascii_lowercase())
+            .unwrap_or_default();
+        let rest = words.get(1..).unwrap_or_default().join(" ");
+        let line = if let Some(line) = self.own_verb(&first, &rest, target, state, now) {
+            line
+        } else if let Some(spells) = resonance(&send) {
+            self.resonance(&spells, target, state, now)
+        } else {
+            line(&send, target, state)
         };
         match line {
             Line::Send(mut lines) => match lines.pop_front() {
@@ -96,10 +110,20 @@ impl Hunt {
                     Go::Send(first)
                 }
             },
-            Line::Wait(seconds) => {
-                self.used.record(key, Some(target), now);
-                Go::Said(Said::Wait(seconds))
+            Line::Then(mut lines, next) => {
+                self.follow_with(next, now);
+                match lines.pop_front() {
+                    None => {
+                        self.used.record(key, Some(target), now);
+                        Go::Said(Said::Wait(1))
+                    }
+                    Some(first) => {
+                        self.followups = lines;
+                        Go::Send(first)
+                    }
+                }
             }
+            Line::Said(said) => Go::Said(said),
             Line::Skip => Go::Skip,
             Line::Unported(verb) => {
                 if self.told_unported.insert(verb) {
@@ -114,238 +138,24 @@ impl Hunt {
 }
 
 impl Hunt {
-    /// `resonance N N ...`: one of the spells, never the last one twice
-    /// running, chosen at random as bigshot chooses (`cmd_resonance_bolt`,
-    /// `bigshot.lic:5917-5929`), and incanted at the game's target.
-    fn resonance(
-        &mut self,
-        spells: &[u16],
-        target: i64,
-        state: &GameState,
-        now: Option<u32>,
-    ) -> Line {
-        let options: Vec<u16> = spells
-            .iter()
-            .enumerate()
-            .filter(|(at, n)| !spells[..*at].contains(n) && Some(**n) != self.repeats.resonance)
-            .map(|(_, n)| *n)
-            .collect();
-        let Ok(len) = u64::try_from(options.len()) else {
-            return Line::Skip;
-        };
-        if len == 0 {
-            return Line::Skip;
-        }
-        let at = usize::try_from(self.roll(now) % len).unwrap_or(0);
-        let Some(pick) = options.get(at).copied() else {
-            return Line::Skip;
-        };
-        self.repeats.resonance = Some(pick);
-        let mut spell = Spell::bare(pick);
-        spell.incanted = true;
-        spell.cast(target, state)
+    /// What bigshot does to every command before its handler (`cmd`,
+    /// `bigshot.lic:3974-4001`): `kick` is `punch` while rooted, and the
+    /// word `target` is the creature's `#id`.
+    fn before_dispatch(&self, send: &str, target: i64) -> String {
+        send.split(' ')
+            .map(|word| match word {
+                "kick" if self.follow.rooted => "punch".to_owned(),
+                "target" => format!("#{target}"),
+                other => other.to_owned(),
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
-
-/// `resonance N N ...`: the spells (`bigshot.lic:4063`).
-fn resonance(send: &str) -> Option<Vec<u16>> {
-    let mut words = send.split_whitespace();
-    if !words.next()?.eq_ignore_ascii_case("resonance") {
-        return None;
-    }
-    let spells: Vec<u16> = words.map_while(|w| w.parse().ok()).collect();
-    (!spells.is_empty()).then_some(spells)
-}
-
-/// The buff a step names before it (`celerity fire`), by its word
-/// (`bigshot.lic:4015-4046`).
-fn buff_before(word: &str) -> Option<u16> {
-    match word {
-        "celerity" | "haste" | "506" => Some(506),
-        "slayer" | "240" => Some(240),
-        "tonis" | "1035" => Some(1035),
-        _ => None,
-    }
-}
-
-/// `celerity <step>` and its kin: the buff's lines, then the step's.
-fn buff_first(first: &str, rest: &str, target: i64, state: &GameState) -> Option<Line> {
-    let number = buff_before(first)?;
-    if rest.is_empty() {
-        return None;
-    }
-    let mut lines = buffed(number, target, state);
-    Some(match line(rest, target, state) {
-        Line::Send(mut step) => {
-            lines.append(&mut step);
-            Line::Send(lines)
-        }
-        step if lines.is_empty() => step,
-        _ => Line::Send(lines),
-    })
-}
-
-/// The lines that put the buff up before the step, when it is down or has
-/// three seconds or less (Lich's `timeleft <= 0.05`, in minutes); none
-/// before any spell list has been seen, as maintain waits for one.
-/// Celerity is not cast while it is up at all (`cmd_spell`, `:5857`), and
-/// Spirit Slayer not while it is cooling (`:4028`).
-fn buffed(number: u16, target: i64, state: &GameState) -> VecDeque<String> {
-    let Some(now) = state.game_time_now() else {
-        return VecDeque::new();
-    };
-    let effects = &state.effects;
-    let id = number.to_string();
-    let up = match effects.active(&id, now) {
-        Some(up) => up,
-        None if effects.saw_category(ACTIVE_SPELLS) || effects.saw_category("Buffs") => false,
-        None => return VecDeque::new(),
-    };
-    let lapsing = !up || effects.remaining(&id, now).is_some_and(|left| left <= 3);
-    let slayer_cooling = number == 240
-        && cena_session::spells::spell(240)
-            .is_some_and(|spell| up_in(state, "Cooldowns", &spell.name));
-    if !lapsing || (number == 506 && up) || slayer_cooling {
-        return VecDeque::new();
-    }
-    match Spell::bare(number).cast(target, state) {
-        Line::Send(lines) => lines,
-        _ => VecDeque::new(),
-    }
-}
-
-/// Combat maneuvers, `cman <step> #id`, with the name the Cooldowns dialog
-/// lists: bigshot's tables for `cmd_cmans` (`bigshot.lic:5038-5061`),
-/// `cmd_bearhug`, and the rogue's `cmd_rogue_cmans` (`:5318-5333`).
-const CMANS: &[(&str, &str)] = &[
-    ("bullrush", "Bull Rush"),
-    ("coupdegrace", "Coup de Grace"),
-    ("cpress", "Crowd Press"),
-    ("dirtkick", "Dirtkick"),
-    ("disarm", "Disarm Weapon"),
-    ("exsanguinate", "Exsanguinate"),
-    ("feint", "Feint"),
-    ("gkick", "Groin Kick"),
-    ("hamstring", "Hamstring"),
-    ("haymaker", "Haymaker"),
-    ("headbutt", "Headbutt"),
-    ("kifocus", "Ki Focus"),
-    ("leapattack", "Leap Attack"),
-    ("mblow", "Mighty Blow"),
-    ("sattack", "Spin Attack"),
-    ("sbash", "Shield Bash"),
-    ("sblow", "Staggering Blow"),
-    ("scleave", "Spell Cleave"),
-    ("sthieve", "Spell Thieve"),
-    ("sunder", "Sunder Shield"),
-    ("tackle", "Tackle"),
-    ("trip", "Trip"),
-    ("truestrike", "True Strike"),
-    ("vaultkick", "Vault Kick"),
-    ("bearhug", "Bearhug"),
-    ("cutthroat", "Cutthroat"),
-    ("divert", "Divert"),
-    ("shroud", "Dust Shroud"),
-    ("eviscerate", "Eviscerate"),
-    ("eyepoke", "Eyepoke"),
-    ("footstomp", "Footstomp"),
-    ("garrote", "Garrote"),
-    ("kneebash", "Kneebash"),
-    ("mug", "Mug"),
-    ("nosetweak", "Nosetweak"),
-    ("spunch", "Sucker Punch"),
-    ("subdue", "Subdue"),
-    ("sweep", "Sweep"),
-    ("swiftkick", "Swiftkick"),
-    ("templeshot", "Templeshot"),
-    ("throatchop", "Throatchop"),
-];
-
-/// Weapon techniques, `weapon <step> #id` (`:4623-4628`, `:4728-4738`).
-const WEAPONS: &[(&str, &str)] = &[
-    ("barrage", "Barrage"),
-    ("flurry", "Flurry"),
-    ("fury", "Fury"),
-    ("gthrusts", "Guardant Thrusts"),
-    ("pummel", "Pummel"),
-    ("thrash", "Thrash"),
-    ("charge", "Charge"),
-    ("clash", "Clash"),
-    ("cripple", "Cripple"),
-    ("cyclone", "Cyclone"),
-    ("dizzyingswing", "Dizzying Swing"),
-    ("pindown", "Pin Down"),
-    ("pulverize", "Pulverize"),
-    ("twinhammer", "Twin Hammerfists"),
-    ("volley", "Volley"),
-    ("wblade", "Whirling Blade"),
-    ("whirlwind", "Whirlwind"),
-];
-
-/// The shield moves after `shield` (`:4076`).
-const SHIELD_MOVES: &[&str] = &[
-    "throw", "bash", "charge", "strike", "pin", "trample", "push",
-];
-
-/// Warcries and the stamina each needs (`cmd_warrior_shouts`, `:4913-4921`).
-const WARCRIES: &[(&str, i32)] = &[
-    ("shout", 25),
-    ("yowlp", 11),
-    ("holler", 31),
-    ("bellow all", 21),
-    ("bellow", 11),
-    ("growl all", 15),
-    ("growl", 8),
-    ("cry all", 31),
-    ("cry", 16),
-];
-
-/// What a plant spell leaves in the room: Tangleweed is not cast again
-/// while one is here (`cmd_weed`, `:5754`).
-const PLANTS: &[&str] = &[
-    "vine",
-    "bramble",
-    "widgeonweed",
-    "vathor club",
-    "swallowwort",
-    "smilax",
-    "creeper",
-    "briar",
-    "ivy",
-    "tumbleweed",
-];
-
-/// Spells cast on oneself, whatever the target (`spell_is_selfcast?`).
-const SELF_CAST: &[u16] = &[
-    106, 109, 115, 117, 120, 130, 140, 205, 206, 211, 213, 215, 218, 219, 220, 240, 303, 307, 310,
-    313, 314, 319, 350, 401, 402, 403, 404, 405, 406, 414, 418, 419, 425, 430, 503, 506, 507, 508,
-    509, 511, 513, 515, 517, 520, 535, 540, 601, 602, 604, 605, 606, 608, 612, 613, 617, 618, 620,
-    625, 630, 640, 650, 707, 712, 905, 911, 913, 916, 919, 1003, 1006, 1007, 1009, 1010, 1011,
-    1012, 1014, 1017, 1018, 1019, 1020, 1025, 1035, 1040, 1109, 1119, 1125, 1130, 1150, 1202, 1204,
-    1208, 1213, 1214, 1215, 1216, 1220, 1235, 1601, 1605, 1606, 1607, 1608, 1609, 1610, 1611, 1612,
-    1613, 1616, 1617, 1618, 1619, 1635,
-];
-
-/// Cast with no target whatever the step says: Celerity and 902.
-const UNAIMED: &[u16] = &[506, 902];
-
-/// bigshot verbs not sent yet, by their first word.
-pub(super) const UNPORTED: &[&str] = &[
-    "briar",
-    "efury",
-    "tether",
-    "nudgeweapon",
-    "nudgeweapons",
-    "unarmed",
-    "mstrike",
-    "wandolier",
-    // Needs the worn-items list to choose `remove` or `get` (`cmd_wield`).
-    "wield",
-];
 
 /// What `send`, a routine step with its guards gone, puts on the wire
 /// against creature `target`.
-fn line(send: &str, target: i64, state: &GameState) -> Line {
+pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
     let words: Vec<&str> = send.split_whitespace().collect();
     let Some(first) = words.first().map(|w| w.to_ascii_lowercase()) else {
         return Line::Skip;
@@ -365,22 +175,23 @@ fn line(send: &str, target: i64, state: &GameState) -> Line {
     }
     match first.as_str() {
         "kweed" | "weed" => return weed(first == "kweed", target, state),
-        "fire" | "throw" | "smite" | "sacrifice" => return one(format!("{first} {at}")),
-        "burst" | "surge" => return one(format!("cman {first}")),
+        "fire" => return one(format!("fire {at}")),
+        "throw" => return gated::throw(target, state),
+        "smite" => return gated::smite(target, state),
+        "sacrifice" => return gated::sacrifice(target, state),
+        "burst" | "surge" => return gated::burst_or_surge(&first, state),
         "chastise" | "excoriate" => return one(format!("feat {send} {at}")),
-        "depress" => return one("renew 1015".to_owned()),
-        "rapid" => return Spell::bare(515).cast(target, state),
-        "leech" => return Spell::bare(516).cast(target, state),
+        "depress" => return gated::depress(state),
+        "rapid" => return gated::rapid(rest.starts_with("ignore"), target, state),
+        "leech" => return gated::leech(target, state),
+        "stomp" => return gated::stomp(state),
         "phase" => return Spell::at(704).cast(target, state),
-        "unravel" | "barddispel" => return Spell::at(1013).cast(target, state),
-        "dislodge" => return one(format!("cman dislodge {at} {rest}").trim_end().to_owned()),
-        "dhurl" => return one(format!("hurl {at} {rest}").trim_end().to_owned()),
-        "curse" if !rest.is_empty() => {
-            return Line::Send(VecDeque::from([
-                "prep 715".to_owned(),
-                format!("curse {at} {rest}"),
-            ]));
-        }
+        "unravel" | "barddispel" => return gated::unravel(&rest, target, state),
+        "efury" => return gated::efury(&rest, target, state),
+        "tether" => return gated::tether(target, state),
+        "curse" if !rest.is_empty() => return gated::curse(&rest, target, state),
+        "store" => return gated::store(&rest, send, state),
+        "stance" if !rest.is_empty() => return gated::stance(&rest, send, state),
         "caststop" => return caststop(&words, target, state),
         "jewel" => {
             return match jewel::activate(&rest) {
@@ -388,13 +199,6 @@ fn line(send: &str, target: i64, state: &GameState) -> Line {
                 Some((line, _)) => one(line),
                 None => Line::Unported("jewel with a mnemonic bigshot does not know"),
             };
-        }
-        "sleep" | "wait" => {
-            return rest
-                .split_whitespace()
-                .next()
-                .and_then(|n| n.parse().ok())
-                .map_or(Line::Skip, Line::Wait);
         }
         "shield" => {
             let known = words
@@ -440,164 +244,6 @@ fn line(send: &str, target: i64, state: &GameState) -> Line {
     one(send.to_owned())
 }
 
-/// A spell step: its number, how it is sent, and what came after.
-struct Spell {
-    number: u16,
-    verb: Verb,
-    /// Words beyond the verb (`open`, an element): sent as written, since
-    /// the casting step does not take them.
-    extra: String,
-    /// Cast at the creature unless the spell is a self-cast one.
-    aimed: bool,
-    /// Written `incant N`: after a stance spell, back to the stance before.
-    incanted: bool,
-}
-
-impl Spell {
-    /// A spell cast with no target (`Spell[N].cast`).
-    const fn bare(number: u16) -> Self {
-        Self {
-            number,
-            verb: Verb::Cast,
-            extra: String::new(),
-            aimed: false,
-            incanted: false,
-        }
-    }
-
-    /// A spell cast at the creature (`force_cast("#id")`).
-    const fn at(number: u16) -> Self {
-        Self {
-            number,
-            verb: Verb::Cast,
-            extra: String::new(),
-            aimed: true,
-            incanted: false,
-        }
-    }
-
-    /// The lines, or a skip when the spell is not known or not affordable
-    /// (`cmd_spell`'s early returns, Lich's `check_energy`).
-    fn cast(&self, target: i64, state: &GameState) -> Line {
-        match cast::ready(state, self.number, 1, 0) {
-            Err(NotReady::NotKnown | NotReady::Mana(..) | NotReady::Spirit | NotReady::Stamina) => {
-                return Line::Skip;
-            }
-            Ok(()) | Err(NotReady::CastRoundtime(_)) => {}
-        }
-        if !self.extra.is_empty() {
-            let verb = match self.verb {
-                Verb::Cast => String::new(),
-                other => format!(" {}", other.word()),
-            };
-            let line = format!("incant {}{verb} {}", self.number, self.extra);
-            return Line::Send(self.stanced(VecDeque::from([line]), state));
-        }
-        // Celerity and 902 go untargeted whatever the step says (`cmd_spell`,
-        // `bigshot.lic:5885-5886`).
-        let aimed =
-            self.aimed && !SELF_CAST.contains(&self.number) && !UNAIMED.contains(&self.number);
-        let casting = Casting {
-            spell: self.number,
-            target: aimed.then(|| format!("#{target}")),
-            count: None,
-            verb: self.verb,
-        };
-        Line::Send(self.stanced(casting.lines(state).into(), state))
-    }
-
-    /// Lich's stance for a spell its table marks as wanting one
-    /// (`spell.rb:762-764`, `:786-787`): offensive for the cast, then back.
-    /// Back is the stance before for a step written `incant N` (bigshot's
-    /// own `after_stance`, `bigshot.lic:5899-5904`), and otherwise the
-    /// safest, `guarded` as a cast roundtime runs (`spell.rb:814-827`,
-    /// `stance.rb:84-86`). The hunting stance is taken again at the next
-    /// step that wants it.
-    fn stanced(&self, mut lines: VecDeque<String>, state: &GameState) -> VecDeque<String> {
-        if !cena_session::spells::spell(self.number).is_some_and(|spell| spell.extras.stance) {
-            return lines;
-        }
-        let before = state.character.stance_typed();
-        if before != Some(Stance::Offensive) {
-            // After a `release`, as Lich releases first (`spell.rb:717-724`).
-            let at = usize::from(lines.front().is_some_and(|line| line == "release"));
-            lines.insert(at, "stance offensive".to_owned());
-        }
-        let after = if self.incanted {
-            before.filter(|stance| *stance != Stance::Offensive)
-        } else {
-            Some(Stance::Guarded)
-        };
-        if let Some(after) = after {
-            lines.push_back(format!("stance {}", after.as_str()));
-        }
-        lines
-    }
-}
-
-/// `incant 611`, `611 evoke`: bigshot's spell pattern (`:4062`).
-fn spell_step(first: &str, words: &[&str]) -> Option<Spell> {
-    let (number, after) = if first == "incant" {
-        (
-            words.get(1)?.parse().ok()?,
-            words.get(2..).unwrap_or_default(),
-        )
-    } else {
-        (first.parse().ok()?, words.get(1..).unwrap_or_default())
-    };
-    let mut verb = Verb::Cast;
-    let mut extra = Vec::new();
-    for word in after {
-        match Verb::parse(word) {
-            Some(v) if v != Verb::Cast || word.eq_ignore_ascii_case("cast") => verb = v,
-            _ => extra.push(*word),
-        }
-    }
-    Some(Spell {
-        number,
-        verb,
-        extra: extra.join(" "),
-        aimed: true,
-        incanted: first == "incant",
-    })
-}
-
-/// Tangleweed at the creature, unless a plant is here already.
-fn weed(evoked: bool, target: i64, state: &GameState) -> Line {
-    let planted = state.room.objects.iter().any(|object| {
-        let text = object.text.to_ascii_lowercase();
-        let words: Vec<&str> = text.split(|c: char| !c.is_ascii_alphanumeric()).collect();
-        PLANTS.iter().any(|plant| {
-            let parts: Vec<&str> = plant.split(' ').collect();
-            words
-                .windows(parts.len())
-                .any(|run| run == parts.as_slice())
-        })
-    });
-    if planted {
-        return Line::Skip;
-    }
-    let mut spell = Spell::at(610);
-    if evoked {
-        spell.verb = Verb::Evoke;
-    }
-    spell.cast(target, state)
-}
-
-/// `caststop N [extra]`: the spell at the creature, then `stop N`.
-fn caststop(words: &[&str], target: i64, state: &GameState) -> Line {
-    let Some(number) = words.get(1).and_then(|n| n.parse().ok()) else {
-        return Line::Skip;
-    };
-    match Spell::at(number).cast(target, state) {
-        Line::Send(mut lines) => {
-            lines.push_back(format!("stop {number}"));
-            Line::Send(lines)
-        }
-        other => other,
-    }
-}
-
 /// Whether a maneuver is cooling: the Cooldowns dialog lists it, or the
 /// game refused it and has not said it is ready.
 fn cooling(state: &GameState, name: &str) -> bool {
@@ -620,7 +266,7 @@ fn coup_refused(target: i64, state: &GameState) -> bool {
 }
 
 /// Whether an effect whose name starts `name` is up in the dialog `title`.
-fn up_in(state: &GameState, title: &str, name: &str) -> bool {
+pub(super) fn up_in(state: &GameState, title: &str, name: &str) -> bool {
     let Some(now) = state.game_time_now() else {
         return false;
     };

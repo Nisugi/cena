@@ -72,6 +72,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use super::aim::{Aimed, Aiming};
 use super::ammo::Ammo;
 use super::death::Mourning;
+use super::follow::Follow;
 use super::guard::{Facts, Used};
 use super::monitor::Watch;
 use super::profile::{Profile, Step};
@@ -199,6 +200,8 @@ pub struct Hunt {
     pub(super) quick: bool,
     /// `eachtarget` and `force`, and `resonance`'s last spell.
     pub(super) repeats: Repeats,
+    /// A step's hold or awaited answer, and the character rooted.
+    pub(super) follow: Follow,
 }
 
 /// The steps that do not take the hunting stance first, by their first
@@ -269,6 +272,7 @@ impl Hunt {
             alerts: Vec::new(),
             quick: false,
             repeats: Repeats::default(),
+            follow: Follow::default(),
         }
     }
 
@@ -363,6 +367,7 @@ impl Hunt {
     pub fn link_lost(&mut self) {
         self.target_gone();
         self.repeats_gone();
+        self.follow_gone();
         self.held = None;
         self.room = None;
     }
@@ -558,6 +563,9 @@ impl Hunt {
                 line,
                 target: Some(target),
             });
+        }
+        if let Some(said) = self.holding(state, now) {
+            return Some(said);
         }
         let steps = self.profile.routines.get(&self.routine)?.clone();
         if steps.is_empty() {

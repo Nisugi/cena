@@ -140,7 +140,12 @@ impl Hunt {
     /// by the effects list before the next, and each with its own retry
     /// window: a spell that fails to land is asked for again in a minute,
     /// not at every prompt.
-    fn assume_aspect(&mut self, sign: &str, state: &GameState, now: u32) -> Option<Said> {
+    pub(super) fn assume_aspect(
+        &mut self,
+        sign: &str,
+        state: &GameState,
+        now: u32,
+    ) -> Option<Said> {
         let mut words = sign.split_whitespace().skip(1);
         let first = words.next()?.to_ascii_lowercase();
         let second = words.next().map(str::to_ascii_lowercase);

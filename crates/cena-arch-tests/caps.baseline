@@ -301,3 +301,10 @@ crates/cena-behavior/src/batch.rs 100
 # game namespace Rule 3.4 prescribes, as cena-platform/src/gemstone.rs is:
 # the jewel command (gemstone/jewel.rs), whose verb is the game's own name.
 crates/cena-behavior/src/gemstone.rs 100
+# NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/hunt/verbs.rs is the
+# dispatch from a bigshot verb to its handler (plan/30 §7, M6b): the table in
+# its module doc, the Line a handler returns, and the dispatch itself. The
+# spells moved into verbs/spell.rs and the tables into verbs/tables.rs when
+# the audit's missing gates and handlers were ported. 247 lines at birth:
+# 247 + 50, rounded up.
+crates/cena-behavior/src/hunt/verbs.rs 300

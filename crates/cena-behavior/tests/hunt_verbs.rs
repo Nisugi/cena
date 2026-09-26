@@ -103,10 +103,8 @@ fn maneuvers_techniques_and_feats_go_through_their_command_at_the_creature() {
         ("chastise", "feat chastise #42"),
         ("shield bash", "shield bash #42"),
         ("burst", "cman burst"),
-        ("dislodge left arm", "cman dislodge #42 left arm"),
         ("fire", "fire #42"),
         ("throw", "throw #42"),
-        ("smite", "smite #42"),
         ("depress", "renew 1015"),
         ("dhurl head", "hurl #42 head"),
     ] {
@@ -222,8 +220,9 @@ fn a_maneuver_cooling_is_not_sent() {
 
 #[test]
 fn sleep_waits_and_an_unported_verb_is_skipped_and_named_once() {
-    let (lines, _) = run("sleep 3", &fighting(&[]), 1).unwrap();
-    assert_eq!(lines, ["wait 3"]);
+    // Held a second at a time, as the hold may end early (`hunt/follow.rs`).
+    let (lines, _) = run("sleep 3", &fighting(&[]), 2).unwrap();
+    assert_eq!(lines, ["wait 1", "wait 1"]);
     let (lines, notes) = run("mstrike", &fighting(&[]), 3).unwrap();
     assert_eq!(lines, ["wait 1", "wait 1", "wait 1"]);
     assert_eq!(notes.len(), 1, "said once: {notes:?}");

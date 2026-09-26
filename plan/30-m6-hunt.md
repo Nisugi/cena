@@ -543,6 +543,17 @@ Demonstrated live on a short hunt.
 >   `wait`, `sleep`, `wand`, `berserk`, `script`, `hide`, `nudgeweapon` (`bigshot.lic:4051`),
 >   and a stance spell cast offensive and put back as Lich's `Spell#cast` does
 >   (`tests/hunt_stance.rs`); Celerity and 902 cast untargeted.
+>   Then the rest of an audit of every handler bigshot dispatches against what Hydra sent
+>   (2026-09-25): the gates it skipped and the handlers that wait or read the answer
+>   (`hunt/verbs/gated.rs`, `hunt/follow.rs`, `tests/hunt_gated.rs`, 16 tests, 31 mutations
+>   each turned one red): `stomp` channels Tremors, `leech` and `rapid` wait on their
+>   cooldowns, `burst`/`surge` on stamina and buff, `smite` only the undead, `throw` not
+>   the prone, `curse` releases and prepares once, `sacrifice` appraises first, `depress`
+>   begins the song, `unravel` stops it, `efury`/`tether`/`wait`/`sleep`/`berserk` hold,
+>   `hide N` retries, `dhurl` recovers, `dislodge` frees a lodged part, `ambush <part>`
+>   aims at the creature, and `kick` is `punch` while rooted. `verbs.rs` split: its
+>   spells and tables moved into `verbs/`. Not yet: PSM costs and availability, `mstrike`,
+>   `unarmed`, `nudgeweapons`, `wield`, `briar`, `wandolier`.
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,

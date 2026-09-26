@@ -55,6 +55,8 @@ pub(super) struct Repeats {
     forcing: Option<Forcing>,
     /// `resonance`: the spell cast last, not cast twice running.
     pub(super) resonance: Option<u16>,
+    /// `hide N`: the tries left after the first (`cmd_hide`, `:6126-6137`).
+    hiding: Option<u32>,
 }
 
 #[derive(Debug)]
@@ -115,10 +117,35 @@ impl Hunt {
         here: Here<'_>,
         now: Option<u32>,
     ) -> Option<Said> {
+        if let Some(said) = self.hiding(state) {
+            return Some(said);
+        }
         if let Some(said) = self.sweeping(state, here, now) {
             return Some(said);
         }
         self.forcing(state, now)
+    }
+
+    /// `hide N` sent its first try: up to `tries` more, each in the wander
+    /// stance, until hidden.
+    pub(super) fn hide_tries(&mut self, tries: u32) {
+        self.repeats.hiding = Some(tries);
+    }
+
+    fn hiding(&mut self, state: &GameState) -> Option<Said> {
+        let left = self.repeats.hiding?;
+        if left == 0 || state.status.known().hidden() == Some(true) {
+            self.repeats.hiding = None;
+            return None;
+        }
+        if let Some(line) = Self::stance_for(self.profile.stance.wander.as_deref(), state) {
+            return Some(Said::Send { line, target: None });
+        }
+        self.repeats.hiding = Some(left - 1);
+        Some(Said::Send {
+            line: "hide".to_owned(),
+            target: None,
+        })
     }
 
     fn sweeping(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Option<Said> {

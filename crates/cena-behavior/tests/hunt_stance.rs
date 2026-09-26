@@ -93,8 +93,8 @@ fn the_hunting_stance_goes_before_a_step_but_not_before_bigshots_exceptions() {
     );
     for (step, first) in [
         ("611", "prepare 611"),
-        ("wait 3", "wait 3"),
-        ("sleep 2", "wait 2"),
+        ("wait 3", "wait 1"),
+        ("sleep 2", "wait 1"),
         ("hide", "hide"),
     ] {
         assert_eq!(

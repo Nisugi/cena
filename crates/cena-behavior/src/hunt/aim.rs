@@ -1,7 +1,7 @@
 //! Where an attack is aimed: bigshot's `ambush` and `archery_aim` lists
 //! (`bigshot.lic:6541-6570`, `:6359-6385`).
 //!
-//! A routine step that is the bare word `ambush` becomes `ambush #<id>
+//! A routine step `ambush`, or `ambush <part>`, becomes `ambush #<id>
 //! <part>` when hidden and `attack #<id> <part>` when not, the part the
 //! next on the `aim.ambush` list (bigshot's default, head, right leg, left
 //! leg, chest, when the list is empty). The game refusing the part -- `You
@@ -43,6 +43,11 @@ impl Aiming {
     pub(super) fn refused(&mut self) {
         self.at += 1;
     }
+
+    /// The place on the list reached.
+    pub(super) const fn at(&self) -> usize {
+        self.at
+    }
 }
 
 /// The line a step becomes once aimed, and a step to send before it.
@@ -58,8 +63,13 @@ impl Hunt {
     /// `None`: the step goes as written.
     pub(super) fn aim(&self, send: &str, target: i64, hidden: bool) -> Option<Aimed> {
         let aim = &self.profile.aim;
-        if send.trim().eq_ignore_ascii_case("ambush") {
-            let parts: Vec<&str> = if aim.ambush.is_empty() {
+        let (verb, named) = send.trim().split_once(' ').unwrap_or((send.trim(), ""));
+        if verb.eq_ignore_ascii_case("ambush") {
+            // `ambush <part>` names the one part (`cmd_ambush`'s string
+            // argument, `bigshot.lic:6554`).
+            let parts: Vec<&str> = if !named.trim().is_empty() {
+                vec![named.trim()]
+            } else if aim.ambush.is_empty() {
                 AMBUSH_DEFAULT.to_vec()
             } else {
                 aim.ambush.iter().map(String::as_str).collect()
