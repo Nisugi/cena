@@ -34,7 +34,7 @@ const CURSES: &[&str] = &[
     "star",
 ];
 
-fn one(line: impl Into<String>) -> Line {
+pub(super) fn one(line: impl Into<String>) -> Line {
     Line::Send(VecDeque::from([line.into()]))
 }
 
@@ -44,7 +44,7 @@ fn then(lines: impl IntoIterator<Item = String>, next: Next) -> Line {
 
 /// `Spell[n].known? && Spell[n].affordable?`, as [`cast::ready`] answers
 /// it: an unread list lets it go.
-fn castable(state: &GameState, number: u16) -> bool {
+pub(super) fn castable(state: &GameState, number: u16) -> bool {
     !matches!(
         cast::ready(state, number, 1, 0),
         Err(NotReady::NotKnown | NotReady::Mana(..) | NotReady::Spirit | NotReady::Stamina)
@@ -449,6 +449,13 @@ impl Hunt {
             }
             "dhurl" => self.dhurl(rest, target),
             "wandolier" => self.wandolier(rest, state),
+            "mstrike" => {
+                let (mut lines, strike) =
+                    self.mstrike(&format!("{first} {rest}"), target, state, now);
+                lines.extend(strike);
+                Line::Send(lines)
+            }
+            "unarmed" if !rest.is_empty() => self.unarmed(rest, target, state, now),
             "dislodge" => self.dislodge(rest, target, state),
             // `cmd_assume`, `:5588-5644`, as maintain casts it for a sign.
             "assume" => match self.assume_aspect(&format!("650 {rest}"), state, now?) {

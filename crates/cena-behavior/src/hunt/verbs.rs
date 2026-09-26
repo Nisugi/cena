@@ -40,6 +40,7 @@
 mod gated;
 mod spell;
 mod tables;
+mod ucs;
 
 use std::collections::VecDeque;
 

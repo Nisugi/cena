@@ -564,9 +564,15 @@ Demonstrated live on a short hunt.
 >   unknown lets it go), `shield bash` as the Shield Bash maneuver when that is available,
 >   703 and 1614 not cast at a creature they already hold, and the frail read off the
 >   appraise reply's last line (`tests/hunt_psm.rs`). **The model read no PSM ranks
->   before `a392b77`,** so the coup gate never fired live; it does now. Not yet: `mstrike`
->   (needs the skills the model never reads), `unarmed`, `nudgeweapons`, `wield`,
->   `briar`, `wandolier`.
+>   before `a392b77`,** so the coup gate never fired live; it does now. Then `wield` and
+>   `briar` on the model's worn list, `wandolier` on its reserve (`5a56feb`, `b05378f`), and
+>   `mstrike` and `unarmed` with bigshot's UAC and Mstrike tabs imported (`[unarmed]`,
+>   `[mstrike]`; `hunt/verbs/ucs.rs`, `tests/hunt_ucs.rs`): Multi-Opponent Combat's ranks
+>   (read since `cf32e5d`; before it, as in Lich unsynced, 0), no nest, the cooldown,
+>   `quickstrike 1`, unfocused at the mob, a Paladin's or Empath's 1607/1107 first; the
+>   unarmed attack by the creature's positioning and the follow-up the game offered. **Of
+>   bigshot's verbs only `nudgeweapons` is not ported**: it walks out of the room and back
+>   mid-fight, which the engine's room change undoes.
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,

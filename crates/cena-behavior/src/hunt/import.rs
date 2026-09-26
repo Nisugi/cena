@@ -284,6 +284,7 @@ impl Job {
         self.profile.loot.box_in_hand = flag(&self.take("box_in_hand"));
         self.profile.flee.count = number(&self.take("flee_count"));
         self.profile.flee.lone_only = flag(&self.take("lone_targets_only"));
+        self.unarmed();
         self.profile.aim.ambush = lowercased(list(&self.take("ambush")));
         self.profile.aim.archery = lowercased(list(&self.take("archery_aim")));
         let container = self.take("ammo_container");
@@ -522,6 +523,29 @@ fn health_at_most(term: &str) -> Option<u32> {
 }
 
 /// A whole number, or not.
+impl Job {
+    /// bigshot's UAC and Mstrike tabs (`bigshot.lic:3518-3528`).
+    fn unarmed(&mut self) {
+        self.profile.unarmed.aim = lowercased(list(&self.take("aim")));
+        let tier3 = self.take("tier3");
+        if !tier3.trim().is_empty() {
+            self.profile.unarmed.tier3 = tier3.trim().to_ascii_lowercase();
+        }
+        self.profile.unarmed.smite = flag(&self.take("uac_smite"));
+        self.profile.unarmed.no_mstrike = flag(&self.take("uac_mstrike"));
+        let mstrike = &mut self.profile.mstrike;
+        mstrike.cooldown = flag(&self.source.take("mstrike_cooldown"));
+        let mstrike = &mut self.profile.mstrike;
+        mstrike.quickstrike = flag(&self.source.take("mstrike_quickstrike"));
+        self.profile.mstrike.stamina_cooldown = number(&self.take("mstrike_stamina_cooldown"));
+        self.profile.mstrike.stamina_quickstrike =
+            number(&self.take("mstrike_stamina_quickstrike"));
+        if let Some(mob) = number(&self.take("mstrike_mob")) {
+            self.profile.mstrike.mob = mob;
+        }
+    }
+}
+
 fn number(text: &str) -> Option<u32> {
     text.trim().parse().ok()
 }

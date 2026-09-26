@@ -136,6 +136,9 @@ pub(super) struct Follow {
     pub(super) rooted: bool,
     /// `reserve list` has been sent for the wandolier.
     pub(super) reserve_asked: bool,
+    /// No Adrenal Surge (1107) before this game second (bigshot's
+    /// `$bigshot_adrenal_surge`, 301 s after the last).
+    pub(super) adrenal_until: Option<u32>,
 }
 
 impl Hunt {

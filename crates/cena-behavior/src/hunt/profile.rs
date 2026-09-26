@@ -109,6 +109,10 @@ pub struct Profile {
     pub boons: Boons,
     /// Lines to put in front of the player (`hunt/monitor.rs`).
     pub monitor: Monitor,
+    /// Unarmed combat, for an `unarmed` step (bigshot's UAC tab).
+    pub unarmed: Unarmed,
+    /// Multi-Strike, for an `mstrike` step (bigshot's Mstrike tab).
+    pub mstrike: Mstrike,
     /// What to attack, in order of preference, each with its routine.
     pub targets: Vec<Target>,
     /// What a quick hunt attacks (`quickhunt_targets`, `hunt/quick.rs`);
@@ -122,6 +126,65 @@ pub struct Profile {
     pub routines: BTreeMap<String, Vec<Step>>,
     /// Named lists of steps a routine step may stand for, such as `volley`.
     pub sequences: BTreeMap<String, Vec<Step>>,
+}
+
+/// Unarmed combat (`cmd_unarmed`, `bigshot.lic:5455-5551`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Unarmed {
+    /// Where the attacks are aimed, in order (`aim`); empty aims nowhere.
+    pub aim: Vec<String>,
+    /// The attack at tier 3 positioning, and the one Multi-Strike uses
+    /// (`tier3`, bigshot's default `punch`).
+    pub tier3: String,
+    /// Smite a noncorporeal creature at tier 3 first (`uac_smite`).
+    pub smite: bool,
+    /// Never Multi-Strike from an `unarmed` step (`uac_mstrike`).
+    pub no_mstrike: bool,
+}
+
+impl Default for Unarmed {
+    fn default() -> Self {
+        Self {
+            aim: Vec::new(),
+            tier3: "punch".to_owned(),
+            smite: false,
+            no_mstrike: false,
+        }
+    }
+}
+
+/// Multi-Strike (`cmd_mstrike`, `bigshot.lic:6175-6211`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Mstrike {
+    /// Strike while it cools, given this much stamina (`mstrike_cooldown`).
+    pub cooldown: bool,
+    /// The stamina a strike while cooling needs; none is the maximum
+    /// (`mstrike_stamina_cooldown`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stamina_cooldown: Option<u32>,
+    /// `quickstrike 1` before it (`mstrike_quickstrike`).
+    pub quickstrike: bool,
+    /// The stamina `quickstrike` needs; none is the maximum
+    /// (`mstrike_stamina_quickstrike`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stamina_quickstrike: Option<u32>,
+    /// Unfocused, at no one, when this many creatures are here
+    /// (`mstrike_mob`, bigshot's default 2).
+    pub mob: u32,
+}
+
+impl Default for Mstrike {
+    fn default() -> Self {
+        Self {
+            cooldown: false,
+            stamina_cooldown: None,
+            quickstrike: false,
+            stamina_quickstrike: None,
+            mob: 2,
+        }
+    }
 }
 
 /// Rooms, by the map's numbers (`cena_map::RoomId`).

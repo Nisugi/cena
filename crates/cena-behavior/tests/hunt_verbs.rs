@@ -223,10 +223,10 @@ fn sleep_waits_and_an_unported_verb_is_skipped_and_named_once() {
     // Held a second at a time, as the hold may end early (`hunt/follow.rs`).
     let (lines, _) = run("sleep 3", &fighting(&[]), 2).unwrap();
     assert_eq!(lines, ["wait 1", "wait 1"]);
-    let (lines, notes) = run("mstrike", &fighting(&[]), 3).unwrap();
+    let (lines, notes) = run("nudgeweapons", &fighting(&[]), 3).unwrap();
     assert_eq!(lines, ["wait 1", "wait 1", "wait 1"]);
     assert_eq!(notes.len(), 1, "said once: {notes:?}");
-    assert!(notes[0].contains("mstrike"), "{notes:?}");
+    assert!(notes[0].contains("nudgeweapons"), "{notes:?}");
 }
 
 #[test]
