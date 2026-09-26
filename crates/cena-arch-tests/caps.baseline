@@ -313,3 +313,8 @@ crates/cena-behavior/src/hunt/verbs.rs 300
 # PSM costs and Lich's `available?` (Lich's :cost tables, for the hunt's PSM
 # steps). 397 lines at birth: 397 + 50, rounded up.
 crates/cena-model/src/state/character/psm.rs 450
+# NEW SPLIT PARENT, 2026-09-26. crates/cena-behavior/src/group.rs is the facade
+# over group/ (plan/39 Stage 2, the group's rules, pure): the module doc and the
+# re-exports; the report, the settings, the looter, the rest and hunt merges,
+# muster and the successor are in group/. 43 lines at birth: 43 + 50, rounded up.
+crates/cena-behavior/src/group.rs 100

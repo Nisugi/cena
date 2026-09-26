@@ -358,14 +358,14 @@
 //! `unsafe_code` are all denied, and clippy's pedantic group is on. Clippy at
 //! `-D warnings` is part of the build, not an optional pass.
 //!
-//! # Measured, 2026-09-24
+//! # Measured, 2026-09-26
 //!
 //! | | count | command |
 //! |---|---|---|
 //! | workspace members | 11 | `sed -n '/^members/,/^\]/p' Cargo.toml \| grep -c '"crates/'` |
 //! | known wire tags | 126 | `grep -cE '^    "[^"]+",$' crates/cena-protocol/src/tags.rs` |
-//! | `Frame` variants | 54 | `awk '/^pub enum Frame \{/,/^\}/' crates/cena-protocol/src/frame/vocabulary.rs \| grep -oE '^    [A-Z][A-Za-z0-9]*' \| sort -u \| wc -l` |
-//! | files under `cena-model`'s `state/` | 90 | `find crates/cena-model/src/state -name '*.rs' \| wc -l` |
+//! | `Frame` variants | 55 | `awk '/^pub enum Frame \{/,/^\}/' crates/cena-protocol/src/frame/vocabulary.rs \| grep -oE '^    [A-Z][A-Za-z0-9]*' \| sort -u \| wc -l` |
+//! | files under `cena-model`'s `state/` | 110 | `find crates/cena-model/src/state -name '*.rs' \| wc -l` |
 //! | architecture test files | 10 | `ls crates/cena-arch-tests/tests/*.rs \| wc -l` |
 //!
 //! # Where to read next

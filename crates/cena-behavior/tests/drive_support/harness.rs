@@ -74,7 +74,7 @@ pub fn set_out_with(
 ) {
     let (walk, transcript, session, typed, _) = set_out_as(stop, rooms, None, |state| {
         for member in company {
-            state.group.apply(&GroupEvent::Joined(member.clone()));
+            state.group.apply(&GroupEvent::Joined(member.clone()), None);
         }
     });
     (walk, transcript, session, typed)

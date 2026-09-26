@@ -247,7 +247,7 @@ pub struct Character {
     /// This crate does no I/O -- an architecture test enforces it -- so the
     /// model reports what changed and the session decides what that costs.
     taught: std::collections::BTreeSet<snapshot::Group>,
-    /// The character's name, from `<playerID>` via [`Frame::AppInfo`].
+    /// The character's name, from `<app char=>` via [`Frame::AppInfo`].
     ///
     /// **Who this file is about.** `identity.race` and its siblings come from
     /// `info`, which a character may never have run; this comes from the login
@@ -255,6 +255,9 @@ pub struct Character {
     ///
     /// [`Frame::AppInfo`]: cena_protocol::Frame::AppInfo
     pub name: Option<String>,
+    /// `<playerID id=>`, verbatim: the game's number for this character, from
+    /// the login burst. [`Self::exist_id`] is what the game's links call it.
+    pub player_id: Option<String>,
     /// The instance -- `Prime`, `Platinum`, `Shattered`, `Test`.
     ///
     /// **Part of the identity, not decoration.** Lich keys its table
@@ -388,6 +391,7 @@ impl Character {
             stats,
             identity,
             name,
+            player_id,
             instance,
             taught,
             currency,
@@ -431,6 +435,7 @@ impl Character {
             // so clearing would be undone within a few lines while leaving a
             // window where the store has no filename to write under.
             name,
+            player_id,
             instance,
             // KEPT, all three, for the reason `stats` is kept: a command
             // taught them and no reconnect re-sends them. Enhancives are the
@@ -572,18 +577,40 @@ impl Character {
     /// after nobody, and `character_store::store_path` would reject them
     /// anyway -- better to hold `None` and say "not yet known".
     pub(crate) fn identify(&mut self, frame: &cena_protocol::Frame) {
-        let cena_protocol::Frame::AppInfo {
-            character, game, ..
-        } = frame
-        else {
-            return;
-        };
-        if !character.is_empty() {
-            self.name = Some(character.clone());
+        match frame {
+            cena_protocol::Frame::AppInfo {
+                character, game, ..
+            } => {
+                if !character.is_empty() {
+                    self.name = Some(character.clone());
+                }
+                if !game.is_empty() {
+                    self.instance = Some(game.clone());
+                }
+            }
+            cena_protocol::Frame::PlayerId { id } if !id.is_empty() => {
+                self.player_id = Some(id.clone());
+            }
+            _ => {}
         }
-        if !game.is_empty() {
-            self.instance = Some(game.clone());
-        }
+    }
+
+    /// The character's own `exist` id, as the game's links name it: what
+    /// tells a consumer "that link is me". `None` until `<playerID>` arrives.
+    ///
+    /// `-(10,000,000 + playerID)`. VERIFIED for one character, in two
+    /// fixtures cut from one log (`cena-protocol/tests/FIXTURES.md`):
+    /// `<playerID id='966483'/>` (`login_burst.xml:3`), and the same session's
+    /// `info` naming the character `<a exist="-10966483">`
+    /// (`character_info.xml:3`) -- the id Lich's own example gives him too
+    /// (`gemstone/group.rb:482`). INFERRED for everyone else: every player
+    /// link in Lich's examples is `-10` and six digits (`group.rb:417-509`).
+    /// Lich stores the number (`common/xmlparser.rb:910-911`) and never
+    /// compares it with a link, so no source states the rule.
+    #[must_use]
+    pub fn exist_id(&self) -> Option<String> {
+        let number: u64 = self.player_id.as_deref()?.parse().ok()?;
+        Some(format!("-{}", number.checked_add(10_000_000)?))
     }
 
     /// Read whatever command reports a completed chunk carries.
@@ -624,42 +651,7 @@ impl Character {
         // stale the moment it was written. The report still fills the model --
         // it carries fame, deeds and field exp that the dialog does not.
         if let Some(report) = experience_report::ExperienceReport::read(chunk) {
-            self.apply_experience(&report);
-        }
-    }
-
-    /// Fold an `experience` report.
-    ///
-    /// Nothing is persisted, so nothing is marked -- see the caller.
-    fn apply_experience(&mut self, report: &experience_report::ExperienceReport) {
-        let exp = &mut self.experience;
-        if let Some(fame) = report.fame {
-            exp.fame = Some(fame);
-        }
-        if let Some(value) = report.experience {
-            exp.experience = Some(value);
-        }
-        if let Some((current, max)) = report.field_experience {
-            exp.field_experience = Some(current);
-            exp.field_experience_max = Some(max);
-        }
-        if let Some(value) = report.ascension_experience {
-            exp.ascension_experience = Some(value);
-        }
-        if let Some(value) = report.recent_deaths {
-            exp.recent_deaths = Some(value);
-        }
-        if let Some(value) = report.total_experience {
-            exp.total_experience = Some(value);
-        }
-        if let Some(sting) = report.deaths_sting {
-            exp.deaths_sting = Some(sting);
-        }
-        if let Some(value) = report.long_term_experience {
-            exp.long_term_experience = Some(value);
-        }
-        if let Some(value) = report.deeds {
-            exp.deeds = Some(value);
+            self.experience.absorb(&report);
         }
     }
 

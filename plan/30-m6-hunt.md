@@ -247,6 +247,10 @@ That is a cross-session behavior: a leader, followers, a hand-over after a timeo
 regroup. It needs a solo hunt that survives a reconnect first, which is SE-4. **The acceptance
 hunt is solo** (author, N4), so groups follow M6.
 
+> **CORRECTED 2026-09-26.** Groups no longer follow M6. Asked when, the author answered
+> *"before"* the live run: they are **M6f**, staged in `plan/39`, whose §8 records the
+> answers.
+
 ### Also in
 
 - **`;hunt <profile>` and `;hunt stop`.** The hub card shows each character's running
@@ -749,7 +753,8 @@ author on 2026-09-24 as a script to port in the future. Not yet read.
 
 ## 8. What M6 deliberately does not prove
 
-- Groups. The acceptance hunt is solo; the design is recorded in §4.
+- ~~Groups. The acceptance hunt is solo; the design is recorded in §4.~~ Moved into M6 as
+  M6f, before the live run (author, 2026-09-26; `plan/39` §8).
 - Professions other than Nisugi's. The vocabulary grows from real profiles, not ahead of them.
 - The agent protocol (M7), although the policy/arbiter split keeps "observe" and "act"
   separate, which M7 needs.

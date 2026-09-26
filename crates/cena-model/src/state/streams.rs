@@ -219,8 +219,11 @@ impl GameState {
                 // and a join line read later, at the prompt, would undo that
                 // though the wire sent it FIRST. Found by the test for the
                 // indicator, which failed exactly so.
+                // With the character's own id, so a link that is you reads as
+                // you (`Group::apply`).
                 if let Some(event) = super::group::classify_text(&chunk_line, &rendered) {
-                    self.group.apply(&event);
+                    let me = self.character.exist_id();
+                    self.group.apply(&event, me.as_deref());
                 }
                 // A kill with no corpse, a portal, a boss's phase: here for
                 // order, so a later `room objs` still outranks it (`prose.rs`).

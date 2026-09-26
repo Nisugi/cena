@@ -5,6 +5,7 @@
 //! invented ones.
 
 use cena_model::GameState;
+use cena_model::state::group::{Group, Leader, Member};
 use cena_protocol::Parser;
 
 fn state_after(lines: &[&str]) -> GameState {
@@ -19,6 +20,14 @@ fn state_after(lines: &[&str]) -> GameState {
         state.apply(&frame);
     }
     state
+}
+
+/// The leader, when it is someone else.
+fn other(group: &Group) -> Option<&Member> {
+    match group.leader() {
+        Leader::Other(member) => Some(member),
+        Leader::Unknown | Leader::You => None,
+    }
 }
 
 /// `group.rb:420`'s example.
@@ -95,11 +104,15 @@ fn taking_a_hand_adds_them_whatever_the_demeanor() {
 fn disbanding_empties_the_group() {
     let group = state_after(&[OREH_JOINS, "You disband your group."]).group;
     assert!(group.is_empty());
-    assert_eq!(group.leader(), None);
+    assert_eq!(
+        *group.leader(),
+        Leader::You,
+        "Lich's `:self` (`group.rb:618`)"
+    );
 }
 
 mod leadership {
-    use super::{OREH_JOINS, state_after};
+    use super::{Leader, OREH_JOINS, other, state_after};
 
     /// `group.rb:438`'s example.
     const ETANAMIR_MAKES_YOU_LEADER: &str = concat!(
@@ -108,30 +121,69 @@ mod leadership {
     );
 
     #[test]
-    fn being_made_leader_leaves_the_leader_unknown() {
-        // "You" is not a link, so there is no id to store. `None` is honest:
-        // this model cannot answer "is it me" without knowing its own id, and
-        // setting the leader to the person who GAVE it away would be wrong.
+    fn being_made_leader_makes_the_leader_you() {
+        // "You" is prose, not a link, so the LINE says who: Lich's
+        // `GIVEN_LEADERSHIP` (`group.rb:598-600`). This was `None`, which also
+        // meant "nobody has said" (`plan/39` §4, gap 2) -- and setting the
+        // leader to the person who GAVE it away would be wrong.
         let group = state_after(&[OREH_JOINS, ETANAMIR_MAKES_YOU_LEADER]).group;
-        assert_eq!(group.leader(), None);
+        assert_eq!(*group.leader(), Leader::You);
         assert_eq!(group.members().len(), 1, "membership is untouched");
     }
 
+    /// `group.rb:442`'s example.
+    const ETANAMIR_TO_ONDREIAN: &str = concat!(
+        r#"<a exist="-10488845" noun="Etanamir">Etanamir</a> designates "#,
+        r#"<a exist="-10778599" noun="Ondreian">Ondreian</a> as the new leader of the group."#,
+    );
+    const JOIN_ETANAMIR: &str = r#"You join <a exist="-10488845" noun="Etanamir">Etanamir</a>."#;
+
     #[test]
     fn a_swap_names_the_new_leader_not_the_old() {
-        // `group.rb:442`'s example -- the pattern whose three duplicate
-        // capture-group names are harmless because Lich reads the LINKS, not
-        // the captures (`group.rb:608`).
-        let group = state_after(&[concat!(
-            r#"<a exist="-10488845" noun="Etanamir">Etanamir</a> designates "#,
-            r#"<a exist="-10778599" noun="Ondreian">Ondreian</a> as the new leader of the group."#,
-        )])
-        .group;
+        // The pattern whose three duplicate capture-group names are harmless
+        // because Lich reads the LINKS, not the captures (`group.rb:608`).
+        let group = state_after(&[JOIN_ETANAMIR, ETANAMIR_TO_ONDREIAN]).group;
         assert_eq!(
-            group.leader().map(|m| m.id.as_str()),
+            other(&group).map(|m| m.id.as_str()),
             Some("-10778599"),
             "the second link, not the first"
         );
+        let ids: Vec<&str> = group.members().iter().map(|m| m.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            ["-10488845", "-10778599"],
+            "both are members (`group.rb:634`)"
+        );
+    }
+
+    #[test]
+    fn a_swap_in_a_strangers_group_leaves_ours_alone() {
+        // Lich sets the leader on any swap (`group.rb:635`). Heard in a room
+        // where another group passes the lead, that would make a stranger our
+        // leader, and the hunt's role would read "follow".
+        let group = state_after(&[
+            r#"You are leading <a exist="-10467645" noun="Oreh">Oreh</a>."#,
+            ETANAMIR_TO_ONDREIAN,
+        ])
+        .group;
+        assert_eq!(*group.leader(), Leader::You);
+        let nouns: Vec<&str> = group.members().iter().map(|m| m.noun.as_str()).collect();
+        assert_eq!(nouns, ["Oreh"], "nor are the strangers members");
+    }
+
+    #[test]
+    fn a_swap_naming_our_member_as_the_new_leader_is_ours() {
+        // The guard reads either name: a member we hold taking the lead from
+        // someone the roster has not named yet.
+        let group = state_after(&[
+            OREH_JOINS,
+            concat!(
+                r#"<a exist="-10488845" noun="Etanamir">Etanamir</a> designates "#,
+                r#"<a exist="-10467645" noun="Oreh">Oreh</a> as the new leader of the group."#,
+            ),
+        ])
+        .group;
+        assert_eq!(other(&group).map(|m| m.noun.as_str()), Some("Oreh"));
     }
 
     #[test]
@@ -141,12 +193,13 @@ mod leadership {
             "as the new leader of the group.",
         )])
         .group;
-        assert_eq!(group.leader().map(|m| m.noun.as_str()), Some("Ondreian"));
+        assert_eq!(other(&group).map(|m| m.noun.as_str()), Some("Ondreian"));
+        assert_eq!(group.members().len(), 1, "and a member (`group.rb:626`)");
     }
 }
 
 mod joining_someone_elses {
-    use super::state_after;
+    use super::{other, state_after};
 
     #[test]
     fn being_added_replaces_whatever_was_held() {
@@ -162,14 +215,14 @@ mod joining_someone_elses {
         ])
         .group;
         assert_eq!(group.members().len(), 1, "Oreh's group is gone");
-        assert_eq!(group.leader().map(|m| m.noun.as_str()), Some("Etanamir"));
+        assert_eq!(other(&group).map(|m| m.noun.as_str()), Some("Etanamir"));
     }
 
     #[test]
     fn you_joining_someone_names_them_leader() {
         let group =
             state_after(&[r#"You join <a exist="-10488845" noun="Etanamir">Etanamir</a>."#]).group;
-        assert_eq!(group.leader().map(|m| m.noun.as_str()), Some("Etanamir"));
+        assert_eq!(other(&group).map(|m| m.noun.as_str()), Some("Etanamir"));
         assert!(group.contains("-10488845"));
     }
 
@@ -260,14 +313,14 @@ mod emptied {
     //! group. Lich clears it on three more signals (`group.rb:603-605`,
     //! `:617-619`) and replaces it on the `group` command's roster (`:644-645`).
 
-    use super::{OREH_JOINS, state_after};
+    use super::{Leader, OREH_JOINS, other, state_after};
 
     #[test]
     fn the_joined_indicator_going_dark_empties_the_group() {
         // `GROUP_EMPTIED`: `<indicator id='IconJOINED' visible='n'/>`.
         let group = state_after(&[OREH_JOINS, r#"<indicator id="IconJOINED" visible="n"/>"#]).group;
         assert!(group.is_empty());
-        assert_eq!(group.leader(), None, "the leader is you again");
+        assert_eq!(*group.leader(), Leader::You, "the leader is you again");
     }
 
     #[test]
@@ -309,7 +362,7 @@ mod emptied {
         let nouns: Vec<&str> = group.members().iter().map(|m| m.noun.as_str()).collect();
         assert_eq!(nouns, ["Etanamir", "Szan"]);
         assert_eq!(
-            group.leader().map(|m| m.noun.as_str()),
+            other(&group).map(|m| m.noun.as_str()),
             Some("Etanamir"),
             "`grouped with` names the leader first (`group.rb:610-614`)"
         );
@@ -323,6 +376,6 @@ mod emptied {
         )])
         .group;
         assert_eq!(group.members().len(), 2);
-        assert_eq!(group.leader(), None, "you, which is not a link");
+        assert_eq!(*group.leader(), Leader::You, "you, which is not a link");
     }
 }

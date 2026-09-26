@@ -30,6 +30,7 @@ pub mod batch;
 pub mod cast;
 pub mod error;
 pub(crate) mod gemstone;
+pub mod group;
 pub mod heal;
 pub mod hunt;
 pub mod keep;
