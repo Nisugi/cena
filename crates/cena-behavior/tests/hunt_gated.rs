@@ -624,3 +624,23 @@ fn wandolier_reserves_a_wand_in_hand_unless_told_not_to() {
     kept.replied(["What were you referring to?"], Some(1_000));
     assert_eq!(tick(&mut kept, &state), "reserve list");
 }
+
+#[test]
+fn a_line_the_game_answers_with_wait_goes_again() {
+    let state = kobold(1_000);
+    let mut h = hunt(&["kick", "punch"]).unwrap();
+    assert_eq!(tick(&mut h, &state), "kick");
+    h.replied(["...wait 2 seconds."], Some(1_000));
+    assert_eq!(tick(&mut h, &state), "kick", "the step again, not the next");
+    h.replied(["You kick at a kobold!"], Some(1_002));
+    assert_eq!(tick(&mut h, &state), "punch");
+
+    let mut spell = hunt(&["incant 1106", "punch"]).unwrap();
+    assert_eq!(ticks(&mut spell, &state, 2), ["prepare 1106", "cast #42"]);
+    spell.replied(["...wait 1 second."], Some(1_000));
+    assert_eq!(
+        tick(&mut spell, &state),
+        "cast #42",
+        "the queued line again"
+    );
+}

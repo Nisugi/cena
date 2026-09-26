@@ -56,6 +56,7 @@ pub mod guard;
 pub mod import;
 mod maintain;
 mod monitor;
+mod posture;
 pub mod profile;
 mod quick;
 mod react;

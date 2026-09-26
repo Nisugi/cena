@@ -139,6 +139,20 @@ pub(super) struct Follow {
     /// No Adrenal Surge (1107) before this game second (bigshot's
     /// `$bigshot_adrenal_surge`, 301 s after the last).
     pub(super) adrenal_until: Option<u32>,
+    /// What went last, to send again if the game says `...wait`. Every
+    /// line sent is answered (`Hunt::replied`), which takes it.
+    pub(super) resend: Option<Resend>,
+}
+
+/// What the last line was, to put back on `...wait N seconds.`: bigshot's
+/// handlers wait the roundtime out and send again (`cmd_cmans`,
+/// `bigshot.lic:5084-5087`, and the others).
+#[derive(Debug)]
+pub(super) enum Resend {
+    /// A line queued after a step's first.
+    Line(String),
+    /// A routine step's first line.
+    Step(super::profile::Step),
 }
 
 impl Hunt {
@@ -208,6 +222,21 @@ impl Hunt {
         };
         if heard {
             hold.over = true;
+        }
+    }
+
+    /// `...wait N seconds.`: the line that met it goes again, after the
+    /// roundtime the driver waits out before every line.
+    pub(super) fn resend_replied(&mut self, lines: &[&str]) {
+        let waited = lines.iter().any(|line| {
+            line.trim()
+                .strip_prefix("...wait ")
+                .is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_digit()))
+        });
+        match self.follow.resend.take().filter(|_| waited) {
+            Some(Resend::Line(line)) => self.followups.push_front(line),
+            Some(Resend::Step(step)) => self.queue.push_front(step),
+            None => {}
         }
     }
 

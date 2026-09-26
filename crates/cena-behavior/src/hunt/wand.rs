@@ -17,7 +17,9 @@
 use cena_session::{GameState, Stance};
 
 use super::engine::Hunt;
-use super::said::{Ending, Why};
+use super::profile::Step;
+use super::said::{Ending, Said, Why};
+use super::verbs::Go;
 use crate::stance::{self, Want};
 
 /// What the last wand line was, to read its reply.
@@ -70,6 +72,41 @@ impl Hunt {
             self.wanding.sent = Sent::Get;
             Some(format!("get {name} from my {fresh}"))
         }
+    }
+
+    /// A `wand` step, or a spell step a wand stands in for: its line, or
+    /// [`Go::Skip`]; `None` for a step that is neither. The step
+    /// is recorded as sent at its wave, not at a get or put-away before it,
+    /// or `once` would refuse its return.
+    pub(super) fn wand_step(
+        &mut self,
+        step: &Step,
+        key: &str,
+        state: &GameState,
+        target: i64,
+        now: Option<u32>,
+    ) -> Option<Go> {
+        let is_wand = step
+            .send
+            .split_whitespace()
+            .next()
+            .is_some_and(|verb| verb.eq_ignore_ascii_case("wand"));
+        if !is_wand && !self.wand_instead(state, &step.send) {
+            return None;
+        }
+        let Some(line) = self.wand_line(state, target) else {
+            return Some(Go::Skip);
+        };
+        // A get or a put-away comes before the wave: the step waits.
+        if line.starts_with("wave ") {
+            self.used.record(key, Some(target), now);
+        } else {
+            self.queue.push_front(step.clone());
+        }
+        Some(Go::Said(Said::Send {
+            line,
+            target: Some(target),
+        }))
     }
 
     /// Whether a spell step should be a wand instead: `wand.if_oom`, and
