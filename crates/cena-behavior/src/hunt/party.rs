@@ -34,6 +34,10 @@ const LOOT_WAIT: u32 = 20;
 
 /// What the group's arms remember between ticks.
 #[derive(Debug, Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts the group's arms carry between ticks"
+)]
 pub(super) struct Grouping {
     /// This tick's group, as the driver read it; `None` alone.
     party: Option<Party>,
@@ -71,6 +75,8 @@ pub(super) struct Grouping {
     told_alone: bool,
     /// Lead: the members last said to be awaited.
     awaited: Vec<String>,
+    /// Lead: `group open` sent while awaiting them.
+    opened: bool,
 }
 
 /// A follower's share of the leader's rest.
@@ -209,6 +215,16 @@ impl Hunt {
             self.grouping.awaited.clone_from(&party.awaiting);
         }
         if self.phase == Phase::Hunting && !party.awaiting.is_empty() {
+            // `head` opens the group for its followers to join
+            // (`bigshot.lic:9908`).
+            if state.group.status() != Some(cena_session::group::GroupStatus::Open)
+                && !std::mem::replace(&mut self.grouping.opened, true)
+            {
+                return Some(Said::Send {
+                    line: "group open".to_owned(),
+                    target: None,
+                });
+            }
             return Some(Said::Wait(1));
         }
         let settings = self.group_settings();

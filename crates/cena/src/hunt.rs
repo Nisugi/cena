@@ -15,12 +15,13 @@
 //! the binary (`CLAUDE.md`, Credentials). What it calls is tested in
 //! `cena-behavior`; what is untested is the wiring here.
 
+use std::collections::BTreeMap;
 use std::io;
 use std::path::Path;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use crate::commands::{Commands, Took};
-use cena_behavior::group::Boards;
+use cena_behavior::group::{Boards, Place};
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
 use cena_behavior::spellcaster::{self, CasterProfile};
@@ -52,6 +53,10 @@ pub(crate) fn open(
         desk.group_on(boards());
         desk
     });
+    if let (Some(desk), Some((_, name))) = (&desk, &who) {
+        take_seat(name, desk, handle, &observer);
+    }
+    let leader = who.as_ref().map(|(_, name)| name.clone());
     // The spellcaster profile, held so a typed line is judged without a
     // file read, and read again after `;sc` changes it.
     let caster = Arc::new(Mutex::new(read_caster(&dir, who.as_ref())));
@@ -121,6 +126,16 @@ pub(crate) fn open(
                     }
                 }))
             }
+            Command::Group { name, with } => {
+                let (Some(desk), Some(leader)) = (desk.clone(), leader.clone()) else {
+                    handler.say(Notice::line(
+                        NoticeKind::Error,
+                        "Hunt: a group needs a map and a character who has logged in.",
+                    ));
+                    return Some(Took::Done);
+                };
+                Took::Started(form(&desk, &handler, &observer, &leader, name, &with))
+            }
             Command::Nothing => Took::Done,
         };
         Some(took)
@@ -137,6 +152,80 @@ pub(crate) fn boards() -> Arc<Boards> {
     Arc::clone(BOARDS.get_or_init(Boards::new))
 }
 
+/// A character's hunt desk and session: what a leader's `hunt <name> with`
+/// starts a follower's hunt on.
+#[derive(Clone)]
+struct Seat {
+    desk: Arc<Desk>,
+    handle: SessionHandle,
+    observer: SessionObserver,
+}
+
+/// Every character's seat in this Hydra, by name.
+fn seats() -> &'static Mutex<BTreeMap<String, Seat>> {
+    static SEATS: OnceLock<Mutex<BTreeMap<String, Seat>>> = OnceLock::new();
+    SEATS.get_or_init(Mutex::default)
+}
+
+/// This character's seat, for a leader to start its hunt from.
+fn take_seat(name: &str, desk: &Arc<Desk>, handle: &SessionHandle, observer: &SessionObserver) {
+    let seat = Seat {
+        desk: Arc::clone(desk),
+        handle: handle.clone(),
+        observer: observer.clone(),
+    };
+    seats()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .insert(name.to_owned(), seat);
+}
+
+/// `hunt <name> with A B`: each named character's own hunt on the profile
+/// of that name, following `leader`; then the leader's, waiting for them
+/// (`plan/39` §8, question 2). A name this Hydra is not running is said,
+/// and hunted without.
+fn form(
+    desk: &Arc<Desk>,
+    handle: &SessionHandle,
+    observer: &SessionObserver,
+    leader: &str,
+    name: String,
+    with: &[String],
+) -> tokio::task::JoinHandle<()> {
+    let seats = seats()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
+    let mut followers = Vec::new();
+    for member in with {
+        match seats.get(member).filter(|_| member != leader) {
+            Some(seat) => {
+                drop(start_placed(
+                    &seat.desk,
+                    &seat.handle,
+                    &seat.observer,
+                    Command::Run(name.clone()),
+                    Place::Follow(leader.to_owned()),
+                ));
+                followers.push(member.clone());
+            }
+            None => handle.say(Notice::line(
+                NoticeKind::Warn,
+                format!(
+                    "Hunt: {member} is not a character this Hydra is running; hunting without them."
+                ),
+            )),
+        }
+    }
+    start_placed(
+        desk,
+        handle,
+        observer,
+        Command::Run(name),
+        Place::Lead(followers),
+    )
+}
+
 /// Run `command` on the hunt desk, once the session can be read. The task
 /// is over when what the desk started is: a heal, a cast, a hunt.
 fn start(
@@ -145,11 +234,22 @@ fn start(
     observer: &SessionObserver,
     command: Command,
 ) -> tokio::task::JoinHandle<()> {
+    start_placed(desk, handle, observer, command, Place::Read)
+}
+
+/// [`start`], a hunt taking `place` in its group.
+fn start_placed(
+    desk: &Arc<Desk>,
+    handle: &SessionHandle,
+    observer: &SessionObserver,
+    command: Command,
+    place: Place,
+) -> tokio::task::JoinHandle<()> {
     let (desk, handle, observer) = (desk.clone(), handle.clone(), observer.clone());
     tokio::spawn(async move {
         match observer.subscribe().await {
             Ok(joined) => {
-                if let Some(run) = desk.run(&handle, joined, command) {
+                if let Some(run) = desk.run_placed(&handle, joined, command, place) {
                     let _ = run.await;
                 }
             }
@@ -185,6 +285,7 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         Command::Run(_)
         | Command::Quick(_)
         | Command::Bounty(_)
+        | Command::Group { .. }
         | Command::Stop
         | Command::Heal { .. }
         | Command::Stock { .. }

@@ -21,6 +21,12 @@ projection; reconnecting/closed/connecting and degraded views omit it. The
 browser must also clear the marker when its viewer connection is lost, even if
 it retains the last room description. This field grants no command authority.
 
+`view.group` is an optional additive projection of the game's own group
+(`plan/39`). Older servers omit it, and so does a character alone or one whose
+group nobody has stated yet. When supplied it contains `leader` (the leader's
+name, or null when this character leads) and `members` (the other members'
+names, the leader not among them). A hub card carries the same `group`.
+
 | Kind | Other fields | Meaning |
 | --- | --- | --- |
 | `authenticate` | `token`, optional `session` | First client message; no state before authentication. `session` names the character this page is for; absent, the hub is served -- except by a server built for one session (`WebServer::bind`), which serves that session. |

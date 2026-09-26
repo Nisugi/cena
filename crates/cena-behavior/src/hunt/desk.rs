@@ -27,7 +27,7 @@ use super::command::Command;
 use super::drive::{HuntEnd, hunt_in};
 use super::engine::Hunt;
 use crate::error::BehaviorError;
-use crate::group::Boards;
+use crate::group::{Boards, Place};
 use crate::heal::{self, HealProfile};
 use crate::loot::{self, LootProfile};
 use crate::travel::{Heard, TravelNotes};
@@ -115,6 +115,19 @@ impl Desk {
         joined: (Snapshot, impl Into<Heard>),
         command: Command,
     ) -> Option<JoinHandle<HuntEnd>> {
+        self.run_placed(handle, joined, command, Place::Read)
+    }
+
+    /// [`Self::run`], a hunt taking `place` in its group: as the command
+    /// that formed the group said (`hunt <name> with ...`, `plan/39` §8,
+    /// question 2). Only a hunt groups; a heal or a cast does not.
+    pub fn run_placed(
+        self: &Arc<Self>,
+        handle: &SessionHandle,
+        joined: (Snapshot, impl Into<Heard>),
+        command: Command,
+        place: Place,
+    ) -> Option<JoinHandle<HuntEnd>> {
         let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
         let (command, quick, bounty) = match command {
             Command::Quick(name) => (Command::Run(name), true, false),
@@ -199,21 +212,16 @@ impl Desk {
                     Some(profile) => machine.with_heal(profile),
                     None => machine,
                 };
-                // For the waggle after a death, when `react.depart_switch`
-                // asks for one (`hunt/death.rs`).
-                let waggle = character
-                    .instance
-                    .as_deref()
-                    .zip(character.name.as_deref())
-                    .and_then(|(i, n)| crate::waggle::path(&self.dir, i, n))
-                    .and_then(|path| std::fs::read_to_string(path).ok())
-                    .and_then(|text| crate::waggle::WaggleProfile::parse(&text).ok())
-                    .filter(|p| !p.cast_list.is_empty());
-                let machine = match waggle {
+                let machine = match self.waggle_profile(&joined.0.state) {
                     Some(profile) => machine.with_waggle(profile),
                     None => machine,
                 };
-                Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+                Some(self.start_in(
+                    handle.clone(),
+                    (joined.0, joined.1.into()),
+                    machine,
+                    Some(place),
+                ))
             }
             _ => None,
         }
@@ -251,6 +259,31 @@ impl Desk {
         joined: (Snapshot, Heard),
         machine: Hunt,
     ) -> JoinHandle<HuntEnd> {
+        self.start_in(handle, joined, machine, None)
+    }
+
+    /// The character's waggle profile, for the waggle after a death when
+    /// `react.depart_switch` asks for one (`hunt/death.rs`).
+    fn waggle_profile(&self, state: &GameState) -> Option<crate::waggle::WaggleProfile> {
+        let character = &state.character;
+        character
+            .instance
+            .as_deref()
+            .zip(character.name.as_deref())
+            .and_then(|(i, n)| crate::waggle::path(&self.dir, i, n))
+            .and_then(|path| std::fs::read_to_string(path).ok())
+            .and_then(|text| crate::waggle::WaggleProfile::parse(&text).ok())
+            .filter(|p| !p.cast_list.is_empty())
+    }
+
+    /// Start `machine`; `place` in a group when it is a hunt.
+    fn start_in(
+        self: &Arc<Self>,
+        handle: SessionHandle,
+        joined: (Snapshot, Heard),
+        machine: Hunt,
+        place: Option<Place>,
+    ) -> JoinHandle<HuntEnd> {
         let running = Running {
             number: self.hunts.fetch_add(1, Ordering::Relaxed),
             stop: CancellationToken::new(),
@@ -270,7 +303,7 @@ impl Desk {
             if let Some(before) = before {
                 before.over.cancelled().await;
             }
-            let end = desk.hunt_once(&handle, &stop, joined, machine).await;
+            let end = desk.hunt_once(&handle, &stop, joined, machine, place).await;
             let mut slot = desk.running.lock().unwrap_or_else(PoisonError::into_inner);
             if slot.as_ref().is_some_and(|hunt| hunt.number == number) {
                 *slot = None;
@@ -485,6 +518,7 @@ impl Desk {
         stop: &CancellationToken,
         joined: (Snapshot, Heard),
         machine: Hunt,
+        place: Option<Place>,
     ) -> HuntEnd {
         if handle.claim(self.token).await.is_err() {
             handle.say(Notice::line(
@@ -520,7 +554,7 @@ impl Desk {
                 notes,
                 wrote,
                 learned,
-                self.boards.get().cloned(),
+                self.boards.get().cloned().zip(place),
             ));
             tokio::select! {
                 end = run => end,

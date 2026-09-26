@@ -38,7 +38,7 @@ pub mod rest;
 pub mod settings;
 pub mod successor;
 
-pub use board::{Board, Boards};
+pub use board::{Board, Boards, Place};
 pub use looter::looter;
 pub use muster::{Muster, Standing, muster, recoverer};
 pub use party::{Party, hindrance, hindrance_of, in_group, standing};

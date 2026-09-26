@@ -56,13 +56,19 @@ export function lifecycleText(lifecycle) {
   return `Game reconnecting${attempt}${delay}${lifecycle.detail ? ` — ${lifecycle.detail}` : ""}`;
 }
 
-// One line of a hub card: vitals as percents, roundtime while it runs, the room.
+// One line of a hub card: vitals as percents, roundtime while it runs, the room,
+// and who it leads or follows (plan/39).
 export function cardSummary(card) {
   const vital = (key, label) => `${label} ${card.vitals[key] == null ? "?" : `${card.vitals[key].percent}%`}`;
   const parts = [vital("health", "HP"), vital("mana", "MP"), vital("stamina", "SP"), vital("spirit", "Sp")];
   const remaining = card.roundtime.remaining_seconds;
   if (remaining != null && remaining > 0) parts.push(`RT ${remaining}s`);
   if (card.room) parts.push(card.room);
+  if (card.group) {
+    parts.push(card.group.leader == null
+      ? `leading ${card.group.members.join(", ")}`
+      : `following ${card.group.leader}`);
+  }
   return parts.join(" · ");
 }
 

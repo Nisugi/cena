@@ -647,15 +647,21 @@ fn a_leader_waits_for_its_members_to_start() {
     creature(&mut state, 43, "warg", &[("dead", "1")]);
     let mut party = leader_party(Vec::new(), Vec::new());
     party.awaiting = vec!["Kiyna".to_owned()];
+    hunt.see(party.clone());
+    assert_eq!(
+        hunt.tick(&state, here(10), Some(100)),
+        send("group open", None),
+        "`head` opens the group (`bigshot.lic:9908`)"
+    );
     hunt.see(party);
-    assert_eq!(hunt.tick(&state, here(10), Some(100)), Said::Wait(1));
+    assert_eq!(hunt.tick(&state, here(10), Some(101)), Said::Wait(1));
     assert_eq!(
         hunt.take_notes(),
         vec!["waiting for Kiyna to start hunting.".to_owned()]
     );
     hunt.see(leader_party(vec![report("Kiyna")], Vec::new()));
     assert_eq!(
-        hunt.tick(&state, here(10), Some(101)),
+        hunt.tick(&state, here(10), Some(102)),
         send("loot #43", None)
     );
 }

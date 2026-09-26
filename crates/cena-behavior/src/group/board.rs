@@ -24,6 +24,22 @@ use tokio::sync::watch;
 
 use super::report::{Leading, Report};
 
+/// How a hunt takes its place in a group as it starts (`plan/39` §8,
+/// question 2): by what the game's group says, or as the command that
+/// forms the group says, until the game's group agrees.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum Place {
+    /// Whatever the game's group says: `;hunt <profile>` typed on a member.
+    #[default]
+    Read,
+    /// Leading these characters, who were asked to join: waited for until
+    /// each has a report up, within `lost_wait`.
+    Lead(Vec<String>),
+    /// Following this leader: caught up to and joined, even from outside
+    /// its group.
+    Follow(String),
+}
+
 /// Every group's board in this Hydra, by the leading character's name.
 #[derive(Debug, Default)]
 pub struct Boards {

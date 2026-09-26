@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use cena_behavior::group::Boards;
+use cena_behavior::group::{Boards, Place};
 use cena_behavior::hunt::{Hunt, HuntEnd, Profile, hunt_in};
 use cena_behavior::travel::TravelNotes;
 use cena_behavior::watchdog::Heartbeat;
@@ -132,6 +132,7 @@ fn member_hunt(
     name: &'static str,
     profile: &'static str,
     grouped: &GroupEvent,
+    place: Place,
     boards: &Arc<Boards>,
     stop: &CancellationToken,
 ) -> (
@@ -178,7 +179,7 @@ fn member_hunt(
             TravelNotes::default(),
             |_| {},
             |_| {},
-            Some(boards),
+            Some((boards, place)),
         ))
         .await;
         Some(end)
@@ -200,6 +201,7 @@ async fn the_follower_takes_the_leaders_target_and_the_loot_it_is_given() {
             leading: true,
             members: vec![member("Kiyna")],
         },
+        Place::Read,
         &boards,
         &stop,
     );
@@ -207,6 +209,7 @@ async fn the_follower_takes_the_leaders_target_and_the_loot_it_is_given() {
         "Kiyna",
         FOLLOWER,
         &GroupEvent::JoinedGroup(member("Ashryn")),
+        Place::Read,
         &boards,
         &stop,
     );
@@ -254,6 +257,7 @@ async fn the_leaders_stop_ends_the_followers_hunt() {
             leading: true,
             members: vec![member("Kiyna")],
         },
+        Place::Read,
         &boards,
         &leader_stop,
     );
@@ -261,6 +265,7 @@ async fn the_leaders_stop_ends_the_followers_hunt() {
         "Kiyna",
         FOLLOWER,
         &GroupEvent::JoinedGroup(member("Ashryn")),
+        Place::Read,
         &boards,
         &follower_stop,
     );
@@ -288,4 +293,78 @@ async fn the_leaders_stop_ends_the_followers_hunt() {
         "{:?}",
         follower.lines()
     );
+}
+
+/// `plan/39` §8, question 2: `hunt <name> with Kiyna` starts Kiyna's hunt
+/// following the leader, though the game's group does not hold it yet: it
+/// joins; the leader opens its group and waits for it.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_named_follower_joins_the_leader_it_was_given() {
+    let boards = Boards::new();
+    let stop = CancellationToken::new();
+    let (leader, leader_task, leader_session) = member_hunt(
+        "Ashryn",
+        LEADER,
+        &GroupEvent::NotInGroup,
+        Place::Lead(vec!["Kiyna".to_owned()]),
+        &boards,
+        &stop,
+    );
+    let (follower, follower_task, follower_session) = member_hunt(
+        "Kiyna",
+        FOLLOWER,
+        &GroupEvent::NotInGroup,
+        Place::Follow("Ashryn".to_owned()),
+        &boards,
+        &stop,
+    );
+    let opened = drive_support::until_written(&leader, "group open").await;
+    let joined = drive_support::until_written(&follower, "join Ashryn").await;
+    stop.cancel();
+    let _ = leader_task.await;
+    let _ = follower_task.await;
+    leader_session.cancel();
+    follower_session.cancel();
+    assert!(opened, "{:?}", leader.lines());
+    assert!(joined, "{:?}", follower.lines());
+}
+
+/// Question 3: a follower's own stop leaves the game's group.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_followers_stop_leaves_the_group() {
+    let boards = Boards::new();
+    let leader_stop = CancellationToken::new();
+    let follower_stop = CancellationToken::new();
+    let (leader, leader_task, leader_session) = member_hunt(
+        "Ashryn",
+        LEADER,
+        &GroupEvent::Listed {
+            leading: true,
+            members: vec![member("Kiyna")],
+        },
+        Place::Read,
+        &boards,
+        &leader_stop,
+    );
+    let (follower, follower_task, follower_session) = member_hunt(
+        "Kiyna",
+        FOLLOWER,
+        &GroupEvent::JoinedGroup(member("Ashryn")),
+        Place::Read,
+        &boards,
+        &follower_stop,
+    );
+    assert!(drive_support::until_written(&follower, "loot #43").await);
+    follower_stop.cancel();
+    let _ = follower_task.await;
+    leader_stop.cancel();
+    let _ = leader_task.await;
+    leader_session.cancel();
+    follower_session.cancel();
+    assert!(
+        follower.lines().contains(&"leave group".to_owned()),
+        "{:?}",
+        follower.lines()
+    );
+    assert!(!leader.lines().contains(&"leave group".to_owned()));
 }

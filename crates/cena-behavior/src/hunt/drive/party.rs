@@ -14,10 +14,11 @@ use std::time::{Duration, Instant};
 
 use cena_map::RoomId;
 use cena_session::group::Leader;
-use cena_session::{CommandId, State};
+use cena_session::{CommandId, Frame, Gate, Origin, State};
 
 use super::{Driver, HuntEnd};
-use crate::group::{self, Board, Boards, Party, Report, Role, muster};
+use crate::error::BehaviorError;
+use crate::group::{self, Board, Boards, Party, Place, Report, Role, muster};
 use crate::hunt::said::{Ending, Phase};
 use crate::travel::TravelNotes;
 
@@ -32,23 +33,37 @@ pub(super) struct Membership {
     on: Option<(String, Arc<Board>)>,
     /// Lead: when each follower was first seen apart.
     since: BTreeMap<String, Instant>,
+    /// Lead: when each member not yet reporting was first waited for.
+    awaited: BTreeMap<String, Instant>,
     /// Lead: when the last rest began, so older drops do not count.
     rested: Option<Instant>,
     /// When this member's own connection last dropped.
     dropped: Option<Instant>,
     /// Asked the game `group` since the connection came up.
     asked: bool,
+    /// Lead: the characters the command named, awaited until they report.
+    expected: Vec<String>,
+    /// Follow: the leader the command named, until the game's group says.
+    following: Option<String>,
 }
 
 impl Membership {
-    pub(super) fn new(boards: Arc<Boards>) -> Self {
+    pub(super) fn new(boards: Arc<Boards>, place: Place) -> Self {
+        let (expected, following) = match place {
+            Place::Read => (Vec::new(), None),
+            Place::Lead(names) => (names, None),
+            Place::Follow(leader) => (Vec::new(), Some(leader)),
+        };
         Self {
             boards,
             on: None,
             since: BTreeMap::new(),
+            awaited: BTreeMap::new(),
             rested: None,
             dropped: None,
             asked: false,
+            expected,
+            following,
         }
     }
 }
@@ -75,13 +90,28 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             return Seen::Go;
         };
         let (role, leader) = match (group::role(&self.state.group), self.state.group.leader()) {
-            (Some(Role::Lead), _) => (Role::Lead, name.clone()),
-            (Some(Role::Follow), Leader::Other(leader)) => (Role::Follow, leader.noun.clone()),
-            (role, _) => match &member.on {
+            // The game's group, once it says, over what the command said.
+            (Some(Role::Lead), _) => {
+                member.following = None;
+                (Role::Lead, name.clone())
+            }
+            (Some(Role::Follow), Leader::Other(leader)) => {
+                member.following = None;
+                (Role::Follow, leader.noun.clone())
+            }
+            (role, _) => match (&member.following, &member.on) {
+                // Named a follower by the command: to be caught up to and
+                // joined, from outside the group.
+                (Some(leader), _) => (Role::Follow, leader.clone()),
                 // Walked off, or its roster not yet re-read: still that
                 // leader's follower while its hunt goes on (bigshot's
                 // `group_all_followers`, `bigshot.lic:9335-9347`).
-                Some((leader, _)) if *leader != name => (Role::Follow, leader.clone()),
+                (None, Some((leader, _))) if *leader != name => (Role::Follow, leader.clone()),
+                // Leading, with members on the board or on their way.
+                (None, Some((leader, board))) if *leader == name && board.reports().len() > 1 => {
+                    (Role::Lead, name.clone())
+                }
+                _ if !member.expected.is_empty() => (Role::Lead, name.clone()),
                 _ if role.is_none() && !member.asked => {
                     member.asked = true;
                     return Seen::Ask;
@@ -185,22 +215,30 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 }
             }
         }
-        // The game's group, not yet on the board: waited for, then not.
+        // The game's group and the command's names, not yet on the board:
+        // waited for, then not.
+        let named: Vec<String> = self
+            .state
+            .group
+            .members()
+            .iter()
+            .map(|m| m.noun.clone())
+            .chain(member.expected.iter().cloned())
+            .collect();
         let mut awaiting = Vec::new();
-        for grouped in self.state.group.members() {
-            let noun = &grouped.noun;
-            if followers.iter().any(|f| f.name == *noun) {
+        for noun in &named {
+            if followers.iter().any(|f| f.name == *noun) || awaiting.contains(noun) {
                 continue;
             }
-            let since = *member.since.entry(noun.clone()).or_insert(now);
+            let since = *member.awaited.entry(noun.clone()).or_insert(now);
             if now.duration_since(since) < settings.lost_wait {
                 awaiting.push(noun.clone());
             }
         }
-        let grouped = |n: &str| self.state.group.members().iter().any(|m| m.noun == n);
+        member.awaited.retain(|n, _| named.contains(n));
         member
             .since
-            .retain(|n, _| followers.iter().any(|f| f.name == *n) || grouped(n));
+            .retain(|n, _| followers.iter().any(|f| f.name == *n));
         // Question 9: every member's drop close together, after the last
         // rest began.
         let drops: Vec<Instant> = std::iter::once(member.dropped)
@@ -265,11 +303,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
     /// the session up, for the leader's muster (`plan/39` §8a). A leader
     /// whose hunt ended for another reason takes its board down, which ends
     /// its followers' hunts (question 3).
-    pub(super) fn leave_party(&mut self, end: HuntEnd) {
+    pub(super) async fn leave_party(&mut self, end: HuntEnd) {
         let Some(name) = self.state.character.name.clone() else {
             return;
         };
-        let closed = matches!(end, HuntEnd::Stopped(crate::error::BehaviorError::Dead));
+        let closed = matches!(end, HuntEnd::Stopped(BehaviorError::Dead));
         if closed {
             let here = self.last_room;
             self.publish(here, State::Closed);
@@ -279,12 +317,25 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             return;
         };
         member.boards.withdraw_except(&name, None);
-        if member
-            .on
-            .as_ref()
-            .is_some_and(|(leader, _)| *leader == name)
-        {
+        let led = member.on.as_ref().map(|(leader, _)| *leader == name);
+        if led == Some(true) {
             member.boards.close(&name);
+        }
+        // Question 3: a follower's own stop leaves the game's group, and the
+        // rest hunt on without it (bigshot's `LEAVE_GROUP`, `:10108`).
+        if led == Some(false) && end == HuntEnd::Stopped(BehaviorError::Cancelled) {
+            let id = (self.next_id)();
+            let _ = self
+                .handle
+                .send_gated(
+                    id,
+                    "leave group",
+                    Origin::Behavior(self.token),
+                    Duration::from_secs(5),
+                    |frame| matches!(frame, Frame::Prompt { .. }),
+                    Gate::None,
+                )
+                .await;
         }
     }
 }

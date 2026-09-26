@@ -210,6 +210,16 @@ pub struct MapLocationView {
     pub room: Option<u32>,
 }
 
+/// The character's game group, when it is in one (`plan/39`): read off
+/// the game's own group, so the hub can show who leads whom.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GroupView {
+    /// Who leads, by name; `None` when this character does.
+    pub leader: Option<String>,
+    /// The other members, by name, the leader not among them.
+    pub members: Vec<String>,
+}
+
 /// State needed by Story, room, hands, vitals, roundtime and connection status.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SessionView {
@@ -217,6 +227,11 @@ pub struct SessionView {
     /// Absent in older servers, without a map, or outside Ready.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub map_location: Option<MapLocationView>,
+    /// The game group, when the character leads one with members or is in
+    /// someone's; absent alone, or while nobody has said. Additive: older
+    /// servers omit it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<GroupView>,
     /// The current room as far as it has been observed.
     pub room: RoomView,
     /// What the left hand holds, or that it is unknown.
@@ -253,6 +268,9 @@ pub struct SessionCard {
     pub roundtime: RoundtimeView,
     /// The room it stands in, when known.
     pub room: Option<String>,
+    /// Its game group, as its view has it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<GroupView>,
 }
 
 impl SessionCard {
@@ -268,6 +286,7 @@ impl SessionCard {
                 vitals: view.vitals.clone(),
                 roundtime: view.roundtime.clone(),
                 room: view.room.title.clone(),
+                group: view.group.clone(),
             },
             None => Self {
                 session,
@@ -276,6 +295,7 @@ impl SessionCard {
                 vitals: VitalsView::default(),
                 roundtime: RoundtimeView::default(),
                 room: None,
+                group: None,
             },
         }
     }

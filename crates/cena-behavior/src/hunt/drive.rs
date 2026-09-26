@@ -57,7 +57,7 @@ use tokio_util::sync::CancellationToken;
 use self::party::{Membership, Seen};
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
-use crate::group::Boards;
+use crate::group::{Boards, Place};
 use crate::loot::Memory;
 use crate::travel::{Heard, TravelNotes, room_of};
 use crate::watchdog::Heartbeat;
@@ -113,8 +113,8 @@ pub async fn hunt(
     .await
 }
 
-/// [`hunt`], able to hunt in a group: the member reads the role the game's
-/// group gives it and takes its place on `boards` (`plan/39` §5).
+/// [`hunt`], able to hunt in a group: the member takes its [`Place`] on
+/// the boards, and reads its role off the game's group (`plan/39` §5).
 #[allow(clippy::too_many_arguments)]
 pub async fn hunt_in(
     handle: &SessionHandle,
@@ -128,7 +128,7 @@ pub async fn hunt_in(
     notes: TravelNotes,
     wrote: impl FnMut(&TravelNotes) + Send,
     learned: impl FnMut(&[String]) + Send,
-    boards: Option<Arc<Boards>>,
+    group: Option<(Arc<Boards>, Place)>,
 ) -> HuntEnd {
     let (snapshot, events) = joined;
     let hunting_map = match super::setup::hunting_map(machine.profile(), map) {
@@ -170,10 +170,10 @@ pub async fn hunt_in(
         transcript: String::new(),
         line: String::new(),
         down: false,
-        membership: boards.map(Membership::new),
+        membership: group.map(|(boards, place)| Membership::new(boards, place)),
     };
     let end = driver.run(heartbeat).await;
-    driver.leave_party(end);
+    driver.leave_party(end).await;
     let text = match end {
         HuntEnd::Finished(ending) => format!("Hunt: over: {ending}."),
         HuntEnd::Stopped(BehaviorError::Cancelled) => "Hunt: stopped.".to_owned(),

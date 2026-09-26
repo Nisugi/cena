@@ -547,6 +547,16 @@ test("a card says what is unknown, and shows roundtime only while it runs", () =
   assert.equal(cardSummary(idle), "HP ? · MP ? · SP ? · Sp ?");
 });
 
+test("a card says who a character leads or follows", () => {
+  const leading = card("0", "Ashryn");
+  leading.roundtime.remaining_seconds = 0;
+  leading.room = null;
+  leading.group = { leader: null, members: ["Kiyna", "Dicate"] };
+  assert.equal(cardSummary(leading), "HP ? · MP ? · SP ? · Sp ? · leading Kiyna, Dicate");
+  const following = { ...leading, group: { leader: "Ashryn", members: [] } };
+  assert.equal(cardSummary(following), "HP ? · MP ? · SP ? · Sp ? · following Ashryn");
+});
+
 test("a malformed session list is a protocol error, not a partial hub", () => {
   const { session, socket } = page();
   const bad = card("0", "Nisugi");

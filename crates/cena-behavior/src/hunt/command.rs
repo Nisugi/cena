@@ -41,6 +41,16 @@ pub enum Command {
     List,
     /// Hunt on this profile.
     Run(String),
+    /// `hunt <name> with <A> <B> ...`: lead these characters, each running
+    /// in this Hydra, each hunting its own profile of the same name
+    /// (`plan/39` §8, question 2). Who they are is the binary's to resolve:
+    /// the desk hunts one session.
+    Group {
+        /// The profile, by the name every member's chain resolves.
+        name: String,
+        /// The followers, by character name.
+        with: Vec<String>,
+    },
     /// `hunt <name> quick`: this room, on the profile, until it is clear.
     Quick(String),
     /// `hunt <name> bounty`: hunt until the bounty is done or a new one is
@@ -83,7 +93,7 @@ pub enum Command {
 const RESERVED: &[&str] = &["import", "import-loot", "check", "list", "stop"];
 
 /// What a wrongly said command is answered with.
-pub const USAGE: &str = "hunt <name> [quick|bounty], hunt stop, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>, hunt check <name>, or hunt list";
+pub const USAGE: &str = "hunt <name> [quick|bounty], hunt <name> with <character>..., hunt stop, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>, hunt check <name>, or hunt list";
 
 /// The hunt command a line is, **the command symbol already gone**. `None`:
 /// not hunt's. `Some(Err(_))`: hunt's, said wrongly.
@@ -144,7 +154,26 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
         Some((name, [bounty])) if bounty.eq_ignore_ascii_case("bounty") => {
             Ok(Command::Bounty((*name).to_owned()))
         }
+        Some((name, [with, members @ ..]))
+            if with.eq_ignore_ascii_case("with") && !members.is_empty() =>
+        {
+            Ok(Command::Group {
+                name: (*name).to_owned(),
+                with: members.iter().map(|member| capitalized(member)).collect(),
+            })
+        }
         _ => Err(USAGE.to_owned()),
+    })
+}
+
+/// A character's name as the game spells it: first letter up, the rest down.
+fn capitalized(name: &str) -> String {
+    let mut letters = name.chars();
+    letters.next().map_or_else(String::new, |first| {
+        first
+            .to_uppercase()
+            .chain(letters.flat_map(char::to_lowercase))
+            .collect()
     })
 }
 
@@ -228,6 +257,14 @@ mod tests {
             parse("hunt ojandhaart"),
             Some(Ok(Command::Run("ojandhaart".to_owned())))
         );
+        assert_eq!(
+            parse("hunt ojandhaart with kiyna Dicate"),
+            Some(Ok(Command::Group {
+                name: "ojandhaart".to_owned(),
+                with: vec!["Kiyna".to_owned(), "Dicate".to_owned()],
+            }))
+        );
+        assert!(matches!(parse("hunt ojandhaart with"), Some(Err(_))));
     }
 
     #[test]

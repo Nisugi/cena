@@ -1,7 +1,7 @@
 # 39 — Group hunting: bigshot's head and tail, measured and staged
 
 **Status: PROPOSED 2026-09-25; §7's eleven questions ANSWERED 2026-09-26 (§8, §8a).
-Stages 0 to 3 are built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
+Stages 0 to 4 are built, but for Stage 4's live run.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
 and has several characters and a test server to run a group on. `plan/30` §4 recorded the
 author's group design and §8 put groups after M6; **the author moved them before the live run**
 (§8, question 1). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
@@ -454,6 +454,32 @@ and each follower `join #<leader's id>` (Lich's `Group.join`,
 shows each member's role and the reasons bigshot printed (*"Dicate resting: fried."*).
 **Live, the author present:** two characters on the test server, one per account
 (`plan/29` §5 Q1), a full hunt-rest-hunt cycle.
+**BUILT 2026-09-26, but for the live run and the hub's own start.**
+
+- **`hunt <profile> with <name>...`** (`Command::Group`): the binary resolves each name to
+  a character this Hydra runs (`crates/cena/src/hunt.rs`, `Seat`), starts that character's
+  own hunt on **the profile of the same name, through its own chain** (question 2's open
+  point, settled here), placed as following the leader (`Place::Follow`), then the
+  leader's, placed as leading them (`Place::Lead`). A named follower catches up and `join`s
+  even from outside the group; the leader sends `group open` and waits for each to report,
+  within `lost_wait`, as bigshot's `head` waits for its followers to register. A name this
+  Hydra does not run is said, and hunted without. `hunt <profile>` typed on a character
+  already in a group still reads its role off the game's group (`Place::Read`).
+- **Stopping:** the leader's stop while leading ends every follower's hunt, and they stay
+  grouped (Stage 3). A follower's own stop sends `leave group` (bigshot's `LEAVE_GROUP`),
+  and the rest hunt on without it. Only a hunt groups: `;heal`, `;keep`, `;waggle` and
+  `;sc` run on the same machine and take no place in a group.
+- **The hub card** carries `group` (`cena-ui`'s `GroupView`, an additive field in
+  `WIRE.md`): *"leading Kiyna, Dicate"* or *"following Ashryn"*, read off the game's own
+  group. bigshot's *"Kiyna isn't hunting because: ..."* lines are notices on the leader's
+  own page (Stage 3), not on the card.
+
+Tests: `crates/cena-behavior/tests/group_drive.rs` (a named follower from outside the group
+joins the leader it was given, which opens its group; a follower's stop leaves it), the
+command's words in `hunt/command.rs`, the projection in `crates/cena-ui/src/projection.rs`,
+and the card's line in `crates/cena-web/assets/tests/session.test.mjs`. **Not built:** a
+hub button that starts a group (the card shows it; `hunt ... with` starts it), and the live
+run, which is the author's.
 
 **Stage 5 — the settings.** A `[group]` table in the leader's profile and the importer's rows
 for it: independent travel and return, quiet followers, the three loot keys and final loot,

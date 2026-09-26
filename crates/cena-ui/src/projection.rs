@@ -1,10 +1,11 @@
 //! Pure model projection: the caller supplies lifecycle and observation time.
 
+use cena_model::state::group::{Group, Leader};
 use cena_model::{GameState, Hand, RoomItem, Vital};
 
 use crate::view::{
-    HandView, LifecycleView, RoomItemView, RoomView, RoundtimeView, SessionView, StyledRun,
-    UnknownTagView, VitalView, VitalsView,
+    GroupView, HandView, LifecycleView, RoomItemView, RoomView, RoundtimeView, SessionView,
+    StyledRun, UnknownTagView, VitalView, VitalsView,
 };
 
 impl SessionView {
@@ -20,6 +21,7 @@ impl SessionView {
         let contents_known = room.component("room objs").is_some();
         Self {
             map_location: None,
+            group: group(&state.group),
             room: RoomView {
                 id: room.id.clone(),
                 title: room.title.clone(),
@@ -73,6 +75,24 @@ impl SessionView {
     }
 }
 
+/// The game group, when there is one to show: leading members, or in
+/// someone's. Alone, or unknown, there is none.
+fn group(value: &Group) -> Option<GroupView> {
+    let leader = match value.leader() {
+        Leader::Unknown => return None,
+        Leader::You if value.is_empty() => return None,
+        Leader::You => None,
+        Leader::Other(leader) => Some(leader.noun.clone()),
+    };
+    let members = value
+        .members()
+        .iter()
+        .map(|member| member.noun.clone())
+        .filter(|noun| leader.as_ref() != Some(noun))
+        .collect();
+    Some(GroupView { leader, members })
+}
+
 fn hand(value: &Hand) -> HandView {
     match value {
         Hand::Unknown => HandView::Unknown,
@@ -116,6 +136,44 @@ pub(crate) fn bounded_text(text: &str, max_bytes: usize) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_group_is_who_leads_whom_and_nothing_alone() {
+        use cena_model::state::group::{GroupEvent, Member};
+        let member = |noun: &str| Member {
+            id: format!("-10{}", noun.len()),
+            noun: noun.to_owned(),
+            text: noun.to_owned(),
+        };
+        let mut state = GameState::default();
+        assert_eq!(group(&state.group), None, "nobody has said");
+        state.group.apply(&GroupEvent::NotInGroup, None);
+        assert_eq!(group(&state.group), None, "alone");
+        state.group.apply(
+            &GroupEvent::Listed {
+                leading: true,
+                members: vec![member("Kiyna")],
+            },
+            None,
+        );
+        assert_eq!(
+            group(&state.group),
+            Some(GroupView {
+                leader: None,
+                members: vec!["Kiyna".to_owned()]
+            })
+        );
+        state
+            .group
+            .apply(&GroupEvent::JoinedGroup(member("Ashryn")), None);
+        assert_eq!(
+            group(&state.group),
+            Some(GroupView {
+                leader: Some("Ashryn".to_owned()),
+                members: Vec::new()
+            })
+        );
+    }
 
     #[test]
     fn unobserved_values_remain_unknown() {
