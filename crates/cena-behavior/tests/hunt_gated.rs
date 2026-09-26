@@ -669,3 +669,82 @@ fn an_assault_and_a_bearhug_are_waited_out() {
     assert_eq!(tick(&mut timed, &kobold(1_016)), "wait 1");
     assert_eq!(tick(&mut timed, &kobold(1_017)), "kick", "17 s at most");
 }
+
+/// `kobold(1_000)` with exits `n` and `e`, and these `(id, noun, name)`
+/// lying on the ground.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors"
+)]
+fn littered(items: &[(&str, &str, &str)]) -> GameState {
+    let mut state = kobold(1_000);
+    state.apply(&Frame::Compass {
+        directions: vec!["n".to_owned(), "e".to_owned()],
+    });
+    let mut runs = vec![linked("kobold")];
+    runs.extend(items.iter().map(|(id, noun, name)| Run {
+        text: (*name).to_owned(),
+        style: Default::default(),
+        link: Some(Link {
+            kind: LinkKind::Exist {
+                id: (*id).to_owned(),
+                noun: (*noun).to_owned(),
+            },
+            text: (*name).to_owned(),
+            coord: None,
+        }),
+        inner_link: None,
+    }));
+    state.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs { runs },
+    });
+    state
+}
+
+#[test]
+fn nudgeweapons_carries_each_weapon_out_and_walks_back() {
+    let state = littered(&[("7", "longsword", "a longsword"), ("8", "rock", "a rock")]);
+    let mut h = hunt(&["nudgeweapons", "kick"]).unwrap();
+    assert_eq!(
+        ticks(&mut h, &state, 5),
+        ["get #7", "n", "drop #7", "s", "kick"],
+        "the sword out by the first exit and back; the rock left"
+    );
+    let bare = littered(&[("8", "rock", "a rock")]);
+    let mut nothing = hunt(&["nudgeweapons"]).unwrap();
+    assert_eq!(tick(&mut nothing, &bare), "wait 1", "no weapon here");
+    let mut full = littered(&[("7", "longsword", "a longsword")]);
+    for (item, frame) in [("shield", true), ("sword", false)] {
+        let hand = cena_session::Frame::RightHand {
+            item: item.to_owned(),
+            link: None,
+        };
+        let left = cena_session::Frame::LeftHand {
+            item: item.to_owned(),
+            link: None,
+        };
+        full.apply(if frame { &left } else { &hand });
+    }
+    let mut h = hunt(&["nudgeweapons"]).unwrap();
+    assert_eq!(
+        ticks(&mut h, &full, 6),
+        ["sheath", "get #7", "n", "drop #7", "s", "gird"],
+        "both hands full: sheathed first, girded after"
+    );
+}
+
+#[test]
+fn a_nudge_goes_on_in_the_next_room_and_the_hunt_resumes_where_it_was() {
+    let here = littered(&[("7", "longsword", "a longsword")]);
+    let mut next_door = kobold(1_001);
+    next_door.room.id = Some("11".to_owned());
+    let mut h = hunt(&["nudgeweapons", "kick"]).unwrap();
+    assert_eq!(ticks(&mut h, &here, 2), ["get #7", "n"]);
+    assert_eq!(
+        ticks(&mut h, &next_door, 2),
+        ["drop #7", "s"],
+        "a room change does not drop the errand"
+    );
+    assert_eq!(tick(&mut h, &here), "kick", "back, and hunting");
+}

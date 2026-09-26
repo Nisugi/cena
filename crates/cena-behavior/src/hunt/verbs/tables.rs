@@ -122,6 +122,3 @@ pub(super) const SHORT_BUFFS: &[u16] = &[140, 211, 215, 219, 919, 1619, 1650];
 
 /// Cast with no target whatever the step says: Celerity and 902.
 pub(super) const UNAIMED: &[u16] = &[506, 902];
-
-/// bigshot verbs not sent yet, by their first word.
-pub(super) const UNPORTED: &[&str] = &["nudgeweapon", "nudgeweapons", "unarmed", "mstrike"];

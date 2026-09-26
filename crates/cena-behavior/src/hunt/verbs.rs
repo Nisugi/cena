@@ -34,8 +34,8 @@
 //! `punch` while the character is rooted, and the word `target` is the
 //! creature's `#id`. `ambush`, `wand` and `script` are the engine's own
 //! ([`super::aim`], [`super::wand`], the importer), and so are `eachtarget`
-//! and `force` ([`super::repeat`]). The forms not ported yet
-//! ([`tables::UNPORTED`]) are skipped, and the player is told once.
+//! and `force` ([`super::repeat`]). Every verb bigshot dispatches is sent;
+//! a `jewel` mnemonic bigshot does not know is skipped, and said once.
 
 mod gated;
 mod spell;
@@ -50,7 +50,7 @@ use self::gated::coup_refused;
 use self::spell::{
     NO_REST_SPELLS, Spell, buff_first, caststop, resonance, soothe, spell_step, weed,
 };
-use self::tables::{ASSAULTS, CMANS, UNPORTED, WARCRIES, WEAPONS};
+use self::tables::{ASSAULTS, CMANS, WARCRIES, WEAPONS};
 use super::engine::Hunt;
 use super::follow::{ASSAULT_ENDS, BEARHUG_ENDS, End, Hold, Next};
 use super::said::{Said, Why};
@@ -186,9 +186,6 @@ pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
     let rest = words.get(1..).unwrap_or_default().join(" ");
     let at = format!("#{target}");
     let one = |text: String| Line::Send(VecDeque::from([text]));
-    if let Some(word) = UNPORTED.iter().find(|w| **w == first) {
-        return Line::Unported(word);
-    }
     // `celerity fire` and its kin carry a step after them; bare, 506 is a spell.
     if let Some(buffed) = buff_first(&first, &rest, target, state) {
         return buffed;

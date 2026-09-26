@@ -570,9 +570,11 @@ Demonstrated live on a short hunt.
 >   `[mstrike]`; `hunt/verbs/ucs.rs`, `tests/hunt_ucs.rs`): Multi-Opponent Combat's ranks
 >   (read since `cf32e5d`; before it, as in Lich unsynced, 0), no nest, the cooldown,
 >   `quickstrike 1`, unfocused at the mob, a Paladin's or Empath's 1607/1107 first; the
->   unarmed attack by the creature's positioning and the follow-up the game offered. **Of
->   bigshot's verbs only `nudgeweapons` is not ported**: it walks out of the room and back
->   mid-fight, which the engine's room change undoes.
+>   unarmed attack by the creature's positioning and the follow-up the game offered. And
+>   `nudgeweapons`, each weapon on the ground carried out an exit and dropped, its lines
+>   served ahead of the room change that would otherwise clear them: **every verb bigshot
+>   dispatches is now sent**, the unported list gone. An assault and a bearhug are waited
+>   out as bigshot waits them (12 s, 17 s), and a line the game answers `...wait` goes again.
 >   And bounty mode, `;hunt <name> bounty` (bigshot's `;bigshot bounty`, `hunt/bounty.rs`,
 >   `tests/hunt_bounty.rs`): hunt until the guild's task is done, failed or a new one is
 >   ready, rest, and end at the rest; not while bandits are here on a bandit bounty.

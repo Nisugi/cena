@@ -449,6 +449,7 @@ impl Hunt {
             }
             "dhurl" => self.dhurl(rest, target),
             "wandolier" => self.wandolier(rest, state),
+            "nudgeweapon" | "nudgeweapons" => self.nudge(state),
             "mstrike" => {
                 let (mut lines, strike) =
                     self.mstrike(&format!("{first} {rest}"), target, state, now);
@@ -575,4 +576,104 @@ pub(super) fn coup_refused(target: i64, state: &GameState) -> bool {
     };
     let known = creature.hp_is_stated() || creature.has_template();
     rank > 0 && known && !creature.coup_eligible(rank, state.game_time_now())
+}
+
+/// Weapons `nudgeweapons` carries out, by a part of their noun, unanchored
+/// as bigshot matches them (`cmd_nudge_weapons`, `bigshot.lic:6583`).
+const NUDGED: &[&str] = &[
+    "axe",
+    "scythe",
+    "pitchfork",
+    "falchion",
+    "sword",
+    "lance",
+    "dagger",
+    "estoc",
+    "handaxe",
+    "katana",
+    "katar",
+    "gauche",
+    "rapier",
+    "scimitar",
+    "whip-blade",
+    "cudgel",
+    "crowbill",
+    "whip",
+    "mace",
+    "star",
+    "hammer",
+    "claidhmore",
+    "flail",
+    "flamberge",
+    "maul",
+    "pick",
+    "staff",
+    "mattock",
+];
+
+/// The way back from a compass direction (Lich's `reverse_direction`,
+/// `global_defs.rb:713-735`).
+fn back(dir: &str) -> Option<&'static str> {
+    Some(match dir {
+        "n" => "s",
+        "ne" => "sw",
+        "e" => "w",
+        "se" => "nw",
+        "s" => "n",
+        "sw" => "ne",
+        "w" => "e",
+        "nw" => "se",
+        "up" => "down",
+        "down" => "up",
+        "out" => "out",
+        _ => return None,
+    })
+}
+
+impl Hunt {
+    /// `nudgeweapons` (`cmd_nudge_weapons`, `bigshot.lic:6577-6605`): each
+    /// weapon lying here carried out by the next exit, dropped, and walked
+    /// back from, in the wander stance, sheathed first when both hands are
+    /// full and girded after. Nothing without exits or weapons.
+    fn nudge(&mut self, state: &GameState) -> Line {
+        let exits = state.room.exits.clone().unwrap_or_default();
+        let weapons: Vec<String> = state
+            .room
+            .objects
+            .iter()
+            .filter(|object| {
+                let noun = object.noun.to_ascii_lowercase();
+                NUDGED.iter().any(|weapon| noun.contains(weapon))
+            })
+            .map(|object| object.id.clone())
+            .collect();
+        let full = state.right_hand.is_holding() && state.left_hand.is_holding();
+        let mut lines: VecDeque<String> =
+            Self::stance_for(self.profile.stance.wander.as_deref(), state)
+                .into_iter()
+                .collect();
+        for (id, dir) in weapons.iter().zip(exits.iter()) {
+            let Some(back) = back(dir) else {
+                continue;
+            };
+            if full {
+                lines.push_back("sheath".to_owned());
+            }
+            lines.extend([
+                format!("get #{id}"),
+                dir.clone(),
+                format!("drop #{id}"),
+                back.to_owned(),
+            ]);
+            if full {
+                lines.push_back("gird".to_owned());
+            }
+        }
+        if !lines.iter().any(|line| line.starts_with("get #")) {
+            return Line::Skip;
+        }
+        let first = lines.pop_front().unwrap_or_default();
+        self.repeats.nudging = lines;
+        one(first)
+    }
 }
