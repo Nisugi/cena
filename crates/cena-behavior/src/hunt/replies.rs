@@ -143,7 +143,6 @@ impl Hunt {
         self.ammo_replied(&lines);
         self.boons_replied(&lines);
         self.force_replied(&lines);
-        self.follow_replied(&lines);
         let replies: Vec<Reply> = lines.iter().copied().filter_map(read).collect();
         // A boost the game answered with neither of its lines is not tried
         // again: treated as none left.
@@ -183,6 +182,10 @@ impl Hunt {
                 Reply::NoBoosts => self.boosts.0 = self.profile.rest.lte_boost,
             }
         }
+        // Last: a reply that also forgot the target (`What were you
+        // referring to?`) has cleared the lines queued, and the answer's line
+        // goes after that (`hunt/follow.rs`).
+        self.follow_replied(&lines);
     }
 
     /// Whether the room the hunt is in is one the game said is a sanctuary.

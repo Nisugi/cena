@@ -11,7 +11,8 @@
 //! in `wand.dead` or dropped. `You are in no condition` rests for the
 //! injury, as the other injury refusals do (`hunt/replies.rs`).
 //!
-//! bigshot's `wandolier` command, which draws from a reserve, is not here.
+//! bigshot's `wandolier`, which draws from the wandolier's reserve, is a
+//! verb (`hunt/verbs/gated.rs`), sharing the wand list and its matching.
 
 use cena_session::GameState;
 
@@ -108,19 +109,31 @@ impl Hunt {
     }
 }
 
-/// Whether a hand holds the wand: every word of its name in the hand's
-/// name, in order (bigshot's `split(' ').join('.*?')`, `:5939`).
+impl Wanding {
+    /// The wand on the list in use.
+    pub(super) const fn at(&self) -> usize {
+        self.at
+    }
+}
+
+/// Whether a hand holds the wand ([`named_like`]).
 fn held(state: &GameState, name: &str) -> bool {
-    [&state.right_hand, &state.left_hand].iter().any(|hand| {
-        hand.name().is_some_and(|text| {
-            let text = text.to_ascii_lowercase();
-            let mut from = 0;
-            name.to_ascii_lowercase().split_whitespace().all(|word| {
-                text[from..].find(word).is_some_and(|at| {
-                    from += at + word.len();
-                    true
-                })
+    [&state.right_hand, &state.left_hand]
+        .iter()
+        .any(|hand| hand.name().is_some_and(|text| named_like(name, text)))
+}
+
+/// Whether `text` names the wand `name`: every word of it, in order
+/// (bigshot's `split(' ').join('.*?')`, `:5939`).
+pub(super) fn named_like(name: &str, text: &str) -> bool {
+    let text = text.to_ascii_lowercase();
+    let mut from = 0;
+    name.to_ascii_lowercase().split_whitespace().all(|word| {
+        text.get(from..)
+            .and_then(|rest| rest.find(word))
+            .is_some_and(|at| {
+                from += at + word.len();
+                true
             })
-        })
     })
 }

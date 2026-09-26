@@ -510,3 +510,117 @@ fn briar_measures_each_weapon_and_raises_a_full_one() {
     let up = with(state, "Active Spells", "9105", "Briar", 1_060);
     assert_eq!(first("briar gauntlet", &up), "wait 1", "Briar is up");
 }
+
+/// `kobold(1_000)` with the wandolier's reserve listed as these
+/// `(id, noun, name)`.
+fn reserving(items: &[(&str, &str, &str)]) -> GameState {
+    let mut state = kobold(1_000);
+    state.apply(&Frame::StreamPush {
+        id: "reserve".into(),
+    });
+    for (id, noun, name) in items {
+        state.apply(&Frame::Text(cena_session::TextFrame {
+            content: (*name).to_owned(),
+            stream: "reserve".to_owned(),
+            style: kobold_style().style,
+            link: Some(Link {
+                kind: LinkKind::Exist {
+                    id: (*id).to_owned(),
+                    noun: (*noun).to_owned(),
+                },
+                text: (*name).to_owned(),
+                coord: None,
+            }),
+            inner_link: None,
+            ends_line: true,
+        }));
+    }
+    state.apply(&Frame::Prompt {
+        time: "1000".into(),
+        text: ">".into(),
+    });
+    state
+}
+
+#[expect(
+    clippy::default_trait_access,
+    reason = "the text's style type is not re-exported for behaviors"
+)]
+fn kobold_style() -> cena_session::TextFrame {
+    cena_session::TextFrame {
+        content: String::new(),
+        stream: String::new(),
+        style: Default::default(),
+        link: None,
+        inner_link: None,
+        ends_line: false,
+    }
+}
+
+fn wandolier(step: &str) -> Result<Hunt, String> {
+    Ok(Hunt::new(
+        Profile::parse(&format!(
+            "targets = [{{ any = true, routine = \"a\" }}]\n[rooms]\nhunting = 10\n[wand]\nnames = [\"oaken wand\"]\nfresh = \"wandolier\"\n[routines]\na = [\"{step}\"]\n"
+        ))?,
+        1,
+    ))
+}
+
+#[test]
+fn wandolier_asks_for_the_reserve_once_then_waves_from_it() {
+    let mut unknown = wandolier("wandolier").unwrap();
+    assert_eq!(tick(&mut unknown, &kobold(1_000)), "reserve list");
+    assert_eq!(
+        tick(&mut unknown, &kobold(1_000)),
+        "wait 1",
+        "asked once, not every tick"
+    );
+
+    let stocked = reserving(&[("77", "wand", "oaken wand")]);
+    assert_eq!(
+        stocked.reserve.items().map(<[_]>::len),
+        Some(1),
+        "the input reaches the check"
+    );
+    let mut h = wandolier("wandolier").unwrap();
+    assert_eq!(ticks(&mut h, &stocked, 2), ["stance offensive", "wave #77"]);
+    let mut guarded = wandolier("wandolier guarded").unwrap();
+    assert_eq!(
+        ticks(&mut guarded, &stocked, 2),
+        ["stance guarded", "wave #77"]
+    );
+
+    let empty = reserving(&[]);
+    let mut h = wandolier("wandolier").unwrap();
+    assert_eq!(tick(&mut h, &empty), "get oaken wand from my wandolier");
+    h.replied(["Get what?"], Some(1_000));
+    assert_eq!(tick(&mut h, &empty), "rub my wandolier");
+}
+
+#[test]
+fn wandolier_reserves_a_wand_in_hand_unless_told_not_to() {
+    let mut state = reserving(&[]);
+    state.apply(&Frame::RightHand {
+        item: "oaken wand".to_owned(),
+        link: Some(Link {
+            kind: LinkKind::Exist {
+                id: "78".to_owned(),
+                noun: "wand".to_owned(),
+            },
+            text: "oaken wand".to_owned(),
+            coord: None,
+        }),
+    });
+    let mut h = wandolier("wandolier").unwrap();
+    assert_eq!(
+        ticks(&mut h, &state, 3),
+        ["reserve #78", "stance offensive", "wave #78"]
+    );
+    let mut kept = wandolier("wandolier noreserve").unwrap();
+    assert_eq!(
+        ticks(&mut kept, &state, 2),
+        ["stance offensive", "wave #78"]
+    );
+    kept.replied(["What were you referring to?"], Some(1_000));
+    assert_eq!(tick(&mut kept, &state), "reserve list");
+}

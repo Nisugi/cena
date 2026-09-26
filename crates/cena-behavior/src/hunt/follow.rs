@@ -15,6 +15,7 @@
 //! | `sacrifice` | `sacrifice #id` when `appraise #id` reads enticingly frail | `cmd_sacrifice`, `:6611-6622` |
 //! | `dhurl` | `recover hurl`, again while the weapon is around here somewhere, ten tries | `cmd_dhurl`, `cmd_recover`, `:6280-6354` |
 //! | `briar` | `raise #id` when `measure #id` reads 100 percent, then the next weapon | `cmd_briar`, `:5650-5673` |
+//! | `wandolier` | `rub my <fresh>` when it has no wand to give; the rest for an injury, `reserve list` when the wand is not found | `cmd_wandolier`, `:5980-6021` |
 //!
 //! Also kept here, from every line heard: whether the character is rooted,
 //! for bigshot's `kick` sent as `punch` (`bigshot.lic:2830-2833`, `:3974`).
@@ -109,6 +110,10 @@ pub(super) enum Answer {
     Recovering { tries: u8 },
     /// `cman dislodge #id <part>`: that part is free once it works.
     Dislodged { part: String },
+    /// `get <wand> from my <fresh>`: rubbed when it has none.
+    WandGot { fresh: String },
+    /// `wave #id` from the wandolier.
+    Waved,
     /// `measure #id`: raised at 100 percent, then the next weapon measured.
     Measured { id: String, rest: VecDeque<String> },
 }
@@ -129,6 +134,8 @@ pub(super) struct Follow {
     answer: Option<Answer>,
     /// bigshot's `$bigshot_rooted`.
     pub(super) rooted: bool,
+    /// `reserve list` has been sent for the wandolier.
+    pub(super) reserve_asked: bool,
 }
 
 impl Hunt {
@@ -264,6 +271,18 @@ impl Hunt {
                 if let Some(next) = rest.pop_front() {
                     self.followups.push_back(format!("measure #{next}"));
                     self.follow.answer = Some(Answer::Measured { id: next, rest });
+                }
+            }
+            Answer::WandGot { fresh } => {
+                if said("Get what?") {
+                    self.followups.push_back(format!("rub my {fresh}"));
+                }
+            }
+            Answer::Waved => {
+                if said("You are in no condition") {
+                    self.must_rest = Some(super::said::Why::Injured);
+                } else if said("What were you referring to?") {
+                    self.followups.push_back("reserve list".to_owned());
                 }
             }
             Answer::Dislodged { part } => {

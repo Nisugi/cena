@@ -15,6 +15,7 @@ use cena_session::{GameState, PsmCategory, StatusName, gameobj};
 
 use super::super::engine::Hunt;
 use super::super::follow::{Answer, EFURY_ENDS, End, Hold, Next, TETHER_ENDS};
+use super::super::wand;
 use super::spell::Spell;
 use super::tables::SHIELD_MOVES;
 use super::{Line, cooling, up_in};
@@ -447,6 +448,7 @@ impl Hunt {
                 Line::Send(lines)
             }
             "dhurl" => self.dhurl(rest, target),
+            "wandolier" => self.wandolier(rest, state),
             "dislodge" => self.dislodge(rest, target, state),
             // `cmd_assume`, `:5588-5644`, as maintain casts it for a sign.
             "assume" => match self.assume_aspect(&format!("650 {rest}"), state, now?) {
@@ -455,6 +457,60 @@ impl Hunt {
             },
             _ => return None,
         })
+    }
+
+    /// `wandolier [stance] [noreserve]` (`cmd_wandolier`,
+    /// `bigshot.lic:5980-6021`): the profile's wand from a hand or the
+    /// reserve, else got from the fresh container (rubbed when it has none);
+    /// put in the reserve from the hand unless `noreserve`; waved in the
+    /// stance named, offensive by default. The reserve is asked for once
+    /// (`reserve list`), as bigshot asks while it is unknown.
+    fn wandolier(&mut self, rest: &str, state: &GameState) -> Line {
+        let Some(fresh) = self.profile.wand.fresh.clone() else {
+            return Line::Skip;
+        };
+        let words: Vec<String> = rest
+            .to_ascii_lowercase()
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect();
+        let Some(reserve) = state.reserve.items() else {
+            if std::mem::replace(&mut self.follow.reserve_asked, true) {
+                return Line::Skip;
+            }
+            return one("reserve list");
+        };
+        let Some(name) = self.profile.wand.names.get(self.wanding.at()).cloned() else {
+            return Line::Skip;
+        };
+        let in_hand = [&state.right_hand, &state.left_hand]
+            .into_iter()
+            .find(|hand| {
+                hand.name()
+                    .is_some_and(|text| wand::named_like(&name, text))
+            })
+            .and_then(|hand| hand.id().map(str::to_owned));
+        let in_reserve = reserve
+            .iter()
+            .find(|item| wand::named_like(&name, &item.text))
+            .map(|item| item.id.clone());
+        let Some(id) = in_hand.clone().or(in_reserve) else {
+            return then(
+                [format!("get {name} from my {fresh}")],
+                Next::Answer(Answer::WandGot { fresh }),
+            );
+        };
+        let mut lines = VecDeque::new();
+        if in_hand.is_some() && !words.iter().any(|w| w == "noreserve") {
+            lines.push_back(format!("reserve #{id}"));
+        }
+        let stance = words
+            .iter()
+            .find_map(|w| Want::parse(w).ok())
+            .unwrap_or(Want::Named(cena_session::Stance::Offensive));
+        lines.extend(stance::command(stance, state));
+        lines.push_back(format!("wave #{id}"));
+        Line::Then(lines, Next::Answer(Answer::Waved))
     }
 
     /// `dhurl [part]` (`cmd_dhurl`, `:6280-6322`): the part named, or the
