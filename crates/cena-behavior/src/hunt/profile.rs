@@ -68,6 +68,10 @@ use crate::stance::Want;
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Profile {
+    /// Exact source-map fingerprint for map-created profiles. Legacy profiles
+    /// omit it; a pinned profile must not run against other map bytes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub map_sha256: Option<String>,
     /// Where to hunt and where to rest.
     pub rooms: Rooms,
     /// The stance for each phase.
@@ -194,8 +198,12 @@ pub struct Rooms {
     /// Where the hunt starts and returns to (`hunting_room_id`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hunting: Option<u32>,
-    /// The rooms Wander stays within (`hunting_boundaries`).
+    /// Excluded rooms (`hunting_boundaries`); these are NOT allowed membership.
     pub boundaries: Vec<u32>,
+    /// Explicit hunting membership. Absent preserves legacy wandering;
+    /// an explicitly empty list is invalid, never unrestricted.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowed: Option<Vec<u32>>,
     /// Rooms walked through, in order, on the way back to hunt
     /// (`rallypoint_room_ids`, `bigshot.lic:7253-7262`).
     pub rally: Vec<u32>,
@@ -272,6 +280,22 @@ pub struct Rest {
     pub waypoints: Vec<u32>,
     /// Sent on arriving at the rest room (`resting_commands`).
     pub commands: Vec<String>,
+    /// Optional healthy, unencumbered resource recovery, separate from town.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field: Option<FieldRest>,
+}
+
+/// Recovery away from town. Town remains the mandatory fallback.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FieldRest {
+    /// Native map room, not a game UID.
+    pub room: u32,
+    /// Explicit native commands, not Lich script names.
+    #[serde(default)]
+    pub commands: Vec<String>,
+    /// Completion thresholds for this field visit.
+    pub until: Until,
 }
 
 /// What a rest waits for, each a percent (`rest_till_*`).
@@ -685,6 +709,24 @@ impl Profile {
     #[must_use]
     pub fn problems(&self) -> Vec<String> {
         let mut out = Vec::new();
+        if let Some(allowed) = &self.rooms.allowed {
+            if allowed.is_empty() {
+                out.push("rooms.allowed must not be empty".into());
+            }
+            if self
+                .rooms
+                .hunting
+                .is_none_or(|room| !allowed.contains(&room))
+            {
+                out.push("rooms.hunting must be inside rooms.allowed".into());
+            }
+            if allowed.iter().any(|id| self.rooms.boundaries.contains(id)) {
+                out.push("rooms.allowed overlaps excluded rooms.boundaries".into());
+            }
+        }
+        if self.rest.field.is_some() && self.rooms.resting.is_none() {
+            out.push("field rest requires a town resting room".into());
+        }
         let stances = [
             ("hunting", &self.stance.hunting),
             ("wander", &self.stance.wander),

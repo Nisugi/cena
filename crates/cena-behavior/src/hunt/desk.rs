@@ -41,6 +41,7 @@ pub struct Desk {
     running: Mutex<Option<Running>>,
     ids: Arc<AtomicU64>,
     hunts: AtomicU64,
+    map_sha256: Option<String>,
 }
 
 /// A hunt under way: how to stop it, and how to know it is over.
@@ -63,7 +64,23 @@ impl Desk {
             running: Mutex::new(None),
             ids: Arc::new(AtomicU64::new(1)),
             hunts: AtomicU64::new(0),
+            map_sha256: None,
         })
+    }
+
+    /// Pin map-created profiles to the host's exact loaded bytes.
+    #[must_use]
+    pub fn with_map_sha256(
+        map: Arc<Map>,
+        dir: PathBuf,
+        token: AuthorityToken,
+        hash: String,
+    ) -> Arc<Self> {
+        let mut desk = Self::new(map, dir, token);
+        if let Some(inner) = Arc::get_mut(&mut desk) {
+            inner.map_sha256 = Some(hash);
+        }
+        desk
     }
 
     /// Stop the hunt under way. `false` when there is none.
@@ -134,6 +151,9 @@ impl Desk {
                         return None;
                     }
                 };
+                if self.refuses_map(&loaded.profile, say) {
+                    return None;
+                }
                 for (place, step) in loaded.profile.held_steps() {
                     say(
                         NoticeKind::Warn,
@@ -188,6 +208,31 @@ impl Desk {
     }
 
     /// Start a hunt, stopping the one under way first.
+    /// Whether `profile` must not run on this map, having said why: pinned
+    /// to other map bytes, or its allowed rooms not valid on it.
+    fn refuses_map(
+        &self,
+        profile: &super::profile::Profile,
+        say: impl Fn(NoticeKind, String),
+    ) -> bool {
+        let why = if profile
+            .map_sha256
+            .as_ref()
+            .is_some_and(|hash| Some(hash) != self.map_sha256.as_ref())
+        {
+            "This hunt was saved against different or unverified map bytes.              Review its setup; nothing started."
+                .to_owned()
+        } else if profile.rooms.allowed.is_some()
+            && let Err(why) = super::setup::validate_map(profile, &self.map)
+        {
+            why
+        } else {
+            return false;
+        };
+        say(NoticeKind::Error, why);
+        true
+    }
+
     fn start(
         self: &Arc<Self>,
         handle: SessionHandle,

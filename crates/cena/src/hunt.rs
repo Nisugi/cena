@@ -23,7 +23,6 @@ use crate::commands::{Commands, Took};
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
 use cena_behavior::spellcaster::{self, CasterProfile};
-use cena_behavior::travel::Map;
 use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Register hunt's words. The character's instance and name, when the login
@@ -34,7 +33,7 @@ pub(crate) fn open(
     observer: SessionObserver,
     state: &GameState,
     commands: &Commands,
-    map: Option<Arc<Map>>,
+    map: Option<Arc<crate::map_context::MapContext>>,
 ) {
     let who = state
         .character
@@ -42,7 +41,14 @@ pub(crate) fn open(
         .clone()
         .zip(state.character.name.clone());
     let dir = cena_session::character_store::data_dir();
-    let desk = map.map(|map| Desk::new(map, dir.clone(), AuthorityToken(3)));
+    let desk = map.map(|context| {
+        Desk::with_map_sha256(
+            Arc::clone(&context.map),
+            dir.clone(),
+            AuthorityToken(3),
+            context.sha256.clone(),
+        )
+    });
     // The spellcaster profile, held so a typed line is judged without a
     // file read, and read again after `;sc` changes it.
     let caster = Arc::new(Mutex::new(read_caster(&dir, who.as_ref())));

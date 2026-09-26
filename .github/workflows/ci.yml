@@ -110,9 +110,13 @@ jobs:
       - name: Explorer snapshot and pure presentation regressions
         run: |
           python3 -m unittest discover -s tools/atlas -p 'test_*.py'
+          node tools/atlas/test_creatures.mjs
           node --test crates/cena-web/assets/atlas/tests/*.mjs
       - name: Native explorer browser regression (no game session)
         run: |
           cargo build --locked -p cena-web --example atlas_preview
           node crates/cena-web/browser-tests/atlas.mjs
           node crates/cena-web/browser-tests/minimap.mjs
+          node crates/cena-web/browser-tests/hunting-editor.mjs
+          node crates/cena-web/browser-tests/hunting-selection.mjs
+          node crates/cena-web/browser-tests/hunting-autosave.mjs

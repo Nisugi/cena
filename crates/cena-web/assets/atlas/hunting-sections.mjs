@@ -72,7 +72,7 @@ export function huntingSections(data,context,area=hillsArea){
  if(!definition&&!inPresentationRegion&&!assigned&&scene.region!=="Wehnimer's Landing")return empty;
  const member=new Set(scene.sheet.rooms.map(r=>r.id));
  const refs=(context?.creatures||[]).flatMap(c=>{
-  const ids=c.associations.filter(a=>a.group===area&&a.basis==='room_uid_match').flatMap(a=>a.roomIds.map(Number)).filter(id=>member.has(id));
+  const ids=c.associations.filter(a=>a.group===area&&['room_uid_match','room_tag_match'].includes(a.basis)).flatMap(a=>a.roomIds.map(Number)).filter(id=>member.has(id));
   return ids.length?[{...c,roomIds:new Set(ids)}]:[];
  }).sort((a,b)=>a.id.localeCompare(b.id));
  // A missing or stale habitat sidecar never turns a generic service/town
@@ -88,11 +88,11 @@ export function huntingSections(data,context,area=hillsArea){
   if(!roomIds.length)return;
   const creatures=refs.flatMap(c=>{const ids=roomIds.filter(id=>c.roomIds.has(id));return ids.length?[{...c,roomIds:ids}]:[];});
   const levels=creatures.map(c=>c.level).filter(Number.isFinite),matched=new Set(creatures.flatMap(c=>c.roomIds));
-  const section={id:rule.id,name:rule.name,color:rule.color,provisional:!!rule.provisional,generated:!!rule.generated,labelEligible:rule.labelEligible!==false,roomIds,creatures,
+  const section={id:rule.id,name:rule.name,color:rule.color,provisional:!!rule.provisional,generated:!!rule.generated,panel:!!rule.panel,labelEligible:rule.labelEligible!==false,roomIds,creatures,
    level:levels.length?`${Math.min(...levels)}${Math.min(...levels)===Math.max(...levels)?'':'–'+Math.max(...levels)}`:null,
    unknown:roomIds.filter(id=>!matched.has(id)),
    evidence:rule.generated?'Provisional place label from current room-title prefixes within this exported display frame. Not an approved area, floor or hunting boundary.':rule.panel?`Source-sheet level from ${definition.reference}, matched by dungeon title and native image rectangle. Presentation only: not a solved elevation or new plate; source coordinates still need human review.`:
-    rule.provisional?'Provisional descriptive grouping from current titles and/or habitat UID matches; not an official hunting boundary.':`Named place from current first room titles; naming reference: ${definition.reference}. Extent is title-matched, not an approved hunting boundary.`};
+    rule.provisional?'Provisional descriptive grouping from current titles and/or room-level habitat evidence; not an official hunting boundary.':`Named place from current first room titles; naming reference: ${definition.reference}. Extent is title-matched, not an approved hunting boundary.`};
   for(const id of roomIds){if(byRoom.has(id))throw Error(`Overlapping place rules at room ${id}`);byRoom.set(id,section);}
   sections.push(section);
  }
@@ -138,12 +138,12 @@ export function huntingSections(data,context,area=hillsArea){
    const place=s.generated&&ranked[0][1]>=g.roomIds.length/2?ranked[0][0]:s.name;
    const population=g.creatures.map(c=>c.id).sort().join('+');
    const briefNames=names.join(' / ').length>42?names[0]+` +${names.length-1} types`:names.join(' / ');
-   const h={...s,...g,id:s.generated?s.id+':'+population+':'+g.roomIds[0]:multiple?s.id+':'+population:s.id,
+   const h={...s,...g,placeId:s.id,id:s.generated?s.id+':'+population+':'+g.roomIds[0]:multiple?s.id+':'+population:s.id,
     name:s.generated?`${place} · ${names.join(' / ')}`:multiple?names.join(' / '):s.name,place,
     mapName:s.generated?`${place} · ${briefNames}`:undefined,
     color:s.generated?habitatColor(place+':'+population):multiple?splitColors[i%splitColors.length]:s.color,
     unknown:[],level:levels.length?`${Math.min(...levels)}${Math.min(...levels)===Math.max(...levels)?'':'–'+Math.max(...levels)}`:null,
-    evidence:'Exact installed habitat matches; populations combine only through shared matched rooms. '+(s.generated?'Separated into locally connected matched-room patches (plain exits or a single recorded compass move); one-way links do not imply return travel. ':'')+'Not a guaranteed spawn, safe area or approved hunting selection. Place context: '+place};
+    evidence:'Recorded habitat UID matches and/or exact creature-name room tags; populations combine only through shared matched rooms. '+(s.generated?'Separated into locally connected matched-room patches (plain exits or a single recorded compass move); one-way links do not imply return travel. ':'')+'Not a guaranteed spawn, safe area or approved hunting selection. Place context: '+place};
    hunts.push(h);for(const id of h.roomIds)byHuntRoom.set(id,h);
   }
  }

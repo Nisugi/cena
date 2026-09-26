@@ -39,13 +39,28 @@ node tools/atlas/context.mjs freeze /path/to/Lich5/lib/gemstone/creatures /data-
 ```
 
 Review unsupported literals and habitat coverage before replacing the checked-in
-catalogue. The reader rejects executable Ruby and interpolation. Names do not
-substitute for habitat UIDs. The shipped Lich license notice must be retained.
+catalogue. The reader rejects executable Ruby and interpolation. Room associations
+retain two separate bases: template habitat UID overlap, and native room tags
+exactly matching a unique catalogue creature name (case/outer whitespace ignored).
+No fuzzy names, area labels or adjacency inference. A match is reference evidence,
+not guaranteed spawning. Overlapping evidence is deduplicated for browsing/counts.
+The shipped Lich license notice must be retained.
+
+To rebuild only habitat sidecars from the existing pinned rooms and catalogue:
+
+```sh
+node tools/atlas/context.mjs match tools/atlas/creature-catalogue.json crates/cena-web/atlas-data
+```
+
+This refreshes sidecar inventory hashes when an inventory exists; it does not
+change layouts, exits, area assignments or user correction files. Changed
+generated hunt memberships/creatures require review of affected saved corrections.
 
 Verification:
 
 ```sh
 python3 -m unittest discover -s tools/atlas -p 'test_*.py'
+node tools/atlas/test_creatures.mjs
 node --test crates/cena-web/assets/atlas/tests/*.mjs
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
@@ -59,3 +74,10 @@ The browser test uses Playwright (same pinned install as the existing browser
 smoke), optionally `PLAYWRIGHT_MODULE` and `BROWSER_EXECUTABLE_PATH`. It launches
 only the offline example, verifies same-origin GET requests and no WebSockets,
 and writes a screenshot under `target/atlas-evidence`. CI runs these tests too.
+
+
+## Developer boundary editor
+
+See `plan/41-developer-hunting-editor.md` for the opt-in offline editor and automatic
+correction files. The running setup experiment stays a separate prototype; these
+changes do not write native Hunt profiles or execute hunting/recovery behavior.
