@@ -614,6 +614,7 @@ impl Character {
         if self.currency.absorb_chunk(chunk) {
             self.taught.insert(snapshot::Group::Currency);
         }
+        self.consume_psms(chunk);
         // NOT MARKED TAUGHT, and there is no `Group::Experience`.
         // `reconnect_invalidation.rs` records why: experience changes
         // continuously and `<dialogData id='expr'>` is the live authority, so

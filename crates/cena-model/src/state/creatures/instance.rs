@@ -191,6 +191,8 @@ pub struct CreatureInstance {
     pub(super) ending: Option<super::prose::Ending>,
     /// The boss phase the last line of prose stated (`prose.rs`).
     pub(super) phase: Option<super::prose::BossPhase>,
+    /// Spell marks a line of prose laid and none has lifted (`prose.rs`).
+    pub(super) marks: BTreeSet<super::prose::SpellMark>,
     /// When the feed first and last showed it.
     pub first_seen_at: Option<u32>,
     /// Game-time second of the most recent sighting; `touch_seen` advances it
@@ -225,6 +227,7 @@ impl CreatureInstance {
             ally: super::ally::classify(name, noun),
             ending: None,
             phase: None,
+            marks: BTreeSet::new(),
             first_seen_at: now,
             last_seen_at: now,
         }

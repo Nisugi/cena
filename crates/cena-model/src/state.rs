@@ -65,6 +65,7 @@ pub mod hands;
 pub mod hazard;
 mod idle;
 pub mod incident;
+pub mod inspect;
 mod inventory;
 pub mod inventory_snapshot;
 pub mod kit;
@@ -90,6 +91,7 @@ pub mod streams;
 pub mod targeting;
 mod unknown;
 pub mod vitals;
+pub mod worn;
 
 pub use character::{Character, Experience, Injury};
 pub use disk::{DISK_NOUNS, Disk};
@@ -196,6 +198,10 @@ pub struct GameState {
     pub overwatch: overwatch::Overwatch,
     /// The spells the game lists for this character (the `Spells` stream).
     pub known_spells: known_spells::KnownSpells,
+    /// What the character wears (the `inv` stream, `worn.rs`).
+    pub worn: worn::Worn,
+    /// What the wandolier holds in reserve (the `reserve` stream, `worn.rs`).
+    pub reserve: worn::Reserve,
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,
@@ -384,6 +390,8 @@ impl GameState {
                     // (`effects.rs`, `Effects::pending`).
                     self.effects.anchor(t);
                 }
+                // The worn and reserve lists end here, popped or not (`worn.rs`).
+                self.close_lists();
                 // **The chunk closes here**, and this is the only place it
                 // does. See `state/chunks.rs`: Lich closes container fills,
                 // combat chunks and its own parser FSM on the prompt, for the
@@ -471,6 +479,10 @@ impl GameState {
                 }
             }
             Frame::UnknownTag { name, raw } => self.record_unknown_tag(name, raw),
+            // The `inv` and `reserve` lists open at their push; the prompt
+            // closing one nobody popped matters to the reserve (`worn.rs`).
+            Frame::StreamPush { id } => self.list_opened(id),
+            Frame::StreamPopForced { id } => self.list_torn(id),
             // Every other frame is published to observers without changing
             // state. `plan/12` §7.1 scopes GameState to room/hands/
             // roundtime/vitals; a frame this slice does not model is not

@@ -57,7 +57,8 @@ pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
 pub use cena_model::state::creatures::boons;
 pub use cena_model::state::{
-    claim, containers, creature, gameobj, group, hands, incident, societies, stream_windows,
+    claim, containers, creature, gameobj, group, hands, incident, inspect, societies,
+    stream_windows, worn,
 };
 // The loot ledger's facts, for the town planner that reads them from its own
 // fold of the stream (`plan/31` Stage 4).
@@ -72,7 +73,9 @@ pub use cena_model::{Able, CreatureInstance, Effect, Injuries, StatusName};
 // `creature::status::Classification`, reached through `creature` above.
 pub use cena_model::{BodyPart, PositionTier};
 // Whose a creature is, how it ended with no corpse, a boss's phase (`inventory/12` §2).
-pub use cena_model::{Ally, BossPhase, Ending};
+pub use cena_model::{Ally, BossPhase, Ending, SpellMark};
+// What a PSM costs and Lich's `available?` over it, for the hunt (`psm/cost.rs`).
+pub use cena_model::{Gauge, PsmAvailability, PsmCost, Warcry, every_cost, psm_cost, warcry_cost};
 // The bounty's task, for a behavior that narrows its work to it (eloot's
 // `skin_bounty_only`).
 pub use cena_model::{

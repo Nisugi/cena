@@ -75,6 +75,8 @@ impl PartialEq for GameState {
             messages,
             overwatch,
             known_spells,
+            worn,
+            reserve,
             bounty,
             doses,
             kits,
@@ -107,6 +109,8 @@ impl PartialEq for GameState {
             && messages == &other.messages
             && overwatch == &other.overwatch
             && known_spells == &other.known_spells
+            && worn == &other.worn
+            && reserve == &other.reserve
             && bounty == &other.bounty
             && doses == &other.doses
             && kits == &other.kits

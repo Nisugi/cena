@@ -57,7 +57,7 @@ use std::collections::{BTreeMap, VecDeque};
 pub use ally::Ally;
 pub use body::BodyPart;
 pub use instance::CreatureInstance;
-pub use prose::{BossPhase, Ending};
+pub use prose::{BossPhase, Ending, SpellMark};
 
 use crate::state::combat::target::Actor;
 use crate::state::creature::status::{Classification, CreatureStatus};
@@ -325,6 +325,7 @@ impl Creatures {
     /// A `<nav>`: the roster and anything held belong to the room left.
     pub fn on_nav(&mut self) {
         self.clear_room();
+        self.forget_marks();
         self.pending_status.clear();
         self.pending_links.clear();
     }

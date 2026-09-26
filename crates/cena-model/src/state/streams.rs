@@ -230,6 +230,7 @@ impl GameState {
             if text.stream == super::known_spells::STREAM {
                 self.known_spells.read_line(&line);
             }
+            self.list_line(&text.stream, &line);
             let buffer = self.streams.entry(text.stream.clone()).or_default();
             // **Bounded.** Found by review: every completed line was retained
             // forever, including ordinary main-window output, and nothing ever

@@ -64,6 +64,7 @@
 //! | `streams`, `pending`, `chunk` | **cleared** | half a sentence nobody will finish; the next connection's bytes are not a continuation |
 //! | `stream_windows` | **cleared** | MEASURED: 15 of 16 declarations arrive before the first prompt, so the burst re-teaches them; and a stale `ifClosed` drops text rather than showing it stale |
 //! | `inventory` | **cleared** | see its own comment: container CONTENTS are not re-sent, and Lich drops them for the same reason |
+//! | `worn`, `reserve` | kept | a logged-off character neither dons nor stows; a list half-arrived is dropped (`worn.rs`) |
 //! | `inventory_snapshot` | kept | a logged-off character gains and loses nothing; it is not in the login burst, and it is point-in-time by contract either way |
 //! | `learned_commands` | kept | what a menu coordinate MEANS is a fact about the game, and the push is not repeated on reconnect |
 //!
@@ -140,6 +141,8 @@ impl GameState {
             messages,
             overwatch,
             known_spells,
+            worn,
+            reserve,
             bounty,
             doses,
             kits,
@@ -374,6 +377,12 @@ impl GameState {
         // Contrast `inventory`, the passive container model, which IS
         // cleared: it mirrors windows the server reopens on login.
         let _ = inventory_snapshot;
+
+        // What is worn and what the wandolier holds: kept, for the snapshot's
+        // reason, a logged-off character neither dons nor stows. A list still
+        // arriving is dropped: the connection that was sending it is gone.
+        worn.drop_partial();
+        reserve.drop_partial();
 
         // Dictionary rows the server taught us. A fact about the GAME -- what
         // the coordinate 2524,12785 means -- not about the connection, and

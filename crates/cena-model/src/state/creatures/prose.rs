@@ -1,5 +1,6 @@
 //! Creature facts only a line of prose states: a kill that leaves no
-//! corpse, a boss that leaves by a portal, and a boss's phase.
+//! corpse, a boss that leaves by a portal, a boss's phase, and the two spell
+//! marks bigshot tracks by creature ([`SpellMark`]).
 //!
 //! # The gap this closes
 //!
@@ -28,6 +29,13 @@
 //! | [`Ending::Collapsed`] | the captain `collapses` | `creaturewindow.lic:294` |
 //! | [`Ending::Faded`] | `fading away with a final shimmer`, `leaving nothing behind` | `creaturewindow.lic:294` |
 //! | [`BossPhase`] | the cold wyrm `plummets toward the ground` ... `radiating wall of devastation`; `launches herself into the air`; `Corruscations of color` ... `disrupting the attack` | `creaturewindow.lic:1470-1474` |
+//! | [`SpellMark`] | `is suddenly surrounded by a blood red haze` / `The blood red haze dissipates from around`; `visibly struggling against` or `in awe of` `your radiant aura!` / `recovers from being rebuked` | `reference/scripts/scripts/bigshot.lic:2767-2774` |
+//!
+//! A mark is laid and lifted by the creature's own bold link on the line,
+//! bigshot's `<pushBold/>...<a exist=...>` capture, and never by name. It is
+//! forgotten when the character leaves the room, as bigshot empties both lists
+//! on a move (`:8862-8869`) and on `You bolt` (`:2792-2803`), which a move
+//! follows.
 //!
 //! creaturewindow's comment (`:264-292`) is the evidence for the captain:
 //! its flee wording is randomised per encounter, so the pattern keys on the
@@ -38,7 +46,8 @@
 //! # Which creature
 //!
 //! The line's first bolded object (`ledger/text.rs`'s `creature`): bold is
-//! the wire's mark for a creature. A captain or wyrm line that links none
+//! the wire's mark for a creature. A mark line that links none is not
+//! applied, as a vaporization is not. A captain or wyrm line that links none
 //! falls back to the one creature in the room whose name holds the boss's;
 //! none or two, and the line is not applied. A vaporization needs its link.
 //! Only a creature the registry knows is changed, as with a departure.
@@ -125,6 +134,31 @@ pub enum BossPhase {
     Shielded,
 }
 
+/// A spell's mark on a creature that only a line of prose states: bigshot's
+/// `$bigshot_703_list` and `$bigshot_1614_list` (`bigshot.lic:2767-2774`),
+/// which `cmd_spell` reads to skip a cast the creature already carries
+/// (`:5859-5860`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SpellMark {
+    /// Corrupt Essence (703): `is suddenly surrounded by a blood red haze`,
+    /// until `The blood red haze dissipates from around` it.
+    BloodRedHaze,
+    /// Aura of the Arkati (1614): `visibly struggling against` or `in awe of`
+    /// your radiant aura, until it `recovers from being rebuked`.
+    Rebuked,
+}
+
+impl SpellMark {
+    /// The spell that lays it.
+    #[must_use]
+    pub const fn spell(self) -> u32 {
+        match self {
+            Self::BloodRedHaze => 703,
+            Self::Rebuked => 1614,
+        }
+    }
+}
+
 /// What one line states about a creature.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Stated {
@@ -132,6 +166,45 @@ pub enum Stated {
     Ended(Ending),
     /// It is in this phase now.
     Phase(BossPhase),
+    /// A mark was laid on it (`true`) or lifted (`false`).
+    Marked(SpellMark, bool),
+}
+
+/// bigshot's four mark lines, lowercased (its patterns are `/i`), each with
+/// the mark and whether it lays or lifts it. Plain substrings: the only
+/// markup in bigshot's patterns is the creature's bold link, which
+/// [`creature`] reads.
+const MARK_LINES: [(&str, SpellMark, bool); 5] = [
+    // bigshot.lic:2767
+    (
+        "is suddenly surrounded by a blood red haze",
+        SpellMark::BloodRedHaze,
+        true,
+    ),
+    // bigshot.lic:2769
+    (
+        "the blood red haze dissipates from around",
+        SpellMark::BloodRedHaze,
+        false,
+    ),
+    // bigshot.lic:2771, its two alternatives
+    (
+        "visibly struggling against your radiant aura!",
+        SpellMark::Rebuked,
+        true,
+    ),
+    ("in awe of your radiant aura!", SpellMark::Rebuked, true),
+    // bigshot.lic:2773
+    ("recovers from being rebuked", SpellMark::Rebuked, false),
+];
+
+/// The mark a line lays or lifts, if any.
+fn mark_in(text: &str) -> Option<(SpellMark, bool)> {
+    let text = text.to_lowercase();
+    MARK_LINES
+        .iter()
+        .find(|(phrase, _, _)| text.contains(phrase))
+        .map(|(_, mark, on)| (*mark, *on))
 }
 
 /// A creature fact one line states, and whom it is about.
@@ -141,7 +214,7 @@ pub struct Told {
     pub id: Option<i64>,
     /// The boss the pattern names, lowercased: for a line that links no
     /// creature, the one creature in the room whose name holds it. `None`
-    /// for a vaporization, which needs its link.
+    /// for a vaporization or a mark, which need their link.
     pub boss: Option<&'static str>,
     /// What the line states.
     pub stated: Stated,
@@ -206,6 +279,9 @@ pub fn read(line: &ChunkLine, text: &str) -> Option<Told> {
         (Some(WYRM), Stated::Phase(BossPhase::Airborne))
     } else if p.shielded.is_match(text) {
         (Some(WYRM), Stated::Phase(BossPhase::Shielded))
+    } else if let Some((mark, on)) = mark_in(text) {
+        // A mark needs its link, as bigshot's patterns do.
+        (None, Stated::Marked(mark, on))
     } else {
         return None;
     };
@@ -225,6 +301,12 @@ impl Creatures {
         let creature = self.instances.get_mut(&id)?;
         match told.stated {
             Stated::Phase(phase) => creature.phase = Some(phase),
+            Stated::Marked(mark, true) => {
+                creature.marks.insert(mark);
+            }
+            Stated::Marked(mark, false) => {
+                creature.marks.remove(&mark);
+            }
             Stated::Ended(ending) => {
                 creature.ending = Some(ending);
                 if ending == Ending::Portal {
@@ -236,6 +318,15 @@ impl Creatures {
             }
         }
         Some(id)
+    }
+
+    /// Every mark is forgotten on leaving the room, as bigshot empties both
+    /// lists on a move (`reset_variables`, `bigshot.lic:8862-8869`): a mark
+    /// that lifts out of sight is never seen to lift.
+    pub(super) fn forget_marks(&mut self) {
+        for creature in self.instances.values_mut() {
+            creature.marks.clear();
+        }
     }
 
     /// The one creature in the room whose name holds `boss`, if exactly one
@@ -268,6 +359,16 @@ impl CreatureInstance {
     #[must_use]
     pub const fn phase(&self) -> Option<BossPhase> {
         self.phase
+    }
+
+    /// **Whether a line has laid this mark on it** and none has lifted it
+    /// since, in this room: bigshot's 703 and 1614 lists.
+    ///
+    /// `false` is also "no line seen", which is bigshot's answer too: a
+    /// creature off both lists gets the cast.
+    #[must_use]
+    pub fn marked(&self, mark: SpellMark) -> bool {
+        self.marks.contains(&mark)
     }
 
     /// A room listing named it: it is here, whatever a line said.
