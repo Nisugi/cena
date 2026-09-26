@@ -5,7 +5,7 @@ loopback server. Open **Map explorer** from the character hub or a character pag
 It opens in a separate tab so the live story and command entry stay available.
 
 This document records the first, offline integration. The separate read-only
-character minimap follow-up is documented in [plan 30](30-despana-live-map.md).
+character minimap follow-up is documented in [plan 40](40-despana-live-map.md).
 
 ## What is included
 
