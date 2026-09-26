@@ -32,8 +32,9 @@
 //! b = ["kweed (expiring \"Tangleweed Vigor\" 5)", "volley", "coupdegrace (thp 20 empowered_below 30)", "fire"]
 //! f = ["hide (!hidden)", "fire (hidden)"]
 //!
-//! [sequences]
-//! volley = ["store weapon", "ready 2weapon", "weapon volley", "ready weapon"]
+//! [sequences.volley]
+//! when = 'expiring "Briar Betrayer" 7 available "volley"'
+//! steps = ["store weapon", "ready 2weapon", "weapon volley", "ready weapon"]
 //! ```
 //!
 //! # Steps
@@ -56,16 +57,18 @@
 //! (`cena_session::settings_store`, the same rule).
 
 use std::collections::BTreeMap;
-use std::fmt;
 
-use serde::de::Error as _;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
-use super::guard::Condition;
 use crate::stance::Want;
 
 mod group;
+mod sequence;
+mod step;
 pub use group::{Fried, GroupTable};
+pub use sequence::Sequence;
+pub use step::Step;
+use step::Written;
 
 /// Everything a hunt is told. See the module docs for the shape.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -131,8 +134,9 @@ pub struct Profile {
     pub priority: bool,
     /// The routines, by name: the steps taken against a target, in order.
     pub routines: BTreeMap<String, Vec<Step>>,
-    /// Named lists of steps a routine step may stand for, such as `volley`.
-    pub sequences: BTreeMap<String, Vec<Step>>,
+    /// Named lists of steps a routine step may stand for, such as `volley`,
+    /// each with the guards that decide whether it runs (`profile/sequence.rs`).
+    pub sequences: BTreeMap<String, Sequence>,
     /// The group's settings, read when this profile's hunt leads
     /// (`plan/39` §0b).
     pub group: GroupTable,
@@ -573,121 +577,6 @@ impl Default for Target {
     }
 }
 
-/// One step of a routine or sequence.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Step {
-    /// What is sent, guards removed: `coupdegrace`, `incant 611`, or a
-    /// sequence's name. For a held step, the whole line as it was.
-    pub send: String,
-    /// The guards, all of which must hold for the step to run.
-    pub when: Vec<Condition>,
-    /// Why this step never runs: it was imported with a guard Hydra does not
-    /// have yet, or a shape it does not read. `None` for a step that runs.
-    pub held: Option<String>,
-}
-
-impl Step {
-    /// Read a step: what to send, then optionally the guards in parentheses,
-    /// such as `coupdegrace (thp 20 empowered_below 30)`.
-    ///
-    /// # Errors
-    ///
-    /// Nothing to send, an unbalanced parenthesis, or a guard
-    /// [`Condition::parse_group`] refuses.
-    pub fn parse(text: &str) -> Result<Self, String> {
-        let text = text.trim();
-        let (send, group) = split_guards(text)?;
-        if send.is_empty() {
-            return Err(format!("{text:?} has nothing to send"));
-        }
-        let when = group.map_or_else(|| Ok(Vec::new()), Condition::parse_group)?;
-        Ok(Self {
-            send: send.to_owned(),
-            when,
-            held: None,
-        })
-    }
-
-    /// A step that never runs, kept with the reason.
-    #[must_use]
-    pub fn held(text: &str, why: &str) -> Self {
-        Self {
-            send: text.trim().to_owned(),
-            when: Vec::new(),
-            held: Some(why.to_owned()),
-        }
-    }
-}
-
-/// `send` and the text inside the trailing parentheses, split at the first
-/// `(` outside quotes. A line not ending in `)` has no guards.
-fn split_guards(text: &str) -> Result<(&str, Option<&str>), String> {
-    let Some(body) = text.strip_suffix(')') else {
-        return Ok((text, None));
-    };
-    let mut quoted = false;
-    for (at, c) in body.char_indices() {
-        match c {
-            '"' => quoted = !quoted,
-            '(' if !quoted => {
-                let (send, group) = body.split_at(at);
-                return Ok((send.trim(), Some(group.get(1..).unwrap_or("").trim())));
-            }
-            _ => {}
-        }
-    }
-    Err(format!(
-        "{text:?} ends with `)` and has no `(` to open the guards"
-    ))
-}
-
-impl fmt::Display for Step {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.send)?;
-        if self.when.is_empty() {
-            return Ok(());
-        }
-        f.write_str(" (")?;
-        for (i, condition) in self.when.iter().enumerate() {
-            if i > 0 {
-                f.write_str(" ")?;
-            }
-            write!(f, "{condition}")?;
-        }
-        f.write_str(")")
-    }
-}
-
-/// How a step is written: a string, or a table for a held one.
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-enum Written {
-    Line(String),
-    Held { step: String, held: String },
-}
-
-impl Serialize for Step {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let written = match &self.held {
-            Some(why) => Written::Held {
-                step: self.send.clone(),
-                held: why.clone(),
-            },
-            None => Written::Line(self.to_string()),
-        };
-        written.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Step {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        match Written::deserialize(deserializer)? {
-            Written::Line(text) => Self::parse(&text).map_err(D::Error::custom),
-            Written::Held { step, held } => Ok(Self::held(&step, &held)),
-        }
-    }
-}
-
 impl Profile {
     /// Read a profile from TOML.
     ///
@@ -784,7 +673,7 @@ impl Profile {
         let sequences = self
             .sequences
             .iter()
-            .flat_map(|(name, steps)| held_in("sequence", name, steps));
+            .flat_map(|(name, sequence)| held_in("sequence", name, &sequence.steps));
         routines.chain(sequences)
     }
 
@@ -793,7 +682,7 @@ impl Profile {
     pub fn unwritten_sequences(&self) -> impl Iterator<Item = &str> {
         self.sequences
             .iter()
-            .filter(|(_, steps)| steps.is_empty())
+            .filter(|(_, sequence)| sequence.steps.is_empty())
             .map(|(name, _)| name.as_str())
     }
 }

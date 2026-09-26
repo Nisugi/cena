@@ -481,10 +481,12 @@ impl Job {
         if self.profile.sequences.contains_key(name) {
             return;
         }
-        self.profile.sequences.insert(name.to_owned(), Vec::new());
+        self.profile
+            .sequences
+            .insert(name.to_owned(), super::profile::Sequence::default());
         self.note(format!(
             "sequence `{name}` stands in for `script {name}`: bigshot ran a Lich script, which Hydra cannot read. \
-             Write its steps under [sequences] {name}; until then the routine skips it"
+             Write its steps with `hunt set <profile> sequences.{name}.steps [...]`, and its guards with `sequences.{name}.when`; until then the routine skips it"
         ));
     }
 }

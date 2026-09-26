@@ -52,6 +52,7 @@
 //! | `once` | this step has not yet been sent at this target in this room | [`Used`] |
 //! | `once_here` | this step has not yet been sent in this room | [`Used`] |
 //! | `every N` | this step was last sent in this room N seconds ago or more, or never | [`Used`] |
+//! | `available "<technique>"` | Lich's `available?` for that PSM: trained, affordable, not cooling, not overexerted; `"weapon charge"` where two lists share the word | `psm_availability` |
 //!
 //! Words for facts the model cannot state yet are left out and import
 //! **held**: `essence_at_least` (the `resource` capture) and `justice` (a
@@ -78,7 +79,7 @@
 use std::fmt;
 
 use cena_session::creature::status::Classification;
-use cena_session::{BodyPart, GameState, StatusName};
+use cena_session::{BodyPart, GameState, PsmCategory, StatusName};
 
 mod read;
 mod used;
@@ -281,6 +282,15 @@ pub enum Guard {
         /// The rank, at least.
         rank: u32,
     },
+    /// `available "<mnemonic>"`: Lich's `available?` for that combat
+    /// maneuver, weapon technique, shield move, feat or armor
+    /// specialization: trained, affordable, not cooling, not overexerted.
+    Available {
+        /// Which list it is in.
+        category: PsmCategory,
+        /// Its mnemonic, as Lich's table has it (`volley`).
+        mnemonic: String,
+    },
 }
 
 /// A guard and its polarity: `!hidden` runs the step when I am not hidden.
@@ -359,6 +369,9 @@ impl Condition {
                 })?;
                 let rank = number(word, it.next())?;
                 Guard::Injured { part, rank }
+            } else if word == "available" {
+                let (category, mnemonic) = psm(&quoted(word, it.next())?)?;
+                Guard::Available { category, mnemonic }
             } else {
                 return Err(format!(
                     "`{word}` is not a guard Hydra knows. The guards are: {}",
@@ -390,6 +403,9 @@ impl fmt::Display for Condition {
             Guard::Effect(dialog, name) => write!(f, "{} \"{name}\"", name_of(DIALOGS, dialog)),
             Guard::Expiring { name, within } => write!(f, "expiring \"{name}\" {within}"),
             Guard::Injured { part, rank } => write!(f, "injured \"{}\" {rank}", part.as_str()),
+            Guard::Available { category, mnemonic } => {
+                write!(f, "available \"{} {mnemonic}\"", category.as_str())
+            }
         }
     }
 }
@@ -409,7 +425,44 @@ fn words() -> String {
     all.extend(DIALOGS.iter().map(|(w, _)| format!("{w} \"<name>\"")));
     all.push("expiring \"<name>\" N".to_owned());
     all.push("injured \"<part>\" N".to_owned());
+    all.push("available \"<technique>\"".to_owned());
     all.join(", ")
+}
+
+/// A PSM by its mnemonic, `volley`, or by its list and mnemonic, `weapon
+/// volley`, for the six mnemonics two lists share (`charge`, `flurry`, ...).
+fn psm(named: &str) -> Result<(PsmCategory, String), String> {
+    let named = named.to_ascii_lowercase();
+    let (wanted, mnemonic) = match named.split_once(' ') {
+        Some((list, mnemonic)) => (
+            PsmCategory::ALL
+                .into_iter()
+                .find(|c| c.as_str() == list)
+                .map(|c| vec![c]),
+            mnemonic.trim(),
+        ),
+        None => (None, named.as_str()),
+    };
+    let found: Vec<PsmCategory> = wanted
+        .unwrap_or_else(|| PsmCategory::ALL.to_vec())
+        .into_iter()
+        .filter(|&c| cena_session::psm_cost(c, mnemonic).is_some())
+        .collect();
+    match found.as_slice() {
+        [one] => Ok((*one, mnemonic.to_owned())),
+        [] => Err(format!(
+            "`available`: `{named}` is no maneuver, technique, shield move, feat or armor specialization Lich lists"
+        )),
+        _ => Err(format!(
+            "`available`: `{mnemonic}` is in {}; say which, as `available \"{} {mnemonic}\"`",
+            found
+                .iter()
+                .map(|c| c.as_str())
+                .collect::<Vec<_>>()
+                .join(" and "),
+            found.first().map_or("", |c| c.as_str()),
+        )),
+    }
 }
 
 /// A body part in Lich's spelling (`leftArm`), ignoring case and spaces, so

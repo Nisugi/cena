@@ -347,6 +347,13 @@ steps = ["store weapon", "ready 2weapon", "stance offensive", "weapon volley",
 A routine line then names `volley` like any verb. The importer cannot read Ruby, so
 `script <name>` imports as a sequence that has to be written by hand, and the importer says so.
 
+**BUILT 2026-09-26** in this shape (`cena-behavior/src/hunt/profile/sequence.rs`): the two
+guards are one `when`, read once before the first step, and `available "volley"` is Lich's
+`available?` as a guard word; once it starts, the sequence is played out, so the swap back
+is sent even after Volley starts cooling. Written from the game line:
+`;hunt set ojandhaart sequences.volley.steps [...]` and `... sequences.volley.when ...`.
+Where Briar Betrayer is listed, and under what text, is UNVERIFIED against the game.
+
 **Presets** ship for the common shapes, such as melee, archer and caster, and a character's
 profile is a preset plus overrides. **The inheritance chain** is built once and used by hunt
 first: a key resolves character → profile → global → built-in default, and the first level

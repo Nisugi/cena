@@ -235,3 +235,126 @@ fn corrupt_essence_is_not_cast_at_a_creature_the_haze_holds() {
     });
     assert_eq!(first("703", &hazed), "wait 1");
 }
+
+/// The author's `volley.lic` as a sequence: its guards are read once,
+/// before the swap, and once it starts every step is played out.
+const VOLLEY: &str = r#"
+targets = [{ any = true, routine = "a" }]
+[rooms]
+hunting = 10
+[routines]
+a = ["volley", "fire"]
+[sequences.volley]
+when = 'expiring "Briar Betrayer" 7 available "volley"'
+steps = ["store weapon", "ready 2weapon", "weapon volley", "raise longbow", "ready weapon"]
+"#;
+
+/// Each line the hunt sends over `ticks` ticks, the state changed by
+/// `between` after each.
+fn played(
+    state: &mut GameState,
+    ticks: usize,
+    between: impl Fn(&mut GameState, &str),
+) -> Vec<String> {
+    let Ok(profile) = Profile::parse(VOLLEY) else {
+        return vec!["profile".to_owned()];
+    };
+    let mut hunt = Hunt::new(profile, 1);
+    let here = Here {
+        room: Some(RoomId(10)),
+        exits: &[],
+        tags: &[],
+    };
+    let mut sent = Vec::new();
+    for _ in 0..ticks {
+        let line = match hunt.tick(state, here, state.game_time_now()) {
+            Said::Send { line, .. } => line,
+            other => format!("{other:?}"),
+        };
+        between(state, &line);
+        sent.push(line);
+    }
+    sent
+}
+
+/// Briar Betrayer up, with `secs` left.
+fn briar(state: &mut GameState, secs: u32) {
+    state.effects.insert_lasting(
+        "9105".to_owned(),
+        Effect {
+            category: "Active Spells".to_owned(),
+            text: "Briar Betrayer".to_owned(),
+            ends_at: None,
+            percent: 100,
+        },
+        secs,
+        Some(1_000),
+    );
+}
+
+#[test]
+fn a_sequence_starts_only_when_its_guards_hold_and_then_plays_out() {
+    let ready = || {
+        let mut state = trained(fighting(100), PsmCategory::Weapon, &["volley"]);
+        briar(&mut state, 5);
+        state
+    };
+    // Volley used and Briar Betrayer renewed part way: both guards now
+    // fail, and the swap back is still sent.
+    let sent = played(&mut ready(), 6, |state, line| match line {
+        "weapon volley" => {
+            state.effects.insert(
+                "v".to_owned(),
+                Effect {
+                    category: "Cooldowns".to_owned(),
+                    text: "Volley".to_owned(),
+                    ends_at: Some(1_060),
+                    percent: 100,
+                },
+            );
+        }
+        "raise longbow" => briar(state, 600),
+        _ => {}
+    });
+    assert_eq!(
+        sent,
+        [
+            "store weapon",
+            "ready 2weapon",
+            "weapon volley",
+            "raise longbow",
+            "ready weapon",
+            "fire #42"
+        ]
+    );
+
+    let mut renewed = ready();
+    briar(&mut renewed, 600);
+    assert_eq!(
+        played(&mut renewed, 1, |_, _| {}),
+        ["fire #42"],
+        "Briar Betrayer has over 7 seconds: skipped whole"
+    );
+    let mut untrained = trained(fighting(100), PsmCategory::Weapon, &["barrage"]);
+    briar(&mut untrained, 5);
+    assert_eq!(
+        played(&mut untrained, 1, |_, _| {}),
+        ["fire #42"],
+        "Volley not available: skipped whole"
+    );
+}
+
+#[test]
+fn available_names_a_technique_lich_lists_and_asks_which_list_when_two_share_it() {
+    let guard = |word: &str| {
+        Profile::parse(&format!(
+            "[routines]\na = ['fire (available \"{word}\")']\n"
+        ))
+    };
+    assert!(guard("volley").is_ok());
+    assert!(guard("weapon charge").is_ok());
+    let shared = guard("charge").err().unwrap_or_default();
+    assert!(shared.contains("say which"), "{shared}");
+    let unknown = guard("frobnicate").err().unwrap_or_default();
+    assert!(unknown.contains("no maneuver"), "{unknown}");
+}

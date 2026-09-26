@@ -188,7 +188,9 @@ impl Desk {
                 for sequence in loaded.profile.unwritten_sequences() {
                     say(
                         NoticeKind::Warn,
-                        format!("sequence {sequence} has no steps and will be skipped."),
+                        format!(
+                            "sequence {sequence} has no steps and will be skipped; `hunt set <profile> sequences.{sequence}.steps [...]` writes them."
+                        ),
                     );
                 }
                 say(NoticeKind::Info, format!("hunting on {name}."));
@@ -482,7 +484,7 @@ impl Desk {
         ) else {
             handle.say(Notice::line(
                 NoticeKind::Error,
-                "Hunt: no heal profile: write one naming the herb `container`.",
+                "Hunt: no heal profile yet. `heal set container <your herb container>` makes one; `heal show` lists the rest.",
             ));
             return None;
         };

@@ -74,7 +74,7 @@ use super::ammo::Ammo;
 use super::bounty::BountyMode;
 use super::death::Mourning;
 use super::follow::{Follow, Resend};
-use super::guard::{Facts, Used};
+use super::guard::{Condition, Facts, Used};
 use super::monitor::Watch;
 use super::party::Grouping;
 use super::profile::{Profile, Step};
@@ -597,15 +597,6 @@ impl Hunt {
             if step.held.is_some() {
                 continue;
             }
-            if let Some(sequence) = self.profile.sequences.get(&step.send) {
-                if sequence.is_empty() {
-                    continue;
-                }
-                let mut queued: VecDeque<Step> = sequence.iter().cloned().collect();
-                queued.append(&mut self.queue);
-                self.queue = queued;
-                continue;
-            }
             let key = step.to_string();
             let facts = Facts {
                 state,
@@ -614,7 +605,20 @@ impl Hunt {
                 used: Some(&self.used),
                 step: &key,
             };
-            if !step.when.iter().all(|c| c.holds(&facts) == Some(true)) {
+            let holds = |when: &[Condition]| when.iter().all(|c| c.holds(&facts) == Some(true));
+            // A sequence's guards, and the naming step's, are read once,
+            // before its first step: once it starts it is played out
+            // (`profile/sequence.rs`).
+            if let Some(sequence) = self.profile.sequences.get(&step.send) {
+                if sequence.steps.is_empty() || !holds(&step.when) || !holds(&sequence.when) {
+                    continue;
+                }
+                let mut queued: VecDeque<Step> = sequence.steps.iter().cloned().collect();
+                queued.append(&mut self.queue);
+                self.queue = queued;
+                continue;
+            }
+            if !holds(&step.when) {
                 continue;
             }
             if let Some(said) = self.waits_behind(&step.send, state, target, now) {

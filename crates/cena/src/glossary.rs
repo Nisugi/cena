@@ -143,7 +143,7 @@
 //! | **Profile** | the data a hunt runs on, one TOML file: rooms, stances, rest, targets and their routines ([`Profile`]) | script |
 //! | **Chain** | how a profile key resolves: the character's, then the profile's, then the global, then the built-in default ([`chain`], `plan/12` §6a.2) | |
 //! | **Routine** | the steps taken against a target, in order: [`Profile::routines`] | |
-//! | **Sequence** | a named list of steps that a routine step may stand for, such as `volley`, written by hand where bigshot ran a script: [`Profile::sequences`] | script |
+//! | **Sequence** | a named list of steps that a routine step may stand for, such as `volley`, with guards read once before its first step, written where bigshot ran a script: [`Profile::sequences`] | script |
 //! | **Step** | one line of a routine or sequence: what is sent, and its guards ([`Step`]) | |
 //! | **Guard** | a named precondition on a step, from the closed vocabulary Hydra defines ([`Guard`]); with its polarity, a [`Condition`]. A step's guards must all hold, and there is no *or* | gate |
 //! | **Held** | a step imported with a guard or shape Hydra does not read yet: kept, with the reason named, and never run ([`Step::held`]) | dropped |

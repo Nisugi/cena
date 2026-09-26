@@ -58,7 +58,9 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 # JSON." Read and written through serde, so the profile is one typed struct
 # and a mistyped key is refused by name rather than ignored. Pure Rust, so
 # the Android and iOS core builds (`plan/12` section 1a) are unaffected.
-toml = "1"
+# `preserve_order`: `;hunt set` writes a profile back in its own key order
+# (`cena-behavior/src/settings.rs`); indexmap was already in the tree.
+toml = { version = "1", features = ["preserve_order"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

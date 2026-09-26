@@ -20,6 +20,8 @@ use std::io;
 use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+mod settings;
+
 use crate::commands::{Commands, Took};
 use cena_behavior::group::{Boards, Place};
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
@@ -109,23 +111,6 @@ pub(crate) fn open(
                 };
                 Took::Started(start(&desk, &handler, &observer, command))
             }
-            Command::Import { .. }
-            | Command::ImportLoot { .. }
-            | Command::Check(_)
-            | Command::List
-            | Command::KeepEdit(_)
-            | Command::ScEdit(_) => {
-                let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
-                let caster = Arc::clone(&caster);
-                // Files are read and written, so not on the session's own thread.
-                Took::Started(tokio::task::spawn_blocking(move || {
-                    let sc = matches!(command, Command::ScEdit(_));
-                    run(&handle, &dir, who.as_ref(), command);
-                    if sc && let Ok(mut held) = caster.lock() {
-                        *held = read_caster(&dir, who.as_ref());
-                    }
-                }))
-            }
             Command::Group { name, with } => {
                 let (Some(desk), Some(leader)) = (desk.clone(), leader.clone()) else {
                     handler.say(Notice::line(
@@ -137,12 +122,23 @@ pub(crate) fn open(
                 Took::Started(form(&desk, &handler, &observer, &leader, name, &with))
             }
             Command::Nothing => Took::Done,
+            // The rest read and write files -- import, check, the settings
+            // -- so not on the session's own thread; `run` names each.
+            command => {
+                let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
+                let caster = Arc::clone(&caster);
+                Took::Started(tokio::task::spawn_blocking(move || {
+                    let sc = matches!(command, Command::ScEdit(_));
+                    run(&handle, &dir, who.as_ref(), command);
+                    if sc && let Ok(mut held) = caster.lock() {
+                        *held = read_caster(&dir, who.as_ref());
+                    }
+                }))
+            }
         };
         Some(took)
     }));
-    eprintln!(
-        "[hunt] ready: hunt <name>, hunt stop, hunt import <bigshot yaml>, hunt check <name>, hunt list"
-    );
+    eprintln!("[hunt] ready: `hunt help` lists the commands and how to change a setting");
 }
 
 /// Every group's board in this Hydra: one set for every character, so a
@@ -282,6 +278,17 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         Command::List => list(dir, &say),
         Command::KeepEdit(words) => keep_edit(dir, who, &words, &say),
         Command::ScEdit(words) => sc_edit(dir, who, &words, &say),
+        Command::Set {
+            profile,
+            key,
+            value,
+        } => settings::set(dir, who, &profile, &key, &value, &say),
+        Command::Unset { profile, key } => settings::unset(dir, who, &profile, &key, &say),
+        Command::Show { profile, key } => settings::show(dir, who, &profile, key.as_deref(), &say),
+        Command::HealSet { key, value } => settings::heal_set(dir, who, &key, &value, &say),
+        Command::HealUnset(key) => settings::heal_unset(dir, who, &key, &say),
+        Command::HealShow => settings::heal_show(dir, who, &say),
+        Command::Help => settings::help(&say),
         Command::Run(_)
         | Command::Quick(_)
         | Command::Bounty(_)
@@ -518,7 +525,9 @@ fn check(dir: &Path, who: Option<&(String, String)>, name: &str, say: Say<'_>) {
     for sequence in profile.unwritten_sequences() {
         say(
             NoticeKind::Warn,
-            format!("Hunt: sequence {sequence} has no steps yet; the routine skips it."),
+            format!(
+                "Hunt: sequence {sequence} has no steps yet; the routine skips it. `hunt set {name} sequences.{sequence}.steps [\"...\", \"...\"]` writes them."
+            ),
         );
     }
     let loot_file = instance
