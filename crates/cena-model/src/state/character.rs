@@ -589,8 +589,8 @@ impl Character {
     /// Read whatever command reports a completed chunk carries.
     ///
     /// Called once per prompt from `GameState::close_chunk`. Each report type
-    /// is a pure function of the chunk (`blocks::InfoReport::read` and, later,
-    /// the `skill` reader), so this is dispatch and nothing else.
+    /// is a pure function of the chunk (`blocks::InfoReport::read`,
+    /// `skills::read_table`, ...), so this is dispatch and nothing else.
     pub(crate) fn consume_chunk(&mut self, chunk: &crate::state::chunks::Chunk) {
         if let Some(report) = blocks::InfoReport::read(chunk) {
             self.apply_info(&report);
@@ -615,6 +615,7 @@ impl Character {
             self.taught.insert(snapshot::Group::Currency);
         }
         self.consume_psms(chunk);
+        self.consume_skills(chunk);
         // NOT MARKED TAUGHT, and there is no `Group::Experience`.
         // `reconnect_invalidation.rs` records why: experience changes
         // continuously and `<dialogData id='expr'>` is the live authority, so

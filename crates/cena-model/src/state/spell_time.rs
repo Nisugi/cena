@@ -76,7 +76,7 @@ impl GameState {
                     let kind = SkillKind::ALL
                         .into_iter()
                         .find(|k| k.key() == short || lich_short(&k.key()) == short)?;
-                    let ranks = self.character.skills.get(kind)?.ranks?;
+                    let ranks = self.character.skills.ranks(kind)?;
                     num(ranks)
                 }
                 ("Stats", "level") => {
