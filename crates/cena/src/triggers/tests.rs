@@ -73,7 +73,9 @@ async fn a_file_that_is_not_toml_is_said_and_nothing_is_on() {
 /// `;trigger` typed at a session with no file yet.
 struct Typing {
     dir: PathBuf,
-    handle: SessionHandle,
+    /// The owner, kept so the helper borrows its handle rather than storing
+    /// a second one (`single_owner.rs`).
+    session: Session<ReplaySource>,
     events: tokio::sync::broadcast::Receiver<Event>,
     commands: Commands,
 }
@@ -88,10 +90,15 @@ impl Typing {
         command(&handle, &commands, dir.clone(), "Nisugi".to_owned());
         Ok(Self {
             dir,
-            handle,
+            session,
             events,
             commands,
         })
+    }
+
+    /// The triggers the session answers its lines with now.
+    fn triggers(&self) -> std::sync::Arc<Matcher> {
+        self.session.handle().triggers()
     }
 
     /// Type `line` (without its symbol), and what it said.
@@ -120,7 +127,7 @@ async fn add_set_and_test_without_writing_the_file() {
     let added = typing.typed("trigger add stunned You are stunned");
     assert!(added[0].contains("`stunned` added"), "{added:?}");
     assert!(added[0].contains("1 trigger on for Nisugi"), "{added:?}");
-    assert_eq!(typing.handle.triggers().triggers().len(), 1);
+    assert_eq!(typing.triggers().triggers().len(), 1);
 
     let set = typing.typed("trigger set stunned look.color #ff4040");
     assert!(
@@ -180,7 +187,7 @@ async fn list_off_and_every() {
         every[0].contains("every squelch off") && every[0].contains("1 trigger on"),
         "the look `add` gave spam keeps it: {every:?}"
     );
-    assert!(!typing.handle.triggers().triggers()[0].rule.squelch);
+    assert!(!typing.triggers().triggers()[0].rule.squelch);
     let unknown = typing.typed("trigger frobnicate");
     assert!(unknown[0].contains("`frobnicate`"), "{unknown:?}");
 }

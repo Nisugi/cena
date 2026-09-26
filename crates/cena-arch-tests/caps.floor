@@ -131,3 +131,17 @@ crates/cena-model/src/state/character/psm.rs 450
 # re-exports; the report, the settings, the looter, the rest and hunt merges,
 # muster and the successor are in group/. 43 lines at birth: 43 + 50, rounded up.
 crates/cena-behavior/src/group.rs 100
+# NEW SPLIT PARENTS, 2026-09-26 (plan/45, M8 Stage 1). Each at birth, measured
+# size + 50, rounded up.
+#
+# crates/cena-model/src/trigger.rs is the trigger rule: the types a trigger is
+# read into and the checks on them; the matcher and the responses are in
+# trigger/. 323 lines.
+crates/cena-model/src/trigger.rs 400
+# crates/cena-behavior/src/triggers.rs reads the one triggers file and gives
+# each character its list; triggers/edit.rs is `;trigger`'s changes to it.
+# 342 lines.
+crates/cena-behavior/src/triggers.rs 400
+# crates/cena/src/triggers.rs gives each session its triggers and runs
+# `;trigger`; its words, its `test` and its tests are in triggers/. 249 lines.
+crates/cena/src/triggers.rs 300
