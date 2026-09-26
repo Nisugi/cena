@@ -670,15 +670,11 @@ impl<S: ByteSource> SessionActor<S> {
             let is_push = matches!(frame, Frame::CmdListUpdate(_) | Frame::CmdTimestamp { .. });
             let lines_before = self.state.lines_seen();
             let terminator = self.state.apply(&frame);
-            // A completed line goes to the player log. **The model's line, not
-            // a second assembly of it**: `route_text` is the one place a frame
-            // boundary is turned into a line boundary, and `lines_seen` moving
-            // is how it says it just did.
-            if let (Some(log), Frame::Text(text)) = (&mut self.player_log, &frame)
-                && self.state.lines_seen() > lines_before
-                && let Some(line) = self.state.stream(&text.stream).last()
-            {
-                log.line(&text.stream, &line.plain());
+            // A completed line goes to the player log and to every viewer.
+            // **The model's line, not a second assembly of it** (`line.rs`).
+            let line = self.finished_line(&frame, lines_before);
+            if let (Some(log), Some(line)) = (&mut self.player_log, &line) {
+                log.line(&line.stream, &line.text());
             }
             // The frame that teaches the character's name is the first moment
             // there is a file to read. Cheap after the first: one bool.
@@ -702,6 +698,9 @@ impl<S: ByteSource> SessionActor<S> {
             // Read before the frame is moved into its event; acted on below.
             let completes_burst = self.completes_burst(&frame);
             let _ = self.events.send(Event::Frame(Box::new(frame)));
+            if let Some(line) = line {
+                let _ = self.events.send(Event::Line(line));
+            }
             if terminator {
                 // before the `send_now` early-out below: a chunk closed
                 // whoever the prompt was owed to

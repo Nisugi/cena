@@ -113,6 +113,7 @@
 //! |---|---|---|
 //! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream: [`Snapshot`] | view, handle, ref |
 //! | **Event** | something the session saw or did, published to observers: [`Event`] (a frame, a combat chunk, a command sent, a notice) | signal, trigger, hook |
+//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a) | display line, story line |
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
 //! | **Lagged** | what an observer that fell behind is told instead of meeting a silent hole; the recovery is to subscribe again | |
 //! | **Notice** | Hydra speaking to the player, not the game: [`Notice`], the port of `Lich::Messaging` | message |
@@ -215,6 +216,7 @@
 //! [`Connector`]: cena_session::Connector
 //! [`CritTables`]: cena_session::CritTables
 //! [`Event::Combat`]: cena_session::Event::Combat
+//! [`Event::Line`]: cena_session::Event::Line
 //! [`Event`]: cena_session::Event
 //! [`Farewell`]: cena_session::Farewell
 //! [`Frame::UnknownTag`]: cena_session::Frame::UnknownTag
@@ -232,6 +234,7 @@
 //! [`HubRequest`]: cena_web::HubRequest
 //! [`Import`]: cena_behavior::hunt::Import
 //! [`LONG_LIVED`]: cena_session::LONG_LIVED
+//! [`Line`]: cena_session::Line
 //! [`LineAssembler::sort_containers`]: cena_ui::LineAssembler::sort_containers
 //! [`MAX_UNATTENDED_LOSSES`]: cena_session::MAX_UNATTENDED_LOSSES
 //! [`Merger`]: cena_ui::Merger

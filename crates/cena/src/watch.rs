@@ -99,7 +99,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
             ),
             // Not shown here: the game's text is the browser's to show, and a
             // combat view is a frontend's to build.
-            Ok(Event::Frame(_) | Event::Combat(_) | Event::Quiet(_)) => {}
+            Ok(Event::Frame(_) | Event::Line(_) | Event::Combat(_) | Event::Quiet(_)) => {}
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and
             // `-> [behavior]` lines for the rest of the run -- and those

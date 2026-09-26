@@ -104,12 +104,14 @@ mod event;
 mod gate;
 mod handle;
 mod io;
+mod line;
 mod owed;
 mod readiness;
 
 pub use ending::EndReason;
 pub use event::Event;
 pub use handle::{Session, Snapshot};
+pub use line::Line;
 pub use readiness::SETUP_DEADLINE;
 
 /// Inbound command channel bound.
@@ -147,7 +149,15 @@ pub(crate) const COMMAND_CHANNEL_BOUND: usize = 32;
 /// two of the author's captures: **1,151** (`GSIV-Nisugi/2025-04-18`) and **794**
 /// (`GSIV-Monstr/2025-09-04`). Against 256 -- so the burst ran 3-4.5x the ring,
 /// and the `!! 99 events dropped` the author saw was the tail of a much larger
-/// overflow. 2,048 covers the larger burst with ~78% headroom.
+/// overflow. 2,048 covered the larger burst with ~78% headroom.
+///
+/// **4,096 since each finished line is published too** (`Event::Line`,
+/// `plan/45` §4a). A line needs a text frame to finish it, so a burst is at most
+/// frames + lines = 2 x 1,151 = 2,302 events, the whole burst being text; 4,096
+/// is the same ~78% headroom over that. The committed login fixtures are cut
+/// too small to measure a real burst's line count, so this is sized to the
+/// bound, not a measurement of lines. The cost is the slot memory of two rings
+/// (the legacy stream and the fenced one) per session, doubled.
 ///
 /// It is a size, not a promise: a slow enough subscriber still lags, and
 /// `crates/cena-session/tests/event_ring.rs` asserts that it is still told.
@@ -163,7 +173,7 @@ pub(crate) const COMMAND_CHANNEL_BOUND: usize = 32;
 /// `tests/observation.rs`'s
 /// `lag_resubscription_replaces_the_old_fence_with_fresh_authoritative_state`
 /// exercises exactly that path.
-pub(crate) const EVENT_CHANNEL_BOUND: usize = 2048;
+pub(crate) const EVENT_CHANNEL_BOUND: usize = 4096;
 
 /// How long one read may block before the loop takes a turn anyway.
 ///

@@ -22,6 +22,14 @@ use crate::lifecycle::State;
 pub enum Event {
     /// A frame arrived from the game.
     Frame(Box<Frame>),
+    /// A frame finished a line of game text: the model's line, the one the
+    /// classifiers and the player log read (`actor/line.rs`).
+    ///
+    /// Published right AFTER the [`Event::Frame`] that finished it. A viewer
+    /// draws this rather than assembling lines from text frames, so every
+    /// viewer agrees on where a line ends (`plan/45` §4a). `Arc` because every
+    /// subscriber shares one allocation.
+    Line(std::sync::Arc<super::line::Line>),
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///
