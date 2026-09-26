@@ -1,0 +1,54 @@
+{"kind": "cut", "from": "2241", "to": "2242", "worded": true, "command": "southwest", "because": ["2240", "2242"], "step": -1}
+{"kind": "cut", "from": "2266", "to": "2265", "worded": true, "command": "northwest", "because": ["2269", "2270"], "step": 1}
+{"kind": "cut", "from": "3016", "to": "3015", "worded": true, "command": "southwest", "because": ["3016", "3017"], "step": 1}
+{"kind": "cut", "from": "4312", "to": "33308", "worded": true, "command": null, "because": ["4312", "4313"], "step": -1}
+{"kind": "cut", "from": "6574", "to": "6570", "worded": false, "command": "east", "because": ["6569", "6570"], "step": 1}
+{"kind": "maze", "from": "7301", "to": "7303", "step": -1}
+{"kind": "cut", "from": "8163", "to": "8186", "worded": true, "command": "down", "because": ["8163", "8186"], "step": -1}
+{"kind": "cut", "from": "8182", "to": "8186", "worded": true, "command": "down", "because": ["8182", "8186"], "step": -1}
+{"kind": "cut", "from": "8183", "to": "8186", "worded": true, "command": "down", "because": ["8182", "8186"], "step": -1}
+{"kind": "cut", "from": "8185", "to": "8186", "worded": true, "command": "down", "because": ["8182", "8186"], "step": -1}
+{"kind": "cut", "from": "8184", "to": "8186", "worded": true, "command": "down", "because": ["8182", "8186"], "step": -1}
+{"kind": "maze", "from": "9073", "to": "15697", "step": -1}
+{"kind": "cut", "from": "9083", "to": "9081", "worded": true, "command": "northwest", "because": ["9075", "9082"], "step": 1}
+{"kind": "cut", "from": "9083", "to": "9080", "worded": true, "command": "northeast", "because": ["9075", "9082"], "step": 1}
+{"kind": "cut", "from": "9087", "to": "9090", "worded": false, "command": "southwest", "because": ["9089", "9090"], "step": 1}
+{"kind": "cut", "from": "9088", "to": "9092", "worded": true, "command": "northeast", "because": ["9091", "9092"], "step": -1}
+{"kind": "cut", "from": "9527", "to": "9517", "worded": true, "command": "north", "because": ["9516", "9517"], "step": 1}
+{"kind": "cut", "from": "9526", "to": "9518", "worded": true, "command": "northwest", "because": ["9516", "9517"], "step": 1}
+{"kind": "cut", "from": "9519", "to": "9525", "worded": true, "command": "south", "because": ["9518", "9525"], "step": -1}
+{"kind": "cut", "from": "9520", "to": "9522", "worded": true, "command": "east", "because": ["9519", "9522"], "step": -1}
+{"kind": "cut", "from": "9527", "to": "9528", "worded": true, "command": "west", "because": ["9527", "9543"], "step": -1}
+{"kind": "cut", "from": "9544", "to": "9545", "worded": true, "command": "north", "because": ["9543", "9545"], "step": -1}
+{"kind": "cut", "from": "9546", "to": "9545", "worded": true, "command": "east", "because": ["9543", "9545"], "step": -1}
+{"kind": "cut", "from": "9544", "to": "9548", "worded": true, "command": "south", "because": ["9547", "9548"], "step": -1}
+{"kind": "cut", "from": "11081", "to": "11080", "worded": true, "command": "southeast", "because": ["11079", "11080"], "step": 1}
+{"kind": "cut", "from": "12229", "to": "12228", "worded": true, "command": "southwest", "because": ["12217", "12219"], "step": -1}
+{"kind": "cut", "from": "12254", "to": "12219", "worded": false, "command": "go barrier", "because": ["12217", "12219"], "step": -1}
+{"kind": "cut", "from": "12234", "to": "12236", "worded": true, "command": "north", "because": ["12232", "12235"], "step": -1}
+{"kind": "cut", "from": "12238", "to": "12236", "worded": true, "command": "northwest", "because": ["12232", "12235"], "step": -1}
+{"kind": "cut", "from": "12229", "to": "12240", "worded": true, "command": "northeast", "because": ["12232", "12240"], "step": 1}
+{"kind": "cut", "from": "12243", "to": "12241", "worded": true, "command": "east", "because": ["12237", "12239"], "step": -1}
+{"kind": "cut", "from": "12251", "to": "12245", "worded": true, "command": "south", "because": ["12244", "12245"], "step": -1}
+{"kind": "cut", "from": "12246", "to": "12255", "worded": false, "command": "north", "because": ["12254", "12255"], "step": -1}
+{"kind": "cut", "from": "35986", "to": "24749", "worded": false, "command": "go sturdy door", "because": ["15474", "24749"], "step": 1}
+{"kind": "maze", "from": "15791", "to": "15914", "step": 1}
+{"kind": "maze", "from": "15917", "to": "15918", "step": -1}
+{"kind": "maze", "from": "15917", "to": "15919", "step": 1}
+{"kind": "maze", "from": "15919", "to": "23256", "step": 1}
+{"kind": "maze", "from": "15920", "to": "15921", "step": 1}
+{"kind": "maze", "from": "15922", "to": "23257", "step": 1}
+{"kind": "maze", "from": "15923", "to": "15924", "step": 1}
+{"kind": "maze", "from": "15924", "to": "15925", "step": -1}
+{"kind": "maze", "from": "15927", "to": "15923", "step": -1}
+{"kind": "cut", "from": "18011", "to": "16135", "worded": false, "command": null, "because": ["16134", "16135"], "step": 1}
+{"kind": "cut", "from": "16287", "to": "16135", "worded": false, "command": "south", "because": ["16134", "16135"], "step": 1}
+{"kind": "maze", "from": "23255", "to": "15697", "step": -1}
+{"kind": "cut", "from": "28633", "to": "28631", "worded": true, "command": "go carved door", "because": ["28627", "28631"], "step": 1}
+{"kind": "cut", "from": "34111", "to": "34110", "worded": false, "command": "northwest", "because": ["34102", "34110"], "step": 1}
+{"kind": "cut", "from": "34107", "to": "34110", "worded": false, "command": "west", "because": ["34102", "34110"], "step": 1}
+{"kind": "cut", "from": "34108", "to": "34110", "worded": false, "command": "southwest", "because": ["34102", "34110"], "step": 1}
+{"kind": "cut", "from": "34102", "to": "34111", "worded": false, "command": "down", "because": ["34102", "34111"], "step": -1}
+{"kind": "cut", "from": "34107", "to": "34111", "worded": false, "command": "south", "because": ["34102", "34111"], "step": -1}
+{"kind": "cut", "from": "34109", "to": "34111", "worded": false, "command": "southwest", "because": ["34102", "34111"], "step": -1}
+{"kind": "cut", "from": "34104", "to": "34107", "worded": false, "command": null, "because": ["34103", "34107"], "step": 1}

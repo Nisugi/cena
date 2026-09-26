@@ -11,15 +11,17 @@
 //! never skinnable, and the membership and free-account refusals end
 //! skinning for the visit.
 //!
-//! Left out of eloot's version: the `rotting chimera` describe (a one-off
-//! for one creature, `occassional_skinner`), and `Bounty.task.skin?` for
-//! `skin_bounty_only`, which reads the bounty model when it is wanted.
+//! Two of eloot's narrower rules are here too. `skin_bounty_only` skins only
+//! the creature a skinning bounty names, and nothing without one
+//! (`:5879-5883`). And a `rotting chimera` learned unskinnable is described
+//! first, and skinned after all when *a huge scorpion tail rises high from
+//! the rear*: only that form yields a skin (`occassional_skinner`, `:5616`).
 
 use std::collections::VecDeque;
 
-use cena_session::GameState;
 use cena_session::containers::ReadySlot;
 use cena_session::containers::StowSlot;
+use cena_session::{GameState, TaskKind};
 
 use super::outcome::Outcome;
 use super::plan::Step;
@@ -33,6 +35,8 @@ const BRAVERY: &str = "incant 604";
 const BLUNT: &[&str] = &["krynch", "stone mastiff", "krag dweller", "cavern urchin"];
 /// Names never skinned (`:5873`).
 const NEVER: &[&str] = &["ethereal", "ghostly", "unwordly", "Grimswarm", "child"];
+/// The creature whose one form is skinnable though the name is not.
+const CHIMERA: &str = "rotting chimera";
 
 /// Which weapon a corpse takes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,6 +76,9 @@ pub(super) struct Skinning {
     refused: bool,
     /// A gem broke out of a corpse into the left hand.
     gem: Option<String>,
+    /// Rotting chimeras learned unskinnable, waiting on a `describe`.
+    chimeras: Vec<(i64, String)>,
+    described: bool,
 }
 
 impl Skinning {
@@ -83,11 +90,34 @@ impl Skinning {
         corpses: &[i64],
         unskinnable: &[String],
     ) -> Self {
-        let mut queue: Vec<(i64, String, Edge)> = corpses
+        let mut named: Vec<(i64, String)> = corpses
             .iter()
             .filter_map(|id| state.creatures().get(*id).map(|c| (*id, c.name.clone())))
+            .collect();
+        if settings.bounty_only {
+            // Only the bounty's creature; no skinning bounty, no skinning.
+            let wanted = state
+                .bounty
+                .task()
+                .filter(|task| task.kind == TaskKind::Skin)
+                .and_then(|task| task.creature())
+                .map(str::to_ascii_lowercase);
+            named.retain(|(_, name)| {
+                wanted
+                    .as_deref()
+                    .is_some_and(|creature| name.to_ascii_lowercase().contains(creature))
+            });
+        }
+        let learned = |name: &str| unskinnable.iter().any(|u| u == name);
+        let chimeras = named
+            .iter()
+            .filter(|(_, name)| learned(name) && name.contains(CHIMERA))
+            .cloned()
+            .collect();
+        let mut queue: Vec<(i64, String, Edge)> = named
+            .into_iter()
             .filter(|(_, name)| {
-                !unskinnable.iter().any(|u| u == name)
+                !learned(name)
                     && !NEVER.iter().any(|word| name.contains(word))
                     && !settings
                         .exclude
@@ -114,6 +144,8 @@ impl Skinning {
             knelt: false,
             refused: false,
             gem: None,
+            chimeras,
+            described: false,
         }
     }
 
@@ -121,6 +153,10 @@ impl Skinning {
     pub(super) fn next(&mut self, state: &GameState) -> Option<Step> {
         if let Some(gem) = self.gem.take() {
             return Some(Step::StowGem(gem));
+        }
+        if !self.chimeras.is_empty() && !self.described {
+            self.described = true;
+            return Some(Step::Describe("chimera".to_owned()));
         }
         if self.refused {
             self.queue.clear();
@@ -291,6 +327,13 @@ impl Skinning {
                 self.refused = true;
                 None
             }
+            (Step::Describe(_), Outcome::ScorpionTail) => {
+                // The scorpion-tailed form: skinned with the edged group.
+                for (id, name) in std::mem::take(&mut self.chimeras) {
+                    self.queue.push_front((id, name, Edge::Edged));
+                }
+                None
+            }
             (Step::Skin { .. }, Outcome::BrokeThrough) => {
                 // The gem lands in the left hand (`:5849`).
                 self.gem = state.left_hand.id().map(str::to_owned);
@@ -302,7 +345,11 @@ impl Skinning {
 
     /// Nothing left to do.
     pub(super) fn is_done(&self) -> bool {
-        self.queue.is_empty() && self.skinner.is_none() && !self.knelt && self.gem.is_none()
+        self.queue.is_empty()
+            && self.skinner.is_none()
+            && !self.knelt
+            && self.gem.is_none()
+            && (self.chimeras.is_empty() || self.described)
     }
 }
 

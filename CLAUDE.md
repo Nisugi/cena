@@ -35,10 +35,14 @@ If anything else contradicts it, it wins.
 | `plan/15-wrayth-protocol.md` | **the game stream** — the XML protocol after login |
 | `plan/13-greenfield-vs-evolution.md` | why this is a new codebase, not a Vellum fork |
 | `plan/30-m6-hunt.md` | **the current milestone**: M6, the first real behavior, step by step with what is built |
-| `plan/33-guard-vocabulary.md` | bigshot's 87 guard words evaluated; PROPOSED, awaiting the author |
-| `plan/31-eloot-port.md` | **M6c**: eloot measured and ordered; Stages 1-3 (the hunt's share), skinning and Stage 4a (the selling round: gem shop and pawnshop during the rest) BUILT; 4b furrier/collectibles/Chronomage/bank, 4c the locksmith pool next |
+| `plan/33-guard-vocabulary.md` | bigshot's 87 guard words evaluated; ANSWERED by the author 2026-09-24 (§6); every surviving word BUILT 2026-09-25 (`cena-behavior/src/hunt/guard.rs`, `guard/`). A bigshot word the importer cannot translate imports **held** |
+| `plan/31-eloot-port.md` | **M6c**: eloot measured and ordered; Stages 1-3 (the hunt's share), skinning and Stages 4a-4c (the selling round during the rest: locksmith pool, gem shop, pawnshop, furrier, collectibles, Chronomage, bank) BUILT, with 4a's leftovers (the hands restored, the jeweler's refusals onward to the pawnshop, scrolls kept), and skinning's last gaps (bounty-only, the chimera, learned names saved) closed |
 | `plan/34-loot-ledger.md` | the loottracker port: 55 patterns as one classifier over the chunk (Stage 1 BUILT, `cena-model/src/state/ledger.rs`), the ledger beside the combat recorder in one database per character (Stage 2 BUILT, `cena-session/src/ledger.rs`; `--record`/`--no-record`), `;loot`'s five reports (Stage 3 BUILT, `cena/src/loot.rs`), combat's first five on the same reader (Stage 4 BUILT, `;combat`, `cena/src/combat.rs`), the Red Forest uid bug explained and fixed. All four stages BUILT |
-| `plan/35-m7-agent.md` | **M7, the agent protocol**: MCP on loopback, control levels, takeover, all statuses; PROPOSED, the author's 2026-09-24 decisions quoted, three questions open (§9). Prior art in `reference/lich-agent-bridge` |
+| `plan/36-eherbs-port.md` | **the Heal behavior**: eherbs measured and staged; Stages 1-2 BUILT (the 247-herb table in `cena-model/src/herbs.rs`, the dose monitor `state/doses.rs`; the healing in `cena-behavior/src/heal/`, during a rest and as `;heal`), Stage 3 (the Survivalist's Kit and its distiller, `state/kit.rs`) and Stage 4 (stocking at the herbalist, `;heal stock`/`fill`, `state/order_menu.rs`) BUILT |
+| `plan/37-spell-behaviors.md` | **spellactive, ewaggle, spellcaster**: measured and staged; Stages 1-2 BUILT (what the spell table dropped, joined back: `cena-model/src/spells/extras.rs`; durations and costs evaluated for the character: `spells/expr.rs`, `state/spell_time.rs`), Stage 3 (the casting step, `cena-behavior/src/cast.rs`), Stage 4 (spellactive as `;keep`, `keep.rs`), Stage 5 (ewaggle as `;waggle`, `waggle.rs`), Stage 6 (spellcaster as `;sc`, `spellcaster.rs`), and a bare typed spell number caught without `;sc` (`014256d`; `;sc set typed off` stops it) |
+| `plan/35-m7-agent.md` | **M7, the agent protocol**: MCP on loopback, control levels, takeover, all statuses; PROPOSED, the author's 2026-09-24 decisions quoted, four questions open (§9). Prior art in `reference/lich-agent-bridge` |
+| `plan/38-scripting-bridge.md` | **scripts in any language, through M7's connection**: a bridge per language, Ruby first (familiar Lich names, data from Hydra), nothing embedded; the Lich relay set aside on measured memory (466 MB committed, the map 100 MB of it). PROPOSED 2026-09-25, not scheduled; it would change the settled "users do not author scripts" line, which only the author changes (§1, §11) |
+| `plan/39-group-hunting.md` | **bigshot's group hunting**: head and tail measured (DRb, not LNet; 31 order types, 21 lines that branch on a role, 20 waits on followers with no deadline, no handover), eohunter's Hub-and-Report port as the reference, the author's disconnect handover (`plan/30` §4) mapped onto sessions in one process: each member keeps its own authority, the leader publishes state and never sends on a follower's session. PROPOSED 2026-09-25, seven stages, eleven questions (§7); blocked first on a hunt that survives a reconnect (§4) |
 | `crates/cena/src/architecture.rs` | the workspace as rustdoc: crate graph, one line's journey, the three seams, every rule and its test. Link-checked, so it cannot go stale silently |
 | `crates/cena/src/glossary.rs` | **the words**: one per concept, each linked to its item, plus the ones that already mean two things (`claim`, `ladder`, `Desk`, …). Binding (`plan/05` §8) |
 | `research/` | **rationale and evidence only. Never instructions.** Contains superseded designs. |
@@ -132,6 +136,19 @@ cargo doc --workspace --no-deps                    # rustdoc link lints are DENY
 node crates/cena-web/browser-tests/smoke.mjs       # Despana browser smoke (CI job `browser-smoke`)
 ```
 
+**One target directory, debug profile** (author, 2026-09-25): *"You build to 1 target. You
+build to debug for your testing."* Every build and test writes to `target/`: no
+`--target-dir`, no `CARGO_TARGET_DIR`. No `--release` for testing. `.gitignore` still lists
+`target-pr1-review/` and `target-alt/` from before this was the rule.
+
+**Worktrees are allowed; whoever makes one removes it** (author, 2026-09-25: *"they can do
+what they want but they need to clean up after themselves"*). Take or discard the work, then
+`git worktree remove <path>`: it deletes the worktree's own `target/` with it, and refuses
+while there is uncommitted work. `.claude/hooks/worktrees.mjs` enforces this. At session
+start it records and reports what already exists; at stop it blocks once on any worktree or
+`target-*` folder made since. A worktree locked with `git worktree lock` is kept on purpose
+and never flagged.
+
 `/check` runs the full set and reports what failed. Use it before any commit, and after any
 agent claims the tree is green. The other project commands: `/where` (milestone, HEAD,
 uncommitted work, what is next), `/corpus` (query the log archive; ask the author first),
@@ -155,7 +172,12 @@ either build breaks `plan/12` §1a.
 author runs it (see Credentials). Run options are arguments, not env vars: an env var set
 once in a shell drove the character on every later run. M1's `--demo` and the measurement
 probes were removed at M6 (`plan/30` §2).
-`CENA_MAP` points travel at a converted map file.
+The environment variables that remain are paths and secrets, not run options: `CENA_MAP`
+(travel's converted map file, `crates/cena/src/travel.rs:47`), `CENA_DATA_DIR` (character
+stores, `crates/cena-session/src/character_store.rs:62`), `CENA_LOG_DIR`, `CENA_LOG_LINES`
+and `CENA_LOG_TIMESTAMPS` (the log sink, `crates/cena-platform/src/sink/config.rs`), and
+`CENA_PASSWORD_<ACCOUNT>`, the password ladder's rung between the OS keyring and the prompt
+(`crates/cena/src/secrets.rs:46`).
 
 `spike/eaccess-spike` and `rtest/` are excluded from the workspace. The spike has its own
 lockfile; run cargo inside it only for the spike.
@@ -194,7 +216,11 @@ a local WebSocket.
 holds the allowed crate edges (`ALLOWED_EDGES`, the table that *is* the architecture);
 `file_rules.rs` caps every source file at **800 lines** by default, with facade files capped
 lower and explicit, justified exceptions in `CAP_EXCEPTIONS`; `citations.rs` checks that
-every path cited in `plan/` resolves. When a file hits its cap, split it. **Moving code down
+every path cited in `plan/` resolves; `single_owner.rs` holds Rule 4.3 (one owning field per
+shared value), `raw_text_escapes.rs` Rule 2.1 (nothing above `cena-protocol` sees raw text),
+and `lints_are_inherited.rs` that every crate takes `[lints] workspace = true`. The rest
+(`architecture.rs`, `include_ban.rs`, `ratchet.rs`, `lexer_gaps.rs`) guard the scans
+themselves. Each file's `//!` header names its rule. When a file hits its cap, split it. **Moving code down
 is the fix; raising the cap is not.**
 
 ## Working in this repo
@@ -252,7 +278,18 @@ is the fix; raising the cap is not.**
   **Only `.xml` is wire data.** The 11,862 `.log` files beside them are a different,
   tag-stripped format — never use them as protocol evidence.
 - Reference clones are in `reference/` (gitignored): `lich-5`, `VellumFE`, `scripts`,
-  `dr-scripts`, plus the Saga Discord thread. eohunter is at `C:\Gemstone\eohunter`.
+  `dr-scripts`, `lich-agent-bridge` (M7's prior art), `lich_repo_mirror`, plus the Saga
+  Discord thread. eohunter is at `C:\Gemstone\eohunter`.
+
+  `scripts` is `elanthia-online/scripts` (236 `.lic`: bigshot, eloot, go2, kswole...).
+  `lich_repo_mirror` is <https://github.com/FarFigNewGut/lich_repo_mirror>, the **old Lich
+  repository's** user scripts, mirrored every 3 hours: **2,130 `.lic` in `lib/`, and only 2
+  also in `scripts`** -- a different population, not a copy. Cloned `--depth 1` on
+  2026-09-25; `git pull` it before citing a version. MEASURED:
+  `comm -12 <(ls lib | grep '\.lic$' | sort) <(ls ../scripts/scripts | grep '\.lic$' | sort)`.
+  Its `gs_map/gs_map.json` is older than `reference/mapdb`'s; use the latter. **Surveyed
+  whole** against Cena's captures and data in `inventory/12-lich-repo-mirror.md`; read it
+  before surveying the mirror again.
 
 ## Where the build stands
 
@@ -274,9 +311,23 @@ counts a person, the authority survives a reconnect, preempt and the behavior wa
 the acting primitives (the stance setter, cast roundtime, the write-time `Gate`,
 `travel_holding`); and step 4's profile format, inheritance chain and bigshot importer
 (`cena-behavior/src/hunt/`, `;hunt import|check|list`). Nisugi's `ojandhaart.yaml`
-imports whole. **Open for the author:** `plan/33`'s six questions on the guard vocabulary;
-until a word is built, a step carrying it imports **held**, never silently lost.
-**Next:** M6b, the engine (`plan/30` §3, §7).
+imports whole. `plan/33`'s six questions were answered on 2026-09-24 and its vocabulary is
+built; a step the importer cannot translate imports **held**, never silently lost.
+**M6b, the engine, is built and not yet run live** (`cena-behavior/src/hunt/engine.rs`).
+**M6c** (eloot, `plan/31`, with the loot ledger `plan/34`) and **M6d** (eherbs, `plan/36`)
+are built, and the spell behaviors (`plan/37`) followed. **The live run is last** (author,
+2026-09-25: *"The live run is at the end! We gotta get all the other m6 stuff so I can test
+it in the live run!!"*). **M6e is built** (`;sorter`, `;foreach`, `;multi`, `plan/30` §7).
+The author asked for **all of bigshot** (2026-09-25), and the solo hunt now has it
+(`plan/30` §7, M6b, records each piece): every verb bigshot dispatches is sent, gated,
+held and answered as its handler does -- including `mstrike`, `unarmed`, `force`,
+`eachtarget`, `wandolier`, `nudgeweapons` -- with `cmd_spell`'s rules, Lich's `available?`
+before every PSM, its stances, quick and bounty modes, the monitor, the death switches, and
+a hunt that survives a reconnect. The model reads what that needed and did not before: PSM
+ranks and costs, skills, the worn and reserve lists (`a392b77`, `cf32e5d`).
+The gaps left after that were closed on 2026-09-26: bounty mode's gem and skin counts,
+`throw`'s hands, Barrage's `swap`, Fury at tier 3, and the enhancive totals read into the
+model. **Groups are `plan/39`, awaiting the author's answers.** Then the live run.
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.

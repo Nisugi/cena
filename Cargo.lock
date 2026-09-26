@@ -198,6 +198,7 @@ dependencies = [
  "cena-map",
  "cena-platform",
  "cena-session",
+ "regex",
  "serde",
  "serde_json",
  "tokio",

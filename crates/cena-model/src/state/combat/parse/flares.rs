@@ -23,6 +23,7 @@ impl Cursor<'_> {
             return;
         };
         ctx.line_flare = true;
+        let shipped = fl.shipped;
         let mut flare = FlareEvent {
             name: fl.name,
             damaging: fl.damaging,
@@ -69,9 +70,16 @@ impl Cursor<'_> {
         // released cast) is the open event belongs to the swing that attack
         // interrupted: resume it. Anything the swing could own resumes it --
         // breeze and arcane reflex name no weapon.
+        //
+        // Not a `flare_patterns.rb` flare on a creature's attack: that table
+        // has the procs the attack itself sets off -- a block, a parry, bark
+        // absorbing the blow -- and resuming on one handed the creature's
+        // damage to our swing (`tests/combat_flare_mirror.rs`). It stays on
+        // the attack, where the recorder reads a 2p flare as our reactive one.
         if let (Some(cur), Some(io)) = (self.current, self.interrupted_own) {
             let e = self.ev(cur);
-            if (e.inbound || e.released) && !Self::flare_contradicts_weapon(&flare, e) {
+            if ((e.inbound && shipped) || e.released) && !Self::flare_contradicts_weapon(&flare, e)
+            {
                 self.save_event(cur);
                 self.interrupted_own = None;
                 self.resume(io);

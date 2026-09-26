@@ -14,6 +14,7 @@ use cena_session::{Event, ObserveError, ObservedEvent, SessionObserver, Snapshot
 use pending::Pending;
 use std::future::Future;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 use tokio::sync::broadcast;
 
@@ -119,6 +120,8 @@ where
                 Ok(event) => {
                     let immediate = event.generation != pending.generation
                         || matches!(event.event, Event::StateChanged(_) | Event::ConnectFailed { .. });
+                    // `;sorter` as the player last set it (`Sessions::sort_containers`).
+                    pending.assembler.sort_containers(shared.sorting.load(Ordering::Relaxed));
                     pending.observe(event);
                     dirty = true;
                     immediate

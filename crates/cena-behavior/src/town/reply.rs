@@ -28,6 +28,36 @@ pub enum Reply {
     CannotFetch,
     /// `You can't wear that`.
     CannotWear,
+    /// The game wants the same command again to be sure: the pawnshop's
+    /// *attempt to resell it again within the next 30 seconds*, and trash's
+    /// *throw the item away again within fifteen seconds* (inventory/12 §3).
+    Again,
+    /// The pool will hold no more: *already holding as many boxes*.
+    PoolFull,
+    /// Too little silver for the tip: *You don't have that much*.
+    NoSilver,
+    /// The box needs no locksmith: *already unlocked* or *already open*.
+    AlreadyOpen,
+    /// *We don't have any boxes ready for you*, or *We don't seem to have
+    /// that box*; also *You need to lighten your load first*, which ends
+    /// the returns the same way.
+    NoneReady,
+    /// *You do not notice a trash receptacle here*: drop it instead.
+    NoTrash,
+    /// Not the game's: the driver says the loot planner found the box
+    /// locked, so it goes back to its bag.
+    BoxLocked,
+    /// A scroll read names a spell: `(215) Frenzy`, and whether the line
+    /// calls it vibrant.
+    ScrollSpell {
+        /// The spell's number.
+        spell: u16,
+        /// The line says `vibrant`.
+        vibrant: bool,
+    },
+    /// `bundle remove` took the bundle apart: *Those were the last two*,
+    /// one skin in each hand (`furrier`, `eloot.lic:6905`).
+    LastTwo,
 }
 
 /// Read one reply line. `None` when it says nothing this planner acts on.
@@ -41,6 +71,7 @@ pub fn classify(line: &str) -> Option<Reply> {
         || has("don't buy trash")
         || has("as if you were a lunatic")
         || has("only deal in gems and jewelry")
+        || has("Not my line, really")
     {
         return Some(Reply::WrongShop);
     }
@@ -67,6 +98,39 @@ pub fn classify(line: &str) -> Option<Reply> {
     }
     if has("You can't wear that") {
         return Some(Reply::CannotWear);
+    }
+    if has("again within the next 30 seconds") || has("again within fifteen seconds") {
+        return Some(Reply::Again);
+    }
+    if has("already holding as many boxes") {
+        return Some(Reply::PoolFull);
+    }
+    if has("You don't have that much") {
+        return Some(Reply::NoSilver);
+    }
+    if has("already unlocked") || has("already open") {
+        return Some(Reply::AlreadyOpen);
+    }
+    if has("We don't have any boxes ready for you")
+        || has("We don't seem to have that box")
+        || has("You need to lighten your load first")
+    {
+        return Some(Reply::NoneReady);
+    }
+    if has("You do not notice a trash receptacle") {
+        return Some(Reply::NoTrash);
+    }
+    if let Some(rest) = text.strip_prefix('(')
+        && let Some((number, _)) = rest.split_once(')')
+        && let Ok(spell) = number.parse::<u16>()
+    {
+        return Some(Reply::ScrollSpell {
+            spell,
+            vibrant: has("vibrant"),
+        });
+    }
+    if has("Those were the last two") {
+        return Some(Reply::LastTwo);
     }
     None
 }

@@ -346,3 +346,69 @@ fn specials_go_one_by_one_before_loot_room_takes_the_rest() {
     without_box.room.objects.remove(1);
     assert_eq!(plan.next(&without_box), Step::LootRoom);
 }
+
+#[test]
+fn a_box_in_hand_is_opened_its_coins_charmed_out_and_its_gem_taken() {
+    let mut state = state(&[], true);
+    let mut plan = Planner::for_box(
+        profile(),
+        Memory::default(),
+        "40",
+        Some("fossil charm".to_owned()),
+    );
+    // The stance first, as for any looting; then the box.
+    state.character.stance = Some("defensive (100%)".to_owned());
+    assert_eq!(plan.next(&state), Step::Open("40".to_owned()));
+    plan.outcome(&Outcome::Stored);
+    assert_eq!(plan.next(&state), Step::LookIn("40".to_owned()));
+    state.apply(&Frame::Container {
+        id: "40".to_owned(),
+        title: Some("Coffer".to_owned()),
+        target: None,
+    });
+    inside(&mut state, "40", "41", "coins", "342 silver coins");
+    inside(&mut state, "40", "42", "emerald", "uncut emerald");
+    assert_eq!(
+        plan.next(&state),
+        Step::Charm {
+            charm: "fossil charm".to_owned(),
+            box_: "40".to_owned()
+        }
+    );
+    plan.outcome(&Outcome::Gathered);
+    assert_eq!(
+        plan.next(&state),
+        Step::LootItem("42".to_owned()),
+        "the coins are the charm's; the gem goes by the game's verb"
+    );
+    state.apply(&Frame::ClearContainer {
+        id: "40".to_owned(),
+    });
+    assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
+    assert!(!plan.box_locked());
+}
+
+#[test]
+fn a_locked_box_is_left_alone_and_said_to_be() {
+    let state = state(&[], true);
+    let mut plan = Planner::for_box(profile(), Memory::default(), "40", None);
+    assert_eq!(plan.next(&state), Step::Open("40".to_owned()));
+    plan.outcome(&Outcome::Locked);
+    assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
+    assert!(plan.box_locked());
+}
+
+#[test]
+fn without_a_charm_the_coins_are_gathered_by_hand() {
+    let mut state = state(&[], true);
+    let mut plan = Planner::for_box(profile(), Memory::default(), "40", None);
+    plan.next(&state);
+    plan.next(&state);
+    state.apply(&Frame::Container {
+        id: "40".to_owned(),
+        title: Some("Coffer".to_owned()),
+        target: None,
+    });
+    inside(&mut state, "40", "41", "coins", "12 silver coins");
+    assert_eq!(plan.next(&state), Step::Coins("40".to_owned()));
+}

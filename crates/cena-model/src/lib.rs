@@ -18,6 +18,7 @@
 
 pub mod crit;
 pub mod effects;
+pub mod herbs;
 pub mod movement;
 pub mod spells;
 pub mod state;
@@ -32,6 +33,9 @@ pub use state::character::blocks::InfoReport;
 pub use state::character::body::{Body, Track};
 pub use state::character::enhancive::{Bonus, EnhanciveLine, EnhanciveTotals, Resource, Section};
 pub use state::character::injured::{Able, Injuries};
+pub use state::character::psm::cost::{
+    Gauge, PsmAvailability, PsmCost, every_cost, psm_cost, warcry_cost,
+};
 pub use state::character::psm::{AscensionTable, PsmLine, PsmRanks, PsmSet};
 pub use state::character::skills::{Skill, SkillKind, SkillLine, SkillSet};
 pub use state::character::spellsong::{Spellsong, base_duration, to_bonus};
@@ -65,7 +69,9 @@ pub use state::resolve::{Held, Location, Match, Specificity, match_of};
 // `message::Message` and `societies::Ability` hold those names.
 pub use state::creature::status::{CreatureStatus, Status};
 pub use state::creature::{Area, Attack, AttackCategory, Creature, MessageKind, Treasure};
-pub use state::creatures::{BodyPart, CreatureInstance, Creatures};
+pub use state::creatures::{
+    Ally, BodyPart, BossPhase, CreatureInstance, Creatures, Ending, SpellMark,
+};
 pub use state::gameobj::{Classification, ObjectTypes};
 pub use state::menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem, category_path};
 pub use state::societies::membership::MembershipLine;

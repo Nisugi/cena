@@ -14,7 +14,7 @@ caught by independent checking.
 ## What to do
 
 ```bash
-cd E:/Cena
+cd "$(git rev-parse --show-toplevel)"
 echo "=== tests ==="
 cargo test --workspace 2>&1 | grep -E 'test result:|^error|FAILED|panicked at' | tail -25
 echo "=== count ==="

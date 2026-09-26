@@ -1,0 +1,2060 @@
+{
+"R0001": {
+"kind": "uncrossed",
+"from": "10242",
+"to": "10262",
+"command": "climb wall"
+},
+"R0002": {
+"kind": "uncrossed",
+"from": "1778",
+"to": "3980",
+"command": "climb overhang"
+},
+"R0003": {
+"kind": "uncrossed",
+"from": "5585",
+"to": "5588",
+"command": "climb stairway"
+},
+"R0004": {
+"kind": "uncrossed",
+"from": "18983",
+"to": "18984",
+"command": "go tunnel"
+},
+"R0005": {
+"kind": "uncrossed",
+"from": "2678",
+"to": "2679",
+"command": "go ledge"
+},
+"R0006": {
+"kind": "uncrossed",
+"from": "13207",
+"to": "14219",
+"command": "climb staircase"
+},
+"R0007": {
+"kind": "uncrossed",
+"from": "18343",
+"to": "18344",
+"command": "climb path"
+},
+"R0008": {
+"kind": "uncrossed",
+"from": "26507",
+"to": "26508",
+"command": "climb wall"
+},
+"R0009": {
+"kind": "uncrossed",
+"from": "2843",
+"to": "2844",
+"command": "climb incline"
+},
+"R0010": {
+"kind": "uncrossed",
+"from": "8427",
+"to": "8430",
+"command": "climb ledge"
+},
+"R0011": {
+"kind": "uncrossed",
+"from": "31075",
+"to": "9433",
+"command": "go staircase"
+},
+"R0012": {
+"kind": "uncrossed",
+"from": "9638",
+"to": "9639",
+"command": "go steps"
+},
+"R0013": {
+"kind": "uncrossed",
+"from": "21736",
+"to": "21737",
+"command": "go tunnel"
+},
+"R0014": {
+"kind": "uncrossed",
+"from": "31927",
+"to": "32105",
+"command": "go ladder"
+},
+"R0015": {
+"kind": "conflict",
+"from": "20987",
+"to": "20990",
+"command": "go staircase"
+},
+"R0016": {
+"kind": "uncrossed",
+"from": "13701",
+"to": "21223",
+"command": "go stairway"
+},
+"R0017": {
+"kind": "uncrossed",
+"from": "27394",
+"to": "27758",
+"command": "climb odd boulder"
+},
+"R0018": {
+"kind": "conflict",
+"from": "12555",
+"to": "12563",
+"command": "go stairs"
+},
+"R0019": {
+"kind": "uncrossed",
+"from": "30882",
+"to": "8663",
+"command": "go steps"
+},
+"R0020": {
+"kind": "uncrossed",
+"from": "35444",
+"to": "35445",
+"command": "go ramp"
+},
+"R0021": {
+"kind": "uncrossed",
+"from": "4644",
+"to": "4645",
+"command": "go rope"
+},
+"R0022": {
+"kind": "uncrossed",
+"from": "29083",
+"to": "29088",
+"command": "go stairs"
+},
+"R0023": {
+"kind": "conflict",
+"from": "8665",
+"to": "17793",
+"command": "go dark hollow"
+},
+"R0024": {
+"kind": "uncrossed",
+"from": "12024",
+"to": "12045",
+"command": "climb steps"
+},
+"R0025": {
+"kind": "uncrossed",
+"from": "11846",
+"to": "11850",
+"command": "go steps"
+},
+"R0026": {
+"kind": "uncrossed",
+"from": "9989",
+"to": "9990",
+"command": "climb rocks"
+},
+"R0027": {
+"kind": "uncrossed",
+"from": "17949",
+"to": "17950",
+"command": "climb stairs"
+},
+"R0028": {
+"kind": "uncrossed",
+"from": "13243",
+"to": "17931",
+"command": "go steps"
+},
+"R0029": {
+"kind": "uncrossed",
+"from": "8044",
+"to": "8045",
+"command": "climb crevice"
+},
+"R0030": {
+"kind": "conflict",
+"from": "24385",
+"to": "24384",
+"command": "go tree"
+},
+"R0031": {
+"kind": "uncrossed",
+"from": "12790",
+"to": "12791",
+"command": "climb stairway"
+},
+"R0032": {
+"kind": "uncrossed",
+"from": "36100",
+"to": "36103",
+"command": "go oak door"
+},
+"R0033": {
+"kind": "conflict",
+"from": "12019",
+"to": "12025",
+"command": "climb blocks"
+},
+"R0034": {
+"kind": "uncrossed",
+"from": "2229",
+"to": "2230",
+"command": "go fissure"
+},
+"R0035": {
+"kind": "uncrossed",
+"from": "34944",
+"to": "35234",
+"command": "go stairs"
+},
+"R0036": {
+"kind": "conflict",
+"from": "7157",
+"to": "36342",
+"command": "go hole"
+},
+"R0037": {
+"kind": "uncrossed",
+"from": "20674",
+"to": "20675",
+"command": "go tunnel"
+},
+"R0038": {
+"kind": "uncrossed",
+"from": "30972",
+"to": "30973",
+"command": "go steps"
+},
+"R0039": {
+"kind": "uncrossed",
+"from": "24547",
+"to": "28346",
+"command": "go fissure"
+},
+"R0040": {
+"kind": "uncrossed",
+"from": "13975",
+"to": "14580",
+"command": "go oak door"
+},
+"R0041": {
+"kind": "uncrossed",
+"from": "17258",
+"to": "17259",
+"command": "go staircase"
+},
+"R0042": {
+"kind": "uncrossed",
+"from": "6394",
+"to": "6395",
+"command": "climb crevice"
+},
+"R0043": {
+"kind": "uncrossed",
+"from": "21098",
+"to": "21099",
+"command": "go steps"
+},
+"R0044": {
+"kind": "uncrossed",
+"from": "34213",
+"to": "34241",
+"command": "g ramp"
+},
+"R0045": {
+"kind": "conflict",
+"from": "28890",
+"to": "28891",
+"command": "go stairs"
+},
+"R0046": {
+"kind": "uncrossed",
+"from": "2762",
+"to": "2763",
+"command": "climb stones"
+},
+"R0047": {
+"kind": "uncrossed",
+"from": "18185",
+"to": "18186",
+"command": "go shaft"
+},
+"R0048": {
+"kind": "uncrossed",
+"from": "2842",
+"to": "2847",
+"command": "climb incline"
+},
+"R0049": {
+"kind": "uncrossed",
+"from": "12776",
+"to": "12787",
+"command": "climb slide"
+},
+"R0050": {
+"kind": "conflict",
+"from": "7146",
+"to": "7085",
+"command": "go hole"
+},
+"R0051": {
+"kind": "uncrossed",
+"from": "19791",
+"to": "19792",
+"command": "climb stairs"
+},
+"R0052": {
+"kind": "conflict",
+"from": "11117",
+"to": "11118",
+"command": "go hole"
+},
+"R0053": {
+"kind": "uncrossed",
+"from": "24786",
+"to": "24788",
+"command": "go oak door"
+},
+"R0054": {
+"kind": "uncrossed",
+"from": "24526",
+"to": "24533",
+"command": "climb hillside"
+},
+"R0055": {
+"kind": "uncrossed",
+"from": "21112",
+"to": "21113",
+"command": "go steps"
+},
+"R0056": {
+"kind": "uncrossed",
+"from": "16497",
+"to": "16498",
+"command": "go ladder"
+},
+"R0057": {
+"kind": "conflict",
+"from": "33420",
+"to": "33421",
+"command": "go staircase"
+},
+"R0058": {
+"kind": "uncrossed",
+"from": "26421",
+"to": "27487",
+"command": "go ladder"
+},
+"R0059": {
+"kind": "uncrossed",
+"from": "32460",
+"to": "32461",
+"command": "go stage door"
+},
+"R0060": {
+"kind": "conflict",
+"from": "2331",
+"to": "2332",
+"command": "go ramp"
+},
+"R0061": {
+"kind": "uncrossed",
+"from": "7706",
+"to": "7707",
+"command": "go tunnel"
+},
+"R0062": {
+"kind": "uncrossed",
+"from": "4150",
+"to": "4151",
+"command": "go tunnel"
+},
+"R0063": {
+"kind": "uncrossed",
+"from": "2840",
+"to": "2871",
+"command": "climb slope"
+},
+"R0064": {
+"kind": "uncrossed",
+"from": "6720",
+"to": "6721",
+"command": "go hole"
+},
+"R0065": {
+"kind": "conflict",
+"from": "33415",
+"to": "33425",
+"command": "go steps"
+},
+"R0066": {
+"kind": "uncrossed",
+"from": "17008",
+"to": "4602",
+"command": "climb crack"
+},
+"R0067": {
+"kind": "uncrossed",
+"from": "9374",
+"to": "9375",
+"command": "climb outcroppings"
+},
+"R0068": {
+"kind": "conflict",
+"from": "3608",
+"to": "4196",
+"command": "climb bank"
+},
+"R0069": {
+"kind": "uncrossed",
+"from": "20904",
+"to": "20905",
+"command": "go boulders"
+},
+"R0070": {
+"kind": "uncrossed",
+"from": "25675",
+"to": "25678",
+"command": "go stairs"
+},
+"R0071": {
+"kind": "uncrossed",
+"from": "189",
+"to": "190",
+"command": "climb root"
+},
+"R0072": {
+"kind": "conflict",
+"from": "9856",
+"to": "9865",
+"command": "climb ridge"
+},
+"R0073": {
+"kind": "uncrossed",
+"from": "31926",
+"to": "31927",
+"command": "go stairway"
+},
+"R0074": {
+"kind": "conflict",
+"from": "8671",
+"to": "8672",
+"command": "go stairs"
+},
+"R0075": {
+"kind": "uncrossed",
+"from": "1884",
+"to": "1892",
+"command": "go staircase"
+},
+"R0076": {
+"kind": "uncrossed",
+"from": "17159",
+"to": "17160",
+"command": "climb steps"
+},
+"R0077": {
+"kind": "uncrossed",
+"from": "2838",
+"to": "2839",
+"command": "climb incline"
+},
+"R0078": {
+"kind": "uncrossed",
+"from": "19594",
+"to": "19595",
+"command": "go steps"
+},
+"R0079": {
+"kind": "uncrossed",
+"from": "7536",
+"to": "7543",
+"command": "climb rubble"
+},
+"R0080": {
+"kind": "uncrossed",
+"from": "30557",
+"to": "30558",
+"command": "go tunnel"
+},
+"R0081": {
+"kind": "uncrossed",
+"from": "6132",
+"to": "8608",
+"command": "go fissure"
+},
+"R0082": {
+"kind": "conflict",
+"from": "10147",
+"to": "10149",
+"command": "climb vines"
+},
+"R0083": {
+"kind": "uncrossed",
+"from": "18625",
+"to": "18626",
+"command": "go tunnel"
+},
+"R0084": {
+"kind": "uncrossed",
+"from": "26229",
+"to": "3736",
+"command": "go steps"
+},
+"R0085": {
+"kind": "uncrossed",
+"from": "21136",
+"to": "21137",
+"command": "go ladder"
+},
+"R0086": {
+"kind": "uncrossed",
+"from": "9633",
+"to": "9634",
+"command": "go steps"
+},
+"R0087": {
+"kind": "uncrossed",
+"from": "3932",
+"to": "3933",
+"command": "go hole"
+},
+"R0088": {
+"kind": "uncrossed",
+"from": "26615",
+"to": "26616",
+"command": "go stairway"
+},
+"R0089": {
+"kind": "uncrossed",
+"from": "10258",
+"to": "10262",
+"command": "climb wall"
+},
+"R0090": {
+"kind": "uncrossed",
+"from": "13163",
+"to": "16923",
+"command": "go tunnel"
+},
+"R0091": {
+"kind": "uncrossed",
+"from": "18959",
+"to": "18960",
+"command": "climb west staircase"
+},
+"R0092": {
+"kind": "uncrossed",
+"from": "883",
+"to": "884",
+"command": "climb boulders"
+},
+"R0093": {
+"kind": "uncrossed",
+"from": "20606",
+"to": "20607",
+"command": "go fissure"
+},
+"R0094": {
+"kind": "conflict",
+"from": "36373",
+"to": "36374",
+"command": "go stair"
+},
+"R0095": {
+"kind": "uncrossed",
+"from": "31533",
+"to": "31536",
+"command": "go stone steps"
+},
+"R0096": {
+"kind": "uncrossed",
+"from": "2681",
+"to": "2682",
+"command": "climb slope"
+},
+"R0097": {
+"kind": "uncrossed",
+"from": "17731",
+"to": "17732",
+"command": "go stairs"
+},
+"R0098": {
+"kind": "uncrossed",
+"from": "11247",
+"to": "11248",
+"command": "go stairs"
+},
+"R0099": {
+"kind": "conflict",
+"from": "11090",
+"to": "11105",
+"command": "go grate"
+},
+"R0100": {
+"kind": "uncrossed",
+"from": "74",
+"to": "75",
+"command": "climb wall"
+},
+"R0101": {
+"kind": "uncrossed",
+"from": "4680",
+"to": "4682",
+"command": "climb tunnel"
+},
+"R0102": {
+"kind": "conflict",
+"from": "27821",
+"to": "27822",
+"command": "go stairway"
+},
+"R0103": {
+"kind": "uncrossed",
+"from": "32368",
+"to": "6322",
+"command": "go steps"
+},
+"R0104": {
+"kind": "conflict",
+"from": "3025",
+"to": "3026",
+"command": "go hole"
+},
+"R0105": {
+"kind": "uncrossed",
+"from": "20038",
+"to": "20039",
+"command": "go tunnel"
+},
+"R0106": {
+"kind": "uncrossed",
+"from": "4956",
+"to": "4989",
+"command": "go steps"
+},
+"R0107": {
+"kind": "uncrossed",
+"from": "7694",
+"to": "7734",
+"command": "go hole"
+},
+"R0108": {
+"kind": "uncrossed",
+"from": "31953",
+"to": "31954",
+"command": "go ladder"
+},
+"R0109": {
+"kind": "uncrossed",
+"from": "3998",
+"to": "3999",
+"command": "go fissure"
+},
+"R0110": {
+"kind": "conflict",
+"from": "5909",
+"to": "5910",
+"command": "go hatch"
+},
+"R0111": {
+"kind": "conflict",
+"from": "18314",
+"to": "18315",
+"command": "climb steps"
+},
+"R0112": {
+"kind": "uncrossed",
+"from": "10497",
+"to": "10499",
+"command": "climb bank"
+},
+"R0113": {
+"kind": "uncrossed",
+"from": "2716",
+"to": "2717",
+"command": "climb path"
+},
+"R0114": {
+"kind": "conflict",
+"from": "13430",
+"to": "13433",
+"command": "go steps"
+},
+"R0115": {
+"kind": "uncrossed",
+"from": "31209",
+"to": "31213",
+"command": "go steps"
+},
+"R0116": {
+"kind": "uncrossed",
+"from": "34283",
+"to": "34287",
+"command": "go ramp"
+},
+"R0117": {
+"kind": "uncrossed",
+"from": "31800",
+"to": "31801",
+"command": "go staircase"
+},
+"R0118": {
+"kind": "conflict",
+"from": "14541",
+"to": "14486",
+"command": "climb stairs"
+},
+"R0119": {
+"kind": "uncrossed",
+"from": "6332",
+"to": "6355",
+"command": "go stairs"
+},
+"R0120": {
+"kind": "uncrossed",
+"from": "2689",
+"to": "2690",
+"command": "climb slope"
+},
+"R0121": {
+"kind": "uncrossed",
+"from": "13026",
+"to": "13027",
+"command": "climb stairs"
+},
+"R0122": {
+"kind": "conflict",
+"from": "2320",
+"to": "2332",
+"command": "go staircase"
+},
+"R0123": {
+"kind": "conflict",
+"from": "5298",
+"to": "5323",
+"command": "climb hill"
+},
+"R0124": {
+"kind": "uncrossed",
+"from": "24749",
+"to": "24759",
+"command": "go oak door"
+},
+"R0125": {
+"kind": "uncrossed",
+"from": "21331",
+"to": "26066",
+"command": "go secret trapdoor"
+},
+"R0126": {
+"kind": "uncrossed",
+"from": "28253",
+"to": "28254",
+"command": "crawl up"
+},
+"R0127": {
+"kind": "uncrossed",
+"from": "34546",
+"to": "34547",
+"command": "go ladder"
+},
+"R0128": {
+"kind": "uncrossed",
+"from": "24029",
+"to": "24038",
+"command": "go tunnel"
+},
+"R0129": {
+"kind": "conflict",
+"from": "22081",
+"to": "22082",
+"command": "go staircase"
+},
+"R0130": {
+"kind": "uncrossed",
+"from": "9996",
+"to": "9997",
+"command": "climb slope"
+},
+"R0131": {
+"kind": "uncrossed",
+"from": "2898",
+"to": "2901",
+"command": "go stairway"
+},
+"R0132": {
+"kind": "uncrossed",
+"from": "26440",
+"to": "27533",
+"command": "go craggy fissure"
+},
+"R0133": {
+"kind": "uncrossed",
+"from": "18265",
+"to": "18266",
+"command": "go steps"
+},
+"R0134": {
+"kind": "uncrossed",
+"from": "7516",
+"to": "7517",
+"command": "go hole"
+},
+"R0135": {
+"kind": "uncrossed",
+"from": "9074",
+"to": "9075",
+"command": "go boulder"
+},
+"R0136": {
+"kind": "uncrossed",
+"from": "26454",
+"to": "26650",
+"command": "go boulder"
+},
+"R0137": {
+"kind": "uncrossed",
+"from": "7861",
+"to": "7862",
+"command": "go hole"
+},
+"R0138": {
+"kind": "uncrossed",
+"from": "6980",
+"to": "6981",
+"command": "go narrow ledge"
+},
+"R0139": {
+"kind": "uncrossed",
+"from": "25678",
+"to": "27817",
+"command": "go staircase"
+},
+"R0140": {
+"kind": "uncrossed",
+"from": "12021",
+"to": "12024",
+"command": "climb benches"
+},
+"R0141": {
+"kind": "uncrossed",
+"from": "31794",
+"to": "35967",
+"command": "go rope"
+},
+"R0142": {
+"kind": "uncrossed",
+"from": "27487",
+"to": "27588",
+"command": "go hatch"
+},
+"R0143": {
+"kind": "uncrossed",
+"from": "13102",
+"to": "15977",
+"command": "go tunnel"
+},
+"R0144": {
+"kind": "uncrossed",
+"from": "1500",
+"to": "4583",
+"command": "climb wall"
+},
+"R0145": {
+"kind": "uncrossed",
+"from": "4800",
+"to": "4801",
+"command": "go steps"
+},
+"R0146": {
+"kind": "uncrossed",
+"from": "2166",
+"to": "2167",
+"command": "climb trail"
+},
+"R0147": {
+"kind": "uncrossed",
+"from": "30895",
+"to": "30896",
+"command": "go staircase"
+},
+"R0148": {
+"kind": "conflict",
+"from": "31368",
+"to": "31371",
+"command": "go staircase"
+},
+"R0149": {
+"kind": "conflict",
+"from": "25816",
+"to": "25817",
+"command": "go stairway"
+},
+"R0150": {
+"kind": "uncrossed",
+"from": "14234",
+"to": "1568",
+"command": "go ramp"
+},
+"R0151": {
+"kind": "uncrossed",
+"from": "3735",
+"to": "3736",
+"command": "go oak door"
+},
+"R0152": {
+"kind": "uncrossed",
+"from": "30425",
+"to": "30426",
+"command": "climb ladder"
+},
+"R0153": {
+"kind": "uncrossed",
+"from": "20788",
+"to": "20791",
+"command": "go stairs"
+},
+"R0154": {
+"kind": "uncrossed",
+"from": "17912",
+"to": "17913",
+"command": "climb stairway"
+},
+"R0155": {
+"kind": "uncrossed",
+"from": "12771",
+"to": "12774",
+"command": "climb rubble"
+},
+"R0156": {
+"kind": "uncrossed",
+"from": "6348",
+"to": "6351",
+"command": "go stairs"
+},
+"R0157": {
+"kind": "conflict",
+"from": "33283",
+"to": "33302",
+"command": "go stairs"
+},
+"R0158": {
+"kind": "uncrossed",
+"from": "20857",
+"to": "20858",
+"command": "go dais"
+},
+"R0159": {
+"kind": "conflict",
+"from": "13196",
+"to": "14155",
+"command": "climb stairwell"
+},
+"R0160": {
+"kind": "uncrossed",
+"from": "19759",
+"to": "19760",
+"command": "climb stairway"
+},
+"R0161": {
+"kind": "uncrossed",
+"from": "3317",
+"to": "3318",
+"command": "go hole"
+},
+"R0162": {
+"kind": "conflict",
+"from": "24392",
+"to": "24384",
+"command": "go tree"
+},
+"R0163": {
+"kind": "uncrossed",
+"from": "4572",
+"to": "9881",
+"command": "climb tree"
+},
+"R0164": {
+"kind": "uncrossed",
+"from": "10243",
+"to": "10263",
+"command": "climb wall"
+},
+"R0165": {
+"kind": "uncrossed",
+"from": "2835",
+"to": "2836",
+"command": "climb slope"
+},
+"R0166": {
+"kind": "uncrossed",
+"from": "22380",
+"to": "22417",
+"command": "go hatch"
+},
+"R0167": {
+"kind": "conflict",
+"from": "30959",
+"to": "30960",
+"command": "go steps"
+},
+"R0168": {
+"kind": "uncrossed",
+"from": "25625",
+"to": "25626",
+"command": "go staircase"
+},
+"R0169": {
+"kind": "uncrossed",
+"from": "102",
+"to": "103",
+"command": "climb protrusion"
+},
+"R0170": {
+"kind": "uncrossed",
+"from": "6333",
+"to": "6334",
+"command": "go stairs"
+},
+"R0171": {
+"kind": "uncrossed",
+"from": "33919",
+"to": "33920",
+"command": "climb steps"
+},
+"R0172": {
+"kind": "uncrossed",
+"from": "12707",
+"to": "12717",
+"command": "go stairs"
+},
+"R0173": {
+"kind": "uncrossed",
+"from": "26015",
+"to": "26016",
+"command": "go tunnel"
+},
+"R0174": {
+"kind": "uncrossed",
+"from": "5045",
+"to": "5046",
+"command": "climb path"
+},
+"R0175": {
+"kind": "conflict",
+"from": "19212",
+"to": "33356",
+"command": "go staircase"
+},
+"R0176": {
+"kind": "uncrossed",
+"from": "15513",
+"to": "6361",
+"command": "go stairs"
+},
+"R0177": {
+"kind": "conflict",
+"from": "24387",
+"to": "24384",
+"command": "go tree"
+},
+"R0178": {
+"kind": "uncrossed",
+"from": "9010",
+"to": "9011",
+"command": "go steps"
+},
+"R0179": {
+"kind": "uncrossed",
+"from": "1832",
+"to": "1833",
+"command": "climb tree"
+},
+"R0180": {
+"kind": "conflict",
+"from": "4642",
+"to": "4643",
+"command": "climb ladder"
+},
+"R0181": {
+"kind": "uncrossed",
+"from": "26055",
+"to": "26059",
+"command": "go oak door"
+},
+"R0182": {
+"kind": "uncrossed",
+"from": "5778",
+"to": "9459",
+"command": "climb stairs"
+},
+"R0183": {
+"kind": "conflict",
+"from": "15984",
+"to": "15990",
+"command": "climb trail"
+},
+"R0184": {
+"kind": "conflict",
+"from": "5239",
+"to": "5241",
+"command": "climb ladder"
+},
+"R0185": {
+"kind": "uncrossed",
+"from": "35237",
+"to": "36724",
+"command": "go stairs"
+},
+"R0186": {
+"kind": "uncrossed",
+"from": "2765",
+"to": "2766",
+"command": "climb rocks"
+},
+"R0187": {
+"kind": "uncrossed",
+"from": "18681",
+"to": "18720",
+"command": "go steps"
+},
+"R0188": {
+"kind": "uncrossed",
+"from": "33756",
+"to": "33765",
+"command": "go slope"
+},
+"R0189": {
+"kind": "uncrossed",
+"from": "2509",
+"to": "2510",
+"command": "climb bank"
+},
+"R0190": {
+"kind": "uncrossed",
+"from": "35589",
+"to": "35602",
+"command": "go hatch"
+},
+"R0191": {
+"kind": "uncrossed",
+"from": "1484",
+"to": "30213",
+"command": "go ramp"
+},
+"R0192": {
+"kind": "uncrossed",
+"from": "30649",
+"to": "30650",
+"command": "go stairway"
+},
+"R0193": {
+"kind": "conflict",
+"from": "2359",
+"to": "3726",
+"command": "go stairs"
+},
+"R0194": {
+"kind": "uncrossed",
+"from": "26795",
+"to": "26796",
+"command": "go staircase"
+},
+"R0195": {
+"kind": "conflict",
+"from": "387",
+"to": "395",
+"command": "go staircase"
+},
+"R0196": {
+"kind": "uncrossed",
+"from": "10382",
+"to": "3746",
+"command": "go steps"
+},
+"R0197": {
+"kind": "uncrossed",
+"from": "10482",
+"to": "5999",
+"command": "go steps"
+},
+"R0198": {
+"kind": "uncrossed",
+"from": "30070",
+"to": "30071",
+"command": "go steps"
+},
+"R0199": {
+"kind": "uncrossed",
+"from": "26834",
+"to": "36470",
+"command": "go staircase"
+},
+"R0200": {
+"kind": "uncrossed",
+"from": "26618",
+"to": "26619",
+"command": "go ramp"
+},
+"R0201": {
+"kind": "uncrossed",
+"from": "23850",
+"to": "23851",
+"command": "go steps"
+},
+"R0202": {
+"kind": "uncrossed",
+"from": "18979",
+"to": "18981",
+"command": "climb stairway"
+},
+"R0203": {
+"kind": "uncrossed",
+"from": "20818",
+"to": "20822",
+"command": "go narrow tunnel"
+},
+"R0204": {
+"kind": "uncrossed",
+"from": "34858",
+"to": "34859",
+"command": "go fissure"
+},
+"R0205": {
+"kind": "conflict",
+"from": "18831",
+"to": "18832",
+"command": "climb ravine"
+},
+"R0206": {
+"kind": "uncrossed",
+"from": "27055",
+"to": "27394",
+"command": "go long burrow"
+},
+"R0207": {
+"kind": "conflict",
+"from": "33409",
+"to": "33423",
+"command": "go stone steps"
+},
+"R0208": {
+"kind": "conflict",
+"from": "23365",
+"to": "23366",
+"command": "go small door"
+},
+"R0209": {
+"kind": "conflict",
+"from": "20907",
+"to": "20909",
+"command": "climb lattice-work"
+},
+"R0210": {
+"kind": "uncrossed",
+"from": "10421",
+"to": "13993",
+"command": "climb stairway"
+},
+"R0211": {
+"kind": "uncrossed",
+"from": "35802",
+"to": "35803",
+"command": "go staircase"
+},
+"R0212": {
+"kind": "uncrossed",
+"from": "9012",
+"to": "9013",
+"command": "go steps"
+},
+"R0213": {
+"kind": "uncrossed",
+"from": "24046",
+"to": "24048",
+"command": "climb steps"
+},
+"R0214": {
+"kind": "uncrossed",
+"from": "31805",
+"to": "31807",
+"command": "go staircase"
+},
+"R0215": {
+"kind": "uncrossed",
+"from": "250",
+"to": "29631",
+"command": "go ramp"
+},
+"R0216": {
+"kind": "conflict",
+"from": "14141",
+"to": "14142",
+"command": "climb stairway"
+},
+"R0217": {
+"kind": "uncrossed",
+"from": "10435",
+"to": "10437",
+"command": "go staircase"
+},
+"R0218": {
+"kind": "uncrossed",
+"from": "2278",
+"to": "2279",
+"command": "climb rubble"
+},
+"R0219": {
+"kind": "uncrossed",
+"from": "5822",
+"to": "5823",
+"command": "go crevasse"
+},
+"R0220": {
+"kind": "uncrossed",
+"from": "36396",
+"to": "36397",
+"command": "go hole"
+},
+"R0221": {
+"kind": "uncrossed",
+"from": "26060",
+"to": "7704",
+"command": "go slope"
+},
+"R0222": {
+"kind": "conflict",
+"from": "24678",
+"to": "24679",
+"command": "go hole"
+},
+"R0223": {
+"kind": "uncrossed",
+"from": "15568",
+"to": "19949",
+"command": "go ramp"
+},
+"R0224": {
+"kind": "uncrossed",
+"from": "20793",
+"to": "20811",
+"command": "go mithril staircase"
+},
+"R0225": {
+"kind": "conflict",
+"from": "11837",
+"to": "11838",
+"command": "go steps"
+},
+"R0226": {
+"kind": "uncrossed",
+"from": "19325",
+"to": "19329",
+"command": "go oak door"
+},
+"R0227": {
+"kind": "uncrossed",
+"from": "14622",
+"to": "14623",
+"command": "go staircase"
+},
+"R0228": {
+"kind": "uncrossed",
+"from": "15995",
+"to": "32599",
+"command": "go black stair"
+},
+"R0229": {
+"kind": "uncrossed",
+"from": "2389",
+"to": "3424",
+"command": "go staircase"
+},
+"R0230": {
+"kind": "uncrossed",
+"from": "31800",
+"to": "31802",
+"command": "go ladder"
+},
+"R0231": {
+"kind": "conflict",
+"from": "4641",
+"to": "4650",
+"command": "climb tree"
+},
+"R0232": {
+"kind": "uncrossed",
+"from": "7221",
+"to": "7225",
+"command": "go tunnel"
+},
+"R0233": {
+"kind": "uncrossed",
+"from": "12023",
+"to": "12041",
+"command": "go stairs"
+},
+"R0234": {
+"kind": "uncrossed",
+"from": "24032",
+"to": "24040",
+"command": "go brick-lined tunnel"
+},
+"R0235": {
+"kind": "conflict",
+"from": "6473",
+"to": "6474",
+"command": "climb slope"
+},
+"R0236": {
+"kind": "uncrossed",
+"from": "15826",
+"to": "15827",
+"command": "climb stairs"
+},
+"R0237": {
+"kind": "uncrossed",
+"from": "12625",
+"to": "12626",
+"command": "go hatch"
+},
+"R0238": {
+"kind": "uncrossed",
+"from": "6292",
+"to": "6293",
+"command": "go hole"
+},
+"R0239": {
+"kind": "conflict",
+"from": "5831",
+"to": "10659",
+"command": "climb gully"
+},
+"R0240": {
+"kind": "uncrossed",
+"from": "1246",
+"to": "1247",
+"command": "go stair"
+},
+"R0241": {
+"kind": "uncrossed",
+"from": "4208",
+"to": "4209",
+"command": "climb rockslide"
+},
+"R0242": {
+"kind": "uncrossed",
+"from": "12984",
+"to": "14824",
+"command": "climb ladder"
+},
+"R0243": {
+"kind": "uncrossed",
+"from": "9750",
+"to": "9751",
+"command": "climb stairs"
+},
+"R0244": {
+"kind": "uncrossed",
+"from": "34292",
+"to": "34293",
+"command": "climb ledge"
+},
+"R0245": {
+"kind": "uncrossed",
+"from": "410",
+"to": "477",
+"command": "go steps"
+},
+"R0246": {
+"kind": "conflict",
+"from": "16443",
+"to": "16447",
+"command": "go trapdoor"
+},
+"R0247": {
+"kind": "uncrossed",
+"from": "2210",
+"to": "2211",
+"command": "climb glass"
+},
+"R0248": {
+"kind": "uncrossed",
+"from": "23976",
+"to": "384",
+"command": "go trapdoor"
+},
+"R0249": {
+"kind": "conflict",
+"from": "23846",
+"to": "23847",
+"command": "go rope"
+},
+"R0250": {
+"kind": "uncrossed",
+"from": "31214",
+"to": "31219",
+"command": "go oak door"
+},
+"R0251": {
+"kind": "uncrossed",
+"from": "14853",
+"to": "14854",
+"command": "go steps"
+},
+"R0252": {
+"kind": "uncrossed",
+"from": "1489",
+"to": "7852",
+"command": "go tower"
+},
+"R0253": {
+"kind": "conflict",
+"from": "17682",
+"to": "23208",
+"command": "go ladder"
+},
+"R0254": {
+"kind": "conflict",
+"from": "3897",
+"to": "3898",
+"command": "go ravine"
+},
+"R0255": {
+"kind": "uncrossed",
+"from": "26036",
+"to": "752",
+"command": "go ladder"
+},
+"R0256": {
+"kind": "conflict",
+"from": "24389",
+"to": "24384",
+"command": "go tree"
+},
+"R0257": {
+"kind": "uncrossed",
+"from": "920",
+"to": "921",
+"command": "go tunnel"
+},
+"R0258": {
+"kind": "uncrossed",
+"from": "12017",
+"to": "12022",
+"command": "climb benches"
+},
+"R0259": {
+"kind": "conflict",
+"from": "9863",
+"to": "9864",
+"command": "climb outcropping"
+},
+"R0260": {
+"kind": "uncrossed",
+"from": "1343",
+"to": "1344",
+"command": "go ramp"
+},
+"R0261": {
+"kind": "uncrossed",
+"from": "24792",
+"to": "35985",
+"command": "go boulder"
+},
+"R0262": {
+"kind": "uncrossed",
+"from": "26501",
+"to": "26502",
+"command": "go ladder"
+},
+"R0263": {
+"kind": "uncrossed",
+"from": "2523",
+"to": "2524",
+"command": "climb rockslide"
+},
+"R0264": {
+"kind": "uncrossed",
+"from": "1787",
+"to": "1788",
+"command": "climb boulder"
+},
+"R0265": {
+"kind": "uncrossed",
+"from": "29776",
+"to": "29778",
+"command": "go steps"
+},
+"R0266": {
+"kind": "uncrossed",
+"from": "8440",
+"to": "8443",
+"command": "climb trail"
+},
+"R0267": {
+"kind": "uncrossed",
+"from": "24407",
+"to": "24472",
+"command": "go stairway"
+},
+"R0268": {
+"kind": "uncrossed",
+"from": "4566",
+"to": "9879",
+"command": "go hole"
+},
+"R0269": {
+"kind": "uncrossed",
+"from": "6610",
+"to": "6611",
+"command": "climb steps"
+},
+"R0270": {
+"kind": "uncrossed",
+"from": "19607",
+"to": "19608",
+"command": "go staircase"
+},
+"R0271": {
+"kind": "uncrossed",
+"from": "12708",
+"to": "12749",
+"command": "go stairs"
+},
+"R0272": {
+"kind": "uncrossed",
+"from": "31967",
+"to": "32085",
+"command": "go stairs"
+},
+"R0273": {
+"kind": "uncrossed",
+"from": "5544",
+"to": "5545",
+"command": "go hole"
+},
+"R0274": {
+"kind": "conflict",
+"from": "24383",
+"to": "24384",
+"command": "go tree"
+},
+"R0275": {
+"kind": "uncrossed",
+"from": "7508",
+"to": "7515",
+"command": "say well"
+},
+"R0276": {
+"kind": "uncrossed",
+"from": "13847",
+"to": "13848",
+"command": "go steps"
+},
+"R0277": {
+"kind": "uncrossed",
+"from": "11230",
+"to": "11231",
+"command": "go staircase"
+},
+"R0278": {
+"kind": "conflict",
+"from": "24386",
+"to": "24384",
+"command": "go tree"
+},
+"R0279": {
+"kind": "uncrossed",
+"from": "18288",
+"to": "18289",
+"command": "climb dune"
+},
+"R0280": {
+"kind": "conflict",
+"from": "2332",
+"to": "2356",
+"command": "go steps"
+},
+"R0281": {
+"kind": "uncrossed",
+"from": "17141",
+"to": "17142",
+"command": "go stairwell"
+},
+"R0282": {
+"kind": "uncrossed",
+"from": "23673",
+"to": "23674",
+"command": "go steps"
+},
+"R0283": {
+"kind": "uncrossed",
+"from": "4662",
+"to": "4665",
+"command": "climb stones"
+},
+"R0284": {
+"kind": "uncrossed",
+"from": "19734",
+"to": "19737",
+"command": "climb stairway"
+},
+"R0285": {
+"kind": "uncrossed",
+"from": "16425",
+"to": "16426",
+"command": "climb staircase"
+},
+"R0286": {
+"kind": "uncrossed",
+"from": "15930",
+"to": "9224",
+"command": "go hole"
+},
+"R0287": {
+"kind": "uncrossed",
+"from": "1826",
+"to": "1827",
+"command": "climb trunk"
+},
+"R0288": {
+"kind": "uncrossed",
+"from": "26617",
+"to": "26618",
+"command": "go hole"
+},
+"R0289": {
+"kind": "uncrossed",
+"from": "4337",
+"to": "8163",
+"command": "go fissure"
+},
+"R0290": {
+"kind": "conflict",
+"from": "34332",
+"to": "34333",
+"command": "climb rise"
+},
+"R0291": {
+"kind": "uncrossed",
+"from": "4880",
+"to": "4882",
+"command": "climb cleft"
+},
+"R0292": {
+"kind": "uncrossed",
+"from": "10166",
+"to": "10167",
+"command": "go crevasse"
+},
+"R0293": {
+"kind": "uncrossed",
+"from": "35442",
+"to": "35447",
+"command": "go ramp"
+},
+"R0294": {
+"kind": "uncrossed",
+"from": "19290",
+"to": "19294",
+"command": "go fieldstone steps"
+},
+"R0295": {
+"kind": "conflict",
+"from": "271",
+"to": "3809",
+"command": "go stairway"
+},
+"R0296": {
+"kind": "uncrossed",
+"from": "9232",
+"to": "9237",
+"command": "go stairway"
+},
+"R0297": {
+"kind": "uncrossed",
+"from": "9579",
+"to": "9580",
+"command": "climb rocks"
+},
+"R0298": {
+"kind": "uncrossed",
+"from": "8180",
+"to": "8181",
+"command": "go fissure"
+},
+"R0299": {
+"kind": "uncrossed",
+"from": "29106",
+"to": "29108",
+"command": "go steps"
+},
+"R0300": {
+"kind": "uncrossed",
+"from": "31805",
+"to": "31806",
+"command": "go ladder"
+},
+"R0301": {
+"kind": "uncrossed",
+"from": "9214",
+"to": "9239",
+"command": "climb rope"
+},
+"R0302": {
+"kind": "uncrossed",
+"from": "31527",
+"to": "31530",
+"command": "go wood staircase"
+},
+"R0303": {
+"kind": "conflict",
+"from": "23861",
+"to": "23862",
+"command": "go ladder"
+},
+"R0304": {
+"kind": "conflict",
+"from": "8064",
+"to": "8066",
+"command": "climb incline"
+},
+"R0305": {
+"kind": "uncrossed",
+"from": "18631",
+"to": "18632",
+"command": "climb staircase"
+},
+"R0306": {
+"kind": "uncrossed",
+"from": "16454",
+"to": "16455",
+"command": "go stairs"
+},
+"R0307": {
+"kind": "conflict",
+"from": "7811",
+"to": "7812",
+"command": "climb stones"
+},
+"R0308": {
+"kind": "conflict",
+"from": "17590",
+"to": "17591",
+"command": "climb steps"
+},
+"R0309": {
+"kind": "conflict",
+"from": "7083",
+"to": "7120",
+"command": "go trapdoor"
+},
+"R0310": {
+"kind": "uncrossed",
+"from": "21688",
+"to": "279",
+"command": "climb walls"
+},
+"R0311": {
+"kind": "uncrossed",
+"from": "11145",
+"to": "11146",
+"command": "go trapdoor"
+},
+"R0312": {
+"kind": "uncrossed",
+"from": "9015",
+"to": "9016",
+"command": "go steps"
+},
+"R0313": {
+"kind": "uncrossed",
+"from": "23521",
+"to": "24046",
+"command": "climb stairway"
+},
+"R0314": {
+"kind": "conflict",
+"from": "11375",
+"to": "11376",
+"command": "climb staircase"
+},
+"R0315": {
+"kind": "uncrossed",
+"from": "1789",
+"to": "1791",
+"command": "climb rocks"
+},
+"R0316": {
+"kind": "uncrossed",
+"from": "10384",
+"to": "13312",
+"command": "go stairway"
+},
+"R0317": {
+"kind": "uncrossed",
+"from": "2647",
+"to": "2658",
+"command": "climb steps"
+},
+"R0318": {
+"kind": "conflict",
+"from": "28917",
+"to": "28918",
+"command": "go ramp"
+},
+"R0319": {
+"kind": "uncrossed",
+"from": "26744",
+"to": "26745",
+"command": "go slope"
+},
+"R0320": {
+"kind": "uncrossed",
+"from": "34846",
+"to": "34847",
+"command": "go stairway"
+},
+"R0321": {
+"kind": "uncrossed",
+"from": "1275",
+"to": "36158",
+"command": "go ladder"
+},
+"R0322": {
+"kind": "uncrossed",
+"from": "26590",
+"to": "26591",
+"command": "go rope"
+},
+"R0323": {
+"kind": "uncrossed",
+"from": "33441",
+"to": "33442",
+"command": "go narrow stair"
+},
+"R0324": {
+"kind": "uncrossed",
+"from": "3125",
+"to": "3126",
+"command": "go tree"
+},
+"R0325": {
+"kind": "uncrossed",
+"from": "4659",
+"to": "4684",
+"command": "climb steps"
+},
+"R0326": {
+"kind": "uncrossed",
+"from": "1427",
+"to": "1428",
+"command": "go steps"
+},
+"R0327": {
+"kind": "uncrossed",
+"from": "30276",
+"to": "30279",
+"command": "go ramp"
+},
+"R0328": {
+"kind": "conflict",
+"from": "19936",
+"to": "19938",
+"command": "go stairs"
+},
+"R0329": {
+"kind": "uncrossed",
+"from": "11298",
+"to": "11319",
+"command": "go hole"
+},
+"R0330": {
+"kind": "uncrossed",
+"from": "963",
+"to": "964",
+"command": "climb boulders"
+},
+"R0331": {
+"kind": "uncrossed",
+"from": "28620",
+"to": "4013",
+"command": "go tunnel"
+},
+"R0332": {
+"kind": "uncrossed",
+"from": "14650",
+"to": "19967",
+"command": "climb stairs"
+},
+"R0333": {
+"kind": "uncrossed",
+"from": "9991",
+"to": "9992",
+"command": "climb slope"
+},
+"R0334": {
+"kind": "uncrossed",
+"from": "6240",
+"to": "6245",
+"command": "go stair"
+},
+"R0335": {
+"kind": "uncrossed",
+"from": "21188",
+"to": "21189",
+"command": "go tunnel"
+},
+"R0336": {
+"kind": "uncrossed",
+"from": "36270",
+"to": "36273",
+"command": "go spiral staircase"
+},
+"R0337": {
+"kind": "uncrossed",
+"from": "24034",
+"to": "24039",
+"command": "go tunnel"
+},
+"R0338": {
+"kind": "uncrossed",
+"from": "26610",
+"to": "26611",
+"command": "go hole"
+},
+"R0339": {
+"kind": "uncrossed",
+"from": "18294",
+"to": "18295",
+"command": "go hollow"
+},
+"R0340": {
+"kind": "conflict",
+"from": "12018",
+"to": "12023",
+"command": "climb benches"
+},
+"R0341": {
+"kind": "uncrossed",
+"from": "1017",
+"to": "1018",
+"command": "climb cliff"
+},
+"R0342": {
+"kind": "uncrossed",
+"from": "2952",
+"to": "2953",
+"command": "go stairs"
+},
+"R0343": {
+"kind": "uncrossed",
+"from": "17153",
+"to": "9689",
+"command": "climb ladder"
+}
+}

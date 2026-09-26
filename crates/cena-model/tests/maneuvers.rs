@@ -12,7 +12,7 @@
 //! token and a roundtime, so it is M6.
 
 use cena_model::GameState;
-use cena_model::state::maneuvers::cooldown_refusal;
+use cena_model::state::maneuvers::{cooldown_refusal, ready_line};
 use cena_protocol::Parser;
 
 /// Verbatim from `2025-09-04_05-28-18.xml`, including the prompt that closes
@@ -139,4 +139,24 @@ fn a_reconnect_forgets_them_because_a_cooldown_cannot_be_aged() {
     state.invalidate_for_reconnect();
     assert!(state.maneuvers.is_empty());
     assert_eq!(state.maneuvers.said_at("Barrage"), None);
+}
+
+/// `Volley is ready for use.` (`cena-behavior/tests/fixtures/smithy_engage.xml:271`)
+/// ends the refusal the model held (`inventory/12` §1.3).
+#[test]
+fn the_ready_line_ends_a_held_refusal() {
+    assert_eq!(ready_line("Volley is ready for use."), Some("Volley"));
+    assert_eq!(
+        ready_line("Guardant Thrusts is ready for use."),
+        Some("Guardant Thrusts")
+    );
+    assert_eq!(ready_line("Your spell is ready."), None);
+    assert_eq!(ready_line(" is ready for use."), None);
+    let state = fed(concat!(
+        "Volley is still in cooldown.\n",
+        "<prompt time=\"1000\">&gt;</prompt>\n",
+        "Volley is ready for use.\n",
+        "<prompt time=\"1030\">&gt;</prompt>\n",
+    ));
+    assert_eq!(state.maneuvers.said_at("Volley"), None);
 }

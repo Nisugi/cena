@@ -44,7 +44,7 @@
 mod boxes;
 mod hunt;
 pub mod pending;
-mod text;
+pub(crate) mod text;
 mod town;
 
 use super::chunks::Chunk;

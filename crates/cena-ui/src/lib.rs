@@ -7,6 +7,7 @@ mod input;
 mod lines;
 mod merge;
 mod projection;
+mod sorter;
 mod view;
 mod wire;
 
