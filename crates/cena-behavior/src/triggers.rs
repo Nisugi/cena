@@ -61,6 +61,8 @@ use toml::{Table, Value};
 
 use crate::hunt::chain::overlay;
 
+pub mod edit;
+
 /// The file's name under the data directory.
 pub const FILE: &str = "triggers.toml";
 

@@ -294,6 +294,21 @@ and **`test "<line>"`**, which runs a line through the real matcher and says wha
 fire -- VellumFE's `.testline`, and its sorter's rule that *"the transform is a pure
 function, so the preview is always truthful."*
 
+**As built, CLAUDE'S, to confirm:**
+
+- `add <name> <words>` makes the words **bold**: a trigger must do something to be read
+  (§5d), and bold is the least a look can do. `set` changes it from there.
+- `on|off <name>`, `on|off category <name>`, `on|off every <kind>`: the kind words need
+  `every`, so a trigger named `squelch` is still a trigger. `remove` and `reload` were added.
+- **Every change is read back as Hydra reads it**, and refused with the reason if its
+  trigger would be refused; nothing is written then. The file is written sorted by category,
+  then name, whole or not at all (a file beside it, then renamed over it).
+- **A change reaches this character at once, the others at `;trigger reload` or their next
+  start**: one file serves every character, but a command runs in one session, which holds
+  no handle on the others. A change reaching every running character is a later step.
+- `test` tests a main-stream line, without markup. A trigger limited to another stream
+  cannot be tested yet.
+
 ### 5d. Decided while building step 2 -- CLAUDE'S, to confirm
 
 | Question | Built | Why |
@@ -356,7 +371,11 @@ Each ends in something demonstrable without a live login.
    line leave the model's scrollback, the player log, the combat event and the creature's
    damage exactly as the game said; triggers see each sorted line. Both wiring points
    mutation-checked. The wire still carries no colour: step 6.
-5. **`;trigger`** (§5c), including `test`.
+5. **`;trigger`** (§5c), including `test`. **BUILT 2026-09-26**: the changes in
+   `crates/cena-behavior/src/triggers/edit.rs` (8 tests in
+   `crates/cena-behavior/tests/triggers_edit.rs`), the command in `crates/cena/src/triggers.rs`
+   with its words (`triggers/words.rs`) and `test` (`triggers/explain.rs`), 14 tests. Six
+   guards mutation-checked. §5c records how it was built.
 6. **Despana renders look responses** -- the only frontend until the GUI. **BUILT
    2026-09-26**: a wire run gains optional `color` and `background` (`#rrggbb`);
    `cena_ui::painted` lays a published line's paint over its runs, for Despana now and the
