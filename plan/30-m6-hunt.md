@@ -537,6 +537,8 @@ Demonstrated live on a short hunt.
 >   Then the verbs that run more than once or carry a buff: `eachtarget` and `force <step>
 >   till N` (`hunt/repeat.rs`), `resonance`, and `celerity`/`slayer`/`tonis` before a step
 >   (`hunt/verbs.rs`); `tests/hunt_repeat.rs`, 8 tests, 11 mutations each turned one red.
+>   And the creature facts from `inventory/12` §2 are read (`hunt/targets.rs`): allies are
+>   never fought, hazard creatures are not `any` targets, and a no-corpse kill is counted.
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,

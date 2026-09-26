@@ -61,6 +61,7 @@ mod repeat;
 pub mod replies;
 mod rest;
 pub mod said;
+mod targets;
 mod verbs;
 mod wand;
 mod wander;

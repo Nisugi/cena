@@ -282,8 +282,12 @@ Pile reports, not re-checked here:
 > Both verb numbers read. Fixed on the model side, for the hunt to read: the two hazard
 > creatures and the 13 hazard objects (`crates/cena-model/src/state/hazard.rs`), familiars,
 > companions and summons (`state/creatures/ally.rs`), and kills that leave no corpse and the
-> cold wyrm's phases (`state/creatures/prose.rs`). Still open from this table: the hunt
-> reading those three, and creature statuses in room prose.
+> cold wyrm's phases (`state/creatures/prose.rs`). The hunt reads the first three
+> (`crates/cena-behavior/src/hunt/targets.rs`, `tests/hunt_targets.rs`): nobody's familiar,
+> companion or summons is fought, an `any` target leaves a hazard creature alone while a
+> target naming it still takes it, and a kill with no corpse counts toward the overkill rest.
+> The cold wyrm's phase is kept and not yet read: no profile names the wyrm. Still open from
+> this table: creature statuses in room prose.
 
 Lines the hunt needs, which the scripts match and Cena does not. All are GAP unless marked.
 

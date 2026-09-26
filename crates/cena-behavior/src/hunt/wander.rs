@@ -6,8 +6,9 @@
 use cena_map::RoomId;
 use cena_session::GameState;
 
-use super::engine::{Hunt, listed};
+use super::engine::Hunt;
 use super::said::{Ending, Here, Phase, Said};
+use super::targets::listed;
 
 impl Hunt {
     // --- flee ---------------------------------------------------------------

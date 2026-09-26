@@ -74,7 +74,7 @@ use super::ammo::Ammo;
 use super::death::Mourning;
 use super::guard::{Facts, Used};
 use super::monitor::Watch;
-use super::profile::{Profile, Step, Target};
+use super::profile::{Profile, Step};
 use super::react::Reacting;
 use super::repeat::Repeats;
 use super::replies::Heard;
@@ -458,8 +458,14 @@ impl Hunt {
             .filter(|creature| creature.corpse())
             .map(|creature| creature.id)
             .collect();
-        for id in &corpses {
-            if self.dead_seen.insert(*id) {
+        // A kill that left no corpse (vaporized, faded) counts as one.
+        let gone = state
+            .creatures()
+            .in_room()
+            .filter(|creature| creature.ending().is_some_and(cena_session::Ending::killed))
+            .map(|creature| creature.id);
+        for id in corpses.iter().copied().chain(gone) {
+            if self.dead_seen.insert(id) {
                 self.fried_kills = self.fried_kills.saturating_add(1);
                 self.heard.rested_for_injury = false;
             }
@@ -639,76 +645,6 @@ impl Hunt {
         Some(Said::Wait(1))
     }
 
-    /// The target: the current one while it is still here and worth
-    /// attacking, else the best by the profile's order.
-    fn choose_target(&mut self, state: &GameState) -> Option<i64> {
-        if let Some(current) = self.target
-            && let Some(here) = self
-                .fightable(state)
-                .find(|creature| creature.id == current)
-        {
-            let rank = |name: &str, noun: Option<&str>| self.rank(name, noun).map(|(at, _)| at);
-            let held = rank(&here.name, here.noun.as_deref());
-            let outranked = self.profile.priority
-                && self
-                    .fightable(state)
-                    .any(|creature| rank(&creature.name, creature.noun.as_deref()) < held);
-            if !outranked {
-                return Some(current);
-            }
-        }
-        let mut best: Option<(usize, i64, String)> = None;
-        for creature in self.fightable(state) {
-            let Some((rank, target)) = self.rank(&creature.name, creature.noun.as_deref()) else {
-                continue;
-            };
-            if best.as_ref().is_none_or(|(at, _, _)| rank < *at) {
-                best = Some((rank, creature.id, target.routine.clone()));
-            }
-        }
-        let (_, id, routine) = best?;
-        self.target = Some(id);
-        self.aiming.reset();
-        self.routine = routine;
-        self.cursor = 0;
-        self.queue.clear();
-        Some(id)
-    }
-
-    /// The first target entry that fits a creature, with its place.
-    fn rank(&self, name: &str, noun: Option<&str>) -> Option<(usize, &Target)> {
-        self.profile.targets.iter().enumerate().find(|(_, target)| {
-            target.any || target.name.as_deref().is_some_and(|n| named(n, name, noun))
-        })
-    }
-
-    /// The creatures here the hunt could fight: alive, not known to be
-    /// unhostile (a companion), not an animate or a bare appendage, and not
-    /// on the never-attack list. What the flee count counts, whether or not
-    /// the target list names them.
-    pub(super) fn could_fight<'a>(
-        &'a self,
-        state: &'a GameState,
-    ) -> impl Iterator<Item = &'a cena_session::CreatureInstance> + 'a {
-        state.creatures().in_room().filter(move |creature| {
-            creature.valid_target()
-                && creature.hostile() != Some(false)
-                && !self.boon_ignored(creature.id)
-                && !listed(&self.profile.never_attack, creature)
-        })
-    }
-
-    /// Those the target list names: the creatures worth attacking.
-    pub(super) fn fightable<'a>(
-        &'a self,
-        state: &'a GameState,
-    ) -> impl Iterator<Item = &'a cena_session::CreatureInstance> + 'a {
-        self.could_fight(state).filter(move |creature| {
-            self.rank(&creature.name, creature.noun.as_deref())
-                .is_some()
-        })
-    }
-
     /// Whose the room is, as it stands (`claim::claim_room`), and whether a
     /// stranger's disk is in it. `None` while the game has not said who is
     /// here.
@@ -752,17 +688,4 @@ impl Hunt {
         }
         stance::command(want, state)
     }
-}
-
-/// Whether `wanted` names a creature: its noun, or its whole name, ignoring
-/// case (`bigshot.lic:7170`).
-fn named(wanted: &str, name: &str, noun: Option<&str>) -> bool {
-    name.eq_ignore_ascii_case(wanted) || noun.is_some_and(|noun| noun.eq_ignore_ascii_case(wanted))
-}
-
-/// Whether any of `names` names this creature ([`named`]).
-pub(super) fn listed(names: &[String], creature: &cena_session::CreatureInstance) -> bool {
-    names
-        .iter()
-        .any(|wanted| named(wanted, &creature.name, creature.noun.as_deref()))
 }
