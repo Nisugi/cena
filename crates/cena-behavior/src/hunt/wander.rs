@@ -117,7 +117,7 @@ impl Hunt {
 
     /// The next number from the seed, mixed with the clock so two hunts on
     /// one seed do not walk in step.
-    fn roll(&mut self, now: Option<u32>) -> u64 {
+    pub(super) fn roll(&mut self, now: Option<u32>) -> u64 {
         let mut x = self.seed ^ u64::from(now.unwrap_or(0));
         x ^= x >> 33;
         x = x.wrapping_mul(0xff51_afd7_ed55_8ccd);

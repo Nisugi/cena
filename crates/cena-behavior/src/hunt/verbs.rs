@@ -31,11 +31,13 @@
 //! | `unravel`, `barddispel` | 1013 at the target | `cmd_unravel` |
 //! | `dhurl <part>` | `hurl #id <part>` | `cmd_dhurl` |
 //! | `sleep N`, `wait N` | nothing for N seconds | `cmd_sleep`, `wait_for_swing` |
+//! | `celerity`, `haste`, `506`; `slayer`, `240`; `tonis`, `1035`, each before a step | the buff first when it is down or has three seconds or less (Celerity only when down), then the step | `cmd`, `:4014-4046` |
+//! | `resonance N N ...` | one of the spells, at random but never the last one twice running, incanted at the game's target | `cmd_resonance_bolt` |
 //!
 //! `hide`, `stance <name>`, `store <anything>`, `assume`, `berserk` and
 //! `stomp` are game commands as written and go as written. `ambush`, `wand`
 //! and `script` are the engine's own ([`super::aim`], [`super::wand`], the
-//! importer). The forms not ported yet ([`UNPORTED`]) are skipped, and the
+//! importer), and so are `eachtarget` and `force` ([`super::repeat`]). The forms not ported yet ([`UNPORTED`]) are skipped, and the
 //! player is told once.
 
 use std::collections::VecDeque;
@@ -43,6 +45,7 @@ use std::collections::VecDeque;
 use cena_session::{GameState, PsmCategory};
 
 use super::engine::Hunt;
+use super::maintain::ACTIVE_SPELLS;
 use super::said::Said;
 use crate::cast::{self, Casting, NotReady, Verb};
 use crate::gemstone::jewel;
@@ -81,7 +84,11 @@ impl Hunt {
         state: &GameState,
         now: Option<u32>,
     ) -> Go {
-        match line(send, target, state) {
+        let line = match resonance(send) {
+            Some(spells) => self.resonance(&spells, target, state, now),
+            None => line(send, target, state),
+        };
+        match line {
             Line::Send(mut lines) => match lines.pop_front() {
                 None => Go::Skip,
                 Some(first) => {
@@ -103,6 +110,105 @@ impl Hunt {
                 Go::Skip
             }
         }
+    }
+}
+
+impl Hunt {
+    /// `resonance N N ...`: one of the spells, never the last one twice
+    /// running, chosen at random as bigshot chooses (`cmd_resonance_bolt`,
+    /// `bigshot.lic:5917-5929`), and incanted at the game's target.
+    fn resonance(
+        &mut self,
+        spells: &[u16],
+        target: i64,
+        state: &GameState,
+        now: Option<u32>,
+    ) -> Line {
+        let options: Vec<u16> = spells
+            .iter()
+            .enumerate()
+            .filter(|(at, n)| !spells[..*at].contains(n) && Some(**n) != self.repeats.resonance)
+            .map(|(_, n)| *n)
+            .collect();
+        let Ok(len) = u64::try_from(options.len()) else {
+            return Line::Skip;
+        };
+        if len == 0 {
+            return Line::Skip;
+        }
+        let at = usize::try_from(self.roll(now) % len).unwrap_or(0);
+        let Some(pick) = options.get(at).copied() else {
+            return Line::Skip;
+        };
+        self.repeats.resonance = Some(pick);
+        Spell::bare(pick).cast(target, state)
+    }
+}
+
+/// `resonance N N ...`: the spells (`bigshot.lic:4063`).
+fn resonance(send: &str) -> Option<Vec<u16>> {
+    let mut words = send.split_whitespace();
+    if !words.next()?.eq_ignore_ascii_case("resonance") {
+        return None;
+    }
+    let spells: Vec<u16> = words.map_while(|w| w.parse().ok()).collect();
+    (!spells.is_empty()).then_some(spells)
+}
+
+/// The buff a step names before it (`celerity fire`), by its word
+/// (`bigshot.lic:4015-4046`).
+fn buff_before(word: &str) -> Option<u16> {
+    match word {
+        "celerity" | "haste" | "506" => Some(506),
+        "slayer" | "240" => Some(240),
+        "tonis" | "1035" => Some(1035),
+        _ => None,
+    }
+}
+
+/// `celerity <step>` and its kin: the buff's lines, then the step's.
+fn buff_first(first: &str, rest: &str, target: i64, state: &GameState) -> Option<Line> {
+    let number = buff_before(first)?;
+    if rest.is_empty() {
+        return None;
+    }
+    let mut lines = buffed(number, target, state);
+    Some(match line(rest, target, state) {
+        Line::Send(mut step) => {
+            lines.append(&mut step);
+            Line::Send(lines)
+        }
+        step if lines.is_empty() => step,
+        _ => Line::Send(lines),
+    })
+}
+
+/// The lines that put the buff up before the step, when it is down or has
+/// three seconds or less (Lich's `timeleft <= 0.05`, in minutes); none
+/// before any spell list has been seen, as maintain waits for one.
+/// Celerity is not cast while it is up at all (`cmd_spell`, `:5857`), and
+/// Spirit Slayer not while it is cooling (`:4028`).
+fn buffed(number: u16, target: i64, state: &GameState) -> VecDeque<String> {
+    let Some(now) = state.game_time_now() else {
+        return VecDeque::new();
+    };
+    let effects = &state.effects;
+    let id = number.to_string();
+    let up = match effects.active(&id, now) {
+        Some(up) => up,
+        None if effects.saw_category(ACTIVE_SPELLS) || effects.saw_category("Buffs") => false,
+        None => return VecDeque::new(),
+    };
+    let lapsing = !up || effects.remaining(&id, now).is_some_and(|left| left <= 3);
+    let slayer_cooling = number == 240
+        && cena_session::spells::spell(240)
+            .is_some_and(|spell| up_in(state, "Cooldowns", &spell.name));
+    if !lapsing || (number == 506 && up) || slayer_cooling {
+        return VecDeque::new();
+    }
+    match Spell::bare(number).cast(target, state) {
+        Line::Send(lines) => lines,
+        _ => VecDeque::new(),
     }
 }
 
@@ -220,12 +326,6 @@ const SELF_CAST: &[u16] = &[
 
 /// bigshot verbs not sent yet, by their first word.
 pub(super) const UNPORTED: &[&str] = &[
-    "eachtarget",
-    "celerity",
-    "haste",
-    "slayer",
-    "tonis",
-    "resonance",
     "briar",
     "efury",
     "tether",
@@ -252,8 +352,8 @@ fn line(send: &str, target: i64, state: &GameState) -> Line {
         return Line::Unported(word);
     }
     // `celerity fire` and its kin carry a step after them; bare, 506 is a spell.
-    if matches!(first.as_str(), "506" | "240" | "1035") && !rest.is_empty() {
-        return Line::Unported("a buff before a step (celerity, slayer, tonis)");
+    if let Some(buffed) = buff_first(&first, &rest, target, state) {
+        return buffed;
     }
     if let Some(spell) = spell_step(&first, &words) {
         return spell.cast(target, state);

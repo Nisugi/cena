@@ -17,7 +17,7 @@ use super::engine::{Hunt, Phase};
 use super::said::Said;
 
 /// The dialog signs are listed under when they are up.
-const ACTIVE_SPELLS: &str = "Active Spells";
+pub(super) const ACTIVE_SPELLS: &str = "Active Spells";
 /// Seconds between two casts of the same sign, so a sign the game refused
 /// is not asked for every tick.
 const SIGN_RETRY: u32 = 60;

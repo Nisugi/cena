@@ -142,6 +142,7 @@ impl Hunt {
         self.wand_replied(&lines);
         self.ammo_replied(&lines);
         self.boons_replied(&lines);
+        self.force_replied(&lines);
         let replies: Vec<Reply> = lines.iter().copied().filter_map(read).collect();
         // A boost the game answered with neither of its lines is not tried
         // again: treated as none left.

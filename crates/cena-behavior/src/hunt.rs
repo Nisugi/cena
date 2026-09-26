@@ -57,6 +57,7 @@ mod monitor;
 pub mod profile;
 mod quick;
 mod react;
+mod repeat;
 pub mod replies;
 mod rest;
 pub mod said;

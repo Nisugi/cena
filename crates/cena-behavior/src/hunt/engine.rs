@@ -76,6 +76,7 @@ use super::guard::{Facts, Used};
 use super::monitor::Watch;
 use super::profile::{Profile, Step, Target};
 use super::react::Reacting;
+use super::repeat::Repeats;
 use super::replies::Heard;
 pub use super::said::{Ending, Here, Phase, Said, Why};
 use super::verbs::Go;
@@ -196,6 +197,8 @@ pub struct Hunt {
     pub(super) alerts: Vec<String>,
     /// A quick hunt: this room, until it is clear ([`super::quick`]).
     pub(super) quick: bool,
+    /// `eachtarget` and `force`, and `resonance`'s last spell.
+    pub(super) repeats: Repeats,
 }
 
 impl Hunt {
@@ -253,6 +256,7 @@ impl Hunt {
             watch: Watch::default(),
             alerts: Vec::new(),
             quick: false,
+            repeats: Repeats::default(),
         }
     }
 
@@ -346,6 +350,7 @@ impl Hunt {
     /// itself are asked again once the session is back.
     pub fn link_lost(&mut self) {
         self.target_gone();
+        self.repeats_gone();
         self.held = None;
         self.room = None;
     }
@@ -505,6 +510,9 @@ impl Hunt {
             return Some(said);
         }
         let target = self.choose_target(state)?;
+        if let Some(said) = self.repeating(state, here, now) {
+            return Some(said);
+        }
         if state.targeting.current() != Some(target) {
             return Some(Said::Send {
                 line: format!("target #{target}"),
@@ -573,6 +581,12 @@ impl Hunt {
             };
             if !step.when.iter().all(|c| c.holds(&facts) == Some(true)) {
                 continue;
+            }
+            if self.repeat(&step, state, target, now) {
+                match self.repeating(state, here, now) {
+                    Some(said) => return Some(said),
+                    None => continue,
+                }
             }
             if let Some(line) = self.censer_first(state, &step.send, now) {
                 self.queue.push_front(step);

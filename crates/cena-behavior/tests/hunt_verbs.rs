@@ -224,10 +224,10 @@ fn a_maneuver_cooling_is_not_sent() {
 fn sleep_waits_and_an_unported_verb_is_skipped_and_named_once() {
     let (lines, _) = run("sleep 3", &fighting(&[]), 1).unwrap();
     assert_eq!(lines, ["wait 3"]);
-    let (lines, notes) = run("eachtarget fire", &fighting(&[]), 3).unwrap();
+    let (lines, notes) = run("mstrike", &fighting(&[]), 3).unwrap();
     assert_eq!(lines, ["wait 1", "wait 1", "wait 1"]);
     assert_eq!(notes.len(), 1, "said once: {notes:?}");
-    assert!(notes[0].contains("eachtarget"), "{notes:?}");
+    assert!(notes[0].contains("mstrike"), "{notes:?}");
 }
 
 #[test]

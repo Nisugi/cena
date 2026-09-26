@@ -534,6 +534,9 @@ Demonstrated live on a short hunt.
 >   `monitor_*` keys raised as warnings, off unless the profile turns it on (`hunt/monitor.rs`,
 >   `tests/hunt_monitor.rs`); quick hunting, `;hunt <name> quick`, this room until it is clear
 >   on `quickhunt_targets` and `quick_commands` (`hunt/quick.rs`, `tests/hunt_quick.rs`).
+>   Then the verbs that run more than once or carry a buff: `eachtarget` and `force <step>
+>   till N` (`hunt/repeat.rs`), `resonance`, and `celerity`/`slayer`/`tonis` before a step
+>   (`hunt/verbs.rs`); `tests/hunt_repeat.rs`, 8 tests, 11 mutations each turned one red.
 > - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
 >   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
 >   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,
