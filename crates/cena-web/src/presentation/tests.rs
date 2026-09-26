@@ -227,10 +227,10 @@ fn observed(generation: u32, cursor: u64, event: Event) -> ObservedEvent {
 
 /// A published line of plain text on `stream`.
 fn published(stream: &str, text: &str) -> Event {
-    Event::Line(std::sync::Arc::new(cena_session::Line {
-        stream: stream.into(),
-        runs: cena_session::ChunkLine::plain(text).runs,
-    }))
+    Event::Line(std::sync::Arc::new(cena_session::Line::new(
+        stream,
+        cena_session::ChunkLine::plain(text).runs,
+    )))
 }
 
 fn drawn(pending: &Pending) -> Vec<(String, String)> {

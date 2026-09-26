@@ -39,13 +39,13 @@ const DFA_LIMIT: usize = 1 << 26;
 /// line.
 #[derive(Debug, Clone)]
 pub struct Matcher {
-    triggers: Vec<Trigger>,
+    pub(super) triggers: Vec<Trigger>,
     sensitive: Literals,
     insensitive: Literals,
     /// Which regexes match a line; `None` when it could not be built.
     set: Option<RegexSet>,
     /// Each regex, by its place in the set, with its trigger's rank.
-    regexes: Vec<(usize, Regex)>,
+    pub(super) regexes: Vec<(usize, Regex)>,
 }
 
 /// One trigger matching one place in a line.

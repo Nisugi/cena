@@ -10,35 +10,17 @@
 //! It is also the point M8's triggers run at (`plan/45` §4): once per line, in
 //! the session, before any viewer, so every viewer and a session nobody
 //! watches agree on what a line said and what it set off.
+//!
+//! The line itself is `cena-model`'s ([`Line`]), since the model is what
+//! makes it and what the triggers answer.
 
 use std::sync::Arc;
 
+use cena_model::line::Line;
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
-use cena_protocol::runs::Runs;
 
 use super::{Event, SessionActor};
-
-/// A finished line of game text, as the model completed it.
-///
-/// The runs, not a rendering of them: their styles, and the links a click
-/// acts on and a trigger may name. The model keeps its own copy in the
-/// stream's scrollback; this one is the viewers'.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Line {
-    /// The stream the wire named; `""` is the main window.
-    pub stream: String,
-    /// The line, split where its style or link changes.
-    pub runs: Runs,
-}
-
-impl Line {
-    /// The text, markup removed.
-    #[must_use]
-    pub fn text(&self) -> String {
-        self.runs.plain()
-    }
-}
 
 impl<S: ByteSource> SessionActor<S> {
     /// The line `frame` finished, if it finished one.
@@ -54,10 +36,7 @@ impl<S: ByteSource> SessionActor<S> {
             return None;
         }
         let runs = self.state.stream(&text.stream).last()?;
-        Some(Arc::new(Line {
-            stream: text.stream.clone(),
-            runs: runs.clone(),
-        }))
+        Some(Arc::new(Line::new(text.stream.clone(), runs.clone())))
     }
 
     /// Publish a finished line to every viewer: as it came, or, with
@@ -74,10 +53,8 @@ impl<S: ByteSource> SessionActor<S> {
             && let Some(sorted) = cena_model::sorter::sort(&line.runs)
         {
             for runs in sorted {
-                let stream = line.stream.clone();
-                let _ = self
-                    .events
-                    .send(Event::Line(Arc::new(Line { stream, runs })));
+                let sorted = Line::new(line.stream.clone(), runs);
+                let _ = self.events.send(Event::Line(Arc::new(sorted)));
             }
             return;
         }

@@ -31,7 +31,7 @@ pub enum Event {
     /// a container look is published as the lines it sorts into, one event
     /// each ([`SessionHandle::sort_containers`](crate::SessionHandle::sort_containers)).
     /// `Arc` because every subscriber shares one allocation.
-    Line(std::sync::Arc<super::line::Line>),
+    Line(std::sync::Arc<cena_model::line::Line>),
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///

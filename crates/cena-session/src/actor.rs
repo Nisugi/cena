@@ -108,10 +108,10 @@ mod line;
 mod owed;
 mod readiness;
 
+pub use cena_model::line::Line;
 pub use ending::EndReason;
 pub use event::Event;
 pub use handle::{Session, Snapshot};
-pub use line::Line;
 pub use readiness::SETUP_DEADLINE;
 
 /// Inbound command channel bound.

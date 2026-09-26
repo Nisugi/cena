@@ -58,8 +58,10 @@ use serde::Deserialize;
 use std::fmt;
 
 mod matcher;
+mod respond;
 
 pub use matcher::{Hit, Matcher};
+pub use respond::Paint;
 
 /// A trigger, by its name in the file, and what it does.
 #[derive(Debug, Clone, PartialEq, Eq)]

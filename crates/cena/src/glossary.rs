@@ -116,7 +116,7 @@
 //! |---|---|---|
 //! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream: [`Snapshot`] | view, handle, ref |
 //! | **Event** | something the session saw or did, published to observers: [`Event`] (a frame, a combat chunk, a command sent, a notice) | signal, trigger, hook |
-//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into | display line, story line |
+//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into, and a character's triggers answer it before it is published ([`Matcher::respond`]) | display line, story line |
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
 //! | **Lagged** | what an observer that fell behind is told instead of meeting a silent hole; the recovery is to subscribe again | |
 //! | **Notice** | Hydra speaking to the player, not the game: [`Notice`], the port of `Lich::Messaging` | message |
@@ -198,6 +198,7 @@
 //! | **Trigger** | when a finished line matches, do something with it, for everyone or the characters it names: [`Trigger`]. Every trigger is in one file, by name ([`triggers`]) | highlight, which is one thing a trigger can do; event |
 //! | **Response** | what a trigger does: in Stage 1 a look, a squelch, a substitute or a redirect. PROPOSED (`plan/45` §3d): the author may choose another word | effect, which is [`Effect`]; action |
 //! | **Look** | a response's colour, background and bold, over the match, a capture group or the line: [`Look`] | style, which is the wire's [`Style`] |
+//! | **Paint** | a look, resolved: what one stretch of a published [`Line`] is painted, the best look deciding each of colour, background and bold: [`Paint`] | highlight |
 //! | **Master switch** | a category, or one kind of response, turned off for every trigger: the file's `[categories]` and `[responses]` | |
 //!
 //! # Names
@@ -273,6 +274,7 @@
 //! [`Line`]: cena_session::Line
 //! [`LONG_LIVED`]: cena_session::LONG_LIVED
 //! [`MAX_UNATTENDED_LOSSES`]: cena_session::MAX_UNATTENDED_LOSSES
+//! [`Matcher::respond`]: cena_session::trigger::Matcher::respond
 //! [`Merger`]: cena_ui::Merger
 //! [`movement`]: cena_session::movement
 //! [`Notice`]: cena_session::Notice
@@ -287,6 +289,7 @@
 //! [`Refusal`]: cena_session::Refusal
 //! [`Rooms::rally`]: field@cena_behavior::hunt::profile::Rooms::rally
 //! [`Runs`]: cena_session::Runs
+//! [`Paint`]: cena_session::trigger::Paint
 //! [`ServerMessage`]: cena_ui::ServerMessage
 //! [`Session`]: cena_session::Session
 //! [`SessionActor`]: cena_session::SessionActor

@@ -340,6 +340,12 @@ Each ends in something demonstrable without a live login.
    step 4's, not the matcher's: it reports both, in rank order.
 4. **Look and text responses**: colour, squelch, substitute, redirect. Tested: the model's
    scrollback, the chunk and the player log see the game's text unchanged.
+   **The model's half BUILT 2026-09-26**: `Matcher::respond`
+   (`crates/cena-model/src/trigger/respond.rs`) turns a finished line into the lines a
+   viewer is given, and the line type moved down to `crates/cena-model/src/line.rs`, gaining
+   its paint. 10 tests in `crates/cena-model/tests/trigger_respond.rs` over lines the real
+   parser finishes; nine rules mutation-checked. How the responses combine is §6a. The
+   session's half -- the matcher on each session, the file read at startup -- is next.
 5. **`;trigger`** (§5c), including `test`.
 6. **Despana renders look responses** -- the only frontend until the GUI.
 7. **A bench**: the golden fixtures against the author's Wrayth set (~220 rules) and a
@@ -348,6 +354,18 @@ Each ends in something demonstrable without a live login.
 
 **Done when** a scripted two-character session shows a colour, a squelch, a substitute and a
 redirect, one of them limited to one character, in Despana.
+
+### 6a. How responses combine -- CLAUDE'S, to confirm
+
+| | Built | Why |
+|---|---|---|
+| Squelch | any one hides the line, whatever else matched; **the line is not published** | answers §8 item 3: a viewer has nothing to draw, and `;trigger test` says what would have hidden a line. A "show squelched" view would need it published, marked; nobody has asked |
+| Substitutes | in rank order; one overlapping a substitute already made is skipped. A regex's `$1`/`${1}` fill in; a literal's `$` is text | one answer where two rewrites claim the same words |
+| Matching | once, on the game's text; a substitute's output is not matched again | no trigger feeds on another's output |
+| Looks | each of colour, background and bold decided alone: priority, then a match or group over a whole-line look, then file order. Bold is on if any look sets it | a whole-line look is the backdrop and a word's look sits on it, unless priority says otherwise |
+| A look over substituted words | covers the replacement | the look was on those words |
+| Redirect | the best-ranked one decides; `copy` shows the line on both | one line, one destination |
+| A substitute's style and link | those of the run it starts in | a substituted name is still the link it was |
 
 ### Stage 2 -- events, conditions, flags
 
@@ -426,7 +444,9 @@ the client asks. If it can be had, import needs no file.
 1. **The word** for what a trigger does (§3d): *response* proposed.
 2. **Per-character in one file** (§5b): Claude's reading of §1 row 3.
 3. **Is a squelched line published at all?** Proposed: yes, marked, so `;trigger test` and a
-   future "show squelched" view can explain what was hidden.
+   future "show squelched" view can explain what was hidden. **BUILT the simpler way: no**
+   (§6a). `;trigger test` explains without it; publishing it marked waits for the view that
+   would read the mark.
 4. **Room components** (the room window): do triggers see their bodies, in Stage 1 or later?
 5. **Wrayth's word boundaries**: Wizard FE's docs have a "Not on Word Boundary" option
    (`reference/wiki_clean/Wizard _front end_.txt:563-575`), implying whole-word by default;
