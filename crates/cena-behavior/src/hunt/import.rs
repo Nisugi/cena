@@ -39,6 +39,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::guard;
 use super::profile::{Profile, Step, Target};
+use super::quick::QUICK;
 use super::yaml;
 use crate::stance::Want;
 
@@ -326,6 +327,9 @@ impl Job {
         self.profile.react.deader = flag(&self.take("deader"));
         self.profile.react.dead_man_switch = flag(&self.take("dead_man_switch"));
         self.profile.react.depart_switch = flag(&self.take("depart_switch"));
+        self.profile.monitor.interaction = flag(&self.take("monitor_interaction"));
+        self.profile.monitor.strings = bars(&self.take("monitor_strings"));
+        self.profile.monitor.safe = bars(&self.take("monitor_safe_strings"));
         // Absent is bigshot's default, on.
         let pull = self.take("pull");
         if !pull.trim().is_empty() {
@@ -349,7 +353,15 @@ impl Job {
     /// `targets`: `name(letter)` entries, a bare name meaning routine `a`,
     /// and a catch-all pattern meaning any creature.
     fn targets(&mut self) {
-        for entry in list(&self.take("targets")) {
+        self.profile.targets = self.target_list("targets", "a");
+        self.profile.quick_targets = self.target_list("quickhunt_targets", "quick");
+    }
+
+    /// bigshot's `targets` and `qtargets` shape (`bigshot.lic:3594-3606`):
+    /// `name(letter)`, or a name alone on `default`'s routine.
+    fn target_list(&mut self, key: &str, default: &str) -> Vec<Target> {
+        let mut out = Vec::new();
+        for entry in list(&self.take(key)) {
             let (name, routine) = match entry
                 .strip_suffix(')')
                 .and_then(|body| body.rsplit_once('('))
@@ -362,7 +374,7 @@ impl Job {
                         letter.to_ascii_lowercase(),
                     )
                 }
-                _ => (entry.to_ascii_lowercase(), "a".to_owned()),
+                _ => (entry.to_ascii_lowercase(), default.to_owned()),
             };
             let any = ANY.contains(&name.as_str());
             if !any && name.contains(['(', ')', '[', ']', '|', '\\', '^', '$', '*', '+', '?']) {
@@ -370,12 +382,13 @@ impl Job {
                     "target {name:?}: bigshot read it as a pattern; Hydra matches it whole, as written"
                 ));
             }
-            self.profile.targets.push(Target {
+            out.push(Target {
                 name: (!any).then_some(name),
                 any,
                 routine,
             });
         }
+        out
     }
 
     /// `hunting_commands` is routine `a`; `hunting_commands_b` to `_j` are
@@ -393,6 +406,12 @@ impl Job {
             }
             let steps: Vec<Step> = entries.iter().map(|entry| self.step(entry)).collect();
             self.profile.routines.insert(letter.to_string(), steps);
+        }
+        // A quick hunt's routine (`quick_commands`, `hunt/quick.rs`).
+        let quick = expanded(&self.take("quick_commands"));
+        if !quick.is_empty() {
+            let steps: Vec<Step> = quick.iter().map(|entry| self.step(entry)).collect();
+            self.profile.routines.insert(QUICK.to_owned(), steps);
         }
     }
 
@@ -510,6 +529,15 @@ fn number(text: &str) -> Option<u32> {
 /// bigshot's booleans: `true` and everything else.
 fn flag(text: &str) -> bool {
     text.trim().eq_ignore_ascii_case("true")
+}
+
+/// bigshot's `||`-joined pattern list (`monitor_strings`), blanks dropped.
+fn bars(text: &str) -> Vec<String> {
+    text.split("||")
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
 
 /// A comma list, trimmed, blanks dropped.

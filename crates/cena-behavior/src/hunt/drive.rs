@@ -23,7 +23,7 @@
 //! # A walk inside the hunt
 //!
 //! Rest and wander walk. The walk is travel's own driver, run through
-//! [`travel_holding`] under the hunt's token, given a second listener on the
+//! [`travel_holding`](crate::travel::travel_holding) under the hunt's token, given a second listener on the
 //! same stream ([`Heard::resubscribe`]) and a copy of the state. The hunt
 //! keeps folding its own stream meanwhile, so that when the walk returns the
 //! hunt's state is as current as the walk's, and nothing was missed. The
@@ -40,6 +40,7 @@
 mod errands;
 mod loot;
 mod selling;
+mod walk;
 
 use std::time::Duration;
 
@@ -54,7 +55,7 @@ use tokio_util::sync::CancellationToken;
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
 use crate::loot::Memory;
-use crate::travel::{Ended, Heard, TravelNotes, room_of, travel_holding};
+use crate::travel::{Heard, TravelNotes, room_of};
 use crate::watchdog::Heartbeat;
 
 /// How long a sent line may wait for its prompt.
@@ -128,6 +129,8 @@ pub async fn hunt(
         saved_unskinnable,
         memory: Memory::default(),
         transcript: String::new(),
+        line: String::new(),
+        down: false,
     };
     let end = driver.run(heartbeat).await;
     let text = match end {
@@ -166,6 +169,11 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     /// The main window's text since the last loot command was sent, for
     /// reading its reply.
     transcript: String,
+    /// The line being read, any window, for the interaction monitor.
+    line: String,
+    /// The connection dropped and the session is reconnecting: the hunt
+    /// waits, holding its authority (SE-4 (c)), until the session is ready.
+    down: bool,
 }
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
@@ -174,6 +182,12 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             heartbeat.beat();
             if let Err(gone) = self.drain() {
                 return HuntEnd::Stopped(gone);
+            }
+            if self.down {
+                if let Err(end) = self.hold(BEAT).await {
+                    return end;
+                }
+                continue;
             }
             let here = self.locate();
             let exits: Vec<RoomId> = here
@@ -261,15 +275,55 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
     }
 
     fn fold(&mut self, event: &Event) -> Result<(), BehaviorError> {
+        match event {
+            Event::StateChanged(State::Reconnecting) => self.link_lost(),
+            Event::StateChanged(State::Ready) if self.down => {
+                self.down = false;
+                self.handle.say(Notice::line(
+                    NoticeKind::Info,
+                    "Hunt: reconnected; hunting on.".to_owned(),
+                ));
+            }
+            _ => {}
+        }
         if let Event::Frame(frame) = event
             && let Frame::Text(text) = &**frame
-            && text.stream.is_empty()
         {
-            self.transcript.push_str(&text.content);
-            let now = self.state.game_time_now();
-            self.machine.heard(&text.content, now);
+            if text.stream.is_empty() {
+                self.transcript.push_str(&text.content);
+                let now = self.state.game_time_now();
+                self.machine.heard(&text.content, now);
+            }
+            // The monitor reads whole lines, from every window.
+            self.line.push_str(&text.content);
+            if text.ends_line {
+                self.machine.watched(&self.line);
+                self.line.clear();
+                for alert in self.machine.take_alerts() {
+                    self.handle.say(Notice::line(
+                        NoticeKind::Warn,
+                        format!("Hunt alert: {alert}"),
+                    ));
+                }
+            }
         }
         fold_into(&mut self.state, event)
+    }
+
+    /// The connection dropped: what it made stale is forgotten, and the
+    /// hunt waits for the session to be ready again (`plan/30` §7: "a
+    /// reconnect mid-hunt keeps the hunt").
+    fn link_lost(&mut self) {
+        if self.down {
+            return;
+        }
+        self.down = true;
+        self.state.invalidate_for_reconnect();
+        self.machine.link_lost();
+        self.handle.say(Notice::line(
+            NoticeKind::Info,
+            "Hunt: the connection dropped; waiting for it to come back.".to_owned(),
+        ));
     }
 
     /// Fold events for up to `for_`, or until stopped.
@@ -331,89 +385,22 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         }
         self.drain().map_err(HuntEnd::Stopped)
     }
-
-    /// Walk to `to` with travel's driver under this authority, folding this
-    /// hunt's own stream meanwhile.
-    async fn walk(&mut self, to: RoomId) -> Result<(), HuntEnd> {
-        let snapshot = Snapshot {
-            session: self.session,
-            state: self.state.clone(),
-            lifecycle: self.lifecycle,
-            generation: self.generation,
-            cursor: self.cursor,
-            retry: None,
-        };
-        let listener = self.events.resubscribe();
-        let mut notes = std::mem::take(&mut self.notes);
-        let travelled = {
-            let handle = self.handle;
-            let cancel = self.cancel;
-            let token = self.token;
-            let map = self.map;
-            let next_id = &mut self.next_id;
-            let mut walk = Box::pin(travel_holding(
-                handle,
-                cancel,
-                next_id,
-                token,
-                (snapshot, listener),
-                map,
-                to,
-                &mut notes,
-                |_| {},
-            ));
-            // The walk holds `next_id`; this loop touches only the stream
-            // and the state, so both borrows stand.
-            let events = &mut self.events;
-            let state = &mut self.state;
-            loop {
-                let event = tokio::select! {
-                    biased;
-                    travelled = &mut walk => break travelled,
-                    event = events.recv() => event,
-                };
-                match event {
-                    Ok(event) => {
-                        if let Err(gone) = fold_into(state, &event) {
-                            return Err(HuntEnd::Stopped(gone));
-                        }
-                    }
-                    Err(RecvError::Lagged(_)) => {}
-                    Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
-                }
-            }
-        };
-        self.notes = notes;
-        (self.wrote)(&self.notes);
-        if let Some(room) = travelled.last_room {
-            self.last_room = Some(room);
-        }
-        match travelled.ended {
-            Ended::Arrived => Ok(()),
-            Ended::Stopped(why) => Err(HuntEnd::Stopped(why)),
-            other => {
-                self.handle.say(Notice::line(
-                    NoticeKind::Warn,
-                    format!("Hunt: could not walk to room {}: {other:?}.", to.0),
-                ));
-                match self.machine.walk_failed(to) {
-                    Some(ending) => Err(HuntEnd::Finished(ending)),
-                    None => Ok(()),
-                }
-            }
-        }
-    }
 }
 
-/// Fold one event into a state: a frame is applied; a reconnect or a close
-/// ends the behavior.
+/// Fold one event into a state: a frame is applied; a reconnect invalidates
+/// what a reconnect invalidates and is waited out; a close ends the behavior.
 fn fold_into(state: &mut GameState, event: &Event) -> Result<(), BehaviorError> {
     match event {
         Event::Frame(frame) => {
             state.apply(frame);
             Ok(())
         }
-        Event::StateChanged(State::Reconnecting) => Err(BehaviorError::Disconnected),
+        // A drop is waited out, holding the authority (SE-4 (c)); the
+        // driver marks it. Invalidating twice is harmless.
+        Event::StateChanged(State::Reconnecting) => {
+            state.invalidate_for_reconnect();
+            Ok(())
+        }
         Event::StateChanged(State::Closed) => Err(BehaviorError::Dead),
         _ => Ok(()),
     }

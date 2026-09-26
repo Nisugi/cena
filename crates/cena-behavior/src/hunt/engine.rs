@@ -73,6 +73,7 @@ use super::aim::{Aimed, Aiming};
 use super::ammo::Ammo;
 use super::death::Mourning;
 use super::guard::{Facts, Used};
+use super::monitor::Watch;
 use super::profile::{Profile, Step, Target};
 use super::react::Reacting;
 use super::replies::Heard;
@@ -189,6 +190,12 @@ pub struct Hunt {
     pub(super) mourning: Mourning,
     /// The character's waggle profile, for a waggle after departing.
     pub(super) waggle_profile: Option<WaggleProfile>,
+    /// The interaction monitor's patterns ([`super::monitor`]).
+    pub(super) watch: Watch,
+    /// Lines the monitor wants put in front of the player.
+    pub(super) alerts: Vec<String>,
+    /// A quick hunt: this room, until it is clear ([`super::quick`]).
+    pub(super) quick: bool,
 }
 
 impl Hunt {
@@ -243,6 +250,9 @@ impl Hunt {
             ammo: Ammo::default(),
             mourning: Mourning::default(),
             waggle_profile: None,
+            watch: Watch::default(),
+            alerts: Vec::new(),
+            quick: false,
         }
     }
 
@@ -332,6 +342,14 @@ impl Hunt {
         }
     }
 
+    /// The connection dropped: the target, the room's claim and the room
+    /// itself are asked again once the session is back.
+    pub fn link_lost(&mut self) {
+        self.target_gone();
+        self.held = None;
+        self.room = None;
+    }
+
     /// The gate refused the target: it is gone.
     pub fn target_gone(&mut self) {
         self.target = None;
@@ -354,7 +372,11 @@ impl Hunt {
         }
         self.note_room(state, now);
         if self.held.is_none() {
-            self.held = Self::hold_room(state, self.profile.wander.ignore_disks);
+            self.held = if self.quick {
+                Some(Held::Mine)
+            } else {
+                Self::hold_room(state, self.profile.wander.ignore_disks)
+            };
         }
         if state.status.known().dead() != Some(true)
             && let Some(said) = self.react(state, here, now)

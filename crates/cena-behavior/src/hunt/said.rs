@@ -89,6 +89,8 @@ pub enum Ending {
     /// The dead man's switch: dead or badly hurt on Shattered, so the
     /// character quits (`hunt/death.rs`).
     Trouble,
+    /// A quick hunt found nothing more to fight here (`hunt/quick.rs`).
+    Cleared,
 }
 
 impl fmt::Display for Ending {
@@ -118,6 +120,7 @@ impl fmt::Display for Ending {
             Self::Trouble => f.write_str(
                 "the dead man's switch: dead or below 40% health on Shattered, so quitting",
             ),
+            Self::Cleared => f.write_str("the room is clear"),
         }
     }
 }

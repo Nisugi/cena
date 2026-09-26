@@ -7,7 +7,7 @@ use cena_map::RoomId;
 use cena_session::GameState;
 
 use super::engine::{Hunt, listed};
-use super::said::{Here, Phase, Said};
+use super::said::{Ending, Here, Phase, Said};
 
 impl Hunt {
     // --- flee ---------------------------------------------------------------
@@ -19,7 +19,7 @@ impl Hunt {
         here: Here<'_>,
         now: Option<u32>,
     ) -> Option<Said> {
-        if self.phase != Phase::Hunting {
+        if self.phase != Phase::Hunting || self.quick {
             return None;
         }
         let flee = &self.profile.flee;
@@ -60,6 +60,9 @@ impl Hunt {
             && (self.held.is_none() && !self.in_sanctuary() || self.may_fight());
         if self.phase != Phase::Hunting || stay {
             return None;
+        }
+        if self.quick {
+            return Some(Said::Done(Ending::Cleared));
         }
         let waited = self.arrived.zip(now).is_none_or(|(arrived, now)| {
             f64::from(now.saturating_sub(arrived)) >= self.profile.wander.wait

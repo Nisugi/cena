@@ -100,10 +100,10 @@ fn nisugis_profile_comes_across_key_by_key() {
         notes.contains("sequence `volley` stands in for `script volley`"),
         "{notes}"
     );
-    assert!(
-        notes.contains("not imported: monitor_strings = "),
-        "{notes}"
-    );
+    // The monitor's lists are carried, and it stays off, as the profile has it.
+    assert!(!p.monitor.interaction);
+    assert!(!p.monitor.strings.is_empty() && !p.monitor.safe.is_empty());
+    assert!(!notes.contains("monitor_strings"), "{notes}");
     assert!(
         !notes.contains("hunting_commands"),
         "nothing in the routines was dropped: {notes}"

@@ -318,9 +318,11 @@ built; a step the importer cannot translate imports **held**, never silently los
 are built, and the spell behaviors (`plan/37`) followed. **The live run is last** (author,
 2026-09-25: *"The live run is at the end! We gotta get all the other m6 stuff so I can test
 it in the live run!!"*). **M6e is built** (`;sorter`, `;foreach`, `;multi`, `plan/30` §7).
-**Next, in any order:** `inventory/12` §2's open hunt gaps; ammo (`plan/30` §7, M6b); the
+The author asked for **all of bigshot** (2026-09-25); since then ammo, `jewel`, the death
+switches, the interaction monitor, quick hunting and a hunt that survives a reconnect are
+built (`plan/30` §7, M6b). **Next, in any order:** `inventory/12` §2's open hunt gaps; the
 bigshot verbs `hunt/verbs.rs` does not send yet (`UNPORTED`); the bigshot settings the
-importer still names as not imported. (Re-read 2026-09-25.)
+importer still names as not imported. Groups are `plan/39`, awaiting the author.
 
 > This section is headed by what is DONE rather than what is next, because that is
 > what it has become: milestones of record with the next one named in a line.

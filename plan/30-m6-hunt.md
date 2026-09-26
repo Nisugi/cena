@@ -509,7 +509,7 @@ Demonstrated live on a short hunt.
 >   ammo, wands, boons and the `censer_between_actions` policy (`plan/33`) are not built.
 >   **Since built, 2026-09-25:** `pull` and `deader` (`8b4dfda`), wands (`f074197`) and
 >   boons (`d87a4ae`). Groups are outside M6 (§8). The censer policy is built
->   (`hunt/censer.rs`, `plan/33` §2h). Ammo remains.
+>   (`hunt/censer.rs`, `plan/33` §2h), and so is ammo (below).
 > - **Found 2026-09-25: the routine's verbs went to the game as written.** §4's table put
 >   `kweed`, `coupdegrace` and `fire` in scope as "an action Hunt can send", and nothing
 >   sent them as bigshot does: `kweed` is not a game command at all (bigshot evokes
@@ -521,12 +521,24 @@ Demonstrated live on a short hunt.
 >   game command (`store weapon`, `weapon volley`) goes as written. Not ported yet, each
 >   skipped and named once to the player: `eachtarget`, the buff-first forms (`celerity`,
 >   `slayer`, `tonis`), `resonance`, `briar`, `efury`, `tether`, `nudgeweapons`,
->   `unarmed`, `mstrike`, `wandolier`, `wield` (needs the worn list), and `jewel`, whose
->   command word is the game's name (Rule 3.4 keeps it to a game module: the author's call).
+>   `unarmed`, `mstrike`, `wandolier` and `wield` (needs the worn list); `jewel` followed
+>   (below).
 >   **Closed the same day, on the author's objection to trying it live with gaps open:**
 >   Assume Aspect is cast as `cmd_assume` casts it (the spell, evoked or prepared, then
 >   `assume <aspect>` once the effects list shows it), and a walk inside a hunt reads and
 >   keeps the character's travel file as travel's own desk does.
+> - **Since built, on the author's *"all of bigshot"* (2026-09-25):** `jewel`, sent from
+>   `cena-behavior/src/gemstone/` as Rule 3.4 asks (`4102b60`); ammo, an arrow the game will
+>   not fire stowed or put in `ammo_container` (`d4540da`); the dead man's switch and the
+>   depart switch (`35afb9a`, `hunt/death.rs`); the interaction monitor, bigshot's
+>   `monitor_*` keys raised as warnings, off unless the profile turns it on (`hunt/monitor.rs`,
+>   `tests/hunt_monitor.rs`); quick hunting, `;hunt <name> quick`, this room until it is clear
+>   on `quickhunt_targets` and `quick_commands` (`hunt/quick.rs`, `tests/hunt_quick.rs`).
+> - **Found by `plan/39`, 2026-09-25: the hunt ended on a reconnect**, which the acceptance
+>   line below forbids: the driver's fold turned `Reconnecting` into an error. Now the
+>   driver waits the drop out holding its authority (SE-4 (c)), sends nothing while away,
+>   forgets the target and the held room, and hunts on after `Ready`; a walk the drop cuts
+>   short is walked again (`plan/39` Stage 0, `tests/hunt_reconnect.rs`).
 > - **The corpus cut, and what it found.** The author's first condition was *"nothing from
 >   hinterwilds"*, and MEASURED over every third of Nisugi's 6,570 sessions plus all of the
 >   newest 45, every session with a fight is in the Hinterwilds or the Duskruin Arena; the

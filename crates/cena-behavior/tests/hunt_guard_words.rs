@@ -381,7 +381,7 @@ fn alone_is_the_rooms_claim() {
         body: Runs {
             runs: vec![
                 run("Also here: ", None, false),
-                run("Qizhmur", Some((-9, "Qizhmur")), false),
+                run("Somebody", Some((-9, "Somebody")), false),
             ],
         },
     });

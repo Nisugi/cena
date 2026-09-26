@@ -107,8 +107,13 @@ pub struct Profile {
     pub wand: Wands,
     /// Boon traits to leave alone or flee from (`hunt/boons.rs`).
     pub boons: Boons,
+    /// Lines to put in front of the player (`hunt/monitor.rs`).
+    pub monitor: Monitor,
     /// What to attack, in order of preference, each with its routine.
     pub targets: Vec<Target>,
+    /// What a quick hunt attacks (`quickhunt_targets`, `hunt/quick.rs`);
+    /// empty is every hostile creature.
+    pub quick_targets: Vec<Target>,
     /// Leave the current target for a better-ranked one that appears
     /// (`priority`, `bigshot.lic:8703-8720`). Off, the current target is
     /// fought until it dies or goes.
@@ -424,6 +429,19 @@ impl Default for React {
             depart_switch: false,
         }
     }
+}
+
+/// The interaction monitor (`monitor_interaction`, `hunt/monitor.rs`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Monitor {
+    /// Watch for lines that ask for the player (`monitor_interaction`).
+    pub interaction: bool,
+    /// Patterns that raise an alert; empty is bigshot's default list
+    /// (`monitor_strings`).
+    pub strings: Vec<String>,
+    /// Patterns that exempt a line from the alert (`monitor_safe_strings`).
+    pub safe: Vec<String>,
 }
 
 /// One entry in the target list. Matched against a creature's noun or

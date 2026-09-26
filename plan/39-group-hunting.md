@@ -218,12 +218,10 @@ rules by the same author, and the hazards live in the port.
 **Gaps, MEASURED 2026-09-25** (in a working tree other agents are editing: the functions are
 named so the lines can drift):
 
-1. **The hunt ends on a reconnect.** `fold_into` maps `StateChanged(Reconnecting)` to
-   `BehaviorError::Disconnected` (`crates/cena-behavior/src/hunt/drive.rs:416`), and the desk
-   releases the authority (`crates/cena-behavior/src/hunt/desk.rs:460`). SE-4 keeps the
-   authority across a reconnect, but no hunt is alive to use it, and M6's own acceptance says
-   *"A reconnect mid-hunt keeps the hunt"* (`plan/30:677`). The author's design cannot be
-   built without it.
+1. ~~**The hunt ends on a reconnect.**~~ **CLOSED 2026-09-25** (Stage 0 below). `fold_into`
+   mapped `StateChanged(Reconnecting)` to `BehaviorError::Disconnected`, and the desk released
+   the authority. SE-4 keeps the authority across a reconnect, but no hunt was alive to use it,
+   and M6's own acceptance says *"A reconnect mid-hunt keeps the hunt"* (`plan/30:677`).
 2. **"Am I the leader?" has no answer.** `designates you as the new leader` and `You are
    leading` set the leader to `None` (`crates/cena-model/src/state/group.rs:316`, `:324-333`),
    which also means nobody has said.
@@ -277,10 +275,14 @@ named so the lines can drift):
 Each ends green, committed, and demonstrable on its own.
 
 **Stage 0 — a hunt that survives a reconnect** (M6's own, named here because Stage 6 cannot
-start without it). On `Reconnecting` the driver holds instead of ending; after `Ready` it
-takes the state as it now is, with the room, hands and group unknown until the burst
-re-teaches them (`plan/12` §5.2), and goes on. Test: a scripted session dropped mid-hunt, the
-hunt carrying on over the next generation. Mutation: restore the `Err` at `drive.rs:416`.
+start without it). **BUILT 2026-09-25.** On `Reconnecting` the driver holds instead of ending
+(`Driver::link_lost` in `crates/cena-behavior/src/hunt/drive.rs`: the state invalidated, the
+target, held room and room forgotten, nothing sent); a walk the drop interrupts returns to the
+loop rather than ending the hunt (`drive/walk.rs`); after `Ready` it takes the state as it now
+is, with the room, hands and group unknown until the burst re-teaches them (`plan/12` §5.2),
+and goes on. Test: `crates/cena-behavior/tests/hunt_reconnect.rs`, a scripted session dropped
+mid-hunt, nothing written for the 60 s it is away, the target taken again after `Ready`. Two
+mutations KILLED: the drop ending the hunt, and the hunt sending while away.
 
 **Stage 1 — the model's group gaps** (`cena-model`). Leading as a three-valued fact; group
 open or closed; the closed refusal; `X joins Y's group`; `no group to disband`; the `HOLD`

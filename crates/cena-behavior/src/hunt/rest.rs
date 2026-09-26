@@ -22,6 +22,9 @@ impl Hunt {
     /// The rest cycle: reasons to go, the walk there, the wait, the walk
     /// back, and the prepare commands.
     pub(super) fn rest(&mut self, state: &GameState, here: Here<'_>) -> Option<Said> {
+        if self.quick {
+            return None;
+        }
         match self.phase {
             Phase::Hunting => self.start_rest(state, here),
             Phase::ToRest(why) => {
