@@ -412,6 +412,7 @@ class FakeNode {
   constructor(tag) {
     this.tagName = tag; this.children = []; this.parent = null; this.own = "";
     this.classes = []; this.listeners = {}; this.scrollTop = 0; this.clientHeight = 100; this.hidden = false;
+    this.style = {};
     this.classList = {
       add: (...names) => this.classes.push(...names),
       toggle: (name, on) => {
@@ -477,6 +478,34 @@ test("evicting lines that own no Story node does not take Story paragraphs with 
   socket.message(update(snapshot, { lines: Array.from({ length: 10 }, (_, i) => said(`new ${i}`)) }));
   assert.equal(story.children.length, MAX_STORY_LINES, "990 retained + 10 new, one paragraph each");
   assert.equal(story.children[0].textContent, "kept 0", "the oldest retained line is still on screen");
+});
+
+test("a trigger's paint is drawn, and paint that is not #rrggbb refuses the message", () => {
+  // plan/45: the session resolves a trigger's look into `color` and
+  // `background` on each run; the page only lays them on.
+  const { socket, element } = page();
+  const snapshot = readySnapshot();
+  const painted = said("You are stunned!");
+  painted.runs = [
+    { text: "You are ", bold: false, monospace: false, preset: null },
+    { text: "stunned", bold: true, monospace: false, preset: null, color: "#ff4040", background: "#000080" },
+    { text: "!", bold: false, monospace: false, preset: null },
+  ];
+  snapshot.story = [painted];
+  socket.message(snapshot);
+  const spans = element("story-output").children[0].children;
+  assert.equal(spans.length, 3);
+  assert.deepEqual(spans[1].style, { color: "#ff4040", backgroundColor: "#000080" });
+  assert.deepEqual(spans[0].style, {}, "an unpainted run gets no style");
+
+  // Anything but the exact form is refused: it would otherwise reach a style.
+  for (const color of ["red", "#FF4040", "#ff404", "url(x)", 7]) {
+    const { session, socket: fresh } = setup();
+    const bad = readySnapshot();
+    bad.story = [{ ...said("x"), runs: [{ text: "x", bold: false, monospace: false, preset: null, color }] }];
+    fresh.message(bad);
+    assert.equal(session.state.connection, "protocol-error", String(color));
+  }
 });
 
 test("a stream pane keeps the reader's place when its own lines have not changed", () => {

@@ -11,7 +11,7 @@ mod view;
 mod wire;
 
 pub use input::{InputError, MAX_COMMAND_BYTES, MAX_REQUEST_ID_BYTES, validate_command};
-pub use lines::{MAX_LINE_BYTES, MAX_LINE_RUNS, story_lines};
+pub use lines::{MAX_LINE_BYTES, MAX_LINE_RUNS, painted, story_lines};
 pub use merge::{MATCH_WINDOW, MERGED_STREAMS, MergedLine, Merger};
 pub use view::{
     Closed, GroupView, HandView, LifecycleView, MapLocationView, RoomItemView, RoomView,

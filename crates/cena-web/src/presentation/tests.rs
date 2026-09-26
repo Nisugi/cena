@@ -262,6 +262,39 @@ fn a_published_line_is_drawn_and_a_text_frame_is_not() {
     assert_eq!(drawn(&pending), [(String::new(), "You see a rock.".into())]);
 }
 
+/// A line the session painted is drawn with its paint (`plan/45` §4): the
+/// look was resolved there, once, and the pump only lays it on.
+#[test]
+fn a_painted_line_is_drawn_with_its_paint() {
+    let mut pending = Pending::new(&snapshot(0));
+    let mut line =
+        cena_session::Line::new("", cena_session::ChunkLine::plain("You are stunned!").runs);
+    line.paint = vec![cena_session::trigger::Paint {
+        span: 8..15,
+        color: Some(cena_session::trigger::Color {
+            red: 0xff,
+            green: 0x40,
+            blue: 0x40,
+        }),
+        background: None,
+        bold: false,
+    }];
+    pending.observe(observed(0, 1, Event::Line(std::sync::Arc::new(line))));
+    let runs = &pending.lines[0].runs;
+    let pieces: Vec<(&str, Option<&str>)> = runs
+        .iter()
+        .map(|run| (run.text.as_str(), run.color.as_deref()))
+        .collect();
+    assert_eq!(
+        pieces,
+        [
+            ("You are ", None),
+            ("stunned", Some("#ff4040")),
+            ("!", None)
+        ]
+    );
+}
+
 #[test]
 fn a_quiet_windows_report_is_left_out_and_other_streams_are_not() {
     let mut pending = Pending::new(&snapshot(0));

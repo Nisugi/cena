@@ -4,14 +4,16 @@
 //! The session publishes each finished line ([`Event::Line`]), the model's
 //! own, so this draws those rather than assembling lines from text frames
 //! (`plan/45` §4a). It keeps no partial line: the model does, and clears it
-//! on a reconnect. It sorts nothing: with `;sorter` on, the session publishes
-//! a container look already sorted. Room components are not lines in the
-//! model, so their bodies are still drawn from their frames here.
+//! on a reconnect. It sorts nothing and matches nothing: with `;sorter` on,
+//! the session publishes a container look already sorted, and a line comes
+//! already answered by the character's triggers, its paint resolved
+//! ([`painted`]). Room components are not lines in the model, so their bodies
+//! are still drawn from their frames here, unpainted.
 
 use super::hub::line_bytes;
 use super::{MAX_DRAIN, MAX_HISTORY_BYTES, MAX_HISTORY_LINES};
-use cena_session::{Event, Frame, Generation, ObservedEvent, Run, Snapshot};
-use cena_ui::{StoryLine, StyledRun, story_lines};
+use cena_session::{Event, Frame, Generation, Line, ObservedEvent, Snapshot};
+use cena_ui::{StoryLine, painted, story_lines};
 use std::collections::VecDeque;
 use tokio::sync::broadcast;
 
@@ -55,9 +57,12 @@ impl Pending {
                 return;
             }
             Event::Line(line) if self.quiet && is_main(&line.stream) => return,
-            Event::Line(line) => story_lines(&line.stream, line.runs.runs.iter().map(styled)),
+            Event::Line(line) => story_lines(&line.stream, painted(&line)),
             Event::Frame(frame) => match *frame {
-                Frame::Component { id, body } => story_lines(&id, body.runs.iter().map(styled)),
+                Frame::Component { id, body } => {
+                    let body = Line::new(id, body);
+                    story_lines(&body.stream, painted(&body))
+                }
                 _ => return,
             },
             _ => return,
@@ -109,14 +114,4 @@ impl Pending {
 /// main-stream text.
 fn is_main(stream: &str) -> bool {
     stream.is_empty() || stream == "main"
-}
-
-/// One run as the story draws it.
-fn styled(run: &Run) -> StyledRun {
-    StyledRun {
-        text: run.text.clone(),
-        bold: run.style.bold_depth > 0,
-        monospace: run.style.mono,
-        preset: run.style.preset.clone(),
-    }
 }

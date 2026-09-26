@@ -33,6 +33,7 @@ impl SessionView {
                             bold: run.style.bold_depth > 0,
                             monospace: run.style.mono,
                             preset: run.style.preset.clone(),
+                            ..StyledRun::default()
                         })
                         .collect()
                 }),

@@ -51,10 +51,17 @@ export function commandError(line) {
   return null;
 }
 
+// A trigger's paint (`plan/45`): optional, and when present exactly the
+// `#rrggbb` the server writes, so nothing else can reach a style property.
+const PAINT = /^#[0-9a-f]{6}$/;
+const validPaint = (value) => value === undefined || value === null
+  || (typeof value === "string" && PAINT.test(value));
+
 function validRuns(runs) {
   return Array.isArray(runs) && runs.every((run) => run && typeof run.text === "string"
     && typeof run.bold === "boolean" && typeof run.monospace === "boolean"
-    && (run.preset === null || typeof run.preset === "string"));
+    && (run.preset === null || typeof run.preset === "string")
+    && validPaint(run.color) && validPaint(run.background));
 }
 
 // A line's closed-window declaration. Shape only: an unrecognised `kind` is

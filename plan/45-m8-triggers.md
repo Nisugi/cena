@@ -237,9 +237,11 @@ differences, and what happens to each:
 | `ifClosed` | declared (`stream_windows`) | stamped by the pump | unchanged |
 
 `LineAssembler` has gone; what is left of it is `cena_ui::story_lines`, one finished line to
-the story lines a viewer draws. The wire has not changed yet: a story line is as it was. It
-changes when a line gains its responses (Stage 1 step 4), and then `WIRE_VERSION` moves from
-1 (`crates/cena-ui/src/wire.rs:10`) and `crates/cena-ui/WIRE.md` records it.
+the story lines a viewer draws. **CORRECTED 2026-09-26:** this said `WIRE_VERSION` would
+move from 1 when a line gained its responses. It did not need to. A run's paint is two
+optional fields, `color` and `background`, which is how `WIRE.md` has always grown
+(`view.map_location` and `view.group` are optional additive projections, and older servers
+omit them); `crates/cena-ui/WIRE.md` records the fields.
 
 ---
 
@@ -355,7 +357,15 @@ Each ends in something demonstrable without a live login.
    damage exactly as the game said; triggers see each sorted line. Both wiring points
    mutation-checked. The wire still carries no colour: step 6.
 5. **`;trigger`** (§5c), including `test`.
-6. **Despana renders look responses** -- the only frontend until the GUI.
+6. **Despana renders look responses** -- the only frontend until the GUI. **BUILT
+   2026-09-26**: a wire run gains optional `color` and `background` (`#rrggbb`);
+   `cena_ui::painted` lays a published line's paint over its runs, for Despana now and the
+   GUI later; the page refuses anything but `#rrggbb` and sets the colours through the
+   CSSOM, which its `style-src 'self'` allows. Tested in `crates/cena-ui/src/lines.rs`,
+   `crates/cena-web/src/presentation/tests.rs` and
+   `crates/cena-web/assets/tests/session.test.mjs`; four guards mutation-checked. Not yet
+   seen in a real browser: the smoke needs a Playwright module, and none was found here
+   (global npm, the projects under `G:\dev`); Chrome is installed.
 7. **A bench**: the golden fixtures against the author's Wrayth set (~220 rules) and a
    synthetic 1,500. The budget is set from the measurement, with VellumFE's ~17 µs a line
    as the reference point, and 25 sessions in mind.

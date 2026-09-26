@@ -3,13 +3,63 @@
 //! This used to assemble lines itself, frame by frame, and so it kept what
 //! the model already keeps: a partial line per stream, flushed at a prompt,
 //! reset on a new connection. The session now publishes each finished line,
-//! the model's own (`plan/45` §4a), already sorted when `;sorter` is on, so
-//! what is left here is per line and holds no state: bound it, and split it
-//! at any embedded newline.
+//! the model's own (`plan/45` §4a), already sorted when `;sorter` is on and
+//! already answered by the character's triggers, so what is left here is per
+//! line and holds no state: split its runs where a trigger's paint starts and
+//! stops ([`painted`]), bound it, and split it at any embedded newline.
+
+use cena_model::line::Line;
 
 use crate::projection::bounded_text;
 use crate::view::Closed;
 use crate::{StoryLine, StyledRun};
+
+/// A published line's runs as the story draws them: each split where a
+/// trigger's paint starts or stops, and each piece given that paint's colour,
+/// background and bold. The paint was resolved in the session, once, for
+/// every viewer (`plan/45` §4); this only lays it over the runs.
+#[must_use]
+pub fn painted(line: &Line) -> Vec<StyledRun> {
+    let mut out = Vec::new();
+    let mut at = 0;
+    for run in &line.runs.runs {
+        let span = at..at + run.text.len();
+        at = span.end;
+        let mut edges = vec![span.start, span.end];
+        for paint in &line.paint {
+            for edge in [paint.span.start, paint.span.end] {
+                if span.start < edge && edge < span.end {
+                    edges.push(edge);
+                }
+            }
+        }
+        edges.sort_unstable();
+        edges.dedup();
+        for pair in edges.windows(2) {
+            let &[start, end] = pair else {
+                continue;
+            };
+            let Some(text) = run.text.get(start - span.start..end - span.start) else {
+                continue;
+            };
+            let paint = line
+                .paint
+                .iter()
+                .find(|paint| paint.span.start <= start && end <= paint.span.end);
+            out.push(StyledRun {
+                text: text.to_owned(),
+                bold: run.style.bold_depth > 0 || paint.is_some_and(|paint| paint.bold),
+                monospace: run.style.mono,
+                preset: run.style.preset.clone(),
+                color: paint.and_then(|paint| paint.color).map(|c| c.to_string()),
+                background: paint
+                    .and_then(|paint| paint.background)
+                    .map(|c| c.to_string()),
+            });
+        }
+    }
+    out
+}
 
 /// Text bytes kept per line; overflow marks the line `truncated`.
 pub const MAX_LINE_BYTES: usize = 16 * 1024;
@@ -87,6 +137,8 @@ impl Building {
             && last.bold == style.bold
             && last.monospace == style.monospace
             && last.preset == preset
+            && last.color == style.color
+            && last.background == style.background
         {
             last.text.push_str(piece);
         } else if self.runs.len() < MAX_LINE_RUNS {
@@ -95,6 +147,8 @@ impl Building {
                 bold: style.bold,
                 monospace: style.monospace,
                 preset,
+                color: style.color.clone(),
+                background: style.background.clone(),
             });
         } else {
             self.truncated = true;
@@ -136,6 +190,94 @@ mod tests {
 
     fn plain(line: &StoryLine) -> String {
         line.runs.iter().map(|run| run.text.as_str()).collect()
+    }
+
+    const RED: cena_model::trigger::Color = cena_model::trigger::Color {
+        red: 0xff,
+        green: 0x40,
+        blue: 0x40,
+    };
+
+    /// A published line of these runs, with this paint.
+    fn published(texts: &[&str], paint: Vec<cena_model::trigger::Paint>) -> Line {
+        let mut runs = cena_model::ChunkLine::plain("template").runs;
+        let template = runs.runs.first().cloned();
+        runs.runs = texts
+            .iter()
+            .filter_map(|text| {
+                let mut run = template.clone()?;
+                run.text = (*text).to_owned();
+                Some(run)
+            })
+            .collect();
+        Line {
+            stream: String::new(),
+            runs,
+            paint,
+        }
+    }
+
+    fn red(span: std::ops::Range<usize>, bold: bool) -> cena_model::trigger::Paint {
+        cena_model::trigger::Paint {
+            span,
+            color: Some(RED),
+            background: None,
+            bold,
+        }
+    }
+
+    #[test]
+    fn paint_splits_a_run_where_it_starts_and_stops() {
+        let runs = painted(&published(&["You are stunned!"], vec![red(8..15, true)]));
+        let texts: Vec<&str> = runs.iter().map(|run| run.text.as_str()).collect();
+        assert_eq!(texts, ["You are ", "stunned", "!"]);
+        assert_eq!(runs[1].color.as_deref(), Some("#ff4040"));
+        assert!(runs[1].bold, "a look's bold");
+        assert_eq!((runs[0].color.as_deref(), runs[0].bold), (None, false));
+        assert_eq!(runs[2].color, None);
+    }
+
+    #[test]
+    fn paint_over_two_runs_paints_each_piece_and_story_lines_keeps_it() {
+        let runs = painted(&published(
+            &["You are ", "stunned!"],
+            vec![red(4..15, false)],
+        ));
+        let pieces: Vec<(&str, bool)> = runs
+            .iter()
+            .map(|run| (run.text.as_str(), run.color.is_some()))
+            .collect();
+        assert_eq!(
+            pieces,
+            [
+                ("You ", false),
+                ("are ", true),
+                ("stunned", true),
+                ("!", false)
+            ]
+        );
+        // Drawn: the two painted pieces join, and paint keeps them apart from
+        // the unpainted ones that are otherwise styled alike.
+        let lines = story_lines("", runs);
+        let drawn: Vec<&str> = lines[0].runs.iter().map(|run| run.text.as_str()).collect();
+        assert_eq!(drawn, ["You ", "are stunned", "!"]);
+    }
+
+    #[test]
+    fn an_unpainted_run_is_written_without_paint() {
+        let plain = serde_json::to_value(run("x")).unwrap();
+        assert!(
+            plain.get("color").is_none() && plain.get("background").is_none(),
+            "{plain}"
+        );
+        let mut coloured = run("x");
+        coloured.color = Some("#ff4040".into());
+        let written = serde_json::to_value(&coloured).unwrap();
+        assert_eq!(written["color"], "#ff4040");
+        assert_eq!(
+            serde_json::from_value::<StyledRun>(written).unwrap(),
+            coloured
+        );
     }
 
     #[test]

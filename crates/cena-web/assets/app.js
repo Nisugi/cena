@@ -42,6 +42,11 @@ export function appendRuns(document, target, runs) {
     if (run.monospace) span.classList.add("text-mono");
     if (PRESETS.has(run.preset)) span.classList.add(PRESETS.get(run.preset));
     else if (run.preset) span.title = `Unmapped text preset: ${run.preset}`;
+    // A trigger's paint (`plan/45`), checked as `#rrggbb` by the transport.
+    // Set through the CSSOM, which the page's `style-src 'self'` allows; a
+    // style attribute would not be.
+    if (run.color) span.style.color = run.color;
+    if (run.background) span.style.backgroundColor = run.background;
     target.appendChild(span);
   }
 }
