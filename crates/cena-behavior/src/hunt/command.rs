@@ -134,7 +134,7 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
         Some((word, args)) if word.eq_ignore_ascii_case("import") => import(args),
         Some((word, args)) if word.eq_ignore_ascii_case("import-loot") && !args.is_empty() => {
             Ok(Command::ImportLoot {
-                path: args.join(" "),
+                path: unquoted(&args.join(" ")),
             })
         }
         Some((word, [name])) if word.eq_ignore_ascii_case("check") => {
@@ -177,7 +177,6 @@ fn capitalized(name: &str) -> String {
     })
 }
 
-/// `import <path...> [as <name>]`: everything before `as` is the path.
 /// `;heal`'s flags, with or without eherbs' dashes.
 fn heal<'a>(words: impl Iterator<Item = &'a str>) -> Result<Command, String> {
     let (mut spellcast, mut ranged, mut blood) = (false, false, false);
@@ -207,6 +206,7 @@ fn heal<'a>(words: impl Iterator<Item = &'a str>) -> Result<Command, String> {
     })
 }
 
+/// `import <path...> [as <name>]`: everything before `as` is the path.
 fn import(args: &[&str]) -> Result<Command, String> {
     let (path, name) = match args.iter().position(|w| w.eq_ignore_ascii_case("as")) {
         Some(at) => {
@@ -222,9 +222,19 @@ fn import(args: &[&str]) -> Result<Command, String> {
         return Err(USAGE.to_owned());
     }
     Ok(Command::Import {
-        path: path.join(" "),
+        path: unquoted(&path.join(" ")),
         name,
     })
+}
+
+/// A path as typed, without the quotes around it: Windows' "Copy as path"
+/// adds them, and `"` cannot be in a Windows file name (os error 123).
+fn unquoted(path: &str) -> String {
+    ['"', '\'']
+        .iter()
+        .find_map(|&q| path.strip_prefix(q)?.strip_suffix(q))
+        .unwrap_or(path)
+        .to_owned()
 }
 
 #[cfg(test)]
@@ -265,6 +275,24 @@ mod tests {
             }))
         );
         assert!(matches!(parse("hunt ojandhaart with"), Some(Err(_))));
+    }
+
+    /// A quoted path is the path: `"` is not part of a Windows file name.
+    #[test]
+    fn a_quoted_path_loses_its_quotes() {
+        assert_eq!(
+            parse("hunt import \"C:\\some dir\\ojandhaart.yaml\" as archer"),
+            Some(Ok(Command::Import {
+                path: "C:\\some dir\\ojandhaart.yaml".to_owned(),
+                name: Some("archer".to_owned()),
+            }))
+        );
+        assert_eq!(
+            parse("hunt import-loot 'C:\\eloot.yaml'"),
+            Some(Ok(Command::ImportLoot {
+                path: "C:\\eloot.yaml".to_owned(),
+            }))
+        );
     }
 
     #[test]
