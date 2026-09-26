@@ -14,6 +14,7 @@
 //! | `unravel` | `stop 1013` once the song resonates or gains mana; `stop 1013` and again when already singing or the tendril wends on, five tries; `release` when there is no target | `cmd_unravel`, `:4915-4957` |
 //! | `sacrifice` | `sacrifice #id` when `appraise #id` reads enticingly frail | `cmd_sacrifice`, `:6611-6622` |
 //! | `dhurl` | `recover hurl`, again while the weapon is around here somewhere, ten tries | `cmd_dhurl`, `cmd_recover`, `:6280-6354` |
+//! | `briar` | `raise #id` when `measure #id` reads 100 percent, then the next weapon | `cmd_briar`, `:5650-5673` |
 //!
 //! Also kept here, from every line heard: whether the character is rooted,
 //! for bigshot's `kick` sent as `punch` (`bigshot.lic:2830-2833`, `:3974`).
@@ -108,6 +109,8 @@ pub(super) enum Answer {
     Recovering { tries: u8 },
     /// `cman dislodge #id <part>`: that part is free once it works.
     Dislodged { part: String },
+    /// `measure #id`: raised at 100 percent, then the next weapon measured.
+    Measured { id: String, rest: VecDeque<String> },
 }
 
 /// What a handler leaves to happen after its lines.
@@ -249,6 +252,18 @@ impl Hunt {
                     || said("You find nothing recoverable");
                 if thrown {
                     self.recover(0);
+                }
+            }
+            Answer::Measured { id, mut rest } => {
+                let full = lines
+                    .iter()
+                    .any(|line| cena_session::inspect::measured_percent(line) == Some(100));
+                if full {
+                    self.followups.push_back(format!("raise #{id}"));
+                }
+                if let Some(next) = rest.pop_front() {
+                    self.followups.push_back(format!("measure #{next}"));
+                    self.follow.answer = Some(Answer::Measured { id: next, rest });
                 }
             }
             Answer::Dislodged { part } => {

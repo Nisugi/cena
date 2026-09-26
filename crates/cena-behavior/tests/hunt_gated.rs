@@ -410,3 +410,103 @@ fn ambush_with_a_part_aims_there_and_at_the_creature() {
         "bigshot's list"
     );
 }
+
+/// One line of the `inv` stream: `pieces` of text, each linked to
+/// `(id, noun)` when given.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the text's style type is not re-exported for behaviors"
+)]
+fn inv_line(state: &mut GameState, pieces: &[(&str, Option<(&str, &str)>)]) {
+    let last = pieces.len().saturating_sub(1);
+    for (at, (text, object)) in pieces.iter().enumerate() {
+        state.apply(&Frame::Text(cena_session::TextFrame {
+            content: (*text).to_owned(),
+            stream: "inv".to_owned(),
+            style: Default::default(),
+            link: object.map(|(id, noun)| Link {
+                kind: LinkKind::Exist {
+                    id: id.to_owned(),
+                    noun: noun.to_owned(),
+                },
+                text: (*text).to_owned(),
+                coord: None,
+            }),
+            inner_link: None,
+            ends_line: at == last,
+        }));
+    }
+}
+
+/// `kobold(1_000)`, wearing these `(id, noun, name)`.
+fn wearing(items: &[(&str, &str, &str)]) -> GameState {
+    let mut state = kobold(1_000);
+    state.apply(&Frame::StreamPush { id: "inv".into() });
+    inv_line(&mut state, &[("Your worn items are:", None)]);
+    for (id, noun, name) in items {
+        inv_line(&mut state, &[("  ", None), (name, Some((id, noun)))]);
+    }
+    state.apply(&Frame::Prompt {
+        time: "1000".into(),
+        text: ">".into(),
+    });
+    state
+}
+
+#[test]
+fn wield_takes_off_what_is_worn_and_gets_the_rest() {
+    let worn = wearing(&[("9", "shield", "a kite shield")]);
+    assert_eq!(
+        worn.worn.wears("shield"),
+        Some(true),
+        "the input reaches the check"
+    );
+    let mut h = hunt(&["wield shield left"]).unwrap();
+    assert_eq!(ticks(&mut h, &worn, 2), ["store left", "remove my shield"]);
+    let mut h = hunt(&["wield sword"]).unwrap();
+    assert_eq!(ticks(&mut h, &worn, 2), ["store right", "get my sword"]);
+    let mut holding = kobold(1_000);
+    holding.apply(&Frame::RightHand {
+        item: "steel sword".to_owned(),
+        link: Some(Link {
+            kind: LinkKind::Exist {
+                id: "5".to_owned(),
+                noun: "sword".to_owned(),
+            },
+            text: "steel sword".to_owned(),
+            coord: None,
+        }),
+    });
+    assert_eq!(first("wield sword", &holding), "wait 1", "already wielded");
+}
+
+#[test]
+fn briar_measures_each_weapon_and_raises_a_full_one() {
+    let mut state = wearing(&[("7", "gauntlet", "a briar gauntlet")]);
+    state.apply(&Frame::RightHand {
+        item: "briar gauntlet".to_owned(),
+        link: Some(Link {
+            kind: LinkKind::Exist {
+                id: "8".to_owned(),
+                noun: "gauntlet".to_owned(),
+            },
+            text: "briar gauntlet".to_owned(),
+            coord: None,
+        }),
+    });
+    let mut h = hunt(&["briar gauntlet", "kick"]).unwrap();
+    assert_eq!(tick(&mut h, &state), "measure #8", "the hand first");
+    h.replied(
+        ["You gaze intently at the gauntlet and judge its thorns to be about 100 percent."],
+        Some(1_000),
+    );
+    assert_eq!(ticks(&mut h, &state, 2), ["raise #8", "measure #7"]);
+    h.replied(
+        ["You gaze intently at the gauntlet and judge its thorns to be about 40 percent."],
+        Some(1_001),
+    );
+    assert_eq!(tick(&mut h, &state), "kick", "not full: not raised");
+    // The same gauntlet in hand, so the input reaches the Briar check.
+    let up = with(state, "Active Spells", "9105", "Briar", 1_060);
+    assert_eq!(first("briar gauntlet", &up), "wait 1", "Briar is up");
+}

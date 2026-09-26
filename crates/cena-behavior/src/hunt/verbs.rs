@@ -223,6 +223,8 @@ pub(super) fn line(send: &str, target: i64, state: &GameState) -> Line {
             };
         }
         "shield" => return gated::shield(&rest, send, target, state),
+        "wield" if !rest.is_empty() => return gated::wield(&rest, state),
+        "briar" if !rest.is_empty() => return gated::briar(&rest, state),
         _ => {}
     }
     if let Some((_, name)) = CMANS.iter().find(|(w, _)| *w == first) {

@@ -110,6 +110,63 @@ pub(super) fn feat(which: &str, send: &str, target: i64, state: &GameState) -> L
     one(format!("feat {send} #{target}"))
 }
 
+/// `wield <noun> [left|right]` (`cmd_wield`, `bigshot.lic:4549-4564`):
+/// nothing when that hand holds it already; the hand stored, then the item
+/// removed when it is worn, got from a container otherwise.
+pub(super) fn wield(rest: &str, state: &GameState) -> Line {
+    let mut words = rest.split_whitespace();
+    let Some(noun) = words.next() else {
+        return Line::Skip;
+    };
+    let left = words.next() == Some("left");
+    let hand = if left {
+        &state.left_hand
+    } else {
+        &state.right_hand
+    };
+    if hand.noun() == Some(noun) {
+        return Line::Skip;
+    }
+    let store = if left { "store left" } else { "store right" };
+    let take = if state.worn.wears(noun) == Some(true) {
+        format!("remove my {noun}")
+    } else {
+        format!("get my {noun}")
+    };
+    Line::Send(VecDeque::from([store.to_owned(), take]))
+}
+
+/// `briar <noun>` (`cmd_briar`, `bigshot.lic:5650-5673`): each weapon of
+/// that noun in a hand or worn is measured, and raised once its briars are
+/// at 100 percent; not while Briar (9105) is up.
+pub(super) fn briar(noun: &str, state: &GameState) -> Line {
+    let up = state
+        .game_time_now()
+        .is_some_and(|now| state.effects.active("9105", now) == Some(true));
+    if up {
+        return Line::Skip;
+    }
+    let hands = [&state.right_hand, &state.left_hand]
+        .into_iter()
+        .filter(|hand| hand.noun() == Some(noun))
+        .filter_map(|hand| hand.id().map(str::to_owned));
+    let worn = state
+        .worn
+        .items()
+        .unwrap_or_default()
+        .iter()
+        .filter(|item| item.noun == noun)
+        .map(|item| item.id.clone());
+    let mut weapons: VecDeque<String> = hands.chain(worn).collect();
+    let Some(id) = weapons.pop_front() else {
+        return Line::Skip;
+    };
+    then(
+        [format!("measure #{id}")],
+        Next::Answer(Answer::Measured { id, rest: weapons }),
+    )
+}
+
 /// `stomp` (`cmd_stomp`, `:6026-6040`): Tremors known; `stomp` while it is
 /// up and 5 mana are left; channelled first when it is down.
 pub(super) fn stomp(state: &GameState) -> Line {

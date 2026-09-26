@@ -97,7 +97,6 @@ pub(super) const PLANTS: &[&str] = &[
     "swallowwort",
     "smilax",
     "creeper",
-    "briar",
     "ivy",
     "tumbleweed",
 ];
@@ -122,12 +121,9 @@ pub(super) const UNAIMED: &[u16] = &[506, 902];
 
 /// bigshot verbs not sent yet, by their first word.
 pub(super) const UNPORTED: &[&str] = &[
-    "briar",
     "nudgeweapon",
     "nudgeweapons",
     "unarmed",
     "mstrike",
     "wandolier",
-    // Needs the worn-items list to choose `remove` or `get` (`cmd_wield`).
-    "wield",
 ];
