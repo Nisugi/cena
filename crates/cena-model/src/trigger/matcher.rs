@@ -36,8 +36,8 @@ use super::{Pattern, Trigger, regex};
 const DFA_LIMIT: usize = 1 << 26;
 
 /// A character's triggers, compiled to be matched against each finished
-/// line.
-#[derive(Debug, Clone)]
+/// line. The default has none, and matches nothing.
+#[derive(Debug, Clone, Default)]
 pub struct Matcher {
     pub(super) triggers: Vec<Trigger>,
     sensitive: Literals,

@@ -8,7 +8,8 @@
 
 use cena_platform::ReplaySource;
 use cena_session::player_log::{Capture, LogSink};
-use cena_session::{Event, Frame, Line, PlayerLog, Session};
+use cena_session::trigger::{Look, Matcher, Pattern, Rule, Span, Trigger};
+use cena_session::{Event, Frame, Line, PlayerLog, Runs, Session};
 use std::sync::Arc;
 
 /// Every event the session published over `wire`, in order.
@@ -191,6 +192,149 @@ async fn off_or_off_the_main_stream_a_look_is_published_as_it_came() {
     let pushed = format!("<pushStream id='thoughts'/>{}<popStream/>", the_box());
     let (elsewhere, _) = run(&pushed, true, "thoughts").await;
     assert_eq!(elsewhere.len(), 1, "{elsewhere:?}");
+}
+
+/// A trigger on these words that does what `edit` says.
+fn trigger(name: &str, text: &str, edit: impl FnOnce(&mut Rule)) -> Trigger {
+    let mut rule = Rule {
+        category: String::new(),
+        priority: 0,
+        pattern: Pattern::Literal {
+            text: text.into(),
+            whole_word: true,
+        },
+        case_sensitive: false,
+        stream: None,
+        look: None,
+        squelch: false,
+        substitute: None,
+        redirect: None,
+    };
+    edit(&mut rule);
+    Trigger {
+        name: name.into(),
+        rule,
+    }
+}
+
+/// `combat_wiring.rs`'s swing: one attack on a cave lizard, 40 damage.
+const SWING: &str = concat!(
+    "You swing a broadsword at <pushBold/><a exist=\"101\" noun=\"lizard\">a cave lizard</a><popBold/>!\n",
+    "  AS: +300 vs DS: +100 with AvD: +30 + d100 roll: +50 = +280\n",
+    "   ... and hit for 40 points of damage!\n",
+    "<prompt time=\"1000\">&gt;</prompt>\n",
+);
+
+/// **A trigger changes what a viewer is given, and nothing else.** The swing
+/// is squelched and its damage rewritten for the viewer; the model's
+/// scrollback, the player log, the combat event and the creature's damage
+/// all keep the game's text (`plan/45` §4).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn triggers_answer_the_published_line_and_the_record_keeps_the_games_text() {
+    let (log, mut sink) = PlayerLog::new();
+    let session = Session::new(ReplaySource::from_bytes(SWING.as_bytes())).with_player_log(
+        log,
+        Capture::default(),
+        None,
+    );
+    session.handle().set_triggers(
+        Matcher::new(vec![
+            trigger("hide-swing", "You swing", |r| r.squelch = true),
+            trigger("damage", "40 points", |r| {
+                r.substitute = Some("LOTS".into());
+            }),
+        ])
+        .unwrap(),
+    );
+    let (_, mut events) = session.subscribe();
+    let end = Box::pin(session.into_actor().run()).await;
+    let events: Vec<Event> = std::iter::from_fn(|| events.try_recv().ok()).collect();
+
+    let shown: Vec<String> = lines(&events).iter().map(|line| line.text()).collect();
+    assert!(
+        !shown.iter().any(|line| line.starts_with("You swing")),
+        "squelched: {shown:?}"
+    );
+    assert!(
+        shown
+            .iter()
+            .any(|line| line == "   ... and hit for LOTS of damage!"),
+        "substituted: {shown:?}"
+    );
+
+    let kept: Vec<String> = end.state.stream("").iter().map(Runs::plain).collect();
+    assert!(
+        kept.iter()
+            .any(|line| line.starts_with("You swing a broadsword")),
+        "{kept:?}"
+    );
+    assert!(
+        kept.iter().any(|line| line.contains("40 points")),
+        "{kept:?}"
+    );
+    let logged = drain(&mut sink);
+    assert!(
+        logged
+            .iter()
+            .any(|line| line.starts_with("You swing a broadsword")),
+        "{logged:?}"
+    );
+    assert!(
+        logged.iter().any(|line| line.contains("40 points")),
+        "{logged:?}"
+    );
+
+    let damage: Vec<u32> = events
+        .iter()
+        .filter_map(|event| match event {
+            Event::Combat(facts) => Some(
+                facts
+                    .events
+                    .iter()
+                    .map(cena_model::state::combat::AttackEvent::total_damage)
+                    .sum(),
+            ),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(damage, [40], "the chunk the classifiers read is the game's");
+    assert_eq!(
+        end.state
+            .creatures()
+            .get(101)
+            .map(cena_model::CreatureInstance::damage_taken),
+        Some(40)
+    );
+}
+
+/// With `;sorter` on, the triggers see each sorted line, as `VellumFE` sorts
+/// before it highlights: a look on `gem` paints the gem line and no other.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn with_sorter_on_triggers_match_each_sorted_line() {
+    let session = Session::new(ReplaySource::from_bytes(the_box().as_bytes()));
+    session.handle().sort_containers(true);
+    session.handle().set_triggers(
+        Matcher::new(vec![trigger("gems", "gem", |r| {
+            r.look = Some(Look {
+                color: None,
+                background: None,
+                bold: true,
+                span: Span::Line,
+            });
+        })])
+        .unwrap(),
+    );
+    let (_, mut events) = session.subscribe();
+    let _ = Box::pin(session.into_actor().run()).await;
+    let events: Vec<Event> = std::iter::from_fn(|| events.try_recv().ok()).collect();
+    let painted: Vec<(String, bool)> = lines(&events)
+        .iter()
+        .map(|line| (line.text(), !line.paint.is_empty()))
+        .collect();
+    assert_eq!(painted.len(), 6, "{painted:?}");
+    for (text, is_painted) in &painted {
+        assert_eq!(*is_painted, text.starts_with("  gem (3)"), "{text:?}");
+    }
 }
 
 fn drain(sink: &mut LogSink) -> Vec<String> {

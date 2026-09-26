@@ -30,6 +30,10 @@ pub enum Event {
     /// viewer agrees on where a line ends (`plan/45` §4a). With `;sorter` on,
     /// a container look is published as the lines it sorts into, one event
     /// each ([`SessionHandle::sort_containers`](crate::SessionHandle::sort_containers)).
+    /// The character's triggers answer each before it is published
+    /// ([`SessionHandle::set_triggers`](crate::SessionHandle::set_triggers)):
+    /// it may arrive substituted, painted, on another stream, twice (a
+    /// redirected copy), or not at all (a squelch).
     /// `Arc` because every subscriber shares one allocation.
     Line(std::sync::Arc<cena_model::line::Line>),
     /// A prompt closed a chunk that held combat: every attack event and fact

@@ -2,8 +2,9 @@
 //! one synchronous turn, so a snapshot and its stream share an exact fence.
 
 use crate::{Event, GameState, Generation, GenerationCell, SessionId, Snapshot, State};
+use cena_model::trigger::Matcher;
 use std::sync::{
-    Arc, Mutex,
+    Arc, Mutex, PoisonError,
     atomic::{AtomicBool, AtomicU64, Ordering},
 };
 use std::time::Duration;
@@ -169,6 +170,10 @@ pub(crate) struct EventPublisher {
     /// given, and because every connection's actor shares this publisher, so
     /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
     sorting: Arc<AtomicBool>,
+    /// This character's triggers, compiled (`plan/45`): what each finished
+    /// line is answered with before it is published. Here for `sorting`'s
+    /// reasons. None until the binary reads the file.
+    triggers: Arc<Mutex<Arc<Matcher>>>,
 }
 
 impl EventPublisher {
@@ -182,6 +187,7 @@ impl EventPublisher {
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
             sorting: Arc::new(AtomicBool::new(false)),
+            triggers: Arc::default(),
         }
     }
 
@@ -193,6 +199,16 @@ impl EventPublisher {
     /// Whether container looks are published sorted.
     pub(crate) fn sorts_containers(&self) -> bool {
         self.sorting.load(Ordering::Relaxed)
+    }
+
+    /// Answer each line published from now on with `triggers`.
+    pub(crate) fn set_triggers(&self, triggers: Matcher) {
+        *self.triggers.lock().unwrap_or_else(PoisonError::into_inner) = Arc::new(triggers);
+    }
+
+    /// The triggers each line is answered with.
+    pub(crate) fn triggers(&self) -> Arc<Matcher> {
+        Arc::clone(&self.triggers.lock().unwrap_or_else(PoisonError::into_inner))
     }
 
     /// A publisher over a caller's own legacy channel, with a fenced stream

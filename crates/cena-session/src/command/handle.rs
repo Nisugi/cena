@@ -275,6 +275,20 @@ impl SessionHandle {
         self.events.sorts_containers()
     }
 
+    /// This character's triggers (`plan/45`): each finished line is answered
+    /// with them before it is published, so every viewer, and a session
+    /// nobody watches, is given the same line. They hold across a reconnect;
+    /// the model and the player log keep the game's text.
+    pub fn set_triggers(&self, triggers: cena_model::trigger::Matcher) {
+        self.events.set_triggers(triggers);
+    }
+
+    /// The triggers each line is answered with.
+    #[must_use]
+    pub fn triggers(&self) -> std::sync::Arc<cena_model::trigger::Matcher> {
+        self.events.triggers()
+    }
+
     /// The slot this handle and all its clones read the player log from.
     pub(crate) fn log_slot(&self) -> crate::player_log::tap::Slot {
         std::sync::Arc::clone(&self.log)

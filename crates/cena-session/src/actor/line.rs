@@ -17,6 +17,7 @@
 use std::sync::Arc;
 
 use cena_model::line::Line;
+use cena_model::trigger::Matcher;
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
 
@@ -39,25 +40,38 @@ impl<S: ByteSource> SessionActor<S> {
         Some(Arc::new(Line::new(text.stream.clone(), runs.clone())))
     }
 
-    /// Publish a finished line to every viewer: as it came, or, with
-    /// `;sorter` on and a main-stream container look, as the lines it sorts
-    /// into (`cena_model::sorter`), one [`Event::Line`] each.
+    /// Publish a finished line to every viewer, one [`Event::Line`] for
+    /// each line it becomes: with `;sorter` on, a main-stream container look
+    /// becomes the lines it sorts into (`cena_model::sorter`), and each line
+    /// is then answered by the character's triggers ([`Matcher::respond`]):
+    /// substituted, painted, redirected, or not published at all.
     ///
-    /// Sorting here and not in a viewer is what lets M8's triggers match each
-    /// sorted line, as `VellumFE` sorts before it highlights (`plan/45` §4a).
-    /// The model's scrollback and the player log keep the look whole.
+    /// Sorting first is what lets the triggers match each sorted line, as
+    /// `VellumFE` sorts before it highlights (`plan/45` §4a). The model's
+    /// scrollback and the player log keep the game's text either way.
     pub(super) fn publish_line(&self, line: Arc<Line>) {
+        let triggers = self.events.triggers();
         let main = line.stream.is_empty() || line.stream == "main";
         if main
             && self.events.sorts_containers()
             && let Some(sorted) = cena_model::sorter::sort(&line.runs)
         {
             for runs in sorted {
-                let sorted = Line::new(line.stream.clone(), runs);
-                let _ = self.events.send(Event::Line(Arc::new(sorted)));
+                self.publish_answered(&triggers, Arc::new(Line::new(line.stream.clone(), runs)));
             }
             return;
         }
-        let _ = self.events.send(Event::Line(line));
+        self.publish_answered(&triggers, line);
+    }
+
+    /// Publish what `triggers` make of `line`.
+    fn publish_answered(&self, triggers: &Matcher, line: Arc<Line>) {
+        if triggers.triggers().is_empty() {
+            let _ = self.events.send(Event::Line(line));
+            return;
+        }
+        for shown in triggers.respond(&line) {
+            let _ = self.events.send(Event::Line(Arc::new(shown)));
+        }
     }
 }

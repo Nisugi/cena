@@ -344,8 +344,16 @@ Each ends in something demonstrable without a live login.
    (`crates/cena-model/src/trigger/respond.rs`) turns a finished line into the lines a
    viewer is given, and the line type moved down to `crates/cena-model/src/line.rs`, gaining
    its paint. 10 tests in `crates/cena-model/tests/trigger_respond.rs` over lines the real
-   parser finishes; nine rules mutation-checked. How the responses combine is §6a. The
-   session's half -- the matcher on each session, the file read at startup -- is next.
+   parser finishes; nine rules mutation-checked. How the responses combine is §6a.
+   **The session's half BUILT 2026-09-26**: `SessionHandle::set_triggers` puts a character's
+   matcher on the session (beside `;sorter`'s switch, so it outlives a reconnect), and each
+   finished line -- each sorted line, with `;sorter` on -- is answered before it is published
+   (`crates/cena-session/src/actor/line.rs`). The binary reads the file as each character
+   starts and says what it left out (`crates/cena/src/triggers.rs`). Tested in
+   `crates/cena-session/tests/published_lines.rs`: a squelched swing and a rewritten damage
+   line leave the model's scrollback, the player log, the combat event and the creature's
+   damage exactly as the game said; triggers see each sorted line. Both wiring points
+   mutation-checked. The wire still carries no colour: step 6.
 5. **`;trigger`** (§5c), including `test`.
 6. **Despana renders look responses** -- the only frontend until the GUI.
 7. **A bench**: the golden fixtures against the author's Wrayth set (~220 rules) and a

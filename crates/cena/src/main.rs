@@ -55,6 +55,7 @@ mod secrets;
 mod setup;
 mod sorter;
 mod travel;
+mod triggers;
 mod watch;
 
 /// What the operator is told before anything happens.

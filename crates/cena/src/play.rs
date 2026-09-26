@@ -32,7 +32,7 @@ use crate::commands::Commands;
 use crate::connector::LiveConnector;
 use crate::{
     batch, combat, connector, frontend, interrupt, learn, loot, roster, secrets, setup, sorter,
-    travel, watch,
+    travel, triggers, watch,
 };
 
 /// The characters named with `--character`, in order. Empty means none was
@@ -186,6 +186,7 @@ impl Table {
         };
         let commands = Commands::install(&hosted.handle);
         sorter::open(&hosted.handle, &commands);
+        triggers::open(&hosted.handle, &self.dir, &character);
         batch::open(&hosted.handle, &hosted.observer, &commands);
         // The ledger's reports need only the database's path, known now.
         match cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character) {
