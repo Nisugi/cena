@@ -489,6 +489,7 @@ name = "cena-agent"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "cena-map",
  "cena-platform",
  "cena-session",
  "getrandom 0.3.4",

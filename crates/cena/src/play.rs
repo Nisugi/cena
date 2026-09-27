@@ -165,7 +165,7 @@ pub(crate) async fn serve(
         // page's link is printed when its character is `Ready`.
         web: frontend::Frontend::open(&map).await,
         agent: crate::agent::Agent::open(&dir).await,
-        scripts: crate::scripts::Scripts::new(&dir),
+        scripts: crate::scripts::Scripts::new(&dir, &map),
         party: crate::hunt::Party::new(gui.clone()),
         gui,
         map,

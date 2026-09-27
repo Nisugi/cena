@@ -54,6 +54,13 @@ pub struct Line {
     pub line: String,
 }
 
+/// `room`'s question.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Room {
+    /// The map's own room number, as `map_room` gives it.
+    pub id: u32,
+}
+
 /// `say`'s text.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct Said {
@@ -165,6 +172,22 @@ impl Scripting {
         };
         seat.door.say(notice);
         json(&serde_json::json!({ "said": true }))
+    }
+
+    #[tool(
+        description = "A room of Hydra's map, by the map's own number: its titles, descriptions, exits lines, the game's numbers for it, location, tags, and each exit with how it is crossed and what it costs. `room` null when there is no such room, `map` false when Hydra has no map."
+    )]
+    async fn room(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(Room { id }): Parameters<Room>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        let Some(atlas) = &seat.atlas else {
+            return json(&serde_json::json!({ "map": false, "room": null }));
+        };
+        let room = atlas.map.room(cena_map::RoomId(id));
+        json(&serde_json::json!({ "map": true, "room": room }))
     }
 }
 

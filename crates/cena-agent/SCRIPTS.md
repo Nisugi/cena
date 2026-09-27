@@ -40,6 +40,7 @@ Each event has `at`, its position, and a `kind`:
 
 | Kind | Carries |
 |---|---|
+| `state` | `cursor`, `fields`: the **local copy** changed (below); each field that did, with its new value. The first event a runner hears is one, with every field |
 | `line` | `cursor`, `stream` (`""` is the main window; `thoughts`, `speech`...), `text`: a line of game text **as the game sent it**, before the player's triggers and `;sorter`. A line the player squelched is still here |
 | `sent` | `cursor`, `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`): a line went out to the game. Yours are `script`, at the cursor `send` answered |
 | `prompt` | `cursor`, `time` (the game's clock, epoch seconds, or `null`), `text` (`>`, `R>`...): the end of a chunk |
@@ -52,9 +53,46 @@ cursor is above the one `send` answered came after your line**. Which lines: eve
 of every stream, the prompt aside. Lich's scripts see fewer (not the inventory, bounty, society
 or spell-window copies, `inventory/13` §1.1); choosing is the runner's.
 
+**A chunk's `state` comes before its lines.** The game's text arrives in chunks, each closed by
+a prompt; a copy of the character is taken at the prompt, and its changes are told **before**
+the chunk's lines and its `prompt`, so a script woken by a line reads the state that line
+produced, as under Lich. So a `state`'s `cursor` is later than the lines after it: it is the
+snapshot's. Lines with no prompt after them go without a `state` after a quarter of a second.
+
 **`lagged: true`** in the answer means events after `since` were let go for room (the last 4096
 are kept). **`closed: true`**: the character's session ended, or the runner was dismissed;
 nothing more will come.
+
+## The local copy
+
+What a script reads without asking. The `state` events keep it: apply each one's `fields` over
+the last. Its fields are `CONTRACT.md`'s `state`, the agent's read -- `character`, `game`,
+`lifecycle`, `generation`, `room` (the game's room number as `id`, `title`, `exits`,
+`creatures`, `objects`, `players`), `hands`, `vitals`, `statuses`, `roundtime`,
+`cast_roundtime`, `stance`, `encumbrance`, `mind` and their `_percent`s, `prepared_spell`,
+`injuries`, `effects` -- with their rules (**unknown is never false**; a list the game has not
+stated is `null`), less what only counts the clock (`clock`, `captured_unix_ms`, every
+`seconds_left`: the `ends_at`s and the `prompt`s' `time` rebuild them), and more:
+
+| Field | Is |
+|---|---|
+| `room_count` | how many times the character has arrived in a room: it changes on every move, even between rooms that read alike |
+| `room_description` | the room's description, as text |
+| `room_exits_line` | the exits line as the game words it, `Obvious paths: north, east.` |
+| `map_room` | the map's own number for the room, when Hydra has a map and names the room **without guessing**; `null` otherwise |
+| `target` | the id of the creature the character targets |
+
+A field a runner does not know is ignored, and new ones come without a new version.
+
+## `room` `{ id }`
+
+A room of Hydra's map, by the map's number (`map_room`): answers `{"map": true, "room": ...}`,
+`room` `null` when there is none by that number, or `{"map": false}` when Hydra runs without a
+map. The room is the map's own record: `id`; `uid` (the game's numbers for it); `title`,
+`description` and `paths` (lists: a room has variants); `location`, `climate`, `terrain`, `tags`;
+and `exits`, each `{to, kind, cost?, dirto?}` with how it is crossed: `cmd` (a command to
+send), or `steps`, `routine`, `pass` or `unported` (Hydra's travel crosses it; a runner asks
+Hydra to walk). `cost` is seconds when a number; absent, the exit is impassable.
 
 ## `send` `{ line }`
 

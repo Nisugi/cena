@@ -42,7 +42,7 @@
 //!
 //! ```text
 //! cena              the binary: Hydra                  agent, behavior, gui, host, platform, session, ui, web
-//! cena-agent        MCP for an outside program         session, platform*
+//! cena-agent        MCP for an outside program         map, session, platform*
 //! cena-gui          the window (egui)                  session, ui
 //! cena-web          the embedded browser viewer        session, ui
 //! cena-ui           projection and wire vocabulary     model

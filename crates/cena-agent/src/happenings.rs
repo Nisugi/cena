@@ -267,19 +267,33 @@ const CLOCK_ONLY: &[&str] = &["cursor", "captured_unix_ms", "clock"];
 /// fields aside; `None` when nothing did.
 #[must_use]
 pub fn changed(before: &CharacterState, after: &CharacterState) -> Option<Happening> {
-    let (serde_json::Value::Object(was), serde_json::Value::Object(now)) = (
-        steady(serde_json::to_value(before).ok()?),
-        steady(serde_json::to_value(after).ok()?),
-    ) else {
-        return None;
+    let fields = changed_fields(Some(before), after);
+    (!fields.is_empty()).then_some(Happening::Changed { fields })
+}
+
+/// Every top-level field of `after`, as `state` spells it, that differs from
+/// `before` -- every one when there is no `before` -- with the fields that
+/// only count the clock left out. What `changed` carries, and what a script
+/// runner's local copy is kept current by (`crate::scripts`).
+#[must_use]
+pub fn changed_fields<T: serde::Serialize>(
+    before: Option<&T>,
+    after: &T,
+) -> serde_json::Map<String, serde_json::Value> {
+    let was = before
+        .and_then(|before| serde_json::to_value(before).ok())
+        .map(steady);
+    let Some(serde_json::Value::Object(now)) = serde_json::to_value(after).ok().map(steady) else {
+        return serde_json::Map::new();
     };
     let mut fields = serde_json::Map::new();
     for (key, value) in now {
-        if !CLOCK_ONLY.contains(&key.as_str()) && was.get(&key) != Some(&value) {
+        let same = was.as_ref().and_then(|was| was.get(&key)) == Some(&value);
+        if !CLOCK_ONLY.contains(&key.as_str()) && !same {
             fields.insert(key, value);
         }
     }
-    (!fields.is_empty()).then_some(Happening::Changed { fields })
+    fields
 }
 
 /// A projection with every `seconds_left` taken out: it counts the clock,

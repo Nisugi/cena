@@ -16,7 +16,10 @@
 //! never the handle, as it holds the agent's.
 //!
 //! - [`listening`]: what a runner listens to, at its own positions.
-//! - [`tools`]: `listen`, `send` and `say`, the contract in `SCRIPTS.md`.
+//! - [`local`]: its local copy of the character, and the map it is placed on.
+//! - `watch`: what the session publishes, told to a runner in Lich's order.
+//! - [`tools`]: `listen`, `send`, `say` and `room`, the contract in
+//!   `SCRIPTS.md`.
 //! - [`runner`]: the Ruby runner's files, carried in the binary, and how one
 //!   is started.
 
@@ -28,18 +31,20 @@ use axum::extract::Request;
 use axum::http::{StatusCode, header};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
+use cena_session::SessionObserver;
 use cena_session::script::Door;
-use cena_session::{Event, Frame, ObservedEvent, SessionObserver};
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
-use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 pub mod listening;
+pub mod local;
 pub mod runner;
 pub mod tools;
+mod watch;
 
 use listening::Listening;
+use local::Atlas;
 
 /// The contract a runner speaks (`SCRIPTS.md`), versioned as the agent's is.
 pub const PROTOCOL: &str = "hydra-script/1";
@@ -49,6 +54,8 @@ pub const PROTOCOL: &str = "hydra-script/1";
 #[derive(Clone, Debug, Default)]
 pub struct Runners {
     seats: Arc<Mutex<BTreeMap<String, Arc<Seat>>>>,
+    /// The map runners place their characters on, when Hydra has one.
+    atlas: Option<Arc<Atlas>>,
 }
 
 /// One runner's character: what it listens to, and how it acts.
@@ -58,10 +65,21 @@ pub struct Seat {
     pub character: String,
     door: Door,
     listening: Arc<Listening>,
+    atlas: Option<Arc<Atlas>>,
     stop: CancellationToken,
 }
 
 impl Runners {
+    /// Runners whose characters are placed on `atlas`'s map: `map_room` in
+    /// the local copy, and `room` answered.
+    #[must_use]
+    pub fn with_atlas(atlas: Atlas) -> Self {
+        Self {
+            atlas: Some(Arc::new(atlas)),
+            ..Self::default()
+        }
+    }
+
     /// Admit a runner for `character`: its token, and from the moment this
     /// returns each line the game sends kept for it. Called inside a Tokio
     /// runtime.
@@ -81,20 +99,24 @@ impl Runners {
         // On before subscribing, so every line after the subscription is
         // published as heard.
         door.listen(true);
-        let Some((_, events)) = crate::characters::subscribe(observer, &stop).await else {
+        let Some((snapshot, events)) = crate::characters::subscribe(observer, &stop).await else {
             return Err(format!("{character} has no session to listen to"));
         };
         let seat = Arc::new(Seat {
             character: character.to_owned(),
             door,
             listening: Arc::default(),
+            atlas: self.atlas.clone(),
             stop,
         });
-        tokio::spawn(watch(
-            events,
-            Arc::clone(&seat.listening),
-            seat.stop.clone(),
-        ));
+        let watching = watch::Watching {
+            character: character.to_owned(),
+            observer: observer.clone(),
+            atlas: self.atlas.clone(),
+            listening: Arc::clone(&seat.listening),
+            stop: seat.stop.clone(),
+        };
+        tokio::spawn(watch::watch(watching, snapshot, events));
         self.lock().insert(token.clone(), seat);
         Ok(token)
     }
@@ -139,65 +161,6 @@ impl Runners {
 
     fn lock(&self) -> std::sync::MutexGuard<'_, BTreeMap<String, Arc<Seat>>> {
         self.seats.lock().unwrap_or_else(PoisonError::into_inner)
-    }
-}
-
-/// What a runner is told of one of the session's events, if anything.
-fn told(observed: &ObservedEvent) -> Option<listening::Event> {
-    let cursor = observed.cursor;
-    match &observed.event {
-        Event::Heard(line) => Some(listening::Event::Line {
-            cursor,
-            stream: line.stream.clone(),
-            text: line.text(),
-        }),
-        Event::Sent { line, origin } => Some(listening::Event::Sent {
-            cursor,
-            line: line.clone(),
-            origin: origin.word().to_owned(),
-        }),
-        Event::Frame(frame) => match frame.as_ref() {
-            Frame::Prompt { time, text } => Some(listening::Event::Prompt {
-                cursor,
-                time: time.parse().ok(),
-                text: text.clone(),
-            }),
-            _ => None,
-        },
-        Event::StateChanged(state) => Some(listening::Event::Lifecycle {
-            cursor,
-            state: format!("{state:?}").to_ascii_lowercase(),
-            generation: u64::from(observed.generation.0),
-        }),
-        _ => None,
-    }
-}
-
-/// Keep what the session publishes for one runner, until stopped.
-async fn watch(
-    mut events: broadcast::Receiver<ObservedEvent>,
-    listening: Arc<Listening>,
-    stop: CancellationToken,
-) {
-    loop {
-        let received = tokio::select! {
-            () = stop.cancelled() => return,
-            received = events.recv() => received,
-        };
-        match received {
-            Ok(published) => {
-                if let Some(event) = told(&published) {
-                    listening.push(event);
-                }
-            }
-            Err(broadcast::error::RecvError::Lagged(missed)) => {
-                listening.push(listening::Event::Lagged { missed });
-            }
-            Err(broadcast::error::RecvError::Closed) => {
-                listening.close();
-                return;
-            }
-        }
     }
 }
 

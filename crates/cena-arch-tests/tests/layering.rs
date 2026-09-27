@@ -140,7 +140,11 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // nothing else, as `cena-web` does; it is its own crate so the MCP
     // vocabulary never becomes a frontend's (`plan/35` §7). `cena-platform` is
     // a DEV-dependency only, for `AnsweringSource` in its end-to-end test.
-    ("cena-agent", &["cena-platform", "cena-session"]),
+    //
+    // `cena-map` ADDED for `plan/46` step 2, the scripts' `Room.current`: the
+    // map's rooms answered to a runner, named as travel names them. A pure
+    // vocabulary, which `cena-behavior` already takes.
+    ("cena-agent", &["cena-map", "cena-platform", "cena-session"]),
     // ADDED for `plan/47` step 1, the GUI: the row this file's doc recorded
     // for the day a GUI crate was added, `(cena-ui, cena-session)`, and never
     // another frontend. Step 1 drew the hub from `cena-ui`'s cards alone;

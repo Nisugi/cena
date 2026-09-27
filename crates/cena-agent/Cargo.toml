@@ -6,6 +6,9 @@ publish.workspace = true
 
 [dependencies]
 cena-session.workspace = true
+# `plan/46` §11 step 2: a script's `Room.current` is a room of the map the
+# binary loaded, named as travel names it.
+cena-map.workspace = true
 # `plan/35` §2: MCP over loopback, measured and chosen 2026-09-27.
 rmcp = { version = "3.4", default-features = false, features = ["server", "macros", "transport-streamable-http-server"] }
 axum = "0.8"

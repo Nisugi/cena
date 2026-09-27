@@ -27,6 +27,16 @@ use tokio::sync::Notify;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Event {
+    /// The local copy changed (`super::local`): every field that did, with
+    /// its new value; the first one a runner is told carries every field.
+    /// It comes **before** the lines of the chunk that changed it.
+    State {
+        /// The session's cursor of the snapshot it was taken from: every
+        /// event at or before it is in it.
+        cursor: u64,
+        /// Field name to its new value.
+        fields: serde_json::Map<String, serde_json::Value>,
+    },
     /// A line of game text as the game sent it: before the player's
     /// triggers and `;sorter` (`cena_session::Event::Heard`).
     Line {

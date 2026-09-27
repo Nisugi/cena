@@ -24,6 +24,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use cena_agent::scripts::Runners;
+use cena_agent::scripts::local::Atlas;
 use cena_agent::scripts::runner::{self, Start};
 use cena_session::command::claimant::Claimed;
 use cena_session::script::Door;
@@ -119,13 +120,21 @@ struct Running {
 }
 
 impl Scripts {
-    /// Scripts over Hydra's data folder `dir`. Nothing starts until a
-    /// character's first script.
-    pub(crate) fn new(dir: &Path) -> Self {
+    /// Scripts over Hydra's data folder `dir`, their characters placed on
+    /// `map` when there is one. Nothing starts until a character's first
+    /// script.
+    pub(crate) fn new(dir: &Path, map: &crate::map_context::ConfiguredMap) -> Self {
+        let runners = match map {
+            Ok(context) => Runners::with_atlas(Atlas {
+                map: Arc::clone(&context.map),
+                locate: cena_behavior::travel::room_of,
+            }),
+            Err(_) => Runners::default(),
+        };
         Self {
             shared: Arc::new(Shared {
                 dir: dir.to_owned(),
-                runners: Runners::default(),
+                runners,
                 url: tokio::sync::OnceCell::new(),
                 unpacked: OnceLock::new(),
                 stop: CancellationToken::new(),
@@ -501,7 +510,7 @@ mod tests {
         let (_, mut events) = session.subscribe();
         let commands = Commands::install(&handle);
         tokio::spawn(session.into_actor().run());
-        let scripts = Scripts::new(&dir);
+        let scripts = Scripts::new(&dir, &Err("no map".to_owned()));
         let id = SessionId(1);
         scripts.open(id, "Nisugi", "GS3", &handle, &observer, &commands);
         let generation = handle.generation();

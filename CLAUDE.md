@@ -208,7 +208,7 @@ lockfile; run cargo inside it only for the spike.
 | `cena-behavior` | curated Rust behaviors (travel, sync, and hunt's profile, guards and importer) | map, session (platform dev-only) |
 | `cena-ui` | pure, versioned projection of a session for frontends (`SessionView`, `WIRE.md`) | model |
 | `cena-web` | Despana: embedded loopback viewer; the native session stays authoritative | ui, session |
-| `cena-agent` | M7: an outside program reads a character over MCP on loopback (`plan/35`; `CONTRACT.md`), and a script runner reaches its own (`plan/46`; `SCRIPTS.md`) | session (platform dev-only) |
+| `cena-agent` | M7: an outside program reads a character over MCP on loopback (`plan/35`; `CONTRACT.md`), and a script runner reaches its own (`plan/46`; `SCRIPTS.md`) | map, session (platform dev-only) |
 | `cena-gui` | the GUI (egui and eframe, the author's fork): the window and its hub so far (`plan/47`) | session, ui |
 | `cena-host` | the table of sessions one Hydra runs: add, remove, one per account, stop all (`plan/29`) | session (platform dev-only) |
 | `cena` | the binary | agent, behavior, gui, host, platform, session, ui, web |
