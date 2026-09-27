@@ -131,4 +131,4 @@ impl GameState {
 /// Matched with `trim() ==`, not `contains`: a player can say anything, and a
 /// `contains` would let one make the supervisor stop reconnecting by typing
 /// it.
-pub(super) const IDLE_WARNING: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";
+pub(crate) const IDLE_WARNING: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";

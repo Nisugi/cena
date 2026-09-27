@@ -2,7 +2,7 @@
 //! sends, what it reads back, and the commands each item gets.
 //!
 //! The game answers `look in` with real looks: the five in
-//! `crates/cena-ui/tests/fixtures/container_looks.xml`, cut from the
+//! `crates/cena-model/tests/fixtures/container_looks.xml`, cut from the
 //! author's logs for `;sorter`. Each is the `<container>`, `<clearContainer>`
 //! and `<inv>` feed, then the `In the ... you see` line, then its prompt.
 
@@ -17,7 +17,7 @@ use cena_session::{AuthorityToken, Event, Outcome, Session, SessionHandle, Sessi
 use tokio::sync::broadcast::Receiver;
 
 const PROMPT: &[u8] = b"<prompt time=\"1\">&gt;</prompt>\n";
-const LOOKS: &str = include_str!("../../cena-ui/tests/fixtures/container_looks.xml");
+const LOOKS: &str = include_str!("../../cena-model/tests/fixtures/container_looks.xml");
 
 /// Look `n` of the fixture (0: the box, 1: the cloak, 2: the backpack, 3:
 /// the shelf, 4: the kit), with its prompt, as the game sent it.

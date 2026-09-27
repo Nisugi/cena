@@ -47,6 +47,10 @@ pub struct Snapshot {
     pub cursor: u64,
     /// Most recent retry decision while reconnecting, cleared on transition.
     pub retry: Option<crate::RetryStatus>,
+    /// The triggers its lines are answered with, so a viewer paints what it
+    /// draws from [`Self::state`] -- the room window's names -- as the lines
+    /// were painted (`plan/45` Stage 7).
+    pub triggers: std::sync::Arc<cena_model::trigger::Matcher>,
 }
 
 /// Everything a caller needs to drive and observe one session.

@@ -26,6 +26,7 @@ fn snapshot(state: GameState, cursor: u64) -> Snapshot {
         generation: Generation(0),
         cursor,
         retry: None,
+        triggers: std::sync::Arc::default(),
     }
 }
 

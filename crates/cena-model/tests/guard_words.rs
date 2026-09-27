@@ -1,8 +1,10 @@
 //! The guard vocabulary: how each word is written, what it reads, and that
 //! unknown skips (`plan/30` §5, `plan/33`).
 
-use cena_behavior::hunt::{Condition, Facts, Guard, Measure};
-use cena_session::{Effect, Frame, GameState, Link, LinkKind, Run, Runs};
+use cena_model::guard::{Condition, Facts, Guard, Measure};
+use cena_model::{Effect, GameState};
+use cena_protocol::frame::{Frame, Link, LinkKind};
+use cena_protocol::runs::{Run, Runs};
 
 /// One guard, parsed. `None` is a broken fixture, which every test unwraps
 /// into a failure.

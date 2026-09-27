@@ -74,6 +74,7 @@ pub(crate) struct Commands {
     loot: Arc<OnceLock<Handler>>,
     combat: Arc<OnceLock<Handler>>,
     sorter: Arc<OnceLock<Handler>>,
+    trigger: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
     agent: Arc<OnceLock<Handler>>,
 }
@@ -133,7 +134,13 @@ impl Commands {
                 return Some(took);
             }
         }
-        for family in [&self.loot, &self.combat, &self.sorter, &self.agent] {
+        for family in [
+            &self.loot,
+            &self.combat,
+            &self.sorter,
+            &self.trigger,
+            &self.agent,
+        ] {
             if let Some(handler) = family.get()
                 && handler(line).is_some()
             {
@@ -183,6 +190,13 @@ impl Commands {
     pub(crate) fn agent(&self, handler: Handler) {
         if self.agent.set(handler).is_err() {
             eprintln!("  !! [commands] agent was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;trigger` to `handler` from now on. Once, as for travel.
+    pub(crate) fn trigger(&self, handler: Handler) {
+        if self.trigger.set(handler).is_err() {
+            eprintln!("  !! [commands] trigger was registered twice; keeping the first");
         }
     }
 

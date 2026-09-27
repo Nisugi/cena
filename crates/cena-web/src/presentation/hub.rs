@@ -136,6 +136,23 @@ impl Hub {
     ///
     /// # Errors
     /// Only when the presentation sequence would overflow `u64`.
+    /// Send each of `alerts`, a trigger's banners, to every viewer
+    /// connected now: after the update that carried their lines, and never
+    /// kept for a viewer who connects later (`kind: "alert"`).
+    pub(crate) fn alert(&self, alerts: Vec<String>) {
+        for text in alerts {
+            let message = ServerMessage::Alert {
+                version: WIRE_VERSION,
+                session: self.session.clone(),
+                generation: self.generation.clone(),
+                text,
+            };
+            if let Ok(encoded) = encode(&message) {
+                let _ = self.updates.send(encoded);
+            }
+        }
+    }
+
     pub(crate) fn publish(
         &mut self,
         snapshot: &Snapshot,
@@ -146,6 +163,7 @@ impl Hub {
         let generation = snapshot.generation.0.to_string();
         let mut view = SessionView::project(
             &snapshot.state,
+            &snapshot.triggers,
             lifecycle(snapshot),
             snapshot.state.game_time_now(),
         );
@@ -172,7 +190,7 @@ impl Hub {
             self.lines_before_gap = Some(self.history.len()).filter(|before| *before > 0);
         }
         // Stamp each line with what its stream does when its window is closed.
-        // Here rather than in `LineAssembler` because this is where the model
+        // Here rather than in `cena_ui::story_lines` because this is where the model
         // is: the declarations come from `<streamWindow ifClosed=>` and the
         // viewer cannot be trusted to know them.
         for line in &mut lines {

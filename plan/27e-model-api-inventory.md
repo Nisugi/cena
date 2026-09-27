@@ -41,6 +41,8 @@ in the login burst, and it is point-in-time by contract either way.
 > as `a` + `pebbled grey leather doublet` **split at a link boundary**, printing
 > down the screen. A frame boundary is not a line boundary — the fix is
 > `LineAssembler`, and `ends_line` is what says where a line really ends.
+> (Since M8 the one assembly is the model's `route_text`, published as `Event::Line`:
+> `plan/45` §4a.)
 
 ## Containers — `state/containers.rs`
 

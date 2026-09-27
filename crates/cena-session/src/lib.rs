@@ -49,7 +49,7 @@ pub mod store;
 pub mod supervisor;
 pub mod travel_store;
 
-pub use actor::{EndReason, Event, SETUP_DEADLINE, Session, SessionActor, Snapshot};
+pub use actor::{EndReason, Event, Line, SETUP_DEADLINE, Session, SessionActor, Snapshot};
 // `CritTables` is this crate's own vocabulary, not a relay: `with_crit_tables`
 // takes one, and the binary that calls it has no edge to `cena-model`.
 pub use cena_model::crit::CritTables;
@@ -59,7 +59,7 @@ pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
 pub use cena_model::state::creatures::boons;
 pub use cena_model::state::{
-    claim, containers, creature, gameobj, group, hands, incident, inspect, societies,
+    claim, containers, creature, flags, gameobj, group, hands, incident, inspect, societies,
     stream_windows, worn,
 };
 // The loot ledger's facts, for the town planner that reads them from its own
@@ -85,12 +85,12 @@ pub use cena_model::{
 };
 pub use cena_model::{Task, TaskKind};
 // The herbs eherbs knows and where they are sold (`plan/36`), and the
-// wound and scar reader the healing chooses by.
-pub use cena_model::herbs;
-pub use cena_model::state::character::body;
-pub use cena_model::state::kit;
+// wound and scar reader the healing chooses by; the guard words and the
+// triggers (`plan/45`).
+pub use cena_model::state::{character::body, kit};
+pub use cena_model::{guard, herbs, trigger};
 pub use cena_protocol::InventoryItem;
-pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, TextFrame};
+pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, Style, TextFrame};
 pub use cena_protocol::runs::{Run, Runs};
 pub use character_store::MAX_STALE;
 pub use command::attendance::Watching;

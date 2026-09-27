@@ -580,7 +580,7 @@ pub fn router(characters: Characters, token: String, stop: &CancellationToken) -
         move || Ok(agent.clone()),
         Arc::new(LocalSessionManager::default()),
         // A plain reply for a plain request; a stream still when one is
-        // needed, which is how the push `plan/45` §4.1 wants arrives.
+        // needed, which is how the push `plan/46` §4.1 wants arrives.
         StreamableHttpServerConfig::default()
             .with_json_response(true)
             .with_cancellation_token(stop.child_token()),

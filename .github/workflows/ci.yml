@@ -27,6 +27,11 @@ jobs:
       # pinning in both places creates two sources of truth that can drift.
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # The binary plays a trigger's sound through rodio, whose audio backend
+      # on Linux links the system ALSA library (plan/45 Stage 3). VellumFE's
+      # CI installs the same package for the same reason.
+      - run: sudo apt-get update && sudo apt-get install -y pkg-config libasound2-dev
+        if: matrix.os == 'ubuntu-latest'
 
       # plan/06 section 4 lists these as 1. test, 2. clippy, 3. fmt. Reordered
       # cheapest-first so a formatting slip does not wait on a full build; the

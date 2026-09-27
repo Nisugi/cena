@@ -54,6 +54,9 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
                     // "the player typed this" from "another character's
                     // script sent this".
                     Origin::Script => "script",
+                    // A trigger's send (`plan/45` Stage 5): never the
+                    // player's, so never shown as `manual`.
+                    Origin::Trigger => "trigger",
                 };
                 eprintln!("{who}  -> [{tag}] {line}");
             }
@@ -98,9 +101,20 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
                     .join(", ")
             ),
             // Not shown here: the game's text is the browser's to show, and a
-            // combat view is a frontend's to build. A decision about the
-            // agent was answered in a notice when the player made it.
-            Ok(Event::Frame(_) | Event::Combat(_) | Event::Quiet(_) | Event::Agent(_)) => {}
+            // combat view is a frontend's to build. A trigger's flag is what
+            // its trigger concluded from that text; `;trigger test` says
+            // which a line would set. A change on the agent's side was
+            // answered in a notice when it was made.
+            Ok(
+                Event::Frame(_)
+                | Event::Line(_)
+                | Event::Combat(_)
+                | Event::Quiet(_)
+                | Event::Flag(_)
+                | Event::Attention(_)
+                | Event::Act(_)
+                | Event::Agent(_),
+            ) => {}
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and
             // `-> [behavior]` lines for the rest of the run -- and those

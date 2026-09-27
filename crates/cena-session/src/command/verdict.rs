@@ -83,6 +83,16 @@ pub enum Origin {
     /// authority and sends as [`Self::Behavior`]; this variant is for
     /// individual commands.
     Script,
+    /// A trigger sent it (`plan/45` Stage 5): a line one of the player's own
+    /// triggers sends as if the player typed it.
+    ///
+    /// It queues as [`Self::Script`] does -- it jumps the queue and never
+    /// preempts a behavior -- and is its own variant for `Script`'s reason: a
+    /// log has to tell "the player typed this" from "a trigger sent this".
+    /// **It never counts as the player being there** (`attendance.rs`): a
+    /// trigger is not a person, and one that fires on a line the game sends
+    /// an idle character would otherwise keep it from ever being idle.
+    Trigger,
 }
 
 impl Origin {
@@ -91,7 +101,7 @@ impl Origin {
     pub const fn token(self) -> Option<crate::queue::AuthorityToken> {
         match self {
             // Neither the player nor a script is a claimant (§4.1).
-            Self::Manual | Self::Script => None,
+            Self::Manual | Self::Script | Self::Trigger => None,
             Self::Behavior(token) => Some(token),
         }
     }

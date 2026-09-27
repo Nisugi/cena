@@ -1,10 +1,11 @@
 //! `;sorter`: show this character's container looks one line per category
 //! (`plan/30` §4, M6e).
 //!
-//! The join only. The sorting is `cena_ui`'s, over the lines the web pump
-//! assembles, and the switch is [`cena_web::Sessions::sort_containers`];
-//! this is the word on Hydra's command line that flips it. It sends nothing
-//! to the game.
+//! The join only. The sorting is the session's: with it on, a container look
+//! is published sorted, to every viewer, and the model and the player log
+//! keep it whole ([`SessionHandle::sort_containers`], `plan/45` §4a). This is
+//! the word on Hydra's command line that flips it. It needs no page open, and
+//! it sends nothing to the game.
 //!
 //! The words are `VellumFE`'s `.sorter`
 //! (`src/core/app_core/commands.rs:2455-2487`): `on`, `off`, and nothing at
@@ -22,7 +23,7 @@
 use std::sync::Arc;
 
 use cena_session::command::claimant::Claimed;
-use cena_session::{Notice, NoticeKind, SessionHandle, SessionId};
+use cena_session::{Notice, NoticeKind, SessionHandle};
 
 use crate::commands::Commands;
 
@@ -59,24 +60,9 @@ pub(crate) fn parse(line: &str) -> Option<Result<Command, String>> {
     Some(command)
 }
 
-/// Do `parsed` to session `id`'s page on `web`, and say what became of it.
-fn answer(
-    parsed: Result<Command, String>,
-    web: Option<&cena_web::Sessions>,
-    id: SessionId,
-) -> Notice {
-    let Some(web) = web else {
-        return Notice::line(
-            NoticeKind::Warn,
-            "Sorter: container looks are sorted in the browser, and this run has no --web.",
-        );
-    };
-    let Some(now) = web.sorts_containers(id) else {
-        return Notice::line(
-            NoticeKind::Warn,
-            "Sorter: this character has no page to sort.",
-        );
-    };
+/// Do `parsed` to `handle`'s session, and say what became of it.
+fn answer(parsed: Result<Command, String>, handle: &SessionHandle) -> Notice {
+    let now = handle.sorts_containers();
     let state = |on: bool| if on { "on" } else { "off" };
     let on = match parsed {
         Ok(Command::Toggle) => !now,
@@ -92,26 +78,19 @@ fn answer(
             );
         }
     };
-    if on != now && !web.sort_containers(id, on) {
-        return Notice::line(
-            NoticeKind::Warn,
-            "Sorter: this character has no page to sort.",
-        );
-    }
+    handle.sort_containers(on);
     Notice::line(
         NoticeKind::Info,
         format!("Container-look sorting {}.", state(on)),
     )
 }
 
-/// Register `;sorter` on `handle`'s command line, flipping its page on `web`
-/// (`None` when this run has no `--web`, and so no page).
-pub(crate) fn open(handle: &SessionHandle, commands: &Commands, web: Option<cena_web::Sessions>) {
+/// Register `;sorter` on `handle`'s command line.
+pub(crate) fn open(handle: &SessionHandle, commands: &Commands) {
     let told = handle.clone();
-    let id = handle.session();
     commands.sorter(Arc::new(move |line: &str| {
         let parsed = parse(line)?;
-        told.say(answer(parsed, web.as_ref(), id));
+        told.say(answer(parsed, &told));
         Some(Claimed::Done)
     }));
 }
@@ -148,40 +127,34 @@ mod tests {
         said
     }
 
-    /// Typed on the command line, `;sorter` flips the session's page, says
-    /// so, and sends the game nothing.
+    /// Typed on the command line, `;sorter` flips the session, says so, and
+    /// sends the game nothing. No page is open: it needs none.
     #[tokio::test(flavor = "current_thread", start_paused = true)]
-    async fn the_command_flips_the_page_and_sends_nothing() {
+    async fn the_command_flips_the_session_and_sends_nothing() {
         let (source, transcript) = AnsweringSource::new(b"<prompt time=\"1\">&gt;</prompt>\n");
         let session = Session::new(source);
         let handle = session.handle();
-        let observer = session.observer();
         let (_, mut events) = session.subscribe();
         let generation = handle.generation();
         let commands = Commands::install(&handle);
-        let server = cena_web::WebServer::bind(observer, handle.clone())
-            .await
-            .unwrap();
-        let web = server.sessions();
-        open(&handle, &commands, Some(web.clone()));
+        open(&handle, &commands);
         tokio::spawn(session.into_actor().run());
-        let id = handle.session();
 
         let mut typed = async |line: &str| {
             let outcome = handle.send_manual_at(generation, line, DEADLINE).await;
             assert_eq!(outcome, Outcome::Handled, "{line}");
             told(&mut events)
         };
-        assert_eq!(web.sorts_containers(id), Some(false), "off until asked");
+        assert!(!handle.sorts_containers(), "off until asked");
         assert_eq!(typed(";sorter on").await, ["Container-look sorting on."]);
-        assert_eq!(web.sorts_containers(id), Some(true));
+        assert!(handle.sorts_containers());
         assert_eq!(
             typed(";sorter status").await,
             ["Container-look sorting on."]
         );
-        assert_eq!(web.sorts_containers(id), Some(true));
+        assert!(handle.sorts_containers());
         assert_eq!(typed(";sorter").await, ["Container-look sorting off."]);
-        assert_eq!(web.sorts_containers(id), Some(false));
+        assert!(!handle.sorts_containers());
         let refused = typed(";sorter edit").await;
         assert!(
             refused.len() == 1
@@ -189,16 +162,7 @@ mod tests {
                 && refused[0].contains("currently off"),
             "{refused:?}"
         );
-        assert_eq!(web.sorts_containers(id), Some(false));
+        assert!(!handle.sorts_containers());
         assert!(transcript.lines().is_empty(), "{:?}", transcript.lines());
-    }
-
-    /// With no `--web` there is no page, and it says so rather than
-    /// pretending to have sorted something.
-    #[test]
-    fn with_no_page_it_says_so() {
-        let notice = answer(Ok(Command::Set(true)), None, SessionId::FIRST);
-        assert_eq!(notice.kind, NoticeKind::Warn);
-        assert!(notice.lines()[0].contains("no --web"), "{notice:?}");
     }
 }

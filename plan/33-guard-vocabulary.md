@@ -1,9 +1,11 @@
 # 33 — The guard vocabulary: bigshot's 87 words, evaluated
 
 **Status: ANSWERED by the author 2026-09-24 (§6); every surviving word BUILT 2026-09-25**
-(`crates/cena-behavior/src/hunt/guard.rs`, what each reads in `guard/read.rs`, the room's
-record of sent steps in `guard/used.rs`; tested in `tests/hunt_guard.rs` and
-`tests/hunt_guard_words.rs`). The two **later** words, `essence` and `justice`, wait on data
+(`crates/cena-model/src/guard.rs`, what each reads in `guard/read.rs`, the room's
+record of sent steps in `guard/used.rs`; tested in `crates/cena-model/tests/guard_words.rs`
+and `crates/cena-behavior/tests/hunt_guard_words.rs`). **MOVED 2026-09-26** from
+`cena-behavior/src/hunt/` to `cena-model`, whole, so M8's triggers read the same words
+(`plan/45` §1 row 2, Stage 2); the hunt reads them as `hunt::guard`, as before. The two **later** words, `essence` and `justice`, wait on data
 the model does not capture. Written as PROPOSED for the author's review (`plan/30` §7, M6a
 step 4). The profile format and the importer (§7 of this doc) are designed from the
 verdicts, so a verdict changed here changes them.
@@ -363,5 +365,5 @@ word imports **with the step held and named**, never with the guard silently los
 > **BUILT AHEAD OF THE REVIEW, 2026-09-24.** The format, the chain and the importer exist
 > (`plan/30` §7 step 4's note), with Nisugi's six words built and the other 81 recognised
 > and held. Because every unbuilt word holds its step, no verdict here changes what was
-> built; a verdict adds a word to `cena-behavior/src/hunt/guard.rs` and a translation to
+> built; a verdict adds a word to `cena-model/src/guard.rs` (the hunt's when this was written) and a translation to
 > `import.rs`, and a rename changes a string.

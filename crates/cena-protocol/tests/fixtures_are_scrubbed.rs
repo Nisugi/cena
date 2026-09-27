@@ -61,6 +61,12 @@ const PSEUDONYMS: &[(&str, &str)] = &[
     // `cena-behavior/tests/fixtures/arch_kill.xml`, from
     // `GSIV-Nisugi/2026/09/2026-09-21_21-49-41.xml:2798`.
     ("Edrys", "Lorwyn"),
+    // Three players on the author's Wrayth highlight list, in
+    // `cena-behavior/tests/fixtures/wrayth.xml`'s `<names>`: a settings file,
+    // not wire, cut by hand from the author's export of 2025-01-06.
+    ("Bastique", "Maravel"),
+    ("Feliathes", "Nythra"),
+    ("Igges", "Orsen"),
 ];
 
 /// Substrings that must not appear in any committed fixture.

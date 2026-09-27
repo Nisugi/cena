@@ -1,9 +1,9 @@
 //! `;sorter` end to end: real container looks, through the parser and the
 //! presentation pump, to the page (`plan/30` §4, M6e).
 //!
-//! The sorter's own tests (`crates/cena-ui/src/sorter.rs`) cut the
-//! fixture's links by hand. This one gives the same bytes to a session, so
-//! the parser decides the pieces: the `<container>` and `<inv>` preamble
+//! The sorter's own tests (`crates/cena-model/tests/sorter.rs`) give the
+//! fixture to the model. This one gives the same bytes to a session, which
+//! sorts what it publishes, and reads them off the page: the `<container>` and `<inv>` preamble
 //! before each look -- which holds its own `In the <a ...>box</a>:` -- must
 //! stay out of the story, and the look's own links must reach the sorter
 //! with their nouns. If either broke, the sorted lines below would not
@@ -20,7 +20,7 @@ use web_support::*;
 
 /// Five looks from the author's logs, each with its prompt; provenance in
 /// the sorter's tests.
-const LOOKS: &str = include_str!("../../cena-ui/tests/fixtures/container_looks.xml");
+const LOOKS: &str = include_str!("../../cena-model/tests/fixtures/container_looks.xml");
 
 /// The fixture's look at line `index` and the prompt after it, as the game
 /// sends them. Rejoined with bare LF, so a CRLF checkout cannot change them.
@@ -69,7 +69,6 @@ async fn a_look_reaches_the_page_sorted_once_sorting_is_on() {
         .await
         .unwrap();
     let pairing = server.pairing_url();
-    let sessions = server.sessions();
     let stop_web = CancellationToken::new();
     let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
     let mut socket = browser(&pairing).await.unwrap();
@@ -99,7 +98,7 @@ async fn a_look_reaches_the_page_sorted_once_sorting_is_on() {
     );
 
     // On: the same bytes, one line per category.
-    assert!(sessions.sort_containers(handle.session(), true));
+    handle.sort_containers(true);
     look(2, "look in box").await;
     let lines = until(&mut socket, |line| line.starts_with("  lockpick"))
         .await

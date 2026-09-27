@@ -14,7 +14,6 @@ use cena_session::{Event, ObserveError, ObservedEvent, SessionObserver, Snapshot
 use pending::Pending;
 use std::future::Future;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 use std::time::Duration;
 use tokio::sync::broadcast;
 
@@ -120,8 +119,6 @@ where
                 Ok(event) => {
                     let immediate = event.generation != pending.generation
                         || matches!(event.event, Event::StateChanged(_) | Event::ConnectFailed { .. });
-                    // `;sorter` as the player last set it (`Sessions::sort_containers`).
-                    pending.assembler.sort_containers(shared.sorting.load(Ordering::Relaxed));
                     pending.observe(event);
                     dirty = true;
                     immediate
@@ -151,15 +148,12 @@ where
             .offer(shared.id, &shared.tag(), &shared.name, &lines);
         pending.bytes = 0;
         let gap = std::mem::take(&mut pending.gap);
-        if shared
-            .hub
-            .lock()
-            .await
-            .publish(&snapshot, lines, gap)
-            .is_err()
-        {
+        let mut hub = shared.hub.lock().await;
+        if hub.publish(&snapshot, lines, gap).is_err() {
             return Err(std::io::Error::other("Presentation sequence exhausted"));
         }
+        hub.alert(std::mem::take(&mut pending.alerts));
+        drop(hub);
         let _ = shared.changed.send(());
         dirty = false;
         ticking = snapshot.state.in_roundtime() == Some(true);

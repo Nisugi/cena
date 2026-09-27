@@ -1,4 +1,4 @@
-# 45 — The Ruby bridge: how a Lich script runs against Hydra
+# 46 — The Ruby bridge: how a Lich script runs against Hydra
 
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
 (§10).** Nothing here is built or scheduled. It
@@ -7,6 +7,10 @@ process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connect
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
 [`inventory/13-ruby-bridge-evidence.md`](../inventory/13-ruby-bridge-evidence.md): Lich's runtime
 read line by line, every Lich call mapped to Hydra, and both script collections measured.
+
+> **RENUMBERED 2026-09-27** from `plan/45`, which M8's trigger plan (`plan/45-m8-triggers.md`,
+> 2026-09-26) already held on its own branch; the two met when the branches merged. Sixty-eight
+> files cite the triggers plan and three cited this one, so this one moved.
 
 Marks as elsewhere: **AUTHOR** is quoted and dated; **MEASURED** cites its source; the rest is
 **PROPOSED**, open until the author says otherwise.

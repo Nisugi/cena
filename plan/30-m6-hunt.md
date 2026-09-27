@@ -684,6 +684,13 @@ projection transform ported from VellumFE. None depends on the hunt, so they can
 > 10 in `cena-ui` (6 over five real looks, `crates/cena-ui/tests/fixtures/container_looks.xml`;
 > 4 synthetic, two of them VellumFE's own), 3 for the command, 1 end to end through the
 > parser and the pump (`crates/cena/tests/web_sorter.rs`). `;foreach` and `;multi` followed (`3804678`, the note below).
+>
+> **MOVED 2026-09-26 (`plan/45` §4a, M8 Stage 1).** The sorter is now
+> `crates/cena-model/src/sorter.rs`, run by the session on each line before it is published,
+> so every viewer gets sorted looks and M8's triggers will match each sorted line. The switch
+> is `SessionHandle::sort_containers`, and `;sorter` needs no page open. Its tests are
+> `crates/cena-model/tests/sorter.rs`, through the real parser and model; the fixture is
+> `crates/cena-model/tests/fixtures/container_looks.xml`. The paths above are as built.
 
 > **`;multi` and `;foreach` BUILT 2026-09-25, not yet run live.** One behavior, a **batch**
 > (`crates/cena-behavior/src/batch/`; `VellumFE`'s own word for its foreach): a list of lines sent
@@ -743,7 +750,7 @@ projection transform ported from VellumFE. None depends on the hunt, so they can
 > player's `/patterns/`.
 >
 > MEASURED: 47 tests -- `batch_multi` 17, `batch_foreach` 18, `batch_foreach_run` 10 (over the
-> real looks in `crates/cena-ui/tests/fixtures/container_looks.xml`), and 2 in
+> real looks in `crates/cena-model/tests/fixtures/container_looks.xml`), and 2 in
 > `crates/cena/src/batch.rs`, a typed `;multi` waiting on the `;go2` it started, through the real
 > command table. Eighteen mutations each turned a test red; the one that did not at first -- a
 > gate refusal skipped instead of retried -- was a gap, now two tests.

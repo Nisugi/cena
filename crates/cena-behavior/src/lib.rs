@@ -42,6 +42,7 @@ pub mod stance;
 pub mod sync;
 pub mod town;
 pub mod travel;
+pub mod triggers;
 pub mod waggle;
 pub mod watchdog;
 

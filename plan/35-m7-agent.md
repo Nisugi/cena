@@ -97,7 +97,7 @@ Its `StreamableHttpService` is a tower `Service` (`transport/streamable_http_ser
 in the crate), so an axum router mounts it with `nest_service`; it also checks the `Host`
 header, localhost by default. Chosen over hand-written JSON-RPC because it tracks the MCP
 specification's revisions, which a hand-written layer would have to follow by hand, and
-because its server-to-client stream is the push `plan/45` §4.1 needs.
+because its server-to-client stream is the push `plan/46` §4.1 needs.
 
 ## 3. Control levels
 
@@ -524,9 +524,9 @@ recent work. Its eight points, as taken:
 | 4 | a caller's request id, so a lost reply cannot admit twice | yes | before the first mutating tool |
 | 5 | permission apart from ownership; exact, expiring, single-use approvals; hold, retreat, stop and revoke distinct | yes | steps 2, 4, 5 |
 | 6 | progress, and its absence, as events | yes; §4's third escalation signal made concrete | step 3's acceptance |
-| 8 | one contract for agents and scripts | the core and meanings, yes. Send-and-wait for **scripts** keeps Lich's semantics on purpose (`plan/45` §3: a match after the cursor); an agent's operations report the behavior's typed result instead | throughout |
+| 8 | one contract for agents and scripts | the core and meanings, yes. Send-and-wait for **scripts** keeps Lich's semantics on purpose (`plan/46` §3: a match after the cursor); an agent's operations report the behavior's typed result instead | throughout |
 
-Its M7a-M7d staging is this section's steps; "M7b" stays the Ruby bridge (`plan/45` §10).
+Its M7a-M7d staging is this section's steps; "M7b" stays the Ruby bridge (`plan/46` §10).
 
 ## 9. Questions
 

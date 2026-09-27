@@ -37,8 +37,11 @@
 //! dropped events the author saw were the tail of a much larger overflow that a
 //! faster subscriber had already absorbed.
 //!
-//! 2,048 covers the larger burst with ~78% headroom. It is not a guess at the
-//! worst case: a slow subscriber can still lag, and `Lagged` still says so.
+//! 2,048 covered the larger burst with ~78% headroom. Since each finished line
+//! is published too (`Event::Line`, `plan/45` §4a), a burst is up to twice its
+//! frames, and the ring is 4,096 -- the same headroom over that bound (the
+//! constant's docs, `EVENT_CHANNEL_BOUND`). It is not a guess at the worst
+//! case: a slow subscriber can still lag, and `Lagged` still says so.
 
 use cena_platform::ReplaySource;
 use cena_session::{Event, Session};
@@ -94,10 +97,12 @@ async fn a_measured_login_burst_does_not_lag_an_attentive_subscriber() {
     let task = tokio::spawn(session.into_actor().run());
 
     let mut seen = 0usize;
+    let mut lines = 0usize;
     let mut lagged = 0u64;
     loop {
         match tokio::time::timeout(Duration::from_secs(5), events.recv()).await {
             Ok(Ok(Event::Frame(_))) => seen += 1,
+            Ok(Ok(Event::Line(_))) => lines += 1,
             Ok(Ok(_)) => {}
             Ok(Err(RecvError::Lagged(missed))) => lagged += missed,
             Ok(Err(RecvError::Closed)) | Err(_) => break,
@@ -113,6 +118,12 @@ async fn a_measured_login_burst_does_not_lag_an_attentive_subscriber() {
     assert!(
         seen >= 1_151,
         "the subscriber saw only {seen} of 1,151 burst frames"
+    );
+    // Every burst line is text that finishes a line: the worst case for the
+    // ring, and what a viewer draws.
+    assert_eq!(
+        lines, 1_151,
+        "the subscriber saw {lines} of 1,151 burst lines"
     );
 }
 

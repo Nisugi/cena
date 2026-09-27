@@ -714,9 +714,15 @@ Revised from `01` §8, each phase ending in something demonstrable:
 | 5 | multi-session: N characters, isolation tests, switching |
 | 6 | first real behavior (Hunt), profile format (§6a.1), supervisor composition |
 | 7 | agent protocol (`07`, safety per §5.5 + §6.3) |
-| 8 | remaining behaviors; customization surface (per `11` — highlights first, §6a.4) |
-| 9 | DragonRealms adapter |
-| 10 | TUI/GUI |
+| 8 | ~~remaining behaviors; customization surface (per `11` — highlights first, §6a.4)~~ **the trigger system** ([`45`](45-m8-triggers.md)) |
+| 9 | ~~DragonRealms adapter~~ removed from the roadmap, §9d |
+| 10 | TUI/GUI — the GUI is next after M8 ([`28`](28-gui-inventory.md)); the TUI is not before M15 |
+
+> **REDEFINED 2026-09-26 (author):** *"Ok we will do M8 first. Trigger system (not just
+> highlights!)"* Most of M8's "remaining behaviors" landed in M6, and the GUI (M10) was
+> about to start; it waits for M8 because highlights apply in core, before any frontend
+> (`28` §3d). `45` §1 records the decisions M8 was planned on, including the one that
+> narrows §6a.2 for triggers: one file, no profile level.
 
 **Milestone 5 before 6 is deliberate:** multi-session is the headline feature and it
 constrains behavior design. Discovering it late would mean rewriting behaviors.

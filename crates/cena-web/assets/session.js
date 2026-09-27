@@ -51,10 +51,17 @@ export function commandError(line) {
   return null;
 }
 
+// A trigger's paint (`plan/45`): optional, and when present exactly the
+// `#rrggbb` the server writes, so nothing else can reach a style property.
+const PAINT = /^#[0-9a-f]{6}$/;
+const validPaint = (value) => value === undefined || value === null
+  || (typeof value === "string" && PAINT.test(value));
+
 function validRuns(runs) {
   return Array.isArray(runs) && runs.every((run) => run && typeof run.text === "string"
     && typeof run.bold === "boolean" && typeof run.monospace === "boolean"
-    && (run.preset === null || typeof run.preset === "string"));
+    && (run.preset === null || typeof run.preset === "string")
+    && validPaint(run.color) && validPaint(run.background));
 }
 
 // A line's closed-window declaration. Shape only: an unrecognised `kind` is
@@ -79,7 +86,8 @@ function validView(view) {
   if (!(room.exits === null || (Array.isArray(room.exits) && room.exits.every((v) => typeof v === "string")))) return false;
   for (const key of ["creatures", "objects", "players"]) {
     if (!(room[key] === null || (Array.isArray(room[key]) && room[key].every((item) =>
-      item && typeof item.text === "string" && nullableText(item.status))))) return false;
+      item && typeof item.text === "string" && nullableText(item.status)
+      && (item.painted === undefined || item.painted === null || validRuns(item.painted)))))) return false;
   }
   for (const hand of [view.left_hand, view.right_hand]) {
     if (!hand || !["unknown", "empty", "holding"].includes(hand.kind)
@@ -111,6 +119,9 @@ function validCard(card) {
 // Merged shared-stream lines the hub keeps (plan/29 step 5d); the server
 // keeps the same number, so a reopened hub shows what this one did.
 export const MAX_MERGED_LINES = 200;
+// A trigger's banners (`plan/45` Stage 3): VellumFE's cap and time on screen.
+export const MAX_ALERTS = 5;
+export const ALERT_MS = 4000;
 
 export class HydraSession {
   constructor({ url, token, sessionId = null, onChange, WebSocketImpl = WebSocket,
@@ -143,7 +154,7 @@ export class HydraSession {
     // last hub request.
     this.state = { connection: "idle", view: null, story: [], session: null,
       generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…", hub: null,
-      available: [], hubNote: "", merged: [] };
+      available: [], hubNote: "", merged: [], alerts: [] };
   }
 
   get ready() {
@@ -303,6 +314,20 @@ export class HydraSession {
         handled: "Done by Hydra" };
       this.untouched = false;
       state.commandStatus = `${label[message.status]}: ${message.detail}`;
+      this.emit();
+      return;
+    }
+    // A trigger's banner: shown a while, the newest few, and only on the
+    // generation it came from. Never kept past its time.
+    if (message.kind === "alert") {
+      if (typeof message.text !== "string") throw new Error("Invalid alert");
+      if (message.session !== state.session || message.generation !== state.generation) return;
+      const alert = { text: message.text };
+      state.alerts = [...state.alerts, alert].slice(-MAX_ALERTS);
+      this.schedule(() => {
+        this.state.alerts = this.state.alerts.filter((shown) => shown !== alert);
+        this.emit();
+      }, ALERT_MS);
       this.emit();
       return;
     }
