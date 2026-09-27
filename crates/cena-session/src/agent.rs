@@ -297,8 +297,9 @@ pub enum Change {
         /// Whether the act was done.
         approved: bool,
     },
-    /// An operation started, was steered, or ended.
-    Operation(Report),
+    /// An operation started, was steered, got on, or ended. Boxed: a report
+    /// is large beside every other event.
+    Operation(Box<Report>),
 }
 
 /// One session's level, the acts waiting on the player, the requests

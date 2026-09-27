@@ -1,7 +1,8 @@
-//! A hunt steered from outside (`plan/35` §4, M7 step 3b): the author's
-//! hold, "defend, start nothing", and retreat, "the rest room, then end"
-//! (`crates/cena-behavior/src/hunt/steer.rs`), driven tick by tick with no
-//! game. The fixtures are `hunt_engine.rs`'s.
+//! A hunt as an agent steers and reads it (`plan/35` §4, M7 steps 3b and
+//! 3c): the author's hold, "defend, start nothing", and retreat, "the rest
+//! room, then end" (`crates/cena-behavior/src/hunt/steer.rs`); and how it is
+//! getting on, stalls included (`hunt/progress.rs`). Driven tick by tick with
+//! no game; the fixtures are `hunt_engine.rs`'s.
 
 use cena_behavior::hunt::engine::{Phase, Why};
 use cena_behavior::hunt::{Ending, Here, Hunt, Profile, Said};
@@ -248,11 +249,11 @@ fn a_held_hunt_fights_on_and_takes_up_no_other() {
 #[test]
 fn a_held_hunt_still_rests_and_flees() {
     let mut hunt = Hunt::new(profile().unwrap(), 1);
-    let mut hurt = state(1_000, "10");
-    hurt.status.set("bleeding", true);
+    let mut bleeding = state(1_000, "10");
+    bleeding.status.set("bleeding", true);
     hunt.hold(true);
     assert_eq!(
-        hunt.tick(&hurt, here(10, NO_EXITS), Some(1_000)),
+        hunt.tick(&bleeding, here(10, NO_EXITS), Some(1_000)),
         Said::Walk(RoomId(20))
     );
 
@@ -359,4 +360,41 @@ fn mana(state: &mut GameState) {
         attrs: Vec::new(),
         time_remaining_secs: None,
     }));
+}
+
+/// Issue #19, point 6: a hunt that goes round empty rooms says so once
+/// `STALL_AFTER` game seconds pass with nothing engaged, naming how many
+/// rooms it searched; held it is not stalled, and an engagement ends it.
+#[test]
+fn a_hunt_says_when_it_gets_nowhere() {
+    let mut hunt = Hunt::new(profile().unwrap(), 7);
+    let exits = [RoomId(11)];
+    hunt.tick(&state(1_000, "10"), here(10, &exits), Some(1_000));
+    assert_eq!(hunt.progress(Some(1_000)).stalled, None);
+    hunt.tick(&state(1_100, "11"), here(11, &exits), Some(1_100));
+    let later = hunt.progress(Some(1_300));
+    assert_eq!(
+        later.stalled.as_deref(),
+        Some("nothing engaged for 5 minutes, across 2 rooms")
+    );
+    assert_eq!(later.counts["rooms_searched"], 2);
+    assert_eq!(later.doing, "hunting");
+    hunt.hold(true);
+    let held = hunt.progress(Some(1_300));
+    assert_eq!((held.doing.as_str(), held.stalled), ("held: hunting", None));
+    hunt.hold(false);
+    let mut fight = state(1_310, "11");
+    creature(&mut fight, 42, "mastodon", &[]);
+    assert_eq!(
+        hunt.tick(&fight, here(11, &exits), Some(1_310)),
+        send("target #42", Some(42))
+    );
+    let engaged = hunt.progress(Some(1_700));
+    assert_eq!(engaged.counts["engaged"], 1);
+    assert_eq!(
+        engaged.stalled.as_deref(),
+        Some("nothing engaged for 6 minutes, across 0 rooms"),
+        "counted from the engagement"
+    );
+    assert_eq!(hunt.progress(Some(1_320)).stalled, None);
 }

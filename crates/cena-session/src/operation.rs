@@ -25,8 +25,18 @@
 //! left. **No effect is claimed**: a hunt's `completed` is the machine's
 //! verdict that its stopping rule was met, never a count of kills; the
 //! combat recorder has what was seen, attributed as it attributes it.
+//!
+//! # Progress, and its absence (issue #19, point 6)
+//!
+//! A behavior reports what it is doing and what it keeps count of
+//! ([`Progress`]), through the [`Reporter`] it is started with, and says when
+//! nothing is coming of it (`stalled`). A caller hears of it only when what
+//! it is doing or its stall changes, each change numbered by the report's
+//! `revision`: the counts ride along and can be read at any time, so a hunt
+//! wandering empty rooms says so once, and an unchanged stall is never said
+//! again.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, OnceLock};
@@ -174,6 +184,43 @@ impl Control {
     }
 }
 
+/// How an operation is getting on, as its behavior reports it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Progress {
+    /// What it is doing now, in the behavior's words: `hunting`, `resting
+    /// (fried)`, `held: hunting`.
+    pub doing: String,
+    /// What it keeps count of, by name: `engaged`, `rests`,
+    /// `rooms_searched`.
+    pub counts: BTreeMap<String, u64>,
+    /// Nothing has come of it for a while, and why, in words; `None` while
+    /// it is getting on.
+    pub stalled: Option<String>,
+}
+
+/// How a behavior reports its [`Progress`]: given to [`Start`] with each
+/// operation, bound to it.
+#[derive(Clone, Debug)]
+pub struct Reporter {
+    handle: SessionHandle,
+    id: u64,
+}
+
+impl Reporter {
+    /// The operation's progress now. Said to whoever watches only when what
+    /// it is doing, or its stall, has changed.
+    pub fn progress(&self, progress: Progress) {
+        let changed = self
+            .handle
+            .agent
+            .with_operations(|table| table.progress(self.id, progress));
+        if let Some(report) = changed {
+            self.handle
+                .publish(Event::Agent(Change::Operation(Box::new(report))));
+        }
+    }
+}
+
 /// How one operation is steered: the behavior's own controls for that run
 /// alone, never for whatever runs next.
 pub type Steer = Arc<dyn Fn(Control) -> Result<(), String> + Send + Sync>;
@@ -194,8 +241,9 @@ pub struct Started {
 /// why not.
 pub type Allows = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
 
-/// Start a line an [`Allows`] took.
-pub type Start = Arc<dyn Fn(&str) -> Started + Send + Sync>;
+/// Start a line an [`Allows`] took, reporting its progress to the
+/// [`Reporter`] given.
+pub type Start = Arc<dyn Fn(&str, Reporter) -> Started + Send + Sync>;
 
 /// Who runs the Hydra commands an agent may perform: the binary, which knows
 /// them ([`SessionHandle::set_performer`]).
@@ -260,6 +308,11 @@ pub struct Report {
     pub ended: Option<Ended>,
     /// Whether its authority was given back, once it has ended.
     pub authority: Option<Released>,
+    /// How it is getting on, when its behavior reports it.
+    pub progress: Option<Progress>,
+    /// Counts the changes a caller hears of: what it is doing, its stall,
+    /// where it is in its life.
+    pub revision: u64,
 }
 
 /// One session's operations: every running one, and the last
@@ -300,15 +353,23 @@ impl Table {
         self.kept.iter().map(|k| k.report.clone()).collect()
     }
 
-    fn add(&mut self, line: &str, approval: Option<u64>, steer: Steer) -> Report {
+    /// The next operation's number, before it starts: its [`Reporter`] is
+    /// bound to it.
+    fn reserve(&mut self) -> u64 {
         self.last_id += 1;
+        self.last_id
+    }
+
+    fn add(&mut self, id: u64, line: &str, approval: Option<u64>, steer: Steer) -> Report {
         let report = Report {
-            id: self.last_id,
+            id,
             line: line.to_owned(),
             lifecycle: Lifecycle::Running,
             approval,
             ended: None,
             authority: None,
+            progress: None,
+            revision: 0,
         };
         self.kept.push_back(Kept {
             report: report.clone(),
@@ -320,6 +381,7 @@ impl Table {
     fn end(&mut self, id: u64, ended: Ended, authority: Released) -> Option<Report> {
         let kept = self.kept.iter_mut().find(|k| k.report.id == id)?;
         kept.report.lifecycle = Lifecycle::Ended;
+        kept.report.revision += 1;
         kept.report.ended = Some(ended);
         kept.report.authority = Some(authority);
         let report = kept.report.clone();
@@ -330,6 +392,19 @@ impl Table {
             }
         }
         Some(report)
+    }
+
+    /// Operation `id`'s progress is `progress`: the report, when what a caller
+    /// hears of changed; `None` when only the counts did, or it is not kept.
+    fn progress(&mut self, id: u64, progress: Progress) -> Option<Report> {
+        let kept = self.kept.iter_mut().find(|k| k.report.id == id)?;
+        let heard = |p: &Progress| (p.doing.clone(), p.stalled.clone());
+        let news = kept.report.progress.as_ref().map(heard) != Some(heard(&progress));
+        kept.report.progress = Some(progress);
+        news.then(|| {
+            kept.report.revision += 1;
+            kept.report.clone()
+        })
     }
 }
 
@@ -343,11 +418,16 @@ pub(crate) fn start(
     let performer = handle
         .performer()
         .ok_or("Hydra cannot run behaviors for an agent yet: the character is still logging in")?;
-    let started = (performer.start)(line);
+    let id = handle.agent.with_operations(Table::reserve);
+    let reporter = Reporter {
+        handle: handle.clone(),
+        id,
+    };
+    let started = (performer.start)(line, reporter);
     let report = handle
         .agent
-        .with_operations(|table| table.add(line, approval, started.steer));
-    handle.publish(Event::Agent(Change::Operation(report.clone())));
+        .with_operations(|table| table.add(id, line, approval, started.steer));
+    handle.publish(Event::Agent(Change::Operation(Box::new(report.clone()))));
     let (watcher, id, token, ended) = (handle.clone(), report.id, started.token, started.ended);
     tokio::spawn(async move {
         let ended = ended.await;
@@ -360,7 +440,7 @@ pub(crate) fn start(
             .agent
             .with_operations(|table| table.end(id, ended, authority));
         if let Some(report) = report {
-            watcher.publish(Event::Agent(Change::Operation(report)));
+            watcher.publish(Event::Agent(Change::Operation(Box::new(report))));
         }
     });
     Ok(report)
@@ -382,10 +462,11 @@ pub(crate) fn steer(handle: &SessionHandle, id: u64, control: Control) -> Result
     let report = handle.agent.with_operations(|table| {
         let kept = table.kept.iter_mut().find(|k| k.report.id == id)?;
         kept.report.lifecycle = control.leaves(kept.report.lifecycle);
+        kept.report.revision += 1;
         Some(kept.report.clone())
     });
     let report = report.ok_or_else(|| format!("operation {id} is no longer kept"))?;
-    handle.publish(Event::Agent(Change::Operation(report.clone())));
+    handle.publish(Event::Agent(Change::Operation(Box::new(report.clone()))));
     Ok(report)
 }
 

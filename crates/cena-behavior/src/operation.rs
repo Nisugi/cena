@@ -21,7 +21,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use cena_session::operation::{Ended, Work};
+use cena_session::operation::{Ended, Progress, Work};
+use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
@@ -45,6 +46,8 @@ pub struct Steering {
     stop: CancellationToken,
     hold: Arc<AtomicBool>,
     retreat: Arc<AtomicBool>,
+    /// How the run is getting on, as it last said (`crate::hunt` progress).
+    progress: Arc<watch::Sender<Option<Progress>>>,
 }
 
 impl Steering {
@@ -55,7 +58,26 @@ impl Steering {
             stop,
             hold: Arc::default(),
             retreat: Arc::default(),
+            progress: Arc::new(watch::Sender::new(None)),
         }
+    }
+
+    /// The run's progress now; whoever [`Self::progress`] watches hears of
+    /// it only when it differs from the last.
+    pub fn report(&self, progress: Progress) {
+        self.progress.send_if_modified(|last| {
+            let news = last.as_ref() != Some(&progress);
+            if news {
+                *last = Some(progress);
+            }
+            news
+        });
+    }
+
+    /// Watch the run's progress.
+    #[must_use]
+    pub fn progress(&self) -> watch::Receiver<Option<Progress>> {
+        self.progress.subscribe()
     }
 
     /// Stop this run, as the player's stop does. Stopping it again is

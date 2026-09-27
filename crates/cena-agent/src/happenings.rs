@@ -141,11 +141,20 @@ pub fn operation(report: &Report) -> serde_json::Value {
             "authority": report.authority.map(Released::word),
         })
     });
+    let progress = report.progress.as_ref().map(|progress| {
+        serde_json::json!({
+            "doing": progress.doing,
+            "counts": progress.counts,
+            "stalled": progress.stalled,
+        })
+    });
     serde_json::json!({
         "id": report.id,
         "line": report.line,
         "lifecycle": report.lifecycle.word(),
+        "revision": report.revision,
         "approval": report.approval,
+        "progress": progress,
         "result": result,
     })
 }

@@ -219,6 +219,17 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
          leaves the table (play.rs's take_off calls Agent::unseat).",
     ),
     (
+        "crates/cena-session/src/operation.rs",
+        "Reporter",
+        "How a behavior an agent started reports its progress (plan/35 section 8, \
+         M7 step 3c): bound to one operation, it writes that operation's progress \
+         into the session's own table and publishes the change, which needs the \
+         session's publisher. A clone of the session's handle, on the type's own \
+         terms (every field shared: see Viewed below), so it cannot drift; it is \
+         made by operation::start for one run and dropped when that run's task \
+         ends, so it never outlives the session it reports to.",
+    ),
+    (
         "crates/cena-web/src/server.rs",
         "Viewed",
         "The embedded frontend's manual-input surface, one per served session \

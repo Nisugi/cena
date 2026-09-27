@@ -58,6 +58,7 @@ mod monitor;
 mod party;
 mod posture;
 pub mod profile;
+pub mod progress;
 mod quick;
 mod react;
 mod repeat;

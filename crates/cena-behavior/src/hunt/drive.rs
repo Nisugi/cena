@@ -278,6 +278,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 now,
             );
             self.publish(here, State::Ready);
+            // How it is getting on, for whoever steers it.
+            self.machine.report_progress(now);
             for note in self.machine.take_notes() {
                 self.handle
                     .say(Notice::line(NoticeKind::Info, format!("Hunt: {note}")));

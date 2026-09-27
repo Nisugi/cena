@@ -11,9 +11,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use cena_platform::AnsweringSource;
+use cena_session::Event;
+use cena_session::agent::Change;
 use cena_session::agent::{Admitted, Approval, Call, Denied, Door, Level};
 use cena_session::operation::{
-    Allows, Control, Ended, Lifecycle, Performer, Released, Report, Start, Started, Steer, Work,
+    Allows, Control, Ended, Lifecycle, Performer, Progress, Released, Report, Reporter, Start,
+    Started, Steer, Work,
 };
 use cena_session::{Generation, Session, SessionHandle};
 use tokio_util::sync::CancellationToken;
@@ -30,7 +33,7 @@ fn performer(starts: &Arc<AtomicUsize>, arrive: &CancellationToken) -> Performer
         }
     });
     let (starts, arrive) = (Arc::clone(starts), arrive.clone());
-    let start: Start = Arc::new(move |_line: &str| {
+    let start: Start = Arc::new(move |_line: &str, _reporter| {
         starts.fetch_add(1, Ordering::SeqCst);
         let stop = CancellationToken::new();
         let steer: Steer = {
@@ -231,4 +234,63 @@ async fn the_controls_read_in_the_lifecycle() {
             Some(Lifecycle::Stopping),
         ]
     );
+}
+
+/// Issue #19, point 6: progress is heard when what the operation is doing,
+/// or its stall, changes; counts alone ride along unheard, and an unchanged
+/// stall is not said again. Each change heard is numbered.
+#[tokio::test]
+async fn progress_is_heard_when_it_changes_and_not_otherwise() {
+    let (source, _) = AnsweringSource::new(
+        b"<prompt time=\"1\">&gt;</prompt>
+",
+    );
+    let session = Session::new(source);
+    let handle = session.handle();
+    let (_, mut events) = session.subscribe();
+    let slot: Arc<std::sync::Mutex<Option<Reporter>>> = Arc::default();
+    let kept = Arc::clone(&slot);
+    let allows: Allows = Arc::new(|line: &str| Ok(line.to_owned()));
+    let start: Start = Arc::new(move |_line: &str, reporter: Reporter| {
+        *kept.lock().unwrap() = Some(reporter);
+        Started {
+            ended: Box::pin(std::future::pending()),
+            steer: Arc::new(|_| Ok(())),
+            token: None,
+        }
+    });
+    assert!(handle.set_performer(Performer {
+        allowed: "anything".to_owned(),
+        allows,
+        start,
+    }));
+    handle.set_agent_level(Level::Behaviors);
+    let door = handle.agent_door();
+    let run = started(door.perform("hunt x", "x", call("r1", &handle))).unwrap();
+    let reporter = slot.lock().unwrap().clone().unwrap();
+    while events.try_recv().is_ok() {}
+    let said = |engaged: u64, stalled: Option<&str>| Progress {
+        doing: "hunting".to_owned(),
+        counts: std::collections::BTreeMap::from([("engaged".to_owned(), engaged)]),
+        stalled: stalled.map(str::to_owned),
+    };
+    reporter.progress(said(0, None));
+    reporter.progress(said(1, None));
+    reporter.progress(said(1, Some("nothing engaged for 5 minutes")));
+    reporter.progress(said(2, Some("nothing engaged for 5 minutes")));
+    let mut heard = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        if let Event::Agent(Change::Operation(report)) = event {
+            heard.push((report.revision, report.progress.and_then(|p| p.stalled)));
+        }
+    }
+    assert_eq!(
+        heard,
+        [
+            (1, None),
+            (2, Some("nothing engaged for 5 minutes".to_owned()))
+        ]
+    );
+    let now = door.operation(run.id).unwrap().progress.unwrap();
+    assert_eq!(now.counts["engaged"], 2, "the counts ride along");
 }

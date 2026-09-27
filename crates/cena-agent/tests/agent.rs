@@ -563,7 +563,7 @@ fn walker() -> cena_session::operation::Performer {
             .then(|| line.to_owned())
             .ok_or_else(|| "only walk <place>".to_owned())
     });
-    let start: Start = std::sync::Arc::new(|_line: &str| {
+    let start: Start = std::sync::Arc::new(|_line: &str, _reporter| {
         let stop = CancellationToken::new();
         let steer: Steer = {
             let stop = stop.clone();

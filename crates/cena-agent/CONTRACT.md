@@ -169,6 +169,8 @@ One operation, or every one kept (the running ones and the last 32 ended), each:
 |---|---|
 | `id`, `line` | its number, and the command as kept |
 | `lifecycle` | `running`, `held`, `retreating`, `stopping` (a stop was admitted, not yet applied), `ended` |
+| `revision` | counts the changes you hear of: its lifecycle, what it is doing, its stall |
+| `progress` | `null` for what reports none (a walk, today); a hunt's `doing` (`hunting`, `resting (fried)`, `held: hunting`), `counts` (`engaged`, `rests`, `rooms_searched`) and `stalled` |
 | `approval` | the request number the player approved it under, or `null` |
 | `result` | `null` until it ends; then `work`, `reason`, `left`, `authority` |
 
@@ -186,6 +188,16 @@ One operation, or every one kept (the running ones and the last 32 ended), each:
 - **`authority`**: whether the authority it claimed was given back, as the session sees it:
   `released`, `not_claimed`, or `unknown` (its token holds the authority again: its own
   release unseen, or a later run of the same behavior).
+
+**`stalled`** is the absence of progress, which the watchdog cannot see (issue #19, point
+6): a hunt in its hunting ground, not held, that has engaged nothing for five game minutes
+says so, with how many rooms it searched since: `"nothing engaged for 5 minutes, across 4
+rooms"`. It is `null` while the hunt is getting on. An `engaged` count is creatures chosen and
+fought, never kills.
+
+A `wait` for kind `operation` hears of an operation when its lifecycle, what it is doing, or
+its stall changes, each with a new `revision`; the counts ride along without being heard, and
+an unchanged stall is never said twice. `operation` reads the counts at any time.
 
 Needs `observe`.
 

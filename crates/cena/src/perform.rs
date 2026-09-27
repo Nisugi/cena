@@ -30,7 +30,9 @@ use std::sync::Arc;
 
 use cena_behavior::operation::{Steering, Underway};
 use cena_behavior::{hunt, travel};
-use cena_session::operation::{Allows, Control, Ended, Performer, Start, Started, Steer, Work};
+use cena_session::operation::{
+    Allows, Control, Ended, Performer, Progress, Reporter, Start, Started, Steer, Work,
+};
 use cena_session::{AuthorityToken, SessionHandle, SessionObserver};
 use tokio_util::sync::CancellationToken;
 
@@ -104,8 +106,15 @@ pub(crate) fn install(
         job(&line).map(|_| line)
     });
     let (session, observer) = (handle.clone(), observer.clone());
-    let start: Start = Arc::new(move |line: &str| {
-        started(&session, &observer, travel.as_ref(), hunt.as_ref(), line)
+    let start: Start = Arc::new(move |line: &str, reporter: Reporter| {
+        started(
+            &session,
+            &observer,
+            travel.as_ref(),
+            hunt.as_ref(),
+            line,
+            reporter,
+        )
     });
     let performer = Performer {
         allowed: ALLOWED.to_owned(),
@@ -160,6 +169,7 @@ fn started(
     travel: Option<&Arc<travel::Desk>>,
     hunt: Option<&Arc<hunt::Desk>>,
     line: &str,
+    reporter: Reporter,
 ) -> Started {
     let stop = CancellationToken::new();
     let job = match job(line) {
@@ -232,13 +242,35 @@ fn started(
                         .unwrap_or_else(std::sync::PoisonError::into_inner) =
                         Some(underway.steering.clone());
                 }
-                follow(underway, &stop, hunt::HuntEnd::ended).await
+                let feed = underway.steering.progress();
+                tokio::select! {
+                    ended = follow(underway, &stop, hunt::HuntEnd::ended) => ended,
+                    never = forward(feed, reporter) => match never {},
+                }
             };
             Started {
                 ended: Box::pin(ended),
                 steer,
                 token: Some(HUNT_TOKEN),
             }
+        }
+    }
+}
+
+/// Pass a run's progress on to its operation for as long as the run goes
+/// on; the caller stops waiting on this when the run ends.
+async fn forward(
+    mut feed: tokio::sync::watch::Receiver<Option<Progress>>,
+    reporter: Reporter,
+) -> std::convert::Infallible {
+    loop {
+        let progress = feed.borrow_and_update().clone();
+        if let Some(progress) = progress {
+            reporter.progress(progress);
+        }
+        if feed.changed().await.is_err() {
+            // Every sender gone: nothing more will come.
+            return std::future::pending().await;
         }
     }
 }

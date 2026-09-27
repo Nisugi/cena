@@ -78,6 +78,7 @@ use super::guard::{Condition, Facts, Used};
 use super::monitor::Watch;
 use super::party::Grouping;
 use super::profile::{Profile, Step};
+use super::progress::Tally;
 use super::react::Reacting;
 use super::repeat::Repeats;
 use super::replies::Heard;
@@ -220,6 +221,8 @@ pub struct Hunt {
     pub(super) steered: Steered,
     /// The run's controls, when something outside steers it.
     pub(super) steering: Option<Steering>,
+    /// What the hunt keeps count of as it goes ([`super::progress`]).
+    pub(super) tally: Tally,
 }
 
 impl Hunt {
@@ -284,6 +287,7 @@ impl Hunt {
             grouping: Grouping::default(),
             steered: Steered::default(),
             steering: None,
+            tally: Tally::default(),
         }
     }
 
@@ -406,6 +410,7 @@ impl Hunt {
         if let Some(said) = self.death(state, now) {
             return said;
         }
+        self.tally.ticked(now);
         self.note_room(state, now);
         if self.held.is_none() {
             self.held = if self.quick {
@@ -472,6 +477,11 @@ impl Hunt {
             return;
         }
         self.room.clone_from(&state.room.id);
+        if self.phase == Phase::Hunting
+            && let Some(room) = &state.room.id
+        {
+            self.tally.entered(room);
+        }
         self.arrived = now;
         self.held = None;
         self.entered = true;
@@ -558,7 +568,11 @@ impl Hunt {
         if let Some(said) = self.assess_boons(state) {
             return Some(said);
         }
+        let before = self.target;
         let target = self.choose_target(state)?;
+        if before != Some(target) {
+            self.tally.engaged(now);
+        }
         self.fight(state, here, target, now)
     }
 

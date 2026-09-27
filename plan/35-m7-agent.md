@@ -529,6 +529,29 @@ Each ends in something demonstrable, as `12` §8 asks.
      controls and `heed`), the lifecycle in `crates/cena-session/tests/agent_operations.rs`,
      a walk's refusal over MCP. Mutations: without the hold arm two tests go red; without the
      held rest, one; without the retreat, one.
+
+   **3c BUILT 2026-09-27**: progress and its absence (issue #19, point 6; §4's third
+   escalation signal, "no progress").
+   - A behavior reports `Progress` through the `Reporter` its operation is started with
+     (`crates/cena-session/src/operation.rs`): what it is doing, what it keeps count of, and
+     `stalled` when nothing is coming of it. The hunt's (`crates/cena-behavior/src/hunt/progress.rs`):
+     its phase (`held: ` when held), creatures engaged, rests, rooms searched; **stalled** when
+     it is in the hunting ground, not held, and has engaged nothing for 300 game seconds,
+     naming the rooms searched since. That is the case the watchdog cannot see: a loop that
+     beats while it wanders empty rooms.
+   - **Heard only when it changes** (the issue's "an unchanged incident does not cause
+     repeated identical model requests"): an operation's `revision` counts its lifecycle,
+     what it is doing and its stall; counts ride along unheard.
+   - The run's `Steering` carries the progress (a `watch`), the driver reports after each tick,
+     and the binary's performer forwards it for as long as the run goes on.
+   - **Not built**: a walk's progress; §4's other two signals (a status Hunt does not react to,
+     which the agent already sees as a `status` happening; a move Hunt did not make); and the
+     issue's recovery states and attribution of an unexpected move. Each is named here so it
+     is found when its case arrives.
+   - Tests: `a_hunt_says_when_it_gets_nowhere` (`crates/cena-behavior/tests/hunt_steer.rs`) and
+     `progress_is_heard_when_it_changes_and_not_otherwise`
+     (`crates/cena-session/tests/agent_operations.rs`). Mutations: every report heard turns the
+     second red; a stall that ignores a hold, the first.
 4. **Commands**, with the denylist.
 5. **Takeover.** `Origin::Agent`, `take_over`, and the level dropping after a bad run.
 6. **Acceptance, live, author present:** a hunt ends on its rest threshold, the agent (not
