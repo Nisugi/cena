@@ -1,7 +1,7 @@
 # 49 — The GUI, second stage: widgets, custom windows, and what follows
 
-> **STATUS: PROPOSED, 2026-09-27.** The author's decisions of the day are quoted in §1,
-> including the stages' order (§4, row 6); two recommendations await the author (§5). Claude's readings are marked as such. `plan/47`
+> **STATUS: APPROVED, 2026-09-27.** Every question is answered; the author's decisions of
+> the day are quoted in §1, including the stages' order (§4, row 6). Claude's readings are marked as such. `plan/47`
 > (M10's first build) is BUILT; `plan/28` stays the inventory of VellumFE's GUI and holds
 > the layout decisions this file builds on; this file is what gets built next, and in what
 > order. `plan/12` wins any contradiction, except where §1 records the author changing it.
@@ -63,8 +63,8 @@ Given this file's first draft, the author answered again the same day:
 | 6 | The order of the stages | *"sure"* | A, then B-H, as §4 lists them. |
 | 7 | A stream widget always follows its window's character? | *"yes"* | DECIDED: R2 holds by construction (§2). |
 | 8 | Where the Advanced place is | *"sounds good."* | DECIDED: the bottom of the Add-a-widget list, closed, and one *Advanced* entry in a widget's right-click menu; nowhere else. |
-| 9 | Tab stacks only in a custom window? | *"what do you recommend?"* | Claude's recommendation in §2, to confirm. |
-| 10 | Presets shared, layouts per character? | *"presets being our put together windows? Does sharing mean editing a preset edits it for all characters?"* | Answered in §2, to confirm. |
+| 9 | Tab stacks only in a custom window? | *"what do you recommend?"*; given §2's recommendation, *"yep custom windows only."* | DECIDED (§2). |
+| 10 | Presets shared, layouts per character? | *"presets being our put together windows? Does sharing mean editing a preset edits it for all characters?"*; given §2's answer, *"yep own copy"* | DECIDED: adding a preset places the character's own copy (§2). |
 
 ---
 
@@ -94,7 +94,7 @@ into a custom window it loses its frame, dragged out it gets one back.
 
 **A tab stack** is a cell of a custom window holding several widgets, one showing, with a
 tab for each and the unread count of a stream not showing (Saga shows *THOUGHTS 2*).
-**CLAUDE'S RECOMMENDATION, to confirm (§1 row 9): yes, only there.** A player drops a
+**DECIDED (§1 row 9): only there.** A player drops a
 widget on a standalone window's title and the two become tabs; what Hydra keeps is a custom
 window of one cell, which looks exactly as the tabbed window should. So there is one tab
 mechanism, one thing saved, and one set of drag rules. The alternative, tabs on a
@@ -104,8 +104,8 @@ relationship to the first"*).
 
 **A preset** is a window already put together, as the author put it: a custom window
 Hydra ships, such as Saga's Experience or Loadout rebuilt from single widgets, or one a
-player saved. It is not special code. **CLAUDE'S RECOMMENDATION, to confirm (§1 row 10):
-adding a preset places a copy.** Editing that window changes that character's window and
+player saved. It is not special code. **DECIDED (§1 row 10): adding a preset places the
+character's own copy.** Editing that window changes that character's window and
 nothing else, and the preset changes only when a player saves over it, which changes no
 window already placed from it. Presets live in one library every character adds from;
 each character's layout is its own. A preset that edits every character at once would
@@ -285,10 +285,9 @@ bundle on macOS, a `.desktop` entry on Linux.
 ## 5. Open, for the author
 
 1. ~~**The order.**~~ **DECIDED** (§1 row 6).
-2. **A tab stack lives only in a custom window**: Claude's recommendation (§2), to confirm.
+2. ~~**A tab stack lives only in a custom window.**~~ **DECIDED** (§1 row 9).
 3. ~~**A stream widget always follows its window's character.**~~ **DECIDED** (§1 row 7).
-4. **Adding a preset places a copy**; one library, layouts per character: Claude's
-   recommendation (§2), to confirm.
+4. ~~**Adding a preset places a copy.**~~ **DECIDED** (§1 row 10).
 5. ~~**Where the Advanced place is.**~~ **DECIDED** (§1 row 8).
 6. ~~**Which stage makes the UI proper**, so the M6 live run can go?~~ **DECIDED, the
    author, 2026-09-27:** *"When I feel the GUI is done."* No stage is the gate; the author's
