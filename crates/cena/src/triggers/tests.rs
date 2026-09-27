@@ -88,7 +88,13 @@ impl Typing {
         let handle = session.handle();
         let (_, events) = session.subscribe();
         let commands = Commands::default();
-        command(&handle, &commands, dir.clone(), "Nisugi".to_owned());
+        command(
+            &handle,
+            &commands,
+            dir.clone(),
+            "Nisugi".to_owned(),
+            Changes::new(),
+        );
         Ok(Self {
             dir,
             session,

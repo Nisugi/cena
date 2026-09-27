@@ -7,16 +7,16 @@
 //! character starts, after every `;trigger` change, and at `;trigger
 //! reload`, and each character is given its own list.
 //!
-//! **A change reaches this character at once, and the others at their next
-//! start or `;trigger reload`.** One file serves every character, but a
-//! command runs in one character's session, which holds no handle on the
-//! others. CLAUDE'S CALL (`plan/45` §5c).
+//! **A change reaches every running character**: the one it was typed at
+//! at once, with all there is to say, and each other one through its
+//! triggers task ([`follow`]), with a line naming who changed it.
 //!
 //! A change is written whole or not at all -- to a file beside it, then over
 //! it -- because a player's triggers file may hold years of rules.
 
 mod act;
 mod explain;
+mod follow;
 mod import;
 mod load;
 mod words;
@@ -35,7 +35,7 @@ use crate::commands::Commands;
 use load::{counted, counted_as, loaded, reload};
 use words::{Command, HELP, Target};
 
-pub(crate) use act::perform;
+pub(crate) use follow::{Changes, run};
 
 /// What `;trigger` says, one notice a line.
 type Said = Vec<(NoticeKind, String)>;
@@ -52,17 +52,18 @@ pub(crate) fn open(handle: &SessionHandle, dir: &Path, character: &str) {
 }
 
 /// Register `;trigger` on `handle`'s command line, for `character`, over
-/// the file under `dir`.
+/// the file under `dir`; a change is told to `others`.
 pub(crate) fn command(
     handle: &SessionHandle,
     commands: &Commands,
     dir: PathBuf,
     character: String,
+    others: Changes,
 ) {
     let told = handle.clone();
     commands.trigger(Arc::new(move |line: &str| {
         let parsed = words::parse(line)?;
-        for (kind, text) in answer(parsed, &told, &dir, &character) {
+        for (kind, text) in answer(parsed, &told, &dir, &character, &others) {
             told.say(Notice::line(kind, format!("Triggers: {text}")));
         }
         Some(Claimed::Done)
@@ -75,13 +76,14 @@ fn answer(
     handle: &SessionHandle,
     dir: &Path,
     character: &str,
+    others: &Changes,
 ) -> Said {
     let info = |lines: Vec<String>| lines.into_iter().map(|l| (NoticeKind::Info, l)).collect();
     let command = match parsed {
         Ok(command) => command,
         Err(why) => return vec![(NoticeKind::Error, why)],
     };
-    let change = |edit: Edit<'_>| change(handle, dir, character, edit);
+    let change = |edit: Edit<'_>| change(handle, dir, character, others, edit);
     match command {
         Command::Help => info(HELP.iter().map(|line| (*line).to_owned()).collect()),
         Command::List => list(dir),
@@ -95,12 +97,15 @@ fn answer(
             Err(why) => vec![(NoticeKind::Error, why)],
         },
         Command::Test(words) => info(explain::explain(&handle.triggers(), &words)),
-        Command::Reload => loaded(reload(handle, dir, character), true),
+        Command::Reload => {
+            others.tell(character, "reloaded");
+            loaded(reload(handle, dir, character), true)
+        }
         Command::Approve(name) => change(&|text| {
             let (text, line) = edit::approve(text, &name)?;
             Ok((text, format!("`{name}` approved: it sends \"{line}\"")))
         }),
-        Command::Import(path) => import::import(handle, dir, character, Path::new(&path)),
+        Command::Import(path) => import::import(handle, dir, character, others, Path::new(&path)),
         Command::Add { name, words } => change(&|text| {
             let text = edit::add(text, &name, &words)?;
             Ok((text, format!("`{name}` added, making \"{words}\" bold")))
@@ -135,10 +140,16 @@ fn answer(
     }
 }
 
-/// Make `edit` to the file, write it, and give this character the result.
-/// A change the file cannot use is refused by `edit`, and nothing is
-/// written.
-fn change(handle: &SessionHandle, dir: &Path, character: &str, edit: Edit<'_>) -> Said {
+/// Make `edit` to the file, write it, give this character the result, and
+/// tell `others`. A change the file cannot use is refused by `edit`, and
+/// nothing is written.
+fn change(
+    handle: &SessionHandle,
+    dir: &Path,
+    character: &str,
+    others: &Changes,
+    edit: Edit<'_>,
+) -> Said {
     let changed = file(dir).and_then(|old| edit(&old));
     let (text, done) = match changed {
         Ok(changed) => changed,
@@ -147,12 +158,13 @@ fn change(handle: &SessionHandle, dir: &Path, character: &str, edit: Edit<'_>) -
     if let Err(why) = write(dir, &text) {
         return vec![(NoticeKind::Error, format!("not saved: {why}"))];
     }
+    others.tell(character, &done);
     match reload(handle, dir, character) {
         Ok(load::Reload { count, unfound, .. }) => {
             let mut said = vec![(
                 NoticeKind::Info,
                 format!(
-                    "{done}. {} on for {character}; other characters take it at `trigger reload`.",
+                    "{done}. {} on for {character}; every other character reads it again.",
                     counted(count)
                 ),
             )];

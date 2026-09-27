@@ -10,11 +10,17 @@ use cena_behavior::triggers::edit::{self, Merged};
 use cena_behavior::triggers::wrayth;
 use cena_session::{NoticeKind, SessionHandle};
 
-use super::{Said, change, counted_as};
+use super::{Changes, Said, change, counted_as};
 
 /// `;trigger import <path>`: a Wrayth settings file's highlights, names and
 /// ignores into the triggers file, then what could not come.
-pub(super) fn import(handle: &SessionHandle, dir: &Path, character: &str, path: &Path) -> Said {
+pub(super) fn import(
+    handle: &SessionHandle,
+    dir: &Path,
+    character: &str,
+    others: &Changes,
+    path: &Path,
+) -> Said {
     let named = path.file_name().map_or_else(
         || path.display().to_string(),
         |file| file.to_string_lossy().into_owned(),
@@ -27,7 +33,7 @@ pub(super) fn import(handle: &SessionHandle, dir: &Path, character: &str, path: 
         Ok(brought) => brought,
         Err(why) => return vec![(NoticeKind::Error, format!("{}: {why}", path.display()))],
     };
-    let mut said = change(handle, dir, character, &|text| {
+    let mut said = change(handle, dir, character, others, &|text| {
         let (text, merged) = edit::import(text, &origin, &brought)?;
         Ok((text, imported(&named, &brought, &merged)))
     });

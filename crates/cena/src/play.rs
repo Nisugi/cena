@@ -89,6 +89,9 @@ struct Table {
     /// The desk every character's sounds and notifications go to
     /// (`attention.rs`): one, so a thing several see sounds once.
     attention: std::sync::mpsc::Sender<crate::attention::Called>,
+    /// Word of each change to the one triggers file, so every character
+    /// reads it again (`triggers::Changes`).
+    changes: triggers::Changes,
 }
 
 /// Run every named character until Ctrl-C, or until all have stopped.
@@ -117,6 +120,7 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
         map,
         pin: dir.join(cena_platform::PIN_FILENAME),
         attention: crate::attention::start(&dir),
+        changes: triggers::Changes::new(),
         dir,
         turn: Arc::default(),
         interrupt: interrupt.clone(),
@@ -197,12 +201,15 @@ impl Table {
         };
         let commands = Commands::install(&hosted.handle);
         sorter::open(&hosted.handle, &commands);
+        // Following before the first read, so no change falls between.
+        let following = self.changes.follow();
         triggers::open(&hosted.handle, &self.dir, &character);
         triggers::command(
             &hosted.handle,
             &commands,
             self.dir.clone(),
             character.clone(),
+            self.changes.clone(),
         );
         batch::open(&hosted.handle, &hosted.observer, &commands);
         // The ledger's reports need only the database's path, known now.
@@ -227,8 +234,15 @@ impl Table {
             self.attention.clone(),
         ));
         // A trigger's send goes as if typed, through this character's
-        // command table (`plan/45` Stage 5).
-        tokio::spawn(triggers::perform(acts, hosted.handle.clone()));
+        // command table (`plan/45` Stage 5), and another character's change
+        // to the triggers file is read again here.
+        tokio::spawn(triggers::run(
+            acts,
+            following,
+            hosted.handle.clone(),
+            self.dir.clone(),
+            character.clone(),
+        ));
         proven.on_ready(&hosted.observer, &self.turn);
         tokio::spawn(after_ready(
             hosted.handle.clone(),

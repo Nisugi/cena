@@ -3,26 +3,16 @@
 //! it goes as if the player had typed it -- to Hydra's `;` commands first,
 //! otherwise to the game as [`Origin::Trigger`], which never counts as the
 //! player being there. What the game or Hydra refuses is said, naming the
-//! trigger.
+//! trigger. Each character's triggers task ([`super::follow`]) hears the
+//! sends and sends them here.
+//!
+//! [`Event::Act`]: cena_session::Event::Act
 
 use cena_session::command::claimant::Claimed;
-use cena_session::{Event, Gate, Notice, NoticeKind, Origin, Sent, SessionHandle};
-use tokio::sync::broadcast::{self, error::RecvError};
-
-/// Send each of a session's trigger sends from its `events`, through its
-/// `handle`, until the session ends.
-pub(crate) async fn perform(mut events: broadcast::Receiver<Event>, handle: SessionHandle) {
-    loop {
-        match events.recv().await {
-            Ok(Event::Act(act)) => send(&handle, &act.trigger, &act.line).await,
-            Ok(_) | Err(RecvError::Lagged(_)) => {}
-            Err(RecvError::Closed) => return,
-        }
-    }
-}
+use cena_session::{Gate, Notice, NoticeKind, Origin, Sent, SessionHandle};
 
 /// Send `trigger`'s `line`, as typed.
-async fn send(handle: &SessionHandle, trigger: &str, line: &str) {
+pub(super) async fn send(handle: &SessionHandle, trigger: &str, line: &str) {
     let said = match handle.typed(line) {
         Some(Claimed::Unknown) => Some(format!(
             "Trigger `{trigger}`: Hydra has no command `{}`.",
@@ -46,7 +36,8 @@ mod tests {
     use std::time::Duration;
 
     use cena_platform::AnsweringSource;
-    use cena_session::{Session, State};
+    use cena_session::{Event, Session, State};
+    use tokio::sync::broadcast;
 
     use super::*;
     use crate::commands::Commands;

@@ -1,8 +1,9 @@
 # 45 — Milestone 8: triggers
 
-> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGES 4, 3 AND 5 on
+> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGES 4, 3, 5 AND 6 on
 > 2026-09-27** (§6): every stage built, all but Stage 1's release run of the bench, and
-> nothing yet run live. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
+> nothing yet run live. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b` and
+> `m6-hunt` merged in again at `b7012d3`, in
 > the worktree `G:\dev\Cena-m8` (locked on purpose: M8 spans sessions). The author's
 > decisions are quoted in §1 with the date. **Everything else here is Claude's proposal**,
 > and two of §1's rows are Claude's *reading* of an answer, marked as such. What was decided
@@ -311,6 +312,7 @@ function, so the preview is always truthful."*
 - **A change reaches this character at once, the others at `;trigger reload` or their next
   start**: one file serves every character, but a command runs in one session, which holds
   no handle on the others. A change reaching every running character is a later step.
+  **SUPERSEDED by Stage 6**: every running character reads it again.
 - `test` tests a main-stream line, without markup. A trigger limited to another stream
   cannot be tested yet.
 
@@ -606,6 +608,34 @@ said. **MET**: `crates/cena/src/triggers/act.rs`'s test,
 | What is said | a Hydra command unknown, or a line the session refused, names the trigger | a trigger acting where no one is watching must still leave a trace |
 | The terminal | `-> [trigger] <line>` | `watch.rs` shows every send by its origin |
 | `;trigger test` | names a send and does not send it | a test that acted would not be a test |
+
+### Stage 6 -- one change, every character (2026-09-27)
+
+Not in the plan as written: §5c left it as *"a later step"*, and the author took it as the
+sixth stage when Stage 5 was done (*"sure"*, to merging `m6-hunt`, renumbering the Ruby
+bridge to `plan/46`, and this).
+
+**BUILT 2026-09-27.** A `;trigger` change, an import, an approval or a `reload` is told on
+one channel the table owns and hands to each character, as it hands down the hunt's
+`Party` (`crates/cena/src/triggers/follow.rs`, `crates/cena/src/play.rs`). Each character's
+triggers task -- the one that sends its trigger lines -- reads the file again for itself
+and says who changed it: *"Triggers: from Nisugi: `stunned` added, making "You are
+stunned" bold. 1 trigger on."* The character it was typed at reads it at once, with
+everything there is to say, and is not told twice. No handle is stored anywhere new
+(`single_owner.rs`), and nothing is a process global (Rule 5.2).
+
+**Done when** a change typed at one character is on for another, which says who made it,
+and the one that typed it is told once. **MET**:
+`crates/cena/src/triggers/follow.rs`'s test. Three mutants (its own change read again, a
+change not told, a reload not told), all caught.
+
+**CLAUDE'S, to confirm:** the others are told in one line, not the refusals and held sends
+the one typing it was shown: with several characters on one screen, those would be said
+once per window. `;trigger reload` now reads the file again for every character, so a file
+edited by hand needs one reload, not one per character.
+
+**Still open, for the author** (§8 item 4): whether triggers see the room window's
+bodies (`Also here:`), where Wrayth's names list is usually seen.
 
 ---
 
