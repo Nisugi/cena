@@ -674,3 +674,33 @@ fn the_library_is_kept_in_its_file() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Hydra's Indicators preset holds all nineteen, three a row; its Effects
+/// preset is one tab stack of the four lists, Active Spells showing.
+#[test]
+fn the_indicators_and_effects_presets_are_whole() {
+    let presets = Preset::hydras();
+    let found = |name: &str| {
+        presets
+            .iter()
+            .find(|preset| preset.name == name)
+            .cloned()
+            .expect(name)
+    };
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let indicators = layout.add_preset(&found("Indicators"), None);
+    let Some(Holds::Custom(custom)) = layout.holder(indicators).map(|holder| &holder.holds) else {
+        panic!("a custom window");
+    };
+    assert_eq!(custom.cells.len(), 19);
+    let effects = layout.add_preset(&found("Effects"), None);
+    let Some(Holds::Custom(custom)) = layout.holder(effects).map(|holder| &holder.holds) else {
+        panic!("a custom window");
+    };
+    assert_eq!(custom.cells.len(), 1, "one tab stack");
+    assert_eq!(custom.cells[0].tabs.len(), 4);
+    assert_eq!(
+        custom.cells[0].shown().map(|shown| shown.widget),
+        Some(Widget::Effects(crate::widget::Category::ActiveSpells))
+    );
+}

@@ -15,6 +15,7 @@
 mod character;
 mod draw;
 mod kind;
+mod status;
 
 use std::sync::Arc;
 
@@ -24,6 +25,7 @@ use egui::Id;
 
 use crate::story::Story;
 pub(crate) use kind::{Group, Widget};
+pub(crate) use status::{Category, Indicator};
 
 /// What a widget draws from: one character, as its play window has it.
 #[derive(Clone, Copy)]

@@ -435,6 +435,25 @@ Claude's order, cheapest first, set when Stage A was done (2026-09-27):
    which the GUI does not depend on, and a test is no reason to add the edge. Ten
    mutants: nine caught, the tenth malformed (it did not build), its line asserted.
 
+   **Step 2 BUILT 2026-09-27** (`crates/cena-gui/src/widget/status.rs`). Each of the
+   nineteen status indicators is a widget of its own, as the author asked: lit in its
+   colour when on (the dangers warm, the postures cool), outlined when off, asking when
+   the game has not said -- which a screen reader hears too (*"Stunned: yes"*). Each of the
+   game's four lists of effects -- Active Spells, Buffs, Debuffs, Cooldowns -- is a widget:
+   a bar each, full as the game last said, its time left beside its name (*"Rapid Fire
+   1:59"*), or *"None."*. A kind may now hold one of these (`Widget::Indicator`,
+   `Widget::Effects`), so the list of kinds is made, not written (`Widget::all`), and the
+   indicators have a group of their own in the Add-a-widget list. Hydra's presets gain
+   *Indicators* (the nineteen, three a row) and *Effects* (the four as one tab stack, as
+   Saga's panel has them). A window with an effect counting down is drawn again each
+   second, as the clocks are each quarter of one (`App`, `clocks_run`), and not at all
+   while nothing counts.
+
+   Tests: an indicator on, off and never told; effects with and without time left, and
+   lists with none; seconds as a clock; the two presets whole; a window's next frame for
+   clocks, effects and neither; and an image of indicators and effects
+   (`tests/snapshots/status.png`). Nine mutants, all caught.
+
 ### Stage C — the launcher tab
 
 The hub's third tab, *"incorporate the things lich's launcher can do"* (`plan/47` §1 row 6):

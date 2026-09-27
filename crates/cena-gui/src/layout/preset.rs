@@ -14,7 +14,7 @@ use egui::{Rect, Vec2};
 use serde::{Deserialize, Serialize};
 
 use super::{CHROME, Custom, Holds, Layout, Placed};
-use crate::widget::Widget;
+use crate::widget::{Category, Indicator, Widget};
 
 /// The version of the library file this build writes and reads.
 const VERSION: u32 = 1;
@@ -85,6 +85,32 @@ impl Preset {
                 ],
                 Vec2::new(300.0, 160.0),
             ),
+            shipped(
+                "Indicators",
+                &Indicator::ALL
+                    .chunks(3)
+                    .map(|row| {
+                        row.iter()
+                            .map(|indicator| Widget::Indicator(*indicator))
+                            .collect()
+                    })
+                    .collect::<Vec<_>>(),
+                Vec2::new(300.0, 140.0),
+            ),
+            Preset {
+                name: "Effects".to_owned(),
+                custom: Custom::stack(
+                    "Effects",
+                    Category::ALL
+                        .map(|category| Placed {
+                            id: 0,
+                            widget: Widget::Effects(category),
+                        })
+                        .to_vec(),
+                    0,
+                    Vec2::new(300.0, 160.0),
+                ),
+            },
         ]
     }
 }

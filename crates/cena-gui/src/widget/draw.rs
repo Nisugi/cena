@@ -5,7 +5,7 @@ use cena_session::hands::Hand;
 use cena_session::{Body, GameState, Notice, NoticeKind, RoomItem, Snapshot, Vital};
 use egui::{Color32, Id, RichText};
 
-use super::{Seen, Widget, character};
+use super::{Seen, Widget, character, status};
 use crate::bar::{self, Amount, Bar, Says};
 use crate::story::Shown;
 use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
@@ -122,6 +122,12 @@ pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
         Widget::Society => line(ui, named(&character::society(state))),
         Widget::Resources => scrolled(ui, &mut |ui| character::resources(ui, state)),
         Widget::Objectives => scrolled(ui, &mut |ui| character::objectives(ui, state)),
+        Widget::Indicator(indicator) => {
+            status::indicator(ui, indicator, state, &named(indicator.name()));
+        }
+        Widget::Effects(category) => {
+            scrolled(ui, &mut |ui| status::effects(ui, category, state));
+        }
         Widget::Exits => line(
             ui,
             named(&match state.and_then(|state| state.room.exits.as_ref()) {

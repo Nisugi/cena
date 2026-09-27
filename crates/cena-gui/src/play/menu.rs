@@ -91,7 +91,7 @@ impl Play {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     presets(ui, &search, library, &mut preset, &mut forget);
                     for group in Group::ALL {
-                        let kinds: Vec<Widget> = Widget::ALL
+                        let kinds: Vec<Widget> = Widget::all()
                             .into_iter()
                             .filter(|kind| kind.group() == group)
                             .filter(|kind| kind.name().to_lowercase().contains(&search))

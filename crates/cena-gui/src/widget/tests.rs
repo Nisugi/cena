@@ -20,7 +20,7 @@ fn drawn<'a>(snapshot: Option<Snapshot>, hunt: Option<HuntView>) -> Harness<'a, 
                 hunt: hunt.as_ref(),
                 who: None,
             };
-            for widget in Widget::ALL {
+            for widget in Widget::all() {
                 let height = widget.size().y.min(120.0);
                 ui.allocate_ui(egui::vec2(500.0, height), |ui| {
                     widget.draw(ui, &seen, Id::new(("widget-test", widget)));
@@ -31,10 +31,11 @@ fn drawn<'a>(snapshot: Option<Snapshot>, hunt: Option<HuntView>) -> Harness<'a, 
 
 #[test]
 fn every_kind_is_listed_once_under_a_name_of_its_own() {
-    let kinds: HashSet<Widget> = Widget::ALL.into_iter().collect();
-    assert_eq!(kinds.len(), Widget::ALL.len());
-    let names: HashSet<&str> = Widget::ALL.iter().map(|widget| widget.name()).collect();
-    assert_eq!(names.len(), Widget::ALL.len());
+    let all = Widget::all();
+    let kinds: HashSet<Widget> = all.iter().copied().collect();
+    assert_eq!(kinds.len(), all.len());
+    let names: HashSet<&str> = all.iter().map(|widget| widget.name()).collect();
+    assert_eq!(names.len(), all.len());
 }
 
 #[test]
@@ -242,4 +243,127 @@ fn numbers_are_grouped_as_the_game_writes_them() {
     ] {
         assert_eq!(character::grouped(n), said);
     }
+}
+
+/// Each indicator says whether it is on, off, or not yet told.
+#[test]
+fn an_indicator_says_whether_it_is_on() {
+    let mut ashryn = snapshot();
+    ashryn.state.status.set("stunned", true);
+    ashryn.state.status.set("hidden", false);
+    let harness = drawn(Some(ashryn), None);
+    for label in [
+        "Stunned: yes",
+        "Hidden: no",
+        "Poisoned: unknown",
+        "Grouped: unknown",
+    ] {
+        assert!(harness.query_by_label(label).is_some(), "{label}");
+    }
+}
+
+/// A list of effects: each by name, with its time left when it has one,
+/// and none said so.
+#[test]
+fn a_list_of_effects_says_each_and_its_time() {
+    let mut ashryn = snapshot();
+    let now = ashryn.state.game_time_now().expect("a clock");
+    let effect = |category: &str, text: &str, ends_at| cena_session::Effect {
+        category: category.to_owned(),
+        text: text.to_owned(),
+        ends_at,
+        percent: 80,
+    };
+    ashryn.state.effects.insert(
+        "1".to_owned(),
+        effect("Buffs", "Rapid Fire", Some(now + 119)),
+    );
+    ashryn.state.effects.insert(
+        "2".to_owned(),
+        effect("Active Spells", "Spirit Warding I", None),
+    );
+    let harness = drawn(Some(ashryn), None);
+    assert!(
+        harness.query_by_label("Spirit Warding I").is_some(),
+        "indefinite"
+    );
+    assert!(
+        harness.query_by_label_contains("Rapid Fire 1:5").is_some(),
+        "about two minutes left"
+    );
+    assert_eq!(
+        harness.query_all_by_label("None.").count(),
+        2,
+        "Debuffs and Cooldowns"
+    );
+}
+
+/// Seconds left read as a clock.
+#[test]
+fn time_left_reads_as_a_clock() {
+    for (seconds, said) in [(0, "0:00"), (59, "0:59"), (119, "1:59"), (3723, "1:02:03")] {
+        assert_eq!(super::status::clock(seconds), said);
+    }
+}
+
+/// Indicators and a list of effects as drawn: some indicators on, some
+/// off, one never told; buffs with and without time left.
+#[test]
+fn indicators_and_effects_as_drawn() {
+    let mut ashryn = snapshot();
+    for (id, on) in [
+        ("standing", true),
+        ("stunned", true),
+        ("hidden", false),
+        ("poisoned", true),
+        ("bleeding", false),
+    ] {
+        ashryn.state.status.set(id, on);
+    }
+    let now = ashryn.state.game_time_now().expect("a clock");
+    for (id, text, ends, percent) in [
+        ("1", "Rapid Fire", None, 100),
+        ("2", "Spirit Warding I", None, 60),
+        ("3", "Mass Blur", Some(now + 3600), 30),
+    ] {
+        ashryn.state.effects.insert(
+            id.to_owned(),
+            cena_session::Effect {
+                category: "Buffs".to_owned(),
+                text: text.to_owned(),
+                ends_at: ends,
+                percent,
+            },
+        );
+    }
+    let story = story();
+    let mut harness = Harness::builder()
+        .with_size((340.0, 220.0))
+        .wgpu()
+        .build_ui(move |ui| {
+            let seen = Seen {
+                snapshot: Some(&ashryn),
+                story: &story,
+                hunt: None,
+                who: None,
+            };
+            ui.horizontal(|ui| {
+                for indicator in [
+                    Indicator::Standing,
+                    Indicator::Stunned,
+                    Indicator::Hidden,
+                    Indicator::Poisoned,
+                    Indicator::Dead,
+                ] {
+                    ui.allocate_ui(egui::vec2(60.0, LINE), |ui| {
+                        Widget::Indicator(indicator).draw(ui, &seen, Id::new(indicator));
+                    });
+                }
+            });
+            ui.allocate_ui(egui::vec2(320.0, 100.0), |ui| {
+                Widget::Effects(Category::Buffs).draw(ui, &seen, Id::new("buffs"));
+            });
+        });
+    harness.run();
+    harness.snapshot("status");
 }

@@ -229,8 +229,8 @@ impl App {
         if closed {
             window.open = false;
         }
-        if clocks_run(snapshot.as_deref(), &seat.story) {
-            context.request_repaint_after(Duration::from_millis(250));
+        if let Some(after) = clocks_run(snapshot.as_deref(), &seat.story) {
+            context.request_repaint_after(after);
         }
         for line in bound {
             self.sessions.send(seat, line);
@@ -269,19 +269,31 @@ impl App {
     }
 }
 
-/// Whether something in a play window counts down by itself -- roundtime,
-/// cast time, a banner -- so the window must be drawn again soon without
-/// an event to prompt it.
+/// When something in a play window counts down by itself -- roundtime,
+/// cast time, a banner, an effect's time left -- how soon it must be drawn
+/// again without an event to prompt it: the clocks a quarter of a second,
+/// an effect, which counts whole seconds, a second.
 fn clocks_run(
     snapshot: Option<&cena_session::Snapshot>,
     story: &std::sync::Mutex<crate::story::Story>,
-) -> bool {
-    let counting = snapshot.is_some_and(|snapshot| {
-        let state = &snapshot.state;
+) -> Option<Duration> {
+    let state = snapshot.map(|snapshot| &snapshot.state);
+    let clocks = state.is_some_and(|state| {
         state.roundtime_remaining().is_some_and(|s| s > 0)
             || state.casttime_remaining().is_some_and(|s| s > 0)
     });
-    counting || lock(story).alerts_at(Instant::now()).next().is_some()
+    if clocks || lock(story).alerts_at(Instant::now()).next().is_some() {
+        return Some(Duration::from_millis(250));
+    }
+    let effects = state.is_some_and(|state| {
+        state.game_time_now().is_some_and(|now| {
+            state
+                .effects
+                .iter()
+                .any(|(id, _)| state.effects.remaining(id, now).is_some_and(|s| s > 0))
+        })
+    });
+    effects.then_some(Duration::from_secs(1))
 }
 
 impl eframe::App for App {
@@ -521,5 +533,37 @@ mod tests {
             "forgotten"
         );
         let _ = std::fs::remove_dir_all(&data);
+    }
+
+    /// A window is drawn again soon while something counts down by itself:
+    /// a quarter of a second for the clocks, a second for an effect's time
+    /// left, and not at all when nothing does.
+    #[test]
+    fn a_window_is_drawn_again_while_something_counts_down() {
+        let story = std::sync::Mutex::new(crate::story::Story::default());
+        let mut quiet = crate::fixture::snapshot();
+        quiet.state.roundtime_ends = None;
+        assert_eq!(clocks_run(Some(&quiet), &story), None);
+        let mut buffed = quiet.clone();
+        let now = buffed.state.game_time_now().expect("a clock");
+        buffed.state.effects.insert(
+            "1".to_owned(),
+            cena_session::Effect {
+                category: "Buffs".to_owned(),
+                text: "Rapid Fire".to_owned(),
+                ends_at: Some(now + 60),
+                percent: 100,
+            },
+        );
+        assert_eq!(
+            clocks_run(Some(&buffed), &story),
+            Some(Duration::from_secs(1))
+        );
+        let mut struck = buffed.clone();
+        struck.state.roundtime_ends = Some(now + 3);
+        assert_eq!(
+            clocks_run(Some(&struck), &story),
+            Some(Duration::from_millis(250))
+        );
     }
 }

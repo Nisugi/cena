@@ -7,6 +7,7 @@ use egui::Vec2;
 use serde::{Deserialize, Serialize};
 
 use super::LINE;
+use super::status::{Category, Indicator};
 
 /// One kind of widget: what it shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -71,6 +72,10 @@ pub(crate) enum Widget {
     Resources,
     /// Quests and bounties the game lists.
     Objectives,
+    /// One status indicator: stunned, hidden, poisoned, ...
+    Indicator(Indicator),
+    /// One of the game's lists of effects.
+    Effects(Category),
 }
 
 /// A group of the Add-a-widget list, as `plan/49` §3 sorts Saga's panels.
@@ -82,13 +87,22 @@ pub(crate) enum Group {
     Info,
     /// Bars, hands, clocks and pictures.
     Graphics,
+    /// The status indicators, one a widget: Saga's Indicators graphic, in
+    /// its nineteen parts.
+    Indicators,
     /// What Hydra adds: its messages, the hunt, the room in its parts.
     Hydra,
 }
 
 impl Group {
     /// Every group, in the order the list shows them.
-    pub(crate) const ALL: [Group; 4] = [Group::Streams, Group::Info, Group::Graphics, Group::Hydra];
+    pub(crate) const ALL: [Group; 5] = [
+        Group::Streams,
+        Group::Info,
+        Group::Graphics,
+        Group::Indicators,
+        Group::Hydra,
+    ];
 
     /// Its heading in the list.
     pub(crate) fn name(self) -> &'static str {
@@ -96,6 +110,7 @@ impl Group {
             Group::Streams => "Streams",
             Group::Info => "Info panels",
             Group::Graphics => "Graphics",
+            Group::Indicators => "Indicators",
             Group::Hydra => "Hydra's own",
         }
     }
@@ -103,7 +118,16 @@ impl Group {
 
 impl Widget {
     /// Every kind, in the order a list of them shows.
-    pub(crate) const ALL: [Widget; 29] = [
+    pub(crate) fn all() -> Vec<Widget> {
+        Widget::PLAIN
+            .into_iter()
+            .chain(Category::ALL.map(Widget::Effects))
+            .chain(Indicator::ALL.map(Widget::Indicator))
+            .collect()
+    }
+
+    /// The kinds that hold nothing but their kind.
+    const PLAIN: [Widget; 29] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -168,6 +192,8 @@ impl Widget {
             Widget::Society => "Society",
             Widget::Resources => "Resources",
             Widget::Objectives => "Objectives",
+            Widget::Indicator(indicator) => indicator.name(),
+            Widget::Effects(category) => category.name(),
         }
     }
 
@@ -196,7 +222,9 @@ impl Widget {
             | Widget::EncumbranceDetail
             | Widget::Society
             | Widget::Resources
-            | Widget::Objectives => Group::Info,
+            | Widget::Objectives
+            | Widget::Effects(_) => Group::Info,
+            Widget::Indicator(_) => Group::Indicators,
             Widget::RoomTitle
             | Widget::RoomDescription
             | Widget::Objects
@@ -225,7 +253,8 @@ impl Widget {
             Widget::RoomDescription => (320.0, 80.0),
             Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),
             Widget::ExperienceTotals | Widget::Resources => (260.0, 60.0),
-            Widget::Objectives => (300.0, 100.0),
+            Widget::Objectives | Widget::Effects(_) => (300.0, 100.0),
+            Widget::Indicator(_) => (100.0, LINE),
             Widget::Roundtime | Widget::CastTime => (110.0, LINE),
             Widget::Health
             | Widget::Mana
