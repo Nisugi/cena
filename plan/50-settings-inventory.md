@@ -250,3 +250,38 @@ These are Claude's proposals. None is built.
    says?
 10. **The data folder.** Should it stop depending on where Hydra was started? The
     candidates are a fixed folder under the user's profile, or one the launcher remembers.
+
+---
+
+## 6. The author's answers, 2026-09-27
+
+Quoted as given. *Reading* marks Claude's understanding where the answer leaves a choice.
+
+1. **Scopes: *"yes"*.** The four scopes stand as §4.4 proposes. *Reading:* keybinds are
+   one set for every character (the Hydra scope, as proposed), with no per-character
+   overrides unless the author says otherwise.
+2. *"eli5?"* Asked again in plain words; open.
+3. **The command symbol and the player-log feeds: *"yes"*.** They go on the character's
+   General page, and that file gets a writer.
+4. **`;sorter`: *"sure and persistent"*.** Saved per character, and kept across restarts.
+5. **Recording: *"recording should be a setting, it should be per thing, combat, loot,
+   whatever else we decide to record."*** One switch per kind of record, not one for all,
+   and not a command-line flag. Today combat and loot share one switch and one database
+   (`crates/cena/src/setup.rs:195`); they come apart.
+6. **Layouts: *"game and name"*.** A character on Prime and one of the same name on
+   Shattered or Test each keep their own layout. A layout saved under the name alone is
+   taken as the first one for that name, so nothing arranged is lost.
+7. **VellumFE's groups: *"performance monitor can be left out, not sure what the speech
+   group is?"*** The performance monitor is out. Speech explained; open.
+8. *"eli5?"* Asked again in plain words; open.
+9. **The front door: *"yeah one main settings button to get to the main settings menu. if
+   we add right click context menu options to open settings for widgets/windows then they
+   would open the same main settings menu to the correct spot for that setting."*** One
+   settings menu. Every other way in, such as a widget's right-click, opens that same menu
+   at the setting's place. It is never a second editor.
+10. **The data folder: *"yeah the data folder should be fixed, ideally we will have an
+    installer and updater right? And the data folder would go there with that stuff."***
+    Fixed, not where Hydra was started. The installer and updater are `plan/49` Stage H.
+    *Reading:* the data belongs in the player's own application-data folder, not beside
+    the program, because an update replaces the program's folder. `CENA_DATA_DIR` stays as
+    an override.
