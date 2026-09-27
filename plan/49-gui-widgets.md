@@ -1,7 +1,7 @@
 # 49 — The GUI, second stage: widgets, custom windows, and what follows
 
 > **STATUS: PROPOSED, 2026-09-27.** The author's decisions of the day are quoted in §1,
-> including the stages' order (§4, row 6); three questions remain (§5). Claude's readings are marked as such. `plan/47`
+> including the stages' order (§4, row 6); two recommendations await the author (§5). Claude's readings are marked as such. `plan/47`
 > (M10's first build) is BUILT; `plan/28` stays the inventory of VellumFE's GUI and holds
 > the layout decisions this file builds on; this file is what gets built next, and in what
 > order. `plan/12` wins any contradiction, except where §1 records the author changing it.
@@ -208,8 +208,8 @@ description, players, objects and exits, each a widget.
 ## 4. Stages
 
 **The order is the author's (§1 row 6), and the M6 live run waits for the GUI:** *"No m6
-live run until I have a proper ui"* (§1 row 5). Which stage makes the UI proper is open
-(§5).
+live run until I have a proper ui"* (§1 row 5), and it goes *"when I feel the GUI is
+done"* (§5 item 6): the author's call, not a stage's.
 
 ### Stage A — widgets and holders (the foundation)
 
@@ -290,10 +290,9 @@ bundle on macOS, a `.desktop` entry on Linux.
 4. **Adding a preset places a copy**; one library, layouts per character: Claude's
    recommendation (§2), to confirm.
 5. ~~**Where the Advanced place is.**~~ **DECIDED** (§1 row 8).
-6. **Which stage makes the UI proper**, so the M6 live run can go? Claude's
-   recommendation: A and B, which give the widgets, custom windows, tab stacks, presets,
-   and every widget the model can feed today; the launcher (C) waits, since today's Start
-   list logs in from the roster. Drawers (E) join if the author's layout needs them.
+6. ~~**Which stage makes the UI proper**, so the M6 live run can go?~~ **DECIDED, the
+   author, 2026-09-27:** *"When I feel the GUI is done."* No stage is the gate; the author's
+   judgment is. (Claude had recommended A and B.)
 
 ---
 
