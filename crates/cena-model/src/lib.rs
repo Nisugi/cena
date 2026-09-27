@@ -18,6 +18,7 @@
 
 pub mod crit;
 pub mod effects;
+pub mod guard;
 pub mod herbs;
 pub mod line;
 pub mod movement;

@@ -419,7 +419,10 @@ Nisugi's alone; without that limit it fails on Dicate's page, checked.
 ### Stage 2 -- events, conditions, flags
 
 1. The guard evaluators move down to `cena-model` (author, §1 row 2); the hunt reads them
-   from there.
+   from there. **BUILT 2026-09-26**: `crates/cena-model/src/guard.rs` with `guard/`, moved
+   whole with `git mv` and its cap; the hunt keeps its `hunt::guard` path through a
+   re-export, so no hunt code changed; the words' tests moved with them
+   (`crates/cena-model/tests/guard_words.rs`).
 2. Condition triggers, edge-triggered (§3a).
 3. Event triggers over the typed facts, as a closed vocabulary; each word names its source.
 4. Gates, checked.

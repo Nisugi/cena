@@ -234,7 +234,7 @@
 //! [`ClientMessage`]: cena_ui::ClientMessage
 //! [`COMMAND_SYMBOL`]: cena_session::command::COMMAND_SYMBOL
 //! [`CommandQueue`]: cena_session::CommandQueue
-//! [`Condition`]: cena_behavior::hunt::Condition
+//! [`Condition`]: cena_session::guard::Condition
 //! [`Connector`]: cena_session::Connector
 //! [`CritTables`]: cena_session::CritTables
 //! [`Event::Combat`]: cena_session::Event::Combat
@@ -260,7 +260,7 @@
 //! [`group::role`]: fn@cena_behavior::group::role
 //! [`group::Settings::lost_wait`]: field@cena_behavior::group::Settings::lost_wait
 //! [`group::successor`]: fn@cena_behavior::group::successor
-//! [`Guard`]: cena_behavior::hunt::Guard
+//! [`Guard`]: cena_session::guard::Guard
 //! [`Heartbeat`]: cena_behavior::Heartbeat
 //! [`Host`]: cena_host::Host
 //! [`HubControl`]: cena_web::HubControl

@@ -84,6 +84,7 @@ pub use cena_model::{
 pub use cena_model::{Task, TaskKind};
 // The herbs eherbs knows and where they are sold (`plan/36`), and the
 // wound and scar reader the healing chooses by.
+pub use cena_model::guard;
 pub use cena_model::herbs;
 pub use cena_model::state::character::body;
 pub use cena_model::state::kit;

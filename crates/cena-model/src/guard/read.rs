@@ -2,8 +2,9 @@
 //! or `None` when the game has not said (the module docs of
 //! [`super`] give each word's source).
 
-use cena_session::claim::{Claim, claim_room};
-use cena_session::{CreatureInstance, GameState, PositionTier, PsmCategory, StatusName, gameobj};
+use crate::state::claim::{Claim, claim_room};
+use crate::state::gameobj;
+use crate::{CreatureInstance, GameState, PositionTier, PsmCategory, StatusName};
 
 use super::{Fact, Facts, Guard, Measure};
 
