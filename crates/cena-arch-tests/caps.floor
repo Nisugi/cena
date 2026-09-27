@@ -196,3 +196,8 @@ crates/cena/src/relay.rs 250
 # NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena-gui/src/keys.rs
 # is the keybinds, its tests in keys/tests.rs: 380 lines, so 450.
 crates/cena-gui/src/keys.rs 450
+# NEW SPLIT PARENT, 2026-09-27, capped at birth. crates/cena-agent/src/scripts.rs
+# is a script runner's seat and listener (plan/46, M7b step 1); what a runner
+# listens to is scripts/listening.rs, its tools scripts/tools.rs. 255 lines, so
+# 255 + 50, rounded up to the next 50.
+crates/cena-agent/src/scripts.rs 350

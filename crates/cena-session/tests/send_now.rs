@@ -151,7 +151,7 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
     // sigil reached the wire having decided its gate on a KNOWN clock --
     // `Some`, not `None`, which is the `plan/12` §5.2 distinction this gate
     // exists to respect, and the thing a looser `matches!` would drop.
-    let Sent::Ok { at: Some(at) } = sent else {
+    let Sent::Ok { at: Some(at), .. } = sent else {
         panic!("the sigil must reach the wire with its gate decided on a known clock: {sent:?}");
     };
     assert!(
@@ -485,9 +485,8 @@ async fn an_ungated_action_sends_during_roundtime() {
     let sent = handle
         .send_now("stance defensive", Origin::Manual, Gate::None)
         .await;
-    assert_eq!(
-        sent,
-        Sent::Ok { at: None },
+    assert!(
+        matches!(sent, Sent::Ok { at: None, .. }),
         "`at` is None because no clock was consulted -- the evidence field \
          reports what the gate READ, and an ungated send reads nothing"
     );
@@ -607,7 +606,7 @@ async fn several_instant_actions_batch_ahead_of_their_trigger() {
         let sent = handle
             .send_now(sigil, Origin::Manual, Gate::Roundtime)
             .await;
-        let Sent::Ok { at: Some(at) } = sent else {
+        let Sent::Ok { at: Some(at), .. } = sent else {
             panic!("{sigil} must go out with its gate decided on a known clock: {sent:?}");
         };
         assert!(

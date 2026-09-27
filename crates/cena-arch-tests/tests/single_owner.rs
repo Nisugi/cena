@@ -230,6 +230,17 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
          ends, so it never outlives the session it reports to.",
     ),
     (
+        "crates/cena-session/src/script.rs",
+        "Door",
+        "The one way a script runner acts on a session (plan/46, M7b step 1): \
+         cena-agent's scripts listener holds a script Door and never the handle, \
+         as it holds the agent's (`the_agent_acts_only_through_the_door` in \
+         layering.rs covers both). A clone of the session's own handle, on the \
+         type's own terms (every field shared: see Viewed below), so it cannot \
+         drift; the binary builds one when it starts a character's runner, and \
+         it goes when the runner stops or the character leaves the table.",
+    ),
+    (
         "crates/cena-web/src/server.rs",
         "Viewed",
         "The embedded frontend's manual-input surface, one per served session \

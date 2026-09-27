@@ -421,11 +421,11 @@ impl<S: ByteSource> SessionActor<S> {
         self.recorder.outbound(&message);
         self.log_wire(false, &message);
         self.log(&format!("send_now {origin:?} {line}"));
-        let _ = self.events.send(Event::Sent {
+        let cursor = self.events.numbered(Event::Sent {
             line: line.to_owned(),
             origin,
         });
-        Sent::Ok { at }
+        Sent::Ok { at, cursor }
     }
 
     /// Accept a command, or refuse it because the session is not `Ready`.

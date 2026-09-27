@@ -289,6 +289,10 @@ pub enum Sent {
         /// against a fresh one are different events, and without this they are
         /// the same line.
         at: Option<u32>,
+        /// The cursor its [`Event::Sent`](crate::Event::Sent) was published
+        /// at: a reader of the numbered stream knows which lines came after
+        /// it (`plan/46` §3, a script's reply).
+        cursor: u64,
     },
     /// It did not go out, and why.
     Refused(Refusal),

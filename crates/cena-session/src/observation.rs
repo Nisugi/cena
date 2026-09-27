@@ -170,6 +170,9 @@ pub(crate) struct EventPublisher {
     /// given, and because every connection's actor shares this publisher, so
     /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
     sorting: Arc<AtomicBool>,
+    /// Whether each finished line is also published as the game sent it
+    /// ([`Event::Heard`]), for a script runner. Here for `sorting`'s reasons.
+    hearing: Arc<AtomicBool>,
     /// This character's triggers, compiled (`plan/45`): what each finished
     /// line is answered with before it is published, and what its conditions
     /// last read. Here for `sorting`'s reasons, which is also why a reconnect
@@ -210,8 +213,19 @@ impl EventPublisher {
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
             sorting: Arc::new(AtomicBool::new(false)),
+            hearing: Arc::new(AtomicBool::new(false)),
             triggers: Arc::default(),
         }
+    }
+
+    /// Publish each finished line as the game sent it too, or stop.
+    pub(crate) fn hear_lines(&self, on: bool) {
+        self.hearing.store(on, Ordering::Relaxed);
+    }
+
+    /// Whether each finished line is published as the game sent it too.
+    pub(crate) fn hears_lines(&self) -> bool {
+        self.hearing.load(Ordering::Relaxed)
     }
 
     /// Publish container looks sorted, or as the game sent them.
@@ -320,6 +334,17 @@ impl EventPublisher {
     }
 
     pub(crate) fn send(&self, event: Event) -> Result<usize, broadcast::error::SendError<Event>> {
+        self.publish(event).1
+    }
+
+    /// Publish `event`, and say the cursor it was published at: where a
+    /// reader of the numbered stream finds it (a sent line's, for a script
+    /// that reads what came after it, `plan/46` §3).
+    pub(crate) fn numbered(&self, event: Event) -> u64 {
+        self.publish(event).0
+    }
+
+    fn publish(&self, event: Event) -> (u64, Result<usize, broadcast::error::SendError<Event>>) {
         // Only control events touch this lock, never incoming frames. The
         // owner publishes the fact once and snapshots read that same fact.
         match &event {
@@ -358,7 +383,7 @@ impl EventPublisher {
                 event: event.clone(),
             });
         }
-        self.legacy.send(event)
+        (cursor, self.legacy.send(event))
     }
 
     /// The session every event and snapshot from this publisher names.

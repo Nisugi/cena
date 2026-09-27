@@ -44,6 +44,7 @@ pub mod observation;
 pub mod operation;
 pub mod player_log;
 pub mod queue;
+pub mod script;
 pub mod settings_store;
 pub mod store;
 pub mod supervisor;
@@ -57,10 +58,9 @@ pub use cena_model::movement::{self, MoveFeedback};
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
-pub use cena_model::state::creatures::boons;
 pub use cena_model::state::{
-    claim, containers, creature, flags, gameobj, group, hands, incident, inspect, societies,
-    stream_windows, worn,
+    claim, containers, creature, creatures::boons, flags, gameobj, group, hands, incident, inspect,
+    societies, stream_windows, worn,
 };
 // The loot ledger's facts, for the town planner that reads them from its own
 // fold of the stream (`plan/31` Stage 4).

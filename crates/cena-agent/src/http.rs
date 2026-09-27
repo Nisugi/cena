@@ -89,7 +89,7 @@ async fn require_token(token: &str, request: Request, next: Next) -> Response {
 
 /// Compared in constant time, as Despana compares its token
 /// (`crates/cena-web/src/socket.rs`).
-fn same(a: &[u8], b: &[u8]) -> bool {
+pub(crate) fn same(a: &[u8], b: &[u8]) -> bool {
     a.len() == b.len()
         && a.iter()
             .zip(b)

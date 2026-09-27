@@ -36,6 +36,18 @@ pub enum Event {
     /// redirected copy), or not at all (a squelch).
     /// `Arc` because every subscriber shares one allocation.
     Line(std::sync::Arc<cena_model::line::Line>),
+    /// A frame finished a line of game text, **as the game sent it**: the
+    /// model's line before `;sorter` and the character's triggers answer it,
+    /// published just before the [`Event::Line`]s it becomes (`plan/46`
+    /// §4.1).
+    ///
+    /// What a script reads. Lich's scripts see each line before its hooks
+    /// change what is shown (`inventory/13` §1.6), and a trigger is Hydra's
+    /// hook: a squelch hides a line from the player, never from a script
+    /// waiting for it. Published only while a script runner listens to the
+    /// character ([`script::Door::listen`](crate::script::Door::listen)), so
+    /// a character nobody scripts publishes each line once.
+    Heard(std::sync::Arc<cena_model::line::Line>),
     /// A trigger set or cleared a flag (`cena_model::state::flags`): the
     /// session has made the change to its state, and whoever folds these
     /// events into a state of its own makes it too, so a hunt's guard reads

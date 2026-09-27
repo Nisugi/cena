@@ -283,6 +283,13 @@ impl SessionHandle {
         self.events.sorts_containers()
     }
 
+    /// Publish each finished line as the game sent it too
+    /// ([`Event::Heard`](crate::Event::Heard)), for a script runner, or
+    /// stop. It holds across a reconnect, as `;sorter` does.
+    pub fn hear_lines(&self, on: bool) {
+        self.events.hear_lines(on);
+    }
+
     /// This character's triggers (`plan/45`): each finished line is answered
     /// with them before it is published, so every viewer, and a session
     /// nobody watches, is given the same line. They hold across a reconnect;

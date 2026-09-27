@@ -19,12 +19,16 @@
 //! - [`server`]: the MCP tools.
 //! - [`http`]: the listener: `/mcp` behind a bearer token, `/health`, on
 //!   loopback.
+//! - [`scripts`]: a script runner's own listener and tools (`plan/46`, M7b):
+//!   the game's lines as it sent them, a line as if typed, and text for the
+//!   player, over the character's script door.
 
 pub mod characters;
 pub mod happenings;
 pub mod http;
 pub mod projection;
 pub mod records;
+pub mod scripts;
 pub mod server;
 
 pub use characters::Characters;

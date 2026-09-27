@@ -1,0 +1,198 @@
+//! A runner's tools (`SCRIPTS.md`): `listen` to its character, `send` a line
+//! as if typed, `say` something to the player. The token a request carries
+//! names the seat it acts on ([`super::Runners`]), so no tool names a
+//! character.
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use axum::http::request::Parts;
+use cena_session::script::Sending;
+use cena_session::{Notice, NoticeKind, Refusal};
+use rmcp::handler::server::router::tool::ToolRouter;
+use rmcp::handler::server::tool::Extension;
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig};
+use rmcp::{ErrorData, ServerHandler, schemars, tool, tool_handler, tool_router};
+use serde::Deserialize;
+
+use super::Seat;
+
+/// What the server tells a runner it is for.
+const INSTRUCTIONS: &str = "Hydra runs game characters; this listener is for the script runner \
+Hydra started for one of them, and the token names which. `listen` returns what happened \
+after a position: the game's lines as it sent them, lines sent, prompts, the player's \
+commands for the runner, the connection's state. `send` sends a line as the player would \
+type it, Hydra's own command when it starts with the command symbol. `say` shows the \
+player text. See SCRIPTS.md (hydra-script/1).";
+
+/// The longest `say` may be, in characters: a screenful of a table.
+pub const MAX_SAID: usize = 20_000;
+
+/// The tools, over the seat each request's token names.
+#[derive(Clone)]
+pub struct Scripting {
+    tool_router: ToolRouter<Self>,
+}
+
+/// `listen`'s question.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Listen {
+    /// Return what came after this position: 0, or absent, for everything
+    /// kept; then the last answer's `next`. Asking from a position lets go
+    /// of everything at or before it.
+    pub since: Option<u64>,
+    /// How long to wait for the first, in milliseconds; at most 30000.
+    /// Absent is 10000.
+    pub timeout_ms: Option<u64>,
+}
+
+/// `send`'s line.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Line {
+    /// One line, as the player would type it.
+    pub line: String,
+}
+
+/// `say`'s text.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Said {
+    /// What to show; each line of it a line.
+    pub text: String,
+    /// `info` (absent), `warn`, `error` or `debug`: how it is coloured.
+    pub kind: Option<String>,
+    /// Fixed-width and never re-wrapped, for a table. Absent is false.
+    pub mono: Option<bool>,
+}
+
+impl Default for Scripting {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[tool_router]
+impl Scripting {
+    /// The tools.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            tool_router: Self::tool_router(),
+        }
+    }
+
+    #[tool(
+        description = "What happened to the character after a position: `line` (the game's text as it sent it), `sent`, `prompt`, `typed` (a command the player typed for the runner), `lifecycle`, `lagged`. Waits up to timeout_ms for the first. Ask next from `next`."
+    )]
+    async fn listen(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(asked): Parameters<Listen>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        let timeout = Duration::from_millis(asked.timeout_ms.unwrap_or(10_000));
+        let heard = seat
+            .listening
+            .listen(asked.since.unwrap_or(0), timeout)
+            .await;
+        json(&heard)
+    }
+
+    #[tool(
+        description = "Send one line as the player would type it: to the game, or to Hydra when it starts with the command symbol. Answers the `sent` event's cursor, or why it was not sent."
+    )]
+    async fn send(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(Line { line }): Parameters<Line>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        if line.contains(['\r', '\n']) {
+            return Err(ErrorData::invalid_params("one line, no line breaks", None));
+        }
+        let answer = match seat.door.send(&line).await {
+            Sending::Sent { cursor } => serde_json::json!({ "outcome": "sent", "cursor": cursor }),
+            Sending::Ran => serde_json::json!({ "outcome": "ran" }),
+            Sending::Unknown => serde_json::json!({ "outcome": "unknown" }),
+            Sending::Refused(refusal) => {
+                serde_json::json!({ "outcome": "refused", "why": why(refusal) })
+            }
+            Sending::Lost => serde_json::json!({ "outcome": "lost" }),
+        };
+        json(&answer)
+    }
+
+    #[tool(
+        description = "Show the player text, as a script's `respond` or `echo` does: `kind` colours it, `mono` keeps its columns."
+    )]
+    async fn say(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(said): Parameters<Said>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        if said.text.chars().count() > MAX_SAID {
+            return Err(ErrorData::invalid_params(
+                format!("at most {MAX_SAID} characters"),
+                None,
+            ));
+        }
+        let kind = match said.kind.as_deref().unwrap_or("info") {
+            "info" => NoticeKind::Info,
+            "warn" => NoticeKind::Warn,
+            "error" => NoticeKind::Error,
+            "debug" => NoticeKind::Debug,
+            other => {
+                return Err(ErrorData::invalid_params(
+                    format!("`{other}` is not a kind: info, warn, error or debug"),
+                    None,
+                ));
+            }
+        };
+        let lines: Vec<String> = said.text.lines().map(str::to_owned).collect();
+        let notice = if said.mono.unwrap_or(false) {
+            Notice::table(kind, lines)
+        } else {
+            Notice {
+                kind,
+                body: cena_session::Body::Lines(lines),
+            }
+        };
+        seat.door.say(notice);
+        json(&serde_json::json!({ "said": true }))
+    }
+}
+
+#[tool_handler(router = self.tool_router)]
+impl ServerHandler for Scripting {
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+            .with_instructions(INSTRUCTIONS)
+    }
+}
+
+/// The seat the request's token named.
+fn seat(parts: &Parts) -> Result<Arc<Seat>, ErrorData> {
+    parts
+        .extensions
+        .get::<Arc<Seat>>()
+        .cloned()
+        .ok_or_else(|| ErrorData::internal_error("no runner's seat on this request", None))
+}
+
+/// Why the session did not send a line, in words.
+fn why(refusal: Refusal) -> &'static str {
+    match refusal {
+        Refusal::Transient => "busy: the session is not ready, or its queue is full",
+        Refusal::Permanent => "refused",
+        Refusal::Roundtime => "roundtime",
+        Refusal::Stunned => "stunned",
+        Refusal::Webbed => "webbed",
+        Refusal::Casttime => "cast roundtime",
+        Refusal::TargetGone => "its target is gone",
+    }
+}
+
+fn json(value: &impl serde::Serialize) -> Result<CallToolResult, ErrorData> {
+    Ok(CallToolResult::success(vec![ContentBlock::json(value)?]))
+}

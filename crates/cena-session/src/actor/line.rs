@@ -57,7 +57,14 @@ impl<S: ByteSource> SessionActor<S> {
     /// Sorting first is what lets the triggers match each sorted line, as
     /// `VellumFE` sorts before it highlights (`plan/45` §4a). The model's
     /// scrollback and the player log keep the game's text either way.
+    ///
+    /// While a script runner listens, the line goes first as the game sent
+    /// it ([`Event::Heard`](super::Event::Heard)): what a script reads is
+    /// never what the player's triggers made of it.
     pub(super) fn publish_line(&mut self, line: Arc<Line>) {
+        if self.events.hears_lines() {
+            let _ = self.events.send(Event::Heard(Arc::clone(&line)));
+        }
         let triggers = self.events.triggers();
         let main = line.stream.is_empty() || line.stream == "main";
         if main
