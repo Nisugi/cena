@@ -88,6 +88,17 @@ exactly that and it works.
 layer over the listener that already exists. Choose by what the library pulls into the
 build and whether `cena-web`'s server can host it.
 
+**MEASURED 2026-09-27, and chosen: `rmcp` 3.4.1**, the official Rust SDK, with `server`,
+`macros` and `transport-streamable-http-server`. A throwaway crate's lockfile against the
+workspace's (`cargo generate-lockfile`, then `comm -23` of the two crate lists): **32 crates
+new to Hydra**, chiefly `chrono`, `futures`, `uuid`, `schemars` (tool input schemas) and
+proc-macro helpers; it resolves against the same axum 0.8 `cena-web` uses, with no second copy.
+Its `StreamableHttpService` is a tower `Service` (`transport/streamable_http_server/tower.rs:1075`
+in the crate), so an axum router mounts it with `nest_service`; it also checks the `Host`
+header, localhost by default. Chosen over hand-written JSON-RPC because it tracks the MCP
+specification's revisions, which a hand-written layer would have to follow by hand, and
+because its server-to-client stream is the push `plan/45` §4.1 needs.
+
 ## 3. Control levels
 
 **AUTHOR:** levels, set as a setting; an act above the level gets a notice.
