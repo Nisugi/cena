@@ -5,9 +5,9 @@
 //! The author: *"in my head you have one command input period. sending a
 //! command in it sends a command on that character. if you want to send a
 //! command to another session then you preface it with a command. like the
-//! borg trio of scripts you would ;queen <character> <command> to send it to
-//! that character and that character send it essentially. or ;queen wall
-//! <command> to send it to all characters connected to the borg. Our command
+//! borg trio of scripts you would `;queen <character> <command>` to send it to
+//! that character and that character send it essentially. or `;queen wall
+//! <command>` to send it to all characters connected to the borg. Our command
 //! wouldn't be ;queen, and what ever it is they'd be able to alias it to
 //! something different when we get the alias system in."*
 //!
