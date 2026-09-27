@@ -2,7 +2,8 @@
 
 # The runner's ear: `listen`, in a loop, from the position after the last
 # event handled, each event handed to Lich's engine as Lich would have
-# handed it (crates/cena-agent/SCRIPTS.md, `listen`).
+# handed it (crates/cena-agent/SCRIPTS.md, `listen`), and the hooks'
+# answers sent back (hooks.rb).
 
 module Hydra
   class Listener
@@ -34,6 +35,7 @@ module Hydra
           next
         end
         heard['events'].each { |event| handle(event) }
+        Hooks.answer_shown
         @since = heard['next']
         respond '--- Hydra: some game lines were missed while scripts were busy.' if heard['lagged']
         break if heard['closed']
@@ -49,6 +51,7 @@ module Hydra
       when 'line' then line(event)
       when 'ended' then Runs.ended(event)
       when 'typed' then typed(event['line'])
+      when 'input' then Hooks.input(event['asked'], event['line'])
       when 'lagged'
         respond "--- Hydra: #{event['missed']} of the game's events were missed on the way to scripts."
       end
@@ -58,11 +61,14 @@ module Hydra
 
     # A game line, to every script listening, as Lich's `strip_xml` would
     # have left it: blank lines and the suppressed streams never reach one.
+    # Then, as Lich runs them after its scripts have the line, the display
+    # hooks, on every line: Lich's see every chunk.
     def line(event)
-      return if UNHEARD.include?(event['stream'].to_s.downcase)
-      return if event['text'].to_s.strip.empty?
-
-      Script.new_downstream(event['text'])
+      text = event['text'].to_s
+      unless UNHEARD.include?(event['stream'].to_s.downcase) || text.strip.empty?
+        Script.new_downstream(text)
+      end
+      Hooks.shown(event['cursor'], text) if Hooks.display?
     end
 
     # A command the player typed for the runner, as Lich's `do_client`

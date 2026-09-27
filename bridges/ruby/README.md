@@ -19,7 +19,8 @@ player's Ruby, one runner per character. Lich's engine needs Ruby 4.0.
 | `map.rb` | `Room.current` and `Room[id]` from Hydra's map, with `wayto` and `timeto` as Lich's |
 | `spell.rb` | `Spell[n]` from Hydra's spell table, evaluated for the character; known and up from the copy |
 | `builtins.rb` | Lich scripts Hydra has built in (`go2`), started by name as Lich's are, as an exec script named after them that waits on Hydra's run |
-| `listener.rb` | `listen` in a loop: the copy's changes, game lines to every script, the player's commands to Lich's command table or `Script.start` |
+| `hooks.rb` | a script's display and input hooks, kept by Lich's own registries, told to Hydra as they come and go, and asked about each line the player is shown or types |
+| `listener.rb` | `listen` in a loop: the copy's changes, game lines to every script and then to the display hooks, the player's commands to Lich's command table or `Script.start`, the player's typing to the input hooks |
 
 ## `lich/`: Lich's engine, unchanged
 
@@ -37,7 +38,9 @@ git hash-object bridges/ruby/lich/lib/common/script.rb
 Only what the runner loads is here: the script engine (`common/script.rb` and the two files
 it requires), the calls scripts make (`global_defs.rb` and what it requires), Lich's `;`
 command table, the helpers those read at load time, the classes a script reads its character
-through (`constants.rb`, `common/gameobj.rb`, `attributes/char.rb`), and the stores (`lich.rb`,
-`common/settings.rb` and its folder, `common/vars.rb`, `common/uservars.rb`). The gems are
+through (`constants.rb`, `common/gameobj.rb`, `attributes/char.rb`), the stores (`lich.rb`,
+`common/settings.rb` and its folder, `common/vars.rb`, `common/uservars.rb`), and the hooks
+(`common/downstreamhook.rb`, `common/upstreamhook.rb` and the `common/hook_registry.rb` they
+share). The gems are
 Lich's installer's: `ox`, `sqlite3`, `sequel`. To take a newer Lich, copy the same
 files from the new commit, update the commit above, and run the runner's tests.

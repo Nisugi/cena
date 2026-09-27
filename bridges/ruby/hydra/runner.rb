@@ -54,6 +54,8 @@ require 'sequel'
   common/detachable_client_registry.rb
   common/markup.rb
   common/script.rb
+  common/downstreamhook.rb
+  common/upstreamhook.rb
   global_defs.rb
   common/gameobj.rb
   attributes/char.rb
@@ -81,6 +83,7 @@ require_relative 'copy'
 require_relative 'map'
 require_relative 'spell'
 require_relative 'builtins'
+require_relative 'hooks'
 require_relative 'listener'
 
 copy = Hydra::Copy.new

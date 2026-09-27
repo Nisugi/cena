@@ -1,0 +1,62 @@
+# Carve out from lich.rbw
+# UpstreamHook class 2024-06-13
+
+require_relative 'hook_registry'
+require_relative 'script_death'
+
+module Lich
+  module Common
+    class UpstreamHook
+      extend HookRegistry
+
+      @@upstream_hooks ||= Hash.new
+      @@upstream_hook_sources ||= Hash.new
+      @@upstream_hook_owners ||= Hash.new
+      @@upstream_hook_persist ||= Hash.new
+      @@upstream_hook_priorities ||= Hash.new
+
+      # Per-class storage for the shared HookRegistry methods.
+      def self._hooks
+        @@upstream_hooks
+      end
+
+      def self._hook_sources
+        @@upstream_hook_sources
+      end
+
+      def self._hook_owners
+        @@upstream_hook_owners
+      end
+
+      def self._hook_persist
+        @@upstream_hook_persist
+      end
+
+      def self._hook_priorities
+        @@upstream_hook_priorities
+      end
+
+      def UpstreamHook.run(client_string)
+        for key in ordered_hook_names
+          return nil if client_string.nil?
+          begin
+            action = hook_action(key)
+            next unless action
+
+            client_string = action.call(client_string)
+          rescue
+            remove(key)
+            respond "--- Lich: UpstreamHook: #{$!}"
+            respond $!.backtrace.first
+          end
+        end
+        return client_string
+      end
+
+      # Apply this registry's per-script-death policy (remove script-scoped
+      # hooks, keep persistent ones, warn on undeclared) so the kill path does
+      # not need to know about UpstreamHook by name.
+      ScriptDeath.on_death { |script| cleanup_on_death(script.object_id) }
+    end
+  end
+end

@@ -51,6 +51,22 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../../bridges/ruby/hydra/builtins.rb"),
     ),
     (
+        "hydra/hooks.rb",
+        include_str!("../../../../bridges/ruby/hydra/hooks.rb"),
+    ),
+    (
+        "lich/lib/common/hook_registry.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/hook_registry.rb"),
+    ),
+    (
+        "lich/lib/common/downstreamhook.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/downstreamhook.rb"),
+    ),
+    (
+        "lich/lib/common/upstreamhook.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/upstreamhook.rb"),
+    ),
+    (
         "lich/LICENSE.txt",
         include_str!("../../../../bridges/ruby/lich/LICENSE.txt"),
     ),

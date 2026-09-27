@@ -90,6 +90,7 @@ fn walker(
 
 /// A scripted character with a runner started for it over `scripts`.
 struct Running {
+    handle: cena_session::SessionHandle,
     transcript: TranscriptHandle,
     /// Whether the stand-in travel was stopped mid-walk.
     walk_stopped: Arc<std::sync::atomic::AtomicBool>,
@@ -101,10 +102,11 @@ struct Running {
     stop: CancellationToken,
 }
 
-/// What the player was told and what went out, until a line told contains
-/// `until`, or a minute passed.
+/// What the player was told and shown and what went out, until a line told
+/// contains `until`, or a minute passed.
 struct Heard {
     told: Vec<String>,
+    shown: Vec<String>,
     sent: Vec<(String, Origin)>,
     finished: bool,
 }
@@ -179,6 +181,7 @@ impl Running {
             }
         });
         Some(Self {
+            handle,
             transcript,
             walk_stopped,
             legacy,
@@ -224,6 +227,7 @@ impl Running {
     async fn heard_until_either(&mut self, until: &str, or: &str) -> Heard {
         let mut heard = Heard {
             told: Vec::new(),
+            shown: Vec::new(),
             sent: Vec::new(),
             finished: false,
         };
@@ -231,6 +235,7 @@ impl Running {
             loop {
                 match self.legacy.recv().await {
                     Ok(Event::Notice(notice)) => heard.told.extend(notice.lines().iter().cloned()),
+                    Ok(Event::Line(line)) => heard.shown.push(line.text()),
                     // A script's own, never the player's typing before it.
                     Ok(Event::Sent { line, origin }) if origin != Origin::Manual => {
                         heard.sent.push((line, origin));
@@ -250,6 +255,31 @@ impl Running {
         .await;
         heard.finished = waited.is_ok() && heard.told.iter().any(|line| line.contains(until));
         heard
+    }
+
+    /// The player types `line` at a frontend: the runner's input hooks
+    /// first, then Hydra's commands or the game.
+    async fn typed_line(&self, line: &str) -> cena_session::Outcome {
+        self.handle
+            .send_typed_at(self.handle.generation(), line, Duration::from_secs(5))
+            .await
+    }
+
+    /// The next `count` lines the player is shown, or fewer after ten
+    /// seconds.
+    async fn shown(&mut self, count: usize) -> Vec<String> {
+        let mut shown = Vec::new();
+        let _ = tokio::time::timeout(Duration::from_secs(10), async {
+            while shown.len() < count {
+                match self.legacy.recv().await {
+                    Ok(Event::Line(line)) => shown.push(line.text()),
+                    Ok(_) => {}
+                    Err(_) => return,
+                }
+            }
+        })
+        .await;
+        shown
     }
 
     fn errors(&self) -> Vec<String> {
@@ -537,6 +567,93 @@ async fn a_script_runs_go2_as_hydras_travel() {
             .walk_stopped
             .load(std::sync::atomic::Ordering::SeqCst),
         "killing the script stopped travel's walk"
+    );
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A room of two lines, the second a breeze.
+const BREEZY_ROOM: &[u8] =
+    b"You see a quiet room.\nA breeze blows.\n<prompt time=\"3\">&gt;</prompt>\n";
+
+/// **Hooks** (`plan/46` §11 step 4): Lich's own `DownstreamHook` and
+/// `UpstreamHook`, asked by Hydra. While the script runs, the breeze is
+/// hidden from the player and still heard by the script, the room shown
+/// changed (its markup not drawn), and then `tt` sent as `target`; killed,
+/// its hooks go with it, and the room is shown as the game sent it.
+#[tokio::test(flavor = "current_thread")]
+async fn a_scripts_hooks_change_what_is_shown_and_typed() {
+    assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("hooks");
+    let scripts = scripts_with(&dir, "hooktest.lic").unwrap();
+    let mut running = Running::start(
+        &scripts,
+        &dir,
+        World {
+            answers: &[
+                (
+                    "glance",
+                    b"You glance about.\n<prompt time=\"2\">&gt;</prompt>\n",
+                ),
+                ("look", BREEZY_ROOM),
+                ("look", BREEZY_ROOM),
+            ],
+            // The first text builds the session's classifiers, which a debug
+            // build takes past the hooks' half second over.
+            before: &["glance"],
+            ..World::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(running.typed("hooktest"));
+    let heard = running.heard_until("[hooktest: hooked]").await;
+    assert!(
+        heard.finished,
+        "not hooked: {:#?}\nrunner's errors: {:#?}",
+        heard.told,
+        running.errors()
+    );
+
+    // The display hook alone, first.
+    running.typed_line("look").await;
+    let heard = running.heard_until("[hooktest: typing hooked]").await;
+    assert!(
+        heard
+            .told
+            .iter()
+            .any(|told| told == "[hooktest: heard the breeze]"),
+        "the script hears what its hook hides: {:#?}",
+        heard.told
+    );
+    let mut shown = heard.shown;
+    if shown.is_empty() {
+        shown = running.shown(1).await;
+    }
+    assert_eq!(
+        shown,
+        ["You see a loud room."],
+        "runner's errors: {:#?}",
+        running.errors()
+    );
+    running.typed_line("tt").await;
+    assert_eq!(running.transcript.lines(), ["glance", "look", "target"]);
+
+    // Its hooks go with it, told to Hydra by Lich's cleanup, which runs
+    // before Lich says it was killed.
+    assert!(running.typed("k hooktest"));
+    let killed = running
+        .heard_until_either("hooktest was killed", "hooktest has exited")
+        .await;
+    assert!(killed.told.iter().any(|told| told.contains("hooktest")));
+    running.typed_line("look").await;
+    assert_eq!(
+        running.shown(2).await,
+        ["You see a quiet room.", "A breeze blows."]
+    );
+    assert_eq!(
+        running.transcript.lines(),
+        ["glance", "look", "target", "look"]
     );
     running.end().await;
     let _ = std::fs::remove_dir_all(&dir);
