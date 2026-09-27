@@ -211,6 +211,7 @@
 //! | **Look** | a response's colour, background and bold, over the match, a capture group or the line: [`Look`] | style, which is the wire's [`Style`] |
 //! | **Paint** | a look, resolved: what one stretch of a published [`Line`] is painted, the best look deciding each of colour, background and bold: [`Paint`] | highlight |
 //! | **Master switch** | a category, or one kind of response, turned off for every trigger: the file's `[categories]` and `[responses]` | |
+//! | **Attention** | what a trigger calls for beyond the line: a sound, an OS notification, a banner ([`Attention`]); once in its trigger's cooldown, and once for every character that saw the same thing, played by the binary even with no page open | alert, which is one kind: the banner |
 //! | **Origin** | where an imported trigger came from, `Wrayth: <file>`: importing that file again replaces what it brought, and a later stage holds a send from a rule the player did not write ([`wrayth`]) | source |
 //!
 //! # Names
@@ -252,6 +253,7 @@
 //! [`Event::Combat`]: cena_session::Event::Combat
 //! [`Event::Line`]: cena_session::Event::Line
 //! [`Event::Flag`]: cena_session::Event::Flag
+//! [`Attention`]: cena_session::trigger::Attention
 //! [`Edges`]: cena_session::trigger::Edges
 //! [`Effect`]: cena_session::Effect
 //! [`Event`]: cena_session::Event

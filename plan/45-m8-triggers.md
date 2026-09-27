@@ -41,7 +41,7 @@ here is **when** something happens, **do** something, for **whom**.
 | 2 | Do conditions reuse the hunt's guard words (`plan/33`)? | *"yes"* | One vocabulary, no second DSL. The guard evaluators move **down** from `cena-behavior` to `cena-model`, where the session can reach them. Stage 2. |
 | 3 | Several packs per character, or one profile like hunts? | *"One file, players won't be accessing the file most of the time, we will have a gui editor which can give a category, they can be sorted by category in the file."* | One triggers file. No packs, no profile level. A **category** on each trigger, set by the (future) GUI editor; the file is written sorted by category. **CLAUDE'S READING, TO CONFIRM:** per-character rules live *inside* the one file (§5b), which keeps `plan/12` §6a.2's global -> character override for triggers without a profile level. |
 | 4 | Import Wrayth first, with the author's exports as fixtures? What does `case="y"` mean? | *"yes, I assume case="y" means case sensitive, but I'm not positive."* | Wrayth XML is the first importer (Stage 4). `case="y"` is read as case-**sensitive**: the author's assumption, **UNVERIFIED** (§2d gives the evidence both ways). |
-| 5 | Sound and OS notifications in M8, or colour/text/routing first? | *"we can hold on sounds."* | Stage 3 (attention) is **held**. **CLAUDE'S READING:** OS notifications were in the same question and are held with sound. The status flag is not attention and stays in Stage 2. |
+| 5 | Sound and OS notifications in M8, or colour/text/routing first? | *"we can hold on sounds."* | Stage 3 (attention) is **held**. **CLAUDE'S READING:** OS notifications were in the same question and are held with sound. The status flag is not attention and stays in Stage 2. **RELEASED 2026-09-27** (author): *"You can do all of stage 3. We already solved sound in vellum fairly sure."* |
 
 **Two binding rules this touches, recorded so they are not re-derived:**
 
@@ -325,7 +325,7 @@ function, so the preview is always truthful."*
 | Squelch with a look or a redirect | **Allowed** | a `for.<name>` can add a squelch to a coloured trigger and cannot remove the colour; which one wins is the matcher's rule (step 3) |
 | `stream = "main"` | read as the model's `""` | the player's word for it |
 | `characters = []` | refused | leave it out to mean everyone |
-| Does a literal match only whole words? | **Yes**; `whole_word = false` matches inside words | Wizard FE's default, documented (`reference/wiki_clean/Wizard _front end_.txt:563-573`), and `VellumFE`'s check (`src/core/highlight_engine.rs:423-437`) |
+| Does a literal match only whole words? | **Yes**; `whole_word = false` matches inside words | Wizard FE's default, documented (`reference/wiki_clean/Wizard _front end_.txt:563-573`), and `VellumFE`'s check (`src/core/highlight_engine.rs:423-437`). **AUTHOR, 2026-09-27**, of Wrayth: *"I don't think it was intended to highlight nisugi out of nisugis if it did work that way."* |
 | Where is the boundary needed? | **Only where the literal's own edge is a letter, digit or `_`**, where a regex's `\b` sits | Wizard FE and `VellumFE` need it on both sides whatever the edge. Wizard FE's own `SEND[` example misses a GM's name for it, and a Saga player's `[DemsDen] `, trailing space deliberate, broke when Saga's import turned whole words on (`reference/discord/saga-thread.txt:21114-21116`, `:21198`). Both match here. Wrayth's rule is UNVERIFIED: that player is *"absolutely certain"* Wrayth had no whole-word setting, and §2d's exports carry no attribute for one |
 
 `regex` cannot do lookaround or backreferences (§8 item 6); such a regex is refused with the
@@ -464,11 +464,40 @@ word, the edges). Twelve mutants, all caught, three of them in the session.
 | `[responses] flag = false` | turns every flag off, as the other kinds | the master switches are per kind (§5a) |
 | The terminal | does not print flag changes | its rule: lifecycle, notices, sends and retries (`crates/cena/src/watch.rs`) |
 
-### Stage 3 -- attention: **HELD** (author, §1 row 5)
+### Stage 3 -- attention (held 2026-09-26, released 2026-09-27, §1 row 5)
 
-Recorded so it is not re-derived: once per occurrence across characters; cooldowns and a
-cap (VellumFE's, §2a); an audio library is a dependency decision, measured like
-`plan/23` §D1b measured axum; who plays a sound when no viewer is open.
+Recorded when it was held: once per occurrence across characters; cooldowns and a cap
+(VellumFE's, §2a); an audio library is a dependency decision, measured like `plan/23` §D1b
+measured axum; who plays a sound when no viewer is open.
+
+**BUILT 2026-09-27**, sounds and OS notifications; banners are the next step.
+
+- The responses are `sound = "<file or path>"`, `notify = true | "<words>"`, `alert = true |
+  "<words>"`, and `cooldown = N` (`crates/cena-model/src/trigger/attention.rs`). `true`
+  says the line as the game sent it, or a condition's name; words fill in a regex's `$1`.
+  They fire on a squelched line (§4) and from a condition, and `[responses]` switches each.
+- The session decides: each call passes its trigger's cooldown, per character, on the
+  game's clock (`Cooldowns`), and is published as `Event::Attention`.
+- The binary plays: one desk for every character, on a thread of its own
+  (`crates/cena/src/attention.rs`). A call another character made within a second is the
+  same occurrence and passes silently; the sound is found by path or in `<data dir>/sounds`
+  as `VellumFE` finds one; the audio device opens at the first sound. **With no page open,
+  it still sounds**: that answers who plays it.
+- Wrayth's `sound` imports as the trigger's `sound`, no longer `held`; a sound found nowhere
+  is said at load, once, with where to put it.
+
+### 6d. Stage 3 as built -- CLAUDE'S, to confirm
+
+| Question | Built | Why |
+|---|---|---|
+| The audio library | **`rodio` 0.22**, wav, mp3, ogg and flac | `VellumFE`'s (0.19 there), the author's *"we already solved sound in vellum"*; MEASURED: `Cargo.lock` 248 -> 363 entries across every target, with second copies of `thiserror` 1 and `windows-sys` 0.45; on Linux it links ALSA, so CI installs `libasound2-dev` |
+| OS notifications | **`notify-rust` 4.18**, zbus on tokio | `VellumFE` has none to follow; its default brings `async-io`, a second executor, which `plan/23` §D1b rules out; MEASURED: 47 crates in an empty crate, most shared with `rodio` on Windows |
+| Where it plays | the binary, not a core crate and not a page | a session nobody watches still sounds (§4, headless first-class); the core crates cross-build for Android and iOS, and the binary does not |
+| Cooldown | per character and per trigger, 3 game seconds unless `cooldown` says, in the session | `VellumFE`'s `DEFAULT_COOLDOWN_SECS`; on the game's clock as every expiry in the model is; in the session so the desk and a page agree on what came |
+| Several characters, one occurrence | the same trigger, sound and words from another character within a second passes silently | the merged streams' second (`cena_ui::Merger`); the same character twice is two occurrences, which its cooldown already let through |
+| A notification's title | `Hydra: <character>`, the first to see it | several characters' one occurrence names the first |
+| A sound not found | said once at load and after each change, grouped, with the sounds folder | a Wrayth path from another machine is the likely case |
+| The cap on banners | the page's, with the banners (next step) | a banner is shown by a page; the desk plays and notifies |
 
 ### Stage 4 -- import
 
@@ -520,7 +549,7 @@ changes nothing. **MET**: `crates/cena/src/triggers/tests.rs`,
 | A sound | kept as `held = { sound = "<path>" }`, the trigger's look on | Stage 3 is held; the path is from the original machine, as `VellumFE` notes |
 | An entry with no colour Hydra can show (`skin`, a palette miss, not `#rrggbb`) | **left out and noted**, unless the other colour stands | a trigger with no response is refused (§5a); the note says which |
 | `<ignores>` | imported, as squelches; `disable` sets the category's switch both ways | `VellumFE` does not import them; the Saga complaint is the master toggle |
-| Whole words | Hydra's default (§5d) | Wrayth's own rule is UNVERIFIED; a live check in Wrayth, or the author's memory, settles it |
+| Whole words | Hydra's default (§5d) | Wrayth's own rule is UNVERIFIED, and the author settled the question it raised (§5d): a name inside a longer word was never meant |
 | `case="y"` | case-sensitive | the author's reading, §1 row 4, UNVERIFIED; `VellumFE` reads it the same |
 
 ### Stage 5 -- act (author, §1 row 1)

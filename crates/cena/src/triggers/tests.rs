@@ -207,9 +207,16 @@ async fn import_brings_a_wrayth_file_in_and_again_replaces_it() {
         ) && said[0].contains("13 triggers on for Nisugi"),
         "{said:?}"
     );
-    assert_eq!(
-        said[1],
-        "Triggers: 2 sounds kept, held: Hydra does not play sounds yet."
+    // The fixture's sounds point at a machine this is not: said once, with
+    // where to put them.
+    assert!(
+        said[1].starts_with(r"Triggers: 2 sounds not found: `C:\fx\CPU unit lost.wav`, `C:\fx\data.wav`. Put them in ")
+            && said[1].ends_with("sounds."),
+        "{said:?}"
+    );
+    assert!(
+        said[2].starts_with("Triggers: 2 triggers play a sound: from the path Wrayth wrote"),
+        "{said:?}"
     );
     assert_eq!(typing.triggers().triggers().len(), 13);
 

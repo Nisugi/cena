@@ -117,11 +117,16 @@ fn every_highlight_name_and_ignore_in_the_fixture_comes_in() {
     assert!(erratic.squelch);
     assert!(erratic.look.is_none());
 
-    // The sound is kept, held, and each trigger says where it came from.
+    // The sound is the path Wrayth wrote, and each trigger says where it
+    // came from.
     let private = edit::show(&text, "[Private]").unwrap();
     assert!(
-        private.contains(&r"held.sound = 'C:\fx\data.wav'".to_owned()),
+        private.contains(&r"sound = 'C:\fx\data.wav'".to_owned()),
         "{private:?}"
+    );
+    assert_eq!(
+        named(&all, "[Private]").unwrap().rule.sound.as_deref(),
+        Some(r"C:\fx\data.wav")
     );
     assert!(
         private.contains(&format!("origin = \"{ORIGIN}\"")),
@@ -228,7 +233,6 @@ fn what_cannot_be_carried_is_named_and_the_rest_comes_in() {
             "`no such palette entry` has no colour Hydra can show, and is left out",
             "`a named colour`: its colour `red` is not #rrggbb, and is left out",
             "`a named colour` has no colour Hydra can show, and is left out",
-            "`nothing but a sound` has no colour Hydra can show, and a sound Hydra does not play yet, and is left out",
             "an entry in Wrayth strings has no words, and is left out",
         ]
     );
@@ -237,12 +241,14 @@ fn what_cannot_be_carried_is_named_and_the_rest_comes_in() {
         .iter()
         .map(|(name, _)| name.as_str())
         .collect();
-    // A quote of the other kind, and a `>`, inside a value are the value's.
+    // A quote of the other kind, and a `>`, inside a value are the value's;
+    // and a sound with no colour is a trigger that only sounds.
     assert_eq!(
         names,
         [
             "background only",
             "Nature's > bless & > b",
+            "nothing but a sound",
             "twice",
             "twice (2)"
         ]
@@ -252,7 +258,8 @@ fn what_cannot_be_carried_is_named_and_the_rest_comes_in() {
         Some(true),
         "a section that closes itself"
     );
-    assert_eq!(import.counts, [4, 0, 0]);
+    assert_eq!(import.counts, [5, 0, 0]);
+    assert_eq!(import.sounds, 1);
 }
 
 #[test]

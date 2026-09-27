@@ -1,11 +1,12 @@
-//! `plan/45` Stage 2 in the session: a trigger's flag is set in the
+//! `plan/45` Stages 2 and 3 in the session: a trigger's flag is set in the
 //! session's state and published, so whoever folds the events sets it too;
-//! a condition is read at each prompt.
+//! a condition is read at each prompt; a call for attention is published,
+//! once in its cooldown.
 
 use cena_platform::ReplaySource;
 use cena_session::flags::{FlagChange, Until};
 use cena_session::guard::Condition;
-use cena_session::trigger::{Flag, Matcher, Pattern, Rule, Trigger};
+use cena_session::trigger::{Flag, Matcher, Pattern, Rule, Say, Trigger};
 use cena_session::{Event, GameState, Session};
 
 /// What the session published over `wire` with `triggers`, and its state at
@@ -146,4 +147,71 @@ async fn a_condition_is_read_at_each_prompt_and_fires_on_its_rise() {
         .count();
     assert_eq!(prompts_before_flag, 3, "set at the third prompt");
     assert_eq!(state.flags.holds("hid", None), Some(true));
+}
+
+fn sounding(name: &str, text: &str) -> Trigger {
+    on_words(
+        name,
+        text,
+        Rule {
+            sound: Some("ding.wav".into()),
+            ..Rule::default()
+        },
+    )
+}
+
+fn called(events: &[Event]) -> Vec<String> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            Event::Attention(call) => Some(call.trigger.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A trigger's attention is published, at most once in its cooldown, by the
+/// game's clock.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn attention_is_published_once_in_its_cooldown() {
+    let wire = format!(
+        "<prompt time=\"999\">&gt;</prompt>\n{SWING}{SWING}\
+         <prompt time=\"1001\">&gt;</prompt>\n{SWING}\
+         <prompt time=\"1002\">&gt;</prompt>\n{SWING}"
+    );
+    let (events, _) = run(&wire, vec![sounding("swing", "You swing")]).await;
+    assert_eq!(
+        called(&events),
+        ["swing", "swing"],
+        "at 999, and at 1002 once three seconds have passed; not at 999 again or 1001"
+    );
+}
+
+/// A condition's attention says its name, at the prompt it fires on.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_condition_calls_for_attention_when_it_fires() {
+    let wire = concat!(
+        "<indicator id=\"IconHIDDEN\" visible=\"n\"/>\n<prompt time=\"100\">&gt;</prompt>\n",
+        "<indicator id=\"IconHIDDEN\" visible=\"y\"/>\n<prompt time=\"101\">&gt;</prompt>\n",
+    );
+    let (events, _) = run(
+        wire,
+        vec![Trigger {
+            name: "hid".into(),
+            rule: Rule {
+                condition: Condition::parse_group("hidden").unwrap_or_default(),
+                notify: Some(Say::Line),
+                ..Rule::default()
+            },
+        }],
+    )
+    .await;
+    let notified: Vec<Option<String>> = events
+        .iter()
+        .filter_map(|event| match event {
+            Event::Attention(call) => Some(call.notify.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(notified, [Some("hid".to_owned())]);
 }

@@ -147,6 +147,9 @@ struct Responses {
     substitute: bool,
     redirect: bool,
     flag: bool,
+    sound: bool,
+    notify: bool,
+    alert: bool,
 }
 
 impl Default for Responses {
@@ -157,6 +160,9 @@ impl Default for Responses {
             substitute: true,
             redirect: true,
             flag: true,
+            sound: true,
+            notify: true,
+            alert: true,
         }
     }
 }
@@ -178,11 +184,23 @@ impl Responses {
         if !self.flag {
             rule.flag = None;
         }
+        if !self.sound {
+            rule.sound = None;
+        }
+        if !self.notify {
+            rule.notify = None;
+        }
+        if !self.alert {
+            rule.alert = None;
+        }
         let responds = rule.look.is_some()
             || rule.squelch
             || rule.substitute.is_some()
             || rule.redirect.is_some()
-            || rule.flag.is_some();
+            || rule.flag.is_some()
+            || rule.sound.is_some()
+            || rule.notify.is_some()
+            || rule.alert.is_some();
         responds.then_some(rule)
     }
 }

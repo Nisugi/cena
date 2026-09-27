@@ -10,7 +10,7 @@ use cena_behavior::triggers::edit::{self, Merged};
 use cena_behavior::triggers::wrayth;
 use cena_session::{NoticeKind, SessionHandle};
 
-use super::{Said, change};
+use super::{Said, change, counted_as};
 
 /// `;trigger import <path>`: a Wrayth settings file's highlights, names and
 /// ignores into the triggers file, then what could not come.
@@ -38,8 +38,10 @@ pub(super) fn import(handle: &SessionHandle, dir: &Path, character: &str, path: 
         said.push((
             NoticeKind::Info,
             format!(
-                "{} kept, held: Hydra does not play sounds yet.",
-                counted_as(brought.sounds, "sound")
+                "{} play a sound: from the path Wrayth wrote when it is there, otherwise by \
+                 its file name from {}.",
+                counted_as(brought.sounds, "trigger"),
+                crate::attention::sounds_dir(dir).display()
             ),
         ));
     }
@@ -88,12 +90,4 @@ fn imported(file: &str, brought: &wrayth::Import, merged: &Merged) -> String {
             .map(|refused| format!("left out {refused}")),
     );
     parts.join("; ")
-}
-
-fn counted_as(count: usize, noun: &str) -> String {
-    if count == 1 {
-        format!("1 {noun}")
-    } else {
-        format!("{count} {noun}s")
-    }
 }

@@ -37,6 +37,7 @@
 
 mod architecture;
 mod ask;
+mod attention;
 mod batch;
 mod combat;
 mod commands;

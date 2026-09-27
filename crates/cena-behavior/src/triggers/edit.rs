@@ -15,7 +15,16 @@ use super::{Refused, read};
 use crate::settings;
 
 /// The kinds of response a master switch turns on or off everywhere.
-pub const KINDS: [&str; 5] = ["look", "squelch", "substitute", "redirect", "flag"];
+pub const KINDS: [&str; 8] = [
+    "look",
+    "squelch",
+    "substitute",
+    "redirect",
+    "flag",
+    "sound",
+    "notify",
+    "alert",
+];
 
 /// What `on` or `off` switches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

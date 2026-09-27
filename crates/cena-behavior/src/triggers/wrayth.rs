@@ -6,7 +6,7 @@
 //! | `<strings>` `<h text color bgcolor>` | a trigger on the words, with a look; category "Wrayth strings" |
 //! | `line="y"` | the look covers the whole line |
 //! | `case="y"` | case-sensitive (the author's reading, §1 row 4, UNVERIFIED) |
-//! | `sound` | kept as `held = { sound = "…" }`: Hydra does not play sounds yet (Stage 3) |
+//! | `sound` | the trigger's `sound`, the path as Wrayth wrote it: played from there when it is there, and otherwise by its file name from the sounds folder (Stage 3) |
 //! | `<names>` | the same, category "Wrayth names" |
 //! | `<ignores>` | a squelch on the words, category "Wrayth ignores"; `disable='y'` switches the category off |
 //! | `@N` | the colour the file's `<palette>` gives entry N |
@@ -56,7 +56,7 @@ pub struct Import {
     pub ignores_on: Option<bool>,
     /// How many came from `<strings>`, `<names>` and `<ignores>`.
     pub counts: [usize; 3],
-    /// How many sounds are kept, held.
+    /// How many triggers play a sound.
     pub sounds: usize,
     /// What could not be carried, one sentence each.
     pub notes: Vec<String>,
@@ -143,24 +143,20 @@ impl Import {
             }
         }
         let sound = entry.get("sound").filter(|sound| !sound.is_empty());
-        if look.is_empty() {
-            let also = if sound.is_some() {
-                ", and a sound Hydra does not play yet"
-            } else {
-                ""
-            };
+        if look.is_empty() && sound.is_none() {
             self.notes.push(format!(
-                "`{words}` has no colour Hydra can show{also}, and is left out"
+                "`{words}` has no colour Hydra can show, and is left out"
             ));
             return None;
         }
-        if entry.get("line").map(String::as_str) == Some("y") {
-            look.insert("span".to_owned(), Value::String("line".to_owned()));
+        if !look.is_empty() {
+            if entry.get("line").map(String::as_str) == Some("y") {
+                look.insert("span".to_owned(), Value::String("line".to_owned()));
+            }
+            trigger.insert("look".to_owned(), Value::Table(look));
         }
-        trigger.insert("look".to_owned(), Value::Table(look));
         if let Some(sound) = sound {
-            let held = Table::from_iter([("sound".to_owned(), Value::String(sound.clone()))]);
-            trigger.insert("held".to_owned(), Value::Table(held));
+            trigger.insert("sound".to_owned(), Value::String(sound.clone()));
             self.sounds += 1;
         }
         Some(trigger)

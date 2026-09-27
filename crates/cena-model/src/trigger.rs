@@ -39,9 +39,13 @@
 //! | **Look** | colour, background, bold; over the match, a capture group, or the line | `look = { color = "#ff4040", bold = true, span = "line" }` |
 //! | **Text** | squelch; substitute (with `$1`); redirect to another stream | `squelch = true`, `substitute = "…"`, `redirect = { stream = "combat", copy = true }` |
 //! | **Flag** | set a named flag, for a time or until cleared, or clear it; the guard word `flag "<name>"` reads it | `flag = { name = "rift", seconds = 30 }`, `flag = { name = "rift", clear = true }` |
+//! | **Attention** | a sound; an OS notification; a banner on the character's pages ([`Attention`]) | `sound = "data.wav"`, `notify = true`, `alert = "$1 is here"`, `cooldown = 10` |
 //!
 //! Where an `event` stands without `text` or `regex`, the whole line is the
-//! match. A condition has no line: its only response is a flag.
+//! match. A condition has no line: it may set a flag and call for
+//! attention, and nothing else. A trigger's attention comes at most once in
+//! its `cooldown`, 3 seconds unless set, `VellumFE`'s
+//! `DEFAULT_COOLDOWN_SECS` (`reference/VellumFE/src/core/alerts.rs:23`).
 //!
 //! None of the line's responses changes what the game said. The model's
 //! scrollback, the chunk the classifiers read and the player log keep the
@@ -92,12 +96,14 @@ use crate::GameState;
 use crate::guard::{Condition, Facts};
 use crate::state::flags::{FlagChange, Until};
 
+mod attention;
 mod check;
 mod edges;
 mod event;
 mod matcher;
 mod respond;
 
+pub use attention::{Attention, Cooldowns, Say};
 pub use edges::Edges;
 pub use event::LineEvent;
 pub use matcher::{Hit, Matcher};
@@ -107,6 +113,10 @@ pub use respond::{Answer, Paint};
 /// `rearm` says otherwise: `VellumFE`'s `DEFAULT_REARM_SECS`
 /// (`reference/VellumFE/src/core/alerts.rs:37`).
 pub const REARM: u32 = 3;
+
+/// Seconds before a trigger's attention comes again, unless its `cooldown`
+/// says otherwise: `VellumFE`'s `DEFAULT_COOLDOWN_SECS`.
+pub const COOLDOWN: u32 = 3;
 
 /// A trigger, by its name in the file, and what it does.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -152,6 +162,14 @@ pub struct Rule {
     pub redirect: Option<Redirect>,
     /// Set or clear a flag.
     pub flag: Option<Flag>,
+    /// Play this sound: a file in the sounds folder, or a path.
+    pub sound: Option<String>,
+    /// Say this as an OS notification.
+    pub notify: Option<Say>,
+    /// Show this as a banner on the character's pages.
+    pub alert: Option<Say>,
+    /// Seconds before its attention comes again.
+    pub cooldown: u32,
 }
 
 /// What a trigger matches in a line's text.
@@ -304,6 +322,10 @@ impl Default for Rule {
             substitute: None,
             redirect: None,
             flag: None,
+            sound: None,
+            notify: None,
+            alert: None,
+            cooldown: COOLDOWN,
         }
     }
 }

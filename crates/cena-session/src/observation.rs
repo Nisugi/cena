@@ -2,8 +2,7 @@
 //! one synchronous turn, so a snapshot and its stream share an exact fence.
 
 use crate::{Event, GameState, Generation, GenerationCell, SessionId, Snapshot, State};
-use cena_model::state::flags::FlagChange;
-use cena_model::trigger::{Edges, Matcher};
+use cena_model::trigger::{Attention, Cooldowns, Edges, Matcher};
 use std::sync::{
     Arc, Mutex, PoisonError,
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -178,13 +177,15 @@ pub(crate) struct EventPublisher {
     triggers: Arc<Mutex<Answering>>,
 }
 
-/// A character's triggers and their conditions' memory, replaced together:
-/// new triggers start new memory, so their first reading is silent
-/// (`cena_model::trigger::Edges`).
+/// A character's triggers and their memory, replaced together: new
+/// triggers start new memory, so their conditions' first reading is silent
+/// (`cena_model::trigger::Edges`) and their attention starts cool
+/// (`Cooldowns`).
 #[derive(Debug, Default)]
 struct Answering {
     matcher: Arc<Matcher>,
     edges: Edges,
+    cooldowns: Cooldowns,
 }
 
 impl EventPublisher {
@@ -216,7 +217,7 @@ impl EventPublisher {
     pub(crate) fn set_triggers(&self, triggers: Matcher) {
         *self.triggers.lock().unwrap_or_else(PoisonError::into_inner) = Answering {
             matcher: Arc::new(triggers),
-            edges: Edges::default(),
+            ..Answering::default()
         };
     }
 
@@ -231,30 +232,30 @@ impl EventPublisher {
         )
     }
 
-    /// Read the conditions against `state`: the flags set or cleared by the
-    /// ones that became true.
-    pub(crate) fn fire_conditions(&self, state: &GameState) -> Vec<FlagChange> {
+    /// Read the conditions against `state`: the triggers they are in, and
+    /// the ranks of those that became true.
+    pub(crate) fn fire_conditions(&self, state: &GameState) -> (Arc<Matcher>, Vec<usize>) {
         let mut answering = self.triggers.lock().unwrap_or_else(PoisonError::into_inner);
-        let Answering { matcher, edges } = &mut *answering;
-        if matcher.conditions().is_empty() {
-            return Vec::new();
+        let Answering { matcher, edges, .. } = &mut *answering;
+        let fired = if matcher.conditions().is_empty() {
+            Vec::new()
+        } else {
+            edges.fire(matcher, state)
+        };
+        (Arc::clone(matcher), fired)
+    }
+
+    /// `calls` for attention without those whose trigger is cooling at game
+    /// second `now`.
+    pub(crate) fn admit(&self, calls: Vec<Attention>, now: Option<u32>) -> Vec<Attention> {
+        if calls.is_empty() {
+            return calls;
         }
-        let now = state.game_time_now();
-        edges
-            .fire(matcher, state)
-            .into_iter()
-            .filter_map(|rank| {
-                Some(
-                    matcher
-                        .triggers()
-                        .get(rank)?
-                        .rule
-                        .flag
-                        .as_ref()?
-                        .change(now),
-                )
-            })
-            .collect()
+        self.triggers
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .cooldowns
+            .admit(calls, now)
     }
 
     /// A publisher over a caller's own legacy channel, with a fenced stream

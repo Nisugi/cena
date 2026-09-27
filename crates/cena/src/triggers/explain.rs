@@ -13,7 +13,7 @@
 //! and the player knows what the line would do when it does. A condition
 //! has no line, and is not tested here.
 
-use cena_session::trigger::{Color, Flag, Matcher, Paint, Rule, Span};
+use cena_session::trigger::{Color, Flag, Matcher, Paint, Rule, Say, Span};
 use cena_session::{ChunkLine, Line};
 
 /// What `matcher` makes of `words`, one sentence per line: each trigger that
@@ -106,6 +106,16 @@ fn does(rule: &Rule) -> String {
     if let Some(flag) = &rule.flag {
         parts.push(flagged(flag));
     }
+    if let Some(sound) = &rule.sound {
+        parts.push(format!("sound `{sound}`"));
+    }
+    for (what, say) in [("notify", &rule.notify), ("alert", &rule.alert)] {
+        match say {
+            Some(Say::Line) => parts.push(format!("{what} with the line")),
+            Some(Say::Words(words)) => parts.push(format!("{what} \"{words}\"")),
+            None => {}
+        }
+    }
     parts.join(", ")
 }
 
@@ -195,6 +205,24 @@ mod tests {
             Some(
                 "`quiet` reads the line as affliction silenced: set flag `silenced` for 30s, \
                  only if !hidden."
+            )
+        );
+    }
+
+    #[test]
+    fn attention_is_named() {
+        let matcher = matcher(
+            "[trigger.whisper]\nregex = '^(\\w+) whispers'\nsound = 'ding.wav'\n\
+             notify = '$1 whispered'\nalert = true\n",
+        )
+        .unwrap();
+        assert_eq!(
+            explain(&matcher, "Dicate whispers, hi")
+                .first()
+                .map(String::as_str),
+            Some(
+                "`whisper` matches \"Dicate whispers\": sound `ding.wav`, notify \"$1 whispered\", \
+                 alert with the line."
             )
         );
     }

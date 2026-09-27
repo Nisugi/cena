@@ -15,15 +15,17 @@
 //! makes it and what the triggers answer.
 //!
 //! A trigger that fires may set a flag, which changes the session's state
-//! and is published ([`Event::Flag`](super::Event::Flag)). The conditions,
-//! which watch the character rather than a line, are read here too, at each
+//! and is published ([`Event::Flag`](super::Event::Flag)), and may call for
+//! attention, which is published for others to play and show
+//! ([`Event::Attention`](super::Event::Attention)). The conditions, which
+//! watch the character rather than a line, are read here too, at each
 //! prompt: the one moment every frame of a chunk has been applied.
 
 use std::sync::Arc;
 
 use cena_model::line::Line;
 use cena_model::state::flags::FlagChange;
-use cena_model::trigger::Matcher;
+use cena_model::trigger::{Attention, Matcher};
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
 
@@ -70,8 +72,8 @@ impl<S: ByteSource> SessionActor<S> {
         self.publish_answered(&triggers, line);
     }
 
-    /// Publish what `triggers` make of `line`, then set the flags of the
-    /// ones that fired: on a squelched line too.
+    /// Publish what `triggers` make of `line`, then what the ones that
+    /// fired do beyond it: on a squelched line too.
     fn publish_answered(&mut self, triggers: &Matcher, line: Arc<Line>) {
         if triggers.triggers().is_empty() {
             let _ = self.events.send(Event::Line(line));
@@ -81,8 +83,24 @@ impl<S: ByteSource> SessionActor<S> {
         for shown in answer.lines {
             let _ = self.events.send(Event::Line(Arc::new(shown)));
         }
+        self.fired(triggers, &answer.fired, answer.attention);
+    }
+
+    /// At a prompt: each condition that became true does what it does.
+    pub(super) fn fire_conditions(&mut self) {
+        let (triggers, fired) = self.events.fire_conditions(&self.state);
+        let attention = fired
+            .iter()
+            .filter_map(|&rank| triggers.condition_attention(rank))
+            .collect();
+        self.fired(&triggers, &fired, attention);
+    }
+
+    /// Set the flags of the triggers `fired`, by rank, and publish the
+    /// `attention` they called for that is not cooling.
+    fn fired(&mut self, triggers: &Matcher, fired: &[usize], attention: Vec<Attention>) {
         let now = self.state.game_time_now();
-        for rank in answer.fired {
+        for &rank in fired {
             if let Some(flag) = triggers
                 .triggers()
                 .get(rank)
@@ -91,12 +109,8 @@ impl<S: ByteSource> SessionActor<S> {
                 self.set_flag(&flag.change(now));
             }
         }
-    }
-
-    /// At a prompt: each condition that became true sets its flag.
-    pub(super) fn fire_conditions(&mut self) {
-        for change in self.events.fire_conditions(&self.state) {
-            self.set_flag(&change);
+        for called in self.events.admit(attention, now) {
+            let _ = self.events.send(Event::Attention(Arc::new(called)));
         }
     }
 

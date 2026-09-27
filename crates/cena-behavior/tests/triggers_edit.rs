@@ -102,7 +102,7 @@ fn on_and_off_switch_a_trigger_a_category_or_a_kind() {
         "the look is left, so the trigger stays"
     );
 
-    let bad = edit::switch(&text, Switch::Every("sound"), false).unwrap_err();
+    let bad = edit::switch(&text, Switch::Every("rumble"), false).unwrap_err();
     assert!(bad.contains("not a kind of response"), "{bad}");
 }
 

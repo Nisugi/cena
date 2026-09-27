@@ -499,3 +499,32 @@ fn a_file_that_is_not_toml_loads_nothing_and_no_file_is_no_triggers() {
     assert!(error.contains("triggers.toml is not TOML"), "{error}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Stage 3's keys: a sound, a notification, a banner and a cooldown that
+/// cannot work are refused by name; a condition may call for attention.
+#[test]
+fn attention_that_cannot_work_is_refused_by_name() {
+    let cases = [
+        ("text = 'x'\nsound = ''", "names no file"),
+        ("text = 'x'\nnotify = false", "`false` says nothing"),
+        ("text = 'x'\nalert = ' '", "says nothing"),
+        (
+            "text = 'x'\nsquelch = true\ncooldown = 5",
+            "`cooldown` is for",
+        ),
+        (
+            "condition = 'hidden'\nnotify = true\nsquelch = true",
+            "no line to colour",
+        ),
+    ];
+    assert_eq!(missed(&cases), Vec::<String>::new());
+    let fine = "[trigger.hid]\ncondition = 'hidden'\nnotify = true\ncooldown = 10\n\
+                [trigger.ding]\ntext = 'x'\nsound = 'ding.wav'\n";
+    assert_eq!(
+        names(fine, "Nisugi"),
+        Some(vec!["ding".to_owned(), "hid".to_owned()])
+    );
+    // Every sound off leaves a trigger that only sounds with nothing to do.
+    let off = format!("{fine}[responses]\nsound = false\n");
+    assert_eq!(names(&off, "Nisugi"), Some(vec!["hid".to_owned()]));
+}

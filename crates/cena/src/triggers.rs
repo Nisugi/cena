@@ -67,22 +67,43 @@ pub(crate) fn command(
 
 /// Read the file and give `character`'s session its triggers: how many are
 /// on, and what was left out.
-fn reload(
-    handle: &SessionHandle,
-    dir: &Path,
-    character: &str,
-) -> Result<(usize, Vec<Refused>), String> {
+fn reload(handle: &SessionHandle, dir: &Path, character: &str) -> Reloaded {
     let loaded = triggers::load(dir)?;
     let mine = loaded.triggers.for_character(character);
     let count = mine.len();
+    let sounds = crate::attention::sounds_dir(dir);
+    let mut missing: Vec<String> = mine
+        .iter()
+        .filter_map(|trigger| trigger.rule.sound.clone())
+        .filter(|sound| crate::attention::found(&sounds, sound).is_none())
+        .collect();
+    missing.sort();
+    missing.dedup();
+    let unfound = (!missing.is_empty()).then(|| {
+        format!(
+            "{} not found: {}. Put {} in {}.",
+            counted_as(missing.len(), "sound"),
+            missing
+                .iter()
+                .map(|sound| format!("`{sound}`"))
+                .collect::<Vec<_>>()
+                .join(", "),
+            if missing.len() == 1 { "it" } else { "them" },
+            sounds.display()
+        )
+    });
     handle.set_triggers(Matcher::new(mine)?);
-    Ok((count, loaded.refused))
+    Ok((count, loaded.refused, unfound))
 }
 
-/// What to say of a reload: each refusal, and how many are on -- always
-/// when `asked`, otherwise only when any are.
-fn loaded(reloaded: Result<(usize, Vec<Refused>), String>, asked: bool) -> Said {
-    let (count, refused) = match reloaded {
+/// A reload: how many are on, what was refused, and which sounds are
+/// nowhere, said.
+type Reloaded = Result<(usize, Vec<Refused>, Option<String>), String>;
+
+/// What to say of a reload: each refusal, the sounds not found, and how
+/// many are on -- always when `asked`, otherwise only when any are.
+fn loaded(reloaded: Reloaded, asked: bool) -> Said {
+    let (count, refused, unfound) = match reloaded {
         Ok(reloaded) => reloaded,
         Err(why) => return vec![(NoticeKind::Warn, format!("{why}. None are on."))],
     };
@@ -90,10 +111,19 @@ fn loaded(reloaded: Result<(usize, Vec<Refused>), String>, asked: bool) -> Said 
         .iter()
         .map(|refused| (NoticeKind::Warn, format!("{refused} It is left out.")))
         .collect();
+    said.extend(unfound.map(|unfound| (NoticeKind::Warn, unfound)));
     if asked || count > 0 {
         said.push((NoticeKind::Info, format!("{} on.", counted(count))));
     }
     said
+}
+
+fn counted_as(count: usize, noun: &str) -> String {
+    if count == 1 {
+        format!("1 {noun}")
+    } else {
+        format!("{count} {noun}s")
+    }
 }
 
 fn counted(count: usize) -> String {
@@ -176,13 +206,17 @@ fn change(handle: &SessionHandle, dir: &Path, character: &str, edit: Edit<'_>) -
         return vec![(NoticeKind::Error, format!("not saved: {why}"))];
     }
     match reload(handle, dir, character) {
-        Ok((count, _)) => vec![(
-            NoticeKind::Info,
-            format!(
-                "{done}. {} on for {character}; other characters take it at `trigger reload`.",
-                counted(count)
-            ),
-        )],
+        Ok((count, _, unfound)) => {
+            let mut said = vec![(
+                NoticeKind::Info,
+                format!(
+                    "{done}. {} on for {character}; other characters take it at `trigger reload`.",
+                    counted(count)
+                ),
+            )];
+            said.extend(unfound.map(|unfound| (NoticeKind::Warn, unfound)));
+            said
+        }
         Err(why) => vec![
             (NoticeKind::Info, format!("{done}.")),
             (NoticeKind::Warn, format!("{why}. None are on.")),

@@ -44,6 +44,16 @@ pub enum Event {
     /// Published after the [`Event::Line`]s of the line that set it, or at
     /// the prompt a condition fired on; only when it changed something.
     Flag(cena_model::state::flags::FlagChange),
+    /// A trigger called for attention: a sound, an OS notification, a
+    /// banner (`cena_model::trigger::Attention`). The session decides it
+    /// and does none of it: the binary's desk plays and notifies, once for
+    /// every character that saw the same thing, and a viewer shows the
+    /// banner. On a squelched line too.
+    ///
+    /// Published after the [`Event::Line`]s of the line that called for it,
+    /// or at the prompt a condition fired on. `Arc` for [`Event::Line`]'s
+    /// reason.
+    Attention(std::sync::Arc<cena_model::trigger::Attention>),
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///

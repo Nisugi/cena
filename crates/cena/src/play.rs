@@ -83,6 +83,9 @@ struct Table {
     /// The Ctrl-C token: the hub's Shut down cancels it, and the run ends by
     /// the one orderly path either way.
     interrupt: tokio_util::sync::CancellationToken,
+    /// The desk every character's sounds and notifications go to
+    /// (`attention.rs`): one, so a thing several see sounds once.
+    attention: std::sync::mpsc::Sender<crate::attention::Called>,
 }
 
 /// Run every named character until Ctrl-C, or until all have stopped.
@@ -109,6 +112,7 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
         web: frontend::Frontend::open(&map).await,
         map,
         pin: dir.join(cena_platform::PIN_FILENAME),
+        attention: crate::attention::start(&dir),
         dir,
         turn: Arc::default(),
         interrupt: interrupt.clone(),
@@ -172,13 +176,15 @@ impl Table {
                 // login, and the sync hears the store's report mid-burst.
                 let (_, events) = session.subscribe();
                 let (_, learning) = session.subscribe();
+                let (_, calls) = session.subscribe();
                 let (session, records, player) =
                     setup::attach(session, &character, &game, &account);
-                attached = Some((events, learning, records, player));
+                attached = Some((events, learning, calls, records, player));
                 session
             })
             .map_err(|e| format!("[{character}] not started: {e}"))?;
-        let (Some((events, learning, records, player)), Some(hosted)) = (attached, host.get(id))
+        let (Some((events, learning, calls, records, player)), Some(hosted)) =
+            (attached, host.get(id))
         else {
             return Err(format!(
                 "[{character}] not started: it left the table at once"
@@ -210,6 +216,11 @@ impl Table {
             );
         }
         let watcher = tokio::spawn(watch::watch_events(events, format!("[{character}]")));
+        tokio::spawn(crate::attention::forward(
+            calls,
+            character.clone(),
+            self.attention.clone(),
+        ));
         proven.on_ready(&hosted.observer, &self.turn);
         tokio::spawn(after_ready(
             hosted.handle.clone(),

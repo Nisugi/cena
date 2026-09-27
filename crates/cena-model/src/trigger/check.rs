@@ -3,7 +3,7 @@
 
 use serde::Deserialize;
 
-use super::{Flag, LineEvent, Look, Pattern, REARM, Redirect, Rule, Span, regex};
+use super::{COOLDOWN, Flag, LineEvent, Look, Pattern, REARM, Redirect, Rule, Say, Span, regex};
 use crate::guard::{Condition, Fact, Guard, Measure};
 
 /// A span as written: a word, or a group's number.
@@ -58,6 +58,10 @@ pub(super) struct Raw {
     substitute: Option<String>,
     redirect: Option<Redirect>,
     flag: Option<Flag>,
+    sound: Option<String>,
+    notify: Option<Say>,
+    alert: Option<Say>,
+    cooldown: Option<u32>,
 }
 
 impl TryFrom<Raw> for Rule {
@@ -68,6 +72,17 @@ impl TryFrom<Raw> for Rule {
         let condition = guards("condition", raw.condition.as_deref())?;
         if let Some(flag) = &raw.flag {
             checked_flag(flag)?;
+        }
+        if raw
+            .sound
+            .as_deref()
+            .is_some_and(|sound| sound.trim().is_empty())
+        {
+            return Err("its `sound` names no file".into());
+        }
+        let attends = raw.sound.is_some() || raw.notify.is_some() || raw.alert.is_some();
+        if raw.cooldown.is_some() && !attends {
+            return Err("`cooldown` is for a `sound`, `notify` or `alert`".into());
         }
         let line_responds =
             raw.look.is_some() || raw.squelch || raw.substitute.is_some() || raw.redirect.is_some();
@@ -87,7 +102,7 @@ impl TryFrom<Raw> for Rule {
             }
             if line_responds {
                 return Err("a condition has no line to colour, hide, change or move; \
-                            it can set a `flag`"
+                            it can set a `flag` or call for attention"
                     .into());
             }
         } else if raw.rearm.is_some() {
@@ -116,8 +131,12 @@ impl TryFrom<Raw> for Rule {
         if raw.redirect.as_ref().is_some_and(|r| r.stream.is_empty()) {
             return Err("its redirect names no stream".into());
         }
-        if !line_responds && raw.flag.is_none() {
-            return Err("it does nothing: no look, squelch, substitute, redirect or flag".into());
+        if !line_responds && raw.flag.is_none() && !attends {
+            return Err(
+                "it does nothing: no look, squelch, substitute, redirect, flag, \
+                        sound, notify or alert"
+                    .into(),
+            );
         }
         Ok(Self {
             category: raw.category,
@@ -137,6 +156,10 @@ impl TryFrom<Raw> for Rule {
                 copy: r.copy,
             }),
             flag: raw.flag,
+            sound: raw.sound,
+            notify: raw.notify,
+            alert: raw.alert,
+            cooldown: raw.cooldown.unwrap_or(COOLDOWN),
         })
     }
 }

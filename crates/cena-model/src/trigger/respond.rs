@@ -31,7 +31,7 @@ use std::ops::Range;
 
 use cena_protocol::runs::{Run, Runs};
 
-use super::{Color, Hit, Look, Matcher, Rule, Span};
+use super::{Attention, Color, Hit, Look, Matcher, Rule, Span};
 use crate::GameState;
 use crate::line::Line;
 
@@ -44,6 +44,8 @@ pub struct Answer {
     /// The triggers that fired, by rank in [`Matcher::triggers`], each once,
     /// in rank order.
     pub fired: Vec<usize>,
+    /// What those that call for attention call for, at each one's first hit.
+    pub attention: Vec<Attention>,
 }
 
 /// A look, resolved: what one stretch of a line is painted.
@@ -94,16 +96,20 @@ impl Matcher {
         if self.triggers.is_empty() {
             return Answer {
                 lines: vec![line.clone()],
-                fired: Vec::new(),
+                ..Answer::default()
             };
         }
         let text = line.text();
         let hits = self.screened(line, &text, state);
-        let mut fired: Vec<usize> = hits.iter().map(|hit| hit.trigger).collect();
-        fired.dedup();
+        let mut firsts: Vec<&Hit> = hits.iter().collect();
+        firsts.dedup_by_key(|hit| hit.trigger);
         Answer {
             lines: self.shown(line, &text, &hits),
-            fired,
+            fired: firsts.iter().map(|hit| hit.trigger).collect(),
+            attention: firsts
+                .iter()
+                .filter_map(|hit| self.attention(hit.trigger, Some(hit), &text))
+                .collect(),
         }
     }
 
@@ -186,7 +192,7 @@ impl Matcher {
 
     /// `template` for `hit`: its groups filled in for a regex, as written
     /// for a literal.
-    fn expand(&self, hit: &Hit, template: &str, text: &str) -> String {
+    pub(super) fn expand(&self, hit: &Hit, template: &str, text: &str) -> String {
         let captures = self
             .regexes
             .iter()
