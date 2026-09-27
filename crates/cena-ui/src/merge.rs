@@ -169,9 +169,7 @@ mod tests {
             stream: stream.to_owned(),
             runs: vec![StyledRun {
                 text: text.to_owned(),
-                bold: false,
-                monospace: false,
-                preset: None,
+                ..StyledRun::default()
             }],
             truncated: false,
             closed: Closed::Main,

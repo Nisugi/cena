@@ -164,7 +164,7 @@ impl CommandQueue {
             // author's rule is that a cross-character command runs "as if they
             // just sent it" (`plan/16` §5a.1). It is a distinct variant so a
             // LOG can tell the two apart, not because it queues differently.
-            Origin::Manual | Origin::Script => self.manual.push_back(envelope),
+            Origin::Manual | Origin::Script | Origin::Trigger => self.manual.push_back(envelope),
             Origin::Behavior(_) => self.held.push_back(envelope),
         }
     }

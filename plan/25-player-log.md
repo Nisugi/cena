@@ -110,6 +110,12 @@ proposed now rather than at M6.
 the lift into `cena-ui` should happen when `cena-web` became the third copy. PR #1
 did it. This feature consumes `LineAssembler`; it does not reimplement it.
 
+> **UPDATED 2026-09-26 (`plan/45` §4a).** `LineAssembler` is retired. The log was in fact
+> fed the model's line, not the assembler's (`crates/cena-session/src/actor/io.rs`), and
+> that same line is now published to every viewer as `Event::Line`
+> (`crates/cena-session/src/actor/line.rs`). "A reconnect does not join two histories" is the
+> model's rule, pinned in `crates/cena-model/tests/reconnect_invalidation.rs`.
+
 ---
 
 ## 3. Decisions

@@ -82,6 +82,10 @@ impl PartialEq for GameState {
             kits,
             order_menu,
             targeting,
+            // **Included.** Set by the player's triggers from what the game
+            // said, so a replay of the same bytes through the same triggers
+            // sets the same flags.
+            flags,
             maneuvers,
             cast_time_ends,
             prepared,
@@ -116,6 +120,7 @@ impl PartialEq for GameState {
             && kits == &other.kits
             && order_menu == &other.order_menu
             && targeting == &other.targeting
+            && flags == &other.flags
             && maneuvers == &other.maneuvers
             && cast_time_ends == &other.cast_time_ends
             && prepared == &other.prepared

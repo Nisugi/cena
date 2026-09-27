@@ -101,8 +101,10 @@ async fn mid_session_snapshot_is_ready_and_stream_starts_after_its_state() {
 
 #[tokio::test(start_paused = true)]
 async fn lag_resubscription_replaces_the_old_fence_with_fresh_authoritative_state() {
+    // More frames than the ring holds (`EVENT_CHANNEL_BOUND`, 4,096), so the
+    // first subscriber must lag.
     let mut reply = "<progressBar id='health' value='68'/>"
-        .repeat(3000)
+        .repeat(6000)
         .into_bytes();
     reply.extend_from_slice(
         b"<progressBar id='health' value='67'/><prompt time='1'>&gt;</prompt>\n",
@@ -123,7 +125,7 @@ async fn lag_resubscription_replaces_the_old_fence_with_fresh_authoritative_stat
     assert!(matches!(events.try_recv(), Err(TryRecvError::Lagged(_))));
 
     let (fresh, mut fresh_events) = observer.subscribe().await.expect("resnapshot");
-    assert!(fresh.cursor > old.cursor + 2048);
+    assert!(fresh.cursor > old.cursor + 4096);
     assert_eq!(
         fresh.state.vitals.get("health").map(|vital| vital.percent),
         Some(67)

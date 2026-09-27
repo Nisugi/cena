@@ -136,6 +136,63 @@ pub enum Incident {
     WeaponReaction(String),
 }
 
+impl Incident {
+    /// Every incident's name: its key in Lich's `messages.rb`, in that
+    /// file's order. What a trigger's `event = "incident <name>"` names
+    /// (`crate::trigger`).
+    pub const NAMES: [&'static str; 21] = [
+        "disarm_seen",
+        "sanctum_transform",
+        "itchy_curse",
+        "infected_wound",
+        "hive_trap",
+        "entangled",
+        "ambusher",
+        "bolted",
+        "rooted",
+        "unrooted",
+        "item_limit",
+        "bless_shrugged",
+        "bless_expired",
+        "arrow_stuck",
+        "aiming",
+        "bond_return",
+        "haze_703",
+        "rebuke_1614",
+        "swift_justice",
+        "arcane_reflex",
+        "weapon_reaction",
+    ];
+
+    /// This incident's name, one of [`Self::NAMES`].
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::Disarmed { .. } => "disarm_seen",
+            Self::SanctumSnake { .. } => "sanctum_transform",
+            Self::ItchyCurse => "itchy_curse",
+            Self::InfectedWound => "infected_wound",
+            Self::HiveTrap(_) => "hive_trap",
+            Self::Entangled => "entangled",
+            Self::Ambusher(_) => "ambusher",
+            Self::Bolted => "bolted",
+            Self::Rooted(_) => "rooted",
+            Self::Unrooted(_) => "unrooted",
+            Self::ItemLimit => "item_limit",
+            Self::BlessShrugged(_) => "bless_shrugged",
+            Self::BlessExpired(_) => "bless_expired",
+            Self::ArrowStuck { .. } => "arrow_stuck",
+            Self::Aiming(_) => "aiming",
+            Self::BondReturn(_) => "bond_return",
+            Self::Haze { .. } => "haze_703",
+            Self::Rebuke { .. } => "rebuke_1614",
+            Self::SwiftJustice(_) => "swift_justice",
+            Self::ArcaneReflex(_) => "arcane_reflex",
+            Self::WeaponReaction(_) => "weapon_reaction",
+        }
+    }
+}
+
 struct Patterns {
     knocked: Pat,
     wrenched: Pat,

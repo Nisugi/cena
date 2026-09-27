@@ -1,6 +1,12 @@
 //! The guard vocabulary: the preconditions a routine step may carry
 //! (`plan/30` §5; `plan/33` for every word bigshot has and what became of it).
 //!
+//! **One vocabulary for the hunt and the triggers.** It was the hunt's, in
+//! `cena-behavior`, and moved down here in M8 so the session can read it: a
+//! trigger's conditions and gates are guard words (author, 2026-09-26,
+//! `plan/45` §1 row 2: *"yes"*), and the session cannot reach the behaviors.
+//! The hunt reads it from here, as `cena_behavior::hunt::guard`.
+//!
 //! A guard names **when the step runs**. `(hidden)` runs a step only while I
 //! am hidden; `(!hidden)` only while I am not. That is one rule for every
 //! word, where bigshot has two (`plan/33` §1: `frozen`, `prone`, `rooted`
@@ -53,6 +59,7 @@
 //! | `once_here` | this step has not yet been sent in this room | [`Used`] |
 //! | `every N` | this step was last sent in this room N seconds ago or more, or never | [`Used`] |
 //! | `available "<technique>"` | Lich's `available?` for that PSM: trained, affordable, not cooling, not overexerted; `"weapon charge"` where two lists share the word | `psm_availability` |
+//! | `flag "<name>"` | a trigger has set that flag, and it has not run out or been cleared (M8, `plan/45` Stage 2) | `state/flags.rs`; not bigshot's |
 //!
 //! Words for facts the model cannot state yet are left out and import
 //! **held**: `essence_at_least` (the `resource` capture) and `justice` (a
@@ -78,8 +85,8 @@
 
 use std::fmt;
 
-use cena_session::creature::status::Classification;
-use cena_session::{BodyPart, GameState, PsmCategory, StatusName};
+use crate::state::creature::status::Classification;
+use crate::{BodyPart, GameState, PsmCategory, StatusName};
 
 mod read;
 mod used;
@@ -282,6 +289,8 @@ pub enum Guard {
         /// The rank, at least.
         rank: u32,
     },
+    /// `flag "<name>"`: a trigger has set this flag, and it holds.
+    Flag(String),
     /// `available "<mnemonic>"`: Lich's `available?` for that combat
     /// maneuver, weapon technique, shield move, feat or armor
     /// specialization: trained, affordable, not cooling, not overexerted.
@@ -369,6 +378,8 @@ impl Condition {
                 })?;
                 let rank = number(word, it.next())?;
                 Guard::Injured { part, rank }
+            } else if word == "flag" {
+                Guard::Flag(quoted(word, it.next())?)
             } else if word == "available" {
                 let (category, mnemonic) = psm(&quoted(word, it.next())?)?;
                 Guard::Available { category, mnemonic }
@@ -403,6 +414,7 @@ impl fmt::Display for Condition {
             Guard::Effect(dialog, name) => write!(f, "{} \"{name}\"", name_of(DIALOGS, dialog)),
             Guard::Expiring { name, within } => write!(f, "expiring \"{name}\" {within}"),
             Guard::Injured { part, rank } => write!(f, "injured \"{}\" {rank}", part.as_str()),
+            Guard::Flag(name) => write!(f, "flag \"{name}\""),
             Guard::Available { category, mnemonic } => {
                 write!(f, "available \"{} {mnemonic}\"", category.as_str())
             }
@@ -426,6 +438,7 @@ fn words() -> String {
     all.push("expiring \"<name>\" N".to_owned());
     all.push("injured \"<part>\" N".to_owned());
     all.push("available \"<technique>\"".to_owned());
+    all.push("flag \"<name>\"".to_owned());
     all.join(", ")
 }
 
@@ -446,7 +459,7 @@ fn psm(named: &str) -> Result<(PsmCategory, String), String> {
     let found: Vec<PsmCategory> = wanted
         .unwrap_or_else(|| PsmCategory::ALL.to_vec())
         .into_iter()
-        .filter(|&c| cena_session::psm_cost(c, mnemonic).is_some())
+        .filter(|&c| crate::psm_cost(c, mnemonic).is_some())
         .collect();
     match found.as_slice() {
         [one] => Ok((*one, mnemonic.to_owned())),
@@ -483,12 +496,13 @@ fn parts() -> String {
         .join(", ")
 }
 
-/// Split on whitespace, keeping `"a quoted name"` as one token.
+/// Split on whitespace, keeping `"a quoted name"` as one token: how a group
+/// of guards is read, and how the hunt's importer reads bigshot's.
 ///
 /// # Errors
 ///
 /// A quote opened and not closed.
-pub(crate) fn tokens(text: &str) -> Result<Vec<String>, String> {
+pub fn tokens(text: &str) -> Result<Vec<String>, String> {
     let mut out = Vec::new();
     let mut current = String::new();
     let mut quoted = false;

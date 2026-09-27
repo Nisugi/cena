@@ -15,6 +15,13 @@ pub struct StyledRun {
     /// maps known ids through its own allowlist to a CSS class and shows
     /// unmapped ones only as a tooltip.
     pub preset: Option<String>,
+    /// A trigger's colour for the text, `#rrggbb` (`plan/45`). Optional and
+    /// additive: absent where no trigger painted, and from older servers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// A trigger's background, `#rrggbb`; as `color`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
 }
 
 /// A complete display line. Truncation is visible rather than silent.
@@ -134,6 +141,11 @@ pub struct RoomItemView {
     /// What a player is doing (`hiding`, `sitting`, ...); only ever set for
     /// players. The browser shows it in parentheses after `text`.
     pub status: Option<String>,
+    /// `text` as the character's triggers paint it (`plan/45` Stage 7);
+    /// only ever set for players. Optional and additive: absent where no
+    /// trigger painted, and from older servers, and the browser shows `text`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub painted: Option<Vec<StyledRun>>,
 }
 
 /// Nullable collections distinguish an unobserved feed from known emptiness.

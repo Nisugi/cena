@@ -48,7 +48,13 @@
 //!   "game state".
 //! - **event** is [`Event`], what a session publishes, and [`ObservedEvent`],
 //!   one of those numbered on an observer's stream. The combat model's
-//!   *attack event* is a third, inside one [`Event::Combat`].
+//!   *attack event* is a third, inside one [`Event::Combat`]. A trigger's
+//!   `event` is a fourth: what the model reads a finished line as, a
+//!   [`LineEvent`]; call it a **line event**.
+//! - **flag** is a name a trigger sets, which the guard word `flag "<name>"`
+//!   reads ([`Flags`]), and a creature's `<crtrStatus>` flags, which the
+//!   guard words `ascended`, `mini_boss` and the rest read ([`Fact::Flag`]).
+//!   Say "a trigger's flag" or "a creature's flag".
 //! - **stream** is a game stream window (thoughts, speech, logons:
 //!   [`stream_windows`]), the event stream an observer reads, and the merged
 //!   streams across characters ([`Merger`]).
@@ -64,7 +70,8 @@
 //!   `Claimed::Unknown` is a Hydra command nobody knows.
 //! - **held** is a hunt step imported with a guard Hydra has not built
 //!   ([`Step::held`]). The authority being held by another claimant is
-//!   [`AuthorityHeld`].
+//!   [`AuthorityHeld`]. A trigger's `held` is what an import kept that Hydra
+//!   does not do yet: a Wrayth sound, until sounds are built ([`wrayth`]).
 //! - **role** is a group member's part, lead, follow or solo
 //!   ([`group::Role`]), and a spell's kind in the spell table
 //!   ([`spells::Role`]). The combat model's message families have a third
@@ -72,6 +79,9 @@
 //! - **report** is what a group member tells its leader ([`group::Report`]),
 //!   and the `;loot` and `;combat` reports printed for the player
 //!   (`crates/cena/src/loot.rs`, `crates/cena/src/combat.rs`).
+//! - **category** is the sorter's item type, `gem` or `wand` in a sorted
+//!   container look ([`SessionHandle::sort_containers`]), and a trigger's group in the triggers file,
+//!   the author's word for what the editor sets (`plan/45` §1 row 3).
 //! - **script** is not a Hydra concept (see **Retired**), and survives in
 //!   three places: the Lich scripts Hydra ports from, bigshot's `script` step
 //!   that the importer turns into a sequence, and the **scripted game**, the
@@ -111,8 +121,9 @@
 //!
 //! | Term | Means | Not |
 //! |---|---|---|
-//! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream: [`Snapshot`] | view, handle, ref |
+//! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream, with the triggers its lines were answered with: [`Snapshot`] | view, handle, ref |
 //! | **Event** | something the session saw or did, published to observers: [`Event`] (a frame, a combat chunk, a command sent, a notice) | signal, trigger, hook |
+//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into, and a character's triggers answer it before it is published ([`Matcher::respond`]) | display line, story line |
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
 //! | **Lagged** | what an observer that fell behind is told instead of meeting a silent hole; the recovery is to subscribe again | |
 //! | **Notice** | Hydra speaking to the player, not the game: [`Notice`], the port of `Lich::Messaging` | message |
@@ -145,9 +156,9 @@
 //! | **Routine** | the steps taken against a target, in order: [`Profile::routines`] | |
 //! | **Sequence** | a named list of steps that a routine step may stand for, such as `volley`, with guards read once before its first step, written where bigshot ran a script: [`Profile::sequences`] | script |
 //! | **Step** | one line of a routine or sequence: what is sent, and its guards ([`Step`]) | |
-//! | **Guard** | a named precondition on a step, from the closed vocabulary Hydra defines ([`Guard`]); with its polarity, a [`Condition`]. A step's guards must all hold, and there is no *or* | gate |
+//! | **Guard** | a named precondition on a step, from the closed vocabulary Hydra defines ([`Guard`]); with its polarity, a [`Condition`]. A step's guards must all hold, and there is no *or*. A trigger reads the same words (`plan/45` §1 row 2) | gate |
 //! | **Held** | a step imported with a guard or shape Hydra does not read yet: kept, with the reason named, and never run ([`Step::held`]) | dropped |
-//! | **Import** | a bigshot profile in, a Hydra profile out, with what it could not carry named at the head of the file: [`import()`], [`Import`] | |
+//! | **Import** | a bigshot profile in, a Hydra profile out, with what it could not carry named at the head of the file: [`import()`], [`Import`]. `;trigger import` does the same for a Wrayth settings file's highlights, names and ignores ([`wrayth`]) | |
 //!
 //! "Dropped" is the importer's other outcome and a different one: a bigshot
 //! key it does not carry at all. A held step is still in the profile.
@@ -182,7 +193,28 @@
 //! | **Hub** | Despana's page for every character: a card each, start, quit, reconnect, and the merged streams. Its requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
 //! | **Character page** | one character's own page. No window shows two characters' story text (`plan/29` §5a) | |
 //! | **Merged streams** | thoughts, speech, logons, deaths and announcements across characters, each line once: [`Merger`] | |
-//! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end shows as one line per category ([`LineAssembler::sort_containers`]) | inventory, which is the `inv` window's feed |
+//! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end is published as one line per category ([`SessionHandle::sort_containers`]); the model and the player log keep it whole | inventory, which is the `inv` window's feed |
+//!
+//! # Triggers
+//!
+//! `plan/45`, M8. What a trigger does is not an **effect**: that word is the
+//! model's spell and buff effects.
+//!
+//! | Term | Means | Not |
+//! |---|---|---|
+//! | **Trigger** | when a finished line matches, is read as a line event, or a condition becomes true, do something, for everyone or the characters it names: [`Trigger`]. Every trigger is in one file, by name ([`triggers`]) | highlight, which is one thing a trigger can do; event |
+//! | **Response** | what a trigger does: a look, a squelch, a substitute, a redirect or a flag. PROPOSED (`plan/45` §3d): the author may choose another word | effect, which is [`Effect`]; action |
+//! | **Line event** | what the model reads a finished line as, from a closed vocabulary (`speech`, `attacked`, `incident weapon_reaction`, ...): [`LineEvent`] | event, which is [`Event`] |
+//! | **Condition** (a trigger's) | guard words that fire a trigger when they all become true, and again only after staying false for its `rearm`: [`Rule::condition`], [`Edges`]. Each word is a [`Condition`] | alert |
+//! | **`only_if`** | guard words that must all hold when a trigger would fire, read against the character and its current target: [`Rule::only_if`] | gate, which is [`Gate`] |
+//! | **Trigger's flag** | a name a trigger sets, until cleared or for so many game seconds, or clears; the session publishes each change ([`Event::Flag`]) so a hunt's guard reads it: [`Flags`] | status |
+//! | **Look** | a response's colour, background and bold, over the match, a capture group or the line: [`Look`] | style, which is the wire's [`Style`] |
+//! | **Paint** | a look, resolved: what one stretch of a published [`Line`] is painted, the best look deciding each of colour, background and bold: [`Paint`]. A name in the room window's players is painted the same way, and only painted ([`Matcher::paint_entry`]) | highlight |
+//! | **Master switch** | a category, or one kind of response, turned off for every trigger: the file's `[categories]` and `[responses]` | |
+//! | **Attention** | what a trigger calls for beyond the line: a sound, an OS notification, a banner ([`Attention`]); once in its trigger's cooldown, and once for every character that saw the same thing, played by the binary even with no page open | alert, which is one kind: the banner |
+//! | **Origin** | where an imported trigger came from, `Wrayth: <file>`: importing that file again replaces what it brought, and it holds a send from a rule the player did not write ([`wrayth`]). Not a command's [`Origin`], who sent it | source |
+//! | **Act** | a trigger's line sent as if the player typed it: through the `;` command table first, then to the game as [`Origin::Trigger`], never counted as a person; at most once in the trigger's cooldown and at the character's pace ([`Act`], [`Pace`]) | action, which `plan/12` §6a.3 keeps for a registry not built |
+//! | **Approved** | the line a trigger from elsewhere may send (`;trigger approve`): only that line, so a changed one is held again | trusted |
 //!
 //! # Names
 //!
@@ -206,15 +238,26 @@
 //! [`AddError::AccountInUse`]: cena_host::AddError::AccountInUse
 //! [`AuthorityHeld`]: cena_session::AuthorityHeld
 //! [`AuthorityToken`]: cena_session::AuthorityToken
+//! [`backoff`]: cena_session::backoff
+//! [`batch::Desk`]: cena_behavior::batch::Desk
+//! [`batch`]: mod@cena_behavior::batch
 //! [`BEHAVIOR_WATCHDOG`]: cena_behavior::BEHAVIOR_WATCHDOG
-//! [`COMMAND_SYMBOL`]: cena_session::command::COMMAND_SYMBOL
+//! [`chain`]: cena_behavior::hunt::chain
+//! [`claim`]: cena_session::claim
+//! [`claimant::Desk`]: cena_session::command::claimant::Desk
 //! [`Claimed`]: cena_session::command::Claimed
 //! [`ClientMessage`]: cena_ui::ClientMessage
+//! [`COMMAND_SYMBOL`]: cena_session::command::COMMAND_SYMBOL
 //! [`CommandQueue`]: cena_session::CommandQueue
-//! [`Condition`]: cena_behavior::hunt::Condition
+//! [`Condition`]: cena_session::guard::Condition
 //! [`Connector`]: cena_session::Connector
 //! [`CritTables`]: cena_session::CritTables
 //! [`Event::Combat`]: cena_session::Event::Combat
+//! [`Event::Line`]: cena_session::Event::Line
+//! [`Event::Flag`]: cena_session::Event::Flag
+//! [`Attention`]: cena_session::trigger::Attention
+//! [`Edges`]: cena_session::trigger::Edges
+//! [`Effect`]: cena_session::Effect
 //! [`Event`]: cena_session::Event
 //! [`Farewell`]: cena_session::Farewell
 //! [`Frame::UnknownTag`]: cena_session::Frame::UnknownTag
@@ -223,21 +266,45 @@
 //! [`GameState::invalidate_for_reconnect`]: cena_session::GameState::invalidate_for_reconnect
 //! [`GameState`]: cena_session::GameState
 //! [`Gate`]: cena_session::Gate
+//! [`Fact::Flag`]: cena_session::guard::Fact::Flag
+//! [`Flags`]: cena_session::flags::Flags
 //! [`Generation`]: cena_session::Generation
-//! [`Guard`]: cena_behavior::hunt::Guard
+//! [`group::Board`]: cena_behavior::group::Board
+//! [`group::Boards`]: cena_behavior::group::Boards
+//! [`group::Leading`]: cena_behavior::group::Leading
+//! [`group::Muster`]: cena_behavior::group::Muster
+//! [`group::muster`]: fn@cena_behavior::group::muster
+//! [`group::Party`]: cena_behavior::group::Party
+//! [`group::Report`]: cena_behavior::group::Report
+//! [`group::Role`]: cena_behavior::group::Role
+//! [`group::role`]: fn@cena_behavior::group::role
+//! [`group::Settings::lost_wait`]: field@cena_behavior::group::Settings::lost_wait
+//! [`group::successor`]: fn@cena_behavior::group::successor
+//! [`Guard`]: cena_session::guard::Guard
 //! [`Heartbeat`]: cena_behavior::Heartbeat
 //! [`Host`]: cena_host::Host
-//! [`Hunt`]: cena_behavior::hunt::Hunt
 //! [`HubControl`]: cena_web::HubControl
 //! [`HubRequest`]: cena_web::HubRequest
+//! [`hunt()`]: fn@cena_behavior::hunt::hunt
+//! [`hunt::Desk`]: cena_behavior::hunt::Desk
+//! [`Hunt`]: cena_behavior::hunt::Hunt
+//! [`import()`]: fn@cena_behavior::hunt::import
 //! [`Import`]: cena_behavior::hunt::Import
+//! [`Look`]: cena_session::trigger::Look
+//! [`Line`]: cena_session::Line
+//! [`LineEvent`]: cena_session::trigger::LineEvent
 //! [`LONG_LIVED`]: cena_session::LONG_LIVED
-//! [`LineAssembler::sort_containers`]: cena_ui::LineAssembler::sort_containers
 //! [`MAX_UNATTENDED_LOSSES`]: cena_session::MAX_UNATTENDED_LOSSES
+//! [`Matcher::respond`]: cena_session::trigger::Matcher::respond
 //! [`Merger`]: cena_ui::Merger
+//! [`movement`]: cena_session::movement
 //! [`Notice`]: cena_session::Notice
 //! [`ObservedEvent`]: cena_session::ObservedEvent
+//! [`Origin`]: cena_session::Origin
 //! [`Origin::Manual`]: cena_session::Origin::Manual
+//! [`Origin::Trigger`]: cena_session::Origin::Trigger
+//! [`Act`]: cena_session::trigger::Act
+//! [`Pace`]: cena_session::trigger::Pace
 //! [`Outcome`]: cena_session::Outcome
 //! [`PREEMPT_GRACE`]: cena_session::PREEMPT_GRACE
 //! [`Preempted`]: cena_session::Preempted
@@ -247,6 +314,8 @@
 //! [`Refusal`]: cena_session::Refusal
 //! [`Rooms::rally`]: field@cena_behavior::hunt::profile::Rooms::rally
 //! [`Runs`]: cena_session::Runs
+//! [`Paint`]: cena_session::trigger::Paint
+//! [`Matcher::paint_entry`]: cena_session::trigger::Matcher::paint_entry
 //! [`ServerMessage`]: cena_ui::ServerMessage
 //! [`Session`]: cena_session::Session
 //! [`SessionActor`]: cena_session::SessionActor
@@ -258,47 +327,33 @@
 //! [`SessionHandle::send_and_await`]: cena_session::SessionHandle::send_and_await
 //! [`SessionHandle::send_now`]: cena_session::SessionHandle::send_now
 //! [`SessionHandle`]: cena_session::SessionHandle
+//! [`SessionHandle::sort_containers`]: cena_session::SessionHandle::sort_containers
 //! [`SessionId`]: cena_session::SessionId
 //! [`SessionObserver::subscribe`]: cena_session::SessionObserver::subscribe
 //! [`SessionView::project`]: cena_ui::SessionView::project
 //! [`Snapshot`]: cena_session::Snapshot
+//! [`spells::Role`]: cena_session::spells::Role
+//! [`State::behaviors_may_run`]: cena_session::State::behaviors_may_run
 //! [`State::Ready`]: cena_session::State::Ready
 //! [`State::Syncing`]: cena_session::State::Syncing
-//! [`State::behaviors_may_run`]: cena_session::State::behaviors_may_run
 //! [`State`]: cena_session::State
 //! [`Step::held`]: field@cena_behavior::hunt::Step::held
 //! [`Step`]: cena_behavior::hunt::Step
-//! [`SupervisedSession`]: cena_session::SupervisedSession
-//! [`Trip::tick`]: cena_behavior::travel::Trip::tick
-//! [`Trip`]: cena_behavior::travel::Trip
-//! [`UnknownTag`]: cena_session::UnknownTag
-//! [`WIRE_VERSION`]: cena_ui::WIRE_VERSION
-//! [`WebServer`]: cena_web::WebServer
-//! [`backoff`]: cena_session::backoff
-//! [`batch::Desk`]: cena_behavior::batch::Desk
-//! [`batch`]: mod@cena_behavior::batch
-//! [`chain`]: cena_behavior::hunt::chain
-//! [`claim`]: cena_session::claim
-//! [`claimant::Desk`]: cena_session::command::claimant::Desk
-//! [`hunt()`]: fn@cena_behavior::hunt::hunt
-//! [`group::Board`]: cena_behavior::group::Board
-//! [`group::Boards`]: cena_behavior::group::Boards
-//! [`group::Leading`]: cena_behavior::group::Leading
-//! [`group::Party`]: cena_behavior::group::Party
-//! [`group::Muster`]: cena_behavior::group::Muster
-//! [`group::Report`]: cena_behavior::group::Report
-//! [`group::Role`]: cena_behavior::group::Role
-//! [`group::Settings::lost_wait`]: field@cena_behavior::group::Settings::lost_wait
-//! [`group::muster`]: fn@cena_behavior::group::muster
-//! [`group::role`]: fn@cena_behavior::group::role
-//! [`group::successor`]: fn@cena_behavior::group::successor
-//! [`hunt::Desk`]: cena_behavior::hunt::Desk
-//! [`import()`]: fn@cena_behavior::hunt::import
-//! [`movement`]: cena_session::movement
-//! [`spells::Role`]: cena_session::spells::Role
 //! [`stop_all`]: cena_host::stop_all
+//! [`Style`]: cena_session::Style
 //! [`stream_windows`]: cena_session::stream_windows
+//! [`SupervisedSession`]: cena_session::SupervisedSession
 //! [`sync()`]: fn@cena_behavior::sync::sync
 //! [`travel()`]: fn@cena_behavior::travel::travel
 //! [`travel::Desk`]: cena_behavior::travel::Desk
+//! [`Trip::tick`]: cena_behavior::travel::Trip::tick
+//! [`Trigger`]: cena_session::trigger::Trigger
+//! [`Rule::condition`]: cena_session::trigger::Rule::condition
+//! [`Rule::only_if`]: cena_session::trigger::Rule::only_if
+//! [`triggers`]: mod@cena_behavior::triggers
+//! [`wrayth`]: mod@cena_behavior::triggers::wrayth
+//! [`Trip`]: cena_behavior::travel::Trip
+//! [`UnknownTag`]: cena_session::UnknownTag
 //! [`watch`]: cena_behavior::watch
+//! [`WebServer`]: cena_web::WebServer
+//! [`WIRE_VERSION`]: cena_ui::WIRE_VERSION

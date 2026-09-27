@@ -56,8 +56,11 @@ with `&session=` its id appended.
 `lifecycle`, nullable `prompt`, and bounded `unknown_tags`. `RoomView` has
 nullable `id` and `title`, nullable styled-run `description`, nullable string
 array `exits`, and nullable `creatures`, `objects`, `players` arrays. Room items
-have string `id`, `noun`, `text`, and nullable string `status`. A null collection
-means unobserved; an empty array means observed empty.
+have string `id`, `noun`, `text`, and nullable string `status`. A player may also
+carry `painted`, styled runs of `text` as the character's triggers paint it
+(`plan/45` Stage 7), each run's `color` and `background` `#rrggbb` as a story
+line's; it is absent where no trigger painted, and a viewer shows `text`. A null
+collection means unobserved; an empty array means observed empty.
 
 Hands are tagged `kind: unknown`, `empty`, or `holding`; holding adds nullable
 `id`/`noun` and string `name`. Vitals have fixed `health`, `mana`, `stamina`,
@@ -78,10 +81,26 @@ are null; an unknown attempt must not be displayed as attempt zero.
 Story lines are `{stream, runs, truncated}`. The empty stream name is Story's
 main channel. Each run is `{text, bold, monospace, preset}`; preset is nullable
 and is only a token for a browser-owned allowlist. It must never become arbitrary
-CSS or markup. All text, including unknown-tag diagnostics, is rendered through
+CSS or markup.
+
+A run may also carry `color` and `background`, a trigger's paint (`plan/45`):
+optional and additive, absent where no trigger painted and from older servers.
+When present each is exactly `#rrggbb`, lowercase; a viewer refuses a message
+carrying anything else, and applies the value only as a colour. The paint was
+resolved natively, once, for every viewer; a viewer lays it on and decides
+nothing. A trigger's bold is folded into `bold`. All text, including unknown-tag diagnostics, is rendered through
 text nodes. Clickable links and full markup fidelity are outside this slice.
 Diagnostics are `{name, raw, truncated}`, capped at 32 entries, 128 name bytes
 and 1024 raw bytes each; the native model retains its own full diagnostic ring.
+
+An `alert` message is a trigger's banner (`plan/45` Stage 3): `{kind, version,
+session, generation, text}`, sent to the character's pages connected when it
+comes, after the update carrying the line that called it, and never kept in a
+snapshot, so a page opened later is not shown banners it missed. The text is
+plain and is rendered through a text node. A viewer shows it briefly; the
+native session has already applied the trigger's cooldown. Added within version
+1: a page is served by the same process that sends it, and a page from an older
+process cannot pair with a newer one, since the pairing token is per process.
 
 Commands allow 1–4096 UTF-8 bytes with non-whitespace content, no CR/LF/NUL,
 and no trimming of accepted text. Request IDs allow 1–64 ASCII letters, digits,
@@ -89,14 +108,14 @@ hyphens and underscores. Validation is pure; the listener additionally checks
 version, authentication, duplicate IDs, and session identity. The native send
 decision enforces current generation.
 
-`LineAssembler::push` takes already projected runs. Frame boundaries do not
-finish a line, streams retain independent partials, embedded newlines and the
-explicit `ends_line` marker finish lines. Prompt handling calls `flush`; a
-generation change or observation gap calls `reset`. Native clear-stream handling
-calls `clear_stream`. Limits are 16 KiB text and 256 runs per unfinished line,
-32 pending streams, and 128 bytes per stream/preset token. Overflow is marked
-as `truncated`, and oversized stream keys are never joined by a shortened key.
-The caller owns bounds for completed history and transport queues.
+Lines are assembled natively, once: the session publishes each line the model
+finishes (`plan/45` §4a), already sorted by `;sorter` and answered by the
+character's triggers. `painted` splits a published line's runs where its paint
+starts and stops; `story_lines` bounds it and splits it at any embedded newline.
+Limits are 16 KiB text and 256 runs per line, and 128 bytes per stream/preset
+token. Overflow is marked as `truncated`, and oversized stream keys are never
+joined by a shortened key. The caller owns bounds for completed history and
+transport queues.
 
 `;sorter` changes lines, never their shape. `push_naming` is `push` plus the
 noun of the object a run names; with `sort_containers(true)`, a main-stream

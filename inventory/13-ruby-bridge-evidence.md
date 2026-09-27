@@ -1,6 +1,6 @@
 # 13 — The Ruby bridge's evidence: Lich's runtime, Lich against Hydra, and the scripts
 
-What `plan/45` stands on, measured 2026-09-26/27. Three measurements, each made by a research
+What `plan/46` stands on, measured 2026-09-26/27. Three measurements, each made by a research
 agent reading the sources and spot-checked afterwards (three claims re-read at their lines:
 `waitforre`'s loop at `global_defs.rb:1402`, the 400-line buffer at `common/script.rb:1827`,
 the `NilClass` patch at `common/class_exts/nilclass.rb:9`; all held).

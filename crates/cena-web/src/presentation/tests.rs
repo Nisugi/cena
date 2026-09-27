@@ -12,6 +12,7 @@ fn snapshot(cursor: u64) -> Snapshot {
         state: GameState::default(),
         lifecycle: State::Ready,
         retry: None,
+        triggers: Arc::default(),
     }
 }
 
@@ -179,20 +180,11 @@ fn reconnecting_before_retry_decision_keeps_unknown_attempt_and_delay() {
 }
 
 #[test]
-fn missing_fence_clears_partial_lines_and_marks_snapshot_gap() {
+fn missing_fence_marks_snapshot_gap() {
     let mut pending = Pending::new(&snapshot(0));
-    pending.assembler.push(
-        "",
-        &StyledRun {
-            text: "incomplete".into(),
-            ..StyledRun::default()
-        },
-        false,
-    );
     let (_sender, mut events) = broadcast::channel(1);
     pending.fence(&snapshot(3), &mut events);
     assert!(pending.gap);
-    assert!(pending.assembler.flush().is_empty());
     let mut hub = Hub::new();
     let mut changes = hub.updates.subscribe();
     hub.publish(&snapshot(3), Vec::new(), pending.gap).unwrap();
@@ -224,27 +216,112 @@ fn fence_consumes_exactly_the_native_snapshot_prefix() {
     assert_eq!(events.try_recv().unwrap().cursor, 3);
 }
 
-#[test]
-fn changed_generation_discards_unfinished_old_text() {
-    let mut pending = Pending::new(&snapshot(0));
-    pending.assembler.push(
-        "",
-        &StyledRun {
-            text: "old".into(),
-            ..StyledRun::default()
-        },
-        false,
-    );
-    pending.observe(ObservedEvent {
+/// An observed event at `cursor` on connection `generation`.
+fn observed(generation: u32, cursor: u64, event: Event) -> ObservedEvent {
+    ObservedEvent {
         session: SessionId::FIRST,
-        generation: Generation(1),
-        cursor: 1,
-        event: Event::Frame(Box::new(Frame::Prompt {
-            time: "1".into(),
-            text: ">".into(),
-        })),
-    });
-    assert!(pending.lines.is_empty());
+        generation: Generation(generation),
+        cursor,
+        event,
+    }
+}
+
+/// A published line of plain text on `stream`.
+fn published(stream: &str, text: &str) -> Event {
+    Event::Line(std::sync::Arc::new(cena_session::Line::new(
+        stream,
+        cena_session::ChunkLine::plain(text).runs,
+    )))
+}
+
+fn drawn(pending: &Pending) -> Vec<(String, String)> {
+    pending
+        .lines
+        .iter()
+        .map(|line| {
+            let text = line.runs.iter().map(|run| run.text.as_str()).collect();
+            (line.stream.clone(), text)
+        })
+        .collect()
+}
+
+#[test]
+fn a_published_line_is_drawn_and_a_text_frame_is_not() {
+    // The session's line is what is drawn (`plan/45` section 4a). A text frame
+    // alone draws nothing, or a line would be drawn twice.
+    let mut pending = Pending::new(&snapshot(0));
+    let text = cena_session::TextFrame {
+        content: "You see a rock.".into(),
+        stream: String::new(),
+        style: cena_session::Style::default(),
+        link: None,
+        inner_link: None,
+        ends_line: true,
+    };
+    pending.observe(observed(0, 1, Event::Frame(Box::new(Frame::Text(text)))));
+    pending.observe(observed(0, 2, published("", "You see a rock.")));
+    assert_eq!(drawn(&pending), [(String::new(), "You see a rock.".into())]);
+}
+
+/// A line the session painted is drawn with its paint (`plan/45` §4): the
+/// look was resolved there, once, and the pump only lays it on.
+#[test]
+fn a_painted_line_is_drawn_with_its_paint() {
+    let mut pending = Pending::new(&snapshot(0));
+    let mut line =
+        cena_session::Line::new("", cena_session::ChunkLine::plain("You are stunned!").runs);
+    line.paint = vec![cena_session::trigger::Paint {
+        span: 8..15,
+        color: Some(cena_session::trigger::Color {
+            red: 0xff,
+            green: 0x40,
+            blue: 0x40,
+        }),
+        background: None,
+        bold: false,
+    }];
+    pending.observe(observed(0, 1, Event::Line(std::sync::Arc::new(line))));
+    let runs = &pending.lines[0].runs;
+    let pieces: Vec<(&str, Option<&str>)> = runs
+        .iter()
+        .map(|run| (run.text.as_str(), run.color.as_deref()))
+        .collect();
+    assert_eq!(
+        pieces,
+        [
+            ("You are ", None),
+            ("stunned", Some("#ff4040")),
+            ("!", None)
+        ]
+    );
+}
+
+#[test]
+fn a_quiet_windows_report_is_left_out_and_other_streams_are_not() {
+    let mut pending = Pending::new(&snapshot(0));
+    pending.observe(observed(0, 1, Event::Quiet(true)));
+    pending.observe(observed(0, 2, published("", "Name: Nisugi")));
+    pending.observe(observed(0, 3, published("thoughts", "[OOC] hi")));
+    pending.observe(observed(0, 4, Event::Quiet(false)));
+    pending.observe(observed(0, 5, published("", "after")));
+    assert_eq!(
+        drawn(&pending),
+        [
+            ("thoughts".into(), "[OOC] hi".into()),
+            (String::new(), "after".into())
+        ]
+    );
+}
+
+#[test]
+fn a_quiet_window_does_not_outlive_its_connection() {
+    // The pump keeps no partial line (the model does, and clears it on a
+    // reconnect: cena-model's `reconnect_invalidation.rs`). What it does keep
+    // across events is the quiet window, and a new connection ends it.
+    let mut pending = Pending::new(&snapshot(0));
+    pending.observe(observed(0, 1, Event::Quiet(true)));
+    pending.observe(observed(1, 2, published("", "fresh")));
+    assert_eq!(drawn(&pending), [(String::new(), "fresh".into())]);
 }
 
 #[test]

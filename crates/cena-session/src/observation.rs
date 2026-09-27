@@ -2,9 +2,10 @@
 //! one synchronous turn, so a snapshot and its stream share an exact fence.
 
 use crate::{Event, GameState, Generation, GenerationCell, SessionId, Snapshot, State};
+use cena_model::trigger::{Act, Attention, Cooldowns, Edges, Matcher, Pace};
 use std::sync::{
-    Arc, Mutex,
-    atomic::{AtomicU64, Ordering},
+    Arc, Mutex, PoisonError,
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
@@ -164,6 +165,38 @@ pub(crate) struct EventPublisher {
     /// Held while a cursor is taken and its event sent, and while a snapshot
     /// is paired with a subscription. See the type's docs.
     fence: Arc<Mutex<()>>,
+    /// `;sorter`: whether a container look is published sorted
+    /// (`cena_model::sorter`). Here because this is what every viewer is
+    /// given, and because every connection's actor shares this publisher, so
+    /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
+    sorting: Arc<AtomicBool>,
+    /// This character's triggers, compiled (`plan/45`): what each finished
+    /// line is answered with before it is published, and what its conditions
+    /// last read. Here for `sorting`'s reasons, which is also why a reconnect
+    /// keeps the conditions' memory. None until the binary reads the file.
+    triggers: Arc<Mutex<Answering>>,
+}
+
+/// A character's triggers and their memory, replaced together: new
+/// triggers start new memory, so their conditions' first reading is silent
+/// (`cena_model::trigger::Edges`) and their attention starts cool
+/// (`Cooldowns`).
+#[derive(Debug, Default)]
+struct Answering {
+    matcher: Arc<Matcher>,
+    edges: Edges,
+    cooldowns: Cooldowns,
+    pace: Pace,
+}
+
+/// What the fired triggers may do beyond the line now: their attention and
+/// sends past each trigger's cooldown, and the sends the pace held back.
+pub(crate) struct Admitted {
+    pub(crate) attention: Vec<Attention>,
+    pub(crate) acts: Vec<Act>,
+    pub(crate) held: Vec<Act>,
+    /// The held sends are to be said: once a window.
+    pub(crate) say_held: bool,
 }
 
 impl EventPublisher {
@@ -176,7 +209,96 @@ impl EventPublisher {
             session,
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
+            sorting: Arc::new(AtomicBool::new(false)),
+            triggers: Arc::default(),
         }
+    }
+
+    /// Publish container looks sorted, or as the game sent them.
+    pub(crate) fn sort_containers(&self, on: bool) {
+        self.sorting.store(on, Ordering::Relaxed);
+    }
+
+    /// Whether container looks are published sorted.
+    pub(crate) fn sorts_containers(&self) -> bool {
+        self.sorting.load(Ordering::Relaxed)
+    }
+
+    /// Answer each line published from now on with `triggers`.
+    pub(crate) fn set_triggers(&self, triggers: Matcher) {
+        *self.triggers.lock().unwrap_or_else(PoisonError::into_inner) = Answering {
+            matcher: Arc::new(triggers),
+            ..Answering::default()
+        };
+    }
+
+    /// The triggers each line is answered with.
+    pub(crate) fn triggers(&self) -> Arc<Matcher> {
+        Arc::clone(
+            &self
+                .triggers
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .matcher,
+        )
+    }
+
+    /// Read the conditions against `state`: the triggers they are in, and
+    /// the ranks of those that became true.
+    pub(crate) fn fire_conditions(&self, state: &GameState) -> (Arc<Matcher>, Vec<usize>) {
+        let mut answering = self.triggers.lock().unwrap_or_else(PoisonError::into_inner);
+        let Answering { matcher, edges, .. } = &mut *answering;
+        let fired = if matcher.conditions().is_empty() {
+            Vec::new()
+        } else {
+            edges.fire(matcher, state)
+        };
+        (Arc::clone(matcher), fired)
+    }
+
+    /// What `attention` and `acts`, from the triggers that fired, may do at
+    /// game second `now`: each trigger once in its cooldown, for both
+    /// together, then the sends at the character's pace.
+    pub(crate) fn admit(
+        &self,
+        attention: Vec<Attention>,
+        acts: Vec<Act>,
+        now: Option<u32>,
+    ) -> Admitted {
+        let mut admitted = Admitted {
+            attention: Vec::new(),
+            acts: Vec::new(),
+            held: Vec::new(),
+            say_held: false,
+        };
+        if attention.is_empty() && acts.is_empty() {
+            return admitted;
+        }
+        let mut answering = self.triggers.lock().unwrap_or_else(PoisonError::into_inner);
+        let Answering {
+            cooldowns, pace, ..
+        } = &mut *answering;
+        // One admission per trigger, whether it calls, sends, or both.
+        let mut decided: Vec<(String, bool)> = Vec::new();
+        let mut may = |trigger: &str, cooldown: u32| {
+            if let Some((_, may)) = decided.iter().find(|(name, _)| name == trigger) {
+                return *may;
+            }
+            let may = cooldowns.admit(trigger, cooldown, now);
+            decided.push((trigger.to_owned(), may));
+            may
+        };
+        admitted.attention = attention
+            .into_iter()
+            .filter(|call| may(&call.trigger, call.cooldown))
+            .collect();
+        let acts: Vec<Act> = acts
+            .into_iter()
+            .filter(|act| may(&act.trigger, act.cooldown))
+            .collect();
+        (admitted.acts, admitted.held) = pace.admit(acts, now);
+        admitted.say_held = !admitted.held.is_empty() && pace.say_held(now);
+        admitted
     }
 
     /// A publisher over a caller's own legacy channel, with a fenced stream
@@ -260,6 +382,7 @@ impl EventPublisher {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .clone(),
+            triggers: self.triggers(),
         }
     }
 

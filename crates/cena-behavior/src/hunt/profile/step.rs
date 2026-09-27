@@ -1,5 +1,5 @@
 //! One step of a routine or sequence: what to send, and the guards in
-//! parentheses that say when (`hunt/guard.rs`).
+//! parentheses that say when (`cena-model/src/guard.rs`).
 
 use std::fmt;
 

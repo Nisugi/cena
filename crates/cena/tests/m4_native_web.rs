@@ -92,7 +92,8 @@ async fn assert_story(socket: &mut Browser, mut lines: Vec<StoryLine>) -> TestRe
                 ServerMessage::Receipt { .. }
                 | ServerMessage::Sessions { .. }
                 | ServerMessage::HubNote { .. }
-                | ServerMessage::Merged { .. } => {
+                | ServerMessage::Merged { .. }
+                | ServerMessage::Alert { .. } => {
                     return Err(io::Error::other("expected room presentation").into());
                 }
             }

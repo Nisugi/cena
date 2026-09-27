@@ -565,3 +565,36 @@ fn the_burst_declares_negative_indicators_too() {
         "and IconDEAD, likewise"
     );
 }
+
+/// A line left half-finished when the connection drops never joins the next
+/// connection's first line.
+///
+/// Despana's pump used to pin this for its own assembler; since every viewer
+/// draws the model's line (`plan/45` §4a), the model is where it must hold.
+#[test]
+fn a_half_finished_line_does_not_join_the_next_connections_first() {
+    // A push interrupts the main line, so "Story " is left unfinished.
+    let wire = "Story <pushStream id='thoughts'/>a thought
+<popStream/>";
+    let fresh = |state: &mut GameState| {
+        let mut parser = cena_protocol::Parser::new();
+        for frame in parser.push_bytes(
+            b"fresh
+",
+        ) {
+            state.apply(&frame);
+        }
+        state
+            .stream("")
+            .last()
+            .map(cena_protocol::runs::Runs::plain)
+    };
+
+    // The fact first: without a reconnect, the fragment joins what follows.
+    let mut same_connection = state_from(wire);
+    assert_eq!(fresh(&mut same_connection).as_deref(), Some("Story fresh"));
+
+    let mut reconnected = state_from(wire);
+    reconnected.invalidate_for_reconnect();
+    assert_eq!(fresh(&mut reconnected).as_deref(), Some("fresh"));
+}

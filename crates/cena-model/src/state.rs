@@ -58,12 +58,13 @@ pub mod departure;
 pub mod disk;
 pub mod doses;
 pub mod equality;
+pub mod flags;
 pub mod fog;
 pub mod gameobj;
 pub mod group;
 pub mod hands;
 pub mod hazard;
-mod idle;
+pub(crate) mod idle;
 pub mod incident;
 pub mod inspect;
 mod inventory;
@@ -172,6 +173,8 @@ pub struct GameState {
     /// dialog's `dDBTarget` list. Evidence of hostility, and the input to
     /// "something is here that I cannot see".
     pub targeting: targeting::Targeting,
+    /// The flags the character's triggers have set (`flags.rs`, `plan/45`).
+    pub flags: flags::Flags,
     /// `<castTime value=>`: the epoch second a cast's hard roundtime ends.
     ///
     /// **Separate from [`Self::roundtime_ends`]**, as it is in Lich

@@ -120,8 +120,8 @@ impl PlayerWriter {
     /// a rotation between a chunk ending `SEC` and one starting `RET` wrote
     /// both halves in clear.
     ///
-    /// That cannot happen here: the unit is a **line**, already assembled by
-    /// `LineAssembler` before it reaches [`LogLine`], and
+    /// That cannot happen here: the unit is a **line**, already finished by
+    /// the model (`route_text`) before it reaches [`LogLine`], and
     /// [`Redactions::apply`] sees each one whole. Recorded so nobody later
     /// reads the missing `pending` as an oversight -- and so that anyone who
     /// changes the unit from a line to something smaller knows what they are

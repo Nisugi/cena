@@ -174,6 +174,11 @@ impl GameState {
             loot: _,
             // Incidents likewise: what happened before the gap still happened.
             incidents: _,
+            // **Kept.** The player's triggers set them, and what those
+            // concluded before the gap is the player's to clear, not the
+            // game's to forget. One set for a time runs out by the server's
+            // clock, which does not stop for a reconnect (`flags.rs`).
+            flags: _,
             creatures,
             pending,
             chunk,

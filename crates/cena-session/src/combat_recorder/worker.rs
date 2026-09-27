@@ -8,7 +8,7 @@
 //! recorder runs on the `AsyncProcessor` worker, never on the game thread.
 //!
 //! The broadcast ring is the wrong pipe for it. That ring is for OBSERVERS,
-//! for whom `Lagged` is an honest answer (`actor.rs`, `EVENT_CHANNEL_BOUND`);
+//! for whom `Lagged` is an honest answer (`actor/bounds.rs`, `EVENT_CHANNEL_BOUND`);
 //! a recorder that misses a chunk is wrong forever. So it gets a bounded
 //! queue of its own, fed directly by the actor, and the one way it can lose
 //! a chunk -- the queue full because the disk stopped -- is counted and

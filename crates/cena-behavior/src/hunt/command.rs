@@ -304,7 +304,7 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
         Some((word, args)) if word.eq_ignore_ascii_case("import") => import(args),
         Some((word, args)) if word.eq_ignore_ascii_case("import-loot") && !args.is_empty() => {
             Ok(Command::ImportLoot {
-                path: unquoted(&args.join(" ")),
+                path: crate::settings::unquoted(&args.join(" ")),
             })
         }
         Some((word, [name])) if word.eq_ignore_ascii_case("check") => {
@@ -438,19 +438,9 @@ fn import(args: &[&str]) -> Result<Command, String> {
         return Err(USAGE.to_owned());
     }
     Ok(Command::Import {
-        path: unquoted(&path.join(" ")),
+        path: crate::settings::unquoted(&path.join(" ")),
         name,
     })
-}
-
-/// A path as typed, without the quotes around it: Windows' "Copy as path"
-/// adds them, and `"` cannot be in a Windows file name (os error 123).
-fn unquoted(path: &str) -> String {
-    ['"', '\'']
-        .iter()
-        .find_map(|&q| path.strip_prefix(q)?.strip_suffix(q))
-        .unwrap_or(path)
-        .to_owned()
 }
 
 #[cfg(test)]

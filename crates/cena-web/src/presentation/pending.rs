@@ -1,15 +1,29 @@
-//! Lines assembled from observed events between two publishes, fenced against
+//! Lines drawn from observed events between two publishes, fenced against
 //! each native snapshot's cursor.
+//!
+//! The session publishes each finished line ([`Event::Line`]), the model's
+//! own, so this draws those rather than assembling lines from text frames
+//! (`plan/45` §4a). It keeps no partial line: the model does, and clears it
+//! on a reconnect. It sorts nothing and matches nothing: with `;sorter` on,
+//! the session publishes a container look already sorted, and a line comes
+//! already answered by the character's triggers, its paint resolved
+//! ([`painted`]). Room components are not lines in the model, so their bodies
+//! are still drawn from their frames here, unpainted. A trigger's banner
+//! ([`Event::Attention`]'s `alert`) is kept here too, for the next publish to
+//! send after its lines, the last [`MAX_ALERTS`] of them.
 
 use super::hub::line_bytes;
 use super::{MAX_DRAIN, MAX_HISTORY_BYTES, MAX_HISTORY_LINES};
-use cena_session::{Event, Frame, Generation, LinkKind, ObservedEvent, Snapshot};
-use cena_ui::{LineAssembler, StoryLine, StyledRun};
+use cena_session::{Event, Frame, Generation, Line, ObservedEvent, Snapshot};
+use cena_ui::{StoryLine, painted, story_lines};
 use std::collections::VecDeque;
 use tokio::sync::broadcast;
 
+/// The banners kept between two publishes, newest kept: a viewer shows no
+/// more at once (`VellumFE`'s `MAX_CONCURRENT`).
+pub(super) const MAX_ALERTS: usize = 5;
+
 pub(super) struct Pending {
-    pub(super) assembler: LineAssembler,
     pub(super) lines: VecDeque<StoryLine>,
     pub(super) bytes: usize,
     pub(super) cursor: u64,
@@ -19,18 +33,20 @@ pub(super) struct Pending {
     /// report stays out of the story. Other streams -- a thought, a death
     /// -- still show; they were not the command's.
     pub(super) quiet: bool,
+    /// Banners since the last publish, oldest first.
+    pub(super) alerts: Vec<String>,
 }
 
 impl Pending {
     pub(super) fn new(snapshot: &Snapshot) -> Self {
         Self {
-            assembler: LineAssembler::default(),
             lines: VecDeque::new(),
             bytes: 0,
             cursor: snapshot.cursor,
             generation: snapshot.generation,
             gap: false,
             quiet: false,
+            alerts: Vec::new(),
         }
     }
 
@@ -40,28 +56,41 @@ impl Pending {
         }
         self.cursor = event.cursor;
         if event.generation != self.generation {
-            self.assembler.reset();
             self.generation = event.generation;
             // A window never outlives its connection.
             self.quiet = false;
         }
-        if let Event::Quiet(quiet) = event.event {
-            self.quiet = quiet;
-            return;
-        }
-        if let Event::Frame(frame) = event.event {
-            if self.quiet && is_report(&frame) {
+        let lines = match event.event {
+            Event::Quiet(quiet) => {
+                self.quiet = quiet;
                 return;
             }
-            let lines = frame_lines(&mut self.assembler, &frame);
-            for line in lines {
-                self.bytes += line_bytes(&line);
-                self.lines.push_back(line);
-                while self.lines.len() > MAX_HISTORY_LINES || self.bytes > MAX_HISTORY_BYTES {
-                    if let Some(old) = self.lines.pop_front() {
-                        self.bytes -= line_bytes(&old);
-                        self.gap = true;
-                    }
+            Event::Attention(call) => {
+                if let Some(text) = &call.alert {
+                    self.alerts.push(text.clone());
+                    let over = self.alerts.len().saturating_sub(MAX_ALERTS);
+                    self.alerts.drain(..over);
+                }
+                return;
+            }
+            Event::Line(line) if self.quiet && is_main(&line.stream) => return,
+            Event::Line(line) => story_lines(&line.stream, painted(&line)),
+            Event::Frame(frame) => match *frame {
+                Frame::Component { id, body } => {
+                    let body = Line::new(id, body);
+                    story_lines(&body.stream, painted(&body))
+                }
+                _ => return,
+            },
+            _ => return,
+        };
+        for line in lines {
+            self.bytes += line_bytes(&line);
+            self.lines.push_back(line);
+            while self.lines.len() > MAX_HISTORY_LINES || self.bytes > MAX_HISTORY_BYTES {
+                if let Some(old) = self.lines.pop_front() {
+                    self.bytes -= line_bytes(&old);
+                    self.gap = true;
                 }
             }
         }
@@ -69,7 +98,6 @@ impl Pending {
 
     pub(super) fn missing(&mut self) {
         self.gap = true;
-        self.assembler.reset();
     }
 
     pub(super) fn fence(
@@ -94,63 +122,13 @@ impl Pending {
         if self.cursor < snapshot.cursor {
             self.missing();
         }
-        if self.generation != snapshot.generation {
-            self.assembler.reset();
-        }
         self.cursor = snapshot.cursor;
         self.generation = snapshot.generation;
     }
 }
 
-/// Whether a frame inside a quiet window is part of the command's report:
-/// main-stream text, and the prompt that ends it.
-fn is_report(frame: &Frame) -> bool {
-    match frame {
-        Frame::Text(text) => text.stream.is_empty() || text.stream == "main",
-        Frame::Prompt { .. } => true,
-        _ => false,
-    }
-}
-
-fn frame_lines(assembler: &mut LineAssembler, frame: &Frame) -> Vec<StoryLine> {
-    match frame {
-        // The noun of the object the text names goes with it, for `;sorter`.
-        Frame::Text(text) => assembler.push_naming(
-            &text.stream,
-            &StyledRun {
-                text: text.content.clone(),
-                bold: text.style.bold_depth > 0,
-                monospace: text.style.mono,
-                preset: text.style.preset.clone(),
-            },
-            text.object().and_then(|link| match &link.kind {
-                LinkKind::Exist { noun, .. } => Some(noun.as_str()),
-                _ => None,
-            }),
-            text.ends_line,
-        ),
-        Frame::Prompt { .. } => assembler.flush(),
-        Frame::Component { id, body } => {
-            let mut lines = assembler.flush();
-            let count = body.runs.len();
-            for (index, run) in body.runs.iter().enumerate() {
-                lines.extend(assembler.push(
-                    id,
-                    &StyledRun {
-                        text: run.text.clone(),
-                        bold: run.style.bold_depth > 0,
-                        monospace: run.style.mono,
-                        preset: run.style.preset.clone(),
-                    },
-                    index + 1 == count,
-                ));
-            }
-            lines
-        }
-        Frame::ClearStream { id } => {
-            assembler.clear_stream(id);
-            Vec::new()
-        }
-        _ => Vec::new(),
-    }
+/// Whether a line inside a quiet window is part of the command's report:
+/// main-stream text.
+fn is_main(stream: &str) -> bool {
+    stream.is_empty() || stream == "main"
 }

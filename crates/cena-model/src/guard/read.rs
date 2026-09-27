@@ -2,8 +2,9 @@
 //! or `None` when the game has not said (the module docs of
 //! [`super`] give each word's source).
 
-use cena_session::claim::{Claim, claim_room};
-use cena_session::{CreatureInstance, GameState, PositionTier, PsmCategory, StatusName, gameobj};
+use crate::state::claim::{Claim, claim_room};
+use crate::state::gameobj;
+use crate::{CreatureInstance, GameState, PositionTier, PsmCategory, StatusName};
 
 use super::{Fact, Facts, Guard, Measure};
 
@@ -62,6 +63,7 @@ impl Guard {
                 Some(!holding)
             }
             Self::Injured { part, rank } => Some(u32::from(target(facts)?.injury(*part)) >= *rank),
+            Self::Flag(name) => state.flags.holds(name, now),
             Self::Available { category, mnemonic } => {
                 state.psm_availability(*category, mnemonic).available()
             }

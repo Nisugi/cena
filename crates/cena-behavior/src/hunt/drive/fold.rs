@@ -68,7 +68,9 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
 }
 
 /// Fold one event into a state: a frame is applied; a reconnect invalidates
-/// what a reconnect invalidates and is waited out; a close ends the behavior.
+/// what a reconnect invalidates and is waited out; a close ends the behavior;
+/// a flag a trigger set is set here too, so a step's `flag` guard reads it
+/// (`plan/45` Stage 2).
 pub(super) fn fold_into(state: &mut GameState, event: &Event) -> Result<(), BehaviorError> {
     match event {
         Event::Frame(frame) => {
@@ -82,6 +84,10 @@ pub(super) fn fold_into(state: &mut GameState, event: &Event) -> Result<(), Beha
             Ok(())
         }
         Event::StateChanged(State::Closed) => Err(BehaviorError::Dead),
+        Event::Flag(change) => {
+            state.flags.apply(change);
+            Ok(())
+        }
         _ => Ok(()),
     }
 }

@@ -22,6 +22,44 @@ use crate::lifecycle::State;
 pub enum Event {
     /// A frame arrived from the game.
     Frame(Box<Frame>),
+    /// A frame finished a line of game text: the model's line, the one the
+    /// classifiers and the player log read (`actor/line.rs`).
+    ///
+    /// Published right AFTER the [`Event::Frame`] that finished it. A viewer
+    /// draws this rather than assembling lines from text frames, so every
+    /// viewer agrees on where a line ends (`plan/45` §4a). With `;sorter` on,
+    /// a container look is published as the lines it sorts into, one event
+    /// each ([`SessionHandle::sort_containers`](crate::SessionHandle::sort_containers)).
+    /// The character's triggers answer each before it is published
+    /// ([`SessionHandle::set_triggers`](crate::SessionHandle::set_triggers)):
+    /// it may arrive substituted, painted, on another stream, twice (a
+    /// redirected copy), or not at all (a squelch).
+    /// `Arc` because every subscriber shares one allocation.
+    Line(std::sync::Arc<cena_model::line::Line>),
+    /// A trigger set or cleared a flag (`cena_model::state::flags`): the
+    /// session has made the change to its state, and whoever folds these
+    /// events into a state of its own makes it too, so a hunt's guard reads
+    /// what the session's triggers set.
+    ///
+    /// Published after the [`Event::Line`]s of the line that set it, or at
+    /// the prompt a condition fired on; only when it changed something.
+    Flag(cena_model::state::flags::FlagChange),
+    /// A trigger called for attention: a sound, an OS notification, a
+    /// banner (`cena_model::trigger::Attention`). The session decides it
+    /// and does none of it: the binary's desk plays and notifies, once for
+    /// every character that saw the same thing, and a viewer shows the
+    /// banner. On a squelched line too.
+    ///
+    /// Published after the [`Event::Line`]s of the line that called for it,
+    /// or at the prompt a condition fired on. `Arc` for [`Event::Line`]'s
+    /// reason.
+    Attention(std::sync::Arc<cena_model::trigger::Attention>),
+    /// A trigger sends a line as if the player typed it (`plan/45` Stage 5,
+    /// `cena_model::trigger::Act`): through the `;` command table first,
+    /// otherwise to the game as [`Origin::Trigger`](crate::Origin::Trigger).
+    /// The session decides and paces it; the binary sends it, holding the
+    /// handle a command table is on.
+    Act(std::sync::Arc<cena_model::trigger::Act>),
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///

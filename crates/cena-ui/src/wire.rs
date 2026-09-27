@@ -191,6 +191,20 @@ pub enum ServerMessage {
         /// One line of plain text.
         detail: String,
     },
+    /// `kind: "alert"`: a trigger's banner (`plan/45` Stage 3), for the
+    /// character's pages open when it comes. Never part of a snapshot: a
+    /// banner is for who is watching, and a page opened later is not shown
+    /// the ones it missed.
+    Alert {
+        /// Always `WIRE_VERSION`.
+        version: u16,
+        /// Session id, canonical decimal u64 string.
+        session: String,
+        /// Connection generation, canonical decimal u64 string.
+        generation: String,
+        /// What the banner says, plain text.
+        text: String,
+    },
 }
 
 #[cfg(test)]

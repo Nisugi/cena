@@ -102,6 +102,18 @@ pub fn typed(words: &str) -> Value {
         .unwrap_or_else(|| Value::String(words.to_owned()))
 }
 
+/// A path as typed, without the quotes around it: Windows' "Copy as path"
+/// adds them, and `"` cannot be in a Windows file name (os error 123). What
+/// `;hunt import`, `;hunt import-loot` and `;trigger import` read.
+#[must_use]
+pub fn unquoted(path: &str) -> String {
+    ['"', '\'']
+        .iter()
+        .find_map(|&q| path.strip_prefix(q)?.strip_suffix(q))
+        .unwrap_or(path)
+        .to_owned()
+}
+
 /// `text` with `key` set to `value`, and the value it replaced, if any.
 ///
 /// # Errors
@@ -109,11 +121,17 @@ pub fn typed(words: &str) -> Value {
 /// `text` is not TOML, the key is empty, or a number in it picks nothing.
 pub fn set(text: &str, key: &str, value: Value) -> Result<(String, Option<Value>), String> {
     let (head, mut table) = split(text)?;
-    let (last, parents) = path(key)?;
-    let old = descend(&mut table, &parents, true)?
-        .ok_or_else(|| format!("`{key}` is not a setting's name"))?
-        .insert(last.to_owned(), value);
+    let old = set_in(&mut table, key, value)?;
     Ok((join(&head, &table)?, old))
+}
+
+/// [`set`], in a table already read: `key` set to `value`, and the value it
+/// replaced.
+pub(crate) fn set_in(table: &mut Table, key: &str, value: Value) -> Result<Option<Value>, String> {
+    let (last, parents) = path(key)?;
+    Ok(descend(table, &parents, true)?
+        .ok_or_else(|| format!("`{key}` is not a setting's name"))?
+        .insert(last.to_owned(), value))
 }
 
 /// `text` without `key`, so the level below decides it again; and whether
@@ -124,11 +142,16 @@ pub fn set(text: &str, key: &str, value: Value) -> Result<(String, Option<Value>
 /// `text` is not TOML, or the key is empty.
 pub fn unset(text: &str, key: &str) -> Result<(String, bool), String> {
     let (head, mut table) = split(text)?;
-    let (last, parents) = path(key)?;
-    let removed = descend(&mut table, &parents, false)?
-        .and_then(|at| at.remove(last))
-        .is_some();
+    let removed = unset_in(&mut table, key)?;
     Ok((join(&head, &table)?, removed))
+}
+
+/// [`unset`], in a table already read: whether `key` was there.
+pub(crate) fn unset_in(table: &mut Table, key: &str) -> Result<bool, String> {
+    let (last, parents) = path(key)?;
+    Ok(descend(table, &parents, false)?
+        .and_then(|at| at.remove(last))
+        .is_some())
 }
 
 /// Every setting under `key` (or all of them), one per line, as `set` takes
@@ -285,7 +308,7 @@ fn descend<'a>(
 }
 
 /// The file's head comment block, and its table.
-fn split(text: &str) -> Result<(String, Table), String> {
+pub(crate) fn split(text: &str) -> Result<(String, Table), String> {
     let mut head = String::new();
     for line in text
         .lines()
@@ -298,7 +321,8 @@ fn split(text: &str) -> Result<(String, Table), String> {
     Ok((head, table))
 }
 
-fn join(head: &str, table: &Table) -> Result<String, String> {
+/// The file's text again: its head comment block, then its table.
+pub(crate) fn join(head: &str, table: &Table) -> Result<String, String> {
     let body = toml::to_string_pretty(table).map_err(|e| e.to_string())?;
     Ok(format!("{head}{body}"))
 }
