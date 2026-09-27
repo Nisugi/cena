@@ -6,12 +6,12 @@ it."*). Nothing here is built, and nothing is scheduled. This plan extends
 [`plan/35-m7-agent.md`](35-m7-agent.md): M7's connection, used by programs as well as by an
 agent.
 
-**Taken further 2026-09-27 in [`plan/45-ruby-bridge.md`](45-ruby-bridge.md)**: how a call is
+**Taken further 2026-09-27 in [`plan/46-ruby-bridge.md`](46-ruby-bridge.md)**: how a call is
 translated, what Hydra answers, and which scripts run, measured in
 [`inventory/13-ruby-bridge-evidence.md`](../inventory/13-ruby-bridge-evidence.md). Two things
 here change there: §4.2's send-and-wait moves into Ruby, since cursors remove the race and Rust's
-regex cannot run scripts' patterns (`plan/45` §3); and §3's one runner for every character
-becomes one per character, for Ruby's process-wide `$globals` (`plan/45` §2).
+regex cannot run scripts' patterns (`plan/46` §3); and §3's one runner for every character
+becomes one per character, for Ruby's process-wide `$globals` (`plan/46` §2).
 
 Every line below is marked. **AUTHOR** is a decision or position the author gave, quoted and
 dated. **MEASURED** gives the command or the source. Everything else is **PROPOSED**: mine,
@@ -380,7 +380,7 @@ comparison: everything in Lich except the map is about 30 MB of live data.
 1. ~~**The settled line** (§1): users author scripts, out of process, in any language?~~
    **ANSWERED 2026-09-26**: *"We intend to allow scripting through the mcp connection for the
    agent. We intend to accomplish this by writing a translator or whatever you want to call it.
-   First one will be ruby."* (`plan/45` §0.)
+   First one will be ruby."* (`plan/46` §0.)
 2. **Lich's names**: keep `GameObj`, `Char`, `Room`, `Spell` and the rest top-level, as Lich
    has them? PROPOSED yes, so a script's diff stays small.
 3. **Stores in Hydra or in the runner** (§4.6). PROPOSED Hydra.
