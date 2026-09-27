@@ -18,6 +18,12 @@
 //! which is how `VellumFE`'s regex matches could come out differently from
 //! one run to the next (`plan/45` §2a).
 //!
+//! **Then the screen** ([`Matcher::screened`]): a trigger with an `event`
+//! keeps its hits only on a line the model reads as that event, and one with
+//! no `text` or `regex` hits the whole line when it is; a trigger with an
+//! `only_if` keeps its hits only when its guard words hold. Each is read once a line,
+//! and only where some trigger asks. A condition has no line, and never hits.
+//!
 //! **The set only nominates**, as in the crit tables
 //! (`crates/cena-model/src/crit/match_index.rs`): it says which regexes match
 //! at all, with the same raised lazy-DFA budget, and each nominee then finds
@@ -31,6 +37,9 @@ use aho_corasick::AhoCorasick;
 use regex::{Regex, RegexSet, RegexSetBuilder};
 
 use super::{Pattern, Trigger, regex};
+use crate::GameState;
+use crate::line::Line;
+use crate::state::chunks::ChunkLine;
 
 /// The regex set's lazy-DFA budget: the crit tables' `RESIDUAL_DFA_LIMIT`.
 const DFA_LIMIT: usize = 1 << 26;
@@ -46,6 +55,10 @@ pub struct Matcher {
     set: Option<RegexSet>,
     /// Each regex, by its place in the set, with its trigger's rank.
     pub(super) regexes: Vec<(usize, Regex)>,
+    /// Some trigger has an `event` or an `only_if`, so hits are screened.
+    screens: bool,
+    /// The conditions, by rank.
+    conditions: Vec<usize>,
 }
 
 /// One trigger matching one place in a line.
@@ -82,7 +95,8 @@ impl Matcher {
         for (rank, trigger) in triggers.iter().enumerate() {
             let case_sensitive = trigger.rule.case_sensitive;
             match &trigger.rule.pattern {
-                Pattern::Literal { text, whole_word } => {
+                None => {}
+                Some(Pattern::Literal { text, whole_word }) => {
                     let into = if case_sensitive {
                         &mut sensitive
                     } else {
@@ -90,7 +104,7 @@ impl Matcher {
                     };
                     into.push((text.as_str(), rank, *whole_word));
                 }
-                Pattern::Regex(source) => {
+                Some(Pattern::Regex(source)) => {
                     let built = regex(source, case_sensitive)
                         .map_err(|e| format!("`{}`: {e}", trigger.name))?;
                     sources.push(if case_sensitive {
@@ -106,13 +120,28 @@ impl Matcher {
             .dfa_size_limit(DFA_LIMIT)
             .build()
             .ok();
+        let screens = triggers
+            .iter()
+            .any(|trigger| trigger.rule.event.is_some() || !trigger.rule.only_if.is_empty());
+        let conditions = (0..triggers.len())
+            .filter(|&rank| triggers.get(rank).is_some_and(|t| t.rule.is_condition()))
+            .collect();
         Ok(Self {
             sensitive: Literals::new(&sensitive, false)?,
             insensitive: Literals::new(&insensitive, true)?,
             triggers,
             set,
             regexes,
+            screens,
+            conditions,
         })
+    }
+
+    /// The conditions among [`Self::triggers`], by rank: the triggers that
+    /// watch the character rather than a line ([`super::Edges`]).
+    #[must_use]
+    pub fn conditions(&self) -> &[usize] {
+        &self.conditions
     }
 
     /// The triggers, in rank order: what a [`Hit::trigger`] indexes.
@@ -167,6 +196,49 @@ impl Matcher {
             }
         }
         kept
+    }
+
+    /// The hits that fire on `line`: [`Self::hits`], then the screen (the
+    /// module docs). `state` is the character an `only_if` reads; with none,
+    /// every `only_if` is taken to hold, which is `;trigger test`'s preview.
+    #[must_use]
+    pub fn screened(&self, line: &Line, text: &str, state: Option<&GameState>) -> Vec<Hit> {
+        let mut hits = self.hits(&line.stream, text);
+        if !self.screens {
+            return hits;
+        }
+        let chunk = ChunkLine {
+            runs: line.runs.clone(),
+        };
+        for (rank, trigger) in self.triggers.iter().enumerate() {
+            let rule = &trigger.rule;
+            if rule.pattern.is_none()
+                && rule.event.is_some()
+                && watches(rule.stream.as_deref(), &line.stream)
+            {
+                hits.push(Hit {
+                    trigger: rank,
+                    span: 0..text.len(),
+                    groups: Vec::new(),
+                });
+            }
+        }
+        // Each trigger's answer, read at its first hit and kept for the rest.
+        let mut passes: Vec<Option<bool>> = vec![None; self.triggers.len()];
+        hits.retain(|hit| {
+            let (Some(trigger), Some(known)) =
+                (self.triggers.get(hit.trigger), passes.get_mut(hit.trigger))
+            else {
+                return false;
+            };
+            *known.get_or_insert_with(|| {
+                let rule = &trigger.rule;
+                rule.event.is_none_or(|event| event.reads(&chunk, text))
+                    && state.is_none_or(|state| rule.only_if_holds(state))
+            })
+        });
+        hits.sort_by_key(|hit| (hit.trigger, hit.span.start));
+        hits
     }
 }
 

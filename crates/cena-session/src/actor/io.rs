@@ -706,6 +706,7 @@ impl<S: ByteSource> SessionActor<S> {
                 // whoever the prompt was owed to
                 let combat = self.publish_combat();
                 self.publish_loot();
+                self.fire_conditions();
                 // The chunk is classified, so its lines can be tagged and
                 // written (`player_log/feed.rs`).
                 if let Some(log) = &mut self.player_log {

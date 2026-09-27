@@ -13,10 +13,16 @@
 //!
 //! The line itself is `cena-model`'s ([`Line`]), since the model is what
 //! makes it and what the triggers answer.
+//!
+//! A trigger that fires may set a flag, which changes the session's state
+//! and is published ([`Event::Flag`](super::Event::Flag)). The conditions,
+//! which watch the character rather than a line, are read here too, at each
+//! prompt: the one moment every frame of a chunk has been applied.
 
 use std::sync::Arc;
 
 use cena_model::line::Line;
+use cena_model::state::flags::FlagChange;
 use cena_model::trigger::Matcher;
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
@@ -49,7 +55,7 @@ impl<S: ByteSource> SessionActor<S> {
     /// Sorting first is what lets the triggers match each sorted line, as
     /// `VellumFE` sorts before it highlights (`plan/45` §4a). The model's
     /// scrollback and the player log keep the game's text either way.
-    pub(super) fn publish_line(&self, line: Arc<Line>) {
+    pub(super) fn publish_line(&mut self, line: Arc<Line>) {
         let triggers = self.events.triggers();
         let main = line.stream.is_empty() || line.stream == "main";
         if main
@@ -64,14 +70,40 @@ impl<S: ByteSource> SessionActor<S> {
         self.publish_answered(&triggers, line);
     }
 
-    /// Publish what `triggers` make of `line`.
-    fn publish_answered(&self, triggers: &Matcher, line: Arc<Line>) {
+    /// Publish what `triggers` make of `line`, then set the flags of the
+    /// ones that fired: on a squelched line too.
+    fn publish_answered(&mut self, triggers: &Matcher, line: Arc<Line>) {
         if triggers.triggers().is_empty() {
             let _ = self.events.send(Event::Line(line));
             return;
         }
-        for shown in triggers.respond(&line) {
+        let answer = triggers.answer(&line, &self.state);
+        for shown in answer.lines {
             let _ = self.events.send(Event::Line(Arc::new(shown)));
+        }
+        let now = self.state.game_time_now();
+        for rank in answer.fired {
+            if let Some(flag) = triggers
+                .triggers()
+                .get(rank)
+                .and_then(|t| t.rule.flag.as_ref())
+            {
+                self.set_flag(&flag.change(now));
+            }
+        }
+    }
+
+    /// At a prompt: each condition that became true sets its flag.
+    pub(super) fn fire_conditions(&mut self) {
+        for change in self.events.fire_conditions(&self.state) {
+            self.set_flag(&change);
+        }
+    }
+
+    /// Make a trigger's flag change, and publish it if it changed anything.
+    fn set_flag(&mut self, change: &FlagChange) {
+        if self.state.flags.apply(change) {
+            let _ = self.events.send(Event::Flag(change.clone()));
         }
     }
 }

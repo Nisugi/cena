@@ -2,7 +2,8 @@
 //! one synchronous turn, so a snapshot and its stream share an exact fence.
 
 use crate::{Event, GameState, Generation, GenerationCell, SessionId, Snapshot, State};
-use cena_model::trigger::Matcher;
+use cena_model::state::flags::FlagChange;
+use cena_model::trigger::{Edges, Matcher};
 use std::sync::{
     Arc, Mutex, PoisonError,
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -171,9 +172,19 @@ pub(crate) struct EventPublisher {
     /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
     sorting: Arc<AtomicBool>,
     /// This character's triggers, compiled (`plan/45`): what each finished
-    /// line is answered with before it is published. Here for `sorting`'s
-    /// reasons. None until the binary reads the file.
-    triggers: Arc<Mutex<Arc<Matcher>>>,
+    /// line is answered with before it is published, and what its conditions
+    /// last read. Here for `sorting`'s reasons, which is also why a reconnect
+    /// keeps the conditions' memory. None until the binary reads the file.
+    triggers: Arc<Mutex<Answering>>,
+}
+
+/// A character's triggers and their conditions' memory, replaced together:
+/// new triggers start new memory, so their first reading is silent
+/// (`cena_model::trigger::Edges`).
+#[derive(Debug, Default)]
+struct Answering {
+    matcher: Arc<Matcher>,
+    edges: Edges,
 }
 
 impl EventPublisher {
@@ -203,12 +214,47 @@ impl EventPublisher {
 
     /// Answer each line published from now on with `triggers`.
     pub(crate) fn set_triggers(&self, triggers: Matcher) {
-        *self.triggers.lock().unwrap_or_else(PoisonError::into_inner) = Arc::new(triggers);
+        *self.triggers.lock().unwrap_or_else(PoisonError::into_inner) = Answering {
+            matcher: Arc::new(triggers),
+            edges: Edges::default(),
+        };
     }
 
     /// The triggers each line is answered with.
     pub(crate) fn triggers(&self) -> Arc<Matcher> {
-        Arc::clone(&self.triggers.lock().unwrap_or_else(PoisonError::into_inner))
+        Arc::clone(
+            &self
+                .triggers
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .matcher,
+        )
+    }
+
+    /// Read the conditions against `state`: the flags set or cleared by the
+    /// ones that became true.
+    pub(crate) fn fire_conditions(&self, state: &GameState) -> Vec<FlagChange> {
+        let mut answering = self.triggers.lock().unwrap_or_else(PoisonError::into_inner);
+        let Answering { matcher, edges } = &mut *answering;
+        if matcher.conditions().is_empty() {
+            return Vec::new();
+        }
+        let now = state.game_time_now();
+        edges
+            .fire(matcher, state)
+            .into_iter()
+            .filter_map(|rank| {
+                Some(
+                    matcher
+                        .triggers()
+                        .get(rank)?
+                        .rule
+                        .flag
+                        .as_ref()?
+                        .change(now),
+                )
+            })
+            .collect()
     }
 
     /// A publisher over a caller's own legacy channel, with a fenced stream

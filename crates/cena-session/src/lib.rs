@@ -57,7 +57,7 @@ pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
 pub use cena_model::state::creatures::boons;
 pub use cena_model::state::{
-    claim, containers, creature, gameobj, group, hands, incident, inspect, societies,
+    claim, containers, creature, flags, gameobj, group, hands, incident, inspect, societies,
     stream_windows, worn,
 };
 // The loot ledger's facts, for the town planner that reads them from its own

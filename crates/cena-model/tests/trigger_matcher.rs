@@ -8,15 +8,9 @@ fn trigger(name: &str, pattern: Pattern) -> Trigger {
     Trigger {
         name: name.into(),
         rule: Rule {
-            category: String::new(),
-            priority: 0,
-            pattern,
-            case_sensitive: false,
-            stream: None,
-            look: None,
+            pattern: Some(pattern),
             squelch: true,
-            substitute: None,
-            redirect: None,
+            ..Rule::default()
         },
     }
 }

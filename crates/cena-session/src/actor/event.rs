@@ -36,6 +36,14 @@ pub enum Event {
     /// redirected copy), or not at all (a squelch).
     /// `Arc` because every subscriber shares one allocation.
     Line(std::sync::Arc<cena_model::line::Line>),
+    /// A trigger set or cleared a flag (`cena_model::state::flags`): the
+    /// session has made the change to its state, and whoever folds these
+    /// events into a state of its own makes it too, so a hunt's guard reads
+    /// what the session's triggers set.
+    ///
+    /// Published after the [`Event::Line`]s of the line that set it, or at
+    /// the prompt a condition fired on; only when it changed something.
+    Flag(cena_model::state::flags::FlagChange),
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///

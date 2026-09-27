@@ -14,7 +14,7 @@ use super::read;
 use crate::settings;
 
 /// The kinds of response a master switch turns on or off everywhere.
-pub const KINDS: [&str; 4] = ["look", "squelch", "substitute", "redirect"];
+pub const KINDS: [&str; 5] = ["look", "squelch", "substitute", "redirect", "flag"];
 
 /// What `on` or `off` switches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

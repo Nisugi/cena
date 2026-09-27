@@ -1,0 +1,149 @@
+//! `plan/45` Stage 2 in the session: a trigger's flag is set in the
+//! session's state and published, so whoever folds the events sets it too;
+//! a condition is read at each prompt.
+
+use cena_platform::ReplaySource;
+use cena_session::flags::{FlagChange, Until};
+use cena_session::guard::Condition;
+use cena_session::trigger::{Flag, Matcher, Pattern, Rule, Trigger};
+use cena_session::{Event, GameState, Session};
+
+/// What the session published over `wire` with `triggers`, and its state at
+/// the end.
+async fn run(wire: &str, triggers: Vec<Trigger>) -> (Vec<Event>, GameState) {
+    let session = Session::new(ReplaySource::from_bytes(wire.as_bytes()));
+    session
+        .handle()
+        .set_triggers(Matcher::new(triggers).unwrap_or_default());
+    let (_, mut events) = session.subscribe();
+    let end = Box::pin(session.into_actor().run()).await;
+    let events = std::iter::from_fn(|| events.try_recv().ok()).collect();
+    (events, end.state)
+}
+
+fn flags(events: &[Event]) -> Vec<FlagChange> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            Event::Flag(change) => Some(change.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn flag(name: &str, seconds: Option<u32>) -> Flag {
+    Flag {
+        name: name.into(),
+        seconds,
+        clear: false,
+    }
+}
+
+fn on_words(name: &str, text: &str, rule: Rule) -> Trigger {
+    Trigger {
+        name: name.into(),
+        rule: Rule {
+            pattern: Some(Pattern::Literal {
+                text: text.into(),
+                whole_word: true,
+            }),
+            ..rule
+        },
+    }
+}
+
+const SWING: &str = "You swing a broadsword at <pushBold/><a exist=\"101\" noun=\"lizard\">a cave lizard</a><popBold/>!\n";
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_squelched_line_sets_its_flag_and_the_change_is_published_once() {
+    let wire = format!("<prompt time=\"999\">&gt;</prompt>\n{SWING}{SWING}");
+    let (events, state) = run(
+        &wire,
+        vec![on_words(
+            "swung",
+            "You swing",
+            Rule {
+                squelch: true,
+                flag: Some(flag("swung", None)),
+                ..Rule::default()
+            },
+        )],
+    )
+    .await;
+    assert!(
+        !events.iter().any(|event| matches!(event, Event::Line(_))),
+        "both swings squelched"
+    );
+    assert_eq!(
+        flags(&events),
+        [FlagChange {
+            name: "swung".into(),
+            until: Some(Until::Cleared),
+        }],
+        "the second swing changed nothing, so nothing more was published"
+    );
+    assert_eq!(
+        state.flags.holds("swung", state.game_time_now()),
+        Some(true)
+    );
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_timed_flag_runs_on_the_games_clock() {
+    let wire = format!("<prompt time=\"999\">&gt;</prompt>\n{SWING}");
+    let (events, _) = run(
+        &wire,
+        vec![on_words(
+            "swung",
+            "You swing",
+            Rule {
+                flag: Some(flag("swung", Some(30))),
+                ..Rule::default()
+            },
+        )],
+    )
+    .await;
+    assert_eq!(
+        flags(&events).first().and_then(|change| change.until),
+        Some(Until::Second(1029))
+    );
+}
+
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_condition_is_read_at_each_prompt_and_fires_on_its_rise() {
+    let wire = concat!(
+        "<indicator id=\"IconHIDDEN\" visible=\"y\"/>\n<prompt time=\"100\">&gt;</prompt>\n",
+        "<indicator id=\"IconHIDDEN\" visible=\"n\"/>\n<prompt time=\"101\">&gt;</prompt>\n",
+        "<indicator id=\"IconHIDDEN\" visible=\"y\"/>\n<prompt time=\"102\">&gt;</prompt>\n",
+    );
+    let (events, state) = run(
+        wire,
+        vec![Trigger {
+            name: "hid".into(),
+            rule: Rule {
+                condition: Condition::parse_group("hidden").unwrap_or_default(),
+                flag: Some(flag("hid", None)),
+                ..Rule::default()
+            },
+        }],
+    )
+    .await;
+    // Hidden at the first prompt is taken silently; hidden again at the
+    // third, after a prompt unhidden, is the rise.
+    assert_eq!(
+        flags(&events),
+        [FlagChange {
+            name: "hid".into(),
+            until: Some(Until::Cleared),
+        }]
+    );
+    let prompts_before_flag = events
+        .iter()
+        .take_while(|event| !matches!(event, Event::Flag(_)))
+        .filter(|event| {
+            matches!(event, Event::Frame(frame) if matches!(**frame, cena_session::Frame::Prompt { .. }))
+        })
+        .count();
+    assert_eq!(prompts_before_flag, 3, "set at the third prompt");
+    assert_eq!(state.flags.holds("hid", None), Some(true));
+}

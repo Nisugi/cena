@@ -53,10 +53,10 @@ fn a_trigger_is_typed_as_written() {
     assert_eq!(rule.category, "Combat");
     assert_eq!(
         rule.pattern,
-        Pattern::Literal {
+        Some(Pattern::Literal {
             text: "You are stunned".into(),
             whole_word: true,
-        }
+        })
     );
     assert!(!rule.case_sensitive, "case is ignored unless asked for");
     assert_eq!(
@@ -93,7 +93,7 @@ fn a_regex_keeps_its_groups_and_the_text_responses_read() {
     .rule;
     assert_eq!(
         rule.pattern,
-        Pattern::Regex(r#"^(\w+) whispers, "(.*)"$"#.into())
+        Some(Pattern::Regex(r#"^(\w+) whispers, "(.*)"$"#.into()))
     );
     assert!(rule.case_sensitive);
     assert_eq!(rule.look.map(|look| look.span), Some(Span::Group(2)));
@@ -119,10 +119,10 @@ fn whole_word_is_the_default_and_can_be_turned_off() {
     .rule;
     assert_eq!(
         rule.pattern,
-        Pattern::Literal {
+        Some(Pattern::Literal {
             text: "SEND[".into(),
             whole_word: false,
-        }
+        })
     );
 }
 
@@ -135,7 +135,7 @@ fn a_bad_trigger_is_refused_by_name_and_the_rest_load() {
             "text = 'x'\nregex = 'x'\nsquelch = true",
             "both `text` and `regex`",
         ),
-        ("squelch = true", "nothing to match"),
+        ("squelch = true", "nothing to fire on"),
         ("text = ''\nsquelch = true", "`text` is empty"),
         ("regex = 'a(?=b)'\nsquelch = true", "regex cannot be used"),
         ("text = 'x'", "it does nothing"),
@@ -174,21 +174,98 @@ fn a_bad_trigger_is_refused_by_name_and_the_rest_load() {
             "`whole_word` is for `text`",
         ),
     ];
-    for (body, reason) in cases {
+    assert_eq!(missed(&cases), Vec::<String>::new());
+}
+
+/// Stage 2's keys, refused the same way: an event, a condition, `only_if`
+/// and a flag that cannot work.
+#[test]
+fn a_stage_2_trigger_that_cannot_work_is_refused_by_name() {
+    let cases = [
+        (
+            "event = 'shouting'\nsquelch = true",
+            "not an event Hydra knows",
+        ),
+        (
+            "event = 'incident nope'\nsquelch = true",
+            "no incident Lich names",
+        ),
+        ("event = 'speech loud'\nsquelch = true", "takes no name"),
+        (
+            "event = 'speech'\ncase_sensitive = true\nsquelch = true",
+            "`case_sensitive` is for `text` or `regex`",
+        ),
+        (
+            "event = 'speech'\nlook = { bold = true, span = 1 }",
+            "needs a `regex`",
+        ),
+        (
+            "condition = 'hidden'\ntext = 'x'\nflag = { name = 'h' }",
+            "watches the character, not a line",
+        ),
+        (
+            "condition = 'hidden'\nsquelch = true",
+            "no line to colour, hide, change or move",
+        ),
+        (
+            "condition = ''\nflag = { name = 'h' }",
+            "names no guard word",
+        ),
+        (
+            "condition = 'hiden'\nflag = { name = 'h' }",
+            "not a guard Hydra knows",
+        ),
+        (
+            "text = 'x'\nrearm = 5\nsquelch = true",
+            "`rearm` is for a `condition`",
+        ),
+        (
+            "text = 'x'\nonly_if = 'once'\nsquelch = true",
+            "reads what a hunt's routine sent",
+        ),
+        (
+            "text = 'x'\nonly_if = '!splashy'\nsquelch = true",
+            "reads the map",
+        ),
+        ("text = 'x'\nflag = { name = ' ' }", "flag has no name"),
+        (
+            "text = 'x'\nflag = { name = 'f', clear = true, seconds = 5 }",
+            "has no `seconds`",
+        ),
+        (
+            "text = 'x'\nflag = { name = 'f', seconds = 0 }",
+            "sets nothing",
+        ),
+        ("condition = 'hidden'", "it does nothing"),
+    ];
+    assert_eq!(missed(&cases), Vec::<String>::new());
+}
+
+/// Each bad trigger, as `body`, beside a good one: the cases where it was
+/// not refused by name for `reason`, or the good one did not load.
+fn missed(cases: &[(&str, &str)]) -> Vec<String> {
+    let mut missed = Vec::new();
+    for &(body, reason) in cases {
         let file = format!("[trigger.bad]\n{body}\n\n[trigger.good]\ntext = 'y'\nsquelch = true\n");
-        let loaded = read(&file).unwrap();
-        assert_eq!(loaded.refused.len(), 1, "{body}: {:?}", loaded.refused);
-        let refused = &loaded.refused[0];
-        assert_eq!(refused.name, "bad", "{body}");
-        assert!(refused.why.contains(reason), "{body}: {}", refused.why);
+        let Some(loaded) = read(&file) else {
+            missed.push(format!("{body}: not TOML"));
+            continue;
+        };
         let kept: Vec<String> = loaded
             .triggers
             .for_character("Nisugi")
             .into_iter()
             .map(|trigger| trigger.name)
             .collect();
-        assert_eq!(kept, ["good"], "{body}");
+        let named = matches!(
+            loaded.refused.as_slice(),
+            [one] if one.name == "bad" && one.why.contains(reason)
+        );
+        if !named || kept != ["good"] {
+            missed.push(format!("{body}: {:?}, kept {kept:?}", loaded.refused));
+        }
     }
+    missed
 }
 
 #[test]
@@ -223,10 +300,10 @@ fn an_override_changes_only_the_fields_it_names() {
     let dicate = only(file, "dicate").unwrap().rule;
     assert_eq!(
         dicate.pattern,
-        Pattern::Literal {
+        Some(Pattern::Literal {
             text: "You are stunned".into(),
             whole_word: true,
-        }
+        })
     );
     let look = dicate.look.unwrap();
     assert_eq!(

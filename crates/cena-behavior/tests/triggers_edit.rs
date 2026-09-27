@@ -23,10 +23,10 @@ fn add_makes_a_trigger_that_bolds_its_words() {
     assert_eq!(mine.len(), 1);
     assert_eq!(
         mine[0].rule.pattern,
-        Pattern::Literal {
+        Some(Pattern::Literal {
             text: "You are stunned".into(),
             whole_word: true,
-        }
+        })
     );
     assert!(mine[0].rule.look.as_ref().is_some_and(|look| look.bold));
     let again = edit::add(&text, "stunned", "other words").unwrap_err();

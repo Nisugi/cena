@@ -21,6 +21,10 @@
 //!
 //! A substitute keeps the style and link of the run it starts in: a
 //! substituted name is still the link it was.
+//!
+//! **Every trigger that matched fired**, whatever the looks decided and even
+//! on a squelched line ([`Answer::fired`]), so a trigger's flag is set on a
+//! line nobody is shown: `plan/45` §4's *"hide this but tell me"*.
 
 use std::cmp::Reverse;
 use std::ops::Range;
@@ -28,7 +32,19 @@ use std::ops::Range;
 use cena_protocol::runs::{Run, Runs};
 
 use super::{Color, Hit, Look, Matcher, Rule, Span};
+use crate::GameState;
 use crate::line::Line;
+
+/// What a character's triggers make of one finished line.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Answer {
+    /// The lines a viewer is given in its place: none when it is squelched,
+    /// two when it is redirected as a copy, otherwise one.
+    pub lines: Vec<Line>,
+    /// The triggers that fired, by rank in [`Matcher::triggers`], each once,
+    /// in rank order.
+    pub fired: Vec<usize>,
+}
 
 /// A look, resolved: what one stretch of a line is painted.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,15 +75,40 @@ struct Cut {
 }
 
 impl Matcher {
-    /// The lines a viewer is given for `line`: none when it is squelched,
-    /// two when it is redirected as a copy, otherwise one.
+    /// What the triggers make of `line`, for the character `state` is: what
+    /// is shown, and what fired.
+    #[must_use]
+    pub fn answer(&self, line: &Line, state: &GameState) -> Answer {
+        self.answer_for(line, Some(state))
+    }
+
+    /// The lines a viewer is given for `line`, with no character to read:
+    /// as if every `only_if` held. What `;trigger test` previews, naming
+    /// each so the player knows it was not read.
     #[must_use]
     pub fn respond(&self, line: &Line) -> Vec<Line> {
+        self.answer_for(line, None).lines
+    }
+
+    fn answer_for(&self, line: &Line, state: Option<&GameState>) -> Answer {
         if self.triggers.is_empty() {
-            return vec![line.clone()];
+            return Answer {
+                lines: vec![line.clone()],
+                fired: Vec::new(),
+            };
         }
         let text = line.text();
-        let hits = self.hits(&line.stream, &text);
+        let hits = self.screened(line, &text, state);
+        let mut fired: Vec<usize> = hits.iter().map(|hit| hit.trigger).collect();
+        fired.dedup();
+        Answer {
+            lines: self.shown(line, &text, &hits),
+            fired,
+        }
+    }
+
+    /// The lines `hits` make of `line`, whose text is `text`.
+    fn shown(&self, line: &Line, text: &str, hits: &[Hit]) -> Vec<Line> {
         let fired: Vec<(&Hit, &Rule)> = hits
             .iter()
             .filter_map(|hit| Some((hit, &self.triggers.get(hit.trigger)?.rule)))
@@ -78,7 +119,7 @@ impl Matcher {
         if fired.iter().any(|(_, rule)| rule.squelch) {
             return Vec::new();
         }
-        let cuts = self.cuts(&fired, &text);
+        let cuts = self.cuts(&fired, text);
         let mut looks: Vec<Laid> = fired
             .iter()
             .filter_map(|(hit, rule)| {

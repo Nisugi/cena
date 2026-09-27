@@ -38,6 +38,7 @@
 //! what the watchdog preempts.
 
 mod errands;
+mod fold;
 mod loot;
 mod party;
 mod selling;
@@ -54,6 +55,7 @@ use cena_session::{
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio_util::sync::CancellationToken;
 
+use self::fold::fold_into;
 use self::party::{Membership, Seen};
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
@@ -448,24 +450,5 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             self.hold(BEAT).await?;
         }
         self.drain().map_err(HuntEnd::Stopped)
-    }
-}
-
-/// Fold one event into a state: a frame is applied; a reconnect invalidates
-/// what a reconnect invalidates and is waited out; a close ends the behavior.
-fn fold_into(state: &mut GameState, event: &Event) -> Result<(), BehaviorError> {
-    match event {
-        Event::Frame(frame) => {
-            state.apply(frame);
-            Ok(())
-        }
-        // A drop is waited out, holding the authority (SE-4 (c)); the
-        // driver marks it. Invalidating twice is harmless.
-        Event::StateChanged(State::Reconnecting) => {
-            state.invalidate_for_reconnect();
-            Ok(())
-        }
-        Event::StateChanged(State::Closed) => Err(BehaviorError::Dead),
-        _ => Ok(()),
     }
 }

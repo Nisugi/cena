@@ -86,11 +86,7 @@ fn triggers(count: usize, lines: &[Line]) -> Vec<Trigger> {
             Trigger {
                 name: format!("t{index}"),
                 rule: Rule {
-                    category: String::new(),
-                    priority: 0,
-                    pattern,
-                    case_sensitive: false,
-                    stream: None,
+                    pattern: Some(pattern),
                     look: Some(Look {
                         color: Some(Color {
                             red: 0xff,
@@ -101,9 +97,7 @@ fn triggers(count: usize, lines: &[Line]) -> Vec<Trigger> {
                         bold: false,
                         span: Span::Match,
                     }),
-                    squelch: false,
-                    substitute: None,
-                    redirect: None,
+                    ..Rule::default()
                 },
             }
         })

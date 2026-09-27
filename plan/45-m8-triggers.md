@@ -1,11 +1,11 @@
 # 45 — Milestone 8: triggers
 
-> **STATUS: PLAN, 2026-09-26; STAGE 1 BUILT the same day** (§6), all but the release run
-> of the bench. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
+> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day** (§6), all but Stage 1's
+> release run of the bench. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
 > the worktree `G:\dev\Cena-m8` (locked on purpose: M8 spans sessions). The author's
 > decisions are quoted in §1 with the date. **Everything else here is Claude's proposal**,
 > and two of §1's rows are Claude's *reading* of an answer, marked as such. What was decided
-> while building, for the author to confirm, is §5c, §5d and §6a.
+> while building, for the author to confirm, is §5c, §5d, §6a and §6b.
 > `plan/12` wins any contradiction, except where §1 records the author changing it.
 
 ---
@@ -152,7 +152,7 @@ per the author. A live check in Wrayth would settle it.
 
 ### 3a. When
 
-Three sources and a gate:
+Three sources and `only_if`:
 
 1. **Text** -- a literal or regex over a finished line, optionally limited to streams, with
    capture groups. Literal is the default, because every one of the author's Wrayth strings
@@ -165,7 +165,9 @@ Three sources and a gate:
 3. **Condition** -- a guard word (`plan/33`) becoming true: HP below a number, stunned, a
    spell about to expire. **Edge-triggered** on VellumFE's rules (§2a).
 
-A **gate** -- *only if* one or more guard words -- may sit on any trigger, and is checked.
+**`only_if`** -- one or more guard words -- may sit on any trigger, and is checked. This
+said *gate* until Stage 2 was built; the glossary gives that word to the session's check at
+the moment it writes (`Gate`), and lists *guard* as not it, so a trigger's is `only_if`.
 
 ### 3b. Do
 
@@ -423,10 +425,43 @@ Nisugi's alone; without that limit it fails on Dicate's page, checked.
    whole with `git mv` and its cap; the hunt keeps its `hunt::guard` path through a
    re-export, so no hunt code changed; the words' tests moved with them
    (`crates/cena-model/tests/guard_words.rs`).
-2. Condition triggers, edge-triggered (§3a).
+2. Condition triggers, edge-triggered (§3a). **BUILT**: `condition = "<guard words>"`,
+   read at each prompt, on `VellumFE`'s three rules
+   (`crates/cena-model/src/trigger/edges.rs`).
 3. Event triggers over the typed facts, as a closed vocabulary; each word names its source.
-4. Gates, checked.
-5. The flag response, readable by guards.
+   **BUILT**: `event = "<word>"`, eleven words over classifiers the model already runs
+   (`crates/cena-model/src/trigger/event.rs`, whose table names each source).
+4. `only_if`, checked (§3a's *gate*, renamed). **BUILT**: guard words read against the
+   session's state when a line or a condition would fire.
+5. The flag response, readable by guards. **BUILT**: `flag = { name, seconds | clear }`,
+   in the game state (`crates/cena-model/src/state/flags.rs`), published as `Event::Flag`
+   and folded by the hunt; the guard word `flag "<name>"` reads it.
+
+**Done when** a line's trigger sets a flag that a condition and a hunt's guard read, with a
+condition firing once on its rise, headless. **MET 2026-09-26**:
+`crates/cena-session/tests/trigger_flags.rs` (a squelched line sets its flag; a condition
+fires at the third prompt and not the first), `crates/cena-model/tests/trigger_stage2.rs`
+(every event word against its classifier's own wire lines, `only_if`, the flag and its guard
+word, the edges). Twelve mutants, all caught, three of them in the session.
+
+### 6b. Stage 2 as built -- CLAUDE'S, to confirm
+
+| Question | Built | Why |
+|---|---|---|
+| The event words | `speech`, `whisper`, `my_attack`, `attacked`, `their_attack`, `departure`, `affliction [<name>]`, `incident [<name>]`, `idle_warning`; incident names are Lich's `messages.rb` keys, affliction names the model's ids | each reads a classifier the model already runs on every line, so no word is a second parser (§ settled: one parser, N classifiers) |
+| Not words, and why | a death: the game's `death` stream, which `stream = "death"` reads. A failed move: `state/movement.rs` reads a line only as a move's answer. A creature attacking someone else, an attack by my group: left for when asked | a word that reads ordinary English as a fact is worse than no word |
+| An `event` beside `text` or `regex` | narrows them: `event = "speech"` with `text = "Nisugi"` is Nisugi named in speech. Alone, it covers the whole line | the ask in §2b is by speaker and event class, and a line of speech is still words |
+| Whose target a word such as `stunned` reads | the game's current target (`dDBTarget`'s value, `state/targeting.rs`) | a trigger aims at nothing; the game's target is the one the player has |
+| The hunt's words in a trigger | `once`, `once_here`, `every` refused (they read what a routine sent); `splashy`, `nomagic` refused (they read the map, which the session has not got) | a rule that cannot work is refused, never kept silently false (§5a) |
+| When a condition is read | at each prompt, after the chunk is applied | the one moment every frame of a chunk has landed; a timed flag's end is noticed at the next prompt |
+| `rearm` | 3 game seconds unless set, `VellumFE`'s `DEFAULT_REARM_SECS` | its reason holds here: health on its line would fire every prompt |
+| A condition's memory | beside the matcher, replaced with it: new triggers read silently first; a reconnect keeps it | a reconnect's unknown readings are no readings, so the memory neither fires nor re-arms across one |
+| What a condition may do | set or clear a flag (attention is Stage 3, held; act is Stage 5); a line's response is refused | a condition has no line to colour, hide, change or move |
+| Where flags live | the game state, set by the session and published as `Event::Flag` only when it changed something; the hunt folds it | every copy of the state must agree, and a behavior folds the session's events; a reconnect keeps them, the player's and not the game's |
+| A timed flag's clock | the game's; set before the clock is known, it reads unknown | every other expiry in the model is on the game's clock |
+| `;trigger test` | takes every `only_if` to hold and names it; a markup-reading event (`speech`, `whisper`, `departure`) does not see typed text | the command runs inside the session and cannot await its state; saying so beats a wrong answer |
+| `[responses] flag = false` | turns every flag off, as the other kinds | the master switches are per kind (§5a) |
+| The terminal | does not print flag changes | its rule: lifecycle, notices, sends and retries (`crates/cena/src/watch.rs`) |
 
 ### Stage 3 -- attention: **HELD** (author, §1 row 5)
 

@@ -1,28 +1,59 @@
-//! A trigger: **when** a finished line matches, **do** something with it
-//! (`plan/45`, M8). Highlighting is one response among several.
+//! A trigger: **when** something happens, **do** something (`plan/45`, M8).
+//! Highlighting is one response among several.
 //!
 //! This is a trigger as the matcher takes it: named, typed and checked. The
 //! file it comes from -- one `triggers.toml`, with categories, master
 //! switches and per-character overrides -- is `cena_behavior::triggers`,
 //! which hands each character its own list of these.
 //!
-//! Stage 1 has one source, a finished line's text, and two groups of
-//! response (`plan/45` §3b):
+//! # When
+//!
+//! | Source | In the file | Fires |
+//! |---|---|---|
+//! | a line's words | `text = "…"` or `regex = '…'` | on each finished line they match |
+//! | what the model reads a line as | `event = "speech"` ([`LineEvent`], its words) | on each finished line that is one; beside `text` or `regex`, it narrows them |
+//! | a condition | `condition = "!health_at_least 30"`, guard words | when they all become true |
+//!
+//! A line's trigger may be limited to one stream (`stream = "combat"`).
+//! **`only_if`**, `only_if = "hidden"`, may sit on any trigger: guard words
+//! that must all hold when it would fire. Not a *gate*, which is the
+//! session's check at the moment it writes (the glossary).
+//!
+//! **The guard words are the hunt's** (author, `plan/45` §1 row 2: *"yes"*),
+//! from [`crate::guard`], read against the character as it is when the line
+//! or the condition is read. **The target** a word such as `stunned` asks
+//! about is the character's current target, as the game's target list names
+//! it. Five words are the hunt's alone and are refused here: `once`,
+//! `once_here` and `every` read what a hunt's routine sent, and `splashy`
+//! and `nomagic` read the map.
+//!
+//! **A condition is edge-triggered**, on `VellumFE`'s rules (`plan/45` §2a):
+//! the first reading is taken silently, it fires only on false to true, and
+//! once it has fired it must stay false for `rearm` seconds, 3 unless set,
+//! before it fires again. A reading the game has not given is no reading.
+//!
+//! # Do
 //!
 //! | Group | Responses | In the file |
 //! |---|---|---|
 //! | **Look** | colour, background, bold; over the match, a capture group, or the line | `look = { color = "#ff4040", bold = true, span = "line" }` |
 //! | **Text** | squelch; substitute (with `$1`); redirect to another stream | `squelch = true`, `substitute = "…"`, `redirect = { stream = "combat", copy = true }` |
+//! | **Flag** | set a named flag, for a time or until cleared, or clear it; the guard word `flag "<name>"` reads it | `flag = { name = "rift", seconds = 30 }`, `flag = { name = "rift", clear = true }` |
 //!
-//! None of them changes what the game said. The model's scrollback, the
-//! chunk the classifiers read and the player log keep the game's text; a
-//! response is a display fact carried with the published line (`plan/45` §4).
+//! Where an `event` stands without `text` or `regex`, the whole line is the
+//! match. A condition has no line: its only response is a flag.
 //!
-//! **Checked as it is read.** A rule that cannot work is refused with the
-//! reason, rather than kept and silently never firing: two ways to match or
-//! none, a regex the `regex` crate cannot build (lookaround and
+//! None of the line's responses changes what the game said. The model's
+//! scrollback, the chunk the classifiers read and the player log keep the
+//! game's text; a response is a display fact carried with the published
+//! line (`plan/45` §4).
+//!
+//! **Checked as it is read** (`check.rs`). A rule that cannot work is
+//! refused with the reason, rather than kept and silently never firing: two
+//! ways to match, a regex the `regex` crate cannot build (lookaround and
 //! backreferences included, `plan/45` §8 item 6), a colour that is not
-//! `#rrggbb`, a capture group the regex does not have, or no response at all.
+//! `#rrggbb`, a capture group the regex does not have, a word a trigger
+//! cannot read, a condition with a line's response, or no response at all.
 //!
 //! **Case**: a pattern ignores case unless `case_sensitive = true`. Wrayth's
 //! highlights ignore case unless marked `case="y"` (the author's reading,
@@ -57,11 +88,25 @@
 use serde::Deserialize;
 use std::fmt;
 
+use crate::GameState;
+use crate::guard::{Condition, Facts};
+use crate::state::flags::{FlagChange, Until};
+
+mod check;
+mod edges;
+mod event;
 mod matcher;
 mod respond;
 
+pub use edges::Edges;
+pub use event::LineEvent;
 pub use matcher::{Hit, Matcher};
-pub use respond::Paint;
+pub use respond::{Answer, Paint};
+
+/// Seconds a condition must stay false before it fires again, unless its
+/// `rearm` says otherwise: `VellumFE`'s `DEFAULT_REARM_SECS`
+/// (`reference/VellumFE/src/core/alerts.rs:37`).
+pub const REARM: u32 = 3;
 
 /// A trigger, by its name in the file, and what it does.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,15 +119,25 @@ pub struct Trigger {
 
 /// When a trigger fires and what it does, checked.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(try_from = "Raw")]
+#[serde(try_from = "check::Raw")]
 pub struct Rule {
     /// Its group in the file, set by the editor; the file is written sorted
     /// by it (author, `plan/45` §1 row 3). Empty when none is given.
     pub category: String,
     /// Higher goes first when two looks overlap; ties go in file order.
     pub priority: i32,
-    /// What it matches in a finished line.
-    pub pattern: Pattern,
+    /// What it matches in a finished line; `None` when an `event` alone
+    /// says which lines, and for a condition.
+    pub pattern: Option<Pattern>,
+    /// What the model must read the line as.
+    pub event: Option<LineEvent>,
+    /// Guard words that fire it when they all become true. Not empty makes
+    /// it a condition, which watches the character and not a line.
+    pub condition: Vec<Condition>,
+    /// Seconds a condition must stay false before it fires again.
+    pub rearm: u32,
+    /// Guard words that must all hold when it would fire.
+    pub only_if: Vec<Condition>,
     /// Whether case matters.
     pub case_sensitive: bool,
     /// The one stream it looks at, `""` for the main one; `None` for all.
@@ -95,6 +150,8 @@ pub struct Rule {
     pub substitute: Option<String>,
     /// Show the line on another stream.
     pub redirect: Option<Redirect>,
+    /// Set or clear a flag.
+    pub flag: Option<Flag>,
 }
 
 /// What a trigger matches in a line's text.
@@ -129,9 +186,10 @@ pub struct Look {
 
 /// The part of a line a look covers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
-#[serde(try_from = "RawSpan")]
+#[serde(try_from = "check::RawSpan")]
 pub enum Span {
-    /// What the pattern matched (`span = "match"`, the default).
+    /// What the pattern matched (`span = "match"`, the default); the whole
+    /// line where an `event` alone matched it.
     #[default]
     Match,
     /// The whole line (`span = "line"`), as Wrayth's `line="y"`.
@@ -163,6 +221,39 @@ pub struct Redirect {
     pub copy: bool,
 }
 
+/// A flag set or cleared: a name the guard word `flag "<name>"` reads.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Flag {
+    /// Its name, matched ignoring case.
+    pub name: String,
+    /// Seconds it stays set, by the game's clock; `None` until cleared.
+    pub seconds: Option<u32>,
+    /// Clear it instead.
+    #[serde(default)]
+    pub clear: bool,
+}
+
+impl Flag {
+    /// The change this makes to the flags at game second `now`.
+    #[must_use]
+    pub fn change(&self, now: Option<u32>) -> FlagChange {
+        let until = if self.clear {
+            None
+        } else {
+            Some(match (self.seconds, now) {
+                (None, _) => Until::Cleared,
+                (Some(seconds), Some(now)) => Until::Second(now.saturating_add(seconds)),
+                (Some(_), None) => Until::Unknown,
+            })
+        };
+        FlagChange {
+            name: self.name.clone(),
+            until,
+        }
+    }
+}
+
 /// The regex `source` builds, ignoring case unless `case_sensitive`: the one
 /// way a trigger's regex is built, for the check and the matcher alike.
 ///
@@ -173,6 +264,48 @@ pub fn regex(source: &str, case_sensitive: bool) -> Result<regex::Regex, regex::
     regex::RegexBuilder::new(source)
         .case_insensitive(!case_sensitive)
         .build()
+}
+
+impl Rule {
+    /// Whether it is a condition, which watches the character and not a line.
+    #[must_use]
+    pub const fn is_condition(&self) -> bool {
+        !self.condition.is_empty()
+    }
+
+    /// Whether every word of its `only_if` holds for `state`; with none, it
+    /// does. The target is the one the game's target list names, and a word
+    /// the game has not answered does not hold.
+    #[must_use]
+    pub fn only_if_holds(&self, state: &GameState) -> bool {
+        let facts = Facts::new(state, state.targeting.current());
+        self.only_if
+            .iter()
+            .all(|condition| condition.holds(&facts) == Some(true))
+    }
+}
+
+impl Default for Rule {
+    /// A rule that does nothing yet: a line's, with nothing to match. What a
+    /// trigger is built on in code; the file's are checked.
+    fn default() -> Self {
+        Self {
+            category: String::new(),
+            priority: 0,
+            pattern: None,
+            event: None,
+            condition: Vec::new(),
+            rearm: REARM,
+            only_if: Vec::new(),
+            case_sensitive: false,
+            stream: None,
+            look: None,
+            squelch: false,
+            substitute: None,
+            redirect: None,
+            flag: None,
+        }
+    }
 }
 
 impl fmt::Display for Color {
@@ -196,128 +329,5 @@ impl TryFrom<String> for Color {
             green: byte(2)?,
             blue: byte(4)?,
         })
-    }
-}
-
-/// A span as written: a word, or a group's number.
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum RawSpan {
-    Word(String),
-    Group(i64),
-}
-
-impl TryFrom<RawSpan> for Span {
-    type Error = String;
-
-    fn try_from(raw: RawSpan) -> Result<Self, String> {
-        match raw {
-            RawSpan::Word(word) => match word.as_str() {
-                "match" => Ok(Self::Match),
-                "line" => Ok(Self::Line),
-                _ => Err(format!(
-                    "span `{word}` is not \"match\", \"line\" or a group's number"
-                )),
-            },
-            RawSpan::Group(group) => usize::try_from(group)
-                .ok()
-                .filter(|&group| group > 0)
-                .map(Self::Group)
-                .ok_or_else(|| format!("span {group}: groups count from 1")),
-        }
-    }
-}
-
-/// A rule as the file writes it, before it is checked.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Raw {
-    #[serde(default)]
-    category: String,
-    #[serde(default)]
-    priority: i32,
-    text: Option<String>,
-    regex: Option<String>,
-    #[serde(default)]
-    case_sensitive: bool,
-    whole_word: Option<bool>,
-    stream: Option<String>,
-    look: Option<Look>,
-    #[serde(default)]
-    squelch: bool,
-    substitute: Option<String>,
-    redirect: Option<Redirect>,
-}
-
-impl TryFrom<Raw> for Rule {
-    type Error = String;
-
-    fn try_from(raw: Raw) -> Result<Self, String> {
-        let pattern = match (raw.text, raw.regex) {
-            (Some(_), Some(_)) => {
-                return Err("it has both `text` and `regex`; a trigger matches one way".into());
-            }
-            (None, None) => return Err("it has no `text` or `regex`: nothing to match".into()),
-            (Some(text), None) if text.is_empty() => return Err("its `text` is empty".into()),
-            (Some(text), None) => Pattern::Literal {
-                text,
-                whole_word: raw.whole_word.unwrap_or(true),
-            },
-            (None, Some(_)) if raw.whole_word.is_some() => {
-                return Err("`whole_word` is for `text`; a regex says `\\b` itself".into());
-            }
-            (None, Some(source)) => {
-                let built = regex(&source, raw.case_sensitive)
-                    .map_err(|e| format!("its regex cannot be used: {e}"))?;
-                if let Some(Look {
-                    span: Span::Group(group),
-                    ..
-                }) = raw.look
-                    && group >= built.captures_len()
-                {
-                    return Err(format!("span {group}: the regex has no group {group}"));
-                }
-                Pattern::Regex(source)
-            }
-        };
-        if let Some(look) = &raw.look {
-            if matches!(pattern, Pattern::Literal { .. }) && matches!(look.span, Span::Group(_)) {
-                return Err("a group's span needs a `regex`; `text` has no groups".into());
-            }
-            if look.color.is_none() && look.background.is_none() && !look.bold {
-                return Err("its look sets no colour, background or bold".into());
-            }
-        }
-        if raw.redirect.as_ref().is_some_and(|r| r.stream.is_empty()) {
-            return Err("its redirect names no stream".into());
-        }
-        let responds =
-            raw.look.is_some() || raw.squelch || raw.substitute.is_some() || raw.redirect.is_some();
-        if !responds {
-            return Err("it does nothing: no look, squelch, substitute or redirect".into());
-        }
-        Ok(Self {
-            category: raw.category,
-            priority: raw.priority,
-            pattern,
-            case_sensitive: raw.case_sensitive,
-            stream: raw.stream.map(main_is_empty),
-            look: raw.look,
-            squelch: raw.squelch,
-            substitute: raw.substitute,
-            redirect: raw.redirect.map(|r| Redirect {
-                stream: main_is_empty(r.stream),
-                copy: r.copy,
-            }),
-        })
-    }
-}
-
-/// The model names the main stream `""`, and a player says `main`.
-fn main_is_empty(stream: String) -> String {
-    if stream == "main" {
-        String::new()
-    } else {
-        stream
     }
 }

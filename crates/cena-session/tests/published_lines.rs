@@ -197,18 +197,11 @@ async fn off_or_off_the_main_stream_a_look_is_published_as_it_came() {
 /// A trigger on these words that does what `edit` says.
 fn trigger(name: &str, text: &str, edit: impl FnOnce(&mut Rule)) -> Trigger {
     let mut rule = Rule {
-        category: String::new(),
-        priority: 0,
-        pattern: Pattern::Literal {
+        pattern: Some(Pattern::Literal {
             text: text.into(),
             whole_word: true,
-        },
-        case_sensitive: false,
-        stream: None,
-        look: None,
-        squelch: false,
-        substitute: None,
-        redirect: None,
+        }),
+        ..Rule::default()
     };
     edit(&mut rule);
     Trigger {

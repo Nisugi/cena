@@ -20,15 +20,8 @@ fn finished(wire: &str) -> Option<Line> {
 /// A trigger on `pattern` that does nothing until `edit` says what.
 fn trigger(name: &str, pattern: Pattern, edit: impl FnOnce(&mut Rule)) -> Trigger {
     let mut rule = Rule {
-        category: String::new(),
-        priority: 0,
-        pattern,
-        case_sensitive: false,
-        stream: None,
-        look: None,
-        squelch: false,
-        substitute: None,
-        redirect: None,
+        pattern: Some(pattern),
+        ..Rule::default()
     };
     edit(&mut rule);
     Trigger {

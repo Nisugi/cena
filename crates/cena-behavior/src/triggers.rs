@@ -17,6 +17,10 @@
 //! [trigger."ignore-spell-spam".for.Dicate]
 //! enabled = false                  # one character's copy, field by field
 //!
+//! [trigger."low"]
+//! condition = "!health_at_least 30"  # fires when it becomes true
+//! flag = { name = "low", seconds = 60 }
+//!
 //! [categories]
 //! Ignores = false                  # every trigger in it off
 //!
@@ -135,6 +139,7 @@ struct Responses {
     squelch: bool,
     substitute: bool,
     redirect: bool,
+    flag: bool,
 }
 
 impl Default for Responses {
@@ -144,6 +149,7 @@ impl Default for Responses {
             squelch: true,
             substitute: true,
             redirect: true,
+            flag: true,
         }
     }
 }
@@ -162,10 +168,14 @@ impl Responses {
         if !self.redirect {
             rule.redirect = None;
         }
+        if !self.flag {
+            rule.flag = None;
+        }
         let responds = rule.look.is_some()
             || rule.squelch
             || rule.substitute.is_some()
-            || rule.redirect.is_some();
+            || rule.redirect.is_some()
+            || rule.flag.is_some();
         responds.then_some(rule)
     }
 }

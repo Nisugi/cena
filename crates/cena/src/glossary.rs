@@ -48,7 +48,13 @@
 //!   "game state".
 //! - **event** is [`Event`], what a session publishes, and [`ObservedEvent`],
 //!   one of those numbered on an observer's stream. The combat model's
-//!   *attack event* is a third, inside one [`Event::Combat`].
+//!   *attack event* is a third, inside one [`Event::Combat`]. A trigger's
+//!   `event` is a fourth: what the model reads a finished line as, a
+//!   [`LineEvent`]; call it a **line event**.
+//! - **flag** is a name a trigger sets, which the guard word `flag "<name>"`
+//!   reads ([`Flags`]), and a creature's `<crtrStatus>` flags, which the
+//!   guard words `ascended`, `mini_boss` and the rest read ([`Fact::Flag`]).
+//!   Say "a trigger's flag" or "a creature's flag".
 //! - **stream** is a game stream window (thoughts, speech, logons:
 //!   [`stream_windows`]), the event stream an observer reads, and the merged
 //!   streams across characters ([`Merger`]).
@@ -149,7 +155,7 @@
 //! | **Routine** | the steps taken against a target, in order: [`Profile::routines`] | |
 //! | **Sequence** | a named list of steps that a routine step may stand for, such as `volley`, with guards read once before its first step, written where bigshot ran a script: [`Profile::sequences`] | script |
 //! | **Step** | one line of a routine or sequence: what is sent, and its guards ([`Step`]) | |
-//! | **Guard** | a named precondition on a step, from the closed vocabulary Hydra defines ([`Guard`]); with its polarity, a [`Condition`]. A step's guards must all hold, and there is no *or* | gate |
+//! | **Guard** | a named precondition on a step, from the closed vocabulary Hydra defines ([`Guard`]); with its polarity, a [`Condition`]. A step's guards must all hold, and there is no *or*. A trigger reads the same words (`plan/45` §1 row 2) | gate |
 //! | **Held** | a step imported with a guard or shape Hydra does not read yet: kept, with the reason named, and never run ([`Step::held`]) | dropped |
 //! | **Import** | a bigshot profile in, a Hydra profile out, with what it could not carry named at the head of the file: [`import()`], [`Import`] | |
 //!
@@ -195,8 +201,12 @@
 //!
 //! | Term | Means | Not |
 //! |---|---|---|
-//! | **Trigger** | when a finished line matches, do something with it, for everyone or the characters it names: [`Trigger`]. Every trigger is in one file, by name ([`triggers`]) | highlight, which is one thing a trigger can do; event |
-//! | **Response** | what a trigger does: in Stage 1 a look, a squelch, a substitute or a redirect. PROPOSED (`plan/45` §3d): the author may choose another word | effect, which is [`Effect`]; action |
+//! | **Trigger** | when a finished line matches, is read as a line event, or a condition becomes true, do something, for everyone or the characters it names: [`Trigger`]. Every trigger is in one file, by name ([`triggers`]) | highlight, which is one thing a trigger can do; event |
+//! | **Response** | what a trigger does: a look, a squelch, a substitute, a redirect or a flag. PROPOSED (`plan/45` §3d): the author may choose another word | effect, which is [`Effect`]; action |
+//! | **Line event** | what the model reads a finished line as, from a closed vocabulary (`speech`, `attacked`, `incident weapon_reaction`, ...): [`LineEvent`] | event, which is [`Event`] |
+//! | **Condition** (a trigger's) | guard words that fire a trigger when they all become true, and again only after staying false for its `rearm`: [`Rule::condition`], [`Edges`]. Each word is a [`Condition`] | alert |
+//! | **`only_if`** | guard words that must all hold when a trigger would fire, read against the character and its current target: [`Rule::only_if`] | gate, which is [`Gate`] |
+//! | **Trigger's flag** | a name a trigger sets, until cleared or for so many game seconds, or clears; the session publishes each change ([`Event::Flag`]) so a hunt's guard reads it: [`Flags`] | status |
 //! | **Look** | a response's colour, background and bold, over the match, a capture group or the line: [`Look`] | style, which is the wire's [`Style`] |
 //! | **Paint** | a look, resolved: what one stretch of a published [`Line`] is painted, the best look deciding each of colour, background and bold: [`Paint`] | highlight |
 //! | **Master switch** | a category, or one kind of response, turned off for every trigger: the file's `[categories]` and `[responses]` | |
@@ -239,6 +249,8 @@
 //! [`CritTables`]: cena_session::CritTables
 //! [`Event::Combat`]: cena_session::Event::Combat
 //! [`Event::Line`]: cena_session::Event::Line
+//! [`Event::Flag`]: cena_session::Event::Flag
+//! [`Edges`]: cena_session::trigger::Edges
 //! [`Effect`]: cena_session::Effect
 //! [`Event`]: cena_session::Event
 //! [`Farewell`]: cena_session::Farewell
@@ -248,6 +260,8 @@
 //! [`GameState::invalidate_for_reconnect`]: cena_session::GameState::invalidate_for_reconnect
 //! [`GameState`]: cena_session::GameState
 //! [`Gate`]: cena_session::Gate
+//! [`Fact::Flag`]: cena_session::guard::Fact::Flag
+//! [`Flags`]: cena_session::flags::Flags
 //! [`Generation`]: cena_session::Generation
 //! [`group::Board`]: cena_behavior::group::Board
 //! [`group::Boards`]: cena_behavior::group::Boards
@@ -272,6 +286,7 @@
 //! [`Import`]: cena_behavior::hunt::Import
 //! [`Look`]: cena_session::trigger::Look
 //! [`Line`]: cena_session::Line
+//! [`LineEvent`]: cena_session::trigger::LineEvent
 //! [`LONG_LIVED`]: cena_session::LONG_LIVED
 //! [`MAX_UNATTENDED_LOSSES`]: cena_session::MAX_UNATTENDED_LOSSES
 //! [`Matcher::respond`]: cena_session::trigger::Matcher::respond
@@ -322,6 +337,8 @@
 //! [`travel::Desk`]: cena_behavior::travel::Desk
 //! [`Trip::tick`]: cena_behavior::travel::Trip::tick
 //! [`Trigger`]: cena_session::trigger::Trigger
+//! [`Rule::condition`]: cena_session::trigger::Rule::condition
+//! [`Rule::only_if`]: cena_session::trigger::Rule::only_if
 //! [`triggers`]: mod@cena_behavior::triggers
 //! [`Trip`]: cena_behavior::travel::Trip
 //! [`UnknownTag`]: cena_session::UnknownTag

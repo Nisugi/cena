@@ -5,17 +5,23 @@
 //! and runs the same `respond`, so what it says is what would happen:
 //! `VellumFE`'s rule for its sorter preview, *"the transform is a pure
 //! function, so the preview is always truthful."* The line is tested as
-//! main-stream text, without the game's markup.
+//! main-stream text, without the game's markup, so an `event` that reads
+//! markup (`speech`, `whisper`, `departure`) does not see it.
+//!
+//! **An `only_if` is not read**: the command runs inside the session, which
+//! cannot hand it the character's state, so each is taken to hold and named,
+//! and the player knows what the line would do when it does. A condition
+//! has no line, and is not tested here.
 
-use cena_session::trigger::{Color, Matcher, Paint, Rule, Span};
+use cena_session::trigger::{Color, Flag, Matcher, Paint, Rule, Span};
 use cena_session::{ChunkLine, Line};
 
 /// What `matcher` makes of `words`, one sentence per line: each trigger that
-/// matches and what it does, then what is shown and how it is painted.
+/// fires and what it does, then what is shown and how it is painted.
 pub(crate) fn explain(matcher: &Matcher, words: &str) -> Vec<String> {
     let line = Line::new("", ChunkLine::plain(words).runs);
     let text = line.text();
-    let hits = matcher.hits("", &text);
+    let hits = matcher.screened(&line, &text, None);
     if hits.is_empty() {
         return vec!["Nothing matches: the line is shown as it came.".into()];
     }
@@ -29,11 +35,23 @@ pub(crate) fn explain(matcher: &Matcher, words: &str) -> Vec<String> {
         let Some(trigger) = matcher.triggers().get(hit.trigger) else {
             continue;
         };
+        let rule = &trigger.rule;
         let found = text.get(hit.span.clone()).unwrap_or_default();
+        let how = match (&rule.pattern, rule.event) {
+            (None, Some(event)) => format!("reads the line as {event}"),
+            (Some(_), Some(event)) => format!("matches \"{found}\" in {event}"),
+            _ => format!("matches \"{found}\""),
+        };
+        let only_if = if rule.only_if.is_empty() {
+            String::new()
+        } else {
+            let words: Vec<String> = rule.only_if.iter().map(ToString::to_string).collect();
+            format!(", only if {}", words.join(" "))
+        };
         out.push(format!(
-            "`{}` matches \"{found}\": {}.",
+            "`{}` {how}: {}{only_if}.",
             trigger.name,
-            does(&trigger.rule)
+            does(rule)
         ));
     }
     let shown = matcher.respond(&line);
@@ -85,7 +103,18 @@ fn does(rule: &Rule) -> String {
         let copy = if to.copy { ", as a copy" } else { "" };
         parts.push(format!("redirect to {stream}{copy}"));
     }
+    if let Some(flag) = &rule.flag {
+        parts.push(flagged(flag));
+    }
     parts.join(", ")
+}
+
+fn flagged(flag: &Flag) -> String {
+    match (flag.clear, flag.seconds) {
+        (true, _) => format!("clear flag `{}`", flag.name),
+        (false, None) => format!("set flag `{}`", flag.name),
+        (false, Some(seconds)) => format!("set flag `{}` for {seconds}s", flag.name),
+    }
 }
 
 fn looks(paint: &Paint) -> String {
@@ -149,6 +178,24 @@ mod tests {
         assert_eq!(
             moved.last().map(String::as_str),
             Some("Shown in stream `whispers`: Dicate whispers, \"hi\"")
+        );
+    }
+
+    #[test]
+    fn an_event_an_only_if_and_a_flag_are_named() {
+        let matcher = matcher(
+            "[trigger.quiet]\nevent = 'affliction silenced'\nonly_if = '!hidden'\n\
+             flag = { name = 'silenced', seconds = 30 }\n",
+        )
+        .unwrap();
+        assert_eq!(
+            explain(&matcher, "A pall of silence settles over you.")
+                .first()
+                .map(String::as_str),
+            Some(
+                "`quiet` reads the line as affliction silenced: set flag `silenced` for 30s, \
+                 only if !hidden."
+            )
         );
     }
 

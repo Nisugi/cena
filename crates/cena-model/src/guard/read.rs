@@ -63,6 +63,7 @@ impl Guard {
                 Some(!holding)
             }
             Self::Injured { part, rank } => Some(u32::from(target(facts)?.injury(*part)) >= *rank),
+            Self::Flag(name) => state.flags.holds(name, now),
             Self::Available { category, mnemonic } => {
                 state.psm_availability(*category, mnemonic).available()
             }
