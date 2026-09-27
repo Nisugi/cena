@@ -15,6 +15,7 @@
 mod character;
 mod draw;
 mod kind;
+mod lists;
 mod room;
 mod status;
 

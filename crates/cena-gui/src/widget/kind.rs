@@ -85,6 +85,12 @@ pub(crate) enum Widget {
     /// One of the game's streams, by its id: thoughts, speech, logons, ...
     /// or any other the character has received (`plan/49` §3).
     Stream(String),
+    /// The spells the game lists for the character.
+    Spellbook,
+    /// What the character keeps in reserve.
+    Reserve,
+    /// The containers the game has shown, and what each holds.
+    Containers,
 }
 
 /// A group of the Add-a-widget list, as `plan/49` §3 sorts Saga's panels.
@@ -143,7 +149,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 31] = [
+    const PLAIN: [Widget; 34] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -175,6 +181,9 @@ impl Widget {
         Widget::Objectives,
         Widget::Compass,
         Widget::Combat,
+        Widget::Spellbook,
+        Widget::Reserve,
+        Widget::Containers,
     ];
 
     /// What a player calls it: a standalone window's title, and its name in
@@ -212,6 +221,9 @@ impl Widget {
             Widget::Objectives => "Objectives",
             Widget::Compass => "Compass",
             Widget::Combat => "Combat",
+            Widget::Spellbook => "Spellbook",
+            Widget::Reserve => "Reserve",
+            Widget::Containers => "Containers",
             Widget::Indicator(indicator) => indicator.name(),
             Widget::Effects(category) => category.name(),
             Widget::Stream(id) => return stream_name(id),
@@ -222,7 +234,7 @@ impl Widget {
     /// Saga's Combat graphic; the room's other parts are Hydra's own.
     pub(crate) fn group(&self) -> Group {
         match self {
-            Widget::Story | Widget::Stream(_) => Group::Streams,
+            Widget::Story | Widget::Stream(_) | Widget::Spellbook => Group::Streams,
             Widget::Health
             | Widget::Mana
             | Widget::Stamina
@@ -239,13 +251,15 @@ impl Widget {
             | Widget::ExperienceTotals
             | Widget::Prepared
             | Widget::Compass
-            | Widget::Combat => Group::Graphics,
+            | Widget::Combat
+            | Widget::Reserve => Group::Graphics,
             Widget::Stance
             | Widget::Encumbrance
             | Widget::EncumbranceDetail
             | Widget::Society
             | Widget::Resources
             | Widget::Objectives
+            | Widget::Containers
             | Widget::Effects(_) => Group::Info,
             Widget::Indicator(_) => Group::Indicators,
             Widget::RoomTitle
@@ -276,7 +290,8 @@ impl Widget {
             Widget::Hunt => (260.0, 90.0),
             Widget::RoomDescription => (320.0, 80.0),
             Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),
-            Widget::ExperienceTotals | Widget::Resources => (260.0, 60.0),
+            Widget::ExperienceTotals | Widget::Resources | Widget::Reserve => (260.0, 60.0),
+            Widget::Spellbook | Widget::Containers => (280.0, 200.0),
             Widget::Objectives | Widget::Effects(_) => (300.0, 100.0),
             Widget::Indicator(_) => (100.0, LINE),
             Widget::Compass => (160.0, 120.0),

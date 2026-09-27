@@ -496,6 +496,19 @@ Claude's order, cheapest first, set when Stage A was done (2026-09-27):
    allowed to follow, and one kept without end). The preset tests moved to
    `layout/preset/tests.rs` as `layout/tests.rs` neared its cap.
 
+   **Step 5 BUILT 2026-09-27** (`crates/cena-gui/src/widget/lists.rs`). *Spellbook*: the
+   spells the game lists, each by number and name under its circle, as its Spells window
+   does. *Reserve*: what the character keeps in reserve, numbered as Saga's R1-R3, or that
+   nothing is, or that the game has not listed it. *Containers*: each container the game has
+   shown, a heading with its count that opens to what it holds -- every container rather
+   than one chosen, so the widget needs no option and no editor to choose it. Hydra's
+   *Loadout* preset gains the prepared spell and the reserve, as Saga's panel has them. Each
+   is drawn from a plain list read off the model where it is drawn, and tested so.
+
+   Tests: spells under their circles, none listed; the reserve numbered, empty and unknown;
+   containers closed with their counts and opened; each unknown before the game has said.
+   Seven mutants, all caught.
+
 ### Stage C — the launcher tab
 
 The hub's third tab, *"incorporate the things lich's launcher can do"* (`plan/47` §1 row 6):

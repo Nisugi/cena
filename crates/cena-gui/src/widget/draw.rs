@@ -5,7 +5,7 @@ use cena_session::hands::Hand;
 use cena_session::{Body, GameState, Notice, NoticeKind, RoomItem, Snapshot, Vital};
 use egui::{Color32, Id, RichText};
 
-use super::{Seen, Widget, character, room, status};
+use super::{Seen, Widget, character, lists, room, status};
 use crate::bar::{self, Amount, Bar, Says};
 use crate::story::Shown;
 use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
@@ -36,6 +36,9 @@ pub(super) fn draw(widget: &Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) 
         // window's character.
         Widget::Compass => return room::compass(ui, state, seen.who.is_none()),
         Widget::Combat => scrolled(ui, &mut |ui| room::combat(ui, state)),
+        Widget::Spellbook => scrolled(ui, &mut |ui| lists::spellbook(ui, state)),
+        Widget::Reserve => scrolled(ui, &mut |ui| lists::reserve(ui, state)),
+        Widget::Containers => scrolled(ui, &mut |ui| lists::containers(ui, state)),
         Widget::Story => story(ui, &seen.story.lines, seen.open, id),
         Widget::Stream(stream_id) => stream(ui, seen, stream_id, id),
         Widget::Hydra => hydra(ui, &seen.story.said, id),

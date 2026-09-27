@@ -62,9 +62,11 @@ impl Preset {
                 &[
                     vec![Widget::RightHand],
                     vec![Widget::LeftHand],
+                    vec![Widget::Prepared],
+                    vec![Widget::Reserve],
                     vec![Widget::Roundtime, Widget::CastTime],
                 ],
-                Vec2::new(300.0, 66.0),
+                Vec2::new(300.0, 146.0),
             ),
             shipped(
                 "Room",

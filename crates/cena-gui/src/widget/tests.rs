@@ -96,6 +96,9 @@ fn a_widget_says_what_it_does_not_know() {
         ("unknown", 3),
         ("Exits unknown", 2),
         ("No hunt running.", 1),
+        ("Spells unknown", 1),
+        ("Reserve unknown", 1),
+        ("Containers unknown", 1),
     ] {
         assert_eq!(harness.query_all_by_label(label).count(), count, "{label}");
     }
@@ -574,4 +577,55 @@ fn a_streams_widget_shows_its_lines() {
         });
     assert!(harness.query_by_label("[General] hello").is_some());
     assert!(harness.query_by_label("Nothing yet.").is_some());
+}
+
+/// The spellbook lists each spell under its circle, as the game's Spells
+/// window does; the reserve numbers what it holds from R1; a container
+/// opens to what it holds.
+#[test]
+fn the_lists_say_what_the_character_has() {
+    use super::lists::{containers_listed, reserved, spells_listed};
+    let mut harness = Harness::builder().with_size((300.0, 500.0)).build_ui(|ui| {
+        spells_listed(
+            ui,
+            &[
+                (101, "Spirit Warding I", Some("Minor Spiritual")),
+                (103, "Spirit Defense", Some("Minor Spiritual")),
+                (401, "Elemental Defense I", Some("Minor Elemental")),
+            ],
+        );
+        spells_listed(ui, &[]);
+        reserved(ui, Some(&["a steel broadsword", "a buckler"]));
+        reserved(ui, Some(&[]));
+        reserved(ui, None);
+        containers_listed(
+            ui,
+            &[
+                ("My Cloak".to_owned(), vec!["a gold ring", "a pink pearl"]),
+                ("stow".to_owned(), vec![]),
+            ],
+        );
+        containers_listed(ui, &[]);
+    });
+    harness.run();
+    for (label, count) in [
+        ("MINOR SPIRITUAL", 1),
+        ("MINOR ELEMENTAL", 1),
+        ("101 Spirit Warding I", 1),
+        ("401 Elemental Defense I", 1),
+        ("No spells listed", 1),
+        ("R1: a steel broadsword", 1),
+        ("R2: a buckler", 1),
+        ("Nothing in reserve", 1),
+        ("Reserve unknown", 1),
+        ("My Cloak (2)", 1),
+        ("stow (0)", 1),
+        ("No container seen yet", 1),
+        ("a gold ring", 0),
+    ] {
+        assert_eq!(harness.query_all_by_label(label).count(), count, "{label}");
+    }
+    harness.get_by_label("My Cloak (2)").click();
+    harness.run();
+    assert!(harness.query_by_label("a gold ring").is_some(), "opened");
 }
