@@ -99,6 +99,8 @@ fn a_widget_says_what_it_does_not_know() {
         ("Spells unknown", 1),
         ("Reserve unknown", 1),
         ("Containers unknown", 1),
+        ("World events unknown", 1),
+        ("Pulse ?", 1),
     ] {
         assert_eq!(harness.query_all_by_label(label).count(), count, "{label}");
     }
@@ -315,7 +317,7 @@ fn time_left_reads_as_a_clock() {
 }
 
 /// Indicators and a list of effects as drawn: some indicators on, some
-/// off, one never told; buffs with and without time left.
+/// off, one never told; buffs, full and less so.
 #[test]
 fn indicators_and_effects_as_drawn() {
     let mut ashryn = snapshot();
@@ -328,11 +330,12 @@ fn indicators_and_effects_as_drawn() {
     ] {
         ashryn.state.status.set(id, on);
     }
-    let now = ashryn.state.game_time_now().expect("a clock");
     for (id, text, ends, percent) in [
         ("1", "Rapid Fire", None, 100),
         ("2", "Spirit Warding I", None, 60),
-        ("3", "Mass Blur", Some(now + 3600), 30),
+        // No time left shown: it counts on the wall clock, and an image must
+        // not depend on how fast the machine rendering it is.
+        ("3", "Mass Blur", None, 30),
     ] {
         ashryn.state.effects.insert(
             id.to_owned(),
@@ -628,4 +631,62 @@ fn the_lists_say_what_the_character_has() {
     harness.get_by_label("My Cloak (2)").click();
     harness.run();
     assert!(harness.query_by_label("a gold ring").is_some(), "opened");
+}
+
+/// The pulse bar asks before the first pulse or the clock, counts down to
+/// the next, says a mana pulse, and is due once the least has passed.
+#[test]
+fn the_pulse_bar_says_when_the_next_comes() {
+    use super::status::pulse_said;
+    use cena_session::world::Pulse;
+    let pulse = |mana| Pulse {
+        at: Some(1_000),
+        min: 46,
+        max: 75,
+        mana,
+    };
+    assert_eq!(
+        pulse_said(None, Some(1_000), "Pulse"),
+        ("Pulse ?".to_owned(), None)
+    );
+    assert_eq!(
+        pulse_said(Some(&pulse(false)), None, "Pulse"),
+        ("Pulse ?".to_owned(), None),
+        "no clock"
+    );
+    assert_eq!(
+        pulse_said(Some(&pulse(false)), Some(1_000), "Pulse"),
+        ("Next pulse in 46-75s".to_owned(), Some(0))
+    );
+    assert_eq!(
+        pulse_said(Some(&pulse(true)), Some(1_023), "Pulse"),
+        ("Next mana pulse in 23-52s".to_owned(), Some(50))
+    );
+    assert_eq!(
+        pulse_said(Some(&pulse(false)), Some(1_046), "Pulse"),
+        ("Pulse due".to_owned(), Some(100))
+    );
+}
+
+/// World events, each with where and how long it has left, or none.
+#[test]
+fn world_events_say_where_and_how_long() {
+    use super::status::events_listed;
+    let listed = |events: &'static [(Option<&str>, &str, Option<u32>)]| {
+        Harness::builder()
+            .with_size((400.0, 200.0))
+            .build_ui(move |ui| events_listed(ui, events))
+    };
+    let some = listed(&[
+        (Some("Wehnimer's Landing"), "An invasion begins!", Some(600)),
+        (None, "The moons align.", None),
+    ]);
+    for label in [
+        "Wehnimer's Landing: An invasion begins! (10:00 left)",
+        "The moons align.",
+    ] {
+        assert!(some.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(some.query_by_label("No world events.").is_none());
+    assert!(listed(&[]).query_by_label("No world events.").is_some());
 }

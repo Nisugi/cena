@@ -91,6 +91,10 @@ pub(crate) enum Widget {
     Reserve,
     /// The containers the game has shown, and what each holds.
     Containers,
+    /// When the next pulse comes.
+    Pulse,
+    /// The world events under way.
+    WorldEvents,
 }
 
 /// A group of the Add-a-widget list, as `plan/49` §3 sorts Saga's panels.
@@ -149,7 +153,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 34] = [
+    const PLAIN: [Widget; 36] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -184,6 +188,8 @@ impl Widget {
         Widget::Spellbook,
         Widget::Reserve,
         Widget::Containers,
+        Widget::Pulse,
+        Widget::WorldEvents,
     ];
 
     /// What a player calls it: a standalone window's title, and its name in
@@ -224,6 +230,8 @@ impl Widget {
             Widget::Spellbook => "Spellbook",
             Widget::Reserve => "Reserve",
             Widget::Containers => "Containers",
+            Widget::Pulse => "Pulse timer",
+            Widget::WorldEvents => "World events",
             Widget::Indicator(indicator) => indicator.name(),
             Widget::Effects(category) => category.name(),
             Widget::Stream(id) => return stream_name(id),
@@ -252,7 +260,8 @@ impl Widget {
             | Widget::Prepared
             | Widget::Compass
             | Widget::Combat
-            | Widget::Reserve => Group::Graphics,
+            | Widget::Reserve
+            | Widget::Pulse => Group::Graphics,
             Widget::Stance
             | Widget::Encumbrance
             | Widget::EncumbranceDetail
@@ -260,6 +269,7 @@ impl Widget {
             | Widget::Resources
             | Widget::Objectives
             | Widget::Containers
+            | Widget::WorldEvents
             | Widget::Effects(_) => Group::Info,
             Widget::Indicator(_) => Group::Indicators,
             Widget::RoomTitle
@@ -292,6 +302,7 @@ impl Widget {
             Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),
             Widget::ExperienceTotals | Widget::Resources | Widget::Reserve => (260.0, 60.0),
             Widget::Spellbook | Widget::Containers => (280.0, 200.0),
+            Widget::WorldEvents => (300.0, 80.0),
             Widget::Objectives | Widget::Effects(_) => (300.0, 100.0),
             Widget::Indicator(_) => (100.0, LINE),
             Widget::Compass => (160.0, 120.0),
@@ -313,7 +324,8 @@ impl Widget {
             | Widget::Level
             | Widget::TrainingPoints
             | Widget::Prepared
-            | Widget::Society => (260.0, LINE),
+            | Widget::Society
+            | Widget::Pulse => (260.0, LINE),
         };
         Vec2::new(width, height)
     }

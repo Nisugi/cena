@@ -509,6 +509,35 @@ Claude's order, cheapest first, set when Stage A was done (2026-09-27):
    containers closed with their counts and opened; each unknown before the game has said.
    Seven mutants, all caught.
 
+   **Step 6 BUILT 2026-09-27, but for Loot.** The model work went first, in `cena-model`
+   (`crates/cena-model/src/state/world.rs`): `GameState` keeps what `<pulse>` and
+   `<worldEvent>` say, frames it parsed and dropped (`state.rs`, the `_ => {}` arm), read as
+   `VellumFE` reads them (`reference/VellumFE/src/core/messages/element.rs:2398`, `:2490`) --
+   a pulse bounds when the *next* comes, on the server clock at arrival; an event lapses its
+   minutes after it came. A reconnect forgets the pulse, timed from its connection, and keeps
+   the world's events; both are in the state's equality, as facts the server stated.
+   `cena-session` re-exports the module (`cena_session::world`). Then the widgets: *Pulse
+   timer*, a bar filling toward the next pulse (*"Next mana pulse in 23-52s"*, *"Pulse
+   due"*), the window drawn each second while it counts; and *World events*, each with its
+   realm and time left. What each says is worked out apart from drawing it, so the tests
+   hold the clock still.
+
+   **Loot is not built: its question is the author's** (§5 item 7). The same for Saga's
+   *Combat Actions*, *Almanac* and *Badge*, whose content is not known here (§3, UNKNOWN).
+
+   Tests: the model's pulse due and overdue and clockless, an event lapsing and pruned and
+   bounded, the state keeping both and a reconnect forgetting the pulse; the pulse bar's
+   sayings; events with their time left and none; the window drawn each second while a pulse
+   counts. An image test from step 2 counted on the wall clock and flaked when a second
+   turned; its bar no longer shows time. Twenty mutants; four survived the first run, each a
+   test whose input never reached the distinction: an event pruned only long after it lapsed,
+   not at its second; no event without a realm checked for none; a plain pulse, so dropping
+   the mana flag changed nothing; and both event lists drawn in one place, so *"No world
+   events."* moving from one to the other still showed once. All twenty caught.
+
+   **Stage B is BUILT**, but for those four: 66 kinds of widget (36 plain, 7 named streams
+   and any other received, 4 effect lists, 19 indicators), and eight presets.
+
 ### Stage C — the launcher tab
 
 The hub's third tab, *"incorporate the things lich's launcher can do"* (`plan/47` §1 row 6):
@@ -516,6 +545,31 @@ saved logins (today's Start list, from the roster), a manual login, accounts, fa
 game and instance. Lich's launcher is the reference
 (`reference/lich-5/lib/common/gui/saved_login_tab.rb`, `manual_login_tab.rb`,
 `account_manager_ui.rb`, `favorites_manager.rb`, `game_selection.rb`).
+
+Claude's steps, set when Stage B was done (2026-09-27), from what Lich's launcher does and
+what Hydra already keeps -- the roster (`crates/cena/src/roster.rs`: character, account,
+game, no secret) and the password ladder (`crates/cena/src/secrets.rs`: the OS keyring,
+then the account's environment variable, then a prompt at a terminal):
+
+1. **The requests.** A hub may ask the binary to log a character in by what was typed --
+   account, password, game, character, and whether to keep the password -- to forget a
+   character from the roster, and to forget an account's kept password. The password
+   travels in the process only, from the window to the binary, and is never printed:
+   its `Debug` says it is hidden. Despana's page cannot send it; the web's wire has no
+   such message. A login proven `Ready` joins the roster, as a terminal login does, and
+   its password goes to the keyring **only when the player ticked the box**, never
+   otherwise and never on a failed login. The binary tells the window the whole roster,
+   each character with whether its account's password is kept.
+2. **The Launch tab**, the hub's third: the roster's characters, each started with a click
+   when its password is kept, or with the password typed there (and the box); a new login
+   typed whole; the accounts whose passwords are kept, each forgotten with a click.
+3. **Favourites**: a star on a character, kept in the roster, puts it first in the list,
+   as Lich's favourites do.
+
+Not in Stage C: asking the login service which characters an account has, as Lich's
+manual tab does (`manual_login_tab.rb`). It needs a new exchange with the live service,
+which no test here may make; the character is typed by name, and a wrong one is refused at
+login with the service's own reason.
 
 ### Stage D — settings
 
@@ -564,6 +618,11 @@ bundle on macOS, a `.desktop` entry on Linux.
 6. ~~**Which stage makes the UI proper**, so the M6 live run can go?~~ **DECIDED, the
    author, 2026-09-27:** *"When I feel the GUI is done."* No stage is the gate; the author's
    judgment is. (Claude had recommended A and B.)
+7. **Loot** (Stage B step 6): the model empties its loot queue each prompt into the ledger
+   (`plan/34`), so no standing list is kept. Should a Loot widget show the last things
+   looted this run (the model keeping, say, the last fifty), or the ledger's totals, which
+   the binary would hand the window? And what do Saga's *Combat Actions*, *Almanac* and
+   *Badge* show? Asked 2026-09-27; not built until answered.
 
 ---
 

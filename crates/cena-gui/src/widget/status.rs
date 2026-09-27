@@ -5,6 +5,7 @@
 //! panel of them a preset of the four stacked as tabs.
 
 use cena_session::GameState;
+use cena_session::world::Pulse;
 use egui::{Align2, Color32, FontId, Sense, Stroke, StrokeKind, Vec2};
 use serde::{Deserialize, Serialize};
 
@@ -297,5 +298,99 @@ pub(super) fn clock(seconds: u32) -> String {
         format!("{hours}:{minutes:02}:{seconds:02}")
     } else {
         format!("{minutes}:{seconds:02}")
+    }
+}
+
+/// The pulse's fill.
+const PULSE: Color32 = Color32::from_rgb(0x47, 0x84, 0xd9);
+
+/// When the next pulse comes, as a bar that fills toward it.
+pub(super) fn pulse(ui: &mut egui::Ui, state: Option<&GameState>, name: &str) {
+    let now = state.and_then(GameState::game_time_now);
+    let (label, percent) = pulse_said(
+        state.and_then(|state| state.world.pulse.as_ref()),
+        now,
+        name,
+    );
+    let amount = percent.map(|percent| Amount {
+        percent,
+        current: None,
+        max: None,
+    });
+    ui.add(
+        Bar::new(&label, amount)
+            .fill(PULSE)
+            .size([ui.available_width(), 18.0])
+            .says(Says {
+                label: true,
+                numbers: false,
+                percent: false,
+            }),
+    );
+}
+
+/// What the pulse bar says at server second `now`, and how full it is:
+/// *"Next pulse in 12-41s"*, *"Next mana pulse in ..."* when it will be one,
+/// *"Pulse due"* once it may come any second, and `name` asking before the
+/// first pulse or the game's clock.
+pub(super) fn pulse_said(
+    pulse: Option<&Pulse>,
+    now: Option<u32>,
+    name: &str,
+) -> (String, Option<u32>) {
+    let due = pulse
+        .zip(now)
+        .and_then(|(pulse, now)| pulse.due(now).map(|due| (pulse, due)));
+    match due {
+        None => (format!("{name} ?"), None),
+        Some((_, (0, _))) => ("Pulse due".to_owned(), Some(100)),
+        Some((pulse, (least, most))) => {
+            let kind = if pulse.mana { "mana pulse" } else { "pulse" };
+            let passed = pulse.min.saturating_sub(least);
+            (
+                format!("Next {kind} in {least}-{most}s"),
+                Some(passed * 100 / pulse.min.max(1)),
+            )
+        }
+    }
+}
+
+/// The world events under way, each with where and how long it has left.
+pub(super) fn world_events(ui: &mut egui::Ui, state: Option<&GameState>) {
+    let Some(state) = state else {
+        ui.weak("World events unknown");
+        return;
+    };
+    let now = state.game_time_now();
+    let events: Vec<(Option<&str>, &str, Option<u32>)> = state
+        .world
+        .events(now)
+        .map(|event| {
+            (
+                event.realm.as_deref(),
+                event.text.as_str(),
+                now.zip(event.expires_at)
+                    .map(|(now, at)| at.saturating_sub(now)),
+            )
+        })
+        .collect();
+    events_listed(ui, &events);
+}
+
+/// `events` -- where, what, and seconds left when the game gave an expiry
+/// -- a line each, or that there are none.
+pub(super) fn events_listed(ui: &mut egui::Ui, events: &[(Option<&str>, &str, Option<u32>)]) {
+    if events.is_empty() {
+        ui.weak("No world events.");
+    }
+    for (realm, text, left) in events {
+        let mut line = match realm {
+            Some(realm) => format!("{realm}: {text}"),
+            None => (*text).to_owned(),
+        };
+        if let Some(left) = left {
+            line = format!("{line} ({} left)", clock(*left));
+        }
+        ui.label(line);
     }
 }

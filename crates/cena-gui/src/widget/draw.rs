@@ -39,6 +39,8 @@ pub(super) fn draw(widget: &Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) 
         Widget::Spellbook => scrolled(ui, &mut |ui| lists::spellbook(ui, state)),
         Widget::Reserve => scrolled(ui, &mut |ui| lists::reserve(ui, state)),
         Widget::Containers => scrolled(ui, &mut |ui| lists::containers(ui, state)),
+        Widget::Pulse => status::pulse(ui, state, &named("Pulse")),
+        Widget::WorldEvents => scrolled(ui, &mut |ui| status::world_events(ui, state)),
         Widget::Story => story(ui, &seen.story.lines, seen.open, id),
         Widget::Stream(stream_id) => stream(ui, seen, stream_id, id),
         Widget::Hydra => hydra(ui, &seen.story.said, id),

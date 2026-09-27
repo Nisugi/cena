@@ -92,6 +92,7 @@ pub mod streams;
 pub mod targeting;
 mod unknown;
 pub mod vitals;
+pub mod world;
 pub mod worn;
 
 pub use character::{Character, Experience, Injury};
@@ -256,6 +257,8 @@ pub struct GameState {
     pub character: Character,
     /// Containers and their contents. `plan/18` §2d.
     pub inventory: Inventory,
+    /// When the next pulse is due, and the world events under way.
+    pub world: world::World,
     /// Whether the server has warned that this character is idle.
     ///
     /// Private, and read through [`GameState::idle_warned`] /
@@ -486,6 +489,16 @@ impl GameState {
             // closing one nobody popped matters to the reserve (`worn.rs`).
             Frame::StreamPush { id } => self.list_opened(id),
             Frame::StreamPopForced { id } => self.list_torn(id),
+            Frame::Pulse { mana, min, max } => {
+                self.world.pulsed(self.game_time_now(), *min, *max, *mana);
+            }
+            Frame::WorldEvent {
+                realm,
+                expires_min,
+                text,
+            } => self
+                .world
+                .announced(self.game_time_now(), realm, *expires_min, text),
             // Every other frame is published to observers without changing
             // state. `plan/12` §7.1 scopes GameState to room/hands/
             // roundtime/vitals; a frame this slice does not model is not

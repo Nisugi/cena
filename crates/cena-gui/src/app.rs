@@ -291,6 +291,12 @@ fn clocks_run(
                 .effects
                 .iter()
                 .any(|(id, _)| state.effects.remaining(id, now).is_some_and(|s| s > 0))
+                || state
+                    .world
+                    .pulse
+                    .as_ref()
+                    .and_then(|pulse| pulse.due(now))
+                    .is_some_and(|(_, most)| most > 0)
         })
     });
     effects.then_some(Duration::from_secs(1))
@@ -537,13 +543,23 @@ mod tests {
 
     /// A window is drawn again soon while something counts down by itself:
     /// a quarter of a second for the clocks, a second for an effect's time
-    /// left, and not at all when nothing does.
+    /// left or the next pulse, and not at all when nothing does.
     #[test]
     fn a_window_is_drawn_again_while_something_counts_down() {
         let story = std::sync::Mutex::new(crate::story::Story::default());
         let mut quiet = crate::fixture::snapshot();
         quiet.state.roundtime_ends = None;
         assert_eq!(clocks_run(Some(&quiet), &story), None);
+        let mut pulsing = quiet.clone();
+        pulsing.state.apply(&cena_session::Frame::Pulse {
+            mana: false,
+            min: 46,
+            max: 75,
+        });
+        assert_eq!(
+            clocks_run(Some(&pulsing), &story),
+            Some(Duration::from_secs(1))
+        );
         let mut buffed = quiet.clone();
         let now = buffed.state.game_time_now().expect("a clock");
         buffed.state.effects.insert(

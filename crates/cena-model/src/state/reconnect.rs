@@ -179,6 +179,7 @@ impl GameState {
             // game's to forget. One set for a time runs out by the server's
             // clock, which does not stop for a reconnect (`flags.rs`).
             flags: _,
+            world,
             creatures,
             pending,
             chunk,
@@ -497,5 +498,11 @@ impl GameState {
         // --- Kept: see the method docs -------------------------------------
         let _ = vitals;
         let _ = (unknown_tags, unknown_tag_counts);
+        // **The pulse is forgotten; the world's events are kept.** A pulse is
+        // timed from its connection -- the next is due so long after the
+        // last one this connection saw -- and the new connection sends its
+        // own. An event is the world's, which went on while we were away,
+        // and runs out by the server's clock (`world.rs`).
+        world.pulse = None;
     }
 }
