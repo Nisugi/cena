@@ -1,0 +1,288 @@
+//! The Ruby runner end to end (`plan/46` §11 step 1): Hydra writes out and
+//! starts Lich's own engine in Ruby; the player's command starts a Lich
+//! script there; its line reaches the game as a script's, the game's answer
+//! reaches the script, and what it says reaches the player, echoed as Lich
+//! echoes it.
+//!
+//! **It needs Ruby 4.0**, which Lich's engine needs: on the `PATH` or where
+//! Lich's Windows installer puts it. Without one this fails, saying so,
+//! rather than passing over nothing.
+
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use cena_agent::scripts::runner::{Start, find_ruby, start, unpack};
+use cena_agent::scripts::{Runners, serve};
+use cena_platform::{AnsweringSource, TranscriptHandle};
+use cena_session::{Event, Origin, Session};
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::sync::broadcast::Receiver;
+use tokio_util::sync::CancellationToken;
+
+/// A folder of this test's own.
+fn temp_dir(test: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("cena-runner-{test}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    dir
+}
+
+/// A scripted character with a runner started for it over `scripts`.
+struct Running {
+    transcript: TranscriptHandle,
+    legacy: Receiver<Event>,
+    runners: Runners,
+    token: String,
+    child: tokio::process::Child,
+    errors: Arc<Mutex<Vec<String>>>,
+    stop: CancellationToken,
+}
+
+/// What the player was told and what went out, until a line told contains
+/// `until`, or a minute passed.
+struct Heard {
+    told: Vec<String>,
+    sent: Vec<(String, Origin)>,
+    finished: bool,
+}
+
+impl Running {
+    /// The character answers `look`; its runner runs the scripts in
+    /// `scripts`, with `dir` for the rest.
+    async fn start(scripts: &Path, dir: &Path) -> Option<Self> {
+        let ruby = find_ruby()?;
+        let (source, transcript) =
+            AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+        transcript.answer(
+            "look",
+            b"You see a quiet room.\n<prompt time=\"2\">&gt;</prompt>\n",
+        );
+        let session = Session::new(source);
+        let handle = session.handle();
+        let observer = session.observer();
+        let (_, legacy) = session.subscribe();
+        tokio::spawn(session.into_actor().run());
+
+        let runners = Runners::default();
+        let stop = CancellationToken::new();
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.ok()?;
+        let url = format!("http://{}/mcp", listener.local_addr().ok()?);
+        tokio::spawn(serve(listener, runners.clone(), stop.clone()));
+        let token = runners
+            .admit("Nisugi", handle.script_door(), &observer)
+            .await
+            .ok()?;
+        let runner_dir = dir.join("runner");
+        unpack(&runner_dir).ok()?;
+        let data = dir.join("data");
+        std::fs::create_dir_all(&data).ok()?;
+        let mut child = start(&Start {
+            ruby: &ruby,
+            dir: &runner_dir,
+            url: &url,
+            token: &token,
+            character: "Nisugi",
+            game: "GS3",
+            scripts,
+            data: &data,
+            symbol: ';',
+        })
+        .ok()?;
+        let errors = Arc::new(Mutex::new(Vec::<String>::new()));
+        let kept = Arc::clone(&errors);
+        let stderr = child.stderr.take()?;
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if let Ok(mut errors) = kept.lock() {
+                    errors.push(line);
+                }
+            }
+        });
+        Some(Self {
+            transcript,
+            legacy,
+            runners,
+            token,
+            child,
+            errors,
+            stop,
+        })
+    }
+
+    /// The player types `;line` for the runner.
+    fn typed(&self, line: &str) -> bool {
+        self.runners.typed(&self.token, line)
+    }
+
+    async fn heard_until(&mut self, until: &str) -> Heard {
+        self.heard_until_either(until, until).await
+    }
+
+    /// Run `;line` and hear it through to `name has exited`. Lich says a
+    /// script has exited a moment before it leaves the running list, so a
+    /// second run of the same script typed at once can be told it is still
+    /// running: that answer is waited out, as a player would type again.
+    /// `None` when it never stopped running.
+    async fn run(&mut self, line: &str, name: &str) -> Option<Heard> {
+        let exited = format!("{name} has exited");
+        for _ in 0..20 {
+            assert!(self.typed(line));
+            let heard = self.heard_until_either(&exited, "is already running").await;
+            if !heard
+                .told
+                .iter()
+                .any(|told| told.contains("is already running"))
+            {
+                return Some(heard);
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        None
+    }
+
+    async fn heard_until_either(&mut self, until: &str, or: &str) -> Heard {
+        let mut heard = Heard {
+            told: Vec::new(),
+            sent: Vec::new(),
+            finished: false,
+        };
+        let waited = tokio::time::timeout(Duration::from_mins(1), async {
+            loop {
+                match self.legacy.recv().await {
+                    Ok(Event::Notice(notice)) => heard.told.extend(notice.lines().iter().cloned()),
+                    Ok(Event::Sent { line, origin }) => heard.sent.push((line, origin)),
+                    Ok(_) => {}
+                    Err(_) => return,
+                }
+                if heard
+                    .told
+                    .iter()
+                    .any(|line| line.contains(until) || line.contains(or))
+                {
+                    return;
+                }
+            }
+        })
+        .await;
+        heard.finished = waited.is_ok() && heard.told.iter().any(|line| line.contains(until));
+        heard
+    }
+
+    fn errors(&self) -> Vec<String> {
+        self.errors.lock().map(|e| e.clone()).unwrap_or_default()
+    }
+
+    async fn end(mut self) {
+        let _ = self.child.kill().await;
+        self.runners.dismiss(&self.token);
+        self.stop.cancel();
+    }
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn a_lich_script_runs_against_hydra() {
+    assert!(
+        find_ruby().is_some(),
+        "no Ruby: the runner needs Ruby 4.0, on the PATH or under C:\\Ruby4Lich5 (Lich's installer)"
+    );
+    let dir = temp_dir("lich-script");
+    let scripts = dir.join("scripts");
+    std::fs::create_dir_all(&scripts).unwrap();
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/hydratest.lic");
+    std::fs::copy(fixture, scripts.join("hydratest.lic")).unwrap();
+    let mut running = Running::start(&scripts, &dir).await.unwrap();
+
+    assert!(running.typed("hydratest one \"two three\""));
+    let heard = running.heard_until("hydratest has exited").await;
+    let errors = running.errors();
+    assert!(
+        heard.finished,
+        "the script did not finish.\ntold: {:#?}\nrunner's errors: {errors:#?}",
+        heard.told
+    );
+    for expected in [
+        "--- Lich: hydratest active.",
+        "[hydratest: args: one|two three]",
+        "[hydratest]>look",
+        "[hydratest: heard: You see a quiet room.]",
+        "a table",
+        "  row one",
+        "--- Lich: hydratest has exited.",
+    ] {
+        assert!(
+            heard.told.iter().any(|line| line == expected),
+            "{expected:?} not told: {:#?}\nrunner's errors: {errors:#?}",
+            heard.told
+        );
+    }
+    assert_eq!(heard.sent, [("look".to_owned(), Origin::Script)]);
+    assert_eq!(running.transcript.lines(), ["look"]);
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// **The first real script end to end** (`plan/46` §11 step 1): Tillmen's
+/// `trollspeak`, from the player's own Lich scripts, unchanged. It is not
+/// ours to commit, so this reads it from the folder `CENA_LICH_SCRIPTS`
+/// names (the author's: `reference/lich_repo_mirror/lib`).
+#[tokio::test(flavor = "current_thread")]
+#[ignore = "Tier 2: needs CENA_LICH_SCRIPTS, a folder holding trollspeak.lic; run with --ignored"]
+async fn trollspeak_runs_unchanged() {
+    let scripts = PathBuf::from(
+        std::env::var_os("CENA_LICH_SCRIPTS").expect("CENA_LICH_SCRIPTS names no folder"),
+    );
+    assert!(
+        scripts.join("trollspeak.lic").is_file(),
+        "no trollspeak.lic"
+    );
+    let dir = temp_dir("trollspeak");
+    let mut running = Running::start(&scripts, &dir).await.unwrap();
+
+    let heard = running
+        .run("trollspeak say hello there, friend", "trollspeak")
+        .await
+        .unwrap();
+    assert!(heard.finished, "{:#?}\n{:#?}", heard.told, running.errors());
+    let [(said, Origin::Script)] = heard.sent.as_slice() else {
+        panic!("{:?}", heard.sent);
+    };
+    assert!(
+        said.starts_with("say ") && said != "say hello there, friend",
+        "{said}"
+    );
+    assert!(
+        heard
+            .told
+            .iter()
+            .any(|line| *line == format!("[trollspeak]>{said}")),
+        "{:#?}",
+        heard.told
+    );
+
+    let heard = running
+        .run("trollspeak echo hello", "trollspeak")
+        .await
+        .unwrap();
+    assert!(heard.sent.is_empty(), "echo sends nothing");
+    assert!(
+        heard
+            .told
+            .iter()
+            .any(|line| line.starts_with("[trollspeak: ")),
+        "{:#?}",
+        heard.told
+    );
+
+    let heard = running.run("trollspeak", "trollspeak").await.unwrap();
+    assert!(
+        heard
+            .told
+            .iter()
+            .any(|line| line.starts_with("Usage: ;trollspeak")),
+        "{:#?}",
+        heard.told
+    );
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}

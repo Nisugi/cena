@@ -57,7 +57,8 @@ pub struct Line {
 /// `say`'s text.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct Said {
-    /// What to show; each line of it a line.
+    /// What to show: split at each line break, every piece a line, so an
+    /// empty text is one blank line.
     pub text: String,
     /// `info` (absent), `warn`, `error` or `debug`: how it is coloured.
     pub kind: Option<String>,
@@ -149,7 +150,11 @@ impl Scripting {
                 ));
             }
         };
-        let lines: Vec<String> = said.text.lines().map(str::to_owned).collect();
+        let lines: Vec<String> = said
+            .text
+            .split('\n')
+            .map(|line| line.strip_suffix('\r').unwrap_or(line).to_owned())
+            .collect();
         let notice = if said.mono.unwrap_or(false) {
             Notice::table(kind, lines)
         } else {

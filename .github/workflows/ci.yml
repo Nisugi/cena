@@ -42,6 +42,13 @@ jobs:
       # VellumFE's Linux build installs none either.
       - run: sudo apt-get update && sudo apt-get install -y pkg-config libasound2-dev mesa-vulkan-drivers
         if: matrix.os == 'ubuntu-latest'
+      # The Ruby script runner's end-to-end test (crates/cena-agent/tests/
+      # runner.rs, plan/46) starts Lich's engine, which needs Ruby 4.0; the
+      # runners' own Ruby is older on some OSes, and the test fails without
+      # one rather than passing over nothing.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
 
       # plan/06 section 4 lists these as 1. test, 2. clippy, 3. fmt. Reordered
       # cheapest-first so a formatting slip does not wait on a full build; the

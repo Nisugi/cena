@@ -17,6 +17,8 @@
 //!
 //! - [`listening`]: what a runner listens to, at its own positions.
 //! - [`tools`]: `listen`, `send` and `say`, the contract in `SCRIPTS.md`.
+//! - [`runner`]: the Ruby runner's files, carried in the binary, and how one
+//!   is started.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -34,6 +36,7 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 pub mod listening;
+pub mod runner;
 pub mod tools;
 
 use listening::Listening;

@@ -19,7 +19,9 @@ Hydra starts the runner and hands it, in its environment:
 | `HYDRA_URL` | the listener, `http://127.0.0.1:<port>/mcp`: loopback, a port the system chose |
 | `HYDRA_TOKEN` | this runner's bearer token, for the `Authorization` header, **never a tool argument**. It names the character; it is kept only in Hydra's memory and opens nothing once the runner is dismissed |
 | `HYDRA_CHARACTER` | the character's name |
+| `HYDRA_GAME` | the game the character logged into, by its login code: `GS3` (GemStone IV), `GSX` (Platinum), `GST` (test), `GSF` (Shattered) |
 | `HYDRA_SCRIPTS` | the folder the player's scripts are in |
+| `HYDRA_DATA` | the folder a runner keeps its own data in (a Lich runner's `DATA_DIR`) |
 | `HYDRA_SYMBOL` | the character's command symbol, `;` unless changed |
 
 MCP's streamable HTTP, **without a session**: each request is a `tools/call` on its own, answered
@@ -74,8 +76,8 @@ after it.
 
 ## `say` `{ text, kind?, mono? }`
 
-Show the player `text` (at most 20000 characters), each line of it a line, as a script's
-`respond` and `echo` do. `kind` colours it: `info` (absent), `warn`, `error`, `debug`. `mono`
+Show the player `text` (at most 20000 characters) as a script's `respond` and `echo` do:
+split at each line break, every piece a line, so `""` is one blank line. `kind` colours it: `info` (absent), `warn`, `error`, `debug`. `mono`
 keeps its columns, never re-wrapped, for a table. It never reaches the game. Answers
 `{"said": true}`.
 
