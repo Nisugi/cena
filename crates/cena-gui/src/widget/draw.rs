@@ -5,19 +5,19 @@ use cena_session::hands::Hand;
 use cena_session::{Body, GameState, Notice, NoticeKind, RoomItem, Snapshot, Vital};
 use egui::{Color32, Id, RichText};
 
-use super::{Seen, Widget, character, status};
+use super::{Seen, Widget, character, room, status};
 use crate::bar::{self, Amount, Bar, Says};
 use crate::story::Shown;
 use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
 
 /// Draw `widget` for `seen` into `ui`. Following another character, a
 /// one-line widget puts its name before what it says, and the rest a line
-/// with its name above.
+/// with its name above. A line to send, when the player asked for one.
 #[allow(
     clippy::too_many_lines,
     reason = "the catalog's table: one arm per kind, each a call; split, it would hide which kind draws how"
 )]
-pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
+pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
     let named = |label: &str| {
         seen.who
@@ -32,6 +32,10 @@ pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
         });
     };
     match widget {
+        // Never for another character's compass: a click would move this
+        // window's character.
+        Widget::Compass => return room::compass(ui, state, seen.who.is_none()),
+        Widget::Combat => scrolled(ui, &mut |ui| room::combat(ui, state)),
         Widget::Story => story(ui, &seen.story.lines, id),
         Widget::Hydra => hydra(ui, &seen.story.said, id),
         Widget::Hunt => scrolled(ui, &mut |ui| hunt(ui, seen.hunt)),
@@ -137,6 +141,7 @@ pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
             }),
         ),
     }
+    None
 }
 
 /// One line of a one-line widget: never wrapped onto a second, which its

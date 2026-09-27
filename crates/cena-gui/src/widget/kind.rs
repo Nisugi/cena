@@ -76,6 +76,10 @@ pub(crate) enum Widget {
     Indicator(Indicator),
     /// One of the game's lists of effects.
     Effects(Category),
+    /// The room's ways out, as a compass rose.
+    Compass,
+    /// Who is fighting in the room: friends and foes.
+    Combat,
 }
 
 /// A group of the Add-a-widget list, as `plan/49` §3 sorts Saga's panels.
@@ -127,7 +131,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 29] = [
+    const PLAIN: [Widget; 31] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -157,6 +161,8 @@ impl Widget {
         Widget::Society,
         Widget::Resources,
         Widget::Objectives,
+        Widget::Compass,
+        Widget::Combat,
     ];
 
     /// What a player calls it: a standalone window's title, and its name in
@@ -192,6 +198,8 @@ impl Widget {
             Widget::Society => "Society",
             Widget::Resources => "Resources",
             Widget::Objectives => "Objectives",
+            Widget::Compass => "Compass",
+            Widget::Combat => "Combat",
             Widget::Indicator(indicator) => indicator.name(),
             Widget::Effects(category) => category.name(),
         }
@@ -216,7 +224,9 @@ impl Widget {
             | Widget::Level
             | Widget::TrainingPoints
             | Widget::ExperienceTotals
-            | Widget::Prepared => Group::Graphics,
+            | Widget::Prepared
+            | Widget::Compass
+            | Widget::Combat => Group::Graphics,
             Widget::Stance
             | Widget::Encumbrance
             | Widget::EncumbranceDetail
@@ -255,6 +265,8 @@ impl Widget {
             Widget::ExperienceTotals | Widget::Resources => (260.0, 60.0),
             Widget::Objectives | Widget::Effects(_) => (300.0, 100.0),
             Widget::Indicator(_) => (100.0, LINE),
+            Widget::Compass => (160.0, 120.0),
+            Widget::Combat => (260.0, 140.0),
             Widget::Roundtime | Widget::CastTime => (110.0, LINE),
             Widget::Health
             | Widget::Mana

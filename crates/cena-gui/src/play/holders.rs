@@ -126,6 +126,7 @@ impl Play {
             follows: &layout.follows,
             session,
             read: &mut self.read,
+            sent: None,
         };
         for holder in &mut layout.holders {
             let at = holder.rect().translate(offset);
@@ -149,6 +150,9 @@ impl Play {
             if held && let Some(shown) = shown {
                 drawn.push((id, shown.response.rect.translate(-offset)));
             }
+        }
+        if let Some(line) = drawing.sent {
+            self.out = Some(super::Asked::Send(line));
         }
         ((drawn, insides), released)
     }

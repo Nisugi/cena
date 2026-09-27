@@ -406,3 +406,22 @@ fn presets_not_saved_say_so() {
     );
     let _ = std::fs::remove_file(&blocked);
 }
+
+/// A compass added to a play window moves its character when clicked, as
+/// if the direction were typed.
+#[test]
+fn a_compass_moves_its_character() {
+    let mut harness = with_baelor();
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        layout.add_widget(Widget::Compass, None);
+    }
+    harness.run();
+    harness.get_by_role_and_label(Role::Button, "north").click();
+    harness.run();
+    assert!(
+        harness
+            .state()
+            .asked
+            .contains(&Asked::Send("north".to_owned()))
+    );
+}

@@ -454,6 +454,24 @@ Claude's order, cheapest first, set when Stage A was done (2026-09-27):
    clocks, effects and neither; and an image of indicators and effects
    (`tests/snapshots/status.png`). Nine mutants, all caught.
 
+   **Step 3 BUILT 2026-09-27** (`crates/cena-gui/src/widget/room.rs`). *Compass*: the
+   room's ways out as a rose -- the eight directions and out in a three-by-three, up and
+   down beside it -- each lit when the room has it. **A click on a lit one goes that way**,
+   sent as if typed (a widget may now hand its window a line to send,
+   `Asked::Send`); never from a compass following another character, which would move
+   this one. *Combat*: who is fighting here, as Saga's panel -- *FRIENDLY*, the character
+   with its stance and whatever the game says is on its side, then *FOES*, each with its
+   statuses in words and a thin bar of its health where the server states it, dead ones
+   said so. A creature the game has not called friendly is a foe. The list is drawn from
+   a small view of each creature (`Fighter`), read off the model's; the test draws the
+   view, since building the model's creature takes `cena-protocol`'s types, which the GUI
+   does not depend on.
+
+   Tests: the compass lit where the room goes, a click on a lit way going and on a dark
+   one not, another character's going nowhere, a click in a play window sent as typed;
+   friends apart from foes with their statuses, the dead, and none; and an image of both
+   (`tests/snapshots/room.png`). Twelve mutants, all caught.
+
 ### Stage C — the launcher tab
 
 The hub's third tab, *"incorporate the things lich's launcher can do"* (`plan/47` §1 row 6):

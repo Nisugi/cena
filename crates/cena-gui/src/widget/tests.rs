@@ -90,7 +90,7 @@ fn a_widget_says_what_it_does_not_know() {
         ("Room unknown", 1),
         ("Description unknown", 1),
         ("unknown", 3),
-        ("Exits unknown", 1),
+        ("Exits unknown", 2),
         ("No hunt running.", 1),
     ] {
         assert_eq!(harness.query_all_by_label(label).count(), count, "{label}");
@@ -366,4 +366,153 @@ fn indicators_and_effects_as_drawn() {
         });
     harness.run();
     harness.snapshot("status");
+}
+
+/// A compass over `snapshot`, for `who` when another character's, and the
+/// lines its clicks asked to send.
+fn compass<'a>(
+    snapshot: Snapshot,
+    who: Option<&'static str>,
+) -> (Harness<'a, ()>, Arc<Mutex<Vec<String>>>) {
+    let sent = Arc::new(Mutex::new(Vec::new()));
+    let heard = Arc::clone(&sent);
+    let story = story();
+    let harness = Harness::builder()
+        .with_size((200.0, 150.0))
+        .build_ui(move |ui| {
+            let seen = Seen {
+                snapshot: Some(&snapshot),
+                story: &story,
+                hunt: None,
+                who,
+            };
+            if let Some(line) = Widget::Compass.draw(ui, &seen, Id::new("compass")) {
+                heard
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .push(line);
+            }
+        });
+    (harness, sent)
+}
+
+/// The compass lights the room's ways out; a click on one goes that way,
+/// and on one the room has not, nowhere.
+#[test]
+fn the_compass_lights_the_ways_out_and_goes() {
+    let (mut harness, sent) = compass(snapshot(), None);
+    harness.run();
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::Button, "south")
+        .click();
+    harness.run();
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::Button, "north")
+        .click();
+    harness.run();
+    assert_eq!(
+        *sent
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
+        ["north"]
+    );
+}
+
+/// Another character's compass goes nowhere: a click would move this
+/// window's character.
+#[test]
+fn another_characters_compass_goes_nowhere() {
+    let (mut harness, sent) = compass(snapshot(), Some("Baelor"));
+    harness.run();
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::Button, "north")
+        .click();
+    harness.run();
+    assert!(
+        sent.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_empty()
+    );
+}
+
+/// The combat list: the character and its friends, then its foes with
+/// their statuses, or that there are none.
+#[test]
+fn the_combat_list_sorts_friends_from_foes() {
+    use super::room::{Fighter, fighting};
+    let fighter = |name: &str, friend, dead, statuses: &[&str], health| Fighter {
+        name: name.to_owned(),
+        friend,
+        dead,
+        statuses: statuses.iter().map(|status| (*status).to_owned()).collect(),
+        health,
+    };
+    let fighters = vec![
+        fighter("a spirit guide", true, false, &[], None),
+        fighter(
+            "a kobold",
+            false,
+            false,
+            &["stunned", "off balance"],
+            Some(40),
+        ),
+        fighter("a rat", false, true, &[], Some(0)),
+    ];
+    let harness = Harness::builder()
+        .with_size((300.0, 300.0))
+        .build_ui(move |ui| {
+            fighting(ui, Some("defensive (100%)"), &fighters);
+            fighting(ui, None, &[]);
+        });
+    for (label, count) in [
+        ("FRIENDLY", 2),
+        ("You", 2),
+        ("defensive (100%)", 1),
+        ("a spirit guide", 1),
+        ("FOES", 2),
+        ("a kobold", 1),
+        ("stunned, off balance", 1),
+        ("a rat", 1),
+        ("dead", 1),
+        ("No foes.", 1),
+    ] {
+        assert_eq!(harness.query_all_by_label(label).count(), count, "{label}");
+    }
+}
+
+/// A compass and a combat list as drawn.
+#[test]
+fn the_compass_and_combat_as_drawn() {
+    use super::room::{Fighter, fighting};
+    let mut ashryn = snapshot();
+    ashryn.state.room.exits = Some(["north", "east", "up", "out"].map(str::to_owned).to_vec());
+    let story = story();
+    let fighters = vec![Fighter {
+        name: "a kobold".to_owned(),
+        friend: false,
+        dead: false,
+        statuses: vec!["stunned".to_owned()],
+        health: Some(40),
+    }];
+    let mut harness = Harness::builder()
+        .with_size((420.0, 150.0))
+        .wgpu()
+        .build_ui(move |ui| {
+            let seen = Seen {
+                snapshot: Some(&ashryn),
+                story: &story,
+                hunt: None,
+                who: None,
+            };
+            ui.horizontal(|ui| {
+                ui.allocate_ui(egui::vec2(160.0, 120.0), |ui| {
+                    let _ = Widget::Compass.draw(ui, &seen, Id::new("compass"));
+                });
+                ui.allocate_ui(egui::vec2(240.0, 140.0), |ui| {
+                    ui.vertical(|ui| fighting(ui, Some("defensive (100%)"), &fighters));
+                });
+            });
+        });
+    harness.run();
+    harness.snapshot("room");
 }

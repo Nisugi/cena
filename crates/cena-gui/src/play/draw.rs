@@ -23,6 +23,8 @@ pub(super) struct Drawing<'a> {
     pub(super) session: u32,
     /// How far each widget that counts what it says was read, by id.
     pub(super) read: &'a mut HashMap<u32, u64>,
+    /// A line a widget asked to send this frame, as if typed.
+    pub(super) sent: Option<String>,
 }
 
 /// What the top bar was asked this frame.
@@ -196,7 +198,9 @@ fn shown(ui: &mut egui::Ui, placed: Placed, drawing: &mut Drawing<'_>) {
         if let Some(count) = placed.widget.count(&drawing.seen) {
             drawing.read.insert(placed.id, count);
         }
-        placed.widget.draw(ui, &drawing.seen, id);
+        if let Some(line) = placed.widget.draw(ui, &drawing.seen, id) {
+            drawing.sent = Some(line);
+        }
         return;
     };
     match drawing
@@ -211,7 +215,8 @@ fn shown(ui: &mut egui::Ui, placed: Placed, drawing: &mut Drawing<'_>) {
                 who: Some(&other.name),
                 ..drawing.seen
             };
-            placed.widget.draw(ui, &seen, id);
+            // Another character's widget sends nothing on this one's.
+            let _ = placed.widget.draw(ui, &seen, id);
         }
         None => {
             ui.weak(format!("{who} is not running."));

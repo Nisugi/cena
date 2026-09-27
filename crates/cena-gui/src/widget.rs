@@ -15,6 +15,7 @@
 mod character;
 mod draw;
 mod kind;
+mod room;
 mod status;
 
 use std::sync::Arc;
@@ -68,8 +69,10 @@ impl Widget {
 
     /// Draw it into `ui`, bare, filling what it is given. `id` is its own,
     /// so two of one kind keep apart what they remember -- a scroll, say.
-    pub(crate) fn draw(self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
-        draw::draw(self, ui, seen, id);
+    /// A line the player asked it to send, as if typed -- a compass's
+    /// direction -- if one was.
+    pub(crate) fn draw(self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
+        draw::draw(self, ui, seen, id)
     }
 }
 
