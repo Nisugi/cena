@@ -359,7 +359,7 @@ fn changed_carries_what_changed_and_not_the_clock() {
         project("Nisugi", &snapshot(before, 1)),
         project("Nisugi", &snapshot(after, 2)),
     );
-    now.roundtime = Some(3);
+    now.roundtime.seconds_left = Some(3);
     now.captured_unix_ms += 1_000;
     let Some(Happening::Changed { fields }) = cena_agent::happenings::changed(&was, &now) else {
         panic!("a status changed");

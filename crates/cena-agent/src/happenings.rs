@@ -19,9 +19,9 @@
 //! 1): each snapshot step that altered the projection carries every top-level
 //! field that changed, with its new value. A reader holding `state` at one
 //! cursor and every `changed` after it holds `state` at each later snapshot.
-//! The fields that only count the clock (`roundtime`, `cast_roundtime`, an
-//! effect's `seconds_left`, `game_time`, `captured_unix_ms`) are left out:
-//! their absolute forms are in, and `game_time` rebuilds them.
+//! What only counts the clock is left out: every `seconds_left` (the
+//! roundtimes', each effect's), `clock` and `captured_unix_ms`. The absolute
+//! `ends_at`s are in, and `clock` rebuilds the rest.
 //!
 //! Every happening carries the session's cursor, which only increases, across
 //! reconnects too (`cena_session::ObservedEvent::cursor`). A caller waits from
@@ -203,13 +203,7 @@ pub fn diff(before: &CharacterState, after: &CharacterState) -> Vec<Happening> {
 }
 
 /// The fields that only count the clock, left out of `changed`.
-const CLOCK_ONLY: &[&str] = &[
-    "cursor",
-    "captured_unix_ms",
-    "game_time",
-    "roundtime",
-    "cast_roundtime",
-];
+const CLOCK_ONLY: &[&str] = &["cursor", "captured_unix_ms", "clock"];
 
 /// Every top-level field of `after` that differs from `before`, clock-only
 /// fields aside; `None` when nothing did.
@@ -230,9 +224,14 @@ pub fn changed(before: &CharacterState, after: &CharacterState) -> Option<Happen
     (!fields.is_empty()).then_some(Happening::Changed { fields })
 }
 
-/// A projection with each effect's `seconds_left` taken out: it counts the
-/// clock, and `ends_at` says the same thing without moving.
+/// A projection with every `seconds_left` taken out: it counts the clock,
+/// and `ends_at` beside it says the same thing without moving.
 fn steady(mut value: serde_json::Value) -> serde_json::Value {
+    for timer in ["roundtime", "cast_roundtime"] {
+        if let Some(timer) = value.get_mut(timer).and_then(|t| t.as_object_mut()) {
+            timer.remove("seconds_left");
+        }
+    }
     if let Some(effects) = value.get_mut("effects").and_then(|e| e.as_array_mut()) {
         for effect in effects {
             if let Some(effect) = effect.as_object_mut() {

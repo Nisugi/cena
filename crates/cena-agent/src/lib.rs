@@ -22,26 +22,9 @@ pub mod records;
 pub mod server;
 
 pub use characters::Characters;
-pub use server::{router, serve};
+pub use server::{new_token, router, serve};
 
 /// The contract this speaks (`CONTRACT.md`). Bumped when a field changes
 /// meaning or goes; a new field or kind is not a break, because a client
 /// ignores what it does not know.
 pub const PROTOCOL: &str = "hydra-agent/1";
-
-const HEX: &[u8; 16] = b"0123456789abcdef";
-
-/// A new bearer token: 32 random bytes, hex.
-///
-/// # Errors
-///
-/// The operating system gave no randomness.
-pub fn new_token() -> Result<String, String> {
-    let mut bytes = [0_u8; 32];
-    getrandom::fill(&mut bytes).map_err(|e| e.to_string())?;
-    Ok(bytes.iter().fold(String::with_capacity(64), |mut hex, b| {
-        hex.push(char::from(HEX[usize::from(b >> 4)]));
-        hex.push(char::from(HEX[usize::from(b & 0xf)]));
-        hex
-    }))
-}

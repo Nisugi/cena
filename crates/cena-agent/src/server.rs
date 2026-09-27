@@ -30,7 +30,7 @@ use crate::projection::project;
 use crate::{PROTOCOL, records};
 
 /// What the server tells a client it is for.
-const INSTRUCTIONS: &str = "Hydra runs GemStone IV characters. These tools read them: \
+const INSTRUCTIONS: &str = "Hydra runs game characters. These tools read them: \
 `characters` lists them, `state` reads one (every status the game has reported; a status \
 not listed is unknown, not off), `wait` returns what happened after a cursor, `records` asks \
 the character's combat and loot database a read-only SQL question, and `capabilities` says \
@@ -306,4 +306,21 @@ fn same(a: &[u8], b: &[u8]) -> bool {
             .zip(b)
             .fold(0_u8, |difference, (a, b)| difference | (a ^ b))
             == 0
+}
+
+const HEX: &[u8; 16] = b"0123456789abcdef";
+
+/// A new bearer token: 32 random bytes, hex.
+///
+/// # Errors
+///
+/// The operating system gave no randomness.
+pub fn new_token() -> Result<String, String> {
+    let mut bytes = [0_u8; 32];
+    getrandom::fill(&mut bytes).map_err(|e| e.to_string())?;
+    Ok(bytes.iter().fold(String::with_capacity(64), |mut hex, b| {
+        hex.push(char::from(HEX[usize::from(b >> 4)]));
+        hex.push(char::from(HEX[usize::from(b & 0xf)]));
+        hex
+    }))
 }

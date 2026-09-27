@@ -41,7 +41,8 @@
 //! architecture rather than a floor under it. This is the graph it asserts:
 //!
 //! ```text
-//! cena              the binary: Hydra                  behavior, host, platform, session, ui, web
+//! cena              the binary: Hydra                  agent, behavior, host, platform, session, ui, web
+//! cena-agent        MCP for an outside program         session, platform*
 //! cena-web          the embedded browser viewer        session, ui
 //! cena-ui           projection and wire vocabulary     model
 //! cena-host         the table of sessions              session, platform*
@@ -67,6 +68,7 @@
 //! | [`cena_behavior`] | [`travel`](cena_behavior::travel) |
 //! | [`cena_ui`] | [`SessionView`](cena_ui::SessionView), and `crates/cena-ui/WIRE.md` for the contract |
 //! | [`cena_web`] | [`WebServer`](cena_web::WebServer) |
+//! | [`cena_agent`] | [`Characters`](cena_agent::Characters), and `crates/cena-agent/CONTRACT.md` for the contract |
 //! | [`cena_host`] | [`Host`](cena_host::Host) |
 //! | `cena-arch-tests` | `crates/cena-arch-tests/tests/layering.rs` |
 //!

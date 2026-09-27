@@ -404,6 +404,14 @@ Each ends in something demonstrable, as `12` §8 asks.
 
 1. **Read-only.** `cena-agent`, the MCP listener, Observe: `characters`, `state`, `wait`,
    `capabilities`, `records`, and the status projection with its every-status test.
+   **BUILT 2026-09-27** (`crates/cena-agent`, contract `CONTRACT.md`, `hydra-agent/1`; the
+   binary's `--agent`, port 47700, the token kept in `<data>/agent.json`). `wait` is the
+   difference between the session's own snapshots after each prompt, as Despana stays
+   current, never a second model. Tests: `crates/cena-agent/tests/agent.rs` (every status
+   passed through; an unstated list is `null`; `changed` rebuilds state; the whole path over
+   MCP behind the token, against a scripted game) and `records.rs` (read-only, capped, no
+   `ATTACH`, the last proved by raising the limit and watching the test fail). *Shown*, live
+   with the author: not yet.
    *Shown:* an MCP client connects and answers "what is my character's status", live,
    author present -- and a question of the author's about the database that no report
    answers yet.
@@ -415,6 +423,24 @@ Each ends in something demonstrable, as `12` §8 asks.
 5. **Takeover.** `Origin::Agent`, `take_over`, and the level dropping after a bad run.
 6. **Acceptance, live, author present:** a hunt ends on its rest threshold, the agent (not
    the hunt) decides what is next and does it; the player stops the agent mid-act.
+
+### Issue #19: LAB's author's review, 2026-09-27, and where each point lands
+
+`https://github.com/Nisugi/cena/issues/19` (therealatari) reviewed this plan against LAB's
+recent work. Its eight points, as taken:
+
+| # | Point | Taken | Where |
+|---|---|---|---|
+| 1 | observation completeness and replay | yes: a list not stated is `null`; capture time; `changed` rebuilds state between reads; `lagged` forces a resync. Per-fact freshness is model work, later | step 1, BUILT |
+| 7 | records' evidence envelope | yes: schema version, when written, whether recording; `ATTACH` refused (it could open another file); table descriptions later | step 1, BUILT |
+| 2 | current eligibility, apart from the catalogue | yes, but not opaque offers: Hydra re-checks target, profile revision and authority revision at send time (the write-time gate already checks the target) | step 3 |
+| 3 | results that separate work, evidence and recovery | yes | step 3 |
+| 4 | a caller's request id, so a lost reply cannot admit twice | yes | before the first mutating tool |
+| 5 | permission apart from ownership; exact, expiring, single-use approvals; hold, retreat, stop and revoke distinct | yes | steps 2, 4, 5 |
+| 6 | progress, and its absence, as events | yes; §4's third escalation signal made concrete | step 3's acceptance |
+| 8 | one contract for agents and scripts | the core and meanings, yes. Send-and-wait for **scripts** keeps Lich's semantics on purpose (`plan/45` §3: a match after the cursor); an agent's operations report the behavior's typed result instead | throughout |
+
+Its M7a-M7d staging is this section's steps; "M7b" stays the Ruby bridge (`plan/45` §10).
 
 ## 9. Questions
 

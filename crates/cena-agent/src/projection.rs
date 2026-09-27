@@ -14,12 +14,14 @@
 //! empty: an empty `players` is the game saying nobody is here, and `null` is
 //! nobody having said (issue #19, point 1; `Room::saw_players`).
 //!
-//! **Times are absolute as well as remaining.** `roundtime_ends` and an
-//! effect's `ends_at` are the game's clock and do not move until the game says
-//! so; `roundtime` and `seconds_left` are the same facts counted from
-//! `game_time`, for a reader that wants them ready. The `changed` happening
-//! carries the absolute forms, so a change-set lists what changed and not
-//! every tick of the clock.
+//! **Times are absolute as well as remaining**, as `cena-ui`'s
+//! `RoundtimeView` has them: an `ends_at` is the game's clock and does not
+//! move until the game says so; `seconds_left` is the same fact counted from
+//! `clock`, for a reader that wants it ready. The `changed` happening carries
+//! the absolute forms, so a change-set lists what changed and not every tick.
+//! (Named apart from `GameState`'s own clock fields on purpose: Rule 4.3,
+//! `single_owner.rs`, lets only `GameState` own `roundtime_ends` and
+//! `game_time`, and this is a copy for the wire, not an owner.)
 
 use std::collections::BTreeMap;
 
@@ -42,7 +44,7 @@ pub struct CharacterState {
     /// When this was read, in Unix milliseconds on this machine.
     pub captured_unix_ms: u64,
     /// The game's clock at that moment, in its own epoch seconds.
-    pub game_time: Option<u32>,
+    pub clock: Option<u32>,
     /// Where the character is.
     pub room: Room,
     /// What is in each hand.
@@ -53,15 +55,10 @@ pub struct CharacterState {
     /// here is unknown**, not off: the indicators, poisoned and diseased, and
     /// the text-only afflictions, all from the one store (`plan/35` §5).
     pub statuses: BTreeMap<String, bool>,
-    /// Seconds of roundtime left; `null` when the clock is not known.
-    pub roundtime: Option<u32>,
-    /// Seconds of cast roundtime left.
-    pub cast_roundtime: Option<u32>,
-    /// When roundtime ends, on the game's clock; `null` when none was ever
-    /// reported, which is a roundtime in the past.
-    pub roundtime_ends: Option<u32>,
-    /// When cast roundtime ends, on the game's clock.
-    pub cast_roundtime_ends: Option<u32>,
+    /// Roundtime.
+    pub roundtime: Timer,
+    /// Cast roundtime.
+    pub cast_roundtime: Timer,
     /// The stance, as the game names it.
     pub stance: Option<String>,
     /// The stance as a percent: 0 offensive, 100 defensive.
@@ -80,6 +77,16 @@ pub struct CharacterState {
     pub injuries: BTreeMap<String, Injury>,
     /// Spells, buffs, debuffs and cooldowns, as the game lists them.
     pub effects: Vec<Effect>,
+}
+
+/// A roundtime: when it ends, and how long that is from now.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Timer {
+    /// When it ends, on the game's clock; `null` when none was ever
+    /// reported, which is one in the past.
+    pub ends_at: Option<u32>,
+    /// Seconds left; `null` when the clock is not known.
+    pub seconds_left: Option<u32>,
 }
 
 /// The room.
@@ -230,7 +237,7 @@ pub fn project(character: &str, snapshot: &Snapshot) -> CharacterState {
         captured_unix_ms: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX)),
-        game_time: state.game_time_now(),
+        clock: state.game_time_now(),
         room: room(state),
         hands: Hands {
             right: hand(&state.right_hand),
@@ -247,10 +254,14 @@ pub fn project(character: &str, snapshot: &Snapshot) -> CharacterState {
             .iter()
             .map(|(id, on)| (id.to_owned(), on))
             .collect(),
-        roundtime: state.roundtime_remaining(),
-        cast_roundtime: state.casttime_remaining(),
-        roundtime_ends: state.roundtime_ends,
-        cast_roundtime_ends: state.cast_time_ends,
+        roundtime: Timer {
+            ends_at: state.roundtime_ends,
+            seconds_left: state.roundtime_remaining(),
+        },
+        cast_roundtime: Timer {
+            ends_at: state.cast_time_ends,
+            seconds_left: state.casttime_remaining(),
+        },
         stance: state.character.stance.clone(),
         stance_percent: state.character.stance_percent,
         encumbrance: state.character.encumbrance.clone(),
