@@ -476,6 +476,7 @@ dependencies = [
  "notify-rust",
  "rodio",
  "rpassword",
+ "rusqlite",
  "serde",
  "serde_json",
  "sha2",

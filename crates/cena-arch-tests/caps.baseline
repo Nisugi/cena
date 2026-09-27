@@ -388,3 +388,8 @@ crates/cena-gui/src/keys.rs 450
 # listens to is scripts/listening.rs, its tools scripts/tools.rs. 255 lines, so
 # 255 + 50, rounded up to the next 50.
 crates/cena-agent/src/scripts.rs 350
+# NEW SPLIT PARENT, 2026-09-27, capped at birth. crates/cena/src/scripts.rs runs a
+# character's Lich scripts on its runner (plan/46, M7b); `;scripts import` is
+# scripts/import.rs, its tests scripts/command_tests.rs. 472 lines, so 472 + 50, rounded
+# up to the next 50.
+crates/cena/src/scripts.rs 550

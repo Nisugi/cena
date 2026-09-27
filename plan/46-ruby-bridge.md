@@ -1,7 +1,7 @@
 # 46 — The Ruby bridge: how a Lich script runs against Hydra
 
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
-(§10).** **Steps 1 and 2 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
+(§10).** **Steps 1 to 3 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11); the rest is not built. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
@@ -334,7 +334,9 @@ None of these is measured; each is a guess until it is.
    AUTHOR: *"yep."*
 6. **Stores.** AUTHOR: *"lich script settings? would be saved in lich no? so data folder?"*
    Answered in §5: yes, `lich.db3` as Lich writes it, in Hydra's data folder, copied once from
-   Lich's. (Confirm.)
+   Lich's. (Confirm.) **BUILT otherwise in one respect** (step 3): not the file but its three
+   script tables, merged row by row, so Lich's login cache (`simu_game_entry`) never reaches
+   Hydra's folder and a runner holding the file need not stop.
 7. **`$frontend` is `'stormfront'`, `LICH_VERSION` the engine's (5.21.0), `XMLData.game`
    Lich's codes** (§5). AUTHOR: *"yep."*
 8. **A script level apart from the agent's**, allowing what a Lich script may do (§8). AUTHOR:
@@ -455,6 +457,41 @@ None of these is measured; each is a guess until it is.
      `sqlite3` and `sequel`, as Lich's installer does.
 3. ~~Stores~~ (built in step 2, for `wander`) and the import; `Script.run` of a built-in,
    **go2 first** (512 callers).
+   **BUILT 2026-09-27** (the author: *"step 3!"*), in three commits:
+   - **Hydra's half** (`crates/cena-session/src/script.rs`, `crates/cena-agent/src/scripts/`):
+     the script door's `perform` starts a line through the binary's performer, exactly as an
+     agent's `perform` does, but **not among the agent's operations**: an agent neither reads
+     nor steers a walk a script began, and a bad end drops no agent level. The listener's
+     `perform` answers a run's number, `stop` steers it, and the runner hears `ended`,
+     **after a fresh copy** (the watcher takes one first), so a script that waited for a
+     walk reads the room it arrived in. Its progress goes nowhere yet.
+   - **The runner** (`bridges/ruby/hydra/builtins.rb`): `Script.start`, `Script.run`,
+     `start_script` and a `;go2` a script has Lich run all start Hydra's travel when they
+     name `go2`, whatever `go2.lic` the player has (question 5). It runs as a Lich exec
+     script named `go2`, so `Script.run` waits for it, `running?` and `Script.exists?` see it,
+     and `;k go2` or `stop_script` stop it and Hydra's walk with it (an `ensure` around the
+     wait). Lich's go2 settings (`_disable_confirm_`, `--delay=`, `typeahead=`) are left
+     behind; travel takes the destination alone. The map's crossings walk the same way.
+   - **The import** (`crates/cena/src/scripts/import.rs`): `;scripts import <Lich folder>`
+     merges Lich's `script_setting`, `script_auto_settings` and `uservars` rows into Hydra's
+     `lich.db3` as they are (Lich's replacing a row Hydra has under the same key), copies
+     the `.lic` and `.rb` scripts of `scripts` and its `custom` folders **never over one Hydra
+     has**, and Lich's `gameobj-data.xml` when Hydra has none, so `GameObj#type` works.
+     `;scripts` says where they are. A script already running keeps what it read.
+   - **Tests**: a built-in started and ended over MCP with a stand-in performer, stopped
+     mid-way, refused, and before the behaviors are ready; in the session, absent from the
+     agent's operations; in Ruby, `Script.run('go2', '229 _disable_confirm_')` walks by a
+     stand-in travel and reads the new room, `start_script('go2')` runs and exists, and
+     `stop_script` stops the walk; the import's tables, scripts and item types, a login's
+     cache left behind and Hydra's own script kept, and through the command line. **Tier 2:
+     the author's own install imported** (`CENA_LICH_FOLDER=C:\Gemstone\lich-5`): 45
+     settings rows, 32 scripts and the item types, into a folder the test then removes.
+     Mutations: killing the script leaving travel walking; the import writing over Hydra's
+     own script.
+   - **Not yet**: the other built-ins of §7 (bigshot, eherbs, waggle, eloot, foreach,
+     sorter, multi, infomon, spellactive); a run's progress read by a script; the performer's
+     refusals are worded for an agent, which a script meets only on a line it never
+     builds.
 4. Hooks, as decided.
 5. The checker over both collections, and the list of what runs published.
 6. §9's measurements, written here.

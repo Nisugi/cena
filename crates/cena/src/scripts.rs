@@ -18,6 +18,8 @@
 //!
 //! Scripts are found in `scripts` in Hydra's data folder (and its `custom`
 //! folders, as Lich's are), and a runner keeps its data in `lich` beside it.
+//! `;scripts import <Lich folder>` brings a Lich player's scripts and their
+//! settings there once ([`import`]); `;scripts` says where they are.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -34,6 +36,8 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::commands::Commands;
+
+mod import;
 
 /// Lich's own `;` words over its scripts, which the runner answers
 /// (`bridges/ruby/lich/lib/common/client_commands/builtins.rb`).
@@ -155,9 +159,14 @@ impl Scripts {
         commands: &Commands,
     ) {
         let (typed, waiting) = mpsc::channel(WAITING);
-        let (scripts, told) = (self.shared.dir.join("scripts"), handle.clone());
+        let (hydra, told) = (self.shared.dir.clone(), handle.clone());
+        let scripts = hydra.join("scripts");
         commands.scripts(Arc::new(move |line: &str| {
             let word = first_word(line);
+            if word == "scripts" {
+                answer(line, &hydra, &told);
+                return Some(Claimed::Done);
+            }
             if !LICH_WORDS.contains(&word.as_str()) && !names_a_script(&scripts, &word) {
                 return None;
             }
@@ -213,6 +222,50 @@ impl Scripts {
     fn lock(&self) -> std::sync::MutexGuard<'_, BTreeMap<SessionId, Desk>> {
         self.desks.lock().unwrap_or_else(PoisonError::into_inner)
     }
+}
+
+/// `;scripts`: where they are, and `import <Lich folder>`, run off the
+/// runtime's threads and said when done.
+fn answer(line: &str, hydra: &Path, told: &SessionHandle) {
+    let rest = line
+        .trim()
+        .split_once(char::is_whitespace)
+        .map_or("", |(_, rest)| rest.trim());
+    let Some(folder) = rest
+        .strip_prefix("import")
+        .filter(|folder| folder.is_empty() || folder.starts_with(char::is_whitespace))
+    else {
+        told.say(Notice::table(
+            NoticeKind::Info,
+            vec![
+                format!(
+                    "Your Lich scripts run from {}, and their settings are kept in {}.",
+                    hydra.join("scripts").display(),
+                    hydra.join("lich").join("lich.db3").display()
+                ),
+                "scripts import <Lich folder>   bring your Lich scripts and their settings here: C:\\Lich5"
+                    .to_owned(),
+                "<script> [args]   run one; k, l, p, u as in Lich".to_owned(),
+            ],
+        ));
+        return;
+    };
+    let folder = folder.trim().trim_matches('"');
+    if folder.is_empty() {
+        told.say(Notice::line(
+            NoticeKind::Error,
+            "Scripts: import from where? Name your Lich folder, the one with data and scripts in it.",
+        ));
+        return;
+    }
+    let (from, into, told) = (PathBuf::from(folder), hydra.to_owned(), told.clone());
+    tokio::task::spawn_blocking(move || {
+        let said = match import::import(&from, &into) {
+            Ok(imported) => Notice::line(NoticeKind::Info, imported.said(&from)),
+            Err(why) => Notice::line(NoticeKind::Error, format!("Scripts: {why}")),
+        };
+        told.say(said);
+    });
 }
 
 /// The first word of a typed line, lowercased: the script or the command.
@@ -416,133 +469,4 @@ async fn keep_words(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn scratch(test: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("cena-scripts-{test}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        dir
-    }
-
-    /// Lich's order of finding: a whole name or its start, in the folder or
-    /// its `custom` folders; never a Wizard script, and never a path.
-    #[test]
-    fn a_script_is_found_as_lich_finds_one() {
-        let dir = scratch("found");
-        std::fs::create_dir_all(dir.join("custom/mine")).unwrap();
-        for file in [
-            "trollspeak.lic",
-            "custom/eloot.rb",
-            "custom/mine/wander.lic",
-            "old.cmd",
-        ] {
-            std::fs::write(dir.join(file), "").unwrap();
-        }
-        for (word, found) in [
-            ("trollspeak", true),
-            ("troll", true),
-            ("eloot", true),
-            ("wander", true),
-            ("old", false),
-            ("nosuch", false),
-            ("../trollspeak", false),
-            ("", false),
-        ] {
-            assert_eq!(names_a_script(&dir, word), found, "{word:?}");
-        }
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    const DEADLINE: std::time::Duration = std::time::Duration::from_secs(5);
-
-    /// What the player was told, until a line containing `until`, or a
-    /// minute.
-    async fn told_until(
-        events: &mut tokio::sync::broadcast::Receiver<cena_session::Event>,
-        until: &str,
-    ) -> Vec<String> {
-        let mut told = Vec::new();
-        let _ = tokio::time::timeout(std::time::Duration::from_mins(1), async {
-            while let Ok(event) = events.recv().await {
-                if let cena_session::Event::Notice(notice) = event {
-                    told.extend(notice.lines().iter().cloned());
-                    if told.iter().any(|line| line.contains(until)) {
-                        return;
-                    }
-                }
-            }
-        })
-        .await;
-        told
-    }
-
-    /// Through the command line: Lich's words answer while no runner runs;
-    /// a word of Hydra's is never a script's, even a family still starting;
-    /// the player's script runs on a runner Hydra starts, hearing the game;
-    /// and a character leaving the table stops its runner, which stops
-    /// hearing.
-    #[tokio::test(flavor = "current_thread")]
-    async fn a_typed_script_runs_and_leaving_the_table_stops_it() {
-        assert!(
-            runner::find_ruby().is_some(),
-            "no Ruby: scripts need Ruby 4.0"
-        );
-        let dir = scratch("typed");
-        std::fs::create_dir_all(dir.join("scripts")).unwrap();
-        std::fs::write(
-            dir.join("scripts/greet.lic"),
-            "put 'look'\nwaitfor 'quiet room'\necho 'done'\nwaitfor 'never comes'\n",
-        )
-        .unwrap();
-        std::fs::write(dir.join("scripts/go2.lic"), "echo 'a script'\n").unwrap();
-        let (source, transcript) =
-            cena_platform::AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
-        for _ in 0..2 {
-            transcript.answer(
-                "look",
-                b"You see a quiet room.\n<prompt time=\"2\">&gt;</prompt>\n",
-            );
-        }
-        let session = cena_session::Session::new(source);
-        let handle = session.handle();
-        let observer = session.observer();
-        let (_, mut events) = session.subscribe();
-        let commands = Commands::install(&handle);
-        tokio::spawn(session.into_actor().run());
-        let scripts = Scripts::new(&dir, &Err("no map".to_owned()));
-        let id = SessionId(1);
-        scripts.open(id, "Nisugi", "GS3", &handle, &observer, &commands);
-        let generation = handle.generation();
-
-        handle.send_manual_at(generation, ";l", DEADLINE).await;
-        let told = told_until(&mut events, "No scripts").await;
-        assert!(
-            told.iter().any(|line| line == "No scripts are running."),
-            "{told:#?}"
-        );
-        handle
-            .send_manual_at(generation, ";go2 bank", DEADLINE)
-            .await;
-        let told = told_until(&mut events, "still starting").await;
-        assert!(
-            told.iter().any(|line| line.contains("still starting")),
-            "Hydra's word, not the script's: {told:#?}"
-        );
-
-        handle.send_manual_at(generation, ";greet", DEADLINE).await;
-        let told = told_until(&mut events, "[greet: done]").await;
-        assert!(told.iter().any(|line| line == "[greet: done]"), "{told:#?}");
-        assert!(told.iter().any(|line| line == "[greet]>look"), "{told:#?}");
-
-        scripts.close(id).await;
-        while events.try_recv().is_ok() {}
-        handle.send_manual_at(generation, "look", DEADLINE).await;
-        let heard = std::iter::from_fn(|| events.try_recv().ok())
-            .filter(|event| matches!(event, cena_session::Event::Heard(_)))
-            .count();
-        assert_eq!(heard, 0, "the runner is gone, and nothing listens");
-        assert_eq!(transcript.lines(), ["look", "look"]);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-}
+mod command_tests;
