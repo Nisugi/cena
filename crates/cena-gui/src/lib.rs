@@ -29,5 +29,5 @@ mod text;
 mod widget;
 
 pub use app::{App, TITLE, run};
-pub use hub::{Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
+pub use hub::{CardWidth, Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
 pub use sessions::Sessions;

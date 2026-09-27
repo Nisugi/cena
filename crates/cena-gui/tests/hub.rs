@@ -5,7 +5,7 @@
 //! hub and compares it with the images under `tests/snapshots/`
 //! (`UPDATE_SNAPSHOTS=1` rewrites them).
 
-use cena_gui::{Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
+use cena_gui::{CardWidth, Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
 use cena_ui::{
     GroupView, HubRequest, LifecycleView, Login, MergedLine, Password, RosterCard, RoundtimeView,
     SessionCard, StyledRun, VitalView, VitalsView,
@@ -534,7 +534,7 @@ fn a_new_login_is_typed_whole_and_its_password_never_shows() {
 #[test]
 fn the_hub_as_drawn() {
     let mut harness = Harness::builder()
-        .with_size((560.0, 520.0))
+        .with_size((900.0, 520.0))
         .wgpu()
         .build_ui_state(|ui, board: &mut Board| board.draw(ui), board());
     harness.run();
@@ -545,4 +545,180 @@ fn the_hub_as_drawn() {
     harness.get_by_label("Launch").click();
     harness.run();
     harness.snapshot("hub_launch");
+}
+
+/// egui's warnings that a widget changed its id in place -- each one a red
+/// box in a debug build (`warn_if_rect_changes_id`,
+/// `egui/src/context.rs:4177`) -- by the thread that drew it, so tests
+/// running side by side do not hear each other's.
+static RENUMBERED: std::sync::Mutex<Vec<(std::thread::ThreadId, String)>> =
+    std::sync::Mutex::new(Vec::new());
+
+struct Heard;
+
+impl log::Log for Heard {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        metadata.level() <= log::Level::Warn
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        let said = record.args().to_string();
+        if said.contains("changed id between passes") {
+            RENUMBERED
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .push((std::thread::current().id(), said));
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+/// A change to the board, and what it is called.
+type Change = (&'static str, fn(&mut Board));
+
+/// The warnings this thread's frames drew since the last call.
+fn renumbered() -> Vec<String> {
+    let me = std::thread::current().id();
+    let mut heard = RENUMBERED
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (mine, others): (Vec<_>, Vec<_>) = heard.drain(..).partition(|(thread, _)| *thread == me);
+    *heard = others;
+    mine.into_iter().map(|(_, said)| said).collect()
+}
+
+/// What changes above a widget -- the answer shown, the shut-down question,
+/// a card come or gone -- leaves the widgets below with their ids, so a
+/// debug build draws no red boxes (the author, 2026-09-27: *"red flashes
+/// ... when the login window changes, clicking on shutdown, launching the
+/// first character"*).
+#[test]
+fn nothing_below_is_renumbered_when_something_above_changes() {
+    static LOGGER: Heard = Heard;
+    let _ = log::set_logger(&LOGGER);
+    log::set_max_level(log::LevelFilter::Warn);
+    for tab in ["Live (2)", "Launch"] {
+        let mut quiet = board();
+        quiet.merged.clear();
+        let mut harness = hub(quiet);
+        harness.get_by_label(tab).click();
+        harness.run();
+        let _ = renumbered();
+        let changes: [Change; 3] = [
+            ("the answer", |board| {
+                board.said = Some("Starting Orsen.".to_owned());
+            }),
+            ("the shut-down question", |board| {
+                board.hub.confirm_shutdown();
+            }),
+            ("a card gone", |board| {
+                board.cards.remove(0);
+            }),
+        ];
+        for (change, apply) in changes {
+            apply(harness.state_mut());
+            harness.run();
+            let heard = renumbered();
+            assert!(heard.is_empty(), "{tab}, {change}: {heard:#?}");
+        }
+    }
+}
+
+/// Cards are as wide as their four bars and tile: side by side where the
+/// hub is wide enough, one to a row where it is not.
+#[test]
+fn cards_tile_as_many_to_a_row_as_fit() {
+    let top = |harness: &Harness<'_, Board>, name: &str| {
+        harness
+            .get_by_role_and_label(Role::Label, name)
+            .rect()
+            .min
+            .y
+    };
+    let narrow = hub(board());
+    assert!(
+        top(&narrow, "Ashryn") < top(&narrow, "Baelor"),
+        "one to a row"
+    );
+    let wide = Harness::builder()
+        .with_size((900.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board());
+    assert!(
+        (top(&wide, "Ashryn") - top(&wide, "Baelor")).abs() < 0.5,
+        "side by side"
+    );
+    let grip = wide
+        .get_all_by_label("Card width")
+        .next()
+        .map(|grip| grip.rect());
+    assert!(
+        grip.is_some_and(|grip| grip.center().x < 400.0),
+        "not stretched across the hub: {grip:?}"
+    );
+}
+
+/// Dragging a card's side sets every card's width, and no narrower than
+/// its least.
+#[test]
+fn a_cards_side_dragged_sets_every_cards_width() {
+    let mut harness = hub(board());
+    harness.run();
+    let Some(side) = harness
+        .get_all_by_label("Card width")
+        .next()
+        .map(|grip| grip.rect().center())
+    else {
+        panic!("a card's side");
+    };
+    let to = side + egui::vec2(60.0, 0.0);
+    harness.hover_at(side);
+    harness.step();
+    harness.drag_at(side);
+    harness.step();
+    for step in 1..=4u8 {
+        harness.hover_at(side + (to - side) * (f32::from(step) / 4.0));
+        harness.step();
+    }
+    harness.drop_at(to);
+    harness.run();
+    assert_eq!(
+        harness.state().hub.card_width,
+        CardWidth(CardWidth::FOUR_BARS.0 + 60.0)
+    );
+    let widths: Vec<f32> = harness
+        .get_all_by_label("Card width")
+        .map(|grip| grip.rect().center().x)
+        .collect();
+    assert!(
+        widths.iter().all(|x| (x - (side.x + 60.0)).abs() < 0.5),
+        "every card is wider: {widths:?}"
+    );
+    assert!(
+        widths
+            .windows(2)
+            .all(|pair| (pair[0] - pair[1]).abs() < 0.5),
+        "{widths:?}"
+    );
+
+    harness.state_mut().hub.card_width = CardWidth(CardWidth::NARROWEST);
+    harness.run();
+    let Some(side) = harness
+        .get_all_by_label("Card width")
+        .next()
+        .map(|grip| grip.rect().center())
+    else {
+        panic!("a card's side");
+    };
+    harness.drag_at(side);
+    harness.step();
+    harness.hover_at(side - egui::vec2(100.0, 0.0));
+    harness.step();
+    harness.drop_at(side - egui::vec2(100.0, 0.0));
+    harness.run();
+    assert_eq!(
+        harness.state().hub.card_width,
+        CardWidth(CardWidth::NARROWEST),
+        "no narrower"
+    );
 }

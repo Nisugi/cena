@@ -13,6 +13,12 @@
 //! one that stopped by itself this run -- a refused login, or idle -- with
 //! why, to reconnect or remove. One the player quits is taken off the table,
 //! so it leaves both.
+//!
+//! Cards tile across the tab, each as wide as its four bars until a side is
+//! dragged, which sets every card's width (the author, 2026-09-27: *"the
+//! width of the 4 bars there by default no auto stretch, then manually
+//! adjustible by dragging a side. They should tile or grid on the panel
+//! depending on window size"*).
 
 use cena_ui::{
     GroupView, HubRequest, LifecycleView, MergedLine, RosterCard, SessionCard, VitalView,
@@ -69,6 +75,26 @@ pub struct Hub {
     confirming: bool,
     /// What the Launch tab is typing.
     launch: crate::launch::Launch,
+    /// Every card's width, as the player last dragged it.
+    pub card_width: CardWidth,
+}
+
+/// A card's width inside its frame: its four bars and the gaps between
+/// them, until the player drags a side.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CardWidth(pub f32);
+
+impl CardWidth {
+    /// Four bars of 72 (`Bar`'s own width) and the three gaps between them.
+    pub const FOUR_BARS: Self = Self(4.0 * 72.0 + 3.0 * 8.0);
+    /// The narrowest a card is dragged to: its bars wrap below the default.
+    pub const NARROWEST: f32 = 160.0;
+}
+
+impl Default for CardWidth {
+    fn default() -> Self {
+        Self::FOUR_BARS
+    }
 }
 
 /// What the shut-down question says: Despana's words.
@@ -120,21 +146,37 @@ impl Hub {
             ui.weak(said);
         }
         ui.separator();
-        egui::Panel::bottom("hub-merged")
-            .resizable(true)
-            .default_size(160.0)
-            .show(ui, |ui| merged(ui, view.merged));
-        match self.tab {
-            Tab::Live => list(ui, &live, view, "No character is running.", &mut asked),
-            Tab::Closed => list(
-                ui,
-                &closed,
-                view,
-                "No character has closed this run.",
-                &mut asked,
-            ),
-            Tab::Launch => self.launch.show(ui, view, &mut asked),
-        }
+        // Below the header, an id of its own: a line appearing above -- the
+        // answer, the shut-down question -- would otherwise renumber every
+        // widget under it, which a debug build draws as red boxes (`plan/49`
+        // Stage C step 4).
+        let body = egui::UiBuilder::new().id(ui.id().with("hub-body"));
+        ui.scope_builder(body, |ui| {
+            egui::Panel::bottom("hub-merged")
+                .resizable(true)
+                .default_size(160.0)
+                .show(ui, |ui| merged(ui, view.merged));
+            let width = &mut self.card_width;
+            match self.tab {
+                Tab::Live => list(
+                    ui,
+                    &live,
+                    view,
+                    "No character is running.",
+                    width,
+                    &mut asked,
+                ),
+                Tab::Closed => list(
+                    ui,
+                    &closed,
+                    view,
+                    "No character has closed this run.",
+                    width,
+                    &mut asked,
+                ),
+                Tab::Launch => self.launch.show(ui, view, &mut asked),
+            }
+        });
         asked
     }
 
@@ -145,12 +187,14 @@ impl Hub {
     }
 }
 
-/// The cards of one tab, or what an empty one says.
+/// The cards of one tab, tiled as many to a row as fit, or what an empty
+/// one says.
 fn list(
     ui: &mut egui::Ui,
     cards: &[&SessionCard],
     view: &HubView<'_>,
     none: &str,
+    width: &mut CardWidth,
     asked: &mut Option<HubAction>,
 ) {
     if cards.is_empty() {
@@ -159,23 +203,87 @@ fn list(
     }
     egui::ScrollArea::vertical()
         .id_salt("hub-cards")
+        .auto_shrink(false)
         .show(ui, |ui| {
-            for card in cards {
-                if let Some(action) = draw(ui, card, view.windowed) {
+            tiled(ui, cards, *width, |ui, card| {
+                // Each card keyed by its session, not its place, so a card
+                // keeps its widgets' state (a button held, a side dragged)
+                // as others come and go.
+                let id = egui::Id::new(("hub-card", &card.session));
+                let drawn = card_scope(ui, id, |ui| draw(ui, card, view.windowed, *width));
+                if let Some(action) = drawn.inner {
                     *asked = Some(action);
                 }
+                side(ui, drawn.response.rect, id, width);
+            });
+        });
+}
+
+/// Lay `items` out as cards `width` wide, as many to a row as fit, each
+/// row's cards aligned at their tops. Counted here rather than left to
+/// egui's wrapping, which can only wrap what it knows the size of before it
+/// is drawn.
+pub(crate) fn tiled<T>(
+    ui: &mut egui::Ui,
+    items: &[T],
+    width: CardWidth,
+    mut card: impl FnMut(&mut egui::Ui, &T),
+) {
+    let outer = width.0 + egui::Frame::group(ui.style()).total_margin().sum().x;
+    let gap = ui.spacing().item_spacing.x;
+    let room = ui.available_width();
+    let (mut per_row, mut used) = (1, outer);
+    while used + gap + outer <= room {
+        used += gap + outer;
+        per_row += 1;
+    }
+    for row in items.chunks(per_row) {
+        ui.horizontal_top(|ui| {
+            for item in row {
+                card(ui, item);
             }
         });
+    }
+}
+
+/// A card's own area: an id of its own, laid out top to bottom.
+pub(crate) fn card_scope<R>(
+    ui: &mut egui::Ui,
+    id: egui::Id,
+    card: impl FnOnce(&mut egui::Ui) -> R,
+) -> egui::InnerResponse<R> {
+    let own = egui::UiBuilder::new()
+        .id(id)
+        .layout(egui::Layout::top_down(egui::Align::Min));
+    ui.scope_builder(own, card)
+}
+
+/// A card's right side, which dragged sets every card's width.
+pub(crate) fn side(ui: &egui::Ui, card: egui::Rect, id: egui::Id, width: &mut CardWidth) {
+    let grip = egui::Rect::from_x_y_ranges(card.right() - 3.0..=card.right() + 3.0, card.y_range());
+    let grip = ui
+        .interact(grip, id.with("side"), egui::Sense::drag())
+        .on_hover_cursor(egui::CursorIcon::ResizeHorizontal);
+    grip.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, "Card width"));
+    if grip.dragged() {
+        let widest = ui.max_rect().width().max(CardWidth::NARROWEST);
+        width.0 = (width.0 + grip.drag_delta().x).clamp(CardWidth::NARROWEST, widest);
+    }
 }
 
 /// One card: who, how it is connected, its four gauges, a line of what else
 /// a player glances at -- roundtime, room, group (`plan/29` §5a R3) -- and
 /// what can be done with it.
-fn draw(ui: &mut egui::Ui, card: &SessionCard, windowed: &[u32]) -> Option<HubAction> {
+fn draw(
+    ui: &mut egui::Ui,
+    card: &SessionCard,
+    windowed: &[u32],
+    width: CardWidth,
+) -> Option<HubAction> {
     let mut asked = None;
     let number = card.session.parse::<u32>().ok();
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        ui.set_width(ui.available_width());
+        ui.set_width(width.0);
         ui.horizontal(|ui| {
             ui.strong(if card.name.is_empty() {
                 "(unnamed)"
@@ -184,7 +292,7 @@ fn draw(ui: &mut egui::Ui, card: &SessionCard, windowed: &[u32]) -> Option<HubAc
             });
             ui.label(lifecycle(&card.lifecycle));
         });
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             let vitals = &card.vitals;
             for (label, vital, color) in [
                 ("HP", &vitals.health, bar::HEALTH),
