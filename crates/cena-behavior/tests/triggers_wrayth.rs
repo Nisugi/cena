@@ -104,11 +104,11 @@ fn every_highlight_name_and_ignore_in_the_fixture_comes_in() {
         (Some(colour(0xff_ff00)), Some(colour(0x33_6699)))
     );
 
-    let bastique = &named(&all, "Bastique").unwrap().rule;
-    assert_eq!(bastique.category, NAMES);
-    assert!(bastique.case_sensitive);
-    let igges = named(&all, "Igges").unwrap().rule.look.as_ref().unwrap();
-    assert_eq!(igges.color, Some(colour(0xff_ff90)));
+    let maravel = &named(&all, "Maravel").unwrap().rule;
+    assert_eq!(maravel.category, NAMES);
+    assert!(maravel.case_sensitive);
+    let orsen = named(&all, "Orsen").unwrap().rule.look.as_ref().unwrap();
+    assert_eq!(orsen.color, Some(colour(0xff_ff90)));
 
     let erratic = &named(&all, "is moving too erratically for that.")
         .unwrap()
@@ -266,4 +266,27 @@ fn what_cannot_be_carried_is_named_and_the_rest_comes_in() {
 fn a_file_with_no_highlights_is_not_a_wrayth_file() {
     let refused = wrayth::read("<settings client=\"1.0\"><palette/></settings>", ORIGIN);
     assert!(refused.unwrap_err().contains("not a Wrayth settings file"));
+}
+
+/// An entry a player commented out stays out, and a comment naming a
+/// section does not open it.
+#[test]
+fn a_commented_out_entry_does_not_come_in() {
+    let xml = "<!-- a note on <names> --><settings><strings>\
+               <h color=\"#ff0000\" text=\"kept\"/>\
+               <!-- <h color=\"#ff0000\" text=\"dropped\"/> -->\
+               </strings></settings>";
+    let import = wrayth::read(xml, ORIGIN).unwrap();
+    let names: Vec<&str> = import
+        .triggers
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .collect();
+    assert_eq!(names, ["kept"]);
+    assert_eq!(import.counts, [1, 0, 0]);
+    // A comment never closed runs to the end, `<names>` and all.
+    let unclosed = "<settings><strings></strings>\
+                    <!-- <names><h color=\"#ff0000\" text=\"x\"/></names>";
+    let unclosed = wrayth::read(unclosed, ORIGIN).unwrap();
+    assert!(unclosed.triggers.is_empty());
 }

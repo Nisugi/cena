@@ -28,7 +28,9 @@
 //!
 //! A Wrayth settings file is one `<settings>` element. MEASURED over the
 //! author's four exports (2026-09-27): no comments, CDATA, processing
-//! instructions or doctype; every element in `<strings>`, `<names>`,
+//! instructions or doctype. Comments are taken out first all the same: a
+//! player who comments an entry out by hand means it gone, and read as
+//! markup it would come in. Every element in `<strings>`, `<names>`,
 //! `<ignores>` and `<palette>` closes itself and nothing stands between
 //! them; values are double-quoted, but for `<ignores disable='n'>` in three
 //! of the four; the entities are `&apos;`, `&gt;` and `&quot;`. Reading that
@@ -71,6 +73,7 @@ type Attributes = BTreeMap<String, String>;
 ///
 /// It has no `<strings>`, `<names>` or `<ignores>`.
 pub fn read(xml: &str, origin: &str) -> Result<Import, String> {
+    let xml = &uncommented(xml);
     let palette: BTreeMap<String, String> = section(xml, "palette")
         .map(|(_, entries)| entries)
         .unwrap_or_default()
@@ -207,6 +210,22 @@ fn unique(words: &str, taken: &[(String, Table)]) -> String {
         name = format!("{words} ({count})");
     }
     name
+}
+
+/// `xml` with its comments taken out; one never closed runs to the end.
+fn uncommented(xml: &str) -> String {
+    let mut out = String::with_capacity(xml.len());
+    let mut rest = xml;
+    while let Some(at) = rest.find("<!--") {
+        out.push_str(rest.get(..at).unwrap_or_default());
+        let after = rest.get(at + "<!--".len()..).unwrap_or_default();
+        rest = after
+            .find("-->")
+            .and_then(|end| after.get(end + "-->".len()..))
+            .unwrap_or_default();
+    }
+    out.push_str(rest);
+    out
 }
 
 /// The element `<name>` anywhere in `xml`: its own attributes, and each
