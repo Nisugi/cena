@@ -36,9 +36,11 @@ $SEND_CHARACTER = '>'
 $cmd_prefix = ''
 
 # Lich's engine, unchanged (../lich, BSD 3-Clause: ../lich/LICENSE.txt):
-# the script itself, the calls scripts make, and the `;` command table.
+# the script itself, the calls scripts make, the `;` command table, and the
+# classes a script reads its character through, filled by copy.rb.
 %w[
   version.rb
+  constants.rb
   common/class_exts/nilclass.rb
   common/limitedarray.rb
   common/feature_flags.rb
@@ -47,17 +49,21 @@ $cmd_prefix = ''
   common/markup.rb
   common/script.rb
   global_defs.rb
+  common/gameobj.rb
+  attributes/char.rb
 ].each { |file| require File.join(LIB_DIR, file) }
 include Lich::Common
 
 require_relative 'connection'
 require_relative 'edge'
+require_relative 'copy'
 require_relative 'listener'
 
-XMLData = Hydra::Data.new(hydra_setting('HYDRA_GAME'), hydra_setting('HYDRA_CHARACTER'))
+copy = Hydra::Copy.new
+XMLData = Hydra::Data.new(hydra_setting('HYDRA_GAME'), hydra_setting('HYDRA_CHARACTER'), copy)
 $stdout = Hydra::Screen.new
 Hydra.connection = Hydra::Connection.new(hydra_setting('HYDRA_URL'), hydra_setting('HYDRA_TOKEN'))
 
-Hydra::Listener.new(Hydra.connection).run
+Hydra::Listener.new(Hydra.connection, copy).run
 # Hydra dismissed the runner, or the session ended: its scripts end with it.
 exit 0

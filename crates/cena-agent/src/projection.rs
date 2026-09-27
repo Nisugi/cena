@@ -142,6 +142,8 @@ pub struct Thing {
 pub struct Player {
     /// Its id.
     pub id: String,
+    /// Its noun: the character's own name, which a command names it by.
+    pub noun: String,
     /// Its name as shown, with any title.
     pub name: String,
     /// Its status, when shown (`sitting`, `dead`...).
@@ -323,6 +325,7 @@ fn room(state: &GameState) -> Room {
                 .iter()
                 .map(|item| Player {
                     id: item.id.clone(),
+                    noun: item.noun.clone(),
                     name: item.text.clone(),
                     status: item.status.as_ref().map(|s| s.as_str().to_owned()),
                 })

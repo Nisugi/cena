@@ -96,7 +96,7 @@ ignoring case.
 | `character`, `game`, `lifecycle`, `generation` | who, which instance, where the session is in its life, which connection (it advances on every reconnect) |
 | `cursor` | the last event this state includes: `wait` from here |
 | `captured_unix_ms`, `clock` | when this was read, on this machine and on the game's clock (epoch seconds) |
-| `room` | `id` (the game's number), `title`, `exits`; `creatures` (`id`, `noun`, `name`, `hostile`, `statuses`, `dead`), `objects`, `players` |
+| `room` | `id` (the game's number), `title`, `exits`; `creatures` (`id`, `noun`, `name`, `hostile`, `statuses`, `dead`), `objects` (`id`, `noun`, `name`), `players` (`id`, `noun`, `name`, `status`) |
 | `hands` | `right`, `left`: `{"state": "unknown"}`, `{"state": "empty"}`, or `{"state": "holding", "id", "noun", "name"}` |
 | `vitals` | `health`, `mana`, `stamina`, `spirit`: `{current, max, percent}` |
 | `statuses` | every status the game has reported, with its value |

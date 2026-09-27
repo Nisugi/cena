@@ -17,8 +17,9 @@ module Hydra
     # How long to wait before asking again after Hydra did not answer.
     RETRY = 1
 
-    def initialize(connection)
+    def initialize(connection, copy)
       @connection = connection
+      @copy = copy
       @since = 0
     end
 
@@ -43,6 +44,8 @@ module Hydra
 
     def handle(event)
       case event['kind']
+      when 'state' then @copy.apply(event['fields'])
+      when 'prompt' then XMLData.prompted(event['time'], event['text'])
       when 'line' then line(event)
       when 'typed' then typed(event['line'])
       when 'lagged'

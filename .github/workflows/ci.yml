@@ -49,6 +49,9 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '4.0'
+      # What Lich's engine requires beside Ruby, as Lich's own installer
+      # provides it: `ox` for GameObj (plan/46 step 2).
+      - run: gem install ox --no-document
 
       # plan/06 section 4 lists these as 1. test, 2. clippy, 3. fmt. Reordered
       # cheapest-first so a formatting slip does not wait on a full build; the

@@ -1,0 +1,10 @@
+# A script of Hydra's own, for the Ruby runner's reads
+# (crates/cena-agent/tests/runner.rs): what Lich's XMLData, GameObj, Char and
+# the check family answer from the runner's local copy, after a look.
+
+put 'look'
+waitfor 'quiet room'
+echo "room: #{checkroom} #{XMLData.room_id} #{checkpaths.inspect} #{XMLData.room_count > 0}"
+echo "npcs: #{GameObj.npcs.map(&:noun).join(',')} loot: #{checkloot.join(',')} pcs: #{checkpcs.inspect}"
+echo "hands: #{checkright} #{checkleft.inspect}"
+echo "char: #{Char.name} #{Char.health}/#{Char.max_health} standing=#{checkstanding} stunned=#{checkstunned}"

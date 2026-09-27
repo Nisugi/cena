@@ -2,8 +2,8 @@
 
 # Where Lich's engine meets the world outside it, answered by Hydra: the
 # game (`Game.puts`), the player's screen (`respond`, `_respond`, a
-# script's own `puts`), Lich's log, and the little of `XMLData` the engine
-# reads (plan/46 section 5). Everything else is Lich's own code, unchanged,
+# script's own `puts`) and Lich's log (plan/46 section 5). What a script
+# reads of its character is copy.rb's. Everything else is Lich's own code, unchanged,
 # in ../lich.
 #
 # Each replacement keeps the shape of the Lich method it replaces
@@ -90,23 +90,6 @@ module Hydra
     def sync=(_on); end
     def tty? = false
     def fileno = nil
-  end
-
-  # The little of Lich's `XMLData` the engine itself reads: which game, and
-  # who. The rest of it is the local copy, plan/46 section 11 step 2; until
-  # then a script that reads more fails naming what it read, rather than
-  # reading a nil it cannot tell from the game's.
-  class Data
-    # Lich's names for the games (lib/common/xmlparser.rb reads them from
-    # `<settingsInfo instance=>`); Hydra passes the code the login used.
-    GAMES = { 'GS3' => 'GSIV', 'GS4' => 'GSIV', 'GSX' => 'GSPlat', 'GS4X' => 'GSPlat' }.freeze
-
-    attr_reader :game, :name
-
-    def initialize(game, name)
-      @game = GAMES.fetch(game.to_s.upcase, game.to_s.upcase)
-      @name = name
-    end
   end
 end
 

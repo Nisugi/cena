@@ -47,16 +47,13 @@ struct Heard {
 }
 
 impl Running {
-    /// The character answers `look`; its runner runs the scripts in
-    /// `scripts`, with `dir` for the rest.
-    async fn start(scripts: &Path, dir: &Path) -> Option<Self> {
+    /// The character answers `look` with `room`; its runner runs the
+    /// scripts in `scripts`, with `dir` for the rest.
+    async fn start(scripts: &Path, dir: &Path, room: &[u8]) -> Option<Self> {
         let ruby = find_ruby()?;
         let (source, transcript) =
             AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
-        transcript.answer(
-            "look",
-            b"You see a quiet room.\n<prompt time=\"2\">&gt;</prompt>\n",
-        );
+        transcript.answer("look", room);
         let session = Session::new(source);
         let handle = session.handle();
         let observer = session.observer();
@@ -180,6 +177,35 @@ impl Running {
     }
 }
 
+/// The game's answer to `look`: a line, and the prompt.
+const QUIET_ROOM: &[u8] = b"You see a quiet room.\n<prompt time=\"2\">&gt;</prompt>\n";
+
+/// A room the game describes whole: its number, title and exits; a player,
+/// a kobold and a rock; the hands, a bar and a status.
+const DESCRIBED_ROOM: &[u8] = b"<nav rm='7000'/>
+<streamWindow id='room' title='Room' subtitle=\" - Quiet Glade\"/>
+<compass><dir value=\"n\"/><dir value=\"e\"/></compass>
+<component id='room players'>Also here: <a exist=\"-99\" noun=\"Kiyna\">Kiyna</a>.</component>
+<component id='room objs'>You also see <pushBold/>a <a exist=\"42\" noun=\"kobold\">kobold</a><popBold/> and <a exist=\"43\" noun=\"rock\">a rock</a>.</component>
+<crtrStatus exist=\"42\" hostile=\"1\"/>
+<right exist=\"11\" noun=\"sword\">broadsword</right><left>Empty</left>
+<dialogData id='minivitals'><progressBar id='health' value='50' text='health 50/100'/></dialogData>
+<indicator id=\"IconSTANDING\" visible=\"y\"/>
+You see a quiet room.
+<prompt time=\"1001\">&gt;</prompt>
+";
+
+/// A folder with one of this test's own scripts in it.
+fn scripts_with(dir: &Path, name: &str) -> std::io::Result<PathBuf> {
+    let scripts = dir.join("scripts");
+    std::fs::create_dir_all(&scripts)?;
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures")
+        .join(name);
+    std::fs::copy(fixture, scripts.join(name))?;
+    Ok(scripts)
+}
+
 #[tokio::test(flavor = "current_thread")]
 async fn a_lich_script_runs_against_hydra() {
     assert!(
@@ -187,11 +213,8 @@ async fn a_lich_script_runs_against_hydra() {
         "no Ruby: the runner needs Ruby 4.0, on the PATH or under C:\\Ruby4Lich5 (Lich's installer)"
     );
     let dir = temp_dir("lich-script");
-    let scripts = dir.join("scripts");
-    std::fs::create_dir_all(&scripts).unwrap();
-    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/hydratest.lic");
-    std::fs::copy(fixture, scripts.join("hydratest.lic")).unwrap();
-    let mut running = Running::start(&scripts, &dir).await.unwrap();
+    let scripts = scripts_with(&dir, "hydratest.lic").unwrap();
+    let mut running = Running::start(&scripts, &dir, QUIET_ROOM).await.unwrap();
 
     assert!(running.typed("hydratest one \"two three\""));
     let heard = running.heard_until("hydratest has exited").await;
@@ -222,6 +245,35 @@ async fn a_lich_script_runs_against_hydra() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// **The reads** (`plan/46` §11 step 2): Lich's own `XMLData` readers,
+/// `GameObj`, `Char` and the check family, answered from the local copy
+/// that the game's description of the room filled.
+#[tokio::test(flavor = "current_thread")]
+async fn a_script_reads_its_character_as_lich_does() {
+    assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("reads");
+    let scripts = scripts_with(&dir, "readstest.lic").unwrap();
+    let mut running = Running::start(&scripts, &dir, DESCRIBED_ROOM)
+        .await
+        .unwrap();
+    let heard = running.run("readstest", "readstest").await.unwrap();
+    let errors = running.errors();
+    for expected in [
+        "[readstest: room: [Quiet Glade] 7000 [\"n\", \"e\"] true]",
+        "[readstest: npcs: kobold loot: rock pcs: [\"Kiyna\"]]",
+        "[readstest: hands: sword nil]",
+        "[readstest: char: Nisugi 50/100 standing=true stunned=false]",
+    ] {
+        assert!(
+            heard.told.iter().any(|line| line == expected),
+            "{expected:?} not told: {:#?}\nrunner's errors: {errors:#?}",
+            heard.told
+        );
+    }
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// **The first real script end to end** (`plan/46` §11 step 1): Tillmen's
 /// `trollspeak`, from the player's own Lich scripts, unchanged. It is not
 /// ours to commit, so this reads it from the folder `CENA_LICH_SCRIPTS`
@@ -237,7 +289,7 @@ async fn trollspeak_runs_unchanged() {
         "no trollspeak.lic"
     );
     let dir = temp_dir("trollspeak");
-    let mut running = Running::start(&scripts, &dir).await.unwrap();
+    let mut running = Running::start(&scripts, &dir, QUIET_ROOM).await.unwrap();
 
     let heard = running
         .run("trollspeak say hello there, friend", "trollspeak")

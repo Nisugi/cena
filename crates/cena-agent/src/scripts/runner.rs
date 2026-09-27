@@ -35,12 +35,28 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../../bridges/ruby/hydra/listener.rb"),
     ),
     (
+        "hydra/copy.rb",
+        include_str!("../../../../bridges/ruby/hydra/copy.rb"),
+    ),
+    (
         "lich/LICENSE.txt",
         include_str!("../../../../bridges/ruby/lich/LICENSE.txt"),
     ),
     (
         "lich/lib/version.rb",
         include_str!("../../../../bridges/ruby/lich/lib/version.rb"),
+    ),
+    (
+        "lich/lib/constants.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/constants.rb"),
+    ),
+    (
+        "lich/lib/common/gameobj.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/gameobj.rb"),
+    ),
+    (
+        "lich/lib/attributes/char.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/attributes/char.rb"),
     ),
     (
         "lich/lib/common/class_exts/nilclass.rb",
