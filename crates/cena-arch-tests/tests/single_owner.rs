@@ -206,7 +206,7 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
      build had been scanning another checkout.",
     ),
     (
-        "crates/cena-session/src/agent.rs",
+        "crates/cena-session/src/agent/door.rs",
         "Door",
         "The one way an agent acts on a session (plan/35 section 3, M7 step 2): \
          cena-agent holds a Door and never the handle, so every act it makes \

@@ -459,6 +459,52 @@ Each ends in something demonstrable, as `12` §8 asks.
    *Shown*, live with the author: not yet (with step 1's).
 3. **Behaviors.** `perform`, `operation` and `control` over Hydra commands; behavior endings
    as events. Hold and resume need building in hunt first.
+
+   **AUTHOR, 2026-09-27**, asked three questions, took the recommendation each time:
+   - *Which Hydra commands at `behaviors`?* **Start and steer only**: `go2 <place>`,
+     `go2 stop`, `hunt <profile>` (and `quick`, `bounty`), `hunt stop`, `heal` (and `stock`,
+     `fill`), `keep`, `waggle`. Not `multi`/`foreach` (any game line), not `sc` (casts at
+     anyone, players included), not a group hunt (it starts other characters, whose levels
+     are theirs), not `agent`, and nothing that writes a setting or a profile: a hunt
+     profile's steps are game commands, so editing one would get round the Commands level.
+   - *Hold?* **Defend, start nothing**: survival, flee and rest still act; no new target, no
+     looting, no buffs, no wandering, until resume or stop.
+   - *Retreat?* **The rest room, then end**: walk to the profile's rest room now and end the
+     hunt there, so the agent decides what is next (LAB's meaning).
+
+   Built in three parts: **3a** operations, **3b** hold, resume and retreat, **3c** progress
+   and its absence (issue #19, point 6).
+
+   **3a BUILT 2026-09-27.**
+   - **The fourth level, `behaviors`.** An agent performs a Hydra command as an **operation**
+     (`crates/cena-session/src/operation.rs`): a ticket read by its number, or waited on
+     (kind `operation`), never a reason to send again. The session holds no command
+     knowledge: the binary registers a `Performer` (`crates/cena/src/perform.rs`, the
+     allowlist above), as it registers the command desk.
+   - **Each request admitted once** (issue #19, point 4): every act carries the caller's
+     `request_id`; the same id and act again answers as the first time and is never done
+     twice, the same id for another act is refused, a duplicate while the first is being
+     admitted is told so, and an approved request's id then names its operation. Kept in
+     memory, the last 256 per character; a restart forgets them, as it ends the operations.
+     `perform` and `control` carry `expected_generation`.
+   - **A result that keeps work, leftovers and release apart** (issue #19, point 3): the
+     behavior's own verdict (`completed`, `failed`, `interrupted`, `no_opportunity`,
+     `unknown`) with its word for why, read off `HuntEnd` and `Travelled`
+     (`crates/cena-behavior/src/operation.rs`); what a walk left undone (an item still
+     stored, one taken out, a stance not restored); and whether the authority was released,
+     as the session sees it. No effect is claimed: a completed hunt is not a count of kills.
+   - **One run's controls.** Each desk now hands back the controls of the run it started
+     (`Underway`, `Steering`), so an agent's stop never stops a hunt the player began since
+     (`crates/cena-behavior/tests/travel_desk.rs`, `an_old_walks_stop_...`, which the desk's
+     own stop fails).
+   - **The approval rechecked at execution** (issue #19, point 5): an approved `control` on an
+     operation that has since ended is not done, and the agent is told so.
+   - Mutations: the request-id lookup forgetting everything turns two tests red; the desk's
+     own stop in place of a run's turns the steering test red. The steering test's first
+     version passed that mutant too, because the second walk had arrived before the stop:
+     rewritten so it is still walking.
+   - **A lowered level stops nothing that runs.** It takes the agent's control away; the
+     player's own stop ends the operation. (Issue #19's hard revocation is step 5's.)
 4. **Commands**, with the denylist.
 5. **Takeover.** `Origin::Agent`, `take_over`, and the level dropping after a bad run.
 6. **Acceptance, live, author present:** a hunt ends on its rest threshold, the agent (not

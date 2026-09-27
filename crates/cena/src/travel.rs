@@ -36,7 +36,7 @@ use std::sync::Arc;
 use crate::commands::{Commands, Took};
 use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command};
 use cena_session::command::claimant;
-use cena_session::{AuthorityToken, Notice, NoticeKind, SessionHandle, SessionObserver};
+use cena_session::{Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Where the combined map is. No default: a wrong map is worse than none.
 ///
@@ -111,7 +111,7 @@ fn open_travel(
     crate::agent::control(handle, commands, state);
     let map = load_map(handle, configured);
     // Hunt walks with travel's driver, so it takes the same map, or none.
-    crate::hunt::open(
+    let hunt = crate::hunt::open(
         handle,
         observer.clone(),
         state,
@@ -120,6 +120,7 @@ fn open_travel(
         party,
     );
     let Some(map) = map else {
+        crate::perform::install(handle, &observer, None, hunt);
         // Travel's words are answered with why it cannot travel, and nothing
         // is sent. Every other word is the command line's to route.
         let told = handle.clone();
@@ -141,8 +142,9 @@ fn open_travel(
     let travel = Desk::new(
         map,
         cena_session::character_store::data_dir(),
-        AuthorityToken(2),
+        crate::perform::TRAVEL_TOKEN,
     );
+    crate::perform::install(handle, &observer, Some(Arc::clone(&travel)), hunt);
     let handler = handle.clone();
     commands.travel(Arc::new(move |line: &str| {
         let command = travel_command(&handler, line)?;

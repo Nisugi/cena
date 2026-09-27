@@ -202,6 +202,9 @@ pub struct SessionHandle {
     /// What an agent may do, and the acts waiting on the player
     /// (`crate::agent`).
     pub(crate) agent: crate::agent::Access,
+    /// Who runs the Hydra commands an agent performs, once the binary has
+    /// registered it (`crate::operation`).
+    pub(crate) performer: crate::operation::Slot,
 }
 
 impl SessionHandle {
@@ -237,6 +240,7 @@ impl SessionHandle {
             attendance: super::attendance::Attendance::default(),
             authority: super::authority::Authority::default(),
             agent: crate::agent::Access::default(),
+            performer: crate::operation::Slot::default(),
         }
     }
 

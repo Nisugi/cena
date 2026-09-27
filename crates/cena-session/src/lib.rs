@@ -41,6 +41,7 @@ pub mod lifecycle;
 pub mod menu_store;
 pub mod notice;
 mod observation;
+pub mod operation;
 pub mod player_log;
 pub mod queue;
 pub mod settings_store;

@@ -439,7 +439,7 @@ async fn at_off_an_agent_sees_a_name_and_is_refused_the_rest() {
     let act = client
         .tool(
             "tell_player",
-            serde_json::json!({"character": "Nisugi", "text": "hello", "because": "testing"}),
+            serde_json::json!({"character": "Nisugi", "text": "hello", "because": "testing", "request_id": "t0"}),
         )
         .await
         .unwrap();
@@ -474,7 +474,7 @@ async fn an_act_above_the_level_waits_for_the_player() {
         .await
         .unwrap();
     let since = state["cursor"].as_u64().unwrap();
-    let tell = serde_json::json!({"character": "Nisugi", "text": "the hunt is over", "because": "you asked to know"});
+    let tell = serde_json::json!({"character": "Nisugi", "text": "the hunt is over", "because": "you asked to know", "request_id": "t1"});
     let asked = client.tool("tell_player", tell.clone()).await.unwrap();
     assert_eq!(asked["needed"], "advise", "{asked}");
     assert_eq!(asked["approval"]["asked"], true, "{asked}");
@@ -530,7 +530,15 @@ async fn an_act_above_the_level_waits_for_the_player() {
     assert!(lagged, "what happened at off is not handed over");
 
     handle.set_agent_level(Level::Advise);
-    let told = client.tool("tell_player", tell).await.unwrap();
+    let again = client.tool("tell_player", tell.clone()).await.unwrap();
+    assert_eq!(
+        again,
+        serde_json::json!({"told": true}),
+        "told once, on the yes"
+    );
+    let mut fresh = tell;
+    fresh["request_id"] = "t2".into();
+    let told = client.tool("tell_player", fresh).await.unwrap();
     assert_eq!(told, serde_json::json!({"told": true}));
     let capabilities = client
         .tool("capabilities", serde_json::json!({"character": "Nisugi"}))
@@ -540,8 +548,124 @@ async fn an_act_above_the_level_waits_for_the_player() {
     assert!(
         capabilities["tools"]
             .as_array()
-            .is_some_and(|tools| tools.len() == 6 && tools.iter().all(|t| t["needs"].is_string())),
+            .is_some_and(|tools| tools.len() == 9 && tools.iter().all(|t| t["needs"].is_string())),
         "{capabilities}"
     );
+    stop.cancel();
+}
+
+/// A stand-in performer: `walk <place>`, a run that ends when stopped.
+fn walker() -> cena_session::operation::Performer {
+    use cena_session::operation::{Allows, Control, Ended, Start, Started, Steer, Work};
+    let allows: Allows = std::sync::Arc::new(|line: &str| {
+        line.starts_with("walk ")
+            .then(|| line.to_owned())
+            .ok_or_else(|| "only walk <place>".to_owned())
+    });
+    let start: Start = std::sync::Arc::new(|_line: &str| {
+        let stop = CancellationToken::new();
+        let steer: Steer = {
+            let stop = stop.clone();
+            std::sync::Arc::new(move |control: Control| {
+                match control {
+                    Control::Stop => stop.cancel(),
+                }
+                Ok(())
+            })
+        };
+        Started {
+            ended: Box::pin(async move {
+                stop.cancelled().await;
+                Ended::plainly(Work::Interrupted, "stopped")
+            }),
+            steer,
+            token: None,
+        }
+    });
+    cena_session::operation::Performer {
+        allowed: "walk <place>".to_owned(),
+        allows,
+        start,
+    }
+}
+
+/// Step 3: a behavior performed over MCP is a ticket. Asked again under the
+/// same request id it is the same operation; it is read and waited on to its
+/// end; a stop is admitted, then applied.
+#[tokio::test]
+async fn a_behavior_is_performed_as_an_operation_and_stopped() {
+    let (handle, _observer, client, stop) = seated().await.unwrap();
+    assert!(handle.set_performer(walker()));
+    handle.set_agent_level(Level::Behaviors);
+    let state = client
+        .tool("state", serde_json::json!({"character": "Nisugi"}))
+        .await
+        .unwrap();
+    let (since, generation) = (state["cursor"].as_u64(), state["generation"].as_u64());
+    let perform = serde_json::json!({"character": "Nisugi", "line": "walk bank", "because": "to sell",
+        "request_id": "p1", "expected_generation": generation});
+    let first = client.tool("perform", perform.clone()).await.unwrap();
+    let id = first["operation"]["id"].as_u64().unwrap();
+    assert_eq!(first["operation"]["lifecycle"], "running", "{first}");
+    let again = client.tool("perform", perform).await.unwrap();
+    assert_eq!(again["operation"]["id"], id, "the same ticket");
+
+    let refused = client
+        .tool(
+            "perform",
+            serde_json::json!({"character": "Nisugi", "line": "drop sword", "because": "x",
+                "request_id": "p2", "expected_generation": generation}),
+        )
+        .await
+        .unwrap();
+    assert_eq!(refused["refused"], "request", "{refused}");
+
+    let control = serde_json::json!({"character": "Nisugi", "operation": id, "control": "stop",
+        "because": "enough", "request_id": "c1", "expected_generation": generation});
+    let stopping = client.tool("control", control).await.unwrap();
+    assert_ne!(stopping["operation"]["lifecycle"], "running", "{stopping}");
+    let mut result = serde_json::Value::Null;
+    for _ in 0..100 {
+        let read = client
+            .tool(
+                "operation",
+                serde_json::json!({"character": "Nisugi", "operation": id}),
+            )
+            .await
+            .unwrap();
+        if read["lifecycle"] == "ended" {
+            result = read["result"].clone();
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(result["work"], "interrupted", "{result}");
+    assert_eq!(result["reason"], "stopped");
+    let waited = client
+        .tool(
+            "wait",
+            serde_json::json!({"character": "Nisugi", "since": since, "kinds": ["operation"], "timeout_ms": 0}),
+        )
+        .await
+        .unwrap();
+    let states: Vec<&serde_json::Value> = waited["happenings"]
+        .as_array()
+        .map(|all| all.iter().map(|h| &h["operation"]["lifecycle"]).collect())
+        .unwrap_or_default();
+    assert_eq!(
+        states.first().copied(),
+        Some(&serde_json::json!("running")),
+        "{waited}"
+    );
+    assert_eq!(
+        states.last().copied(),
+        Some(&serde_json::json!("ended")),
+        "{waited}"
+    );
+    let capabilities = client
+        .tool("capabilities", serde_json::json!({"character": "Nisugi"}))
+        .await
+        .unwrap();
+    assert_eq!(capabilities["character"]["performs"], "walk <place>");
     stop.cancel();
 }

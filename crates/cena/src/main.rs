@@ -50,6 +50,7 @@ mod interrupt;
 mod learn;
 mod loot;
 mod map_context;
+mod perform;
 mod play;
 mod roster;
 mod secrets;

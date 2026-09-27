@@ -1,5 +1,5 @@
 //! An agent's control level, and the one door an agent acts through
-//! (`plan/35` §3, M7 step 2).
+//! (`plan/35` §3, M7 steps 2 and 3).
 //!
 //! # The level is the player's
 //!
@@ -13,10 +13,10 @@
 //! `;agent level`. Nothing on [`Door`] changes it: an agent never sets its own
 //! level.
 //!
-//! # Three levels now, six in the plan
+//! # Four levels now, six in the plan
 //!
 //! `plan/35` §3 names Off, Observe, Advise, Behaviors, Commands and Takeover.
-//! Only the first three have anything to permit yet, so only they exist; each
+//! Only the first four have anything to permit yet, so only they exist; each
 //! later step adds its level beside the tools it permits. A level with nothing
 //! behind it would be one a player could set today and have mean more after
 //! an update: a permission given before it existed.
@@ -51,7 +51,25 @@
 //! A refusal that asks nothing is told to the player at most once every few
 //! minutes, with how many there were: an agent polling a character at `off`
 //! would otherwise fill its stream.
+//!
+//! # Each request admitted once (issue #19, point 4)
+//!
+//! Every act carries the caller's own request id ([`Call`]). The first time,
+//! the act is admitted or refused; **the same id again, for the same act, is
+//! answered as the first time was, and never done twice**, so a caller whose
+//! reply was lost asks again safely. The same id for a different act is
+//! refused. A request asked while the first is still being admitted is told
+//! so rather than admitted beside it. An act that could not be done, or was
+//! refused without asking the player, admitted nothing, and may be asked
+//! again under the same id. The last [`KEPT_REQUESTS`] ids are kept, in
+//! memory: a restart of Hydra forgets them, as it ends every operation they
+//! could have named.
 
+mod door;
+
+pub use door::{Call, Door};
+
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -60,6 +78,7 @@ use tokio::time::Instant;
 
 use crate::lifecycle::Generation;
 use crate::notice::{Body, Notice, NoticeKind};
+use crate::operation::{Control, Report, Table};
 use crate::{Event, SessionHandle};
 
 /// What an agent may do with one character (`plan/35` §3). Each includes
@@ -77,11 +96,14 @@ pub enum Level {
     Observe,
     /// Also put a message in front of the player. Nothing reaches the game.
     Advise,
+    /// Also start, steer and stop behaviors, through the Hydra commands the
+    /// binary allows ([`Door::perform`]). Never a game command of its own.
+    Behaviors,
 }
 
 impl Level {
     /// Every level, lowest first.
-    pub const ALL: [Self; 3] = [Self::Off, Self::Observe, Self::Advise];
+    pub const ALL: [Self; 4] = [Self::Off, Self::Observe, Self::Advise, Self::Behaviors];
 
     /// The word the player types and the settings file keeps.
     #[must_use]
@@ -90,6 +112,7 @@ impl Level {
             Self::Off => "off",
             Self::Observe => "observe",
             Self::Advise => "advise",
+            Self::Behaviors => "behaviors",
         }
     }
 
@@ -109,6 +132,9 @@ impl Level {
             Self::Observe => "an agent may read this character, and do nothing else",
             Self::Advise => {
                 "an agent may read this character and put a message in front of you; nothing it does reaches the game"
+            }
+            Self::Behaviors => {
+                "an agent may also start, steer and stop go2, hunt, heal, keep and waggle; never a game command of its own"
             }
         }
     }
@@ -145,9 +171,8 @@ pub const MAX_TOLD: usize = 2_000;
 /// The longest reason an act carries, in characters.
 pub const MAX_BECAUSE: usize = 300;
 
-/// How long after telling the player of a refused read before telling them of
-/// more: an agent polling every few seconds would otherwise fill the stream.
-const RETOLD_AFTER: Duration = Duration::from_mins(5);
+/// How many request ids are remembered ([`Call`]).
+pub const KEPT_REQUESTS: usize = 256;
 
 /// Something an agent does that changes what the player sees or what the
 /// character does, as against reading.
@@ -158,6 +183,18 @@ pub enum Act {
         /// The message.
         text: String,
     },
+    /// Run a Hydra command an agent may run ([`Door::perform`]).
+    Perform {
+        /// The command, as the binary keeps it.
+        line: String,
+    },
+    /// Steer an operation an agent started ([`Door::control`]).
+    Control {
+        /// The operation's number.
+        operation: u64,
+        /// What to do to it.
+        control: Control,
+    },
 }
 
 impl Act {
@@ -166,22 +203,28 @@ impl Act {
     pub const fn needs(&self) -> Level {
         match self {
             Self::TellPlayer { .. } => Level::Advise,
+            Self::Perform { .. } | Self::Control { .. } => Level::Behaviors,
         }
     }
 
-    /// What it is, as the player is asked about it. **Not the message
-    /// itself**: showing it in the question would put it in front of the
-    /// player at a level that does not allow that.
+    /// What it is, as the player is asked about it. **Not a message's
+    /// words**: showing them in the question would put them in front of the
+    /// player at a level that does not allow that. A command is shown
+    /// whole: the player approves exactly it.
     fn described(&self) -> String {
         match self {
             Self::TellPlayer { text } => {
                 format!("tell you something ({} characters)", text.chars().count())
             }
+            Self::Perform { line } => format!("run `{line}`"),
+            Self::Control { operation, control } => {
+                format!("{} its operation {operation}", control.word())
+            }
         }
     }
 }
 
-/// Why an agent was refused.
+/// Why an agent was refused by the level.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Refused {
     /// The level it needed.
@@ -202,7 +245,7 @@ pub enum Approval {
     Asked {
         /// The request's number.
         id: u64,
-        /// How long it waits.
+        /// How long it still waits.
         expires_in: Duration,
     },
     /// The player was not asked: [`MAX_WAITING`] requests already wait.
@@ -211,7 +254,7 @@ pub enum Approval {
 
 /// An act waiting for the player, as `;agent` lists it.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Request {
+pub struct Pending {
     /// Its number, for `;agent approve` and `;agent deny`.
     pub id: u64,
     /// What it would do.
@@ -222,24 +265,44 @@ pub struct Request {
     pub expires_in: Duration,
 }
 
-/// What the player decided about the agent, published as
+/// What an act that was let through did.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Admitted {
+    /// The message is in front of the player.
+    Told,
+    /// An operation was started or steered: as it stands now.
+    Operation(Report),
+}
+
+/// Why an act was not done.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Denied {
+    /// The level does not allow it.
+    Level(Refused),
+    /// It cannot be done as asked, whatever the level: why, in words.
+    Invalid(String),
+}
+
+/// What changed about the agent's side of a session, published as
 /// [`Event::Agent`] so an agent learns it in order with everything else.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Decision {
-    /// The level changed.
+pub enum Change {
+    /// The player set the level.
     Level(Level),
-    /// A request was answered: let through, or not (denied, lapsed, or
-    /// dropped when the level changed).
+    /// The player answered a request: let through, or not (denied, lapsed,
+    /// could not be done, or dropped when the level changed).
     Answered {
         /// The request's number.
         id: u64,
         /// Whether the act was done.
         approved: bool,
     },
+    /// An operation started, was steered, or ended.
+    Operation(Report),
 }
 
-/// One session's level and the acts waiting on the player, shared by every
-/// clone of its handle.
+/// One session's level, the acts waiting on the player, the requests
+/// admitted and the operations started, shared by every clone of its handle.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Access(Arc<Mutex<Inner>>);
 
@@ -252,6 +315,9 @@ struct Inner {
     /// nothing, and how many there were since.
     told_of_reads: Option<Instant>,
     reads_untold: u32,
+    /// Every request id admitted, oldest first.
+    requests: VecDeque<Admission>,
+    operations: Table,
 }
 
 #[derive(Debug)]
@@ -263,14 +329,62 @@ struct Waiting {
     expires: Instant,
 }
 
+/// A request id, the act it asked for, and what became of it.
+#[derive(Debug)]
+struct Admission {
+    request: String,
+    act: Act,
+    answer: Answer,
+}
+
+/// What became of an admitted request.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Answer {
+    /// Being done now.
+    InFlight,
+    /// The message was put in front of the player.
+    Told,
+    /// This operation was started or steered.
+    Operation(u64),
+    /// The player was asked, under this number.
+    Asked(u64),
+    /// The player was asked under this number, and it was not done.
+    NotApproved(u64),
+}
+
+impl Answer {
+    fn of(admitted: &Admitted) -> Self {
+        match admitted {
+            Admitted::Told => Self::Told,
+            Admitted::Operation(report) => Self::Operation(report.id),
+        }
+    }
+}
+
+/// A request id looked up.
+enum Recalled {
+    /// Never seen.
+    New,
+    /// Seen, for a different act.
+    Other,
+    /// Seen, for this act.
+    Answer(Answer),
+}
+
 impl Access {
     fn lock(&self) -> MutexGuard<'_, Inner> {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
+
+    /// The session's operations, for `crate::operation`.
+    pub(crate) fn with_operations<T>(&self, f: impl FnOnce(&mut Table) -> T) -> T {
+        f(&mut self.lock().operations)
+    }
 }
 
 impl Inner {
-    /// Take out every request past its time, for the caller to answer.
+    /// Take out every request past its time, and mark it not done; the
+    /// caller tells the agent.
     fn lapse(&mut self, now: Instant) -> Vec<u64> {
         let mut lapsed = Vec::new();
         self.waiting.retain(|w| {
@@ -280,7 +394,50 @@ impl Inner {
             }
             live
         });
+        for &id in &lapsed {
+            self.settle_asked(id, Answer::NotApproved(id));
+        }
         lapsed
+    }
+
+    fn recall(&self, request: &str, act: &Act) -> Recalled {
+        match self.requests.iter().find(|a| a.request == request) {
+            None => Recalled::New,
+            Some(seen) if seen.act != *act => Recalled::Other,
+            Some(seen) => Recalled::Answer(seen.answer),
+        }
+    }
+
+    fn remember(&mut self, request: &str, act: &Act, answer: Answer) {
+        self.requests.push_back(Admission {
+            request: request.to_owned(),
+            act: act.clone(),
+            answer,
+        });
+        while self.requests.len() > KEPT_REQUESTS {
+            self.requests.pop_front();
+        }
+    }
+
+    fn settle(&mut self, request: &str, answer: Answer) {
+        if let Some(seen) = self.requests.iter_mut().find(|a| a.request == request) {
+            seen.answer = answer;
+        }
+    }
+
+    fn forget(&mut self, request: &str) {
+        self.requests.retain(|a| a.request != request);
+    }
+
+    /// The request that asked the player under `id` now has `answer`.
+    fn settle_asked(&mut self, id: u64, answer: Answer) {
+        if let Some(seen) = self
+            .requests
+            .iter_mut()
+            .find(|a| a.answer == Answer::Asked(id))
+        {
+            seen.answer = answer;
+        }
     }
 }
 
@@ -295,6 +452,10 @@ impl SessionHandle {
     /// Set this character's agent level. Every act still waiting is dropped
     /// and answered as not approved, so a level lowered and raised again
     /// never brings one back. Saving it is the caller's.
+    ///
+    /// **It stops nothing that runs.** An operation an agent started goes on
+    /// as if the player had started it; below [`Level::Behaviors`] the agent
+    /// can no longer steer it, and the player's own stop ends it.
     pub fn set_agent_level(&self, level: Level) {
         let dropped = {
             let mut inner = self.agent.lock();
@@ -304,38 +465,42 @@ impl SessionHandle {
             inner.level = level;
             inner.told_of_reads = None;
             inner.reads_untold = 0;
-            std::mem::take(&mut inner.waiting)
+            let dropped = std::mem::take(&mut inner.waiting);
+            for waiting in &dropped {
+                inner.settle_asked(waiting.id, Answer::NotApproved(waiting.id));
+            }
+            dropped
         };
         for waiting in dropped {
-            self.decided(Decision::Answered {
+            self.decided(Change::Answered {
                 id: waiting.id,
                 approved: false,
             });
         }
-        self.decided(Decision::Level(level));
+        self.decided(Change::Level(level));
     }
 
     /// The acts waiting for the player, oldest first.
     #[must_use]
-    pub fn agent_requests(&self) -> Vec<Request> {
+    pub fn agent_requests(&self) -> Vec<Pending> {
         let now = Instant::now();
-        let (lapsed, requests) = {
+        let (lapsed, pending) = {
             let mut inner = self.agent.lock();
             let lapsed = inner.lapse(now);
-            let requests = inner
+            let pending = inner
                 .waiting
                 .iter()
-                .map(|w| Request {
+                .map(|w| Pending {
                     id: w.id,
                     act: w.act.described(),
                     because: w.because.clone(),
                     expires_in: w.expires - now,
                 })
                 .collect();
-            (lapsed, requests)
+            (lapsed, pending)
         };
         self.answer_lapsed(lapsed);
-        requests
+        pending
     }
 
     /// Let request `id` through: its act is done now, once.
@@ -343,21 +508,23 @@ impl SessionHandle {
     /// # Errors
     ///
     /// Nothing waits under `id`, or it lapsed, or the connection it was asked
-    /// on has ended. Nothing was done; the words say which.
+    /// on has ended, or the act can no longer be done (an operation that has
+    /// since ended). Nothing was done; the words say which.
     pub fn approve_agent(&self, id: u64) -> Result<(), String> {
         let waiting = self.take_request(id)?;
-        if waiting.generation != self.generation() {
-            self.decided(Decision::Answered {
-                id,
-                approved: false,
-            });
-            return Err(format!(
-                "request {id} was asked on a connection that has since ended; nothing was done"
-            ));
-        }
-        self.perform(&waiting.act, &waiting.because);
-        self.decided(Decision::Answered { id, approved: true });
-        Ok(())
+        let done = if waiting.generation == self.generation() {
+            self.perform(&waiting.act, &waiting.because, Some(id))
+        } else {
+            Err("it was asked on a connection that has since ended".to_owned())
+        };
+        let answer = done.as_ref().map_or(Answer::NotApproved(id), Answer::of);
+        self.agent.lock().settle_asked(id, answer);
+        self.decided(Change::Answered {
+            id,
+            approved: done.is_ok(),
+        });
+        done.map(drop)
+            .map_err(|why| format!("request {id} was not done: {why}"))
     }
 
     /// Refuse request `id`.
@@ -367,19 +534,12 @@ impl SessionHandle {
     /// Nothing waits under `id`, or it already lapsed.
     pub fn deny_agent(&self, id: u64) -> Result<(), String> {
         self.take_request(id)?;
-        self.decided(Decision::Answered {
+        self.agent.lock().settle_asked(id, Answer::NotApproved(id));
+        self.decided(Change::Answered {
             id,
             approved: false,
         });
         Ok(())
-    }
-
-    /// The door an agent acts on this session through.
-    #[must_use]
-    pub fn agent_door(&self) -> Door {
-        Door {
-            handle: self.clone(),
-        }
     }
 
     fn take_request(&self, id: u64) -> Result<Waiting, String> {
@@ -407,19 +567,21 @@ impl SessionHandle {
 
     fn answer_lapsed(&self, lapsed: Vec<u64>) {
         for id in lapsed {
-            self.decided(Decision::Answered {
+            self.decided(Change::Answered {
                 id,
                 approved: false,
             });
         }
     }
 
-    fn decided(&self, decision: Decision) {
-        self.publish(Event::Agent(decision));
+    fn decided(&self, change: Change) {
+        self.publish(Event::Agent(change));
     }
 
-    /// Do an act the level, or the player, allowed.
-    fn perform(&self, act: &Act, because: &str) {
+    /// Do an act the level, or the player, allowed, as the approval numbered
+    /// `approval` when it was one. The player is told what the agent did and
+    /// why: the audit trail, in their stream and their log.
+    fn perform(&self, act: &Act, because: &str, approval: Option<u64>) -> Result<Admitted, String> {
         match act {
             Act::TellPlayer { text } => {
                 let mut lines: Vec<String> = text.lines().map(str::to_owned).collect();
@@ -431,6 +593,30 @@ impl SessionHandle {
                     kind: NoticeKind::Info,
                     body: Body::Lines(lines),
                 });
+                Ok(Admitted::Told)
+            }
+            Act::Perform { line } => {
+                let report = crate::operation::start(self, line, approval)?;
+                self.say(Notice::line(
+                    NoticeKind::Info,
+                    format!(
+                        "Agent: `{line}` (operation {}), because: {because}",
+                        report.id
+                    ),
+                ));
+                Ok(Admitted::Operation(report))
+            }
+            Act::Control { operation, control } => {
+                let report = crate::operation::steer(self, *operation, *control)?;
+                self.say(Notice::line(
+                    NoticeKind::Info,
+                    format!(
+                        "Agent: {} operation {operation} (`{}`), because: {because}",
+                        control.word(),
+                        report.line
+                    ),
+                ));
+                Ok(Admitted::Operation(report))
             }
         }
     }
@@ -440,169 +626,4 @@ impl SessionHandle {
         self.command_symbol()
             .unwrap_or(crate::command::claimant::DEFAULT_SYMBOL)
     }
-}
-
-/// The only way an agent acts on a session: each act checks the level here.
-///
-/// Built by [`SessionHandle::agent_door`], for `cena-agent`, which holds this
-/// and never the handle.
-#[derive(Clone, Debug)]
-pub struct Door {
-    handle: SessionHandle,
-}
-
-impl Door {
-    /// The character's level now.
-    #[must_use]
-    pub fn level(&self) -> Level {
-        self.handle.agent_level()
-    }
-
-    /// Whether the level allows a read that needs `needed`.
-    ///
-    /// # Errors
-    ///
-    /// [`Refused`], with [`Approval::NotAsked`]; the player is told, at most
-    /// once every few minutes however often the agent asks.
-    pub fn may(&self, needed: Level) -> Result<(), Refused> {
-        let level = self.level();
-        if level >= needed {
-            return Ok(());
-        }
-        Err(self.refuse_unasked(needed, level))
-    }
-
-    /// Refuse without asking the player to approve, and tell them, at most
-    /// once every [`RETOLD_AFTER`] with how many were refused since.
-    fn refuse_unasked(&self, needed: Level, level: Level) -> Refused {
-        let now = Instant::now();
-        let tell = {
-            let mut inner = self.handle.agent.lock();
-            inner.reads_untold += 1;
-            let due = inner
-                .told_of_reads
-                .is_none_or(|told| now.duration_since(told) >= RETOLD_AFTER);
-            due.then(|| {
-                inner.told_of_reads = Some(now);
-                std::mem::take(&mut inner.reads_untold)
-            })
-        };
-        if let Some(times) = tell {
-            let symbol = self.handle.symbol();
-            let tried = if times == 1 {
-                "An agent was refused this character".to_owned()
-            } else {
-                format!("An agent was refused this character {times} times")
-            };
-            self.handle.say(Notice::line(
-                NoticeKind::Warn,
-                format!(
-                    "{tried}: its agent level is {}. {symbol}agent level {} lets it; {symbol}agent help says more.",
-                    level.word(),
-                    needed.word()
-                ),
-            ));
-        }
-        Refused {
-            needed,
-            level,
-            approval: Approval::NotAsked,
-        }
-    }
-
-    /// Put `text` in front of the player, with the agent's reason. Needs
-    /// [`Level::Advise`]; below it, and above [`Level::Off`], the player is
-    /// asked.
-    ///
-    /// Control characters are taken out, and both are cut to [`MAX_TOLD`]
-    /// and [`MAX_BECAUSE`]: the words reach a terminal as they are.
-    ///
-    /// # Errors
-    ///
-    /// [`Refused`], naming the approval the player was asked for.
-    pub fn tell_player(&self, text: &str, because: &str) -> Result<(), Refused> {
-        let text = clean(text, MAX_TOLD, true);
-        let because = clean(because, MAX_BECAUSE, false);
-        self.act(&Act::TellPlayer { text }, &because)
-    }
-
-    fn act(&self, act: &Act, because: &str) -> Result<(), Refused> {
-        let needed = act.needs();
-        let now = Instant::now();
-        let generation = self.handle.generation();
-        let (level, asked, lapsed) = {
-            let mut inner = self.handle.agent.lock();
-            let level = inner.level;
-            if level >= needed {
-                drop(inner);
-                self.handle.perform(act, because);
-                return Ok(());
-            }
-            if level == Level::Off {
-                drop(inner);
-                return Err(self.refuse_unasked(needed, level));
-            }
-            let lapsed = inner.lapse(now);
-            let asked = (inner.waiting.len() < MAX_WAITING).then(|| {
-                inner.last_id += 1;
-                let id = inner.last_id;
-                inner.waiting.push(Waiting {
-                    id,
-                    act: act.clone(),
-                    because: because.to_owned(),
-                    generation,
-                    expires: now + APPROVAL_LIFETIME,
-                });
-                id
-            });
-            (level, asked, lapsed)
-        };
-        self.handle.answer_lapsed(lapsed);
-        let approval = match asked {
-            Some(id) => {
-                self.ask(id, act, because, level);
-                Approval::Asked {
-                    id,
-                    expires_in: APPROVAL_LIFETIME,
-                }
-            }
-            None => Approval::Full,
-        };
-        Err(Refused {
-            needed,
-            level,
-            approval,
-        })
-    }
-
-    /// Ask the player about request `id`.
-    fn ask(&self, id: u64, act: &Act, because: &str, level: Level) {
-        let symbol = self.handle.symbol();
-        self.handle.say(Notice {
-            kind: NoticeKind::Warn,
-            body: Body::Lines(vec![
-                format!("An agent asks to {}, because: {because}", act.described()),
-                format!(
-                    "That needs the {} level; this character's is {}.",
-                    act.needs().word(),
-                    level.word()
-                ),
-                format!(
-                    "{symbol}agent approve {id} lets it, once. {symbol}agent deny {id} refuses. Unanswered, it lapses in {} minutes.",
-                    APPROVAL_LIFETIME.as_secs() / 60
-                ),
-            ]),
-        });
-    }
-}
-
-/// `text` without control characters (a line break kept where `lines` says),
-/// cut to `most` characters.
-fn clean(text: &str, most: usize, lines: bool) -> String {
-    text.chars()
-        .filter(|&c| !c.is_control() || (lines && c == '\n'))
-        .take(most)
-        .collect::<String>()
-        .trim()
-        .to_owned()
 }

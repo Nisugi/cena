@@ -34,6 +34,8 @@ use std::time::Duration;
 use serde::Serialize;
 use tokio::sync::Notify;
 
+use cena_session::operation::{Released, Report};
+
 use crate::projection::CharacterState;
 
 /// One thing that happened.
@@ -118,6 +120,34 @@ pub enum Happening {
         /// Whether the act was done.
         approved: bool,
     },
+    /// An operation started, was steered, or ended: as it stands now.
+    Operation {
+        /// The operation ([`operation`]).
+        operation: serde_json::Value,
+    },
+}
+
+/// An operation as an agent reads it: its number, its command, where it is
+/// in its life, the approval it began on, and, once ended, its `result` --
+/// what the work came to and why, what it left undone, and whether its
+/// authority was given back (`cena_session::operation`).
+#[must_use]
+pub fn operation(report: &Report) -> serde_json::Value {
+    let result = report.ended.as_ref().map(|ended| {
+        serde_json::json!({
+            "work": ended.work.word(),
+            "reason": ended.reason,
+            "left": ended.left,
+            "authority": report.authority.map(Released::word),
+        })
+    });
+    serde_json::json!({
+        "id": report.id,
+        "line": report.line,
+        "lifecycle": report.lifecycle.word(),
+        "approval": report.approval,
+        "result": result,
+    })
 }
 
 /// Every kind, for `wait`'s filter and for `capabilities`.
@@ -134,6 +164,7 @@ pub const KINDS: &[&str] = &[
     "changed",
     "level",
     "approval",
+    "operation",
 ];
 
 impl Happening {
@@ -153,6 +184,7 @@ impl Happening {
             Self::Changed { .. } => "changed",
             Self::Level { .. } => "level",
             Self::Approval { .. } => "approval",
+            Self::Operation { .. } => "operation",
         }
     }
 }

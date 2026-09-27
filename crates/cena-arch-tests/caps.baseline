@@ -339,3 +339,10 @@ crates/cena-behavior/src/hunt/profile.rs 800
 # set|unset|show|help|setup`, `heal`/`waggle set|unset|show`) are in
 # hunt/settings.rs. 690 lines: the ratchet's suggestion.
 crates/cena/src/hunt.rs 750
+# NEW SPLIT PARENT, 2026-09-27. crates/cena-session/src/agent.rs is an agent's
+# level and the player's side of it (plan/35 section 3, M7 steps 2-3): the
+# levels, the acts, the approvals and the request ids. The door an agent acts
+# through went down into agent/door.rs when step 3's operations took the file
+# past 800, and the operations themselves are crates/cena-session/src/operation.rs.
+# 629 lines: the ratchet's suggestion.
+crates/cena-session/src/agent.rs 700

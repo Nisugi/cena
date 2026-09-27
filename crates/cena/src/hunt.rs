@@ -27,12 +27,13 @@ use cena_behavior::group::{Boards, Place};
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
 use cena_behavior::spellcaster::{self, CasterProfile};
-use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
+use cena_session::{GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Register hunt's words. The character's instance and name, when the login
 /// has said them, choose the character level of the chain; `map` is the one
 /// travel loaded, and `None` when travel has none; `party` is what every
-/// character's hunt shares.
+/// character's hunt shares. The desk, when there is a map, for what an agent
+/// runs (`crate::perform`).
 pub(crate) fn open(
     handle: &SessionHandle,
     observer: SessionObserver,
@@ -40,7 +41,7 @@ pub(crate) fn open(
     commands: &Commands,
     map: Option<Arc<crate::map_context::MapContext>>,
     party: &Party,
-) {
+) -> Option<Arc<Desk>> {
     let who = state
         .character
         .instance
@@ -51,7 +52,7 @@ pub(crate) fn open(
         let desk = Desk::with_map_sha256(
             Arc::clone(&context.map),
             dir.clone(),
-            AuthorityToken(3),
+            crate::perform::HUNT_TOKEN,
             context.sha256.clone(),
         );
         desk.group_on(Arc::clone(&party.boards));
@@ -83,7 +84,7 @@ pub(crate) fn open(
             );
         }
     }
-    let (handler, seats) = (handle.clone(), Arc::clone(&party.seats));
+    let (handler, seats, kept) = (handle.clone(), Arc::clone(&party.seats), desk.clone());
     commands.hunt(Arc::new(move |line: &str| {
         let command = match parse_command(line)? {
             Ok(command) => command,
@@ -141,6 +142,7 @@ pub(crate) fn open(
         Some(took)
     }));
     eprintln!("[hunt] ready: `hunt help` lists the commands and how to change a setting");
+    kept
 }
 
 /// What every character's hunt in this Hydra shares: each group's board, so

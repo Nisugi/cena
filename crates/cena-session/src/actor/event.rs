@@ -68,10 +68,11 @@ pub enum Event {
     /// stopped, what is still stored (`crate::notice`). **Not from the
     /// game**, which is why it is its own event and not a frame.
     Notice(crate::notice::Notice),
-    /// The player decided something about the agent: its level, or an act
-    /// it asked to do (`crate::agent`). Published so an agent learns it in
-    /// order with everything else; the player was told in a notice.
-    Agent(crate::agent::Decision),
+    /// The agent's side of the session changed: the player set its level or
+    /// answered a request, or an operation it started moved on
+    /// (`crate::agent`). Published so an agent learns it in order with
+    /// everything else; the player was told in a notice.
+    Agent(crate::agent::Change),
     /// The session changed lifecycle state.
     StateChanged(State),
     /// A connection attempt failed, and another is coming after `delay`.

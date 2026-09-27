@@ -30,20 +30,29 @@ use rmcp::{ErrorData, ServerHandler, schemars, tool, tool_handler, tool_router};
 use serde::Deserialize;
 use tokio_util::sync::CancellationToken;
 
-use cena_session::agent::{Approval, Level, MAX_BECAUSE, MAX_TOLD, Refused};
+use cena_session::Generation;
+use cena_session::agent::{
+    Admitted, Approval, Call, Denied, Level, MAX_BECAUSE, MAX_TOLD, Refused,
+};
+use cena_session::operation::Control;
 
 use crate::characters::{Characters, Seat, subscribe};
-use crate::happenings::KINDS;
+use crate::happenings::{self, KINDS};
 use crate::projection::project;
 use crate::{PROTOCOL, records};
 
 /// What the server tells a client it is for.
 const INSTRUCTIONS: &str = "Hydra runs game characters. Each character's player sets what \
 an agent may do with it, its level: `off` (the default) allows nothing, `observe` allows \
-reading, `advise` also allows `tell_player`. A tool the level does not allow answers \
-`refused`, naming the level it needed; only the player can raise a level, and the player is \
-told you asked. An act refused at `observe` waits for the player's yes: `wait` for its \
-`approval`. `characters` lists the characters with their levels, `state` reads one (every \
+reading, `advise` also allows `tell_player`, `behaviors` also allows `perform` (start a \
+behavior as an operation: a walk, a hunt, a heal) and `control` (stop it). A tool the level \
+does not allow answers `refused`, naming the level it needed; only the player can raise a \
+level, and the player is told you asked. An act refused above `off` waits for the player's \
+yes: `wait` for its `approval`. Every act takes your own `request_id`: asking again with the \
+same one is answered as the first time and never done twice, so retry with it after a lost \
+reply. An operation is a ticket: read it with `operation`, or `wait` for kind `operation`; \
+its `result` says what the work came to, apart from what it left undone. \
+`characters` lists the characters with their levels, `state` reads one (every \
 status the game has reported; a status not listed is unknown, not off), `wait` returns what \
 happened after a cursor, `records` asks the character's combat and loot database a \
 read-only SQL question, `tell_player` puts a message in front of the player, and \
@@ -99,6 +108,52 @@ pub struct Tell {
     /// Why: shown to the player with the message, and kept in their log. At
     /// most 300 characters.
     pub because: String,
+    /// Your own id for this request, 1-64 letters, digits, `-` or `_`: the
+    /// same id again is answered as the first time, never done twice.
+    pub request_id: String,
+}
+
+/// `perform`'s command.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Perform {
+    /// The character to run it on.
+    pub character: String,
+    /// The Hydra command, without its symbol: `hunt <profile>`, `go2 <place>`,
+    /// `heal`... `capabilities` lists what an agent may run.
+    pub line: String,
+    /// Why: shown to the player and kept in their log. At most 300
+    /// characters.
+    pub because: String,
+    /// Your own id for this request, as for `tell_player`.
+    pub request_id: String,
+    /// The `generation` `state` last gave: a stale one is refused.
+    pub expected_generation: u64,
+}
+
+/// `control`'s instruction.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Steering {
+    /// The character the operation runs on.
+    pub character: String,
+    /// The operation's number, as `perform` gave it.
+    pub operation: u64,
+    /// What to do to it: `stop`.
+    pub control: String,
+    /// Why, as for `perform`.
+    pub because: String,
+    /// Your own id for this request, as for `tell_player`.
+    pub request_id: String,
+    /// The `generation` `state` last gave: a stale one is refused.
+    pub expected_generation: u64,
+}
+
+/// `operation`'s question.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Which {
+    /// The character.
+    pub character: String,
+    /// The operation's number; every operation kept when absent.
+    pub operation: Option<u64>,
 }
 
 /// `capabilities`' question.
@@ -228,15 +283,99 @@ impl Agent {
             character,
             text,
             because,
+            request_id,
         }): Parameters<Tell>,
     ) -> Result<CallToolResult, ErrorData> {
         bounded("text", &text, MAX_TOLD)?;
         bounded("because", &because, MAX_BECAUSE)?;
+        request(&request_id)?;
         let seat = self.seat(&character)?;
-        match seat.door.tell_player(&text, &because) {
-            Ok(()) => json(&serde_json::json!({ "told": true })),
-            Err(refused) => refusal(&seat.name, &refused),
-        }
+        let call = Call {
+            request: &request_id,
+            generation: None,
+        };
+        admitted(&seat.name, seat.door.tell_player(&text, &because, call))
+    }
+
+    #[tool(
+        description = "Start a behavior on a character as an operation: `go2 <place>`, `hunt <profile>`, `heal`, and the rest `capabilities` lists. Needs the `behaviors` level; below it (and above `off`) the player is asked. Answers the operation, a ticket to read with `operation` or to `wait` on (kind `operation`); a lost reply is safe to retry with the same `request_id`."
+    )]
+    async fn perform(
+        &self,
+        Parameters(asked): Parameters<Perform>,
+    ) -> Result<CallToolResult, ErrorData> {
+        bounded("line", &asked.line, MAX_LINE)?;
+        bounded("because", &asked.because, MAX_BECAUSE)?;
+        request(&asked.request_id)?;
+        let seat = self.seat(&asked.character)?;
+        let call = Call {
+            request: &asked.request_id,
+            generation: Some(generation(asked.expected_generation)?),
+        };
+        admitted(
+            &seat.name,
+            seat.door.perform(&asked.line, &asked.because, call),
+        )
+    }
+
+    #[tool(
+        description = "Steer an operation `perform` started: `stop`. Needs the `behaviors` level. Admission is not application: the operation reads `stopping`, then `ended`."
+    )]
+    async fn control(
+        &self,
+        Parameters(asked): Parameters<Steering>,
+    ) -> Result<CallToolResult, ErrorData> {
+        bounded("because", &asked.because, MAX_BECAUSE)?;
+        request(&asked.request_id)?;
+        let control = Control::named(&asked.control).ok_or_else(|| {
+            let known: Vec<&str> = Control::ALL.iter().map(|c| c.word()).collect();
+            ErrorData::invalid_params(
+                format!(
+                    "`{}` is not a control; the controls are {}",
+                    asked.control,
+                    known.join(", ")
+                ),
+                None,
+            )
+        })?;
+        let seat = self.seat(&asked.character)?;
+        let call = Call {
+            request: &asked.request_id,
+            generation: Some(generation(asked.expected_generation)?),
+        };
+        let done = seat
+            .door
+            .control(asked.operation, control, &asked.because, call);
+        admitted(&seat.name, done)
+    }
+
+    #[tool(
+        description = "An operation as it stands: its command, `lifecycle` (running, stopping, ended) and, once ended, its `result`: `work` (completed, failed, interrupted, no_opportunity, unknown) with the behavior's `reason`, what it `left` undone, and whether its `authority` was released. Without `operation`, every one kept."
+    )]
+    async fn operation(
+        &self,
+        Parameters(Which {
+            character,
+            operation: id,
+        }): Parameters<Which>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = match self.readable(&character)? {
+            Ok(seat) => seat,
+            Err(refused) => return Ok(refused),
+        };
+        let Some(id) = id else {
+            let all: Vec<serde_json::Value> = seat
+                .door
+                .operations()
+                .iter()
+                .map(happenings::operation)
+                .collect();
+            return json(&all);
+        };
+        let report = seat.door.operation(id).ok_or_else(|| {
+            ErrorData::invalid_params(format!("{} has no operation {id}", seat.name), None)
+        })?;
+        json(&happenings::operation(&report))
     }
 
     #[tool(
@@ -286,6 +425,7 @@ impl Agent {
             answer["character"] = serde_json::json!({
                 "name": seat.name,
                 "level": level.word(),
+                "performs": seat.door.performs(),
                 "tables": tables,
             });
         }
@@ -335,8 +475,9 @@ fn json(value: &impl serde::Serialize) -> Result<CallToolResult, ErrorData> {
 fn needs(tool: &str) -> Option<Level> {
     match tool {
         "characters" | "capabilities" => Some(Level::Off),
-        "state" | "wait" | "records" => Some(Level::Observe),
+        "state" | "wait" | "records" | "operation" => Some(Level::Observe),
         "tell_player" => Some(Level::Advise),
+        "perform" | "control" => Some(Level::Behaviors),
         _ => None,
     }
 }
@@ -371,6 +512,47 @@ fn refusal(character: &str, refused: &Refused) -> Result<CallToolResult, ErrorDa
             "next": next,
         }),
     )?]))
+}
+
+/// The longest command `perform` takes, in characters.
+const MAX_LINE: usize = 200;
+
+/// An act's answer: what it did, or why not, as a result the agent reads.
+fn admitted(character: &str, done: Result<Admitted, Denied>) -> Result<CallToolResult, ErrorData> {
+    match done {
+        Ok(Admitted::Told) => json(&serde_json::json!({ "told": true })),
+        Ok(Admitted::Operation(report)) => {
+            json(&serde_json::json!({ "operation": happenings::operation(&report) }))
+        }
+        Err(Denied::Level(refused)) => refusal(character, &refused),
+        Err(Denied::Invalid(why)) => Ok(CallToolResult::error(vec![ContentBlock::json(
+            serde_json::json!({ "refused": "request", "character": character, "why": why }),
+        )?])),
+    }
+}
+
+/// A request id is 1-64 ASCII letters, digits, `-` or `_`, as Despana's are
+/// (`crates/cena-ui/WIRE.md`).
+fn request(id: &str) -> Result<(), ErrorData> {
+    let fits = (1..=64).contains(&id.len())
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_');
+    if fits {
+        Ok(())
+    } else {
+        Err(ErrorData::invalid_params(
+            "`request_id` is 1-64 letters, digits, `-` or `_`",
+            None,
+        ))
+    }
+}
+
+/// A generation as the agent gave it.
+fn generation(given: u64) -> Result<Generation, ErrorData> {
+    u32::try_from(given)
+        .map(Generation)
+        .map_err(|_| ErrorData::invalid_params(format!("no generation is {given}"), None))
 }
 
 /// `value` is not blank and at most `most` characters.

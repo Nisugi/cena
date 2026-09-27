@@ -154,10 +154,11 @@ impl Agent {
 /// What `;agent help` says.
 const HELP: &[&str] = &[
     "agent                  this character's agent level, and what an agent is waiting on you for",
-    "agent level <level>    set it, kept for this character: off (the default), observe or advise",
+    "agent level <level>    set it, kept for this character: off (the default), observe, advise or behaviors",
     "                         off: an agent may do nothing with this character",
     "                         observe: it may read the character, and nothing else",
     "                         advise: it may also put a message in front of you; nothing reaches the game",
+    "                         behaviors: it may also start, steer and stop go2, hunt, heal, keep and waggle",
     "agent approve <n>      let an agent do the one thing it asked, once",
     "agent deny <n>         refuse it",
     "An agent is a program such as Claude Code, connected to the listener Hydra starts with --agent.",
@@ -347,7 +348,7 @@ fn save(dir: &Path, url: &str, token: &str) -> std::io::Result<()> {
 mod tests {
     use super::*;
     use cena_platform::AnsweringSource;
-    use cena_session::agent::Approval;
+    use cena_session::agent::{Approval, Call, Denied};
     use cena_session::{Body, Session};
 
     fn text(notice: &Notice) -> String {
@@ -393,7 +394,13 @@ mod tests {
         let (_, mut events) = session.subscribe();
         handle.set_agent_level(Level::Observe);
         let door = handle.agent_door();
-        let Err(refused) = door.tell_player("the hunt is over", "you asked to know") else {
+        let call = |request| Call {
+            request,
+            generation: None,
+        };
+        let Err(Denied::Level(refused)) =
+            door.tell_player("the hunt is over", "you asked to know", call("r1"))
+        else {
             panic!("told the player at observe");
         };
         let Approval::Asked { id, .. } = refused.approval else {
@@ -428,7 +435,7 @@ mod tests {
             "done once: {told:?}"
         );
 
-        let Err(refused) = door.tell_player("again", "why not") else {
+        let Err(Denied::Level(refused)) = door.tell_player("again", "why not", call("r2")) else {
             panic!("told the player at observe");
         };
         let Approval::Asked { id, .. } = refused.approval else {

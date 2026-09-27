@@ -38,6 +38,8 @@ use cena_session::{
     AuthorityToken, CommandId, GameState, Notice, NoticeKind, SessionHandle, Snapshot,
 };
 use tokio::task::JoinHandle;
+
+use crate::operation::{Steering, Underway};
 use tokio_util::sync::CancellationToken;
 
 use super::command::Command;
@@ -122,6 +124,18 @@ impl Desk {
         joined: (Snapshot, impl Into<Heard>),
         command: Command,
     ) -> Option<JoinHandle<Travelled>> {
+        self.underway(handle, joined, command)
+            .map(|underway| underway.task)
+    }
+
+    /// [`Self::run`], with the controls for the walk it started, and for no
+    /// walk started after it (`crate::operation`).
+    pub fn underway(
+        self: &Arc<Self>,
+        handle: &SessionHandle,
+        joined: (Snapshot, impl Into<Heard>),
+        command: Command,
+    ) -> Option<Underway<Travelled>> {
         let say = |kind, text: String| handle.say(Notice::line(kind, format!("Travel: {text}")));
         let state = &joined.0.state;
         let mut traveller = self.traveller(handle, state);
@@ -228,7 +242,7 @@ impl Desk {
         joined: (Snapshot, Heard),
         goal: RoomId,
         traveller: Traveller,
-    ) -> JoinHandle<Travelled> {
+    ) -> Underway<Travelled> {
         let walk = Walk {
             number: self.walks.fetch_add(1, Ordering::Relaxed),
             stop: CancellationToken::new(),
@@ -243,7 +257,8 @@ impl Desk {
             before.stop.cancel();
         }
         let desk = Arc::clone(self);
-        tokio::spawn(async move {
+        let steering = Steering::new(walk.stop.clone());
+        let task = tokio::spawn(async move {
             let Walk { number, stop, over } = walk;
             // The walk before this one holds the authority under the same
             // token until it has stopped: claiming before then would be
@@ -284,7 +299,8 @@ impl Desk {
             }
             over.cancel();
             ended
-        })
+        });
+        Underway { task, steering }
     }
 
     /// Write the character's spot from the notes. A file that could not be

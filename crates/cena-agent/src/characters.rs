@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use cena_session::agent::{Decision, Door, Level};
+use cena_session::agent::{Change, Door, Level};
 use cena_session::{Event, ObserveError, ObservedEvent, SessionId, SessionObserver, Snapshot};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
@@ -142,12 +142,15 @@ fn direct(event: &Event) -> Option<Happening> {
         Event::StateChanged(state) => Some(Happening::Lifecycle {
             state: format!("{state:?}").to_ascii_lowercase(),
         }),
-        Event::Agent(Decision::Level(level)) => Some(Happening::Level {
+        Event::Agent(Change::Level(level)) => Some(Happening::Level {
             level: level.word().to_owned(),
         }),
-        Event::Agent(Decision::Answered { id, approved }) => Some(Happening::Approval {
+        Event::Agent(Change::Answered { id, approved }) => Some(Happening::Approval {
             id: *id,
             approved: *approved,
+        }),
+        Event::Agent(Change::Operation(report)) => Some(Happening::Operation {
+            operation: crate::happenings::operation(report),
         }),
         _ => None,
     }

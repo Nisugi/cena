@@ -351,3 +351,41 @@ async fn only_travels_own_lines_are_taken() {
     assert_eq!(playing.sent(), [] as [&str; 0]);
     let _ = NoticeKind::Info;
 }
+
+/// An operation steers its own run and no other (`cena_behavior::operation`):
+/// the first walk's controls, used after a second walk has replaced it, stop
+/// nothing, and the second walks on. The desk's own stop would have stopped
+/// it. Neither walk's move is answered, so the second is still walking when
+/// the old stop comes -- the case that tells the two apart.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_old_walks_stop_does_not_stop_the_walk_after_it() {
+    let playing = Playing::at_the_gate("steering").await.unwrap();
+    let go = |to: &str| parse_command(&format!("go2 {to}")).and_then(Result::ok);
+    let joined = playing.observer.subscribe().await.unwrap();
+    let first = playing
+        .desk
+        .underway(&playing.handle, joined, go("gemshop").unwrap())
+        .unwrap();
+    tokio::time::advance(Duration::from_millis(500)).await;
+    let joined = playing.observer.subscribe().await.unwrap();
+    let second = playing
+        .desk
+        .underway(&playing.handle, joined, go("bank").unwrap())
+        .unwrap();
+    assert_eq!(
+        first.task.await.unwrap().ended,
+        Ended::Stopped(BehaviorError::Cancelled),
+        "replaced"
+    );
+    first.steering.stop();
+    for _ in 0..10 {
+        tokio::time::advance(Duration::from_millis(50)).await;
+        tokio::task::yield_now().await;
+    }
+    assert!(!second.task.is_finished(), "the second walk goes on");
+    second.steering.stop();
+    assert_eq!(
+        second.task.await.unwrap().ended,
+        Ended::Stopped(BehaviorError::Cancelled)
+    );
+}
