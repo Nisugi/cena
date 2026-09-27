@@ -223,6 +223,46 @@ Everything after it adds widgets, so the model goes first and every widget is wr
    hand. The top bar keeps who, the connection, Stop and its menus.
 3. **Standalone windows** hold them, framed, as today; the layout keyed by id, a
    version-1 file converted.
+
+   **Steps 1-3 BUILT 2026-09-27, in one commit**, since step 1's catalog had nothing to
+   draw it until step 2. The catalog is `crates/cena-gui/src/widget.rs`: seventeen kinds
+   (the story, a bar per vital, each hand, roundtime and cast time, the room's name,
+   description, creatures, objects, players and exits, Hydra's messages, the hunt), each
+   drawing itself bare (`widget/draw.rs`), saying the size it would like, and saying what it
+   does not know rather than drawing nothing (*"Creatures: unknown"*, *"Right: ?"*). A
+   one-line widget stays one line in a narrow cell, cut short with an ellipsis and whole on
+   hover; the rest scroll. So nothing spills out of its cell, and a clip meant to stop that
+   was removed as untestable. The room's description is styled by one function the web view
+   shares (`cena_ui::room_description`), moved down from its projection.
+
+   The layout is version 2 (`crates/cena-gui/src/layout.rs`): windows (holders), each a
+   standalone window around one placed widget or a custom window of cells, every window and
+   widget with an id of its own. The first layout is the story on the left and, down the
+   right, custom windows Vitals (four bars), Loadout (each hand, then the two clocks side by
+   side) and Room (its five parts), with Hunt and Hydra standalone; in a short play area the
+   first three give way so Room and Hydra keep a window's smallest height. **Version 1 is not
+   converted: no file of it exists.** The M10 run's layouts were in the M10 worktree's data
+   folder, which its removal deleted, and the real data folder has none (checked
+   2026-09-27), so a converter would convert nothing; a version-1 file is not read, and a
+   fitted layout takes its place. The top bar keeps who, the connection, the menus and Stop;
+   its hands and clocks are widgets now, and the Layout menu's *Lay out afresh* replaces
+   *Fit the panes afresh*.
+
+   A custom window's cells follow it when it is resized (`layout/custom.rs`): across, each
+   scales with the inside's width, so a row of bars stays as wide as the window and two
+   clocks stay halves; down, a cell on the bottom edge keeps to it, and a line stays a line.
+   Its cells are first laid for an estimate of the inside (the frame and title bar take 12
+   by 44 points, measured in a rendered play window) and kept to the real one when drawn.
+   The play window's windows keep M10's mechanics unchanged (`play/holders.rs`, formerly
+   `panes.rs`).
+
+   Tests: every widget drawn and found as a screen reader finds it, known and not; a
+   one-line widget in a narrow cell; the first layout tiling the area in order, in a short
+   area too, every id its own; a custom window's rows laid, shared when they ask too much,
+   and kept to a resized inside; the play window found by its windows' titles, a drag, a
+   resize, a shared edge, *Lay out afresh*, and a small move in open space staying where it
+   was put. Fourteen mutants: all caught, two only once a test was written for them (a
+   window snapping to its own starting edges, so a nudge sprang back, and the ellipsis).
 4. **Custom windows.** Made from a menu; a widget dragged in or out, its chrome following;
    the grid inside.
 5. **Tab stacks**, with unread counts.

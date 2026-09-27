@@ -1,129 +1,240 @@
-//! A play window's layout (`plan/47` step 6): where each pane sits inside
-//! it, and the grid their edges snap to, kept by character name -- a
-//! `SessionId` starts again at 0 every run (`plan/23` §D1a), a name does not.
+//! A play window's layout (`plan/49` Stage A): the windows it holds -- a
+//! standalone window around one widget, or a custom window of several held
+//! bare -- where each sits, and the grid their edges snap to. It is kept by
+//! the character's name, since a `SessionId` starts again at 0 every run
+//! (`plan/23` §D1a) and a name does not.
 //!
 //! The author's model (`plan/28` §7d): *"free rects, with the grid as a snap
 //! target"*, the pitch adjustable, since a fixed one was the complaint about
-//! Saga (§7d.1). A rect is kept from the pane area's top left, so a window
-//! moved across the screen keeps its layout.
+//! Saga (§7d.1). A window's rect is kept from the play area's top left, so a
+//! play window moved across the screen keeps its layout; a custom window's
+//! cells are kept from its inside's top left (`custom.rs`).
+//!
+//! Every window and every placed widget has an id of its own, given when it
+//! is placed and never derived from what it shows (`plan/28` §7c), so two of
+//! one kind can live side by side.
 
-use std::collections::BTreeMap;
+mod custom;
+
 use std::path::{Path, PathBuf};
 
 use egui::{Rect, Vec2, pos2};
 use serde::{Deserialize, Serialize};
 
-/// A pane of a play window.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub(crate) enum Pane {
-    /// The game's text.
-    Story,
-    /// The four vitals.
-    Vitals,
-    /// The room the character stands in.
-    Room,
-    /// Hydra's own messages.
-    Hydra,
-    /// What the hunt is doing (`plan/47` step 8).
-    Hunt,
-}
+use crate::widget::Widget;
+pub(crate) use custom::Custom;
 
-impl Pane {
-    /// Every pane, in the order they are drawn.
-    pub(crate) const ALL: [Pane; 5] = [
-        Pane::Story,
-        Pane::Vitals,
-        Pane::Hunt,
-        Pane::Room,
-        Pane::Hydra,
-    ];
-
-    /// Its title bar's words.
-    pub(crate) fn title(self) -> &'static str {
-        match self {
-            Pane::Story => "Story",
-            Pane::Vitals => "Vitals",
-            Pane::Room => "Room",
-            Pane::Hydra => "Hydra",
-            Pane::Hunt => "Hunt",
-        }
-    }
-}
-
-/// The smallest a pane can be made.
+/// The smallest a window can be made.
 pub(crate) const SMALLEST: Vec2 = Vec2::new(120.0, 60.0);
 
 /// The grid a new layout starts with, in points.
 pub(crate) const GRID: f32 = 10.0;
 
-/// The version of the layout file this build writes and reads.
-const VERSION: u32 = 1;
+/// What a window's frame and title bar take from its rect, as measured in a
+/// rendered play window: near enough for a first layout, since a custom
+/// window's cells are kept to its real inside when it is first drawn
+/// (`Custom::fit`).
+const CHROME: Vec2 = Vec2::new(12.0, 44.0);
 
-/// Where a play window's panes sit.
+/// The version of the layout file this build writes and reads. Version 1
+/// was M10's five panes; none outlived the M10 branch, whose data folder
+/// went with it (`plan/49` Stage A), so one is not read, and a fitted layout
+/// takes its place.
+const VERSION: u32 = 2;
+
+/// What a play window holds, and where.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct Layout {
     /// This file's shape; a file of another is not read.
     version: u32,
     /// The grid's pitch in points; 0 for none.
     pub(crate) grid: f32,
-    /// Each pane's rect from the pane area's top left: x, y, width, height.
-    panes: BTreeMap<Pane, [f32; 4]>,
+    /// The id the next window or widget placed is given.
+    next: u32,
+    /// Its windows, in the order they are drawn.
+    pub(crate) holders: Vec<Holder>,
+}
+
+/// One window in a play window: a standalone window or a custom window.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) struct Holder {
+    /// Its own id.
+    pub(crate) id: u32,
+    /// Its rect from the play area's top left: x, y, width, height.
+    rect: [f32; 4],
+    /// What it holds.
+    pub(crate) holds: Holds,
+}
+
+/// What a window holds: chrome follows from it (`plan/28` §7d.3), never from
+/// a setting of the widget's.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Holds {
+    /// One widget, framed and titled: a standalone window.
+    One(Placed),
+    /// Widgets held bare, with one frame for all: a custom window.
+    Custom(Custom),
+}
+
+/// A widget placed somewhere, with the id it was given there.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct Placed {
+    /// Its own id.
+    pub(crate) id: u32,
+    /// What it shows.
+    pub(crate) widget: Widget,
+}
+
+impl Holder {
+    /// Its title bar's words: its widget's name, or the custom window's own.
+    pub(crate) fn title(&self) -> &str {
+        match &self.holds {
+            Holds::One(placed) => placed.widget.name(),
+            Holds::Custom(custom) => &custom.title,
+        }
+    }
+
+    /// Where it sits, from the play area's top left.
+    pub(crate) fn rect(&self) -> Rect {
+        rect(self.rect)
+    }
+
+    /// Put it at `at`.
+    pub(crate) fn set(&mut self, at: Rect) {
+        self.rect = kept(at);
+    }
 }
 
 impl Layout {
-    /// The first layout, for a pane area `area` across: the story on the
-    /// left, and down the right the vitals, the hunt, the room and Hydra's
-    /// messages, their edges on the grid.
+    /// The first layout, for a play area `area` across: the story on the
+    /// left, and down the right the vitals, what the hands hold and the
+    /// clocks, the hunt, the room and Hydra's messages, their edges on the
+    /// grid. The vitals, the hands and the room are custom windows of single
+    /// widgets, as the author asked (`plan/49` §1 row 1). The first three
+    /// are as tall as what they hold; in a short area they give way, so the
+    /// room and Hydra's messages keep the smallest a window can be.
     pub(crate) fn fitted(area: Vec2) -> Self {
         let on_grid = |value: f32| (value / GRID).round() * GRID;
         let split = on_grid(area.x * 0.66).max(SMALLEST.x);
         let side = (area.x - split).max(SMALLEST.x);
-        let vitals = 130.0;
-        let hunt = 110.0;
-        let room = on_grid(((area.y - vitals - hunt) * 0.5).max(SMALLEST.y));
-        let hydra = (area.y - vitals - hunt - room).max(SMALLEST.y);
+        let fixed = [130.0, 110.0, 110.0];
+        let left = area.y - 2.0 * SMALLEST.y;
+        let scale = (left / fixed.iter().sum::<f32>()).clamp(0.0, 1.0);
+        let [vitals, loadout, hunt] = fixed.map(|height| (height * scale).floor());
+        let rest = area.y - vitals - loadout - hunt;
+        let room = on_grid(rest * 0.6).clamp(SMALLEST.y, (rest - SMALLEST.y).max(SMALLEST.y));
+        let hydra = (rest - room).max(SMALLEST.y);
         let mut layout = Self {
             version: VERSION,
             grid: GRID,
-            panes: BTreeMap::new(),
+            next: 1,
+            holders: Vec::new(),
         };
-        layout.set(Pane::Story, rect(0.0, 0.0, split, area.y.max(SMALLEST.y)));
-        layout.set(Pane::Vitals, rect(split, 0.0, side, vitals));
-        layout.set(Pane::Hunt, rect(split, vitals, side, hunt));
-        layout.set(Pane::Room, rect(split, vitals + hunt, side, room));
-        layout.set(Pane::Hydra, rect(split, vitals + hunt + room, side, hydra));
+        let story = layout.place(Widget::Story);
+        layout.add(
+            Rect::from_min_size(pos2(0.0, 0.0), Vec2::new(split, area.y.max(SMALLEST.y))),
+            Holds::One(story),
+        );
+        let mut y = 0.0;
+        let mut next = |height: f32| {
+            let at = Rect::from_min_size(pos2(split, y), Vec2::new(side, height));
+            y += height;
+            at
+        };
+        let vitals_at = next(vitals);
+        layout.custom(
+            vitals_at,
+            "Vitals",
+            &[
+                &[Widget::Health],
+                &[Widget::Mana],
+                &[Widget::Stamina],
+                &[Widget::Spirit],
+            ],
+        );
+        let loadout_at = next(loadout);
+        layout.custom(
+            loadout_at,
+            "Loadout",
+            &[
+                &[Widget::RightHand],
+                &[Widget::LeftHand],
+                &[Widget::Roundtime, Widget::CastTime],
+            ],
+        );
+        let hunt_at = next(hunt);
+        let hunt = layout.place(Widget::Hunt);
+        layout.add(hunt_at, Holds::One(hunt));
+        let room_at = next(room);
+        layout.custom(
+            room_at,
+            "Room",
+            &[
+                &[Widget::RoomTitle],
+                &[Widget::Creatures],
+                &[Widget::Objects],
+                &[Widget::Players],
+                &[Widget::Exits],
+            ],
+        );
+        let hydra_at = next(hydra);
+        let hydra = layout.place(Widget::Hydra);
+        layout.add(hydra_at, Holds::One(hydra));
         layout
     }
 
-    /// Give each pane this layout never placed -- one saved before the pane
-    /// existed -- the place `fitted` gives it.
-    pub(crate) fn fill_from(&mut self, fitted: &Layout) {
-        for pane in Pane::ALL {
-            if !self.panes.contains_key(&pane) {
-                self.set(pane, fitted.rect(pane));
-            }
+    /// `widget`, given an id of its own.
+    fn place(&mut self, widget: Widget) -> Placed {
+        let id = self.next;
+        self.next += 1;
+        Placed { id, widget }
+    }
+
+    /// A window holding `holds` at `at`, on top of the rest; its id.
+    fn add(&mut self, at: Rect, holds: Holds) -> u32 {
+        let id = self.next;
+        self.next += 1;
+        self.holders.push(Holder {
+            id,
+            rect: kept(at),
+            holds,
+        });
+        id
+    }
+
+    /// A custom window titled `title` at `at`, its widgets in `rows`.
+    fn custom(&mut self, at: Rect, title: &str, rows: &[&[Widget]]) -> u32 {
+        let rows: Vec<Vec<Placed>> = rows
+            .iter()
+            .map(|row| row.iter().map(|widget| self.place(*widget)).collect())
+            .collect();
+        let inside = (at.size() - CHROME).max(Vec2::ZERO);
+        self.add(at, Holds::Custom(Custom::rows(title, rows, inside)))
+    }
+
+    /// The window `id`, if it is here.
+    pub(crate) fn holder(&self, id: u32) -> Option<&Holder> {
+        self.holders.iter().find(|holder| holder.id == id)
+    }
+
+    /// Where window `id` sits, if it is here.
+    pub(crate) fn rect(&self, id: u32) -> Option<Rect> {
+        self.holder(id).map(Holder::rect)
+    }
+
+    /// Put window `id` at `at`.
+    pub(crate) fn set(&mut self, id: u32, at: Rect) {
+        if let Some(holder) = self.holders.iter_mut().find(|holder| holder.id == id) {
+            holder.set(at);
         }
     }
 
-    /// Whether every pane has a place.
-    pub(crate) fn complete(&self) -> bool {
-        Pane::ALL.iter().all(|pane| self.panes.contains_key(pane))
-    }
-
-    /// Where `pane` sits, from the pane area's top left; a pane this layout
-    /// never placed is given a small place at the top left.
-    pub(crate) fn rect(&self, pane: Pane) -> Rect {
-        self.panes.get(&pane).map_or_else(
-            || rect(0.0, 0.0, SMALLEST.x * 2.0, SMALLEST.y * 2.0),
-            |&[x, y, width, height]| rect(x, y, width, height),
-        )
-    }
-
-    /// Put `pane` at `at`.
-    pub(crate) fn set(&mut self, pane: Pane, at: Rect) {
-        self.panes
-            .insert(pane, [at.min.x, at.min.y, at.width(), at.height()]);
+    /// The window titled `title`: for a test, which finds a window as a
+    /// player does.
+    #[cfg(test)]
+    pub(crate) fn titled(&self, title: &str) -> Option<&Holder> {
+        self.holders.iter().find(|holder| holder.title() == title)
     }
 
     /// `character`'s saved layout in `dir`; `None` when there is none, or it
@@ -147,8 +258,14 @@ impl Layout {
     }
 }
 
-fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
+/// A kept rect as a rect.
+fn rect([x, y, width, height]: [f32; 4]) -> Rect {
     Rect::from_min_size(pos2(x, y), Vec2::new(width, height))
+}
+
+/// A rect as it is kept: x, y, width, height.
+fn kept(at: Rect) -> [f32; 4] {
+    [at.min.x, at.min.y, at.width(), at.height()]
 }
 
 /// `character`'s layout file: its name in lower case, letters and digits
@@ -164,71 +281,4 @@ fn file(dir: &Path, character: &str) -> PathBuf {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The first layout fills the area, no pane over another.
-    #[test]
-    fn the_first_layout_tiles_the_area() {
-        let area = Vec2::new(900.0, 600.0);
-        let layout = Layout::fitted(area);
-        let rects: Vec<Rect> = Pane::ALL.iter().map(|pane| layout.rect(*pane)).collect();
-        let covered: f32 = rects.iter().map(|r| r.width() * r.height()).sum();
-        assert!((covered - area.x * area.y).abs() < 1.0, "{covered}");
-        for (i, a) in rects.iter().enumerate() {
-            for b in rects.iter().skip(i + 1) {
-                assert!(a.intersect(*b).area() < 0.5, "{a:?} over {b:?}");
-            }
-        }
-        assert!(
-            (layout.rect(Pane::Story).width() % GRID).abs() < 0.01,
-            "on the grid"
-        );
-    }
-
-    /// A layout saved before a pane existed gets that pane where a fitted
-    /// layout puts it, and keeps every other where the player left it.
-    #[test]
-    fn a_pane_new_since_the_layout_was_saved_is_fitted_in() {
-        let area = Vec2::new(900.0, 600.0);
-        let fitted = Layout::fitted(area);
-        let mut old = fitted.clone();
-        old.panes.remove(&Pane::Hunt);
-        old.set(Pane::Room, rect(0.0, 0.0, 200.0, 100.0));
-        assert!(!old.complete());
-        old.fill_from(&fitted);
-        assert!(old.complete());
-        assert_eq!(old.rect(Pane::Hunt), fitted.rect(Pane::Hunt));
-        assert_eq!(old.rect(Pane::Room), rect(0.0, 0.0, 200.0, 100.0));
-    }
-
-    /// One file per character on every filesystem: its name in lower case,
-    /// letters and digits only -- asserted here rather than through a load,
-    /// which Windows' case-blind files would pass either way.
-    #[test]
-    fn a_characters_file_is_its_name_in_lower_case() {
-        let dir = Path::new("layouts");
-        assert_eq!(file(dir, "Ashryn"), dir.join("ashryn.json"));
-        assert_eq!(file(dir, "GS3:Ashryn"), dir.join("gs3ashryn.json"));
-    }
-
-    #[test]
-    fn a_layout_is_kept_by_name_whatever_its_case() {
-        let dir = std::env::temp_dir().join(format!("cena-layout-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
-        layout.set(Pane::Room, rect(10.0, 20.0, 300.0, 200.0));
-        layout.grid = 16.0;
-        layout.save(&dir, "Ashryn").expect("saved");
-        assert_eq!(Layout::load(&dir, "ASHRYN").as_ref(), Some(&layout));
-        assert_eq!(Layout::load(&dir, "Baelor"), None, "never saved");
-        std::fs::write(file(&dir, "Lorwyn"), "{ not json").expect("written");
-        assert_eq!(Layout::load(&dir, "Lorwyn"), None, "unreadable: fitted");
-        let later = serde_json::to_string(&layout)
-            .expect("written")
-            .replace("\"version\":1", "\"version\":2");
-        std::fs::write(file(&dir, "Orsen"), later).expect("written");
-        assert_eq!(Layout::load(&dir, "Orsen"), None, "another version: fitted");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-}
+mod tests;

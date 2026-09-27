@@ -17,7 +17,7 @@ pub use lines::{MAX_LINE_BYTES, MAX_LINE_RUNS, painted, story_lines};
 pub use merge::{
     MATCH_WINDOW, MAX_MERGED_HISTORY, MERGED_STREAMS, MergedHistory, MergedLine, Merger,
 };
-pub use projection::room_player;
+pub use projection::{room_description, room_player};
 pub use view::{
     Closed, GroupView, HandView, HuntView, LifecycleView, MapLocationView, RoomItemView, RoomView,
     RoundtimeView, SessionCard, SessionView, StoryLine, StyledRun, UnknownTagView, VitalView,

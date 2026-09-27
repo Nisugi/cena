@@ -15,6 +15,8 @@
 mod app;
 pub mod bar;
 mod feed;
+#[cfg(test)]
+mod fixture;
 mod hub;
 mod keys;
 mod layout;
@@ -23,6 +25,7 @@ mod sessions;
 mod snap;
 mod story;
 mod text;
+mod widget;
 
 pub use app::{App, TITLE, run};
 pub use hub::{Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};

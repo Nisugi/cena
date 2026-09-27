@@ -11,16 +11,18 @@
 //! It draws from the character's `GameState` directly, as the author chose
 //! for the native GUI (`plan/28` §7b, *"Third option is the one"*), with the
 //! room's player names painted by the character's triggers as Despana paints
-//! them ([`cena_ui::room_player`]). Its panes -- story, vitals, room, Hydra
-//! -- drag, resize and snap inside it, and their layout is kept by the
-//! character's name (step 6, `panes.rs`, `crate::layout`).
+//! them ([`cena_ui::room_player`]). What it shows are widgets, each one thing
+//! (`crate::widget`), held by windows inside it -- a standalone window around
+//! one, or a custom window of several, bare -- that drag, resize and snap,
+//! their layout kept by the character's name (`plan/49` Stage A,
+//! `holders.rs`, `crate::layout`).
 //!
 //! **The focus rule**, `VellumFE`'s (`reference/VellumFE/src/frontend/gui/app.rs:3426`),
 //! for the author's complaint: a click nothing else took returns the
 //! keyboard to the command input, so the player can type without clicking it.
 
 mod draw;
-mod panes;
+mod holders;
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -31,7 +33,7 @@ use egui::Id;
 
 use crate::layout::{GRID, Layout};
 use crate::story::Story;
-use panes::Engaged;
+use holders::Engaged;
 
 /// What a play window asks for.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,9 +76,9 @@ pub(crate) struct Play {
     name: String,
     /// Where layouts are kept; `None`, and nothing is saved.
     layouts: Option<PathBuf>,
-    /// Where its panes sit: saved, or fitted to the window when first drawn.
+    /// Where its windows sit: saved, or fitted to the window when first drawn.
     layout: Option<Layout>,
-    /// The panes let go for a drag or resize under way.
+    /// The windows let go for a drag or resize under way.
     engaged: Vec<Engaged>,
     /// Why the layout could not be saved, until it can.
     unsaved: Option<String>,

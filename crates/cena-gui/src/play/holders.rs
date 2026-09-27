@@ -1,54 +1,57 @@
-//! A play window's panes, free inside it (`plan/47` step 6): each its own
-//! window that drags by its title bar and resizes by its edges, and lands
-//! snapped (`crate::snap`). Each pane's content scrolls, and a scroll area
-//! keeps its own presses, so the title bar is where a pane is moved from.
+//! A play window's windows, free inside it (`plan/47` step 6, `plan/49`
+//! Stage A): each a standalone window around one widget or a custom window
+//! of several, that drags by its title bar and resizes by its edges, and
+//! lands snapped (`crate::snap`). What each holds scrolls rather than grows,
+//! and a scroll area keeps its own presses, so the title bar is where a
+//! window is moved from.
 //!
-//! `VellumFE`'s way with egui windows (`reference/VellumFE/src/frontend/gui/app/zones.rs:1927-2084`),
-//! at the scale of four panes: while nobody presses on a pane, it is pinned
-//! to the rect the layout keeps -- its position fed and its size held --
-//! because egui's own memory of a window must never win. From a press that
-//! reaches it until the release, egui owns it and every handle behaves
-//! natively; each frame the rect egui drew is snapped and kept, and the
-//! release frame's is where it lands. Shift snaps to nothing.
+//! `VellumFE`'s way with egui windows (`reference/VellumFE/src/frontend/gui/app/zones.rs:1927-2084`):
+//! while nobody presses on a window, it is pinned to the rect the layout
+//! keeps -- its position fed and its size held -- because egui's own memory
+//! of a window must never win. From a press that reaches it until the
+//! release, egui owns it and every handle behaves natively; each frame the
+//! rect egui drew is snapped and kept, and the release frame's is where it
+//! lands. Shift snaps to nothing.
 //!
-//! **Every pane a press reaches is let go, not only one.** Panes tile, so
-//! two windows' resize handles meet on each shared edge, and it is egui
+//! **Every window a press reaches is let go, not only one.** Windows tile,
+//! so two windows' resize handles meet on each shared edge, and it is egui
 //! that picks which of them a press resizes -- the one on top. `VellumFE`
 //! latches one window and needs a page of rules to latch the same one egui
-//! chose (`zones.rs`, `should_claim_latch`); here each pane the press
+//! chose (`zones.rs`, `should_claim_latch`); here each window the press
 //! reaches is let go, and whichever egui moved is the one kept. The others,
 //! let go but untouched, stay where they were.
 
 use egui::{Id, LayerId, Order, Pos2, Rect, Stroke};
 
 use super::{Play, PlayView, draw};
-use crate::layout::{Layout, Pane, SMALLEST};
+use crate::layout::{Holder, Layout, SMALLEST};
 use crate::snap::{self, Guide};
 use crate::text::AMBER;
+use crate::widget::Seen;
 
-/// How far outside a pane its resize handles reach, so a press there
+/// How far outside a window its resize handles reach, so a press there
 /// reaches it.
 const EDGE: f32 = 8.0;
 
-/// A pane let go for a gesture: which, and where it was when the press
+/// A window let go for a gesture: which, and where it was when the press
 /// began. Its size is let go too, for a resize; a move cannot change it,
-/// since every pane's content scrolls rather than growing the window
-/// (`draw.rs`, `pane`).
+/// since what every window holds scrolls rather than growing it
+/// (`draw.rs`, `holder`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Engaged {
-    pub(super) pane: Pane,
+    pub(super) holder: u32,
     pub(super) start: Rect,
 }
 
-/// A pane's window id: its own in every play window.
-fn id(session: u32, pane: Pane) -> Id {
-    Id::new(("play-pane", session, pane))
+/// A window's egui id: its own in every play window.
+fn id(session: u32, holder: u32) -> Id {
+    Id::new(("play-window", session, holder))
 }
 
 impl Play {
-    /// Draw each pane as a window inside `ui`'s remaining area, following a
-    /// drag or resize and snapping it. `true` when a gesture ended and moved
-    /// a pane, so the layout wants saving.
+    /// Draw each window inside `ui`'s remaining area, following a drag or
+    /// resize and snapping it. `true` when a gesture ended and moved a
+    /// window, so the layout wants saving.
     pub(super) fn arrange(&mut self, ui: &mut egui::Ui, view: &PlayView<'_>) -> bool {
         let area = ui.available_rect_before_wrap();
         let session = self.session;
@@ -56,9 +59,6 @@ impl Play {
         let layout = self
             .layout
             .get_or_insert_with(|| Layout::fitted(area.size()));
-        if !layout.complete() {
-            layout.fill_from(&Layout::fitted(area.size()));
-        }
         let (pressed, down, origin, shift) = context.input(|input| {
             (
                 input.pointer.any_pressed(),
@@ -73,21 +73,29 @@ impl Play {
         {
             self.engaged = reached(&context, layout, area, origin, session)
                 .into_iter()
-                .map(|pane| Engaged {
-                    pane,
-                    start: layout.rect(pane),
-                })
+                .filter_map(|holder| layout.rect(holder).map(|start| Engaged { holder, start }))
                 .collect();
         }
+        let seen = Seen {
+            snapshot: view.snapshot,
+            story: view.story,
+            hunt: view.hunt,
+        };
         let offset = area.min.to_vec2();
         let mut drawn = Vec::new();
-        for pane in Pane::ALL {
-            let at = layout.rect(pane).translate(offset);
-            let held = self.engaged.iter().any(|engaged| engaged.pane == pane);
-            let window = pane_window(pane, at, held, area, session);
-            let shown = window.show(&context, |ui| draw::pane(ui, pane, view, session));
+        for holder in &mut layout.holders {
+            let at = holder.rect().translate(offset);
+            let held = self
+                .engaged
+                .iter()
+                .any(|engaged| engaged.holder == holder.id);
+            let title = holder.title().to_owned();
+            let window = holder_window(title, holder.id, at, held, area, session);
+            let shown = window.show(&context, |ui| {
+                draw::holder(ui, &mut holder.holds, &seen, session);
+            });
             if held && let Some(shown) = shown {
-                drawn.push((pane, shown.response.rect.translate(-offset)));
+                drawn.push((holder.id, shown.response.rect.translate(-offset)));
             }
         }
         if self.engaged.is_empty() {
@@ -96,13 +104,14 @@ impl Play {
         let bounds = Rect::from_min_size(Pos2::ZERO, area.size());
         let mut guides = Vec::new();
         for engaged in &self.engaged {
-            let Some((_, now)) = drawn.iter().find(|(pane, _)| *pane == engaged.pane) else {
+            let Some((_, now)) = drawn.iter().find(|(holder, _)| *holder == engaged.holder) else {
                 continue;
             };
-            let siblings: Vec<Rect> = Pane::ALL
+            let siblings: Vec<Rect> = layout
+                .holders
                 .iter()
-                .filter(|pane| **pane != engaged.pane)
-                .map(|pane| layout.rect(*pane))
+                .filter(|holder| holder.id != engaged.holder)
+                .map(Holder::rect)
                 .collect();
             let (snapped, engaged_guides) = if shift {
                 (*now, Vec::new())
@@ -116,7 +125,7 @@ impl Play {
                     layout.grid,
                 )
             };
-            layout.set(engaged.pane, snapped);
+            layout.set(engaged.holder, snapped);
             guides.extend(engaged_guides);
         }
         if down {
@@ -126,16 +135,17 @@ impl Play {
         let moved = self
             .engaged
             .iter()
-            .any(|engaged| layout.rect(engaged.pane) != engaged.start);
+            .any(|engaged| layout.rect(engaged.holder) != Some(engaged.start));
         self.engaged.clear();
         moved
     }
 }
 
-/// Pane `pane`'s window at `at` inside `area`: pinned to it, or, `held` by a
-/// gesture, let go.
-fn pane_window(
-    pane: Pane,
+/// Window `holder`'s egui window at `at` inside `area`, titled `title`:
+/// pinned to it, or, `held` by a gesture, let go.
+fn holder_window(
+    title: String,
+    holder: u32,
     at: Rect,
     held: bool,
     area: Rect,
@@ -145,8 +155,8 @@ fn pane_window(
     // `TitleBar` mode the fork hands the move over apart from the area, and
     // the rect the window reports stays where the press began, so nothing
     // could be snapped. Content that takes its own presses keeps them.
-    let window = egui::Window::new(pane.title())
-        .id(id(session, pane))
+    let window = egui::Window::new(title)
+        .id(id(session, holder))
         .drag_area(egui::WindowDrag::Anywhere)
         .collapsible(false)
         .resizable(true)
@@ -163,38 +173,42 @@ fn pane_window(
     }
 }
 
-/// The panes a press at `origin` reaches: the one whose window is on top
-/// there, and every pane whose edges reach it, since a resize handle lies
-/// just outside a pane and two meet on a shared edge. A press on anything
-/// else on top -- a menu, a popup -- reaches none: without that, choosing
-/// from the Layout menu over a pane moved the pane beneath. `VellumFE`'s
-/// latch asks the same of `layer_id_at` (`zones.rs`, `should_claim_latch`).
+/// The windows a press at `origin` reaches: the one on top there, and every
+/// window whose edges reach it, since a resize handle lies just outside a
+/// window and two meet on a shared edge. A press on anything else on top --
+/// a menu, a popup -- reaches none: without that, choosing from the Layout
+/// menu over a window moved the window beneath. `VellumFE`'s latch asks the
+/// same of `layer_id_at` (`zones.rs`, `should_claim_latch`).
 fn reached(
     context: &egui::Context,
     layout: &Layout,
     area: Rect,
     origin: Pos2,
     session: u32,
-) -> Vec<Pane> {
+) -> Vec<u32> {
     let on_top = context.layer_id_at(origin);
-    let over_a_pane = on_top.and_then(|layer| {
-        Pane::ALL
-            .into_iter()
-            .find(|pane| layer.id == id(session, *pane))
+    let over_a_window = on_top.and_then(|layer| {
+        layout
+            .holders
+            .iter()
+            .map(|holder| holder.id)
+            .find(|holder| layer.id == id(session, *holder))
     });
-    if on_top.is_some_and(|layer| layer.order != Order::Background) && over_a_pane.is_none() {
+    if on_top.is_some_and(|layer| layer.order != Order::Background) && over_a_window.is_none() {
         return Vec::new();
     }
-    Pane::ALL
-        .into_iter()
-        .filter(|pane| {
-            Some(*pane) == over_a_pane
-                || layout
-                    .rect(*pane)
+    layout
+        .holders
+        .iter()
+        .filter(|holder| {
+            Some(holder.id) == over_a_window
+                || holder
+                    .rect()
                     .translate(area.min.to_vec2())
                     .expand(EDGE)
                     .contains(origin)
         })
+        .map(|holder| holder.id)
         .collect()
 }
 
