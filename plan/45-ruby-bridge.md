@@ -1,6 +1,7 @@
 # 45 — The Ruby bridge: how a Lich script runs against Hydra
 
-**Status: PROPOSED 2026-09-27, author asked for it.** Nothing here is built or scheduled. It
+**Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
+(§10).** Nothing here is built or scheduled. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -184,10 +185,13 @@ LAB's code for its GPL; this is the opposite case.
 the one `$frontend` names (§10, question 7). Labels and `goto` (1 file in A, 48 in B) come along
 if the engine is copied, at no cost.
 
-**Stores** are Hydra's (`plan/38` §11, question 3), keyed as Lich keys them: the script's name
-and a scope. Settings stay write-through, as Lich's are. A player's existing values can come
-over once: Lich keeps them as Marshal blobs in `lich.db3` (`inventory/13` §1.8), which the runner,
-being Ruby, can read.
+**Stores stay Lich's** (§10, question 6; this replaces `plan/38` §11's "in Hydra"). The engine
+is Lich's (question 4), so its Settings, CharSettings, UserVars and Vars write `lich.db3` as Lich
+does: Marshal blobs keyed by the script's name and a scope (`inventory/13` §1.8), write-through.
+The file lives in Hydra's data folder, copied once from the player's Lich data folder so scripts
+keep their settings on day one. One runner per character is no obstacle: several Lich processes
+already share one `lich.db3`. A second language's bridge would not read Ruby's Marshal; that is
+its problem when it comes.
 
 **Lich's environment** (G15, 115 files in A): `$lich_char` is the character's symbol,
 `XMLData.game` is Lich's code for the instance (`GSIV`, `GSPlat`), `LICH_VERSION` a version the
@@ -241,9 +245,11 @@ presets are in the parser's runs; the rest are model facts. So the `line` event 
 data (§4.1), and such a script changes a regex over markup into a read of a field. The checker
 (§1) points at each line.
 
-**Not proposed, and the author's to decide**: the bridge could re-render a line's links and bold
-as `<a exist="…" noun="…">` and `<pushBold/>` from those runs, so the commonest patterns work
-unchanged. It is familiar; it is also markup the script mistakes for the game's.
+**The fallback, if labelled data is not enough (AUTHOR, 2026-09-27):** *"Before faking tags I
+would rather dupe the byte source and send it."* So a script that truly needs the markup gets a
+**copy of the game's own bytes**, not markup re-rendered from the runs. Hydra still parses once,
+and nothing inside Hydra sees raw bytes; the copy is handed out, like the session log. Faked tags
+are not built.
 
 ## 7. The behaviors scripts call
 
@@ -283,27 +289,38 @@ is an input hook, §6.1), sloot, step2, tpick, poolparty, stand and the rest of 
 None of these is measured; each is a guess until it is.
 
 - A runner's memory per character: Ruby, the bridge, and N scripts.
+- **A runner's start time.** The author, 2026-09-27: *"I'm not sure waiting until you try to run
+  a script and taking 30-90 seconds for ruby to boot up is a good idea, but let's at least try
+  it."* Most of Lich's start is loading its 100 MB map (`plan/38` §2a), which a runner never
+  does; unmeasured. If starting on the first script is slow, the runner starts at login.
 - The local copy's update size and rate in combat.
 - A send to its first reply line, against Lich's in-process path.
 - A hooked line's display delay (§6.1), and the deadline to set.
 - MCP notification delivery under load (`plan/38` §5 keeps a plain-JSON layer in reserve).
 
-## 10. Questions for the author
+## 10. Questions for the author: ANSWERED 2026-09-27
 
-1. **One runner per character** (§2), for `$globals`, or one for all?
-2. **Hooks** (§6.1): read-only, through the runner, or declarative?
-3. **Raw XML** (§6.2): links and bold as data only, or also re-rendered as markup?
-4. **Reuse Lich's engine** (§5), BSD, notice kept, or write it fresh?
-5. **A built-in and a script with the same name** (§7), `go2.lic` beside Hydra's travel: the
-   built-in wins, unless the player says otherwise?
-6. **Stores** in Hydra, with a one-time import from `lich.db3` (§5)?
-7. **`$frontend`, `LICH_VERSION`, `XMLData.game`** (§5): which values? 18 scripts in A compare
-   `$frontend` to `'stormfront'`.
-8. **A script level** apart from the agent's (§8)?
-9. **Who starts the runner**: Hydra, with the player's Ruby from a setting, when a character's
-   first script starts? Where do scripts live?
-10. **The checker** (§1): shipped with the bridge?
-11. **The slot**: inside M7, or an M7b after the agent?
+1. **One runner per character** (§2), for `$globals`. AUTHOR: *"sure let's try it your way."*
+2. **Hooks through the runner, with a deadline** (§6.1). AUTHOR: *"sure ask the script, with a
+   time limit."*
+3. **Raw XML: labelled data first** (§6.2). AUTHOR: *"I agree we try labelled data first. Before
+   faking tags I would rather dupe the byte source and send it."* The fallback is a copy of the
+   bytes; faked tags are not built.
+4. **Reuse Lich's engine** (§5). AUTHOR: *"sure reuse it, we can always make a slimmer version
+   later."*
+5. **The built-in wins over a script of the same name** (§7), unless the player says otherwise.
+   AUTHOR: *"yep."*
+6. **Stores.** AUTHOR: *"lich script settings? would be saved in lich no? so data folder?"*
+   Answered in §5: yes, `lich.db3` as Lich writes it, in Hydra's data folder, copied once from
+   Lich's. (Confirm.)
+7. **`$frontend` is `'stormfront'`, `LICH_VERSION` the engine's (5.21.0), `XMLData.game`
+   Lich's codes** (§5). AUTHOR: *"yep."*
+8. **A script level apart from the agent's**, allowing what a Lich script may do (§8). AUTHOR:
+   *"yep."*
+9. **Hydra starts the runner on a character's first script**, with the player's Ruby found as
+   Saga finds it. AUTHOR: try it, measure it (§9); at login if it is slow.
+10. **Ship the checker** (§1). AUTHOR: *"yes."*
+11. **M7b, after the agent's connection** and after M6's live run. AUTHOR: *"got it."*
 
 ## 11. Steps, when scheduled
 
