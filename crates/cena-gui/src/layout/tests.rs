@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use super::custom::Cell;
 use super::*;
 use crate::widget::LINE;
 
@@ -194,4 +193,117 @@ fn a_layout_is_kept_by_name_whatever_its_case() {
     std::fs::write(file(&dir, "Orsen"), earlier).expect("written");
     assert_eq!(Layout::load(&dir, "Orsen"), None, "another version: fitted");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The Room window of a fitted layout, and the id of its widget `widget`.
+fn room_with(layout: &Layout, widget: Widget) -> (u32, u32) {
+    let room = layout.titled("Room").expect("a room");
+    let Holds::Custom(custom) = &room.holds else {
+        panic!("a custom window");
+    };
+    let placed = custom
+        .cells
+        .iter()
+        .flat_map(|cell| cell.tabs.iter())
+        .find(|placed| placed.widget == widget)
+        .expect("in the room");
+    (room.id, placed.id)
+}
+
+fn widgets_in(layout: &Layout, title: &str) -> Vec<Widget> {
+    match layout.titled(title).map(|holder| &holder.holds) {
+        Some(Holds::Custom(custom)) => custom
+            .cells
+            .iter()
+            .flat_map(|cell| cell.tabs.iter().map(|placed| placed.widget))
+            .collect(),
+        Some(Holds::One(placed)) => vec![placed.widget],
+        None => Vec::new(),
+    }
+}
+
+/// A widget let go outside every custom window gets a standalone window of
+/// its own there, kept inside the play area; the rest of its custom window
+/// stays.
+#[test]
+fn a_widget_let_go_in_the_open_gets_a_window_of_its_own() {
+    let area = Vec2::new(900.0, 600.0);
+    let mut layout = Layout::fitted(area);
+    let (room, exits) = room_with(&layout, Widget::Exits);
+    layout.release(room, exits, pos2(890.0, 300.0), &[], area);
+    let window = layout.titled("Exits").expect("a window of its own");
+    assert!(matches!(window.holds, Holds::One(placed) if placed.id == exits));
+    assert!(window.rect().max.x <= area.x + 0.5, "{:?}", window.rect());
+    assert!(!widgets_in(&layout, "Room").contains(&Widget::Exits));
+    assert_eq!(widgets_in(&layout, "Room").len(), 4);
+}
+
+/// Let go over another custom window's inside, it goes in there, bare, at
+/// the pointer; the last widget out of a custom window takes it along.
+#[test]
+fn a_widget_let_go_on_a_custom_window_joins_it() {
+    let area = Vec2::new(900.0, 600.0);
+    let mut layout = Layout::fitted(area);
+    let fresh = layout.new_custom();
+    let inside = Rect::from_min_size(pos2(20.0, 60.0), Vec2::new(288.0, 156.0));
+    let (room, exits) = room_with(&layout, Widget::Exits);
+    layout.release(room, exits, pos2(50.0, 80.0), &[(fresh, inside)], area);
+    assert_eq!(widgets_in(&layout, "Custom window"), [Widget::Exits]);
+    let Some(Holds::Custom(custom)) = layout.holder(fresh).map(|holder| &holder.holds) else {
+        panic!("still a custom window");
+    };
+    // At the pointer, as far right as the inside lets a widget 260 across go.
+    assert_eq!(custom.cells[0].rect().min, pos2(28.0, 20.0));
+    layout.release(fresh, exits, pos2(890.0, 590.0), &[], area);
+    assert!(
+        layout.holder(fresh).is_none(),
+        "its last widget took it along"
+    );
+    assert!(layout.titled("Exits").is_some());
+}
+
+/// A standalone window dropped with the pointer on a custom window's inside
+/// joins it and goes; dropped elsewhere, nothing changes.
+#[test]
+fn a_standalone_window_joins_the_custom_window_it_is_dropped_on() {
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let hunt = layout
+        .titled("Hunt")
+        .map(|holder| holder.id)
+        .expect("a hunt");
+    let room = layout
+        .titled("Room")
+        .map(|holder| holder.id)
+        .expect("a room");
+    let inside = Rect::from_min_size(pos2(600.0, 400.0), Vec2::new(290.0, 100.0));
+    assert!(!layout.join(hunt, pos2(10.0, 10.0), &[(room, inside)]));
+    assert!(layout.titled("Hunt").is_some());
+    assert!(layout.join(hunt, pos2(620.0, 420.0), &[(room, inside)]));
+    assert!(layout.titled("Hunt").is_none());
+    assert!(widgets_in(&layout, "Room").contains(&Widget::Hunt));
+}
+
+/// A widget taken out of a tab stack leaves its other tabs in the cell, the
+/// one showing still one there.
+#[test]
+fn a_tab_taken_out_leaves_the_rest_of_its_stack() {
+    let placed = |id, widget| Placed { id, widget };
+    let mut custom = Custom::empty("Streams", Vec2::new(200.0, 100.0));
+    custom.put(placed(1, Widget::Story), pos2(0.0, 0.0));
+    custom.cells[0].tabs.push(placed(2, Widget::Hydra));
+    custom.cells[0].showing = 1;
+    assert_eq!(
+        custom.take(2).map(|taken| taken.widget),
+        Some(Widget::Hydra)
+    );
+    assert_eq!(custom.cells.len(), 1);
+    assert_eq!(
+        custom.cells[0].shown().map(|shown| shown.widget),
+        Some(Widget::Story)
+    );
+    assert_eq!(
+        custom.cells[0].showing, 0,
+        "the tab showing is one still there"
+    );
+    assert_eq!(custom.take(9), None);
 }

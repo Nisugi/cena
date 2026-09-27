@@ -351,6 +351,11 @@ fn the_layout_can_be_fitted_afresh() {
     // The play area can settle by a point between frames, which moves the
     // bottom edges; the windows the menu sat over are exactly as fitted.
     assert_eq!([kept(&harness, "Vitals"), kept(&harness, "Room")], fitted);
+    // And on the screen, not only in the layout: shrunk back from the size
+    // it had, a frame after it was asked.
+    let shown = harness.get_by_label("Room").rect().size();
+    let wanted = fitted[1].expect("fitted").size();
+    assert!((shown - wanted).length() < 0.5, "{shown:?} for {wanted:?}");
 }
 
 /// Drawn with no roundtime: its seconds come from the wall clock, and an
@@ -366,3 +371,5 @@ fn the_window_as_drawn() {
     harness.run();
     harness.snapshot("play");
 }
+
+mod arrange;

@@ -21,6 +21,7 @@
 //! for the author's complaint: a click nothing else took returns the
 //! keyboard to the command input, so the player can type without clicking it.
 
+mod arrange;
 mod draw;
 mod holders;
 
@@ -80,6 +81,14 @@ pub(crate) struct Play {
     layout: Option<Layout>,
     /// The windows let go for a drag or resize under way.
     engaged: Vec<Engaged>,
+    /// Arrange is on: a custom window's cells take the pointer
+    /// (`arrange.rs`). Never saved: a play window opens with it off.
+    arranging: bool,
+    /// The cell being moved or resized, with Arrange on.
+    cell: Option<arrange::CellGesture>,
+    /// Each custom window's inside as last drawn, from the play area's top
+    /// left: where its cells were when a press comes.
+    insides: Vec<(u32, egui::Rect)>,
     /// Why the layout could not be saved, until it can.
     unsaved: Option<String>,
     /// The line being typed.
@@ -104,6 +113,9 @@ impl Play {
             layouts,
             layout,
             engaged: Vec::new(),
+            arranging: false,
+            cell: None,
+            insides: Vec::new(),
             unsaved: None,
             input: String::new(),
             history: Vec::new(),
@@ -123,9 +135,13 @@ impl Play {
         let session = self.session;
         let mut grid = self.layout.as_ref().map_or(GRID, |layout| layout.grid);
         let unsaved = self.unsaved.clone();
+        let mut arranging = self.arranging;
         let top = egui::Panel::top(Id::new(("play-top", session)))
-            .show(ui, |ui| draw::top(ui, view, &mut grid, unsaved.as_deref()))
+            .show(ui, |ui| {
+                draw::top(ui, view, &mut grid, &mut arranging, unsaved.as_deref())
+            })
             .inner;
+        self.arranging = arranging;
         let mut changed = false;
         match top {
             Some(draw::Top::Stop) => asked = Some(Asked::Stop),
@@ -137,6 +153,13 @@ impl Play {
             Some(draw::Top::Grid) => {
                 if let Some(layout) = &mut self.layout {
                     layout.grid = grid;
+                    changed = true;
+                }
+            }
+            Some(draw::Top::NewCustom) => {
+                if let Some(layout) = &mut self.layout {
+                    layout.new_custom();
+                    self.arranging = true;
                     changed = true;
                 }
             }

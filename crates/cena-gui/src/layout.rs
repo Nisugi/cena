@@ -15,6 +15,7 @@
 //! one kind can live side by side.
 
 mod custom;
+mod moves;
 
 use std::path::{Path, PathBuf};
 
@@ -22,7 +23,7 @@ use egui::{Rect, Vec2, pos2};
 use serde::{Deserialize, Serialize};
 
 use crate::widget::Widget;
-pub(crate) use custom::Custom;
+pub(crate) use custom::{Cell, Custom, SMALLEST as SMALLEST_CELL};
 
 /// The smallest a window can be made.
 pub(crate) const SMALLEST: Vec2 = Vec2::new(120.0, 60.0);

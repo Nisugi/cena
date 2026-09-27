@@ -261,10 +261,41 @@ Everything after it adds widgets, so the model goes first and every widget is wr
    area too, every id its own; a custom window's rows laid, shared when they ask too much,
    and kept to a resized inside; the play window found by its windows' titles, a drag, a
    resize, a shared edge, *Lay out afresh*, and a small move in open space staying where it
-   was put. Fourteen mutants: all caught, two only once a test was written for them (a
-   window snapping to its own starting edges, so a nudge sprang back, and the ellipsis).
+   was put. Thirteen mutants: eleven caught; a window snapping to its own starting edges,
+   so a nudge sprang back, caught once a test was written for it; and the clip, which
+   survived and was removed for one-line widgets whose ellipsis a test holds.
 4. **Custom windows.** Made from a menu; a widget dragged in or out, its chrome following;
    the grid inside.
+
+   **BUILT 2026-09-27.** A widget in a custom window is bare, with no title bar to take
+   hold of, so the play window's Layout menu gains **Arrange** (`crates/cena-gui/src/play/arrange.rs`).
+   On, each cell is dimmed under its outline and its widget's name, which it also says to a
+   screen reader, and takes the pointer: dragged from inside it moves, from near an edge
+   that edge moves (one edge per axis, the pointer showing which), and it lands snapped to
+   the inside's edges, the other cells and the grid, its snap lines drawn in its window,
+   and always inside it: a move slid back in, a resize cut at the edge. Let go outside its
+   window, the widget leaves, its name following the pointer until then: into the custom
+   window beneath, or into a standalone window of its own, framed; its window's last widget
+   out takes the window with it. A standalone window carried, not resized, onto a custom
+   window joins it, bare. With Arrange off none of this happens, so no press in play
+   rearranges anything (§1 row 3); a play window opens with it off. *New custom window* in
+   the same menu makes an empty one, saying how to fill it, and turns Arrange on. Claude's
+   design: the plan named the step, not how a bare widget is taken hold of. The layout's
+   side is `layout/moves.rs`; a press on a cell while arranging lets go of no window, so a
+   window's own grid is not shown for a cell's gesture.
+
+   Tests: the cells named only with Arrange on, from the menu; no widget leaving its window
+   with it off; a cell moved and snapped to the inside's bottom, moved partway out and slid
+   back, resized by its edge, resized past its window and kept in it; a widget dragged out
+   into its own window, the drag rendered with its name at the pointer
+   (`tests/snapshots/arrange.png`); a window dropped on a custom window joining it only when
+   arranging, and one resized over it never; a new custom window empty and arranging; the
+   arranged layout kept by name; the layout's release, join and take, and a press's edges
+   and pointers. Twenty mutants: fourteen caught at once; four once a test was written for
+   them (a resize counted as dragging out, a resized window joining, a tab stack's shown
+   tab left past its end, a move not slid back in); a filter keeping a widget from being
+   released into its own window found vacuous and removed, with its twin in joining; and a
+   repaint after a layout change removed, since the tests show a window settles without it.
 5. **Tab stacks**, with unread counts.
 6. **Add a widget.** Every kind in one searchable list (Saga's *"Find a panel..."*), grouped
    as §3; the Advanced place at the bottom of it, closed, with following another character.

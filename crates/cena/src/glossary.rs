@@ -197,6 +197,7 @@
 //! | **Widget** | one thing a player reads about one character, drawn bare: a bar per vital, each hand its own, the story, the exits. The author: *"individual things, a bar for health is a widget"* (`plan/49` §1) | pane, the M10 word for a window holding several |
 //! | **Standalone window** | a window in a play window holding one widget, with a title and a frame (`plan/49` §2) | |
 //! | **Custom window** | a window in a play window holding several widgets bare, each in a cell of its own, with one frame for all: the vitals, the loadout and the room come as three (`plan/49` §2, `plan/28` §7d) | container window, `plan/28`'s word for it |
+//! | **Arrange** | the Layout menu's switch that lets a custom window's cells be moved, resized, and dragged out, and lets a standalone window be dropped into one; off, no press rearranges anything (`plan/49` Stage A step 4) | edit mode |
 //! | **Hub** | every character at a glance: a card each, start, quit, reconnect, and the merged streams. Two frontends have one: Despana's hub page, and the window's [`Hub`](cena_gui::Hub), in two tabs, Live and Closed (`plan/47`). Requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
 //! | **Character page** | one character's own page. No window shows two characters' story text (`plan/29` §5a) | |
 //! | **Merged streams** | thoughts, speech, logons, deaths and announcements across characters, each line once: [`Merger`] | |

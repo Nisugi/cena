@@ -196,3 +196,6 @@ crates/cena-gui/src/keys.rs 450
 # so 350. Both by the rule above: + 50, rounded up.
 crates/cena-gui/src/widget.rs 250
 crates/cena-gui/src/layout.rs 350
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/49 Stage A). crates/cena-gui/src/play/tests.rs
+# is the play window's tests, arranging's in play/tests/arrange.rs: 375 lines, so 450.
+crates/cena-gui/src/play/tests.rs 450

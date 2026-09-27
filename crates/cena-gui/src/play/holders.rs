@@ -23,8 +23,8 @@
 
 use egui::{Id, LayerId, Order, Pos2, Rect, Stroke};
 
-use super::{Play, PlayView, draw};
-use crate::layout::{Holder, Layout, SMALLEST};
+use super::{Play, PlayView, arrange, draw};
+use crate::layout::{Holder, Holds, Layout, SMALLEST};
 use crate::snap::{self, Guide};
 use crate::text::AMBER;
 use crate::widget::Seen;
@@ -48,59 +48,126 @@ fn id(session: u32, holder: u32) -> Id {
     Id::new(("play-window", session, holder))
 }
 
+/// Windows drawn this frame, from the play area's top left: each held
+/// window's rect as egui drew it, and each custom window's inside.
+type Drawn = (Vec<(u32, Rect)>, Vec<(u32, Rect)>);
+
 impl Play {
     /// Draw each window inside `ui`'s remaining area, following a drag or
-    /// resize and snapping it. `true` when a gesture ended and moved a
-    /// window, so the layout wants saving.
+    /// resize and snapping it, and, with Arrange on, a custom window's cells
+    /// too (`arrange.rs`): a widget dragged out of one leaves it, and a
+    /// standalone window dropped on one joins it. `true` when the layout
+    /// changed, so it wants saving.
     pub(super) fn arrange(&mut self, ui: &mut egui::Ui, view: &PlayView<'_>) -> bool {
         let area = ui.available_rect_before_wrap();
-        let session = self.session;
         let context = ui.ctx().clone();
-        let layout = self
-            .layout
+        self.layout
             .get_or_insert_with(|| Layout::fitted(area.size()));
-        let (pressed, down, origin, shift) = context.input(|input| {
-            (
-                input.pointer.any_pressed(),
-                input.pointer.any_down(),
-                input.pointer.press_origin(),
-                input.modifiers.shift,
-            )
-        });
-        if pressed
-            && self.engaged.is_empty()
-            && let Some(origin) = origin
-        {
-            self.engaged = reached(&context, layout, area, origin, session)
-                .into_iter()
-                .filter_map(|holder| layout.rect(holder).map(|start| Engaged { holder, start }))
-                .collect();
-        }
+        self.press(&context, area);
         let seen = Seen {
             snapshot: view.snapshot,
             story: view.story,
             hunt: view.hunt,
         };
-        let offset = area.min.to_vec2();
+        let ((drawn, insides), released) = self.draw_windows(&context, area, &seen);
+        let mut changed = false;
+        if let (Some(out), Some(layout)) = (released, self.layout.as_mut()) {
+            let at = out.at - area.min.to_vec2();
+            layout.release(out.holder, out.placed, at, &insides, area.size());
+            changed = true;
+        }
+        self.insides.clone_from(&insides);
+        self.settle(&context, area, &drawn, &insides) || changed
+    }
+
+    /// A press this frame lets go of the windows it reaches (`reached`),
+    /// unless, with Arrange on, it is on a cell, which is the cell's
+    /// (`arrange.rs`): its window is not let go, nor the grid shown.
+    fn press(&mut self, context: &egui::Context, area: Rect) {
+        let Some(layout) = &self.layout else {
+            return;
+        };
+        let (pressed, origin) =
+            context.input(|input| (input.pointer.any_pressed(), input.pointer.press_origin()));
+        let Some(origin) = origin.filter(|_| pressed && self.engaged.is_empty()) else {
+            return;
+        };
+        if self.arranging && on_cell(context, layout, &self.insides, area, origin, self.session) {
+            return;
+        }
+        self.engaged = reached(context, layout, area, origin, self.session)
+            .into_iter()
+            .filter_map(|holder| layout.rect(holder).map(|start| Engaged { holder, start }))
+            .collect();
+    }
+
+    /// Each window, pinned or let go, with what it holds; with Arrange on, a
+    /// custom window's cells arranged. What was drawn, and a widget let go
+    /// outside its custom window, if one was.
+    fn draw_windows(
+        &mut self,
+        context: &egui::Context,
+        area: Rect,
+        seen: &Seen<'_>,
+    ) -> (Drawn, Option<arrange::Released>) {
+        let (session, arranging, offset) = (self.session, self.arranging, area.min.to_vec2());
         let mut drawn = Vec::new();
+        let mut insides = Vec::new();
+        let mut released = None;
+        let Some(layout) = self.layout.as_mut() else {
+            return ((drawn, insides), released);
+        };
+        let grid = layout.grid;
         for holder in &mut layout.holders {
             let at = holder.rect().translate(offset);
             let held = self
                 .engaged
                 .iter()
                 .any(|engaged| engaged.holder == holder.id);
-            let title = holder.title().to_owned();
-            let window = holder_window(title, holder.id, at, held, area, session);
-            let shown = window.show(&context, |ui| {
-                draw::holder(ui, &mut holder.holds, &seen, session);
+            let (id, title) = (holder.id, holder.title().to_owned());
+            let window = holder_window(title, id, at, held, area, session);
+            let shown = window.show(context, |ui| {
+                let inside = draw::holder(ui, &mut holder.holds, seen, session);
+                if let Holds::Custom(custom) = &mut holder.holds {
+                    insides.push((id, inside.translate(-offset)));
+                    if arranging {
+                        released = released.or_else(|| {
+                            arrange::cells(ui, custom, id, inside, grid, &mut self.cell)
+                        });
+                    }
+                }
             });
             if held && let Some(shown) = shown {
-                drawn.push((holder.id, shown.response.rect.translate(-offset)));
+                drawn.push((id, shown.response.rect.translate(-offset)));
             }
         }
+        ((drawn, insides), released)
+    }
+
+    /// The windows let go this frame, snapped where egui drew them, with the
+    /// guides while the gesture lasts; at its end, with Arrange on, a window
+    /// carried onto a custom window joins it. `true` when the gesture ended
+    /// and changed the layout.
+    fn settle(
+        &mut self,
+        context: &egui::Context,
+        area: Rect,
+        drawn: &[(u32, Rect)],
+        insides: &[(u32, Rect)],
+    ) -> bool {
+        let Some(layout) = self.layout.as_mut() else {
+            return false;
+        };
         if self.engaged.is_empty() {
             return false;
         }
+        let (down, shift, latest) = context.input(|input| {
+            (
+                input.pointer.any_down(),
+                input.modifiers.shift,
+                input.pointer.latest_pos(),
+            )
+        });
         let bounds = Rect::from_min_size(Pos2::ZERO, area.size());
         let mut guides = Vec::new();
         for engaged in &self.engaged {
@@ -129,16 +196,53 @@ impl Play {
             guides.extend(engaged_guides);
         }
         if down {
-            guide(&context, area, layout.grid, &guides, session);
+            guide(context, area, layout.grid, &guides, self.session);
             return false;
         }
-        let moved = self
+        let mut changed = self
             .engaged
             .iter()
             .any(|engaged| layout.rect(engaged.holder) != Some(engaged.start));
+        if self.arranging
+            && let Some(at) = latest
+        {
+            // A window moved, not resized, and let go over a custom window's
+            // inside, joins it.
+            for engaged in &self.engaged {
+                let carried = layout.rect(engaged.holder).is_some_and(|now| {
+                    now != engaged.start && (now.size() - engaged.start.size()).length() < 0.5
+                });
+                if carried {
+                    changed |= layout.join(engaged.holder, at - area.min.to_vec2(), insides);
+                }
+            }
+        }
         self.engaged.clear();
-        moved
+        changed
     }
+}
+
+/// Whether a press at `origin` is on a cell of the custom window on top
+/// there, its inside where `insides` last saw it.
+fn on_cell(
+    context: &egui::Context,
+    layout: &Layout,
+    insides: &[(u32, Rect)],
+    area: Rect,
+    origin: Pos2,
+    session: u32,
+) -> bool {
+    let on_top = context.layer_id_at(origin).map(|layer| layer.id);
+    insides.iter().any(|(holder, inside)| {
+        let inside = inside.translate(area.min.to_vec2());
+        on_top == Some(id(session, *holder))
+            && matches!(
+                layout.holder(*holder).map(|found| &found.holds),
+                Some(Holds::Custom(custom)) if custom.cells.iter().any(|cell| {
+                    cell.rect().translate(inside.min.to_vec2()).contains(origin)
+                })
+            )
+    })
 }
 
 /// Window `holder`'s egui window at `at` inside `area`, titled `title`:

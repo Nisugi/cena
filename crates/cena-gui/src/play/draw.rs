@@ -20,6 +20,8 @@ pub(super) enum Top {
     Grid,
     /// The keybinds were to be read again.
     ReloadKeys,
+    /// A new custom window was asked for.
+    NewCustom,
 }
 
 /// The top bar: who, how connected, the keybinds, the layout's grid, Stop;
@@ -29,6 +31,7 @@ pub(super) fn top(
     ui: &mut egui::Ui,
     view: &PlayView<'_>,
     grid: &mut f32,
+    arranging: &mut bool,
     unsaved: Option<&str>,
 ) -> Option<Top> {
     let mut asked = None;
@@ -63,6 +66,12 @@ pub(super) fn top(
                         asked = Some(Top::Grid);
                     }
                 });
+                ui.checkbox(arranging, "Arrange")
+                    .on_hover_text("Move, resize and drag widgets in and out of custom windows");
+                if ui.button("New custom window").clicked() {
+                    asked = Some(Top::NewCustom);
+                    ui.close();
+                }
                 if ui.button("Lay out afresh").clicked() {
                     asked = Some(Top::Fit);
                     ui.close();
@@ -96,8 +105,14 @@ pub(super) fn widget_id(session: u32, placed: u32) -> Id {
 /// never its content's. One widget is given everything; a custom window's
 /// widgets are drawn bare in their cells, once the cells are kept to the
 /// inside it has now (`Custom::fit`). Nothing spills out of its cell: a
-/// one-line widget stays one line, and the rest scroll.
-pub(super) fn holder(ui: &mut egui::Ui, holds: &mut Holds, seen: &Seen<'_>, session: u32) {
+/// one-line widget stays one line, and the rest scroll. Its inside, where
+/// it drew.
+pub(super) fn holder(
+    ui: &mut egui::Ui,
+    holds: &mut Holds,
+    seen: &Seen<'_>,
+    session: u32,
+) -> egui::Rect {
     let inside = ui.available_rect_before_wrap();
     ui.set_min_size(inside.size());
     match holds {
@@ -106,6 +121,10 @@ pub(super) fn holder(ui: &mut egui::Ui, holds: &mut Holds, seen: &Seen<'_>, sess
         }
         Holds::Custom(custom) => {
             custom.fit(inside.size());
+            if custom.cells.is_empty() {
+                ui.new_child(UiBuilder::new().max_rect(inside.shrink(4.0)))
+                    .weak("Empty. With Arrange on, in the Layout menu, drop widgets here.");
+            }
             for cell in &custom.cells {
                 let Some(placed) = cell.shown() else {
                     continue;
@@ -126,4 +145,5 @@ pub(super) fn holder(ui: &mut egui::Ui, holds: &mut Holds, seen: &Seen<'_>, sess
             ui.advance_cursor_after_rect(inside);
         }
     }
+    inside
 }
