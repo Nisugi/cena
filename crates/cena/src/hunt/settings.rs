@@ -293,7 +293,6 @@ fn split(who: Who<'_>) -> (Option<&str>, Option<&str>) {
 mod tests {
     use std::cell::RefCell;
     use std::path::{Path, PathBuf};
-    use std::sync::atomic::{AtomicUsize, Ordering};
 
     use cena_behavior::hunt;
     use cena_session::NoticeKind;
@@ -318,14 +317,10 @@ mod tests {
 
     const PROFILE: &str = "# imported\n\ntargets = [{ any = true, routine = \"a\" }]\n\n[rooms]\nhunting = 10\nresting = 20\n\n[routines]\na = [\"volley\", \"fire\"]\n\n[sequences]\nvolley = []\n";
 
-    /// A data directory of its own, holding `ojandhaart`.
-    fn dir() -> std::io::Result<PathBuf> {
-        static N: AtomicUsize = AtomicUsize::new(0);
-        let dir = std::env::temp_dir().join(format!(
-            "cena-settings-{}-{}",
-            std::process::id(),
-            N.fetch_add(1, Ordering::Relaxed)
-        ));
+    /// A data directory of its own, holding `ojandhaart`: named by the
+    /// process and the calling test, so no counter is needed.
+    fn dir(test: &str) -> std::io::Result<PathBuf> {
+        let dir = std::env::temp_dir().join(format!("cena-settings-{}-{test}", std::process::id()));
         let profiles = hunt::chain::profiles_dir(&dir);
         std::fs::create_dir_all(&profiles)?;
         std::fs::write(profiles.join("ojandhaart.toml"), PROFILE)?;
@@ -339,7 +334,7 @@ mod tests {
 
     #[test]
     fn a_setting_is_saved_and_a_bad_one_is_refused_by_name() {
-        let dir = dir().unwrap();
+        let dir = dir("a_setting_is_saved_and_a_bad_one_is_refused_by_name").unwrap();
         let who = ("prime".to_owned(), "Nisugi".to_owned());
         let said = RefCell::new(Vec::new());
         let say = |kind: NoticeKind, text: String| said.borrow_mut().push((kind, text));
@@ -396,7 +391,7 @@ mod tests {
 
     #[test]
     fn the_heal_profile_is_made_by_its_first_setting() {
-        let dir = dir().unwrap();
+        let dir = dir("the_heal_profile_is_made_by_its_first_setting").unwrap();
         let who = ("prime".to_owned(), "Nisugi".to_owned());
         let said = RefCell::new(Vec::new());
         let say = |kind: NoticeKind, text: String| said.borrow_mut().push((kind, text));
@@ -435,7 +430,7 @@ mod tests {
     /// and the error names it; a missing one is made.
     #[test]
     fn a_broken_profile_is_never_written_over() {
-        let dir = dir().unwrap();
+        let dir = dir("a_broken_profile_is_never_written_over").unwrap();
         let who = ("prime".to_owned(), "Nisugi".to_owned());
         let said = RefCell::new(Vec::new());
         let say = |kind: NoticeKind, text: String| said.borrow_mut().push((kind, text));

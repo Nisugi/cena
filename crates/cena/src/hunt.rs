@@ -18,7 +18,7 @@
 use std::collections::BTreeMap;
 use std::io;
 use std::path::Path;
-use std::sync::{Arc, Mutex, OnceLock, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 mod settings;
 
@@ -31,13 +31,15 @@ use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle,
 
 /// Register hunt's words. The character's instance and name, when the login
 /// has said them, choose the character level of the chain; `map` is the one
-/// travel loaded, and `None` when travel has none.
+/// travel loaded, and `None` when travel has none; `party` is what every
+/// character's hunt shares.
 pub(crate) fn open(
     handle: &SessionHandle,
     observer: SessionObserver,
     state: &GameState,
     commands: &Commands,
     map: Option<Arc<crate::map_context::MapContext>>,
+    party: &Party,
 ) {
     let who = state
         .character
@@ -52,11 +54,11 @@ pub(crate) fn open(
             AuthorityToken(3),
             context.sha256.clone(),
         );
-        desk.group_on(boards());
+        desk.group_on(Arc::clone(&party.boards));
         desk
     });
     if let (Some(desk), Some((_, name))) = (&desk, &who) {
-        take_seat(name, desk, handle, &observer);
+        take_seat(party, name, desk, handle, &observer);
     }
     let leader = who.as_ref().map(|(_, name)| name.clone());
     // The spellcaster profile, held so a typed line is judged without a
@@ -81,7 +83,7 @@ pub(crate) fn open(
             );
         }
     }
-    let handler = handle.clone();
+    let (handler, seats) = (handle.clone(), Arc::clone(&party.seats));
     commands.hunt(Arc::new(move |line: &str| {
         let command = match parse_command(line)? {
             Ok(command) => command,
@@ -119,7 +121,7 @@ pub(crate) fn open(
                     ));
                     return Some(Took::Done);
                 };
-                Took::Started(form(&desk, &handler, &observer, &leader, name, &with))
+                Took::Started(form(&seats, &desk, &handler, &observer, &leader, name, &with))
             }
             Command::Nothing => Took::Done,
             // The rest read and write files -- import, check, the settings
@@ -141,11 +143,28 @@ pub(crate) fn open(
     eprintln!("[hunt] ready: `hunt help` lists the commands and how to change a setting");
 }
 
-/// Every group's board in this Hydra: one set for every character, so a
-/// leader's hunt and its followers' meet (`plan/39` §5).
-pub(crate) fn boards() -> Arc<Boards> {
-    static BOARDS: OnceLock<Arc<Boards>> = OnceLock::new();
-    Arc::clone(BOARDS.get_or_init(Boards::new))
+/// What every character's hunt in this Hydra shares: each group's board, so
+/// a leader's hunt and its followers' meet (`plan/39` §5), and each
+/// character's seat, so a leader can start its followers' hunts.
+///
+/// **Owned by the session table** (`play.rs`) and handed to each character's
+/// hunt as it opens. It was two process globals, which `plan/05` Rule 5.2
+/// forbids ("No process globals. None.") and `every_static_is_allowlisted`
+/// caught: shared state belongs to what owns the sessions, not to the process.
+#[derive(Clone)]
+pub(crate) struct Party {
+    boards: Arc<Boards>,
+    seats: Arc<Mutex<BTreeMap<String, Seat>>>,
+}
+
+impl Party {
+    /// No groups and no seats yet.
+    pub(crate) fn new() -> Self {
+        Self {
+            boards: Boards::new(),
+            seats: Arc::default(),
+        }
+    }
 }
 
 /// A character's hunt desk and session: what a leader's `hunt <name> with`
@@ -157,20 +176,21 @@ struct Seat {
     observer: SessionObserver,
 }
 
-/// Every character's seat in this Hydra, by name.
-fn seats() -> &'static Mutex<BTreeMap<String, Seat>> {
-    static SEATS: OnceLock<Mutex<BTreeMap<String, Seat>>> = OnceLock::new();
-    SEATS.get_or_init(Mutex::default)
-}
-
 /// This character's seat, for a leader to start its hunt from.
-fn take_seat(name: &str, desk: &Arc<Desk>, handle: &SessionHandle, observer: &SessionObserver) {
+fn take_seat(
+    party: &Party,
+    name: &str,
+    desk: &Arc<Desk>,
+    handle: &SessionHandle,
+    observer: &SessionObserver,
+) {
     let seat = Seat {
         desk: Arc::clone(desk),
         handle: handle.clone(),
         observer: observer.clone(),
     };
-    seats()
+    party
+        .seats
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .insert(name.to_owned(), seat);
@@ -181,6 +201,7 @@ fn take_seat(name: &str, desk: &Arc<Desk>, handle: &SessionHandle, observer: &Se
 /// (`plan/39` §8, question 2). A name this Hydra is not running is said,
 /// and hunted without.
 fn form(
+    seats: &Mutex<BTreeMap<String, Seat>>,
     desk: &Arc<Desk>,
     handle: &SessionHandle,
     observer: &SessionObserver,
@@ -188,10 +209,7 @@ fn form(
     name: String,
     with: &[String],
 ) -> tokio::task::JoinHandle<()> {
-    let seats = seats()
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .clone();
+    let seats = seats.lock().unwrap_or_else(PoisonError::into_inner).clone();
     let mut followers = Vec::new();
     for member in with {
         match seats.get(member).filter(|_| member != leader) {
