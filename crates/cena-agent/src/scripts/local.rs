@@ -64,6 +64,9 @@ pub struct Local {
     pub map_room: Option<u32>,
     /// The creature the character targets, by its id.
     pub target: Option<String>,
+    /// The spells the character's spell list names, by number; `null` until
+    /// the game has sent the list.
+    pub known_spells: Option<Vec<u32>>,
 }
 
 /// Where the character is on the map, followed from one copy to the next:
@@ -101,5 +104,12 @@ pub fn local(character: &str, snapshot: &Snapshot, map_room: Option<u32>) -> Loc
         room_exits_line: state.room.component("room exits").map(Runs::plain),
         map_room,
         target: state.targeting.current().map(|id| id.to_string()),
+        known_spells: state.known_spells.is_stated().then(|| {
+            state
+                .known_spells
+                .iter()
+                .map(|(number, _)| number)
+                .collect()
+        }),
     }
 }

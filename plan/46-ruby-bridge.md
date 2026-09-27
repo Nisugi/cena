@@ -401,7 +401,7 @@ None of these is measured; each is a guess until it is.
      Measured: §9.
 2. The local copy and the reads (GameObj, Char, XMLData, `Room.current`, Spell, the check*
    family); **`wander`** (`plan/38` §10).
-   **BUILT 2026-09-27** (the author: *"step 2!"*), in three commits:
+   **BUILT 2026-09-27** (the author: *"step 2!"*), in four commits:
    - **The local copy** (`crates/cena-agent/src/scripts/local.rs`, `watch.rs`): the agent's
      projection as its core, as this plan says, in Hydra's own names, so a second language's
      bridge is not bound to Lich's; plus the room count (what Lich's `move` watches), the
@@ -431,18 +431,25 @@ None of these is measured; each is a guess until it is.
      `script_auto_settings` without the key its saves need, and every save fails. The import
      from the player's Lich folder stays in step 3. `Lich::Messaging` is answered in its
      colour's notice kind, beside a `Frontend` saying Hydra is Wrayth's family with no GSL.
+   - **`Spell`, its reads** (`bridges/ruby/hydra/spell.rb`): the table's row asked of Hydra
+     once (`spell`, by number or name), what a cast lasts and costs asked each time, evaluated
+     for the character by Hydra's own evaluator (`GameState::spell_minutes`, `spell_cost`), so
+     the runner carries neither Lich's effect list nor its Ruby formulas; `known?` from the
+     spell list in the copy (`known_spells`), `active?`, `timeleft` and `Spell.active` from its
+     effects. `affordable?` checks mana, spirit and stamina, not Lich's Monk and overexertion
+     rules. **Not `cast`**, which acts: it says it is not answered yet.
    - **Tests** (`crates/cena-agent/tests/scripts_local.rs`, `runner.rs`): a stun's `state`
      before the line that stunned; a mapped room named and answered; a script reading a room
-     the scripted game describes whole through Lich's own classes; a script walking an exit
+     the scripted game describes whole through Lich's own classes, Heroism known, up and priced
+     among it; a script walking an exit
      of `Room.current` with Lich's `move` and keeping a setting that a **second runner
      process** finds in `lich.db3`. **Tillmen's `wander.lic` runs unchanged** over two scripted
      rooms: out of the Quiet Glade by the map, the kobold found, `target random`, stopped
      (Tier 2, `CENA_LICH_SCRIPTS`), five runs in a row. Mutations: a chunk's lines before its
      state; a runner ignoring `state`; the stores without `init_db` first (which a second run
      in the same process passed, Lich's settings cache hiding the file: hence the second
-     process).
-   - **Not yet**: `Spell` and what it reads (`Effects`, the spell table); `Stats`, `Skills`
-     and Lich's `Infomon`; `GameObj`'s type data (`gameobj-data.xml`, which Hydra has only as
+     process); every spell read as known.
+   - **Not yet**: `Spell#cast`; Lich's `Effects`; `Stats`, `Skills` and Lich's `Infomon`; `GameObj`'s type data (`gameobj-data.xml`, which Hydra has only as
      its own TSV); the familiar's room; `Room#path_to` and `find_nearest`; a crossing's walk
      waits on the copy naming the room, which step 3's operation replaces. CI installs `ox`,
      `sqlite3` and `sequel`, as Lich's installer does.

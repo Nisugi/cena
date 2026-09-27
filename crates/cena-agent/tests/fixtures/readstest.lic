@@ -8,3 +8,7 @@ echo "room: #{checkroom} #{XMLData.room_id} #{checkpaths.inspect} #{XMLData.room
 echo "npcs: #{GameObj.npcs.map(&:noun).join(',')} loot: #{checkloot.join(',')} pcs: #{checkpcs.inspect}"
 echo "hands: #{checkright} #{checkleft.inspect}"
 echo "char: #{Char.name} #{Char.health}/#{Char.max_health} standing=#{checkstanding} stunned=#{checkstunned}"
+heroism = Spell[215]
+echo "spell: #{heroism.name} circle=#{heroism.circle} known=#{heroism.known?} active=#{heroism.active?} checkspell=#{checkspell(215)}"
+echo "costs: mana=#{heroism.mana_cost} on another=#{heroism.time_per(target: 'Kiyna')} minutes affordable=#{heroism.affordable?}"
+echo "others: #{Spell[101].known?} #{Spell['Heroism'].num} #{Spell[99999].inspect}"

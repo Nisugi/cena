@@ -18,8 +18,8 @@
 //! - [`listening`]: what a runner listens to, at its own positions.
 //! - [`local`]: its local copy of the character, and the map it is placed on.
 //! - `watch`: what the session publishes, told to a runner in Lich's order.
-//! - [`tools`]: `listen`, `send`, `say` and `room`, the contract in
-//!   `SCRIPTS.md`.
+//! - [`tools`]: `listen`, `send`, `say`, `room` and `spell`, the contract
+//!   in `SCRIPTS.md`.
 //! - [`runner`]: the Ruby runner's files, carried in the binary, and how one
 //!   is started.
 
@@ -66,6 +66,8 @@ pub struct Seat {
     door: Door,
     listening: Arc<Listening>,
     atlas: Option<Arc<Atlas>>,
+    /// Read for what is evaluated for the character on asking (`spell`).
+    observer: SessionObserver,
     stop: CancellationToken,
 }
 
@@ -107,6 +109,7 @@ impl Runners {
             door,
             listening: Arc::default(),
             atlas: self.atlas.clone(),
+            observer: observer.clone(),
             stop,
         });
         let watching = watch::Watching {

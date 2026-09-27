@@ -79,6 +79,7 @@ require_relative 'connection'
 require_relative 'edge'
 require_relative 'copy'
 require_relative 'map'
+require_relative 'spell'
 require_relative 'listener'
 
 copy = Hydra::Copy.new

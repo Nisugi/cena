@@ -81,6 +81,7 @@ stated is `null`), less what only counts the clock (`clock`, `captured_unix_ms`,
 | `room_exits_line` | the exits line as the game words it, `Obvious paths: north, east.` |
 | `map_room` | the map's own number for the room, when Hydra has a map and names the room **without guessing**; `null` otherwise |
 | `target` | the id of the creature the character targets |
+| `known_spells` | the numbers of the spells the character's spell list names; `null` until the game has sent the list |
 
 A field a runner does not know is ignored, and new ones come without a new version.
 
@@ -93,6 +94,15 @@ map. The room is the map's own record: `id`; `uid` (the game's numbers for it); 
 and `exits`, each `{to, kind, cost?, dirto?}` with how it is crossed: `cmd` (a command to
 send), or `steps`, `routine`, `pass` or `unported` (Hydra's travel crosses it; a runner asks
 Hydra to walk). `cost` is seconds when a number; absent, the exit is impassable.
+
+## `spell` `{ number? , name? }`
+
+A spell of Hydra's spell table, by number or by name (ignoring case). Answers `{"spell": ...}`,
+`null` when there is no such spell: `number`, `name`, `type` (the table's, verbatim),
+`availability` (`all`, `self-cast`, `group`...), `costs` (`mana`, `spirit`, `stamina`, `renew`)
+and `minutes` (`self`, `target`), **evaluated for the character now**: a cost the table gives
+as a formula is worked out from the character's skills and stats, and `null` when what it
+needs is not known. A cost the spell does not have is `0`.
 
 ## `send` `{ line }`
 

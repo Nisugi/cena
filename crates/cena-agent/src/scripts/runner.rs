@@ -43,6 +43,10 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../../bridges/ruby/hydra/map.rb"),
     ),
     (
+        "hydra/spell.rb",
+        include_str!("../../../../bridges/ruby/hydra/spell.rb"),
+    ),
+    (
         "lich/LICENSE.txt",
         include_str!("../../../../bridges/ruby/lich/LICENSE.txt"),
     ),

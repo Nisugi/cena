@@ -125,6 +125,8 @@ module Hydra
     def current_target_id = @copy['target']
     # The map's room Hydra names, never guessed (map.rb, `Room.current`).
     def map_room = @copy['map_room']
+    # The spells the spell list names, by number (spell.rb, `known?`).
+    def known_spells = @copy['known_spells']
     def current_target_ids = [@copy['target']].compact
 
     # The statuses as Lich's indicators: `IconSTUNNED` => `y`. One the game

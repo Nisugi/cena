@@ -210,6 +210,11 @@ const DESCRIBED_ROOM: &[u8] = b"<nav rm='7000'/>
 <right exist=\"11\" noun=\"sword\">broadsword</right><left>Empty</left>
 <dialogData id='minivitals'><progressBar id='health' value='50' text='health 50/100'/></dialogData>
 <indicator id=\"IconSTANDING\" visible=\"y\"/>
+<clearStream id=\"Spells\"/>
+<stream id=\"Spells\">Major Spiritual:</stream>
+<stream id=\"Spells\">  <a exist=\"-1\" coord=\"1,1\" noun=\"215\">Heroism</a></stream>
+<dialogData id='minivitals'><progressBar id='mana' value='50' text='mana 20/40'/></dialogData>
+<dialogData id='Active Spells'><progressBar id='215' value='90' text=\"Heroism\" time='00:20:00'/></dialogData>
 You see a quiet room.
 <prompt time=\"1001\">&gt;</prompt>
 ";
@@ -284,6 +289,9 @@ async fn a_script_reads_its_character_as_lich_does() {
         "[readstest: npcs: kobold loot: rock pcs: [\"Kiyna\"]]",
         "[readstest: hands: sword nil]",
         "[readstest: char: Nisugi 50/100 standing=true stunned=false]",
+        "[readstest: spell: Heroism circle=2 known=true active=true checkspell=true]",
+        "[readstest: costs: mana=15.0 on another=1.0 minutes affordable=true]",
+        "[readstest: others: false 215 nil]",
     ] {
         assert!(
             heard.told.iter().any(|line| line == expected),

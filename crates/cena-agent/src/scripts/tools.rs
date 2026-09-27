@@ -61,6 +61,15 @@ pub struct Room {
     pub id: u32,
 }
 
+/// `spell`'s question: by number, or by name.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SpellAsked {
+    /// The spell's number: 215.
+    pub number: Option<u16>,
+    /// Its name, ignoring case: `Heroism`.
+    pub name: Option<String>,
+}
+
 /// `say`'s text.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct Said {
@@ -188,6 +197,50 @@ impl Scripting {
         };
         let room = atlas.map.room(cena_map::RoomId(id));
         json(&serde_json::json!({ "map": true, "room": room }))
+    }
+
+    #[tool(
+        description = "A spell of the spell table, by number or name: its name, type, who it can be cast on, its costs, and how long it lasts, both evaluated for the character now. `spell` null when the table has no such spell."
+    )]
+    async fn spell(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(asked): Parameters<SpellAsked>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        let spell = match (asked.number, asked.name.as_deref()) {
+            (Some(number), _) => cena_session::spells::spell(number),
+            (None, Some(name)) => cena_session::spell_named(name),
+            (None, None) => {
+                return Err(ErrorData::invalid_params("a number or a name", None));
+            }
+        };
+        let Some(spell) = spell else {
+            return json(&serde_json::json!({ "spell": null }));
+        };
+        let stop = tokio_util::sync::CancellationToken::new();
+        let (snapshot, _) = crate::characters::subscribe(&seat.observer, &stop)
+            .await
+            .ok_or_else(|| ErrorData::internal_error("the character has no session", None))?;
+        let state = &snapshot.state;
+        let cost = |kind| state.spell_cost(spell.number, kind);
+        let minutes = |cast| state.spell_minutes(spell.number, cast);
+        json(&serde_json::json!({ "spell": {
+            "number": spell.number,
+            "name": spell.name,
+            "type": spell.kind,
+            "availability": spell.availability,
+            "costs": {
+                "mana": cost("mana"),
+                "spirit": cost("spirit"),
+                "stamina": cost("stamina"),
+                "renew": cost("renew"),
+            },
+            "minutes": {
+                "self": minutes(cena_session::spells::CastType::SelfCast),
+                "target": minutes(cena_session::spells::CastType::Target),
+            },
+        }}))
     }
 }
 
