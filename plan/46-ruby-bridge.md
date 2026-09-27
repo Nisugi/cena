@@ -1,7 +1,7 @@
 # 46 — The Ruby bridge: how a Lich script runs against Hydra
 
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
-(§10).** **Steps 1 to 4 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
+(§10).** **Steps 1 to 5 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11); the rest is not built. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
@@ -349,7 +349,9 @@ None of these is measured; each is a guess until it is.
    *"yep."*
 9. **Hydra starts the runner on a character's first script**, with the player's Ruby found as
    Saga finds it. AUTHOR: try it, measure it (§9); at login if it is slow.
-10. **Ship the checker** (§1). AUTHOR: *"yes."*
+10. **Ship the checker** (§1). AUTHOR: *"yes."* **BUILT otherwise in one respect** (step 5):
+    not from the census's lexer but from Ruby's own parser, against the runner itself, since a
+    player has Ruby and not Python, and a checker that reads the runner cannot drift from it.
 11. **M7b, after the agent's connection** and after M6's live run. AUTHOR: *"got it."*
     **MOVED 2026-09-27**: the author asked *"So M7 is done ... that means we can work on the
     scripting bridge in a worktree no?"*, was told this answer put it after M6's live run and
@@ -548,4 +550,44 @@ None of these is measured; each is a guess until it is.
      deadline measured (§9); Lich's `quiet_command`, a hook of its own (`util.rb` is not
      loaded).
 5. The checker over both collections, and the list of what runs published.
+   **BUILT 2026-09-27** (the author: *"step 5"*), in three commits:
+   - **The checker** (`bridges/ruby/hydra/check.rb`; `crates/cena-agent/src/scripts/checker.rs`
+     runs it). Ruby reads the script with its own parser (Prism) as Lich runs it -- cut at each
+     line that is a label alone, `script` in scope -- and every name it uses is judged against
+     the runner itself: the runner split in two, `bridges/ruby/hydra/engine.rb` loading Lich's
+     engine and Hydra's edges for both the runner and the checker, so what the checker finds
+     defined is what a script finds. Listed by hand is only what the runner defines and does
+     not answer as Lich does: the game's markup, and each method registered as not answered yet
+     (`Hydra.unanswered`: `Spell#cast`). A finding's kind is `stops`, `markup`, `windows` or
+     `differs` (a script's verdict is its worst), and it says whether it is Hydra's to answer
+     or the script's own. What it cannot see into it does not judge: a method of an unknown
+     receiver; names from a gem, a mixin, a script started or a script beside it named like
+     the name; a use behind `defined?` or `respond_to?`, under a `rescue` modifier, or in a
+     DSL's block.
+   - **Found in building it, and changed in the runner**: scripts lean on what Lich loads
+     before any script (`OpenStruct`, `YAML`, `Time.parse`, `Terminal::Table`...), which the
+     runner now loads, each as it is found; and `HAVE_GTK`, now false, as a Lich started
+     `--no-gtk`, so a script that asks goes its way without a window.
+   - **`;scripts check <script>`** (`crates/cena/src/scripts/check.rs`): the script found as
+     Lich finds one (now in Lich's order: `custom` first, a whole name before a prefix), and
+     its verdict and findings said, each thing once at its first line.
+   - **The list** (`inventory/14-what-runs.md`, a TSV a collection): **35% of elanthia-online's
+     scripts and 59% of the old repository's run today**, against `inventory/13`'s ceilings of
+     76% and 87%. The difference is the runner's to-do list, ordered there by how many scripts
+     each answer lets run: the game's markup (§6.2), Lich's windows, `Spell#cast`,
+     `Lich::Util`, then `Stats`, `Skills`, `Spells`, `Wounds`, `Scars`, `Effects`, `Society`
+     and `XMLData`'s fields, which Hydra's model holds and the runner does not name yet. 23 and
+     212 scripts stop on something of their own: a name defined nowhere, `File.exists?`
+     (dropped in Ruby 3.2), a file Ruby cannot read.
+   - **Tests**: the checker over a fixture with one line of each kind and lines it must not
+     find; what a check says, grouped and capped; `;scripts check` through the command line;
+     finding in Lich's order. Mutations, each red: no label cut, no `script` local, no guards,
+     no rescue modifier, the script's own constants judged, `<c>` taken as markup, the not-yet
+     registry unread, Lich's classes taken as the script's, a sibling script's names judged, a
+     prefix before a whole name. Hand check: 30 random stop findings in the old repository all
+     real; of the 1,254 that run, 18 mention a blocking name, each explained.
+   - **Not yet**: a spell held in a variable (`sign.cast`), which the checker misses. And a
+     question for the author: **Lich's windows**. §6 counted Gtk as running in ordinary Ruby
+     given the gem; the runner as built does not load it, and 16 of elanthia-online's scripts
+     and 55 of the old repository's stop only there (often at a settings window).
 6. §9's measurements, written here.

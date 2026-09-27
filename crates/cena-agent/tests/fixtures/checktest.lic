@@ -24,3 +24,4 @@ def helper = echo(Room.current.id)
 UpstreamHook.add('checktest', proc { |line| line.sub(/\A<c>tt\z/, 'target') })
 USAGE:
 echo level, task, there
+Walktest::Stride.new

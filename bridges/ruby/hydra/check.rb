@@ -60,7 +60,7 @@ module Hydra
     # Lich's names the runner loads, whose missing methods are Lich's
     # engine's, not loaded or not answered: Hydra's to answer.
     LICH_NAMES = %w[GameObj Char Script Settings CharSettings GameSettings UserVars Vars DownstreamHook
-                    UpstreamHook].freeze
+                    UpstreamHook Win32].freeze
 
     # Lich's reads of the game's markup: defined in Lich's engine, never
     # answered under Hydra, which gives scripts the game's text and its
@@ -116,7 +116,7 @@ module Hydra
       def file(path)
         source = File.binread(path).force_encoding(Encoding::UTF_8)
         source = source.encode(Encoding::UTF_8, Encoding::ISO_8859_1) unless source.valid_encoding?
-        findings = findings(source)
+        findings = findings(source, siblings(File.dirname(path)))
         name = File.basename(path, '.*')
         {
           'name' => name,
@@ -129,7 +129,17 @@ module Hydra
         }
       end
 
-      def findings(source)
+      # The scripts beside one: a constant named after one of them (`LNet`,
+      # lnet.lic; `Oleani`, oleani-lib.lic) is that script's, defined when it
+      # runs in the same runner.
+      def siblings(dir)
+        @siblings ||= {}
+        # Dir.glob reads a backslash as an escape: a Windows path is turned first.
+        @siblings[dir] ||= Dir.glob(File.join(dir.tr('\\', '/'), '*.{lic,rb}'))
+                              .map { |f| File.basename(f, '.*').downcase }
+      end
+
+      def findings(source, siblings = [])
         results = parsed(source)
         failed = results.find { |result| !result.errors.empty? }
         if failed
@@ -138,7 +148,7 @@ module Hydra
           return [Finding.new(error.location.start_line, 'stops', 'does not parse',
                               "Ruby #{RUBY_VERSION} cannot read it#{cut}: #{error.message}", false)]
         end
-        known = Known.new
+        known = Known.new(siblings)
         results.each { |result| result.value.accept(known) }
         visitor = Visitor.new(known)
         results.each { |result| result.value.accept(visitor) }
@@ -177,13 +187,14 @@ module Hydra
 
     # What the script defines, and the libraries it loads: a first pass.
     class Known < Prism::Visitor
-      attr_reader :methods, :constants, :findings, :guarded
+      attr_reader :methods, :constants, :findings, :guarded, :siblings
       # Names come from where this checker cannot see: a gem the script
       # loads, another script it starts, a module it mixes in.
       attr_accessor :unseen
 
-      def initialize
-        super
+      def initialize(siblings = [])
+        super()
+        @siblings = siblings
         @methods = Set.new
         @constants = Set.new
         @findings = []
@@ -434,9 +445,15 @@ module Hydra
           found(node, 'windows', path, WINDOWS_WHY)
         elsif head == 'Lich' || lich_class?(path)
           found(node, 'stops', path, LICH_WHY, hydra: true)
-        elsif !@known.unseen
+        elsif !@known.unseen && !sibling?(head)
           found(node, 'stops', path, 'not defined under Hydra\'s runner, nor by this script')
         end
+      end
+
+      # A constant named after a script beside this one: that script's.
+      def sibling?(name)
+        name = name.downcase
+        @known.siblings.any? { |stem| stem == name || stem.start_with?("#{name}-", "#{name}_") }
       end
 
       # A constant the script defines: its first or last name.
