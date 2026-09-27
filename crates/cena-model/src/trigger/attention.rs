@@ -70,34 +70,30 @@ pub struct Attention {
     pub cooldown: u32,
 }
 
-/// When each trigger's attention last came, by the game's clock: one per
-/// character and per set of triggers, so new triggers start cool.
+/// When each trigger last did what it does beyond the line -- its attention
+/// and its send, together -- by the game's clock: one per character and per
+/// set of triggers, so new triggers start cool.
 #[derive(Debug, Clone, Default)]
 pub struct Cooldowns {
     last: BTreeMap<String, u32>,
 }
 
 impl Cooldowns {
-    /// `calls` without those whose trigger is still cooling at game second
-    /// `now`; each admitted starts its trigger's cooldown. With the clock
-    /// unknown, every call is admitted and none starts one.
-    pub fn admit(&mut self, calls: Vec<Attention>, now: Option<u32>) -> Vec<Attention> {
+    /// Whether `trigger` may call for attention or send at game second
+    /// `now`, `cooldown` seconds after it last did; when it may, its
+    /// cooldown starts now. With the clock unknown it may, and none starts.
+    pub fn admit(&mut self, trigger: &str, cooldown: u32, now: Option<u32>) -> bool {
         let Some(now) = now else {
-            return calls;
+            return true;
         };
-        calls
-            .into_iter()
-            .filter(|call| {
-                let cooling = self
-                    .last
-                    .get(&call.trigger)
-                    .is_some_and(|&last| now.saturating_sub(last) < call.cooldown);
-                if !cooling {
-                    self.last.insert(call.trigger.clone(), now);
-                }
-                !cooling
-            })
-            .collect()
+        let cooling = self
+            .last
+            .get(trigger)
+            .is_some_and(|&last| now.saturating_sub(last) < cooldown);
+        if !cooling {
+            self.last.insert(trigger.to_owned(), now);
+        }
+        !cooling
     }
 }
 

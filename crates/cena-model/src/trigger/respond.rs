@@ -31,7 +31,7 @@ use std::ops::Range;
 
 use cena_protocol::runs::{Run, Runs};
 
-use super::{Attention, Color, Hit, Look, Matcher, Rule, Span};
+use super::{Act, Attention, Color, Hit, Look, Matcher, Rule, Span};
 use crate::GameState;
 use crate::line::Line;
 
@@ -46,6 +46,8 @@ pub struct Answer {
     pub fired: Vec<usize>,
     /// What those that call for attention call for, at each one's first hit.
     pub attention: Vec<Attention>,
+    /// The lines those that send would send, at each one's first hit.
+    pub acts: Vec<Act>,
 }
 
 /// A look, resolved: what one stretch of a line is painted.
@@ -109,6 +111,10 @@ impl Matcher {
             attention: firsts
                 .iter()
                 .filter_map(|hit| self.attention(hit.trigger, Some(hit), &text))
+                .collect(),
+            acts: firsts
+                .iter()
+                .filter_map(|hit| self.act(hit.trigger, Some(hit), &text))
                 .collect(),
         }
     }

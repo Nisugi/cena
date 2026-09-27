@@ -1,5 +1,6 @@
 use super::*;
 use cena_platform::ReplaySource;
+use cena_session::trigger::Matcher;
 use cena_session::{Event, Session};
 
 /// A data directory holding `file` as its triggers file, if any.

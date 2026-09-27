@@ -2,7 +2,7 @@
 //! one synchronous turn, so a snapshot and its stream share an exact fence.
 
 use crate::{Event, GameState, Generation, GenerationCell, SessionId, Snapshot, State};
-use cena_model::trigger::{Attention, Cooldowns, Edges, Matcher};
+use cena_model::trigger::{Act, Attention, Cooldowns, Edges, Matcher, Pace};
 use std::sync::{
     Arc, Mutex, PoisonError,
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -186,6 +186,17 @@ struct Answering {
     matcher: Arc<Matcher>,
     edges: Edges,
     cooldowns: Cooldowns,
+    pace: Pace,
+}
+
+/// What the fired triggers may do beyond the line now: their attention and
+/// sends past each trigger's cooldown, and the sends the pace held back.
+pub(crate) struct Admitted {
+    pub(crate) attention: Vec<Attention>,
+    pub(crate) acts: Vec<Act>,
+    pub(crate) held: Vec<Act>,
+    /// The held sends are to be said: once a window.
+    pub(crate) say_held: bool,
 }
 
 impl EventPublisher {
@@ -245,17 +256,49 @@ impl EventPublisher {
         (Arc::clone(matcher), fired)
     }
 
-    /// `calls` for attention without those whose trigger is cooling at game
-    /// second `now`.
-    pub(crate) fn admit(&self, calls: Vec<Attention>, now: Option<u32>) -> Vec<Attention> {
-        if calls.is_empty() {
-            return calls;
+    /// What `attention` and `acts`, from the triggers that fired, may do at
+    /// game second `now`: each trigger once in its cooldown, for both
+    /// together, then the sends at the character's pace.
+    pub(crate) fn admit(
+        &self,
+        attention: Vec<Attention>,
+        acts: Vec<Act>,
+        now: Option<u32>,
+    ) -> Admitted {
+        let mut admitted = Admitted {
+            attention: Vec::new(),
+            acts: Vec::new(),
+            held: Vec::new(),
+            say_held: false,
+        };
+        if attention.is_empty() && acts.is_empty() {
+            return admitted;
         }
-        self.triggers
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .cooldowns
-            .admit(calls, now)
+        let mut answering = self.triggers.lock().unwrap_or_else(PoisonError::into_inner);
+        let Answering {
+            cooldowns, pace, ..
+        } = &mut *answering;
+        // One admission per trigger, whether it calls, sends, or both.
+        let mut decided: Vec<(String, bool)> = Vec::new();
+        let mut may = |trigger: &str, cooldown: u32| {
+            if let Some((_, may)) = decided.iter().find(|(name, _)| name == trigger) {
+                return *may;
+            }
+            let may = cooldowns.admit(trigger, cooldown, now);
+            decided.push((trigger.to_owned(), may));
+            may
+        };
+        admitted.attention = attention
+            .into_iter()
+            .filter(|call| may(&call.trigger, call.cooldown))
+            .collect();
+        let acts: Vec<Act> = acts
+            .into_iter()
+            .filter(|act| may(&act.trigger, act.cooldown))
+            .collect();
+        (admitted.acts, admitted.held) = pace.admit(acts, now);
+        admitted.say_held = !admitted.held.is_empty() && pace.say_held(now);
+        admitted
     }
 
     /// A publisher over a caller's own legacy channel, with a fenced stream

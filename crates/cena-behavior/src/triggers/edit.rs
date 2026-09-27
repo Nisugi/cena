@@ -15,7 +15,7 @@ use super::{Refused, read};
 use crate::settings;
 
 /// The kinds of response a master switch turns on or off everywhere.
-pub const KINDS: [&str; 8] = [
+pub const KINDS: [&str; 9] = [
     "look",
     "squelch",
     "substitute",
@@ -24,6 +24,7 @@ pub const KINDS: [&str; 8] = [
     "sound",
     "notify",
     "alert",
+    "send",
 ];
 
 /// What `on` or `off` switches.
@@ -112,6 +113,35 @@ pub fn unset(text: &str, name: &str, key: &str) -> Result<String, String> {
             Err(format!("`{name}` does not set `{key}`"))
         }
     })
+}
+
+/// `name`, which came from elsewhere, approved to send its line: `approved`
+/// names that line, so a later change to it is held again. The new text,
+/// and the line approved.
+///
+/// # Errors
+///
+/// The file is not TOML, there is no such trigger, it is the player's own
+/// (it sends already), or it sends nothing.
+pub fn approve(text: &str, name: &str) -> Result<(String, String), String> {
+    let mut approved = String::new();
+    let text = change(text, &[name], |table| {
+        let trigger = trigger(table, name)?;
+        if trigger.get("origin").is_none() {
+            return Err(format!(
+                "`{name}` is the player's own, and sends without approval"
+            ));
+        }
+        let send = trigger
+            .get("send")
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("`{name}` sends nothing"))?
+            .to_owned();
+        trigger.insert("approved".to_owned(), Value::String(send.clone()));
+        approved = send;
+        Ok(())
+    })?;
+    Ok((text, approved))
 }
 
 /// The file without trigger `name`.

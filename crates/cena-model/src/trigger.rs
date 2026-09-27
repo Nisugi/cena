@@ -40,11 +40,12 @@
 //! | **Text** | squelch; substitute (with `$1`); redirect to another stream | `squelch = true`, `substitute = "…"`, `redirect = { stream = "combat", copy = true }` |
 //! | **Flag** | set a named flag, for a time or until cleared, or clear it; the guard word `flag "<name>"` reads it | `flag = { name = "rift", seconds = 30 }`, `flag = { name = "rift", clear = true }` |
 //! | **Attention** | a sound; an OS notification; a banner on the character's pages ([`Attention`]) | `sound = "data.wav"`, `notify = true`, `alert = "$1 is here"`, `cooldown = 10` |
+//! | **Act** | send a line as if typed: a Hydra command, or the game's ([`Act`]); from the player's own rules, or one approved | `send = "stand"`, `send = "weapon $1"` |
 //!
 //! Where an `event` stands without `text` or `regex`, the whole line is the
-//! match. A condition has no line: it may set a flag and call for
-//! attention, and nothing else. A trigger's attention comes at most once in
-//! its `cooldown`, 3 seconds unless set, `VellumFE`'s
+//! match. A condition has no line: it may set a flag, call for attention
+//! and send, and nothing else. A trigger's attention and its send come at
+//! most once in its `cooldown`, 3 seconds unless set, `VellumFE`'s
 //! `DEFAULT_COOLDOWN_SECS` (`reference/VellumFE/src/core/alerts.rs:23`).
 //!
 //! None of the line's responses changes what the game said. The model's
@@ -96,6 +97,7 @@ use crate::GameState;
 use crate::guard::{Condition, Facts};
 use crate::state::flags::{FlagChange, Until};
 
+mod act;
 mod attention;
 mod check;
 mod edges;
@@ -103,6 +105,7 @@ mod event;
 mod matcher;
 mod respond;
 
+pub use act::{Act, MAX_SENDS, Pace, SEND_WINDOW};
 pub use attention::{Attention, Cooldowns, Say};
 pub use edges::Edges;
 pub use event::LineEvent;
@@ -168,7 +171,10 @@ pub struct Rule {
     pub notify: Option<Say>,
     /// Show this as a banner on the character's pages.
     pub alert: Option<Say>,
-    /// Seconds before its attention comes again.
+    /// Send this line as if typed: through the `;` command table first,
+    /// then to the game; with a regex, `$1` is a group.
+    pub send: Option<String>,
+    /// Seconds before its attention or its send comes again.
     pub cooldown: u32,
 }
 
@@ -325,6 +331,7 @@ impl Default for Rule {
             sound: None,
             notify: None,
             alert: None,
+            send: None,
             cooldown: COOLDOWN,
         }
     }

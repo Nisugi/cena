@@ -25,7 +25,7 @@ use std::sync::Arc;
 
 use cena_model::line::Line;
 use cena_model::state::flags::FlagChange;
-use cena_model::trigger::{Attention, Matcher};
+use cena_model::trigger::{Act, Attention, Matcher, SEND_WINDOW};
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
 
@@ -83,7 +83,7 @@ impl<S: ByteSource> SessionActor<S> {
         for shown in answer.lines {
             let _ = self.events.send(Event::Line(Arc::new(shown)));
         }
-        self.fired(triggers, &answer.fired, answer.attention);
+        self.fired(triggers, &answer.fired, answer.attention, answer.acts);
     }
 
     /// At a prompt: each condition that became true does what it does.
@@ -93,12 +93,23 @@ impl<S: ByteSource> SessionActor<S> {
             .iter()
             .filter_map(|&rank| triggers.condition_attention(rank))
             .collect();
-        self.fired(&triggers, &fired, attention);
+        let acts = fired
+            .iter()
+            .filter_map(|&rank| triggers.condition_act(rank))
+            .collect();
+        self.fired(&triggers, &fired, attention, acts);
     }
 
     /// Set the flags of the triggers `fired`, by rank, and publish the
-    /// `attention` they called for that is not cooling.
-    fn fired(&mut self, triggers: &Matcher, fired: &[usize], attention: Vec<Attention>) {
+    /// `attention` they called for and the `acts` they send, past each
+    /// trigger's cooldown and the character's pace; say the sends held back.
+    fn fired(
+        &mut self,
+        triggers: &Matcher,
+        fired: &[usize],
+        attention: Vec<Attention>,
+        acts: Vec<Act>,
+    ) {
         let now = self.state.game_time_now();
         for &rank in fired {
             if let Some(flag) = triggers
@@ -109,8 +120,28 @@ impl<S: ByteSource> SessionActor<S> {
                 self.set_flag(&flag.change(now));
             }
         }
-        for called in self.events.admit(attention, now) {
+        let admitted = self.events.admit(attention, acts, now);
+        for called in admitted.attention {
             let _ = self.events.send(Event::Attention(Arc::new(called)));
+        }
+        for act in admitted.acts {
+            let _ = self.events.send(Event::Act(Arc::new(act)));
+        }
+        if admitted.say_held {
+            let held: Vec<String> = admitted
+                .held
+                .iter()
+                .map(|act| format!("`{}` ({})", act.line, act.trigger))
+                .collect();
+            let _ = self.events.send(Event::Notice(crate::notice::Notice::line(
+                crate::notice::NoticeKind::Warn,
+                format!(
+                    "Triggers: not sent, {} lines in {SEND_WINDOW} seconds already: {}. \
+                     A trigger may be answering its own line.",
+                    cena_model::trigger::MAX_SENDS,
+                    held.join(", ")
+                ),
+            )));
         }
     }
 

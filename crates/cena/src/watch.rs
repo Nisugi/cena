@@ -54,6 +54,9 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
                     // "the player typed this" from "another character's
                     // script sent this".
                     Origin::Script => "script",
+                    // A trigger's send (`plan/45` Stage 5): never the
+                    // player's, so never shown as `manual`.
+                    Origin::Trigger => "trigger",
                 };
                 eprintln!("{who}  -> [{tag}] {line}");
             }
@@ -107,7 +110,8 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
                 | Event::Combat(_)
                 | Event::Quiet(_)
                 | Event::Flag(_)
-                | Event::Attention(_),
+                | Event::Attention(_)
+                | Event::Act(_),
             ) => {}
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and

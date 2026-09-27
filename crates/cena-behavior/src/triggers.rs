@@ -37,7 +37,7 @@
 //! **For whom** is CLAUDE'S READING of "one file", to confirm (`plan/45`
 //! §5b). A trigger is everyone's unless `characters` names who. `for.<name>`
 //! changes one character's copy field by field, by the hunt chain's rule
-//! ([`overlay`]): a table merges key by key and anything else is replaced.
+//! ([`overlay`](crate::hunt::chain::overlay)): a table merges key by key and anything else is replaced.
 //! That keeps `plan/12` §6a.2's global -> character override for triggers
 //! without a profile level. Character names are matched ignoring case.
 //!
@@ -50,6 +50,14 @@
 //! replaces what it brought. What an import kept but Hydra does not do yet
 //! is `held`, a table by the response's name (`held = { sound = "…" }`).
 //! Both belong to the trigger, not to one character's copy.
+//!
+//! **A trigger from elsewhere does not send until the player approves it**
+//! (author, `plan/45` §1 row 1: *"b is fine"*). One with an `origin` and a
+//! `send` loads with the send held, and says so ([`Loaded::held`]), until
+//! `approved` names that very line (`;trigger approve`); a send changed
+//! since -- a new import, an edit -- is held again. `VellumFE`'s rule for its
+//! alert packs: *"the gate is about authorship, not about the capability
+//! itself"* (`reference/VellumFE/src/config/alertpacks.rs:18-27`).
 //!
 //! **Refused by name.** A trigger the file cannot type is left out, named,
 //! with the reason ([`Refused`]), and the rest load: one bad regex among
@@ -69,9 +77,8 @@ use cena_session::trigger::{Rule, Trigger};
 use serde::Deserialize;
 use toml::{Table, Value};
 
-use crate::hunt::chain::overlay;
-
 pub mod edit;
+mod entry;
 pub mod wrayth;
 
 /// The file's name under the data directory.
@@ -98,6 +105,9 @@ pub struct Loaded {
     pub triggers: Triggers,
     /// What did not, by name.
     pub refused: Vec<Refused>,
+    /// Triggers whose `send` is held: it came from elsewhere and the player
+    /// has not approved it (`;trigger approve`). They load; they do not send.
+    pub held: Vec<Refused>,
 }
 
 /// A trigger, or a section of the file, left out, and why.
@@ -125,6 +135,8 @@ struct Entry {
     base: Form,
     /// One character's copy, by lowercased name.
     overrides: Vec<(String, Form)>,
+    /// Why its send is held, when it is.
+    held: Option<String>,
 }
 
 /// A trigger as someone has it: on or off, and its rule.
@@ -150,6 +162,7 @@ struct Responses {
     sound: bool,
     notify: bool,
     alert: bool,
+    send: bool,
 }
 
 impl Default for Responses {
@@ -163,6 +176,7 @@ impl Default for Responses {
             sound: true,
             notify: true,
             alert: true,
+            send: true,
         }
     }
 }
@@ -193,6 +207,9 @@ impl Responses {
         if !self.alert {
             rule.alert = None;
         }
+        if !self.send {
+            rule.send = None;
+        }
         let responds = rule.look.is_some()
             || rule.squelch
             || rule.substitute.is_some()
@@ -200,7 +217,8 @@ impl Responses {
             || rule.flag.is_some()
             || rule.sound.is_some()
             || rule.notify.is_some()
-            || rule.alert.is_some();
+            || rule.alert.is_some()
+            || rule.send.is_some();
         responds.then_some(rule)
     }
 }
@@ -287,8 +305,16 @@ pub fn read(text: &str) -> Result<Loaded, String> {
         None => {}
         Some(Value::Table(all)) => {
             for (name, value) in all {
-                match entry(&name, value) {
-                    Ok(entry) => triggers.entries.push(entry),
+                match entry::entry(&name, value) {
+                    Ok(entry) => {
+                        if let Some(why) = &entry.held {
+                            loaded.held.push(Refused {
+                                name: name.clone(),
+                                why: why.clone(),
+                            });
+                        }
+                        triggers.entries.push(entry);
+                    }
                     Err(why) => refuse(&name, why),
                 }
             }
@@ -310,83 +336,4 @@ pub fn read(text: &str) -> Result<Loaded, String> {
 /// A switch section's refusal: on its own, its switches are all on.
 fn switches(e: &toml::de::Error) -> String {
     format!("{}; its switches are all on until it is fixed", e.message())
-}
-
-fn entry(name: &str, value: Value) -> Result<Entry, String> {
-    if name.trim().is_empty() {
-        return Err("a trigger needs a name".into());
-    }
-    let Value::Table(mut table) = value else {
-        return Err("is not a table".into());
-    };
-    let characters = match table.remove("characters") {
-        None => None,
-        Some(value) => {
-            let names: Vec<String> = value
-                .try_into()
-                .map_err(|e: toml::de::Error| format!("its `characters`: {}", e.message()))?;
-            if names.is_empty() {
-                return Err("its `characters` names nobody; leave it out to mean everyone".into());
-            }
-            Some(names.iter().map(|name| name.to_lowercase()).collect())
-        }
-    };
-    match table.remove("origin") {
-        None | Some(Value::String(_)) => {}
-        Some(other) => return Err(format!("its `origin` is {other}, not where it came from")),
-    }
-    match table.remove("held") {
-        None => {}
-        Some(Value::Table(held)) if held.values().all(Value::is_str) => {}
-        Some(_) => {
-            return Err("its `held` is not a table of what was kept and not done".into());
-        }
-    }
-    let overrides = match table.remove("for") {
-        None => Table::new(),
-        Some(Value::Table(overrides)) => overrides,
-        Some(_) => return Err("its `for` is not a table of characters".into()),
-    };
-    let base = form(table.clone())?;
-    let mut forms: Vec<(String, Form)> = Vec::new();
-    for (character, value) in overrides {
-        let Value::Table(over) = value else {
-            return Err(format!("for {character}: not a table"));
-        };
-        if ["characters", "for", "origin", "held"]
-            .iter()
-            .any(|key| over.contains_key(*key))
-        {
-            return Err(format!(
-                "for {character}: `characters`, `for`, `origin` and `held` belong to the \
-                 trigger, not one character"
-            ));
-        }
-        let key = character.to_lowercase();
-        if forms.iter().any(|(name, _)| *name == key) {
-            return Err(format!("for {character}: that character is named twice"));
-        }
-        let mut merged = table.clone();
-        overlay(&mut merged, over);
-        let form = form(merged).map_err(|why| format!("for {character}, {why}"))?;
-        forms.push((key, form));
-    }
-    Ok(Entry {
-        name: name.to_owned(),
-        characters,
-        base,
-        overrides: forms,
-    })
-}
-
-fn form(mut table: Table) -> Result<Form, String> {
-    let enabled = match table.remove("enabled") {
-        None => true,
-        Some(Value::Boolean(on)) => on,
-        Some(other) => return Err(format!("its `enabled` is {other}, not true or false")),
-    };
-    let rule = table
-        .try_into()
-        .map_err(|e: toml::de::Error| e.message().to_owned())?;
-    Ok(Form { enabled, rule })
 }

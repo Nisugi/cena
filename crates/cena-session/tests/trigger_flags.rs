@@ -215,3 +215,98 @@ async fn a_condition_calls_for_attention_when_it_fires() {
         .collect();
     assert_eq!(notified, [Some("hid".to_owned())]);
 }
+
+fn sent(events: &[Event]) -> Vec<String> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            Event::Act(act) => Some(act.line.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn warned(events: &[Event]) -> Vec<String> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            Event::Notice(notice) => Some(notice.lines().join(" ")),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A trigger's send is published with its groups filled in; the session
+/// does not send it itself, the binary does.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_send_is_published_for_the_binary_to_send() {
+    let wire = "<prompt time=\"999\">&gt;</prompt>\nYou could use this opportunity to tackle!\n";
+    let (events, _) = run(
+        wire,
+        vec![Trigger {
+            name: "react".into(),
+            rule: Rule {
+                pattern: Some(Pattern::Regex(
+                    r"You could use this opportunity to (\w+)".into(),
+                )),
+                send: Some("weapon $1".into()),
+                ..Rule::default()
+            },
+        }],
+    )
+    .await;
+    assert_eq!(sent(&events), ["weapon tackle"]);
+}
+
+/// Triggers that answer each other are held back past the pace, and said
+/// once, not once a line.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn sends_past_the_pace_are_held_back_and_said_once() {
+    let lines: Vec<String> = (0..8).map(|i| format!("ping {i}")).collect();
+    let wire = format!("<prompt time=\"999\">&gt;</prompt>\n{}\n", lines.join("\n"));
+    let triggers = (0..8)
+        .map(|i| {
+            on_words(
+                &format!("t{i}"),
+                &format!("ping {i}"),
+                Rule {
+                    send: Some(format!("pong {i}")),
+                    ..Rule::default()
+                },
+            )
+        })
+        .collect();
+    let (events, _) = run(&wire, triggers).await;
+    assert_eq!(
+        sent(&events),
+        ["pong 0", "pong 1", "pong 2", "pong 3", "pong 4"]
+    );
+    let said = warned(&events);
+    assert_eq!(said.len(), 1, "{said:?}");
+    assert!(
+        said[0].contains("`pong 5` (t5)") && said[0].contains("answering its own line"),
+        "{said:?}"
+    );
+}
+
+/// A trigger that sounds and sends is admitted once in its cooldown, for
+/// both: its sound does not start a cooldown that eats its send.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_trigger_that_sounds_and_sends_does_both() {
+    let wire = format!("<prompt time=\"999\">&gt;</prompt>\n{SWING}");
+    let (events, _) = run(
+        &wire,
+        vec![on_words(
+            "swing",
+            "You swing",
+            Rule {
+                sound: Some("ding.wav".into()),
+                send: Some("stance defensive".into()),
+                ..Rule::default()
+            },
+        )],
+    )
+    .await;
+    assert_eq!(called(&events), ["swing"]);
+    assert_eq!(sent(&events), ["stance defensive"]);
+}

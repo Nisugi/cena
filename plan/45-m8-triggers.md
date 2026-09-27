@@ -1,12 +1,12 @@
 # 45 — Milestone 8: triggers
 
-> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGES 4 AND 3 on
-> 2026-09-27** (§6), all but Stage 1's release run of the bench. Stage 5 (act) is what
-> remains. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
+> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGES 4, 3 AND 5 on
+> 2026-09-27** (§6): every stage built, all but Stage 1's release run of the bench, and
+> nothing yet run live. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
 > the worktree `G:\dev\Cena-m8` (locked on purpose: M8 spans sessions). The author's
 > decisions are quoted in §1 with the date. **Everything else here is Claude's proposal**,
 > and two of §1's rows are Claude's *reading* of an answer, marked as such. What was decided
-> while building, for the author to confirm, is §5c, §5d, §6a, §6b and §6c.
+> while building, for the author to confirm, is §5c, §5d, §6a, §6b, §6c, §6d and §6e.
 > `plan/12` wins any contradiction, except where §1 records the author changing it.
 
 ---
@@ -555,7 +555,7 @@ changes nothing. **MET**: `crates/cena/src/triggers/tests.rs`,
 | Question | Built | Why |
 |---|---|---|
 | An XML library? | **No**: the dialect is measured (no comments, CDATA or doctype; every element in the four sections closes itself; `'` and `"` both quote; `&apos;`, `&gt;`, `&quot;`) and read by hand, quotes honoured | `hunt/yaml.rs`'s precedent (`plan/05` §-1); the workspace has no XML crate |
-| A trigger's name | **its words**: `[LNet]-`, `Bastique`; words twice in one file get `(2)` | what a player looks for in `;trigger list`; `VellumFE`'s `wrayth_merchant_2` slugs lose it |
+| A trigger's name | **its words**: `[LNet]-`, `Maravel`; words twice in one file get `(2)` | what a player looks for in `;trigger list`; `VellumFE`'s `wrayth_merchant_2` slugs lose it |
 | Names as one trigger per style, as `VellumFE`? | **No**, one trigger per name | `VellumFE` merges because its engine is multi-literal; here one literal is one trigger, and a name is removed alone |
 | Importing a file again | **replaces** what that file brought (`origin = "Wrayth: <file>"`), whatever was changed since | the same file twice is the same file once; a change made since is lost, and the import says how many it replaced |
 | A name the player already uses | **left to the player**; the import's is `<name> (Wrayth)` | the player's own rule outranks an import |
@@ -579,6 +579,33 @@ changes nothing. **MET**: `crates/cena/src/triggers/tests.rs`,
   rule's act arrives held.
 - **A trigger cannot feed itself**: re-arm and a rate limit, so one whose command's echo
   matches its own pattern does not loop.
+
+**BUILT 2026-09-27.** `send = "<line>"`, `$1` filled in from a regex, from a line's trigger
+or a condition (`crates/cena-model/src/trigger/act.rs`). The session paces it and publishes
+`Event::Act`; the binary sends it through the character's `;` command table first, and
+otherwise to the game as `Origin::Trigger` (`crates/cena/src/triggers/act.rs`). A trigger
+with an `origin` sends only the line its `approved` names (`;trigger approve <name>`,
+`crates/cena-behavior/src/triggers/entry.rs`).
+
+**Done when** a trigger's line reaches the game marked as a trigger's, a Hydra command sent
+by one runs, neither counts as a person, and a pair answering each other is held back and
+said. **MET**: `crates/cena/src/triggers/act.rs`'s test,
+`crates/cena-session/tests/attendance.rs` (`a_trigger_sending_is_not_a_person_either`),
+`crates/cena-session/tests/trigger_flags.rs` (the pace, said once). Eight mutants, all caught.
+
+### 6e. Stage 5 as built -- CLAUDE'S, to confirm
+
+| Question | Built | Why |
+|---|---|---|
+| Who sends | the binary, one task per character, through the handle that character's `;` commands are on | the command table is the binary's (`crate::commands`), and the session decides and paces as it does attention |
+| As typed | `;` commands first, then the game; `Gate::None`, as a typed line goes | the author's words, *"as if typed"*; a line in roundtime is answered by the game as a typed one is |
+| The pace | at most 5 sends in 10 game seconds per character, across its triggers; the rest held back and said, once a window | two triggers answering each other loop with no single trigger's cooldown broken; `VellumFE`'s triggers never send, so the numbers are mine |
+| No clock | nothing is sent | a pace nobody can measure is no pace; the game's clock is known from the first prompt |
+| Cooldown | shared with the trigger's attention: one admission per trigger for both | a trigger that sounds and sends is one firing, not two |
+| From elsewhere | an `origin` holds the send until `approved` names that very line; a new line is held again | `VellumFE`'s *"the gate is about authorship"*, by the line rather than a hash, since the line is what is approved |
+| What is said | a Hydra command unknown, or a line the session refused, names the trigger | a trigger acting where no one is watching must still leave a trace |
+| The terminal | `-> [trigger] <line>` | `watch.rs` shows every send by its origin |
+| `;trigger test` | names a send and does not send it | a test that acted would not be a test |
 
 ---
 

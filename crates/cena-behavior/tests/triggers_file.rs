@@ -528,3 +528,67 @@ fn attention_that_cannot_work_is_refused_by_name() {
     let off = format!("{fine}[responses]\nsound = false\n");
     assert_eq!(names(&off, "Nisugi"), Some(vec!["hid".to_owned()]));
 }
+
+/// Stage 5: a trigger from elsewhere does not send until the player
+/// approves that very line; the player's own sends at once.
+#[test]
+fn a_send_from_elsewhere_waits_for_approval_of_that_line() {
+    let own = "[trigger.mine]\ntext = 'x'\nsend = 'stand'\n";
+    let loaded = read(own).unwrap();
+    assert!(loaded.held.is_empty());
+    assert_eq!(
+        only(own, "Nisugi").unwrap().rule.send.as_deref(),
+        Some("stand")
+    );
+
+    let imported = "[trigger.theirs]\ntext = 'x'\nsend = 'stand'\norigin = 'a shared file'\n";
+    let loaded = read(imported).unwrap();
+    assert_eq!(loaded.held.len(), 1);
+    assert!(
+        loaded.held[0].why.contains("came from a shared file")
+            && loaded.held[0].why.contains("trigger approve theirs"),
+        "{:?}",
+        loaded.held
+    );
+    assert_eq!(
+        names(imported, "Nisugi"),
+        Some(Vec::new()),
+        "held, it does nothing, so it is not on"
+    );
+
+    let approved = format!("{imported}approved = 'stand'\n");
+    assert!(read(&approved).unwrap().held.is_empty());
+    assert_eq!(
+        only(&approved, "Nisugi").unwrap().rule.send.as_deref(),
+        Some("stand")
+    );
+
+    // A send changed since its approval is held again.
+    let changed = approved.replace("send = 'stand'", "send = 'quit'");
+    assert_eq!(read(&changed).unwrap().held.len(), 1);
+
+    // Held, a trigger that also colours keeps its colour.
+    let coloured = format!("{imported}look = {{ bold = true }}\n");
+    let theirs = only(&coloured, "Nisugi").unwrap();
+    assert_eq!(theirs.rule.send, None);
+    assert!(theirs.rule.look.is_some());
+}
+
+#[test]
+fn a_send_that_cannot_work_is_refused_by_name() {
+    let cases = [
+        ("text = 'x'\nsend = ' '", "`send` is empty"),
+        ("text = 'x'\nsend = \"stand\\nquit\"", "more than one line"),
+        (
+            "text = 'x'\nsend = 'stand'\nfor = { Dicate = { approved = 'stand' } }",
+            "belong to the trigger",
+        ),
+        (
+            "text = 'x'\nsend = 'stand'\napproved = 5",
+            "`approved` is 5",
+        ),
+    ];
+    assert_eq!(missed(&cases), Vec::<String>::new());
+    let off = "[trigger.mine]\ntext = 'x'\nsend = 'stand'\n[responses]\nsend = false\n";
+    assert_eq!(names(off, "Nisugi"), Some(Vec::new()));
+}

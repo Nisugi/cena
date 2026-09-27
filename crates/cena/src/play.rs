@@ -177,13 +177,14 @@ impl Table {
                 let (_, events) = session.subscribe();
                 let (_, learning) = session.subscribe();
                 let (_, calls) = session.subscribe();
+                let (_, acts) = session.subscribe();
                 let (session, records, player) =
                     setup::attach(session, &character, &game, &account);
-                attached = Some((events, learning, calls, records, player));
+                attached = Some((events, learning, calls, acts, records, player));
                 session
             })
             .map_err(|e| format!("[{character}] not started: {e}"))?;
-        let (Some((events, learning, calls, records, player)), Some(hosted)) =
+        let (Some((events, learning, calls, acts, records, player)), Some(hosted)) =
             (attached, host.get(id))
         else {
             return Err(format!(
@@ -221,6 +222,9 @@ impl Table {
             character.clone(),
             self.attention.clone(),
         ));
+        // A trigger's send goes as if typed, through this character's
+        // command table (`plan/45` Stage 5).
+        tokio::spawn(triggers::perform(acts, hosted.handle.clone()));
         proven.on_ready(&hosted.observer, &self.turn);
         tokio::spawn(after_ready(
             hosted.handle.clone(),

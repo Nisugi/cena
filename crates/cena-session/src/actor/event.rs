@@ -54,6 +54,12 @@ pub enum Event {
     /// or at the prompt a condition fired on. `Arc` for [`Event::Line`]'s
     /// reason.
     Attention(std::sync::Arc<cena_model::trigger::Attention>),
+    /// A trigger sends a line as if the player typed it (`plan/45` Stage 5,
+    /// `cena_model::trigger::Act`): through the `;` command table first,
+    /// otherwise to the game as [`Origin::Trigger`](crate::Origin::Trigger).
+    /// The session decides and paces it; the binary sends it, holding the
+    /// handle a command table is on.
+    Act(std::sync::Arc<cena_model::trigger::Act>),
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///

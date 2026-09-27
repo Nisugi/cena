@@ -158,3 +158,24 @@ fn one_bad_trigger_does_not_block_editing_another() {
     let text = edit::add(text, "fine", "words").unwrap();
     assert_eq!(names(&text).unwrap(), ["fine"]);
 }
+
+/// `approve` names the line approved; the player's own needs none.
+#[test]
+fn approve_names_the_line_it_lets_send() {
+    let text = "[trigger.theirs]\ntext = 'x'\nsend = 'stand'\norigin = 'a shared file'\n";
+    let (approved, line) = edit::approve(text, "theirs").unwrap();
+    assert_eq!(line, "stand");
+    assert!(read(&approved).unwrap().held.is_empty());
+    let own = "[trigger.mine]\ntext = 'x'\nsend = 'stand'\n";
+    assert!(
+        edit::approve(own, "mine")
+            .unwrap_err()
+            .contains("player's own")
+    );
+    let silent = "[trigger.quiet]\ntext = 'x'\nsquelch = true\norigin = 'a shared file'\n";
+    assert!(
+        edit::approve(silent, "quiet")
+            .unwrap_err()
+            .contains("sends nothing")
+    );
+}

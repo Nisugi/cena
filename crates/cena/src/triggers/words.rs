@@ -4,7 +4,7 @@
 //! matches, a value, and a line to test are the rest of the line, as typed.
 
 /// `;trigger help`, one usage per line.
-pub(crate) const HELP: [&str; 12] = [
+pub(crate) const HELP: [&str; 13] = [
     "trigger list -- every trigger, by category",
     "trigger show <name> -- one trigger's settings",
     "trigger add <name> <words> -- a new trigger on those words, making them bold",
@@ -17,6 +17,7 @@ pub(crate) const HELP: [&str; 12] = [
     "trigger test <line> -- what this character's triggers would do to that line",
     "trigger reload -- read the file again, for this character",
     "trigger import <path> -- a Wrayth settings file's highlights, names and ignores",
+    "trigger approve <name> -- let a trigger that came from elsewhere send its line",
 ];
 
 /// One `;trigger` command.
@@ -66,6 +67,8 @@ pub(crate) enum Command {
     Reload,
     /// `;trigger import <path>`: a Wrayth settings file.
     Import(String),
+    /// `;trigger approve <name>`: let a trigger from elsewhere send.
+    Approve(String),
 }
 
 /// What `on` or `off` switches.
@@ -98,12 +101,12 @@ fn command(rest: &str) -> Result<Command, String> {
         "" | "help" => Ok(Command::Help),
         "list" => Ok(Command::List),
         "reload" => Ok(Command::Reload),
-        "show" | "remove" => {
+        "show" | "remove" | "approve" => {
             let (name, _) = name(rest).ok_or_else(|| usage("a trigger's name"))?;
-            Ok(if verb == "show" {
-                Command::Show(name)
-            } else {
-                Command::Remove(name)
+            Ok(match verb.as_str() {
+                "show" => Command::Show(name),
+                "remove" => Command::Remove(name),
+                _ => Command::Approve(name),
             })
         }
         "add" => {

@@ -15,8 +15,10 @@
 //! A change is written whole or not at all -- to a file beside it, then over
 //! it -- because a player's triggers file may hold years of rules.
 
+mod act;
 mod explain;
 mod import;
+mod load;
 mod words;
 
 use std::path::{Path, PathBuf};
@@ -24,14 +26,16 @@ use std::sync::Arc;
 use std::{fs, io};
 
 use cena_behavior::settings::typed;
+use cena_behavior::triggers;
 use cena_behavior::triggers::edit::{self, Switch};
-use cena_behavior::triggers::{self, Refused};
 use cena_session::command::claimant::Claimed;
-use cena_session::trigger::Matcher;
 use cena_session::{Notice, NoticeKind, SessionHandle};
 
 use crate::commands::Commands;
+use load::{counted, counted_as, loaded, reload};
 use words::{Command, HELP, Target};
+
+pub(crate) use act::perform;
 
 /// What `;trigger` says, one notice a line.
 type Said = Vec<(NoticeKind, String)>;
@@ -65,72 +69,6 @@ pub(crate) fn command(
     }));
 }
 
-/// Read the file and give `character`'s session its triggers: how many are
-/// on, and what was left out.
-fn reload(handle: &SessionHandle, dir: &Path, character: &str) -> Reloaded {
-    let loaded = triggers::load(dir)?;
-    let mine = loaded.triggers.for_character(character);
-    let count = mine.len();
-    let sounds = crate::attention::sounds_dir(dir);
-    let mut missing: Vec<String> = mine
-        .iter()
-        .filter_map(|trigger| trigger.rule.sound.clone())
-        .filter(|sound| crate::attention::found(&sounds, sound).is_none())
-        .collect();
-    missing.sort();
-    missing.dedup();
-    let unfound = (!missing.is_empty()).then(|| {
-        format!(
-            "{} not found: {}. Put {} in {}.",
-            counted_as(missing.len(), "sound"),
-            missing
-                .iter()
-                .map(|sound| format!("`{sound}`"))
-                .collect::<Vec<_>>()
-                .join(", "),
-            if missing.len() == 1 { "it" } else { "them" },
-            sounds.display()
-        )
-    });
-    handle.set_triggers(Matcher::new(mine)?);
-    Ok((count, loaded.refused, unfound))
-}
-
-/// A reload: how many are on, what was refused, and which sounds are
-/// nowhere, said.
-type Reloaded = Result<(usize, Vec<Refused>, Option<String>), String>;
-
-/// What to say of a reload: each refusal, the sounds not found, and how
-/// many are on -- always when `asked`, otherwise only when any are.
-fn loaded(reloaded: Reloaded, asked: bool) -> Said {
-    let (count, refused, unfound) = match reloaded {
-        Ok(reloaded) => reloaded,
-        Err(why) => return vec![(NoticeKind::Warn, format!("{why}. None are on."))],
-    };
-    let mut said: Said = refused
-        .iter()
-        .map(|refused| (NoticeKind::Warn, format!("{refused} It is left out.")))
-        .collect();
-    said.extend(unfound.map(|unfound| (NoticeKind::Warn, unfound)));
-    if asked || count > 0 {
-        said.push((NoticeKind::Info, format!("{} on.", counted(count))));
-    }
-    said
-}
-
-fn counted_as(count: usize, noun: &str) -> String {
-    if count == 1 {
-        format!("1 {noun}")
-    } else {
-        format!("{count} {noun}s")
-    }
-}
-
-fn counted(count: usize) -> String {
-    let noun = if count == 1 { "trigger" } else { "triggers" };
-    format!("{count} {noun}")
-}
-
 /// Do `parsed`, and say what became of it.
 fn answer(
     parsed: Result<Command, String>,
@@ -158,6 +96,10 @@ fn answer(
         },
         Command::Test(words) => info(explain::explain(&handle.triggers(), &words)),
         Command::Reload => loaded(reload(handle, dir, character), true),
+        Command::Approve(name) => change(&|text| {
+            let (text, line) = edit::approve(text, &name)?;
+            Ok((text, format!("`{name}` approved: it sends \"{line}\"")))
+        }),
         Command::Import(path) => import::import(handle, dir, character, Path::new(&path)),
         Command::Add { name, words } => change(&|text| {
             let text = edit::add(text, &name, &words)?;
@@ -206,7 +148,7 @@ fn change(handle: &SessionHandle, dir: &Path, character: &str, edit: Edit<'_>) -
         return vec![(NoticeKind::Error, format!("not saved: {why}"))];
     }
     match reload(handle, dir, character) {
-        Ok((count, _, unfound)) => {
+        Ok(load::Reload { count, unfound, .. }) => {
             let mut said = vec![(
                 NoticeKind::Info,
                 format!(

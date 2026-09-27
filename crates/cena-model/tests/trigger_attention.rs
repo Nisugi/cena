@@ -18,16 +18,6 @@ fn trigger(name: &str, rule: Rule) -> Trigger {
     }
 }
 
-fn call(trigger: &str, cooldown: u32) -> Attention {
-    Attention {
-        trigger: trigger.into(),
-        sound: Some("ding.wav".into()),
-        notify: None,
-        alert: None,
-        cooldown,
-    }
-}
-
 #[test]
 fn true_says_the_line_as_the_game_sent_it_and_words_fill_in_groups() {
     let matcher = Matcher::new(vec![
@@ -105,31 +95,21 @@ fn a_condition_says_its_name_and_a_trigger_with_no_attention_calls_for_none() {
 }
 
 #[test]
-fn a_trigger_calls_at_most_once_in_its_cooldown() {
+fn a_trigger_does_what_it_does_beyond_the_line_at_most_once_in_its_cooldown() {
     let mut cooldowns = Cooldowns::default();
-    let admitted = |cooldowns: &mut Cooldowns, calls: Vec<Attention>, now| {
-        cooldowns
-            .admit(calls, now)
-            .into_iter()
-            .map(|call| call.trigger)
-            .collect::<Vec<_>>()
-    };
-    assert_eq!(
-        admitted(&mut cooldowns, vec![call("a", 3), call("b", 0)], Some(100)),
-        ["a", "b"]
+    assert!(cooldowns.admit("a", 3, Some(100)));
+    assert!(cooldowns.admit("b", 0, Some(100)));
+    assert!(
+        !cooldowns.admit("a", 3, Some(102)),
+        "a cools for three seconds"
     );
-    assert_eq!(
-        admitted(&mut cooldowns, vec![call("a", 3), call("b", 0)], Some(102)),
-        ["b"],
-        "a cools for three seconds; b has none"
-    );
-    assert_eq!(
-        admitted(&mut cooldowns, vec![call("a", 3)], Some(103)),
-        ["a"],
+    assert!(cooldowns.admit("b", 0, Some(102)), "b has none");
+    assert!(
+        cooldowns.admit("a", 3, Some(103)),
         "cooled, from 100 and not from the call it held back"
     );
-    // With no clock, each call comes, and none starts a cooldown.
+    // With no clock, each may, and none starts a cooldown.
     let mut fresh = Cooldowns::default();
-    assert_eq!(admitted(&mut fresh, vec![call("a", 3)], None), ["a"]);
-    assert_eq!(admitted(&mut fresh, vec![call("a", 3)], Some(100)), ["a"]);
+    assert!(fresh.admit("a", 3, None));
+    assert!(fresh.admit("a", 3, Some(100)));
 }

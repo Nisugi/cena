@@ -109,6 +109,9 @@ fn does(rule: &Rule) -> String {
     if let Some(sound) = &rule.sound {
         parts.push(format!("sound `{sound}`"));
     }
+    if let Some(send) = &rule.send {
+        parts.push(format!("send `{send}` (not sent by a test)"));
+    }
     for (what, say) in [("notify", &rule.notify), ("alert", &rule.alert)] {
         match say {
             Some(Say::Line) => parts.push(format!("{what} with the line")),

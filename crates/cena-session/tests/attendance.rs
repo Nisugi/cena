@@ -117,6 +117,37 @@ async fn a_behavior_sending_is_not_a_person_so_a_fight_is_given_up() {
     );
 }
 
+/// A trigger sending on every connection is not a person either
+/// (`plan/45` Stage 5): one that fires on what the game sends an idle
+/// character would otherwise keep it from ever being given up.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_trigger_sending_is_not_a_person_either() {
+    let lines = Lines::default();
+    let (session, handle) = SupervisedSession::new(HangUps(lines.clone()));
+    let (_, mut events) = session.subscribe();
+    let task = tokio::spawn(session.run());
+
+    for _ in 0..5 {
+        if !ready(&mut events).await {
+            break;
+        }
+        let _ = handle.send_now("stand", Origin::Trigger, Gate::None).await;
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        lines.latest().expect("a connection").hang_up();
+    }
+    let end = tokio::time::timeout(Duration::from_hours(1), task)
+        .await
+        .expect("the session must stop, not fight on")
+        .expect("no panic");
+
+    assert!(
+        lines.written().iter().any(|line| line == "stand"),
+        "the trigger's line must have reached the wire, or this proves nothing"
+    );
+    assert_eq!(end.stopped_because, StoppedBecause::Unattended);
+    assert_eq!(lines.made(), 2);
+}
+
 /// The same fight with a person typing keeps going: someone is there.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_person_typing_keeps_the_session() {
