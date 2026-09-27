@@ -1,0 +1,12 @@
+# A script of Hydra's own, for the Ruby runner's built-ins
+# (crates/cena-agent/tests/runner.rs): go2 started as Lich scripts start it,
+# which Hydra's travel answers.
+
+walked = Script.run('go2', '229 _disable_confirm_')
+echo "walked #{!walked.nil?}: now #{Room.current.id}"
+start_script('go2', ['far'])
+wait_until { Script.running?('go2') }
+echo "far: running=#{running?('go2')} exists=#{Script.exists?('go2')}"
+stop_script('go2')
+wait_while { Script.running?('go2') }
+echo "stopped: running=#{Script.running?('go2')}"

@@ -18,6 +18,7 @@ player's Ruby, one runner per character. Lich's engine needs Ruby 4.0.
 | `copy.rb` | the local copy of the character from Hydra's `state` events, `XMLData` answered from it by Lich's names, and Lich's `GameObj` filled from it |
 | `map.rb` | `Room.current` and `Room[id]` from Hydra's map, with `wayto` and `timeto` as Lich's |
 | `spell.rb` | `Spell[n]` from Hydra's spell table, evaluated for the character; known and up from the copy |
+| `builtins.rb` | Lich scripts Hydra has built in (`go2`), started by name as Lich's are, as an exec script named after them that waits on Hydra's run |
 | `listener.rb` | `listen` in a loop: the copy's changes, game lines to every script, the player's commands to Lich's command table or `Script.start` |
 
 ## `lich/`: Lich's engine, unchanged

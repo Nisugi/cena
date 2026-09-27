@@ -287,7 +287,8 @@ impl Scripting {
                 .unwrap_or_else(PoisonError::into_inner)
                 .steering
                 .remove(&id);
-            watched.listening.push(super::listening::Event::Ended {
+            // Told after a fresh copy, so the room it ended in is in it.
+            let _ = watched.ends.send(super::listening::Event::Ended {
                 run: id,
                 work: ended.work.word().to_owned(),
                 reason: ended.reason,

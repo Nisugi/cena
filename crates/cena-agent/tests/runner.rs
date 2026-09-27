@@ -29,9 +29,70 @@ fn temp_dir(test: &str) -> PathBuf {
     dir
 }
 
+/// The world a test's character plays in.
+#[derive(Default)]
+struct World<'a> {
+    /// The scripted game's answers.
+    answers: &'a [(&'a str, &'a [u8])],
+    /// The map its runner places it on.
+    atlas: Option<Atlas>,
+    /// What the player typed before the runner started.
+    before: &'a [&'a str],
+    /// Whether Hydra's travel is stood in for (`walker`).
+    walker: bool,
+}
+
+/// A stand-in for Hydra's travel, the binary's performer: `go2 229` walks
+/// north and arrives; `go2 far` walks until it is stopped, and says so in
+/// `stopped`.
+fn walker(
+    handle: &cena_session::SessionHandle,
+    stopped: Arc<std::sync::atomic::AtomicBool>,
+) -> cena_session::operation::Performer {
+    use cena_session::operation::{Ended, Performer, Started, Work};
+    let walking = handle.clone();
+    Performer {
+        allowed: "go2".to_owned(),
+        allows: Arc::new(|line: &str| {
+            if line.starts_with("go2 ") {
+                Ok(line.to_owned())
+            } else {
+                Err(format!("`{line}` is not travel's"))
+            }
+        }),
+        start: Arc::new(move |line: &str, _reporter| {
+            let (walking, stopped) = (walking.clone(), Arc::clone(&stopped));
+            let halt = Arc::new(tokio::sync::Notify::new());
+            let heard = Arc::clone(&halt);
+            let far = line == "go2 far";
+            Started {
+                ended: Box::pin(async move {
+                    if far {
+                        heard.notified().await;
+                        stopped.store(true, std::sync::atomic::Ordering::SeqCst);
+                        return Ended::plainly(Work::Interrupted, "stopped");
+                    }
+                    walking
+                        .send_manual_at(walking.generation(), "north", Duration::from_secs(5))
+                        .await;
+                    Ended::plainly(Work::Completed, "arrived")
+                }),
+                steer: Arc::new(move |_| {
+                    halt.notify_one();
+                    Ok(())
+                }),
+                token: None,
+            }
+        }),
+        halt: Arc::new(|| {}),
+    }
+}
+
 /// A scripted character with a runner started for it over `scripts`.
 struct Running {
     transcript: TranscriptHandle,
+    /// Whether the stand-in travel was stopped mid-walk.
+    walk_stopped: Arc<std::sync::atomic::AtomicBool>,
     legacy: Receiver<Event>,
     runners: Runners,
     token: String,
@@ -49,16 +110,15 @@ struct Heard {
 }
 
 impl Running {
-    /// The character answers each of `answers`, and has typed `before`
-    /// before its runner starts; its runner runs the scripts in `scripts`,
-    /// with `dir` for the rest, placed on `atlas`'s map when there is one.
-    async fn start(
-        scripts: &Path,
-        dir: &Path,
-        answers: &[(&str, &[u8])],
-        atlas: Option<Atlas>,
-        before: &[&str],
-    ) -> Option<Self> {
+    /// The character plays in `world`; its runner runs the scripts in
+    /// `scripts`, with `dir` for the rest.
+    async fn start(scripts: &Path, dir: &Path, world: World<'_>) -> Option<Self> {
+        let World {
+            answers,
+            atlas,
+            before,
+            walker: walks,
+        } = world;
         let ruby = find_ruby()?;
         let (source, transcript) =
             AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
@@ -70,6 +130,12 @@ impl Running {
         let observer = session.observer();
         let (_, legacy) = session.subscribe();
         tokio::spawn(session.into_actor().run());
+        let walk_stopped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        if walks {
+            handle
+                .set_performer(walker(&handle, Arc::clone(&walk_stopped)))
+                .then_some(())?;
+        }
         for line in before {
             handle
                 .send_manual_at(handle.generation(), line, Duration::from_secs(5))
@@ -114,6 +180,7 @@ impl Running {
         });
         Some(Self {
             transcript,
+            walk_stopped,
             legacy,
             runners,
             token,
@@ -238,9 +305,16 @@ async fn a_lich_script_runs_against_hydra() {
     );
     let dir = temp_dir("lich-script");
     let scripts = scripts_with(&dir, "hydratest.lic").unwrap();
-    let mut running = Running::start(&scripts, &dir, &[("look", QUIET_ROOM)], None, &[])
-        .await
-        .unwrap();
+    let mut running = Running::start(
+        &scripts,
+        &dir,
+        World {
+            answers: &[("look", QUIET_ROOM)],
+            ..World::default()
+        },
+    )
+    .await
+    .unwrap();
 
     assert!(running.typed("hydratest one \"two three\""));
     let heard = running.heard_until("hydratest has exited").await;
@@ -279,9 +353,16 @@ async fn a_script_reads_its_character_as_lich_does() {
     assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
     let dir = temp_dir("reads");
     let scripts = scripts_with(&dir, "readstest.lic").unwrap();
-    let mut running = Running::start(&scripts, &dir, &[("look", DESCRIBED_ROOM)], None, &[])
-        .await
-        .unwrap();
+    let mut running = Running::start(
+        &scripts,
+        &dir,
+        World {
+            answers: &[("look", DESCRIBED_ROOM)],
+            ..World::default()
+        },
+    )
+    .await
+    .unwrap();
     let heard = running.run("readstest", "readstest").await.unwrap();
     let errors = running.errors();
     for expected in [
@@ -363,7 +444,17 @@ fn two_rooms() -> Option<Atlas> {
 /// map, running `scripts`. It looked before its runner started, so the
 /// runner's first copy has the room.
 async fn in_the_quiet_glade(scripts: &Path, dir: &Path) -> Option<Running> {
-    Running::start(scripts, dir, IN_THE_GLADES, two_rooms(), &["look"]).await
+    Running::start(
+        scripts,
+        dir,
+        World {
+            answers: IN_THE_GLADES,
+            atlas: two_rooms(),
+            before: &["look"],
+            walker: true,
+        },
+    )
+    .await
 }
 
 /// **The map and the stores** (`plan/46` §11 step 2): `Room.current` named
@@ -403,6 +494,49 @@ async fn a_script_walks_the_map_and_keeps_its_settings() {
 runner's errors: {:#?}",
         heard.told,
         running.errors()
+    );
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// **Hydra's built-ins, started as Lich's scripts** (`plan/46` §11 step 3):
+/// `Script.run('go2', ...)` walks by Hydra's travel and waits, Lich's go2
+/// settings left behind, and the room it arrived in is read after it;
+/// `start_script('go2', ...)` is seen running by Lich's own `running?` and
+/// `exists?`, and killing it stops travel's walk.
+#[tokio::test(flavor = "current_thread")]
+async fn a_script_runs_go2_as_hydras_travel() {
+    assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("builtins");
+    let scripts = scripts_with(&dir, "builtintest.lic").unwrap();
+    let mut running = in_the_quiet_glade(&scripts, &dir).await.unwrap();
+    let heard = running.run("builtintest", "builtintest").await.unwrap();
+    let errors = running.errors();
+    for expected in [
+        "[builtintest: walked true: now 229]",
+        "[builtintest: far: running=true exists=true]",
+        "[builtintest: stopped: running=false]",
+    ] {
+        assert!(
+            heard.told.iter().any(|line| line == expected),
+            "{expected:?} not told: {:#?}\nrunner's errors: {errors:#?}",
+            heard.told
+        );
+    }
+    for _ in 0..50 {
+        if running
+            .walk_stopped
+            .load(std::sync::atomic::Ordering::SeqCst)
+        {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(
+        running
+            .walk_stopped
+            .load(std::sync::atomic::Ordering::SeqCst),
+        "killing the script stopped travel's walk"
     );
     running.end().await;
     let _ = std::fs::remove_dir_all(&dir);
@@ -453,9 +587,16 @@ async fn trollspeak_runs_unchanged() {
         "no trollspeak.lic"
     );
     let dir = temp_dir("trollspeak");
-    let mut running = Running::start(&scripts, &dir, &[("look", QUIET_ROOM)], None, &[])
-        .await
-        .unwrap();
+    let mut running = Running::start(
+        &scripts,
+        &dir,
+        World {
+            answers: &[("look", QUIET_ROOM)],
+            ..World::default()
+        },
+    )
+    .await
+    .unwrap();
 
     let heard = running
         .run("trollspeak say hello there, friend", "trollspeak")

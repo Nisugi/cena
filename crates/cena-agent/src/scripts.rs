@@ -35,6 +35,7 @@ use cena_session::SessionObserver;
 use cena_session::script::Door;
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 pub mod listening;
@@ -70,6 +71,9 @@ pub struct Seat {
     observer: SessionObserver,
     /// The built-ins this runner started that have not ended, by number.
     runs: Mutex<Runs>,
+    /// Where a built-in's end goes, to be told after a fresh copy
+    /// (`watch`).
+    ends: mpsc::UnboundedSender<listening::Event>,
     stop: CancellationToken,
 }
 
@@ -122,6 +126,7 @@ impl Runners {
         let Some((snapshot, events)) = crate::characters::subscribe(observer, &stop).await else {
             return Err(format!("{character} has no session to listen to"));
         };
+        let (ends, ended) = mpsc::unbounded_channel();
         let seat = Arc::new(Seat {
             character: character.to_owned(),
             door,
@@ -129,6 +134,7 @@ impl Runners {
             atlas: self.atlas.clone(),
             observer: observer.clone(),
             runs: Mutex::default(),
+            ends,
             stop,
         });
         let watching = watch::Watching {
@@ -137,6 +143,7 @@ impl Runners {
             atlas: self.atlas.clone(),
             listening: Arc::clone(&seat.listening),
             stop: seat.stop.clone(),
+            ends: ended,
         };
         tokio::spawn(watch::watch(watching, snapshot, events));
         self.lock().insert(token.clone(), seat);

@@ -11,16 +11,13 @@
 #
 # How an exit is crossed and what it costs, as Lich's `wayto` and `timeto`:
 # a command is a String; a crossing Hydra ports as steps or a routine is a
-# callable that asks Hydra's travel to walk it. A cost is seconds when it is
+# callable that has Hydra's travel walk it (builtins.rb, `go2`). A cost is seconds when it is
 # a constant (or a Haste-shortened roundtime, at its full price); a cost
 # Hydra answers only for a walker -- a gate, a ladder, a price table -- is a
 # proc answering nil, as an exit Hydra cannot answer is impassable there.
 
 module Hydra
   class Room
-    # How long a crossing's walk may take before it is given up on.
-    WALK = 30
-
     @rooms = {}
     @lock = Mutex.new
 
@@ -89,18 +86,13 @@ module Hydra
   end
 
   # An exit Hydra's travel crosses: `call` walks it, as Lich's StringProc
-  # does, and answers whether the character arrived.
+  # does, and answers whether the walk arrived.
   class Crossing
     def initialize(to)
       @to = to
     end
 
-    def call
-      put "#{$lich_char}go2 #{@to}"
-      deadline = Time.now + Room::WALK
-      sleep 0.1 until XMLData.map_room == @to || Time.now > deadline
-      XMLData.map_room == @to
-    end
+    def call = Builtins.perform("go2 #{@to}")
 
     def to_s = "#{$lich_char}go2 #{@to}"
   end

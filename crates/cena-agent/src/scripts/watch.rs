@@ -11,6 +11,10 @@
 //! later -- as under Lich, where the parser runs ahead of a script's thread.
 //! A chunk with no prompt is let go after [`HOLD`], without a copy.
 //!
+//! **A built-in's end is told the same way**: a copy is taken first, so a
+//! script that waited for a walk and then reads `Room.current` reads the
+//! room it arrived in, not the one it left (`plan/46` §7).
+//!
 //! A copy is taken as the agent's watcher takes one (`crate::characters`):
 //! a fresh snapshot and its stream at each prompt, the old stream read up
 //! to the new snapshot's fence first, so nothing between falls out.
@@ -19,7 +23,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use cena_session::{Event, Frame, ObservedEvent, SessionObserver, Snapshot};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
@@ -38,6 +42,8 @@ pub(super) struct Watching {
     pub(super) atlas: Option<Arc<Atlas>>,
     pub(super) listening: Arc<Listening>,
     pub(super) stop: CancellationToken,
+    /// The runner's built-ins that ended: told after a fresh copy.
+    pub(super) ends: mpsc::UnboundedReceiver<listening::Event>,
 }
 
 /// What a runner is told of one of the session's events, if anything.
@@ -81,12 +87,78 @@ fn closes_a_chunk(event: &Event) -> bool {
     }
 }
 
+/// The watch under way.
+struct Watcher {
+    character: String,
+    observer: SessionObserver,
+    atlas: Option<Arc<Atlas>>,
+    listening: Arc<Listening>,
+    stop: CancellationToken,
+    events: broadcast::Receiver<ObservedEvent>,
+    whereabouts: Whereabouts,
+    last: Local,
+    held: Vec<listening::Event>,
+    let_go: Option<Instant>,
+}
+
+impl Watcher {
+    fn copy_of(&mut self, snapshot: &Snapshot) -> Local {
+        let map_room = self
+            .whereabouts
+            .locate(self.atlas.as_deref(), &snapshot.state);
+        local(&self.character, snapshot, map_room)
+    }
+
+    /// Take a fresh copy and tell what changed, then what was held. `false`
+    /// when the session is gone.
+    async fn copy(&mut self) -> bool {
+        let Some((snapshot, fresh)) =
+            crate::characters::subscribe(&self.observer, &self.stop).await
+        else {
+            return false;
+        };
+        // The events up to the new snapshot's fence are still in the old
+        // receiver: they belong to this chunk.
+        while let Ok(event) = self.events.try_recv() {
+            if event.cursor > snapshot.cursor {
+                break;
+            }
+            self.held.extend(told(&event));
+        }
+        self.events = fresh;
+        let now = self.copy_of(&snapshot);
+        let fields = changed_fields(Some(&self.last), &now);
+        if !fields.is_empty() {
+            self.listening.push(listening::Event::State {
+                cursor: snapshot.cursor,
+                fields,
+            });
+        }
+        self.last = now;
+        self.release();
+        true
+    }
+
+    /// Pass on what was held, in order.
+    fn release(&mut self) {
+        for event in self.held.drain(..) {
+            self.listening.push(event);
+        }
+        self.let_go = None;
+    }
+
+    fn end(&mut self) {
+        self.release();
+        self.listening.close();
+    }
+}
+
 /// Keep what the session publishes for one runner, starting from
 /// `snapshot` and its `events`, until stopped.
 pub(super) async fn watch(
     watching: Watching,
     snapshot: Snapshot,
-    mut events: broadcast::Receiver<ObservedEvent>,
+    events: broadcast::Receiver<ObservedEvent>,
 ) {
     let Watching {
         character,
@@ -94,81 +166,66 @@ pub(super) async fn watch(
         atlas,
         listening,
         stop,
+        mut ends,
     } = watching;
     let mut whereabouts = Whereabouts::default();
-    let copy = |snapshot: &Snapshot, whereabouts: &mut Whereabouts| -> Local {
-        let map_room = whereabouts.locate(atlas.as_deref(), &snapshot.state);
-        local(&character, snapshot, map_room)
+    let map_room = whereabouts.locate(atlas.as_deref(), &snapshot.state);
+    let mut watcher = Watcher {
+        last: local(&character, &snapshot, map_room),
+        character,
+        observer,
+        atlas,
+        listening,
+        stop,
+        events,
+        whereabouts,
+        held: Vec::new(),
+        let_go: None,
     };
-    let mut last = copy(&snapshot, &mut whereabouts);
-    listening.push(listening::Event::State {
+    watcher.listening.push(listening::Event::State {
         cursor: snapshot.cursor,
-        fields: changed_fields(None, &last),
+        fields: changed_fields(None, &watcher.last),
     });
-    let mut held: Vec<listening::Event> = Vec::new();
-    let mut let_go: Option<Instant> = None;
     loop {
         let received = tokio::select! {
-            () = stop.cancelled() => return,
-            () = sleep_until(let_go) => {
-                release(&listening, &mut held);
-                let_go = None;
+            () = watcher.stop.cancelled() => return,
+            () = sleep_until(watcher.let_go) => {
+                watcher.release();
                 continue;
             }
-            received = events.recv() => received,
+            Some(ended) = ends.recv() => {
+                if !watcher.copy().await {
+                    watcher.end();
+                    return;
+                }
+                watcher.listening.push(ended);
+                continue;
+            }
+            received = watcher.events.recv() => received,
         };
         let published = match received {
             Ok(published) => published,
             Err(broadcast::error::RecvError::Lagged(missed)) => {
-                release(&listening, &mut held);
-                listening.push(listening::Event::Lagged { missed });
+                watcher.release();
+                watcher.listening.push(listening::Event::Lagged { missed });
                 continue;
             }
             Err(broadcast::error::RecvError::Closed) => {
-                release(&listening, &mut held);
-                listening.close();
+                watcher.end();
                 return;
             }
         };
-        held.extend(told(&published));
+        watcher.held.extend(told(&published));
         if !closes_a_chunk(&published.event) {
-            if !held.is_empty() && let_go.is_none() {
-                let_go = Some(Instant::now() + HOLD);
+            if !watcher.held.is_empty() && watcher.let_go.is_none() {
+                watcher.let_go = Some(Instant::now() + HOLD);
             }
             continue;
         }
-        let Some((snapshot, fresh)) = crate::characters::subscribe(&observer, &stop).await else {
-            release(&listening, &mut held);
-            listening.close();
+        if !watcher.copy().await {
+            watcher.end();
             return;
-        };
-        // The events up to the new snapshot's fence are still in the old
-        // receiver: they belong to this chunk.
-        while let Ok(event) = events.try_recv() {
-            if event.cursor > snapshot.cursor {
-                break;
-            }
-            held.extend(told(&event));
         }
-        events = fresh;
-        let now = copy(&snapshot, &mut whereabouts);
-        let fields = changed_fields(Some(&last), &now);
-        if !fields.is_empty() {
-            listening.push(listening::Event::State {
-                cursor: snapshot.cursor,
-                fields,
-            });
-        }
-        last = now;
-        release(&listening, &mut held);
-        let_go = None;
-    }
-}
-
-/// Pass on what was held, in order.
-fn release(listening: &Listening, held: &mut Vec<listening::Event>) {
-    for event in held.drain(..) {
-        listening.push(event);
     }
 }
 

@@ -47,6 +47,7 @@ module Hydra
       when 'state' then @copy.apply(event['fields'])
       when 'prompt' then XMLData.prompted(event['time'], event['text'])
       when 'line' then line(event)
+      when 'ended' then Runs.ended(event)
       when 'typed' then typed(event['line'])
       when 'lagged'
         respond "--- Hydra: #{event['missed']} of the game's events were missed on the way to scripts."
