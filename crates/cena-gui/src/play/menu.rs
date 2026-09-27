@@ -3,12 +3,14 @@
 //! **Add a widget**, from the Layout menu: every kind in one list, found by
 //! typing, grouped as `plan/49` §3 sorts Saga's panels (Saga's *"Find a
 //! panel..."*), each saying whether one is shown already. A click adds it in
-//! a standalone window of its own. At the bottom, closed, the **Advanced**
+//! a standalone window of its own. Above them the presets, Hydra's and those
+//! saved (step 7): a click places a copy. At the bottom, closed, the **Advanced**
 //! place (§1 row 8): the character what is added follows, when another than
 //! the window's own -- a party's vitals in one window, say (§1 row 3).
 //!
 //! **A right-click** on a window or a widget in one opens its menu: remove
-//! it; rename or remove a custom window; and one **Advanced** entry, closed,
+//! it; rename, save as a preset or remove a custom window; and one
+//! **Advanced** entry, closed,
 //! for the character the widget follows. Neither menu offers a story to
 //! another character: no window mixes two characters' story (§1 row 7).
 
@@ -16,8 +18,8 @@ use std::collections::HashSet;
 
 use egui::{Id, Order, Pos2, Rect, RichText, vec2};
 
-use super::Play;
-use crate::layout::{Holds, Layout};
+use super::{Asked, Play};
+use crate::layout::{Holds, Layout, Library, Preset};
 use crate::widget::{Character, Group, Widget};
 
 /// The Add-a-widget list, open.
@@ -41,6 +43,8 @@ pub(super) struct Menu {
     at: Pos2,
     /// A custom window's new title, while it is being typed.
     renaming: Option<String>,
+    /// The name a custom window is saved as a preset under, while typed.
+    saving: Option<String>,
 }
 
 /// What a menu was asked to do.
@@ -49,6 +53,7 @@ enum Act {
     RemoveWindow,
     Rename(String),
     Follow(u32, Option<String>),
+    Save(String),
 }
 
 impl Play {
@@ -60,6 +65,7 @@ impl Play {
         context: &egui::Context,
         area: Rect,
         others: &[Character],
+        library: &Library,
     ) -> bool {
         let Some(shown) = self.layout.as_ref().map(kinds_shown) else {
             return false;
@@ -69,6 +75,8 @@ impl Play {
         };
         let mut open = true;
         let mut chosen = None;
+        let mut preset = None;
+        let mut forget = None;
         egui::Window::new("Add a widget")
             .id(Id::new(("add-widget", self.session)))
             .open(&mut open)
@@ -81,6 +89,7 @@ impl Play {
                 );
                 let search = adding.search.to_lowercase();
                 egui::ScrollArea::vertical().show(ui, |ui| {
+                    presets(ui, &search, library, &mut preset, &mut forget);
                     for group in Group::ALL {
                         let kinds: Vec<Widget> = Widget::ALL
                             .into_iter()
@@ -109,16 +118,24 @@ impl Play {
                     advanced(ui, &mut adding.whose, others);
                 });
             });
+        let whose = adding_whose(self.adding.as_ref());
         if !open {
             self.adding = None;
+        }
+        if let Some(name) = forget {
+            self.out = Some(Asked::ForgetPreset(name));
+        }
+        let Some(layout) = self.layout.as_mut() else {
+            return false;
+        };
+        if let Some(preset) = preset {
+            layout.add_preset(&preset, whose.as_deref());
+            return true;
         }
         let Some(kind) = chosen else {
             return false;
         };
-        let whose = adding_whose(self.adding.as_ref());
-        if let Some(layout) = self.layout.as_mut() {
-            layout.add_widget(kind, whose);
-        }
+        layout.add_widget(kind, whose);
         true
     }
 
@@ -151,6 +168,7 @@ impl Play {
                 placed,
                 at,
                 renaming: None,
+                saving: None,
             });
         }
         let (Some(menu), Some(layout)) = (self.menu.as_mut(), self.layout.as_ref()) else {
@@ -178,11 +196,18 @@ impl Play {
         let Some(layout) = self.layout.as_mut() else {
             return false;
         };
+        if let Act::Save(name) = &act {
+            if let Some(Holds::Custom(custom)) = layout.holder(holder).map(|found| &found.holds) {
+                self.out = Some(Asked::SavePreset(Preset::of(name, custom)));
+            }
+            return false;
+        }
         match act {
             Act::Remove(placed) => layout.remove_widget(holder, placed),
             Act::RemoveWindow => layout.remove_window(holder),
             Act::Rename(title) => layout.rename(holder, &title),
             Act::Follow(placed, who) => layout.follow(placed, who),
+            Act::Save(_) => {}
         }
         true
     }
@@ -213,6 +238,47 @@ impl Play {
             }
         };
         Some((holder.id, placed))
+    }
+}
+
+/// The presets, Hydra's and those saved, whose names hold `search`: a click
+/// on one chooses it, a player's own can be forgotten.
+fn presets(
+    ui: &mut egui::Ui,
+    search: &str,
+    library: &Library,
+    chosen: &mut Option<Preset>,
+    forget: &mut Option<String>,
+) {
+    let found = |preset: &&Preset| preset.name.to_lowercase().contains(search);
+    let hydras = Preset::hydras();
+    let hydras: Vec<&Preset> = hydras.iter().filter(found).collect();
+    let saved: Vec<&Preset> = library.presets().iter().filter(found).collect();
+    if hydras.is_empty() && saved.is_empty() {
+        return;
+    }
+    ui.label(RichText::new("PRESETS").small().weak());
+    for preset in hydras {
+        if ui.button(&preset.name).clicked() {
+            *chosen = Some(preset.clone());
+        }
+    }
+    for preset in saved {
+        ui.horizontal(|ui| {
+            if ui.button(&preset.name).clicked() {
+                *chosen = Some(preset.clone());
+            }
+            if ui
+                .small_button("Forget")
+                .on_hover_text("Forget this preset; windows placed from it stay")
+                .clicked()
+            {
+                *forget = Some(preset.name.clone());
+            }
+        });
+    }
+    if let Some(why) = &library.unsaved {
+        ui.colored_label(crate::text::WRONG, format!("Presets not saved: {why}"));
     }
 }
 
@@ -274,7 +340,7 @@ fn items(ui: &mut egui::Ui, menu: &mut Menu, layout: &Layout, others: &[Characte
         ui.separator();
         ui.weak(&custom.title);
         match &mut menu.renaming {
-            Some(title) => {
+            Some(title) if menu.saving.is_none() => {
                 // Enter is the menu's, taken before the field sees it: a
                 // field that keeps the keyboard never loses it to Enter.
                 let enter = ui
@@ -284,9 +350,27 @@ fn items(ui: &mut egui::Ui, menu: &mut Menu, layout: &Layout, others: &[Characte
                     act = Some(Act::Rename(title.clone()));
                 }
             }
-            None => {
+            _ => {
                 if ui.button("Rename...").clicked() {
                     menu.renaming = Some(custom.title.clone());
+                    menu.saving = None;
+                }
+            }
+        }
+        match &mut menu.saving {
+            Some(name) => {
+                ui.label("Save as preset:");
+                let enter = ui
+                    .input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
+                ui.text_edit_singleline(name).request_focus();
+                if enter && !name.trim().is_empty() {
+                    act = Some(Act::Save(name.clone()));
+                }
+            }
+            None => {
+                if ui.button("Save as preset...").clicked() {
+                    menu.saving = Some(custom.title.clone());
+                    menu.renaming = None;
                 }
             }
         }

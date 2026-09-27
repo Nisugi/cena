@@ -367,6 +367,34 @@ Everything after it adds widgets, so the model goes first and every widget is wr
 7. **Presets.** A Vitals row and a Loadout from the widgets that exist; saving a custom
    window as a preset.
 
+   **BUILT 2026-09-27** (`crates/cena-gui/src/layout/preset.rs`). Hydra ships four:
+   *Vitals* (the four bars stacked), *Vitals row* (side by side, Saga's bar across the
+   bottom), *Loadout* (each hand, then the two clocks) and *Room* (its six parts, the
+   description too). They head the Add-a-widget list, above the kinds, found by the same
+   typing; a click places a copy, and with the Advanced place showing another character,
+   its widgets follow that one, but a story, which stays its window's own -- a party's
+   vitals in one click. A right-click on a custom window offers *Save as preset...*, under
+   a name typed (not an empty one); it goes into **one library every character adds from**,
+   `presets.json` beside the layouts, over one of the same name, and a saved preset can be
+   forgotten from the list. Placing one gives its widgets ids of their own, so **what is
+   placed is the character's own copy** (§1 row 10): nothing done to the copy reaches the
+   preset, and nothing saved over the preset reaches a copy placed before. The library
+   belongs to the app, which every play window asks to keep or forget one
+   (`Asked::SavePreset`, `Asked::ForgetPreset`); one it cannot write says so in the list.
+
+   Tests: Hydra's presets named once and the row one row; a copy with ids of its own,
+   untouched by the preset saved over later; a preset placed for another character, its
+   story its own; the library kept in its file, kept over, forgotten, of another version
+   unread, and unwritable saying so; the list placing a preset, for another character too,
+   and narrowed by typing; a custom window saved from its menu, not under an empty name,
+   and forgotten; and the app keeping and forgetting through a play window, in the file.
+   Sixteen mutants: fourteen caught at once, two once a test was written for them (the app
+   forgetting, and an empty name).
+
+   **Stage A is BUILT**, steps 1-7, 2026-09-27: every panel a widget, standalone and custom
+   windows, arranging, tab stacks, the Add-a-widget list with the Advanced place, and
+   presets. Stage B, the catalog widget by widget, is next.
+
 ### Stage B — the catalog, widget by widget
 
 Each widget whose data the model already holds (§3), in small steps, cheapest first.

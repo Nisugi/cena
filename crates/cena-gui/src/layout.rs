@@ -16,6 +16,7 @@
 
 mod custom;
 mod moves;
+mod preset;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -26,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use crate::widget::Widget;
 pub(crate) use custom::{Cell, Custom, SMALLEST as SMALLEST_CELL, stacks_at, tabs_and_body};
 pub(crate) use moves::Taking;
+pub(crate) use preset::{Library, Preset};
 
 /// The smallest a window can be made.
 pub(crate) const SMALLEST: Vec2 = Vec2::new(120.0, 60.0);

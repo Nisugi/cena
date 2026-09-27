@@ -38,7 +38,7 @@ use crate::story::Story;
 use holders::Engaged;
 
 /// What a play window asks for.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Asked {
     /// Send this line on the character, as typed: Hydra's command line
     /// first, then the game.
@@ -47,6 +47,10 @@ pub(crate) enum Asked {
     Stop,
     /// Read the keybinds file again.
     ReloadKeys,
+    /// Keep this custom window in the presets every character adds from.
+    SavePreset(crate::layout::Preset),
+    /// Forget the preset of this name.
+    ForgetPreset(String),
 }
 
 /// What a play window shows this frame.
@@ -69,6 +73,8 @@ pub(crate) struct PlayView<'a> {
     pub(crate) keys: &'a [String],
     /// The other characters running, which a widget may follow.
     pub(crate) others: &'a [crate::widget::Character],
+    /// The presets a player saved, which every character adds from.
+    pub(crate) presets: &'a crate::layout::Library,
 }
 
 /// A play window's own state, which outlives a frame.
@@ -99,6 +105,8 @@ pub(crate) struct Play {
     adding: Option<menu::Adding>,
     /// A window's or widget's right-click menu, while open (`menu.rs`).
     menu: Option<menu::Menu>,
+    /// What a menu asked of the app this frame, which the window hands on.
+    out: Option<Asked>,
     /// Why the layout could not be saved, until it can.
     unsaved: Option<String>,
     /// The line being typed.
@@ -129,6 +137,7 @@ impl Play {
             read: std::collections::HashMap::new(),
             adding: None,
             menu: None,
+            out: None,
             unsaved: None,
             input: String::new(),
             history: Vec::new(),
@@ -186,8 +195,9 @@ impl Play {
         });
         let area = ui.available_rect_before_wrap();
         changed |= self.arrange(ui, view);
-        changed |= self.add_list(ui.ctx(), area, view.others);
+        changed |= self.add_list(ui.ctx(), area, view.others, view.presets);
         changed |= self.right_click(ui.ctx(), area, view.others);
+        asked = asked.or(self.out.take());
         if changed {
             self.save();
         }

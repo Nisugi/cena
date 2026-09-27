@@ -74,6 +74,10 @@ fn the_list_adds_a_widget_found_by_typing() {
             .query_by_role_and_label(Role::Button, "Health")
             .is_none()
     );
+    assert!(
+        harness.query_by_label("PRESETS").is_none(),
+        "no preset is called so"
+    );
     harness
         .get_by_role_and_label(Role::Button, "Cast time")
         .click();
@@ -97,14 +101,13 @@ fn the_list_says_what_is_shown() {
         harness.query_all_by_label("shown").count(),
         Widget::ALL.len() - 1
     );
+    search(&mut harness, "description");
+    assert_eq!(harness.query_all_by_label("shown").count(), 0);
     harness
         .get_by_role_and_label(Role::Button, "Room description")
         .click();
     harness.run();
-    assert_eq!(
-        harness.query_all_by_label("shown").count(),
-        Widget::ALL.len()
-    );
+    assert_eq!(harness.query_all_by_label("shown").count(), 1);
 }
 
 /// The Advanced place is closed until opened; there, a widget added follows
@@ -309,4 +312,99 @@ fn a_widget_of_lines_names_whose_it_is() {
         harness.query_by_label("No hunt running.").is_some(),
         "Baelor's"
     );
+}
+
+/// The list's presets come first: a click places a copy, and with Advanced
+/// showing another character, its widgets follow that one.
+#[test]
+fn the_list_places_a_preset() {
+    let mut harness = with_baelor();
+    open_the_list(&mut harness);
+    assert!(harness.query_by_label("PRESETS").is_some());
+    harness
+        .get_by_role_and_label(Role::Button, "Vitals row")
+        .click();
+    harness.run();
+    assert!(matches!(
+        holds(&harness, "Vitals row"),
+        Some(Holds::Custom(custom)) if custom.cells.len() == 4
+    ));
+    search(&mut harness, "loadout");
+    harness.get_by_label("Advanced").click();
+    harness.run();
+    harness.get_by_label("Baelor").click();
+    harness.run();
+    harness
+        .get_by_role_and_label(Role::Button, "Loadout")
+        .click();
+    harness.run();
+    assert!(
+        harness
+            .query_by_label("Baelor Left: a steel broadsword")
+            .is_some()
+    );
+}
+
+/// A custom window saved as a preset from its menu asks the app to keep it,
+/// under the name typed; a preset saved before can be forgotten from the
+/// list.
+#[test]
+fn a_custom_window_is_saved_as_a_preset_and_forgotten() {
+    let mut harness = with_baelor();
+    harness
+        .get_by_label("Left: a steel broadsword")
+        .click_secondary();
+    harness.run();
+    harness.get_by_label("Save as preset...").click();
+    harness.run();
+    harness.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
+    harness.run();
+    harness.key_press(egui::Key::Backspace);
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    assert!(harness.state().asked.is_empty(), "a preset needs a name");
+    typed(&mut harness, "Kit");
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    let saved = harness.state().asked.iter().find_map(|asked| match asked {
+        Asked::SavePreset(preset) => Some(preset.clone()),
+        _ => None,
+    });
+    let saved = saved.expect("asked to keep it");
+    assert_eq!(saved.name, "Kit");
+    harness.state_mut().presets = {
+        let mut library = crate::layout::Library::default();
+        library.keep(saved);
+        library
+    };
+    open_the_list(&mut harness);
+    harness
+        .get_by_role_and_label(Role::Button, "Forget")
+        .click();
+    harness.run();
+    assert!(
+        harness
+            .state()
+            .asked
+            .contains(&Asked::ForgetPreset("Kit".to_owned()))
+    );
+}
+
+/// A library whose file cannot be written says so in the list.
+#[test]
+fn presets_not_saved_say_so() {
+    let mut harness = with_baelor();
+    let blocked = std::env::temp_dir().join(format!("cena-presets-blocked-{}", std::process::id()));
+    std::fs::write(&blocked, "a file, not a folder").expect("written");
+    let mut library = crate::layout::Library::load(Some(blocked.clone()));
+    library.keep(crate::layout::Preset::hydras().remove(0));
+    harness.state_mut().presets = library;
+    open_the_list(&mut harness);
+    assert!(
+        harness
+            .query_by_label_contains("Presets not saved")
+            .is_some()
+    );
+    let _ = std::fs::remove_file(&blocked);
 }

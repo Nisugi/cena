@@ -15,6 +15,8 @@ struct Scene {
     hunt: Option<cena_ui::HuntView>,
     /// The other characters running, which a widget may follow.
     others: Vec<crate::widget::Character>,
+    /// The presets a player saved.
+    presets: crate::layout::Library,
     asked: Vec<Asked>,
 }
 
@@ -32,6 +34,7 @@ impl Scene {
                 waiting: Some("mana 30%, wants 50%".to_owned()),
             }),
             others: Vec::new(),
+            presets: crate::layout::Library::default(),
             asked: Vec::new(),
         }
     }
@@ -47,6 +50,7 @@ impl Scene {
             numlock: None,
             keys: &[],
             others: &self.others,
+            presets: &self.presets,
         };
         if let Some(asked) = self.play.show(ui, &view) {
             self.asked.push(asked);

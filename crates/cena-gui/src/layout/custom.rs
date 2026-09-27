@@ -214,8 +214,7 @@ impl Custom {
         }
     }
 
-    /// The inside's size its cells were last kept to: for a test.
-    #[cfg(test)]
+    /// The inside's size its cells were last kept to.
     pub(crate) fn inside(&self) -> Vec2 {
         Vec2::new(self.inside[0], self.inside[1])
     }

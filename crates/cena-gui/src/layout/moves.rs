@@ -52,8 +52,7 @@ impl Layout {
     /// several added in a row stay apart; its id.
     pub(crate) fn add_widget(&mut self, widget: Widget, follows: Option<String>) -> u32 {
         let placed = self.place(widget);
-        let step = f32::from(u16::try_from(self.holders.len() % 10).unwrap_or(0)) * ADDED_STEP;
-        let corner = NEW_AT + vec2(step, step);
+        let corner = self.next_corner();
         self.add(
             Rect::from_min_size(corner, widget.size() + CHROME),
             Holds::One(placed),
@@ -62,6 +61,13 @@ impl Layout {
             self.follows.insert(placed.id, who);
         }
         placed.id
+    }
+
+    /// Where the next window added from the list goes: down and right of the
+    /// last, so several added in a row stay apart, starting over every ten.
+    pub(super) fn next_corner(&self) -> Pos2 {
+        let step = f32::from(u16::try_from(self.holders.len() % 10).unwrap_or(0)) * ADDED_STEP;
+        NEW_AT + vec2(step, step)
     }
 
     /// Take widget `placed` out of window `holder`: its standalone window

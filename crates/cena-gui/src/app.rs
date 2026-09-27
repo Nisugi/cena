@@ -26,6 +26,7 @@ use cena_ui::LifecycleView;
 
 use crate::hub::{HubAction, HubView};
 use crate::keys::{self, Keybinds};
+use crate::layout::Library;
 use crate::play::{Asked, Play, PlayView};
 use crate::sessions::{Seat, lock};
 use crate::widget::Character;
@@ -43,6 +44,9 @@ pub struct App {
     plays: BTreeMap<u32, Window>,
     /// Where play windows keep their layouts; `None`, and they keep none.
     layouts: Option<PathBuf>,
+    /// The presets a player saved, which every play window adds from
+    /// (`plan/49` Stage A step 7), kept beside the layouts.
+    presets: Library,
     /// The keybinds, and the file they are read from, when there is one.
     keys: Keybinds,
     keys_file: Option<PathBuf>,
@@ -73,6 +77,7 @@ impl App {
             sessions,
             plays: BTreeMap::new(),
             layouts: None,
+            presets: Library::default(),
             keys: Keybinds::default(),
             keys_file: None,
             keys_said: Vec::new(),
@@ -89,6 +94,7 @@ impl App {
     pub fn keeping(sessions: Sessions, data: &std::path::Path) -> Self {
         let mut app = Self {
             layouts: Some(data.join("layouts")),
+            presets: Library::load(Some(data.join("layouts"))),
             keys_file: Some(keys::path(data)),
             ..Self::new(sessions)
         };
@@ -213,6 +219,7 @@ impl App {
                     numlock,
                     keys: keys_said,
                     others: &others,
+                    presets: &self.presets,
                 };
                 let asked = window.play.show(ui, &view);
                 drop(story);
@@ -230,6 +237,8 @@ impl App {
         }
         match asked {
             Some(Asked::ReloadKeys) => self.read_keys(),
+            Some(Asked::SavePreset(preset)) => self.presets.keep(preset),
+            Some(Asked::ForgetPreset(name)) => self.presets.forget(&name),
             Some(Asked::Send(line)) => self.sessions.send(seat, line),
             Some(Asked::Stop) => {
                 let symbol = seat
@@ -464,5 +473,53 @@ mod tests {
         harness.run();
         harness.run();
         assert!(harness.query_by_label("> ;stop").is_some());
+    }
+
+    /// A custom window saved as a preset from a play window is kept in the
+    /// library every character adds from, in its file beside the layouts.
+    #[test]
+    fn a_preset_saved_is_kept_for_every_character() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("a runtime");
+        let data = std::env::temp_dir().join(format!("cena-app-presets-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&data);
+        let sessions = Sessions::new(runtime.handle().clone());
+        sessions.seat_for_test(handle(), "Ashryn");
+        let mut harness = Harness::builder()
+            .with_size((1200.0, 900.0))
+            .build_ui_state(
+                |ui, app: &mut App| app.draw(ui),
+                App::keeping(sessions, &data),
+            );
+        harness.run();
+        harness.get_by_label("Left: ?").click_secondary();
+        harness.run();
+        harness.get_by_label("Save as preset...").click();
+        harness.run();
+        harness.key_press(egui::Key::Enter);
+        harness.run();
+        harness.run();
+        let kept = Library::load(Some(data.join("layouts")));
+        let names: Vec<&str> = kept
+            .presets()
+            .iter()
+            .map(|preset| preset.name.as_str())
+            .collect();
+        assert_eq!(names, ["Loadout"]);
+        harness.get_by_label("Layout").click();
+        harness.run();
+        harness.get_by_label("Add a widget...").click();
+        harness.run();
+        harness.get_by_label("Forget").click();
+        harness.run();
+        harness.run();
+        assert!(
+            Library::load(Some(data.join("layouts")))
+                .presets()
+                .is_empty(),
+            "forgotten"
+        );
+        let _ = std::fs::remove_dir_all(&data);
     }
 }
