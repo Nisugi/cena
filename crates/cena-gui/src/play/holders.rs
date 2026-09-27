@@ -64,11 +64,17 @@ impl Play {
         self.layout
             .get_or_insert_with(|| Layout::fitted(area.size()));
         self.press(&context, area);
+        let open = self
+            .layout
+            .as_ref()
+            .map(Layout::streams)
+            .unwrap_or_default();
         let seen = Seen {
             snapshot: view.snapshot,
             story: view.story,
             hunt: view.hunt,
             who: None,
+            open: &open,
         };
         let ((drawn, insides), released) = self.draw_windows(&context, area, seen, view.others);
         let mut changed = false;

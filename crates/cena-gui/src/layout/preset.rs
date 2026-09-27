@@ -51,7 +51,11 @@ impl Preset {
             Widget::Spirit,
         ];
         vec![
-            shipped("Vitals", &bars.map(|bar| vec![bar]), Vec2::new(300.0, 86.0)),
+            shipped(
+                "Vitals",
+                &bars.clone().map(|bar| vec![bar]),
+                Vec2::new(300.0, 86.0),
+            ),
             shipped("Vitals row", &[bars.to_vec()], Vec2::new(800.0, 20.0)),
             shipped(
                 "Loadout",
@@ -98,6 +102,20 @@ impl Preset {
                 Vec2::new(300.0, 140.0),
             ),
             Preset {
+                name: "Streams".to_owned(),
+                custom: Custom::stack(
+                    "Streams",
+                    ["thoughts", "speech", "logons", "death", "announcements"]
+                        .map(|id| Placed {
+                            id: 0,
+                            widget: Widget::Stream(id.to_owned()),
+                        })
+                        .to_vec(),
+                    0,
+                    Vec2::new(320.0, 200.0),
+                ),
+            },
+            Preset {
                 name: "Effects".to_owned(),
                 custom: Custom::stack(
                     "Effects",
@@ -124,7 +142,7 @@ fn shipped(name: &str, rows: &[Vec<Widget>], inside: Vec2) -> Preset {
             row.iter()
                 .map(|widget| Placed {
                     id: 0,
-                    widget: *widget,
+                    widget: widget.clone(),
                 })
                 .collect()
         })
@@ -235,3 +253,6 @@ fn write(dir: &Path, presets: &[Preset]) -> std::io::Result<()> {
     let text = serde_json::to_string_pretty(&file).map_err(std::io::Error::other)?;
     std::fs::write(dir.join(FILE), text)
 }
+
+#[cfg(test)]
+mod tests;

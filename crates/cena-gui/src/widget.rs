@@ -40,6 +40,9 @@ pub(crate) struct Seen<'a> {
     /// Whose it is, when the widget follows another character than its
     /// window's, which it then names (`plan/49` §1 row 3).
     pub(crate) who: Option<&'a str>,
+    /// The streams a widget in this window shows, whose lines the story
+    /// then leaves out (`plan/49` Stage B step 4).
+    pub(crate) open: &'a [String],
 }
 
 /// Another character running in this Hydra, as a widget that follows it
@@ -59,10 +62,11 @@ impl Widget {
     /// How much it has said, ever, when it is a stream of lines: a tab not
     /// showing counts what came since it last did (`plan/49` §2). `None`
     /// for the rest, which have nothing to count.
-    pub(crate) fn count(self, seen: &Seen<'_>) -> Option<u64> {
+    pub(crate) fn count(&self, seen: &Seen<'_>) -> Option<u64> {
         match self {
             Widget::Story => Some(seen.story.heard),
             Widget::Hydra => Some(seen.story.told),
+            Widget::Stream(id) => Some(seen.story.streams.get(id).map_or(0, |kept| kept.heard)),
             _ => None,
         }
     }
@@ -71,7 +75,7 @@ impl Widget {
     /// so two of one kind keep apart what they remember -- a scroll, say.
     /// A line the player asked it to send, as if typed -- a compass's
     /// direction -- if one was.
-    pub(crate) fn draw(self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
+    pub(crate) fn draw(&self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
         draw::draw(self, ui, seen, id)
     }
 }

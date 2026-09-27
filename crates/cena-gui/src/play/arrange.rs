@@ -207,15 +207,15 @@ pub(super) fn cells(
             let taking = Taking::Tab(tab.id);
             let name = tab.widget.name();
             landing =
-                landing.or(arranging.follow(ui, &response, gesture, taking, index, name, cell));
+                landing.or(arranging.follow(ui, &response, gesture, taking, index, &name, cell));
         }
         if let Some(at) = clicked {
             cell.showing = at;
         }
-        let Some(placed) = cell.shown().copied() else {
+        let Some(placed) = cell.shown().cloned() else {
             continue;
         };
-        let names: Vec<&str> = cell.tabs.iter().map(|tab| tab.widget.name()).collect();
+        let names: Vec<_> = cell.tabs.iter().map(|tab| tab.widget.name()).collect();
         let names = names.join(", ");
         let response = overlay(ui, body, holder, placed.id, &names);
         let taking = Taking::Cell(placed.id);

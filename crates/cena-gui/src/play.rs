@@ -195,7 +195,8 @@ impl Play {
         });
         let area = ui.available_rect_before_wrap();
         changed |= self.arrange(ui, view);
-        changed |= self.add_list(ui.ctx(), area, view.others, view.presets);
+        let received: Vec<&str> = view.story.streams.ids().collect();
+        changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);
         changed |= self.right_click(ui.ctx(), area, view.others);
         asked = asked.or(self.out.take());
         if changed {

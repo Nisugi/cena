@@ -3,6 +3,8 @@
 //! the size it would like. Kept apart from the facade so a kind added in
 //! Stage B is a variant and a line in each table here.
 
+use std::borrow::Cow;
+
 use egui::Vec2;
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +12,7 @@ use super::LINE;
 use super::status::{Category, Indicator};
 
 /// One kind of widget: what it shows.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum Widget {
     /// The game's text: the main stream, and the streams whose window is
@@ -80,6 +82,9 @@ pub(crate) enum Widget {
     Compass,
     /// Who is fighting in the room: friends and foes.
     Combat,
+    /// One of the game's streams, by its id: thoughts, speech, logons, ...
+    /// or any other the character has received (`plan/49` §3).
+    Stream(String),
 }
 
 /// A group of the Add-a-widget list, as `plan/49` §3 sorts Saga's panels.
@@ -121,10 +126,17 @@ impl Group {
 }
 
 impl Widget {
-    /// Every kind, in the order a list of them shows.
+    /// Every kind, in the order a list of them shows: the streams named
+    /// here among them, not those a character may receive besides
+    /// (`plan/49` §3), which the Add-a-widget list offers from the story.
     pub(crate) fn all() -> Vec<Widget> {
         Widget::PLAIN
             .into_iter()
+            .chain(
+                STREAMS
+                    .iter()
+                    .map(|(id, _)| Widget::Stream((*id).to_owned())),
+            )
             .chain(Category::ALL.map(Widget::Effects))
             .chain(Indicator::ALL.map(Widget::Indicator))
             .collect()
@@ -167,8 +179,8 @@ impl Widget {
 
     /// What a player calls it: a standalone window's title, and its name in
     /// a list.
-    pub(crate) fn name(self) -> &'static str {
-        match self {
+    pub(crate) fn name(&self) -> Cow<'static, str> {
+        Cow::Borrowed(match self {
             Widget::Story => "Story",
             Widget::Health => "Health",
             Widget::Mana => "Mana",
@@ -202,14 +214,15 @@ impl Widget {
             Widget::Combat => "Combat",
             Widget::Indicator(indicator) => indicator.name(),
             Widget::Effects(category) => category.name(),
-        }
+            Widget::Stream(id) => return stream_name(id),
+        })
     }
 
     /// Its group in the Add-a-widget list (`plan/49` §3): the creatures are
     /// Saga's Combat graphic; the room's other parts are Hydra's own.
-    pub(crate) fn group(self) -> Group {
+    pub(crate) fn group(&self) -> Group {
         match self {
-            Widget::Story => Group::Streams,
+            Widget::Story | Widget::Stream(_) => Group::Streams,
             Widget::Health
             | Widget::Mana
             | Widget::Stamina
@@ -247,18 +260,19 @@ impl Widget {
 
     /// Whether it is one character's story, which never follows another
     /// character (`plan/49` §1 row 7): no window mixes two characters'
-    /// story (`plan/29` §5a R2). Hydra's messages count as its story.
-    pub(crate) fn is_story(self) -> bool {
-        matches!(self, Widget::Story | Widget::Hydra)
+    /// story (`plan/29` §5a R2). Hydra's messages count as its story, and
+    /// so does each of its streams.
+    pub(crate) fn is_story(&self) -> bool {
+        matches!(self, Widget::Story | Widget::Hydra | Widget::Stream(_))
     }
 
     /// The size it would like, when nothing else says: a bar or a hand is
     /// one line, a list a few, the story as much as it is given
     /// (`plan/28` §7e: geometry is the widget's to say).
-    pub(crate) fn size(self) -> Vec2 {
+    pub(crate) fn size(&self) -> Vec2 {
         let (width, height) = match self {
             Widget::Story => (480.0, 320.0),
-            Widget::Hydra => (320.0, 120.0),
+            Widget::Hydra | Widget::Stream(_) => (320.0, 120.0),
             Widget::Hunt => (260.0, 90.0),
             Widget::RoomDescription => (320.0, 80.0),
             Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),
@@ -288,4 +302,32 @@ impl Widget {
         };
         Vec2::new(width, height)
     }
+}
+
+/// The streams the game sends that a player knows by name, by their ids,
+/// as Saga lists them (`plan/49` §3): Voln is the Order's own thoughts
+/// (`reference/lich-5/lib/common/markup.rb:213`). Mentor and Host come
+/// only to those who hold the position, and are offered when received.
+pub(crate) const STREAMS: [(&str, &str); 7] = [
+    ("thoughts", "Thoughts"),
+    ("speech", "Speech"),
+    ("logons", "Arrivals"),
+    ("death", "Deaths"),
+    ("announcements", "Announcements"),
+    ("familiar", "Familiar"),
+    ("voln", "Voln"),
+];
+
+/// A stream's name: the one it is known by, or its id with a capital.
+pub(crate) fn stream_name(id: &str) -> Cow<'static, str> {
+    if let Some((_, name)) = STREAMS.iter().find(|(known, _)| *known == id) {
+        return Cow::Borrowed(name);
+    }
+    let mut chars = id.chars();
+    Cow::Owned(
+        chars
+            .next()
+            .map(|first| first.to_uppercase().chain(chars).collect())
+            .unwrap_or_default(),
+    )
 }

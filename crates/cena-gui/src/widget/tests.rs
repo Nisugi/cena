@@ -19,11 +19,12 @@ fn drawn<'a>(snapshot: Option<Snapshot>, hunt: Option<HuntView>) -> Harness<'a, 
                 story: &story,
                 hunt: hunt.as_ref(),
                 who: None,
+                open: &[],
             };
             for widget in Widget::all() {
                 let height = widget.size().y.min(120.0);
                 ui.allocate_ui(egui::vec2(500.0, height), |ui| {
-                    widget.draw(ui, &seen, Id::new(("widget-test", widget)));
+                    widget.draw(ui, &seen, Id::new(("widget-test", widget.name())));
                 });
             }
         })
@@ -32,9 +33,12 @@ fn drawn<'a>(snapshot: Option<Snapshot>, hunt: Option<HuntView>) -> Harness<'a, 
 #[test]
 fn every_kind_is_listed_once_under_a_name_of_its_own() {
     let all = Widget::all();
-    let kinds: HashSet<Widget> = all.iter().copied().collect();
+    let kinds: HashSet<Widget> = all.iter().cloned().collect();
     assert_eq!(kinds.len(), all.len());
-    let names: HashSet<&str> = all.iter().map(|widget| widget.name()).collect();
+    let names: HashSet<String> = all
+        .iter()
+        .map(|widget| widget.name().into_owned())
+        .collect();
     assert_eq!(names.len(), all.len());
 }
 
@@ -133,6 +137,7 @@ fn a_one_line_widget_stays_one_line() {
                 story: &story,
                 hunt: None,
                 who: None,
+                open: &[],
             };
             let mut heights = seen_heights
                 .lock()
@@ -141,7 +146,7 @@ fn a_one_line_widget_stays_one_line() {
             for widget in [Widget::RoomTitle, Widget::Exits, Widget::LeftHand] {
                 let used = ui
                     .allocate_ui(egui::vec2(120.0, LINE), |ui| {
-                        widget.draw(ui, &seen, Id::new(("one-line", widget)));
+                        widget.draw(ui, &seen, Id::new(("one-line", widget.name())));
                     })
                     .response
                     .rect
@@ -346,6 +351,7 @@ fn indicators_and_effects_as_drawn() {
                 story: &story,
                 hunt: None,
                 who: None,
+                open: &[],
             };
             ui.horizontal(|ui| {
                 for indicator in [
@@ -385,6 +391,7 @@ fn compass<'a>(
                 story: &story,
                 hunt: None,
                 who,
+                open: &[],
             };
             if let Some(line) = Widget::Compass.draw(ui, &seen, Id::new("compass")) {
                 heard
@@ -503,6 +510,7 @@ fn the_compass_and_combat_as_drawn() {
                 story: &story,
                 hunt: None,
                 who: None,
+                open: &[],
             };
             ui.horizontal(|ui| {
                 ui.allocate_ui(egui::vec2(160.0, 120.0), |ui| {
@@ -515,4 +523,55 @@ fn the_compass_and_combat_as_drawn() {
         });
     harness.run();
     harness.snapshot("room");
+}
+
+/// A stream's widget shows its lines, or that none has come yet; its count
+/// is how many it heard.
+#[test]
+fn a_streams_widget_shows_its_lines() {
+    let mut story = story();
+    story.hear(
+        &cena_session::ObservedEvent {
+            session: cena_session::SessionId::FIRST,
+            generation: cena_session::Generation::FIRST,
+            cursor: 5,
+            event: cena_session::Event::Line(Arc::new(cena_session::Line::new(
+                "thoughts",
+                cena_session::ChunkLine::plain("[General] hello").runs,
+            ))),
+        },
+        None,
+    );
+    let thoughts = Widget::Stream("thoughts".to_owned());
+    let speech = Widget::Stream("speech".to_owned());
+    let seen = Seen {
+        snapshot: None,
+        story: &story,
+        hunt: None,
+        who: None,
+        open: &[],
+    };
+    assert_eq!(thoughts.count(&seen), Some(1));
+    assert_eq!(speech.count(&seen), Some(0));
+    assert_eq!(thoughts.name(), "Thoughts");
+    assert_eq!(Widget::Stream("mentor".to_owned()).name(), "Mentor");
+    let harness = Harness::builder()
+        .with_size((300.0, 200.0))
+        .build_ui(move |ui| {
+            let seen = Seen {
+                snapshot: None,
+                story: &story,
+                hunt: None,
+                who: None,
+                open: &[],
+            };
+            ui.allocate_ui(egui::vec2(280.0, 80.0), |ui| {
+                let _ = thoughts.draw(ui, &seen, Id::new("thoughts"));
+            });
+            ui.allocate_ui(egui::vec2(280.0, 80.0), |ui| {
+                let _ = speech.draw(ui, &seen, Id::new("speech"));
+            });
+        });
+    assert!(harness.query_by_label("[General] hello").is_some());
+    assert!(harness.query_by_label("Nothing yet.").is_some());
 }

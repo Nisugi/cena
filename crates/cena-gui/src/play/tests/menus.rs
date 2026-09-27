@@ -172,7 +172,7 @@ fn a_right_click_removes_one_widget_of_a_custom_window() {
     let widgets: Vec<Widget> = room
         .cells
         .iter()
-        .flat_map(|cell| cell.tabs.iter().map(|tab| tab.widget))
+        .flat_map(|cell| cell.tabs.iter().map(|tab| tab.widget.clone()))
         .collect();
     assert_eq!(widgets.len(), 4);
     assert!(!widgets.contains(&Widget::Exits));
@@ -424,4 +424,86 @@ fn a_compass_moves_its_character() {
             .asked
             .contains(&Asked::Send("north".to_owned()))
     );
+}
+
+/// A line on `stream`, as the feed hands the story one.
+fn heard(stream: &str, text: &str) -> cena_session::ObservedEvent {
+    cena_session::ObservedEvent {
+        session: cena_session::SessionId::FIRST,
+        generation: cena_session::Generation::FIRST,
+        cursor: 9,
+        event: cena_session::Event::Line(Arc::new(cena_session::Line::new(
+            stream,
+            cena_session::ChunkLine::plain(text).runs,
+        ))),
+    }
+}
+
+/// A thought reaches the story while no widget shows thoughts; with a
+/// Thoughts widget open, it is there, once, and not in the story.
+#[test]
+fn a_streams_widget_takes_its_lines_from_the_story() {
+    let mut harness = with_baelor();
+    harness
+        .state_mut()
+        .story
+        .hear(&heard("thoughts", "[General] anyone hunting?"), None);
+    harness.run();
+    assert_eq!(
+        harness
+            .query_all_by_label("[General] anyone hunting?")
+            .count(),
+        1,
+        "in the story"
+    );
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        layout.add_widget(Widget::Stream("thoughts".to_owned()), None);
+    }
+    harness.run();
+    assert!(holds(&harness, "Thoughts").is_some());
+    assert_eq!(
+        harness
+            .query_all_by_label("[General] anyone hunting?")
+            .count(),
+        1,
+        "in the Thoughts window alone"
+    );
+}
+
+/// The list offers every stream the character has received, known by name
+/// or not: one that comes with a position the game gives, too.
+#[test]
+fn the_list_offers_a_stream_the_character_received() {
+    let mut harness = with_baelor();
+    harness
+        .state_mut()
+        .story
+        .hear(&heard("mentor", "[Mentor] welcome"), None);
+    harness.run();
+    open_the_list(&mut harness);
+    search(&mut harness, "mentor");
+    harness
+        .get_by_role_and_label(Role::Button, "Mentor")
+        .click();
+    harness.run();
+    assert!(matches!(
+        holds(&harness, "Mentor"),
+        Some(Holds::One(placed)) if placed.widget == Widget::Stream("mentor".to_owned())
+    ));
+    assert!(harness.query_by_label("[Mentor] welcome").is_some());
+}
+
+/// A stream's menu has no Advanced entry: a stream is its character's
+/// story, and never follows another.
+#[test]
+fn a_streams_menu_offers_no_following() {
+    let mut harness = with_baelor();
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        layout.add_widget(Widget::Stream("thoughts".to_owned()), None);
+    }
+    harness.run();
+    harness.get_by_label("Nothing yet.").click_secondary();
+    harness.run();
+    assert!(harness.query_by_label("Remove").is_some(), "a menu");
+    assert!(harness.query_by_label("Advanced").is_none());
 }

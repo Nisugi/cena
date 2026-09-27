@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use super::*;
-use crate::layout::{Library, Preset};
 use crate::widget::LINE;
 
 fn at(x: f32, y: f32, width: f32, height: f32) -> Rect {
@@ -14,7 +13,11 @@ fn at(x: f32, y: f32, width: f32, height: f32) -> Rect {
 fn the_first_layout_tiles_the_area() {
     let area = Vec2::new(900.0, 600.0);
     let layout = Layout::fitted(area);
-    let titles: Vec<&str> = layout.holders.iter().map(Holder::title).collect();
+    let titles: Vec<String> = layout
+        .holders
+        .iter()
+        .map(|holder| holder.title().into_owned())
+        .collect();
     assert_eq!(
         titles,
         ["Story", "Vitals", "Loadout", "Hunt", "Room", "Hydra"]
@@ -56,7 +59,7 @@ fn every_window_and_widget_has_an_id_of_its_own() {
     for holder in &layout.holders {
         assert!(ids.insert(holder.id), "window {}", holder.id);
         let placed: Vec<Placed> = match &holder.holds {
-            Holds::One(placed) => vec![*placed],
+            Holds::One(placed) => vec![placed.clone()],
             Holds::Custom(custom) => custom
                 .cells
                 .iter()
@@ -73,7 +76,7 @@ fn every_window_and_widget_has_an_id_of_its_own() {
     let shown: Vec<Widget> = vitals
         .cells
         .iter()
-        .filter_map(|cell| cell.shown().map(|placed| placed.widget))
+        .filter_map(|cell| cell.shown().map(|placed| placed.widget.clone()))
         .collect();
     assert_eq!(
         shown,
@@ -197,7 +200,7 @@ fn a_layout_is_kept_by_name_whatever_its_case() {
 }
 
 /// The Room window of a fitted layout, and the id of its widget `widget`.
-fn room_with(layout: &Layout, widget: Widget) -> (u32, u32) {
+fn room_with(layout: &Layout, widget: &Widget) -> (u32, u32) {
     let room = layout.titled("Room").expect("a room");
     let Holds::Custom(custom) = &room.holds else {
         panic!("a custom window");
@@ -206,7 +209,7 @@ fn room_with(layout: &Layout, widget: Widget) -> (u32, u32) {
         .cells
         .iter()
         .flat_map(|cell| cell.tabs.iter())
-        .find(|placed| placed.widget == widget)
+        .find(|placed| placed.widget == *widget)
         .expect("in the room");
     (room.id, placed.id)
 }
@@ -216,9 +219,9 @@ fn widgets_in(layout: &Layout, title: &str) -> Vec<Widget> {
         Some(Holds::Custom(custom)) => custom
             .cells
             .iter()
-            .flat_map(|cell| cell.tabs.iter().map(|placed| placed.widget))
+            .flat_map(|cell| cell.tabs.iter().map(|placed| placed.widget.clone()))
             .collect(),
-        Some(Holds::One(placed)) => vec![placed.widget],
+        Some(Holds::One(placed)) => vec![placed.widget.clone()],
         None => Vec::new(),
     }
 }
@@ -230,10 +233,10 @@ fn widgets_in(layout: &Layout, title: &str) -> Vec<Widget> {
 fn a_widget_let_go_in_the_open_gets_a_window_of_its_own() {
     let area = Vec2::new(900.0, 600.0);
     let mut layout = Layout::fitted(area);
-    let (room, exits) = room_with(&layout, Widget::Exits);
+    let (room, exits) = room_with(&layout, &Widget::Exits);
     layout.release(room, Taking::Cell(exits), pos2(890.0, 300.0), &[], area);
     let window = layout.titled("Exits").expect("a window of its own");
-    assert!(matches!(window.holds, Holds::One(placed) if placed.id == exits));
+    assert!(matches!(&window.holds, Holds::One(placed) if placed.id == exits));
     assert!(window.rect().max.x <= area.x + 0.5, "{:?}", window.rect());
     assert!(!widgets_in(&layout, "Room").contains(&Widget::Exits));
     assert_eq!(widgets_in(&layout, "Room").len(), 4);
@@ -247,7 +250,7 @@ fn a_widget_let_go_on_a_custom_window_joins_it() {
     let mut layout = Layout::fitted(area);
     let fresh = layout.new_custom();
     let inside = Rect::from_min_size(pos2(20.0, 60.0), Vec2::new(288.0, 156.0));
-    let (room, exits) = room_with(&layout, Widget::Exits);
+    let (room, exits) = room_with(&layout, &Widget::Exits);
     layout.release(
         room,
         Taking::Tab(exits),
@@ -305,7 +308,7 @@ fn a_tab_taken_out_leaves_the_rest_of_its_stack() {
     );
     assert_eq!(custom.cells.len(), 1);
     assert_eq!(
-        custom.cells[0].shown().map(|shown| shown.widget),
+        custom.cells[0].shown().map(|shown| shown.widget.clone()),
         Some(Widget::Story)
     );
     assert_eq!(
@@ -334,7 +337,11 @@ fn a_window_dropped_on_anothers_title_stacks_with_it() {
         panic!("a custom window of one tab stack");
     };
     assert_eq!(custom.cells.len(), 1);
-    let tabs: Vec<Widget> = custom.cells[0].tabs.iter().map(|tab| tab.widget).collect();
+    let tabs: Vec<Widget> = custom.cells[0]
+        .tabs
+        .iter()
+        .map(|tab| tab.widget.clone())
+        .collect();
     assert_eq!(tabs, [Widget::Hydra, Widget::Hunt]);
     assert_eq!(custom.cells[0].showing, 0);
 }
@@ -358,7 +365,7 @@ fn only_a_widgets_middle_stacks() {
     let widgets: Vec<Vec<Widget>> = custom
         .cells
         .iter()
-        .map(|cell| cell.tabs.iter().map(|tab| tab.widget).collect())
+        .map(|cell| cell.tabs.iter().map(|tab| tab.widget.clone()).collect())
         .collect();
     assert_eq!(
         widgets,
@@ -389,7 +396,7 @@ fn stacking_onto_a_cell_takes_what_was_dragged() {
         custom
             .cells
             .iter()
-            .map(|cell| cell.tabs.iter().map(|tab| tab.widget).collect())
+            .map(|cell| cell.tabs.iter().map(|tab| tab.widget.clone()).collect())
             .collect()
     };
     assert_eq!(
@@ -416,7 +423,11 @@ fn a_cell_stacked_onto_itself_stays() {
     );
     custom.stack_onto(Taking::Cell(1), 2);
     custom.stack_onto(Taking::Tab(2), 1);
-    let tabs: Vec<Widget> = custom.cells[0].tabs.iter().map(|tab| tab.widget).collect();
+    let tabs: Vec<Widget> = custom.cells[0]
+        .tabs
+        .iter()
+        .map(|tab| tab.widget.clone())
+        .collect();
     assert_eq!(tabs, [Widget::Story, Widget::Hydra]);
 }
 
@@ -426,8 +437,8 @@ fn a_cell_stacked_onto_itself_stays() {
 fn a_stack_let_go_in_the_open_keeps_together() {
     let area = Vec2::new(900.0, 600.0);
     let mut layout = Layout::fitted(area);
-    let (room, creatures) = room_with(&layout, Widget::Creatures);
-    let (_, objects) = room_with(&layout, Widget::Objects);
+    let (room, creatures) = room_with(&layout, &Widget::Creatures);
+    let (_, objects) = room_with(&layout, &Widget::Objects);
     if let Some(Holder {
         holds: Holds::Custom(custom),
         ..
@@ -446,7 +457,11 @@ fn a_stack_let_go_in_the_open_keeps_together() {
     let Holds::Custom(custom) = &window.holds else {
         panic!("a custom window");
     };
-    let tabs: Vec<Widget> = custom.cells[0].tabs.iter().map(|tab| tab.widget).collect();
+    let tabs: Vec<Widget> = custom.cells[0]
+        .tabs
+        .iter()
+        .map(|tab| tab.widget.clone())
+        .collect();
     assert_eq!(tabs, [Widget::Creatures, Widget::Objects]);
     assert_eq!(custom.cells[0].showing, 1);
 }
@@ -464,7 +479,7 @@ fn an_added_widget_gets_a_window_and_keeps_whom_it_follows() {
         layout
             .holders
             .iter()
-            .find(|holder| matches!(holder.holds, Holds::One(one) if one.id == placed))
+            .find(|holder| matches!(&holder.holds, Holds::One(one) if one.id == placed))
             .map(Holder::rect)
     };
     let (a, b) = (
@@ -489,7 +504,7 @@ fn an_added_widget_gets_a_window_and_keeps_whom_it_follows() {
 #[test]
 fn removing_forgets_what_followed() {
     let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
-    let (room, exits) = room_with(&layout, Widget::Exits);
+    let (room, exits) = room_with(&layout, &Widget::Exits);
     layout.follow(exits, Some("Baelor".to_owned()));
     layout.remove_widget(room, exits);
     assert!(!widgets_in(&layout, "Room").contains(&Widget::Exits));
@@ -498,12 +513,12 @@ fn removing_forgets_what_followed() {
     let window = layout
         .holders
         .iter()
-        .find(|holder| matches!(holder.holds, Holds::One(one) if one.id == added))
+        .find(|holder| matches!(&holder.holds, Holds::One(one) if one.id == added))
         .map(|holder| holder.id)
         .expect("its window");
     layout.remove_widget(window, added);
     assert!(layout.holder(window).is_none(), "its window went with it");
-    let (_, creatures) = room_with(&layout, Widget::Creatures);
+    let (_, creatures) = room_with(&layout, &Widget::Creatures);
     layout.follow(creatures, Some("Baelor".to_owned()));
     layout.remove_window(room);
     assert!(layout.titled("Room").is_none());
@@ -521,186 +536,8 @@ fn a_custom_window_is_renamed_and_a_widget_unfollowed() {
         .expect("vitals");
     layout.rename(vitals, "  Bars ");
     assert!(layout.titled("Bars").is_some());
-    let (_, exits) = room_with(&layout, Widget::Exits);
+    let (_, exits) = room_with(&layout, &Widget::Exits);
     layout.follow(exits, Some("Baelor".to_owned()));
     layout.follow(exits, None);
     assert!(layout.follows.is_empty());
-}
-
-/// The widgets of a custom window, in its cells' order.
-fn in_custom(custom: &Custom) -> Vec<Widget> {
-    custom
-        .cells
-        .iter()
-        .flat_map(|cell| cell.tabs.iter().map(|tab| tab.widget))
-        .collect()
-}
-
-/// Hydra's presets: each named once, the vitals row four bars side by side.
-#[test]
-fn hydras_presets_are_put_together() {
-    let presets = Preset::hydras();
-    let names: HashSet<&str> = presets.iter().map(|preset| preset.name.as_str()).collect();
-    assert_eq!(names.len(), presets.len());
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
-    let row = presets
-        .iter()
-        .find(|preset| preset.name == "Vitals row")
-        .expect("a vitals row");
-    let placed = layout.add_preset(row, None);
-    let Some(Holds::Custom(custom)) = layout.holder(placed).map(|holder| &holder.holds) else {
-        panic!("a custom window");
-    };
-    assert_eq!(
-        in_custom(custom),
-        [
-            Widget::Health,
-            Widget::Mana,
-            Widget::Stamina,
-            Widget::Spirit
-        ]
-    );
-    let tops: HashSet<u32> = custom
-        .cells
-        .iter()
-        .map(|cell| cell.rect().min.y.to_bits())
-        .collect();
-    assert_eq!(tops.len(), 1, "one row");
-}
-
-/// Placing a preset places a copy: its widgets get ids of their own, each
-/// copy apart, and saving over the preset later changes no copy.
-#[test]
-fn a_preset_placed_is_a_copy() {
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
-    let vitals = Preset::hydras().remove(0);
-    let first = layout.add_preset(&vitals, None);
-    let second = layout.add_preset(&vitals, None);
-    assert_ne!(first, second);
-    let mut ids = HashSet::new();
-    for holder in &layout.holders {
-        let placed: Vec<u32> = match &holder.holds {
-            Holds::One(placed) => vec![placed.id],
-            Holds::Custom(custom) => custom
-                .cells
-                .iter()
-                .flat_map(|cell| cell.tabs.iter().map(|tab| tab.id))
-                .collect(),
-        };
-        for id in placed {
-            assert!(ids.insert(id), "widget {id} twice");
-        }
-        assert!(ids.insert(holder.id), "window {}", holder.id);
-    }
-    let mut library = Library::load(None);
-    library.keep(vitals.clone());
-    let Some(Holds::Custom(custom)) = layout.holder(first).map(|holder| &holder.holds) else {
-        panic!("a custom window");
-    };
-    library.keep(Preset::of(
-        "Vitals",
-        &Custom::empty("Vitals", Vec2::new(10.0, 10.0)),
-    ));
-    let Some(Holds::Custom(after)) = layout.holder(first).map(|holder| &holder.holds) else {
-        panic!("still a custom window");
-    };
-    assert_eq!(after, custom, "the copy placed is untouched");
-    assert_eq!(library.presets().len(), 1, "kept over the same name");
-}
-
-/// A preset placed for another character: each widget follows that one,
-/// but a story, which stays its own window's.
-#[test]
-fn a_preset_placed_for_another_follows_but_its_story() {
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
-    let placed = |id, widget| Placed { id, widget };
-    let custom = Custom::rows(
-        "Mixed",
-        vec![
-            vec![placed(0, Widget::Story)],
-            vec![placed(0, Widget::Health)],
-        ],
-        Vec2::new(200.0, 200.0),
-    );
-    let window = layout.add_preset(&Preset::of("Mixed", &custom), Some("Baelor"));
-    let Some(Holds::Custom(custom)) = layout.holder(window).map(|holder| &holder.holds) else {
-        panic!("a custom window");
-    };
-    for tab in custom.cells.iter().flat_map(|cell| cell.tabs.iter()) {
-        let follows = layout.follows.get(&tab.id).map(String::as_str);
-        match tab.widget {
-            Widget::Story => assert_eq!(follows, None),
-            _ => assert_eq!(follows, Some("Baelor")),
-        }
-    }
-}
-
-/// The library is kept in its file: what is kept is there when it is read
-/// again, one of the same name kept over, a forgotten one gone; no file, or
-/// one of another version, is an empty library.
-#[test]
-fn the_library_is_kept_in_its_file() {
-    let dir = std::env::temp_dir().join(format!("cena-presets-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    assert!(
-        Library::load(Some(dir.clone())).presets().is_empty(),
-        "no file"
-    );
-    let mut library = Library::load(Some(dir.clone()));
-    let mut hydras = Preset::hydras().into_iter();
-    let (Some(vitals), Some(row)) = (hydras.next(), hydras.next()) else {
-        panic!("Hydra's presets");
-    };
-    library.keep(vitals);
-    library.keep(row);
-    assert_eq!(
-        Library::load(Some(dir.clone())).presets(),
-        library.presets()
-    );
-    library.forget("Vitals");
-    let read = Library::load(Some(dir.clone()));
-    let names: Vec<&str> = read
-        .presets()
-        .iter()
-        .map(|preset| preset.name.as_str())
-        .collect();
-    assert_eq!(names, ["Vitals row"]);
-    let file = dir.join("presets.json");
-    let text = std::fs::read_to_string(&file).expect("written");
-    std::fs::write(&file, text.replace("\"version\": 1", "\"version\": 2")).expect("written");
-    assert!(
-        Library::load(Some(dir.clone())).presets().is_empty(),
-        "another version"
-    );
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-/// Hydra's Indicators preset holds all nineteen, three a row; its Effects
-/// preset is one tab stack of the four lists, Active Spells showing.
-#[test]
-fn the_indicators_and_effects_presets_are_whole() {
-    let presets = Preset::hydras();
-    let found = |name: &str| {
-        presets
-            .iter()
-            .find(|preset| preset.name == name)
-            .cloned()
-            .expect(name)
-    };
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
-    let indicators = layout.add_preset(&found("Indicators"), None);
-    let Some(Holds::Custom(custom)) = layout.holder(indicators).map(|holder| &holder.holds) else {
-        panic!("a custom window");
-    };
-    assert_eq!(custom.cells.len(), 19);
-    let effects = layout.add_preset(&found("Effects"), None);
-    let Some(Holds::Custom(custom)) = layout.holder(effects).map(|holder| &holder.holds) else {
-        panic!("a custom window");
-    };
-    assert_eq!(custom.cells.len(), 1, "one tab stack");
-    assert_eq!(custom.cells[0].tabs.len(), 4);
-    assert_eq!(
-        custom.cells[0].shown().map(|shown| shown.widget),
-        Some(Widget::Effects(crate::widget::Category::ActiveSpells))
-    );
 }

@@ -27,9 +27,9 @@ fn stacks(harness: &Harness<'_, Scene>, title: &str) -> Vec<Vec<Widget>> {
         Some(Holds::Custom(custom)) => custom
             .cells
             .iter()
-            .map(|cell| cell.tabs.iter().map(|tab| tab.widget).collect())
+            .map(|cell| cell.tabs.iter().map(|tab| tab.widget.clone()).collect())
             .collect(),
-        Some(Holds::One(placed)) => vec![vec![placed.widget]],
+        Some(Holds::One(placed)) => vec![vec![placed.widget.clone()]],
         None => Vec::new(),
     }
 }
@@ -203,13 +203,14 @@ fn a_tab_first_seen_hidden_counts_from_then() {
         story: &story,
         hunt: None,
         who: None,
+        open: &[],
     };
     let hydra = crate::layout::Placed {
         id: 7,
         widget: Widget::Hydra,
     };
     let mut read = std::collections::HashMap::new();
-    assert_eq!(super::super::draw::unread(&mut read, hydra, &seen), None);
+    assert_eq!(super::super::draw::unread(&mut read, &hydra, &seen), None);
     assert_eq!(read.get(&7), Some(&story.told));
 }
 

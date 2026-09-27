@@ -66,6 +66,7 @@ impl Play {
         area: Rect,
         others: &[Character],
         library: &Library,
+        received: &[&str],
     ) -> bool {
         let Some(shown) = self.layout.as_ref().map(kinds_shown) else {
             return false;
@@ -73,6 +74,16 @@ impl Play {
         let Some(adding) = self.adding.as_mut() else {
             return false;
         };
+        // The streams named, and any other this character has received: a
+        // stream that comes with a position the game gives appears for the
+        // characters that hold it (`plan/49` §3).
+        let mut every = Widget::all();
+        for id in received {
+            let stream = Widget::Stream((*id).to_owned());
+            if !every.contains(&stream) {
+                every.push(stream);
+            }
+        }
         let mut open = true;
         let mut chosen = None;
         let mut preset = None;
@@ -91,8 +102,8 @@ impl Play {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     presets(ui, &search, library, &mut preset, &mut forget);
                     for group in Group::ALL {
-                        let kinds: Vec<Widget> = Widget::all()
-                            .into_iter()
+                        let kinds: Vec<&Widget> = every
+                            .iter()
                             .filter(|kind| kind.group() == group)
                             .filter(|kind| kind.name().to_lowercase().contains(&search))
                             .collect();
@@ -107,9 +118,9 @@ impl Play {
                                     .add_enabled(!own_only, egui::Button::new(kind.name()))
                                     .clicked()
                                 {
-                                    chosen = Some(kind);
+                                    chosen = Some(kind.clone());
                                 }
-                                if shown.contains(&kind) {
+                                if shown.contains(kind) {
                                     ui.weak("shown");
                                 }
                             });
@@ -293,11 +304,11 @@ fn kinds_shown(layout: &Layout) -> HashSet<Widget> {
         .holders
         .iter()
         .flat_map(|holder| match &holder.holds {
-            Holds::One(placed) => vec![placed.widget],
+            Holds::One(placed) => vec![placed.widget.clone()],
             Holds::Custom(custom) => custom
                 .cells
                 .iter()
-                .flat_map(|cell| cell.tabs.iter().map(|tab| tab.widget))
+                .flat_map(|cell| cell.tabs.iter().map(|tab| tab.widget.clone()))
                 .collect(),
         })
         .collect()
@@ -401,14 +412,14 @@ fn items(ui: &mut egui::Ui, menu: &mut Menu, layout: &Layout, others: &[Characte
 }
 
 /// The kind of widget `placed` in window `holder`.
-fn widget_in(layout: &Layout, holder: u32, placed: u32) -> Option<Widget> {
+fn widget_in(layout: &Layout, holder: u32, placed: u32) -> Option<&Widget> {
     match &layout.holder(holder)?.holds {
-        Holds::One(one) => (one.id == placed).then_some(one.widget),
+        Holds::One(one) => (one.id == placed).then_some(&one.widget),
         Holds::Custom(custom) => custom
             .cells
             .iter()
             .flat_map(|cell| cell.tabs.iter())
             .find(|tab| tab.id == placed)
-            .map(|tab| tab.widget),
+            .map(|tab| &tab.widget),
     }
 }

@@ -31,9 +31,9 @@ fn widgets_in(harness: &Harness<'_, Scene>, title: &str) -> Vec<Widget> {
         Some(Holds::Custom(custom)) => custom
             .cells
             .iter()
-            .flat_map(|cell| cell.tabs.iter().map(|placed| placed.widget))
+            .flat_map(|cell| cell.tabs.iter().map(|placed| placed.widget.clone()))
             .collect(),
-        Some(Holds::One(placed)) => vec![placed.widget],
+        Some(Holds::One(placed)) => vec![placed.widget.clone()],
         None => Vec::new(),
     }
 }

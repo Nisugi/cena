@@ -51,16 +51,15 @@ impl Layout {
     /// that is another character, placed down and right of the last one so
     /// several added in a row stay apart; its id.
     pub(crate) fn add_widget(&mut self, widget: Widget, follows: Option<String>) -> u32 {
+        let size = widget.size() + CHROME;
         let placed = self.place(widget);
+        let id = placed.id;
         let corner = self.next_corner();
-        self.add(
-            Rect::from_min_size(corner, widget.size() + CHROME),
-            Holds::One(placed),
-        );
+        self.add(Rect::from_min_size(corner, size), Holds::One(placed));
         if let Some(who) = follows {
-            self.follows.insert(placed.id, who);
+            self.follows.insert(id, who);
         }
-        placed.id
+        id
     }
 
     /// Where the next window added from the list goes: down and right of the
@@ -182,16 +181,12 @@ impl Layout {
                 && Rect::from_min_size(holder.rect().min, vec2(holder.rect().width(), TITLE))
                     .contains(at)
         }) {
-            let Holds::One(first) = onto.holds else {
+            let Holds::One(first) = &onto.holds else {
                 return false;
             };
+            let (first, title) = (first.clone(), first.widget.name().into_owned());
             let inside = (onto.rect().size() - CHROME).max(Vec2::ZERO);
-            onto.holds = Holds::Custom(Custom::stack(
-                first.widget.name(),
-                vec![first, placed],
-                0,
-                inside,
-            ));
+            onto.holds = Holds::Custom(Custom::stack(&title, vec![first, placed], 0, inside));
         } else if let Some((into, inside)) = insides
             .iter()
             .find(|(_, inside)| inside.contains(at))
@@ -221,7 +216,7 @@ impl Layout {
             self.land_in(*into, tabs, showing, at - inside.min.to_vec2());
             return;
         }
-        let Some(shown) = tabs.get(showing).or_else(|| tabs.first()).copied() else {
+        let Some(shown) = tabs.get(showing).or_else(|| tabs.first()).cloned() else {
             return;
         };
         let strip = if tabs.len() > 1 { LINE } else { 0.0 };
@@ -233,7 +228,7 @@ impl Layout {
             Holds::One(shown)
         } else {
             let inside = (size - CHROME).max(Vec2::ZERO);
-            Holds::Custom(Custom::stack(shown.widget.name(), tabs, showing, inside))
+            Holds::Custom(Custom::stack(&shown.widget.name(), tabs, showing, inside))
         };
         self.add(placed_at, holds);
     }

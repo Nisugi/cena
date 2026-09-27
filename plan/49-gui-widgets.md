@@ -472,6 +472,30 @@ Claude's order, cheapest first, set when Stage A was done (2026-09-27):
    friends apart from foes with their statuses, the dead, and none; and an image of both
    (`tests/snapshots/room.png`). Twelve mutants, all caught.
 
+   **Step 4 BUILT 2026-09-27** (`crates/cena-gui/src/story/streams.rs`,
+   `widget/draw.rs`). A widget of one of the game's streams, by its id: *Thoughts*
+   (`thoughts`), *Speech*, *Arrivals* (`logons`), *Deaths* (`death`), *Announcements*,
+   *Familiar*, *Voln* (the Order's own thoughts), and **any other the character has
+   received**, offered in the Add-a-widget list under its id with a capital -- so a
+   mentor's or a host's stream appears for the characters that hold the position and
+   nobody else (§1 row 4), and Hydra never had to be told its id. The story keeps every
+   stream's own lines, painted by the triggers as its own are, even one the game drops from
+   the story (speech, main's copy); a line the game sends to the story is marked with its
+   stream, and **the story leaves it out while a widget of that stream is open** in the
+   window, showing or a tab behind another -- the story and the stream never say one line
+   twice. A stream is its character's story: it never follows another (§1 row 7). Hydra's
+   presets gain *Streams*, one tab stack of thoughts, speech, arrivals, deaths and
+   announcements, each tab counting what came since it showed. A widget kind may now hold
+   a name, so it is cloned, not copied, and its name may be made (`Widget::name`).
+
+   Tests: each stream kept, speech too, the story's lines marked; a stream keeping its
+   newest 500; a stream's widget showing its lines, counting them, named or capitalised;
+   the story giving a thought up to an open Thoughts widget; the list offering a stream
+   received (a mentor's); a stream's menu offering no following; and the Streams preset.
+   Ten mutants: eight caught at once, two once tests were written for them (a stream
+   allowed to follow, and one kept without end). The preset tests moved to
+   `layout/preset/tests.rs` as `layout/tests.rs` neared its cap.
+
 ### Stage C — the launcher tab
 
 The hub's third tab, *"incorporate the things lich's launcher can do"* (`plan/47` §1 row 6):

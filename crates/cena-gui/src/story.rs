@@ -37,6 +37,10 @@ pub(crate) enum Shown {
     Typed(String),
     /// Lines were lost here: the feed fell behind.
     Gap,
+    /// A line of another stream, which the game sends to the story while
+    /// that stream's window is closed: kept apart from the story's own, so
+    /// the story leaves it out while a widget of the stream is open.
+    From(String, Vec<StyledRun>),
 }
 
 /// What a play window shows of one character, kept by its feed.
@@ -54,6 +58,8 @@ pub(crate) struct Story {
     pub(crate) heard: u64,
     /// Hydra's messages told, ever, for the same.
     pub(crate) told: u64,
+    /// Each stream's own lines, for a widget of it (`streams.rs`).
+    pub(crate) streams: streams::Streams,
     /// Inside a quiet command's window.
     quiet: bool,
     /// The connection the last event came on.
@@ -72,6 +78,12 @@ impl Story {
         match &event.event {
             Event::Quiet(quiet) => self.quiet = *quiet,
             Event::Line(line) => {
+                let main = is_main(&line.stream);
+                let lines = story_lines(&line.stream, painted(line));
+                if !main {
+                    self.streams
+                        .hear(&line.stream, lines.iter().map(|shown| shown.runs.clone()));
+                }
                 let style = match state.map_or(Destination::Main, |state| {
                     state.stream_windows().route(&line.stream, &|_| false)
                 }) {
@@ -79,17 +91,21 @@ impl Story {
                     Destination::MainStyled(style) => Some(style),
                     Destination::Main | Destination::Window(_) => None,
                 };
-                if self.quiet && is_main(&line.stream) {
+                if self.quiet && main {
                     return;
                 }
-                for shown in story_lines(&line.stream, painted(line)) {
+                for shown in lines {
                     let mut runs = shown.runs;
                     if let Some(style) = &style {
                         for run in runs.iter_mut().filter(|run| run.preset.is_none()) {
                             run.preset = Some(style.clone());
                         }
                     }
-                    self.push(Shown::Game(runs));
+                    self.push(if main {
+                        Shown::Game(runs)
+                    } else {
+                        Shown::From(line.stream.clone(), runs)
+                    });
                     self.heard += 1;
                 }
             }
@@ -151,6 +167,8 @@ impl Story {
 fn is_main(stream: &str) -> bool {
     stream.is_empty() || stream == MAIN
 }
+
+mod streams;
 
 #[cfg(test)]
 mod tests;

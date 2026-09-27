@@ -203,6 +203,7 @@
 //! | **Arrange** | the Layout menu's switch that lets a custom window's cells be moved, resized, and dragged out, and lets a standalone window be dropped into one; off, no press rearranges anything (`plan/49` Stage A step 4) | edit mode |
 //! | **Hub** | every character at a glance: a card each, start, quit, reconnect, and the merged streams. Two frontends have one: Despana's hub page, and the window's [`Hub`](cena_gui::Hub), in two tabs, Live and Closed (`plan/47`). Requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
 //! | **Character page** | one character's own page. No window shows two characters' story text (`plan/29` §5a) | |
+//! | **Stream** (a widget) | one of the game's streams in a widget of its own -- thoughts, speech, arrivals, any the character has received -- which the story then leaves out while it is open, so no line is said twice (`plan/49` Stage B step 4) | the merged streams, which are the hub's |
 //! | **Merged streams** | thoughts, speech, logons, deaths and announcements across characters, each line once: [`Merger`] | |
 //! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end is published as one line per category ([`SessionHandle::sort_containers`]); the model and the player log keep it whole | inventory, which is the `inv` window's feed |
 //!

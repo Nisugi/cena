@@ -88,7 +88,7 @@ pub(crate) enum Holds {
 }
 
 /// A widget placed somewhere, with the id it was given there.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Placed {
     /// Its own id.
     pub(crate) id: u32,
@@ -102,10 +102,10 @@ impl Holder {
     /// adds whose it is to a widget following another character
     /// (`play/draw.rs`, `title`).
     #[cfg(test)]
-    pub(crate) fn title(&self) -> &str {
+    pub(crate) fn title(&self) -> std::borrow::Cow<'_, str> {
         match &self.holds {
             Holds::One(placed) => placed.widget.name(),
-            Holds::Custom(custom) => &custom.title,
+            Holds::Custom(custom) => std::borrow::Cow::Borrowed(&custom.title),
         }
     }
 
@@ -222,7 +222,11 @@ impl Layout {
     fn custom(&mut self, at: Rect, title: &str, rows: &[&[Widget]]) -> u32 {
         let rows: Vec<Vec<Placed>> = rows
             .iter()
-            .map(|row| row.iter().map(|widget| self.place(*widget)).collect())
+            .map(|row| {
+                row.iter()
+                    .map(|widget| self.place(widget.clone()))
+                    .collect()
+            })
             .collect();
         let inside = (at.size() - CHROME).max(Vec2::ZERO);
         self.add(at, Holds::Custom(Custom::rows(title, rows, inside)))
@@ -231,6 +235,28 @@ impl Layout {
     /// The window `id`, if it is here.
     pub(crate) fn holder(&self, id: u32) -> Option<&Holder> {
         self.holders.iter().find(|holder| holder.id == id)
+    }
+
+    /// The streams a widget here shows, showing or a tab behind another:
+    /// the story leaves their lines out (`plan/49` Stage B step 4).
+    pub(crate) fn streams(&self) -> Vec<String> {
+        let mut streams = Vec::new();
+        for holder in &self.holders {
+            let placed: Vec<&Placed> = match &holder.holds {
+                Holds::One(placed) => vec![placed],
+                Holds::Custom(custom) => custom
+                    .cells
+                    .iter()
+                    .flat_map(|cell| cell.tabs.iter())
+                    .collect(),
+            };
+            for placed in placed {
+                if let Widget::Stream(id) = &placed.widget {
+                    streams.push(id.clone());
+                }
+            }
+        }
+        streams
     }
 
     /// Where window `id` sits, if it is here.

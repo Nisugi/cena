@@ -17,7 +17,7 @@ use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
     clippy::too_many_lines,
     reason = "the catalog's table: one arm per kind, each a call; split, it would hide which kind draws how"
 )]
-pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
+pub(super) fn draw(widget: &Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
     let named = |label: &str| {
         seen.who
@@ -36,7 +36,8 @@ pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -
         // window's character.
         Widget::Compass => return room::compass(ui, state, seen.who.is_none()),
         Widget::Combat => scrolled(ui, &mut |ui| room::combat(ui, state)),
-        Widget::Story => story(ui, &seen.story.lines, id),
+        Widget::Story => story(ui, &seen.story.lines, seen.open, id),
+        Widget::Stream(stream_id) => stream(ui, seen, stream_id, id),
         Widget::Hydra => hydra(ui, &seen.story.said, id),
         Widget::Hunt => scrolled(ui, &mut |ui| hunt(ui, seen.hunt)),
         Widget::Health => vital(
@@ -127,10 +128,10 @@ pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -
         Widget::Resources => scrolled(ui, &mut |ui| character::resources(ui, state)),
         Widget::Objectives => scrolled(ui, &mut |ui| character::objectives(ui, state)),
         Widget::Indicator(indicator) => {
-            status::indicator(ui, indicator, state, &named(indicator.name()));
+            status::indicator(ui, *indicator, state, &named(indicator.name()));
         }
         Widget::Effects(category) => {
-            scrolled(ui, &mut |ui| status::effects(ui, category, state));
+            scrolled(ui, &mut |ui| status::effects(ui, *category, state));
         }
         Widget::Exits => line(
             ui,
@@ -312,8 +313,8 @@ fn notice_lines(ui: &mut egui::Ui, notice: &Notice) {
 }
 
 /// The story, newest at the bottom, where it stays unless the player
-/// scrolls back.
-fn story(ui: &mut egui::Ui, lines: &std::collections::VecDeque<Shown>, id: Id) {
+/// scrolls back; a stream's lines left out while a widget of it is `open`.
+fn story(ui: &mut egui::Ui, lines: &std::collections::VecDeque<Shown>, open: &[String], id: Id) {
     egui::ScrollArea::vertical()
         .min_scrolled_height(0.0)
         .id_salt(id.with("story"))
@@ -325,6 +326,11 @@ fn story(ui: &mut egui::Ui, lines: &std::collections::VecDeque<Shown>, id: Id) {
                     Shown::Game(runs) => {
                         ui.label(text::job(runs, ui.style()));
                     }
+                    Shown::From(stream, runs) => {
+                        if !open.contains(stream) {
+                            ui.label(text::job(runs, ui.style()));
+                        }
+                    }
                     Shown::Typed(line) => {
                         ui.weak(format!("> {line}"));
                     }
@@ -332,6 +338,26 @@ fn story(ui: &mut egui::Ui, lines: &std::collections::VecDeque<Shown>, id: Id) {
                         ui.colored_label(WRONG, "Some lines were missed here.");
                     }
                 }
+            }
+        });
+}
+
+/// One of the game's streams, newest at the bottom, where it stays unless
+/// the player scrolls back.
+fn stream(ui: &mut egui::Ui, seen: &Seen<'_>, stream: &str, id: Id) {
+    egui::ScrollArea::vertical()
+        .min_scrolled_height(0.0)
+        .id_salt(id.with("stream"))
+        .stick_to_bottom(true)
+        .auto_shrink(false)
+        .show(ui, |ui| match seen.story.streams.get(stream) {
+            Some(kept) => {
+                for runs in &kept.lines {
+                    ui.label(text::job(runs, ui.style()));
+                }
+            }
+            None => {
+                ui.weak("Nothing yet.");
             }
         });
 }

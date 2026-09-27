@@ -140,7 +140,7 @@ pub(super) fn holder(
     let inside = ui.available_rect_before_wrap();
     ui.set_min_size(inside.size());
     match holds {
-        Holds::One(placed) => shown(ui, *placed, drawing),
+        Holds::One(placed) => shown(ui, placed, drawing),
         Holds::Custom(custom) => {
             custom.fit(inside.size());
             if custom.cells.is_empty() {
@@ -158,10 +158,9 @@ pub(super) fn holder(
                 let (tabs, body) = tabs_and_body(at, cell.tabs.len());
                 for (index, (tab, rect)) in cell.tabs.iter().zip(tabs).enumerate() {
                     let showing = index == cell.showing;
-                    let name = match unread(drawing.read, *tab, &drawing.seen).filter(|_| !showing)
-                    {
+                    let name = match unread(drawing.read, tab, &drawing.seen).filter(|_| !showing) {
                         Some(unread) => format!("{} {unread}", tab.widget.name()),
-                        None => tab.widget.name().to_owned(),
+                        None => tab.widget.name().into_owned(),
                     };
                     let mut child =
                         ui.new_child(UiBuilder::new().max_rect(rect).id_salt(("tab", tab.id)));
@@ -176,7 +175,7 @@ pub(super) fn holder(
                 };
                 let mut child =
                     ui.new_child(UiBuilder::new().max_rect(body).id_salt(("cell", placed.id)));
-                shown(&mut child, *placed, drawing);
+                shown(&mut child, placed, drawing);
             }
             ui.advance_cursor_after_rect(inside);
         }
@@ -188,7 +187,7 @@ pub(super) fn holder(
 /// now. The one way a widget is drawn, standalone, alone in a cell or a tab.
 /// One that follows another character draws from that character, named on
 /// it, or says that character is not running; a story never follows.
-fn shown(ui: &mut egui::Ui, placed: Placed, drawing: &mut Drawing<'_>) {
+fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
     let id = widget_id(drawing.session, placed.id);
     let follows = drawing
         .follows
@@ -230,7 +229,7 @@ pub(super) fn title(holds: &Holds, follows: &BTreeMap<u32, String>) -> String {
     match holds {
         Holds::One(placed) => match follows.get(&placed.id) {
             Some(who) if !placed.widget.is_story() => format!("{} ({who})", placed.widget.name()),
-            _ => placed.widget.name().to_owned(),
+            _ => placed.widget.name().into_owned(),
         },
         Holds::Custom(custom) => custom.title.clone(),
     }
@@ -239,7 +238,11 @@ pub(super) fn title(holds: &Holds, follows: &BTreeMap<u32, String>) -> String {
 /// What `placed` has said since it last showed, when it counts and that is
 /// something. A widget first seen here is read up to now, so a tab counts
 /// from when it was stacked.
-pub(super) fn unread(read: &mut HashMap<u32, u64>, placed: Placed, seen: &Seen<'_>) -> Option<u64> {
+pub(super) fn unread(
+    read: &mut HashMap<u32, u64>,
+    placed: &Placed,
+    seen: &Seen<'_>,
+) -> Option<u64> {
     let count = placed.widget.count(seen)?;
     let last = *read.entry(placed.id).or_insert(count);
     Some(count.saturating_sub(last)).filter(|unread| *unread > 0)
