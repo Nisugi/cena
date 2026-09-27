@@ -326,6 +326,34 @@ pub struct Waited {
 
 /// How many happenings a character's log keeps.
 pub const KEPT: usize = 1_000;
+/// How many lines of game text a character's log keeps.
+pub const KEPT_LINES: usize = 500;
+/// How many lines one read returns at most.
+pub const LINES_RETURNED: usize = 200;
+
+/// A line of game text as the game sent it and the player's viewers show
+/// it: **untrusted** (`plan/35` §5), since players write much of it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct GameLine {
+    /// The session's cursor it was published at.
+    pub cursor: u64,
+    /// Its stream: `""` is the main window; `thoughts`, `speech`...
+    pub stream: String,
+    /// The text, markup removed.
+    pub text: String,
+}
+
+/// Lines of game text, read after a cursor.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Lines {
+    /// The lines, oldest first.
+    pub lines: Vec<GameLine>,
+    /// Some lines after the cursor asked for are no longer kept.
+    pub lagged: bool,
+    /// More lines are kept after the last one returned: read again from its
+    /// cursor.
+    pub more: bool,
+}
 /// How many one `wait` returns at most.
 pub const RETURNED: usize = 200;
 /// The longest one `wait` blocks.
@@ -343,6 +371,9 @@ struct Inner {
     entries: VecDeque<Entry>,
     /// The highest cursor dropped to the bound; 0 when none was.
     dropped_through: u64,
+    /// The game's text, oldest first, and the highest cursor dropped from it.
+    lines: VecDeque<GameLine>,
+    lines_dropped_through: u64,
     /// The latest cursor seen, happenings or not.
     latest: u64,
     closed: bool,
@@ -376,6 +407,57 @@ impl Log {
         let mut inner = self.lock();
         inner.entries.retain(|entry| entry.cursor > through);
         inner.dropped_through = inner.dropped_through.max(through);
+        inner.lines.retain(|line| line.cursor > through);
+        inner.lines_dropped_through = inner.lines_dropped_through.max(through);
+    }
+
+    /// A line of game text at `cursor`.
+    pub fn line(&self, cursor: u64, stream: &str, text: String) {
+        let mut inner = self.lock();
+        inner.lines.push_back(GameLine {
+            cursor,
+            stream: stream.to_owned(),
+            text,
+        });
+        while inner.lines.len() > KEPT_LINES {
+            if let Some(dropped) = inner.lines.pop_front() {
+                inner.lines_dropped_through = dropped.cursor;
+            }
+        }
+        inner.latest = inner.latest.max(cursor);
+    }
+
+    /// Lines of game text: after `since`, oldest first, or the last ones
+    /// when `since` is `None`; at most `most` (and [`LINES_RETURNED`]).
+    /// `until` stops at a cursor, for the lines of one window.
+    #[must_use]
+    pub fn lines(&self, since: Option<u64>, until: Option<u64>, most: usize) -> Lines {
+        let inner = self.lock();
+        let most = most.clamp(1, LINES_RETURNED);
+        let within = |line: &&GameLine| {
+            since.is_none_or(|since| line.cursor > since)
+                && until.is_none_or(|until| line.cursor <= until)
+        };
+        let kept: Vec<&GameLine> = inner.lines.iter().filter(within).collect();
+        let chosen: Vec<GameLine> = match since {
+            Some(_) => kept.iter().take(most).map(|line| (*line).clone()).collect(),
+            None => kept
+                .iter()
+                .skip(kept.len().saturating_sub(most))
+                .map(|line| (*line).clone())
+                .collect(),
+        };
+        Lines {
+            more: since.is_some() && kept.len() > chosen.len(),
+            lagged: since.is_some_and(|since| since < inner.lines_dropped_through),
+            lines: chosen,
+        }
+    }
+
+    /// The latest cursor this log has seen.
+    #[must_use]
+    pub fn latest(&self) -> u64 {
+        self.lock().latest
     }
 
     /// The session has ended.

@@ -154,11 +154,12 @@ impl Agent {
 /// What `;agent help` says.
 const HELP: &[&str] = &[
     "agent                  this character's agent level, and what an agent is waiting on you for",
-    "agent level <level>    set it, kept for this character: off (the default), observe, advise or behaviors",
+    "agent level <level>    set it, kept for this character: off (the default), observe, advise, behaviors or commands",
     "                         off: an agent may do nothing with this character",
     "                         observe: it may read the character, and nothing else",
     "                         advise: it may also put a message in front of you; nothing reaches the game",
     "                         behaviors: it may also start, steer and stop go2, hunt, heal, keep and waggle",
+    "                         commands: it may also send game commands, never dropping, giving, selling or destroying",
     "agent approve <n>      let an agent do the one thing it asked, once",
     "agent deny <n>         refuse it",
     "An agent is a program such as Claude Code, connected to the listener Hydra starts with --agent.",
@@ -377,8 +378,8 @@ mod tests {
         assert_eq!(handle.agent_level(), Level::Observe);
         assert_eq!(load_level(&dir, "GS3", "Nisugi"), Ok(Level::Observe));
 
-        let said = text(&answer(&handle, &dir, who, &["level", "commands"]));
-        assert!(said.contains("no level commands"), "{said}");
+        let said = text(&answer(&handle, &dir, who, &["level", "takeover"]));
+        assert!(said.contains("no level takeover"), "{said}");
         assert_eq!(handle.agent_level(), Level::Observe, "unchanged");
         assert!(text(&answer(&handle, &dir, who, &[])).contains("Nothing is waiting"));
         let _ = std::fs::remove_dir_all(&dir);

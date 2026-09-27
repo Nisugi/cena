@@ -254,6 +254,13 @@ async fn stunned_on_look() -> (cena_session::SessionHandle, cena_session::Sessio
         "look",
         b"<indicator id=\"IconSTUNNED\" visible=\"y\"/>\n<prompt time=\"2\">&gt;</prompt>\n",
     );
+    // Twice: the scripted game answers each scripted line once.
+    for _ in 0..2 {
+        transcript.answer(
+            "glance",
+            b"You glance about.\n<prompt time=\"3\">&gt;</prompt>\n",
+        );
+    }
     let session = Session::new(source);
     let (handle, observer) = (session.handle(), session.observer());
     tokio::spawn(session.into_actor().run());
@@ -549,7 +556,7 @@ async fn an_act_above_the_level_waits_for_the_player() {
     assert!(
         capabilities["tools"]
             .as_array()
-            .is_some_and(|tools| tools.len() == 9 && tools.iter().all(|t| t["needs"].is_string())),
+            .is_some_and(|tools| tools.len() == 11 && tools.iter().all(|t| t["needs"].is_string())),
         "{capabilities}"
     );
     stop.cancel();
@@ -684,5 +691,106 @@ async fn a_behavior_is_performed_as_an_operation_and_stopped() {
         .await
         .unwrap();
     assert_eq!(capabilities["character"]["performs"], "walk <place>");
+    stop.cancel();
+}
+
+/// Step 4: a game command at `commands` is an operation whose result is the
+/// game's answer, with the text that came meanwhile; it goes out as the
+/// agent's; the denylist refuses at every level and sends nothing; below
+/// `commands` the player is asked, and the yes sends it.
+#[tokio::test]
+async fn a_command_is_sent_as_the_agents_and_the_denylist_holds() {
+    let (handle, _observer, client, stop) = seated().await.unwrap();
+    handle.set_agent_level(Level::Commands);
+    let state = client
+        .tool("state", serde_json::json!({"character": "Nisugi"}))
+        .await
+        .unwrap();
+    let (since, generation) = (state["cursor"].as_u64(), state["generation"].as_u64());
+    let command = |line: &str, request: &str| {
+        serde_json::json!({"character": "Nisugi", "line": line, "because": "to see",
+            "request_id": request, "expected_generation": generation})
+    };
+    let sent = client
+        .tool("command", command("glance", "g1"))
+        .await
+        .unwrap();
+    assert_eq!(sent["operation"]["result"]["work"], "completed", "{sent}");
+    assert_eq!(sent["operation"]["result"]["reason"], "answered");
+    assert_eq!(sent["text"]["untrusted"], true);
+    assert!(
+        sent["text"]["lines"]
+            .to_string()
+            .contains("You glance about."),
+        "{sent}"
+    );
+
+    for line in [
+        "drop sword",
+        "dro sword",
+        "put my topaz",
+        "look; drop sword",
+        ";go2 bank",
+    ] {
+        let denied = client.tool("command", command(line, "d1")).await.unwrap();
+        assert_eq!(denied["refused"], "request", "{line}: {denied}");
+        assert!(
+            denied["why"]
+                .as_str()
+                .is_some_and(|why| why.starts_with("never sent")),
+            "{denied}"
+        );
+    }
+    let origins = client
+        .tool(
+            "wait",
+            serde_json::json!({"character": "Nisugi", "since": since, "kinds": ["sent"], "timeout_ms": 0}),
+        )
+        .await
+        .unwrap();
+    let sent_lines: Vec<(serde_json::Value, serde_json::Value)> = origins["happenings"]
+        .as_array()
+        .map(|all| {
+            all.iter()
+                .map(|h| (h["line"].clone(), h["origin"].clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+    assert_eq!(
+        sent_lines,
+        [(serde_json::json!("glance"), serde_json::json!("agent"))],
+        "only the glance went out, and as the agent's"
+    );
+
+    handle.set_agent_level(Level::Behaviors);
+    let asked = client
+        .tool("command", command("glance", "g2"))
+        .await
+        .unwrap();
+    assert_eq!(asked["needed"], "commands", "{asked}");
+    let id = asked["approval"]["id"].as_u64().unwrap();
+    handle.approve_agent(id).unwrap();
+    let mut glanced = 0;
+    for _ in 0..100 {
+        let read = client
+            .tool(
+                "text",
+                serde_json::json!({"character": "Nisugi", "since": since}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(read["untrusted"], true);
+        glanced = read["lines"].as_array().map_or(0, |lines| {
+            lines
+                .iter()
+                .filter(|line| line["text"] == "You glance about.")
+                .count()
+        });
+        if glanced == 2 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(glanced, 2, "the approved glance went out and was answered");
     stop.cancel();
 }

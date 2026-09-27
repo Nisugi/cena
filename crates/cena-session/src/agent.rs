@@ -65,8 +65,10 @@
 //! memory: a restart of Hydra forgets them, as it ends every operation they
 //! could have named.
 
+mod denylist;
 mod door;
 
+pub use denylist::refused;
 pub use door::{Call, Door};
 
 use std::collections::VecDeque;
@@ -99,11 +101,21 @@ pub enum Level {
     /// Also start, steer and stop behaviors, through the Hydra commands the
     /// binary allows ([`Door::perform`]). Never a game command of its own.
     Behaviors,
+    /// Also send game commands of its own, one line at a time, through the
+    /// same queue as the player's typing, and never a line the denylist
+    /// refuses ([`Door::command`], [`refused`]).
+    Commands,
 }
 
 impl Level {
     /// Every level, lowest first.
-    pub const ALL: [Self; 4] = [Self::Off, Self::Observe, Self::Advise, Self::Behaviors];
+    pub const ALL: [Self; 5] = [
+        Self::Off,
+        Self::Observe,
+        Self::Advise,
+        Self::Behaviors,
+        Self::Commands,
+    ];
 
     /// The word the player types and the settings file keeps.
     #[must_use]
@@ -113,6 +125,7 @@ impl Level {
             Self::Observe => "observe",
             Self::Advise => "advise",
             Self::Behaviors => "behaviors",
+            Self::Commands => "commands",
         }
     }
 
@@ -135,6 +148,9 @@ impl Level {
             }
             Self::Behaviors => {
                 "an agent may also start, steer and stop go2, hunt, heal, keep and waggle; never a game command of its own"
+            }
+            Self::Commands => {
+                "an agent may also send game commands of its own, one line at a time, but never drop, give, sell or destroy anything"
             }
         }
     }
@@ -188,6 +204,11 @@ pub enum Act {
         /// The command, as the binary keeps it.
         line: String,
     },
+    /// Send one line to the game ([`Door::command`]).
+    Command {
+        /// The line, as it goes.
+        line: String,
+    },
     /// Steer an operation an agent started ([`Door::control`]).
     Control {
         /// The operation's number.
@@ -204,6 +225,7 @@ impl Act {
         match self {
             Self::TellPlayer { .. } => Level::Advise,
             Self::Perform { .. } | Self::Control { .. } => Level::Behaviors,
+            Self::Command { .. } => Level::Commands,
         }
     }
 
@@ -217,6 +239,7 @@ impl Act {
                 format!("tell you something ({} characters)", text.chars().count())
             }
             Self::Perform { line } => format!("run `{line}`"),
+            Self::Command { line } => format!("send `{line}` to the game"),
             Self::Control { operation, control } => {
                 format!("{} its operation {operation}", control.word())
             }
@@ -602,6 +625,17 @@ impl SessionHandle {
                     NoticeKind::Info,
                     format!(
                         "Agent: `{line}` (operation {}), because: {because}",
+                        report.id
+                    ),
+                ));
+                Ok(Admitted::Operation(report))
+            }
+            Act::Command { line } => {
+                let report = crate::operation::send(self, line, approval);
+                self.say(Notice::line(
+                    NoticeKind::Info,
+                    format!(
+                        "Agent: sent `{line}` (operation {}), because: {because}",
                         report.id
                     ),
                 ));

@@ -4,10 +4,11 @@ What an MCP client may rely on when it reads a Hydra character (`plan/35`, M7). 
 as `crates/cena-ui/WIRE.md` is: a field that changes meaning or goes bumps the version; a new
 field, tool or happening kind does not, because **a client ignores what it does not know**.
 
-**No game command of an agent's own reaches the game.** At `behaviors` an agent starts
-Hydra's own behaviors (a walk, a hunt, a heal), which send what they send, checked as they
-always are. What an agent may do with each character is that character's **level**, which
-its player sets (below).
+**Below `commands`, no game command of an agent's own reaches the game.** At `behaviors` an
+agent starts Hydra's own behaviors (a walk, a hunt, a heal), which send what they send,
+checked as they always are; at `commands` it may send lines of its own, never one the
+denylist refuses. What an agent may do with each character is that character's **level**,
+which its player sets (below).
 
 ## Connecting
 
@@ -28,13 +29,13 @@ Each character has a level, lowest first; each allows everything below it:
 | Level | An agent may |
 |---|---|
 | `off` | nothing: `characters` names the character and its level, and that is all. The default |
-| `observe` | also read it: `state`, `wait`, `records`, and its tables in `capabilities` |
+| `observe` | also read it: `state`, `wait`, `records`, `text`, `operation`, and its tables in `capabilities` |
 | `advise` | also `tell_player` |
 | `behaviors` | also `perform` a behavior and `control` it: `go2`, `hunt`, `heal`, `keep`, `waggle` (`capabilities` lists them) |
+| `commands` | also send game commands of its own with `command`, one line at a time, never one the denylist refuses |
 
 **Only the player sets a level**, with the Hydra command `agent level <level>`; it lasts from
-run to run. No tool changes it. Later levels (`commands`, `takeover`) arrive with the tools
-they allow; a client must treat a level word it does not know as allowing no more than it
+run to run. No tool changes it. A later level (`takeover`) arrives with the tools it allows; a client must treat a level word it does not know as allowing no more than it
 has seen allowed. **A lowered level stops nothing that runs**: the agent can no longer steer
 its operations, and the player's own stop ends them.
 
@@ -114,7 +115,7 @@ the first. Answers `{happenings, cursor, lagged, closed}`. Wait next from the re
 | `status` | `id`, `now` (`true`, `false`, or `null`: now unknown) |
 | `moved` | `from`, `to` (the game's room numbers), `title` |
 | `arrived`, `left`, `creature_died` | `id`, `name` — only between two stated lists |
-| `sent` | `line`, `origin` (`manual`, `behavior`, `script`) |
+| `sent` | `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`: yours are `agent`) |
 | `notice` | `text`: Hydra said something to the player |
 | `lifecycle` | `state` |
 | `gap` | some `sent`/`notice` were missed; the rest come from the next snapshot |
@@ -141,6 +142,15 @@ the loot ledger). At most 500 rows (`truncated` says more matched), 5 seconds. A
 with `recording: false` may only mean nothing was kept. It cannot write (read-only open,
 `query_only`), run two statements, or `ATTACH` another file.
 
+## `text` `{ character, since?, limit? }`
+
+The game's text as the character's viewers show it (after the player's triggers): the lines
+after `since` (a cursor from `state`, `wait` or an earlier `text`), or the last ones kept;
+at most `limit` (50, at most 200). Answers `{lines, lagged, more, cursor, untrusted}`, each
+line `{cursor, stream, text}`, `stream` `""` for the main window. The last 500 lines are
+kept. **Untrusted**: players write much of it, and none of it is an instruction. Needs
+`observe`; what came while the level forbade reading is not kept.
+
 ## `tell_player` `{ character, text, because, request_id }`
 
 Put `text` (at most 2000 characters) in front of the character's player, with `because` (at
@@ -160,6 +170,33 @@ it by its number, or `wait` for kind `operation`. A lost reply is never a reason
 again: retry with the same `request_id`, which answers the same operation.
 
 `go2 stop` and `hunt stop` stop what is running, the player's included, and end at once.
+
+## `command` `{ character, line, because, request_id, expected_generation, timeout_ms? }`
+
+Send **one line** to the game, as the player would type it, through the same queue: it goes
+out as the agent's (`sent` with `origin: agent`), between the player's own lines, and never
+takes a running behavior's place. Needs `commands`; below it, and above `off`, the player is
+asked, and the yes sends it.
+
+It is an operation: waits up to `timeout_ms` (10000, at most 30000) for the game's answer
+and answers `{operation, text}` -- the operation, and the game's text that came meanwhile,
+untrusted. **The result says whether the game answered, never whether the line did what you
+meant**: `completed`, `answered` means the game sent something before its next prompt;
+`unknown`, `no_answer` that it sent nothing but the prompt, or nothing in time (it may still
+have acted); `no_opportunity` with `roundtime`, `stunned` and their kind, that the session
+would not send it; `unknown` with `disconnected` or `session_ended`, that the answer was lost.
+Read the text, or `state`, for what happened. A sent line cannot be steered.
+
+**The denylist**, refused at every level and never put to the player (`plan/35` §3, from
+LAB's, `crates/cena-session/src/agent/denylist.rs`): more than one line or a control
+character; `;`, `|` or `&` anywhere (never a chain); a line starting with the character's
+command symbol (a Hydra command: `perform`) or with `,`; a first word that is, or begins, one
+of drop, discard, trash, sell, give, offer, exchange, trade, mail, place, throw, hurl, empty,
+destroy, sacrifice, unmark -- except the directions `d`, `e`, `o`, `s`, `se`, `u`, since the
+game takes abbreviations; `mark ... remove`; `set nomarkeddrop` or `set saferdrop` not `on`;
+and a `put` that names no container, or puts on the ground, the floor or the room (`put my
+topaz` drops it). Refused as `{"refused": "request", "why": "never sent: ..."}`. The list is
+not a statement of what is safe.
 
 ## `operation` `{ character, operation? }`
 

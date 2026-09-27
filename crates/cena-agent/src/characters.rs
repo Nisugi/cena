@@ -185,17 +185,30 @@ impl<'a> Keeper<'a> {
         if let Happening::Level { level } = &happening {
             self.level = Level::named(level).unwrap_or(Level::Off);
         }
+        if self.visible(cursor) || matches!(happening, Happening::Level { .. }) {
+            self.log.push(cursor, happening);
+        }
+    }
+
+    /// A line of the game's text, kept by the same rule.
+    fn keep_line(&mut self, cursor: u64, line: &cena_session::Line) {
+        if self.visible(cursor) {
+            self.log.line(cursor, &line.stream, line.text());
+        }
+    }
+
+    /// Whether what happened at `cursor` may be kept: the level allows
+    /// reading. The first thing kept after a stretch that was not lets go of
+    /// everything before it.
+    fn visible(&mut self, cursor: u64) -> bool {
         if self.level < Level::Observe {
             self.hidden = true;
-            if matches!(happening, Happening::Level { .. }) {
-                self.log.push(cursor, happening);
-            }
-            return;
+            return false;
         }
         if std::mem::take(&mut self.hidden) {
             self.log.forget(cursor.saturating_sub(1));
         }
-        self.log.push(cursor, happening);
+        true
     }
 }
 
@@ -240,6 +253,9 @@ async fn watch(seat: Seat) {
                 if let Some(happening) = direct(&event.event) {
                     keeper.keep(event.cursor, happening);
                 }
+                if let Event::Line(line) = &event.event {
+                    keeper.keep_line(event.cursor, line);
+                }
                 log.reached(event.cursor);
                 worth_a_look(&event.event)
             }
@@ -267,6 +283,9 @@ async fn watch(seat: Seat) {
             }
             if let Some(happening) = direct(&event.event) {
                 keeper.keep(event.cursor, happening);
+            }
+            if let Event::Line(line) = &event.event {
+                keeper.keep_line(event.cursor, line);
             }
         }
         events = fresh;

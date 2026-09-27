@@ -93,6 +93,14 @@ pub enum Origin {
     /// trigger is not a person, and one that fires on a line the game sends
     /// an idle character would otherwise keep it from ever being idle.
     Trigger,
+    /// An agent sent it, at the Commands level (`plan/35` §3 and §7).
+    ///
+    /// It queues as [`Self::Script`] does -- it jumps the queue and never
+    /// preempts a behavior (author, 2026-09-24: *an agent's single command
+    /// interleaves*) -- and is its own variant for `Script`'s reason: a log
+    /// has to tell "the player typed this" from "the agent sent this". It
+    /// never counts as the player being there, as [`Self::Trigger`] does not.
+    Agent,
 }
 
 impl Origin {
@@ -101,7 +109,7 @@ impl Origin {
     pub const fn token(self) -> Option<crate::queue::AuthorityToken> {
         match self {
             // Neither the player nor a script is a claimant (§4.1).
-            Self::Manual | Self::Script | Self::Trigger => None,
+            Self::Manual | Self::Script | Self::Trigger | Self::Agent => None,
             Self::Behavior(token) => Some(token),
         }
     }

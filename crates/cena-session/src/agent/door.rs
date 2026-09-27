@@ -132,6 +132,25 @@ impl Door {
         )
     }
 
+    /// Send `line` to the game, as an operation whose result is the game's
+    /// answer. Needs [`Level::Commands`]. A line the denylist refuses is
+    /// refused at every level, and never put to the player to approve
+    /// ([`super::refused`]).
+    ///
+    /// # Errors
+    ///
+    /// [`Denied`]: the level; or a denied line, a stale generation, a
+    /// request id used for another act.
+    pub fn command(&self, line: &str, because: &str, call: Call<'_>) -> Result<Admitted, Denied> {
+        self.act(
+            Act::Command {
+                line: line.to_owned(),
+            },
+            because,
+            call,
+        )
+    }
+
     /// Steer operation `operation`. Needs [`Level::Behaviors`].
     ///
     /// **Admission is not application**: the report says the operation is
@@ -241,6 +260,16 @@ impl Door {
     /// The act in the form it is kept and compared in: a command as the
     /// binary's performer keeps it, or why an agent may not run it.
     fn canonical(&self, act: Act) -> Result<Act, Denied> {
+        if let Act::Command { line } = &act {
+            if let Some(why) = super::refused(line, self.handle.symbol()) {
+                return Err(Denied::Invalid(format!("never sent: {why}")));
+            }
+            let line = line.split_whitespace().collect::<Vec<_>>().join(" ");
+            if line.is_empty() {
+                return Err(Denied::Invalid("the line is empty".to_owned()));
+            }
+            return Ok(Act::Command { line });
+        }
         let Act::Perform { line } = act else {
             return Ok(act);
         };

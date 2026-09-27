@@ -145,6 +145,7 @@
 //! | **Door** | the only way an agent acts on a session, each act checked against the level: [`agent::Door`](cena_session::agent::Door). The agent crate holds a door and never a [`SessionHandle`] | |
 //! | **Operation** | a behavior an agent started, read and steered by its number to its end: a ticket, not a reply ([`Door::perform`](cena_session::agent::Door::perform), [`operation::Report`](cena_session::operation::Report)). Its result keeps apart what the work came to, what it left undone, and whether its authority was released | |
 //! | **Request id** | the caller's own id for an act: the same id again, for the same act, is answered as the first time and never done twice ([`agent::Call`](cena_session::agent::Call)) | |
+//! | **Denylist** | what an agent may never send to the game at any level: LAB's list, and a `put` that is a drop and the abbreviations of every denied verb ([`agent::refused`](cena_session::agent::refused)). Not a list of what is safe | |
 //! | **Approval** | the player's yes to one act an agent asked for above its level: that act, once, on that connection, within [`APPROVAL_LIFETIME`](cena_session::agent::APPROVAL_LIFETIME) ([`SessionHandle::approve_agent`](cena_session::SessionHandle::approve_agent)). It grants nothing further | |
 //! | **Quit** | send `quit` and wait for the game to hang up: [`SessionHandle::quit`], told as a [`Farewell`] | |
 //!

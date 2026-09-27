@@ -418,12 +418,85 @@ pub(crate) fn start(
     let performer = handle
         .performer()
         .ok_or("Hydra cannot run behaviors for an agent yet: the character is still logging in")?;
+    Ok(begin(handle, line, approval, |reporter| {
+        (performer.start)(line, reporter)
+    }))
+}
+
+/// How long an agent's line waits for the game's answer.
+pub const SEND_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Send `line` to the game for an agent, as an operation: the round trip
+/// through the same queue as the player's typing ([`Origin::Agent`]), ended
+/// by the game's next prompt. **Its result is whether the game answered --
+/// sent anything before that prompt -- never whether the line did what was
+/// meant**: that is in what the game said, which the caller reads.
+///
+/// [`Origin::Agent`]: crate::Origin::Agent
+pub(crate) fn send(handle: &SessionHandle, line: &str, approval: Option<u64>) -> Report {
+    let sender = handle.clone();
+    let sent = line.to_owned();
+    begin(handle, line, approval, move |_reporter| Started {
+        ended: Box::pin(async move {
+            let outcome = sender
+                .send_and_await(
+                    crate::CommandId(0),
+                    &sent,
+                    crate::Origin::Agent,
+                    SEND_DEADLINE,
+                    // As typed input's: whatever the game sends before its
+                    // next prompt answers it; the prompt alone closes the
+                    // window unanswered (`queue.rs`, `close_window`).
+                    crate::queue::any_frame,
+                )
+                .await;
+            answered(&outcome)
+        }),
+        steer: Arc::new(|control: Control| {
+            Err(format!(
+                "a line sent to the game cannot be told to {}: it is already the game's",
+                control.word()
+            ))
+        }),
+        token: None,
+    })
+}
+
+/// A game command's round trip, as an operation's result.
+fn answered(outcome: &crate::Outcome) -> Ended {
+    use crate::{Outcome, Refusal};
+    let (work, reason) = match outcome {
+        Outcome::Confirmed(_) => (Work::Completed, "answered"),
+        Outcome::Timeout => (Work::Unknown, "no_answer"),
+        Outcome::Refused(Refusal::Roundtime) => (Work::NoOpportunity, "roundtime"),
+        Outcome::Refused(Refusal::Casttime) => (Work::NoOpportunity, "cast_roundtime"),
+        Outcome::Refused(Refusal::Stunned) => (Work::NoOpportunity, "stunned"),
+        Outcome::Refused(Refusal::Webbed) => (Work::NoOpportunity, "webbed"),
+        Outcome::Refused(Refusal::TargetGone) => (Work::NoOpportunity, "target_gone"),
+        Outcome::Refused(Refusal::Transient) => (Work::NoOpportunity, "busy"),
+        Outcome::Refused(Refusal::Permanent) => (Work::NoOpportunity, "refused"),
+        // It may have reached the game before the answer was lost.
+        Outcome::Disconnected => (Work::Unknown, "disconnected"),
+        Outcome::Dead => (Work::Unknown, "session_ended"),
+        Outcome::Interrupted => (Work::Unknown, "interrupted"),
+        Outcome::Handled => (Work::Unknown, "handled"),
+    };
+    Ended::plainly(work, reason)
+}
+
+/// Register an operation `make` starts, and watch it to its end.
+fn begin(
+    handle: &SessionHandle,
+    line: &str,
+    approval: Option<u64>,
+    make: impl FnOnce(Reporter) -> Started,
+) -> Report {
     let id = handle.agent.with_operations(Table::reserve);
     let reporter = Reporter {
         handle: handle.clone(),
         id,
     };
-    let started = (performer.start)(line, reporter);
+    let started = make(reporter);
     let report = handle
         .agent
         .with_operations(|table| table.add(id, line, approval, started.steer));
@@ -443,7 +516,7 @@ pub(crate) fn start(
             watcher.publish(Event::Agent(Change::Operation(Box::new(report))));
         }
     });
-    Ok(report)
+    report
 }
 
 /// Steer operation `id` with `control`.

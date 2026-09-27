@@ -552,7 +552,35 @@ Each ends in something demonstrable, as `12` §8 asks.
      `progress_is_heard_when_it_changes_and_not_otherwise`
      (`crates/cena-session/tests/agent_operations.rs`). Mutations: every report heard turns the
      second red; a stall that ignores a hold, the first.
-4. **Commands**, with the denylist.
+4. **Commands**, with the denylist. **BUILT 2026-09-27.**
+   - **The fifth level, `commands`**, and `command`: one line to the game through the same
+     queue as the player's typing, as **`Origin::Agent`** -- queued as `Script` and `Trigger`
+     are, never attendance, never preempting (AUTHOR 2026-09-24: an agent's single command
+     interleaves). It was listed under step 5; sending needs it now, so it came now.
+   - **A game command is an operation**: its result is the round trip -- `answered` when the
+     game sent anything before its next prompt (the matcher typed input uses), `no_answer`,
+     the session's refusals (roundtime, stunned...) -- never whether the line did what was
+     meant (LAB: *"Report sent-but-unverified separately from evidence-backed success"*). The
+     tool waits for the answer and hands back the game's text that came meanwhile.
+   - **`text`** (Observe, §6's): the game's lines as viewers see them (`Event::Line`, M8's),
+     the last 500 kept per character, untrusted, and hidden while the level forbids reading
+     as every happening is.
+   - **The denylist** (`crates/cena-session/src/agent/denylist.rs`) is LAB's, at `016bcc9`
+     (`src/lich_agent_bridge/actions.py`: `_FORBIDDEN`, `evaluate`), checked at the door
+     before the level, so a denied line is never asked of the player. **Two holes closed,
+     each on a documented case** (the author's rule: from a real case): `put` with no
+     container drops (`reference/wiki_clean/Verb_DROP.txt`: `>put my topaz` answers *You
+     drop a clear topaz.*), and verbs are abbreviated (`Verb_EXPERIENCE.txt`: *"commonly
+     abbreviated to 'EXP'"*), so a first word that begins a denied verb is denied, save the
+     six directions that do. `;` is denied anywhere, as LAB denies it, though only a leading
+     symbol is Hydra's.
+   - No write-time gate: an agent's line goes as the player's does, and the game answers a
+     line sent in roundtime with its own `...wait`. `Gate::Act` is a behavior's, for actions
+     whose target it chose.
+   - Tests: the denylist's own (LAB's list whole, the two holes, what is not on it), and over
+     MCP a command answered with its text, five denied lines sending nothing, the one line
+     sent as `agent`, and a command approved below the level. Mutations: the denylist
+     skipped at the door lets `drop sword` out; sent as `Manual`, the origin test fails.
 5. **Takeover.** `Origin::Agent`, `take_over`, and the level dropping after a bad run.
 6. **Acceptance, live, author present:** a hunt ends on its rest threshold, the agent (not
    the hunt) decides what is next and does it; the player stops the agent mid-act.
