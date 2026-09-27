@@ -44,18 +44,19 @@ mod party;
 mod selling;
 mod walk;
 
+use fold::fold_into;
+
 use std::sync::Arc;
 use std::time::Duration;
 
 use cena_map::{Map, Origin as Whence, RoomId};
 use cena_session::{
-    AuthorityToken, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind, Origin, Outcome,
+    AuthorityToken, CommandId, Frame, GameState, Gate, Notice, NoticeKind, Origin, Outcome,
     Refusal, SessionHandle, Snapshot, State,
 };
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio_util::sync::CancellationToken;
 
-use self::fold::fold_into;
 use self::party::{Membership, Seen};
 use super::engine::{Ending, Here, Hunt, Said};
 use crate::error::BehaviorError;
@@ -337,59 +338,6 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Err(TryRecvError::Closed) => return Err(BehaviorError::Dead),
             }
         }
-    }
-
-    fn fold(&mut self, event: &Event) -> Result<(), BehaviorError> {
-        match event {
-            Event::StateChanged(State::Reconnecting) => self.link_lost(),
-            Event::StateChanged(State::Ready) if self.down => {
-                self.down = false;
-                self.handle.say(Notice::line(
-                    NoticeKind::Info,
-                    "Hunt: reconnected; hunting on.".to_owned(),
-                ));
-            }
-            _ => {}
-        }
-        if let Event::Frame(frame) = event
-            && let Frame::Text(text) = &**frame
-        {
-            if text.stream.is_empty() {
-                self.transcript.push_str(&text.content);
-                let now = self.state.game_time_now();
-                self.machine.heard(&text.content, now);
-            }
-            // The monitor reads whole lines, from every window.
-            self.line.push_str(&text.content);
-            if text.ends_line {
-                self.machine.watched(&self.line);
-                self.line.clear();
-                for alert in self.machine.take_alerts() {
-                    self.handle.say(Notice::line(
-                        NoticeKind::Warn,
-                        format!("Hunt alert: {alert}"),
-                    ));
-                }
-            }
-        }
-        fold_into(&mut self.state, event)
-    }
-
-    /// The connection dropped: what it made stale is forgotten, and the
-    /// hunt waits for the session to be ready again (`plan/30` §7: "a
-    /// reconnect mid-hunt keeps the hunt").
-    fn link_lost(&mut self) {
-        if self.down {
-            return;
-        }
-        self.down = true;
-        self.state.invalidate_for_reconnect();
-        self.machine.link_lost();
-        self.party_link_lost();
-        self.handle.say(Notice::line(
-            NoticeKind::Info,
-            "Hunt: the connection dropped; waiting for it to come back.".to_owned(),
-        ));
     }
 
     /// Fold events for up to `for_`, or until stopped.
