@@ -165,6 +165,16 @@ impl Party {
             seats: Arc::default(),
         }
     }
+
+    /// A character left the table: a leader can no longer start its hunt.
+    /// Without this, a stopped character's seat stayed, and `hunt ... with`
+    /// named it would have started a hunt on a session that was gone.
+    pub(crate) fn unseat(&self, name: &str) {
+        self.seats
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(name);
+    }
 }
 
 /// A character's hunt desk and session: what a leader's `hunt <name> with`

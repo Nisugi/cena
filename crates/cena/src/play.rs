@@ -323,6 +323,7 @@ impl Table {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(&id)?;
+        self.party.unseat(&one.character);
         let named = (one.character.clone(), one.login.clone());
         // A character still in the process holds its logs open (`setup`'s
         // FLUSH_WAIT has why); the hub is not made to wait for that.

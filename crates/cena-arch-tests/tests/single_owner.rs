@@ -194,6 +194,18 @@ const HANDLE_OWNER: (&str, &str) = ("crates/cena-session/src/actor/handle.rs", "
 /// a needle miss.
 const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
     (
+        "crates/cena/src/hunt.rs",
+        "Seat",
+        "One character's hunt desk and session, kept in the session table's Party \
+     (plan/39 Stage 4) so that a leader's `hunt <profile> with <names>` can start \
+     each follower's hunt on the follower's own session. A clone of that \
+     session's handle, on the type's own terms (every field shared: see Viewed \
+     below), so it cannot drift; and it goes when its character leaves the table \
+     (`Party::unseat`, called from play.rs's take_off), so it never outlives the \
+     session. Found 2026-09-27, when this test first ran against this tree: its \
+     build had been scanning another checkout.",
+    ),
+    (
         "crates/cena-web/src/server.rs",
         "Viewed",
         "The embedded frontend's manual-input surface, one per served session \
