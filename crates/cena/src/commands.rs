@@ -35,6 +35,10 @@ pub(crate) type Handler = Arc<dyn Fn(&str) -> Option<Claimed> + Send + Sync>;
 /// the line was its own, with the task when it started one.
 pub(crate) type Starter = Arc<dyn Fn(&str) -> Option<Took> + Send + Sync>;
 
+/// How a family stops what it started, for `;stop`: `true` when something
+/// was running.
+pub(crate) type Stopper = Arc<dyn Fn() -> bool + Send + Sync>;
+
 /// What a family did with a line of its own.
 pub(crate) enum Took {
     /// Done, or answered, by the time it returned.
@@ -57,12 +61,20 @@ pub(crate) const HELP: &[&str] = &[
     "loot, combat     reports on what was recorded: loot summary, combat hunts",
     "sorter           show a container's contents one line per category: sorter on, off or status",
     "multi help, foreach help   run commands several times, or once for each item",
+    "stop             stop everything Hydra is doing on this character: a hunt, a walk, a batch",
+    "to <name> <command>, all <command>   send a command on another character, or on every one",
 ];
 
 /// Whether a line, without its symbol, asks for [`HELP`].
 fn asks_for_help(line: &str) -> bool {
     let line = line.trim();
     line.eq_ignore_ascii_case("help") || line == "?"
+}
+
+/// Whether a line, without its symbol, is `;stop`: everything Hydra is doing
+/// on this character. The play window's Stop sends it (`plan/47` step 4).
+fn asks_to_stop(line: &str) -> bool {
+    line.trim().eq_ignore_ascii_case("stop")
 }
 
 /// The handlers the command line routes to, filled as each becomes ready.
@@ -75,6 +87,10 @@ pub(crate) struct Commands {
     sorter: Arc<OnceLock<Handler>>,
     trigger: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
+    relay: Arc<OnceLock<Starter>>,
+    /// What `;stop` stops: each family that starts something that goes on,
+    /// by the word the player knows it by.
+    stoppers: Arc<std::sync::Mutex<Vec<(&'static str, Stopper)>>>,
 }
 
 impl Commands {
@@ -88,6 +104,18 @@ impl Commands {
             if asks_for_help(line) {
                 let lines = HELP.iter().map(|&line| line.to_owned()).collect();
                 told.say(Notice::table(NoticeKind::Info, lines));
+                return Claimed::Done;
+            }
+            if asks_to_stop(line) {
+                let stopped = routes.stop();
+                told.say(Notice::line(
+                    NoticeKind::Info,
+                    if stopped.is_empty() {
+                        "Nothing was running.".to_owned()
+                    } else {
+                        format!("Stopped: {}.", stopped.join(", "))
+                    },
+                ));
                 return Claimed::Done;
             }
             // A task it started runs on by itself: nobody typing waits.
@@ -123,7 +151,7 @@ impl Commands {
     /// answers `Some` for its own words and `None` for the rest, so the
     /// first to answer has the line.
     pub(crate) fn route(&self, line: &str) -> Option<Took> {
-        for family in [&self.travel, &self.hunt, &self.batch] {
+        for family in [&self.travel, &self.hunt, &self.batch, &self.relay] {
             if let Some(starter) = family.get()
                 && let Some(took) = starter(line)
             {
@@ -138,6 +166,25 @@ impl Commands {
             }
         }
         None
+    }
+
+    /// `;stop` stops `name`'s work with `stopper` from now on.
+    pub(crate) fn stops(&self, name: &'static str, stopper: Stopper) {
+        self.stoppers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .push((name, stopper));
+    }
+
+    /// Stop every family's work; the names of those that had some.
+    fn stop(&self) -> Vec<&'static str> {
+        self.stoppers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .iter()
+            .filter(|(_, stopper)| stopper())
+            .map(|(name, _)| *name)
+            .collect()
     }
 
     /// Route travel's words to `handler` from now on. Once: a second call is
@@ -180,6 +227,13 @@ impl Commands {
     pub(crate) fn trigger(&self, handler: Handler) {
         if self.trigger.set(handler).is_err() {
             eprintln!("  !! [commands] trigger was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;to` and `;all` to `handler` from now on. Once, as for travel.
+    pub(crate) fn relay(&self, handler: Starter) {
+        if self.relay.set(handler).is_err() {
+            eprintln!("  !! [commands] relay was registered twice; keeping the first");
         }
     }
 
@@ -278,5 +332,38 @@ mod tests {
             ["look"],
             "only the game's line was sent"
         );
+    }
+
+    /// `;stop` stops every family that has something running, says which,
+    /// and says so when nothing was; the game hears none of it.
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn stop_stops_whatever_is_running_and_says_what() {
+        let (source, transcript) = AnsweringSource::new(
+            b"<prompt time=\"1\">&gt;</prompt>
+",
+        );
+        let session = Session::new(source);
+        let handle = session.handle();
+        let (_, mut events) = session.subscribe();
+        let generation = handle.generation();
+        let commands = Commands::install(&handle);
+        tokio::spawn(session.into_actor().run());
+        let hunting = Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let running = Arc::clone(&hunting);
+        commands.stops(
+            "hunt",
+            Arc::new(move || running.swap(false, std::sync::atomic::Ordering::Relaxed)),
+        );
+        commands.stops("go2", Arc::new(|| false));
+
+        for expected in ["Stopped: hunt.", "Nothing was running."] {
+            assert_eq!(
+                handle.send_manual_at(generation, ";stop", DEADLINE).await,
+                Outcome::Handled
+            );
+            let said = told(&mut events);
+            assert!(said.iter().any(|s| s.contains(expected)), "{said:?}");
+        }
+        assert!(transcript.lines().is_empty(), "nothing reached the game");
     }
 }

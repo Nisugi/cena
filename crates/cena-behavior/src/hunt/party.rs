@@ -145,7 +145,7 @@ impl Hunt {
         } else if self.grouping.prepared != Some(self.rest_number()) {
             Some("preparing for the rest")
         } else {
-            self.still_resting(state)
+            self.still_resting(state).map(super::report::Unrested::word)
         };
         let grouped = match &self.grouping.party {
             Some(party) if party.role == Role::Follow => group::in_group(state, &party.leader),

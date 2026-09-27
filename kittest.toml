@@ -1,0 +1,18 @@
+# egui_kittest's image comparison (plan/47 step 9), read from here by every
+# crate's tests: kittest looks for this file upward from the test's directory
+# (egui_kittest/src/config.rs:55 in the fork).
+#
+# The committed images (crates/cena-gui/tests/snapshots/) are rendered on
+# Windows, by the software adapter kittest prefers when there is one (WARP),
+# so Windows is the source of truth and compares at kittest's default. macOS
+# (Metal) and Linux (lavapipe, which CI installs) draw the same frame with
+# small differences, and compare at the looser threshold egui gives the
+# platforms that are not its own source of truth (the fork's kittest.toml).
+# The section is `mac`, not `macos` as kittest's README says: config.rs:29.
+threshold = 0.6
+
+[mac]
+threshold = 2.0
+
+[linux]
+threshold = 2.0

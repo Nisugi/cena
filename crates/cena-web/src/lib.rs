@@ -13,7 +13,7 @@ mod server;
 mod socket;
 
 pub use hunt_setup::HuntSetup;
-pub use server::{HubControl, HubRequest, Sessions, WebServer};
+pub use server::{Sessions, WebServer};
 
 /// Pure, bounded host projection over the same snapshot as the room pane.
 /// Called only while Ready. It must not perform I/O or send commands.

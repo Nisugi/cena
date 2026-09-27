@@ -330,7 +330,9 @@ fn declared(state: &cena_session::GameState, stream: &str) -> Closed {
 pub(super) fn lifecycle(snapshot: &Snapshot) -> LifecycleView {
     match snapshot.lifecycle {
         State::Ready => LifecycleView::Ready,
-        State::Closed => LifecycleView::Closed { detail: None },
+        State::Closed => LifecycleView::Closed {
+            detail: snapshot.stopped.clone(),
+        },
         State::Reconnecting => LifecycleView::Reconnecting {
             attempt: snapshot.retry.as_ref().map(|retry| retry.attempt),
             retry_delay_ms: snapshot

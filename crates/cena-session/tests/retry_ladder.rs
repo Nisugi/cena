@@ -82,6 +82,7 @@ async fn a_fatal_connect_error_is_not_retried_even_once() {
     let (connector, attempts) =
         LadderConnector::new(vec![], ConnectError::fatal("auth", "bad password"));
     let (session, _handle) = SupervisedSession::new(connector);
+    let observer = session.observer();
 
     // **Bounded on purpose.** This was written as a bare `session.run().await`,
     // and disabling the fatal check to falsify it did not fail the test -- it
@@ -110,6 +111,12 @@ async fn a_fatal_connect_error_is_not_retried_even_once() {
         StoppedBecause::Fatal(ConnectError::fatal("auth", "bad password")),
         "and it carries the error, so a caller can say WHY the player is not \
          logged in rather than just that they are not"
+    );
+    // And a viewer is told too: a hub's Closed card reads it (`plan/47`).
+    let (last, _) = observer.subscribe().await.expect("the final snapshot");
+    assert_eq!(
+        last.stopped.as_deref(),
+        Some("not logged in: [auth] bad password")
     );
 }
 
@@ -192,6 +199,7 @@ async fn an_unattended_session_stops_at_the_cap() {
         ConnectError::transient("tcp", "unreachable"),
     );
     let (session, _handle) = SupervisedSession::new(connector);
+    let observer = session.observer();
 
     // Bounded for the same reason the fatal test is: a supervisor that ignored
     // the cap would exhaust the three sources and then retry the transient
@@ -216,6 +224,11 @@ async fn an_unattended_session_stops_at_the_cap() {
         StoppedBecause::Unattended,
         "and it says so: the session is re-openable and the player is simply \
          not there, which is not the same as a failure"
+    );
+    let (last, _) = observer.subscribe().await.expect("the final snapshot");
+    assert_eq!(
+        last.stopped.as_deref(),
+        Some("looked idle, so not reconnecting")
     );
 }
 

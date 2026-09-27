@@ -190,7 +190,11 @@
 //! | **Frontend wire** | [`ServerMessage`] and [`ClientMessage`], versioned by [`WIRE_VERSION`] and written down in `crates/cena-ui/WIRE.md`. No model or protocol type crosses it | |
 //! | **Despana** | the embedded browser viewer: one loopback listener inside the binary ([`cena_web`], [`WebServer`]) | |
 //! | **Pairing token** | the secret a browser presents before any state is sent; held in memory, for this process only | |
-//! | **Hub** | Despana's page for every character: a card each, start, quit, reconnect, and the merged streams. Its requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
+//! | **Relay** | a line typed on one character and sent on another, `;to <name> <command>`, or on every running one, `;all <command>`: as if typed there, its command line first. The author's `;queen` from the borg scripts, renamed (`relay.rs`, `plan/47` step 5) | broadcast |
+//! | **Hunt panel** | a play window's Hunt pane: what the hunt is doing each turn and why it waits -- *"mana 30%, wants 50%"* -- from the hunt's own [`Status`](cena_behavior::hunt::Status) reports (`plan/47` step 8) | |
+//! | **Keybind** | a key, named by its winit code (`Numpad8`, `F13`), and the line it sends on the character whose play window has the keyboard, as if typed: `keybinds.toml` in the data folder (`plan/47` step 7) | macro |
+//! | **Play window** | one character's own native window in the GUI: its story, one command input that sends on that character, its vitals, room and hands, and Hydra's messages in their own pane. Closing it leaves the character running headless; the hub opens it again ([`App`](cena_gui::App), `plan/47` step 4) | |
+//! | **Hub** | every character at a glance: a card each, start, quit, reconnect, and the merged streams. Two frontends have one: Despana's hub page, and the window's [`Hub`](cena_gui::Hub), in two tabs, Live and Closed (`plan/47`). Requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
 //! | **Character page** | one character's own page. No window shows two characters' story text (`plan/29` §5a) | |
 //! | **Merged streams** | thoughts, speech, logons, deaths and announcements across characters, each line once: [`Merger`] | |
 //! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end is published as one line per category ([`SessionHandle::sort_containers`]); the model and the player log keep it whole | inventory, which is the `inv` window's feed |
@@ -283,8 +287,8 @@
 //! [`Guard`]: cena_session::guard::Guard
 //! [`Heartbeat`]: cena_behavior::Heartbeat
 //! [`Host`]: cena_host::Host
-//! [`HubControl`]: cena_web::HubControl
-//! [`HubRequest`]: cena_web::HubRequest
+//! [`HubControl`]: cena_ui::HubControl
+//! [`HubRequest`]: cena_ui::HubRequest
 //! [`hunt()`]: fn@cena_behavior::hunt::hunt
 //! [`hunt::Desk`]: cena_behavior::hunt::Desk
 //! [`Hunt`]: cena_behavior::hunt::Hunt

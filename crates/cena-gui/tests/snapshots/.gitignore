@@ -1,0 +1,4 @@
+# A failed comparison leaves these beside the committed image (egui_kittest).
+*.new.png
+*.diff.png
+*.old.png

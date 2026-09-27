@@ -2,9 +2,10 @@
 //! a bounded duplicate set, and no command outbox or retry path.
 
 use crate::presentation::encode;
-use crate::server::{Asked, Choice, HubRequest, Shared, Viewed};
+use crate::server::{Asked, Choice, Shared, Viewed};
 use axum::extract::ws::{CloseFrame, Message, WebSocket};
 use cena_session::{Generation, Outcome, SessionId};
+use cena_ui::HubRequest;
 use cena_ui::{ClientMessage, ReceiptStatus, ServerMessage, WIRE_VERSION, validate_command};
 use std::collections::HashSet;
 use std::future::Future;
@@ -156,14 +157,14 @@ fn hub_request(text: &str) -> Option<HubRequest> {
         }
         ClientMessage::RemoveSession { version, session } => {
             let id = session_id(&session)?;
-            (version == WIRE_VERSION).then_some(HubRequest::Remove(id))
+            (version == WIRE_VERSION).then_some(HubRequest::Remove(id.0))
         }
         ClientMessage::Shutdown { version } => {
             (version == WIRE_VERSION).then_some(HubRequest::Shutdown)
         }
         ClientMessage::ReconnectSession { version, session } => {
             let id = session_id(&session)?;
-            (version == WIRE_VERSION).then_some(HubRequest::Reconnect(id))
+            (version == WIRE_VERSION).then_some(HubRequest::Reconnect(id.0))
         }
         _ => None,
     }
@@ -443,7 +444,7 @@ mod tests {
         );
         assert_eq!(
             hub_request(r#"{"kind":"reconnect_session","version":1,"session":"3"}"#),
-            Some(HubRequest::Reconnect(SessionId(3)))
+            Some(HubRequest::Reconnect(3))
         );
         assert_eq!(hub_request(r#"{"kind":"shutdown","version":2}"#), None);
         assert_eq!(

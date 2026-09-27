@@ -10,6 +10,7 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use cena_session::{SessionHandle, SessionId, SessionObserver};
+use cena_ui::HubControl;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::future::{Future, IntoFuture};
@@ -93,25 +94,6 @@ impl Shared {
         cards
     }
 }
-
-/// A request from the hub page, for whoever runs the sessions.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HubRequest {
-    /// Start this character: one the hub offered as available.
-    Add(String),
-    /// Quit this session and take it off the table.
-    Remove(SessionId),
-    /// Log this stopped session's character back in.
-    Reconnect(SessionId),
-    /// Shut Hydra down in order, as Ctrl-C does.
-    Shutdown,
-}
-
-/// What answers the hub's requests: the owner of the session table, which
-/// alone knows the roster and the keyring. It returns one line for the page
-/// that asked. A closure, not a trait: there is one answerer.
-pub type HubControl =
-    Arc<dyn Fn(HubRequest) -> std::pin::Pin<Box<dyn Future<Output = String> + Send>> + Send + Sync>;
 
 /// What an authenticated viewer is shown.
 pub(crate) enum Choice {

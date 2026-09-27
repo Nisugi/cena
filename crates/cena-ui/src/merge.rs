@@ -36,6 +36,10 @@ pub const MERGED_STREAMS: &[&str] = &["thoughts", "speech", "logons", "death", "
 /// How far apart two arrivals may be and still be one occurrence (author).
 pub const MATCH_WINDOW: Duration = Duration::from_secs(1);
 
+/// Merged lines a hub keeps, for a hub page opening now or the window's
+/// panel: the newest.
+pub const MAX_MERGED_HISTORY: usize = 200;
+
 /// One merged line: its text once, and every character that received it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MergedLine {
@@ -157,6 +161,57 @@ fn addressed(runs: &[StyledRun], name: &str) -> Vec<StyledRun> {
             run
         })
         .collect()
+}
+
+/// What a hub shows of the merged streams: the [`Merger`], and the last
+/// [`MAX_MERGED_HISTORY`] lines it made, each kept once however many
+/// characters it gained. Despana's hub and the window's each keep one
+/// (`plan/47` step 3).
+#[derive(Debug, Default)]
+pub struct MergedHistory {
+    merger: Merger,
+    lines: VecDeque<MergedLine>,
+}
+
+impl MergedHistory {
+    /// Nothing merged yet.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Offer the lines `session` -- tagged `tag`, the character named `name`
+    /// -- received at `now` ([`Merger::offer`]), and get back those that
+    /// merged: each new, or an earlier line gaining this character, which
+    /// replaces its copy in the history.
+    pub fn offer(
+        &mut self,
+        now: Instant,
+        session: &str,
+        tag: &str,
+        name: &str,
+        lines: &[StoryLine],
+    ) -> Vec<MergedLine> {
+        let merged: Vec<MergedLine> = lines
+            .iter()
+            .filter_map(|line| self.merger.offer(now, session, tag, name, line))
+            .collect();
+        for line in &merged {
+            match self.lines.iter_mut().find(|kept| kept.id == line.id) {
+                Some(kept) => kept.clone_from(line),
+                None => self.lines.push_back(line.clone()),
+            }
+        }
+        while self.lines.len() > MAX_MERGED_HISTORY {
+            self.lines.pop_front();
+        }
+        merged
+    }
+
+    /// The lines kept, oldest first.
+    pub fn lines(&self) -> impl Iterator<Item = &MergedLine> {
+        self.lines.iter()
+    }
 }
 
 #[cfg(test)]
@@ -316,5 +371,29 @@ mod tests {
             )
             .unwrap();
         assert_eq!(quoted.runs[0].text, "Kiyna says, \"I see you, friend\"");
+    }
+
+    /// A line another character also heard replaces its copy in the
+    /// history rather than appearing twice; the history keeps the newest
+    /// [`MAX_MERGED_HISTORY`].
+    #[test]
+    fn the_history_keeps_each_line_once_and_the_newest() {
+        let mut history = MergedHistory::new();
+        let now = Instant::now();
+        let heard = line("thoughts", "[General] hello");
+        history.offer(now, "0", "Ashryn", "Ashryn", std::slice::from_ref(&heard));
+        history.offer(now, "1", "Baelor", "Baelor", &[heard]);
+        let kept: Vec<&MergedLine> = history.lines().collect();
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].from, ["Ashryn", "Baelor"]);
+
+        let later = now + MATCH_WINDOW * 2;
+        let many: Vec<StoryLine> = (0..=MAX_MERGED_HISTORY)
+            .map(|n| line("thoughts", &format!("[General] {n}")))
+            .collect();
+        history.offer(later, "0", "Ashryn", "Ashryn", &many);
+        let kept: Vec<&MergedLine> = history.lines().collect();
+        assert_eq!(kept.len(), MAX_MERGED_HISTORY);
+        assert_eq!(kept[0].runs[0].text, "[General] 1", "the oldest went");
     }
 }

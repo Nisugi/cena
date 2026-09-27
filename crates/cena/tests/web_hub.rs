@@ -5,8 +5,9 @@ mod web_support;
 
 use cena_platform::AnsweringSource;
 use cena_session::{Generation, Outcome, Session, SessionId};
+use cena_ui::HubRequest;
 use cena_ui::{ClientMessage, LifecycleView, ReceiptStatus, ServerMessage, WIRE_VERSION};
-use cena_web::{HubRequest, WebServer};
+use cena_web::WebServer;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 use web_support::*;
@@ -197,10 +198,7 @@ async fn the_hub_asks_its_control_to_add_and_remove_and_shows_the_answer() {
     assert!(next_note(&mut hub).await.is_some());
     assert_eq!(
         *asked.lock().unwrap(),
-        [
-            HubRequest::Add("Sugiin".into()),
-            HubRequest::Remove(SessionId(1))
-        ]
+        [HubRequest::Add("Sugiin".into()), HubRequest::Remove(1)]
     );
 
     // A malformed id is not a request: the socket is closed, and nothing
@@ -439,7 +437,7 @@ async fn a_hub_request_that_never_finishes_does_not_block_the_next() {
     let a_actor = tokio::spawn(a.into_actor().run());
     sessions.control(std::sync::Arc::new(|request: HubRequest| {
         Box::pin(async move {
-            if request == HubRequest::Remove(SessionId(7)) {
+            if request == HubRequest::Remove(7) {
                 std::future::pending::<()>().await;
             }
             format!("handled {request:?}")
@@ -459,7 +457,7 @@ async fn a_hub_request_that_never_finishes_does_not_block_the_next() {
     send(&mut hub, &reconnect("0")).await.unwrap();
     assert_eq!(
         next_note(&mut hub).await.as_deref(),
-        Some("handled Reconnect(SessionId(0))"),
+        Some("handled Reconnect(0)"),
         "the second request was answered while the first never finished"
     );
 
