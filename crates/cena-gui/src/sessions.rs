@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 use cena_session::{
     Notice, NoticeKind, Outcome, SessionHandle, SessionId, SessionObserver, Snapshot,
 };
-use cena_ui::{HubControl, HubRequest, MergedHistory, MergedLine, SessionCard};
+use cena_ui::{HubControl, HubRequest, HuntView, MergedHistory, MergedLine, SessionCard};
 use tokio_util::sync::CancellationToken;
 
 use crate::feed;
@@ -72,6 +72,9 @@ pub(crate) struct Seat {
     pub(crate) snapshot: Mutex<Option<Arc<Snapshot>>>,
     /// Its story, messages and banners, kept by its feed.
     pub(crate) story: Mutex<Story>,
+    /// What its hunt is doing, as the binary last said; `None` while none
+    /// runs (`plan/47` step 8).
+    pub(crate) hunt: Mutex<Option<HuntView>>,
     /// What its play window's commands go through.
     pub(crate) handle: SessionHandle,
     /// Cancelled when it is detached, which ends its feed.
@@ -90,6 +93,7 @@ impl Seat {
             card: Mutex::new(SessionCard::of(id.0.to_string(), name.to_owned(), None)),
             snapshot: Mutex::default(),
             story: Mutex::default(),
+            hunt: Mutex::default(),
             handle,
             stop: CancellationToken::new(),
             id,
@@ -175,6 +179,15 @@ impl Sessions {
     /// this is called the hub can ask nothing.
     pub fn control(&self, control: HubControl) {
         *lock(&self.shared.control) = Some(control);
+    }
+
+    /// What session `id`'s hunt is doing now: `None` when none runs. Its
+    /// play window's Hunt pane shows it (`plan/47` step 8).
+    pub fn hunt(&self, id: SessionId, hunt: Option<HuntView>) {
+        if let Some(seat) = self.seats().iter().find(|seat| seat.id == id) {
+            *lock(&seat.hunt) = hunt;
+        }
+        self.shared.window.wake();
     }
 
     /// The characters the hub may start now.

@@ -118,18 +118,53 @@ fn hand(hand: &Hand) -> &str {
 
 /// One pane's content, filling its window: a window sizes itself to what
 /// it holds, and a pane is the size its layout says, not its content's.
+/// The story and Hydra's messages scroll themselves; the others scroll
+/// when what they hold does not fit, never growing the pane: none asks for a
+/// height of its own, which is the layout's to say.
 pub(super) fn pane(ui: &mut egui::Ui, pane: Pane, view: &PlayView<'_>, session: u32) {
     ui.set_min_size(ui.available_size());
+    let scrolled = |ui: &mut egui::Ui, add: &mut dyn FnMut(&mut egui::Ui)| {
+        egui::ScrollArea::vertical()
+            .min_scrolled_height(0.0)
+            .id_salt(("play-pane-scroll", session, pane))
+            .auto_shrink(false)
+            .show(ui, |ui| add(ui));
+    };
     match pane {
         Pane::Story => story(ui, &view.story.lines, session),
-        Pane::Vitals => vitals(ui, view),
-        Pane::Room => match view.snapshot {
+        Pane::Hydra => hydra(ui, view, session),
+        Pane::Vitals => scrolled(ui, &mut |ui| vitals(ui, view)),
+        Pane::Room => scrolled(ui, &mut |ui| match view.snapshot {
             Some(snapshot) => room(ui, snapshot),
             None => {
                 ui.weak("Room unknown");
             }
-        },
-        Pane::Hydra => hydra(ui, view, session),
+        }),
+        Pane::Hunt => scrolled(ui, &mut |ui| hunt(ui, view.hunt)),
+    }
+}
+
+/// What the hunt is doing: what runs, where it is in its cycle, what it did
+/// last, the creature it fights, and -- the reason for the pane, since a
+/// stuck hunt is a waiting one -- why it waits.
+fn hunt(ui: &mut egui::Ui, hunt: Option<&cena_ui::HuntView>) {
+    let Some(hunt) = hunt else {
+        ui.weak("No hunt running.");
+        return;
+    };
+    ui.horizontal_wrapped(|ui| {
+        ui.strong(&hunt.running);
+        ui.label(&hunt.phase);
+    });
+    ui.label(&hunt.doing);
+    if let Some(target) = &hunt.target {
+        ui.horizontal_wrapped(|ui| {
+            ui.weak("Fighting:");
+            ui.colored_label(CREATURE, target);
+        });
+    }
+    if let Some(waiting) = &hunt.waiting {
+        ui.colored_label(AMBER, format!("Waiting: {waiting}"));
     }
 }
 
@@ -229,6 +264,7 @@ fn items(ui: &mut egui::Ui, label: &str, items: &[RoomItem], color: Color32) {
 /// Hydra's own messages, the newest at the bottom.
 fn hydra(ui: &mut egui::Ui, view: &PlayView<'_>, session: u32) {
     egui::ScrollArea::vertical()
+        .min_scrolled_height(0.0)
         .id_salt(("play-said", session))
         .stick_to_bottom(true)
         .auto_shrink(false)
@@ -267,6 +303,7 @@ fn said(ui: &mut egui::Ui, notice: &Notice) {
 /// scrolls back.
 fn story(ui: &mut egui::Ui, lines: &std::collections::VecDeque<Shown>, session: u32) {
     egui::ScrollArea::vertical()
+        .min_scrolled_height(0.0)
         .id_salt(("play-story", session))
         .stick_to_bottom(true)
         .auto_shrink(false)

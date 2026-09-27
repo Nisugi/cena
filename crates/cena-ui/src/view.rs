@@ -262,6 +262,27 @@ pub struct SessionView {
     pub unknown_tags: Vec<UnknownTagView>,
 }
 
+/// What a character's hunt is doing, for a frontend's hunt panel
+/// (`plan/47` step 8): what runs, where it is in its cycle, what it did last,
+/// the creature it fights and why it waits -- *"resting: mana 30%, wants
+/// 50%"*. The binary makes it of the hunt's own report.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HuntView {
+    /// What runs: a profile's name, or the command that started a run with
+    /// no profile (`heal`, `keep`).
+    pub running: String,
+    /// Where it is in its cycle: `hunting`, `resting (out of mana)`.
+    pub phase: String,
+    /// What it did this turn: the line it sent, the room it walks to.
+    pub doing: String,
+    /// The creature it fights, by what the room calls it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    /// Why it waits, with the numbers, when it does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waiting: Option<String>,
+}
+
 /// One character on the hub page: who it is, and what a player glances at
 /// across several (`plan/29` §5a R3).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

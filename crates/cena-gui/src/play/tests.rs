@@ -116,6 +116,7 @@ struct Scene {
     play: Play,
     snapshot: Snapshot,
     story: Story,
+    hunt: Option<cena_ui::HuntView>,
     asked: Vec<Asked>,
 }
 
@@ -125,6 +126,13 @@ impl Scene {
             play: Play::new(0, "Ashryn", None),
             snapshot: snapshot(),
             story: story(),
+            hunt: Some(cena_ui::HuntView {
+                running: "ojandhaart".to_owned(),
+                phase: "resting (out of mana)".to_owned(),
+                doing: "waiting 5s".to_owned(),
+                target: None,
+                waiting: Some("mana 30%, wants 50%".to_owned()),
+            }),
             asked: Vec::new(),
         }
     }
@@ -136,6 +144,7 @@ impl Scene {
             snapshot: Some(&self.snapshot),
             story: &self.story,
             now: Instant::now(),
+            hunt: self.hunt.as_ref(),
             numlock: None,
             keys: &[],
         };
@@ -169,6 +178,9 @@ fn the_window_shows_what_a_player_glances_at() {
         "> look",
         "Hunt: resting until mana is 50%.",
         "A kobold is here!",
+        "ojandhaart",
+        "resting (out of mana)",
+        "Waiting: mana 30%, wants 50%",
     ] {
         assert!(harness.query_by_label(label).is_some(), "{label}");
     }
@@ -264,7 +276,9 @@ fn a_dragged_pane_snaps_and_is_kept_by_name() {
         layout.grid = 0.0;
     }
     let before = room(&harness).expect("fitted");
-    let grip = harness.get_by_label("Room").rect().center();
+    // By its title bar, as a player moves a pane.
+    let window = harness.get_by_label("Room").rect();
+    let grip = egui::pos2(window.center().x, window.min.y + 12.0);
     // Five points short of the left edge: near enough to snap to it.
     let to = grip + egui::vec2(5.0 - before.min.x, 0.0);
     // Frame by frame: a window being dragged asks for the next frame.

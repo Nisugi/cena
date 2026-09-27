@@ -20,6 +20,7 @@ use std::io;
 use std::path::Path;
 use std::sync::{Arc, Mutex, PoisonError};
 
+mod panel;
 mod settings;
 
 use crate::commands::{Commands, Took};
@@ -62,6 +63,9 @@ pub(crate) fn open(
     }
     if let (Some(desk), Some((_, name))) = (&desk, &who) {
         take_seat(party, name, desk, handle, &observer);
+    }
+    if let Some(desk) = &desk {
+        panel::show(desk, handle.session(), party.window.as_ref());
     }
     let leader = who.as_ref().map(|(_, name)| name.clone());
     // The spellcaster profile, held so a typed line is judged without a
@@ -158,14 +162,18 @@ pub(crate) fn open(
 pub(crate) struct Party {
     boards: Arc<Boards>,
     seats: Arc<Mutex<BTreeMap<String, Seat>>>,
+    /// The window, when there is one: each hunt's reports go to its Hunt
+    /// pane (`plan/47` step 8, `hunt/panel.rs`).
+    window: Option<cena_gui::Sessions>,
 }
 
 impl Party {
-    /// No groups and no seats yet.
-    pub(crate) fn new() -> Self {
+    /// No groups and no seats yet; hunts shown in `window`, when there is one.
+    pub(crate) fn new(window: Option<cena_gui::Sessions>) -> Self {
         Self {
             boards: Boards::new(),
             seats: Arc::default(),
+            window,
         }
     }
 

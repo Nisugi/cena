@@ -1,6 +1,7 @@
 //! A play window's panes, free inside it (`plan/47` step 6): each its own
-//! window that drags from anywhere on it and resizes by its edges, and lands
-//! snapped (`crate::snap`).
+//! window that drags by its title bar and resizes by its edges, and lands
+//! snapped (`crate::snap`). Each pane's content scrolls, and a scroll area
+//! keeps its own presses, so the title bar is where a pane is moved from.
 //!
 //! `VellumFE`'s way with egui windows (`reference/VellumFE/src/frontend/gui/app/zones.rs:1927-2084`),
 //! at the scale of four panes: while nobody presses on a pane, it is pinned
@@ -30,7 +31,9 @@ use crate::text::AMBER;
 const EDGE: f32 = 8.0;
 
 /// A pane let go for a gesture: which, and where it was when the press
-/// began.
+/// began. Its size is let go too, for a resize; a move cannot change it,
+/// since every pane's content scrolls rather than growing the window
+/// (`draw.rs`, `pane`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Engaged {
     pub(super) pane: Pane,
@@ -53,6 +56,9 @@ impl Play {
         let layout = self
             .layout
             .get_or_insert_with(|| Layout::fitted(area.size()));
+        if !layout.complete() {
+            layout.fill_from(&Layout::fitted(area.size()));
+        }
         let (pressed, down, origin, shift) = context.input(|input| {
             (
                 input.pointer.any_pressed(),
@@ -78,27 +84,7 @@ impl Play {
         for pane in Pane::ALL {
             let at = layout.rect(pane).translate(offset);
             let held = self.engaged.iter().any(|engaged| engaged.pane == pane);
-            // Dragged from anywhere, as `VellumFE`'s are: dragged by its title
-            // the fork hands the move over apart from the area, and the rect
-            // the window reports stays where the press began, so nothing
-            // could be snapped. Text, links and scroll bars still take their
-            // own presses first.
-            let window = egui::Window::new(pane.title())
-                .id(id(session, pane))
-                .drag_area(egui::WindowDrag::Anywhere)
-                .collapsible(false)
-                .resizable(true)
-                .constrain_to(area)
-                .default_pos(at.min)
-                .default_size(at.size());
-            let window = if held {
-                window.min_size(SMALLEST)
-            } else {
-                window
-                    .current_pos(at.min)
-                    .min_size(at.size())
-                    .max_size(at.size())
-            };
+            let window = pane_window(pane, at, held, area, session);
             let shown = window.show(&context, |ui| draw::pane(ui, pane, view, session));
             if held && let Some(shown) = shown {
                 drawn.push((pane, shown.response.rect.translate(-offset)));
@@ -143,6 +129,37 @@ impl Play {
             .any(|engaged| layout.rect(engaged.pane) != engaged.start);
         self.engaged.clear();
         moved
+    }
+}
+
+/// Pane `pane`'s window at `at` inside `area`: pinned to it, or, `held` by a
+/// gesture, let go.
+fn pane_window(
+    pane: Pane,
+    at: Rect,
+    held: bool,
+    area: Rect,
+    session: u32,
+) -> egui::Window<'static> {
+    // Dragged from anywhere, as `VellumFE`'s are: dragged by its title in
+    // `TitleBar` mode the fork hands the move over apart from the area, and
+    // the rect the window reports stays where the press began, so nothing
+    // could be snapped. Content that takes its own presses keeps them.
+    let window = egui::Window::new(pane.title())
+        .id(id(session, pane))
+        .drag_area(egui::WindowDrag::Anywhere)
+        .collapsible(false)
+        .resizable(true)
+        .constrain_to(area)
+        .default_pos(at.min)
+        .default_size(at.size());
+    if held {
+        window.min_size(SMALLEST)
+    } else {
+        window
+            .current_pos(at.min)
+            .min_size(at.size())
+            .max_size(at.size())
     }
 }
 

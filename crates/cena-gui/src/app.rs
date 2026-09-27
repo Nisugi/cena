@@ -172,6 +172,7 @@ impl App {
         }
         let snapshot = lock(&seat.snapshot).clone();
         let lifecycle = lock(&seat.card).lifecycle.clone();
+        let hunt = lock(&seat.hunt).clone();
         let builder = egui::ViewportBuilder::default()
             .with_title(format!("{} — {TITLE}", seat.name))
             .with_inner_size([980.0, 680.0]);
@@ -192,6 +193,7 @@ impl App {
                     snapshot: snapshot.as_deref(),
                     story: &story,
                     now: Instant::now(),
+                    hunt: hunt.as_ref(),
                     numlock,
                     keys: keys_said,
                 };
@@ -378,6 +380,42 @@ mod tests {
             Some(""),
             "the input never saw it"
         );
+    }
+
+    /// What the binary says of a character's hunt shows in its window's Hunt
+    /// pane, and goes when the hunt does.
+    #[test]
+    fn a_hunt_shows_in_its_window() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("a runtime");
+        let sessions = Sessions::new(runtime.handle().clone());
+        sessions.seat_for_test(handle(), "Ashryn");
+        let told = sessions.clone();
+        let mut harness = Harness::builder()
+            .with_size((1200.0, 900.0))
+            .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
+        harness.run();
+        assert!(harness.query_by_label("No hunt running.").is_some());
+        told.hunt(
+            cena_session::SessionId::FIRST,
+            Some(cena_ui::HuntView {
+                running: "ojandhaart".to_owned(),
+                phase: "resting (out of mana)".to_owned(),
+                doing: "waiting 5s".to_owned(),
+                target: None,
+                waiting: Some("mana 30%, wants 50%".to_owned()),
+            }),
+        );
+        harness.run();
+        assert!(
+            harness
+                .query_by_label("Waiting: mana 30%, wants 50%")
+                .is_some()
+        );
+        told.hunt(cena_session::SessionId::FIRST, None);
+        harness.run();
+        assert!(harness.query_by_label("No hunt running.").is_some());
     }
 
     /// Typed before the window has seen the session, a line is echoed and

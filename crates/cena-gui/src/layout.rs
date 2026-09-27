@@ -25,11 +25,19 @@ pub(crate) enum Pane {
     Room,
     /// Hydra's own messages.
     Hydra,
+    /// What the hunt is doing (`plan/47` step 8).
+    Hunt,
 }
 
 impl Pane {
     /// Every pane, in the order they are drawn.
-    pub(crate) const ALL: [Pane; 4] = [Pane::Story, Pane::Vitals, Pane::Room, Pane::Hydra];
+    pub(crate) const ALL: [Pane; 5] = [
+        Pane::Story,
+        Pane::Vitals,
+        Pane::Hunt,
+        Pane::Room,
+        Pane::Hydra,
+    ];
 
     /// Its title bar's words.
     pub(crate) fn title(self) -> &'static str {
@@ -38,6 +46,7 @@ impl Pane {
             Pane::Vitals => "Vitals",
             Pane::Room => "Room",
             Pane::Hydra => "Hydra",
+            Pane::Hunt => "Hunt",
         }
     }
 }
@@ -64,15 +73,16 @@ pub(crate) struct Layout {
 
 impl Layout {
     /// The first layout, for a pane area `area` across: the story on the
-    /// left, and down the right the vitals, the room and Hydra's messages,
-    /// their edges on the grid.
+    /// left, and down the right the vitals, the hunt, the room and Hydra's
+    /// messages, their edges on the grid.
     pub(crate) fn fitted(area: Vec2) -> Self {
         let on_grid = |value: f32| (value / GRID).round() * GRID;
         let split = on_grid(area.x * 0.66).max(SMALLEST.x);
         let side = (area.x - split).max(SMALLEST.x);
-        let vitals = 120.0;
-        let room = on_grid(((area.y - vitals) * 0.5).max(SMALLEST.y));
-        let hydra = (area.y - vitals - room).max(SMALLEST.y);
+        let vitals = 130.0;
+        let hunt = 110.0;
+        let room = on_grid(((area.y - vitals - hunt) * 0.5).max(SMALLEST.y));
+        let hydra = (area.y - vitals - hunt - room).max(SMALLEST.y);
         let mut layout = Self {
             version: VERSION,
             grid: GRID,
@@ -80,9 +90,25 @@ impl Layout {
         };
         layout.set(Pane::Story, rect(0.0, 0.0, split, area.y.max(SMALLEST.y)));
         layout.set(Pane::Vitals, rect(split, 0.0, side, vitals));
-        layout.set(Pane::Room, rect(split, vitals, side, room));
-        layout.set(Pane::Hydra, rect(split, vitals + room, side, hydra));
+        layout.set(Pane::Hunt, rect(split, vitals, side, hunt));
+        layout.set(Pane::Room, rect(split, vitals + hunt, side, room));
+        layout.set(Pane::Hydra, rect(split, vitals + hunt + room, side, hydra));
         layout
+    }
+
+    /// Give each pane this layout never placed -- one saved before the pane
+    /// existed -- the place `fitted` gives it.
+    pub(crate) fn fill_from(&mut self, fitted: &Layout) {
+        for pane in Pane::ALL {
+            if !self.panes.contains_key(&pane) {
+                self.set(pane, fitted.rect(pane));
+            }
+        }
+    }
+
+    /// Whether every pane has a place.
+    pub(crate) fn complete(&self) -> bool {
+        Pane::ALL.iter().all(|pane| self.panes.contains_key(pane))
     }
 
     /// Where `pane` sits, from the pane area's top left; a pane this layout
@@ -158,6 +184,22 @@ mod tests {
             (layout.rect(Pane::Story).width() % GRID).abs() < 0.01,
             "on the grid"
         );
+    }
+
+    /// A layout saved before a pane existed gets that pane where a fitted
+    /// layout puts it, and keeps every other where the player left it.
+    #[test]
+    fn a_pane_new_since_the_layout_was_saved_is_fitted_in() {
+        let area = Vec2::new(900.0, 600.0);
+        let fitted = Layout::fitted(area);
+        let mut old = fitted.clone();
+        old.panes.remove(&Pane::Hunt);
+        old.set(Pane::Room, rect(0.0, 0.0, 200.0, 100.0));
+        assert!(!old.complete());
+        old.fill_from(&fitted);
+        assert!(old.complete());
+        assert_eq!(old.rect(Pane::Hunt), fitted.rect(Pane::Hunt));
+        assert_eq!(old.rect(Pane::Room), rect(0.0, 0.0, 200.0, 100.0));
     }
 
     /// One file per character on every filesystem: its name in lower case,

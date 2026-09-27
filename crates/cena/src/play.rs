@@ -160,8 +160,8 @@ pub(crate) async fn serve(
         // One listener for every character, each with its own page; each
         // page's link is printed when its character is `Ready`.
         web: frontend::Frontend::open(&map).await,
+        party: crate::hunt::Party::new(gui.clone()),
         gui,
-        party: crate::hunt::Party::new(),
         map,
         pin: dir.join(cena_platform::PIN_FILENAME),
         attention: crate::attention::start(&dir),

@@ -26,7 +26,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use cena_session::Snapshot;
-use cena_ui::LifecycleView;
+use cena_ui::{HuntView, LifecycleView};
 use egui::Id;
 
 use crate::layout::{GRID, Layout};
@@ -57,6 +57,8 @@ pub(crate) struct PlayView<'a> {
     pub(crate) story: &'a Story,
     /// Now, for which banners are still up.
     pub(crate) now: Instant,
+    /// What its hunt is doing, when one runs.
+    pub(crate) hunt: Option<&'a HuntView>,
     /// `NumLock`, once a numpad press has shown it.
     pub(crate) numlock: Option<bool>,
     /// What the keybinds file bound, and what is wrong in it.

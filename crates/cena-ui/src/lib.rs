@@ -19,7 +19,7 @@ pub use merge::{
 };
 pub use projection::room_player;
 pub use view::{
-    Closed, GroupView, HandView, LifecycleView, MapLocationView, RoomItemView, RoomView,
+    Closed, GroupView, HandView, HuntView, LifecycleView, MapLocationView, RoomItemView, RoomView,
     RoundtimeView, SessionCard, SessionView, StoryLine, StyledRun, UnknownTagView, VitalView,
     VitalsView,
 };
