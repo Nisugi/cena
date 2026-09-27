@@ -10,6 +10,7 @@ members = [
     "crates/cena-ui",
     "crates/cena-web",
     "crates/cena-host",
+    "crates/cena-gui",
     "crates/cena",
     "crates/cena-arch-tests",
 ]
@@ -36,6 +37,10 @@ cena-behavior = { path = "crates/cena-behavior" }
 cena-ui = { path = "crates/cena-ui" }
 cena-web = { path = "crates/cena-web" }
 cena-host = { path = "crates/cena-host" }
+# The GUI's toolkit (plan/47): the author's egui fork, pinned to the commit
+# VellumFE builds with -- egui 0.35.0 with its numpad capture (plan/47 §2).
+egui = { git = "https://github.com/Nisugi/egui.git", rev = "2e2ead359c474102c5f713f86f2ec4a3be5e741b" }
+egui_kittest = { git = "https://github.com/Nisugi/egui.git", rev = "2e2ead359c474102c5f713f86f2ec4a3be5e741b" }
 
 # The first and only serialization in the workspace, added for M3 step 8.
 # `research/04-inherited-decisions.md:1878` (C21) argues the character store is

@@ -135,6 +135,12 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // M4 author decision D2: the embedded frontend projects native session
     // observations through toolkit-free UI vocabulary. No frontend owns parsing.
     ("cena-web", &["cena-session", "cena-ui"]),
+    // ADDED for `plan/47` step 1, the GUI: the row this file's doc recorded
+    // for the day a GUI crate was added, `(cena-ui, cena-session)`, and never
+    // another frontend. It draws the hub from `cena-ui`'s cards and nothing
+    // else yet; `cena-session` joins when it reads the session table (step 3),
+    // not before (`plan/05` §-1).
+    ("cena-gui", &["cena-ui"]),
     // ADDED for `plan/29` step 3, the session table: the crate that knows a
     // Hydra runs several sessions. It sits above `cena-session` and below
     // every frontend that adds or removes one -- the binary, the web hub, the

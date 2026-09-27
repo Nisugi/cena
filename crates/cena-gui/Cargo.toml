@@ -1,0 +1,18 @@
+[package]
+name = "cena-gui"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cena-ui.workspace = true
+egui.workspace = true
+
+[dev-dependencies]
+# `wgpu` renders a frame in a test and `snapshot` compares it with the image
+# committed under `tests/snapshots/` (plan/47 §4: the GUI is checked through
+# tests, never by running the binary).
+egui_kittest = { workspace = true, features = ["wgpu", "snapshot"] }
+
+[lints]
+workspace = true

@@ -203,6 +203,7 @@ lockfile; run cargo inside it only for the spike.
 | `cena-behavior` | curated Rust behaviors (travel, sync, and hunt's profile, guards and importer) | map, session (platform dev-only) |
 | `cena-ui` | pure, versioned projection of a session for frontends (`SessionView`, `WIRE.md`) | model |
 | `cena-web` | Despana: embedded loopback viewer; the native session stays authoritative | ui, session |
+| `cena-gui` | the GUI (egui, the author's fork): the hub so far (`plan/47`) | ui |
 | `cena-host` | the table of sessions one Hydra runs: add, remove, one per account, stop all (`plan/29`) | session (platform dev-only) |
 | `cena` | the binary | behavior, host, platform, session, ui, web |
 | `cena-arch-tests` | the rules the compiler cannot express | — |
