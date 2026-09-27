@@ -568,10 +568,12 @@ fn walker() -> cena_session::operation::Performer {
         let steer: Steer = {
             let stop = stop.clone();
             std::sync::Arc::new(move |control: Control| {
-                match control {
-                    Control::Stop => stop.cancel(),
+                if control == Control::Stop {
+                    stop.cancel();
+                    Ok(())
+                } else {
+                    Err(format!("a walk cannot {}", control.word()))
                 }
-                Ok(())
             })
         };
         Started {
@@ -621,6 +623,20 @@ async fn a_behavior_is_performed_as_an_operation_and_stopped() {
         .unwrap();
     assert_eq!(refused["refused"], "request", "{refused}");
 
+    let held = client
+        .tool(
+            "control",
+            serde_json::json!({"character": "Nisugi", "operation": id, "control": "hold",
+                "because": "wait", "request_id": "c0", "expected_generation": generation}),
+        )
+        .await
+        .unwrap();
+    assert!(
+        held["why"]
+            .as_str()
+            .is_some_and(|why| why.contains("cannot hold")),
+        "a walk has only stop: {held}"
+    );
     let control = serde_json::json!({"character": "Nisugi", "operation": id, "control": "stop",
         "because": "enough", "request_id": "c1", "expected_generation": generation});
     let stopping = client.tool("control", control).await.unwrap();

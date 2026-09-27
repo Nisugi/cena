@@ -65,6 +65,7 @@ pub mod replies;
 mod rest;
 pub mod said;
 pub mod setup;
+mod steer;
 mod targets;
 mod verbs;
 mod wand;

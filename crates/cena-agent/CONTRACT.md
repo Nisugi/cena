@@ -168,7 +168,7 @@ One operation, or every one kept (the running ones and the last 32 ended), each:
 | Field | Meaning |
 |---|---|
 | `id`, `line` | its number, and the command as kept |
-| `lifecycle` | `running`, `stopping` (a stop was admitted, not yet applied), `ended` |
+| `lifecycle` | `running`, `held`, `retreating`, `stopping` (a stop was admitted, not yet applied), `ended` |
 | `approval` | the request number the player approved it under, or `null` |
 | `result` | `null` until it ends; then `work`, `reason`, `left`, `authority` |
 
@@ -177,7 +177,8 @@ One operation, or every one kept (the running ones and the last 32 ended), each:
 - **`work`**: what the work came to, as the behavior judged it: `completed` (a walk arrived,
   a hunt met its stopping rule), `failed`, `interrupted` (stopped, disconnected, the group
   ended), `no_opportunity` (it never began), `unknown`. `reason` is the behavior's own word:
-  `arrived`, `rested`, `dead`, `stopped`, `not_started`. **It claims no effect**: a completed
+  `arrived`, `rested`, `dead`, `stopped`, `retreated`, `not_started`; a retreat that arrived
+  is `interrupted`, `retreated`, because a safe return is not a finished hunt. **It claims no effect**: a completed
   hunt is not a count of kills. `records` has what the recorder saw.
 - **`left`**: what it left undone that someone may need to put right, in words: an item still
   stored, one taken out and not put back, a stance not restored. A walk that failed and
@@ -190,9 +191,20 @@ Needs `observe`.
 
 ## `control` `{ character, operation, control, because, request_id, expected_generation }`
 
-Steer an operation `perform` started: `stop`. Needs `behaviors`. **Admission is not
-application**: the answer reads `stopping`, and a later one `ended`. An operation steers its
-own run and no other: a stop sent after the player began another hunt stops nothing.
+Steer an operation `perform` started. Needs `behaviors`. **Admission is not application**:
+the answer reads the lifecycle the control asks for, and a later one what happened. An
+operation steers its own run and no other: a stop sent after the player began another hunt
+stops nothing.
+
+| Control | For | Does |
+|---|---|---|
+| `stop` | anything | stops it, as the player's own stop does |
+| `hold` | a hunt | **defend, start nothing**: survival, flee and rest act as always, and the creature already being fought is fought on; no new target, no looting, no buffs, no wandering, no walk back from a rest. A rest that finishes while held stays in the resting room |
+| `resume` | a hunt | goes on after a hold |
+| `retreat` | a hunt | walks to the profile's resting room, fogging and by waypoints as a rest would, and **ends there** (`retreated`), without resting, selling or healing; it wins over a hold. With no resting room, it ends at once (`no_resting_room`) |
+
+A hunt's run takes `hold`, `resume` and `retreat` once it has begun; asked sooner, the answer
+says so, and a `stop` always works. A walk, a heal, a keep or a waggle takes only `stop`.
 
 ## `capabilities` `{ character? }`
 

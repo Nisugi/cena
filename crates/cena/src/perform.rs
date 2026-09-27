@@ -28,7 +28,7 @@
 
 use std::sync::Arc;
 
-use cena_behavior::operation::Underway;
+use cena_behavior::operation::{Steering, Underway};
 use cena_behavior::{hunt, travel};
 use cena_session::operation::{Allows, Control, Ended, Performer, Start, Started, Steer, Work};
 use cena_session::{AuthorityToken, SessionHandle, SessionObserver};
@@ -117,6 +117,42 @@ pub(crate) fn install(
     }
 }
 
+/// The controls of a hunt once it has begun: filled by its operation's task,
+/// read by its operation's [`Steer`].
+type Reins = Arc<std::sync::Mutex<Option<Steering>>>;
+
+/// How an operation is steered. Stop is its own token, joined to the run's
+/// once it has begun; hold, resume and retreat are a hunt's alone, and reach
+/// its run once it has begun (`cena_behavior::hunt`, steer's docs).
+fn steer_for(stop: &CancellationToken, reins: Option<Reins>) -> Steer {
+    let stop = stop.clone();
+    Arc::new(move |control: Control| {
+        if control == Control::Stop {
+            stop.cancel();
+            return Ok(());
+        }
+        let Some(reins) = &reins else {
+            return Err(format!(
+                "only a hunt can be told to {}; this can only be stopped",
+                control.word()
+            ));
+        };
+        let held = reins
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let Some(steering) = held.as_ref() else {
+            return Err("the hunt has not begun yet; ask again in a moment".to_owned());
+        };
+        match control {
+            Control::Hold => steering.hold(),
+            Control::Resume => steering.resume(),
+            Control::Retreat => steering.retreat(),
+            Control::Stop => steering.stop(),
+        }
+        Ok(())
+    })
+}
+
 /// Start `line`, one `allows` took.
 fn started(
     handle: &SessionHandle,
@@ -126,26 +162,27 @@ fn started(
     line: &str,
 ) -> Started {
     let stop = CancellationToken::new();
-    let steer: Steer = {
-        let stop = stop.clone();
-        Arc::new(move |control: Control| match control {
-            Control::Stop => {
-                stop.cancel();
-                Ok(())
-            }
-        })
-    };
     let job = match job(line) {
         Ok(job) => job,
-        Err(why) => return at_once(steer, Ended::plainly(Work::NoOpportunity, &why)),
+        Err(why) => {
+            return at_once(
+                steer_for(&stop, None),
+                Ended::plainly(Work::NoOpportunity, &why),
+            );
+        }
     };
     let (handle, observer) = (handle.clone(), observer.clone());
     match job {
-        Job::Walk(travel::Command::Stop) => {
-            at_once(steer, stopping(travel.is_some_and(|d| d.stop())))
-        }
-        Job::Hunt(hunt::Command::Stop) => at_once(steer, stopping(hunt.is_some_and(|d| d.stop()))),
+        Job::Walk(travel::Command::Stop) => at_once(
+            steer_for(&stop, None),
+            stopping(travel.is_some_and(|d| d.stop())),
+        ),
+        Job::Hunt(hunt::Command::Stop) => at_once(
+            steer_for(&stop, None),
+            stopping(hunt.is_some_and(|d| d.stop())),
+        ),
         Job::Walk(command) => {
+            let steer = steer_for(&stop, None);
             let Some(desk) = travel.cloned() else {
                 return at_once(steer, Ended::plainly(Work::NoOpportunity, "no_map"));
             };
@@ -168,6 +205,14 @@ fn started(
             }
         }
         Job::Hunt(command) => {
+            // A hunt proper is held and retreated; a heal, a keep or a
+            // waggle, run by the same desk, is only stopped.
+            let hunting = matches!(
+                command,
+                hunt::Command::Run(_) | hunt::Command::Quick(_) | hunt::Command::Bounty(_)
+            );
+            let reins: Option<Reins> = hunting.then(Reins::default);
+            let steer = steer_for(&stop, reins.clone());
             let Some(desk) = hunt.cloned() else {
                 return at_once(steer, Ended::plainly(Work::NoOpportunity, "no_map"));
             };
@@ -178,10 +223,16 @@ fn started(
                 if stop.is_cancelled() {
                     return Ended::plainly(Work::Interrupted, "stopped");
                 }
-                match desk.underway(&handle, joined, command) {
-                    Some(underway) => follow(underway, &stop, hunt::HuntEnd::ended).await,
-                    None => Ended::plainly(Work::NoOpportunity, "not_started"),
+                let Some(underway) = desk.underway(&handle, joined, command) else {
+                    return Ended::plainly(Work::NoOpportunity, "not_started");
+                };
+                if let Some(reins) = &reins {
+                    *reins
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) =
+                        Some(underway.steering.clone());
                 }
+                follow(underway, &stop, hunt::HuntEnd::ended).await
             };
             Started {
                 ended: Box::pin(ended),
@@ -234,7 +285,26 @@ async fn follow<T>(
 
 #[cfg(test)]
 mod tests {
-    use super::{canonical, job};
+    use super::{Reins, canonical, job, steer_for};
+    use cena_behavior::operation::Steering;
+    use cena_session::operation::Control;
+    use tokio_util::sync::CancellationToken;
+
+    /// Only a hunt is held, resumed or retreated, and only once its run has
+    /// begun; anything can be stopped, at any time.
+    #[test]
+    fn only_a_hunt_is_held_and_only_once_it_has_begun() {
+        let stop = CancellationToken::new();
+        let walk = steer_for(&stop, None);
+        assert!(walk(Control::Hold).is_err_and(|why| why.contains("only a hunt")));
+        let reins = Reins::default();
+        let hunt = steer_for(&stop, Some(reins.clone()));
+        assert!(hunt(Control::Retreat).is_err_and(|why| why.contains("not begun")));
+        *reins.lock().unwrap() = Some(Steering::new(CancellationToken::new()));
+        assert_eq!(hunt(Control::Hold), Ok(()));
+        assert_eq!(hunt(Control::Stop), Ok(()));
+        assert!(stop.is_cancelled());
+    }
 
     /// The author's list: start and steer, and nothing that writes.
     #[test]

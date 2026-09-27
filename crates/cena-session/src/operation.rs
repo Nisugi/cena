@@ -44,6 +44,10 @@ pub const KEPT_ENDED: usize = 32;
 pub enum Lifecycle {
     /// Under way.
     Running,
+    /// Held: it defends itself and starts nothing, until resumed or stopped.
+    Held,
+    /// Walking to where it ends, as asked: a hunt to its resting room.
+    Retreating,
     /// Asked to stop, and not yet stopped.
     Stopping,
     /// Over: [`Report::ended`] says how.
@@ -56,6 +60,8 @@ impl Lifecycle {
     pub const fn word(self) -> &'static str {
         match self {
             Self::Running => "running",
+            Self::Held => "held",
+            Self::Retreating => "retreating",
             Self::Stopping => "stopping",
             Self::Ended => "ended",
         }
@@ -118,22 +124,44 @@ impl Ended {
     }
 }
 
-/// A way to steer an operation under way.
+/// A way to steer an operation under way (`plan/35` §4; the author chose
+/// what hold and retreat mean, 2026-09-27).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Control {
     /// Stop it, as the player's own stop does.
     Stop,
+    /// Defend, and start nothing: what keeps the character alive still acts;
+    /// nothing new is begun until [`Self::Resume`].
+    Hold,
+    /// Go on after a hold.
+    Resume,
+    /// Walk to where it ends -- a hunt's resting room -- and end there.
+    Retreat,
 }
 
 impl Control {
     /// Every control.
-    pub const ALL: [Self; 1] = [Self::Stop];
+    pub const ALL: [Self; 4] = [Self::Stop, Self::Hold, Self::Resume, Self::Retreat];
 
     /// Its word.
     #[must_use]
     pub const fn word(self) -> &'static str {
         match self {
             Self::Stop => "stop",
+            Self::Hold => "hold",
+            Self::Resume => "resume",
+            Self::Retreat => "retreat",
+        }
+    }
+
+    /// Where an operation stands once this control is applied, from `now`.
+    const fn leaves(self, now: Lifecycle) -> Lifecycle {
+        match (self, now) {
+            (_, Lifecycle::Ended) => Lifecycle::Ended,
+            (Self::Stop, _) | (_, Lifecycle::Stopping) => Lifecycle::Stopping,
+            (Self::Retreat, _) | (_, Lifecycle::Retreating) => Lifecycle::Retreating,
+            (Self::Hold, _) => Lifecycle::Held,
+            (Self::Resume, _) => Lifecycle::Running,
         }
     }
 
@@ -353,9 +381,7 @@ pub(crate) fn steer(handle: &SessionHandle, id: u64, control: Control) -> Result
     steer(control)?;
     let report = handle.agent.with_operations(|table| {
         let kept = table.kept.iter_mut().find(|k| k.report.id == id)?;
-        if kept.report.lifecycle == Lifecycle::Running {
-            kept.report.lifecycle = Lifecycle::Stopping;
-        }
+        kept.report.lifecycle = control.leaves(kept.report.lifecycle);
         Some(kept.report.clone())
     });
     let report = report.ok_or_else(|| format!("operation {id} is no longer kept"))?;

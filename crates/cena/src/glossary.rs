@@ -72,6 +72,10 @@
 //!   ([`Step::held`]). The authority being held by another claimant is
 //!   [`AuthorityHeld`]. A trigger's `held` is what an import kept that Hydra
 //!   does not do yet: a Wrayth sound, until sounds are built ([`wrayth`]).
+//!   An operation an agent **holds** defends itself and starts nothing until
+//!   resumed ([`Control::Hold`](cena_session::operation::Control::Hold), the
+//!   author's and LAB's word); the hunt's claim on a room is a fourth, inside
+//!   the engine and never public.
 //! - **role** is a group member's part, lead, follow or solo
 //!   ([`group::Role`]), and a spell's kind in the spell table
 //!   ([`spells::Role`]). The combat model's message families have a third

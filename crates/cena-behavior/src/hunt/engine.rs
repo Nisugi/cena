@@ -82,11 +82,13 @@ use super::react::Reacting;
 use super::repeat::Repeats;
 use super::replies::Heard;
 pub use super::said::{Ending, Here, Phase, Said, Why};
+use super::steer::Steered;
 use super::verbs::Go;
 use super::wand::Wanding;
 use crate::heal::HealProfile;
 use crate::keep::KeepProfile;
 use crate::loot::{Left, LootProfile};
+use crate::operation::Steering;
 use crate::stance::{self, Want};
 use crate::waggle::WaggleProfile;
 
@@ -214,6 +216,10 @@ pub struct Hunt {
     pub(super) bounty_mode: BountyMode,
     /// The group, when this hunt is in one ([`super::party`]).
     pub(super) grouping: Grouping,
+    /// Held or retreating, as last heeded ([`super::steer`]).
+    pub(super) steered: Steered,
+    /// The run's controls, when something outside steers it.
+    pub(super) steering: Option<Steering>,
 }
 
 impl Hunt {
@@ -276,6 +282,8 @@ impl Hunt {
             follow: Follow::default(),
             bounty_mode: BountyMode::default(),
             grouping: Grouping::default(),
+            steered: Steered::default(),
+            steering: None,
         }
     }
 
@@ -417,15 +425,19 @@ impl Hunt {
         if let Some(said) = self.group_arm(state, here, now) {
             return said;
         }
+        if let Some(said) = self.retreating(here).or_else(|| self.held_away()) {
+            return said;
+        }
         if let Some(said) = self.rest(state, here) {
             return said;
         }
-        if self
-            .profile
-            .rooms
-            .allowed
-            .as_ref()
-            .is_some_and(|rooms| here.room.is_none_or(|id| !rooms.contains(&id.0)))
+        if !self.steered.hold
+            && self
+                .profile
+                .rooms
+                .allowed
+                .as_ref()
+                .is_some_and(|rooms| here.room.is_none_or(|id| !rooms.contains(&id.0)))
         {
             if here.room.is_none() {
                 return Said::Wait(1);
@@ -437,6 +449,9 @@ impl Hunt {
             return Said::Walk(RoomId(start));
         }
         if let Some(said) = self.flee(state, here, now) {
+            return said;
+        }
+        if let Some(said) = self.held(state, here, now) {
             return said;
         }
         if let Some(said) = self.loot(state, now) {
@@ -544,6 +559,19 @@ impl Hunt {
             return Some(said);
         }
         let target = self.choose_target(state)?;
+        self.fight(state, here, target, now)
+    }
+
+    /// Fight `target`: its repeats, then target it, rally, and one step of
+    /// its routine. Engage's, and a held hunt's for the creature it was
+    /// already fighting ([`super::steer`]).
+    pub(super) fn fight(
+        &mut self,
+        state: &GameState,
+        here: Here<'_>,
+        target: i64,
+        now: Option<u32>,
+    ) -> Option<Said> {
         if let Some(said) = self.repeating(state, here, now) {
             return Some(said);
         }

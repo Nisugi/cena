@@ -505,6 +505,30 @@ Each ends in something demonstrable, as `12` §8 asks.
      rewritten so it is still walking.
    - **A lowered level stops nothing that runs.** It takes the agent's control away; the
      player's own stop ends the operation. (Issue #19's hard revocation is step 5's.)
+
+   **3b BUILT 2026-09-27**: `hold`, `resume` and `retreat`, a hunt's alone
+   (`crates/cena-behavior/src/hunt/steer.rs`).
+   - **Hold**, as the author chose it: every arm above the fighting ones acts as always
+     (incidents, survival, the group, a rest the character needs, flee), and **the creature
+     already being fought is fought on**, the author's words being *no new target*; nothing
+     else is begun: no target, loot, buff, wander, return to the hunting rooms, or walk back
+     from a rest. A rest that finishes while held stays in the resting room and is counted
+     once, when resumed. Issue #19 point 5 asks that hold say which survival actions remain
+     active: that list is it.
+   - **Retreat** wins over a hold and over a rest in progress: the target dropped, the walk to
+     the resting room as a rest walks it (fog, waypoints), and `Ending::Retreated` there
+     without resting, selling or healing. Its operation reads `interrupted`, `retreated`: a
+     safe return is not a finished hunt (issue #19, point 3).
+   - **Read once a tick, by the driver.** The run's controls (`Steering`) are shared with the
+     machine; `Hunt::heed`, called by the driver before each tick, takes them in, so
+     `Hunt::tick` still reads only what it is given.
+   - The operation's lifecycle says what was asked (`held`, `retreating`); its result says
+     what happened. A heal, keep, waggle or walk refuses them in words; a hunt asked before
+     its run has begun says so.
+   - Tests: `crates/cena-behavior/tests/hunt_steer.rs` (five, one driven through the real
+     controls and `heed`), the lifecycle in `crates/cena-session/tests/agent_operations.rs`,
+     a walk's refusal over MCP. Mutations: without the hold arm two tests go red; without the
+     held rest, one; without the retreat, one.
 4. **Commands**, with the denylist.
 5. **Takeover.** `Origin::Agent`, `take_over`, and the level dropping after a bad run.
 6. **Acceptance, live, author present:** a hunt ends on its rest threshold, the agent (not

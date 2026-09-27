@@ -45,7 +45,8 @@ use crate::{PROTOCOL, records};
 const INSTRUCTIONS: &str = "Hydra runs game characters. Each character's player sets what \
 an agent may do with it, its level: `off` (the default) allows nothing, `observe` allows \
 reading, `advise` also allows `tell_player`, `behaviors` also allows `perform` (start a \
-behavior as an operation: a walk, a hunt, a heal) and `control` (stop it). A tool the level \
+behavior as an operation: a walk, a hunt, a heal) and `control` (stop it; hold, resume or \
+retreat a hunt). A tool the level \
 does not allow answers `refused`, naming the level it needed; only the player can raise a \
 level, and the player is told you asked. An act refused above `off` waits for the player's \
 yes: `wait` for its `approval`. Every act takes your own `request_id`: asking again with the \
@@ -137,7 +138,8 @@ pub struct Steering {
     pub character: String,
     /// The operation's number, as `perform` gave it.
     pub operation: u64,
-    /// What to do to it: `stop`.
+    /// What to do to it: `stop`, or for a hunt `hold` (defend, start
+    /// nothing), `resume`, or `retreat` (walk to the resting room and end).
     pub control: String,
     /// Why, as for `perform`.
     pub because: String,
@@ -319,7 +321,7 @@ impl Agent {
     }
 
     #[tool(
-        description = "Steer an operation `perform` started: `stop`. Needs the `behaviors` level. Admission is not application: the operation reads `stopping`, then `ended`."
+        description = "Steer an operation `perform` started: `stop`; a hunt also takes `hold` (it defends itself and starts nothing: no new target, no looting, no buffs, no wandering, no walk back from a rest), `resume`, and `retreat` (it walks to its resting room and ends there). Needs the `behaviors` level. Admission is not application: the operation reads `held`, `retreating` or `stopping`, then `ended`."
     )]
     async fn control(
         &self,
@@ -350,7 +352,7 @@ impl Agent {
     }
 
     #[tool(
-        description = "An operation as it stands: its command, `lifecycle` (running, stopping, ended) and, once ended, its `result`: `work` (completed, failed, interrupted, no_opportunity, unknown) with the behavior's `reason`, what it `left` undone, and whether its `authority` was released. Without `operation`, every one kept."
+        description = "An operation as it stands: its command, `lifecycle` (running, held, retreating, stopping, ended) and, once ended, its `result`: `work` (completed, failed, interrupted, no_opportunity, unknown) with the behavior's `reason`, what it `left` undone, and whether its `authority` was released. Without `operation`, every one kept."
     )]
     async fn operation(
         &self,

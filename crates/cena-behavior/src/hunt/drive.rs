@@ -266,6 +266,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 self.machine.incidents(&incidents);
             }
             let now = self.state.game_time_now();
+            // Held, resumed or retreating, as whoever steers it said last.
+            self.machine.heed();
             let said = self.machine.tick(
                 &self.state,
                 Here {

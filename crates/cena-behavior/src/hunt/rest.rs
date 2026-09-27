@@ -211,6 +211,11 @@ impl Hunt {
         if let Some(said) = self.hold_for_group(state, here, state.game_time_now()) {
             return said;
         }
+        // Rested, and held: it stays here, and the rest is counted once it
+        // is resumed (`hunt/steer.rs`).
+        if self.rest_held() {
+            return Said::Wait(REST_BEAT);
+        }
         self.fried_kills = 0;
         self.field_rest = false;
         self.heard.rested_for_injury = why == Why::Injured;
@@ -301,7 +306,7 @@ impl Hunt {
 
     /// The way to town's rest room: its waypoints, and the fog's first line
     /// when this rest fogs.
-    fn set_out(&mut self, why: Why) -> Option<Said> {
+    pub(super) fn set_out(&mut self, why: Why) -> Option<Said> {
         self.waypoints = self
             .profile
             .rest

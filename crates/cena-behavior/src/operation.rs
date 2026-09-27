@@ -18,6 +18,9 @@
 //! put back, a stance not restored -- is carried as `left`, apart from the
 //! verdict, so a failed trip that tidied up is still a failed trip.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use cena_session::operation::{Ended, Work};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -35,23 +38,56 @@ pub struct Underway<T> {
     pub steering: Steering,
 }
 
-/// The controls of one run.
+/// The controls of one run. A hunt heeds all of them
+/// (`crate::hunt::Hunt::heed`); a walk only its stop.
 #[derive(Clone, Debug)]
 pub struct Steering {
     stop: CancellationToken,
+    hold: Arc<AtomicBool>,
+    retreat: Arc<AtomicBool>,
 }
 
 impl Steering {
     /// The controls of the run `stop` cancels.
     #[must_use]
-    pub(crate) const fn new(stop: CancellationToken) -> Self {
-        Self { stop }
+    pub fn new(stop: CancellationToken) -> Self {
+        Self {
+            stop,
+            hold: Arc::default(),
+            retreat: Arc::default(),
+        }
     }
 
     /// Stop this run, as the player's stop does. Stopping it again is
     /// nothing.
     pub fn stop(&self) {
         self.stop.cancel();
+    }
+
+    /// Hold: defend, and start nothing (`crate::hunt` steer's docs).
+    pub fn hold(&self) {
+        self.hold.store(true, Ordering::Relaxed);
+    }
+
+    /// Go on after a hold.
+    pub fn resume(&self) {
+        self.hold.store(false, Ordering::Relaxed);
+    }
+
+    /// Walk to the resting room and end there; a hold gives way to it.
+    pub fn retreat(&self) {
+        self.retreat.store(true, Ordering::Relaxed);
+        self.hold.store(false, Ordering::Relaxed);
+    }
+
+    /// Whether the run is held.
+    pub(crate) fn held(&self) -> bool {
+        self.hold.load(Ordering::Relaxed)
+    }
+
+    /// Whether the run was asked to retreat.
+    pub(crate) fn retreating(&self) -> bool {
+        self.retreat.load(Ordering::Relaxed)
     }
 }
 
@@ -94,6 +130,9 @@ impl HuntEnd {
             Ending::Deader => (Work::Interrupted, "deader"),
             Ending::MemberDied => (Work::Interrupted, "member_died"),
             Ending::LeaderStopped => (Work::Interrupted, "leader_stopped"),
+            // Arrived where it was sent, and the hunt was cut short to get
+            // there: a safe return is not a finished hunt (issue #19).
+            Ending::Retreated => (Work::Interrupted, "retreated"),
         };
         Ended::plainly(work, reason)
     }

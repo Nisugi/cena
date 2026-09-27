@@ -36,8 +36,9 @@ fn performer(starts: &Arc<AtomicUsize>, arrive: &CancellationToken) -> Performer
         let steer: Steer = {
             let stop = stop.clone();
             Arc::new(move |control: Control| {
-                match control {
-                    Control::Stop => stop.cancel(),
+                // The stand-in takes every control; only a stop ends it.
+                if control == Control::Stop {
+                    stop.cancel();
                 }
                 Ok(())
             })
@@ -202,4 +203,32 @@ async fn below_behaviors_the_yes_starts_it() {
         "{after:?}"
     );
     assert_eq!(starts.load(Ordering::SeqCst), 1);
+}
+
+/// Hold, resume and retreat, as the operation reads once each is admitted:
+/// held, running again, retreating; a stop after a retreat is still a stop.
+#[tokio::test]
+async fn the_controls_read_in_the_lifecycle() {
+    let (handle, _starts, _arrive) = seated(Level::Behaviors);
+    let door = handle.agent_door();
+    let run = started(door.perform("walk bank", "to sell", call("r1", &handle))).unwrap();
+    let mut read = Vec::new();
+    for (request, control) in [
+        ("c1", Control::Hold),
+        ("c2", Control::Resume),
+        ("c3", Control::Retreat),
+        ("c4", Control::Stop),
+    ] {
+        let now = started(door.control(run.id, control, "steering", call(request, &handle)));
+        read.push(now.map(|report| report.lifecycle));
+    }
+    assert_eq!(
+        read,
+        [
+            Some(Lifecycle::Held),
+            Some(Lifecycle::Running),
+            Some(Lifecycle::Retreating),
+            Some(Lifecycle::Stopping),
+        ]
+    );
 }

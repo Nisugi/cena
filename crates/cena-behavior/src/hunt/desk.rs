@@ -344,6 +344,7 @@ impl Desk {
         }
         let desk = Arc::clone(self);
         let steering = Steering::new(running.stop.clone());
+        let machine = machine.steered_by(steering.clone());
         let task = tokio::spawn(async move {
             let Running { number, stop, over } = running;
             if let Some(before) = before {
