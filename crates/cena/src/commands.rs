@@ -64,7 +64,7 @@ pub(crate) const HELP: &[&str] = &[
     "agent help       what an agent (a program such as Claude Code) may do with this character",
     "stop             stop everything Hydra is doing on this character: a hunt, a walk, a batch",
     "to <name> <command>, all <command>   send a command on another character, or on every one",
-    "<script> [args]  run one of your Lich scripts; k, l, p, u as in Lich. scripts: where they are, and import them",
+    "<script> [args]  run one of your Lich scripts; k, l, p, u as in Lich. scripts: where they are; scripts import, scripts check",
 ];
 
 /// Whether a line, without its symbol, asks for [`HELP`].

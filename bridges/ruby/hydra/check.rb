@@ -117,8 +117,11 @@ module Hydra
         source = File.binread(path).force_encoding(Encoding::UTF_8)
         source = source.encode(Encoding::UTF_8, Encoding::ISO_8859_1) unless source.valid_encoding?
         findings = findings(source)
+        name = File.basename(path, '.*')
         {
-          'name' => File.basename(path, '.*'),
+          'name' => name,
+          # Hydra has it built in: its own runs when it is typed or started.
+          'builtin' => Hydra::Builtins::COMMANDS.key?(name.downcase),
           'file' => path,
           'lines' => source.count("\n") + (source.end_with?("\n") ? 0 : 1),
           'verdict' => verdict(findings),

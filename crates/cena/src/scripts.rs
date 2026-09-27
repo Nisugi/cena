@@ -19,7 +19,9 @@
 //! Scripts are found in `scripts` in Hydra's data folder (and its `custom`
 //! folders, as Lich's are), and a runner keeps its data in `lich` beside it.
 //! `;scripts import <Lich folder>` brings a Lich player's scripts and their
-//! settings there once ([`import`]); `;scripts` says where they are.
+//! settings there once ([`import`]); `;scripts check <script>` says which of
+//! a script's lines will not work under Hydra, and why ([`check`]);
+//! `;scripts` says where they are.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -37,6 +39,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::commands::Commands;
 
+mod check;
 mod import;
 
 /// Lich's own `;` words over its scripts, which the runner answers
@@ -78,6 +81,9 @@ const STARTING: &[&str] = &["force", "e", "eq", "exec", "execq", "en", "execname
 /// The script files a runner runs: Lich's own kinds, less the Wizard's
 /// `.cmd` and `.wiz`, which the bridge does not take (`plan/46` §5).
 const KINDS: &[&str] = &["lic", "rb", "lic.gz", "rb.gz"];
+
+/// What is said when the player has no Ruby.
+const NO_RUBY: &str = "scripts need Ruby 4.0, which Lich's installer puts in C:\\Ruby4Lich5; none was found there or on the PATH.";
 
 /// How many typed commands may wait for a runner to start.
 const WAITING: usize = 32;
@@ -159,15 +165,15 @@ impl Scripts {
         commands: &Commands,
     ) {
         let (typed, waiting) = mpsc::channel(WAITING);
-        let (hydra, told) = (self.shared.dir.clone(), handle.clone());
-        let scripts = hydra.join("scripts");
+        let (shared, told) = (Arc::clone(&self.shared), handle.clone());
+        let scripts = shared.dir.join("scripts");
         commands.scripts(Arc::new(move |line: &str| {
             let word = first_word(line);
             if word == "scripts" {
-                answer(line, &hydra, &told);
+                answer(line, &shared, &told);
                 return Some(Claimed::Done);
             }
-            if !LICH_WORDS.contains(&word.as_str()) && !names_a_script(&scripts, &word) {
+            if !LICH_WORDS.contains(&word.as_str()) && find_script(&scripts, &word).is_none() {
                 return None;
             }
             let said = match typed.try_send(line.trim().to_owned()) {
@@ -224,13 +230,21 @@ impl Scripts {
     }
 }
 
-/// `;scripts`: where they are, and `import <Lich folder>`, run off the
-/// runtime's threads and said when done.
-fn answer(line: &str, hydra: &Path, told: &SessionHandle) {
+/// `;scripts`: where they are, `check <script>`, and `import <Lich
+/// folder>`, the last two run off the command line and said when done.
+fn answer(line: &str, shared: &Arc<Shared>, told: &SessionHandle) {
+    let hydra = shared.dir.as_path();
     let rest = line
         .trim()
         .split_once(char::is_whitespace)
         .map_or("", |(_, rest)| rest.trim());
+    if let Some(script) = rest
+        .strip_prefix("check")
+        .filter(|script| script.is_empty() || script.starts_with(char::is_whitespace))
+    {
+        check::check(script, shared, told);
+        return;
+    }
     let Some(folder) = rest
         .strip_prefix("import")
         .filter(|folder| folder.is_empty() || folder.starts_with(char::is_whitespace))
@@ -244,6 +258,8 @@ fn answer(line: &str, hydra: &Path, told: &SessionHandle) {
                     hydra.join("lich").join("lich.db3").display()
                 ),
                 "scripts import <Lich folder>   bring your Lich scripts and their settings here: C:\\Lich5"
+                    .to_owned(),
+                "scripts check <script>   which of its lines will not work under Hydra, and why"
                     .to_owned(),
                 "<script> [args]   run one; k, l, p, u as in Lich".to_owned(),
             ],
@@ -276,35 +292,64 @@ fn first_word(line: &str) -> String {
         .to_ascii_lowercase()
 }
 
-/// Whether `word` names a script in `dir`, as Lich finds one
-/// (`common/script.rb`, `__find_script_file`): in `custom`, its folders, or
-/// `dir` itself; the whole name, or the start of one.
-fn names_a_script(dir: &Path, word: &str) -> bool {
+/// The script `word` names in `dir`, as Lich finds one
+/// (`common/script.rb`, `__find_script_file`): in `custom` and its folders,
+/// then `dir` itself, each in order of name; the whole name first, then the
+/// first that starts with it. `word` is lowercase.
+fn find_script(dir: &Path, word: &str) -> Option<PathBuf> {
     if word.is_empty() || word.contains(['/', '\\', '.']) {
-        return false;
+        return None;
     }
     let custom = dir.join("custom");
-    let mut folders = vec![dir.to_owned(), custom.clone()];
+    let mut folders = vec![custom.clone()];
     if let Ok(entries) = std::fs::read_dir(&custom) {
-        folders.extend(
-            entries
-                .filter_map(Result::ok)
-                .map(|entry| entry.path())
-                .filter(|path| path.is_dir()),
-        );
+        let mut inside: Vec<PathBuf> = entries
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect();
+        inside.sort();
+        folders.extend(inside);
     }
-    folders.iter().any(|folder| {
-        std::fs::read_dir(folder).is_ok_and(|entries| {
-            entries.filter_map(Result::ok).any(|entry| {
-                let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
-                KINDS.iter().any(|kind| {
-                    name.strip_suffix(kind)
-                        .and_then(|stem| stem.strip_suffix('.'))
-                        .is_some_and(|stem| stem.starts_with(word))
+    folders.push(dir.to_owned());
+    let scripts: Vec<(String, PathBuf)> = folders
+        .iter()
+        .flat_map(|folder| {
+            let mut found: Vec<(String, PathBuf)> = std::fs::read_dir(folder)
+                .into_iter()
+                .flatten()
+                .filter_map(Result::ok)
+                .filter_map(|entry| {
+                    let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+                    let stem = KINDS.iter().find_map(|kind| {
+                        name.strip_suffix(kind)
+                            .and_then(|stem| stem.strip_suffix('.'))
+                    })?;
+                    Some((stem.to_owned(), entry.path()))
                 })
-            })
+                .collect();
+            found.sort();
+            found
         })
-    })
+        .collect();
+    let whole = scripts.iter().find(|(stem, _)| stem == word);
+    whole
+        .or_else(|| scripts.iter().find(|(stem, _)| stem.starts_with(word)))
+        .map(|(_, path)| path.clone())
+}
+
+/// Where the runner's files are, written the first time they are asked
+/// for.
+fn unpacked(shared: &Shared) -> Result<PathBuf, String> {
+    shared
+        .unpacked
+        .get_or_init(|| {
+            let dir = shared.dir.join("runner").join("ruby");
+            runner::unpack(&dir)
+                .map(|()| dir)
+                .map_err(|e| format!("the runner's files were not written: {e}"))
+        })
+        .clone()
 }
 
 /// One character's runner: started on the first command that needs it,
@@ -374,23 +419,13 @@ async fn ended(running: &mut Option<Running>) -> String {
 /// Start a runner for `seat`: the listener and the runner's files the first
 /// time, then the player's Ruby.
 async fn start(shared: &Shared, seat: &Seat) -> Result<Running, String> {
-    let ruby = runner::find_ruby().ok_or(
-        "scripts need Ruby 4.0, which Lich's installer puts in C:\\Ruby4Lich5; none was found there or on the PATH.",
-    )?;
+    let ruby = runner::find_ruby().ok_or(NO_RUBY)?;
     let url = shared
         .url
         .get_or_init(|| listen(shared.runners.clone(), shared.stop.clone()))
         .await
         .clone()?;
-    let dir = shared
-        .unpacked
-        .get_or_init(|| {
-            let dir = shared.dir.join("runner").join("ruby");
-            runner::unpack(&dir)
-                .map(|()| dir)
-                .map_err(|e| format!("the runner's files were not written: {e}"))
-        })
-        .clone()?;
+    let dir = unpacked(shared)?;
     let (scripts, data) = (shared.dir.join("scripts"), shared.dir.join("lich"));
     for folder in [&scripts, &data] {
         std::fs::create_dir_all(folder)

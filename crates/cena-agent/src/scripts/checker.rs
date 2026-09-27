@@ -25,6 +25,9 @@ pub const CHECKER: &str = "hydra/check.rb";
 pub struct Checked {
     /// Its name: the file's, without `.lic`.
     pub name: String,
+    /// Hydra has it built in (`go2`): Hydra's own runs in its place, typed
+    /// or started by a script (`bridges/ruby/hydra/builtins.rb`).
+    pub builtin: bool,
     /// How many lines it has.
     pub lines: u64,
     /// The worst of its findings.
