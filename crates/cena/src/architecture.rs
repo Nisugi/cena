@@ -31,7 +31,7 @@
 //!
 //! # The crate graph is the architecture
 //!
-//! Eleven crates, one per layer, with dependencies pointing one way: down.
+//! Twelve crates, one per layer, with dependencies pointing one way: down.
 //! Cargo enforces the acyclic half. The other half -- a forbidden edge that
 //! happens to close no cycle, such as the projection reaching into the
 //! session -- is `crate_dependency_edges_match_the_plan`
@@ -41,8 +41,9 @@
 //! architecture rather than a floor under it. This is the graph it asserts:
 //!
 //! ```text
-//! cena              the binary: Hydra                  agent, behavior, host, platform, session, ui, web
+//! cena              the binary: Hydra                  agent, behavior, gui, host, platform, session, ui, web
 //! cena-agent        MCP for an outside program         session, platform*
+//! cena-gui          the window (egui)                  session, ui
 //! cena-web          the embedded browser viewer        session, ui
 //! cena-ui           projection and wire vocabulary     model
 //! cena-host         the table of sessions              session, platform*
@@ -67,6 +68,7 @@
 //! | [`cena_session`] | its crate page, which gives the reading order |
 //! | [`cena_behavior`] | [`travel`](cena_behavior::travel) |
 //! | [`cena_ui`] | [`SessionView`](cena_ui::SessionView), and `crates/cena-ui/WIRE.md` for the contract |
+//! | [`cena_gui`] | [`Sessions`](cena_gui::Sessions), and [`run`](cena_gui::run) for the window |
 //! | [`cena_web`] | [`WebServer`](cena_web::WebServer) |
 //! | [`cena_agent`] | [`Characters`](cena_agent::Characters), and `crates/cena-agent/CONTRACT.md` for the contract |
 //! | [`cena_host`] | [`Host`](cena_host::Host) |
@@ -275,8 +277,8 @@
 //! It is a crate rather than part of the binary because its callers include
 //! the web hub, and a frontend cannot depend on the binary. Yet `cena-web` has
 //! no edge to it either: a hub's add, remove, reconnect and shutdown travel as
-//! a [`HubRequest`](cena_web::HubRequest) to whoever registered a
-//! [`HubControl`](cena_web::HubControl), which is the binary, which owns the
+//! a [`HubRequest`](cena_ui::HubRequest) to whoever registered a
+//! [`HubControl`](cena_ui::HubControl), which is the binary, which owns the
 //! table. Anything that reads across sessions -- the merge of thoughts,
 //! speech, logons, deaths and announcements into one stream
 //! ([`Merger`](cena_ui::Merger)) -- is a consumer of N sessions above them,
@@ -381,7 +383,7 @@
 //! [`lifecycle`](cena_session::lifecycle), [`command`](cena_session::command),
 //! [`actor`](cena_session::actor), [`supervisor`](cena_session::supervisor);
 //! [`cena_behavior`] with [`travel`](cena_behavior::travel) first;
-//! [`cena_ui`] and [`cena_web`] for the viewer; [`cena_host`] for the table;
+//! [`cena_ui`], [`cena_gui`] and [`cena_web`] for the viewers; [`cena_host`] for the table;
 //! and [`play`](crate::play) for how the binary ties them together. The
 //! words this page uses, and the ones that already mean two things, are in
 //! [`glossary`](crate::glossary). For the reasoning behind any of it,

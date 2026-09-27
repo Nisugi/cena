@@ -1,0 +1,175 @@
+//! `plan/47` step 10: the progress bar, to the author's spec -- both ways of
+//! filling, any size, an overlay, and its text inside, on any side, or none,
+//! saying any mix of label, numbers and percent. The last test renders every
+//! kind at once and compares it with `tests/snapshots/bars.png`.
+
+use cena_gui::bar::{Amount, Bar, Fills, HEALTH, MANA, Overlay, Place, SPIRIT, STAMINA, Says};
+use egui::{Color32, Rect, Vec2};
+use egui_kittest::Harness;
+use egui_kittest::kittest::Queryable as _;
+
+fn amount(percent: u32) -> Amount {
+    Amount {
+        percent,
+        current: i32::try_from(percent * 4).ok(),
+        max: Some(400),
+    }
+}
+
+const ALL: Says = Says {
+    label: true,
+    numbers: true,
+    percent: true,
+};
+
+/// Where each bar landed, in the order drawn.
+#[derive(Default)]
+struct Drawn {
+    rects: Vec<Rect>,
+    frame: Option<egui::TextureHandle>,
+}
+
+/// A frame to lay over a bar: a two-pixel gold border, clear inside.
+fn frame(ctx: &egui::Context) -> egui::TextureHandle {
+    let (width, height) = (24, 12);
+    let mut image = egui::ColorImage::filled([width, height], Color32::TRANSPARENT);
+    for y in 0..height {
+        for x in 0..width {
+            if x < 2 || y < 2 || x >= width - 2 || y >= height - 2 {
+                image[(x, y)] = Color32::from_rgb(0xd4, 0xaf, 0x37);
+            }
+        }
+    }
+    ctx.load_texture("frame", image, egui::TextureOptions::NEAREST)
+}
+
+fn gallery(ui: &mut egui::Ui, drawn: &mut Drawn) {
+    let texture = drawn.frame.get_or_insert_with(|| frame(ui.ctx())).clone();
+    drawn.rects.clear();
+    let mut add = |ui: &mut egui::Ui, bar: Bar<'_>| drawn.rects.push(ui.add(bar).rect);
+    ui.horizontal(|ui| {
+        add(
+            ui,
+            Bar::new("HP", Some(amount(87)))
+                .fill(HEALTH)
+                .says(ALL)
+                .size([160.0, 20.0]),
+        );
+        add(
+            ui,
+            Bar::new("MP", Some(amount(40)))
+                .fill(MANA)
+                .text(Place::Right),
+        );
+        add(ui, Bar::new("SP", None).fill(STAMINA).text(Place::Left));
+    });
+    ui.horizontal(|ui| {
+        add(
+            ui,
+            Bar::new("Sp", Some(amount(100)))
+                .fill(SPIRIT)
+                .text(Place::Above),
+        );
+        add(
+            ui,
+            Bar::new("Stance", Some(amount(30)))
+                .text(Place::Below)
+                .fills(Fills::Left),
+        );
+        add(
+            ui,
+            Bar::new("Hidden", Some(amount(60)))
+                .fill(MANA)
+                .text(Place::Hidden),
+        );
+        add(
+            ui,
+            Bar::new("Framed", Some(amount(55)))
+                .fill(HEALTH)
+                .size([120.0, 22.0])
+                .overlay(Overlay::framed(
+                    texture.id(),
+                    Vec2::new(24.0, 12.0),
+                    [2.0, 2.0, 2.0, 2.0],
+                )),
+        );
+    });
+    ui.horizontal(|ui| {
+        add(
+            ui,
+            Bar::new("HP", Some(amount(75)))
+                .fill(HEALTH)
+                .fills(Fills::Up)
+                .text(Place::Below),
+        );
+        add(
+            ui,
+            Bar::new("MP", Some(amount(25)))
+                .fill(MANA)
+                .fills(Fills::Down)
+                .text(Place::Right),
+        );
+        add(
+            ui,
+            Bar::new("Tall", Some(amount(50)))
+                .fill(STAMINA)
+                .fills(Fills::Up)
+                .size([30.0, 100.0])
+                .says(Says {
+                    label: false,
+                    numbers: false,
+                    percent: true,
+                }),
+        );
+    });
+}
+
+fn harness<'a>() -> Harness<'a, Drawn> {
+    Harness::builder()
+        .with_size((460.0, 280.0))
+        .build_ui_state(gallery, Drawn::default())
+}
+
+/// Each bar is found by what it says, wherever the words are drawn, and a
+/// bar with its text hidden still says it to a screen reader.
+#[test]
+fn every_bar_says_its_words() {
+    let harness = harness();
+    for words in [
+        "HP 348/400 87%",
+        "MP 40%",
+        "SP ?",
+        "Sp 100%",
+        "Stance 30%",
+        "Hidden 60%",
+        "Framed 55%",
+        "HP 75%",
+        "MP 25%",
+        "50%",
+    ] {
+        assert!(harness.query_by_label(words).is_some(), "{words}");
+    }
+}
+
+/// A bar is the size it was given; text outside it adds to the space it
+/// takes, text inside does not.
+#[test]
+fn a_bar_is_the_size_it_was_given() {
+    let harness = harness();
+    let rects = &harness.state().rects;
+    assert_eq!(rects[0].size(), Vec2::new(160.0, 20.0), "inside");
+    assert_eq!(rects[5].size(), Vec2::new(72.0, 18.0), "hidden text");
+    assert_eq!(rects[9].size(), Vec2::new(30.0, 100.0), "upright");
+    assert!(rects[1].width() > 72.0, "text to the right widens it");
+    assert!(rects[3].height() > 18.0, "text above heightens it");
+}
+
+#[test]
+fn the_bars_as_drawn() {
+    let mut harness = Harness::builder()
+        .with_size((460.0, 280.0))
+        .wgpu()
+        .build_ui_state(gallery, Drawn::default());
+    harness.run();
+    harness.snapshot("bars");
+}

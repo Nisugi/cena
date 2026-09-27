@@ -72,7 +72,8 @@ clock. The listener supplies current extrapolated server time for live views.
 
 Lifecycle is tagged `kind: connecting`, `ready`, `reconnecting`, or `closed`.
 Reconnecting carries nullable `attempt`, nullable `retry_delay_ms`, nullable `detail`;
-closed carries nullable `detail`. The retry delay is the original scheduled
+closed carries nullable `detail`: why a session that stopped by itself stopped (a
+login no retry could fix, or idle), and null for one the player quit. The retry delay is the original scheduled
 backoff in milliseconds, not the time remaining until retry. Display it as a
 scheduled delay, never as a countdown. This is supplied by native lifecycle
 observation. When retry scheduling has not been observed, the attempt and delay

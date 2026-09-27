@@ -145,6 +145,8 @@ fn open_travel(
         crate::perform::TRAVEL_TOKEN,
     );
     crate::perform::install(handle, &observer, Some(Arc::clone(&travel)), hunt);
+    let walking = Arc::clone(&travel);
+    commands.stops("go2", Arc::new(move || walking.stop()));
     let handler = handle.clone();
     commands.travel(Arc::new(move |line: &str| {
         let command = travel_command(&handler, line)?;

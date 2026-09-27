@@ -26,6 +26,7 @@ use super::chain;
 use super::command::Command;
 use super::drive::{HuntEnd, hunt_in};
 use super::engine::Hunt;
+use super::report::{Reports, Status};
 use crate::error::BehaviorError;
 use crate::group::{Boards, Place};
 use crate::heal::{self, HealProfile};
@@ -48,6 +49,9 @@ pub struct Desk {
     /// Every group's board in this Hydra, when hunts here may group
     /// (`plan/39` §5).
     boards: OnceLock<Arc<Boards>>,
+    /// What its runs are doing, turn by turn, for a hunt panel (`plan/47`
+    /// step 8).
+    reports: Reports,
 }
 
 /// A hunt under way: how to stop it, and how to know it is over.
@@ -72,7 +76,15 @@ impl Desk {
             hunts: AtomicU64::new(0),
             map_sha256: None,
             boards: OnceLock::new(),
+            reports: Reports::default(),
         })
+    }
+
+    /// Hear what this desk's runs are doing, turn by turn: the latest, or
+    /// `None` while nothing runs.
+    #[must_use]
+    pub fn reports(&self) -> tokio::sync::watch::Receiver<Option<Status>> {
+        self.reports.follow()
     }
 
     /// Let this desk's hunts hunt in a group, on `boards`: one set for every
@@ -248,6 +260,7 @@ impl Desk {
                     (joined.0, joined.1.into()),
                     machine,
                     Some(place),
+                    &name,
                 ))
             }
             _ => None,
@@ -280,13 +293,15 @@ impl Desk {
         true
     }
 
+    /// Start a run that is not a hunt, named `what` for its reports.
     fn start(
         self: &Arc<Self>,
+        what: &str,
         handle: SessionHandle,
         joined: (Snapshot, Heard),
         machine: Hunt,
     ) -> Underway<HuntEnd> {
-        self.start_in(handle, joined, machine, None)
+        self.start_in(handle, joined, machine, None, what)
     }
 
     /// A per-character settings file of this character's, as found: `path`
@@ -321,14 +336,17 @@ impl Desk {
             .filter(|p| !p.cast_list.is_empty())
     }
 
-    /// Start `machine`; `place` in a group when it is a hunt.
+    /// Start `machine`, named `what` for its reports; `place` in a group
+    /// when it is a hunt.
     fn start_in(
         self: &Arc<Self>,
         handle: SessionHandle,
         joined: (Snapshot, Heard),
         machine: Hunt,
         place: Option<Place>,
+        what: &str,
     ) -> Underway<HuntEnd> {
+        let what = what.to_owned();
         let running = Running {
             number: self.hunts.fetch_add(1, Ordering::Relaxed),
             stop: CancellationToken::new(),
@@ -350,7 +368,10 @@ impl Desk {
             if let Some(before) = before {
                 before.over.cancelled().await;
             }
+            desk.reports.running(&what);
             let end = Box::pin(desk.hunt_once(&handle, &stop, joined, machine, place)).await;
+            // Before `over`: the next run, waiting on it, reports after this.
+            desk.reports.tell(None);
             let mut slot = desk.running.lock().unwrap_or_else(PoisonError::into_inner);
             if slot.as_ref().is_some_and(|hunt| hunt.number == number) {
                 *slot = None;
@@ -447,7 +468,7 @@ impl Desk {
         match crate::spellcaster::lines(&profile, state, &words) {
             Ok(lines) => {
                 let machine = Hunt::send_only(lines);
-                Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+                Some(self.start("sc", handle.clone(), (joined.0, joined.1.into()), machine))
             }
             Err(why) => {
                 handle.say(Notice::line(NoticeKind::Warn, format!("Sc: {why}")));
@@ -480,7 +501,12 @@ impl Desk {
             }
         };
         let machine = Hunt::waggle_only(profile, targets);
-        Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+        Some(self.start(
+            "waggle",
+            handle.clone(),
+            (joined.0, joined.1.into()),
+            machine,
+        ))
     }
 
     /// `;keep`: the keep profile's spells kept up until stopped.
@@ -513,6 +539,7 @@ impl Desk {
             ),
         ));
         Some(self.start(
+            "keep",
             handle.clone(),
             (joined.0, joined.1.into()),
             Hunt::keep_only(profile),
@@ -539,7 +566,12 @@ impl Desk {
             ));
             return None;
         };
-        Some(self.start(handle.clone(), (joined.0, joined.1.into()), make(profile)))
+        Some(self.start(
+            "herbs",
+            handle.clone(),
+            (joined.0, joined.1.into()),
+            make(profile),
+        ))
     }
 
     /// The character's heal profile (`plan/36`), when there is one and it
@@ -605,6 +637,7 @@ impl Desk {
                 wrote,
                 learned,
                 self.boards.get().cloned().zip(place),
+                &self.reports,
             ));
             tokio::select! {
                 end = run => end,

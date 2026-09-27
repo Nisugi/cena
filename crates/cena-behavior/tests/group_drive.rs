@@ -140,6 +140,23 @@ fn member_hunt(
     JoinHandle<Option<HuntEnd>>,
     CancellationToken,
 ) {
+    member_hunt_reporting(name, profile, grouped, place, boards, stop, Arc::default())
+}
+
+/// [`member_hunt`], its turns reported to `reports` (`plan/47` step 8).
+fn member_hunt_reporting(
+    name: &'static str,
+    profile: &'static str,
+    grouped: &GroupEvent,
+    place: Place,
+    boards: &Arc<Boards>,
+    stop: &CancellationToken,
+    reports: Arc<cena_behavior::hunt::Reports>,
+) -> (
+    TranscriptHandle,
+    JoinHandle<Option<HuntEnd>>,
+    CancellationToken,
+) {
     let (source, transcript) = AnsweringSource::logged_in(ROOM);
     let session = Session::new(source);
     let handle = session.handle();
@@ -180,6 +197,7 @@ fn member_hunt(
             |_| {},
             |_| {},
             Some((boards, place)),
+            &reports,
         ))
         .await;
         Some(end)
@@ -205,15 +223,25 @@ async fn the_follower_takes_the_leaders_target_and_the_loot_it_is_given() {
         &boards,
         &stop,
     );
-    let (follower, follower_task, follower_session) = member_hunt(
+    let reports = Arc::new(cena_behavior::hunt::Reports::default());
+    let reported = reports.follow();
+    let (follower, follower_task, follower_session) = member_hunt_reporting(
         "Kiyna",
         FOLLOWER,
         &GroupEvent::JoinedGroup(member("Ashryn")),
         Place::Read,
         &boards,
         &stop,
+        reports,
     );
     let looted = drive_support::until_written(&follower, "loot #43").await;
+    // Each turn is reported for a hunt panel (`plan/47` step 8).
+    let last = reported.borrow().clone();
+    assert!(
+        last.as_ref()
+            .is_some_and(|status| status.phase == "hunting" && !status.doing.is_empty()),
+        "{last:?}"
+    );
     let assisted = drive_support::until_written(&follower, "target #42").await;
     stop.cancel();
     let _ = leader_task.await;

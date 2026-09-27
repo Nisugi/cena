@@ -148,12 +148,18 @@ const ROOM_PLAYERS: &str = "room players";
 fn players(values: &[RoomItem], triggers: &Matcher, state: &GameState) -> Vec<RoomItemView> {
     let mut views = items(values);
     for view in &mut views {
-        let entry = triggers.paint_entry(ROOM_PLAYERS, &view.text, state);
-        if !entry.paint.is_empty() {
-            view.painted = Some(painted(&entry));
-        }
+        view.painted = room_player(&view.text, triggers, state);
     }
     views
+}
+
+/// A room player's name as the character's triggers paint it, as an entry
+/// on the room window's player list (`plan/45` Stage 7); `None` when no
+/// trigger paints it. Despana's room window and the GUI's both draw it.
+#[must_use]
+pub fn room_player(name: &str, triggers: &Matcher, state: &GameState) -> Option<Vec<StyledRun>> {
+    let entry = triggers.paint_entry(ROOM_PLAYERS, name, state);
+    (!entry.paint.is_empty()).then(|| painted(&entry))
 }
 
 pub(crate) fn bounded_text(text: &str, max_bytes: usize) -> &str {

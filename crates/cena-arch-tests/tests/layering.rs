@@ -141,6 +141,12 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // vocabulary never becomes a frontend's (`plan/35` §7). `cena-platform` is
     // a DEV-dependency only, for `AnsweringSource` in its end-to-end test.
     ("cena-agent", &["cena-platform", "cena-session"]),
+    // ADDED for `plan/47` step 1, the GUI: the row this file's doc recorded
+    // for the day a GUI crate was added, `(cena-ui, cena-session)`, and never
+    // another frontend. Step 1 drew the hub from `cena-ui`'s cards alone;
+    // `cena-session` joined at step 2, when the hub began following the
+    // sessions the binary puts on the table.
+    ("cena-gui", &["cena-session", "cena-ui"]),
     // ADDED for `plan/29` step 3, the session table: the crate that knows a
     // Hydra runs several sessions. It sits above `cena-session` and below
     // every frontend that adds or removes one -- the binary, the web hub, the
@@ -174,11 +180,14 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // and the set equality below is what keeps that true.
     // AMENDED for `plan/29`: `cena-host`, the session table, which the
     // binary's `--character` path runs several characters on (`play.rs`).
+    // AMENDED for `plan/47` step 2: `cena-gui`, the window the binary opens
+    // when no `--headless` or `--web` says otherwise.
     (
         "cena",
         &[
             "cena-agent",
             "cena-behavior",
+            "cena-gui",
             "cena-host",
             "cena-platform",
             "cena-session",

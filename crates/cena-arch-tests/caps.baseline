@@ -367,3 +367,19 @@ crates/cena/src/hunt.rs 750
 # past 800, and the operations themselves are crates/cena-session/src/operation.rs.
 # 629 lines: the ratchet's suggestion.
 crates/cena-session/src/agent.rs 700
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena-gui/src/feed.rs
+# follows one session for the window; its tests are feed/tests.rs. 138 lines,
+# so the rule above: 138 + 50, rounded up to the next 50.
+crates/cena-gui/src/feed.rs 200
+# NEW SPLIT PARENTS, 2026-09-27, capped at birth (plan/47 §7). crates/cena-gui/src/play.rs
+# is a character's play window, its tests in play/tests.rs: 385 lines, so 450.
+# crates/cena-gui/src/story.rs keeps what the window shows, its tests in
+# story/tests.rs: 149 lines, so 200. Both by the rule above: + 50, rounded up.
+crates/cena-gui/src/play.rs 450
+crates/cena-gui/src/story.rs 200
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena/src/relay.rs
+# is ;to and ;all, its tests in relay/tests.rs: 178 lines, so 250.
+crates/cena/src/relay.rs 250
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena-gui/src/keys.rs
+# is the keybinds, its tests in keys/tests.rs: 380 lines, so 450.
+crates/cena-gui/src/keys.rs 450

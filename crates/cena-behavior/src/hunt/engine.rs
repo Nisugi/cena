@@ -142,6 +142,9 @@ pub struct Hunt {
     pub(super) loot: Option<LootProfile>,
     /// A reason to rest the loot planner handed in, until the rest starts.
     pub(super) must_rest: Option<Why>,
+    /// Why this turn waits, with the numbers: set by the rest arm, cleared
+    /// each tick ([`Hunt::waiting`]).
+    pub(super) waiting: Option<String>,
     /// The current rest cycle uses field settings; escalation only goes to town.
     pub(super) field_rest: bool,
     /// The heal profile, when the character has one (`plan/36`).
@@ -249,6 +252,7 @@ impl Hunt {
             seed,
             loot: None,
             must_rest: None,
+            waiting: None,
             field_rest: false,
             heal: None,
             heal_only: None,
@@ -359,6 +363,13 @@ impl Hunt {
         self.target
     }
 
+    /// Why the hunt waits this turn, with the numbers, when it does: a
+    /// rest not yet over (`hunt/report.rs`).
+    #[must_use]
+    pub fn waiting(&self) -> Option<&str> {
+        self.waiting.as_deref()
+    }
+
     /// What the machine wants the player told, since it was last asked.
     pub fn take_notes(&mut self) -> Vec<String> {
         std::mem::take(&mut self.notes)
@@ -398,6 +409,7 @@ impl Hunt {
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
+        self.waiting = None;
         if let Some(said) = self.errand_line() {
             return said;
         }

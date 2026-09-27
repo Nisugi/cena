@@ -11,6 +11,7 @@ use cena_map::RoomId;
 use cena_session::{Able, GameState, Injuries};
 
 use super::engine::{Hunt, REST_BEAT};
+use super::report::Unrested;
 use super::said::{Ending, Here, Phase, Said, Why};
 
 /// The map's Temporal Rift, where a fog can land (`bigshot.lic:7635`).
@@ -204,7 +205,7 @@ impl Hunt {
             return Said::Send { line, target: None };
         }
         if let Some(still) = self.still_resting(state) {
-            let _ = still;
+            self.waiting = Some(still.to_string());
             return Said::Wait(REST_BEAT);
         }
         // A leader waits for its followers, then gathers them (`hunt/party.rs`).
@@ -451,19 +452,19 @@ impl Hunt {
 
     /// Why the rest is not over, or `None` when it is. A threshold whose
     /// vital the game has not stated keeps resting.
-    pub(super) fn still_resting(&self, state: &GameState) -> Option<&'static str> {
+    pub(super) fn still_resting(&self, state: &GameState) -> Option<Unrested> {
         if self.wounded(state) {
-            return Some("wounded");
+            return Some(Unrested::Wounded);
         }
+        let encumbered = state.character.encumbrance_percent;
         if self.profile.rooms.allowed.is_some()
-            && self.profile.rest.encumbered.is_some_and(|at| {
-                state
-                    .character
-                    .encumbrance_percent
-                    .is_none_or(|now| now >= at)
-            })
+            && let Some(under) = self.profile.rest.encumbered
+            && encumbered.is_none_or(|now| now >= under)
         {
-            return Some("encumbrance not yet cleared or known");
+            return Some(Unrested::Encumbered {
+                now: encumbered,
+                under,
+            });
         }
         let until = if self.field_rest {
             &self.profile.rest.field.as_ref()?.until
@@ -471,31 +472,31 @@ impl Hunt {
             &self.profile.rest.until
         };
         let mind = state.character.experience.mind_percent;
-        if until
-            .experience
-            .is_some_and(|at| mind.is_none_or(|mind| mind > at))
+        if let Some(most) = until.experience
+            && mind.is_none_or(|mind| mind > most)
         {
-            return Some("mind still above threshold");
+            return Some(Unrested::Mind { now: mind, most });
         }
-        if until
-            .mana
-            .is_some_and(|at| state.mana().is_none_or(|v| v.percent < at))
+        let mana = state.mana().map(|v| v.percent);
+        if let Some(wants) = until.mana
+            && mana.is_none_or(|now| now < wants)
         {
-            return Some("mana still below threshold");
+            return Some(Unrested::Mana { now: mana, wants });
         }
-        if until.spirit.is_some_and(|at| {
-            state
-                .spirit()
-                .and_then(|v| v.current)
-                .is_none_or(|spirit| spirit < i32::try_from(at).unwrap_or(i32::MAX))
-        }) {
-            return Some("spirit still below threshold");
-        }
-        if until
-            .stamina
-            .is_some_and(|at| state.stamina().is_none_or(|v| v.percent < at))
+        let spirit = state.spirit().and_then(|v| v.current);
+        if let Some(wants) = until.spirit
+            && spirit.is_none_or(|now| now < i32::try_from(wants).unwrap_or(i32::MAX))
         {
-            return Some("stamina still below threshold");
+            return Some(Unrested::Spirit { now: spirit, wants });
+        }
+        let stamina = state.stamina().map(|v| v.percent);
+        if let Some(wants) = until.stamina
+            && stamina.is_none_or(|now| now < wants)
+        {
+            return Some(Unrested::Stamina {
+                now: stamina,
+                wants,
+            });
         }
         None
     }

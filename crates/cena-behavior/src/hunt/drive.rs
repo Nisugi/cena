@@ -59,6 +59,7 @@ use tokio_util::sync::CancellationToken;
 
 use self::party::{Membership, Seen};
 use super::engine::{Ending, Here, Hunt, Said};
+use super::report::{self, Reports, Status};
 use crate::error::BehaviorError;
 use crate::group::{Boards, Place};
 use crate::loot::Memory;
@@ -110,8 +111,19 @@ pub async fn hunt(
     learned: impl FnMut(&[String]) + Send,
 ) -> HuntEnd {
     Box::pin(hunt_in(
-        handle, cancel, next_id, token, joined, map, machine, heartbeat, notes, wrote, learned,
+        handle,
+        cancel,
+        next_id,
+        token,
+        joined,
+        map,
+        machine,
+        heartbeat,
+        notes,
+        wrote,
+        learned,
         None,
+        &Reports::default(),
     ))
     .await
 }
@@ -132,6 +144,7 @@ pub async fn hunt_in(
     wrote: impl FnMut(&TravelNotes) + Send,
     learned: impl FnMut(&[String]) + Send,
     group: Option<(Arc<Boards>, Place)>,
+    reports: &Reports,
 ) -> HuntEnd {
     let (snapshot, events) = joined;
     let hunting_map = match super::setup::hunting_map(machine.profile(), map) {
@@ -174,6 +187,7 @@ pub async fn hunt_in(
         line: String::new(),
         down: false,
         membership: group.map(|(boards, place)| Membership::new(boards, place)),
+        reports,
     };
     let end = driver.run(heartbeat).await;
     driver.leave_party(end).await;
@@ -221,6 +235,8 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     down: bool,
     /// Its place in a group, when it can hunt in one (`drive/party.rs`).
     membership: Option<Membership>,
+    /// Where it says what it is doing each turn (`hunt/report.rs`).
+    reports: &'a Reports,
 }
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
@@ -278,6 +294,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 now,
             );
             self.publish(here, State::Ready);
+            self.report(&said);
             // How it is getting on, for whoever steers it.
             self.machine.report_progress(now);
             for note in self.machine.take_notes() {
@@ -319,6 +336,27 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 return end;
             }
         }
+    }
+
+    /// Say what this turn does, for a hunt panel: the creature fought by
+    /// what the room calls it, else by its id.
+    fn report(&self, said: &Said) {
+        let target = self.machine.target().map(|id| {
+            let id_text = id.to_string();
+            self.state
+                .room
+                .creatures
+                .iter()
+                .find(|creature| creature.id == id_text)
+                .map_or_else(|| format!("#{id}"), |creature| creature.text.clone())
+        });
+        self.reports.tell(Some(Status {
+            profile: String::new(),
+            phase: self.machine.phase().to_string(),
+            doing: report::doing(said),
+            target,
+            waiting: self.machine.waiting().map(str::to_owned),
+        }));
     }
 
     /// Where the character is, by the map: from the room the game names,

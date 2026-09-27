@@ -250,6 +250,20 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
      'every field is shared' half mechanically.",
     ),
     (
+        "crates/cena-gui/src/sessions.rs",
+        "Seat",
+        "The GUI's manual-input surface, one per session the window shows \
+         (plan/47 step 4): its play window's command input sends through it. \
+         On Viewed's terms above, and for the same reasons: a clone of the \
+         handle the binary attached, every field shared so it cannot drift; \
+         every send is generation-pinned (`Sessions::send` passes the \
+         generation of the last snapshot the window saw to send_manual_at), so \
+         a stale window is refused by the session; and the seat goes when the \
+         binary detaches its session (`Sessions::detach`, called from \
+         play.rs's take_off). The cena-gui row of layering.rs ALLOWED_EDGES \
+         gives it the edge.",
+    ),
+    (
         "crates/cena-host/src/table.rs",
         "Hosted",
         "The session table's entry for one running session (plan/29 step 3). \

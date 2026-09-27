@@ -36,6 +36,10 @@ const FOREACH_TOKEN: AuthorityToken = AuthorityToken(5);
 pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands: &Commands) {
     let multi = Desk::new(Kind::Multi.name(), MULTI_TOKEN);
     let foreach = Desk::new(Kind::Foreach.name(), FOREACH_TOKEN);
+    for (name, desk) in [("multi", &multi), ("foreach", &foreach)] {
+        let desk = Arc::clone(desk);
+        commands.stops(name, Arc::new(move || desk.stop()));
+    }
     let hydra = through(commands.clone());
     let (told, observer) = (handle.clone(), observer.clone());
     commands.batch(Arc::new(move |line: &str| {

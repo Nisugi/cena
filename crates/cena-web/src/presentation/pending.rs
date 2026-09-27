@@ -13,7 +13,8 @@
 //! send after its lines, the last [`MAX_ALERTS`] of them.
 
 use super::hub::line_bytes;
-use super::{MAX_DRAIN, MAX_HISTORY_BYTES, MAX_HISTORY_LINES};
+use super::{MAX_HISTORY_BYTES, MAX_HISTORY_LINES};
+use cena_session::observation::catch_up;
 use cena_session::{Event, Frame, Generation, Line, ObservedEvent, Snapshot};
 use cena_ui::{StoryLine, painted, story_lines};
 use std::collections::VecDeque;
@@ -106,20 +107,11 @@ impl Pending {
         old: &mut broadcast::Receiver<ObservedEvent>,
     ) {
         // Events through this fence were published before subscribe answered.
-        // Never await a missing event or drain beyond this fixed budget.
-        for _ in 0..MAX_DRAIN {
-            if self.cursor >= snapshot.cursor {
-                break;
-            }
-            match old.try_recv() {
-                Ok(event) if event.cursor <= snapshot.cursor => self.observe(event),
-                _ => {
-                    self.missing();
-                    break;
-                }
-            }
+        let (events, whole) = catch_up(old, self.cursor, snapshot.cursor);
+        for event in events {
+            self.observe(event);
         }
-        if self.cursor < snapshot.cursor {
+        if !whole {
             self.missing();
         }
         self.cursor = snapshot.cursor;
