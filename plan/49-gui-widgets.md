@@ -1,7 +1,7 @@
 # 49 — The GUI, second stage: widgets, custom windows, and what follows
 
-> **STATUS: PROPOSED, 2026-09-27.** The author's decisions of the day are quoted in §1.
-> The stages (§4) are not yet approved. Claude's readings are marked as such. `plan/47`
+> **STATUS: PROPOSED, 2026-09-27.** The author's decisions of the day are quoted in §1,
+> including the stages' order (§4, row 6); three questions remain (§5). Claude's readings are marked as such. `plan/47`
 > (M10's first build) is BUILT; `plan/28` stays the inventory of VellumFE's GUI and holds
 > the layout decisions this file builds on; this file is what gets built next, and in what
 > order. `plan/12` wins any contradiction, except where §1 records the author changing it.
@@ -54,6 +54,18 @@ Asked three things in reply, answered the same day:
 The third answer is also a rule for everything below: **the everyday surface stays simple,
 and the power goes behind one Advanced door.**
 
+Given this file's first draft, the author answered again the same day:
+
+| # | Asked | Answer | What it means here |
+|---|---|---|---|
+| 4 | Voln, Mentor, Host: what are they? | *"mentor and host are positions you hold with the game, not for everyone, they're just text streams like thoughts, same for voln, it has it's own thought stream."* | Stream widgets like any other (§3). |
+| 5 | The live run first? | *"No m6 live run until I have a proper ui."* | **The M6 live run waits for the GUI** (§4). |
+| 6 | The order of the stages | *"sure"* | A, then B-H, as §4 lists them. |
+| 7 | A stream widget always follows its window's character? | *"yes"* | DECIDED: R2 holds by construction (§2). |
+| 8 | Where the Advanced place is | *"sounds good."* | DECIDED: the bottom of the Add-a-widget list, closed, and one *Advanced* entry in a widget's right-click menu; nowhere else. |
+| 9 | Tab stacks only in a custom window? | *"what do you recommend?"* | Claude's recommendation in §2, to confirm. |
+| 10 | Presets shared, layouts per character? | *"presets being our put together windows? Does sharing mean editing a preset edits it for all characters?"* | Answered in §2, to confirm. |
+
 ---
 
 ## 2. The model
@@ -82,29 +94,39 @@ into a custom window it loses its frame, dragged out it gets one back.
 
 **A tab stack** is a cell of a custom window holding several widgets, one showing, with a
 tab for each and the unread count of a stream not showing (Saga shows *THOUGHTS 2*).
-**CLAUDE'S READING, to confirm:** a standalone window made tabbed becomes a custom window
-of one cell, so a tab stack exists in one place only.
+**CLAUDE'S RECOMMENDATION, to confirm (§1 row 9): yes, only there.** A player drops a
+widget on a standalone window's title and the two become tabs; what Hydra keeps is a custom
+window of one cell, which looks exactly as the tabbed window should. So there is one tab
+mechanism, one thing saved, and one set of drag rules. The alternative, tabs on a
+standalone window as well, is two ways of holding several widgets, which is Vellum's
+`TabGroup` beside its layout again (`plan/28` §7d, *"a second layout system with no
+relationship to the first"*).
 
-**A preset** is a custom window Hydra ships: Saga's Experience or Loadout, rebuilt from
-single widgets. It is not special code; it is a saved custom window, and a player may add
-it as it is, copy it, take it apart, or save their own custom window as a preset.
+**A preset** is a window already put together, as the author put it: a custom window
+Hydra ships, such as Saga's Experience or Loadout rebuilt from single widgets, or one a
+player saved. It is not special code. **CLAUDE'S RECOMMENDATION, to confirm (§1 row 10):
+adding a preset places a copy.** Editing that window changes that character's window and
+nothing else, and the preset changes only when a player saves over it, which changes no
+window already placed from it. Presets live in one library every character adds from;
+each character's layout is its own. A preset that edits every character at once would
+make every edit a question (*this character, or all of them?*), which is the
+complication the author asked to avoid (§1 row 3). A player who wants one layout
+everywhere copies a whole layout to another character in one action.
 
 **Ids.** A placed widget gets an opaque id when it is placed (`plan/28` §7c), so two of one
 kind can coexist: a second story widget showing only thoughts. Today's layout is keyed by
 a closed `Pane` enum of five (`crates/cena-gui/src/layout.rs`) and cannot say that.
 
-**Following another character** (party vitals): chosen only in the Advanced place.
-**CLAUDE'S READING, to confirm:** a stream widget always follows its window's character, so
-R2 (no window mixes two characters' story) holds by construction; any other widget may
-follow another.
+**Following another character** (party vitals): chosen only in the Advanced place. A
+stream widget always follows its window's character (DECIDED, §1 row 7), so R2 (no window
+mixes two characters' story) holds by construction; any other widget may follow another.
 
 **Saved.** A character's layout stays in `layouts/<name>.json` in the data folder
 (`plan/47` step 6), gaining its holders and widgets as a new version. A version-1 file is
 converted once, its five panes becoming five standalone windows where the player left
 them; today `Layout::load` drops a file of another version and fits afresh
 (`crates/cena-gui/src/layout.rs`, `load`), which would throw the player's layout away.
-**CLAUDE'S READING, to confirm:** presets are shared by every character, in one library in
-the data folder; layouts stay per character.
+Presets are one library beside the layouts.
 
 ---
 
@@ -127,7 +149,11 @@ work goes first, in `cena-model`. **GUI**: a widget with no game fact behind it.
 
 One widget kind, whose option is which stream ids it shows. The model keeps every stream
 the game sends, by id (`crates/cena-model/src/state/streams.rs:119`, `GameState::stream`),
-so a stream widget can show any id, including one no one listed.
+so a stream widget can show any id, including one no one listed. **The Add-a-widget list
+offers every stream this character has received**, under its known name where there is
+one and its id where not: a stream that comes only with a position the game gives (the
+author: Mentor and Host, §1 row 4) appears for the characters that hold it, and Hydra
+never has to be told its id.
 
 | Saga | Stream id | State |
 |---|---|---|
@@ -136,7 +162,8 @@ so a stream widget can show any id, including one no one listed.
 | Familiar | `familiar` | READY, as any id is |
 | Spellbook | `Spells`, read into typed rows (`crates/cena-model/src/state/known_spells.rs:52`) | READY, as a list |
 | Room | the `room` window | READY: M10's Room, split below |
-| Voln, Mentor, Host | no id in Hydra's code; `voln` appears only as a wiki example | UNKNOWN: the ids need the corpus, which is the author's to allow |
+| Voln | `voln`, the Order of Voln's own thoughts (`reference/lich-5/lib/common/markup.rb:213`) | READY, as any id is |
+| Mentor, Host | streams for those the game makes mentors or hosts (§1 row 4); no id in Lich, VellumFE or Hydra | READY: offered when received, as above |
 
 ### Info panels
 
@@ -180,9 +207,9 @@ description, players, objects and exits, each a widget.
 
 ## 4. Stages
 
-**Before any of them: the M6 live run, with the GUI as it is.** M10's first build was the
-live run's cockpit (`plan/47` §3); what hurts there is the best evidence for this order.
-Claude's recommendation, not yet the author's.
+**The order is the author's (§1 row 6), and the M6 live run waits for the GUI:** *"No m6
+live run until I have a proper ui"* (§1 row 5). Which stage makes the UI proper is open
+(§5).
 
 ### Stage A — widgets and holders (the foundation)
 
@@ -257,13 +284,16 @@ bundle on macOS, a `.desktop` entry on Linux.
 
 ## 5. Open, for the author
 
-1. **The order.** A, then B-H as listed, after the M6 live run?
-2. **A tab stack lives only in a custom window** (§2), a tabbed standalone window becoming
-   one of one cell?
-3. **A stream widget always follows its window's character** (§2)?
-4. **Presets shared by every character; layouts per character** (§2)?
-5. **Where the Advanced place is.** Proposed: the bottom of the Add-a-widget list, closed,
-   and a widget's right-click menu under one *Advanced* entry. Nowhere else.
+1. ~~**The order.**~~ **DECIDED** (§1 row 6).
+2. **A tab stack lives only in a custom window**: Claude's recommendation (§2), to confirm.
+3. ~~**A stream widget always follows its window's character.**~~ **DECIDED** (§1 row 7).
+4. **Adding a preset places a copy**; one library, layouts per character: Claude's
+   recommendation (§2), to confirm.
+5. ~~**Where the Advanced place is.**~~ **DECIDED** (§1 row 8).
+6. **Which stage makes the UI proper**, so the M6 live run can go? Claude's
+   recommendation: A and B, which give the widgets, custom windows, tab stacks, presets,
+   and every widget the model can feed today; the launcher (C) waits, since today's Start
+   list logs in from the roster. Drawers (E) join if the author's layout needs them.
 
 ---
 
