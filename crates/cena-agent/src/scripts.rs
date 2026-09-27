@@ -23,6 +23,8 @@
 //!   `stop`, the contract in `SCRIPTS.md`.
 //! - [`runner`]: the Ruby runner's files, carried in the binary, and how one
 //!   is started.
+//! - [`checker`]: which lines of a script will not work under Hydra, and why,
+//!   found by the runner's own Ruby without running it.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -39,6 +41,7 @@ use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, Stream
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+pub mod checker;
 mod hooks;
 pub mod listening;
 pub mod local;

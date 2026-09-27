@@ -1,0 +1,26 @@
+# A script of Hydra's own for the checker (crates/cena-agent/tests/checker.rs):
+# a line of each kind it finds, then lines it must not find. Never run.
+level = Stats.level
+Spell[401].cast
+task = XMLData.bounty_task
+there = File.exists?('x')
+undefined_helper
+status_tags
+Gtk::Window.new
+DownstreamHook.add('checktest', proc { |line| line =~ /<pushBold/ ? nil : line })
+echo $_SERVERBUFFER_.size
+fput 'look'
+echo script.name
+helper
+Process.getrusage rescue nil
+if defined?(Lich::Util)
+  Lich::Util.quiet_command('look')
+end
+Data.new(1)
+class Data
+  def initialize(value) = @value = value
+end
+def helper = echo(Room.current.id)
+UpstreamHook.add('checktest', proc { |line| line.sub(/\A<c>tt\z/, 'target') })
+USAGE:
+echo level, task, there

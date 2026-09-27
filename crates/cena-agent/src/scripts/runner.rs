@@ -23,6 +23,14 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../../bridges/ruby/hydra/runner.rb"),
     ),
     (
+        "hydra/engine.rb",
+        include_str!("../../../../bridges/ruby/hydra/engine.rb"),
+    ),
+    (
+        "hydra/check.rb",
+        include_str!("../../../../bridges/ruby/hydra/check.rb"),
+    ),
+    (
         "hydra/connection.rb",
         include_str!("../../../../bridges/ruby/hydra/connection.rb"),
     ),

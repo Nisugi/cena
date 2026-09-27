@@ -99,9 +99,7 @@ module Hydra
 
     def inspect = "#<Spell #{@num} #{@name}>"
 
-    def cast(*)
-      raise NotImplementedError, "Spell##{__method__} is not answered by Hydra yet (plan/46): cast with fput"
-    end
+    Hydra.unanswered(self, :cast, 'cast with fput')
 
     private
 
