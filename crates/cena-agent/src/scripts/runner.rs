@@ -39,6 +39,10 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../../bridges/ruby/hydra/copy.rb"),
     ),
     (
+        "hydra/map.rb",
+        include_str!("../../../../bridges/ruby/hydra/map.rb"),
+    ),
+    (
         "lich/LICENSE.txt",
         include_str!("../../../../bridges/ruby/lich/LICENSE.txt"),
     ),
@@ -57,6 +61,56 @@ pub const FILES: &[(&str, &str)] = &[
     (
         "lich/lib/attributes/char.rb",
         include_str!("../../../../bridges/ruby/lich/lib/attributes/char.rb"),
+    ),
+    (
+        "lich/lib/lich.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/lich.rb"),
+    ),
+    (
+        "lich/lib/common/settings.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/settings.rb"),
+    ),
+    (
+        "lich/lib/common/settings/database_adapter.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/settings/database_adapter.rb"),
+    ),
+    (
+        "lich/lib/common/settings/path_navigator.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/settings/path_navigator.rb"),
+    ),
+    (
+        "lich/lib/common/settings/settings_proxy.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/settings/settings_proxy.rb"),
+    ),
+    (
+        "lich/lib/common/settings/instance_settings.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/settings/instance_settings.rb"),
+    ),
+    (
+        "lich/lib/common/settings/sessions_settings.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/settings/sessions_settings.rb"),
+    ),
+    (
+        "lich/lib/common/settings/session_database_adapter.rb",
+        include_str!(
+            "../../../../bridges/ruby/lich/lib/common/settings/session_database_adapter.rb"
+        ),
+    ),
+    (
+        "lich/lib/common/settings/charsettings.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/settings/charsettings.rb"),
+    ),
+    (
+        "lich/lib/common/settings/gamesettings.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/settings/gamesettings.rb"),
+    ),
+    (
+        "lich/lib/common/vars.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/vars.rb"),
+    ),
+    (
+        "lich/lib/common/uservars.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/uservars.rb"),
     ),
     (
         "lich/lib/common/class_exts/nilclass.rb",

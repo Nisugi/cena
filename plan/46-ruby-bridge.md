@@ -1,8 +1,8 @@
 # 46 — The Ruby bridge: how a Lich script runs against Hydra
 
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
-(§10).** **Step 1 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live run (§10,
-question 11); the rest is not built. It
+(§10).** **Steps 1 and 2 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
+run (§10, question 11); the rest is not built. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -301,7 +301,8 @@ None of these is measured; each is a guess until it is.
 - A runner's memory per character: Ruby, the bridge, and N scripts. **MEASURED 2026-09-27, with
   no script running: 27.0 MiB working set, 58.8 MiB private** (`Get-Process` on the runner three
   seconds after it started), against Lich's 466 MB committed (`plan/38` §2a). With scripts:
-  unmeasured.
+  unmeasured. **With step 2's classes and stores loaded: 38.8 MiB working set, 72.8 MiB
+  private**, the same way.
 - **A runner's start time.** The author, 2026-09-27: *"I'm not sure waiting until you try to run
   a script and taking 30-90 seconds for ruby to boot up is a good idea, but let's at least try
   it."* Most of Lich's start is loading its 100 MB map (`plan/38` §2a), which a runner never
@@ -309,7 +310,9 @@ None of these is measured; each is a guess until it is.
   reaching a socket, 313-370 ms over six runs (Ruby 4.0.3, Windows 11, the author's machine;
   Lich's engine loaded, no script). How: `bridges/ruby/hydra/runner.rb` started with the
   contract's environment, `HYDRA_URL` naming a socket that accepts, timed to the first
-  connection. So the runner starts on the first script, as the author asked.
+  connection. So the runner starts on the first script, as the author asked. **With step 2:
+  885 ms** median, 866-913 ms over six runs: `GameObj` (and `ox`), `lich.rb`, the stores and
+  `sequel` loaded too.
 - The local copy's update size and rate in combat.
 - A send to its first reply line, against Lich's in-process path.
 - A hooked line's display delay (§6.1), and the deadline to set.
@@ -398,7 +401,53 @@ None of these is measured; each is a guess until it is.
      Measured: §9.
 2. The local copy and the reads (GameObj, Char, XMLData, `Room.current`, Spell, the check*
    family); **`wander`** (`plan/38` §10).
-3. Stores and the import; `Script.run` of a built-in, **go2 first** (512 callers).
+   **BUILT 2026-09-27** (the author: *"step 2!"*), in three commits:
+   - **The local copy** (`crates/cena-agent/src/scripts/local.rs`, `watch.rs`): the agent's
+     projection as its core, as this plan says, in Hydra's own names, so a second language's
+     bridge is not bound to Lich's; plus the room count (what Lich's `move` watches), the
+     room's description and exits line, the map's room, the target, and each player's noun.
+     A copy is taken at each prompt and its changed fields told as a `state` event, the first
+     whole. **The lines of a chunk are held until its prompt**, so the copy's changes go
+     first: §3's *"delivering the state's change ahead of the line"*, kept. A chunk with no
+     prompt goes after 250 ms.
+   - **The reads** (`bridges/ruby/hydra/copy.rb`): Lich's own `GameObj`, `Char`,
+     `constants.rb` and the check family, unchanged, over an `XMLData` answered from the copy by
+     Lich's reader names. The Lich shapes are made in one place: the title bracketed, exits
+     spelled out, statuses as `IconSTUNNED => y`, every body part present, effects as Lich's
+     dialogs. What Hydra does not send yet is not answered, so a script reading it fails
+     naming it.
+   - **The map** (`bridges/ruby/hydra/map.rb`): the binary hands its map and travel's own
+     `room_of` to the runners, so `Room.current` is the room travel would name, never a
+     guess, and nil where Lich's map would pick the first that fits; `Room[id]` asks Hydra's
+     map once per room (`room`). `wayto` is the command, or a callable that asks travel to walk
+     a crossing Hydra ports; `timeto` is seconds for a constant or a Haste roundtime at full
+     price, and a proc answering nil for a cost only travel can answer for the walker (a
+     gate, a ladder, a price table), as Hydra takes a cost it cannot answer as impassable.
+     `cena-agent` gains the edge to `cena-map`.
+   - **The stores, from step 3** (`wander`'s first line is `CharSettings`): Lich's own
+     `lich.rb`, settings, `CharSettings`, `GameSettings`, `Vars` and `UserVars`, unchanged,
+     writing `lich.db3` in `HYDRA_DATA` (`lich` in Hydra's data folder). Found in building
+     it: Lich makes its tables before loading its settings, or the settings' adapter makes
+     `script_auto_settings` without the key its saves need, and every save fails. The import
+     from the player's Lich folder stays in step 3. `Lich::Messaging` is answered in its
+     colour's notice kind, beside a `Frontend` saying Hydra is Wrayth's family with no GSL.
+   - **Tests** (`crates/cena-agent/tests/scripts_local.rs`, `runner.rs`): a stun's `state`
+     before the line that stunned; a mapped room named and answered; a script reading a room
+     the scripted game describes whole through Lich's own classes; a script walking an exit
+     of `Room.current` with Lich's `move` and keeping a setting that a **second runner
+     process** finds in `lich.db3`. **Tillmen's `wander.lic` runs unchanged** over two scripted
+     rooms: out of the Quiet Glade by the map, the kobold found, `target random`, stopped
+     (Tier 2, `CENA_LICH_SCRIPTS`), five runs in a row. Mutations: a chunk's lines before its
+     state; a runner ignoring `state`; the stores without `init_db` first (which a second run
+     in the same process passed, Lich's settings cache hiding the file: hence the second
+     process).
+   - **Not yet**: `Spell` and what it reads (`Effects`, the spell table); `Stats`, `Skills`
+     and Lich's `Infomon`; `GameObj`'s type data (`gameobj-data.xml`, which Hydra has only as
+     its own TSV); the familiar's room; `Room#path_to` and `find_nearest`; a crossing's walk
+     waits on the copy naming the room, which step 3's operation replaces. CI installs `ox`,
+     `sqlite3` and `sequel`, as Lich's installer does.
+3. ~~Stores~~ (built in step 2, for `wander`) and the import; `Script.run` of a built-in,
+   **go2 first** (512 callers).
 4. Hooks, as decided.
 5. The checker over both collections, and the list of what runs published.
 6. §9's measurements, written here.

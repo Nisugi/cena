@@ -248,6 +248,7 @@
 //! |---|---|---|
 //! | **Script** | the player's own program, a Lich `.lic` first, run by a script runner in its own language's runtime: started with `;name`, and doing what a Lich script does ([`script`](cena_session::script)). Back from **Retired**: the author, 2026-09-26 (`CLAUDE.md`, Settled decisions) | behavior; the scripted game |
 //! | **Script runner** | the process that runs one character's scripts, Hydra's own child: Ruby with Lich's engine (`bridges/ruby`), started on the character's first script and stopped when it leaves the table ([`Runners`](cena_agent::scripts::Runners)) | runner alone, which is also the desk's |
+//! | **Local copy** | what a script runner keeps of its character, so a script reads without asking: the agent's projection and what a script needs beyond it, told as `state` events, a chunk's changes before its lines ([`scripts::local`](cena_agent::scripts::local)) | snapshot, which is the session's own |
 //! | **Heard line** | a finished line as the game sent it, before `;sorter` and the triggers, published only while a script runner listens: [`Event::Heard`](cena_session::Event::Heard). What a script reads, as Lich's scripts read before its hooks | line, which a viewer is given |
 //! | **Script door** | the only way a script runner acts on a session: listen, send a line as typed, say ([`script::Door`](cena_session::script::Door)); `cena-agent` holds it and never the handle | door alone, which is the agent's and checks a level |
 //!

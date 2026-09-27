@@ -12,10 +12,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use cena_agent::scripts::local::Atlas;
 use cena_agent::scripts::runner::{Start, find_ruby, start, unpack};
 use cena_agent::scripts::{Runners, serve};
+use cena_map::{Map, RoomId, Uid};
 use cena_platform::{AnsweringSource, TranscriptHandle};
-use cena_session::{Event, Origin, Session};
+use cena_session::{Event, GameState, Origin, Session};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::broadcast::Receiver;
 use tokio_util::sync::CancellationToken;
@@ -47,20 +49,34 @@ struct Heard {
 }
 
 impl Running {
-    /// The character answers `look` with `room`; its runner runs the
-    /// scripts in `scripts`, with `dir` for the rest.
-    async fn start(scripts: &Path, dir: &Path, room: &[u8]) -> Option<Self> {
+    /// The character answers each of `answers`, and has typed `before`
+    /// before its runner starts; its runner runs the scripts in `scripts`,
+    /// with `dir` for the rest, placed on `atlas`'s map when there is one.
+    async fn start(
+        scripts: &Path,
+        dir: &Path,
+        answers: &[(&str, &[u8])],
+        atlas: Option<Atlas>,
+        before: &[&str],
+    ) -> Option<Self> {
         let ruby = find_ruby()?;
         let (source, transcript) =
             AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
-        transcript.answer("look", room);
+        for (line, reply) in answers {
+            transcript.answer(line, reply);
+        }
         let session = Session::new(source);
         let handle = session.handle();
         let observer = session.observer();
         let (_, legacy) = session.subscribe();
         tokio::spawn(session.into_actor().run());
+        for line in before {
+            handle
+                .send_manual_at(handle.generation(), line, Duration::from_secs(5))
+                .await;
+        }
 
-        let runners = Runners::default();
+        let runners = atlas.map_or_else(Runners::default, Runners::with_atlas);
         let stop = CancellationToken::new();
         let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.ok()?;
         let url = format!("http://{}/mcp", listener.local_addr().ok()?);
@@ -148,7 +164,10 @@ impl Running {
             loop {
                 match self.legacy.recv().await {
                     Ok(Event::Notice(notice)) => heard.told.extend(notice.lines().iter().cloned()),
-                    Ok(Event::Sent { line, origin }) => heard.sent.push((line, origin)),
+                    // A script's own, never the player's typing before it.
+                    Ok(Event::Sent { line, origin }) if origin != Origin::Manual => {
+                        heard.sent.push((line, origin));
+                    }
                     Ok(_) => {}
                     Err(_) => return,
                 }
@@ -214,7 +233,9 @@ async fn a_lich_script_runs_against_hydra() {
     );
     let dir = temp_dir("lich-script");
     let scripts = scripts_with(&dir, "hydratest.lic").unwrap();
-    let mut running = Running::start(&scripts, &dir, QUIET_ROOM).await.unwrap();
+    let mut running = Running::start(&scripts, &dir, &[("look", QUIET_ROOM)], None, &[])
+        .await
+        .unwrap();
 
     assert!(running.typed("hydratest one \"two three\""));
     let heard = running.heard_until("hydratest has exited").await;
@@ -253,7 +274,7 @@ async fn a_script_reads_its_character_as_lich_does() {
     assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
     let dir = temp_dir("reads");
     let scripts = scripts_with(&dir, "readstest.lic").unwrap();
-    let mut running = Running::start(&scripts, &dir, DESCRIBED_ROOM)
+    let mut running = Running::start(&scripts, &dir, &[("look", DESCRIBED_ROOM)], None, &[])
         .await
         .unwrap();
     let heard = running.run("readstest", "readstest").await.unwrap();
@@ -274,6 +295,141 @@ async fn a_script_reads_its_character_as_lich_does() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Two rooms of a map: the Quiet Glade (228, the game's 7000), and the North
+/// Glade (229, the game's 7001) north of it.
+const TWO_ROOMS: &str = r#"[
+    {"id":228,"uid":[7000],"title":["[Quiet Glade]"],"exits":[{"to":229,"kind":"cardinal","cmd":"north","cost":0.2}]},
+    {"id":229,"uid":[7001],"title":["[North Glade]"],"exits":[{"to":228,"kind":"cardinal","cmd":"south","cost":0.2}]}
+]"#;
+
+/// The Quiet Glade, as `look` shows it.
+const QUIET_GLADE: &[u8] = b"<nav rm='7000'/>
+<streamWindow id='room' title='Room' subtitle=\" - Quiet Glade\"/>
+<compass><dir value=\"n\"/></compass>
+<component id='room players'></component>
+<component id='room objs'></component>
+You see a quiet glade.
+<prompt time=\"1001\">&gt;</prompt>
+";
+
+/// The North Glade, walked into, with a kobold in it.
+const NORTH_GLADE: &[u8] = b"<nav rm='7001'/>
+<streamWindow id='room' title='Room' subtitle=\" - North Glade\"/>
+<compass><dir value=\"s\"/></compass>
+<component id='room players'></component>
+<component id='room objs'>You also see <pushBold/>a <a exist=\"42\" noun=\"kobold\">kobold</a><popBold/>.</component>
+<crtrStatus exist=\"42\" hostile=\"1\"/>
+You walk north.
+<prompt time=\"1002\">&gt;</prompt>
+";
+
+/// The game's answers in the two glades.
+const IN_THE_GLADES: &[(&str, &[u8])] = &[
+    ("look", QUIET_GLADE),
+    ("north", NORTH_GLADE),
+    (
+        "target random",
+        b"You are now targeting a kobold.\n<prompt time=\"1003\">&gt;</prompt>\n",
+    ),
+];
+
+/// Travel's way of naming a room, cut down for a test: by the game's number.
+fn by_number(map: &Map, state: &GameState, _: cena_map::Origin) -> Option<RoomId> {
+    let uid: i64 = state.room.id.as_deref()?.parse().ok()?;
+    match map.ids_for_uid(Uid(uid)) {
+        [room] => Some(*room),
+        _ => None,
+    }
+}
+
+/// The two glades as an atlas.
+fn two_rooms() -> Option<Atlas> {
+    let rooms = serde_json::from_str(TWO_ROOMS).ok()?;
+    Some(Atlas {
+        map: Arc::new(Map::from_rooms(rooms).ok()?),
+        locate: by_number,
+    })
+}
+
+/// A running character in the Quiet Glade, its runner on the two glades'
+/// map, running `scripts`. It looked before its runner started, so the
+/// runner's first copy has the room.
+async fn in_the_quiet_glade(scripts: &Path, dir: &Path) -> Option<Running> {
+    Running::start(scripts, dir, IN_THE_GLADES, two_rooms(), &["look"]).await
+}
+
+/// **The map and the stores** (`plan/46` §11 step 2): `Room.current` named
+/// by Hydra, its `wayto` walked with Lich's own `move`, and `CharSettings`
+/// kept in `lich.db3` from one runner to the next: the second runner is a
+/// new process, so what it finds can only have come from the file.
+#[tokio::test(flavor = "current_thread")]
+async fn a_script_walks_the_map_and_keeps_its_settings() {
+    assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("walk");
+    let scripts = scripts_with(&dir, "walktest.lic").unwrap();
+    let mut running = in_the_quiet_glade(&scripts, &dir).await.unwrap();
+    let heard = running.run("walktest", "walktest").await.unwrap();
+    let errors = running.errors();
+    for expected in [
+        "[walktest: from 228 [Quiet Glade] north to 229]",
+        "[walktest: moved true, now 229 [North Glade]]",
+        "[walktest: seen [229]]",
+    ] {
+        assert!(
+            heard.told.iter().any(|line| line == expected),
+            "{expected:?} not told: {:#?}\nrunner's errors: {errors:#?}",
+            heard.told
+        );
+    }
+    assert_eq!(heard.sent, [("north".to_owned(), Origin::Script)]);
+    running.end().await;
+
+    let mut running = in_the_quiet_glade(&scripts, &dir).await.unwrap();
+    let heard = running.run("walktest", "walktest").await.unwrap();
+    assert!(
+        heard
+            .told
+            .iter()
+            .any(|line| line == "[walktest: seen [229, 229]]"),
+        "the first runner's setting, from lich.db3: {:#?}
+runner's errors: {:#?}",
+        heard.told,
+        running.errors()
+    );
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// **The second real script end to end** (`plan/46` §11 step 2): Tillmen's
+/// `wander`, unchanged, from `CENA_LICH_SCRIPTS`. It walks out of the Quiet
+/// Glade by the map, finds the kobold, targets it, and stops.
+#[tokio::test(flavor = "current_thread")]
+#[ignore = "Tier 2: needs CENA_LICH_SCRIPTS, a folder holding wander.lic; run with --ignored"]
+async fn wander_runs_unchanged() {
+    let scripts = PathBuf::from(
+        std::env::var_os("CENA_LICH_SCRIPTS").expect("CENA_LICH_SCRIPTS names no folder"),
+    );
+    assert!(scripts.join("wander.lic").is_file(), "no wander.lic");
+    let dir = temp_dir("wander");
+    let mut running = in_the_quiet_glade(&scripts, &dir).await.unwrap();
+    let heard = running.run("wander", "wander").await.unwrap();
+    let errors = running.errors();
+    assert!(heard.finished, "{:#?}\n{errors:#?}", heard.told);
+    let sent: Vec<&str> = heard.sent.iter().map(|(line, _)| line.as_str()).collect();
+    assert_eq!(
+        sent,
+        ["north", "target random"],
+        "{:#?}\n{errors:#?}",
+        heard.told
+    );
+    assert_eq!(
+        running.transcript.lines(),
+        ["look", "north", "target random"]
+    );
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// **The first real script end to end** (`plan/46` §11 step 1): Tillmen's
 /// `trollspeak`, from the player's own Lich scripts, unchanged. It is not
 /// ours to commit, so this reads it from the folder `CENA_LICH_SCRIPTS`
@@ -289,7 +445,9 @@ async fn trollspeak_runs_unchanged() {
         "no trollspeak.lic"
     );
     let dir = temp_dir("trollspeak");
-    let mut running = Running::start(&scripts, &dir, QUIET_ROOM).await.unwrap();
+    let mut running = Running::start(&scripts, &dir, &[("look", QUIET_ROOM)], None, &[])
+        .await
+        .unwrap();
 
     let heard = running
         .run("trollspeak say hello there, friend", "trollspeak")

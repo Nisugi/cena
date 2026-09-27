@@ -35,9 +35,15 @@ $frontend = 'stormfront'
 $SEND_CHARACTER = '>'
 $cmd_prefix = ''
 
+# The gems Lich's engine needs beside Ruby, as Lich's installer provides
+# them: its stores are SQLite through Sequel.
+require 'sqlite3'
+require 'sequel'
+
 # Lich's engine, unchanged (../lich, BSD 3-Clause: ../lich/LICENSE.txt):
-# the script itself, the calls scripts make, the `;` command table, and the
-# classes a script reads its character through, filled by copy.rb.
+# the script itself, the calls scripts make, the `;` command table, the
+# classes a script reads its character through (filled by copy.rb), and
+# the stores.
 %w[
   version.rb
   constants.rb
@@ -51,12 +57,28 @@ $cmd_prefix = ''
   global_defs.rb
   common/gameobj.rb
   attributes/char.rb
+  lich.rb
 ].each { |file| require File.join(LIB_DIR, file) }
 include Lich::Common
+
+# The stores (plan/46 section 5): Lich's own, writing `lich.db3` in
+# HYDRA_DATA as Lich writes it in its data folder. Its tables are made
+# first, as Lich makes them at start: the settings' adapter would otherwise
+# make one without the key its saves need.
+Dir.mkdir(TEMP_DIR) unless Dir.exist?(TEMP_DIR)
+Lich.init_db
+%w[
+  common/settings.rb
+  common/settings/charsettings.rb
+  common/settings/gamesettings.rb
+  common/vars.rb
+  common/uservars.rb
+].each { |file| require File.join(LIB_DIR, file) }
 
 require_relative 'connection'
 require_relative 'edge'
 require_relative 'copy'
+require_relative 'map'
 require_relative 'listener'
 
 copy = Hydra::Copy.new

@@ -123,6 +123,8 @@ module Hydra
     def roundtime_end = timer('roundtime')
     def cast_roundtime_end = timer('cast_roundtime')
     def current_target_id = @copy['target']
+    # The map's room Hydra names, never guessed (map.rb, `Room.current`).
+    def map_room = @copy['map_room']
     def current_target_ids = [@copy['target']].compact
 
     # The statuses as Lich's indicators: `IconSTUNNED` => `y`. One the game

@@ -99,6 +99,52 @@ module Lich
   def self.log(message)
     $stderr.puts "[lich] #{message}"
   end
+
+  module Common
+    # The frontend, as Lich's code asks after it: Hydra draws what a runner
+    # says, as a client of Wrayth's family would, and speaks no GSL. Lich's
+    # own (lib/common/frontend.rb) is launchers and Windows bindings a runner
+    # has no use for.
+    module Frontend
+      def self.client = 'stormfront'
+      def self.supports_xml?(_frontend = nil) = true
+      def self.supports_gsl?(_frontend = nil) = false
+      def self.supports_streams?(_frontend = nil) = true
+      def self.supports_mono?(_frontend = nil) = false
+      def self.supports_room_window?(_frontend = nil) = true
+    end
+  end
+
+  # `Lich::Messaging`'s colours, as the kinds Hydra draws a notice in
+  # (lib/messaging.rb, `msg_format`, names which colour is which).
+  module Messaging
+    KINDS = {
+      'error' => 'error', 'yellow' => 'error', 'bold' => 'error', 'monster' => 'error', 'creature' => 'error',
+      'warn' => 'warn', 'orange' => 'warn', 'gold' => 'warn', 'thought' => 'warn',
+      'debug' => 'debug'
+    }.freeze
+
+    # A message in its colour's kind; `debug` only when Lich's debug
+    # messaging is on, as Lich's own `msg` has it.
+    def self.msg(type = 'info', msg = '', encode: true)
+      _ = encode
+      return if type == 'debug' && [nil, false, 'false'].include?(Lich.debug_messaging)
+
+      lines = Hydra.lines_of(msg, [])
+      lines.each { |line| Script.new_script_output(line) }
+      Hydra.say(lines.map { |line| Hydra.plain(line) }, mono: false, kind: KINDS.fetch(type.to_s, 'info'))
+    end
+
+    # A table, kept in its columns.
+    def self.mono(msg, encode: false)
+      _ = encode
+      raise StandardError, 'Lich::Messaging.mono only works with String parameters!' unless msg.is_a?(String)
+
+      lines = msg.split("\n")
+      lines.each { |line| Script.new_script_output(line) }
+      Hydra.say(lines, mono: true)
+    end
+  end
 end
 
 # The game, as Lich's `Game` (lib/games.rb) is to a script.

@@ -14,8 +14,10 @@ player's Ruby, one runner per character. Lich's engine needs Ruby 4.0.
 |---|---|
 | `runner.rb` | the entry: the environment Hydra starts it with, Lich's engine loaded, the rest started |
 | `connection.rb` | `hydra-script/1`'s tools over MCP, one HTTP request per call |
-| `edge.rb` | where Lich's engine meets the world, answered by Hydra: `Game.puts`, `respond`, `_respond`, a script's `$stdout`, `Lich.log`, the little of `XMLData` the engine reads |
-| `listener.rb` | `listen` in a loop: game lines to every script, the player's commands to Lich's command table or `Script.start` |
+| `edge.rb` | where Lich's engine meets the world, answered by Hydra: `Game.puts`, `respond`, `_respond`, a script's `$stdout`, `Lich.log`, `Lich::Messaging`, and a `Frontend` saying Hydra is Wrayth's family |
+| `copy.rb` | the local copy of the character from Hydra's `state` events, `XMLData` answered from it by Lich's names, and Lich's `GameObj` filled from it |
+| `map.rb` | `Room.current` and `Room[id]` from Hydra's map, with `wayto` and `timeto` as Lich's |
+| `listener.rb` | `listen` in a loop: the copy's changes, game lines to every script, the player's commands to Lich's command table or `Script.start` |
 
 ## `lich/`: Lich's engine, unchanged
 
@@ -32,5 +34,8 @@ git hash-object bridges/ruby/lich/lib/common/script.rb
 
 Only what the runner loads is here: the script engine (`common/script.rb` and the two files
 it requires), the calls scripts make (`global_defs.rb` and what it requires), Lich's `;`
-command table, and the helpers those read at load time. To take a newer Lich, copy the same
+command table, the helpers those read at load time, the classes a script reads its character
+through (`constants.rb`, `common/gameobj.rb`, `attributes/char.rb`), and the stores (`lich.rb`,
+`common/settings.rb` and its folder, `common/vars.rb`, `common/uservars.rb`). The gems are
+Lich's installer's: `ox`, `sqlite3`, `sequel`. To take a newer Lich, copy the same
 files from the new commit, update the commit above, and run the runner's tests.
