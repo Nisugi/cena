@@ -24,6 +24,9 @@ fn member(name: &str) -> Report {
         grouped: true,
         health: None,
         headroom: None,
+        prepared: None,
+        looted: Vec::new(),
+        dropped: None,
     }
 }
 
@@ -624,11 +627,13 @@ fn quiet_followers_prep_after_the_leader_has_for_this_rest() {
     let before = Leading {
         rest: 3,
         prepared: Some(2),
+        ..Leading::default()
     };
     assert!(!order.follower_may_prep(&before), "the last rest's prep");
     let after = Leading {
         rest: 3,
         prepared: Some(3),
+        ..Leading::default()
     };
     assert!(order.follower_may_prep(&after));
 }

@@ -8,6 +8,10 @@
 # clone -- which is exactly how it failed mid-session on 2026-09-18 when a
 # `git stash -u` round-trip rewrote them as CRLF.
 crates/cena-protocol/tests/fixtures/*.xml -text
+# The same test reads cena-behavior's hunt replays (`fixture_files`), and a
+# fresh Windows checkout without this made them CRLF: Windows CI red on main
+# from their first commit (02037df, 2026-09-24).
+crates/cena-behavior/tests/fixtures/*.xml -text
 
 # The crit tables are data the loader parses line by line, and a golden digest
 # is taken over the parsed result. Keep them byte-stable across platforms.

@@ -35,11 +35,13 @@ pub mod heal;
 pub mod hunt;
 pub mod keep;
 pub mod loot;
+pub mod settings;
 pub mod spellcaster;
 pub mod stance;
 pub mod sync;
 pub mod town;
 pub mod travel;
+pub mod triggers;
 pub mod waggle;
 pub mod watchdog;
 

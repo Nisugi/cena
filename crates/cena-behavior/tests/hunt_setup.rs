@@ -20,14 +20,19 @@ fn request() -> Result<Request, serde_json::Error> {
      "targets":["warg"],"attacks":["attack"],"until":{"experience":80,"mana":90},"preview":null}),
     )
 }
-fn dir() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)?
-        .as_nanos();
+/// A fresh directory per test. Not the clock: Windows' clock can give two
+/// tests running at once the same nanosecond, and they then shared one
+/// directory and failed each other at random.
+///
+/// Named by the process and the calling test, which is unique within a run
+/// without a counter: a `static` counter is a process global
+/// (`every_static_is_allowlisted`), and a clock alone is not unique.
+fn dir(test: &str) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
-        "../../target/hunt-setup-tests/{}-{stamp}",
+        "../../target/hunt-setup-tests/{}-{test}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path)?;
     Ok(path)
 }
@@ -76,7 +81,11 @@ fn here(id: u32) -> Here<'static> {
 
 #[test]
 fn preview_save_reload_are_native_and_never_overwrite() {
-    let (map, dir, mut request) = (map().unwrap(), dir().unwrap(), request().unwrap());
+    let (map, dir, mut request) = (
+        map().unwrap(),
+        dir("preview_save_reload_are_native_and_never_overwrite").unwrap(),
+        request().unwrap(),
+    );
     let hash = "a".repeat(64);
     let preview = setup::configure(&dir, ("test", "Ada"), &map, &hash, &request).unwrap();
     assert!(!preview.saved && !preview.started);
@@ -106,7 +115,11 @@ fn preview_save_reload_are_native_and_never_overwrite() {
 
 #[test]
 fn stale_empty_missing_unacknowledged_and_conflicting_choices_are_refused() {
-    let (map, dir, good) = (map().unwrap(), dir().unwrap(), request().unwrap());
+    let (map, dir, good) = (
+        map().unwrap(),
+        dir("stale_empty_missing_unacknowledged_and_conflicting_choices_are_refused").unwrap(),
+        request().unwrap(),
+    );
     let hash = "a".repeat(64);
     let mut cases = Vec::new();
     let mut r = good.clone();
@@ -156,7 +169,11 @@ fn stale_empty_missing_unacknowledged_and_conflicting_choices_are_refused() {
 #[test]
 fn setup_preserves_unmanaged_inheritance_and_detects_preview_changes() {
     use cena_behavior::hunt::chain;
-    let (map, dir, mut r) = (map().unwrap(), dir().unwrap(), request().unwrap());
+    let (map, dir, mut r) = (
+        map().unwrap(),
+        dir("setup_preserves_unmanaged_inheritance_and_detects_preview_changes").unwrap(),
+        request().unwrap(),
+    );
     let global = chain::global_path(&dir);
     chain::write_new(&global, "prepare=['look']\n[routines]\nother=['attack']\n").unwrap();
     let hash = "a".repeat(64);
@@ -198,7 +215,11 @@ fn setup_preserves_unmanaged_inheritance_and_detects_preview_changes() {
 
 #[test]
 fn field_and_town_commands_are_separate_and_new_injury_escalates() {
-    let (map, dir, r) = (map().unwrap(), dir().unwrap(), request().unwrap());
+    let (map, dir, r) = (
+        map().unwrap(),
+        dir("field_and_town_commands_are_separate_and_new_injury_escalates").unwrap(),
+        request().unwrap(),
+    );
     let p = Profile::parse(
         &setup::configure(&dir, ("test", "Ada"), &map, &"a".repeat(64), &r)
             .unwrap()
@@ -256,7 +277,11 @@ fn field_and_town_commands_are_separate_and_new_injury_escalates() {
 
 #[test]
 fn membership_is_not_exclusion_and_routes_cannot_detour_outside_it() {
-    let (map, dir, r) = (map().unwrap(), dir().unwrap(), request().unwrap());
+    let (map, dir, r) = (
+        map().unwrap(),
+        dir("membership_is_not_exclusion_and_routes_cannot_detour_outside_it").unwrap(),
+        request().unwrap(),
+    );
     let mut p = Profile::parse(
         &setup::configure(&dir, ("test", "Ada"), &map, &"a".repeat(64), &r)
             .unwrap()
@@ -299,7 +324,11 @@ fn native_desk_refuses_stale_or_unverified_pinned_map_before_starting() {
     use cena_behavior::hunt::{Command, Desk, chain};
     use cena_session::{AuthorityToken, Session};
     use std::sync::Arc;
-    let (map, dir, r) = (map().unwrap(), dir().unwrap(), request().unwrap());
+    let (map, dir, r) = (
+        map().unwrap(),
+        dir("native_desk_refuses_stale_or_unverified_pinned_map_before_starting").unwrap(),
+        request().unwrap(),
+    );
     let text = setup::configure(&dir, ("test", "Ada"), &map, &"a".repeat(64), &r)
         .unwrap()
         .toml;

@@ -105,6 +105,20 @@ pub enum StoppedBecause {
     Unattended,
 }
 
+impl StoppedBecause {
+    /// Why, in words for the player: `None` when the player quit, since
+    /// they know. The fatal error is already redacted by the connector
+    /// ([`ConnectError::detail`]); the idle wording is after `VellumFE`'s.
+    #[must_use]
+    pub fn said(&self) -> Option<String> {
+        match self {
+            Self::Cancelled => None,
+            Self::Fatal(error) => Some(format!("not logged in: {error}")),
+            Self::Unattended => Some("looked idle, so not reconnecting".to_owned()),
+        }
+    }
+}
+
 /// What a supervised session left behind.
 #[derive(Debug)]
 pub struct SupervisedEnd {
@@ -389,11 +403,15 @@ impl<C: Connector> SupervisedSession<C> {
             self.core.lifecycle = State::Closed;
             let _ = self.core.events.send(Event::StateChanged(State::Closed));
         }
-        self.core.observations.finish(
-            self.core
-                .events
-                .snapshot(&self.core.state, self.core.lifecycle),
-        );
+        // Why, on the snapshot every later subscriber is given. Nothing is
+        // answered between the `Closed` above and this -- `finish` does not
+        // await -- so a viewer that saw `Closed` and asked again reads it.
+        let mut last = self
+            .core
+            .events
+            .snapshot(&self.core.state, self.core.lifecycle);
+        last.stopped = stopped_because.said();
+        self.core.observations.finish(last);
         self.log(&format!("session stopped: {stopped_because:?}"));
         if let Some(sink) = self.core.sink.as_mut() {
             let _ = sink.flush();
@@ -481,7 +499,10 @@ impl<C: Connector> SupervisedSession<C> {
         // (`reference/VellumFE/src/frontend/headless/runtime.rs:948`), which
         // the burst also carries, so it has the same hole.
         //
-        let person = self.core.attendance.count() > self.core.attendance_seen;
+        // A person typed, or a page is open and allowed to count
+        // (`command/attendance.rs`).
+        let person = self.core.attendance.count() > self.core.attendance_seen
+            || self.core.attendance.watched();
         self.core.attendance_seen = self.core.attendance.count();
         let long_lived = lived >= LONG_LIVED && !self.core.state.idle_warned();
         let attended = person || long_lived;

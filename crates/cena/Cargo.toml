@@ -15,6 +15,8 @@ cena-session.workspace = true
 cena-ui.workspace = true
 cena-web.workspace = true
 cena-host.workspace = true
+# The window (plan/47): what the binary opens unless --headless or --web.
+cena-gui.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # Fingerprint the exact map shared by travel and the read-only minimap.
@@ -39,6 +41,19 @@ tokio-util = "0.7"
 # keyring has no Android backend; the binary is desktop-only.
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service", "vendored"] }
 rpassword = "7"
+
+# A trigger's sound and OS notification (plan/45 Stage 3, §6d), played by the
+# binary so a session nobody watches still sounds. Here and not in a core
+# crate for keyring's reason: CI builds the core for Android and iOS, and the
+# binary is desktop-only. MEASURED 2026-09-27 by resolving each in an empty
+# crate and diffing against this Cargo.lock: rodio adds 65 crates across
+# every target (on Linux it links the system ALSA library, so CI installs
+# libasound2-dev, as VellumFE's CI does); notify-rust with zbus on tokio adds
+# 47, where its default would bring a second executor, async-io.
+# rodio is VellumFE's (reference/VellumFE/src/sound.rs, 0.19 there); the
+# formats are the four VellumFE plays: wav, mp3, ogg, flac.
+rodio = { version = "0.22", default-features = false, features = ["playback", "wav", "mp3", "vorbis", "flac"] }
+notify-rust = { version = "4.18", default-features = false, features = ["z-with-tokio"] }
 
 [dev-dependencies]
 # `test-util` for `start_paused`: `interrupt.rs`'s tests race a phase that

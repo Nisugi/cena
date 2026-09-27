@@ -15,6 +15,13 @@ pub struct StyledRun {
     /// maps known ids through its own allowlist to a CSS class and shows
     /// unmapped ones only as a tooltip.
     pub preset: Option<String>,
+    /// A trigger's colour for the text, `#rrggbb` (`plan/45`). Optional and
+    /// additive: absent where no trigger painted, and from older servers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// A trigger's background, `#rrggbb`; as `color`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
 }
 
 /// A complete display line. Truncation is visible rather than silent.
@@ -134,6 +141,11 @@ pub struct RoomItemView {
     /// What a player is doing (`hiding`, `sitting`, ...); only ever set for
     /// players. The browser shows it in parentheses after `text`.
     pub status: Option<String>,
+    /// `text` as the character's triggers paint it (`plan/45` Stage 7);
+    /// only ever set for players. Optional and additive: absent where no
+    /// trigger painted, and from older servers, and the browser shows `text`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub painted: Option<Vec<StyledRun>>,
 }
 
 /// Nullable collections distinguish an unobserved feed from known emptiness.
@@ -210,6 +222,16 @@ pub struct MapLocationView {
     pub room: Option<u32>,
 }
 
+/// The character's game group, when it is in one (`plan/39`): read off
+/// the game's own group, so the hub can show who leads whom.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GroupView {
+    /// Who leads, by name; `None` when this character does.
+    pub leader: Option<String>,
+    /// The other members, by name, the leader not among them.
+    pub members: Vec<String>,
+}
+
 /// State needed by Story, room, hands, vitals, roundtime and connection status.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SessionView {
@@ -217,6 +239,11 @@ pub struct SessionView {
     /// Absent in older servers, without a map, or outside Ready.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub map_location: Option<MapLocationView>,
+    /// The game group, when the character leads one with members or is in
+    /// someone's; absent alone, or while nobody has said. Additive: older
+    /// servers omit it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<GroupView>,
     /// The current room as far as it has been observed.
     pub room: RoomView,
     /// What the left hand holds, or that it is unknown.
@@ -233,6 +260,27 @@ pub struct SessionView {
     pub prompt: Option<String>,
     /// At most 32 unknown-tag diagnostics sampled from the model's ring.
     pub unknown_tags: Vec<UnknownTagView>,
+}
+
+/// What a character's hunt is doing, for a frontend's hunt panel
+/// (`plan/47` step 8): what runs, where it is in its cycle, what it did last,
+/// the creature it fights and why it waits -- *"resting: mana 30%, wants
+/// 50%"*. The binary makes it of the hunt's own report.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HuntView {
+    /// What runs: a profile's name, or the command that started a run with
+    /// no profile (`heal`, `keep`).
+    pub running: String,
+    /// Where it is in its cycle: `hunting`, `resting (out of mana)`.
+    pub phase: String,
+    /// What it did this turn: the line it sent, the room it walks to.
+    pub doing: String,
+    /// The creature it fights, by what the room calls it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    /// Why it waits, with the numbers, when it does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waiting: Option<String>,
 }
 
 /// One character on the hub page: who it is, and what a player glances at
@@ -253,6 +301,9 @@ pub struct SessionCard {
     pub roundtime: RoundtimeView,
     /// The room it stands in, when known.
     pub room: Option<String>,
+    /// Its game group, as its view has it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<GroupView>,
 }
 
 impl SessionCard {
@@ -268,6 +319,7 @@ impl SessionCard {
                 vitals: view.vitals.clone(),
                 roundtime: view.roundtime.clone(),
                 room: view.room.title.clone(),
+                group: view.group.clone(),
             },
             None => Self {
                 session,
@@ -276,6 +328,7 @@ impl SessionCard {
                 vitals: VitalsView::default(),
                 roundtime: RoundtimeView::default(),
                 room: None,
+                group: None,
             },
         }
     }

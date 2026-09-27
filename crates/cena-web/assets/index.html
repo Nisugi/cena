@@ -10,6 +10,7 @@
 </head>
 <body>
   <a class="skip-link" href="#command-input">Skip to command</a>
+  <div id="alerts" class="alerts" role="alert" hidden></div>
   <div id="shell" class="desktop-shell">
     <header class="application-header">
       <h1>Hydra <span>Despana</span></h1>
@@ -71,7 +72,7 @@
           <form id="command-form" autocomplete="off">
             <label for="command-input" class="visually-hidden">Game command</label>
             <span id="prompt" aria-hidden="true">&gt;</span>
-            <input id="command-input" name="command" type="text" placeholder="Enter command" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="4096" disabled aria-describedby="command-status">
+            <input id="command-input" name="command" type="text" placeholder="Enter a command. ;help lists Hydra's own." spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="4096" disabled aria-describedby="command-status">
             <button id="command-send" type="submit" disabled>Send</button>
           </form>
           <output id="command-status" role="status">Waiting for connection.</output>

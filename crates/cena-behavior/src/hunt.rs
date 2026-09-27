@@ -7,7 +7,7 @@
 //! | Piece | Module | What it is |
 //! |---|---|---|
 //! | the profile | [`profile`] | one TOML file: rooms, thresholds, stances, targets and their routines |
-//! | the guards | [`guard`] | the closed vocabulary of preconditions a routine step may carry |
+//! | the guards | [`guard`] | the closed vocabulary of preconditions a routine step may carry; `cena-model`'s since M8, which the triggers read too |
 //! | the chain | [`chain`] | how a key resolves: character, then profile, then global, then the built-in default (`plan/12` §6a.2) |
 //! | the importer | [`import`](mod@import) | a bigshot profile in, a Hydra profile out, with what it could not carry named |
 //!
@@ -52,16 +52,17 @@ pub mod drive;
 pub mod engine;
 mod errands;
 mod follow;
-pub mod guard;
 pub mod import;
 mod maintain;
 mod monitor;
+mod party;
 mod posture;
 pub mod profile;
 mod quick;
 mod react;
 mod repeat;
 pub mod replies;
+mod report;
 mod rest;
 pub mod said;
 pub mod setup;
@@ -72,11 +73,13 @@ mod wander;
 mod wrack;
 pub mod yaml;
 
+pub use cena_session::guard;
 pub use chain::{LoadError, Loaded, load};
 pub use command::{Command, parse as parse_command};
 pub use desk::Desk;
-pub use drive::{HuntEnd, hunt};
+pub use drive::{HuntEnd, hunt, hunt_in};
 pub use engine::{Ending, Here, Hunt, Said};
 pub use guard::{Condition, Dialog, Fact, Facts, Guard, Measure, Used};
 pub use import::{Import, import};
 pub use profile::{Profile, Step};
+pub use report::{Reports, Status};

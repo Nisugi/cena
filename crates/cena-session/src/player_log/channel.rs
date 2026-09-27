@@ -60,8 +60,9 @@ pub struct LogLine {
     /// Which connection within that session.
     ///
     /// A reconnect is a full re-login, so a reader seeing this change knows the
-    /// character was gone and came back. `LineAssembler` resets on the same
-    /// boundary, so no line ever spans two generations.
+    /// character was gone and came back. The model clears a half-finished
+    /// line on the same boundary (`GameState::invalidate_for_reconnect`), so no
+    /// line ever spans two generations.
     pub generation: Generation,
 }
 

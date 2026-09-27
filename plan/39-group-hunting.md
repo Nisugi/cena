@@ -1,7 +1,7 @@
 # 39 — Group hunting: bigshot's head and tail, measured and staged
 
-**Status: PROPOSED 2026-09-25; ten of §7's eleven questions ANSWERED 2026-09-26 (§8).
-Stages 0, 1 and 2 are built.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
+**Status: PROPOSED 2026-09-25; §7's eleven questions ANSWERED 2026-09-26 (§8, §8a).
+Stages 0 to 7 are built, but for the live runs.** The author asked for *"all of bigshot"* before M6's live run (2026-09-25),
 and has several characters and a test server to run a group on. `plan/30` §4 recorded the
 author's group design and §8 put groups after M6; **the author moved them before the live run**
 (§8, question 1). This plan measures what bigshot's group does, maps it onto Hydra's sessions,
@@ -370,7 +370,8 @@ no I/O, no clock, no randomness. Time is an `Instant` the caller passes and a ra
   a member rests wounded, and a follower begins once `Leading::prepared` names **this** rest,
   which is §0e's race closed by a number.
 - **Muster** (`group/muster.rs`): question 7's table, read in order: the connection
-  (`Reconnecting` and the steps back: `Lost`, then `Gone`; `Closed`: `Gone` at once), dead,
+  (`Reconnecting` and the steps back: `Lost`; `Closed` at once, or the wait run out: by the
+  leader's room, §8a's `TakeHome`, `Drag` or `Dead`, else the handover `Gone`), dead,
   left the group, then here and hindered `Hold`, elsewhere and able `Await`, elsewhere and stuck
   `Fetch`. Every wait ends `lost_wait` (90 s) after the member was first seen apart: `Await`
   becomes `Fetch`, and `Hold` or a member the map cannot place becomes `Overdue`, which rests
@@ -409,6 +410,43 @@ the follower's rest and loot on assignment, the overkill count. Demonstrated by 
 sessions, two desks and one board in one test, through a full cycle: the follower attacks the
 leader's target, the named looter loots, both walk to rest, the leader waits for the
 follower's prep **for this rest**, and both walk back.
+**BUILT 2026-09-26.** The board is `group/board.rs` (`Boards`, one set per process, found by
+the leader's name; per member a `watch` of its `Report`, and one of the leader's `Leading`).
+The driver reads it each turn and hands the pure engine a `Party` (`group/party.rs`,
+`hunt/drive/party.rs`); the engine's arms are `hunt/party.rs`, run between survival and rest.
+
+- **Lead:** muster first (`Dead` ends every hunt; `Drag` sends `drag <name>` then rests;
+  `TakeHome` rests for `Why::Linkdead`, which fogs; `Fetch` walks; `Overdue` rests for
+  `Why::Straggler` once the member can move; `Hold`, `Await` and `Lost` stop the wander and the
+  walk to rest), then `should_rest` over every report instead of its own reason, one more loot
+  first when it says so, and the looter named by `looter`. At the rest it waits for each
+  follower's `unready` and `prepared == this rest`, saying who and why as bigshot does
+  (`:7577-7593`), then gathers (`group open`, everyone here and grouped, within `lost_wait`)
+  and walks back.
+- **Follow:** apart from the leader it walks there (at once when out of the group, after
+  3 game seconds when grouped, since the game carries it); with the leader and out of the
+  group it sends `join <leader>`; it takes the leader's target while that stands, with its
+  own routine for it; it loots only when named; it never flees, wanders or starts a rest. At
+  the leader's rest, once `follower_may_prep`, its selling, herbs and resting commands, then
+  its own thresholds; when the leader starts back, its prepare commands.
+- **Both:** every member counts the kills it sees, so the overkill count needs no order
+  (bigshot's `FOLLOWER_OVERKILL`). A member whose connection drops publishes `Reconnecting`
+  at once and when it dropped, so question 9's *everyone dropped* is read afterwards. A
+  leader's hunt that ends takes its board down, which ends its followers' hunts
+  (`Ending::LeaderStopped`, question 3); a session Hydra gave up leaves its report `Closed`.
+
+Tests: `crates/cena-behavior/tests/group_engine.rs` (20, one per rule) and
+`crates/cena-behavior/tests/group_drive.rs` (2: two scripted sessions and one board, the
+follower taking the leader's target and the loot it is named for; the leader's stop ending
+the follower's hunt). The full rest cycle is proved rule by rule in `group_engine.rs`, not yet
+in one two-session run.
+
+INFERRED, the author's to confirm: the 3-second grace before a grouped follower walks
+itself; the leader waiting up to `lost_wait` at the start for the game group's members to
+report, as bigshot's `head` waits for them to register (`:9927-9999`); a corpse waited for
+up to 20 seconds for the looter; a follower that walks off (to catch up, or on its own
+selling round) staying that leader's follower while the leader's board stands; a session
+whose group is `Unknown` asking `group` once and then hunting on what it is told.
 
 **Stage 4 — the command and the hub.** The leader's command starts the group: `group open`,
 and each follower `join #<leader's id>` (Lich's `Group.join`,
@@ -416,11 +454,58 @@ and each follower `join #<leader's id>` (Lich's `Group.join`,
 shows each member's role and the reasons bigshot printed (*"Dicate resting: fried."*).
 **Live, the author present:** two characters on the test server, one per account
 (`plan/29` §5 Q1), a full hunt-rest-hunt cycle.
+**BUILT 2026-09-26, but for the live run and the hub's own start.**
+
+- **`hunt <profile> with <name>...`** (`Command::Group`): the binary resolves each name to
+  a character this Hydra runs (`crates/cena/src/hunt.rs`, `Seat`), starts that character's
+  own hunt on **the profile of the same name, through its own chain** (question 2's open
+  point, settled here), placed as following the leader (`Place::Follow`), then the
+  leader's, placed as leading them (`Place::Lead`). A named follower catches up and `join`s
+  even from outside the group; the leader sends `group open` and waits for each to report,
+  within `lost_wait`, as bigshot's `head` waits for its followers to register. A name this
+  Hydra does not run is said, and hunted without. `hunt <profile>` typed on a character
+  already in a group still reads its role off the game's group (`Place::Read`).
+- **Stopping:** the leader's stop while leading ends every follower's hunt, and they stay
+  grouped (Stage 3). A follower's own stop sends `leave group` (bigshot's `LEAVE_GROUP`),
+  and the rest hunt on without it. Only a hunt groups: `;heal`, `;keep`, `;waggle` and
+  `;sc` run on the same machine and take no place in a group.
+- **The hub card** carries `group` (`cena-ui`'s `GroupView`, an additive field in
+  `WIRE.md`): *"leading Kiyna, Dicate"* or *"following Ashryn"*, read off the game's own
+  group. bigshot's *"Kiyna isn't hunting because: ..."* lines are notices on the leader's
+  own page (Stage 3), not on the card.
+
+Tests: `crates/cena-behavior/tests/group_drive.rs` (a named follower from outside the group
+joins the leader it was given, which opens its group; a follower's stop leaves it), the
+command's words in `hunt/command.rs`, the projection in `crates/cena-ui/src/projection.rs`,
+and the card's line in `crates/cena-web/assets/tests/session.test.mjs`. **Not built:** a
+hub button that starts a group (the card shows it; `hunt ... with` starts it), and the live
+run, which is the author's.
 
 **Stage 5 — the settings.** A `[group]` table in the leader's profile and the importer's rows
 for it: independent travel and return, quiet followers, the three loot keys and final loot,
 group deader, `disable_commands`, and Troubadour's Rally (1040) for self and group. A test per
 key; `;hunt import` of a profile that sets them.
+**BUILT 2026-09-26.** `[group]` is `hunt/profile/group.rs` (`GroupTable`): the Stage 2 keys
+(`ma_looter`, `never_loot`, `random_loot`, `fried_trigger`, `successors`, `lost_wait`,
+`quiet_followers`) and bigshot's others. The importer reads them (`hunt/import/group.rs`).
+
+- **`independent_return` / `independent_travel`** (`hunt/party/alone.rs`): the leader sends
+  `disband group` right before the walk its members take apart; each follower walks on its
+  own: home by its own fog, the leader's waypoints and resting room; out by the leader's rally
+  rooms and hunting room. The leader publishes its rooms (`Leading::rooms`). They join again
+  at the far end: the gather at the rest, and a new gather **before it hunts** (`pre_hunt`,
+  `bigshot.lic:7266-7275`), which the default travel passes at once.
+- **`final_loot`, `disable_commands`, `troubadours_rally`** (`hunt/party/keys.rs`): the
+  leader, or a hunt alone, loots the room once with the loot profile before it wanders on;
+  fried in a group, `disable_commands` replaces the target's routine; with 1040 known,
+  `incant 1040` before a routine step when stuck or a member of the group here is
+  (`mana pulse` when it cannot afford it, as `cmd_1040` does). The last two are **each
+  member's own**, read where it attacks (§0b).
+- **`group_deader`** is not a key: the author replaced its pause with the dead member's
+  recovery (question 10). The importer says so rather than dropping it silently.
+
+Tests: `crates/cena-behavior/tests/group_settings.rs` (8: the import, the default, and each
+key on the engine).
 
 **Stage 6 — the author's handover.** A lost member is held for: the others keep the room clear,
 with no wander and no walk to rest. After the wait, the successor leads. Out of game: take
@@ -430,6 +515,47 @@ leader adds the one left behind (`group #<id>`, as Lich's `Group.add` sends it,
 rejoins. Tests over scripted sessions with one connection dropped and the clock advanced, a
 mutation per branch. **Live:** one member knocked off by a second login on its account, the
 trigger `plan/29` §5b recorded.
+**BUILT 2026-09-26, but for the live run.** Each follower reads the leader's own report on the
+board (`hunt/drive/party.rs`, `leader_view`) and runs muster on it with the leader's
+`lost_wait` and `successors`, which the leader publishes:
+
+- **Held for** (`Lost`): the follower fights what comes and nothing else: no catching up, no
+  joining, no rest of its own (question 5).
+- **Given up** (`Closed`, or the wait run out): the handover. Every member computes the same
+  successor (`successor`, the leader's list, else the healthiest, a tie by a fixed roll so all
+  agree). A member still in the lost leader's game group sends `leave group` first. The
+  successor leads, waiting for the others as a `hunt ... with` leader does; the others follow
+  it and join. The lost leader's report is read with the new leader's followers, so §8a's
+  rule applies to it: standing there link-dead, it is added and taken home; gone from the
+  game, the group hunts on (or rests, if the merged reasons say so).
+- **The one who comes back** (question 8): `Boards` records who took over from whom; a hunt
+  that comes back from its reconnect to find its lead handed on follows the new leader.
+- **§8a's open row, closed by the author's own handover words:** a member given up, standing
+  here, well, but not in the group is added (`Muster::Add`: `group #<id>`, Lich's
+  `Group.add`, `group.rb:298-309`), then taken home. INFERRED from *"the leader add the
+  disconnected loligagger to their group, then go rest"* (§1), for any member, not only a
+  lost leader. That the game lets a leader add a link-dead character is UNVERIFIED.
+
+Tests: `crates/cena-behavior/tests/group_handover.rs` (the follower's hold and wait, the add)
+and `crates/cena-behavior/tests/group_drive.rs` (`a_leader_given_up_hands_over_to_its_successor`:
+two scripted sessions, the leader `Closed` on the board, `successors = ["Dicate"]`: both
+leave the old group, Dicate opens its own, Kiyna joins Dicate).
+
+**Stage 7 — a dead member** (§8b, question 10). **BUILT 2026-09-26, but for the live run.**
+`hunt/party/recover.rs`. Every member's hunt ends (`Ending::MemberDied`). The recoverer is the
+leader if able, else the first follower able (`recoverer`). The leader carries it out
+itself, or publishes who does (`Leading::recover`) and waits for it within `lost_wait`;
+every other member ends at once. A dead **leader's** report stays up, dead, so its
+followers' muster reads it and the recoverer among them carries it out. The recovery, a
+step a tick: the hands emptied (travel's `store_commands`), `hold <name>` (Lich's `HOLD_*`
+lines, read since Stage 1), then `incant 130` when Spirit Guide is known and affordable, else
+`drag <name>` and the walk to the resting room, else an alert to the player: *"... they need
+you"*. The alert now reaches the player the tick it is raised, before a hunt that ends with
+it. Tests: `crates/cena-behavior/tests/group_handover.rs` (a follower not named ends; the one
+named carries a dead leader out by Spirit Guide; a stuck leader names the follower; nobody
+able alerts), and `group_engine.rs` (the leader carries a member out by drag). UNVERIFIED,
+as §8 already says: where Spirit Guide goes and that it takes the held dead along, and
+`drag`'s conditions and messages.
 
 **Not in this plan:** corpse recovery (designed in eohunter, not built; bigshot has none);
 group bounties (`has_bounty?` is broken, `:1055`); working with a Lich bigshot over DRb
@@ -512,7 +638,7 @@ Each answer is quoted as given. What follows it is PROPOSED unless labelled.
 5. **The wait.** *"60-120 seconds? While still keeping the room safe. Configurable ..."*.
    One key, `lost_wait`, default **90 s**. While it runs, the members still here fight what
    comes in and nothing else: no wander, no walk to rest (Stage 6 as written).
-6. **In game or out.** Not answered: the author asked for the context the question lacked
+6. **In game or out.** Answered in §8a, after the author asked for the context the question lacked
    (*"how do you know their having problems? They stop responding? What stops responding?
    Their hydra info stops updating? They stop sending commands?"*). The context is below
    (§8a). The question is asked again there.
@@ -599,12 +725,44 @@ connection drops or when the game removes the character? UNVERIFIED by any sourc
 corpus could measure it: two of the author's characters in one room, one of them dropped.
 That needs the author's leave to query.
 
+**ANSWERED (AUTHOR, 2026-09-26):** *"if a character goes linkdead ... hydra says closed and
+character is standing in the room ... take character back to town to rest, either walk if
+they're still in your group and ok, fog if you can and they're still in your group, or drag em
+if something happened to them."*
+
+*Still in game* is read off the **leader's own room**: the lost member still listed among its
+players, link-dead. Then the group does not hand over and hunt on; it takes the character
+home to rest. **BUILT 2026-09-26** in Stage 2's muster (`group/muster.rs`, `Standing`, five
+tests in `crates/cena-behavior/tests/group_muster.rs`). Once Hydra has given the member up
+(`Closed`; or the lost wait run out, INFERRED to read the same, as both were `Gone` before):
+
+| The leader's room says | The group |
+|---|---|
+| not there | the handover (`Gone`), Stage 6 |
+| there, in the group, nothing wrong | rests now and takes it along (`TakeHome`): the leader's own way to rest, the fog when it fogs and can, else the walk; the game carries a grouped member with the leader (§3) |
+| there, something wrong (down, stunned, webbed) | dragged home (`Drag`) |
+| there, dead | question 10's recovery (`Dead`), whose third step is the drag |
+
+What the answer leaves:
+
+- **There and fine, but not in the group**: not covered, so it stays the handover. Whether a
+  leader can add a link-dead character (`group #<id>`, or holding its hand) is UNVERIFIED.
+- INFERRED: *"fog if you can"* is the leader's own rest fog (`rest.fog`). That a fog carries a
+  grouped link-dead member is UNVERIFIED, as Spirit Guide's is for question 10.
+- Whether the game lets a character who is not dead (lying down, stunned) be dragged is
+  UNVERIFIED, the same open item as question 10's `drag`.
+- Reading the room's status text into a `Hindrance` (`appears dead`, `stunned`, `lying down`,
+  `crates/cena-model/src/state/room.rs:97-114`) is Stage 3's, with the rest of the reports.
+- How long a link-dead character stands, and when `has disconnected` is sent: still
+  unmeasured, and the rule no longer needs either, since it reads the room.
+
 ### 8b. The stages, revised
 
 - **Stage 1** (the model) adds: *"am I the leader"* as a three-valued fact, which needs the
   character's own `exist` id (question 8); the eight `HOLD_*_SECOND`/`_THIRD` lines
   (question 10); and, once question 6 is answered, `has disconnected` from the logons feed.
-  **BUILT 2026-09-26** (§6), all but `has disconnected`, which still waits on question 6.
+  **BUILT 2026-09-26** (§6), all but `has disconnected`, which §8a's answer does not need: it
+  reads the room.
 - **Stage 2** (the rules, pure) adds: the successor (`successors`, else the healthiest); the
   lost member's reason and what each reason asks (question 7's table); `lost_wait`.
   **BUILT 2026-09-26** (§6), with *rest first* after everyone dropped (question 9) and the
@@ -618,7 +776,9 @@ That needs the author's leave to query.
   and a follower's stop (question 3).
 - **Stage 5** (the settings) adds `successors`, `lost_wait` and `quiet_followers`.
 - **Stage 6** (the handover) adds: the successor by Stage 2's rule, and *rest first* when
-  every member dropped (question 9). It waits on question 6.
+  every member dropped (question 9). Since §8a's answer, the handover is only for a member
+  given up and **not** standing in the leader's room; one still there is taken home or
+  dragged (`TakeHome`, `Drag`), which Stage 3 acts on beside the rest and Stage 7's drag.
 - **Stage 7, new: a dead member** (question 10): the hunts ended, the hand taken, Spirit
   Guide, the drag, the alert. It is tested over scripted sessions, one branch per step, a
   mutation each. It is live on the test server, where the author can make a character die.

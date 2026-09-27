@@ -23,6 +23,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             generation: self.generation,
             cursor: self.cursor,
             retry: None,
+            stopped: None,
+            triggers: self.handle.triggers(),
         };
         let listener = self.events.resubscribe();
         let mut notes = std::mem::take(&mut self.notes);

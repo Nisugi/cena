@@ -10,11 +10,11 @@ mod tests;
 pub(crate) use hub::{Hub, encode};
 
 use crate::server::Viewed;
+use cena_session::observation::retrying;
 use cena_session::{Event, ObserveError, ObservedEvent, SessionObserver, Snapshot, State};
 use pending::Pending;
 use std::future::Future;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 use std::time::Duration;
 use tokio::sync::broadcast;
 
@@ -22,59 +22,6 @@ const MAX_HISTORY_LINES: usize = 256;
 /// Retained Story, counted in **encoded** bytes -- see [`hub::line_bytes`].
 const MAX_HISTORY_BYTES: usize = 96 * 1024;
 pub(crate) const MAX_WIRE_BYTES: usize = 512 * 1024;
-const MAX_DRAIN: usize = 4096;
-/// First wait after a retryable observation failure, doubled to the cap.
-const OBSERVE_RETRY_FIRST: Duration = Duration::from_millis(100);
-/// The longest wait between observation attempts: bounded, never a spin.
-const OBSERVE_RETRY_CAP: Duration = Duration::from_secs(2);
-
-/// Ask for a fresh observation, retrying the failures that are not an answer.
-///
-/// `None` when the viewer server is stopping; otherwise the subscription, or
-/// the error that ends observation.
-///
-/// # Why this is not `?`
-///
-/// The pump used to map **every** [`ObserveError`] to a fatal I/O error. That
-/// ended `WebServer::run`, disconnected every viewer, and was reported only
-/// at shutdown -- for `Busy` (the owner's bounded inbox was momentarily
-/// full) and `Timeout` (it did not answer within its budget), which
-/// `cena_session::observation` documents as *retryable read failures, not
-/// proof the owner died*. A busy owner under a login burst is exactly when a
-/// viewer is most wanted.
-///
-/// So those two are retried with doubling backoff capped at
-/// [`OBSERVE_RETRY_CAP`] -- bounded, never a spin -- and without a retry
-/// limit: a timeout cannot prove death, and the pump's own stop token is
-/// what ends the wait. Only `Closed`, the owner gone without a final
-/// snapshot, is terminal. The last published view stays up meanwhile: that
-/// is the stale view the pump already refuses to *replace* with a guess, not
-/// a new one.
-async fn observe<T, F, Fut>(
-    stop: &tokio_util::sync::CancellationToken,
-    mut subscribe: F,
-) -> Option<Result<T, ObserveError>>
-where
-    F: FnMut() -> Fut,
-    Fut: Future<Output = Result<T, ObserveError>>,
-{
-    let mut delay = OBSERVE_RETRY_FIRST;
-    loop {
-        let result = tokio::select! {
-            () = stop.cancelled() => return None,
-            result = subscribe() => result,
-        };
-        match result {
-            Err(ObserveError::Busy | ObserveError::Timeout) => {}
-            answered => return Some(answered),
-        }
-        tokio::select! {
-            () = stop.cancelled() => return None,
-            () = tokio::time::sleep(delay) => {}
-        }
-        delay = (delay * 2).min(OBSERVE_RETRY_CAP);
-    }
-}
 
 type Subscription = (Snapshot, broadcast::Receiver<ObservedEvent>);
 
@@ -83,7 +30,8 @@ pub(crate) async fn pump(observer: SessionObserver, viewed: Arc<Viewed>) -> std:
 }
 
 /// The pump over any source of subscriptions: [`pump`] passes the session's,
-/// and a test passes one that fails on cue.
+/// and a test passes one that fails on cue. A busy or slow owner is asked
+/// again ([`retrying`] has why); only an owner gone ends it.
 async fn project<F, Fut>(mut subscribe: F, shared: Arc<Viewed>) -> std::io::Result<()>
 where
     F: FnMut() -> Fut,
@@ -92,7 +40,7 @@ where
     let fatal = |error: ObserveError| {
         std::io::Error::other(format!("Session observation failed: {error:?}"))
     };
-    let Some(result) = observe(&shared.stop, &mut subscribe).await else {
+    let Some(result) = retrying(&shared.stop, &mut subscribe).await else {
         return Ok(());
     };
     let (initial, mut events) = result.map_err(fatal)?;
@@ -120,8 +68,6 @@ where
                 Ok(event) => {
                     let immediate = event.generation != pending.generation
                         || matches!(event.event, Event::StateChanged(_) | Event::ConnectFailed { .. });
-                    // `;sorter` as the player last set it (`Sessions::sort_containers`).
-                    pending.assembler.sort_containers(shared.sorting.load(Ordering::Relaxed));
                     pending.observe(event);
                     dirty = true;
                     immediate
@@ -137,7 +83,7 @@ where
         if !refresh {
             continue;
         }
-        let Some(result) = observe(&shared.stop, &mut subscribe).await else {
+        let Some(result) = retrying(&shared.stop, &mut subscribe).await else {
             return Ok(());
         };
         // Stale state must never masquerade as an authoritative live view.
@@ -146,18 +92,17 @@ where
         events = next;
         let lines: Vec<_> = pending.lines.drain(..).collect();
         // The hub's merged streams read the same lines this page shows.
-        shared.merged.offer(shared.id, &shared.tag(), &lines);
+        shared
+            .merged
+            .offer(shared.id, &shared.tag(), &shared.name, &lines);
         pending.bytes = 0;
         let gap = std::mem::take(&mut pending.gap);
-        if shared
-            .hub
-            .lock()
-            .await
-            .publish(&snapshot, lines, gap)
-            .is_err()
-        {
+        let mut hub = shared.hub.lock().await;
+        if hub.publish(&snapshot, lines, gap).is_err() {
             return Err(std::io::Error::other("Presentation sequence exhausted"));
         }
+        hub.alert(std::mem::take(&mut pending.alerts));
+        drop(hub);
         let _ = shared.changed.send(());
         dirty = false;
         ticking = snapshot.state.in_roundtime() == Some(true);

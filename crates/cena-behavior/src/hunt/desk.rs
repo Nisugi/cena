@@ -3,7 +3,7 @@
 //!
 //! One desk per session, the map shared between them all. It loads the
 //! profile the way this character would run it ([`chain::load`]), claims
-//! the authority, runs the [`hunt`] with a [`watch`] beside it, and releases
+//! the authority, runs the [`hunt_in`] with a [`watch`] beside it, and releases
 //! on every exit. **One hunt at a time**: a second `;hunt <name>` stops the
 //! first and starts when it has let go, as travel's desk does for walks.
 //!
@@ -12,7 +12,7 @@
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use cena_map::Map;
 use cena_session::travel_store::{self, TravelFile};
@@ -24,11 +24,14 @@ use tokio_util::sync::CancellationToken;
 
 use super::chain;
 use super::command::Command;
-use super::drive::{HuntEnd, hunt};
+use super::drive::{HuntEnd, hunt_in};
 use super::engine::Hunt;
+use super::report::{Reports, Status};
 use crate::error::BehaviorError;
+use crate::group::{Boards, Place};
 use crate::heal::{self, HealProfile};
 use crate::loot::{self, LootProfile};
+use crate::settings::Stored;
 use crate::travel::{Heard, TravelNotes};
 use crate::watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, watch};
 
@@ -42,6 +45,12 @@ pub struct Desk {
     ids: Arc<AtomicU64>,
     hunts: AtomicU64,
     map_sha256: Option<String>,
+    /// Every group's board in this Hydra, when hunts here may group
+    /// (`plan/39` §5).
+    boards: OnceLock<Arc<Boards>>,
+    /// What its runs are doing, turn by turn, for a hunt panel (`plan/47`
+    /// step 8).
+    reports: Reports,
 }
 
 /// A hunt under way: how to stop it, and how to know it is over.
@@ -65,7 +74,23 @@ impl Desk {
             ids: Arc::new(AtomicU64::new(1)),
             hunts: AtomicU64::new(0),
             map_sha256: None,
+            boards: OnceLock::new(),
+            reports: Reports::default(),
         })
+    }
+
+    /// Hear what this desk's runs are doing, turn by turn: the latest, or
+    /// `None` while nothing runs.
+    #[must_use]
+    pub fn reports(&self) -> tokio::sync::watch::Receiver<Option<Status>> {
+        self.reports.follow()
+    }
+
+    /// Let this desk's hunts hunt in a group, on `boards`: one set for every
+    /// session in the process, so a leader's and its followers' hunts meet.
+    /// Set once; a second call is ignored.
+    pub fn group_on(&self, boards: Arc<Boards>) {
+        let _ = self.boards.set(boards);
     }
 
     /// Pin map-created profiles to the host's exact loaded bytes.
@@ -102,6 +127,19 @@ impl Desk {
         handle: &SessionHandle,
         joined: (Snapshot, impl Into<Heard>),
         command: Command,
+    ) -> Option<JoinHandle<HuntEnd>> {
+        self.run_placed(handle, joined, command, Place::Read)
+    }
+
+    /// [`Self::run`], a hunt taking `place` in its group: as the command
+    /// that formed the group said (`hunt <name> with ...`, `plan/39` §8,
+    /// question 2). Only a hunt groups; a heal or a cast does not.
+    pub fn run_placed(
+        self: &Arc<Self>,
+        handle: &SessionHandle,
+        joined: (Snapshot, impl Into<Heard>),
+        command: Command,
+        place: Place,
     ) -> Option<JoinHandle<HuntEnd>> {
         let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
         let (command, quick, bounty) = match command {
@@ -163,7 +201,9 @@ impl Desk {
                 for sequence in loaded.profile.unwritten_sequences() {
                     say(
                         NoticeKind::Warn,
-                        format!("sequence {sequence} has no steps and will be skipped."),
+                        format!(
+                            "sequence {sequence} has no steps and will be skipped; `hunt set <profile> sequences.{sequence}.steps [...]` writes them."
+                        ),
                     );
                 }
                 say(NoticeKind::Info, format!("hunting on {name}."));
@@ -187,21 +227,17 @@ impl Desk {
                     Some(profile) => machine.with_heal(profile),
                     None => machine,
                 };
-                // For the waggle after a death, when `react.depart_switch`
-                // asks for one (`hunt/death.rs`).
-                let waggle = character
-                    .instance
-                    .as_deref()
-                    .zip(character.name.as_deref())
-                    .and_then(|(i, n)| crate::waggle::path(&self.dir, i, n))
-                    .and_then(|path| std::fs::read_to_string(path).ok())
-                    .and_then(|text| crate::waggle::WaggleProfile::parse(&text).ok())
-                    .filter(|p| !p.cast_list.is_empty());
-                let machine = match waggle {
+                let machine = match self.waggle_profile(&joined.0.state) {
                     Some(profile) => machine.with_waggle(profile),
                     None => machine,
                 };
-                Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+                Some(self.start_in(
+                    handle.clone(),
+                    (joined.0, joined.1.into()),
+                    machine,
+                    Some(place),
+                    &name,
+                ))
             }
             _ => None,
         }
@@ -233,12 +269,60 @@ impl Desk {
         true
     }
 
+    /// Start a run that is not a hunt, named `what` for its reports.
     fn start(
         self: &Arc<Self>,
+        what: &str,
         handle: SessionHandle,
         joined: (Snapshot, Heard),
         machine: Hunt,
     ) -> JoinHandle<HuntEnd> {
+        self.start_in(handle, joined, machine, None, what)
+    }
+
+    /// A per-character settings file of this character's, as found: `path`
+    /// names it (`keep::path` and its kin), `parse` reads it. Missing when
+    /// the game has not said who this is.
+    fn stored<T>(
+        &self,
+        state: &GameState,
+        path: fn(&std::path::Path, &str, &str) -> Option<std::path::PathBuf>,
+        parse: impl FnOnce(&str) -> Result<T, String>,
+    ) -> Stored<T> {
+        let character = &state.character;
+        character
+            .instance
+            .as_deref()
+            .zip(character.name.as_deref())
+            .and_then(|(i, n)| path(&self.dir, i, n))
+            .map_or(Stored::Missing, |path| crate::settings::read(&path, parse))
+    }
+
+    /// The character's waggle profile, for the waggle after a death when
+    /// `react.depart_switch` asks for one (`hunt/death.rs`).
+    fn waggle_profile(&self, state: &GameState) -> Option<crate::waggle::WaggleProfile> {
+        let character = &state.character;
+        character
+            .instance
+            .as_deref()
+            .zip(character.name.as_deref())
+            .and_then(|(i, n)| crate::waggle::path(&self.dir, i, n))
+            .and_then(|path| std::fs::read_to_string(path).ok())
+            .and_then(|text| crate::waggle::WaggleProfile::parse(&text).ok())
+            .filter(|p| !p.cast_list.is_empty())
+    }
+
+    /// Start `machine`, named `what` for its reports; `place` in a group
+    /// when it is a hunt.
+    fn start_in(
+        self: &Arc<Self>,
+        handle: SessionHandle,
+        joined: (Snapshot, Heard),
+        machine: Hunt,
+        place: Option<Place>,
+        what: &str,
+    ) -> JoinHandle<HuntEnd> {
+        let what = what.to_owned();
         let running = Running {
             number: self.hunts.fetch_add(1, Ordering::Relaxed),
             stop: CancellationToken::new(),
@@ -258,7 +342,10 @@ impl Desk {
             if let Some(before) = before {
                 before.over.cancelled().await;
             }
-            let end = desk.hunt_once(&handle, &stop, joined, machine).await;
+            desk.reports.running(&what);
+            let end = Box::pin(desk.hunt_once(&handle, &stop, joined, machine, place)).await;
+            // Before `over`: the next run, waiting on it, reports after this.
+            desk.reports.tell(None);
             let mut slot = desk.running.lock().unwrap_or_else(PoisonError::into_inner);
             if slot.as_ref().is_some_and(|hunt| hunt.number == number) {
                 *slot = None;
@@ -337,20 +424,24 @@ impl Desk {
         words: &[String],
     ) -> Option<JoinHandle<HuntEnd>> {
         let state = &joined.0.state;
-        let profile = state
-            .character
-            .instance
-            .as_deref()
-            .zip(state.character.name.as_deref())
-            .and_then(|(i, n)| crate::spellcaster::path(&self.dir, i, n))
-            .and_then(|path| std::fs::read_to_string(path).ok())
-            .and_then(|text| crate::spellcaster::CasterProfile::parse(&text).ok())
-            .unwrap_or_default();
+        let profile = match self.stored(state, crate::spellcaster::path, |text| {
+            crate::spellcaster::CasterProfile::parse(text)
+        }) {
+            Stored::Found(profile) => profile,
+            Stored::Broken(why) => {
+                handle.say(Notice::line(
+                    NoticeKind::Error,
+                    format!("Sc: nothing was cast: {why}"),
+                ));
+                return None;
+            }
+            Stored::Missing => crate::spellcaster::CasterProfile::default(),
+        };
         let words: Vec<&str> = words.iter().map(String::as_str).collect();
         match crate::spellcaster::lines(&profile, state, &words) {
             Ok(lines) => {
                 let machine = Hunt::send_only(lines);
-                Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+                Some(self.start("sc", handle.clone(), (joined.0, joined.1.into()), machine))
             }
             Err(why) => {
                 handle.say(Notice::line(NoticeKind::Warn, format!("Sc: {why}")));
@@ -366,24 +457,29 @@ impl Desk {
         joined: (Snapshot, impl Into<Heard>),
         targets: Vec<String>,
     ) -> Option<JoinHandle<HuntEnd>> {
-        let character = &joined.0.state.character;
-        let profile = character
-            .instance
-            .as_deref()
-            .zip(character.name.as_deref())
-            .and_then(|(i, n)| crate::waggle::path(&self.dir, i, n))
-            .and_then(|path| std::fs::read_to_string(path).ok())
-            .and_then(|text| crate::waggle::WaggleProfile::parse(&text).ok())
-            .filter(|p| !p.cast_list.is_empty());
-        let Some(profile) = profile else {
-            handle.say(Notice::line(
-                NoticeKind::Error,
-                "Hunt: no waggle profile: write one with a `cast_list`.",
-            ));
-            return None;
+        let profile = match self.stored(&joined.0.state, crate::waggle::path, |text| {
+            crate::waggle::WaggleProfile::parse(text)
+        }) {
+            Stored::Found(profile) if !profile.cast_list.is_empty() => profile,
+            Stored::Broken(why) => {
+                handle.say(Notice::line(NoticeKind::Error, format!("Waggle: {why}")));
+                return None;
+            }
+            _ => {
+                handle.say(Notice::line(
+                    NoticeKind::Error,
+                    "Waggle: no spells to cast yet. `waggle set cast_list [101, 107, 401]` names them; `waggle show` lists the rest.",
+                ));
+                return None;
+            }
         };
         let machine = Hunt::waggle_only(profile, targets);
-        Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
+        Some(self.start(
+            "waggle",
+            handle.clone(),
+            (joined.0, joined.1.into()),
+            machine,
+        ))
     }
 
     /// `;keep`: the keep profile's spells kept up until stopped.
@@ -392,20 +488,21 @@ impl Desk {
         handle: &SessionHandle,
         joined: (Snapshot, impl Into<Heard>),
     ) -> Option<JoinHandle<HuntEnd>> {
-        let character = &joined.0.state.character;
-        let profile = character
-            .instance
-            .as_deref()
-            .zip(character.name.as_deref())
-            .and_then(|(i, n)| crate::keep::path(&self.dir, i, n))
-            .and_then(|path| std::fs::read_to_string(path).ok())
-            .and_then(|text| crate::keep::KeepProfile::parse(&text).ok());
-        let Some(profile) = profile.filter(|p| !p.spells.is_empty()) else {
-            handle.say(Notice::line(
-                NoticeKind::Error,
-                "Hunt: nothing to keep up: `keep add <spell>` first.",
-            ));
-            return None;
+        let profile = match self.stored(&joined.0.state, crate::keep::path, |text| {
+            crate::keep::KeepProfile::parse(text)
+        }) {
+            Stored::Found(profile) if !profile.spells.is_empty() => profile,
+            Stored::Broken(why) => {
+                handle.say(Notice::line(NoticeKind::Error, format!("Keep: {why}")));
+                return None;
+            }
+            _ => {
+                handle.say(Notice::line(
+                    NoticeKind::Error,
+                    "Hunt: nothing to keep up: `keep add <spell>` first.",
+                ));
+                return None;
+            }
         };
         handle.say(Notice::line(
             NoticeKind::Info,
@@ -415,6 +512,7 @@ impl Desk {
             ),
         ));
         Some(self.start(
+            "keep",
             handle.clone(),
             (joined.0, joined.1.into()),
             Hunt::keep_only(profile),
@@ -437,11 +535,16 @@ impl Desk {
         ) else {
             handle.say(Notice::line(
                 NoticeKind::Error,
-                "Hunt: no heal profile: write one naming the herb `container`.",
+                "Hunt: no heal profile yet. `heal set container <your herb container>` makes one; `heal show` lists the rest.",
             ));
             return None;
         };
-        Some(self.start(handle.clone(), (joined.0, joined.1.into()), make(profile)))
+        Some(self.start(
+            "herbs",
+            handle.clone(),
+            (joined.0, joined.1.into()),
+            make(profile),
+        ))
     }
 
     /// The character's heal profile (`plan/36`), when there is one and it
@@ -453,14 +556,11 @@ impl Desk {
         name: Option<&str>,
     ) -> Option<HealProfile> {
         let path = heal::path(&self.dir, instance?, name?)?;
-        let text = std::fs::read_to_string(&path).ok()?;
-        match HealProfile::parse(&text) {
-            Ok(profile) => Some(profile),
-            Err(why) => {
-                handle.say(Notice::line(
-                    NoticeKind::Error,
-                    format!("Heal: {} does not read: {why}.", path.display()),
-                ));
+        match crate::settings::read(&path, HealProfile::parse) {
+            Stored::Found(profile) => Some(profile),
+            Stored::Missing => None,
+            Stored::Broken(why) => {
+                handle.say(Notice::line(NoticeKind::Error, format!("Heal: {why}.")));
                 None
             }
         }
@@ -473,6 +573,7 @@ impl Desk {
         stop: &CancellationToken,
         joined: (Snapshot, Heard),
         machine: Hunt,
+        place: Option<Place>,
     ) -> HuntEnd {
         if handle.claim(self.token).await.is_err() {
             handle.say(Notice::line(
@@ -496,9 +597,20 @@ impl Desk {
         let end = {
             let wrote = |notes: &TravelNotes| self.keep(handle, file.as_mut(), notes);
             let learned = |names: &[String]| unskinnable(handle, loot_file.as_deref(), names);
-            let run = Box::pin(hunt(
-                handle, stop, ids, self.token, joined, &self.map, machine, &heartbeat, notes,
-                wrote, learned,
+            let run = Box::pin(hunt_in(
+                handle,
+                stop,
+                ids,
+                self.token,
+                joined,
+                &self.map,
+                machine,
+                &heartbeat,
+                notes,
+                wrote,
+                learned,
+                self.boards.get().cloned().zip(place),
+                &self.reports,
             ));
             tokio::select! {
                 end = run => end,

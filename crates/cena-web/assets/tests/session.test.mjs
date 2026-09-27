@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { HydraSession, MAX_STORY_LINES, commandError, launchSession, takeLaunchToken } from "../session.js";
+import { ALERT_MS, HydraSession, MAX_ALERTS, MAX_STORY_LINES, commandError, launchSession, takeLaunchToken } from "../session.js";
 import { cardSummary, lifecycleText, mount, placeLine } from "../app.js";
 
 // Shared synthetic contract fixture, also round-tripped by Rust cena-ui tests.
@@ -404,6 +404,7 @@ test("the history gap notice clears once the hole can no longer be in the Story"
 
 class FakeNode {
   toggleAttribute(name, value) { this[name] = value; }
+  setAttribute(name, value) { this[name] = value; }
   querySelector(selector) {
     this.selected ??= new Map();
     if (!this.selected.has(selector)) this.selected.set(selector, new FakeNode('div'));
@@ -412,6 +413,7 @@ class FakeNode {
   constructor(tag) {
     this.tagName = tag; this.children = []; this.parent = null; this.own = "";
     this.classes = []; this.listeners = {}; this.scrollTop = 0; this.clientHeight = 100; this.hidden = false;
+    this.style = {};
     this.classList = {
       add: (...names) => this.classes.push(...names),
       toggle: (name, on) => {
@@ -444,6 +446,7 @@ class FakeNode {
 
 function page() {
   const nodes = new Map();
+  const timers = [];
   const document = {
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new FakeNode("div")); return nodes.get(id); },
     createElement(tag) { return new FakeNode(tag); },
@@ -452,10 +455,11 @@ function page() {
     location: { hash: "#token=synthetic-token", pathname: "/", search: "", protocol: "http:", host: "127.0.0.1:1" },
     history: { replaceState() {} }, WebSocket: FakeSocket, performance: { now: () => 0 },
     setInterval: () => 1, clearInterval() {}, addEventListener() {}, removeEventListener() {},
+    setTimeout(fn, delay) { timers.push({ fn, delay }); return timers.length; }, clearTimeout() {},
   };
   const session = mount(document, environment);
   session.socket.open();
-  return { session, socket: session.socket, element: (id) => document.getElementById(id) };
+  return { session, socket: session.socket, timers, element: (id) => document.getElementById(id) };
 }
 
 const said = (text, stream = "") => ({ stream, runs: [{ text, bold: false, monospace: false, preset: null }],
@@ -477,6 +481,57 @@ test("evicting lines that own no Story node does not take Story paragraphs with 
   socket.message(update(snapshot, { lines: Array.from({ length: 10 }, (_, i) => said(`new ${i}`)) }));
   assert.equal(story.children.length, MAX_STORY_LINES, "990 retained + 10 new, one paragraph each");
   assert.equal(story.children[0].textContent, "kept 0", "the oldest retained line is still on screen");
+});
+
+test("a trigger's paint is drawn, and paint that is not #rrggbb refuses the message", () => {
+  // plan/45: the session resolves a trigger's look into `color` and
+  // `background` on each run; the page only lays them on.
+  const { socket, element } = page();
+  const snapshot = readySnapshot();
+  const painted = said("You are stunned!");
+  painted.runs = [
+    { text: "You are ", bold: false, monospace: false, preset: null },
+    { text: "stunned", bold: true, monospace: false, preset: null, color: "#ff4040", background: "#000080" },
+    { text: "!", bold: false, monospace: false, preset: null },
+  ];
+  snapshot.story = [painted];
+  socket.message(snapshot);
+  const spans = element("story-output").children[0].children;
+  assert.equal(spans.length, 3);
+  assert.deepEqual(spans[1].style, { color: "#ff4040", backgroundColor: "#000080" });
+  assert.deepEqual(spans[0].style, {}, "an unpainted run gets no style");
+
+  // Anything but the exact form is refused: it would otherwise reach a style.
+  for (const color of ["red", "#FF4040", "#ff404", "url(x)", 7]) {
+    const { session, socket: fresh } = setup();
+    const bad = readySnapshot();
+    bad.story = [{ ...said("x"), runs: [{ text: "x", bold: false, monospace: false, preset: null, color }] }];
+    fresh.message(bad);
+    assert.equal(session.state.connection, "protocol-error", String(color));
+  }
+});
+
+test("a player's name is drawn as a trigger painted it, and bad paint refuses the view", () => {
+  // plan/45 Stage 7: the room window's names take the triggers' looks.
+  const { socket, element } = page();
+  const snapshot = readySnapshot();
+  snapshot.view.room.players = [
+    { id: "-1", noun: "Maravel", text: "Maravel", status: "sitting",
+      painted: [{ text: "Maravel", bold: false, monospace: false, preset: null, color: "#ecc013" }] },
+    { id: "-2", noun: "Orsen", text: "Orsen", status: null },
+  ];
+  socket.message(snapshot);
+  const list = element("room-players");
+  assert.equal(list.textContent, "Maravel (sitting), Orsen");
+  assert.deepEqual(list.children[0].style, { color: "#ecc013" }, "the painted name");
+  assert.deepEqual(list.children.at(-1).style, {}, "a name no trigger painted");
+
+  const { session, socket: fresh } = setup();
+  const bad = readySnapshot();
+  bad.view.room.players = [{ id: "-1", noun: "M", text: "M", status: null,
+    painted: [{ text: "M", bold: false, monospace: false, preset: null, color: "red" }] }];
+  fresh.message(bad);
+  assert.equal(session.state.connection, "protocol-error");
 });
 
 test("a stream pane keeps the reader's place when its own lines have not changed", () => {
@@ -545,6 +600,16 @@ test("a card says what is unknown, and shows roundtime only while it runs", () =
   idle.roundtime.remaining_seconds = 0;
   idle.room = null;
   assert.equal(cardSummary(idle), "HP ? · MP ? · SP ? · Sp ?");
+});
+
+test("a card says who a character leads or follows", () => {
+  const leading = card("0", "Ashryn");
+  leading.roundtime.remaining_seconds = 0;
+  leading.room = null;
+  leading.group = { leader: null, members: ["Kiyna", "Dicate"] };
+  assert.equal(cardSummary(leading), "HP ? · MP ? · SP ? · Sp ? · leading Kiyna, Dicate");
+  const following = { ...leading, group: { leader: "Ashryn", members: [] } };
+  assert.equal(cardSummary(following), "HP ? · MP ? · SP ? · Sp ? · following Ashryn");
 });
 
 test("a malformed session list is a protocol error, not a partial hub", () => {
@@ -636,4 +701,40 @@ test("the hub shuts Hydra down after asking, and then stops reconnecting", () =>
   assert.equal(session.state.connection, "shut-down");
   assert.equal(session.socket, null);
   assert.equal(element("connection-status").textContent, "Hydra has shut down");
+});
+
+test("a trigger's banner shows a while, the newest few, and only on its own generation", () => {
+  // plan/45 Stage 3: the session applied the trigger's cooldown; the page
+  // shows each banner for ALERT_MS, at most MAX_ALERTS at once.
+  const { session, socket, timers } = setup();
+  const snapshot = readySnapshot();
+  socket.message(snapshot);
+  const alert = (text, generation = snapshot.generation) => ({ kind: "alert", version: 1,
+    session: snapshot.session, generation, text });
+  socket.message(alert("stale", String(BigInt(snapshot.generation) + 1n)));
+  assert.deepEqual(session.state.alerts, [], "another generation's banner is not shown");
+  for (let i = 0; i < MAX_ALERTS + 2; i += 1) socket.message(alert(`banner ${i}`));
+  assert.deepEqual(session.state.alerts.map((shown) => shown.text),
+    Array.from({ length: MAX_ALERTS }, (_, i) => `banner ${i + 2}`), "the newest are kept");
+  const expiring = timers.filter((timer) => timer.delay === ALERT_MS);
+  assert.equal(expiring.length, MAX_ALERTS + 2);
+  for (const timer of expiring) timer.fn();
+  assert.deepEqual(session.state.alerts, [], "each goes when its time is up");
+  socket.message({ ...alert("x"), text: 5 });
+  assert.equal(session.state.connection, "protocol-error", "a banner that is not text refuses the message");
+});
+
+test("a banner is drawn as text, never as markup", () => {
+  const { socket, element, timers } = page();
+  const snapshot = readySnapshot();
+  socket.message(snapshot);
+  const box = element("alerts");
+  assert.equal(box.hidden, true);
+  socket.message({ kind: "alert", version: 1, session: snapshot.session, generation: snapshot.generation,
+    text: "<b>Dicate</b> whispers" });
+  assert.equal(box.hidden, false);
+  assert.equal(box.children.length, 1);
+  assert.equal(box.children[0].textContent, "<b>Dicate</b> whispers");
+  for (const timer of timers.filter((timer) => timer.delay === ALERT_MS)) timer.fn();
+  assert.equal(box.hidden, true);
 });

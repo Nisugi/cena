@@ -23,21 +23,26 @@
 //! bigshot has twenty waits on its followers and none ends (`plan/39` §0e).
 //! Each wait these rules imply is [`Muster`]'s, and it ends at
 //! [`Settings::lost_wait`] after it began (`plan/12` §5.5): a member lost to
-//! a dropped connection is then handed over, one walking over is fetched,
+//! a dropped connection is then taken home if it still stands in the
+//! leader's room, else handed over; one walking over is fetched,
 //! and one that still cannot move sends the group to rest as soon as it can
 //! ([`Muster::Overdue`]). The rest merge's hold for a stunned member is the
 //! same member's [`Muster::Hold`], so it has one deadline, not two.
 
+pub mod board;
 pub mod looter;
 pub mod muster;
+pub mod party;
 pub mod report;
 pub mod rest;
 pub mod settings;
 pub mod successor;
 
+pub use board::{Board, Boards, Place};
 pub use looter::looter;
-pub use muster::{Muster, muster, recoverer};
-pub use report::{Hindrance, Leading, Report, Role, role};
+pub use muster::{Muster, Standing, muster, recoverer};
+pub use party::{Party, hindrance, hindrance_of, in_group, standing};
+pub use report::{Hindrance, Leading, Report, Role, Rooms, role};
 pub use rest::{PrepOrder, RestCall, all_dropped, prep_order, should_rest, unready};
 pub use settings::{FriedTrigger, LOST_WAIT, Settings, looter_pattern};
 pub use successor::successor;

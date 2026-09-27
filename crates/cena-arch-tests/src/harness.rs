@@ -37,9 +37,19 @@ use std::process::Command;
 /// The workspace root. `CARGO_MANIFEST_DIR` is this crate's directory, which
 /// in a workspace is NOT the root — the trap Vellum never hit, being one
 /// crate (`plan/05:200-203`).
+///
+/// **Read when the tests run, not when this library was built.** `env!` fixes
+/// the path at build time, and a build reused from another checkout scans
+/// that checkout: MEASURED 2026-09-27, the main tree's tests were scanning
+/// `C:\gemstone\cena`, an older clone, and passing, while this tree broke
+/// three rules (a process global, split parents with no cap, an unreviewed
+/// handle). `cargo test` sets `CARGO_MANIFEST_DIR` for the process it runs, so
+/// that is the tree under test; the built-in path is the fallback for a test
+/// binary run by hand.
 pub fn workspace_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent() // crates/
+    let here = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")), PathBuf::from);
+    here.parent() // crates/
         .and_then(Path::parent) // workspace root
         .expect("cena-arch-tests must live at <root>/crates/cena-arch-tests")
         .to_path_buf()

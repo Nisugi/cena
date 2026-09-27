@@ -11,6 +11,26 @@ impl Hunt {
     /// The target: the current one while it is still here and worth
     /// attacking, else the best by the profile's order.
     pub(super) fn choose_target(&mut self, state: &GameState) -> Option<i64> {
+        // A follower takes its leader's target while it stands
+        // (`bigshot.lic:10145-10150`), with its own routine for it.
+        let assist = self
+            .leader_target()
+            .filter(|leader| self.target != Some(*leader))
+            .and_then(|leader| {
+                let creature = self.fightable(state).find(|c| c.id == leader)?;
+                let routine = self
+                    .rank(creature)
+                    .map_or_else(|| "a".to_owned(), |(_, target)| target.routine.clone());
+                Some((leader, routine))
+            });
+        if let Some((leader, routine)) = assist {
+            self.target = Some(leader);
+            self.aiming.reset();
+            self.routine = routine;
+            self.cursor = 0;
+            self.queue.clear();
+            return Some(leader);
+        }
         if let Some(current) = self.target
             && let Some(here) = self
                 .fightable(state)

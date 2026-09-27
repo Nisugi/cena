@@ -71,10 +71,44 @@ impl HealProfile {
     }
 }
 
+/// Every setting, in the struct's order: what `;heal show` lists, the ones
+/// not set among them.
+pub const KEYS: &[&str] = &[
+    "container",
+    "skip_scars",
+    "potions",
+    "yabathilium",
+    "blood_only",
+    "buy_missing",
+    "stock",
+    "split_blood",
+    "deposit_coins",
+    "distiller",
+];
+
 /// The character's heal profile: `<data>/hunt/heal/<instance>_<character>.toml`.
 /// `None` when the names cannot be a file name.
 #[must_use]
 pub fn path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
     let file = chain::file_name(&format!("{instance}_{character}"))?;
     Some(dir.join("hunt").join("heal").join(format!("{file}.toml")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{HealProfile, KEYS};
+
+    /// `KEYS` is every field, in order: a field added to the struct and not
+    /// here would never be listed by `;heal show`.
+    #[test]
+    fn keys_are_every_setting() {
+        let every = HealProfile {
+            stock: Some(50),
+            distiller: Some(true),
+            ..HealProfile::default()
+        };
+        let table = toml::Table::try_from(&every).unwrap();
+        let keys: Vec<&str> = table.keys().map(String::as_str).collect();
+        assert_eq!(keys, KEYS);
+    }
 }

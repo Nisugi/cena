@@ -49,6 +49,7 @@ const BOOKKEEPING: &[&str] = &["profile_current", "save_profile_name", "notes"];
 /// The catch-all patterns bigshot profiles use for "any creature".
 const ANY: &[&str] = &["(?:.+?)", "(?:.+)", "(?:.*)", ".+?", ".+", ".*"];
 
+mod group;
 mod rest;
 mod words;
 
@@ -114,6 +115,7 @@ pub fn import(name: &str, yaml_text: &str) -> Result<Import, String> {
     job.loot_flee_wander();
     job.targets();
     job.routines();
+    job.group();
     for (key, value) in job.source.left() {
         job.notes
             .push(format!("not imported: {key} = {}", shorten(&value)));
@@ -479,10 +481,12 @@ impl Job {
         if self.profile.sequences.contains_key(name) {
             return;
         }
-        self.profile.sequences.insert(name.to_owned(), Vec::new());
+        self.profile
+            .sequences
+            .insert(name.to_owned(), super::profile::Sequence::default());
         self.note(format!(
             "sequence `{name}` stands in for `script {name}`: bigshot ran a Lich script, which Hydra cannot read. \
-             Write its steps under [sequences] {name}; until then the routine skips it"
+             Write its steps with `hunt set <profile> sequences.{name}.steps [...]`, and its guards with `sequences.{name}.when`; until then the routine skips it"
         ));
     }
 }

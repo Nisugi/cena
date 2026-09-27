@@ -56,6 +56,7 @@ pub mod experience_report;
 pub mod injured;
 pub mod profile;
 pub mod psm;
+pub mod shadow;
 pub mod skills;
 pub mod snapshot;
 pub mod spellsong;
@@ -709,6 +710,24 @@ impl Character {
             if let Some(charges) = standing::covert_arts_line(&text) {
                 changed |= self.standing.covert_arts_charges != Some(charges);
                 self.standing.covert_arts_charges = Some(charges);
+            }
+            if let Some(said) = shadow::line(&text) {
+                // `Level 100`, verbatim: the number is the last word.
+                let level = self
+                    .experience
+                    .level
+                    .as_deref()
+                    .and_then(|label| label.split_whitespace().last()?.parse::<u16>().ok());
+                let skills = &self.skills;
+                let ranks = |kind| skills.ranks(kind).unwrap_or(0);
+                changed |= self.standing.apply_shadow(said, |mana| {
+                    shadow::essences_for(
+                        mana,
+                        level.unwrap_or(0),
+                        ranks(skills::SkillKind::ElementalManaControl),
+                        ranks(skills::SkillKind::SpiritManaControl),
+                    )
+                });
             }
         }
 

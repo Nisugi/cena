@@ -23,18 +23,18 @@
 //! where a failure is visible as `None` rather than defaulting to level 0 —
 //! which would silently give every bard the shortest possible song.
 //!
-//! # Where this deliberately differs
+//! # Where the other two went
 //!
-//! `Spellsong.timeleft` (`spellsong.rb:26`) reads a process-global
-//! `@@renewed` timestamp that a *script* sets when it renews. That is not a
-//! fact about the character — it is bookkeeping owned by whoever is doing the
-//! renewing — so it belongs to the behavior at M6, not here. What lives here
-//! is [`Spellsong::duration`], the thing `timeleft` is computed *from*.
+//! `Spellsong.timeleft` and `renew_cost` (`spellsong.rb:26`, `:60`) read the
+//! effects list and the spell table, which a character alone does not hold,
+//! so they are [`GameState::spellsong_timeleft`] and
+//! [`GameState::spellsong_renew_cost`] (`state/spell_time.rs`). `timeleft`
+//! there reads the game's own time left on an active song rather than a
+//! timestamp a script sets, which is what Lich's `sync` re-aligns its clock
+//! to anyway.
 //!
-//! `renew_cost` (`spellsong.rb:60`) is likewise deferred: it sums
-//! `song.renew_cost` over nine spell numbers, which needs the spell table
-//! (`common/spell.rb`, 954 lines) that Cena has not ported. The per-song costs
-//! that are plain constants are here; the summing is not.
+//! [`GameState::spellsong_timeleft`]: crate::state::GameState::spellsong_timeleft
+//! [`GameState::spellsong_renew_cost`]: crate::state::GameState::spellsong_renew_cost
 
 use crate::state::character::skills::{SkillKind, SkillSet};
 

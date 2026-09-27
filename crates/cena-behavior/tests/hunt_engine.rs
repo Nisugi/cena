@@ -591,11 +591,19 @@ fn the_rest_cycle_end_to_end() {
         Said::Wait(5),
         "mind still above 90"
     );
+    // Why it waits, with the numbers, for a hunt panel (`plan/47` step 8).
+    assert_eq!(hunt.waiting(), Some("mind 100%, wants 90% or less"));
     state.character.experience.mind_percent = Some(80);
     assert_eq!(
         hunt.tick(&state, at_rest, Some(1_200)),
         Said::Wait(5),
         "mana unknown keeps resting"
+    );
+    assert!(
+        hunt.waiting()
+            .is_some_and(|why| why.starts_with("mana not yet known, wants ")),
+        "{:?}",
+        hunt.waiting()
     );
     state.apply(&Frame::Prompt {
         time: "1300".into(),
@@ -615,6 +623,7 @@ fn the_rest_cycle_end_to_end() {
         Said::Walk(RoomId(10))
     );
     assert_eq!(hunt.phase(), Phase::Returning);
+    assert_eq!(hunt.waiting(), None, "rested: nothing to wait for");
 
     state.room.id = Some("10".to_owned());
     assert_eq!(

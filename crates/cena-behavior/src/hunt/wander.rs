@@ -9,6 +9,7 @@ use cena_session::GameState;
 use super::engine::Hunt;
 use super::said::{Ending, Here, Phase, Said};
 use super::targets::listed;
+use crate::group::Role;
 
 impl Hunt {
     // --- flee ---------------------------------------------------------------
@@ -20,7 +21,8 @@ impl Hunt {
         here: Here<'_>,
         now: Option<u32>,
     ) -> Option<Said> {
-        if self.phase != Phase::Hunting || self.quick {
+        // A follower goes where its leader is (`hunt/party.rs`).
+        if self.phase != Phase::Hunting || self.quick || self.role() == Some(Role::Follow) {
             return None;
         }
         let flee = &self.profile.flee;
@@ -59,8 +61,12 @@ impl Hunt {
         // Unknown who is here: stay until the game says.
         let stay = self.fightable(state).next().is_some()
             && (self.held.is_none() && !self.in_sanctuary() || self.may_fight());
-        if self.phase != Phase::Hunting || stay {
+        if self.phase != Phase::Hunting || stay || self.role() == Some(Role::Follow) {
             return None;
+        }
+        // A leader waits for a member it is holding for, and for the looter.
+        if self.grouping.holding || self.corpse_waiting(state, now) {
+            return Some(Said::Wait(1));
         }
         if self.quick {
             return Some(Said::Done(Ending::Cleared));
@@ -73,6 +79,9 @@ impl Hunt {
         }
         if let Some(line) = Self::stance_for(self.profile.stance.wander.as_deref(), state) {
             return Some(Said::Send { line, target: None });
+        }
+        if let Some(said) = self.final_loot() {
+            return Some(said);
         }
         let to = self.next_room(here, now)?;
         Some(Said::Walk(to))

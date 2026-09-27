@@ -38,22 +38,30 @@
 //! what the watchdog preempts.
 
 mod errands;
+mod fold;
 mod loot;
+mod party;
 mod selling;
 mod walk;
 
+use fold::fold_into;
+
+use std::sync::Arc;
 use std::time::Duration;
 
 use cena_map::{Map, Origin as Whence, RoomId};
 use cena_session::{
-    AuthorityToken, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind, Origin, Outcome,
+    AuthorityToken, CommandId, Frame, GameState, Gate, Notice, NoticeKind, Origin, Outcome,
     Refusal, SessionHandle, Snapshot, State,
 };
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio_util::sync::CancellationToken;
 
+use self::party::{Membership, Seen};
 use super::engine::{Ending, Here, Hunt, Said};
+use super::report::{self, Reports, Status};
 use crate::error::BehaviorError;
+use crate::group::{Boards, Place};
 use crate::loot::Memory;
 use crate::travel::{Heard, TravelNotes, room_of};
 use crate::watchdog::Heartbeat;
@@ -102,6 +110,42 @@ pub async fn hunt(
     wrote: impl FnMut(&TravelNotes) + Send,
     learned: impl FnMut(&[String]) + Send,
 ) -> HuntEnd {
+    Box::pin(hunt_in(
+        handle,
+        cancel,
+        next_id,
+        token,
+        joined,
+        map,
+        machine,
+        heartbeat,
+        notes,
+        wrote,
+        learned,
+        None,
+        &Reports::default(),
+    ))
+    .await
+}
+
+/// [`hunt`], able to hunt in a group: the member takes its [`Place`] on
+/// the boards, and reads its role off the game's group (`plan/39` §5).
+#[allow(clippy::too_many_arguments)]
+pub async fn hunt_in(
+    handle: &SessionHandle,
+    cancel: &CancellationToken,
+    next_id: impl FnMut() -> CommandId,
+    token: AuthorityToken,
+    joined: (Snapshot, Heard),
+    map: &Map,
+    machine: Hunt,
+    heartbeat: &Heartbeat,
+    notes: TravelNotes,
+    wrote: impl FnMut(&TravelNotes) + Send,
+    learned: impl FnMut(&[String]) + Send,
+    group: Option<(Arc<Boards>, Place)>,
+    reports: &Reports,
+) -> HuntEnd {
     let (snapshot, events) = joined;
     let hunting_map = match super::setup::hunting_map(machine.profile(), map) {
         Ok(map) => map,
@@ -142,8 +186,11 @@ pub async fn hunt(
         transcript: String::new(),
         line: String::new(),
         down: false,
+        membership: group.map(|(boards, place)| Membership::new(boards, place)),
+        reports,
     };
     let end = driver.run(heartbeat).await;
+    driver.leave_party(end).await;
     let text = match end {
         HuntEnd::Finished(ending) => format!("Hunt: over: {ending}."),
         HuntEnd::Stopped(BehaviorError::Cancelled) => "Hunt: stopped.".to_owned(),
@@ -186,6 +233,10 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     /// The connection dropped and the session is reconnecting: the hunt
     /// waits, holding its authority (SE-4 (c)), until the session is ready.
     down: bool,
+    /// Its place in a group, when it can hunt in one (`drive/party.rs`).
+    membership: Option<Membership>,
+    /// Where it says what it is doing each turn (`hunt/report.rs`).
+    reports: &'a Reports,
 }
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
@@ -216,6 +267,16 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 .and_then(|room| self.map.room(room))
                 .map(|room| room.meta.clone())
                 .unwrap_or_default();
+            match self.see_party(here) {
+                Seen::Go => {}
+                Seen::Say(line) => {
+                    if let Err(end) = self.send(line, None).await {
+                        return end;
+                    }
+                    continue;
+                }
+                Seen::Over(end) => return end,
+            }
             let incidents = self.state.take_incidents();
             if !incidents.is_empty() {
                 self.machine.incidents(&incidents);
@@ -230,9 +291,19 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 },
                 now,
             );
+            self.publish(here, State::Ready);
+            self.report(&said);
             for note in self.machine.take_notes() {
                 self.handle
                     .say(Notice::line(NoticeKind::Info, format!("Hunt: {note}")));
+            }
+            // What the tick itself wants in front of the player (a dead
+            // member nobody can carry out), before a hunt that ends with it.
+            for alert in self.machine.take_alerts() {
+                self.handle.say(Notice::line(
+                    NoticeKind::Warn,
+                    format!("Hunt alert: {alert}"),
+                ));
             }
             let step = match said {
                 Said::Nothing => self.hold(BEAT).await,
@@ -263,6 +334,27 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         }
     }
 
+    /// Say what this turn does, for a hunt panel: the creature fought by
+    /// what the room calls it, else by its id.
+    fn report(&self, said: &Said) {
+        let target = self.machine.target().map(|id| {
+            let id_text = id.to_string();
+            self.state
+                .room
+                .creatures
+                .iter()
+                .find(|creature| creature.id == id_text)
+                .map_or_else(|| format!("#{id}"), |creature| creature.text.clone())
+        });
+        self.reports.tell(Some(Status {
+            profile: String::new(),
+            phase: self.machine.phase().to_string(),
+            doing: report::doing(said),
+            target,
+            waiting: self.machine.waiting().map(str::to_owned),
+        }));
+    }
+
     /// Where the character is, by the map: from the room the game names,
     /// else near where the hunt last was.
     fn locate(&mut self) -> Option<RoomId> {
@@ -284,58 +376,6 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Err(TryRecvError::Closed) => return Err(BehaviorError::Dead),
             }
         }
-    }
-
-    fn fold(&mut self, event: &Event) -> Result<(), BehaviorError> {
-        match event {
-            Event::StateChanged(State::Reconnecting) => self.link_lost(),
-            Event::StateChanged(State::Ready) if self.down => {
-                self.down = false;
-                self.handle.say(Notice::line(
-                    NoticeKind::Info,
-                    "Hunt: reconnected; hunting on.".to_owned(),
-                ));
-            }
-            _ => {}
-        }
-        if let Event::Frame(frame) = event
-            && let Frame::Text(text) = &**frame
-        {
-            if text.stream.is_empty() {
-                self.transcript.push_str(&text.content);
-                let now = self.state.game_time_now();
-                self.machine.heard(&text.content, now);
-            }
-            // The monitor reads whole lines, from every window.
-            self.line.push_str(&text.content);
-            if text.ends_line {
-                self.machine.watched(&self.line);
-                self.line.clear();
-                for alert in self.machine.take_alerts() {
-                    self.handle.say(Notice::line(
-                        NoticeKind::Warn,
-                        format!("Hunt alert: {alert}"),
-                    ));
-                }
-            }
-        }
-        fold_into(&mut self.state, event)
-    }
-
-    /// The connection dropped: what it made stale is forgotten, and the
-    /// hunt waits for the session to be ready again (`plan/30` §7: "a
-    /// reconnect mid-hunt keeps the hunt").
-    fn link_lost(&mut self) {
-        if self.down {
-            return;
-        }
-        self.down = true;
-        self.state.invalidate_for_reconnect();
-        self.machine.link_lost();
-        self.handle.say(Notice::line(
-            NoticeKind::Info,
-            "Hunt: the connection dropped; waiting for it to come back.".to_owned(),
-        ));
     }
 
     /// Fold events for up to `for_`, or until stopped.
@@ -396,24 +436,5 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             self.hold(BEAT).await?;
         }
         self.drain().map_err(HuntEnd::Stopped)
-    }
-}
-
-/// Fold one event into a state: a frame is applied; a reconnect invalidates
-/// what a reconnect invalidates and is waited out; a close ends the behavior.
-fn fold_into(state: &mut GameState, event: &Event) -> Result<(), BehaviorError> {
-    match event {
-        Event::Frame(frame) => {
-            state.apply(frame);
-            Ok(())
-        }
-        // A drop is waited out, holding the authority (SE-4 (c)); the
-        // driver marks it. Invalidating twice is harmless.
-        Event::StateChanged(State::Reconnecting) => {
-            state.invalidate_for_reconnect();
-            Ok(())
-        }
-        Event::StateChanged(State::Closed) => Err(BehaviorError::Dead),
-        _ => Ok(()),
     }
 }

@@ -71,6 +71,19 @@ impl Default for WaggleProfile {
     }
 }
 
+/// Every setting, in the struct's order: what `;waggle set` names when it
+/// refuses one.
+pub const KEYS: &[&str] = &[
+    "cast_list",
+    "start_at",
+    "stop_at",
+    "refreshable_min",
+    "multicast",
+    "reserve_mana",
+    "bail",
+    "skip_not_sharing",
+];
+
 /// The character's waggle profile: `<data>/hunt/waggle/<instance>_<character>.toml`.
 #[must_use]
 pub fn path(dir: &std::path::Path, instance: &str, character: &str) -> Option<std::path::PathBuf> {
@@ -86,6 +99,15 @@ impl WaggleProfile {
     /// Not TOML, or a key this does not know.
     pub fn parse(text: &str) -> Result<Self, String> {
         toml::from_str(text).map_err(|e| e.to_string())
+    }
+
+    /// The profile as a file's text.
+    ///
+    /// # Errors
+    ///
+    /// The profile cannot be written as TOML, which no field of it is.
+    pub fn to_toml(&self) -> Result<String, String> {
+        toml::to_string_pretty(self).map_err(|e| e.to_string())
     }
 }
 
@@ -467,4 +489,17 @@ fn max_multicast(state: &GameState, circle: u16) -> u32 {
         _ => 0,
     };
     total / 25 + 1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{KEYS, WaggleProfile};
+
+    /// `KEYS` is every field, in order.
+    #[test]
+    fn keys_are_every_setting() {
+        let table = toml::Table::try_from(WaggleProfile::default()).unwrap();
+        let keys: Vec<&str> = table.keys().map(String::as_str).collect();
+        assert_eq!(keys, KEYS);
+    }
 }

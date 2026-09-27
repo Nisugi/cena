@@ -246,6 +246,49 @@ impl SessionHandle {
         self.attendance.clone()
     }
 
+    /// A page is showing this session: hold what this returns for as long
+    /// as it is open. It counts as a person using the session only once
+    /// [`Self::let_pages_attend`] allows it (`command/attendance.rs`).
+    #[must_use]
+    pub fn watching(&self) -> super::attendance::Watching {
+        self.attendance.open_page()
+    }
+
+    /// Whether an open page counts as a person using the session, when the
+    /// connection is lost: off by default, the author's *"maybe it could be
+    /// an advanced option"* (`plan/29` §5b).
+    pub fn let_pages_attend(&self, on: bool) {
+        self.attendance.let_pages_attend(on);
+    }
+
+    /// `;sorter`: publish this session's container looks one line per
+    /// category, or as the game sent them (`cena_model::sorter`). Every
+    /// viewer gets what is published, and it holds across a reconnect; the
+    /// model and the player log keep the look whole either way.
+    pub fn sort_containers(&self, on: bool) {
+        self.events.sort_containers(on);
+    }
+
+    /// Whether this session's container looks are published sorted.
+    #[must_use]
+    pub fn sorts_containers(&self) -> bool {
+        self.events.sorts_containers()
+    }
+
+    /// This character's triggers (`plan/45`): each finished line is answered
+    /// with them before it is published, so every viewer, and a session
+    /// nobody watches, is given the same line. They hold across a reconnect;
+    /// the model and the player log keep the game's text.
+    pub fn set_triggers(&self, triggers: cena_model::trigger::Matcher) {
+        self.events.set_triggers(triggers);
+    }
+
+    /// The triggers each line is answered with.
+    #[must_use]
+    pub fn triggers(&self) -> std::sync::Arc<cena_model::trigger::Matcher> {
+        self.events.triggers()
+    }
+
     /// The slot this handle and all its clones read the player log from.
     pub(crate) fn log_slot(&self) -> crate::player_log::tap::Slot {
         std::sync::Arc::clone(&self.log)

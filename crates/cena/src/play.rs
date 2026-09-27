@@ -14,8 +14,9 @@
 //! two characters' story in one window is what `plan/29` §5a R2 rules out.
 //! Ctrl-C quits every session together.
 //!
-//! **The only run path** (`plan/30` §2): with no `--character`, `main` asks
-//! for one and runs it here.
+//! **The only run path** (`plan/30` §2): `--headless` or `--web` with no
+//! `--character` asks for one at the terminal; the window (`gui.rs`) starts
+//! with none and runs the same table.
 
 use std::collections::BTreeMap;
 use std::io::IsTerminal;
@@ -25,20 +26,33 @@ use std::time::Duration;
 
 use cena_host::{Host, Who, stop_all};
 use cena_session::{Event, SessionHandle, SessionId, SessionObserver, State, StoppedBecause};
-use cena_web::HubRequest;
+use cena_ui::{HubControl, HubRequest};
 
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
 use crate::{
     batch, combat, connector, frontend, interrupt, learn, loot, roster, secrets, setup, sorter,
-    travel, watch,
+    travel, triggers, watch,
 };
 
 /// The characters named with `--character`, in order. Empty means none was
 /// named, and `main` asks for one at the prompt.
 pub(crate) fn characters() -> Vec<String> {
     characters_in(std::env::args().skip(1))
+}
+
+/// Whether this run has no window: `--headless`, or `--web`, whose browser
+/// pages are the frontend (the author: *"keep despana like it is"*,
+/// `plan/47` §1). Anything else opens the window.
+pub(crate) fn headless() -> bool {
+    headless_in(std::env::args().skip(1))
+}
+
+/// [`headless`], over any argument list, so it can be tested.
+fn headless_in(args: impl IntoIterator<Item = String>) -> bool {
+    args.into_iter()
+        .any(|arg| arg == "--headless" || arg == "--web")
 }
 
 /// [`characters`], over any argument list, so it can be tested.
@@ -74,18 +88,32 @@ struct Started {
 /// characters while Hydra runs (`plan/29` step 5c).
 struct Table {
     map: crate::map_context::ConfiguredMap,
-    host: tokio::sync::Mutex<Host>,
+    /// Behind an `Arc` so each character's `;to` and `;all` can look it up
+    /// (`relay.rs`), holding it weakly.
+    host: Arc<tokio::sync::Mutex<Host>>,
     started: std::sync::Mutex<BTreeMap<SessionId, Started>>,
     web: Option<frontend::Frontend>,
+    /// The window's sessions, when this run has a window (`gui.rs`).
+    gui: Option<cena_gui::Sessions>,
+    /// What every character's hunt shares: the groups' boards and the
+    /// characters' seats (`crate::hunt::Party`).
+    party: crate::hunt::Party,
     dir: PathBuf,
     pin: PathBuf,
     turn: Arc<std::sync::Mutex<()>>,
     /// The Ctrl-C token: the hub's Shut down cancels it, and the run ends by
     /// the one orderly path either way.
     interrupt: tokio_util::sync::CancellationToken,
+    /// The desk every character's sounds and notifications go to
+    /// (`attention.rs`): one, so a thing several see sounds once.
+    attention: std::sync::mpsc::Sender<crate::attention::Called>,
+    /// Word of each change to the one triggers file, so every character
+    /// reads it again (`triggers::Changes`).
+    changes: triggers::Changes,
 }
 
-/// Run every named character until Ctrl-C, or until all have stopped.
+/// Run every named character, with no window, until Ctrl-C or until all
+/// have stopped.
 ///
 /// # Errors
 ///
@@ -93,22 +121,51 @@ struct Table {
 /// nobody at the terminal, or no password -- before anything connected; or
 /// every session's login was refused.
 pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let logins = settle(&names)?;
+    serve(logins, None, interrupt::on_ctrl_c()).await?;
+    Ok(())
+}
+
+/// Settle every named character's login, in order, before anything
+/// connects: from the roster and the ladder, or asked for at the terminal.
+///
+/// # Errors
+///
+/// A login could not be settled: a character unknown to the roster with
+/// nobody at the terminal, or no password.
+pub(crate) fn settle(names: &[String]) -> std::io::Result<Vec<Typed>> {
     let dir = cena_session::character_store::data_dir();
-    let mut logins = Vec::new();
-    for name in &names {
-        logins.push(login_for(&dir, name)?);
-    }
+    names.iter().map(|name| login_for(&dir, name)).collect()
+}
+
+/// Put `logins` on the session table and run it until `interrupt` is
+/// cancelled -- or, with no frontend to start another, until every
+/// character has stopped -- then quit them all. The window, when there is
+/// one, is `gui`, and is closed at the end.
+///
+/// # Errors
+///
+/// Every session's login was refused.
+pub(crate) async fn serve(
+    logins: Vec<Typed>,
+    gui: Option<cena_gui::Sessions>,
+    interrupt: tokio_util::sync::CancellationToken,
+) -> Result<(), String> {
+    let dir = cena_session::character_store::data_dir();
     eprintln!();
-    let interrupt = interrupt::on_ctrl_c();
     let map = crate::map_context::load();
     let table = Arc::new(Table {
-        host: tokio::sync::Mutex::new(Host::new()),
+        host: Arc::new(tokio::sync::Mutex::new(Host::new())),
         started: std::sync::Mutex::default(),
         // One listener for every character, each with its own page; each
         // page's link is printed when its character is `Ready`.
         web: frontend::Frontend::open(&map).await,
+        party: crate::hunt::Party::new(gui.clone()),
+        gui,
         map,
         pin: dir.join(cena_platform::PIN_FILENAME),
+        attention: crate::attention::start(&dir),
+        changes: triggers::Changes::new(),
         dir,
         turn: Arc::default(),
         interrupt: interrupt.clone(),
@@ -118,22 +175,28 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
             eprintln!("{e}");
         }
     }
+    // Both hubs are answered the same way, by the table.
+    let answering = Arc::clone(&table);
+    let control: HubControl = Arc::new(move |request| {
+        let table = Arc::clone(&answering);
+        Box::pin(async move { table.answer(request).await })
+    });
     if let Some(web) = &table.web {
         web.announce_hub();
-        let answering = Arc::clone(&table);
-        web.sessions().control(Arc::new(move |request| {
-            let table = Arc::clone(&answering);
-            Box::pin(async move { table.answer(request).await })
-        }));
+        web.sessions().control(Arc::clone(&control));
+    }
+    if let Some(gui) = &table.gui {
+        gui.control(control);
     }
     table.offer().await;
 
     eprintln!("[play] running; Ctrl-C quits every character");
     // With the hub up, no character left running is not the end: the hub can
     // start one again, and quitting the last from it shut Hydra down under
-    // the page (author's live run, 2026-09-24). Only Ctrl-C ends a --web run.
-    // Without it, nothing could start another, so all stopped is the end.
-    if table.web.is_some() {
+    // the page (author's live run, 2026-09-24). Only Ctrl-C ends a --web run,
+    // and a windowed one ends when its window closes too (`gui.rs`).
+    // Without either, nothing could start another, so all stopped is the end.
+    if table.web.is_some() || table.gui.is_some() {
         interrupt.cancelled().await;
     } else {
         tokio::select! {
@@ -146,8 +209,11 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
     }
     eprintln!("\n[disconnect] quitting every session");
     let (stopped, refused) = Box::pin(table.stop_everything()).await;
+    if let Some(gui) = &table.gui {
+        gui.close();
+    }
     if refused > 0 && refused == stopped {
-        return Err("every login was refused".into());
+        return Err("every login was refused".to_owned());
     }
     Ok(())
 }
@@ -172,23 +238,33 @@ impl Table {
                 // login, and the sync hears the store's report mid-burst.
                 let (_, events) = session.subscribe();
                 let (_, learning) = session.subscribe();
+                let (_, calls) = session.subscribe();
+                let (_, acts) = session.subscribe();
                 let (session, records, player) =
                     setup::attach(session, &character, &game, &account);
-                attached = Some((events, learning, records, player));
+                attached = Some((events, learning, calls, acts, records, player));
                 session
             })
             .map_err(|e| format!("[{character}] not started: {e}"))?;
-        let (Some((events, learning, records, player)), Some(hosted)) = (attached, host.get(id))
+        let (Some((events, learning, calls, acts, records, player)), Some(hosted)) =
+            (attached, host.get(id))
         else {
             return Err(format!(
                 "[{character}] not started: it left the table at once"
             ));
         };
         let commands = Commands::install(&hosted.handle);
-        sorter::open(
+        crate::relay::open(&hosted.handle, &commands, self.characters());
+        sorter::open(&hosted.handle, &commands);
+        // Following before the first read, so no change falls between.
+        let following = self.changes.follow();
+        triggers::open(&hosted.handle, &self.dir, &character);
+        triggers::command(
             &hosted.handle,
             &commands,
-            self.web.as_ref().map(|web| web.sessions().clone()),
+            self.dir.clone(),
+            character.clone(),
+            self.changes.clone(),
         );
         batch::open(&hosted.handle, &hosted.observer, &commands);
         // The ledger's reports need only the database's path, known now.
@@ -206,7 +282,25 @@ impl Table {
                 hosted.handle.clone(),
             );
         }
+        if let Some(gui) = &self.gui {
+            gui.attach(&character, hosted.observer.clone(), &hosted.handle);
+        }
         let watcher = tokio::spawn(watch::watch_events(events, format!("[{character}]")));
+        tokio::spawn(crate::attention::forward(
+            calls,
+            character.clone(),
+            self.attention.clone(),
+        ));
+        // A trigger's send goes as if typed, through this character's
+        // command table (`plan/45` Stage 5), and another character's change
+        // to the triggers file is read again here.
+        tokio::spawn(triggers::run(
+            acts,
+            following,
+            hosted.handle.clone(),
+            self.dir.clone(),
+            character.clone(),
+        ));
         proven.on_ready(&hosted.observer, &self.turn);
         tokio::spawn(after_ready(
             hosted.handle.clone(),
@@ -215,6 +309,7 @@ impl Table {
             learning,
             format!("[{character}]"),
             self.map.clone(),
+            self.party.clone(),
         ));
         self.started
             .lock()
@@ -232,7 +327,8 @@ impl Table {
         Ok(id)
     }
 
-    /// Answer the hub page (`cena_web::HubRequest`), with one line for it.
+    /// Answer a hub (`cena_ui::HubRequest`), Despana's or the window's,
+    /// with one line for it.
     async fn answer(&self, request: HubRequest) -> String {
         let said = match request {
             HubRequest::Add(name) => match hub_login(&self.dir, &name) {
@@ -242,8 +338,8 @@ impl Table {
                 },
                 Err(e) => e,
             },
-            HubRequest::Remove(id) => self.remove(id).await,
-            HubRequest::Reconnect(id) => self.reconnect(id).await,
+            HubRequest::Remove(id) => self.remove(SessionId(id)).await,
+            HubRequest::Reconnect(id) => self.reconnect(SessionId(id)).await,
             HubRequest::Shutdown => {
                 eprintln!("[play] shut down from the hub");
                 self.interrupt.cancel();
@@ -298,12 +394,16 @@ impl Table {
         if let Some(web) = &self.web {
             web.detach(id);
         }
+        if let Some(gui) = &self.gui {
+            gui.detach(id);
+        }
         let end = hosted.stop().await;
         let one = self
             .started
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(&id)?;
+        self.party.unseat(&one.character);
         let named = (one.character.clone(), one.login.clone());
         // A character still in the process holds its logs open (`setup`'s
         // FLUSH_WAIT has why); the hub is not made to wait for that.
@@ -311,11 +411,13 @@ impl Table {
         Some(named)
     }
 
-    /// Tell the hub which characters it can add: in the roster, with a saved
+    /// Tell the hubs which characters they can add: in the roster, with a saved
     /// password, and not running. A name on two games is offered as
     /// `GAME:Name`.
     async fn offer(&self) {
-        let Some(web) = &self.web else { return };
+        if self.web.is_none() && self.gui.is_none() {
+            return;
+        }
         let running: Vec<String> = self
             .host
             .lock()
@@ -341,8 +443,33 @@ impl Table {
                     e.character.clone()
                 }
             })
-            .collect();
-        web.sessions().offer(available);
+            .collect::<Vec<String>>();
+        if let Some(web) = &self.web {
+            web.sessions().offer(available.clone());
+        }
+        if let Some(gui) = &self.gui {
+            gui.offer(available);
+        }
+    }
+
+    /// The characters running now, for a relay (`relay.rs`): looked up when
+    /// the relay is typed, through a weak hold, so a character's command
+    /// line never keeps the table alive.
+    fn characters(&self) -> crate::relay::Characters {
+        let host = Arc::downgrade(&self.host);
+        Arc::new(move || {
+            let host = host.clone();
+            Box::pin(async move {
+                let Some(host) = host.upgrade() else {
+                    return Vec::new();
+                };
+                let host = host.lock().await;
+                host.sessions()
+                    .filter(|(_, hosted)| hosted.is_running())
+                    .map(|(_, hosted)| (hosted.who.character.clone(), hosted.handle.clone()))
+                    .collect()
+            })
+        })
     }
 
     /// Resolves when no session on the table is still running.
@@ -435,12 +562,13 @@ async fn after_ready(
     mut learning: tokio::sync::broadcast::Receiver<Event>,
     who: String,
     map: crate::map_context::ConfiguredMap,
+    party: crate::hunt::Party,
 ) {
     let Some(stale) = learn::stale_at_ready(&mut learning).await else {
         return;
     };
     drop(learning);
-    travel::after_login(&handle, observer, &commands, &map).await;
+    travel::after_login(&handle, observer, &commands, &map, &party).await;
     learn::sync(&handle, &stale, &who).await;
 }
 
@@ -513,7 +641,7 @@ async fn until_ready(observer: &SessionObserver) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{characters_in, hub_login};
+    use super::{characters_in, headless_in, hub_login};
 
     fn args(line: &str) -> Vec<String> {
         line.split_whitespace().map(str::to_owned).collect()
@@ -541,6 +669,16 @@ mod tests {
             panic!("a character with no roster entry was started");
         };
         assert!(said.contains("command line"), "{said}");
+    }
+
+    /// Only `--headless` and `--web` keep the window shut; a character named
+    /// alone opens it with that character started (`plan/47` §6 item 2).
+    #[test]
+    fn the_window_opens_unless_headless_or_web() {
+        assert!(!headless_in(args("")));
+        assert!(!headless_in(args("--character Nisugi --record")));
+        assert!(headless_in(args("--character Nisugi --headless")));
+        assert!(headless_in(args("--web --character Nisugi")));
     }
 
     #[test]

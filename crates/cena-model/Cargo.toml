@@ -15,6 +15,11 @@ cena-protocol.workspace = true
 # comparison against RegexSet, and for why `fancy-regex` is NOT taken on for
 # the single lookahead pattern.
 regex = "1"
+# The trigger matcher's literals (`plan/45` section 4, `src/trigger/matcher.rs`):
+# one automaton for the literals where case matters and one for the rest,
+# searched once a line. Already compiled for `regex`, which depends on it, so
+# nothing new is built; the version is the one Cargo.lock already holds.
+aho-corasick = "1.1"
 
 [lints]
 workspace = true

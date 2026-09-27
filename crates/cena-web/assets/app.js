@@ -42,8 +42,29 @@ export function appendRuns(document, target, runs) {
     if (run.monospace) span.classList.add("text-mono");
     if (PRESETS.has(run.preset)) span.classList.add(PRESETS.get(run.preset));
     else if (run.preset) span.title = `Unmapped text preset: ${run.preset}`;
+    // A trigger's paint (`plan/45`), checked as `#rrggbb` by the transport.
+    // Set through the CSSOM, which the page's `style-src 'self'` allows; a
+    // style attribute would not be.
+    if (run.color) span.style.color = run.color;
+    if (run.background) span.style.backgroundColor = run.background;
     target.appendChild(span);
   }
+}
+
+// A room list: each entry's name -- as a trigger painted it, when one did
+// (`plan/45` Stage 7) -- and a player's status after it.
+function appendEntries(document, target, items) {
+  const piece = (value) => {
+    const span = document.createElement("span");
+    span.textContent = value;
+    target.appendChild(span);
+  };
+  items.forEach((item, index) => {
+    if (index > 0) piece(", ");
+    if (item.painted) appendRuns(document, target, item.painted);
+    else piece(item.text);
+    if (item.status) piece(` (${item.status})`);
+  });
 }
 
 export function lifecycleText(lifecycle) {
@@ -56,13 +77,19 @@ export function lifecycleText(lifecycle) {
   return `Game reconnecting${attempt}${delay}${lifecycle.detail ? ` — ${lifecycle.detail}` : ""}`;
 }
 
-// One line of a hub card: vitals as percents, roundtime while it runs, the room.
+// One line of a hub card: vitals as percents, roundtime while it runs, the room,
+// and who it leads or follows (plan/39).
 export function cardSummary(card) {
   const vital = (key, label) => `${label} ${card.vitals[key] == null ? "?" : `${card.vitals[key].percent}%`}`;
   const parts = [vital("health", "HP"), vital("mana", "MP"), vital("stamina", "SP"), vital("spirit", "Sp")];
   const remaining = card.roundtime.remaining_seconds;
   if (remaining != null && remaining > 0) parts.push(`RT ${remaining}s`);
   if (card.room) parts.push(card.room);
+  if (card.group) {
+    parts.push(card.group.leader == null
+      ? `leading ${card.group.members.join(", ")}`
+      : `following ${card.group.leader}`);
+  }
   return parts.join(" · ");
 }
 
@@ -342,8 +369,21 @@ export function mount(document, environment) {
     text("hub-note", note);
   }
 
+  // A trigger's banners, as text: the session keeps them only a while.
+  function renderAlerts(alerts) {
+    const box = element("alerts");
+    box.replaceChildren();
+    for (const alert of alerts) {
+      const node = document.createElement("p");
+      node.textContent = alert.text;
+      box.appendChild(node);
+    }
+    box.hidden = alerts.length === 0;
+  }
+
   function render(state, ready) {
     minimap.update(state);
+    renderAlerts(state.alerts);
     element("hub").hidden = state.hub === null;
     element("shell").classList.toggle("hub-mode", state.hub !== null);
     if (state.hub !== null) {
@@ -375,8 +415,11 @@ export function mount(document, environment) {
     text("room-exits", view?.room.exits?.join(" · ") || (view?.room.exits ? "None" : "Unknown"));
     for (const kind of ["creatures", "objects", "players"]) {
       const items = view?.room[kind];
-      text(`room-${kind}`, items?.map((item) => item.text + (item.status ? ` (${item.status})` : "")).join(", ")
-        || (items ? "None" : "Unknown"));
+      const list = element(`room-${kind}`);
+      if (items?.length) {
+        list.replaceChildren();
+        appendEntries(document, list, items);
+      } else list.textContent = items ? "None" : "Unknown";
     }
     const unknown = view?.unknown_tags || [];
     text("diagnostics-label", `Protocol diagnostics (${unknown.length})`);
@@ -416,15 +459,33 @@ export function mount(document, environment) {
   }
 
   const protocol = environment.location.protocol === "https:" ? "wss:" : "ws:";
+  // The page's own timers, so a banner's time on screen and a reconnect's
+  // wait run on the clock the page was given.
+  const timers = environment.setTimeout ? { schedule: environment.setTimeout,
+    cancel: environment.clearTimeout } : {};
   const session = new HydraSession({ url: `${protocol}//${environment.location.host}/ws`, token,
-    sessionId, onChange: render, WebSocketImpl: environment.WebSocket });
+    sessionId, onChange: render, WebSocketImpl: environment.WebSocket, ...timers });
   const setupLink = document.createElement('button');
   setupLink.textContent = 'Configure hunt (experimental)';
   setupLink.id = 'native-hunt-launch';
-  element('minimap').append(setupLink);
+  // Why the button did nothing, when it cannot open setup: a click that is
+  // silently ignored tells nobody anything (plan/44 Q02).
+  const setupNote = document.createElement('output');
+  setupNote.id = 'native-hunt-note';
+  setupNote.setAttribute('role', 'status');
+  element('minimap').append(setupLink, setupNote);
   setupLink.onclick = () => {
     const explorer = element('minimap').querySelector('[data-map-explorer]');
-    if (!session.state.session || !session.token || explorer.hidden) return;
+    setupNote.textContent = '';
+    if (!session.state.session || !session.token) {
+      setupNote.textContent = 'Not connected to the character yet; try again once it is.';
+      return;
+    }
+    if (!explorer || explorer.hidden) {
+      setupNote.textContent = 'The map has not placed this character yet (or no map is loaded: CENA_MAP). '
+        + 'Look or move, then try again. ;hunt help lists the commands meanwhile.';
+      return;
+    }
     const url = new URL(explorer.href, environment.location.href);
     const hash = new URLSearchParams(url.hash.slice(1));
     hash.set('setup_token', session.token); hash.set('setup_session', session.state.session);

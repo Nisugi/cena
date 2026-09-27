@@ -74,8 +74,9 @@ use super::ammo::Ammo;
 use super::bounty::BountyMode;
 use super::death::Mourning;
 use super::follow::{Follow, Resend};
-use super::guard::{Facts, Used};
+use super::guard::{Condition, Facts, Used};
 use super::monitor::Watch;
+use super::party::Grouping;
 use super::profile::{Profile, Step};
 use super::react::Reacting;
 use super::repeat::Repeats;
@@ -138,6 +139,9 @@ pub struct Hunt {
     pub(super) loot: Option<LootProfile>,
     /// A reason to rest the loot planner handed in, until the rest starts.
     pub(super) must_rest: Option<Why>,
+    /// Why this turn waits, with the numbers: set by the rest arm, cleared
+    /// each tick ([`Hunt::waiting`]).
+    pub(super) waiting: Option<String>,
     /// The current rest cycle uses field settings; escalation only goes to town.
     pub(super) field_rest: bool,
     /// The heal profile, when the character has one (`plan/36`).
@@ -211,6 +215,8 @@ pub struct Hunt {
     pub(super) follow: Follow,
     /// `;hunt <name> bounty`.
     pub(super) bounty_mode: BountyMode,
+    /// The group, when this hunt is in one ([`super::party`]).
+    pub(super) grouping: Grouping,
 }
 
 impl Hunt {
@@ -237,6 +243,7 @@ impl Hunt {
             seed,
             loot: None,
             must_rest: None,
+            waiting: None,
             field_rest: false,
             heal: None,
             heal_only: None,
@@ -272,6 +279,7 @@ impl Hunt {
             repeats: Repeats::default(),
             follow: Follow::default(),
             bounty_mode: BountyMode::default(),
+            grouping: Grouping::default(),
         }
     }
 
@@ -343,6 +351,13 @@ impl Hunt {
         self.target
     }
 
+    /// Why the hunt waits this turn, with the numbers, when it does: a
+    /// rest not yet over (`hunt/report.rs`).
+    #[must_use]
+    pub fn waiting(&self) -> Option<&str> {
+        self.waiting.as_deref()
+    }
+
     /// What the machine wants the player told, since it was last asked.
     pub fn take_notes(&mut self) -> Vec<String> {
         std::mem::take(&mut self.notes)
@@ -382,6 +397,7 @@ impl Hunt {
     /// One turn: what to do now, against `state` as it is, standing in
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
+        self.waiting = None;
         if let Some(said) = self.errand_line() {
             return said;
         }
@@ -408,6 +424,9 @@ impl Hunt {
             return said;
         }
         if let Some(said) = self.survival(state) {
+            return said;
+        }
+        if let Some(said) = self.group_arm(state, here, now) {
             return said;
         }
         if let Some(said) = self.rest(state, here) {
@@ -487,6 +506,10 @@ impl Hunt {
                 self.heard.rested_for_injury = false;
             }
         }
+        // Every member counts the kills it sees; only the looter loots.
+        if !self.loots_here() {
+            return None;
+        }
         let corpse = corpses
             .iter()
             .copied()
@@ -542,6 +565,9 @@ impl Hunt {
                 target: Some(target),
             });
         }
+        if let Some(said) = self.rally(state) {
+            return Some(said);
+        }
         self.next_step(state, here, target, now)
     }
 
@@ -568,7 +594,7 @@ impl Hunt {
         if let Some(said) = self.holding(state, now) {
             return Some(said);
         }
-        let steps = self.profile.routines.get(&self.routine)?.clone();
+        let steps = self.routine_steps(state)?;
         if steps.is_empty() {
             return None;
         }
@@ -583,15 +609,6 @@ impl Hunt {
             if step.held.is_some() {
                 continue;
             }
-            if let Some(sequence) = self.profile.sequences.get(&step.send) {
-                if sequence.is_empty() {
-                    continue;
-                }
-                let mut queued: VecDeque<Step> = sequence.iter().cloned().collect();
-                queued.append(&mut self.queue);
-                self.queue = queued;
-                continue;
-            }
             let key = step.to_string();
             let facts = Facts {
                 state,
@@ -600,7 +617,20 @@ impl Hunt {
                 used: Some(&self.used),
                 step: &key,
             };
-            if !step.when.iter().all(|c| c.holds(&facts) == Some(true)) {
+            let holds = |when: &[Condition]| when.iter().all(|c| c.holds(&facts) == Some(true));
+            // A sequence's guards, and the naming step's, are read once,
+            // before its first step: once it starts it is played out
+            // (`profile/sequence.rs`).
+            if let Some(sequence) = self.profile.sequences.get(&step.send) {
+                if sequence.steps.is_empty() || !holds(&step.when) || !holds(&sequence.when) {
+                    continue;
+                }
+                let mut queued: VecDeque<Step> = sequence.steps.iter().cloned().collect();
+                queued.append(&mut self.queue);
+                self.queue = queued;
+                continue;
+            }
+            if !holds(&step.when) {
                 continue;
             }
             if let Some(said) = self.waits_behind(&step.send, state, target, now) {

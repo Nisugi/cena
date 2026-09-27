@@ -1,154 +1,122 @@
-//! Assemble UI text fragments, independently of parser frame boundaries.
+//! One finished line, as the story lines a viewer draws.
+//!
+//! This used to assemble lines itself, frame by frame, and so it kept what
+//! the model already keeps: a partial line per stream, flushed at a prompt,
+//! reset on a new connection. The session now publishes each finished line,
+//! the model's own (`plan/45` §4a), already sorted when `;sorter` is on and
+//! already answered by the character's triggers, so what is left here is per
+//! line and holds no state: split its runs where a trigger's paint starts and
+//! stops ([`painted`]), bound it, and split it at any embedded newline.
 
-use std::collections::VecDeque;
+use cena_model::line::Line;
 
 use crate::projection::bounded_text;
-use crate::sorter::{self, Piece};
 use crate::view::Closed;
 use crate::{StoryLine, StyledRun};
 
-/// Text bytes kept per unfinished line; overflow marks the line `truncated`.
-pub const MAX_LINE_BYTES: usize = 16 * 1024;
-/// Runs kept per unfinished line; overflow marks the line `truncated`.
-pub const MAX_LINE_RUNS: usize = 256;
-/// Streams that may hold an unfinished line at once; a new stream beyond this
-/// emits the least recently used partial, marked `truncated`.
-pub const MAX_PENDING_STREAMS: usize = 32;
-const MAX_STREAM_BYTES: usize = 128;
-const MAX_PRESET_BYTES: usize = 128;
-/// Pieces kept for the sorter per unfinished line; past it the line is shown
-/// unsorted. MEASURED: the longest container look in a month of the author's
-/// logs names 108 items, which is 217 pieces (`crate::sorter`).
-const MAX_SORTED_PIECES: usize = 4 * MAX_LINE_RUNS;
-
-/// Bounded unfinished lines, independent per stream and ordered by recent use.
-///
-/// A stream switch does not end its line: the enclosing stream can resume after
-/// an interleaved thought. A prompt calls `flush`; generation changes and lag
-/// recovery call `reset` so text from different histories is never joined.
-///
-/// With [`Self::sort_containers`] on, a main-stream container look finishes
-/// as one line per category (`;sorter`).
-#[derive(Debug, Default)]
-pub struct LineAssembler {
-    pending: VecDeque<(String, Pending)>,
-    /// `;sorter`, for lines begun from now on. Off until the session asks.
-    sorting: bool,
+/// A published line's runs as the story draws them: each split where a
+/// trigger's paint starts or stops, and each piece given that paint's colour,
+/// background and bold. The paint was resolved in the session, once, for
+/// every viewer (`plan/45` §4); this only lays it over the runs.
+#[must_use]
+pub fn painted(line: &Line) -> Vec<StyledRun> {
+    let mut out = Vec::new();
+    let mut at = 0;
+    for run in &line.runs.runs {
+        let span = at..at + run.text.len();
+        at = span.end;
+        let mut edges = vec![span.start, span.end];
+        for paint in &line.paint {
+            for edge in [paint.span.start, paint.span.end] {
+                if span.start < edge && edge < span.end {
+                    edges.push(edge);
+                }
+            }
+        }
+        edges.sort_unstable();
+        edges.dedup();
+        for pair in edges.windows(2) {
+            let &[start, end] = pair else {
+                continue;
+            };
+            let Some(text) = run.text.get(start - span.start..end - span.start) else {
+                continue;
+            };
+            let paint = line
+                .paint
+                .iter()
+                .find(|paint| paint.span.start <= start && end <= paint.span.end);
+            out.push(StyledRun {
+                text: text.to_owned(),
+                bold: run.style.bold_depth > 0 || paint.is_some_and(|paint| paint.bold),
+                monospace: run.style.mono,
+                preset: run.style.preset.clone(),
+                color: paint.and_then(|paint| paint.color).map(|c| c.to_string()),
+                background: paint
+                    .and_then(|paint| paint.background)
+                    .map(|c| c.to_string()),
+            });
+        }
+    }
+    out
 }
 
+/// Text bytes kept per line; overflow marks the line `truncated`.
+pub const MAX_LINE_BYTES: usize = 16 * 1024;
+/// Runs kept per line; overflow marks the line `truncated`.
+pub const MAX_LINE_RUNS: usize = 256;
+const MAX_STREAM_BYTES: usize = 128;
+const MAX_PRESET_BYTES: usize = 128;
+
+/// The story lines for one finished line on `stream`.
+///
+/// `runs` is the line in wire order, each run's text and style.
+///
+/// Usually one line. None when there are no runs at all (an empty component
+/// body). More when the text carries a newline (a component body can). An
+/// oversized stream name is shortened and every line marked `truncated`, so
+/// shortened names can never pass for each other.
+pub fn story_lines<I>(stream: &str, runs: I) -> Vec<StoryLine>
+where
+    I: IntoIterator<Item = StyledRun>,
+{
+    let mut runs = runs.into_iter().peekable();
+    if runs.peek().is_none() {
+        return Vec::new();
+    }
+    let key = bounded_text(stream, MAX_STREAM_BYTES).to_owned();
+    let mut lines = Vec::new();
+    let mut line = Building::default();
+    for run in runs {
+        for (index, piece) in run.text.split('\n').enumerate() {
+            if index > 0 {
+                lines.push(std::mem::take(&mut line).finish(key.clone()));
+            }
+            line.append(piece, &run);
+        }
+    }
+    if stream.len() > MAX_STREAM_BYTES {
+        line.truncated = true;
+    }
+    lines.push(line.finish(key));
+    if stream.len() > MAX_STREAM_BYTES {
+        for line in &mut lines {
+            line.truncated = true;
+        }
+    }
+    lines
+}
+
+/// A line being built, bounded as it grows.
 #[derive(Debug, Default)]
-struct Pending {
+struct Building {
     runs: Vec<StyledRun>,
     bytes: usize,
     truncated: bool,
-    /// The line piece by piece, as pushed, with the object each names: what
-    /// the sorter reads, since merging same-style runs loses where a link
-    /// began. `None` unless sorting was on when a main-stream line began, so
-    /// no other line pays for it.
-    pieces: Option<Vec<Piece>>,
 }
 
-impl LineAssembler {
-    /// Accept one UI run. Embedded newlines and `ends_line` are boundaries;
-    /// ordinary calls and stream switches are not.
-    ///
-    /// Bounds limit retained partial text, run metadata, and stream keys. When
-    /// all stream slots are occupied, the oldest partial is emitted with its
-    /// truncation flag. Oversized stream names are emitted immediately, marked
-    /// truncated, so shortened keys can never merge unrelated streams.
-    pub fn push(&mut self, stream: &str, run: &StyledRun, ends_line: bool) -> Vec<StoryLine> {
-        self.push_naming(stream, run, None, ends_line)
-    }
-
-    /// [`Self::push`] for a run that names a game object: the `noun=` of the
-    /// `<a exist= noun=>` link it sits in (`TextFrame::object`). Only the
-    /// sorter reads it; a line's runs are the same either way.
-    pub fn push_naming(
-        &mut self,
-        stream: &str,
-        run: &StyledRun,
-        noun: Option<&str>,
-        ends_line: bool,
-    ) -> Vec<StoryLine> {
-        let mut lines = Vec::new();
-        let mut pending =
-            if let Some(index) = self.pending.iter().position(|(key, _)| key == stream) {
-                self.pending
-                    .remove(index)
-                    .map(|(_, pending)| pending)
-                    .unwrap_or_default()
-            } else {
-                if self.pending.len() == MAX_PENDING_STREAMS
-                    && let Some((key, mut old)) = self.pending.pop_front()
-                {
-                    old.truncated = true;
-                    old.finish_into(key, &mut lines);
-                }
-                self.fresh(stream)
-            };
-        let key = bounded_text(stream, MAX_STREAM_BYTES).to_owned();
-        for (index, piece) in run.text.split('\n').enumerate() {
-            if index > 0 {
-                let next = self.fresh(stream);
-                std::mem::replace(&mut pending, next).finish_into(key.clone(), &mut lines);
-            }
-            pending.append(piece, run, noun);
-        }
-        if stream.len() > MAX_STREAM_BYTES {
-            pending.truncated = true;
-            pending.finish_into(key, &mut lines);
-            // Even complete lines preceding the tail have a shortened stream.
-            for line in &mut lines {
-                line.truncated = true;
-            }
-        } else if ends_line {
-            pending.finish_into(key, &mut lines);
-        } else {
-            self.pending.push_back((key, pending));
-        }
-        lines
-    }
-
-    /// Turn `;sorter` on or off: a main-stream container look begun from now
-    /// on finishes as one line per category, or as it came.
-    pub fn sort_containers(&mut self, on: bool) {
-        self.sorting = on;
-    }
-
-    /// Close nonempty partial lines at a prompt or clean stream end.
-    pub fn flush(&mut self) -> Vec<StoryLine> {
-        let mut lines = Vec::new();
-        for (stream, pending) in self.pending.drain(..) {
-            if !pending.runs.is_empty() || pending.truncated {
-                pending.finish_into(stream, &mut lines);
-            }
-        }
-        lines
-    }
-
-    /// Discard fragments after native invalidation or a lost event interval.
-    pub fn reset(&mut self) {
-        self.pending.clear();
-    }
-
-    /// Clear the named stream's unfinished line at its native clear boundary.
-    pub fn clear_stream(&mut self, stream: &str) {
-        self.pending.retain(|(key, _)| key != stream);
-    }
-
-    /// A new line on `stream`, keeping pieces for the sorter only when it
-    /// will read them: sorting is on, and this is the main stream, where a
-    /// look arrives (`VellumFE` sorts `main` only, `flush_line.rs:426`).
-    fn fresh(&self, stream: &str) -> Pending {
-        Pending {
-            pieces: (self.sorting && (stream.is_empty() || stream == "main")).then(Vec::new),
-            ..Pending::default()
-        }
-    }
-}
-
-impl Pending {
-    fn append(&mut self, text: &str, style: &StyledRun, noun: Option<&str>) {
+impl Building {
+    fn append(&mut self, text: &str, style: &StyledRun) {
         if text.is_empty() || self.truncated {
             return;
         }
@@ -169,6 +137,8 @@ impl Pending {
             && last.bold == style.bold
             && last.monospace == style.monospace
             && last.preset == preset
+            && last.color == style.color
+            && last.background == style.background
         {
             last.text.push_str(piece);
         } else if self.runs.len() < MAX_LINE_RUNS {
@@ -177,53 +147,22 @@ impl Pending {
                 bold: style.bold,
                 monospace: style.monospace,
                 preset,
+                color: style.color.clone(),
+                background: style.background.clone(),
             });
         } else {
             self.truncated = true;
             return;
         }
         self.bytes += piece.len();
-        if let Some(pieces) = &mut self.pieces {
-            if pieces.len() < MAX_SORTED_PIECES && !self.truncated {
-                pieces.push(Piece {
-                    run: StyledRun {
-                        text: piece.to_owned(),
-                        bold: style.bold,
-                        monospace: style.monospace,
-                        preset: style.preset.clone(),
-                    },
-                    noun: noun.map(str::to_owned),
-                });
-            } else {
-                self.pieces = None;
-            }
-        }
-    }
-
-    /// Finish into `lines`: sorted, when this is a whole container look the
-    /// sorter takes (`crate::sorter`), and otherwise as it came.
-    fn finish_into(self, stream: String, lines: &mut Vec<StoryLine>) {
-        if !self.truncated
-            && let Some(sorted) = self.pieces.as_deref().and_then(sorter::sort)
-        {
-            for runs in sorted {
-                let mut line = Self::default();
-                for run in &runs {
-                    line.append(&run.text, run, None);
-                }
-                lines.push(line.finish(stream.clone()));
-            }
-            return;
-        }
-        lines.push(self.finish(stream));
     }
 
     /// **`closed` is left as [`Closed::Main`] here, deliberately.**
     ///
-    /// The declaration comes from `<streamWindow ifClosed=>` and this
-    /// assembler has no model to ask. The pump that owns the `GameState`
-    /// stamps it (`cena-web/src/presentation.rs`), so the wire's rule is read
-    /// in one place.
+    /// The declaration comes from `<streamWindow ifClosed=>` and this has no
+    /// model to ask. The pump that owns the `GameState` stamps it
+    /// (`cena-web/src/presentation.rs`), so the wire's rule is read in one
+    /// place.
     ///
     /// `Main` rather than an `Option`: a line nobody classified is a line that
     /// shows in the story, which is the safe direction -- the unsafe one is
@@ -253,14 +192,99 @@ mod tests {
         line.runs.iter().map(|run| run.text.as_str()).collect()
     }
 
+    const RED: cena_model::trigger::Color = cena_model::trigger::Color {
+        red: 0xff,
+        green: 0x40,
+        blue: 0x40,
+    };
+
+    /// A published line of these runs, with this paint.
+    fn published(texts: &[&str], paint: Vec<cena_model::trigger::Paint>) -> Line {
+        let mut runs = cena_model::ChunkLine::plain("template").runs;
+        let template = runs.runs.first().cloned();
+        runs.runs = texts
+            .iter()
+            .filter_map(|text| {
+                let mut run = template.clone()?;
+                run.text = (*text).to_owned();
+                Some(run)
+            })
+            .collect();
+        Line {
+            stream: String::new(),
+            runs,
+            paint,
+        }
+    }
+
+    fn red(span: std::ops::Range<usize>, bold: bool) -> cena_model::trigger::Paint {
+        cena_model::trigger::Paint {
+            span,
+            color: Some(RED),
+            background: None,
+            bold,
+        }
+    }
+
     #[test]
-    fn markup_fragment_boundaries_do_not_create_display_lines() {
-        let mut assembly = LineAssembler::default();
-        assert!(assembly.push("", &run("  a "), false).is_empty());
+    fn paint_splits_a_run_where_it_starts_and_stops() {
+        let runs = painted(&published(&["You are stunned!"], vec![red(8..15, true)]));
+        let texts: Vec<&str> = runs.iter().map(|run| run.text.as_str()).collect();
+        assert_eq!(texts, ["You are ", "stunned", "!"]);
+        assert_eq!(runs[1].color.as_deref(), Some("#ff4040"));
+        assert!(runs[1].bold, "a look's bold");
+        assert_eq!((runs[0].color.as_deref(), runs[0].bold), (None, false));
+        assert_eq!(runs[2].color, None);
+    }
+
+    #[test]
+    fn paint_over_two_runs_paints_each_piece_and_story_lines_keeps_it() {
+        let runs = painted(&published(
+            &["You are ", "stunned!"],
+            vec![red(4..15, false)],
+        ));
+        let pieces: Vec<(&str, bool)> = runs
+            .iter()
+            .map(|run| (run.text.as_str(), run.color.is_some()))
+            .collect();
+        assert_eq!(
+            pieces,
+            [
+                ("You ", false),
+                ("are ", true),
+                ("stunned", true),
+                ("!", false)
+            ]
+        );
+        // Drawn: the two painted pieces join, and paint keeps them apart from
+        // the unpainted ones that are otherwise styled alike.
+        let lines = story_lines("", runs);
+        let drawn: Vec<&str> = lines[0].runs.iter().map(|run| run.text.as_str()).collect();
+        assert_eq!(drawn, ["You ", "are stunned", "!"]);
+    }
+
+    #[test]
+    fn an_unpainted_run_is_written_without_paint() {
+        let plain = serde_json::to_value(run("x")).unwrap();
+        assert!(
+            plain.get("color").is_none() && plain.get("background").is_none(),
+            "{plain}"
+        );
+        let mut coloured = run("x");
+        coloured.color = Some("#ff4040".into());
+        let written = serde_json::to_value(&coloured).unwrap();
+        assert_eq!(written["color"], "#ff4040");
+        assert_eq!(
+            serde_json::from_value::<StyledRun>(written).unwrap(),
+            coloured
+        );
+    }
+
+    #[test]
+    fn a_line_split_at_markup_is_drawn_as_one_line() {
         let mut bold = run("leather doublet");
         bold.bold = true;
-        assert!(assembly.push("", &bold, false).is_empty());
-        let lines = assembly.push("", &run("."), true);
+        let lines = story_lines("", vec![run("  a "), bold, run(".")]);
         assert_eq!(lines.len(), 1);
         assert_eq!(plain(&lines[0]), "  a leather doublet.");
         assert_eq!(lines[0].runs.len(), 3);
@@ -268,80 +292,45 @@ mod tests {
     }
 
     #[test]
-    fn interleaved_streams_resume_their_own_partial_lines() {
-        let mut assembly = LineAssembler::default();
-        assembly.push("", &run("Story "), false);
-        let thoughts = assembly.push("thoughts", &run("a thought"), true);
-        assert_eq!(thoughts[0].stream, "thoughts");
-        let story = assembly.push("", &run("resumes"), true);
-        assert_eq!(plain(&story[0]), "Story resumes");
+    fn no_runs_draw_no_line_and_empty_text_draws_an_empty_one() {
+        assert!(story_lines("room objs", Vec::new()).is_empty());
+        assert_eq!(story_lines("", vec![run("")]).len(), 1);
     }
 
     #[test]
     fn embedded_newlines_and_blank_lines_are_real_boundaries() {
-        let mut assembly = LineAssembler::default();
-        let lines = assembly.push("", &run("one\n\nthree"), true);
+        let lines = story_lines("", vec![run("one\n\nthree")]);
         assert_eq!(
             lines.iter().map(plain).collect::<Vec<_>>(),
             ["one", "", "three"]
         );
-        assert!(assembly.flush().is_empty());
     }
 
     #[test]
-    fn prompt_flushes_and_generation_reset_discards_fragments() {
-        let mut assembly = LineAssembler::default();
-        assembly.push("", &run("before prompt"), false);
-        assert_eq!(plain(&assembly.flush()[0]), "before prompt");
-        assembly.push("", &run("stale"), false);
-        assembly.reset();
-        assert_eq!(
-            plain(&assembly.push("", &run("new generation"), true)[0]),
-            "new generation"
+    fn long_lines_truncate_at_utf8_boundaries() {
+        let lines = story_lines(
+            "",
+            vec![run(&"🦀".repeat(MAX_LINE_BYTES)), run("discarded tail")],
         );
-        assembly.push("inv", &run("old list"), false);
-        assembly.clear_stream("inv");
-        assert!(assembly.flush().is_empty());
-    }
-
-    #[test]
-    fn long_lines_truncate_at_utf8_boundaries_until_the_real_terminator() {
-        let mut assembly = LineAssembler::default();
-        assembly.push("", &run(&"🦀".repeat(MAX_LINE_BYTES)), false);
-        assert!(assembly.pending[0].1.bytes <= MAX_LINE_BYTES);
-        let lines = assembly.push("", &run("discarded tail"), true);
         assert!(lines[0].truncated);
         assert_eq!(plain(&lines[0]).len(), MAX_LINE_BYTES);
-        assert_eq!(plain(&assembly.push("", &run("next"), true)[0]), "next");
     }
 
     #[test]
-    fn stream_and_metadata_limits_prevent_unbounded_partial_state() {
-        let mut assembly = LineAssembler::default();
-        for index in 0..MAX_PENDING_STREAMS {
-            assert!(
-                assembly
-                    .push(&index.to_string(), &run("partial"), false)
-                    .is_empty()
-            );
-        }
-        let evicted = assembly.push("extra", &run("new partial"), false);
-        assert_eq!(evicted.len(), 1);
-        assert!(evicted[0].truncated);
-        assert_eq!(evicted[0].stream, "0");
-        assert_eq!(assembly.pending.len(), MAX_PENDING_STREAMS);
-        assembly.reset();
-        for index in 0..=MAX_LINE_RUNS {
-            let mut fragment = run("x");
-            fragment.bold = index % 2 == 0;
-            assembly.push("", &fragment, false);
-        }
-        let lines = assembly.flush();
+    fn run_and_preset_limits_bound_a_line() {
+        let runs: Vec<StyledRun> = (0..=MAX_LINE_RUNS)
+            .map(|index| {
+                let mut fragment = run("x");
+                fragment.bold = index % 2 == 0;
+                fragment
+            })
+            .collect();
+        let lines = story_lines("", runs);
         assert_eq!(lines[0].runs.len(), MAX_LINE_RUNS);
         assert!(lines[0].truncated);
         let mut long_preset = run("styled");
         long_preset.preset = Some("x".repeat(MAX_PRESET_BYTES + 1));
-        let lines = assembly.push("", &long_preset, true);
+        let lines = story_lines("", vec![long_preset]);
         assert!(lines[0].truncated);
         assert_eq!(
             lines[0].runs[0].preset.as_ref().unwrap().len(),
@@ -350,14 +339,12 @@ mod tests {
     }
 
     #[test]
-    fn oversized_stream_names_do_not_alias_each_others_fragments() {
-        let mut assembly = LineAssembler::default();
+    fn oversized_stream_names_are_marked_and_kept_apart() {
         let prefix = "a".repeat(MAX_STREAM_BYTES);
-        let a = assembly.push(&format!("{prefix}one"), &run("first"), false);
-        let b = assembly.push(&format!("{prefix}two"), &run("second"), false);
+        let a = story_lines(&format!("{prefix}one"), vec![run("first")]);
+        let b = story_lines(&format!("{prefix}two"), vec![run("second")]);
         assert_eq!(plain(&a[0]), "first");
         assert_eq!(plain(&b[0]), "second");
         assert!(a[0].truncated && b[0].truncated);
-        assert!(assembly.flush().is_empty());
     }
 }

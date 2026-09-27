@@ -114,13 +114,23 @@ pub fn overlay(base: &mut toml::Table, over: toml::Table) {
 /// The merged table is not a profile: a key no table has, or a value of the
 /// wrong shape.
 pub fn resolve(levels: Vec<toml::Table>) -> Result<Profile, String> {
+    merge(levels)?
+        .try_into()
+        .map_err(|e: toml::de::Error| e.to_string())
+}
+
+/// The built-in default with each level laid over it, not yet read as a
+/// [`Profile`]: every setting, as `;hunt show` lists them.
+///
+/// # Errors
+///
+/// The default cannot be written as a table, which no field of it is.
+pub fn merge(levels: Vec<toml::Table>) -> Result<toml::Table, String> {
     let mut merged = toml::Table::try_from(Profile::default()).map_err(|e| e.to_string())?;
     for level in levels {
         overlay(&mut merged, level);
     }
-    merged
-        .try_into()
-        .map_err(|e: toml::de::Error| e.to_string())
+    Ok(merged)
 }
 
 /// A profile as one character will run it, and where it came from.
@@ -193,6 +203,28 @@ pub fn load(
     character: Option<&str>,
     name: &str,
 ) -> Result<Loaded, LoadError> {
+    let (levels, sources) = levels(dir, instance, character, name)?;
+    let profile = resolve(levels).map_err(|why| LoadError::Malformed { path: None, why })?;
+    let problems = profile.problems();
+    if !problems.is_empty() {
+        return Err(LoadError::Invalid(problems));
+    }
+    Ok(Loaded { profile, sources })
+}
+
+/// Each level's table, lowest first, and the files they came from: what
+/// [`load`] resolves, for a caller that wants the settings before they are
+/// read as a profile (`;hunt show`, [`merge`]).
+///
+/// # Errors
+///
+/// No such profile, or a file that cannot be read or is not TOML.
+pub fn levels(
+    dir: &Path,
+    instance: Option<&str>,
+    character: Option<&str>,
+    name: &str,
+) -> Result<(Vec<toml::Table>, Vec<PathBuf>), LoadError> {
     let profile = profile_path(dir, name).ok_or_else(|| LoadError::BadName(name.to_owned()))?;
     let mut sources = Vec::new();
     let mut levels = Vec::new();
@@ -208,12 +240,7 @@ pub fn load(
     {
         levels.push(table);
     }
-    let profile = resolve(levels).map_err(|why| LoadError::Malformed { path: None, why })?;
-    let problems = profile.problems();
-    if !problems.is_empty() {
-        return Err(LoadError::Invalid(problems));
-    }
-    Ok(Loaded { profile, sources })
+    Ok((levels, sources))
 }
 
 /// One level's table, if its file exists; the path is recorded when it does.

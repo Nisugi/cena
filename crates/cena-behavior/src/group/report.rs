@@ -12,17 +12,19 @@
 //! eohunter's shape, in one process: a member's [`Report`] is what its own
 //! hunt knows of itself, and the leader reads the latest (`plan/39` §3).
 //!
-//! **A field no rule reads is not here** (`plan/05` §−1). `plan/39` §5
-//! lists more for the board: hidden and sneaky (the movement barrier),
-//! looting (the leader's wait before it leaves a room), the rest a follower
-//! has prepared for (the rest-prep barrier), and the leader's phase, target,
-//! looter and rooms. Each arrives with the Stage 3 rule that reads it.
+//! **A field no rule reads is not here** (`plan/05` §−1). Stage 3 added
+//! what the engine's group arms read: the rest a member has prepared for
+//! (the rest-prep barrier), the corpses it has looted (the leader's wait
+//! before it leaves a room), and the leader's phase, room, target, looter
+//! and prep order. `plan/39` §5's hidden and sneaky (the movement barrier)
+//! and the leader's rooms are not built: no rule reads them yet.
 
 use cena_map::RoomId;
 use cena_session::State;
 use cena_session::group::{Group, Leader};
 
-use crate::hunt::said::Why;
+use super::rest::PrepOrder;
+use crate::hunt::said::{Phase, Why};
 
 /// A member's part in the group, read off the game's group and never
 /// chosen (`plan/39` §8, question 2: *"passing group lead is like passing
@@ -112,6 +114,19 @@ pub struct Report {
     /// (`group_encumbrance`, `bigshot.lic:1240-1249`, from `encumbrance?`,
     /// `:8798-8801`); `None` when either is unknown.
     pub headroom: Option<i32>,
+    /// The rest whose own prep it has finished, by the leader's number;
+    /// `None` before its first. bigshot's `rest_prep_complete?`
+    /// (`bigshot.lic:8767-8769`) is a flag the leader can read for the last
+    /// rest (`plan/39` §0e); a number cannot be.
+    pub prepared: Option<u32>,
+    /// The corpses in its room it has looted: the leader waits for the
+    /// looter before it leaves a room (`bigshot.lic:7466`, `:9431`).
+    pub looted: Vec<i64>,
+    /// When its connection last dropped, on the process's clock: the
+    /// leader tells *every member dropped at once* (`plan/39` §8, question
+    /// 9) from these after the fact, since a member that is down publishes
+    /// nothing while it is.
+    pub dropped: Option<std::time::Instant>,
 }
 
 impl Report {
@@ -123,8 +138,9 @@ impl Report {
     }
 }
 
-/// What the leader publishes for its followers, beside its own report.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// What the leader publishes for its followers, beside its own report:
+/// what it is doing now, not a queue of orders (`plan/39` §3).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Leading {
     /// The number of the rest under way, or of the last one.
     pub rest: u32,
@@ -136,4 +152,44 @@ pub struct Leading {
     /// (`bigshot.lic:7541-7560`, `plan/39` §0e). Naming the rest cannot be
     /// read for the wrong one.
     pub prepared: Option<u32>,
+    /// Where the leader is in its cycle; `None` before its first tick.
+    pub phase: Option<Phase>,
+    /// The leader's room, by the map's number: where a follower catches up
+    /// to (`group.room_id`, `bigshot.lic:9337`).
+    pub room: Option<RoomId>,
+    /// The creature the leader is fighting: a follower's target while it
+    /// stands (`group.leader_target`, `bigshot.lic:10145-10150`).
+    pub target: Option<i64>,
+    /// Who loots, by name (`group.looter`, `bigshot.lic:10196`).
+    pub looter: Option<String>,
+    /// Who preps first at this rest ([`super::prep_order`]).
+    pub order: Option<PrepOrder>,
+    /// The leader's rooms, which its followers take (`group.hunting_id`
+    /// and its siblings, `bigshot.lic:1098-1116`): read when they travel on
+    /// their own.
+    pub rooms: Rooms,
+    /// Its followers walk out on their own (`independent_travel`).
+    pub independent_travel: bool,
+    /// Its followers walk home on their own (`independent_return`).
+    pub independent_return: bool,
+    /// Who leads when it is lost, first present first (its `successors`).
+    pub successors: Vec<String>,
+    /// How long its group waits for a member (its `lost_wait`).
+    pub lost_wait: Option<std::time::Duration>,
+    /// A dead member being carried out, and who carries it (`plan/39` §8,
+    /// question 10): every other member's hunt ends.
+    pub recover: Option<(String, String)>,
+}
+
+/// The leader's rooms, by the map's numbers.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Rooms {
+    /// Where the hunt starts.
+    pub hunting: Option<RoomId>,
+    /// Where it rests.
+    pub resting: Option<RoomId>,
+    /// Walked through on the way out, in order.
+    pub rally: Vec<RoomId>,
+    /// Walked through on the way home, in order.
+    pub waypoints: Vec<RoomId>,
 }

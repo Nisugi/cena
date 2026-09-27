@@ -194,6 +194,18 @@ const HANDLE_OWNER: (&str, &str) = ("crates/cena-session/src/actor/handle.rs", "
 /// a needle miss.
 const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
     (
+        "crates/cena/src/hunt.rs",
+        "Seat",
+        "One character's hunt desk and session, kept in the session table's Party \
+     (plan/39 Stage 4) so that a leader's `hunt <profile> with <names>` can start \
+     each follower's hunt on the follower's own session. A clone of that \
+     session's handle, on the type's own terms (every field shared: see Viewed \
+     below), so it cannot drift; and it goes when its character leaves the table \
+     (`Party::unseat`, called from play.rs's take_off), so it never outlives the \
+     session. Found 2026-09-27, when this test first ran against this tree: its \
+     build had been scanning another checkout.",
+    ),
+    (
         "crates/cena-web/src/server.rs",
         "Viewed",
         "The embedded frontend's manual-input surface, one per served session \
@@ -212,6 +224,20 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
      the session rather than delivered. M4 decision D2 gives cena-web this \
      edge (layering.rs ALLOWED_EDGES). `the_handle_premise_holds` checks the \
      'every field is shared' half mechanically.",
+    ),
+    (
+        "crates/cena-gui/src/sessions.rs",
+        "Seat",
+        "The GUI's manual-input surface, one per session the window shows \
+         (plan/47 step 4): its play window's command input sends through it. \
+         On Viewed's terms above, and for the same reasons: a clone of the \
+         handle the binary attached, every field shared so it cannot drift; \
+         every send is generation-pinned (`Sessions::send` passes the \
+         generation of the last snapshot the window saw to send_manual_at), so \
+         a stale window is refused by the session; and the seat goes when the \
+         binary detaches its session (`Sessions::detach`, called from \
+         play.rs's take_off). The cena-gui row of layering.rs ALLOWED_EDGES \
+         gives it the edge.",
     ),
     (
         "crates/cena-host/src/table.rs",

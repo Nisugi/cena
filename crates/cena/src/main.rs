@@ -3,9 +3,11 @@
 //! One run path. `--character A --character B` names the characters to play,
 //! `--record` / `--no-record` says whether combat and loot go to the
 //! character's database (`setup::recording`), which `;loot` and `;combat`
-//! report on;
-//! with none named, Hydra asks for one at the terminal. Either way they go on
-//! the session table (`play.rs`), with the web hub under `--web`.
+//! report on. They go on the session table (`play.rs`), shown in the window
+//! (`gui.rs`, `plan/47`) -- or, under `--headless`, in no window, and under
+//! `--web`, in the browser; with no window and none named, Hydra asks for one
+//! at the terminal. With no arguments at all, the window opens with no
+//! character started.
 //!
 //! **How the whole workspace fits together is [`architecture`]**: the crate
 //! graph, the flow of one line of game text, the three seams, and the tests
@@ -37,12 +39,14 @@
 
 mod architecture;
 mod ask;
+mod attention;
 mod batch;
 mod combat;
 mod commands;
 mod connector;
 mod frontend;
 mod glossary;
+mod gui;
 mod hunt;
 mod hunt_setup;
 mod interrupt;
@@ -50,11 +54,13 @@ mod learn;
 mod loot;
 mod map_context;
 mod play;
+mod relay;
 mod roster;
 mod secrets;
 mod setup;
 mod sorter;
 mod travel;
+mod triggers;
 mod watch;
 
 /// What the operator is told before anything happens.
@@ -88,14 +94,21 @@ const BANNER_NOTE: &str = "The password is never logged, but it IS kept in memor
      session,\nbecause reconnecting re-logs in. The wire IS written to disk -- \
      see the\nlog paths below.\n";
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     banner();
+    // Built by hand rather than by `#[tokio::main]`: a window needs the main
+    // thread, so the sessions run on the runtime's workers (`plan/47` §4).
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
     let mut characters = play::characters();
+    if !play::headless() {
+        return gui::run(&runtime, &characters);
+    }
     if characters.is_empty() {
         characters.push(ask::character()?);
     }
-    Box::pin(play::play(characters)).await
+    runtime.block_on(Box::pin(play::play(characters)))
 }
 
 #[cfg(test)]

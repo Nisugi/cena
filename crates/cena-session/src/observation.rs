@@ -2,9 +2,10 @@
 //! one synchronous turn, so a snapshot and its stream share an exact fence.
 
 use crate::{Event, GameState, Generation, GenerationCell, SessionId, Snapshot, State};
+use cena_model::trigger::{Act, Attention, Cooldowns, Edges, Matcher, Pace};
 use std::sync::{
-    Arc, Mutex,
-    atomic::{AtomicU64, Ordering},
+    Arc, Mutex, PoisonError,
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
@@ -164,6 +165,38 @@ pub(crate) struct EventPublisher {
     /// Held while a cursor is taken and its event sent, and while a snapshot
     /// is paired with a subscription. See the type's docs.
     fence: Arc<Mutex<()>>,
+    /// `;sorter`: whether a container look is published sorted
+    /// (`cena_model::sorter`). Here because this is what every viewer is
+    /// given, and because every connection's actor shares this publisher, so
+    /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
+    sorting: Arc<AtomicBool>,
+    /// This character's triggers, compiled (`plan/45`): what each finished
+    /// line is answered with before it is published, and what its conditions
+    /// last read. Here for `sorting`'s reasons, which is also why a reconnect
+    /// keeps the conditions' memory. None until the binary reads the file.
+    triggers: Arc<Mutex<Answering>>,
+}
+
+/// A character's triggers and their memory, replaced together: new
+/// triggers start new memory, so their conditions' first reading is silent
+/// (`cena_model::trigger::Edges`) and their attention starts cool
+/// (`Cooldowns`).
+#[derive(Debug, Default)]
+struct Answering {
+    matcher: Arc<Matcher>,
+    edges: Edges,
+    cooldowns: Cooldowns,
+    pace: Pace,
+}
+
+/// What the fired triggers may do beyond the line now: their attention and
+/// sends past each trigger's cooldown, and the sends the pace held back.
+pub(crate) struct Admitted {
+    pub(crate) attention: Vec<Attention>,
+    pub(crate) acts: Vec<Act>,
+    pub(crate) held: Vec<Act>,
+    /// The held sends are to be said: once a window.
+    pub(crate) say_held: bool,
 }
 
 impl EventPublisher {
@@ -176,7 +209,96 @@ impl EventPublisher {
             session,
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
+            sorting: Arc::new(AtomicBool::new(false)),
+            triggers: Arc::default(),
         }
+    }
+
+    /// Publish container looks sorted, or as the game sent them.
+    pub(crate) fn sort_containers(&self, on: bool) {
+        self.sorting.store(on, Ordering::Relaxed);
+    }
+
+    /// Whether container looks are published sorted.
+    pub(crate) fn sorts_containers(&self) -> bool {
+        self.sorting.load(Ordering::Relaxed)
+    }
+
+    /// Answer each line published from now on with `triggers`.
+    pub(crate) fn set_triggers(&self, triggers: Matcher) {
+        *self.triggers.lock().unwrap_or_else(PoisonError::into_inner) = Answering {
+            matcher: Arc::new(triggers),
+            ..Answering::default()
+        };
+    }
+
+    /// The triggers each line is answered with.
+    pub(crate) fn triggers(&self) -> Arc<Matcher> {
+        Arc::clone(
+            &self
+                .triggers
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .matcher,
+        )
+    }
+
+    /// Read the conditions against `state`: the triggers they are in, and
+    /// the ranks of those that became true.
+    pub(crate) fn fire_conditions(&self, state: &GameState) -> (Arc<Matcher>, Vec<usize>) {
+        let mut answering = self.triggers.lock().unwrap_or_else(PoisonError::into_inner);
+        let Answering { matcher, edges, .. } = &mut *answering;
+        let fired = if matcher.conditions().is_empty() {
+            Vec::new()
+        } else {
+            edges.fire(matcher, state)
+        };
+        (Arc::clone(matcher), fired)
+    }
+
+    /// What `attention` and `acts`, from the triggers that fired, may do at
+    /// game second `now`: each trigger once in its cooldown, for both
+    /// together, then the sends at the character's pace.
+    pub(crate) fn admit(
+        &self,
+        attention: Vec<Attention>,
+        acts: Vec<Act>,
+        now: Option<u32>,
+    ) -> Admitted {
+        let mut admitted = Admitted {
+            attention: Vec::new(),
+            acts: Vec::new(),
+            held: Vec::new(),
+            say_held: false,
+        };
+        if attention.is_empty() && acts.is_empty() {
+            return admitted;
+        }
+        let mut answering = self.triggers.lock().unwrap_or_else(PoisonError::into_inner);
+        let Answering {
+            cooldowns, pace, ..
+        } = &mut *answering;
+        // One admission per trigger, whether it calls, sends, or both.
+        let mut decided: Vec<(String, bool)> = Vec::new();
+        let mut may = |trigger: &str, cooldown: u32| {
+            if let Some((_, may)) = decided.iter().find(|(name, _)| name == trigger) {
+                return *may;
+            }
+            let may = cooldowns.admit(trigger, cooldown, now);
+            decided.push((trigger.to_owned(), may));
+            may
+        };
+        admitted.attention = attention
+            .into_iter()
+            .filter(|call| may(&call.trigger, call.cooldown))
+            .collect();
+        let acts: Vec<Act> = acts
+            .into_iter()
+            .filter(|act| may(&act.trigger, act.cooldown))
+            .collect();
+        (admitted.acts, admitted.held) = pace.admit(acts, now);
+        admitted.say_held = !admitted.held.is_empty() && pace.say_held(now);
+        admitted
     }
 
     /// A publisher over a caller's own legacy channel, with a fenced stream
@@ -260,6 +382,8 @@ impl EventPublisher {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .clone(),
+            stopped: None,
+            triggers: self.triggers(),
         }
     }
 
@@ -277,4 +401,90 @@ impl EventPublisher {
             let _ = request.send(subscription);
         }
     }
+}
+
+/// First wait after a retryable observation failure, doubled to the cap.
+const RETRY_FIRST: Duration = Duration::from_millis(100);
+/// The longest wait between observation attempts: bounded, never a spin.
+const RETRY_CAP: Duration = Duration::from_secs(2);
+/// The most events [`catch_up`] reads from an old receiver.
+const MAX_CATCH_UP: usize = 4096;
+
+/// Ask for a fresh observation with `subscribe`, retrying the failures that
+/// are not an answer. `None` once `stop` is cancelled; otherwise the
+/// subscription, or the error that ends observation. Every viewer that
+/// follows a session asks this way (`cena-web`'s pump, `cena-gui`'s feed).
+///
+/// # Why a viewer does not stop at the first error
+///
+/// The web pump used to map **every** [`ObserveError`] to a fatal I/O error.
+/// That ended the web server, disconnected every viewer, and was reported
+/// only at shutdown -- for `Busy` (the owner's bounded inbox was momentarily
+/// full) and `Timeout` (it did not answer within its budget), which are
+/// *retryable read failures, not proof the owner died*. A busy owner under a
+/// login burst is exactly when a viewer is most wanted.
+///
+/// So those two are retried with doubling backoff capped at two seconds --
+/// bounded, never a spin -- and without a retry limit: a timeout cannot prove
+/// death, and `stop` is what ends the wait. Only `Closed`, the owner gone
+/// without a final snapshot, is terminal. Whatever the viewer last showed
+/// stays up meanwhile: a stale view it refuses to *replace* with a guess.
+pub async fn retrying<T, F, Fut>(
+    stop: &tokio_util::sync::CancellationToken,
+    mut subscribe: F,
+) -> Option<Result<T, ObserveError>>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T, ObserveError>>,
+{
+    let mut delay = RETRY_FIRST;
+    loop {
+        let result = tokio::select! {
+            () = stop.cancelled() => return None,
+            result = subscribe() => result,
+        };
+        match result {
+            Err(ObserveError::Busy | ObserveError::Timeout) => {}
+            answered => return Some(answered),
+        }
+        tokio::select! {
+            () = stop.cancelled() => return None,
+            () = tokio::time::sleep(delay) => {}
+        }
+        delay = (delay * 2).min(RETRY_CAP);
+    }
+}
+
+/// The events still on `old` after cursor `seen`, up to and including
+/// `fence` -- a fresh snapshot's cursor -- in order, and whether they were
+/// all there.
+///
+/// A viewer that asks for a fresh snapshot while holding the receiver of its
+/// last one reads what that receiver has up to the new snapshot's cursor:
+/// those were published before the snapshot answered, and the new receiver
+/// starts after them. It never waits for a missing event, and reads at most
+/// a fixed budget; `false` means some were lost (lag, or the budget), and
+/// the viewer says its story has a hole.
+pub fn catch_up(
+    old: &mut broadcast::Receiver<ObservedEvent>,
+    seen: u64,
+    fence: u64,
+) -> (Vec<ObservedEvent>, bool) {
+    let mut at = seen;
+    let mut events = Vec::new();
+    for _ in 0..MAX_CATCH_UP {
+        if at >= fence {
+            break;
+        }
+        match old.try_recv() {
+            Ok(event) if event.cursor <= fence => {
+                if event.cursor > at {
+                    at = event.cursor;
+                    events.push(event);
+                }
+            }
+            _ => return (events, false),
+        }
+    }
+    (events, at >= fence)
 }
