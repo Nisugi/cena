@@ -1,7 +1,10 @@
 //! Pure model projection: the caller supplies lifecycle and observation time.
 
 use cena_model::state::group::{Group, Leader};
+use cena_model::trigger::Matcher;
 use cena_model::{GameState, Hand, RoomItem, Vital};
+
+use crate::lines::painted;
 
 use crate::view::{
     GroupView, HandView, LifecycleView, RoomItemView, RoomView, RoundtimeView, SessionView,
@@ -15,8 +18,16 @@ impl SessionView {
     /// recorded server time. An unknown clock remains an unknown remainder.
     /// With a known clock, an unreported roundtime is over, matching the model's
     /// `roundtime_remaining` contract. Native invalidation clears the clock.
+    ///
+    /// `triggers` paint the room window's player names, as they painted the
+    /// lines: the snapshot's own (`plan/45` Stage 7).
     #[must_use]
-    pub fn project(state: &GameState, lifecycle: LifecycleView, server_now: Option<u32>) -> Self {
+    pub fn project(
+        state: &GameState,
+        triggers: &Matcher,
+        lifecycle: LifecycleView,
+        server_now: Option<u32>,
+    ) -> Self {
         let room = &state.room;
         let contents_known = room.component("room objs").is_some();
         Self {
@@ -40,7 +51,9 @@ impl SessionView {
                 exits: room.exits.clone(),
                 creatures: contents_known.then(|| items(&room.creatures)),
                 objects: contents_known.then(|| items(&room.objects)),
-                players: room.saw_players().then(|| items(&room.players)),
+                players: room
+                    .saw_players()
+                    .then(|| players(&room.players, triggers, state)),
             },
             left_hand: hand(&state.left_hand),
             right_hand: hand(&state.right_hand),
@@ -122,8 +135,25 @@ fn items(values: &[RoomItem]) -> Vec<RoomItemView> {
             noun: item.noun.clone(),
             text: item.text.clone(),
             status: item.status.as_ref().map(ToString::to_string),
+            painted: None,
         })
         .collect()
+}
+
+/// The stream a trigger names to paint only the room window's players.
+const ROOM_PLAYERS: &str = "room players";
+
+/// The room's players, each name painted by the character's triggers as an
+/// entry on [`ROOM_PLAYERS`] (`plan/45` Stage 7).
+fn players(values: &[RoomItem], triggers: &Matcher, state: &GameState) -> Vec<RoomItemView> {
+    let mut views = items(values);
+    for view in &mut views {
+        let entry = triggers.paint_entry(ROOM_PLAYERS, &view.text, state);
+        if !entry.paint.is_empty() {
+            view.painted = Some(painted(&entry));
+        }
+    }
+    views
 }
 
 pub(crate) fn bounded_text(text: &str, max_bytes: usize) -> &str {
@@ -178,7 +208,12 @@ mod tests {
 
     #[test]
     fn unobserved_values_remain_unknown() {
-        let view = SessionView::project(&GameState::default(), LifecycleView::Connecting, None);
+        let view = SessionView::project(
+            &GameState::default(),
+            &Matcher::default(),
+            LifecycleView::Connecting,
+            None,
+        );
         assert_eq!(view.room.exits, None);
         assert_eq!(view.room.description, None);
         assert_eq!(view.room.objects, None);
@@ -205,7 +240,8 @@ mod tests {
                 max: Some(100),
             },
         );
-        let view = SessionView::project(&state, LifecycleView::Ready, Some(100));
+        let view =
+            SessionView::project(&state, &Matcher::default(), LifecycleView::Ready, Some(100));
         assert_eq!(view.left_hand, HandView::Empty);
         assert_eq!(view.room.exits, Some(Vec::new()));
         assert_eq!(view.vitals.mana.unwrap().current, None);
@@ -218,21 +254,71 @@ mod tests {
     fn explicit_time_makes_projection_deterministic_and_roundtime_saturates() {
         let mut state = GameState::default();
         state.roundtime_ends = Some(110);
-        let a = SessionView::project(&state, LifecycleView::Ready, Some(103));
-        let b = SessionView::project(&state, LifecycleView::Ready, Some(103));
+        let a = SessionView::project(&state, &Matcher::default(), LifecycleView::Ready, Some(103));
+        let b = SessionView::project(&state, &Matcher::default(), LifecycleView::Ready, Some(103));
         assert_eq!(a, b);
         assert_eq!(a.roundtime.remaining_seconds, Some(7));
         assert_eq!(
-            SessionView::project(&state, LifecycleView::Ready, Some(111))
+            SessionView::project(&state, &Matcher::default(), LifecycleView::Ready, Some(111))
                 .roundtime
                 .remaining_seconds,
             Some(0)
         );
         assert_eq!(
-            SessionView::project(&state, LifecycleView::Ready, None)
+            SessionView::project(&state, &Matcher::default(), LifecycleView::Ready, None)
                 .roundtime
                 .remaining_seconds,
             None
+        );
+    }
+
+    /// `plan/45` Stage 7: a player's name comes painted by the triggers; one
+    /// no trigger painted comes as its text alone.
+    #[test]
+    fn a_players_name_is_painted_by_the_triggers() {
+        use cena_model::trigger::{Color, Look, Pattern, Rule, Span, Trigger};
+        let player = |name: &str| RoomItem {
+            id: format!("-{}", name.len()),
+            noun: name.to_owned(),
+            text: name.to_owned(),
+            before: None,
+            after: None,
+            status: None,
+        };
+        let friend = Trigger {
+            name: "friend".into(),
+            rule: Rule {
+                pattern: Some(Pattern::Literal {
+                    text: "Maravel".into(),
+                    whole_word: true,
+                }),
+                look: Some(Look {
+                    color: Some(Color {
+                        red: 0xec,
+                        green: 0xc0,
+                        blue: 0x13,
+                    }),
+                    background: None,
+                    bold: false,
+                    span: Span::Match,
+                }),
+                ..Rule::default()
+            },
+        };
+        let triggers = Matcher::new(vec![friend]).unwrap_or_default();
+        let views = players(
+            &[player("Maravel"), player("Orsen")],
+            &triggers,
+            &GameState::default(),
+        );
+        let painted = views[0].painted.as_ref().unwrap();
+        assert_eq!(painted.len(), 1);
+        assert_eq!(painted[0].text, "Maravel");
+        assert_eq!(painted[0].color.as_deref(), Some("#ecc013"));
+        assert_eq!(views[1].painted, None);
+        assert!(
+            items(&[player("Maravel")])[0].painted.is_none(),
+            "creatures and objects are not painted"
         );
     }
 
@@ -245,7 +331,7 @@ mod tests {
                 raw: "🦀".repeat(500),
             })
             .collect();
-        let view = SessionView::project(&state, LifecycleView::Ready, None);
+        let view = SessionView::project(&state, &Matcher::default(), LifecycleView::Ready, None);
         assert_eq!(view.unknown_tags.len(), 32);
         assert!(
             view.unknown_tags

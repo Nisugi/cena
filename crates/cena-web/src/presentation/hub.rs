@@ -163,6 +163,7 @@ impl Hub {
         let generation = snapshot.generation.0.to_string();
         let mut view = SessionView::project(
             &snapshot.state,
+            &snapshot.triggers,
             lifecycle(snapshot),
             snapshot.state.game_time_now(),
         );

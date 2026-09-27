@@ -25,10 +25,17 @@
 //! **Every trigger that matched fired**, whatever the looks decided and even
 //! on a squelched line ([`Answer::fired`]), so a trigger's flag is set on a
 //! line nobody is shown: `plan/45` §4's *"hide this but tell me"*.
+//!
+//! **An entry in a list is only painted** ([`Matcher::paint_entry`]): a name
+//! in the room window's players is given its looks, and nothing else --
+//! not hidden, moved or rewritten, and nothing fires. That feed restates the
+//! room at every arrival and departure, each of which is already a line of
+//! its own that the triggers answer (`plan/45` Stage 7).
 
 use std::cmp::Reverse;
 use std::ops::Range;
 
+use cena_protocol::frame::Style;
 use cena_protocol::runs::{Run, Runs};
 
 use super::{Act, Attention, Color, Hit, Look, Matcher, Rule, Span};
@@ -119,6 +126,36 @@ impl Matcher {
         }
     }
 
+    /// `text` as an entry in a list on `stream` -- a name in the room
+    /// window's players -- painted by the looks of the triggers that match
+    /// it, for the character `state` is. Looks only: see the module's docs.
+    #[must_use]
+    pub fn paint_entry(&self, stream: &str, text: &str, state: &GameState) -> Line {
+        let entry = Line::new(
+            stream,
+            Runs {
+                runs: vec![Run {
+                    text: text.to_owned(),
+                    style: Style::default(),
+                    link: None,
+                    inner_link: None,
+                }],
+            },
+        );
+        if self.triggers.is_empty() {
+            return entry;
+        }
+        let hits = self.screened(&entry, text, Some(state));
+        let fired: Vec<(&Hit, &Rule)> = hits
+            .iter()
+            .filter_map(|hit| Some((hit, &self.triggers.get(hit.trigger)?.rule)))
+            .collect();
+        Line {
+            paint: paint(&laid(&fired, text, &[])),
+            ..entry
+        }
+    }
+
     /// The lines `hits` make of `line`, whose text is `text`.
     fn shown(&self, line: &Line, text: &str, hits: &[Hit]) -> Vec<Line> {
         let fired: Vec<(&Hit, &Rule)> = hits
@@ -132,23 +169,7 @@ impl Matcher {
             return Vec::new();
         }
         let cuts = self.cuts(&fired, text);
-        let mut looks: Vec<Laid> = fired
-            .iter()
-            .filter_map(|(hit, rule)| {
-                let look = rule.look.as_ref()?;
-                let span = match look.span {
-                    Span::Match => hit.span.clone(),
-                    Span::Line => 0..text.len(),
-                    Span::Group(group) => hit.groups.get(group.checked_sub(1)?)?.clone()?,
-                };
-                Some(Laid {
-                    span: moved(&cuts, &span),
-                    look,
-                    rank: (Reverse(rule.priority), look.span == Span::Line, hit.trigger),
-                })
-            })
-            .collect();
-        looks.sort_by_key(|laid| laid.rank);
+        let looks = laid(&fired, text, &cuts);
         let shown = Line {
             stream: line.stream.clone(),
             runs: if cuts.is_empty() {
@@ -295,6 +316,29 @@ fn moved(cuts: &[Cut], span: &Range<usize>) -> Range<usize> {
 }
 
 /// Resolve `looks`, best first, into the paint each stretch of the line gets.
+/// The looks of the `fired` triggers over `text`, moved past `cuts`, best
+/// first.
+fn laid<'a>(fired: &[(&Hit, &'a Rule)], text: &str, cuts: &[Cut]) -> Vec<Laid<'a>> {
+    let mut looks: Vec<Laid> = fired
+        .iter()
+        .filter_map(|(hit, rule)| {
+            let look = rule.look.as_ref()?;
+            let span = match look.span {
+                Span::Match => hit.span.clone(),
+                Span::Line => 0..text.len(),
+                Span::Group(group) => hit.groups.get(group.checked_sub(1)?)?.clone()?,
+            };
+            Some(Laid {
+                span: moved(cuts, &span),
+                look,
+                rank: (Reverse(rule.priority), look.span == Span::Line, hit.trigger),
+            })
+        })
+        .collect();
+    looks.sort_by_key(|laid| laid.rank);
+    looks
+}
+
 fn paint(looks: &[Laid]) -> Vec<Paint> {
     let mut edges: Vec<usize> = looks
         .iter()

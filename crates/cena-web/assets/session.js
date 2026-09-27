@@ -86,7 +86,8 @@ function validView(view) {
   if (!(room.exits === null || (Array.isArray(room.exits) && room.exits.every((v) => typeof v === "string")))) return false;
   for (const key of ["creatures", "objects", "players"]) {
     if (!(room[key] === null || (Array.isArray(room[key]) && room[key].every((item) =>
-      item && typeof item.text === "string" && nullableText(item.status))))) return false;
+      item && typeof item.text === "string" && nullableText(item.status)
+      && (item.painted === undefined || item.painted === null || validRuns(item.painted)))))) return false;
   }
   for (const hand of [view.left_hand, view.right_hand]) {
     if (!hand || !["unknown", "empty", "holding"].includes(hand.kind)

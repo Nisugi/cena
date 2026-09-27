@@ -141,6 +141,11 @@ pub struct RoomItemView {
     /// What a player is doing (`hiding`, `sitting`, ...); only ever set for
     /// players. The browser shows it in parentheses after `text`.
     pub status: Option<String>,
+    /// `text` as the character's triggers paint it (`plan/45` Stage 7);
+    /// only ever set for players. Optional and additive: absent where no
+    /// trigger painted, and from older servers, and the browser shows `text`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub painted: Option<Vec<StyledRun>>,
 }
 
 /// Nullable collections distinguish an unobserved feed from known emptiness.

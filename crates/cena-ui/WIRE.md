@@ -56,8 +56,11 @@ with `&session=` its id appended.
 `lifecycle`, nullable `prompt`, and bounded `unknown_tags`. `RoomView` has
 nullable `id` and `title`, nullable styled-run `description`, nullable string
 array `exits`, and nullable `creatures`, `objects`, `players` arrays. Room items
-have string `id`, `noun`, `text`, and nullable string `status`. A null collection
-means unobserved; an empty array means observed empty.
+have string `id`, `noun`, `text`, and nullable string `status`. A player may also
+carry `painted`, styled runs of `text` as the character's triggers paint it
+(`plan/45` Stage 7), each run's `color` and `background` `#rrggbb` as a story
+line's; it is absent where no trigger painted, and a viewer shows `text`. A null
+collection means unobserved; an empty array means observed empty.
 
 Hands are tagged `kind: unknown`, `empty`, or `holding`; holding adds nullable
 `id`/`noun` and string `name`. Vitals have fixed `health`, `mana`, `stamina`,

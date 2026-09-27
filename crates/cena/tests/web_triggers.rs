@@ -12,7 +12,7 @@ use cena_behavior::triggers;
 use cena_platform::AnsweringSource;
 use cena_session::trigger::Matcher;
 use cena_session::{Generation, Outcome, Session, SessionHandle, SessionId};
-use cena_ui::{ServerMessage, StoryLine};
+use cena_ui::{RoomItemView, ServerMessage, StoryLine};
 use cena_web::WebServer;
 use tokio_util::sync::CancellationToken;
 use web_support::*;
@@ -167,4 +167,76 @@ async fn two_characters_see_one_file_answered_each_their_own_way() {
     a_stop.cancel();
     b_stop.cancel();
     let _ = (a_actor.await, b_actor.await);
+}
+
+/// A player's name as the page is given it: each run's text and colour, or
+/// nothing when no trigger painted it.
+type Drawn = Option<Vec<(String, Option<String>)>>;
+
+/// What the game says to `look` in a room with two players in it.
+const PLAYERS: &[u8] = b"<component id='room players'>Also here: \
+<a exist=\"-7\" noun=\"Maravel\">Maravel</a> and <a exist=\"-8\" noun=\"Orsen\">Orsen</a>\
+</component>\n<prompt time=\"1\">&gt;</prompt>\n";
+
+/// Stage 7 (`plan/45`): a name in the room window's players is painted by
+/// the character's triggers, through the snapshot the page is drawn from.
+#[tokio::test]
+async fn a_name_in_the_room_window_is_painted_by_the_triggers() {
+    let (source, transcript) = AnsweringSource::logged_in(ROOM);
+    transcript.answer("look", PLAYERS);
+    let session = Session::numbered(SessionId(0), source);
+    let (handle, observer, stop) = (session.handle(), session.observer(), session.cancel_token());
+    let file = "[trigger.friend]\ntext = 'Maravel'\nlook = { color = '#ecc013' }\n";
+    let loaded = triggers::read(file).unwrap();
+    handle.set_triggers(Matcher::new(loaded.triggers.for_character("Nisugi")).unwrap());
+    let actor = tokio::spawn(session.into_actor().run());
+    await_ready(&observer, Generation::FIRST).await.unwrap();
+
+    let server = WebServer::open().await.unwrap();
+    server.sessions().attach("Nisugi", observer, handle.clone());
+    let pairing = server.pairing_url();
+    let stop_web = CancellationToken::new();
+    let web = tokio::spawn(server.run(stop_web.clone().cancelled_owned()));
+    let mut page = browser_for(&pairing, Some("0")).await.unwrap();
+    let sent = handle
+        .send_manual_at(Generation::FIRST, "look", DEADLINE)
+        .await;
+    assert!(matches!(sent, Outcome::Confirmed(_)), "{sent:?}");
+
+    let players: Vec<RoomItemView> = tokio::time::timeout(DEADLINE, async {
+        loop {
+            if let ServerMessage::Snapshot { view, .. } | ServerMessage::Update { view, .. } =
+                receive(&mut page).await?
+                && let Some(players) = view.room.players
+                && players.len() == 2
+            {
+                return TestResult::Ok(players);
+            }
+        }
+    })
+    .await
+    .unwrap()
+    .unwrap();
+    let colours: Vec<Drawn> = players
+        .iter()
+        .map(|player| {
+            player.painted.as_ref().map(|runs| {
+                runs.iter()
+                    .map(|run| (run.text.clone(), run.color.clone()))
+                    .collect()
+            })
+        })
+        .collect();
+    assert_eq!(
+        colours,
+        [
+            Some(vec![("Maravel".to_owned(), Some("#ecc013".to_owned()))]),
+            None
+        ]
+    );
+
+    stop_web.cancel();
+    web.await.unwrap().unwrap();
+    stop.cancel();
+    let _ = actor.await;
 }

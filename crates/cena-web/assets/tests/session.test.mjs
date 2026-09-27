@@ -404,6 +404,7 @@ test("the history gap notice clears once the hole can no longer be in the Story"
 
 class FakeNode {
   toggleAttribute(name, value) { this[name] = value; }
+  setAttribute(name, value) { this[name] = value; }
   querySelector(selector) {
     this.selected ??= new Map();
     if (!this.selected.has(selector)) this.selected.set(selector, new FakeNode('div'));
@@ -508,6 +509,29 @@ test("a trigger's paint is drawn, and paint that is not #rrggbb refuses the mess
     fresh.message(bad);
     assert.equal(session.state.connection, "protocol-error", String(color));
   }
+});
+
+test("a player's name is drawn as a trigger painted it, and bad paint refuses the view", () => {
+  // plan/45 Stage 7: the room window's names take the triggers' looks.
+  const { socket, element } = page();
+  const snapshot = readySnapshot();
+  snapshot.view.room.players = [
+    { id: "-1", noun: "Maravel", text: "Maravel", status: "sitting",
+      painted: [{ text: "Maravel", bold: false, monospace: false, preset: null, color: "#ecc013" }] },
+    { id: "-2", noun: "Orsen", text: "Orsen", status: null },
+  ];
+  socket.message(snapshot);
+  const list = element("room-players");
+  assert.equal(list.textContent, "Maravel (sitting), Orsen");
+  assert.deepEqual(list.children[0].style, { color: "#ecc013" }, "the painted name");
+  assert.deepEqual(list.children.at(-1).style, {}, "a name no trigger painted");
+
+  const { session, socket: fresh } = setup();
+  const bad = readySnapshot();
+  bad.view.room.players = [{ id: "-1", noun: "M", text: "M", status: null,
+    painted: [{ text: "M", bold: false, monospace: false, preset: null, color: "red" }] }];
+  fresh.message(bad);
+  assert.equal(session.state.connection, "protocol-error");
 });
 
 test("a stream pane keeps the reader's place when its own lines have not changed", () => {

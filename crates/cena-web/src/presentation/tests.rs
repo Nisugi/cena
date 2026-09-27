@@ -12,6 +12,7 @@ fn snapshot(cursor: u64) -> Snapshot {
         state: GameState::default(),
         lifecycle: State::Ready,
         retry: None,
+        triggers: Arc::default(),
     }
 }
 

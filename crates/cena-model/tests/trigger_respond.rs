@@ -341,3 +341,60 @@ fn a_redirect_moves_or_copies_the_line_and_the_best_ranked_decides() {
     assert_eq!(streams, ["", "whispers"]);
     assert_eq!(copied[0].runs, copied[1].runs);
 }
+
+/// Stage 7: a name in the room window's players is only painted -- a
+/// squelch or a substitute on it does nothing there -- by the triggers on
+/// every stream or on `room players`, never one kept to another, and only
+/// while its `only_if` holds.
+#[test]
+fn an_entry_in_a_list_is_only_painted() {
+    let state = GameState::default();
+    let matcher = Matcher::new(vec![
+        trigger("friend", words("Maravel"), |rule| {
+            rule.look = Some(look(Some(RED), None, Span::Match));
+        }),
+        trigger("hush", words("Maravel"), |rule| rule.squelch = true),
+        trigger("rename", words("Orsen"), |rule| {
+            rule.substitute = Some("Bob".into());
+        }),
+        trigger("main only", words("Orsen"), |rule| {
+            rule.stream = Some(String::new());
+            rule.look = Some(look(Some(GREEN), None, Span::Line));
+        }),
+        trigger("window only", words("Nythra"), |rule| {
+            rule.stream = Some("room players".into());
+            rule.look = Some(look(None, Some(GREEN), Span::Line));
+        }),
+        trigger("while hidden", words("Kelmond"), |rule| {
+            rule.only_if = cena_model::guard::Condition::parse_group("hidden").unwrap_or_default();
+            rule.look = Some(look(Some(RED), None, Span::Line));
+        }),
+    ])
+    .unwrap_or_default();
+    let entry = |text: &str| matcher.paint_entry("room players", text, &state);
+
+    let maravel = entry("Maravel");
+    assert_eq!(maravel.text(), "Maravel", "not hidden");
+    assert_eq!(
+        maravel.paint,
+        [Paint {
+            span: 0..7,
+            color: Some(RED),
+            background: None,
+            bold: false,
+        }]
+    );
+    let orsen = entry("Orsen");
+    assert_eq!(orsen.text(), "Orsen", "not rewritten");
+    assert!(
+        orsen.paint.is_empty(),
+        "kept to the main window: {:?}",
+        orsen.paint
+    );
+    assert_eq!(entry("Nythra").paint.len(), 1, "kept to the room window");
+    assert!(entry("Maravels").paint.is_empty(), "whole words");
+    assert!(
+        entry("Kelmond").paint.is_empty(),
+        "not hidden, so not painted"
+    );
+}

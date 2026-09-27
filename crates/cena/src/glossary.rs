@@ -121,7 +121,7 @@
 //!
 //! | Term | Means | Not |
 //! |---|---|---|
-//! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream: [`Snapshot`] | view, handle, ref |
+//! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream, with the triggers its lines were answered with: [`Snapshot`] | view, handle, ref |
 //! | **Event** | something the session saw or did, published to observers: [`Event`] (a frame, a combat chunk, a command sent, a notice) | signal, trigger, hook |
 //! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into, and a character's triggers answer it before it is published ([`Matcher::respond`]) | display line, story line |
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
@@ -209,7 +209,7 @@
 //! | **`only_if`** | guard words that must all hold when a trigger would fire, read against the character and its current target: [`Rule::only_if`] | gate, which is [`Gate`] |
 //! | **Trigger's flag** | a name a trigger sets, until cleared or for so many game seconds, or clears; the session publishes each change ([`Event::Flag`]) so a hunt's guard reads it: [`Flags`] | status |
 //! | **Look** | a response's colour, background and bold, over the match, a capture group or the line: [`Look`] | style, which is the wire's [`Style`] |
-//! | **Paint** | a look, resolved: what one stretch of a published [`Line`] is painted, the best look deciding each of colour, background and bold: [`Paint`] | highlight |
+//! | **Paint** | a look, resolved: what one stretch of a published [`Line`] is painted, the best look deciding each of colour, background and bold: [`Paint`]. A name in the room window's players is painted the same way, and only painted ([`Matcher::paint_entry`]) | highlight |
 //! | **Master switch** | a category, or one kind of response, turned off for every trigger: the file's `[categories]` and `[responses]` | |
 //! | **Attention** | what a trigger calls for beyond the line: a sound, an OS notification, a banner ([`Attention`]); once in its trigger's cooldown, and once for every character that saw the same thing, played by the binary even with no page open | alert, which is one kind: the banner |
 //! | **Origin** | where an imported trigger came from, `Wrayth: <file>`: importing that file again replaces what it brought, and it holds a send from a rule the player did not write ([`wrayth`]). Not a command's [`Origin`], who sent it | source |
@@ -315,6 +315,7 @@
 //! [`Rooms::rally`]: field@cena_behavior::hunt::profile::Rooms::rally
 //! [`Runs`]: cena_session::Runs
 //! [`Paint`]: cena_session::trigger::Paint
+//! [`Matcher::paint_entry`]: cena_session::trigger::Matcher::paint_entry
 //! [`ServerMessage`]: cena_ui::ServerMessage
 //! [`Session`]: cena_session::Session
 //! [`SessionActor`]: cena_session::SessionActor

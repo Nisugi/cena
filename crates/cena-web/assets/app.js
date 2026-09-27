@@ -51,6 +51,22 @@ export function appendRuns(document, target, runs) {
   }
 }
 
+// A room list: each entry's name -- as a trigger painted it, when one did
+// (`plan/45` Stage 7) -- and a player's status after it.
+function appendEntries(document, target, items) {
+  const piece = (value) => {
+    const span = document.createElement("span");
+    span.textContent = value;
+    target.appendChild(span);
+  };
+  items.forEach((item, index) => {
+    if (index > 0) piece(", ");
+    if (item.painted) appendRuns(document, target, item.painted);
+    else piece(item.text);
+    if (item.status) piece(` (${item.status})`);
+  });
+}
+
 export function lifecycleText(lifecycle) {
   if (!lifecycle) return "Waiting for game state";
   if (lifecycle.kind === "ready") return "Ready";
@@ -399,8 +415,11 @@ export function mount(document, environment) {
     text("room-exits", view?.room.exits?.join(" · ") || (view?.room.exits ? "None" : "Unknown"));
     for (const kind of ["creatures", "objects", "players"]) {
       const items = view?.room[kind];
-      text(`room-${kind}`, items?.map((item) => item.text + (item.status ? ` (${item.status})` : "")).join(", ")
-        || (items ? "None" : "Unknown"));
+      const list = element(`room-${kind}`);
+      if (items?.length) {
+        list.replaceChildren();
+        appendEntries(document, list, items);
+      } else list.textContent = items ? "None" : "Unknown";
     }
     const unknown = view?.unknown_tags || [];
     text("diagnostics-label", `Protocol diagnostics (${unknown.length})`);

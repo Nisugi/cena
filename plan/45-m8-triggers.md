@@ -1,7 +1,7 @@
 # 45 — Milestone 8: triggers
 
-> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGES 4, 3, 5 AND 6 on
-> 2026-09-27** (§6): every stage built, all but Stage 1's release run of the bench, and
+> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGES 4, 3, 5, 6 AND 7
+> on 2026-09-27** (§6): every stage built, all but Stage 1's release run of the bench, and
 > nothing yet run live. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b` and
 > `m6-hunt` merged in again at `b7012d3`, in
 > the worktree `G:\dev\Cena-m8` (locked on purpose: M8 spans sessions). The author's
@@ -236,7 +236,7 @@ differences, and what happens to each:
 | | Model (`route_text`) | Despana (`LineAssembler`) | Resolution |
 |---|---|---|---|
 | Boundary | `ends_line`, which the parser sets on exactly one text frame per wire line (`crates/cena-protocol/src/parser/emit.rs:27`) | `ends_line`, **plus** a flush at every prompt, **plus** a split at embedded `\n` | **MEASURED 2026-09-26 on the 23 committed fixtures: 0 lines open at a prompt, 0 newlines in a text frame** (`crates/cena-protocol/tests/lines_at_the_prompt.rs`, which also shows the check can fail). The same check over real traffic is the gated `no_line_is_left_open_at_a_prompt_on_real_traffic` in `corpus_replay.rs`, **not yet run**. Until it is, the fixtures say the two agree on text. |
-| Room components | room state, not stream lines | lines on stream `id` | stay a rendering of room state; whether triggers see component bodies is an open item (§8) |
+| Room components | room state, not stream lines | lines on stream `id` | stay a rendering of room state; the room window's players are painted by the triggers' looks (Stage 7) |
 | Bounds | none per line; 2,000 lines per stream | 16 KB, 256 runs, 32 pending streams | the bounds move to the published line |
 | `;sorter` | -- | a Despana switch | **moved into the session**, before the matcher: VellumFE sorts before it highlights, so each sorted line is matched. BUILT: `crates/cena-model/src/sorter.rs`, applied in `crates/cena-session/src/actor/line.rs` |
 | Quiet windows | -- | `Event::Quiet` hides a quiet command's report | unchanged; the viewer still tracks `Event::Quiet` |
@@ -634,8 +634,38 @@ the one typing it was shown: with several characters on one screen, those would 
 once per window. `;trigger reload` now reads the file again for every character, so a file
 edited by hand needs one reload, not one per character.
 
-**Still open, for the author** (§8 item 4): whether triggers see the room window's
-bodies (`Also here:`), where Wrayth's names list is usually seen.
+### Stage 7 -- the room window's players (2026-09-27)
+
+§8 item 4, answered by the author the same day: *"there are two also heres ... there's the
+room players feed which only goes to the room window, then there's the non room window feed
+which comes when you look or when you change rooms. room players updates everytime someone
+enters or leaves the room. So it can, and I guess it should if the room window is open."*
+
+**BUILT 2026-09-27.** Each name in the room window's players is painted by the character's
+triggers, as an entry on the stream `room players` (`Matcher::paint_entry`,
+`crates/cena-model/src/trigger/respond.rs`). The projection paints it
+(`crates/cena-ui/src/projection.rs`), from the triggers the snapshot carries
+(`Snapshot::triggers`), so the room window and the story are painted by the same set, and a
+`;trigger` change repaints it with the notice that says so. A room entry gains an optional
+`painted` on the wire (`crates/cena-ui/WIRE.md`), and Despana draws it as it draws a line's
+paint.
+
+**Done when** a trigger's look on a name reaches the room window, and a name no trigger
+painted comes plain. **MET**: `crates/cena/tests/web_triggers.rs`
+(`a_name_in_the_room_window_is_painted_by_the_triggers`), with the model's, the
+projection's and the page's own tests. Six mutants, all caught.
+
+**CLAUDE'S, to confirm:**
+
+| Question | Built | Why |
+|---|---|---|
+| What a trigger does there | its look only: not hidden, moved or rewritten, and nothing fires -- no sound, notification, send or flag | the feed restates the room at every arrival and departure, so a sound on a friend's name would ring each time anyone else came or went; each arrival is already a main-window line of its own (*"Maravel just arrived."*), and the triggers answer that |
+| Which triggers | those on every stream, and those kept to `stream = "room players"`; not those kept to the main window | a Wrayth name imports on every stream; `room players` is how a player keeps a look to the room window |
+| "If the room window is open" | painted whether or not a viewer has it open | a look is only seen where the list is drawn, and the author's rule is that looks are laid once, in core, before any frontend (§0) |
+| The other two lists | creatures and objects are not painted | the author spoke of the players; the same entry painting reaches them when asked |
+
+The main window's `Also here:`, which comes at a `look` or a room change, is a line like
+any other and was answered from Stage 1.
 
 ---
 
@@ -664,6 +694,7 @@ bodies (`Also here:`), where Wrayth's names list is usually seen.
    (§6a). `;trigger test` explains without it; publishing it marked waits for the view that
    would read the mark.
 4. **Room components** (the room window): do triggers see their bodies, in Stage 1 or later?
+   **ANSWERED 2026-09-27** (author): the players feed, yes. **BUILT** as Stage 7.
 5. **Wrayth's word boundaries**: Wizard FE's docs have a "Not on Word Boundary" option
    (`reference/wiki_clean/Wizard _front end_.txt:563-575`), implying whole-word by default;
    Saga's import defaulted to whole-word and broke matches. The fixtures and one live look
