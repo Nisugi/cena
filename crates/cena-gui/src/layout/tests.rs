@@ -230,7 +230,7 @@ fn a_widget_let_go_in_the_open_gets_a_window_of_its_own() {
     let area = Vec2::new(900.0, 600.0);
     let mut layout = Layout::fitted(area);
     let (room, exits) = room_with(&layout, Widget::Exits);
-    layout.release(room, exits, pos2(890.0, 300.0), &[], area);
+    layout.release(room, Taking::Cell(exits), pos2(890.0, 300.0), &[], area);
     let window = layout.titled("Exits").expect("a window of its own");
     assert!(matches!(window.holds, Holds::One(placed) if placed.id == exits));
     assert!(window.rect().max.x <= area.x + 0.5, "{:?}", window.rect());
@@ -247,14 +247,20 @@ fn a_widget_let_go_on_a_custom_window_joins_it() {
     let fresh = layout.new_custom();
     let inside = Rect::from_min_size(pos2(20.0, 60.0), Vec2::new(288.0, 156.0));
     let (room, exits) = room_with(&layout, Widget::Exits);
-    layout.release(room, exits, pos2(50.0, 80.0), &[(fresh, inside)], area);
+    layout.release(
+        room,
+        Taking::Tab(exits),
+        pos2(50.0, 80.0),
+        &[(fresh, inside)],
+        area,
+    );
     assert_eq!(widgets_in(&layout, "Custom window"), [Widget::Exits]);
     let Some(Holds::Custom(custom)) = layout.holder(fresh).map(|holder| &holder.holds) else {
         panic!("still a custom window");
     };
     // At the pointer, as far right as the inside lets a widget 260 across go.
     assert_eq!(custom.cells[0].rect().min, pos2(28.0, 20.0));
-    layout.release(fresh, exits, pos2(890.0, 590.0), &[], area);
+    layout.release(fresh, Taking::Cell(exits), pos2(890.0, 590.0), &[], area);
     assert!(
         layout.holder(fresh).is_none(),
         "its last widget took it along"
@@ -276,7 +282,7 @@ fn a_standalone_window_joins_the_custom_window_it_is_dropped_on() {
         .map(|holder| holder.id)
         .expect("a room");
     let inside = Rect::from_min_size(pos2(600.0, 400.0), Vec2::new(290.0, 100.0));
-    assert!(!layout.join(hunt, pos2(10.0, 10.0), &[(room, inside)]));
+    assert!(!layout.join(hunt, pos2(10.0, 100.0), &[(room, inside)]));
     assert!(layout.titled("Hunt").is_some());
     assert!(layout.join(hunt, pos2(620.0, 420.0), &[(room, inside)]));
     assert!(layout.titled("Hunt").is_none());
@@ -289,7 +295,7 @@ fn a_standalone_window_joins_the_custom_window_it_is_dropped_on() {
 fn a_tab_taken_out_leaves_the_rest_of_its_stack() {
     let placed = |id, widget| Placed { id, widget };
     let mut custom = Custom::empty("Streams", Vec2::new(200.0, 100.0));
-    custom.put(placed(1, Widget::Story), pos2(0.0, 0.0));
+    custom.land(vec![placed(1, Widget::Story)], 0, pos2(0.0, 0.0));
     custom.cells[0].tabs.push(placed(2, Widget::Hydra));
     custom.cells[0].showing = 1;
     assert_eq!(
@@ -306,4 +312,140 @@ fn a_tab_taken_out_leaves_the_rest_of_its_stack() {
         "the tab showing is one still there"
     );
     assert_eq!(custom.take(9), None);
+}
+
+/// A standalone window dropped on another's title bar: the two become one
+/// window of one tab stack, where the other was, the first tab showing.
+#[test]
+fn a_window_dropped_on_anothers_title_stacks_with_it() {
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let hunt = layout
+        .titled("Hunt")
+        .map(|holder| holder.id)
+        .expect("a hunt");
+    let hydra = layout.titled("Hydra").map(Holder::rect).expect("hydra");
+    let title = hydra.min + Vec2::new(40.0, 10.0);
+    assert!(layout.join(hunt, title, &[]));
+    assert!(layout.titled("Hunt").is_none());
+    let stacked = layout.titled("Hydra").expect("still there");
+    assert_eq!(stacked.rect(), hydra, "where it was");
+    let Holds::Custom(custom) = &stacked.holds else {
+        panic!("a custom window of one tab stack");
+    };
+    assert_eq!(custom.cells.len(), 1);
+    let tabs: Vec<Widget> = custom.cells[0].tabs.iter().map(|tab| tab.widget).collect();
+    assert_eq!(tabs, [Widget::Hydra, Widget::Hunt]);
+    assert_eq!(custom.cells[0].showing, 0);
+}
+
+/// Let go over the middle of a widget, something joins its tab stack; over
+/// its side, it takes a place of its own there.
+#[test]
+fn only_a_widgets_middle_stacks() {
+    let placed = |id, widget| Placed { id, widget };
+    let mut custom = Custom::empty("Streams", Vec2::new(400.0, 200.0));
+    custom.land(vec![placed(1, Widget::Story)], 0, pos2(0.0, 0.0));
+    let story = custom.cells[0].rect();
+    custom.land(vec![placed(2, Widget::Hydra)], 0, story.center());
+    assert_eq!(custom.cells.len(), 1, "stacked");
+    custom.land(
+        vec![placed(3, Widget::Hunt)],
+        0,
+        pos2(story.min.x + 5.0, story.center().y),
+    );
+    assert_eq!(custom.cells.len(), 2, "beside, not stacked");
+    let widgets: Vec<Vec<Widget>> = custom
+        .cells
+        .iter()
+        .map(|cell| cell.tabs.iter().map(|tab| tab.widget).collect())
+        .collect();
+    assert_eq!(
+        widgets,
+        [vec![Widget::Story, Widget::Hydra], vec![Widget::Hunt]]
+    );
+}
+
+/// A tab or a whole cell stacked onto another cell's widget: the tab alone
+/// moves, the cell with all its tabs; onto its own cell, nothing moves.
+#[test]
+fn stacking_onto_a_cell_takes_what_was_dragged() {
+    let placed = |id, widget| Placed { id, widget };
+    let mut custom = Custom::empty("Streams", Vec2::new(600.0, 400.0));
+    custom.land(
+        vec![placed(1, Widget::Story), placed(2, Widget::Hydra)],
+        0,
+        pos2(0.0, 0.0),
+    );
+    custom.land(vec![placed(3, Widget::Hunt)], 0, pos2(0.0, 350.0));
+    custom.stack_onto(Taking::Tab(2), 1);
+    assert_eq!(
+        custom.cells[0].tabs.len(),
+        2,
+        "onto its own cell: nothing moved"
+    );
+    custom.stack_onto(Taking::Tab(2), 3);
+    let widgets = |custom: &Custom| -> Vec<Vec<Widget>> {
+        custom
+            .cells
+            .iter()
+            .map(|cell| cell.tabs.iter().map(|tab| tab.widget).collect())
+            .collect()
+    };
+    assert_eq!(
+        widgets(&custom),
+        [vec![Widget::Story], vec![Widget::Hunt, Widget::Hydra]]
+    );
+    custom.stack_onto(Taking::Cell(3), 1);
+    assert_eq!(
+        widgets(&custom),
+        [vec![Widget::Story, Widget::Hunt, Widget::Hydra]]
+    );
+}
+
+/// Stacking a cell onto a widget of its own cell moves nothing, and loses
+/// nothing.
+#[test]
+fn a_cell_stacked_onto_itself_stays() {
+    let placed = |id, widget| Placed { id, widget };
+    let mut custom = Custom::empty("Streams", Vec2::new(400.0, 200.0));
+    custom.land(
+        vec![placed(1, Widget::Story), placed(2, Widget::Hydra)],
+        0,
+        pos2(0.0, 0.0),
+    );
+    custom.stack_onto(Taking::Cell(1), 2);
+    custom.stack_onto(Taking::Tab(2), 1);
+    let tabs: Vec<Widget> = custom.cells[0].tabs.iter().map(|tab| tab.widget).collect();
+    assert_eq!(tabs, [Widget::Story, Widget::Hydra]);
+}
+
+/// A whole tab stack let go in the open becomes a custom window of that one
+/// stack, titled by the widget showing, which still shows.
+#[test]
+fn a_stack_let_go_in_the_open_keeps_together() {
+    let area = Vec2::new(900.0, 600.0);
+    let mut layout = Layout::fitted(area);
+    let (room, creatures) = room_with(&layout, Widget::Creatures);
+    let (_, objects) = room_with(&layout, Widget::Objects);
+    if let Some(Holder {
+        holds: Holds::Custom(custom),
+        ..
+    }) = layout.holders.iter_mut().find(|holder| holder.id == room)
+    {
+        custom.stack_onto(Taking::Cell(objects), creatures);
+        let stacked = custom
+            .cells
+            .iter_mut()
+            .find(|cell| cell.tabs.len() == 2)
+            .expect("a stack");
+        stacked.showing = 1;
+    }
+    layout.release(room, Taking::Cell(creatures), pos2(300.0, 300.0), &[], area);
+    let window = layout.titled("Objects").expect("a window of the stack");
+    let Holds::Custom(custom) = &window.holds else {
+        panic!("a custom window");
+    };
+    let tabs: Vec<Widget> = custom.cells[0].tabs.iter().map(|tab| tab.widget).collect();
+    assert_eq!(tabs, [Widget::Creatures, Widget::Objects]);
+    assert_eq!(custom.cells[0].showing, 1);
 }

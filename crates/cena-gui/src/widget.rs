@@ -144,6 +144,17 @@ impl Widget {
         Vec2::new(width, height)
     }
 
+    /// How much it has said, ever, when it is a stream of lines: a tab not
+    /// showing counts what came since it last did (`plan/49` §2). `None`
+    /// for the rest, which have nothing to count.
+    pub(crate) fn count(self, seen: &Seen<'_>) -> Option<u64> {
+        match self {
+            Widget::Story => Some(seen.story.heard),
+            Widget::Hydra => Some(seen.story.told),
+            _ => None,
+        }
+    }
+
     /// Draw it into `ui`, bare, filling what it is given. `id` is its own,
     /// so two of one kind keep apart what they remember -- a scroll, say.
     pub(crate) fn draw(self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {

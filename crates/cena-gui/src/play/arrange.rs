@@ -8,6 +8,11 @@
 //! custom window beneath, or into a standalone window of its own
 //! (`Layout::release`).
 //!
+//! A tab stack's tabs stay clickable, and each drags alone (step 5); its
+//! body drags the whole stack. Wherever something is let go the rule is the
+//! layout's (`moves.rs`): onto a widget, it joins that widget's tab stack;
+//! onto empty space, it takes a place of its own.
+//!
 //! With Arrange off, a cell takes nothing, so no press in play rearranges
 //! anything: the author asked that the everyday surface stay simple
 //! (`plan/49` §1 row 3).
@@ -16,20 +21,20 @@ use egui::{
     Align2, Color32, CursorIcon, FontId, Id, LayerId, Order, Pos2, Rect, Sense, Stroke, Vec2,
 };
 
-use crate::layout::{Custom, SMALLEST_CELL};
+use crate::layout::{Cell, Custom, SMALLEST_CELL, Taking, stacks_at, tabs_and_body};
 use crate::snap;
 use crate::text::AMBER;
 
 /// How far inside a cell's edge a press takes the edge rather than the cell.
 const EDGE: f32 = 5.0;
 
-/// A cell being moved or resized.
+/// A cell being moved or resized, or one tab of a stack being moved.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct CellGesture {
     /// The custom window it is in.
     holder: u32,
-    /// The widget it shows, which names it.
-    placed: u32,
+    /// What is being dragged: a tab, or the cell showing this widget.
+    taking: Taking,
     /// Where it was when the press began, from the inside's top left.
     start: Rect,
     /// Which edges the press took; none, and it moves.
@@ -124,20 +129,44 @@ impl Grab {
     }
 }
 
-/// A widget dragged out of its custom window and let go.
+/// A widget, or a whole stack, dragged out of its custom window and let go.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Released {
     /// The custom window it left.
     pub(super) holder: u32,
-    /// The widget.
-    pub(super) placed: u32,
+    /// What left.
+    pub(super) taking: Taking,
     /// Where it was let go.
     pub(super) at: Pos2,
 }
 
-/// Custom window `holder`'s cells, drawn at `inside`, arranged: each shows
-/// its outline and name and follows the pointer as the module says. The
-/// widget let go outside the window, if one was.
+/// Where a gesture let go inside its own window comes to.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Landing {
+    /// Outside the window: it leaves.
+    Out(Released),
+    /// On another cell of the window, whose stack it joins: that cell named
+    /// by a widget it holds.
+    Onto { from: Taking, into: u32 },
+    /// A tab let go on empty space in the window: a cell of its own there,
+    /// from the inside's top left.
+    Apart { tab: u32, at: Pos2 },
+}
+
+/// What every cell of one custom window shares while it is arranged.
+struct Arranging<'a> {
+    holder: u32,
+    inside: Rect,
+    grid: f32,
+    shift: bool,
+    /// Each cell's rect, from the inside's top left, as the frame began.
+    rects: &'a [Rect],
+    /// A widget in each cell, which names the cell.
+    owners: &'a [u32],
+}
+
+/// Custom window `holder`'s cells, drawn at `inside`, arranged as the module
+/// says. A widget or stack let go outside the window, if one was.
 pub(super) fn cells(
     ui: &mut egui::Ui,
     custom: &mut Custom,
@@ -146,99 +175,223 @@ pub(super) fn cells(
     grid: f32,
     gesture: &mut Option<CellGesture>,
 ) -> Option<Released> {
-    let mut released = None;
-    let rects: Vec<Rect> = custom.cells.iter().map(crate::layout::Cell::rect).collect();
-    let bounds = Rect::from_min_size(Pos2::ZERO, inside.size());
-    let shift = ui.input(|input| input.modifiers.shift);
+    let rects: Vec<Rect> = custom.cells.iter().map(Cell::rect).collect();
+    let owners: Vec<u32> = custom
+        .cells
+        .iter()
+        .map(|cell| cell.shown().map_or(0, |placed| placed.id))
+        .collect();
+    let arranging = Arranging {
+        holder,
+        inside,
+        grid,
+        shift: ui.input(|input| input.modifiers.shift),
+        rects: &rects,
+        owners: &owners,
+    };
+    let mut landing = None;
     for (index, cell) in custom.cells.iter_mut().enumerate() {
+        let rect = rects[index].translate(inside.min.to_vec2());
+        let (tabs, body) = tabs_and_body(rect, cell.tabs.len());
+        let mut clicked = None;
+        let stack = cell.tabs.clone();
+        for (at, (tab, tab_rect)) in stack.iter().zip(tabs).enumerate() {
+            let response = ui.interact(
+                tab_rect,
+                Id::new(("arrange-tab", holder, tab.id)),
+                Sense::click_and_drag(),
+            );
+            if response.clicked() {
+                clicked = Some(at);
+            }
+            let taking = Taking::Tab(tab.id);
+            let name = tab.widget.name();
+            landing =
+                landing.or(arranging.follow(ui, &response, gesture, taking, index, name, cell));
+        }
+        if let Some(at) = clicked {
+            cell.showing = at;
+        }
         let Some(placed) = cell.shown().copied() else {
             continue;
         };
-        let rect = rects[index].translate(inside.min.to_vec2());
-        let response = ui.interact(
-            rect,
-            Id::new(("arrange-cell", holder, placed.id)),
-            Sense::drag(),
-        );
-        // A screen reader, and a test, finds a cell by its widget's name.
-        response.widget_info(|| {
-            egui::WidgetInfo::labeled(egui::WidgetType::Other, true, placed.widget.name())
-        });
-        let painter = ui.painter();
-        painter.rect_filled(rect, 0.0, Color32::from_black_alpha(170));
-        painter.rect_stroke(rect, 0.0, Stroke::new(1.0, AMBER), egui::StrokeKind::Inside);
-        painter.text(
-            rect.center(),
-            Align2::CENTER_CENTER,
-            placed.widget.name(),
-            FontId::proportional(12.0),
-            AMBER,
-        );
-        if let Some(at) = response.hover_pos() {
-            ui.ctx().set_cursor_icon(Grab::at(rect, at).cursor());
+        let names: Vec<&str> = cell.tabs.iter().map(|tab| tab.widget.name()).collect();
+        let names = names.join(", ");
+        let response = overlay(ui, body, holder, placed.id, &names);
+        let taking = Taking::Cell(placed.id);
+        landing = landing.or(arranging.follow(ui, &response, gesture, taking, index, &names, cell));
+    }
+    match landing? {
+        Landing::Out(released) => return Some(released),
+        Landing::Onto { from, into } => custom.stack_onto(from, into),
+        Landing::Apart { tab, at } => {
+            if let Some(tab) = custom.take(tab) {
+                custom.land(vec![tab], 0, at);
+            }
         }
+    }
+    None
+}
+
+/// A cell's body while arranging: washed, outlined and named, taking the
+/// pointer; its name said to a screen reader, and a test.
+fn overlay(ui: &egui::Ui, body: Rect, holder: u32, placed: u32, names: &str) -> egui::Response {
+    let response = ui.interact(
+        body,
+        Id::new(("arrange-cell", holder, placed)),
+        Sense::drag(),
+    );
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, names));
+    let painter = ui.painter();
+    painter.rect_filled(body, 0.0, Color32::from_black_alpha(170));
+    painter.rect_stroke(body, 0.0, Stroke::new(1.0, AMBER), egui::StrokeKind::Inside);
+    painter.text(
+        body.center(),
+        Align2::CENTER_CENTER,
+        names,
+        FontId::proportional(12.0),
+        AMBER,
+    );
+    if let Some(at) = response.hover_pos() {
+        ui.ctx().set_cursor_icon(Grab::at(body, at).cursor());
+    }
+    response
+}
+
+impl Arranging<'_> {
+    /// Follow `response` for `taking`, cell `index`'s, named `name`: a
+    /// gesture begun on it, the cell following a cell's gesture, and where
+    /// the gesture lands when it is let go, when that is not where the cell
+    /// already is.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "one call per handle; the rest is the window's, in self"
+    )]
+    fn follow(
+        &self,
+        ui: &egui::Ui,
+        response: &egui::Response,
+        gesture: &mut Option<CellGesture>,
+        taking: Taking,
+        index: usize,
+        name: &str,
+        cell: &mut Cell,
+    ) -> Option<Landing> {
         if response.drag_started()
             && let Some(origin) = ui.input(|input| input.pointer.press_origin())
         {
+            let grab = match taking {
+                Taking::Tab(_) => Grab::default(),
+                Taking::Cell(_) => Grab::at(response.rect, origin),
+            };
             *gesture = Some(CellGesture {
-                holder,
-                placed: placed.id,
-                start: rects[index],
-                grab: Grab::at(rect, origin),
+                holder: self.holder,
+                taking,
+                start: self.rects[index],
+                grab,
                 origin,
                 last: origin,
             });
         }
-        let Some(ours) = gesture
+        let ours = gesture
             .as_mut()
-            .filter(|ours| ours.holder == holder && ours.placed == placed.id)
-        else {
-            continue;
-        };
+            .filter(|ours| ours.holder == self.holder && ours.taking == taking)?;
         if let Some(at) = response.interact_pointer_pos() {
             ours.last = at;
         }
+        let pointer = ours.last - self.inside.min.to_vec2();
+        let outside = ours.grab.moves() && !self.inside.contains(ours.last);
+        // The cell it would stack onto: never its own, which a moved cell
+        // lies over by now.
+        let onto = self
+            .rects
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(at, rect)| *at != index && stacks_at(**rect, pointer))
+            .map(|(at, _)| at)
+            .filter(|_| ours.grab.moves());
+        let (snapped, guides) = self.snapped(ours, index);
+        let (grab, last) = (ours.grab, ours.last);
+        if response.dragged() {
+            if outside || matches!(taking, Taking::Tab(_)) {
+                ghost(ui.ctx(), last, name);
+            }
+            if let Some(onto) = onto {
+                // Let go here, it stacks: the cell it would join lights up.
+                let target = self.rects[onto].translate(self.inside.min.to_vec2());
+                ui.painter()
+                    .rect_filled(target, 0.0, AMBER.gamma_multiply(0.35));
+            }
+            if matches!(taking, Taking::Cell(_)) {
+                cell.set(snapped);
+                if !outside {
+                    self.guide(ui, &guides);
+                }
+            }
+            return None;
+        }
+        if !response.drag_stopped() {
+            return None;
+        }
+        *gesture = None;
+        if outside {
+            return Some(Landing::Out(Released {
+                holder: self.holder,
+                taking,
+                at: last,
+            }));
+        }
+        if let Some(onto) = onto {
+            return Some(Landing::Onto {
+                from: taking,
+                into: self.owners[onto],
+            });
+        }
+        match taking {
+            Taking::Tab(tab) if !self.rects[index].contains(pointer) => {
+                Some(Landing::Apart { tab, at: pointer })
+            }
+            Taking::Tab(_) => None,
+            Taking::Cell(_) => {
+                let bounds = Rect::from_min_size(Pos2::ZERO, self.inside.size());
+                cell.set(kept_in(snapped, bounds, grab));
+                None
+            }
+        }
+    }
+
+    /// Where `ours`, on cell `index`, puts the cell now: snapped to the
+    /// inside's edges, the other cells and the grid, unless Shift is held.
+    fn snapped(&self, ours: &CellGesture, index: usize) -> (Rect, Vec<snap::Guide>) {
         let now = ours.grab.apply(ours.start, ours.last - ours.origin);
-        let siblings: Vec<Rect> = rects
+        if self.shift {
+            return (now, Vec::new());
+        }
+        let siblings: Vec<Rect> = self
+            .rects
             .iter()
             .enumerate()
             .filter(|(at, _)| *at != index)
             .map(|(_, rect)| *rect)
             .collect();
-        let (snapped, guides) = if shift {
-            (now, Vec::new())
-        } else {
-            snap::snap(ours.start, now, bounds, &siblings, SMALLEST_CELL, grid)
-        };
-        let outside = ours.grab.moves() && !inside.contains(ours.last);
-        if response.drag_stopped() {
-            if outside {
-                released = Some(Released {
-                    holder,
-                    placed: placed.id,
-                    at: ours.last,
-                });
+        let bounds = Rect::from_min_size(Pos2::ZERO, self.inside.size());
+        snap::snap(ours.start, now, bounds, &siblings, SMALLEST_CELL, self.grid)
+    }
+
+    /// A line for each snap a cell's gesture has engaged, in its window.
+    fn guide(&self, ui: &egui::Ui, guides: &[snap::Guide]) {
+        let accent = Stroke::new(1.5, AMBER);
+        for guide in guides {
+            if guide.vertical {
+                ui.painter()
+                    .vline(self.inside.min.x + guide.at, self.inside.y_range(), accent);
             } else {
-                cell.set(kept_in(snapped, bounds, ours.grab));
-            }
-            *gesture = None;
-        } else if response.dragged() {
-            cell.set(snapped);
-            if outside {
-                ghost(ui.ctx(), ours.last, placed.widget.name());
-            } else {
-                let accent = Stroke::new(1.5, AMBER);
-                for guide in guides {
-                    if guide.vertical {
-                        painter.vline(inside.min.x + guide.at, inside.y_range(), accent);
-                    } else {
-                        painter.hline(inside.x_range(), inside.min.y + guide.at, accent);
-                    }
-                }
+                ui.painter()
+                    .hline(self.inside.x_range(), self.inside.min.y + guide.at, accent);
             }
         }
     }
-    released
 }
 
 /// Where a cell lands, inside its window's inside `bounds`: a move slid back
@@ -262,8 +415,9 @@ fn kept_in(rect: Rect, bounds: Rect, grab: Grab) -> Rect {
     ))
 }
 
-/// While a widget is dragged outside its window: its name at the pointer,
-/// over everything, where it would land.
+/// While a widget is dragged where it would leave its cell -- out of its
+/// window, or a tab anywhere -- its name at the pointer, over everything,
+/// where it would land.
 fn ghost(context: &egui::Context, at: Pos2, name: &str) {
     let painter = context.layer_painter(LayerId::new(Order::Tooltip, Id::new("arrange-ghost")));
     let rect = Rect::from_center_size(at, Vec2::new(140.0, 24.0));

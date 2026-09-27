@@ -373,3 +373,4 @@ fn the_window_as_drawn() {
 }
 
 mod arrange;
+mod tabs;

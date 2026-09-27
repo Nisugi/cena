@@ -73,17 +73,85 @@ impl Custom {
         Some(taken)
     }
 
-    /// Put `placed` in a cell of its own, its corner at `at`, as big as the
-    /// widget asks and the inside allows, and kept inside.
-    pub(crate) fn put(&mut self, placed: Placed, at: Pos2) {
+    /// A custom window titled `title` of one cell filling its inside, `inside`
+    /// across: a tab stack of `tabs`, `showing` the one shown.
+    pub(crate) fn stack(title: &str, tabs: Vec<Placed>, showing: usize, inside: Vec2) -> Self {
+        Self {
+            title: title.to_owned(),
+            inside: [inside.x, inside.y],
+            cells: vec![Cell {
+                rect: kept(Rect::from_min_size(Pos2::ZERO, inside)),
+                tabs,
+                showing,
+            }],
+        }
+    }
+
+    /// Take out the whole cell showing or stacking widget `placed`.
+    pub(crate) fn take_cell(&mut self, placed: u32) -> Option<Cell> {
+        let at = self
+            .cells
+            .iter()
+            .position(|cell| cell.tabs.iter().any(|tab| tab.id == placed))?;
+        Some(self.cells.remove(at))
+    }
+
+    /// The cell whose stacking middle is at `at`, from the inside's top left
+    /// (`stacks_at`): the one drawn last, on top, where cells overlap.
+    pub(crate) fn stack_at(&self, at: Pos2) -> Option<usize> {
+        self.cells
+            .iter()
+            .rposition(|cell| stacks_at(cell.rect(), at))
+    }
+
+    /// `tabs`, `showing` the one shown, let go at `at` inside: onto the
+    /// middle of a cell, whose tab stack they join, or else in a cell of
+    /// their own with its corner there, as big as the one shown asks and the
+    /// inside allows, and kept inside.
+    pub(crate) fn land(&mut self, tabs: Vec<Placed>, showing: usize, at: Pos2) {
+        if let Some(onto) = self.stack_at(at) {
+            self.cells[onto].tabs.extend(tabs);
+            return;
+        }
+        let Some(shown) = tabs.get(showing).or_else(|| tabs.first()) else {
+            return;
+        };
         let inside = Vec2::new(self.inside[0], self.inside[1]);
-        let size = placed.widget.size().min(inside).max(SMALLEST);
+        let strip = if tabs.len() > 1 { LINE } else { 0.0 };
+        let size = (shown.widget.size() + Vec2::new(0.0, strip))
+            .min(inside)
+            .max(SMALLEST);
         let furthest = (inside - size).max(Vec2::ZERO).to_pos2();
         self.cells.push(Cell {
             rect: kept(Rect::from_min_size(at.clamp(Pos2::ZERO, furthest), size)),
-            tabs: vec![placed],
-            showing: 0,
+            tabs,
+            showing,
         });
+    }
+
+    /// `from` -- a tab, or a whole cell -- taken out and joined to the tab
+    /// stack of the cell holding widget `into`. Nothing moves when that is
+    /// where it already is.
+    pub(crate) fn stack_onto(&mut self, from: super::Taking, into: u32) {
+        let holding = |cell: &Cell, placed: u32| cell.tabs.iter().any(|tab| tab.id == placed);
+        let already = match from {
+            super::Taking::Tab(placed) | super::Taking::Cell(placed) => self
+                .cells
+                .iter()
+                .any(|cell| holding(cell, placed) && holding(cell, into)),
+        };
+        if already {
+            return;
+        }
+        let tabs = match from {
+            super::Taking::Tab(placed) => self.take(placed).map(|tab| vec![tab]),
+            super::Taking::Cell(placed) => self.take_cell(placed).map(|cell| cell.tabs),
+        };
+        if let (Some(tabs), Some(cell)) =
+            (tabs, self.cells.iter_mut().find(|cell| holding(cell, into)))
+        {
+            cell.tabs.extend(tabs);
+        }
     }
 
     /// A custom window titled `title` whose inside is `inside` across, its
@@ -190,4 +258,32 @@ impl Cell {
     pub(crate) fn shown(&self) -> Option<&Placed> {
         self.tabs.get(self.showing).or_else(|| self.tabs.first())
     }
+}
+
+/// Whether something let go at `at` stacks onto a cell at `rect`: over the
+/// middle half of its width. Anywhere else over it, a cell is moved or
+/// placed there instead, so a full custom window can still be rearranged.
+pub(crate) fn stacks_at(rect: Rect, at: Pos2) -> bool {
+    rect.shrink2(Vec2::new(rect.width() / 4.0, 0.0))
+        .contains(at)
+}
+
+/// A cell drawn at `at` holding `tabs` widgets: a rect for each tab, side by
+/// side in a strip one line tall across its top, when it is a tab stack; and
+/// the rest, which the widget shown fills.
+pub(crate) fn tabs_and_body(at: Rect, tabs: usize) -> (Vec<Rect>, Rect) {
+    if tabs < 2 {
+        return (Vec::new(), at);
+    }
+    let (strip, body) = at.split_top_bottom_at_y(at.min.y + LINE);
+    let width = strip.width() / f32::from(u16::try_from(tabs).unwrap_or(u16::MAX));
+    let mut x = strip.min.x;
+    let rects = (0..tabs)
+        .map(|_| {
+            let tab = Rect::from_min_size(pos2(x, strip.min.y), Vec2::new(width, LINE));
+            x += width;
+            tab
+        })
+        .collect();
+    (rects, body)
 }

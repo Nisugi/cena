@@ -297,6 +297,39 @@ Everything after it adds widgets, so the model goes first and every widget is wr
    released into its own window found vacuous and removed, with its twin in joining; and a
    repaint after a layout change removed, since the tests show a window settles without it.
 5. **Tab stacks**, with unread counts.
+
+   **BUILT 2026-09-27.** A cell holding more than one widget draws a strip of tabs, one
+   line tall, across its top: a click on a tab shows its widget, with Arrange on or off. A
+   tab not showing says what its widget has said since it last showed -- *"Hydra 2"*, as
+   Saga's *THOUGHTS 2* -- for the widgets that count what they say (the story counts the
+   game's lines, Hydra's messages count themselves; the rest count nothing). A widget first
+   seen as a hidden tab counts from then, and a widget drawn showing, anywhere, is read up
+   to now: one function draws every showing widget and marks it read
+   (`crates/cena-gui/src/play/draw.rs`, `shown`).
+
+   Making and unmaking them is arranging's (step 4), under one rule for everything let go:
+   **over the middle half of a widget, it joins that widget's tab stack; anywhere else, it
+   takes a place of its own.** The middle half, not the whole, so a full custom window can
+   still be rearranged; the widget it would join lights up while it is over it. A
+   standalone window carried onto another's title bar stacks with it, the two becoming one
+   custom window of one tab stack where the other was, as §2 decided. A tab dragged alone
+   leaves its stack; a stack's body drags the whole stack, which, let go in the open, keeps
+   together as a custom window of that one stack, still showing what it showed. A tab let
+   go on empty space in its own window takes a cell of its own there.
+   (`layout/moves.rs`, `Taking`, `stack_onto`, `stacks_at`.)
+
+   Tests: a click switching, with Arrange on too; counts for a hidden tab, none for one
+   showing even on the frame a line arrives, and counting only what came after being read;
+   the story's counters; stacking by a title, only when arranging; a tab onto a widget in
+   another window, a cell onto a widget's middle and not its side, a tab back to empty
+   space; a stack let go in the open; a cell stacked onto itself losing nothing; and two
+   images, a stack with its tabs (`tests/snapshots/tabs.png`) and the widget a cell would
+   join lit up mid-drag (`stack.png`). Twenty-one mutants: seventeen caught at once; four
+   once a test was written for them (reading a widget while it shows, a lone cell's
+   reading, a tab let go on empty space, and a showing tab's count on the frame a line
+   arrives). Reading had been done in three places, which is why two survived; it is done
+   in one now. And one design change came of a failing test, not a mutant: stacking had
+   been anywhere over a widget, which made a full custom window impossible to rearrange.
 6. **Add a widget.** Every kind in one searchable list (Saga's *"Find a panel..."*), grouped
    as §3; the Advanced place at the bottom of it, closed, with following another character.
 7. **Presets.** A Vitals row and a Loadout from the widgets that exist; saving a custom

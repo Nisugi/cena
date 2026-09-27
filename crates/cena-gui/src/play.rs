@@ -89,6 +89,9 @@ pub(crate) struct Play {
     /// Each custom window's inside as last drawn, from the play area's top
     /// left: where its cells were when a press comes.
     insides: Vec<(u32, egui::Rect)>,
+    /// How far each widget that counts what it says was read, by its id: a
+    /// tab not showing shows what came since (`draw.rs`, `unread`).
+    read: std::collections::HashMap<u32, u64>,
     /// Why the layout could not be saved, until it can.
     unsaved: Option<String>,
     /// The line being typed.
@@ -116,6 +119,7 @@ impl Play {
             arranging: false,
             cell: None,
             insides: Vec::new(),
+            read: std::collections::HashMap::new(),
             unsaved: None,
             input: String::new(),
             history: Vec::new(),

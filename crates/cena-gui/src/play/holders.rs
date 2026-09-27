@@ -73,7 +73,7 @@ impl Play {
         let mut changed = false;
         if let (Some(out), Some(layout)) = (released, self.layout.as_mut()) {
             let at = out.at - area.min.to_vec2();
-            layout.release(out.holder, out.placed, at, &insides, area.size());
+            layout.release(out.holder, out.taking, at, &insides, area.size());
             changed = true;
         }
         self.insides.clone_from(&insides);
@@ -127,7 +127,7 @@ impl Play {
             let (id, title) = (holder.id, holder.title().to_owned());
             let window = holder_window(title, id, at, held, area, session);
             let shown = window.show(context, |ui| {
-                let inside = draw::holder(ui, &mut holder.holds, seen, session);
+                let inside = draw::holder(ui, &mut holder.holds, seen, session, &mut self.read);
                 if let Holds::Custom(custom) = &mut holder.holds {
                     insides.push((id, inside.translate(-offset)));
                     if arranging {

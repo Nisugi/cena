@@ -49,6 +49,11 @@ pub(crate) struct Story {
     pub(crate) said: VecDeque<Notice>,
     /// A trigger's banners, with when each arrived.
     pub(crate) alerts: VecDeque<(Instant, String)>,
+    /// Lines of the game's heard, ever: a tab not showing counts how many
+    /// came since it last did (`plan/49` §2).
+    pub(crate) heard: u64,
+    /// Hydra's messages told, ever, for the same.
+    pub(crate) told: u64,
     /// Inside a quiet command's window.
     quiet: bool,
     /// The connection the last event came on.
@@ -85,6 +90,7 @@ impl Story {
                         }
                     }
                     self.push(Shown::Game(runs));
+                    self.heard += 1;
                 }
             }
             Event::Notice(notice) => self.tell(notice.clone()),
@@ -118,6 +124,7 @@ impl Story {
             return;
         }
         self.said.push_back(notice);
+        self.told += 1;
         while self.said.len() > MAX_SAID {
             self.said.pop_front();
         }

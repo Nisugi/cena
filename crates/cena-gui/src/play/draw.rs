@@ -2,10 +2,12 @@
 //! holds -- one widget, framed by its window, or a custom window's widgets,
 //! bare in their cells (`plan/49` §2).
 
+use std::collections::HashMap;
+
 use egui::{Color32, Id, UiBuilder};
 
 use super::PlayView;
-use crate::layout::Holds;
+use crate::layout::{Holds, Placed, tabs_and_body};
 use crate::text::{AMBER, WRONG};
 use crate::widget::Seen;
 
@@ -105,30 +107,28 @@ pub(super) fn widget_id(session: u32, placed: u32) -> Id {
 /// never its content's. One widget is given everything; a custom window's
 /// widgets are drawn bare in their cells, once the cells are kept to the
 /// inside it has now (`Custom::fit`). Nothing spills out of its cell: a
-/// one-line widget stays one line, and the rest scroll. Its inside, where
-/// it drew.
+/// one-line widget stays one line, and the rest scroll. A tab stack shows a
+/// tab for each of its widgets, a click on one showing it, each not showing
+/// with what it has said since it last showed; `read` is how far each
+/// widget was read. Its inside, where it drew.
 pub(super) fn holder(
     ui: &mut egui::Ui,
     holds: &mut Holds,
     seen: &Seen<'_>,
     session: u32,
+    read: &mut HashMap<u32, u64>,
 ) -> egui::Rect {
     let inside = ui.available_rect_before_wrap();
     ui.set_min_size(inside.size());
     match holds {
-        Holds::One(placed) => {
-            placed.widget.draw(ui, seen, widget_id(session, placed.id));
-        }
+        Holds::One(placed) => shown(ui, *placed, seen, session, read),
         Holds::Custom(custom) => {
             custom.fit(inside.size());
             if custom.cells.is_empty() {
                 ui.new_child(UiBuilder::new().max_rect(inside.shrink(4.0)))
                     .weak("Empty. With Arrange on, in the Layout menu, drop widgets here.");
             }
-            for cell in &custom.cells {
-                let Some(placed) = cell.shown() else {
-                    continue;
-                };
+            for cell in &mut custom.cells {
                 let at = cell
                     .rect()
                     .translate(inside.min.to_vec2())
@@ -136,14 +136,54 @@ pub(super) fn holder(
                 if !at.is_positive() {
                     continue;
                 }
+                let (tabs, body) = tabs_and_body(at, cell.tabs.len());
+                for (index, (tab, rect)) in cell.tabs.iter().zip(tabs).enumerate() {
+                    let showing = index == cell.showing;
+                    let name = match unread(read, *tab, seen).filter(|_| !showing) {
+                        Some(unread) => format!("{} {unread}", tab.widget.name()),
+                        None => tab.widget.name().to_owned(),
+                    };
+                    let mut child =
+                        ui.new_child(UiBuilder::new().max_rect(rect).id_salt(("tab", tab.id)));
+                    let button = egui::Button::selectable(showing, name)
+                        .wrap_mode(egui::TextWrapMode::Truncate);
+                    if child.add_sized(rect.size(), button).clicked() {
+                        cell.showing = index;
+                    }
+                }
+                let Some(placed) = cell.shown() else {
+                    continue;
+                };
                 let mut child =
-                    ui.new_child(UiBuilder::new().max_rect(at).id_salt(("cell", placed.id)));
-                placed
-                    .widget
-                    .draw(&mut child, seen, widget_id(session, placed.id));
+                    ui.new_child(UiBuilder::new().max_rect(body).id_salt(("cell", placed.id)));
+                shown(&mut child, *placed, seen, session, read);
             }
             ui.advance_cursor_after_rect(inside);
         }
     }
     inside
+}
+
+/// `placed` drawn into `ui`, showing: so what it has said is read, up to
+/// now. The one way a widget is drawn, standalone, alone in a cell or a tab.
+fn shown(
+    ui: &mut egui::Ui,
+    placed: Placed,
+    seen: &Seen<'_>,
+    session: u32,
+    read: &mut HashMap<u32, u64>,
+) {
+    if let Some(count) = placed.widget.count(seen) {
+        read.insert(placed.id, count);
+    }
+    placed.widget.draw(ui, seen, widget_id(session, placed.id));
+}
+
+/// What `placed` has said since it last showed, when it counts and that is
+/// something. A widget first seen here is read up to now, so a tab counts
+/// from when it was stacked.
+pub(super) fn unread(read: &mut HashMap<u32, u64>, placed: Placed, seen: &Seen<'_>) -> Option<u64> {
+    let count = placed.widget.count(seen)?;
+    let last = *read.entry(placed.id).or_insert(count);
+    Some(count.saturating_sub(last)).filter(|unread| *unread > 0)
 }

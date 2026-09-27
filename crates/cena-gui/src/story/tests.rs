@@ -153,3 +153,16 @@ fn a_hole_is_marked_once_and_the_story_is_bounded() {
     assert_eq!(story.lines.len(), MAX_STORY);
     assert_eq!(texts(&story)[0], "line 0");
 }
+
+/// The story counts the game's lines it heard and Hydra's messages it was
+/// told, ever, for a tab not showing: not what the player typed, nor a
+/// debug message, which it does not keep.
+#[test]
+fn it_counts_what_it_heard_and_was_told() {
+    let mut story = Story::default();
+    story.hear(&observed(0, said("", "You see a rock.")), None);
+    story.typed("look");
+    story.tell(Notice::line(NoticeKind::Info, "Hunt: resting."));
+    story.tell(Notice::line(NoticeKind::Debug, "a detail"));
+    assert_eq!((story.heard, story.told), (1, 1));
+}

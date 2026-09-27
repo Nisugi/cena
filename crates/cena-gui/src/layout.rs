@@ -23,7 +23,8 @@ use egui::{Rect, Vec2, pos2};
 use serde::{Deserialize, Serialize};
 
 use crate::widget::Widget;
-pub(crate) use custom::{Cell, Custom, SMALLEST as SMALLEST_CELL};
+pub(crate) use custom::{Cell, Custom, SMALLEST as SMALLEST_CELL, stacks_at, tabs_and_body};
+pub(crate) use moves::Taking;
 
 /// The smallest a window can be made.
 pub(crate) const SMALLEST: Vec2 = Vec2::new(120.0, 60.0);
