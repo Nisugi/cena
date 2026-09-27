@@ -74,6 +74,7 @@ impl Hub {
             .cards
             .iter()
             .partition(|card| matches!(card.lifecycle, LifecycleView::Closed { .. }));
+        let playing = !live.is_empty();
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.tab, Tab::Live, format!("Live ({})", live.len()));
             ui.selectable_value(
@@ -82,8 +83,14 @@ impl Hub {
                 format!("Closed ({})", closed.len()),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                // With nothing playing there is nothing to lose, so it does
+                // not ask, as closing the window does not (author, 2026-09-27).
                 if ui.button("Shut down").clicked() {
-                    self.confirming = true;
+                    if playing {
+                        self.confirming = true;
+                    } else {
+                        asked = Some(HubAction::Ask(HubRequest::Shutdown));
+                    }
                 }
             });
         });

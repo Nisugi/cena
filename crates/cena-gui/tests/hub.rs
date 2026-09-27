@@ -273,6 +273,21 @@ fn shut_down_asks_first() {
     assert_eq!(harness.state().asked, [ask(HubRequest::Shutdown)]);
 }
 
+/// With no character playing -- only closed ones -- there is nothing to
+/// lose, so one click shuts down.
+#[test]
+fn shut_down_with_nothing_playing_does_not_ask() {
+    let mut closed = board();
+    closed
+        .cards
+        .retain(|card| matches!(card.lifecycle, LifecycleView::Closed { .. }));
+    let mut harness = hub(closed);
+    harness.get_by_label("Shut down").click();
+    harness.run();
+    assert!(harness.query_by_label(SHUT_DOWN_QUESTION).is_none());
+    assert_eq!(harness.state().asked, [ask(HubRequest::Shutdown)]);
+}
+
 /// The merged streams, tagged with who heard each line, and the binary's
 /// answer to the last request.
 #[test]

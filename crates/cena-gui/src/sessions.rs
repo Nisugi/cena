@@ -9,6 +9,7 @@
 //! it was given, on the runtime, never on its own thread.
 
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
+use std::time::{Duration, Instant};
 
 use cena_session::{
     Notice, NoticeKind, Outcome, SessionHandle, SessionId, SessionObserver, Snapshot,
@@ -47,9 +48,14 @@ struct Shared {
     offered: Mutex<Vec<String>>,
     /// Every session's shared streams, merged (`plan/29` step 5d).
     merged: Arc<Mutex<MergedHistory>>,
-    /// The binary's answer to the last request.
-    said: Mutex<Option<String>>,
+    /// The binary's answer to the last request, and when it came.
+    said: Mutex<Option<(String, Instant)>>,
 }
+
+/// How long the binary's answer stays on the hub: long enough to read, and
+/// gone before it goes stale. Live, 2026-09-27: *"Starting Nisugi."* still
+/// showed after Nisugi had quit.
+const SAID_FOR: Duration = Duration::from_secs(10);
 
 /// How a feed wakes the window: the window's context, once it exists.
 #[derive(Clone, Default)]
@@ -119,7 +125,8 @@ pub(crate) struct Glance {
     pub(crate) cards: Vec<SessionCard>,
     pub(crate) offered: Vec<String>,
     pub(crate) merged: Vec<MergedLine>,
-    pub(crate) said: Option<String>,
+    /// The binary's last answer, while it is fresh, and how long it has left.
+    pub(crate) said: Option<(String, Duration)>,
 }
 
 impl Sessions {
@@ -227,25 +234,38 @@ impl Sessions {
     /// it comes. With nobody to answer, says so at once.
     pub(crate) fn ask(&self, request: HubRequest) {
         let Some(control) = lock(&self.shared.control).clone() else {
-            *lock(&self.shared.said) =
-                Some("Nothing here can start or stop characters.".to_owned());
+            *lock(&self.shared.said) = Some((
+                "Nothing here can start or stop characters.".to_owned(),
+                Instant::now(),
+            ));
             return;
         };
         let shared = Arc::clone(&self.shared);
         self.shared.runtime.spawn(async move {
             let said = control(request).await;
-            *lock(&shared.said) = Some(said);
+            *lock(&shared.said) = Some((said, Instant::now()));
             shared.window.wake();
         });
     }
 
     /// What the hub draws this frame.
     pub(crate) fn glance(&self) -> Glance {
+        self.glance_at(Instant::now())
+    }
+
+    /// What the hub draws at `now`: the answer only while it is fresh.
+    fn glance_at(&self, now: Instant) -> Glance {
+        let said = lock(&self.shared.said).as_ref().and_then(|(said, at)| {
+            SAID_FOR
+                .checked_sub(now.saturating_duration_since(*at))
+                .filter(|left| !left.is_zero())
+                .map(|left| (said.clone(), left))
+        });
         Glance {
             cards: self.cards(),
             offered: lock(&self.shared.offered).clone(),
             merged: lock(&self.shared.merged).lines().cloned().collect(),
-            said: lock(&self.shared.said).clone(),
+            said,
         }
     }
 
@@ -328,4 +348,28 @@ fn unsent(outcome: &Outcome) -> Option<String> {
 /// A lock that a panic elsewhere does not poison for the window.
 pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_answer_shows_for_a_while_then_goes() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("a runtime");
+        let sessions = Sessions::new(runtime.handle().clone());
+        let before = Instant::now();
+        // With no control, the answer is said at once.
+        sessions.ask(HubRequest::Shutdown);
+        let after = Instant::now();
+
+        let almost = before + SAID_FOR.saturating_sub(Duration::from_millis(1));
+        let (said, left) = sessions.glance_at(almost).said.expect("still fresh");
+        assert_eq!(said, "Nothing here can start or stop characters.");
+        // It goes when it said it would: the window's next frame is then.
+        assert!(sessions.glance_at(almost + left).said.is_none());
+        assert!(sessions.glance_at(after + SAID_FOR).said.is_none());
+    }
 }

@@ -119,6 +119,11 @@ impl App {
         let seats = self.sessions.seated();
         self.seat(&seats);
         let glance = self.sessions.glance();
+        if let Some((_, left)) = &glance.said {
+            // A frame when the answer is due to go, or it stays until the
+            // next input.
+            ui.ctx().request_repaint_after(*left);
+        }
         let windowed: Vec<u32> = self
             .plays
             .iter()
@@ -129,7 +134,7 @@ impl App {
             cards: &glance.cards,
             offered: &glance.offered,
             merged: &glance.merged,
-            said: glance.said.as_deref(),
+            said: glance.said.as_ref().map(|(said, _)| said.as_str()),
             windowed: &windowed,
         };
         match self.hub.show(ui, &view) {
