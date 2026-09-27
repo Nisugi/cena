@@ -626,6 +626,13 @@ hub for help and settings. The user quality-of-life review of 2026-09-26
 (`44-user-qol-review.md`, not yet committed) names the gaps this closes: no screen to set up
 healing or edit a hunt profile (its Q01, Q03), no front door (Q04).
 
+**The inventory is taken** (2026-09-27): [`50-settings-inventory.md`](50-settings-inventory.md),
+PROPOSED, every setting Hydra has measured and cited, what VellumFE has that Hydra lacks, a
+proposed shape, and ten questions for the author (§5). No editor is written before they are
+answered. Two defects it found are fixed: a character named Presets would have written its
+layout over the preset library (`094b482`), and the loot profile's learned `unskinnable` list
+was not written atomically (`74a76e1`).
+
 ### Stage E — drawers
 
 A main area and four drawers, each clipping or pushing, with translucency and click-through
