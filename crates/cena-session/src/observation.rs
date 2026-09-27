@@ -401,3 +401,89 @@ impl EventPublisher {
         }
     }
 }
+
+/// First wait after a retryable observation failure, doubled to the cap.
+const RETRY_FIRST: Duration = Duration::from_millis(100);
+/// The longest wait between observation attempts: bounded, never a spin.
+const RETRY_CAP: Duration = Duration::from_secs(2);
+/// The most events [`catch_up`] reads from an old receiver.
+const MAX_CATCH_UP: usize = 4096;
+
+/// Ask for a fresh observation with `subscribe`, retrying the failures that
+/// are not an answer. `None` once `stop` is cancelled; otherwise the
+/// subscription, or the error that ends observation. Every viewer that
+/// follows a session asks this way (`cena-web`'s pump, `cena-gui`'s feed).
+///
+/// # Why a viewer does not stop at the first error
+///
+/// The web pump used to map **every** [`ObserveError`] to a fatal I/O error.
+/// That ended the web server, disconnected every viewer, and was reported
+/// only at shutdown -- for `Busy` (the owner's bounded inbox was momentarily
+/// full) and `Timeout` (it did not answer within its budget), which are
+/// *retryable read failures, not proof the owner died*. A busy owner under a
+/// login burst is exactly when a viewer is most wanted.
+///
+/// So those two are retried with doubling backoff capped at two seconds --
+/// bounded, never a spin -- and without a retry limit: a timeout cannot prove
+/// death, and `stop` is what ends the wait. Only `Closed`, the owner gone
+/// without a final snapshot, is terminal. Whatever the viewer last showed
+/// stays up meanwhile: a stale view it refuses to *replace* with a guess.
+pub async fn retrying<T, F, Fut>(
+    stop: &tokio_util::sync::CancellationToken,
+    mut subscribe: F,
+) -> Option<Result<T, ObserveError>>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T, ObserveError>>,
+{
+    let mut delay = RETRY_FIRST;
+    loop {
+        let result = tokio::select! {
+            () = stop.cancelled() => return None,
+            result = subscribe() => result,
+        };
+        match result {
+            Err(ObserveError::Busy | ObserveError::Timeout) => {}
+            answered => return Some(answered),
+        }
+        tokio::select! {
+            () = stop.cancelled() => return None,
+            () = tokio::time::sleep(delay) => {}
+        }
+        delay = (delay * 2).min(RETRY_CAP);
+    }
+}
+
+/// The events still on `old` after cursor `seen`, up to and including
+/// `fence` -- a fresh snapshot's cursor -- in order, and whether they were
+/// all there.
+///
+/// A viewer that asks for a fresh snapshot while holding the receiver of its
+/// last one reads what that receiver has up to the new snapshot's cursor:
+/// those were published before the snapshot answered, and the new receiver
+/// starts after them. It never waits for a missing event, and reads at most
+/// a fixed budget; `false` means some were lost (lag, or the budget), and
+/// the viewer says its story has a hole.
+pub fn catch_up(
+    old: &mut broadcast::Receiver<ObservedEvent>,
+    seen: u64,
+    fence: u64,
+) -> (Vec<ObservedEvent>, bool) {
+    let mut at = seen;
+    let mut events = Vec::new();
+    for _ in 0..MAX_CATCH_UP {
+        if at >= fence {
+            break;
+        }
+        match old.try_recv() {
+            Ok(event) if event.cursor <= fence => {
+                if event.cursor > at {
+                    at = event.cursor;
+                    events.push(event);
+                }
+            }
+            _ => return (events, false),
+        }
+    }
+    (events, at >= fence)
+}

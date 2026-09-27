@@ -15,6 +15,8 @@ cena-session.workspace = true
 cena-ui.workspace = true
 cena-web.workspace = true
 cena-host.workspace = true
+# The window (plan/47): what the binary opens unless --headless or --web.
+cena-gui.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # Fingerprint the exact map shared by travel and the read-only minimap.

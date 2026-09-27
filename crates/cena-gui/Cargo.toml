@@ -5,14 +5,23 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+cena-session.workspace = true
 cena-ui.workspace = true
 egui.workspace = true
+eframe.workspace = true
+# Each character's feed runs on the binary's runtime, beside its session
+# (plan/47 §4): the window has the main thread, the sessions the workers.
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
+tokio-util = "0.7"
 
 [dev-dependencies]
 # `wgpu` renders a frame in a test and `snapshot` compares it with the image
 # committed under `tests/snapshots/` (plan/47 §4: the GUI is checked through
 # tests, never by running the binary).
 egui_kittest = { workspace = true, features = ["wgpu", "snapshot"] }
+# `test-util` for `start_paused`: a feed's retries and ticks run in virtual
+# time.
+tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
 
 [lints]
 workspace = true

@@ -173,3 +173,7 @@ crates/cena-behavior/src/hunt/profile.rs 800
 # set|unset|show|help|setup`, `heal`/`waggle set|unset|show`) are in
 # hunt/settings.rs. 690 lines: the ratchet's suggestion.
 crates/cena/src/hunt.rs 750
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena-gui/src/feed.rs
+# follows one session for the window; its tests are feed/tests.rs. 138 lines,
+# so the rule above: 138 + 50, rounded up to the next 50.
+crates/cena-gui/src/feed.rs 200
