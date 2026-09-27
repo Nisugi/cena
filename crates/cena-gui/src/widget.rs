@@ -12,6 +12,7 @@
 //! would buy nothing (`plan/05` §−1). Each kind says its name, the size it
 //! would like, and draws itself; what holds it decides where.
 
+mod character;
 mod draw;
 mod kind;
 

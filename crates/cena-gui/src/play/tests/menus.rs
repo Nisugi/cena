@@ -96,11 +96,9 @@ fn the_list_says_what_is_shown() {
     for heading in ["STREAMS", "GRAPHICS", "HYDRA'S OWN"] {
         assert!(harness.query_by_label(heading).is_some(), "{heading}");
     }
-    // The first layout shows every kind but the room's description.
-    assert_eq!(
-        harness.query_all_by_label("shown").count(),
-        Widget::ALL.len() - 1
-    );
+    // The first layout shows sixteen kinds: all but the room's description
+    // of the seventeen it was made from.
+    assert_eq!(harness.query_all_by_label("shown").count(), 16);
     search(&mut harness, "description");
     assert_eq!(harness.query_all_by_label("shown").count(), 0);
     harness

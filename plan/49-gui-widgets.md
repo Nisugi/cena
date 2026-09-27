@@ -401,6 +401,40 @@ Each widget whose data the model already holds (§3), in small steps, cheapest f
 A widget whose data the model does not hold is **not** built here: its model work is
 listed and goes first, in the crate that owns the fact.
 
+Claude's order, cheapest first, set when Stage A was done (2026-09-27):
+
+1. **What the character is and has**, read off facts the model keeps as fields: stance,
+   encumbrance, mind and the next level as bars; level, training points, the experience
+   numbers, the prepared spell, society, resources, objectives. An Experience preset.
+2. **Status indicators** (nineteen, a widget each, and an Indicators preset) and the
+   **effects lists** (Active Spells, Buffs, Debuffs, Cooldowns; a preset of the four as
+   one tab stack, as Saga's panel has them).
+3. **A compass** of the room's exits, and **the combat list**: friends and foes in the room
+   with their statuses, as Saga's Combat panel.
+4. **The game's streams**: thoughts, speech, arrivals, deaths, announcements, familiar,
+   Voln, and any other the character has received (§3); the story no longer showing a
+   stream's lines while a widget of that stream is open.
+5. **The spellbook**, a **container**, and **the reserve** (Saga's R1-R3).
+6. **What the model does not keep yet**: World Events and the pulse timer, stored where
+   they are parsed and dropped; and Loot, whose standing list is a question (§3).
+
+   **Step 1 BUILT 2026-09-27** (`crates/cena-gui/src/widget/character.rs`). Twelve kinds:
+   *Stance*, *Encumbrance* and *Mind* and *Next level* as bars, each labelled in the
+   game's words (*"Stance: defensive (100%)"*, which says its percent already, so the bar
+   does not say it twice) and plain while unknown (*"Stance ?"*); *Encumbrance, in words*;
+   *Level*; *Training points*; *Experience*, the numbers the game has told, grouped as it
+   writes them; *Prepared spell*; *Society* with its rank; *Resources* (the profession's
+   resource against its caps, suffusion, Covert Arts charges, shadow essence); and
+   *Objectives*. Hydra's presets gain *Experience* (level, mind, next level, training
+   points, the numbers). The catalog's kinds moved to `widget/kind.rs` in step 6 took
+   them as a variant and a line in each table, and the dispatch in `widget/draw.rs` stays
+   one arm a kind, allowed its length by name as `cena-model`'s container classifier is.
+
+   Tests: every kind said as the game said it, and each saying what it does not know yet;
+   numbers grouped. Objectives are tested empty only: their type is `cena-protocol`'s,
+   which the GUI does not depend on, and a test is no reason to add the edge. Ten
+   mutants: nine caught, the tenth malformed (it did not build), its line asserted.
+
 ### Stage C — the launcher tab
 
 The hub's third tab, *"incorporate the things lich's launcher can do"* (`plan/47` §1 row 6):

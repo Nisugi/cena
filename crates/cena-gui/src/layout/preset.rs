@@ -41,7 +41,8 @@ impl Preset {
     }
 
     /// The presets Hydra ships: the vitals stacked and in a row, what the
-    /// hands hold with the clocks, and the room in its parts.
+    /// hands hold with the clocks, the room in its parts, and the
+    /// experience, as Saga's panel has it (`plan/49` §3).
     pub(crate) fn hydras() -> Vec<Preset> {
         let bars = [
             Widget::Health,
@@ -72,6 +73,17 @@ impl Preset {
                     vec![Widget::Exits],
                 ],
                 Vec2::new(320.0, 240.0),
+            ),
+            shipped(
+                "Experience",
+                &[
+                    vec![Widget::Level],
+                    vec![Widget::Mind],
+                    vec![Widget::NextLevel],
+                    vec![Widget::TrainingPoints],
+                    vec![Widget::ExperienceTotals],
+                ],
+                Vec2::new(300.0, 160.0),
             ),
         ]
     }

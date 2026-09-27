@@ -5,7 +5,7 @@ use cena_session::hands::Hand;
 use cena_session::{Body, GameState, Notice, NoticeKind, RoomItem, Snapshot, Vital};
 use egui::{Color32, Id, RichText};
 
-use super::{Seen, Widget};
+use super::{Seen, Widget, character};
 use crate::bar::{self, Amount, Bar, Says};
 use crate::story::Shown;
 use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
@@ -13,6 +13,10 @@ use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
 /// Draw `widget` for `seen` into `ui`. Following another character, a
 /// one-line widget puts its name before what it says, and the rest a line
 /// with its name above.
+#[allow(
+    clippy::too_many_lines,
+    reason = "the catalog's table: one arm per kind, each a call; split, it would hide which kind draws how"
+)]
 pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
     let named = |label: &str| {
@@ -99,6 +103,25 @@ pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
             );
         }),
         Widget::Players => scrolled(ui, &mut |ui| players(ui, seen.snapshot)),
+        Widget::Stance => character::stance(ui, state, &named),
+        Widget::Encumbrance => character::encumbrance(ui, state, &named),
+        Widget::EncumbranceDetail => line(
+            ui,
+            named(
+                state
+                    .and_then(|state| state.character.encumbrance_detail.as_deref())
+                    .unwrap_or("Encumbrance unknown"),
+            ),
+        ),
+        Widget::Mind => character::mind(ui, state, &named),
+        Widget::NextLevel => character::next_level(ui, state, &named),
+        Widget::Level => line(ui, named(&character::level(state))),
+        Widget::TrainingPoints => line(ui, named(&character::training(state))),
+        Widget::ExperienceTotals => scrolled(ui, &mut |ui| character::experience(ui, state)),
+        Widget::Prepared => line(ui, named(&character::prepared(state))),
+        Widget::Society => line(ui, named(&character::society(state))),
+        Widget::Resources => scrolled(ui, &mut |ui| character::resources(ui, state)),
+        Widget::Objectives => scrolled(ui, &mut |ui| character::objectives(ui, state)),
         Widget::Exits => line(
             ui,
             named(&match state.and_then(|state| state.room.exits.as_ref()) {

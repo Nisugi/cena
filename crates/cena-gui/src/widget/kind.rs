@@ -47,6 +47,30 @@ pub(crate) enum Widget {
     Hydra,
     /// What the hunt is doing, and why it waits (`plan/47` step 8).
     Hunt,
+    /// The stance, as a bar.
+    Stance,
+    /// Encumbrance, as a bar.
+    Encumbrance,
+    /// Encumbrance, in the game's sentence.
+    EncumbranceDetail,
+    /// The mind's fill of experience, as a bar.
+    Mind,
+    /// How near the next level, as a bar.
+    NextLevel,
+    /// The level.
+    Level,
+    /// Physical and mental training points.
+    TrainingPoints,
+    /// The experience numbers: total, field, ascension, long-term, deeds.
+    ExperienceTotals,
+    /// The spell prepared.
+    Prepared,
+    /// The society and rank.
+    Society,
+    /// The profession's resource, and its kin.
+    Resources,
+    /// Quests and bounties the game lists.
+    Objectives,
 }
 
 /// A group of the Add-a-widget list, as `plan/49` §3 sorts Saga's panels.
@@ -79,7 +103,7 @@ impl Group {
 
 impl Widget {
     /// Every kind, in the order a list of them shows.
-    pub(crate) const ALL: [Widget; 17] = [
+    pub(crate) const ALL: [Widget; 29] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -97,6 +121,18 @@ impl Widget {
         Widget::Exits,
         Widget::Hydra,
         Widget::Hunt,
+        Widget::Stance,
+        Widget::Encumbrance,
+        Widget::EncumbranceDetail,
+        Widget::Mind,
+        Widget::NextLevel,
+        Widget::Level,
+        Widget::TrainingPoints,
+        Widget::ExperienceTotals,
+        Widget::Prepared,
+        Widget::Society,
+        Widget::Resources,
+        Widget::Objectives,
     ];
 
     /// What a player calls it: a standalone window's title, and its name in
@@ -120,6 +156,18 @@ impl Widget {
             Widget::Exits => "Exits",
             Widget::Hydra => "Hydra",
             Widget::Hunt => "Hunt",
+            Widget::Stance => "Stance",
+            Widget::Encumbrance => "Encumbrance",
+            Widget::EncumbranceDetail => "Encumbrance, in words",
+            Widget::Mind => "Mind",
+            Widget::NextLevel => "Next level",
+            Widget::Level => "Level",
+            Widget::TrainingPoints => "Training points",
+            Widget::ExperienceTotals => "Experience",
+            Widget::Prepared => "Prepared spell",
+            Widget::Society => "Society",
+            Widget::Resources => "Resources",
+            Widget::Objectives => "Objectives",
         }
     }
 
@@ -136,7 +184,19 @@ impl Widget {
             | Widget::LeftHand
             | Widget::Roundtime
             | Widget::CastTime
-            | Widget::Creatures => Group::Graphics,
+            | Widget::Creatures
+            | Widget::Mind
+            | Widget::NextLevel
+            | Widget::Level
+            | Widget::TrainingPoints
+            | Widget::ExperienceTotals
+            | Widget::Prepared => Group::Graphics,
+            Widget::Stance
+            | Widget::Encumbrance
+            | Widget::EncumbranceDetail
+            | Widget::Society
+            | Widget::Resources
+            | Widget::Objectives => Group::Info,
             Widget::RoomTitle
             | Widget::RoomDescription
             | Widget::Objects
@@ -164,6 +224,8 @@ impl Widget {
             Widget::Hunt => (260.0, 90.0),
             Widget::RoomDescription => (320.0, 80.0),
             Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),
+            Widget::ExperienceTotals | Widget::Resources => (260.0, 60.0),
+            Widget::Objectives => (300.0, 100.0),
             Widget::Roundtime | Widget::CastTime => (110.0, LINE),
             Widget::Health
             | Widget::Mana
@@ -172,7 +234,16 @@ impl Widget {
             | Widget::RightHand
             | Widget::LeftHand
             | Widget::RoomTitle
-            | Widget::Exits => (260.0, LINE),
+            | Widget::Exits
+            | Widget::Stance
+            | Widget::Encumbrance
+            | Widget::EncumbranceDetail
+            | Widget::Mind
+            | Widget::NextLevel
+            | Widget::Level
+            | Widget::TrainingPoints
+            | Widget::Prepared
+            | Widget::Society => (260.0, LINE),
         };
         Vec2::new(width, height)
     }
