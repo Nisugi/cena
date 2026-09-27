@@ -84,11 +84,11 @@ pub use cena_model::{
 pub use cena_model::{Task, TaskKind};
 // The herbs eherbs knows and where they are sold (`plan/36`), and the
 // wound and scar reader the healing chooses by.
-pub use cena_model::guard;
-pub use cena_model::herbs;
 pub use cena_model::state::character::body;
 pub use cena_model::state::kit;
 pub use cena_model::trigger;
+pub use cena_model::{guard, herbs};
+pub use cena_platform::{DEFAULT_GAME_CODE, GAMES};
 pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, Style, TextFrame};
 pub use cena_protocol::runs::{Run, Runs};

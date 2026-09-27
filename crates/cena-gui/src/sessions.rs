@@ -14,7 +14,9 @@ use std::time::{Duration, Instant};
 use cena_session::{
     Notice, NoticeKind, Outcome, SessionHandle, SessionId, SessionObserver, Snapshot,
 };
-use cena_ui::{HubControl, HubRequest, HuntView, MergedHistory, MergedLine, SessionCard};
+use cena_ui::{
+    HubControl, HubRequest, HuntView, MergedHistory, MergedLine, RosterCard, SessionCard,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::feed;
@@ -46,6 +48,8 @@ struct Shared {
     control: Mutex<Option<HubControl>>,
     /// Characters the hub may start, as the binary last said.
     offered: Mutex<Vec<String>>,
+    /// Every character on the roster, as the binary last said.
+    roster: Mutex<Vec<RosterCard>>,
     /// Every session's shared streams, merged (`plan/29` step 5d).
     merged: Arc<Mutex<MergedHistory>>,
     /// The binary's answer to the last request, and when it came.
@@ -124,6 +128,7 @@ impl Seat {
 pub(crate) struct Glance {
     pub(crate) cards: Vec<SessionCard>,
     pub(crate) offered: Vec<String>,
+    pub(crate) roster: Vec<RosterCard>,
     pub(crate) merged: Vec<MergedLine>,
     /// The binary's last answer, while it is fresh, and how long it has left.
     pub(crate) said: Option<(String, Duration)>,
@@ -141,6 +146,7 @@ impl Sessions {
                 closing: std::sync::atomic::AtomicBool::new(false),
                 control: Mutex::default(),
                 offered: Mutex::default(),
+                roster: Mutex::default(),
                 merged: Arc::default(),
                 said: Mutex::default(),
             }),
@@ -200,6 +206,13 @@ impl Sessions {
     /// The characters the hub may start now.
     pub fn offer(&self, offered: Vec<String>) {
         *lock(&self.shared.offered) = offered;
+        self.shared.window.wake();
+    }
+
+    /// Every character on the roster, for the Launch tab (`plan/49` Stage
+    /// C): never a password, only whether one is kept.
+    pub fn roster(&self, roster: Vec<RosterCard>) {
+        *lock(&self.shared.roster) = roster;
         self.shared.window.wake();
     }
 
@@ -264,6 +277,7 @@ impl Sessions {
         Glance {
             cards: self.cards(),
             offered: lock(&self.shared.offered).clone(),
+            roster: lock(&self.shared.roster).clone(),
             merged: lock(&self.shared.merged).lines().cloned().collect(),
             said,
         }

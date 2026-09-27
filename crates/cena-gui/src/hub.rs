@@ -1,6 +1,7 @@
 //! The hub: every character this Hydra runs, at a glance, in two tabs
-//! (`plan/47` §3). The author: *"we probably don't want to clutter the live
-//! cards with the closed cards. so tab for closed and tab for live?"*
+//! (`plan/47` §3), and a third to launch them from (`launch.rs`, `plan/49`
+//! Stage C). The author: *"we probably don't want to clutter the live cards
+//! with the closed cards. so tab for closed and tab for live?"*
 //!
 //! A card is [`SessionCard`], the web hub's own, so both hubs show the same
 //! thing from the same projection and nothing is copied (`plan/47` §4). So is
@@ -13,7 +14,9 @@
 //! why, to reconnect or remove. One the player quits is taken off the table,
 //! so it leaves both.
 
-use cena_ui::{GroupView, HubRequest, LifecycleView, MergedLine, SessionCard, VitalView};
+use cena_ui::{
+    GroupView, HubRequest, LifecycleView, MergedLine, RosterCard, SessionCard, VitalView,
+};
 
 use crate::bar::{self, Amount, Bar};
 
@@ -25,6 +28,8 @@ pub enum Tab {
     Live,
     /// Characters that ended this run, each with why.
     Closed,
+    /// The roster, a new login, and the kept passwords (`plan/49` Stage C).
+    Launch,
 }
 
 /// What the player asked the hub for.
@@ -44,6 +49,8 @@ pub struct HubView<'a> {
     /// Characters the hub can start: in the roster, with a saved password,
     /// not running.
     pub offered: &'a [String],
+    /// Every character on the roster.
+    pub roster: &'a [RosterCard],
     /// The merged streams, oldest first.
     pub merged: &'a [MergedLine],
     /// What the binary answered the last request, if it has.
@@ -60,6 +67,8 @@ pub struct Hub {
     pub tab: Tab,
     /// Asking whether to shut Hydra down.
     confirming: bool,
+    /// What the Launch tab is typing.
+    launch: crate::launch::Launch,
 }
 
 /// What the shut-down question says: Despana's words.
@@ -82,6 +91,7 @@ impl Hub {
                 Tab::Closed,
                 format!("Closed ({})", closed.len()),
             );
+            ui.selectable_value(&mut self.tab, Tab::Launch, "Launch");
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 // With nothing playing there is nothing to lose, so it does
                 // not ask, as closing the window does not (author, 2026-09-27).
@@ -115,10 +125,7 @@ impl Hub {
             .default_size(160.0)
             .show(ui, |ui| merged(ui, view.merged));
         match self.tab {
-            Tab::Live => {
-                start(ui, view.offered, &mut asked);
-                list(ui, &live, view, "No character is running.", &mut asked);
-            }
+            Tab::Live => list(ui, &live, view, "No character is running.", &mut asked),
             Tab::Closed => list(
                 ui,
                 &closed,
@@ -126,6 +133,7 @@ impl Hub {
                 "No character has closed this run.",
                 &mut asked,
             ),
+            Tab::Launch => self.launch.show(ui, view, &mut asked),
         }
         asked
     }
@@ -135,21 +143,6 @@ impl Hub {
     pub fn confirm_shutdown(&mut self) {
         self.confirming = true;
     }
-}
-
-/// A button for each character the hub can start.
-fn start(ui: &mut egui::Ui, offered: &[String], asked: &mut Option<HubAction>) {
-    if offered.is_empty() {
-        return;
-    }
-    ui.horizontal_wrapped(|ui| {
-        for name in offered {
-            if ui.button(format!("Start {name}")).clicked() {
-                *asked = Some(HubAction::Ask(HubRequest::Add(name.clone())));
-            }
-        }
-    });
-    ui.separator();
 }
 
 /// The cards of one tab, or what an empty one says.

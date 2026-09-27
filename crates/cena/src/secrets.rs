@@ -36,6 +36,13 @@ pub(crate) enum Source {
     Env,
     /// Typed at the prompt; a candidate for [`offer_to_remember`].
     Prompt,
+    /// Typed in the window's launcher (`plan/49` Stage C): kept in the
+    /// keyring once the login is proven when `keep`, the box ticked --
+    /// never asked about at a terminal nobody may be watching.
+    Window {
+        /// The player ticked "keep the password".
+        keep: bool,
+    },
 }
 
 /// The environment variable that holds `account`'s password:
@@ -122,6 +129,32 @@ pub(crate) fn saved(account: &str) -> bool {
         || std::env::var(env_name(account)).is_ok_and(|p| !p.is_empty())
 }
 
+/// Keep `password` for `account` in the OS keyring: the launcher's box,
+/// ticked, once the login proved it right.
+///
+/// # Errors
+///
+/// The keyring would not keep it, in its own words.
+pub(crate) fn keep(account: &str, password: &str) -> Result<(), String> {
+    entry(account)
+        .and_then(|entry| entry.set_password(password))
+        .map_err(|e| e.to_string())
+}
+
+/// Forget the password kept for `account` in the OS keyring; none kept is
+/// already forgotten. One in the account's environment variable is the
+/// player's own arrangement, and stays.
+///
+/// # Errors
+///
+/// The keyring would not forget it, in its own words.
+pub(crate) fn forget(account: &str) -> Result<(), String> {
+    match entry(account).and_then(|entry| entry.delete_credential()) {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 fn entry(account: &str) -> keyring::Result<keyring::Entry> {
     keyring::Entry::new(KEYRING_SERVICE, &account.trim().to_lowercase())
 }
@@ -154,12 +187,14 @@ fn from_keyring(account: &str) -> Option<String> {
 ///
 /// `turn` is shared by every session's offer, so when several characters
 /// log in at once their questions are asked one at a time rather than
-/// talking over each other on one terminal.
+/// talking over each other on one terminal. A password kept is word to
+/// `changed`: the window's roster says which passwords are.
 pub(crate) async fn offer_to_remember(
     account: String,
     password: String,
     observer: SessionObserver,
     turn: std::sync::Arc<std::sync::Mutex<()>>,
+    changed: std::sync::Arc<tokio::sync::Notify>,
 ) {
     let Ok((snapshot, mut events)) = observer.subscribe().await else {
         return;
@@ -182,8 +217,11 @@ pub(crate) async fn offer_to_remember(
         let mut answer = String::new();
         let _ = io::stdin().lock().read_line(&mut answer);
         let said = if answer.trim().eq_ignore_ascii_case("y") {
-            match entry(&account).and_then(|entry| entry.set_password(&password)) {
-                Ok(()) => format!("[login] saved to the OS keyring for {account}"),
+            match keep(&account, &password) {
+                Ok(()) => {
+                    changed.notify_one();
+                    format!("[login] saved to the OS keyring for {account}")
+                }
                 Err(e) => format!("[login] the OS keyring would not save it ({e})"),
             }
         } else {

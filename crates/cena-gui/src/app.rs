@@ -140,6 +140,7 @@ impl App {
         let view = HubView {
             cards: &glance.cards,
             offered: &glance.offered,
+            roster: &glance.roster,
             merged: &glance.merged,
             said: glance.said.as_ref().map(|(said, _)| said.as_str()),
             windowed: &windowed,

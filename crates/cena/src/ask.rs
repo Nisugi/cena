@@ -140,6 +140,23 @@ pub fn from_roster(entry: &crate::roster::Entry, at_terminal: bool) -> io::Resul
     Ok(typed)
 }
 
+/// The login the window's launcher typed (`plan/49` Stage C), tidied as a
+/// login typed at the terminal is -- names trimmed, the game's code upper
+/// case, the password untouched -- its password kept once proven when the
+/// player said so.
+pub fn from_window(login: &cena_ui::Login) -> Typed {
+    let mut typed = tidy(
+        &login.account,
+        login.password.expose().to_owned(),
+        &login.character,
+        &login.game,
+    );
+    typed.password_from = crate::secrets::Source::Window {
+        keep: login.remember,
+    };
+    typed
+}
+
 /// The guard every prompt here opens with, split out so it can be tested on BOTH answers.
 ///
 /// Its only input is whether stdin is a terminal, and a test cannot choose
@@ -279,5 +296,33 @@ mod tests {
     fn an_empty_game_code_is_the_default() {
         let typed = tidy("a", "p".to_owned(), "c", "  ");
         assert_eq!(typed.game_code, "GST");
+    }
+
+    /// A login typed in the window is tidied as one typed at the terminal,
+    /// its password untouched, and remembers whether its box was ticked.
+    #[test]
+    fn a_window_login_is_tidied_and_says_whether_to_keep() {
+        let login = |remember| cena_ui::Login {
+            account: " acct ".to_owned(),
+            password: cena_ui::Password::new(" p w ".to_owned()),
+            game: "gsf".to_owned(),
+            character: " Ashryn ".to_owned(),
+            remember,
+        };
+        let typed = from_window(&login(true));
+        assert_eq!(
+            (typed.account.as_str(), typed.character.as_str()),
+            ("acct", "Ashryn")
+        );
+        assert_eq!(typed.game_code, "GSF");
+        assert_eq!(typed.password, " p w ", "a password is never trimmed");
+        assert_eq!(
+            typed.password_from,
+            crate::secrets::Source::Window { keep: true }
+        );
+        assert_eq!(
+            from_window(&login(false)).password_from,
+            crate::secrets::Source::Window { keep: false }
+        );
     }
 }

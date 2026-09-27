@@ -110,6 +110,9 @@ struct Table {
     /// Word of each change to the one triggers file, so every character
     /// reads it again (`triggers::Changes`).
     changes: triggers::Changes,
+    /// Word that the roster or a kept password changed with no request to
+    /// answer -- a login proven `Ready` -- so the hubs are offered it again.
+    roster: Arc<tokio::sync::Notify>,
 }
 
 /// Run every named character, with no window, until Ctrl-C or until all
@@ -166,6 +169,7 @@ pub(crate) async fn serve(
         pin: dir.join(cena_platform::PIN_FILENAME),
         attention: crate::attention::start(&dir),
         changes: triggers::Changes::new(),
+        roster: Arc::default(),
         dir,
         turn: Arc::default(),
         interrupt: interrupt.clone(),
@@ -189,6 +193,13 @@ pub(crate) async fn serve(
         gui.control(control);
     }
     table.offer().await;
+    let offering = Arc::clone(&table);
+    tokio::spawn(async move {
+        loop {
+            offering.roster.notified().await;
+            offering.offer().await;
+        }
+    });
 
     eprintln!("[play] running; Ctrl-C quits every character");
     // With the hub up, no character left running is not the end: the hub can
@@ -301,7 +312,7 @@ impl Table {
             self.dir.clone(),
             character.clone(),
         ));
-        proven.on_ready(&hosted.observer, &self.turn);
+        proven.on_ready(&hosted.observer, &self.turn, &self.roster);
         tokio::spawn(after_ready(
             hosted.handle.clone(),
             hosted.observer.clone(),
@@ -339,6 +350,34 @@ impl Table {
                 Err(e) => e,
             },
             HubRequest::Remove(id) => self.remove(SessionId(id)).await,
+            HubRequest::Login(login) => {
+                let name = login.character.trim().to_owned();
+                match self.start(crate::ask::from_window(&login)).await {
+                    Ok(_) => format!("Logging {name} in."),
+                    Err(e) => e,
+                }
+            }
+            HubRequest::Forget(name) => match roster::forget(&self.dir, &name) {
+                Ok(Some(entry)) => format!("{} is off the roster.", entry.character),
+                Ok(None) => format!("{name} is not on the roster."),
+                Err(e) => format!("The roster could not be changed: {e}"),
+            },
+            HubRequest::ForgetPassword(account) => match secrets::forget(&account) {
+                // The keyring's is gone; the account's variable is the
+                // player's own, and still answers.
+                Ok(()) if secrets::saved(&account) => format!(
+                    "The OS keyring keeps no password for {account}; {} still holds one.",
+                    secrets::env_name(&account)
+                ),
+                Ok(()) => format!("The password kept for {account} is forgotten."),
+                Err(e) => format!("The OS keyring would not forget it: {e}"),
+            },
+            HubRequest::Favourite(name, star) => match roster::favourite(&self.dir, &name, star) {
+                Ok(Some(entry)) if star => format!("{} is a favourite.", entry.character),
+                Ok(Some(entry)) => format!("{} is no longer a favourite.", entry.character),
+                Ok(None) => format!("{name} is not on the roster."),
+                Err(e) => format!("The roster could not be changed: {e}"),
+            },
             HubRequest::Reconnect(id) => self.reconnect(SessionId(id)).await,
             HubRequest::Shutdown => {
                 eprintln!("[play] shut down from the hub");
@@ -449,6 +488,12 @@ impl Table {
         }
         if let Some(gui) = &self.gui {
             gui.offer(available);
+            gui.roster(
+                roster
+                    .iter()
+                    .map(|entry| entry.card(secrets::saved(&entry.account)))
+                    .collect(),
+            );
         }
     }
 
@@ -579,6 +624,9 @@ async fn after_ready(
 pub(crate) struct Proven {
     entry: roster::Entry,
     typed_password: Option<(String, String)>,
+    /// A password typed in the window's launcher with its box ticked: kept
+    /// in the keyring once the login is proven, without a question.
+    kept: Option<(String, String)>,
 }
 
 impl Proven {
@@ -587,25 +635,42 @@ impl Proven {
             entry: roster::Entry::of(typed),
             typed_password: (typed.password_from == secrets::Source::Prompt)
                 .then(|| (typed.account.clone(), typed.password.clone())),
+            kept: (typed.password_from == secrets::Source::Window { keep: true })
+                .then(|| (typed.account.clone(), typed.password.clone())),
         }
     }
 
-    /// When `observer`'s login reaches `Ready`: record the roster entry, and
-    /// offer a typed password to the keyring, one question at a time (`turn`).
-    pub(crate) fn on_ready(self, observer: &SessionObserver, turn: &Arc<std::sync::Mutex<()>>) {
+    /// When `observer`'s login reaches `Ready`: record the roster entry, keep
+    /// a password the window's box asked to keep, and offer one typed at the
+    /// terminal to the keyring, one question at a time (`turn`). Each change
+    /// is word to `changed`.
+    pub(crate) fn on_ready(
+        self,
+        observer: &SessionObserver,
+        turn: &Arc<std::sync::Mutex<()>>,
+        changed: &Arc<tokio::sync::Notify>,
+    ) {
         if let Some((account, password)) = self.typed_password {
             tokio::spawn(secrets::offer_to_remember(
                 account,
                 password,
                 observer.clone(),
                 Arc::clone(turn),
+                Arc::clone(changed),
             ));
         }
         let observer = observer.clone();
-        let entry = self.entry;
+        let (entry, kept, changed) = (self.entry, self.kept, Arc::clone(changed));
         tokio::spawn(async move {
             if until_ready(&observer).await {
                 remember(&cena_session::character_store::data_dir(), entry);
+                if let Some((account, password)) = kept {
+                    match secrets::keep(&account, &password) {
+                        Ok(()) => eprintln!("[login] saved to the OS keyring for {account}"),
+                        Err(e) => eprintln!("[login] the OS keyring would not save it ({e})"),
+                    }
+                }
+                changed.notify_one();
             }
         });
     }
@@ -641,7 +706,7 @@ async fn until_ready(observer: &SessionObserver) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{characters_in, headless_in, hub_login};
+    use super::{Proven, characters_in, headless_in, hub_login};
 
     fn args(line: &str) -> Vec<String> {
         line.split_whitespace().map(str::to_owned).collect()
@@ -679,6 +744,24 @@ mod tests {
         assert!(!headless_in(args("--character Nisugi --record")));
         assert!(headless_in(args("--character Nisugi --headless")));
         assert!(headless_in(args("--web --character Nisugi")));
+    }
+
+    /// A password typed in the window is kept once proven only when its box
+    /// was ticked, and is never asked about at the terminal.
+    #[test]
+    fn a_window_password_is_kept_only_when_its_box_was_ticked() {
+        let login = |remember| cena_ui::Login {
+            account: "acct".to_owned(),
+            password: cena_ui::Password::new("pw".to_owned()),
+            game: "gst".to_owned(),
+            character: "Ashryn".to_owned(),
+            remember,
+        };
+        let ticked = Proven::of(&crate::ask::from_window(&login(true)));
+        assert_eq!(ticked.kept, Some(("acct".to_owned(), "pw".to_owned())));
+        assert_eq!(ticked.typed_password, None, "never asked at the terminal");
+        let unticked = Proven::of(&crate::ask::from_window(&login(false)));
+        assert_eq!((unticked.kept, unticked.typed_password), (None, None));
     }
 
     #[test]

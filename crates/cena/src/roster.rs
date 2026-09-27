@@ -37,6 +37,10 @@ pub(crate) struct Entry {
     pub(crate) account: String,
     /// The game code it logs in to (`GS3` is Prime).
     pub(crate) game_code: String,
+    /// Starred in the window's launcher, which lists it first (`plan/49`
+    /// Stage C). Absent from a roster written before there were favourites.
+    #[serde(default)]
+    pub(crate) favourite: bool,
 }
 
 impl Entry {
@@ -46,6 +50,20 @@ impl Entry {
             character: typed.character.clone(),
             account: typed.account.clone(),
             game_code: typed.game_code.clone(),
+            favourite: false,
+        }
+    }
+
+    /// This character as the window's launcher shows it (`plan/49` Stage
+    /// C), with `kept`, whether its account's password is: never the
+    /// password.
+    pub(crate) fn card(&self, kept: bool) -> cena_ui::RosterCard {
+        cena_ui::RosterCard {
+            character: self.character.clone(),
+            account: self.account.clone(),
+            game: self.game_code.clone(),
+            kept,
+            favourite: self.favourite,
         }
     }
 }
@@ -112,16 +130,60 @@ pub(crate) fn all(dir: &Path) -> io::Result<Vec<Entry>> {
     Ok(load(dir)?.characters.into_values().collect())
 }
 
-/// Remember `entry`, replacing what was known of that character.
+/// Remember `entry`, replacing what was known of that character -- but for
+/// its star, which a login does not know and must not undo.
 ///
 /// # Errors
 ///
 /// The file cannot be read or written.
-pub(crate) fn record(dir: &Path, entry: Entry) -> io::Result<()> {
+pub(crate) fn record(dir: &Path, mut entry: Entry) -> io::Result<()> {
     let mut file = load(dir)?;
-    file.schema_version = SCHEMA_VERSION;
+    let key = key(&entry.game_code, &entry.character);
+    entry.favourite |= file
+        .characters
+        .get(&key)
+        .is_some_and(|known| known.favourite);
+    file.characters.insert(key, entry);
+    save(dir, file)
+}
+
+/// Take the character `name` means off the roster (`find`'s names): the
+/// entry it had, or `None` when it had none.
+///
+/// # Errors
+///
+/// The file cannot be read or written, or the name is ambiguous.
+pub(crate) fn forget(dir: &Path, name: &str) -> io::Result<Option<Entry>> {
+    let Some(entry) = find(dir, name)? else {
+        return Ok(None);
+    };
+    let mut file = load(dir)?;
     file.characters
-        .insert(key(&entry.game_code, &entry.character), entry);
+        .remove(&key(&entry.game_code, &entry.character));
+    save(dir, file)?;
+    Ok(Some(entry))
+}
+
+/// Star the character `name` means, or unstar it: its entry as it is now,
+/// or `None` when it has none.
+///
+/// # Errors
+///
+/// The file cannot be read or written, or the name is ambiguous.
+pub(crate) fn favourite(dir: &Path, name: &str, star: bool) -> io::Result<Option<Entry>> {
+    let Some(mut entry) = find(dir, name)? else {
+        return Ok(None);
+    };
+    entry.favourite = star;
+    let mut file = load(dir)?;
+    file.characters
+        .insert(key(&entry.game_code, &entry.character), entry.clone());
+    save(dir, file)?;
+    Ok(Some(entry))
+}
+
+fn save(dir: &Path, mut file: File) -> io::Result<()> {
+    file.schema_version = SCHEMA_VERSION;
     std::fs::create_dir_all(dir)?;
     cena_session::store::save_json(dir, &dir.join(FILENAME), &file)
 }
@@ -135,6 +197,7 @@ mod tests {
             character: character.to_owned(),
             account: account.to_owned(),
             game_code: game.to_owned(),
+            favourite: false,
         }
     }
 
@@ -177,5 +240,54 @@ mod tests {
             Some("ACCT2".to_owned())
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A star outlives the next login, which does not know of it; one
+    /// character of a name shared across games is starred or forgotten
+    /// alone; and a name the roster has not is said to be absent.
+    #[test]
+    fn a_star_outlives_a_login_and_forgetting_takes_one() {
+        let dir = scratch("stars");
+        record(&dir, entry("GS3", "Nisugi", "ACCT1")).expect("recorded");
+        record(&dir, entry("GSX", "Nisugi", "ACCT2")).expect("recorded");
+        let starred = favourite(&dir, "gs3:nisugi", true).expect("starred");
+        assert_eq!(starred.map(|e| e.character), Some("Nisugi".to_owned()));
+        record(&dir, entry("GS3", "Nisugi", "ACCT1")).expect("logged in again");
+        let starred = |name| find(&dir, name).ok().flatten().map(|e| e.favourite);
+        assert_eq!(starred("GS3:Nisugi"), Some(true), "the login kept the star");
+        assert_eq!(
+            starred("GSX:Nisugi"),
+            Some(false),
+            "the other game's is apart"
+        );
+
+        favourite(&dir, "GS3:Nisugi", false).expect("unstarred");
+        assert_eq!(starred("GS3:Nisugi"), Some(false));
+
+        let gone = forget(&dir, "GSX:Nisugi").expect("forgotten");
+        assert_eq!(gone.map(|e| e.account), Some("ACCT2".to_owned()));
+        assert_eq!(all(&dir).map(|all| all.len()).ok(), Some(1));
+        assert_eq!(forget(&dir, "GSX:Nisugi").ok(), Some(None), "not there");
+        assert_eq!(favourite(&dir, "Stranger", true).ok(), Some(None));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A launcher's card says each of the entry's facts, and whether the
+    /// password is kept as it was told.
+    #[test]
+    fn a_card_is_the_entry_and_whether_it_is_kept() {
+        let mut starred = entry("GSX", "Nisugi", "ACCT2");
+        starred.favourite = true;
+        assert_eq!(
+            starred.card(true),
+            cena_ui::RosterCard {
+                character: "Nisugi".to_owned(),
+                account: "ACCT2".to_owned(),
+                game: "GSX".to_owned(),
+                kept: true,
+                favourite: true,
+            }
+        );
+        assert!(!entry("GS3", "Nerten", "ACCT1").card(false).kept);
     }
 }

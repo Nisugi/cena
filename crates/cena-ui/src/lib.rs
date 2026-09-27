@@ -11,7 +11,7 @@ mod projection;
 mod view;
 mod wire;
 
-pub use hub::{HubControl, HubRequest};
+pub use hub::{HubControl, HubRequest, Login, Password, RosterCard};
 pub use input::{InputError, MAX_COMMAND_BYTES, MAX_REQUEST_ID_BYTES, validate_command};
 pub use lines::{MAX_LINE_BYTES, MAX_LINE_RUNS, painted, story_lines};
 pub use merge::{

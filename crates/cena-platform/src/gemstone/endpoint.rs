@@ -63,6 +63,17 @@
 /// in `cena/src/ask.rs`.
 pub const DEFAULT_GAME_CODE: &str = "GST";
 
+/// The games a launcher offers (`plan/49` Stage C): the code a login asks
+/// for, and what a player calls it. Lich's launcher's list
+/// (`reference/lich-5/lib/common/gui/game_selection.rb:12`), `GemStone` only;
+/// Platinum, `GSX`, is retired (`weblogin/instance.rs`). Here for the reason
+/// [`DEFAULT_GAME_CODE`] is.
+pub const GAMES: [(&str, &str); 3] = [
+    ("GS3", "Prime"),
+    ("GSF", "Shattered"),
+    ("GST", "Prime Test"),
+];
+
 /// One endpoint pair: the two spellings of the same game server.
 type Pair = (&'static str, u16);
 
@@ -119,7 +130,13 @@ pub fn other_spelling(host: &str, port: u16) -> Option<(&'static str, u16)> {
 // path -- the same reason the table itself is here. The behavioural tests that
 // need no hostname stayed in the integration test.
 mod tests {
-    use super::{ENDPOINT_PAIRS, other_spelling};
+    use super::{DEFAULT_GAME_CODE, ENDPOINT_PAIRS, GAMES, other_spelling};
+
+    /// A launcher's game starts where a login that names none goes.
+    #[test]
+    fn the_default_game_is_one_a_launcher_offers() {
+        assert!(GAMES.iter().any(|(code, _)| *code == DEFAULT_GAME_CODE));
+    }
 
     #[test]
     fn every_pair_maps_in_both_directions() {

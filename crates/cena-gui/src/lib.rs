@@ -19,6 +19,7 @@ mod feed;
 mod fixture;
 mod hub;
 mod keys;
+mod launch;
 mod layout;
 mod play;
 mod sessions;

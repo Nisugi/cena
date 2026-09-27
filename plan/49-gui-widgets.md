@@ -566,6 +566,52 @@ then the account's environment variable, then a prompt at a terminal):
 3. **Favourites**: a star on a character, kept in the roster, puts it first in the list,
    as Lich's favourites do.
 
+**Stage C BUILT 2026-09-27, all three steps in one commit**, since the tab is what the
+requests are for. *The requests* (`crates/cena-ui/src/hub.rs`): `HubRequest` gains `Login`,
+`Forget`, `ForgetPassword` and `Favourite`; a `Login`'s `Password` prints as
+`Password(hidden)`, and the window's `RosterCard` carries whether a password is kept, never
+one. Despana's wire has no message that makes a `Login`, so a password never crosses a
+socket. The binary answers them (`crates/cena/src/play.rs`): a window login is tidied as a
+terminal one is (`ask::from_window`) and marked `secrets::Source::Window { keep }`; once it
+is proven `Ready` it joins the roster, and its password goes to the keyring
+(`secrets::keep`) only when `keep`. The table re-offers the roster when a login changes it
+with no request to answer (a `Notify` that `Proven::on_ready` and the terminal's yes both
+ping). Forgetting a password forgets the keyring's (`secrets::forget`); one in the account's
+environment variable is the player's own and stays, and the answer says so. A character is
+named to the binary as `GAME:Name`, which the roster reads as that one character whatever
+other game has one of the same name.
+
+*The Launch tab* (`crates/cena-gui/src/launch.rs`), the hub's third: the roster, each
+character with its game by name and its account; *Start* when its password is kept (the
+binary's offered list, so the Live tab no longer starts characters), *Playing* when it
+plays, and otherwise a masked password field, a *Keep* box and *Log in*; *Forget* on each.
+Below, a new login typed whole -- account, password, character, and the game from a list --
+and the accounts whose passwords are kept, each forgotten with a click. A password typed
+leaves the tab once asked for; the rest of a new login stays for a second try. The games
+are Lich's launcher's (`game_selection.rb:12`), kept beside `DEFAULT_GAME_CODE` in
+`cena-platform`'s game namespace (Rule 3.4) and re-exported; the list starts on that
+default. *Favourites*: a star on each character, kept in the roster (`favourite`, absent from
+an older file), lists it first; a later login keeps the star it does not know of.
+
+Tests: a password never printed, and masked to a screen reader; the roster starred first
+then by name, each row's three states; each request by its roster name; a new login refused
+until whole, its game chosen, its names trimmed; the roster's star outliving a login and
+forgetting one of two same-named characters; a window login tidied and kept only when
+ticked; the default game one the launcher offers; the tab rendered. Twenty-four mutants, all
+caught, after four holes were closed on the way to writing them: no closed character on the
+roster, so one counted as playing passed; no character offered by `GAME:Name`; no account
+without a kept password, to be left off the list; and the binary's cards built inline in
+`offer()`, where nothing could reach them (now `roster::Entry::card`). Typing in a test
+reaches a field only once it is focused, as a player's does.
+
+**Not tested here, and why.** The binary's answers to the four new requests run on the
+session table, which needs a live connector; `secrets::keep` and `secrets::forget` write the
+real OS keyring; and the re-offer after a login proven `Ready` needs a login. Each is a few
+lines over tested pieces, and each is the author's to see live: log a character in from
+Launch with the box ticked, see it join the roster with its password kept, then forget it.
+`cena-session`'s facade sat at its 120-line cap (`file_rules.rs:337`); the one line the
+games' re-export needed was found by joining two re-exports of one module.
+
 Not in Stage C: asking the login service which characters an account has, as Lich's
 manual tab does (`manual_login_tab.rb`). It needs a new exchange with the live service,
 which no test here may make; the character is typed by name, and a wrong one is refused at

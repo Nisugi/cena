@@ -185,7 +185,7 @@
 //! |---|---|---|
 //! | **Host** | the table of sessions one Hydra runs: add, remove, one per account, stop them all ([`Host`], [`stop_all`]) | |
 //! | **Account** | the login a character is on. The game keeps one character per account online, so the table refuses a second ([`AddError::AccountInUse`]) | session |
-//! | **Roster** | which account and game each character is on, holding no secret: [`roster`](crate::roster) | |
+//! | **Roster** | which account and game each character is on, and whether the player starred it, holding no secret: [`roster`](crate::roster) | |
 //! | **Projection** | a game state turned into the vocabulary a frontend renders, reading no clock and changing nothing: [`SessionView::project`] | snapshot |
 //! | **Frontend wire** | [`ServerMessage`] and [`ClientMessage`], versioned by [`WIRE_VERSION`] and written down in `crates/cena-ui/WIRE.md`. No model or protocol type crosses it | |
 //! | **Despana** | the embedded browser viewer: one loopback listener inside the binary ([`cena_web`], [`WebServer`]) | |
@@ -199,6 +199,8 @@
 //! | **Custom window** | a window in a play window holding several widgets bare, each in a cell of its own, with one frame for all: the vitals, the loadout and the room come as three (`plan/49` §2, `plan/28` §7d) | container window, `plan/28`'s word for it |
 //! | **Tab stack** | several widgets in one cell of a custom window, one showing, a tab for each; a tab not showing counts what its widget said since (*"Hydra 2"*). Made by letting go over the middle of a widget, or one standalone window on another's title bar (`plan/49` §2, Stage A step 5) | tab group, Vellum's separate mechanism |
 //! | **Follow** (a widget) | show another running character than its window's -- a party's vitals in one window -- chosen only in the Advanced place: the bottom of the Add-a-widget list, or a widget's right-click menu. A story never follows (`plan/49` §1 rows 3, 7, 8) | |
+//! | **Launch tab** | the hub's third tab: the roster, each character started with a click when its account's password is kept or with the password typed there; a new login typed whole; the kept passwords, each forgotten. A star lists a character first. Lich's launcher is its reference (`plan/49` Stage C) | launcher, Lich's separate program |
+//! | **Kept password** | one Hydra can read without asking: in the OS keyring, or the account's environment variable. The window keeps one only when its box was ticked, once the login proved it ([`secrets`](crate::secrets)) | saved login, which is the roster's |
 //! | **Preset** | a custom window already put together: Hydra's four (Vitals, Vitals row, Loadout, Room) and any a player saved, in one library every character adds from. Placing one places the character's own copy (`plan/49` §2, Stage A step 7) | template |
 //! | **Arrange** | the Layout menu's switch that lets a custom window's cells be moved, resized, and dragged out, and lets a standalone window be dropped into one; off, no press rearranges anything (`plan/49` Stage A step 4) | edit mode |
 //! | **Hub** | every character at a glance: a card each, start, quit, reconnect, and the merged streams. Two frontends have one: Despana's hub page, and the window's [`Hub`](cena_gui::Hub), in two tabs, Live and Closed (`plan/47`). Requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
