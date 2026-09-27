@@ -11,25 +11,27 @@ use crate::story::Shown;
 use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
 
 /// What the top bar was asked this frame.
-#[derive(Debug, Default)]
-pub(super) struct Top {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Top {
     /// Stop was pressed.
-    pub(super) stop: bool,
+    Stop,
     /// The layout was to be fitted afresh.
-    pub(super) reset: bool,
+    Fit,
     /// The grid's pitch was changed.
-    pub(super) grid_changed: bool,
+    Grid,
+    /// The keybinds were to be read again.
+    ReloadKeys,
 }
 
-/// The top bar: who, how connected, the clocks, the hands, the layout's
-/// grid, Stop; and any banner.
+/// The top bar: who, how connected, the clocks, the hands, the keybinds,
+/// the layout's grid, Stop; and any banner.
 pub(super) fn top(
     ui: &mut egui::Ui,
     view: &PlayView<'_>,
     grid: &mut f32,
     unsaved: Option<&str>,
-) -> Top {
-    let mut asked = Top::default();
+) -> Option<Top> {
+    let mut asked = None;
     let state = view.snapshot.map(|snapshot| &snapshot.state);
     ui.horizontal(|ui| {
         ui.strong(view.name);
@@ -54,25 +56,43 @@ pub(super) fn top(
             ));
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            asked.stop = ui
+            if ui
                 .button("Stop")
                 .on_hover_text("Stop everything Hydra is doing on this character")
-                .clicked();
+                .clicked()
+            {
+                asked = Some(Top::Stop);
+            }
+            ui.menu_button("Keys", |ui| {
+                for said in view.keys {
+                    ui.label(said);
+                }
+                if ui.button("Read the keybinds again").clicked() {
+                    asked = Some(Top::ReloadKeys);
+                    ui.close();
+                }
+            });
             ui.menu_button("Layout", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Grid");
-                    asked.grid_changed = ui
+                    let changed = ui
                         .add(egui::DragValue::new(grid).range(0.0..=64.0).suffix(" pt"))
                         .on_hover_text("What the panes' edges snap to; 0 for none. Shift while dragging snaps to nothing.")
                         .changed();
+                    if changed {
+                        asked = Some(Top::Grid);
+                    }
                 });
                 if ui.button("Fit the panes afresh").clicked() {
-                    asked.reset = true;
+                    asked = Some(Top::Fit);
                     ui.close();
                 }
             });
             if let Some(why) = unsaved {
                 ui.colored_label(WRONG, format!("Layout not saved: {why}"));
+            }
+            if let Some(on) = view.numlock {
+                ui.weak(if on { "NumLock on" } else { "NumLock off" });
             }
         });
     });

@@ -16,6 +16,7 @@ mod app;
 pub mod bar;
 mod feed;
 mod hub;
+mod keys;
 mod layout;
 mod play;
 mod sessions;

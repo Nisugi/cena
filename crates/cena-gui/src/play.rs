@@ -41,6 +41,8 @@ pub(crate) enum Asked {
     Send(String),
     /// Stop everything Hydra is doing on the character (`;stop`).
     Stop,
+    /// Read the keybinds file again.
+    ReloadKeys,
 }
 
 /// What a play window shows this frame.
@@ -55,6 +57,10 @@ pub(crate) struct PlayView<'a> {
     pub(crate) story: &'a Story,
     /// Now, for which banners are still up.
     pub(crate) now: Instant,
+    /// `NumLock`, once a numpad press has shown it.
+    pub(crate) numlock: Option<bool>,
+    /// What the keybinds file bound, and what is wrong in it.
+    pub(crate) keys: &'a [String],
 }
 
 /// A play window's own state, which outlives a frame.
@@ -116,18 +122,21 @@ impl Play {
         let top = egui::Panel::top(Id::new(("play-top", session)))
             .show(ui, |ui| draw::top(ui, view, &mut grid, unsaved.as_deref()))
             .inner;
-        if top.stop {
-            asked = Some(Asked::Stop);
-        }
         let mut changed = false;
-        if top.reset {
-            self.layout = None;
-            changed = true;
-        } else if top.grid_changed
-            && let Some(layout) = &mut self.layout
-        {
-            layout.grid = grid;
-            changed = true;
+        match top {
+            Some(draw::Top::Stop) => asked = Some(Asked::Stop),
+            Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
+            Some(draw::Top::Fit) => {
+                self.layout = None;
+                changed = true;
+            }
+            Some(draw::Top::Grid) => {
+                if let Some(layout) = &mut self.layout {
+                    layout.grid = grid;
+                    changed = true;
+                }
+            }
+            None => {}
         }
         egui::Panel::bottom(Id::new(("play-input-panel", session))).show(ui, |ui| {
             if let Some(line) = self.input(ui) {

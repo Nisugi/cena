@@ -13,6 +13,11 @@ eframe.workspace = true
 # store Hydra writes, so JSON, as the workspace's other stores are.
 serde.workspace = true
 serde_json.workspace = true
+# Keybinds (plan/47 step 7): written by hand, so TOML, as the hunt profiles
+# and the triggers are; each key named by winit's code for it, the version
+# eframe already builds (no feature of its own, so nothing new is built).
+toml.workspace = true
+winit = { version = "0.30", default-features = false }
 # Each character's feed runs on the binary's runtime, beside its session
 # (plan/47 §4): the window has the main thread, the sessions the workers.
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }

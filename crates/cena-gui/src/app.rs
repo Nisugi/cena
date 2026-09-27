@@ -11,6 +11,11 @@
 //! character running headless (the author: *"when their running gui play
 //! window is closed, if the connection isn't closed then they remain
 //! headless"*); its hub card opens it again.
+//!
+//! Keybinds (step 7, `crate::keys`) send on the character whose play window
+//! has the keyboard: a bound key is taken from that window's input, and the
+//! numpad, which the fork hands over apart from any window, goes to the one
+//! focused.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -20,6 +25,7 @@ use std::time::{Duration, Instant};
 use cena_ui::LifecycleView;
 
 use crate::hub::{HubAction, HubView};
+use crate::keys::{self, Keybinds};
 use crate::play::{Asked, Play, PlayView};
 use crate::sessions::{Seat, lock};
 use crate::{Hub, Sessions};
@@ -36,6 +42,17 @@ pub struct App {
     plays: BTreeMap<u32, Window>,
     /// Where play windows keep their layouts; `None`, and they keep none.
     layouts: Option<PathBuf>,
+    /// The keybinds, and the file they are read from, when there is one.
+    keys: Keybinds,
+    keys_file: Option<PathBuf>,
+    /// What a play window says of the keybinds: how many, and what is wrong.
+    keys_said: Vec<String>,
+    /// The fork is to be told again which numpad keys to catch.
+    catch_again: bool,
+    /// Numpad lines this frame, for the play window with the keyboard.
+    numpad: Vec<String>,
+    /// `NumLock`, as the last numpad press showed it.
+    numlock: Option<bool>,
 }
 
 /// One character's play window.
@@ -55,17 +72,44 @@ impl App {
             sessions,
             plays: BTreeMap::new(),
             layouts: None,
+            keys: Keybinds::default(),
+            keys_file: None,
+            keys_said: Vec::new(),
+            catch_again: true,
+            numpad: Vec::new(),
+            numlock: None,
         }
     }
 
-    /// The same, its play windows keeping their layouts in `layouts`, by
-    /// character name (`plan/47` step 6).
+    /// The same, keeping what it keeps in `data`, the data folder: play
+    /// windows' layouts by character name (`plan/47` step 6), and the
+    /// keybinds read from it (step 7).
     #[must_use]
-    pub fn keeping_layouts(sessions: Sessions, layouts: PathBuf) -> Self {
-        Self {
-            layouts: Some(layouts),
+    pub fn keeping(sessions: Sessions, data: &std::path::Path) -> Self {
+        let mut app = Self {
+            layouts: Some(data.join("layouts")),
+            keys_file: Some(keys::path(data)),
             ..Self::new(sessions)
-        }
+        };
+        app.read_keys();
+        app
+    }
+
+    /// Read the keybinds file again, and say what it bound.
+    fn read_keys(&mut self) {
+        let Some(file) = &self.keys_file else {
+            return;
+        };
+        let (keys, problems) = Keybinds::load(file);
+        self.keys_said = std::iter::once(if keys.len() == 0 {
+            format!("No keys bound: write them in {}.", file.display())
+        } else {
+            format!("{} keys bound, from {}.", keys.len(), file.display())
+        })
+        .chain(problems)
+        .collect();
+        self.keys = keys;
+        self.catch_again = true;
     }
 
     /// Draw one frame into `ui` -- the hub, then each open play window --
@@ -118,6 +162,8 @@ impl App {
 
     /// Show `seat`'s play window, if open, and act on what it asked.
     fn play(&mut self, context: &egui::Context, seat: &Arc<Seat>) {
+        let (keys, numpad, keys_said) = (&self.keys, &mut self.numpad, &self.keys_said);
+        let numlock = self.numlock;
         let Some(window) = self.plays.get_mut(&seat.id.0) else {
             return;
         };
@@ -129,11 +175,16 @@ impl App {
         let builder = egui::ViewportBuilder::default()
             .with_title(format!("{} — {TITLE}", seat.name))
             .with_inner_size([980.0, 680.0]);
-        let (asked, closed) = context.show_viewport_immediate(
+        let (asked, bound, closed) = context.show_viewport_immediate(
             egui::ViewportId::from_hash_of(("play", seat.id.0)),
             builder,
             |ui, _class| {
                 let closed = ui.input(|input| input.viewport().close_requested());
+                // Taken before anything draws, so no widget sees a bound key.
+                let mut bound = ui.ctx().input_mut(|input| keys.take(input));
+                if ui.input(|input| input.focused) {
+                    bound.append(numpad);
+                }
                 let story = lock(&seat.story);
                 let view = PlayView {
                     name: &seat.name,
@@ -141,10 +192,12 @@ impl App {
                     snapshot: snapshot.as_deref(),
                     story: &story,
                     now: Instant::now(),
+                    numlock,
+                    keys: keys_said,
                 };
                 let asked = window.play.show(ui, &view);
                 drop(story);
-                (asked, closed)
+                (asked, bound, closed)
             },
         );
         if closed {
@@ -153,7 +206,11 @@ impl App {
         if clocks_run(snapshot.as_deref(), &seat.story) {
             context.request_repaint_after(Duration::from_millis(250));
         }
+        for line in bound {
+            self.sessions.send(seat, line);
+        }
         match asked {
+            Some(Asked::ReloadKeys) => self.read_keys(),
             Some(Asked::Send(line)) => self.sessions.send(seat, line),
             Some(Asked::Stop) => {
                 let symbol = seat
@@ -200,7 +257,23 @@ fn clocks_run(
 }
 
 impl eframe::App for App {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        if std::mem::take(&mut self.catch_again) {
+            frame.set_numpad_capture_mode(if self.keys.numpad_always {
+                eframe::NumpadCaptureMode::Always
+            } else {
+                eframe::NumpadCaptureMode::NumLockAware
+            });
+            frame.set_numpad_capture_keys(Some(self.keys.numpad_caught()));
+        }
+        let pressed = frame.numpad_keys();
+        if let Some(on) = pressed.iter().rev().find_map(|event| event.numlock_on) {
+            self.numlock = Some(on);
+        }
+        self.numpad = pressed
+            .iter()
+            .filter_map(|event| keys::numpad_line(&self.keys, event))
+            .collect();
         if ui.ctx().input(|input| input.viewport().close_requested()) && !self.close_asked() {
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -228,8 +301,8 @@ pub fn run(sessions: Sessions) -> eframe::Result {
         options,
         Box::new(move |creation| {
             sessions.opened(&creation.egui_ctx);
-            let layouts = cena_session::character_store::data_dir().join("layouts");
-            Ok(Box::new(App::keeping_layouts(sessions, layouts)))
+            let data = cena_session::character_store::data_dir();
+            Ok(Box::new(App::keeping(sessions, &data)))
         }),
     )
 }
@@ -279,6 +352,32 @@ mod tests {
         harness.run();
         harness.run();
         assert!(harness.query_by_role(Role::TextInput).is_some(), "reopened");
+    }
+
+    /// A bound key sends its line on the character whose window has it, as
+    /// if typed there; the command input never sees the key.
+    #[test]
+    fn a_bound_key_sends_on_its_window() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("a runtime");
+        let sessions = Sessions::new(runtime.handle().clone());
+        sessions.seat_for_test(handle(), "Ashryn");
+        let mut app = App::new(sessions);
+        app.keys = Keybinds::read("[keys]\nF5 = \"look\"\n").0;
+        let mut harness = Harness::builder()
+            .with_size((1200.0, 900.0))
+            .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
+        harness.run();
+        harness.key_press(egui::Key::F5);
+        harness.run();
+        harness.run();
+        assert!(harness.query_by_label("> look").is_some());
+        assert_eq!(
+            harness.get_by_role(Role::TextInput).value().as_deref(),
+            Some(""),
+            "the input never saw it"
+        );
     }
 
     /// Typed before the window has seen the session, a line is echoed and

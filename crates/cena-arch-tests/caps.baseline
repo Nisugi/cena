@@ -373,3 +373,6 @@ crates/cena-gui/src/story.rs 200
 # NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena/src/relay.rs
 # is ;to and ;all, its tests in relay/tests.rs: 178 lines, so 250.
 crates/cena/src/relay.rs 250
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena-gui/src/keys.rs
+# is the keybinds, its tests in keys/tests.rs: 380 lines, so 450.
+crates/cena-gui/src/keys.rs 450

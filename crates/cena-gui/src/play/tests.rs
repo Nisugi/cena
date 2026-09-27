@@ -136,6 +136,8 @@ impl Scene {
             snapshot: Some(&self.snapshot),
             story: &self.story,
             now: Instant::now(),
+            numlock: None,
+            keys: &[],
         };
         if let Some(asked) = self.play.show(ui, &view) {
             self.asked.push(asked);
