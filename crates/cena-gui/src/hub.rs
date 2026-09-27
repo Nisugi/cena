@@ -15,6 +15,8 @@
 
 use cena_ui::{GroupView, HubRequest, LifecycleView, MergedLine, SessionCard, VitalView};
 
+use crate::bar::{self, Amount, Bar};
+
 /// Which of the hub's tabs is showing.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Tab {
@@ -160,13 +162,13 @@ fn draw(ui: &mut egui::Ui, card: &SessionCard) -> Option<HubRequest> {
         });
         ui.horizontal(|ui| {
             let vitals = &card.vitals;
-            for (label, vital) in [
-                ("HP", &vitals.health),
-                ("MP", &vitals.mana),
-                ("SP", &vitals.stamina),
-                ("Sp", &vitals.spirit),
+            for (label, vital, color) in [
+                ("HP", &vitals.health, bar::HEALTH),
+                ("MP", &vitals.mana, bar::MANA),
+                ("SP", &vitals.stamina, bar::STAMINA),
+                ("Sp", &vitals.spirit, bar::SPIRIT),
             ] {
-                gauge(ui, label, vital.as_ref());
+                ui.add(Bar::new(label, vital.as_ref().map(amount)).fill(color));
             }
         });
         let mut facts = Vec::new();
@@ -224,20 +226,14 @@ fn merged(ui: &mut egui::Ui, lines: &[MergedLine]) {
         });
 }
 
-/// A gauge's bar, labelled with its percent; `?`, with no fill at all, until
-/// the game has said. egui draws a rounded cap even at 0%, which on an
-/// unknown gauge would read as "a little".
-fn gauge(ui: &mut egui::Ui, label: &str, vital: Option<&VitalView>) {
-    let bar = match vital {
-        Some(vital) => egui::ProgressBar::new(
-            f32::from(u16::try_from(vital.percent.min(100)).unwrap_or(100)) / 100.0,
-        )
-        .text(format!("{label} {}%", vital.percent)),
-        None => egui::ProgressBar::new(0.0)
-            .fill(egui::Color32::TRANSPARENT)
-            .text(format!("{label} ?")),
-    };
-    ui.add(bar.desired_width(72.0));
+/// A vital as a bar's value: `?`, with no fill at all, until the game has
+/// said.
+pub(crate) fn amount(vital: &VitalView) -> Amount {
+    Amount {
+        percent: vital.percent,
+        current: vital.current,
+        max: vital.max,
+    }
 }
 
 /// How a character is connected, in the web hub's words (`app.js`'s

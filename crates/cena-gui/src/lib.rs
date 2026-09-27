@@ -12,6 +12,7 @@
 //! merged streams.
 
 mod app;
+pub mod bar;
 mod feed;
 mod hub;
 mod sessions;
