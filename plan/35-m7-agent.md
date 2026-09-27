@@ -614,6 +614,9 @@ Each ends in something demonstrable, as `12` §8 asks.
      without its token, one; no level drop, one.
 6. **Acceptance, live, author present:** a hunt ends on its rest threshold, the agent (not
    the hunt) decides what is next and does it; the player stops the agent mid-act.
+   **READY, not run**: the runbook is [`plan/47-m7-acceptance.md`](47-m7-acceptance.md),
+   which also carries steps 1 and 2's *Shown*. The hunt ends on its rest threshold through the
+   profile's own `rest.stop_after 1`, so the ending is the machine's `Rested`.
 
 ### Issue #19: LAB's author's review, 2026-09-27, and where each point lands
 
