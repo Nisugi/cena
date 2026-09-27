@@ -24,6 +24,7 @@
 mod arrange;
 mod draw;
 mod holders;
+mod menu;
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -66,6 +67,8 @@ pub(crate) struct PlayView<'a> {
     pub(crate) numlock: Option<bool>,
     /// What the keybinds file bound, and what is wrong in it.
     pub(crate) keys: &'a [String],
+    /// The other characters running, which a widget may follow.
+    pub(crate) others: &'a [crate::widget::Character],
 }
 
 /// A play window's own state, which outlives a frame.
@@ -92,6 +95,10 @@ pub(crate) struct Play {
     /// How far each widget that counts what it says was read, by its id: a
     /// tab not showing shows what came since (`draw.rs`, `unread`).
     read: std::collections::HashMap<u32, u64>,
+    /// The Add-a-widget list, while open (`menu.rs`).
+    adding: Option<menu::Adding>,
+    /// A window's or widget's right-click menu, while open (`menu.rs`).
+    menu: Option<menu::Menu>,
     /// Why the layout could not be saved, until it can.
     unsaved: Option<String>,
     /// The line being typed.
@@ -120,6 +127,8 @@ impl Play {
             cell: None,
             insides: Vec::new(),
             read: std::collections::HashMap::new(),
+            adding: None,
+            menu: None,
             unsaved: None,
             input: String::new(),
             history: Vec::new(),
@@ -160,6 +169,7 @@ impl Play {
                     changed = true;
                 }
             }
+            Some(draw::Top::AddWidget) => self.adding = Some(menu::Adding::default()),
             Some(draw::Top::NewCustom) => {
                 if let Some(layout) = &mut self.layout {
                     layout.new_custom();
@@ -174,7 +184,10 @@ impl Play {
                 asked = Some(Asked::Send(line));
             }
         });
+        let area = ui.available_rect_before_wrap();
         changed |= self.arrange(ui, view);
+        changed |= self.add_list(ui.ctx(), area, view.others);
+        changed |= self.right_click(ui.ctx(), area, view.others);
         if changed {
             self.save();
         }

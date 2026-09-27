@@ -202,6 +202,7 @@ fn a_tab_first_seen_hidden_counts_from_then() {
         snapshot: None,
         story: &story,
         hunt: None,
+        who: None,
     };
     let hydra = crate::layout::Placed {
         id: 7,

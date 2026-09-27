@@ -13,6 +13,8 @@ struct Scene {
     snapshot: Snapshot,
     story: Story,
     hunt: Option<cena_ui::HuntView>,
+    /// The other characters running, which a widget may follow.
+    others: Vec<crate::widget::Character>,
     asked: Vec<Asked>,
 }
 
@@ -29,6 +31,7 @@ impl Scene {
                 target: None,
                 waiting: Some("mana 30%, wants 50%".to_owned()),
             }),
+            others: Vec::new(),
             asked: Vec::new(),
         }
     }
@@ -43,6 +46,7 @@ impl Scene {
             hunt: self.hunt.as_ref(),
             numlock: None,
             keys: &[],
+            others: &self.others,
         };
         if let Some(asked) = self.play.show(ui, &view) {
             self.asked.push(asked);
@@ -373,4 +377,5 @@ fn the_window_as_drawn() {
 }
 
 mod arrange;
+mod menus;
 mod tabs;

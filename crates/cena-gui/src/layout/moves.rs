@@ -11,13 +11,17 @@
 use egui::{Pos2, Rect, Vec2, pos2, vec2};
 
 use super::{CHROME, Custom, Holder, Holds, Layout, Placed};
-use crate::widget::LINE;
+use crate::widget::{LINE, Widget};
 
 /// Where a new custom window first sits, from the play area's top left.
 const NEW_AT: Pos2 = pos2(20.0, 20.0);
 
 /// A new custom window's size.
 const NEW_SIZE: Vec2 = vec2(300.0, 200.0);
+
+/// How far down and right of the last one a widget added from the list is
+/// placed, so several added in a row stay apart.
+const ADDED_STEP: f32 = 24.0;
 
 /// How much of a standalone window's top is its title bar, which another
 /// dropped there stacks onto (`plan/49` §2).
@@ -41,6 +45,83 @@ impl Layout {
             Rect::from_min_size(NEW_AT, NEW_SIZE),
             Holds::Custom(Custom::empty("Custom window", inside)),
         )
+    }
+
+    /// `widget` in a standalone window of its own, following `follows` when
+    /// that is another character, placed down and right of the last one so
+    /// several added in a row stay apart; its id.
+    pub(crate) fn add_widget(&mut self, widget: Widget, follows: Option<String>) -> u32 {
+        let placed = self.place(widget);
+        let step = f32::from(u16::try_from(self.holders.len() % 10).unwrap_or(0)) * ADDED_STEP;
+        let corner = NEW_AT + vec2(step, step);
+        self.add(
+            Rect::from_min_size(corner, widget.size() + CHROME),
+            Holds::One(placed),
+        );
+        if let Some(who) = follows {
+            self.follows.insert(placed.id, who);
+        }
+        placed.id
+    }
+
+    /// Take widget `placed` out of window `holder`: its standalone window
+    /// goes with it; a custom window stays, even empty, to be filled or
+    /// removed. What it followed is forgotten.
+    pub(crate) fn remove_widget(&mut self, holder: u32, placed: u32) {
+        let Some(found) = self.holders.iter_mut().find(|found| found.id == holder) else {
+            return;
+        };
+        match &mut found.holds {
+            Holds::One(one) if one.id == placed => {
+                self.holders.retain(|found| found.id != holder);
+            }
+            Holds::One(_) => return,
+            Holds::Custom(custom) => {
+                if custom.take(placed).is_none() {
+                    return;
+                }
+            }
+        }
+        self.follows.remove(&placed);
+    }
+
+    /// Window `holder` gone, with every widget in it.
+    pub(crate) fn remove_window(&mut self, holder: u32) {
+        let Some(at) = self.holders.iter().position(|found| found.id == holder) else {
+            return;
+        };
+        let gone = self.holders.remove(at);
+        let ids: Vec<u32> = match &gone.holds {
+            Holds::One(placed) => vec![placed.id],
+            Holds::Custom(custom) => custom
+                .cells
+                .iter()
+                .flat_map(|cell| cell.tabs.iter().map(|tab| tab.id))
+                .collect(),
+        };
+        for id in ids {
+            self.follows.remove(&id);
+        }
+    }
+
+    /// Custom window `holder` titled `title`.
+    pub(crate) fn rename(&mut self, holder: u32, title: &str) {
+        if let Some(Holder {
+            holds: Holds::Custom(custom),
+            ..
+        }) = self.holders.iter_mut().find(|found| found.id == holder)
+        {
+            title.trim().clone_into(&mut custom.title);
+        }
+    }
+
+    /// Widget `placed` following `who`, or its window's character when
+    /// `None`.
+    pub(crate) fn follow(&mut self, placed: u32, who: Option<String>) {
+        match who {
+            Some(who) => self.follows.insert(placed, who),
+            None => self.follows.remove(&placed),
+        };
     }
 
     /// `taking`, dragged out of custom window `from`, let go at `at` (from

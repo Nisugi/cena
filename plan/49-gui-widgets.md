@@ -332,6 +332,38 @@ Everything after it adds widgets, so the model goes first and every widget is wr
    been anywhere over a widget, which made a full custom window impossible to rearrange.
 6. **Add a widget.** Every kind in one searchable list (Saga's *"Find a panel..."*), grouped
    as §3; the Advanced place at the bottom of it, closed, with following another character.
+
+   **BUILT 2026-09-27** (`crates/cena-gui/src/play/menu.rs`). The Layout menu's *Add a
+   widget...* opens the list: typing narrows it, its groups are §3's (Streams, Info panels,
+   Graphics, Hydra's own; a group with nothing in it yet is left out), and each kind already
+   shown says so. A click adds it in a standalone window of its own, set down and right of
+   the last so several added stay apart. At the bottom, closed, **Advanced**: *Show for*
+   this character or another running one. Chosen, what is added follows that character,
+   its window titled whose (*"Stamina (Baelor)"*) and its content named (*"Baelor SP ?"*);
+   a story cannot be added so (§1 row 7).
+
+   A **right-click** on a window or a widget in one opens its menu: *Remove* the widget (a
+   standalone window goes with it; a custom window stays, even empty); for a custom window,
+   *Rename...* and *Remove window*; and, for a widget that is not a story, one **Advanced**
+   entry, closed, with the same *Show for*. Escape, or a click outside, closes it. That is
+   the whole of the Advanced place, as §1 row 8 has it.
+
+   Following is kept once, in the layout (`Layout::follows`, by widget id), not on each
+   widget, and saved with it; removing a widget or its window forgets it. A widget drawing
+   for another character draws from that one's snapshot and hunt, never its story, which
+   no other window shows; a story named in the file as following someone shows its own
+   lines regardless. Following a character not running says so (*"Lorwyn is not
+   running."*). The window gathers the other characters each frame (`App`), and the
+   catalog's kinds moved to `widget/kind.rs` so the facade stays small as Stage B adds to it.
+
+   Tests: the list found by typing, its groups and what is shown, a click adding; the
+   Advanced place closed, adding for another character, a story refused; the right-click
+   menu removing a window, one widget of a custom window, renaming and removing a custom
+   window, following from its Advanced entry, none for a story, closing on Escape and on a
+   click outside; a follower of lines naming whose; a character not running; a story that
+   stays its own; and the layout's add, remove, rename and follow, following saved.
+   Twenty-one mutants: twenty caught at once; the twenty-first, a story allowed to follow,
+   once its test followed a character not running, where that is seen.
 7. **Presets.** A Vitals row and a Loadout from the widgets that exist; saving a custom
    window as a preset.
 

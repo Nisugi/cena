@@ -10,48 +10,77 @@ use crate::bar::{self, Amount, Bar, Says};
 use crate::story::Shown;
 use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
 
-/// Draw `widget` for `seen` into `ui`.
+/// Draw `widget` for `seen` into `ui`. Following another character, a
+/// one-line widget puts its name before what it says, and the rest a line
+/// with its name above.
 pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
+    let named = |label: &str| {
+        seen.who
+            .map_or_else(|| label.to_owned(), |who| format!("{who} {label}"))
+    };
+    let scrolled = |ui: &mut egui::Ui, add: &mut dyn FnMut(&mut egui::Ui)| {
+        scrolled(ui, id, |ui| {
+            if let Some(who) = seen.who {
+                ui.weak(who);
+            }
+            add(ui);
+        });
+    };
     match widget {
         Widget::Story => story(ui, &seen.story.lines, id),
         Widget::Hydra => hydra(ui, &seen.story.said, id),
-        Widget::Hunt => scrolled(ui, id, |ui| hunt(ui, seen.hunt)),
-        Widget::Health => vital(ui, "HP", state.and_then(GameState::health), bar::HEALTH),
-        Widget::Mana => vital(ui, "MP", state.and_then(GameState::mana), bar::MANA),
-        Widget::Stamina => vital(ui, "SP", state.and_then(GameState::stamina), bar::STAMINA),
-        Widget::Spirit => vital(ui, "Sp", state.and_then(GameState::spirit), bar::SPIRIT),
-        Widget::RightHand => held(ui, "Right", state.map(|state| &state.right_hand)),
-        Widget::LeftHand => held(ui, "Left", state.map(|state| &state.left_hand)),
+        Widget::Hunt => scrolled(ui, &mut |ui| hunt(ui, seen.hunt)),
+        Widget::Health => vital(
+            ui,
+            &named("HP"),
+            state.and_then(GameState::health),
+            bar::HEALTH,
+        ),
+        Widget::Mana => vital(ui, &named("MP"), state.and_then(GameState::mana), bar::MANA),
+        Widget::Stamina => vital(
+            ui,
+            &named("SP"),
+            state.and_then(GameState::stamina),
+            bar::STAMINA,
+        ),
+        Widget::Spirit => vital(
+            ui,
+            &named("Sp"),
+            state.and_then(GameState::spirit),
+            bar::SPIRIT,
+        ),
+        Widget::RightHand => held(ui, &named("Right"), state.map(|state| &state.right_hand)),
+        Widget::LeftHand => held(ui, &named("Left"), state.map(|state| &state.left_hand)),
         Widget::Roundtime => clock(
             ui,
-            "RT",
+            &named("RT"),
             state.and_then(GameState::roundtime_remaining),
             AMBER,
         ),
         Widget::CastTime => clock(
             ui,
-            "CT",
+            &named("CT"),
             state.and_then(GameState::casttime_remaining),
             bar::MANA,
         ),
         Widget::RoomTitle => line(
             ui,
-            RichText::new(
+            RichText::new(named(
                 state
                     .and_then(|state| state.room.title.as_deref())
                     .unwrap_or("Room unknown"),
-            )
+            ))
             .color(AMBER)
             .strong(),
         ),
-        Widget::RoomDescription => scrolled(ui, id, |ui| {
+        Widget::RoomDescription => scrolled(ui, &mut |ui| {
             match state.and_then(cena_ui::room_description) {
                 Some(runs) => ui.label(text::job(&runs, ui.style())),
                 None => ui.weak("Description unknown"),
             };
         }),
-        Widget::Creatures => scrolled(ui, id, |ui| {
+        Widget::Creatures => scrolled(ui, &mut |ui| {
             let known = state.filter(|state| state.room.component("room objs").is_some());
             items(
                 ui,
@@ -60,7 +89,7 @@ pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
                 CREATURE,
             );
         }),
-        Widget::Objects => scrolled(ui, id, |ui| {
+        Widget::Objects => scrolled(ui, &mut |ui| {
             let known = state.filter(|state| state.room.component("room objs").is_some());
             items(
                 ui,
@@ -69,14 +98,14 @@ pub(super) fn draw(widget: Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) {
                 OBJECT,
             );
         }),
-        Widget::Players => scrolled(ui, id, |ui| players(ui, seen.snapshot)),
+        Widget::Players => scrolled(ui, &mut |ui| players(ui, seen.snapshot)),
         Widget::Exits => line(
             ui,
-            match state.and_then(|state| state.room.exits.as_ref()) {
+            named(&match state.and_then(|state| state.room.exits.as_ref()) {
                 Some(exits) if exits.is_empty() => "Obvious exits: none".to_owned(),
                 Some(exits) => format!("Obvious exits: {}", exits.join(", ")),
                 None => "Exits unknown".to_owned(),
-            },
+            }),
         ),
     }
 }

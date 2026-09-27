@@ -449,3 +449,79 @@ fn a_stack_let_go_in_the_open_keeps_together() {
     assert_eq!(tabs, [Widget::Creatures, Widget::Objects]);
     assert_eq!(custom.cells[0].showing, 1);
 }
+
+/// Widgets added from the list each get a standalone window, set apart
+/// from the last; what one follows is kept, and saved with the layout.
+#[test]
+fn an_added_widget_gets_a_window_and_keeps_whom_it_follows() {
+    let dir = std::env::temp_dir().join(format!("cena-layout-follows-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let first = layout.add_widget(Widget::Health, Some("Baelor".to_owned()));
+    let second = layout.add_widget(Widget::Mana, None);
+    let rect_of = |layout: &Layout, placed: u32| {
+        layout
+            .holders
+            .iter()
+            .find(|holder| matches!(holder.holds, Holds::One(one) if one.id == placed))
+            .map(Holder::rect)
+    };
+    let (a, b) = (
+        rect_of(&layout, first).expect("a"),
+        rect_of(&layout, second).expect("b"),
+    );
+    assert_ne!(a.min, b.min, "set apart");
+    assert_eq!(
+        layout.follows.get(&first).map(String::as_str),
+        Some("Baelor")
+    );
+    assert!(!layout.follows.contains_key(&second));
+    layout.save(&dir, "Ashryn").expect("saved");
+    let loaded = Layout::load(&dir, "Ashryn").expect("loaded");
+    assert_eq!(loaded.follows, layout.follows);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A widget removed takes its standalone window with it, but leaves a
+/// custom window standing; either way, whom it followed is forgotten. A
+/// window removed takes all its widgets, and theirs.
+#[test]
+fn removing_forgets_what_followed() {
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let (room, exits) = room_with(&layout, Widget::Exits);
+    layout.follow(exits, Some("Baelor".to_owned()));
+    layout.remove_widget(room, exits);
+    assert!(!widgets_in(&layout, "Room").contains(&Widget::Exits));
+    assert!(layout.follows.is_empty());
+    let added = layout.add_widget(Widget::Spirit, Some("Baelor".to_owned()));
+    let window = layout
+        .holders
+        .iter()
+        .find(|holder| matches!(holder.holds, Holds::One(one) if one.id == added))
+        .map(|holder| holder.id)
+        .expect("its window");
+    layout.remove_widget(window, added);
+    assert!(layout.holder(window).is_none(), "its window went with it");
+    let (_, creatures) = room_with(&layout, Widget::Creatures);
+    layout.follow(creatures, Some("Baelor".to_owned()));
+    layout.remove_window(room);
+    assert!(layout.titled("Room").is_none());
+    assert!(layout.follows.is_empty());
+}
+
+/// A custom window takes a new title, trimmed; following is undone by
+/// following the window's own again.
+#[test]
+fn a_custom_window_is_renamed_and_a_widget_unfollowed() {
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let vitals = layout
+        .titled("Vitals")
+        .map(|holder| holder.id)
+        .expect("vitals");
+    layout.rename(vitals, "  Bars ");
+    assert!(layout.titled("Bars").is_some());
+    let (_, exits) = room_with(&layout, Widget::Exits);
+    layout.follow(exits, Some("Baelor".to_owned()));
+    layout.follow(exits, None);
+    assert!(layout.follows.is_empty());
+}

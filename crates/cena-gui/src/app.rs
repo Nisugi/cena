@@ -28,6 +28,7 @@ use crate::hub::{HubAction, HubView};
 use crate::keys::{self, Keybinds};
 use crate::play::{Asked, Play, PlayView};
 use crate::sessions::{Seat, lock};
+use crate::widget::Character;
 use crate::{Hub, Sessions};
 
 /// The window's title: the product's name (`CLAUDE.md`: anything
@@ -147,7 +148,7 @@ impl App {
             None => {}
         }
         for seat in &seats {
-            self.play(ui.ctx(), seat);
+            self.play(ui.ctx(), seat, &seats);
         }
     }
 
@@ -165,8 +166,9 @@ impl App {
         }
     }
 
-    /// Show `seat`'s play window, if open, and act on what it asked.
-    fn play(&mut self, context: &egui::Context, seat: &Arc<Seat>) {
+    /// Show `seat`'s play window, if open, and act on what it asked. The
+    /// other `seats` are the characters its widgets may follow.
+    fn play(&mut self, context: &egui::Context, seat: &Arc<Seat>, seats: &[Arc<Seat>]) {
         let (keys, numpad, keys_said) = (&self.keys, &mut self.numpad, &self.keys_said);
         let numlock = self.numlock;
         let Some(window) = self.plays.get_mut(&seat.id.0) else {
@@ -178,6 +180,15 @@ impl App {
         let snapshot = lock(&seat.snapshot).clone();
         let lifecycle = lock(&seat.card).lifecycle.clone();
         let hunt = lock(&seat.hunt).clone();
+        let others: Vec<Character> = seats
+            .iter()
+            .filter(|other| other.id != seat.id)
+            .map(|other| Character {
+                name: other.name.clone(),
+                snapshot: lock(&other.snapshot).clone(),
+                hunt: lock(&other.hunt).clone(),
+            })
+            .collect();
         let builder = egui::ViewportBuilder::default()
             .with_title(format!("{} — {TITLE}", seat.name))
             .with_inner_size([980.0, 680.0]);
@@ -201,6 +212,7 @@ impl App {
                     hunt: hunt.as_ref(),
                     numlock,
                     keys: keys_said,
+                    others: &others,
                 };
                 let asked = window.play.show(ui, &view);
                 drop(story);

@@ -17,6 +17,7 @@
 mod custom;
 mod moves;
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use egui::{Rect, Vec2, pos2};
@@ -55,6 +56,11 @@ pub(crate) struct Layout {
     next: u32,
     /// Its windows, in the order they are drawn.
     pub(crate) holders: Vec<Holder>,
+    /// The character each widget follows, by the widget's id, when it is
+    /// not its window's: chosen only in the Advanced place (`plan/49` §1 row
+    /// 3). A widget not here follows its window's character.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) follows: BTreeMap<u32, String>,
 }
 
 /// One window in a play window: a standalone window or a custom window.
@@ -89,7 +95,11 @@ pub(crate) struct Placed {
 }
 
 impl Holder {
-    /// Its title bar's words: its widget's name, or the custom window's own.
+    /// Its title bar's words: its widget's name, or the custom window's own:
+    /// for a test, which finds a window as a player does. The play window
+    /// adds whose it is to a widget following another character
+    /// (`play/draw.rs`, `title`).
+    #[cfg(test)]
     pub(crate) fn title(&self) -> &str {
         match &self.holds {
             Holds::One(placed) => placed.widget.name(),
@@ -132,6 +142,7 @@ impl Layout {
             grid: GRID,
             next: 1,
             holders: Vec::new(),
+            follows: BTreeMap::new(),
         };
         let story = layout.place(Widget::Story);
         layout.add(

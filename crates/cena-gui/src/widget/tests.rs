@@ -18,6 +18,7 @@ fn drawn<'a>(snapshot: Option<Snapshot>, hunt: Option<HuntView>) -> Harness<'a, 
                 snapshot: snapshot.as_ref(),
                 story: &story,
                 hunt: hunt.as_ref(),
+                who: None,
             };
             for widget in Widget::ALL {
                 let height = widget.size().y.min(120.0);
@@ -129,6 +130,7 @@ fn a_one_line_widget_stays_one_line() {
                 snapshot: Some(&ashryn),
                 story: &story,
                 hunt: None,
+                who: None,
             };
             let mut heights = seen_heights
                 .lock()

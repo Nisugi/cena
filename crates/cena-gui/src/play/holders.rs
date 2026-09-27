@@ -44,7 +44,7 @@ pub(super) struct Engaged {
 }
 
 /// A window's egui id: its own in every play window.
-fn id(session: u32, holder: u32) -> Id {
+pub(super) fn id(session: u32, holder: u32) -> Id {
     Id::new(("play-window", session, holder))
 }
 
@@ -68,8 +68,9 @@ impl Play {
             snapshot: view.snapshot,
             story: view.story,
             hunt: view.hunt,
+            who: None,
         };
-        let ((drawn, insides), released) = self.draw_windows(&context, area, &seen);
+        let ((drawn, insides), released) = self.draw_windows(&context, area, seen, view.others);
         let mut changed = false;
         if let (Some(out), Some(layout)) = (released, self.layout.as_mut()) {
             let at = out.at - area.min.to_vec2();
@@ -108,7 +109,8 @@ impl Play {
         &mut self,
         context: &egui::Context,
         area: Rect,
-        seen: &Seen<'_>,
+        seen: Seen<'_>,
+        others: &[crate::widget::Character],
     ) -> (Drawn, Option<arrange::Released>) {
         let (session, arranging, offset) = (self.session, self.arranging, area.min.to_vec2());
         let mut drawn = Vec::new();
@@ -118,16 +120,23 @@ impl Play {
             return ((drawn, insides), released);
         };
         let grid = layout.grid;
+        let mut drawing = draw::Drawing {
+            seen,
+            others,
+            follows: &layout.follows,
+            session,
+            read: &mut self.read,
+        };
         for holder in &mut layout.holders {
             let at = holder.rect().translate(offset);
             let held = self
                 .engaged
                 .iter()
                 .any(|engaged| engaged.holder == holder.id);
-            let (id, title) = (holder.id, holder.title().to_owned());
+            let (id, title) = (holder.id, draw::title(&holder.holds, drawing.follows));
             let window = holder_window(title, id, at, held, area, session);
             let shown = window.show(context, |ui| {
-                let inside = draw::holder(ui, &mut holder.holds, seen, session, &mut self.read);
+                let inside = draw::holder(ui, &mut holder.holds, &mut drawing);
                 if let Holds::Custom(custom) = &mut holder.holds {
                     insides.push((id, inside.translate(-offset)));
                     if arranging {
