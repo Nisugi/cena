@@ -135,6 +135,12 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     // M4 author decision D2: the embedded frontend projects native session
     // observations through toolkit-free UI vocabulary. No frontend owns parsing.
     ("cena-web", &["cena-session", "cena-ui"]),
+    // ADDED for `plan/35` step 1, M7's agent: a program outside Hydra reads a
+    // character over MCP. It reads sessions through their observers, and
+    // nothing else, as `cena-web` does; it is its own crate so the MCP
+    // vocabulary never becomes a frontend's (`plan/35` §7). `cena-platform` is
+    // a DEV-dependency only, for `AnsweringSource` in its end-to-end test.
+    ("cena-agent", &["cena-platform", "cena-session"]),
     // ADDED for `plan/29` step 3, the session table: the crate that knows a
     // Hydra runs several sessions. It sits above `cena-session` and below
     // every frontend that adds or removes one -- the binary, the web hub, the
@@ -171,6 +177,7 @@ const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     (
         "cena",
         &[
+            "cena-agent",
             "cena-behavior",
             "cena-host",
             "cena-platform",

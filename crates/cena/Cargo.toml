@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+cena-agent.workspace = true
 cena-behavior.workspace = true
 # AMENDED for Milestone 1 Step 2 (author's call, 2026-09-18). The login
 # produces a ByteSource and the session consumes one; the binary is the only

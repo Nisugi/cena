@@ -77,6 +77,8 @@ struct Table {
     host: tokio::sync::Mutex<Host>,
     started: std::sync::Mutex<BTreeMap<SessionId, Started>>,
     web: Option<frontend::Frontend>,
+    /// `--agent`'s MCP listener (`plan/35`), when asked for.
+    agent: Option<crate::agent::Agent>,
     dir: PathBuf,
     pin: PathBuf,
     turn: Arc<std::sync::Mutex<()>>,
@@ -107,6 +109,7 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
         // One listener for every character, each with its own page; each
         // page's link is printed when its character is `Ready`.
         web: frontend::Frontend::open(&map).await,
+        agent: crate::agent::Agent::open(&dir).await,
         map,
         pin: dir.join(cena_platform::PIN_FILENAME),
         dir,
@@ -143,6 +146,9 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
     }
     if let Some(web) = &table.web {
         web.shutdown().await;
+    }
+    if let Some(agent) = &table.agent {
+        agent.shutdown().await;
     }
     eprintln!("\n[disconnect] quitting every session");
     let (stopped, refused) = Box::pin(table.stop_everything()).await;
@@ -192,12 +198,17 @@ impl Table {
         );
         batch::open(&hosted.handle, &hosted.observer, &commands);
         // The ledger's reports need only the database's path, known now.
-        match cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character) {
+        let database =
+            cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character);
+        match &database {
             Ok(database) => {
                 loot::open(&hosted.handle, &commands, database.clone());
-                combat::open(&hosted.handle, &commands, database);
+                combat::open(&hosted.handle, &commands, database.clone());
             }
             Err(e) => eprintln!("[{character}] no loot reports: {e}"),
+        }
+        if let Some(agent) = &self.agent {
+            agent.seat(id, &character, hosted.observer.clone(), database.ok());
         }
         if let Some(web) = &self.web {
             web.attach(
@@ -297,6 +308,9 @@ impl Table {
         let hosted = self.host.lock().await.take(id)?;
         if let Some(web) = &self.web {
             web.detach(id);
+        }
+        if let Some(agent) = &self.agent {
+            agent.unseat(id);
         }
         let end = hosted.stop().await;
         let one = self

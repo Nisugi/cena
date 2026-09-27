@@ -35,6 +35,7 @@
 //! is a full re-login (`LiveConnector`). The wire is written to disk, with
 //! the credential redacted (`Redactions`).
 
+mod agent;
 mod architecture;
 mod ask;
 mod batch;
