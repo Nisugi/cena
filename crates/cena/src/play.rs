@@ -26,7 +26,7 @@ use std::time::Duration;
 
 use cena_host::{Host, Who, stop_all};
 use cena_session::{Event, SessionHandle, SessionId, SessionObserver, State, StoppedBecause};
-use cena_web::HubRequest;
+use cena_ui::{HubControl, HubRequest};
 
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
@@ -173,13 +173,18 @@ pub(crate) async fn serve(
             eprintln!("{e}");
         }
     }
+    // Both hubs are answered the same way, by the table.
+    let answering = Arc::clone(&table);
+    let control: HubControl = Arc::new(move |request| {
+        let table = Arc::clone(&answering);
+        Box::pin(async move { table.answer(request).await })
+    });
     if let Some(web) = &table.web {
         web.announce_hub();
-        let answering = Arc::clone(&table);
-        web.sessions().control(Arc::new(move |request| {
-            let table = Arc::clone(&answering);
-            Box::pin(async move { table.answer(request).await })
-        }));
+        web.sessions().control(Arc::clone(&control));
+    }
+    if let Some(gui) = &table.gui {
+        gui.control(control);
     }
     table.offer().await;
 
@@ -319,7 +324,8 @@ impl Table {
         Ok(id)
     }
 
-    /// Answer the hub page (`cena_web::HubRequest`), with one line for it.
+    /// Answer a hub (`cena_ui::HubRequest`), Despana's or the window's,
+    /// with one line for it.
     async fn answer(&self, request: HubRequest) -> String {
         let said = match request {
             HubRequest::Add(name) => match hub_login(&self.dir, &name) {
@@ -329,8 +335,8 @@ impl Table {
                 },
                 Err(e) => e,
             },
-            HubRequest::Remove(id) => self.remove(id).await,
-            HubRequest::Reconnect(id) => self.reconnect(id).await,
+            HubRequest::Remove(id) => self.remove(SessionId(id)).await,
+            HubRequest::Reconnect(id) => self.reconnect(SessionId(id)).await,
             HubRequest::Shutdown => {
                 eprintln!("[play] shut down from the hub");
                 self.interrupt.cancel();
@@ -402,11 +408,13 @@ impl Table {
         Some(named)
     }
 
-    /// Tell the hub which characters it can add: in the roster, with a saved
+    /// Tell the hubs which characters they can add: in the roster, with a saved
     /// password, and not running. A name on two games is offered as
     /// `GAME:Name`.
     async fn offer(&self) {
-        let Some(web) = &self.web else { return };
+        if self.web.is_none() && self.gui.is_none() {
+            return;
+        }
         let running: Vec<String> = self
             .host
             .lock()
@@ -432,8 +440,13 @@ impl Table {
                     e.character.clone()
                 }
             })
-            .collect();
-        web.sessions().offer(available);
+            .collect::<Vec<String>>();
+        if let Some(web) = &self.web {
+            web.sessions().offer(available.clone());
+        }
+        if let Some(gui) = &self.gui {
+            gui.offer(available);
+        }
     }
 
     /// Resolves when no session on the table is still running.

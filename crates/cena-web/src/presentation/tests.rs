@@ -12,6 +12,7 @@ fn snapshot(cursor: u64) -> Snapshot {
         state: GameState::default(),
         lifecycle: State::Ready,
         retry: None,
+        stopped: None,
         triggers: Arc::default(),
     }
 }
@@ -150,6 +151,22 @@ fn subscription_and_cache_share_a_presentation_sequence() {
     let next: serde_json::Value = serde_json::from_str(&events.try_recv().unwrap()).unwrap();
     assert_eq!(next["cursor"], "2");
     assert_eq!(next["kind"], "update");
+}
+
+/// A session that stopped by itself says why on its closed card; one the
+/// player quit says nothing more (`plan/47` step 3).
+#[test]
+fn a_closed_session_says_why_it_stopped() {
+    let mut closed = snapshot(1);
+    closed.lifecycle = State::Closed;
+    assert_eq!(lifecycle(&closed), LifecycleView::Closed { detail: None });
+    closed.stopped = Some("looked idle, so not reconnecting".into());
+    assert_eq!(
+        lifecycle(&closed),
+        LifecycleView::Closed {
+            detail: Some("looked idle, so not reconnecting".into())
+        }
+    );
 }
 
 #[test]

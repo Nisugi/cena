@@ -1,14 +1,41 @@
-//! `plan/47` step 1: the hub, drawn from the web hub's own cards, in two
-//! tabs. Driven through `egui_kittest`, which finds widgets as a screen
-//! reader would; the last test renders the hub and compares it with the
-//! images under `tests/snapshots/` (`UPDATE_SNAPSHOTS=1` rewrites them).
+//! `plan/47` steps 1 and 3: the hub, drawn from the web hub's own cards, in
+//! two tabs, and what it asks of the binary. Driven through `egui_kittest`,
+//! which finds widgets as a screen reader would; the last test renders the
+//! hub and compares it with the images under `tests/snapshots/`
+//! (`UPDATE_SNAPSHOTS=1` rewrites them).
 
-use cena_gui::{Hub, Tab};
-use cena_ui::{GroupView, LifecycleView, RoundtimeView, SessionCard, VitalView, VitalsView};
+use cena_gui::{Hub, HubView, SHUT_DOWN_QUESTION, Tab};
+use cena_ui::{
+    GroupView, HubRequest, LifecycleView, MergedLine, RoundtimeView, SessionCard, StyledRun,
+    VitalView, VitalsView,
+};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 
-type State = (Hub, Vec<SessionCard>);
+/// What the window would gather, and what the hub asked for.
+#[derive(Default)]
+struct Board {
+    hub: Hub,
+    cards: Vec<SessionCard>,
+    offered: Vec<String>,
+    merged: Vec<MergedLine>,
+    said: Option<String>,
+    asked: Vec<HubRequest>,
+}
+
+impl Board {
+    fn draw(&mut self, ui: &mut egui::Ui) {
+        let view = HubView {
+            cards: &self.cards,
+            offered: &self.offered,
+            merged: &self.merged,
+            said: self.said.as_deref(),
+        };
+        if let Some(request) = self.hub.show(ui, &view) {
+            self.asked.push(request);
+        }
+    }
+}
 
 fn vital(percent: u32) -> VitalView {
     VitalView {
@@ -67,22 +94,43 @@ fn cards() -> Vec<SessionCard> {
         "2",
         "Lorwyn",
         LifecycleView::Closed {
-            detail: Some("login refused".to_owned()),
+            detail: Some("not logged in: [auth] bad password".to_owned()),
         },
     );
     vec![ashryn, baelor, lorwyn]
 }
 
-fn hub<'a>(cards: Vec<SessionCard>) -> Harness<'a, State> {
-    Harness::builder().with_size((520.0, 300.0)).build_ui_state(
-        |ui, (hub, cards): &mut State| hub.show(ui, cards),
-        (Hub::default(), cards),
-    )
+/// A thought both live characters heard.
+fn merged() -> Vec<MergedLine> {
+    vec![MergedLine {
+        id: "0".to_owned(),
+        stream: "thoughts".to_owned(),
+        runs: vec![StyledRun {
+            text: "[General] Maravel: anyone hunting?".to_owned(),
+            ..StyledRun::default()
+        }],
+        from: vec!["Ashryn".to_owned(), "Baelor".to_owned()],
+    }]
+}
+
+fn board() -> Board {
+    Board {
+        cards: cards(),
+        offered: vec!["Orsen".to_owned()],
+        merged: merged(),
+        ..Board::default()
+    }
+}
+
+fn hub<'a>(board: Board) -> Harness<'a, Board> {
+    Harness::builder()
+        .with_size((560.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board)
 }
 
 #[test]
 fn live_and_closed_are_apart_and_counted() {
-    let mut harness = hub(cards());
+    let mut harness = hub(board());
     assert!(harness.query_by_label("Ashryn").is_some());
     assert!(harness.query_by_label("Baelor").is_some());
     assert!(
@@ -92,24 +140,24 @@ fn live_and_closed_are_apart_and_counted() {
 
     harness.get_by_label("Closed (1)").click();
     harness.run();
-    assert_eq!(harness.state().0.tab, Tab::Closed);
+    assert_eq!(harness.state().hub.tab, Tab::Closed);
     assert!(harness.query_by_label("Lorwyn").is_some());
     assert!(harness.query_by_label("Ashryn").is_none());
     assert!(
         harness
-            .query_by_label("Game closed — login refused")
+            .query_by_label("Game closed — not logged in: [auth] bad password")
             .is_some(),
         "a closed card says why"
     );
 
     harness.get_by_label("Live (2)").click();
     harness.run();
-    assert_eq!(harness.state().0.tab, Tab::Live);
+    assert_eq!(harness.state().hub.tab, Tab::Live);
 }
 
 #[test]
 fn a_card_says_what_a_player_glances_at() {
-    let harness = hub(cards());
+    let harness = hub(board());
     assert!(harness.query_by_label("Ready").is_some());
     assert!(
         harness
@@ -140,7 +188,7 @@ fn a_card_says_what_a_player_glances_at() {
 
 #[test]
 fn an_empty_tab_says_so() {
-    let mut harness = hub(Vec::new());
+    let mut harness = hub(Board::default());
     assert!(harness.query_by_label("No character is running.").is_some());
     harness.get_by_label("Closed (0)").click();
     harness.run();
@@ -151,6 +199,74 @@ fn an_empty_tab_says_so() {
     );
 }
 
+/// Each live card quits its own character; a closed one reconnects or is
+/// removed; an offered character is started by name.
+#[test]
+fn each_button_asks_for_its_own_character() {
+    let mut harness = hub(board());
+    harness.get_by_label("Start Orsen").click();
+    harness.run();
+    // Ashryn's Quit, then Baelor's: the second.
+    if let Some(quit) = harness.get_all_by_label("Quit").nth(1) {
+        quit.click();
+    }
+    harness.run();
+    harness.get_by_label("Closed (1)").click();
+    harness.run();
+    harness.get_by_label("Reconnect").click();
+    harness.run();
+    harness.get_by_label("Remove").click();
+    harness.run();
+    assert_eq!(
+        harness.state().asked,
+        [
+            HubRequest::Add("Orsen".to_owned()),
+            HubRequest::Remove(1),
+            HubRequest::Reconnect(2),
+            HubRequest::Remove(2),
+        ]
+    );
+}
+
+/// Shutting down ends every character, so it asks first; keeping on asks
+/// nothing.
+#[test]
+fn shut_down_asks_first() {
+    let mut harness = hub(board());
+    harness.get_by_label("Shut down").click();
+    harness.run();
+    assert!(harness.state().asked.is_empty(), "one click shuts nothing");
+    assert!(harness.query_by_label(SHUT_DOWN_QUESTION).is_some());
+
+    harness.get_by_label("Keep playing").click();
+    harness.run();
+    assert!(harness.query_by_label(SHUT_DOWN_QUESTION).is_none());
+    assert!(harness.state().asked.is_empty());
+
+    harness.state_mut().hub.confirm_shutdown();
+    harness.run();
+    harness.get_by_label("Shut down every character").click();
+    harness.run();
+    assert_eq!(harness.state().asked, [HubRequest::Shutdown]);
+}
+
+/// The merged streams, tagged with who heard each line, and the binary's
+/// answer to the last request.
+#[test]
+fn the_hub_shows_the_merged_streams_and_the_last_answer() {
+    let mut with_answer = board();
+    with_answer.said = Some("Starting Orsen.".to_owned());
+    let harness = hub(with_answer);
+    assert!(
+        harness
+            .query_by_label("[Ashryn, Baelor] [General] Maravel: anyone hunting?")
+            .is_some()
+    );
+    assert!(harness.query_by_label("Starting Orsen.").is_some());
+    let quiet = hub(Board::default());
+    assert!(quiet.query_by_label("Nothing yet.").is_some());
+}
+
 /// The hub as a player sees it, rendered and compared with the committed
 /// images. Rendered on every OS CI runs (`plan/47` step 9): by WARP on
 /// Windows, Metal on macOS, and lavapipe on Linux, which CI installs; the
@@ -158,12 +274,9 @@ fn an_empty_tab_says_so() {
 #[test]
 fn the_hub_as_drawn() {
     let mut harness = Harness::builder()
-        .with_size((520.0, 300.0))
+        .with_size((560.0, 520.0))
         .wgpu()
-        .build_ui_state(
-            |ui, (hub, cards): &mut State| hub.show(ui, cards),
-            (Hub::default(), cards()),
-        );
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board());
     harness.run();
     harness.snapshot("hub_live");
     harness.get_by_label("Closed (1)").click();

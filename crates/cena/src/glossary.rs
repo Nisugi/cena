@@ -283,8 +283,8 @@
 //! [`Guard`]: cena_session::guard::Guard
 //! [`Heartbeat`]: cena_behavior::Heartbeat
 //! [`Host`]: cena_host::Host
-//! [`HubControl`]: cena_web::HubControl
-//! [`HubRequest`]: cena_web::HubRequest
+//! [`HubControl`]: cena_ui::HubControl
+//! [`HubRequest`]: cena_ui::HubRequest
 //! [`hunt()`]: fn@cena_behavior::hunt::hunt
 //! [`hunt::Desk`]: cena_behavior::hunt::Desk
 //! [`Hunt`]: cena_behavior::hunt::Hunt

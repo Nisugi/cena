@@ -3,8 +3,12 @@
 //!
 //! eframe owns the main thread for as long as the window is open, so the
 //! binary builds its runtime by hand and runs the sessions there; this only
-//! draws what their feeds left on the seats.
+//! draws what their feeds left on the seats, and hands what the player asks
+//! for to the runtime.
 
+use cena_ui::LifecycleView;
+
+use crate::hub::HubView;
 use crate::{Hub, Sessions};
 
 /// The window's title: the product's name (`CLAUDE.md`: anything
@@ -28,15 +32,44 @@ impl App {
     }
 
     /// Draw one frame into `ui`: what eframe calls each frame, and what a
-    /// test drives directly.
+    /// test drives directly. A request the player made goes to the binary.
     pub fn draw(&mut self, ui: &mut egui::Ui) {
-        let cards = self.sessions.cards();
-        self.hub.show(ui, &cards);
+        let glance = self.sessions.glance();
+        let view = HubView {
+            cards: &glance.cards,
+            offered: &glance.offered,
+            merged: &glance.merged,
+            said: glance.said.as_deref(),
+        };
+        if let Some(request) = self.hub.show(ui, &view) {
+            self.sessions.ask(request);
+        }
+    }
+
+    /// The window was asked to close. With a character still playing, it
+    /// asks first, as the hub's Shut down does, and stays open; otherwise it
+    /// closes, and the binary quits whatever is left. Returns whether it
+    /// closes.
+    pub fn close_asked(&mut self) -> bool {
+        let playing = self
+            .sessions
+            .cards()
+            .iter()
+            .any(|card| !matches!(card.lifecycle, LifecycleView::Closed { .. }));
+        if playing && !self.sessions.closing() {
+            self.hub.confirm_shutdown();
+            return false;
+        }
+        true
     }
 }
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if ui.ctx().input(|input| input.viewport().close_requested()) && !self.close_asked() {
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
         egui::CentralPanel::default().show(ui, |ui| self.draw(ui));
     }
 }
@@ -52,7 +85,7 @@ pub fn run(sessions: Sessions) -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title(TITLE)
-            .with_inner_size([560.0, 640.0]),
+            .with_inner_size([560.0, 720.0]),
         ..Default::default()
     };
     eframe::run_native(

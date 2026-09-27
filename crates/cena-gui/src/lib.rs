@@ -7,13 +7,16 @@
 //!
 //! Built in the order `plan/47` §5 gives. So far: the [`App`], a window the
 //! binary opens and [`run`]s on the main thread, showing the [`Hub`] over the
-//! [`Sessions`] the binary attached, each followed by its own feed.
+//! [`Sessions`] the binary attached, each followed by its own feed; the hub
+//! starts, quits and reconnects characters through the binary, and shows the
+//! merged streams.
 
 mod app;
 mod feed;
 mod hub;
 mod sessions;
+mod text;
 
 pub use app::{App, TITLE, run};
-pub use hub::{Hub, Tab};
+pub use hub::{Hub, HubView, SHUT_DOWN_QUESTION, Tab};
 pub use sessions::Sessions;

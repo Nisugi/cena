@@ -13,6 +13,7 @@ fn snapshot(cursor: u64, lifecycle: State, room: Option<&str>) -> Snapshot {
         state,
         lifecycle,
         retry: None,
+        stopped: None,
         triggers: Arc::default(),
     }
 }
@@ -55,18 +56,50 @@ impl Script {
     }
 }
 
-fn start(script: &Arc<Script>) -> (Arc<Seat>, tokio::task::JoinHandle<()>) {
+/// A feed for Ashryn over `script`, its merged lines into `merged`.
+fn start_merging(
+    script: &Arc<Script>,
+    merged: &Arc<Mutex<MergedHistory>>,
+) -> (Arc<Seat>, tokio::task::JoinHandle<()>) {
     let seat = Arc::new(Seat::new(SessionId::FIRST, "Ashryn"));
     let answering = Arc::clone(script);
-    let task = tokio::spawn(follow(
-        move || {
-            let script = Arc::clone(&answering);
-            async move { script.answer() }
-        },
-        Arc::clone(&seat),
-        Wake::default(),
-    ));
+    let ears = Ears {
+        seat: Arc::clone(&seat),
+        merged: Arc::clone(merged),
+    };
+    let task = tokio::spawn(async move {
+        follow(
+            move || {
+                let script = Arc::clone(&answering);
+                async move { script.answer() }
+            },
+            &ears,
+            Wake::default(),
+        )
+        .await;
+    });
     (seat, task)
+}
+
+fn start(script: &Arc<Script>) -> (Arc<Seat>, tokio::task::JoinHandle<()>) {
+    start_merging(script, &Arc::default())
+}
+
+fn said(stream: &str, text: &str) -> Event {
+    Event::Line(Arc::new(cena_session::Line::new(
+        stream,
+        cena_session::ChunkLine::plain(text).runs,
+    )))
+}
+
+fn merged_text(merged: &Mutex<MergedHistory>) -> Vec<(String, Vec<String>)> {
+    lock(merged)
+        .lines()
+        .map(|line| {
+            let text = line.runs.iter().map(|run| run.text.as_str()).collect();
+            (text, line.from.clone())
+        })
+        .collect()
 }
 
 fn card(seat: &Seat) -> SessionCard {
@@ -149,6 +182,68 @@ async fn a_roundtime_is_asked_after_without_an_event() {
     let (seat, _task) = start(&script);
     settle().await;
     assert_eq!(card(&seat).room.as_deref(), Some("after the tick"));
+}
+
+/// A thought reaches the hub's merged streams, tagged with who heard it; a
+/// line on the main stream does not.
+#[tokio::test(start_paused = true)]
+async fn a_thought_is_merged_and_the_story_is_not() {
+    let script = Script::new([
+        Ok(snapshot(0, State::Ready, None)),
+        Ok(snapshot(2, State::Ready, None)),
+    ]);
+    let merged = Arc::default();
+    let (_seat, _task) = start_merging(&script, &merged);
+    settle().await;
+    let _ = script
+        .events
+        .send(observed(1, said("thoughts", "[General] hello")));
+    let _ = script.events.send(observed(2, said("", "You see a rock.")));
+    settle().await;
+    assert_eq!(
+        merged_text(&merged),
+        [("[General] hello".to_owned(), vec!["Ashryn".to_owned()])]
+    );
+}
+
+/// A line published before a fresh snapshot, and still on the old receiver
+/// when the feed asks again, is heard once: not lost at the switch, and not
+/// heard twice from both receivers.
+#[tokio::test(start_paused = true)]
+async fn a_line_at_the_switch_is_heard_once() {
+    let script = Script::new([
+        Ok(snapshot(0, State::Ready, None)),
+        Ok(snapshot(2, State::Ready, None)),
+    ]);
+    let merged = Arc::default();
+    let (_seat, _task) = start_merging(&script, &merged);
+    settle().await;
+    // Both before the feed wakes: it reads the first, asks again, and finds
+    // the second still waiting on the old receiver.
+    let _ = script
+        .events
+        .send(observed(1, Event::StateChanged(State::Ready)));
+    let _ = script
+        .events
+        .send(observed(2, said("thoughts", "[General] once")));
+    settle().await;
+    assert_eq!(
+        merged_text(&merged),
+        [("[General] once".to_owned(), vec!["Ashryn".to_owned()])]
+    );
+}
+
+/// A session that stopped by itself says why on its card.
+#[test]
+fn a_stopped_session_says_why() {
+    let mut closed = snapshot(0, State::Closed, None);
+    closed.stopped = Some("not logged in: [auth] bad password".to_owned());
+    assert_eq!(
+        lifecycle(&closed),
+        LifecycleView::Closed {
+            detail: Some("not logged in: [auth] bad password".to_owned())
+        }
+    );
 }
 
 #[test]

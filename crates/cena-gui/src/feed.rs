@@ -4,42 +4,76 @@
 //! The same shape as Despana's pump (`cena-web/src/presentation.rs`): a fresh
 //! snapshot is asked for when an event arrives, at most every 100 ms unless
 //! the connection changed, and every 100 ms while a roundtime runs, so the
-//! seconds count down. Asking is `cena-session`'s ([`retrying`]), shared with
-//! the pump rather than copied.
+//! seconds count down. Asking and catching up are `cena-session`'s
+//! ([`retrying`], [`catch_up`]), shared with the pump rather than copied.
+//!
+//! Between snapshots it hears each new event once ([`Ears`]): a line on a
+//! merged stream goes to the hub's merged history.
 
 use std::future::Future;
-use std::sync::{Arc, PoisonError};
-use std::time::Duration;
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
-use cena_session::observation::retrying;
+use cena_session::observation::{catch_up, retrying};
 use cena_session::{
     Event, Generation, ObserveError, ObservedEvent, SessionObserver, Snapshot, State,
 };
-use cena_ui::{LifecycleView, SessionCard, SessionView};
+use cena_ui::{LifecycleView, MergedHistory, SessionCard, SessionView, painted, story_lines};
 use tokio::sync::broadcast;
 
-use crate::sessions::{Seat, Wake};
+use crate::sessions::{Seat, Wake, lock};
 
 type Subscription = (Snapshot, broadcast::Receiver<ObservedEvent>);
 
-/// Follow `observer`'s session for `seat`.
-pub(crate) async fn feed(observer: SessionObserver, seat: Arc<Seat>, window: Wake) {
-    follow(|| observer.subscribe(), seat, window).await;
+/// Follow `observer`'s session for `seat`, its merged lines into `merged`.
+pub(crate) async fn feed(
+    observer: SessionObserver,
+    seat: Arc<Seat>,
+    merged: Arc<Mutex<MergedHistory>>,
+    window: Wake,
+) {
+    let ears = Ears { seat, merged };
+    follow(|| observer.subscribe(), &ears, window).await;
+}
+
+/// What the feed does with each event it has not heard before.
+pub(crate) struct Ears {
+    /// Whose events they are.
+    pub(crate) seat: Arc<Seat>,
+    /// The merged streams every seat's lines go to.
+    pub(crate) merged: Arc<Mutex<MergedHistory>>,
+}
+
+impl Ears {
+    /// A line goes to the merged history, which keeps only the streams that
+    /// merge ([`cena_ui::Merger::offer`]).
+    fn hear(&self, event: &Event) {
+        let Event::Line(line) = event else { return };
+        let lines = story_lines(&line.stream, painted(line));
+        lock(&self.merged).offer(
+            Instant::now(),
+            &self.seat.id.0.to_string(),
+            &self.seat.tag(),
+            &self.seat.name,
+            &lines,
+        );
+    }
 }
 
 /// [`feed`] over any source of subscriptions, so a test can script one:
-/// until `seat` is detached or the session's owner is gone. The seat keeps
+/// until the seat is detached or the session's owner is gone. The seat keeps
 /// what was last seen either way.
-pub(crate) async fn follow<F, Fut>(mut subscribe: F, seat: Arc<Seat>, window: Wake)
+pub(crate) async fn follow<F, Fut>(mut subscribe: F, ears: &Ears, window: Wake)
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<Subscription, ObserveError>>,
 {
+    let seat = &ears.seat;
     let Some(Ok((snapshot, mut events))) = retrying(&seat.stop, &mut subscribe).await else {
         return;
     };
     let mut seen = Seen::of(&snapshot);
-    show(&seat, &snapshot, &window);
+    show(seat, &snapshot, &window);
     let mut terminal = snapshot.lifecycle == State::Closed;
     let mut ticking = snapshot.state.in_roundtime() == Some(true);
     let mut dirty = false;
@@ -52,7 +86,9 @@ where
                 Ok(event) => {
                     let immediate = event.generation != seen.generation
                         || matches!(event.event, Event::StateChanged(_) | Event::ConnectFailed { .. });
-                    seen.observe(&event);
+                    if seen.fresh(&event) {
+                        ears.hear(&event.event);
+                    }
                     dirty = true;
                     immediate
                 }
@@ -67,9 +103,15 @@ where
         let Some(Ok((snapshot, next))) = retrying(&seat.stop, &mut subscribe).await else {
             return;
         };
+        // What the old receiver still holds up to the new snapshot was
+        // published before it; the new receiver starts after.
+        let (caught, _whole) = catch_up(&mut events, seen.cursor, snapshot.cursor);
+        for event in &caught {
+            ears.hear(&event.event);
+        }
         seen = Seen::of(&snapshot);
         events = next;
-        show(&seat, &snapshot, &window);
+        show(seat, &snapshot, &window);
         dirty = false;
         ticking = snapshot.state.in_roundtime() == Some(true);
         terminal = snapshot.lifecycle == State::Closed;
@@ -90,12 +132,14 @@ impl Seen {
         }
     }
 
-    fn observe(&mut self, event: &ObservedEvent) {
+    /// Whether `event` is new, moving past it if so.
+    fn fresh(&mut self, event: &ObservedEvent) -> bool {
         if event.cursor <= self.cursor {
-            return;
+            return false;
         }
         self.cursor = event.cursor;
         self.generation = event.generation;
+        true
     }
 }
 
@@ -121,7 +165,9 @@ fn show(seat: &Seat, snapshot: &Snapshot, window: &Wake) {
 pub(crate) fn lifecycle(snapshot: &Snapshot) -> LifecycleView {
     match snapshot.lifecycle {
         State::Ready => LifecycleView::Ready,
-        State::Closed => LifecycleView::Closed { detail: None },
+        State::Closed => LifecycleView::Closed {
+            detail: snapshot.stopped.clone(),
+        },
         State::Reconnecting => LifecycleView::Reconnecting {
             attempt: snapshot.retry.as_ref().map(|retry| retry.attempt),
             retry_delay_ms: snapshot

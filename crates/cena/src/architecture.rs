@@ -275,8 +275,8 @@
 //! It is a crate rather than part of the binary because its callers include
 //! the web hub, and a frontend cannot depend on the binary. Yet `cena-web` has
 //! no edge to it either: a hub's add, remove, reconnect and shutdown travel as
-//! a [`HubRequest`](cena_web::HubRequest) to whoever registered a
-//! [`HubControl`](cena_web::HubControl), which is the binary, which owns the
+//! a [`HubRequest`](cena_ui::HubRequest) to whoever registered a
+//! [`HubControl`](cena_ui::HubControl), which is the binary, which owns the
 //! table. Anything that reads across sessions -- the merge of thoughts,
 //! speech, logons, deaths and announcements into one stream
 //! ([`Merger`](cena_ui::Merger)) -- is a consumer of N sessions above them,

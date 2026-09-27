@@ -47,6 +47,13 @@ pub struct Snapshot {
     pub cursor: u64,
     /// Most recent retry decision while reconnecting, cleared on transition.
     pub retry: Option<crate::RetryStatus>,
+    /// Why the session stopped, in words for the player, on the final
+    /// snapshot of one that stopped by itself: a login the connector said no
+    /// retry could fix, or a session that looked idle
+    /// ([`StoppedBecause::said`](crate::StoppedBecause::said)). `None` while
+    /// it runs, and when the player quit it. A hub's Closed card shows it
+    /// (`plan/47` step 3).
+    pub stopped: Option<String>,
     /// The triggers its lines are answered with, so a viewer paints what it
     /// draws from [`Self::state`] -- the room window's names -- as the lines
     /// were painted (`plan/45` Stage 7).
