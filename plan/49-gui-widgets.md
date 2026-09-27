@@ -613,6 +613,53 @@ Launch with the box ticked, see it join the roster with its password kept, then 
 `cena-session`'s facade sat at its 120-line cap (`file_rules.rs:337`); the one line the
 games' re-export needed was found by joining two re-exports of one module.
 
+**REVISED BY THE AUTHOR 2026-09-27, after running it.** Quoted:
+
+> *"the panels shouldn't stretch across the whole screen like this, they should probably be
+> the width of the 4 bars there by default no auto stretch, then manually adjustible by
+> dragging a side. They should tile or grid on the panel depending on window size."*
+>
+> *"I prefer not launched to come back and that's where your characters are listed that are
+> saved and well, haven't been launched. You can favorite a card and that pushes them to the
+> top of the grid."*
+>
+> *"then new login will have the spot to put in your login credentials, minus character.
+> Game needs to default to Prime and not test. So when they enter their credentials and hit
+> login it will bring up a list of the characters they have on that account. There will be
+> buttons beside each character. Add/Forget  Favorite  Play. Adding will just add them to the
+> not launched panel as saved characters. There will be a log out button next to the Log in
+> button that terminates the connection."*
+>
+> *"also get red flashes like this when the login window changes, clicking on shutdown,
+> launching the first character."*
+
+So Stage C gains four steps:
+
+4. **No red flashes.** Debug builds box in red any widget whose id changed while its place
+   did not. That is egui's `warn_if_rect_changes_id`, on under `debug_assertions`. A child
+   area's ids come from its parent's running count, even when it has a name of its own. So
+   a line appearing above (the answer, the shut-down question, a new card) renumbers
+   everything below. Each region and each card gets an id of its own.
+5. **Cards in a grid.** A card is as wide as its four bars by default and does not stretch.
+   Dragging a side sets the width for every card. Cards tile across the tab, as many to a
+   row as fit.
+6. **Not launched**, the third tab, replacing Launch. It holds the roster's characters that
+   are not on the table, as cards in the same grid, starred ones first. Below them are the
+   new login and the kept passwords.
+7. **An account's characters.** The new login asks for the account and password, not a
+   character, with the game defaulting to Prime. *Log in* asks the login service for that
+   account's characters on that game: `K A M F G P C`, stopping before `L`
+   (`crates/cena-platform/src/eaccess/handshake.rs:170`). Each character is listed with
+   *Add* (or *Forget* once added), a star, and *Play*. *Add* puts it on the roster without
+   playing. *Log out* forgets the account's password in the window and the list. A kept
+   password is saved at *Log in*, since the service has then proved it. Claude's call, for
+   the author to confirm: the service's connection closes once the list arrives, because
+   *Play* logs in afresh, as a reconnect must. So *Log out* ends the window's hold on the
+   password, not a socket.
+
+Superseded by the revision: the paragraph below, which excluded the listing, and step 2's
+Launch tab name.
+
 Not in Stage C: asking the login service which characters an account has, as Lich's
 manual tab does (`manual_login_tab.rb`). It needs a new exchange with the live service,
 which no test here may make; the character is typed by name, and a wrong one is refused at
