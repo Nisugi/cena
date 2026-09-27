@@ -207,6 +207,17 @@ pub struct Reporter {
 }
 
 impl Reporter {
+    /// A reporter bound to no operation: what it is told goes nowhere. For a
+    /// behavior started for a script (`crate::script`), which is not the
+    /// agent's operation and whose progress nobody reads yet. The agent's
+    /// operations are numbered from 1 ([`Table::reserve`]), so 0 names none.
+    pub(crate) fn unread(handle: &SessionHandle) -> Self {
+        Self {
+            handle: handle.clone(),
+            id: 0,
+        }
+    }
+
     /// The operation it reports for.
     pub(crate) const fn id(&self) -> u64 {
         self.id

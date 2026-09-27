@@ -146,3 +146,43 @@ async fn a_scripts_line_goes_out_as_the_scripts_and_says_where() {
         "only the game's line was sent"
     );
 }
+
+/// A built-in a script started is the script's, not the agent's: the
+/// agent's operations do not list it, and its progress goes nowhere.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_scripts_built_in_is_not_the_agents_operation() {
+    use cena_session::operation::{Ended, Performer, Progress, Started, Work};
+    let (source, _transcript) = AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+    let session = Session::new(source);
+    let handle = session.handle();
+    let (_, mut events) = session.subscribe();
+    tokio::spawn(session.into_actor().run());
+    let performer = Performer {
+        allowed: "go2".to_owned(),
+        allows: Arc::new(|line: &str| Ok(line.to_owned())),
+        start: Arc::new(|_line: &str, reporter| {
+            reporter.progress(Progress::default());
+            Started {
+                ended: Box::pin(std::future::ready(Ended::plainly(
+                    Work::Completed,
+                    "arrived",
+                ))),
+                steer: Arc::new(|_| Ok(())),
+                token: None,
+            }
+        }),
+        halt: Arc::new(|| {}),
+    };
+    assert!(handle.set_performer(performer));
+
+    let run = handle.script_door().perform("go2 bank").unwrap();
+    assert_eq!(run.line, "go2 bank");
+    let ended = run.ended.await;
+    assert_eq!(ended.reason, "arrived");
+    assert!(handle.agent_door().operations().is_empty());
+    assert!(
+        !std::iter::from_fn(|| events.try_recv().ok())
+            .any(|event| matches!(event, Event::Agent(_))),
+        "nothing said on the agent's side"
+    );
+}

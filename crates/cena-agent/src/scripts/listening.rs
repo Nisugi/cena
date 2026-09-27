@@ -81,6 +81,18 @@ pub enum Event {
         /// Which connection; it advances on every reconnect.
         generation: u64,
     },
+    /// A built-in a runner started (`perform`) ended.
+    Ended {
+        /// The run's number, as `perform` gave it.
+        run: u64,
+        /// What the work came to: `completed`, `failed`, `interrupted`,
+        /// `no_opportunity`, `unknown`.
+        work: String,
+        /// The behavior's own word for why: `arrived`, `stopped`...
+        reason: String,
+        /// What it left undone that someone may need to put right.
+        left: Vec<String>,
+    },
     /// Events were missed between the session and this log: lines a script
     /// was waiting for may be among them.
     Lagged {

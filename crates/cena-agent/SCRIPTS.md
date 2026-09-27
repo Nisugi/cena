@@ -46,6 +46,7 @@ Each event has `at`, its position, and a `kind`:
 | `prompt` | `cursor`, `time` (the game's clock, epoch seconds, or `null`), `text` (`>`, `R>`...): the end of a chunk |
 | `typed` | `line`: the player typed a command for the runner, without the symbol (`trollspeak say hi`, `k trollspeak`) |
 | `lifecycle` | `cursor`, `state` (`ready`, `reconnecting`...), `generation` (advances on every reconnect) |
+| `ended` | `run`, `work` (`completed`, `failed`, `interrupted`, `no_opportunity`, `unknown`), `reason` (the behavior's own word: `arrived`, `stopped`...), `left` (what it left undone, in words): a built-in `perform` started ended |
 | `lagged` | `missed`: that many of the session's events were missed on the way here; a line a script waits for may be among them |
 
 `cursor` is the session's own, which only increases, across reconnects too: **a line whose
@@ -103,6 +104,22 @@ A spell of Hydra's spell table, by number or by name (ignoring case). Answers `{
 and `minutes` (`self`, `target`), **evaluated for the character now**: a cost the table gives
 as a formula is worked out from the character's skills and stats, and `null` when what it
 needs is not known. A cost the spell does not have is `0`.
+
+## `perform` `{ line }`
+
+Start one of Hydra's built-in behaviors, as a Lich script starts one of Lich's by name
+(`plan/46` §7): `line` is a Hydra command without its symbol, `go2 bank` or `go2 228`.
+Answers `{"run": n, "line": ...}`, the command as Hydra keeps it, or `{"refused": why}`: Hydra's
+behaviors are not ready yet (they are once the character has logged in), or Hydra does not run
+that line for a script. **It goes on whether or not the runner waits**; `listen` hears its
+`ended`, by `run`. It is the runner's, not an agent's: an agent does not see it among its
+operations.
+
+## `stop` `{ run }`
+
+Stop a built-in this runner started, as the player's own stop does. Answers
+`{"stopping": true}`, or `{"refused": why}` when it is not under way; `listen` hears its
+`ended`.
 
 ## `send` `{ line }`
 

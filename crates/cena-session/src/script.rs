@@ -21,8 +21,16 @@
 //!   gate and no queue, as `Game.puts` writes straight to the socket
 //!   (`inventory/13` §1.2), and never counted as the player being there.
 //! - [`Door::say`]: tell the player something, Lich's `respond`.
+//! - [`Door::perform`]: start one of Hydra's built-in behaviors that a Lich
+//!   script starts by name -- `go2` first (`plan/46` §7) -- and hand back how
+//!   it ends and how it is stopped, so the script waits on it as
+//!   `Script.run` waits on a script. Started as an agent's `perform` is,
+//!   through the binary's performer, and **not** among the agent's
+//!   operations: a walk a script began is neither the agent's to read or
+//!   steer, nor a run whose bad end drops the agent's level.
 
 use crate::command::Claimed;
+use crate::operation::{Ended, Reporter, Steer};
 use crate::{Gate, Notice, Origin, Refusal, Sent, SessionHandle};
 
 /// The only way a script runner acts on a session.
@@ -52,6 +60,25 @@ pub enum Sending {
     Refused(Refusal),
     /// No connection took it: the session is gone, or between connections.
     Lost,
+}
+
+/// A built-in behavior a script started: how it ends, and how it is
+/// stopped.
+pub struct Run {
+    /// The command as the performer keeps it: `go2 bank`.
+    pub line: String,
+    /// Resolves with how it ended.
+    pub ended: std::pin::Pin<Box<dyn std::future::Future<Output = Ended> + Send>>,
+    /// Steers it: a script stops it.
+    pub steer: Steer,
+}
+
+impl std::fmt::Debug for Run {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Run")
+            .field("line", &self.line)
+            .finish_non_exhaustive()
+    }
 }
 
 impl SessionHandle {
@@ -87,6 +114,27 @@ impl Door {
     /// Tell the player something.
     pub fn say(&self, notice: Notice) {
         self.handle.say(notice);
+    }
+
+    /// Start `line`, a Hydra command without its symbol (`go2 bank`), as one
+    /// of Hydra's built-in behaviors.
+    ///
+    /// # Errors
+    ///
+    /// Hydra's behaviors are not ready yet (the binary registers them once
+    /// logged in), or they do not run `line`: why, in words.
+    pub fn perform(&self, line: &str) -> Result<Run, String> {
+        let performer = self
+            .handle
+            .performer()
+            .ok_or_else(|| "Hydra's behaviors are not ready yet".to_owned())?;
+        let line = (performer.allows)(line)?;
+        let started = (performer.start)(&line, Reporter::unread(&self.handle));
+        Ok(Run {
+            line,
+            ended: started.ended,
+            steer: started.steer,
+        })
     }
 
     /// The character's command symbol, which marks a line as Hydra's own:

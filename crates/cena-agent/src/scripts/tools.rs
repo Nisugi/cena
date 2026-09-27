@@ -3,7 +3,7 @@
 //! names the seat it acts on ([`super::Runners`]), so no tool names a
 //! character.
 
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError};
 use std::time::Duration;
 
 use axum::http::request::Parts;
@@ -68,6 +68,20 @@ pub struct SpellAsked {
     pub number: Option<u16>,
     /// Its name, ignoring case: `Heroism`.
     pub name: Option<String>,
+}
+
+/// `perform`'s command.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Perform {
+    /// A Hydra command without its symbol: `go2 bank`, `go2 228`.
+    pub line: String,
+}
+
+/// `stop`'s run.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Stop {
+    /// The run's number, as `perform` gave it.
+    pub run: u64,
 }
 
 /// `say`'s text.
@@ -241,6 +255,72 @@ impl Scripting {
                 "target": minutes(cena_session::spells::CastType::Target),
             },
         }}))
+    }
+
+    #[tool(
+        description = "Start one of Hydra's built-in behaviors, as a Lich script starts one of Lich's by name: `go2 bank`. Answers the run's number, or why not; `listen` hears its `ended`."
+    )]
+    async fn perform(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(Perform { line }): Parameters<Perform>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        let run = match seat.door.perform(&line) {
+            Ok(run) => run,
+            Err(why) => return json(&serde_json::json!({ "refused": why })),
+        };
+        let id = {
+            let mut runs = seat.runs.lock().unwrap_or_else(PoisonError::into_inner);
+            runs.last += 1;
+            let id = runs.last;
+            runs.steering.insert(id, run.steer);
+            id
+        };
+        let watched = Arc::clone(&seat);
+        let ended = run.ended;
+        tokio::spawn(async move {
+            let ended = ended.await;
+            watched
+                .runs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .steering
+                .remove(&id);
+            watched.listening.push(super::listening::Event::Ended {
+                run: id,
+                work: ended.work.word().to_owned(),
+                reason: ended.reason,
+                left: ended.left,
+            });
+        });
+        json(&serde_json::json!({ "run": id, "line": run.line }))
+    }
+
+    #[tool(
+        description = "Stop a built-in this runner started, as the player's own stop does. `listen` hears its `ended`."
+    )]
+    async fn stop(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(Stop { run }): Parameters<Stop>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        let steer = seat
+            .runs
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .steering
+            .get(&run)
+            .cloned();
+        let answer = match steer {
+            None => serde_json::json!({ "refused": format!("run {run} is not under way") }),
+            Some(steer) => match steer(cena_session::operation::Control::Stop) {
+                Ok(()) => serde_json::json!({ "stopping": true }),
+                Err(why) => serde_json::json!({ "refused": why }),
+            },
+        };
+        json(&answer)
     }
 }
 

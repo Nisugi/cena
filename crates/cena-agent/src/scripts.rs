@@ -18,8 +18,8 @@
 //! - [`listening`]: what a runner listens to, at its own positions.
 //! - [`local`]: its local copy of the character, and the map it is placed on.
 //! - `watch`: what the session publishes, told to a runner in Lich's order.
-//! - [`tools`]: `listen`, `send`, `say`, `room` and `spell`, the contract
-//!   in `SCRIPTS.md`.
+//! - [`tools`]: `listen`, `send`, `say`, `room`, `spell`, `perform` and
+//!   `stop`, the contract in `SCRIPTS.md`.
 //! - [`runner`]: the Ruby runner's files, carried in the binary, and how one
 //!   is started.
 
@@ -68,7 +68,25 @@ pub struct Seat {
     atlas: Option<Arc<Atlas>>,
     /// Read for what is evaluated for the character on asking (`spell`).
     observer: SessionObserver,
+    /// The built-ins this runner started that have not ended, by number.
+    runs: Mutex<Runs>,
     stop: CancellationToken,
+}
+
+/// A runner's built-ins under way: how each is stopped.
+#[derive(Default)]
+struct Runs {
+    last: u64,
+    steering: BTreeMap<u64, cena_session::operation::Steer>,
+}
+
+impl std::fmt::Debug for Runs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Runs")
+            .field("last", &self.last)
+            .field("running", &self.steering.keys().collect::<Vec<_>>())
+            .finish()
+    }
 }
 
 impl Runners {
@@ -110,6 +128,7 @@ impl Runners {
             listening: Arc::default(),
             atlas: self.atlas.clone(),
             observer: observer.clone(),
+            runs: Mutex::default(),
             stop,
         });
         let watching = watch::Watching {

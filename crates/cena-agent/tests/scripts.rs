@@ -251,3 +251,138 @@ async fn heard_lines_last_as_long_as_a_runner() {
         .await;
     assert_eq!(heard(&mut legacy), 0);
 }
+
+/// A stand-in for the binary's performer: `go2 bank` arrives at once; `go2
+/// far` walks until it is stopped; anything else is not a built-in.
+fn walker() -> cena_session::operation::Performer {
+    use cena_session::operation::{Ended, Performer, Started, Work};
+    let allows: cena_session::operation::Allows = Arc::new(|line: &str| {
+        if line.starts_with("go2 ") {
+            Ok(line.to_owned())
+        } else {
+            Err(format!("`{line}` is not a built-in"))
+        }
+    });
+    let start: cena_session::operation::Start = Arc::new(|line: &str, _reporter| {
+        let stopped = Arc::new(tokio::sync::Notify::new());
+        let far = line == "go2 far";
+        let heard = Arc::clone(&stopped);
+        Started {
+            ended: Box::pin(async move {
+                if far {
+                    heard.notified().await;
+                    Ended::plainly(Work::Interrupted, "stopped")
+                } else {
+                    Ended::plainly(Work::Completed, "arrived")
+                }
+            }),
+            steer: Arc::new(move |_| {
+                stopped.notify_one();
+                Ok(())
+            }),
+            token: None,
+        }
+    });
+    Performer {
+        allowed: "go2".to_owned(),
+        allows,
+        start,
+        halt: Arc::new(|| {}),
+    }
+}
+
+/// A runner starts a built-in by name and hears it end; it stops one that
+/// would go on; what Hydra does not run, and a session whose behaviors are
+/// not ready, are refused in words.
+#[tokio::test(flavor = "current_thread")]
+async fn a_runner_starts_a_built_in_and_hears_it_end() {
+    let (source, _transcript) = AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+    let session = Session::new(source);
+    let handle = session.handle();
+    let observer = session.observer();
+    tokio::spawn(session.into_actor().run());
+    let runners = Runners::default();
+    let token = runners
+        .admit("Nisugi", handle.script_door(), &observer)
+        .await
+        .unwrap();
+    let app = router(runners.clone(), &CancellationToken::new());
+
+    let early = call(
+        &app,
+        &token,
+        "perform",
+        serde_json::json!({"line": "go2 bank"}),
+    )
+    .await
+    .unwrap();
+    assert!(
+        early["refused"].as_str().unwrap().contains("not ready"),
+        "{early}"
+    );
+    assert!(handle.set_performer(walker()));
+
+    let bank = call(
+        &app,
+        &token,
+        "perform",
+        serde_json::json!({"line": "go2 bank"}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(bank["line"], "go2 bank");
+    let first = bank["run"].as_u64().unwrap();
+    let events = heard_until(&app, &token, |events| !kind(events, "ended").is_empty())
+        .await
+        .unwrap();
+    let ended = kind(&events, "ended")[0];
+    assert_eq!(
+        (ended["run"].as_u64(), &ended["work"], &ended["reason"]),
+        (
+            Some(first),
+            &serde_json::json!("completed"),
+            &serde_json::json!("arrived")
+        )
+    );
+
+    let far = call(
+        &app,
+        &token,
+        "perform",
+        serde_json::json!({"line": "go2 far"}),
+    )
+    .await
+    .unwrap();
+    let second = far["run"].as_u64().unwrap();
+    assert_ne!(first, second);
+    let stopping = call(&app, &token, "stop", serde_json::json!({"run": second}))
+        .await
+        .unwrap();
+    assert_eq!(stopping["stopping"], true);
+    let events = heard_until(&app, &token, |events| {
+        kind(events, "ended")
+            .iter()
+            .any(|e| e["run"].as_u64() == Some(second))
+    })
+    .await
+    .unwrap();
+    let ended = kind(&events, "ended")
+        .into_iter()
+        .find(|e| e["run"].as_u64() == Some(second))
+        .unwrap();
+    assert_eq!(ended["reason"], "stopped");
+
+    let gone = call(&app, &token, "stop", serde_json::json!({"run": first}))
+        .await
+        .unwrap();
+    assert!(gone["refused"].as_str().unwrap().contains("not under way"));
+    let hunt = call(
+        &app,
+        &token,
+        "perform",
+        serde_json::json!({"line": "hunt x"}),
+    )
+    .await
+    .unwrap();
+    assert!(hunt["refused"].as_str().unwrap().contains("not a built-in"));
+}
