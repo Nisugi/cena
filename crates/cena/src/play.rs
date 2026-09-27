@@ -79,6 +79,9 @@ struct Table {
     web: Option<frontend::Frontend>,
     /// `--agent`'s MCP listener (`plan/35`), when asked for.
     agent: Option<crate::agent::Agent>,
+    /// What every character's hunt shares: the groups' boards and the
+    /// characters' seats (`crate::hunt::Party`).
+    party: crate::hunt::Party,
     dir: PathBuf,
     pin: PathBuf,
     turn: Arc<std::sync::Mutex<()>>,
@@ -110,6 +113,7 @@ pub(crate) async fn play(names: Vec<String>) -> Result<(), Box<dyn std::error::E
         // page's link is printed when its character is `Ready`.
         web: frontend::Frontend::open(&map).await,
         agent: crate::agent::Agent::open(&dir).await,
+        party: crate::hunt::Party::new(),
         map,
         pin: dir.join(cena_platform::PIN_FILENAME),
         dir,
@@ -226,6 +230,7 @@ impl Table {
             learning,
             format!("[{character}]"),
             self.map.clone(),
+            self.party.clone(),
         ));
         self.started
             .lock()
@@ -449,12 +454,13 @@ async fn after_ready(
     mut learning: tokio::sync::broadcast::Receiver<Event>,
     who: String,
     map: crate::map_context::ConfiguredMap,
+    party: crate::hunt::Party,
 ) {
     let Some(stale) = learn::stale_at_ready(&mut learning).await else {
         return;
     };
     drop(learning);
-    travel::after_login(&handle, observer, &commands, &map).await;
+    travel::after_login(&handle, observer, &commands, &map, &party).await;
     learn::sync(&handle, &stale, &who).await;
 }
 
