@@ -206,6 +206,19 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
      build had been scanning another checkout.",
     ),
     (
+        "crates/cena-session/src/agent.rs",
+        "Door",
+        "The one way an agent acts on a session (plan/35 section 3, M7 step 2): \
+         cena-agent holds a Door and never the handle, so every act it makes \
+         is checked against the character's level inside the session, where \
+         the level lives (`the_agent_acts_only_through_the_door` in \
+         layering.rs holds the other half). A clone of the session's own \
+         handle, on the type's own terms (every field shared: see Viewed \
+         below), so it cannot drift; the binary builds one per character \
+         when it seats it for the agent, and drops it when the character \
+         leaves the table (play.rs's take_off calls Agent::unseat).",
+    ),
+    (
         "crates/cena-web/src/server.rs",
         "Viewed",
         "The embedded frontend's manual-input surface, one per served session \
@@ -326,6 +339,9 @@ fn the_handle_premise_holds() {
             // An `Arc<Mutex<..>>` (`command/authority.rs`): the session's one
             // authority cell, the same for every clone.
             || ty.ends_with("::Authority")
+            // An `Arc<Mutex<..>>` (`agent.rs`): the agent's level and the
+            // acts waiting on the player, one for every clone.
+            || ty.ends_with("agent::Access")
     };
     let copied: Vec<String> = fields
         .iter()

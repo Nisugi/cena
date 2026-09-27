@@ -515,3 +515,61 @@ fn map_does_no_file_io() {
         )
     );
 }
+
+/// `plan/35` §3: an agent's level is checked in the session, where the level
+/// lives, and not in the agent crate. `cena-agent` acts only through
+/// `cena_session::agent::Door`, each of whose acts checks the level, so its
+/// sources never name `SessionHandle`: holding one, an act could skip the
+/// check.
+///
+/// Written with the rule (`plan/05` §0), on tokens as the file-I/O rules
+/// are, so a word in a string or a comment is not a hit and an import under
+/// another name still is.
+#[test]
+fn the_agent_acts_only_through_the_door() {
+    let sources: Vec<(std::path::PathBuf, String)> = scannable_sources()
+        .into_iter()
+        .filter(|(path, _)| relative(path).starts_with("crates/cena-agent/src/"))
+        .collect();
+    assert!(
+        !sources.is_empty(),
+        "the scan found no cena-agent sources, so this test is vacuous"
+    );
+    let hits = handles_named(&sources);
+    assert!(
+        hits.is_empty(),
+        "cena-agent names SessionHandle: an agent must act through the Door, \
+         which checks the level (`plan/35` §3).\n{}",
+        hits.join("\n")
+    );
+}
+
+/// Every token in `sources` naming `SessionHandle`.
+fn handles_named(sources: &[(std::path::PathBuf, String)]) -> Vec<String> {
+    let mut hits = Vec::new();
+    for (path, text) in sources {
+        for t in tokens(text).iter().filter(|t| t.is("SessionHandle")) {
+            hits.push(format!("{}:{}", relative(path), t.line));
+        }
+    }
+    hits
+}
+
+/// The rule's mutations: a handle imported plainly, under another name, or
+/// named in a path is found; the word in a string or a comment is not.
+#[test]
+fn a_handle_under_any_name_is_found_and_a_mention_is_not() {
+    let path = cena_arch_tests::harness::workspace_root().join("crates/cena-agent/src/f.rs");
+    for case in [
+        "use cena_session::SessionHandle;\n",
+        "use cena_session::{Door, SessionHandle as Seated};\n",
+        "struct Seat { h: cena_session::SessionHandle }\n",
+    ] {
+        assert!(
+            !handles_named(&[(path.clone(), case.to_owned())]).is_empty(),
+            "missed: {case:?}"
+        );
+    }
+    let clean = "// never a SessionHandle\nconst S: &str = \"SessionHandle\";\n";
+    assert!(handles_named(&[(path, clean.to_owned())]).is_empty());
+}

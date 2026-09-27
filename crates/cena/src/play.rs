@@ -212,7 +212,13 @@ impl Table {
             Err(e) => eprintln!("[{character}] no loot reports: {e}"),
         }
         if let Some(agent) = &self.agent {
-            agent.seat(id, &character, hosted.observer.clone(), database.ok());
+            agent.seat(
+                id,
+                &character,
+                &hosted.handle,
+                hosted.observer.clone(),
+                database.ok(),
+            );
         }
         if let Some(web) = &self.web {
             web.attach(

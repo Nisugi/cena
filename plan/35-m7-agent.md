@@ -417,6 +417,46 @@ Each ends in something demonstrable, as `12` §8 asks.
    answers yet.
 2. **Levels and notices.** The setting, the check, refusal as a notice with an approve link,
    `because` in the player log, the badge and the level control in Despana.
+   **BUILT 2026-09-27**, on the command line; Despana's part waits (below).
+   - **The level** is `cena_session::agent::Level`, kept in the character's settings file
+     (`{"agent": {"level": "observe"}}`), `off` until the player raises it: `;agent level
+     observe`, read back at every login. **Three levels exist, not six**: `off`, `observe`,
+     `advise`. Each later step adds its level beside the tools it allows, so a player can never
+     set a level today that means more after an update.
+   - **The check is in the session.** An agent acts only through a `Door`
+     (`crates/cena-session/src/agent.rs`), each of whose acts checks the level; `cena-agent`
+     holds a door and never a `SessionHandle`, which
+     `crates/cena-arch-tests/tests/layering.rs` (`the_agent_acts_only_through_the_door`)
+     asserts. A read is checked by the tool that reads, against the same level, because what
+     it reads from is an observer and changes nothing.
+   - **A refusal** is a tool error the model reads: the level, the level needed, and whether
+     the player was asked. At `off` nobody is asked and the agent sees only the character's
+     name and level; a refused read asks nobody either. The player is told either way, at most
+     once every five minutes with a count, so an agent polling at `off` cannot fill the stream.
+   - **An act above the level, and above `off`, waits for the player**: a notice with the
+     request's number (`;agent approve 3`, `;agent deny 3`), saying what the act is (for a
+     message, its length and never its words, which the level has not allowed yet) and the
+     agent's `because`. The yes is that act, once, on the connection it was asked on, within
+     two minutes; at most three wait; a change of level drops them all. The agent reads the
+     answer in `wait` (`approval`), with the level's changes (`level`).
+   - **`tell_player`** is the first act: `advise`, with a required `because`, both shown and
+     kept in the player log (the log's `hydra` tag). Nothing reaches the game.
+   - **What happened while reading was not allowed is not handed over**: once the level
+     allows it again, a `wait` from before answers `lagged`.
+   - **Not built, and why.** Despana's badge, level control and clickable approve link: the
+     page today is a demo of Despana (author, 2026-09-26), and it shows no notices at all
+     (`grep -rn Notice crates/cena-web/src` finds nothing), so a refusal has no way onto it yet;
+     `;agent` typed in its command box works as at the terminal. The request id
+     of issue #19 point 4 waits for step 3's first act that reaches the game: a lost reply to
+     `tell_player` shows a message twice, and nothing worse. `expected_generation` likewise:
+     an approval is already bound to its connection.
+   - Tests: `crates/cena-agent/tests/agent.rs` (`at_off_...`, `an_act_above_the_level_...`,
+     over MCP against a scripted game), `crates/cena/src/agent.rs` (the level kept and read
+     back; approve once, deny), `server.rs` (`every_tool_has_a_level`). Mutations: an unplaced
+     tool, the notice unthrottled, and a `SessionHandle` in `cena-agent` each turn a test red;
+     the first version of the `lagged` rule read the level when the watcher got to an event
+     rather than where it stood in the stream, and its test caught it.
+   *Shown*, live with the author: not yet (with step 1's).
 3. **Behaviors.** `perform`, `operation` and `control` over Hydra commands; behavior endings
    as events. Hold and resume need building in hunt first.
 4. **Commands**, with the denylist.

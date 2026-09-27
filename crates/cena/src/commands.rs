@@ -57,6 +57,7 @@ pub(crate) const HELP: &[&str] = &[
     "loot, combat     reports on what was recorded: loot summary, combat hunts",
     "sorter           show a container's contents one line per category: sorter on, off or status",
     "multi help, foreach help   run commands several times, or once for each item",
+    "agent help       what an agent (a program such as Claude Code) may do with this character",
 ];
 
 /// Whether a line, without its symbol, asks for [`HELP`].
@@ -74,6 +75,7 @@ pub(crate) struct Commands {
     combat: Arc<OnceLock<Handler>>,
     sorter: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
+    agent: Arc<OnceLock<Handler>>,
 }
 
 impl Commands {
@@ -97,6 +99,8 @@ impl Commands {
                 Some("Travel")
             } else if cena_behavior::hunt::parse_command(line).is_some() {
                 Some("Hunt")
+            } else if line.split_whitespace().next() == Some("agent") {
+                Some("Agent")
             } else {
                 None
             };
@@ -129,7 +133,7 @@ impl Commands {
                 return Some(took);
             }
         }
-        for family in [&self.loot, &self.combat, &self.sorter] {
+        for family in [&self.loot, &self.combat, &self.sorter, &self.agent] {
             if let Some(handler) = family.get()
                 && handler(line).is_some()
             {
@@ -172,6 +176,13 @@ impl Commands {
     pub(crate) fn sorter(&self, handler: Handler) {
         if self.sorter.set(handler).is_err() {
             eprintln!("  !! [commands] sorter was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;agent` to `handler` from now on. Once, as for travel.
+    pub(crate) fn agent(&self, handler: Handler) {
+        if self.agent.set(handler).is_err() {
+            eprintln!("  !! [commands] agent was registered twice; keeping the first");
         }
     }
 

@@ -105,6 +105,19 @@ pub enum Happening {
         /// Field name to its new value, as `state` spells both.
         fields: serde_json::Map<String, serde_json::Value>,
     },
+    /// The player set the character's agent level.
+    Level {
+        /// The level now: `off`, `observe`, `advise`.
+        level: String,
+    },
+    /// The player answered an act that waited for their yes: done, or not
+    /// (denied, lapsed, or dropped when the level changed).
+    Approval {
+        /// The number the refusal gave.
+        id: u64,
+        /// Whether the act was done.
+        approved: bool,
+    },
 }
 
 /// Every kind, for `wait`'s filter and for `capabilities`.
@@ -119,6 +132,8 @@ pub const KINDS: &[&str] = &[
     "lifecycle",
     "gap",
     "changed",
+    "level",
+    "approval",
 ];
 
 impl Happening {
@@ -136,6 +151,8 @@ impl Happening {
             Self::Lifecycle { .. } => "lifecycle",
             Self::Gap => "gap",
             Self::Changed { .. } => "changed",
+            Self::Level { .. } => "level",
+            Self::Approval { .. } => "approval",
         }
     }
 }
@@ -309,6 +326,15 @@ impl Log {
     pub fn reached(&self, cursor: u64) {
         let mut inner = self.lock();
         inner.latest = inner.latest.max(cursor);
+    }
+
+    /// Drop everything up to `through`, as if it had fallen out of the log:
+    /// a `wait` from before it answers `lagged`. For what an agent must not
+    /// be handed, what happened while its level did not let it read.
+    pub fn forget(&self, through: u64) {
+        let mut inner = self.lock();
+        inner.entries.retain(|entry| entry.cursor > through);
+        inner.dropped_through = inner.dropped_through.max(through);
     }
 
     /// The session has ended.

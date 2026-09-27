@@ -5,12 +5,20 @@
 //! stops, as it attaches and detaches Despana's pages (`crates/cena/src/play.rs`).
 //! Seating starts a watcher that fills the character's [`Log`]; unseating
 //! stops it.
+//!
+//! **What happens while the level forbids reading is not kept for later.**
+//! The watcher runs whatever the level (it is Hydra's, not the agent's), but
+//! while the character is below Observe it keeps only the level's own
+//! changes; once reading is allowed again, the log forgets everything before,
+//! so a `wait` from an older cursor answers `lagged` and the agent reads
+//! `state` afresh rather than the stretch it was not allowed to see.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
+use cena_session::agent::{Decision, Door, Level};
 use cena_session::{Event, ObserveError, ObservedEvent, SessionId, SessionObserver, Snapshot};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
@@ -25,6 +33,8 @@ pub struct Seat {
     pub name: String,
     /// Read-only access to its session.
     pub observer: SessionObserver,
+    /// The only way to act on it, each act checked against its level.
+    pub door: Door,
     /// Its database (the combat recorder and the loot ledger), when known.
     pub database: Option<PathBuf>,
     /// Whether this run records combat and loot into it (`--record`);
@@ -49,23 +59,20 @@ impl Characters {
         id: SessionId,
         name: &str,
         observer: SessionObserver,
+        door: Door,
         database: Option<PathBuf>,
         recording: Option<bool>,
     ) {
         let seat = Seat {
             name: name.to_owned(),
             observer,
+            door,
             database,
             recording,
             log: Arc::default(),
             stop: CancellationToken::new(),
         };
-        tokio::spawn(watch(
-            seat.name.clone(),
-            seat.observer.clone(),
-            Arc::clone(&seat.log),
-            seat.stop.clone(),
-        ));
+        tokio::spawn(watch(seat.clone()));
         if let Some(old) = self.lock().insert(id, seat) {
             old.stop.cancel();
         }
@@ -135,7 +142,57 @@ fn direct(event: &Event) -> Option<Happening> {
         Event::StateChanged(state) => Some(Happening::Lifecycle {
             state: format!("{state:?}").to_ascii_lowercase(),
         }),
+        Event::Agent(Decision::Level(level)) => Some(Happening::Level {
+            level: level.word().to_owned(),
+        }),
+        Event::Agent(Decision::Answered { id, approved }) => Some(Happening::Approval {
+            id: *id,
+            approved: *approved,
+        }),
         _ => None,
+    }
+}
+
+/// What goes into one character's log, by its level: everything while the
+/// agent may read, only the level's changes while it may not, and a clean
+/// break between.
+///
+/// **The level is followed through the stream, in order**, from the level's
+/// own events: a happening is kept by the level at its place in the stream,
+/// not by the level when the watcher reaches it. Read from the door instead,
+/// a level lowered and raised again between two looks would hide nothing
+/// (the first version did; its test caught it).
+struct Keeper<'a> {
+    log: &'a Log,
+    level: Level,
+    /// Something was held back since the agent last could read.
+    hidden: bool,
+}
+
+impl<'a> Keeper<'a> {
+    fn new(log: &'a Log, level: Level) -> Self {
+        Self {
+            log,
+            level,
+            hidden: level < Level::Observe,
+        }
+    }
+
+    fn keep(&mut self, cursor: u64, happening: Happening) {
+        if let Happening::Level { level } = &happening {
+            self.level = Level::named(level).unwrap_or(Level::Off);
+        }
+        if self.level < Level::Observe {
+            self.hidden = true;
+            if matches!(happening, Happening::Level { .. }) {
+                self.log.push(cursor, happening);
+            }
+            return;
+        }
+        if std::mem::take(&mut self.hidden) {
+            self.log.forget(cursor.saturating_sub(1));
+        }
+        self.log.push(cursor, happening);
     }
 }
 
@@ -151,11 +208,22 @@ fn worth_a_look(event: &Event) -> bool {
 
 /// Watch one character until stopped: its direct events into the log as
 /// they come, and after each prompt a fresh snapshot, compared with the last.
-async fn watch(name: String, observer: SessionObserver, log: Arc<Log>, stop: CancellationToken) {
+async fn watch(seat: Seat) {
+    let Seat {
+        name,
+        observer,
+        door,
+        log,
+        stop,
+        ..
+    } = seat;
     let Some((snapshot, mut events)) = subscribe(&observer, &stop).await else {
         log.close();
         return;
     };
+    // Read after subscribing: a change made in between is in the stream
+    // too, and arrives again as the same level.
+    let mut keeper = Keeper::new(&log, door.level());
     let mut last: CharacterState = project(&name, &snapshot);
     log.reached(snapshot.cursor);
     loop {
@@ -167,7 +235,7 @@ async fn watch(name: String, observer: SessionObserver, log: Arc<Log>, stop: Can
         let look = match received {
             Ok(event) => {
                 if let Some(happening) = direct(&event.event) {
-                    log.push(event.cursor, happening);
+                    keeper.keep(event.cursor, happening);
                 }
                 log.reached(event.cursor);
                 worth_a_look(&event.event)
@@ -195,16 +263,16 @@ async fn watch(name: String, observer: SessionObserver, log: Arc<Log>, stop: Can
                 break;
             }
             if let Some(happening) = direct(&event.event) {
-                log.push(event.cursor, happening);
+                keeper.keep(event.cursor, happening);
             }
         }
         events = fresh;
         if gap {
-            log.push(snapshot.cursor, Happening::Gap);
+            keeper.keep(snapshot.cursor, Happening::Gap);
         }
         let now = project(&name, &snapshot);
         for happening in diff(&last, &now).into_iter().chain(changed(&last, &now)) {
-            log.push(snapshot.cursor, happening);
+            keeper.keep(snapshot.cursor, happening);
         }
         log.reached(snapshot.cursor);
         last = now;

@@ -1,7 +1,8 @@
-//! The agent, read-only (`plan/35` §8 step 1): the projection carries every
-//! status the model holds and nothing it does not; `wait` is the difference
-//! between snapshots; and the whole path works over MCP, behind the token,
-//! against a scripted game.
+//! The agent (`plan/35` §8): the projection carries every status the model
+//! holds and nothing it does not; `wait` is the difference between
+//! snapshots; the whole path works over MCP, behind the token, against a
+//! scripted game (step 1); and each character's level decides what a tool
+//! may do, with the player asked about an act above it (step 2).
 
 use std::time::Duration;
 
@@ -11,7 +12,8 @@ use cena_agent::Characters;
 use cena_agent::happenings::{Happening, Log, diff};
 use cena_agent::projection::project;
 use cena_platform::AnsweringSource;
-use cena_session::{GameState, Generation, Session, SessionId, Snapshot, State};
+use cena_session::agent::Level;
+use cena_session::{Event, GameState, Generation, Session, SessionId, Snapshot, State};
 use http_body_util::BodyExt;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceExt;
@@ -271,7 +273,9 @@ async fn stunned_on_look() -> (cena_session::SessionHandle, cena_session::Sessio
 async fn an_mcp_client_reads_a_character_behind_the_token() {
     let (handle, observer) = stunned_on_look().await;
     let characters = Characters::default();
-    characters.seat(SessionId(1), "Nisugi", observer, None, None);
+    let door = handle.agent_door();
+    characters.seat(SessionId(1), "Nisugi", observer, door, None, None);
+    handle.set_agent_level(Level::Observe);
     let stop = CancellationToken::new();
     let router = cena_agent::router(characters, "secret".to_owned(), &stop);
 
@@ -374,4 +378,170 @@ fn changed_carries_what_changed_and_not_the_clock() {
         cena_agent::happenings::changed(&was, &was).is_none(),
         "nothing changed, nothing said"
     );
+}
+
+/// A seated character's client, the character at `off`.
+async fn seated() -> Option<(
+    cena_session::SessionHandle,
+    cena_session::SessionObserver,
+    Client,
+    CancellationToken,
+)> {
+    let (handle, observer) = stunned_on_look().await;
+    let characters = Characters::default();
+    let door = handle.agent_door();
+    characters.seat(SessionId(1), "Nisugi", observer.clone(), door, None, None);
+    let stop = CancellationToken::new();
+    let router = cena_agent::router(characters, "secret".to_owned(), &stop);
+    let client = Client::connect(router, "secret").await?;
+    Some((handle, observer, client, stop))
+}
+
+/// What the player was told, as text, from a subscription taken earlier.
+fn told(events: &mut tokio::sync::broadcast::Receiver<cena_session::ObservedEvent>) -> Vec<String> {
+    let mut said = Vec::new();
+    while let Ok(observed) = events.try_recv() {
+        if let Event::Notice(notice) = observed.event {
+            said.push(notice.lines().join("\n"));
+        }
+    }
+    said
+}
+
+/// Step 2, at `off`: the agent sees the name and the level and nothing else,
+/// cannot even ask to act, and the player is told it tried -- once, however
+/// often it tries.
+#[tokio::test]
+async fn at_off_an_agent_sees_a_name_and_is_refused_the_rest() {
+    let (_handle, observer, client, stop) = seated().await.unwrap();
+    let (_, mut events) = observer.subscribe().await.unwrap();
+    let listed = client
+        .tool("characters", serde_json::json!({}))
+        .await
+        .unwrap();
+    assert_eq!(
+        listed,
+        serde_json::json!([{"character": "Nisugi", "level": "off"}])
+    );
+    let answer = client
+        .call("state", serde_json::json!({"character": "Nisugi"}))
+        .await
+        .unwrap();
+    assert_eq!(
+        answer["result"]["isError"], true,
+        "a refusal the model reads"
+    );
+    let refused = tool_json(&answer).unwrap();
+    assert_eq!(refused["refused"], "level");
+    assert_eq!(refused["needed"], "observe");
+    assert_eq!(refused["level"], "off");
+    assert!(refused["approval"].is_null(), "a read is never approved");
+    let act = client
+        .tool(
+            "tell_player",
+            serde_json::json!({"character": "Nisugi", "text": "hello", "because": "testing"}),
+        )
+        .await
+        .unwrap();
+    assert!(act["approval"].is_null(), "at off, not even asked: {act}");
+    for tool in ["wait", "records"] {
+        let again = client
+            .tool(
+                tool,
+                serde_json::json!({"character": "Nisugi", "since": 0, "sql": "SELECT 1"}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(again["needed"], "observe", "{tool}: {again}");
+    }
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let said = told(&mut events);
+    assert_eq!(said.len(), 1, "told once: {said:?}");
+    assert!(said[0].contains("agent level observe"), "{said:?}");
+    stop.cancel();
+}
+
+/// Step 2, above `off`: an act the level does not allow waits for the
+/// player, whose answer the agent reads in `wait`; lowering the level and
+/// raising it again makes an old cursor `lagged`; at `advise` the act is
+/// done at once.
+#[tokio::test]
+async fn an_act_above_the_level_waits_for_the_player() {
+    let (handle, _observer, client, stop) = seated().await.unwrap();
+    handle.set_agent_level(Level::Observe);
+    let state = client
+        .tool("state", serde_json::json!({"character": "Nisugi"}))
+        .await
+        .unwrap();
+    let since = state["cursor"].as_u64().unwrap();
+    let tell = serde_json::json!({"character": "Nisugi", "text": "the hunt is over", "because": "you asked to know"});
+    let asked = client.tool("tell_player", tell.clone()).await.unwrap();
+    assert_eq!(asked["needed"], "advise", "{asked}");
+    assert_eq!(asked["approval"]["asked"], true, "{asked}");
+    let id = asked["approval"]["id"].as_u64().unwrap();
+
+    handle.approve_agent(id).unwrap();
+    assert!(handle.approve_agent(id).is_err(), "once");
+    let waited = client
+        .tool(
+            "wait",
+            serde_json::json!({"character": "Nisugi", "since": since, "kinds": ["approval"], "timeout_ms": 5000}),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        waited["happenings"][0],
+        serde_json::json!({"cursor": waited["happenings"][0]["cursor"], "kind": "approval", "id": id, "approved": true})
+    );
+    let notices = client
+        .tool(
+            "wait",
+            serde_json::json!({"character": "Nisugi", "since": since, "kinds": ["notice"], "timeout_ms": 0}),
+        )
+        .await
+        .unwrap();
+    let texts = notices["happenings"].to_string();
+    assert!(
+        texts.contains("An agent asks to tell you something"),
+        "{texts}"
+    );
+    assert!(
+        texts.contains("Agent: the hunt is over") && texts.contains("you asked to know"),
+        "{texts}"
+    );
+
+    handle.set_agent_level(Level::Off);
+    handle.set_agent_level(Level::Observe);
+    let mut lagged = false;
+    for _ in 0..200 {
+        let waited = client
+            .tool(
+                "wait",
+                serde_json::json!({"character": "Nisugi", "since": since, "timeout_ms": 0}),
+            )
+            .await
+            .unwrap();
+        if waited["lagged"] == true {
+            lagged = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(lagged, "what happened at off is not handed over");
+
+    handle.set_agent_level(Level::Advise);
+    let told = client.tool("tell_player", tell).await.unwrap();
+    assert_eq!(told, serde_json::json!({"told": true}));
+    let capabilities = client
+        .tool("capabilities", serde_json::json!({"character": "Nisugi"}))
+        .await
+        .unwrap();
+    assert_eq!(capabilities["character"]["level"], "advise");
+    assert!(
+        capabilities["tools"]
+            .as_array()
+            .is_some_and(|tools| tools.len() == 6 && tools.iter().all(|t| t["needs"].is_string())),
+        "{capabilities}"
+    );
+    stop.cancel();
 }

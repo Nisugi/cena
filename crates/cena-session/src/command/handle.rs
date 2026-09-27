@@ -199,6 +199,9 @@ pub struct SessionHandle {
     pub(super) attendance: super::attendance::Attendance,
     /// The session's command authority (`authority.rs`).
     pub(super) authority: super::authority::Authority,
+    /// What an agent may do, and the acts waiting on the player
+    /// (`crate::agent`).
+    pub(crate) agent: crate::agent::Access,
 }
 
 impl SessionHandle {
@@ -233,6 +236,7 @@ impl SessionHandle {
             desk: super::claimant::Slot::default(),
             attendance: super::attendance::Attendance::default(),
             authority: super::authority::Authority::default(),
+            agent: crate::agent::Access::default(),
         }
     }
 
@@ -335,6 +339,12 @@ impl SessionHandle {
             log.notice(self.generation(), &notice);
         }
         let _ = self.events.send(crate::Event::Notice(notice));
+    }
+
+    /// Publish an event that is the session's own doing, not the game's, as
+    /// [`Self::say`] publishes a notice.
+    pub(crate) fn publish(&self, event: crate::Event) {
+        let _ = self.events.send(event);
     }
 
     /// The generation this handle stamps **right now**.

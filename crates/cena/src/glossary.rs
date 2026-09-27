@@ -126,6 +126,9 @@
 //! | **Claimant** | whoever may hold the authority (`plan/12` §4.1): a behavior, later an agent, and never manual input | |
 //! | **Preempt** | take the authority from its holder, cooperatively for [`PREEMPT_GRACE`] and then by force: [`SessionHandle::preempt`], [`Preempted`]. Only an explicit stop, or the watchdog, preempts | |
 //! | **Refusal** | why the session would not send a command: [`Refusal`] | |
+//! | **Agent level** | what an agent may do with one character, set only by its player and kept in the character's settings: [`agent::Level`](cena_session::agent::Level), `off` until raised (`plan/35` §3) | |
+//! | **Door** | the only way an agent acts on a session, each act checked against the level: [`agent::Door`](cena_session::agent::Door). The agent crate holds a door and never a [`SessionHandle`] | |
+//! | **Approval** | the player's yes to one act an agent asked for above its level: that act, once, on that connection, within [`APPROVAL_LIFETIME`](cena_session::agent::APPROVAL_LIFETIME) ([`SessionHandle::approve_agent`](cena_session::SessionHandle::approve_agent)). It grants nothing further | |
 //! | **Quit** | send `quit` and wait for the game to hang up: [`SessionHandle::quit`], told as a [`Farewell`] | |
 //!
 //! # Behaviors

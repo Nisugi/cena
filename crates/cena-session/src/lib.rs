@@ -31,6 +31,7 @@
 //! [`ObservedEvent`] stream. Observing does not confer command authority.
 
 pub mod actor;
+pub mod agent;
 pub mod character_store;
 pub mod combat_recorder;
 pub mod command;
