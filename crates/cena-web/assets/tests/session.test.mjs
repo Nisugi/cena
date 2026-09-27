@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { HydraSession, MAX_STORY_LINES, commandError, launchSession, takeLaunchToken } from "../session.js";
+import { ALERT_MS, HydraSession, MAX_ALERTS, MAX_STORY_LINES, commandError, launchSession, takeLaunchToken } from "../session.js";
 import { cardSummary, lifecycleText, mount, placeLine } from "../app.js";
 
 // Shared synthetic contract fixture, also round-tripped by Rust cena-ui tests.
@@ -445,6 +445,7 @@ class FakeNode {
 
 function page() {
   const nodes = new Map();
+  const timers = [];
   const document = {
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, new FakeNode("div")); return nodes.get(id); },
     createElement(tag) { return new FakeNode(tag); },
@@ -453,10 +454,11 @@ function page() {
     location: { hash: "#token=synthetic-token", pathname: "/", search: "", protocol: "http:", host: "127.0.0.1:1" },
     history: { replaceState() {} }, WebSocket: FakeSocket, performance: { now: () => 0 },
     setInterval: () => 1, clearInterval() {}, addEventListener() {}, removeEventListener() {},
+    setTimeout(fn, delay) { timers.push({ fn, delay }); return timers.length; }, clearTimeout() {},
   };
   const session = mount(document, environment);
   session.socket.open();
-  return { session, socket: session.socket, element: (id) => document.getElementById(id) };
+  return { session, socket: session.socket, timers, element: (id) => document.getElementById(id) };
 }
 
 const said = (text, stream = "") => ({ stream, runs: [{ text, bold: false, monospace: false, preset: null }],
@@ -675,4 +677,40 @@ test("the hub shuts Hydra down after asking, and then stops reconnecting", () =>
   assert.equal(session.state.connection, "shut-down");
   assert.equal(session.socket, null);
   assert.equal(element("connection-status").textContent, "Hydra has shut down");
+});
+
+test("a trigger's banner shows a while, the newest few, and only on its own generation", () => {
+  // plan/45 Stage 3: the session applied the trigger's cooldown; the page
+  // shows each banner for ALERT_MS, at most MAX_ALERTS at once.
+  const { session, socket, timers } = setup();
+  const snapshot = readySnapshot();
+  socket.message(snapshot);
+  const alert = (text, generation = snapshot.generation) => ({ kind: "alert", version: 1,
+    session: snapshot.session, generation, text });
+  socket.message(alert("stale", String(BigInt(snapshot.generation) + 1n)));
+  assert.deepEqual(session.state.alerts, [], "another generation's banner is not shown");
+  for (let i = 0; i < MAX_ALERTS + 2; i += 1) socket.message(alert(`banner ${i}`));
+  assert.deepEqual(session.state.alerts.map((shown) => shown.text),
+    Array.from({ length: MAX_ALERTS }, (_, i) => `banner ${i + 2}`), "the newest are kept");
+  const expiring = timers.filter((timer) => timer.delay === ALERT_MS);
+  assert.equal(expiring.length, MAX_ALERTS + 2);
+  for (const timer of expiring) timer.fn();
+  assert.deepEqual(session.state.alerts, [], "each goes when its time is up");
+  socket.message({ ...alert("x"), text: 5 });
+  assert.equal(session.state.connection, "protocol-error", "a banner that is not text refuses the message");
+});
+
+test("a banner is drawn as text, never as markup", () => {
+  const { socket, element, timers } = page();
+  const snapshot = readySnapshot();
+  socket.message(snapshot);
+  const box = element("alerts");
+  assert.equal(box.hidden, true);
+  socket.message({ kind: "alert", version: 1, session: snapshot.session, generation: snapshot.generation,
+    text: "<b>Dicate</b> whispers" });
+  assert.equal(box.hidden, false);
+  assert.equal(box.children.length, 1);
+  assert.equal(box.children[0].textContent, "<b>Dicate</b> whispers");
+  for (const timer of timers.filter((timer) => timer.delay === ALERT_MS)) timer.fn();
+  assert.equal(box.hidden, true);
 });

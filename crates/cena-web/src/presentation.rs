@@ -148,15 +148,12 @@ where
             .offer(shared.id, &shared.tag(), &shared.name, &lines);
         pending.bytes = 0;
         let gap = std::mem::take(&mut pending.gap);
-        if shared
-            .hub
-            .lock()
-            .await
-            .publish(&snapshot, lines, gap)
-            .is_err()
-        {
+        let mut hub = shared.hub.lock().await;
+        if hub.publish(&snapshot, lines, gap).is_err() {
             return Err(std::io::Error::other("Presentation sequence exhausted"));
         }
+        hub.alert(std::mem::take(&mut pending.alerts));
+        drop(hub);
         let _ = shared.changed.send(());
         dirty = false;
         ticking = snapshot.state.in_roundtime() == Some(true);

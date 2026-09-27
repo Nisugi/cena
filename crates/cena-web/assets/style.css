@@ -65,6 +65,8 @@ summary { cursor: pointer; color: var(--amber); }
 .text-whisper, .text-thought { color: #a9bbf5; }
 .stream-label, .empty-state { color: var(--muted); font-style: italic; }
 .output-gap { color: #f0968c; font-style: italic; margin: 4px 10px; }
+.alerts { position: fixed; top: 12px; right: 12px; z-index: 10; max-width: 40ch; }
+.alerts p { margin: 0 0 6px; padding: 8px 12px; background: #3a2f10; color: #ffe08a; border: 1px solid #806a20; border-radius: 4px; }
 .story-command { flex: none; padding: 6px 8px; border-top: 1px solid var(--line-strong); background: var(--surface-raised); }
 #command-form { display: flex; gap: 8px; align-items: center; }
 #prompt { color: var(--amber); max-width: 10%; overflow: hidden; }

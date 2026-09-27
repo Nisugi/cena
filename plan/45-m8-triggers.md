@@ -1,8 +1,8 @@
 # 45 — Milestone 8: triggers
 
-> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGE 4 on 2026-09-27**
-> (§6), all but Stage 1's release run of the bench. Stage 3 is held; the author: *"we can do
-> 4 and circle back to 3"*. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
+> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGES 4 AND 3 on
+> 2026-09-27** (§6), all but Stage 1's release run of the bench. Stage 5 (act) is what
+> remains. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
 > the worktree `G:\dev\Cena-m8` (locked on purpose: M8 spans sessions). The author's
 > decisions are quoted in §1 with the date. **Everything else here is Claude's proposal**,
 > and two of §1's rows are Claude's *reading* of an answer, marked as such. What was decided
@@ -470,7 +470,7 @@ Recorded when it was held: once per occurrence across characters; cooldowns and 
 (VellumFE's, §2a); an audio library is a dependency decision, measured like `plan/23` §D1b
 measured axum; who plays a sound when no viewer is open.
 
-**BUILT 2026-09-27**, sounds and OS notifications; banners are the next step.
+**BUILT 2026-09-27**: sounds, OS notifications and banners.
 
 - The responses are `sound = "<file or path>"`, `notify = true | "<words>"`, `alert = true |
   "<words>"`, and `cooldown = N` (`crates/cena-model/src/trigger/attention.rs`). `true`
@@ -485,6 +485,17 @@ measured axum; who plays a sound when no viewer is open.
   it still sounds**: that answers who plays it.
 - Wrayth's `sound` imports as the trigger's `sound`, no longer `held`; a sound found nowhere
   is said at load, once, with where to put it.
+- The banner is a page's: the pump keeps a character's `alert`s and sends each as an
+  `alert` message after the update that carried its line, to the pages open then, never in
+  a snapshot (`crates/cena-ui/WIRE.md`). The page shows it as text for 4 seconds, at most 5
+  at once, `VellumFE`'s `DEFAULT_DURATION_SECS` and `MAX_CONCURRENT`.
+
+**Done when** a trigger's sound and notification reach the desk once however many characters
+saw the thing, and its banner reaches its own character's page after the line and no other
+page. **MET 2026-09-27**: `crates/cena/src/attention/tests.rs` (one occurrence, three
+characters), `crates/cena/tests/web_alerts.rs` (Nisugi's page told, Dicate's not), the page's
+`session.test.mjs`. Twenty mutants across the stage, all caught. **Not heard or seen**: no
+sound has been played or notification shown by a test; that is the author's first run.
 
 ### 6d. Stage 3 as built -- CLAUDE'S, to confirm
 
@@ -497,7 +508,9 @@ measured axum; who plays a sound when no viewer is open.
 | Several characters, one occurrence | the same trigger, sound and words from another character within a second passes silently | the merged streams' second (`cena_ui::Merger`); the same character twice is two occurrences, which its cooldown already let through |
 | A notification's title | `Hydra: <character>`, the first to see it | several characters' one occurrence names the first |
 | A sound not found | said once at load and after each change, grouped, with the sounds folder | a Wrayth path from another machine is the likely case |
-| The cap on banners | the page's, with the banners (next step) | a banner is shown by a page; the desk plays and notifies |
+| The cap on banners | the page's: 5 at once, 4 seconds each | `VellumFE`'s `MAX_CONCURRENT` and `DEFAULT_DURATION_SECS`; the pump keeps the newest 5 between publishes |
+| A banner on the wire | a new `alert` message within version 1, never in a snapshot | a page opened later is not shown what it missed; a page from an older process cannot pair with a newer one (the pairing token is per process), so no older page meets the new kind |
+| The hub page | shows no banners | each banner is a character's; the hub's merged streams already carry what several characters heard |
 
 ### Stage 4 -- import
 

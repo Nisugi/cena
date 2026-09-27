@@ -8,7 +8,9 @@
 //! the session publishes a container look already sorted, and a line comes
 //! already answered by the character's triggers, its paint resolved
 //! ([`painted`]). Room components are not lines in the model, so their bodies
-//! are still drawn from their frames here, unpainted.
+//! are still drawn from their frames here, unpainted. A trigger's banner
+//! ([`Event::Attention`]'s `alert`) is kept here too, for the next publish to
+//! send after its lines, the last [`MAX_ALERTS`] of them.
 
 use super::hub::line_bytes;
 use super::{MAX_DRAIN, MAX_HISTORY_BYTES, MAX_HISTORY_LINES};
@@ -16,6 +18,10 @@ use cena_session::{Event, Frame, Generation, Line, ObservedEvent, Snapshot};
 use cena_ui::{StoryLine, painted, story_lines};
 use std::collections::VecDeque;
 use tokio::sync::broadcast;
+
+/// The banners kept between two publishes, newest kept: a viewer shows no
+/// more at once (`VellumFE`'s `MAX_CONCURRENT`).
+pub(super) const MAX_ALERTS: usize = 5;
 
 pub(super) struct Pending {
     pub(super) lines: VecDeque<StoryLine>,
@@ -27,6 +33,8 @@ pub(super) struct Pending {
     /// report stays out of the story. Other streams -- a thought, a death
     /// -- still show; they were not the command's.
     pub(super) quiet: bool,
+    /// Banners since the last publish, oldest first.
+    pub(super) alerts: Vec<String>,
 }
 
 impl Pending {
@@ -38,6 +46,7 @@ impl Pending {
             generation: snapshot.generation,
             gap: false,
             quiet: false,
+            alerts: Vec::new(),
         }
     }
 
@@ -54,6 +63,14 @@ impl Pending {
         let lines = match event.event {
             Event::Quiet(quiet) => {
                 self.quiet = quiet;
+                return;
+            }
+            Event::Attention(call) => {
+                if let Some(text) = &call.alert {
+                    self.alerts.push(text.clone());
+                    let over = self.alerts.len().saturating_sub(MAX_ALERTS);
+                    self.alerts.drain(..over);
+                }
                 return;
             }
             Event::Line(line) if self.quiet && is_main(&line.stream) => return,

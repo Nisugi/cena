@@ -90,6 +90,15 @@ text nodes. Clickable links and full markup fidelity are outside this slice.
 Diagnostics are `{name, raw, truncated}`, capped at 32 entries, 128 name bytes
 and 1024 raw bytes each; the native model retains its own full diagnostic ring.
 
+An `alert` message is a trigger's banner (`plan/45` Stage 3): `{kind, version,
+session, generation, text}`, sent to the character's pages connected when it
+comes, after the update carrying the line that called it, and never kept in a
+snapshot, so a page opened later is not shown banners it missed. The text is
+plain and is rendered through a text node. A viewer shows it briefly; the
+native session has already applied the trigger's cooldown. Added within version
+1: a page is served by the same process that sends it, and a page from an older
+process cannot pair with a newer one, since the pairing token is per process.
+
 Commands allow 1–4096 UTF-8 bytes with non-whitespace content, no CR/LF/NUL,
 and no trimming of accepted text. Request IDs allow 1–64 ASCII letters, digits,
 hyphens and underscores. Validation is pure; the listener additionally checks

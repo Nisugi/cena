@@ -136,6 +136,23 @@ impl Hub {
     ///
     /// # Errors
     /// Only when the presentation sequence would overflow `u64`.
+    /// Send each of `alerts`, a trigger's banners, to every viewer
+    /// connected now: after the update that carried their lines, and never
+    /// kept for a viewer who connects later (`kind: "alert"`).
+    pub(crate) fn alert(&self, alerts: Vec<String>) {
+        for text in alerts {
+            let message = ServerMessage::Alert {
+                version: WIRE_VERSION,
+                session: self.session.clone(),
+                generation: self.generation.clone(),
+                text,
+            };
+            if let Ok(encoded) = encode(&message) {
+                let _ = self.updates.send(encoded);
+            }
+        }
+    }
+
     pub(crate) fn publish(
         &mut self,
         snapshot: &Snapshot,

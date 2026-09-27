@@ -353,8 +353,21 @@ export function mount(document, environment) {
     text("hub-note", note);
   }
 
+  // A trigger's banners, as text: the session keeps them only a while.
+  function renderAlerts(alerts) {
+    const box = element("alerts");
+    box.replaceChildren();
+    for (const alert of alerts) {
+      const node = document.createElement("p");
+      node.textContent = alert.text;
+      box.appendChild(node);
+    }
+    box.hidden = alerts.length === 0;
+  }
+
   function render(state, ready) {
     minimap.update(state);
+    renderAlerts(state.alerts);
     element("hub").hidden = state.hub === null;
     element("shell").classList.toggle("hub-mode", state.hub !== null);
     if (state.hub !== null) {
@@ -427,8 +440,12 @@ export function mount(document, environment) {
   }
 
   const protocol = environment.location.protocol === "https:" ? "wss:" : "ws:";
+  // The page's own timers, so a banner's time on screen and a reconnect's
+  // wait run on the clock the page was given.
+  const timers = environment.setTimeout ? { schedule: environment.setTimeout,
+    cancel: environment.clearTimeout } : {};
   const session = new HydraSession({ url: `${protocol}//${environment.location.host}/ws`, token,
-    sessionId, onChange: render, WebSocketImpl: environment.WebSocket });
+    sessionId, onChange: render, WebSocketImpl: environment.WebSocket, ...timers });
   const setupLink = document.createElement('button');
   setupLink.textContent = 'Configure hunt (experimental)';
   setupLink.id = 'native-hunt-launch';
