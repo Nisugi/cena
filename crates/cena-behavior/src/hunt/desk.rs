@@ -689,7 +689,7 @@ fn unskinnable(handle: &SessionHandle, file: Option<&std::path::Path>, names: &[
         .map_err(|e| e.to_string())
         .and_then(|text| loot::remember_unskinnable(&text, names))
         .and_then(|written| match written {
-            Some(text) => std::fs::write(file, text).map_err(|e| e.to_string()),
+            Some(text) => crate::settings::save(file, &text).map_err(|e| e.to_string()),
             None => Ok(()),
         });
     match saved {
