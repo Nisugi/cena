@@ -62,6 +62,7 @@ pub(crate) const HELP: &[&str] = &[
     "sorter           show a container's contents one line per category: sorter on, off or status",
     "multi help, foreach help   run commands several times, or once for each item",
     "stop             stop everything Hydra is doing on this character: a hunt, a walk, a batch",
+    "to <name> <command>, all <command>   send a command on another character, or on every one",
 ];
 
 /// Whether a line, without its symbol, asks for [`HELP`].
@@ -86,6 +87,7 @@ pub(crate) struct Commands {
     sorter: Arc<OnceLock<Handler>>,
     trigger: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
+    relay: Arc<OnceLock<Starter>>,
     /// What `;stop` stops: each family that starts something that goes on,
     /// by the word the player knows it by.
     stoppers: Arc<std::sync::Mutex<Vec<(&'static str, Stopper)>>>,
@@ -149,7 +151,7 @@ impl Commands {
     /// answers `Some` for its own words and `None` for the rest, so the
     /// first to answer has the line.
     pub(crate) fn route(&self, line: &str) -> Option<Took> {
-        for family in [&self.travel, &self.hunt, &self.batch] {
+        for family in [&self.travel, &self.hunt, &self.batch, &self.relay] {
             if let Some(starter) = family.get()
                 && let Some(took) = starter(line)
             {
@@ -225,6 +227,13 @@ impl Commands {
     pub(crate) fn trigger(&self, handler: Handler) {
         if self.trigger.set(handler).is_err() {
             eprintln!("  !! [commands] trigger was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;to` and `;all` to `handler` from now on. Once, as for travel.
+    pub(crate) fn relay(&self, handler: Starter) {
+        if self.relay.set(handler).is_err() {
+            eprintln!("  !! [commands] relay was registered twice; keeping the first");
         }
     }
 

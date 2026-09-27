@@ -190,6 +190,7 @@
 //! | **Frontend wire** | [`ServerMessage`] and [`ClientMessage`], versioned by [`WIRE_VERSION`] and written down in `crates/cena-ui/WIRE.md`. No model or protocol type crosses it | |
 //! | **Despana** | the embedded browser viewer: one loopback listener inside the binary ([`cena_web`], [`WebServer`]) | |
 //! | **Pairing token** | the secret a browser presents before any state is sent; held in memory, for this process only | |
+//! | **Relay** | a line typed on one character and sent on another, `;to <name> <command>`, or on every running one, `;all <command>`: as if typed there, its command line first. The author's `;queen` from the borg scripts, renamed (`relay.rs`, `plan/47` step 5) | broadcast |
 //! | **Play window** | one character's own native window in the GUI: its story, one command input that sends on that character, its vitals, room and hands, and Hydra's messages in their own pane. Closing it leaves the character running headless; the hub opens it again ([`App`](cena_gui::App), `plan/47` step 4) | |
 //! | **Hub** | every character at a glance: a card each, start, quit, reconnect, and the merged streams. Two frontends have one: Despana's hub page, and the window's [`Hub`](cena_gui::Hub), in two tabs, Live and Closed (`plan/47`). Requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
 //! | **Character page** | one character's own page. No window shows two characters' story text (`plan/29` §5a) | |

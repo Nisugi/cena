@@ -183,3 +183,6 @@ crates/cena-gui/src/feed.rs 200
 # story/tests.rs: 149 lines, so 200. Both by the rule above: + 50, rounded up.
 crates/cena-gui/src/play.rs 450
 crates/cena-gui/src/story.rs 200
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena/src/relay.rs
+# is ;to and ;all, its tests in relay/tests.rs: 178 lines, so 250.
+crates/cena/src/relay.rs 250

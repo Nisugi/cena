@@ -88,7 +88,9 @@ struct Started {
 /// characters while Hydra runs (`plan/29` step 5c).
 struct Table {
     map: crate::map_context::ConfiguredMap,
-    host: tokio::sync::Mutex<Host>,
+    /// Behind an `Arc` so each character's `;to` and `;all` can look it up
+    /// (`relay.rs`), holding it weakly.
+    host: Arc<tokio::sync::Mutex<Host>>,
     started: std::sync::Mutex<BTreeMap<SessionId, Started>>,
     web: Option<frontend::Frontend>,
     /// The window's sessions, when this run has a window (`gui.rs`).
@@ -153,7 +155,7 @@ pub(crate) async fn serve(
     eprintln!();
     let map = crate::map_context::load();
     let table = Arc::new(Table {
-        host: tokio::sync::Mutex::new(Host::new()),
+        host: Arc::new(tokio::sync::Mutex::new(Host::new())),
         started: std::sync::Mutex::default(),
         // One listener for every character, each with its own page; each
         // page's link is printed when its character is `Ready`.
@@ -252,6 +254,7 @@ impl Table {
             ));
         };
         let commands = Commands::install(&hosted.handle);
+        crate::relay::open(&hosted.handle, &commands, self.characters());
         sorter::open(&hosted.handle, &commands);
         // Following before the first read, so no change falls between.
         let following = self.changes.follow();
@@ -447,6 +450,26 @@ impl Table {
         if let Some(gui) = &self.gui {
             gui.offer(available);
         }
+    }
+
+    /// The characters running now, for a relay (`relay.rs`): looked up when
+    /// the relay is typed, through a weak hold, so a character's command
+    /// line never keeps the table alive.
+    fn characters(&self) -> crate::relay::Characters {
+        let host = Arc::downgrade(&self.host);
+        Arc::new(move || {
+            let host = host.clone();
+            Box::pin(async move {
+                let Some(host) = host.upgrade() else {
+                    return Vec::new();
+                };
+                let host = host.lock().await;
+                host.sessions()
+                    .filter(|(_, hosted)| hosted.is_running())
+                    .map(|(_, hosted)| (hosted.who.character.clone(), hosted.handle.clone()))
+                    .collect()
+            })
+        })
     }
 
     /// Resolves when no session on the table is still running.

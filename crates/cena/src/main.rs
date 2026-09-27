@@ -54,6 +54,7 @@ mod learn;
 mod loot;
 mod map_context;
 mod play;
+mod relay;
 mod roster;
 mod secrets;
 mod setup;
