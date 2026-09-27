@@ -4,7 +4,7 @@
 //! hub and compares it with the images under `tests/snapshots/`
 //! (`UPDATE_SNAPSHOTS=1` rewrites them).
 
-use cena_gui::{Hub, HubView, SHUT_DOWN_QUESTION, Tab};
+use cena_gui::{Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
 use cena_ui::{
     GroupView, HubRequest, LifecycleView, MergedLine, RoundtimeView, SessionCard, StyledRun,
     VitalView, VitalsView,
@@ -20,7 +20,8 @@ struct Board {
     offered: Vec<String>,
     merged: Vec<MergedLine>,
     said: Option<String>,
-    asked: Vec<HubRequest>,
+    windowed: Vec<u32>,
+    asked: Vec<HubAction>,
 }
 
 impl Board {
@@ -30,9 +31,10 @@ impl Board {
             offered: &self.offered,
             merged: &self.merged,
             said: self.said.as_deref(),
+            windowed: &self.windowed,
         };
-        if let Some(request) = self.hub.show(ui, &view) {
-            self.asked.push(request);
+        if let Some(action) = self.hub.show(ui, &view) {
+            self.asked.push(action);
         }
     }
 }
@@ -113,13 +115,19 @@ fn merged() -> Vec<MergedLine> {
     }]
 }
 
+/// Ashryn's play window open; Baelor's closed, so Baelor runs headless.
 fn board() -> Board {
     Board {
         cards: cards(),
         offered: vec!["Orsen".to_owned()],
         merged: merged(),
+        windowed: vec![0],
         ..Board::default()
     }
+}
+
+fn ask(request: HubRequest) -> HubAction {
+    HubAction::Ask(request)
 }
 
 fn hub<'a>(board: Board) -> Harness<'a, Board> {
@@ -220,12 +228,27 @@ fn each_button_asks_for_its_own_character() {
     assert_eq!(
         harness.state().asked,
         [
-            HubRequest::Add("Orsen".to_owned()),
-            HubRequest::Remove(1),
-            HubRequest::Reconnect(2),
-            HubRequest::Remove(2),
+            ask(HubRequest::Add("Orsen".to_owned())),
+            ask(HubRequest::Remove(1)),
+            ask(HubRequest::Reconnect(2)),
+            ask(HubRequest::Remove(2)),
         ]
     );
+}
+
+/// A character running headless -- its play window closed -- offers to
+/// open it again; one whose window is open does not.
+#[test]
+fn a_headless_character_offers_its_window() {
+    let mut harness = hub(board());
+    assert_eq!(
+        harness.query_all_by_label("Open window").count(),
+        1,
+        "Baelor's only"
+    );
+    harness.get_by_label("Open window").click();
+    harness.run();
+    assert_eq!(harness.state().asked, [HubAction::Open(1)]);
 }
 
 /// Shutting down ends every character, so it asks first; keeping on asks
@@ -247,7 +270,7 @@ fn shut_down_asks_first() {
     harness.run();
     harness.get_by_label("Shut down every character").click();
     harness.run();
-    assert_eq!(harness.state().asked, [HubRequest::Shutdown]);
+    assert_eq!(harness.state().asked, [ask(HubRequest::Shutdown)]);
 }
 
 /// The merged streams, tagged with who heard each line, and the binary's

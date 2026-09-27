@@ -9,15 +9,18 @@
 //! binary opens and [`run`]s on the main thread, showing the [`Hub`] over the
 //! [`Sessions`] the binary attached, each followed by its own feed; the hub
 //! starts, quits and reconnects characters through the binary, and shows the
-//! merged streams.
+//! merged streams; and a play window per character, another native window,
+//! with its story and one command input.
 
 mod app;
 pub mod bar;
 mod feed;
 mod hub;
+mod play;
 mod sessions;
+mod story;
 mod text;
 
 pub use app::{App, TITLE, run};
-pub use hub::{Hub, HubView, SHUT_DOWN_QUESTION, Tab};
+pub use hub::{Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
 pub use sessions::Sessions;

@@ -7,8 +7,9 @@
 //! seconds count down. Asking and catching up are `cena-session`'s
 //! ([`retrying`], [`catch_up`]), shared with the pump rather than copied.
 //!
-//! Between snapshots it hears each new event once ([`Ears`]): a line on a
-//! merged stream goes to the hub's merged history.
+//! Between snapshots it hears each new event once ([`Ears`]): into the
+//! seat's story for its play window, and a line on a merged stream into the
+//! hub's merged history.
 
 use std::future::Future;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -45,10 +46,15 @@ pub(crate) struct Ears {
 }
 
 impl Ears {
-    /// A line goes to the merged history, which keeps only the streams that
-    /// merge ([`cena_ui::Merger::offer`]).
-    fn hear(&self, event: &Event) {
-        let Event::Line(line) = event else { return };
+    /// Into the story, as the character's last snapshot routes it; and a line
+    /// to the merged history, which keeps only the streams that merge
+    /// ([`cena_ui::Merger::offer`]).
+    fn hear(&self, event: &ObservedEvent) {
+        let state = lock(&self.seat.snapshot).clone();
+        lock(&self.seat.story).hear(event, state.as_ref().map(|snapshot| &snapshot.state));
+        let Event::Line(line) = &event.event else {
+            return;
+        };
         let lines = story_lines(&line.stream, painted(line));
         lock(&self.merged).offer(
             Instant::now(),
@@ -73,9 +79,9 @@ where
         return;
     };
     let mut seen = Seen::of(&snapshot);
-    show(seat, &snapshot, &window);
     let mut terminal = snapshot.lifecycle == State::Closed;
     let mut ticking = snapshot.state.in_roundtime() == Some(true);
+    show(seat, snapshot, &window);
     let mut dirty = false;
     let mut interval = tokio::time::interval(Duration::from_millis(100));
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -87,12 +93,15 @@ where
                     let immediate = event.generation != seen.generation
                         || matches!(event.event, Event::StateChanged(_) | Event::ConnectFailed { .. });
                     if seen.fresh(&event) {
-                        ears.hear(&event.event);
+                        ears.hear(&event);
                     }
                     dirty = true;
                     immediate
                 }
-                Err(broadcast::error::RecvError::Lagged(_)) => true,
+                Err(broadcast::error::RecvError::Lagged(_)) => {
+                    lock(&seat.story).missed();
+                    true
+                }
                 Err(broadcast::error::RecvError::Closed) => { terminal = true; true }
             },
             _ = interval.tick() => dirty || ticking,
@@ -105,16 +114,19 @@ where
         };
         // What the old receiver still holds up to the new snapshot was
         // published before it; the new receiver starts after.
-        let (caught, _whole) = catch_up(&mut events, seen.cursor, snapshot.cursor);
+        let (caught, whole) = catch_up(&mut events, seen.cursor, snapshot.cursor);
         for event in &caught {
-            ears.hear(&event.event);
+            ears.hear(event);
+        }
+        if !whole {
+            lock(&seat.story).missed();
         }
         seen = Seen::of(&snapshot);
         events = next;
-        show(seat, &snapshot, &window);
         dirty = false;
         ticking = snapshot.state.in_roundtime() == Some(true);
         terminal = snapshot.lifecycle == State::Closed;
+        show(seat, snapshot, &window);
     }
 }
 
@@ -143,14 +155,15 @@ impl Seen {
     }
 }
 
-/// Put `snapshot` on the seat's card, and wake the window.
-fn show(seat: &Seat, snapshot: &Snapshot, window: &Wake) {
+/// Put `snapshot` on the seat, and its card, and wake the window.
+fn show(seat: &Seat, snapshot: Snapshot, window: &Wake) {
     let view = SessionView::project(
         &snapshot.state,
         &snapshot.triggers,
-        lifecycle(snapshot),
+        lifecycle(&snapshot),
         snapshot.state.game_time_now(),
     );
+    *lock(&seat.snapshot) = Some(Arc::new(snapshot));
     {
         let mut card = seat.card.lock().unwrap_or_else(PoisonError::into_inner);
         *card = SessionCard::of(card.session.clone(), card.name.clone(), Some(&view));

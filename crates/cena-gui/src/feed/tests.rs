@@ -61,7 +61,7 @@ fn start_merging(
     script: &Arc<Script>,
     merged: &Arc<Mutex<MergedHistory>>,
 ) -> (Arc<Seat>, tokio::task::JoinHandle<()>) {
-    let seat = Arc::new(Seat::new(SessionId::FIRST, "Ashryn"));
+    let seat = Arc::new(Seat::new(handle(), "Ashryn"));
     let answering = Arc::clone(script);
     let ears = Ears {
         seat: Arc::clone(&seat),
@@ -79,6 +79,15 @@ fn start_merging(
         .await;
     });
     (seat, task)
+}
+
+/// A handle whose session is not there: the feed never sends.
+fn handle() -> cena_session::SessionHandle {
+    cena_session::SessionHandle::new(
+        tokio::sync::mpsc::channel(1).0,
+        cena_session::GenerationCell::default(),
+        broadcast::channel(1).0,
+    )
 }
 
 fn start(script: &Arc<Script>) -> (Arc<Seat>, tokio::task::JoinHandle<()>) {
@@ -244,6 +253,26 @@ fn a_stopped_session_says_why() {
             detail: Some("not logged in: [auth] bad password".to_owned())
         }
     );
+}
+
+/// A feed that fell behind the session marks the hole in the story rather
+/// than joining the lines on either side as if nothing were missing.
+#[tokio::test(start_paused = true)]
+async fn a_feed_that_fell_behind_marks_the_hole() {
+    let script = Script::new([
+        Ok(snapshot(0, State::Ready, None)),
+        Ok(snapshot(40, State::Ready, None)),
+    ]);
+    let (seat, _task) = start(&script);
+    settle().await;
+    // More than the channel holds, before the feed can read one.
+    for cursor in 1..=40 {
+        let _ = script
+            .events
+            .send(observed(cursor, said("", &format!("line {cursor}"))));
+    }
+    settle().await;
+    assert!(lock(&seat.story).lines.contains(&crate::story::Shown::Gap));
 }
 
 #[test]

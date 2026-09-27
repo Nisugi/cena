@@ -10,11 +10,14 @@
 
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
-use cena_session::{SessionHandle, SessionId, SessionObserver};
+use cena_session::{
+    Notice, NoticeKind, Outcome, SessionHandle, SessionId, SessionObserver, Snapshot,
+};
 use cena_ui::{HubControl, HubRequest, MergedHistory, MergedLine, SessionCard};
 use tokio_util::sync::CancellationToken;
 
 use crate::feed;
+use crate::story::Story;
 
 /// The sessions the window shows. Cloneable, and usable from the binary's
 /// runtime while the window runs on the main thread.
@@ -65,6 +68,12 @@ impl Wake {
 pub(crate) struct Seat {
     /// Its card on the hub, as its feed last saw it.
     pub(crate) card: Mutex<SessionCard>,
+    /// The character as its feed last saw it, for its play window.
+    pub(crate) snapshot: Mutex<Option<Arc<Snapshot>>>,
+    /// Its story, messages and banners, kept by its feed.
+    pub(crate) story: Mutex<Story>,
+    /// What its play window's commands go through.
+    pub(crate) handle: SessionHandle,
     /// Cancelled when it is detached, which ends its feed.
     pub(crate) stop: CancellationToken,
     /// Which session it is.
@@ -74,10 +83,14 @@ pub(crate) struct Seat {
 }
 
 impl Seat {
-    /// A seat for session `id`, named `name`, with nothing seen yet.
-    pub(crate) fn new(id: SessionId, name: &str) -> Self {
+    /// A seat for `handle`'s session, named `name`, with nothing seen yet.
+    pub(crate) fn new(handle: SessionHandle, name: &str) -> Self {
+        let id = handle.session();
         Self {
             card: Mutex::new(SessionCard::of(id.0.to_string(), name.to_owned(), None)),
+            snapshot: Mutex::default(),
+            story: Mutex::default(),
+            handle,
             stop: CancellationToken::new(),
             id,
             name: name.to_owned(),
@@ -126,7 +139,7 @@ impl Sessions {
     /// Show `handle`'s session as `name`, the character, and start following
     /// it. Replaces an earlier attachment of the same session.
     pub fn attach(&self, name: &str, observer: SessionObserver, handle: &SessionHandle) {
-        let seat = Arc::new(Seat::new(handle.session(), name));
+        let seat = Arc::new(Seat::new(handle.clone(), name));
         {
             let mut seats = self.seats();
             if let Some(old) = seats.iter().position(|old| old.id == seat.id) {
@@ -223,6 +236,46 @@ impl Sessions {
         }
     }
 
+    /// Every attached session's seat, in the order they were attached.
+    pub(crate) fn seated(&self) -> Vec<Arc<Seat>> {
+        self.seats().clone()
+    }
+
+    /// A seat for `handle`'s session with no feed behind it, as a test
+    /// needs: nothing here can make a live session.
+    #[cfg(test)]
+    pub(crate) fn seat_for_test(&self, handle: SessionHandle, name: &str) -> Arc<Seat> {
+        let seat = Arc::new(Seat::new(handle, name));
+        self.seats().push(Arc::clone(&seat));
+        seat
+    }
+
+    /// Send `line` on `seat`'s character as the player typed it, on the
+    /// connection its window last saw: Hydra's command line first, then the
+    /// game (`SessionHandle::send_manual_at`). It is echoed in the story at
+    /// once; a line that may not have gone is said in Hydra's pane.
+    pub(crate) fn send(&self, seat: &Arc<Seat>, line: String) {
+        lock(&seat.story).typed(&line);
+        let Some(generation) = lock(&seat.snapshot).as_ref().map(|shot| shot.generation) else {
+            lock(&seat.story).tell(Notice::line(
+                NoticeKind::Warn,
+                "Not connected yet; nothing was sent.",
+            ));
+            return;
+        };
+        let (seat, window) = (Arc::clone(seat), self.shared.window.clone());
+        self.shared.runtime.spawn(async move {
+            let outcome = seat
+                .handle
+                .send_manual_at(generation, &line, SEND_DEADLINE)
+                .await;
+            if let Some(why) = unsent(&outcome) {
+                lock(&seat.story).tell(Notice::line(NoticeKind::Warn, why));
+                window.wake();
+            }
+        });
+    }
+
     /// Every attached session's card, in the order they were attached.
     #[must_use]
     pub fn cards(&self) -> Vec<SessionCard> {
@@ -234,6 +287,28 @@ impl Sessions {
 
     fn seats(&self) -> MutexGuard<'_, Vec<Arc<Seat>>> {
         lock(&self.shared.seats)
+    }
+}
+
+/// How long a typed line waits for its answer: Despana's `COMMAND_TIMEOUT`
+/// is the same order.
+const SEND_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// What the player is told about a line that may not have gone, in
+/// Despana's receipt words (`cena-web/src/socket.rs`, `outcome_receipt`);
+/// `None` when it went, or Hydra ran it.
+fn unsent(outcome: &Outcome) -> Option<String> {
+    match outcome {
+        Outcome::Handled | Outcome::Confirmed(_) => None,
+        Outcome::Refused(why) => Some(format!("Not sent: the session refused it ({why:?}).")),
+        Outcome::Timeout => Some(
+            "No answer yet; the command may have reached the game. Do not send it again blindly."
+                .to_owned(),
+        ),
+        Outcome::Interrupted | Outcome::Dead | Outcome::Disconnected => Some(
+            "The connection was interrupted; that command may not have reached the game."
+                .to_owned(),
+        ),
     }
 }
 

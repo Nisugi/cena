@@ -27,6 +27,15 @@ pub enum Tab {
     Closed,
 }
 
+/// What the player asked the hub for.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HubAction {
+    /// Something for the binary, the owner of the session table.
+    Ask(HubRequest),
+    /// Open this session's play window: the window's own business.
+    Open(u32),
+}
+
 /// What the hub shows this frame, gathered by the window from its sessions.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct HubView<'a> {
@@ -39,6 +48,9 @@ pub struct HubView<'a> {
     pub merged: &'a [MergedLine],
     /// What the binary answered the last request, if it has.
     pub said: Option<&'a str>,
+    /// The sessions whose play window is open; a live card without one
+    /// offers to open it.
+    pub windowed: &'a [u32],
 }
 
 /// The hub's own state, which outlives a frame.
@@ -56,7 +68,7 @@ pub const SHUT_DOWN_QUESTION: &str = "Shut Hydra down? Every character will quit
 impl Hub {
     /// Draw the hub over `view`, and return what the player asked for, if
     /// anything.
-    pub fn show(&mut self, ui: &mut egui::Ui, view: &HubView<'_>) -> Option<HubRequest> {
+    pub fn show(&mut self, ui: &mut egui::Ui, view: &HubView<'_>) -> Option<HubAction> {
         let mut asked = None;
         let (closed, live): (Vec<&SessionCard>, Vec<&SessionCard>) = view
             .cards
@@ -80,7 +92,7 @@ impl Hub {
                 ui.label(SHUT_DOWN_QUESTION);
                 if ui.button("Shut down every character").clicked() {
                     self.confirming = false;
-                    asked = Some(HubRequest::Shutdown);
+                    asked = Some(HubAction::Ask(HubRequest::Shutdown));
                 }
                 if ui.button("Keep playing").clicked() {
                     self.confirming = false;
@@ -98,9 +110,15 @@ impl Hub {
         match self.tab {
             Tab::Live => {
                 start(ui, view.offered, &mut asked);
-                list(ui, &live, "No character is running.", &mut asked);
+                list(ui, &live, view, "No character is running.", &mut asked);
             }
-            Tab::Closed => list(ui, &closed, "No character has closed this run.", &mut asked),
+            Tab::Closed => list(
+                ui,
+                &closed,
+                view,
+                "No character has closed this run.",
+                &mut asked,
+            ),
         }
         asked
     }
@@ -113,14 +131,14 @@ impl Hub {
 }
 
 /// A button for each character the hub can start.
-fn start(ui: &mut egui::Ui, offered: &[String], asked: &mut Option<HubRequest>) {
+fn start(ui: &mut egui::Ui, offered: &[String], asked: &mut Option<HubAction>) {
     if offered.is_empty() {
         return;
     }
     ui.horizontal_wrapped(|ui| {
         for name in offered {
             if ui.button(format!("Start {name}")).clicked() {
-                *asked = Some(HubRequest::Add(name.clone()));
+                *asked = Some(HubAction::Ask(HubRequest::Add(name.clone())));
             }
         }
     });
@@ -128,7 +146,13 @@ fn start(ui: &mut egui::Ui, offered: &[String], asked: &mut Option<HubRequest>) 
 }
 
 /// The cards of one tab, or what an empty one says.
-fn list(ui: &mut egui::Ui, cards: &[&SessionCard], none: &str, asked: &mut Option<HubRequest>) {
+fn list(
+    ui: &mut egui::Ui,
+    cards: &[&SessionCard],
+    view: &HubView<'_>,
+    none: &str,
+    asked: &mut Option<HubAction>,
+) {
     if cards.is_empty() {
         ui.label(none);
         return;
@@ -137,8 +161,8 @@ fn list(ui: &mut egui::Ui, cards: &[&SessionCard], none: &str, asked: &mut Optio
         .id_salt("hub-cards")
         .show(ui, |ui| {
             for card in cards {
-                if let Some(request) = draw(ui, card) {
-                    *asked = Some(request);
+                if let Some(action) = draw(ui, card, view.windowed) {
+                    *asked = Some(action);
                 }
             }
         });
@@ -147,7 +171,7 @@ fn list(ui: &mut egui::Ui, cards: &[&SessionCard], none: &str, asked: &mut Optio
 /// One card: who, how it is connected, its four gauges, a line of what else
 /// a player glances at -- roundtime, room, group (`plan/29` §5a R3) -- and
 /// what can be done with it.
-fn draw(ui: &mut egui::Ui, card: &SessionCard) -> Option<HubRequest> {
+fn draw(ui: &mut egui::Ui, card: &SessionCard, windowed: &[u32]) -> Option<HubAction> {
     let mut asked = None;
     let number = card.session.parse::<u32>().ok();
     egui::Frame::group(ui.style()).show(ui, |ui| {
@@ -188,13 +212,18 @@ fn draw(ui: &mut egui::Ui, card: &SessionCard) -> Option<HubRequest> {
         ui.horizontal(|ui| {
             if matches!(card.lifecycle, LifecycleView::Closed { .. }) {
                 if ui.button("Reconnect").clicked() {
-                    asked = Some(HubRequest::Reconnect(number));
+                    asked = Some(HubAction::Ask(HubRequest::Reconnect(number)));
                 }
                 if ui.button("Remove").clicked() {
-                    asked = Some(HubRequest::Remove(number));
+                    asked = Some(HubAction::Ask(HubRequest::Remove(number)));
                 }
-            } else if ui.button("Quit").clicked() {
-                asked = Some(HubRequest::Remove(number));
+                return;
+            }
+            if !windowed.contains(&number) && ui.button("Open window").clicked() {
+                asked = Some(HubAction::Open(number));
+            }
+            if ui.button("Quit").clicked() {
+                asked = Some(HubAction::Ask(HubRequest::Remove(number)));
             }
         });
     });
@@ -237,8 +266,9 @@ pub(crate) fn amount(vital: &VitalView) -> Amount {
 }
 
 /// How a character is connected, in the web hub's words (`app.js`'s
-/// `lifecycleText`), so the two hubs say the same thing.
-fn lifecycle(lifecycle: &LifecycleView) -> String {
+/// `lifecycleText`), so the two hubs -- and a play window -- say the same
+/// thing.
+pub(crate) fn lifecycle(lifecycle: &LifecycleView) -> String {
     let dashed = |detail: &Option<String>| {
         detail
             .as_ref()

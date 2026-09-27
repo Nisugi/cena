@@ -57,6 +57,9 @@ pub(crate) fn open(
         desk.group_on(Arc::clone(&party.boards));
         desk
     });
+    if let Some(desk) = desk.clone() {
+        commands.stops("hunt", Arc::new(move || desk.stop()));
+    }
     if let (Some(desk), Some((_, name))) = (&desk, &who) {
         take_seat(party, name, desk, handle, &observer);
     }
