@@ -72,6 +72,7 @@ fn saving_one_section_keeps_a_section_this_build_has_never_heard_of() {
         again.sections["highlights"]["rules"][0]["match"], "kobold",
         "another system's settings were lost by saving ours"
     );
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
