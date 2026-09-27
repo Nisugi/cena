@@ -556,7 +556,7 @@ async fn an_act_above_the_level_waits_for_the_player() {
     assert!(
         capabilities["tools"]
             .as_array()
-            .is_some_and(|tools| tools.len() == 11 && tools.iter().all(|t| t["needs"].is_string())),
+            .is_some_and(|tools| tools.len() == 12 && tools.iter().all(|t| t["needs"].is_string())),
         "{capabilities}"
     );
     stop.cancel();
@@ -596,6 +596,7 @@ fn walker() -> cena_session::operation::Performer {
         allowed: "walk <place>".to_owned(),
         allows,
         start,
+        halt: std::sync::Arc::new(|| {}),
     }
 }
 

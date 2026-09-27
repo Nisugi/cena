@@ -108,7 +108,7 @@ fn open_travel(
     {
         eprintln!("  !! [commands] no command line to give the symbol {symbol} to");
     }
-    crate::agent::control(handle, commands, state);
+    crate::agent::control(handle, &observer, commands, state);
     let map = load_map(handle, configured);
     // Hunt walks with travel's driver, so it takes the same map, or none.
     let hunt = crate::hunt::open(

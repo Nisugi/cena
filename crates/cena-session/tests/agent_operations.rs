@@ -62,6 +62,7 @@ fn performer(starts: &Arc<AtomicUsize>, arrive: &CancellationToken) -> Performer
         allowed: "walk <place>".to_owned(),
         allows,
         start,
+        halt: std::sync::Arc::new(|| {}),
     }
 }
 
@@ -263,6 +264,7 @@ async fn progress_is_heard_when_it_changes_and_not_otherwise() {
         allowed: "anything".to_owned(),
         allows,
         start,
+        halt: std::sync::Arc::new(|| {}),
     }));
     handle.set_agent_level(Level::Behaviors);
     let door = handle.agent_door();

@@ -33,11 +33,19 @@ Each character has a level, lowest first; each allows everything below it:
 | `advise` | also `tell_player` |
 | `behaviors` | also `perform` a behavior and `control` it: `go2`, `hunt`, `heal`, `keep`, `waggle` (`capabilities` lists them) |
 | `commands` | also send game commands of its own with `command`, one line at a time, never one the denylist refuses |
+| `takeover` | also `take_over`: stop what runs and hold the character |
 
 **Only the player sets a level**, with the Hydra command `agent level <level>`; it lasts from
-run to run. No tool changes it. A later level (`takeover`) arrives with the tools it allows; a client must treat a level word it does not know as allowing no more than it
-has seen allowed. **A lowered level stops nothing that runs**: the agent can no longer steer
-its operations, and the player's own stop ends them.
+run to run. No tool changes it. A client must treat a level word it does not know as
+allowing no more than it has seen allowed. **A lowered level stops nothing that runs**, save a
+takeover, which a level below `takeover` ends at once: the agent can no longer steer its
+operations, and the player's own stop ends them.
+
+**A run of yours that ends badly drops the level to `observe`** (`plan/35` §4): a behavior you
+performed, or a takeover, that ends `dead`, `disconnected`, `wedged` (the watchdog found it
+stopped) or `trouble` (the dead man's switch). The player is told, and only the player raises
+it again; the drop is kept. **The player's `agent stop`** stops every operation of yours and
+takes back a takeover at once; the level stays where it was.
 
 **A tool the level does not allow is refused**, as a tool error (`isError: true`) whose JSON is:
 
@@ -115,7 +123,7 @@ the first. Answers `{happenings, cursor, lagged, closed}`. Wait next from the re
 | `status` | `id`, `now` (`true`, `false`, or `null`: now unknown) |
 | `moved` | `from`, `to` (the game's room numbers), `title` |
 | `arrived`, `left`, `creature_died` | `id`, `name` — only between two stated lists |
-| `sent` | `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`: yours are `agent`) |
+| `sent` | `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`: yours are `agent`, a takeover's too) |
 | `notice` | `text`: Hydra said something to the player |
 | `lifecycle` | `state` |
 | `gap` | some `sent`/`notice` were missed; the rest come from the next snapshot |
@@ -197,6 +205,29 @@ game takes abbreviations; `mark ... remove`; `set nomarkeddrop` or `set saferdro
 and a `put` that names no container, or puts on the ground, the floor or the room (`put my
 topaz` drops it). Refused as `{"refused": "request", "why": "never sent: ..."}`. The list is
 not a statement of what is safe.
+
+## `take_over` `{ character, because, request_id, expected_generation }`
+
+Take the character over, as an operation. Needs `takeover`; below it, and above `off`, the
+player is asked. It stops whatever runs, takes the command authority, and holds it: while it
+holds, no behavior can start (`perform` is refused until you give it back), and your
+`command`s are sent as the holder's, still after the player's own typing. Its `progress`
+reads `holding the character` once it holds. **Nothing resumes by itself afterwards**: you
+start what comes next. One at a time: a second is refused, naming the first.
+
+It ends, each ending its own `reason`:
+
+| `reason` | `work` | Who |
+|---|---|---|
+| `released` | `completed` | you: `control stop` on it |
+| `revoked` | `interrupted` | the player: `agent stop` -- the authority is taken back at once, and whatever you still had queued is refused, never sent |
+| `level_lowered` | `interrupted` | the player, below `takeover`: as `revoked` |
+| `owner_idle` | `interrupted` | nobody: five minutes without you reading or acting on the character |
+| `disconnected`, `session_ended` | `interrupted` | the connection |
+| `dead` | `failed` | the character died |
+| `authority_held` | `no_opportunity` | it never took hold |
+
+`dead` and `disconnected` drop the level to `observe`.
 
 ## `operation` `{ character, operation? }`
 

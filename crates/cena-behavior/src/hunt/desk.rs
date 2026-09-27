@@ -611,7 +611,8 @@ impl Desk {
                 // Stopped by the player, or preempted as wedged: either way
                 // the hunt was cancelled from outside.
                 watched = watch(handle, stop, &heartbeat, BEHAVIOR_WATCHDOG, "Hunt") => match watched {
-                    Watched::Stopped | Watched::Wedged(_) => HuntEnd::Stopped(BehaviorError::Cancelled),
+                    Watched::Stopped => HuntEnd::Stopped(BehaviorError::Cancelled),
+                    Watched::Wedged(_) => HuntEnd::Stopped(BehaviorError::Wedged),
                 },
             }
         };

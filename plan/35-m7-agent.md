@@ -582,6 +582,36 @@ Each ends in something demonstrable, as `12` §8 asks.
      sent as `agent`, and a command approved below the level. Mutations: the denylist
      skipped at the door lets `drop sword` out; sent as `Manual`, the origin test fails.
 5. **Takeover.** `Origin::Agent`, `take_over`, and the level dropping after a bad run.
+   **BUILT 2026-09-27** (the author approved the rest of the steps: *"I approve the rest of the
+   steps"*). `crates/cena-session/src/agent/takeover.rs`.
+   - **The sixth level, `takeover`**, and `take_over`, an operation: it stops what runs -- the
+     binary's behaviors through its performer's new `halt`, then the session's own preempt,
+     which takes the authority from a holder that does not let go -- and claims the authority
+     under the agent's own token (`AuthorityToken(7)`). While it holds, no behavior can start,
+     and the agent's lines are the holder's: `Origin::Agent` now carries the token it holds,
+     so they queue as a behavior's do and are refused, never sent, once the authority is
+     taken back (issue #19 point 5's *"revoke while an action waits ... no old send occurs
+     afterward"*). The player's typing still goes first.
+   - **Each ending its own** (point 5's *"graceful retreat and hard revocation produce
+     different, explicit results"*): `released` by the agent; `revoked` by the player's new
+     **`;agent stop`**, which also stops every running agent operation and takes the authority
+     back at once, synchronously, before the takeover notices; `level_lowered` the same;
+     `owner_idle` after five minutes without the agent touching the character (point 5's
+     *"bounded owner liveness"* and *"model hangs do not block status or stop"*);
+     `disconnected`, `session_ended`, `dead`. One takeover at a time (*"two clients cannot
+     both own takeover"*). Nothing resumes by itself.
+   - **A run that ends badly drops the level** to Observe: an agent's behavior or takeover
+     ending `dead`, `disconnected`, `wedged` or `trouble`. `wedged` is new:
+     `BehaviorError::Wedged`, the watchdog's preemption, which read as a plain stop until
+     now. The binary keeps every level change in the settings file, so the drop survives a
+     restart.
+   - Not bound to one MCP client: Hydra has one agent token, so "which client" is the token's
+     holder; a second client with the same token is the same caller.
+   - Tests: `crates/cena-session/tests/agent_takeover.rs` (three, against a running scripted
+     game with time paused: held, refused, sent as the holder's, released; revoked at once;
+     a lowered level, five idle minutes, a death that drops the level). Mutations: the
+     player's stop waiting for the takeover to notice turns two red; the holder's line sent
+     without its token, one; no level drop, one.
 6. **Acceptance, live, author present:** a hunt ends on its rest threshold, the agent (not
    the hunt) decides what is next and does it; the player stops the agent mid-act.
 

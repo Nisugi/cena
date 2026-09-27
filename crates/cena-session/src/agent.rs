@@ -67,9 +67,12 @@
 
 mod denylist;
 mod door;
+mod takeover;
 
 pub use denylist::refused;
 pub use door::{Call, Door};
+pub use takeover::{OWNER_IDLE, TOKEN};
+pub(crate) use takeover::{drop_level, ended_badly, holding as takeover_token};
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -105,16 +108,20 @@ pub enum Level {
     /// same queue as the player's typing, and never a line the denylist
     /// refuses ([`Door::command`], [`refused`]).
     Commands,
+    /// Also take the character over: stop what runs and hold the command
+    /// authority ([`Door::take_over`]).
+    Takeover,
 }
 
 impl Level {
     /// Every level, lowest first.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Off,
         Self::Observe,
         Self::Advise,
         Self::Behaviors,
         Self::Commands,
+        Self::Takeover,
     ];
 
     /// The word the player types and the settings file keeps.
@@ -126,6 +133,7 @@ impl Level {
             Self::Advise => "advise",
             Self::Behaviors => "behaviors",
             Self::Commands => "commands",
+            Self::Takeover => "takeover",
         }
     }
 
@@ -151,6 +159,9 @@ impl Level {
             }
             Self::Commands => {
                 "an agent may also send game commands of its own, one line at a time, but never drop, give, sell or destroy anything"
+            }
+            Self::Takeover => {
+                "an agent may also take the character over: stop what runs and hold it until it gives it back or you take it"
             }
         }
     }
@@ -209,6 +220,8 @@ pub enum Act {
         /// The line, as it goes.
         line: String,
     },
+    /// Take the character over ([`Door::take_over`]).
+    TakeOver,
     /// Steer an operation an agent started ([`Door::control`]).
     Control {
         /// The operation's number.
@@ -226,6 +239,7 @@ impl Act {
             Self::TellPlayer { .. } => Level::Advise,
             Self::Perform { .. } | Self::Control { .. } => Level::Behaviors,
             Self::Command { .. } => Level::Commands,
+            Self::TakeOver => Level::Takeover,
         }
     }
 
@@ -240,6 +254,7 @@ impl Act {
             }
             Self::Perform { line } => format!("run `{line}`"),
             Self::Command { line } => format!("send `{line}` to the game"),
+            Self::TakeOver => "take the character over: stop what runs and hold it".to_owned(),
             Self::Control { operation, control } => {
                 format!("{} its operation {operation}", control.word())
             }
@@ -342,6 +357,10 @@ struct Inner {
     /// Every request id admitted, oldest first.
     requests: VecDeque<Admission>,
     operations: Table,
+    /// The agent holding the character, when it does.
+    takeover: Option<takeover::Holding>,
+    /// When the agent last touched the character, reading or acting.
+    last_seen: Option<Instant>,
 }
 
 #[derive(Debug)]
@@ -481,7 +500,7 @@ impl SessionHandle {
     /// as if the player had started it; below [`Level::Behaviors`] the agent
     /// can no longer steer it, and the player's own stop ends it.
     pub fn set_agent_level(&self, level: Level) {
-        let dropped = {
+        let (dropped, held) = {
             let mut inner = self.agent.lock();
             if inner.level == level {
                 return;
@@ -493,8 +512,9 @@ impl SessionHandle {
             for waiting in &dropped {
                 inner.settle_asked(waiting.id, Answer::NotApproved(waiting.id));
             }
-            dropped
+            (dropped, inner.takeover.clone())
         };
+        takeover::level_changed(self, held, level);
         for waiting in dropped {
             self.decided(Change::Answered {
                 id: waiting.id,
@@ -637,6 +657,18 @@ impl SessionHandle {
                     format!(
                         "Agent: sent `{line}` (operation {}), because: {because}",
                         report.id
+                    ),
+                ));
+                Ok(Admitted::Operation(report))
+            }
+            Act::TakeOver => {
+                let report = takeover::take_over(self, approval)?;
+                self.say(Notice::line(
+                    NoticeKind::Warn,
+                    format!(
+                        "Agent: taking the character over (operation {}), because: {because}. {}agent stop takes it back.",
+                        report.id,
+                        self.symbol()
                     ),
                 ));
                 Ok(Admitted::Operation(report))

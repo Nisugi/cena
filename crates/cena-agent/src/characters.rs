@@ -134,7 +134,7 @@ fn direct(event: &Event) -> Option<Happening> {
     match event {
         Event::Sent { line, origin } => Some(Happening::Sent {
             line: line.clone(),
-            origin: format!("{origin:?}").to_ascii_lowercase(),
+            origin: origin.word().to_owned(),
         }),
         Event::Notice(notice) => Some(Happening::Notice {
             text: notice.lines().join("\n"),

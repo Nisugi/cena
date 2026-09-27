@@ -67,6 +67,7 @@ impl Door {
     /// [`Refused`], with [`Approval::NotAsked`]; the player is told, at most
     /// once every few minutes however often the agent asks.
     pub fn may(&self, needed: Level) -> Result<(), Refused> {
+        self.handle.agent.lock().last_seen = Some(Instant::now());
         let level = self.level();
         if level >= needed {
             return Ok(());
@@ -151,6 +152,18 @@ impl Door {
         )
     }
 
+    /// Take the character over: stop what runs and hold the command
+    /// authority, as an operation (`super::takeover`). Needs
+    /// [`Level::Takeover`]. `control stop` on it gives the character back.
+    ///
+    /// # Errors
+    ///
+    /// [`Denied`]: the level; or a takeover already holding, a stale
+    /// generation, a request id used for another act.
+    pub fn take_over(&self, because: &str, call: Call<'_>) -> Result<Admitted, Denied> {
+        self.act(Act::TakeOver, because, call)
+    }
+
     /// Steer operation `operation`. Needs [`Level::Behaviors`].
     ///
     /// **Admission is not application**: the report says the operation is
@@ -190,11 +203,12 @@ impl Door {
         let (next, level, lapsed) = {
             let mut inner = handle.agent.lock();
             let lapsed = inner.lapse(now);
+            inner.last_seen = Some(now);
             let level = inner.level;
             let next = match inner.recall(call.request, &act) {
                 Recalled::Other => Next::Other,
                 Recalled::Answer(answer) => Next::Answered(answer),
-                Recalled::New => match stale(&inner.operations, &act) {
+                Recalled::New => match stale(&inner.operations, inner.takeover.as_ref(), &act) {
                     Some(why) => Next::Stale(why),
                     None if level >= needed => {
                         inner.remember(call.request, &act, Answer::InFlight);
@@ -397,8 +411,19 @@ enum Next {
 }
 
 /// Why a new act can no longer be done at all: an operation that is not
-/// kept, or has ended.
-fn stale(operations: &crate::operation::Table, act: &Act) -> Option<String> {
+/// kept, or has ended; a behavior to start while the agent holds the
+/// character, which it would find held.
+fn stale(
+    operations: &crate::operation::Table,
+    holding: Option<&super::takeover::Holding>,
+    act: &Act,
+) -> Option<String> {
+    if let (Act::Perform { .. }, Some(held)) = (act, holding) {
+        return Some(format!(
+            "the agent holds this character (operation {}): give it back with `control stop` first, and nothing resumes by itself",
+            held.operation
+        ));
+    }
     let Act::Control { operation, .. } = act else {
         return None;
     };

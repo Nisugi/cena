@@ -31,7 +31,7 @@ use std::sync::Arc;
 use cena_behavior::operation::{Steering, Underway};
 use cena_behavior::{hunt, travel};
 use cena_session::operation::{
-    Allows, Control, Ended, Performer, Progress, Reporter, Start, Started, Steer, Work,
+    Allows, Control, Ended, Halt, Performer, Progress, Reporter, Start, Started, Steer, Work,
 };
 use cena_session::{AuthorityToken, SessionHandle, SessionObserver};
 use tokio_util::sync::CancellationToken;
@@ -105,6 +105,12 @@ pub(crate) fn install(
         let line = canonical(line);
         job(&line).map(|_| line)
     });
+    // A takeover stops what runs first, as the player's own stops do.
+    let (walking, hunting) = (travel.clone(), hunt.clone());
+    let halt: Halt = Arc::new(move || {
+        let _ = walking.as_ref().is_some_and(|desk| desk.stop());
+        let _ = hunting.as_ref().is_some_and(|desk| desk.stop());
+    });
     let (session, observer) = (handle.clone(), observer.clone());
     let start: Start = Arc::new(move |line: &str, reporter: Reporter| {
         started(
@@ -120,6 +126,7 @@ pub(crate) fn install(
         allowed: ALLOWED.to_owned(),
         allows,
         start,
+        halt,
     };
     if !handle.set_performer(performer) {
         eprintln!("  !! [agent] something already runs this session's behaviors for an agent");

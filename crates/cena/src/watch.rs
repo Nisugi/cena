@@ -57,7 +57,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
                     // A trigger's send (`plan/45` Stage 5): never the
                     // player's, so never shown as `manual`.
                     Origin::Trigger => "trigger",
-                    Origin::Agent => "agent",
+                    Origin::Agent(_) => "agent",
                 };
                 eprintln!("{who}  -> [{tag}] {line}");
             }

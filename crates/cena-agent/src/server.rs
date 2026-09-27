@@ -38,7 +38,10 @@ an agent may do with it, its level: `off` (the default) allows nothing, `observe
 reading and `text`, `advise` also allows `tell_player`, `behaviors` also allows `perform` (start a \
 behavior as an operation: a walk, a hunt, a heal) and `control` (stop it; hold, resume or \
 retreat a hunt), and `commands` also allows `command` (one line to the game, never one the \
-denylist refuses: nothing dropped, given, sold or destroyed). A tool the level \
+denylist refuses: nothing dropped, given, sold or destroyed), and `takeover` also allows \
+`take_over` (stop what runs and hold the character until you `control stop` it or the player \
+takes it back; nothing resumes by itself). A run you started that ends in death, a \
+disconnect or the watchdog drops the level to `observe`. A tool the level \
 does not allow answers `refused`, naming the level it needed; only the player can raise a \
 level, and the player is told you asked. An act refused above `off` waits for the player's \
 yes: `wait` for its `approval`. Every act takes your own `request_id`: asking again with the \
@@ -170,6 +173,19 @@ pub struct Reading {
     pub since: Option<u64>,
     /// At most this many lines; absent is 50, and never more than 200.
     pub limit: Option<u64>,
+}
+
+/// `take_over`'s reason.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Seize {
+    /// The character to take over.
+    pub character: String,
+    /// Why, as for `perform`.
+    pub because: String,
+    /// Your own id for this request, as for `tell_player`.
+    pub request_id: String,
+    /// The `generation` `state` last gave: a stale one is refused.
+    pub expected_generation: u64,
 }
 
 /// `operation`'s question.
@@ -412,6 +428,23 @@ impl Agent {
     }
 
     #[tool(
+        description = "Take the character over: stop whatever runs and hold the command authority, as an operation. Needs the `takeover` level. While you hold it no behavior can start, your `command`s are sent as the holder's, and the player's typing still goes first. `control stop` on it gives the character back; the player's `agent stop` takes it back at once; it also ends on a disconnect, a death, a lowered level, or five minutes without you touching the character. Nothing resumes by itself afterwards."
+    )]
+    async fn take_over(
+        &self,
+        Parameters(asked): Parameters<Seize>,
+    ) -> Result<CallToolResult, ErrorData> {
+        bounded("because", &asked.because, MAX_BECAUSE)?;
+        request(&asked.request_id)?;
+        let seat = self.seat(&asked.character)?;
+        let call = Call {
+            request: &asked.request_id,
+            generation: Some(generation(asked.expected_generation)?),
+        };
+        admitted(&seat.name, seat.door.take_over(&asked.because, call))
+    }
+
+    #[tool(
         description = "Steer an operation `perform` started: `stop`; a hunt also takes `hold` (it defends itself and starts nothing: no new target, no looting, no buffs, no wandering, no walk back from a rest), `resume`, and `retreat` (it walks to its resting room and ends there). Needs the `behaviors` level. Admission is not application: the operation reads `held`, `retreating` or `stopping`, then `ended`."
     )]
     async fn control(
@@ -572,6 +605,7 @@ fn needs(tool: &str) -> Option<Level> {
         "tell_player" => Some(Level::Advise),
         "perform" | "control" => Some(Level::Behaviors),
         "command" => Some(Level::Commands),
+        "take_over" => Some(Level::Takeover),
         _ => None,
     }
 }

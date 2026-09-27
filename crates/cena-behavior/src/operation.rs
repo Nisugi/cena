@@ -120,6 +120,7 @@ fn stopped(why: BehaviorError) -> Ended {
         BehaviorError::Dead => Ended::plainly(Work::Failed, "dead"),
         BehaviorError::Disconnected => Ended::plainly(Work::Interrupted, "disconnected"),
         BehaviorError::AuthorityHeld => Ended::plainly(Work::NoOpportunity, "authority_held"),
+        BehaviorError::Wedged => Ended::plainly(Work::Failed, "wedged"),
     }
 }
 

@@ -207,6 +207,11 @@ pub struct Reporter {
 }
 
 impl Reporter {
+    /// The operation it reports for.
+    pub(crate) const fn id(&self) -> u64 {
+        self.id
+    }
+
     /// The operation's progress now. Said to whoever watches only when what
     /// it is doing, or its stall, has changed.
     pub fn progress(&self, progress: Progress) {
@@ -245,6 +250,10 @@ pub type Allows = Arc<dyn Fn(&str) -> Result<String, String> + Send + Sync>;
 /// [`Reporter`] given.
 pub type Start = Arc<dyn Fn(&str, Reporter) -> Started + Send + Sync>;
 
+/// Stop whatever behavior runs, as the player's own stops do: what a
+/// takeover asks first (`crate::agent`, takeover).
+pub type Halt = Arc<dyn Fn() + Send + Sync>;
+
 /// Who runs the Hydra commands an agent may perform: the binary, which knows
 /// them ([`SessionHandle::set_performer`]).
 #[derive(Clone)]
@@ -255,6 +264,8 @@ pub struct Performer {
     pub allows: Allows,
     /// Start a line [`Self::allows`] took.
     pub start: Start,
+    /// Stop whatever behavior runs.
+    pub halt: Halt,
 }
 
 impl std::fmt::Debug for Performer {
@@ -418,7 +429,7 @@ pub(crate) fn start(
     let performer = handle
         .performer()
         .ok_or("Hydra cannot run behaviors for an agent yet: the character is still logging in")?;
-    Ok(begin(handle, line, approval, |reporter| {
+    Ok(begin(handle, line, approval, true, |reporter| {
         (performer.start)(line, reporter)
     }))
 }
@@ -436,13 +447,14 @@ pub const SEND_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10
 pub(crate) fn send(handle: &SessionHandle, line: &str, approval: Option<u64>) -> Report {
     let sender = handle.clone();
     let sent = line.to_owned();
-    begin(handle, line, approval, move |_reporter| Started {
+    let holding = crate::agent::takeover_token(handle);
+    begin(handle, line, approval, false, move |_reporter| Started {
         ended: Box::pin(async move {
             let outcome = sender
                 .send_and_await(
                     crate::CommandId(0),
                     &sent,
-                    crate::Origin::Agent,
+                    crate::Origin::Agent(holding),
                     SEND_DEADLINE,
                     // As typed input's: whatever the game sends before its
                     // next prompt answers it; the prompt alone closes the
@@ -484,11 +496,14 @@ fn answered(outcome: &crate::Outcome) -> Ended {
     Ended::plainly(work, reason)
 }
 
-/// Register an operation `make` starts, and watch it to its end.
-fn begin(
+/// Register an operation `make` starts, and watch it to its end. A `run` --
+/// a behavior or a takeover, not a single line -- that ends badly drops the
+/// agent's level (`crate::agent`, takeover).
+pub(crate) fn begin(
     handle: &SessionHandle,
     line: &str,
     approval: Option<u64>,
+    run: bool,
     make: impl FnOnce(Reporter) -> Started,
 ) -> Report {
     let id = handle.agent.with_operations(Table::reserve);
@@ -513,7 +528,11 @@ fn begin(
             .agent
             .with_operations(|table| table.end(id, ended, authority));
         if let Some(report) = report {
-            watcher.publish(Event::Agent(Change::Operation(Box::new(report))));
+            let reason = report.ended.as_ref().map(|ended| ended.reason.clone());
+            watcher.publish(Event::Agent(Change::Operation(Box::new(report.clone()))));
+            if let Some(reason) = reason.filter(|reason| run && crate::agent::ended_badly(reason)) {
+                crate::agent::drop_level(&watcher, &report, &reason);
+            }
         }
     });
     report

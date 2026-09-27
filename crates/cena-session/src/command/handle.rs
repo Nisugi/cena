@@ -198,7 +198,7 @@ pub struct SessionHandle {
     /// What a person has done through this handle (`attendance.rs`).
     pub(super) attendance: super::attendance::Attendance,
     /// The session's command authority (`authority.rs`).
-    pub(super) authority: super::authority::Authority,
+    pub(crate) authority: super::authority::Authority,
     /// What an agent may do, and the acts waiting on the player
     /// (`crate::agent`).
     pub(crate) agent: crate::agent::Access,
@@ -371,6 +371,12 @@ impl SessionHandle {
             log.notice(self.generation(), &notice);
         }
         let _ = self.events.send(crate::Event::Notice(notice));
+    }
+
+    /// Every event the session publishes from now on, for what inside the
+    /// session watches it (an agent's takeover, `crate::agent`).
+    pub(crate) fn events(&self) -> tokio::sync::broadcast::Receiver<crate::Event> {
+        self.events.subscribe()
     }
 
     /// Publish an event that is the session's own doing, not the game's, as

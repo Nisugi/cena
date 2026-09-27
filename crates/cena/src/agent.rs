@@ -154,14 +154,16 @@ impl Agent {
 /// What `;agent help` says.
 const HELP: &[&str] = &[
     "agent                  this character's agent level, and what an agent is waiting on you for",
-    "agent level <level>    set it, kept for this character: off (the default), observe, advise, behaviors or commands",
+    "agent level <level>    set it, kept for this character: off (the default), observe, advise, behaviors, commands or takeover",
     "                         off: an agent may do nothing with this character",
     "                         observe: it may read the character, and nothing else",
     "                         advise: it may also put a message in front of you; nothing reaches the game",
     "                         behaviors: it may also start, steer and stop go2, hunt, heal, keep and waggle",
     "                         commands: it may also send game commands, never dropping, giving, selling or destroying",
+    "                         takeover: it may also take the character over, stopping what runs, until it gives it back",
     "agent approve <n>      let an agent do the one thing it asked, once",
     "agent deny <n>         refuse it",
+    "agent stop             stop everything the agent is doing, and take the character back if it holds it",
     "An agent is a program such as Claude Code, connected to the listener Hydra starts with --agent.",
 ];
 
@@ -171,10 +173,24 @@ const HELP: &[&str] = &[
 ///
 /// A settings file that cannot be read leaves the level `off` and says so:
 /// the safe level is the one that allows nothing.
-pub(crate) fn control(handle: &SessionHandle, commands: &Commands, state: &GameState) {
+pub(crate) fn control(
+    handle: &SessionHandle,
+    observer: &SessionObserver,
+    commands: &Commands,
+    state: &GameState,
+) {
     let character = &state.character;
     let who = character.instance.clone().zip(character.name.clone());
     let dir = cena_session::character_store::data_dir();
+    if let Some((instance, name)) = who.clone() {
+        tokio::spawn(keep_level(
+            handle.clone(),
+            observer.clone(),
+            dir.clone(),
+            instance,
+            name,
+        ));
+    }
     if let Some((instance, name)) = &who {
         match load_level(&dir, instance, name) {
             Ok(level) => handle.set_agent_level(level),
@@ -197,6 +213,40 @@ pub(crate) fn control(handle: &SessionHandle, commands: &Commands, state: &GameS
         told.say(answer(&told, &dir, who, &words));
         Some(Claimed::Done)
     }));
+}
+
+/// Keep every change of the level in the settings file, whoever made it:
+/// the player's `;agent level`, and the session's own drop to Observe after
+/// a run that ended badly (`plan/35` §4), which must not come back at the
+/// next login.
+async fn keep_level(
+    handle: SessionHandle,
+    observer: SessionObserver,
+    dir: PathBuf,
+    instance: String,
+    name: String,
+) {
+    use cena_session::agent::Change;
+    use tokio::sync::broadcast::error::RecvError;
+    let Ok((_, mut events)) = observer.subscribe().await else {
+        return;
+    };
+    loop {
+        match events.recv().await {
+            Ok(event) => {
+                if let cena_session::Event::Agent(Change::Level(level)) = event.event
+                    && let Err(why) = save_level(&dir, &instance, &name, level)
+                {
+                    handle.say(Notice::line(
+                        NoticeKind::Warn,
+                        format!("Agent: the level {} was not kept: {why}.", level.word()),
+                    ));
+                }
+            }
+            Err(RecvError::Lagged(_)) => {}
+            Err(RecvError::Closed) => return,
+        }
+    }
 }
 
 /// What `;agent <words>` does, and what it says.
@@ -253,6 +303,23 @@ fn answer(handle: &SessionHandle, dir: &Path, who: Option<(&str, &str)>, words: 
                 Err(why) => Notice::line(NoticeKind::Error, format!("Agent: {why}.")),
             }
         }
+        ["stop"] => match handle.stop_agent() {
+            (0, false) => Notice::line(
+                NoticeKind::Info,
+                "Agent: nothing of the agent's is running.",
+            ),
+            (stopped, held) => Notice::line(
+                NoticeKind::Info,
+                format!(
+                    "Agent: {stopped} operation(s) told to stop{}. The level is unchanged; agent level observe keeps it from acting again.",
+                    if held {
+                        ", and the character taken back"
+                    } else {
+                        ""
+                    }
+                ),
+            ),
+        },
         ["help"] => Notice::table(
             NoticeKind::Info,
             HELP.iter().map(|&l| l.to_owned()).collect(),
@@ -280,6 +347,11 @@ fn status(handle: &SessionHandle) -> Notice {
     } else {
         "No agent can connect: Hydra was not started with --agent.".to_owned()
     });
+    if let Some(operation) = handle.agent_holds() {
+        lines.push(format!(
+            "An agent holds this character (operation {operation}): agent stop takes it back."
+        ));
+    }
     let requests = handle.agent_requests();
     if requests.is_empty() {
         lines.push("Nothing is waiting on you.".to_owned());
@@ -378,10 +450,12 @@ mod tests {
         assert_eq!(handle.agent_level(), Level::Observe);
         assert_eq!(load_level(&dir, "GS3", "Nisugi"), Ok(Level::Observe));
 
-        let said = text(&answer(&handle, &dir, who, &["level", "takeover"]));
-        assert!(said.contains("no level takeover"), "{said}");
+        let said = text(&answer(&handle, &dir, who, &["level", "everything"]));
+        assert!(said.contains("no level everything"), "{said}");
         assert_eq!(handle.agent_level(), Level::Observe, "unchanged");
         assert!(text(&answer(&handle, &dir, who, &[])).contains("Nothing is waiting"));
+        let said = text(&answer(&handle, &dir, who, &["stop"]));
+        assert!(said.contains("nothing of the agent's"), "{said}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

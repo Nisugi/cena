@@ -100,7 +100,11 @@ pub enum Origin {
     /// interleaves*) -- and is its own variant for `Script`'s reason: a log
     /// has to tell "the player typed this" from "the agent sent this". It
     /// never counts as the player being there, as [`Self::Trigger`] does not.
-    Agent,
+    ///
+    /// **Holding the character** (`plan/35` §4, takeover), it carries the
+    /// agent's token and is the holder's: queued as a behavior's is, and
+    /// refused, never sent, once the authority is taken back.
+    Agent(Option<crate::queue::AuthorityToken>),
 }
 
 impl Origin {
@@ -109,8 +113,22 @@ impl Origin {
     pub const fn token(self) -> Option<crate::queue::AuthorityToken> {
         match self {
             // Neither the player nor a script is a claimant (§4.1).
-            Self::Manual | Self::Script | Self::Trigger | Self::Agent => None,
+            Self::Manual | Self::Script | Self::Trigger => None,
             Self::Behavior(token) => Some(token),
+            Self::Agent(holding) => holding,
+        }
+    }
+
+    /// Who sent it, in a word: `manual`, `behavior`, `script`, `trigger`,
+    /// `agent`.
+    #[must_use]
+    pub const fn word(self) -> &'static str {
+        match self {
+            Self::Manual => "manual",
+            Self::Behavior(_) => "behavior",
+            Self::Script => "script",
+            Self::Trigger => "trigger",
+            Self::Agent(_) => "agent",
         }
     }
 
