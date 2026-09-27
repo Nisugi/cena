@@ -9,6 +9,10 @@ cena-session.workspace = true
 cena-ui.workspace = true
 egui.workspace = true
 eframe.workspace = true
+# A play window's layout is saved by character name (plan/47 step 6): a
+# store Hydra writes, so JSON, as the workspace's other stores are.
+serde.workspace = true
+serde_json.workspace = true
 # Each character's feed runs on the binary's runtime, beside its session
 # (plan/47 §4): the window has the main thread, the sessions the workers.
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }

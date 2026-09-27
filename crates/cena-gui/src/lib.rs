@@ -16,8 +16,10 @@ mod app;
 pub mod bar;
 mod feed;
 mod hub;
+mod layout;
 mod play;
 mod sessions;
+mod snap;
 mod story;
 mod text;
 

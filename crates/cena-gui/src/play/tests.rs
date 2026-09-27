@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use super::*;
 use cena_session::{
-    Amount as Numbers, ChunkLine, Event, Frame, GameState, Generation, ObservedEvent, ProgressBar,
-    SessionId, State,
+    Amount as Numbers, ChunkLine, Event, Frame, GameState, Generation, Notice, NoticeKind,
+    ObservedEvent, ProgressBar, RoomItem, SessionId, State,
 };
 use egui::accesskit::Role;
 use egui_kittest::Harness;
@@ -122,7 +122,7 @@ struct Scene {
 impl Scene {
     fn new() -> Self {
         Self {
-            play: Play::new(0),
+            play: Play::new(0, "Ashryn", None),
             snapshot: snapshot(),
             story: story(),
             asked: Vec::new(),
@@ -233,6 +233,169 @@ fn a_click_nothing_took_returns_the_keyboard_to_the_input() {
     harness.run();
     harness.run();
     assert!(harness.get_by_role(Role::TextInput).is_focused());
+}
+
+/// A pane dragged by its title to within a few points of the window's left
+/// edge lands on it, and the layout is kept under the character's name: a
+/// new window for Ashryn opens with Room where it was left.
+#[test]
+fn a_dragged_pane_snaps_and_is_kept_by_name() {
+    let dir = std::env::temp_dir().join(format!("cena-play-layout-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut scene = Scene::new();
+    scene.play = Play::new(0, "Ashryn", Some(dir.clone()));
+    let mut harness = Harness::builder()
+        .with_size((900.0, 520.0))
+        .build_ui_state(|ui, scene: &mut Scene| scene.draw(ui), scene);
+    harness.run();
+    let room = |harness: &Harness<'_, Scene>| {
+        harness
+            .state()
+            .play
+            .layout
+            .as_ref()
+            .map(|layout| layout.rect(crate::layout::Pane::Room))
+    };
+    // No grid: a pane is rarely a whole number of cells wide, so one edge or
+    // the other is always on a grid line, and here the edge is the target.
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        layout.grid = 0.0;
+    }
+    let before = room(&harness).expect("fitted");
+    let grip = harness.get_by_label("Room").rect().center();
+    // Five points short of the left edge: near enough to snap to it.
+    let to = grip + egui::vec2(5.0 - before.min.x, 0.0);
+    // Frame by frame: a window being dragged asks for the next frame.
+    harness.hover_at(grip);
+    harness.step();
+    harness.drag_at(grip);
+    harness.step();
+    for step in 1..=4u8 {
+        harness.hover_at(grip + (to - grip) * (f32::from(step) / 4.0));
+        harness.step();
+    }
+    harness.drop_at(to);
+    harness.step();
+    harness.step();
+    let after = room(&harness).expect("still laid out");
+    assert!(after.min.x.abs() < 0.01, "snapped to the edge: {after:?}");
+    assert_eq!(after.size(), before.size(), "a move keeps the size");
+    assert!(harness.state().play.engaged.is_empty(), "the gesture ended");
+
+    let reopened = Play::new(0, "Ashryn", Some(dir.clone()));
+    assert_eq!(
+        reopened
+            .layout
+            .map(|layout| layout.rect(crate::layout::Pane::Room)),
+        Some(after)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A pane resized by its edge moves only that edge, which lands on the
+/// grid: a held pane's size is let go for the gesture, or no handle could
+/// resize it. The story's bottom edge, which borders no other pane: where
+/// panes tile, two windows' handles meet on one edge.
+#[test]
+fn a_resized_pane_lands_on_the_grid() {
+    let mut harness = harness();
+    harness.run();
+    let story = |harness: &Harness<'_, Scene>| {
+        harness
+            .state()
+            .play
+            .layout
+            .as_ref()
+            .map(|layout| layout.rect(crate::layout::Pane::Story))
+    };
+    let before = story(&harness).expect("fitted");
+    let window = harness.get_by_label("Story").rect();
+    let edge = egui::pos2(window.center().x, window.max.y - 2.0);
+    let to = edge - egui::vec2(0.0, 37.0);
+    harness.hover_at(edge);
+    harness.step();
+    harness.drag_at(edge);
+    harness.step();
+    for step in 1..=4u8 {
+        harness.hover_at(edge + (to - edge) * (f32::from(step) / 4.0));
+        harness.step();
+    }
+    harness.drop_at(to);
+    harness.step();
+    harness.step();
+    let after = story(&harness).expect("still laid out");
+    assert!(
+        after.height() < before.height() - 20.0,
+        "{before:?} -> {after:?}"
+    );
+    assert!((after.max.y % 10.0).abs() < 0.01, "on the grid: {after:?}");
+    assert!((after.min.y - before.min.y).abs() < 0.01, "the top stayed");
+    assert!(
+        (after.width() - before.width()).abs() < 0.01,
+        "and the width"
+    );
+}
+
+/// On an edge two panes share, a drag resizes one of them -- whichever
+/// egui gives the handle to -- rather than neither.
+#[test]
+fn a_shared_edge_resizes() {
+    let mut harness = harness();
+    harness.run();
+    let rects = |harness: &Harness<'_, Scene>| {
+        let layout = harness.state().play.layout.clone().expect("fitted");
+        (
+            layout.rect(crate::layout::Pane::Room),
+            layout.rect(crate::layout::Pane::Hydra),
+        )
+    };
+    let (room, hydra) = rects(&harness);
+    // Two points inside Room, where Room's window is on top but Hydra's
+    // handle, drawn later, also reaches: egui resizes Hydra.
+    let window = harness.get_by_label("Room").rect();
+    let edge = egui::pos2(window.center().x, window.max.y - 2.0);
+    let to = edge + egui::vec2(0.0, 33.0);
+    harness.hover_at(edge);
+    harness.step();
+    harness.drag_at(edge);
+    harness.step();
+    for step in 1..=4u8 {
+        harness.hover_at(edge + (to - edge) * (f32::from(step) / 4.0));
+        harness.step();
+    }
+    harness.drop_at(to);
+    harness.step();
+    harness.step();
+    let (room_after, hydra_after) = rects(&harness);
+    assert!(
+        room_after != room || hydra_after != hydra,
+        "one of them moved its edge"
+    );
+}
+
+/// The Layout menu fits the panes afresh, however they were moved.
+#[test]
+fn the_layout_can_be_fitted_afresh() {
+    let mut harness = harness();
+    harness.run();
+    let fitted = harness.state().play.layout.clone().expect("fitted");
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        layout.set(
+            crate::layout::Pane::Room,
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(200.0, 100.0)),
+        );
+    }
+    harness.run();
+    harness.get_by_label("Layout").click();
+    harness.run();
+    harness.get_by_label("Fit the panes afresh").click();
+    harness.run();
+    let now = harness.state().play.layout.clone().expect("fitted again");
+    // The pane area can settle by a point between frames, which moves the
+    // bottom edges; the panes the menu sat over are exactly as fitted.
+    for pane in [crate::layout::Pane::Vitals, crate::layout::Pane::Room] {
+        assert_eq!(now.rect(pane), fitted.rect(pane), "{pane:?}");
+    }
 }
 
 /// Drawn with no roundtime: its seconds come from the wall clock, and an

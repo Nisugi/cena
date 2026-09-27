@@ -13,6 +13,7 @@
 //! headless"*); its hub card opens it again.
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -33,6 +34,8 @@ pub struct App {
     sessions: Sessions,
     /// Each attached character's play window, open or not, by session.
     plays: BTreeMap<u32, Window>,
+    /// Where play windows keep their layouts; `None`, and they keep none.
+    layouts: Option<PathBuf>,
 }
 
 /// One character's play window.
@@ -43,13 +46,25 @@ struct Window {
 }
 
 impl App {
-    /// The hub over `sessions`, on its first tab.
+    /// The hub over `sessions`, on its first tab, its play windows keeping
+    /// no layout.
     #[must_use]
     pub fn new(sessions: Sessions) -> Self {
         Self {
             hub: Hub::default(),
             sessions,
             plays: BTreeMap::new(),
+            layouts: None,
+        }
+    }
+
+    /// The same, its play windows keeping their layouts in `layouts`, by
+    /// character name (`plan/47` step 6).
+    #[must_use]
+    pub fn keeping_layouts(sessions: Sessions, layouts: PathBuf) -> Self {
+        Self {
+            layouts: Some(layouts),
+            ..Self::new(sessions)
         }
     }
 
@@ -93,8 +108,9 @@ impl App {
         self.plays
             .retain(|session, _| seats.iter().any(|seat| seat.id.0 == *session));
         for seat in seats {
+            let layouts = self.layouts.clone();
             self.plays.entry(seat.id.0).or_insert_with(|| Window {
-                play: Play::new(seat.id.0),
+                play: Play::new(seat.id.0, &seat.name, layouts),
                 open: true,
             });
         }
@@ -212,7 +228,8 @@ pub fn run(sessions: Sessions) -> eframe::Result {
         options,
         Box::new(move |creation| {
             sessions.opened(&creation.egui_ctx);
-            Ok(Box::new(App::new(sessions)))
+            let layouts = cena_session::character_store::data_dir().join("layouts");
+            Ok(Box::new(App::keeping_layouts(sessions, layouts)))
         }),
     )
 }
