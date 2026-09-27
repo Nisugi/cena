@@ -1,7 +1,7 @@
 # 46 — The Ruby bridge: how a Lich script runs against Hydra
 
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
-(§10).** **Steps 1 to 3 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
+(§10).** **Steps 1 to 4 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11); the rest is not built. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
@@ -229,8 +229,10 @@ are read-only and hiding is M8's squelch. That leaves 52 of A's scripts (22%) an
 needing a rewrite. Three ways:
 
 - **(a) Read-only.** As `plan/38` has it; those scripts move their hiding to M8.
-- **(b) Hooks through the runner** (PROPOSED). When a script on a character adds a display hook,
-  each display line for that character passes through the runner, whose hooks answer keep,
+- **(b) Hooks through the runner** (ANSWERED, §10 question 2; **BUILT**, §11 step 4, with the
+  showing held after `;sorter` and the triggers, not before them). When a script on a character
+  adds a display hook, each display line for that character passes through the runner, whose
+  hooks answer keep,
   replace or hide within a deadline; past it, the line shows as it came. Typed lines likewise,
   for input hooks. Lich's rule is kept where it matters: hooks change only what is shown, after
   the model has the line (VERIFIED, `inventory/13` §1.6), so nothing a behavior or the model sees
@@ -315,7 +317,11 @@ None of these is measured; each is a guess until it is.
   `sequel` loaded too.
 - The local copy's update size and rate in combat.
 - A send to its first reply line, against Lich's in-process path.
-- A hooked line's display delay (§6.1), and the deadline to set.
+- A hooked line's display delay (§6.1), and the deadline to set. **The deadline is set, not
+  measured: 500 ms** (`cena_session::script::HOOK_DEADLINE`, step 4), past the 250 ms a runner's
+  watcher holds a chunk with no prompt. Found in building it, MEASURED once in a debug build
+  (a test's timestamps, 2026-09-27): the first chunk of text a session reads builds its
+  classifiers, **1.6 s** inside the actor, so on a hooked character that chunk goes as it came.
 - MCP notification delivery under load (`plan/38` §5 keeps a plain-JSON layer in reserve). **Not
   built that way**: a runner long-polls `listen` (§11, step 1), so what is owed is a line's time
   from the session to a script's buffer, in combat.
@@ -493,5 +499,53 @@ None of these is measured; each is a guess until it is.
      refusals are worded for an agent, which a script meets only on a line it never
      builds.
 4. Hooks, as decided.
+   **BUILT 2026-09-27** (the author: *"step 4"*), in three commits:
+   - **Hydra's half** (`crates/cena-session/src/script.rs`, `crates/cena-session/src/actor/hooked.rs`;
+     `crates/cena-agent/src/scripts/hooks.rs`). While a runner has **display hooks**, what a
+     viewer is shown of each line -- after `;sorter` and the triggers, as it would have been
+     published -- waits for the runner to answer the line it heard (`shown`, by the `line`
+     event's cursor): kept as it came, links and colours and all; hidden; or text in its place,
+     which the player's triggers answer again (painted, substituted, squelched), as a
+     frontend's highlights answer what Lich's hooks let through. A line the triggers squelched
+     stays squelched. **Only the showing waits**: the model, the log, the triggers' flags,
+     attention and sends, and every script have the line on time, so nothing a behavior sees
+     depends on a script (§6.1, Lich's rule). Lines are shown in the game's order; one not
+     answered in 500 ms goes as it came, and everything held goes when the hooks go or the
+     connection ends. While a runner has **input hooks**, each line the player types at a
+     frontend (`SessionHandle::send_typed_at`, which the window and Despana now call) is asked
+     first (`input`), before Hydra's commands or the game see it: kept, replaced or swallowed,
+     and as typed past the deadline. Hydra's own lines on the manual path (`;multi`'s, a
+     relayed `;to`, the sorter's) never meet them, as Lich's `put` never does: a hook turning a
+     line into a `;multi` of itself would never end. A runner says which hooks it has
+     (`hooks`); its dismissal takes them.
+   - **The runner** (`bridges/ruby/hydra/hooks.rb`). Lich's own `DownstreamHook`,
+     `UpstreamHook` and their `HookRegistry`, vendored byte for byte, so names, priorities, a
+     raising hook removed, and `persist:` at a script's death are Lich's. Hydra is told as the
+     first hook of a kind comes and the last goes: added, removed, or taken with a script's
+     death, which Lich does before it says the script was killed. Each game line goes to the
+     scripts, then through the display hooks as `text\r\n`, as a line of Lich's chunks ends; a
+     batch's answers go back together before the next `listen`. The player's typing goes
+     through the input hooks as `<c>line`, as a Wrayth frontend sends it. Markup a hook adds is
+     not drawn (tags only, so a line's own `<3` stays).
+   - **Tests**: in the session (`crates/cena-session/tests/script_hooks.rs`), a hooked line kept
+     with its link, hidden, changed, and shown when answered rather than at the deadline; one
+     unanswered shown as it came at the deadline, with an answered one behind it waiting; the
+     hooks' going showing what they held at once; a trigger's flag set while its line waits, a
+     changed line painted and squelched by the triggers, a squelched one staying squelched; the
+     player's typing swallowed, replaced, or sent as typed after the deadline, and Hydra's own
+     line never asked. Over MCP (`crates/cena-agent/tests/scripts.rs`), the same through
+     `hooks`, `shown` and `input`, and nothing asked once dismissed. In Ruby
+     (`crates/cena-agent/tests/runner.rs`), a Lich script's display hook hiding one line and
+     changing another, its markup not drawn, its input hook sending `tt` as `target`, and both
+     gone when it is killed. Mutations: the deadline ignored (the actor spins and the test
+     hangs), lines never held, a change ignored, a squelch undone, typing not asked, the hooks'
+     going or an answer not waking the actor, input hooks never installed, a dismissed runner's
+     hooks kept; in Ruby, answers never sent, display hooks never told, input not asked, markup
+     drawn. Each turns a test red.
+   - **Not yet**: a hook's markup drawn (the `<pushBold/>` it adds, a `<pushStream>` that moves
+     a line to a window); a hook matching across a chunk's lines, or on markup (`<prompt`),
+     which sees text a line at a time (the checker, step 5, is to point at them); the
+     deadline measured (§9); Lich's `quiet_command`, a hook of its own (`util.rb` is not
+     loaded).
 5. The checker over both collections, and the list of what runs published.
 6. §9's measurements, written here.
