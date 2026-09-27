@@ -10,7 +10,8 @@
 
 use toml::{Table, Value};
 
-use super::read;
+use super::wrayth::{self, Import};
+use super::{Refused, read};
 use crate::settings;
 
 /// The kinds of response a master switch turns on or off everywhere.
@@ -181,6 +182,68 @@ pub fn list(text: &str) -> Result<Vec<Listed>, String> {
         .collect();
     listed.sort_by(|a, b| (&a.category, &a.name).cmp(&(&b.category, &b.name)));
     Ok(listed)
+}
+
+/// What an import did to the file.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Merged {
+    /// Triggers an earlier import from the same origin brought, replaced.
+    pub replaced: usize,
+    /// Triggers given another name because theirs was taken: `(had, given)`.
+    pub renamed: Vec<(String, String)>,
+    /// Triggers left out, as the file would refuse them.
+    pub refused: Vec<Refused>,
+}
+
+/// `text` with `import`'s triggers in it, marked with `origin`. What an
+/// earlier import from the same `origin` brought is replaced whole, so the
+/// same file imported twice is imported once; a name another trigger has is
+/// given `(Wrayth)`; a trigger the file would refuse is left out and named.
+/// The file's `disable` on its ignores sets their category's switch.
+///
+/// # Errors
+///
+/// The triggers file is not TOML, or its `trigger` or `categories` is not a
+/// table.
+pub fn import(text: &str, origin: &str, import: &Import) -> Result<(String, Merged), String> {
+    let (head, mut table) = settings::split(text)?;
+    let mut merged = Merged::default();
+    let mut names = Vec::new();
+    let triggers = section(&mut table, "trigger")?;
+    let before = triggers.len();
+    triggers.retain(|_, trigger| trigger.get("origin").and_then(Value::as_str) != Some(origin));
+    merged.replaced = before - triggers.len();
+    for (name, trigger) in &import.triggers {
+        let mut given = name.clone();
+        let mut count = 1;
+        while triggers.contains_key(&given) {
+            count += 1;
+            given = if count == 2 {
+                format!("{name} (Wrayth)")
+            } else {
+                format!("{name} (Wrayth {count})")
+            };
+        }
+        if given != *name {
+            merged.renamed.push((name.clone(), given.clone()));
+        }
+        triggers.insert(given.clone(), Value::Table(trigger.clone()));
+        names.push(given);
+    }
+    if let Some(on) = import.ignores_on {
+        section(&mut table, "categories")?.insert(wrayth::IGNORES.to_owned(), Value::Boolean(on));
+    }
+    sort(&mut table);
+    merged.refused = read(&settings::join(&head, &table)?)?
+        .refused
+        .into_iter()
+        .filter(|refused| names.contains(&refused.name))
+        .collect();
+    let triggers = section(&mut table, "trigger")?;
+    for refused in &merged.refused {
+        triggers.remove(&refused.name);
+    }
+    Ok((settings::join(&head, &table)?, merged))
 }
 
 /// `text` with `edit` made and its triggers sorted, unless that leaves any of

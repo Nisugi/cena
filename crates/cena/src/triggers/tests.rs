@@ -191,3 +191,36 @@ async fn list_off_and_every() {
     let unknown = typing.typed("trigger frobnicate");
     assert!(unknown[0].contains("`frobnicate`"), "{unknown:?}");
 }
+
+/// `;trigger import`: a Wrayth file comes in and is on at once, what is held
+/// is said, and the same file again replaces what it brought.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn import_brings_a_wrayth_file_in_and_again_replaces_it() {
+    let mut typing = Typing::new("import").unwrap();
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../cena-behavior/tests/fixtures/wrayth.xml");
+    let said = typing.typed(&format!("trigger import \"{}\"", fixture.display()));
+    assert!(
+        said[0].contains(
+            "wrayth.xml imported: 8 highlights (\"Wrayth strings\"), 3 names (\"Wrayth names\"), \
+             2 ignores (\"Wrayth ignores\")"
+        ) && said[0].contains("13 triggers on for Nisugi"),
+        "{said:?}"
+    );
+    assert_eq!(
+        said[1],
+        "Triggers: 2 sounds kept, held: Hydra does not play sounds yet."
+    );
+    assert_eq!(typing.triggers().triggers().len(), 13);
+
+    let again = typing.typed(&format!("trigger import {}", fixture.display()));
+    assert!(
+        again[0].contains("13 from an earlier import of it replaced")
+            && again[0].contains("13 triggers on"),
+        "{again:?}"
+    );
+
+    let missing = typing.typed(r"trigger import C:\no\such.xml");
+    assert!(missing[0].contains("such.xml"), "{missing:?}");
+    assert_eq!(typing.triggers().triggers().len(), 13, "nothing changed");
+}

@@ -1,0 +1,33 @@
+<!-- Cut from the author's Wrayth export Nisugi3.xml (2025-01-06) for plan/45 Stage 4: each entry verbatim, the two sound paths shortened, the rest of the file left out. -->
+<settings client="1.0.1.28">
+	<strings>
+		<h bgcolor="" color="#ff8080" text="GSIV"/>
+		<h bgcolor="" color="#ff8000" line="y" text="[LNet]-"/>
+		<h bgcolor="#362804" color="#ffff00" line="y" text="[bigshot]&gt;"/>
+		<h bgcolor="" color="#ff0000" line="y" text="Striking with a serpent&apos;s unsettling quickness"/>
+		<h bgcolor="" case="y" color="#ff0000" line="y" text="[bigshot: Trying to load a profile that does not exist.]"/>
+		<h color="@11" text="A dark shadowy tendril rises up from" line="y" bgcolor="@20"/>
+		<h color="@9" text="[Private]" sound="C:\fx\data.wav"/>
+		<h text="It seems you have died, my friend" color="@7" bgcolor="" sound="C:\fx\CPU unit lost.wav"/>
+	</strings>
+	<names>
+		<h bgcolor="#311c1c" case="y" color="#ecc013" text="Bastique"/>
+		<h bgcolor="#311c1c" case="y" color="#ecc013" text="Feliathes"/>
+		<h color="@0" text="Igges"/>
+	</names>
+	<ignores disable='n'>
+		<h text="is moving too erratically for that."/>
+		<h text="are moving too erratically for that."/>
+	</ignores>
+	<palette>
+		<i id="0" color="#FFFF90"/>
+		<i id="7" color="#FF3300"/>
+		<i id="9" color="#ECC013"/>
+		<i id="11" color="#FFFF00"/>
+		<i id="20" color="#336699"/>
+	</palette>
+	<presets>
+		<p id="roomName" color="skin" bgcolor="@41" line="y"/>
+		<p id="bold" color="@6" bgcolor="skin"/>
+	</presets>
+</settings>

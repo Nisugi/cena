@@ -70,7 +70,8 @@
 //!   `Claimed::Unknown` is a Hydra command nobody knows.
 //! - **held** is a hunt step imported with a guard Hydra has not built
 //!   ([`Step::held`]). The authority being held by another claimant is
-//!   [`AuthorityHeld`].
+//!   [`AuthorityHeld`]. A trigger's `held` is what an import kept that Hydra
+//!   does not do yet: a Wrayth sound, until sounds are built ([`wrayth`]).
 //! - **role** is a group member's part, lead, follow or solo
 //!   ([`group::Role`]), and a spell's kind in the spell table
 //!   ([`spells::Role`]). The combat model's message families have a third
@@ -157,7 +158,7 @@
 //! | **Step** | one line of a routine or sequence: what is sent, and its guards ([`Step`]) | |
 //! | **Guard** | a named precondition on a step, from the closed vocabulary Hydra defines ([`Guard`]); with its polarity, a [`Condition`]. A step's guards must all hold, and there is no *or*. A trigger reads the same words (`plan/45` §1 row 2) | gate |
 //! | **Held** | a step imported with a guard or shape Hydra does not read yet: kept, with the reason named, and never run ([`Step::held`]) | dropped |
-//! | **Import** | a bigshot profile in, a Hydra profile out, with what it could not carry named at the head of the file: [`import()`], [`Import`] | |
+//! | **Import** | a bigshot profile in, a Hydra profile out, with what it could not carry named at the head of the file: [`import()`], [`Import`]. `;trigger import` does the same for a Wrayth settings file's highlights, names and ignores ([`wrayth`]) | |
 //!
 //! "Dropped" is the importer's other outcome and a different one: a bigshot
 //! key it does not carry at all. A held step is still in the profile.
@@ -210,6 +211,7 @@
 //! | **Look** | a response's colour, background and bold, over the match, a capture group or the line: [`Look`] | style, which is the wire's [`Style`] |
 //! | **Paint** | a look, resolved: what one stretch of a published [`Line`] is painted, the best look deciding each of colour, background and bold: [`Paint`] | highlight |
 //! | **Master switch** | a category, or one kind of response, turned off for every trigger: the file's `[categories]` and `[responses]` | |
+//! | **Origin** | where an imported trigger came from, `Wrayth: <file>`: importing that file again replaces what it brought, and a later stage holds a send from a rule the player did not write ([`wrayth`]) | source |
 //!
 //! # Names
 //!
@@ -340,6 +342,7 @@
 //! [`Rule::condition`]: cena_session::trigger::Rule::condition
 //! [`Rule::only_if`]: cena_session::trigger::Rule::only_if
 //! [`triggers`]: mod@cena_behavior::triggers
+//! [`wrayth`]: mod@cena_behavior::triggers::wrayth
 //! [`Trip`]: cena_behavior::travel::Trip
 //! [`UnknownTag`]: cena_session::UnknownTag
 //! [`watch`]: cena_behavior::watch

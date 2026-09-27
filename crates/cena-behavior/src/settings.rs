@@ -41,6 +41,18 @@ pub fn typed(words: &str) -> Value {
         .unwrap_or_else(|| Value::String(words.to_owned()))
 }
 
+/// A path as typed, without the quotes around it: Windows' "Copy as path"
+/// adds them, and `"` cannot be in a Windows file name (os error 123). What
+/// `;hunt import`, `;hunt import-loot` and `;trigger import` read.
+#[must_use]
+pub fn unquoted(path: &str) -> String {
+    ['"', '\'']
+        .iter()
+        .find_map(|&q| path.strip_prefix(q)?.strip_suffix(q))
+        .unwrap_or(path)
+        .to_owned()
+}
+
 /// `text` with `key` set to `value`, and the value it replaced, if any.
 ///
 /// # Errors

@@ -241,6 +241,31 @@ fn a_stage_2_trigger_that_cannot_work_is_refused_by_name() {
     assert_eq!(missed(&cases), Vec::<String>::new());
 }
 
+/// Stage 4's keys: where a trigger came from and what it holds belong to
+/// the trigger, typed, and not to one character's copy.
+#[test]
+fn an_origin_or_held_that_cannot_be_read_is_refused_by_name() {
+    let cases = [
+        ("text = 'x'\nsquelch = true\norigin = 5", "`origin` is 5"),
+        (
+            "text = 'x'\nsquelch = true\nheld = 'sound'",
+            "`held` is not a table",
+        ),
+        (
+            "text = 'x'\nsquelch = true\nheld = { sound = 3 }",
+            "`held` is not a table",
+        ),
+        (
+            "text = 'x'\nsquelch = true\nfor = { Dicate = { origin = 'y' } }",
+            "belong to the trigger",
+        ),
+    ];
+    assert_eq!(missed(&cases), Vec::<String>::new());
+    let kept = "[trigger.ok]\ntext = 'x'\nsquelch = true\norigin = 'Wrayth: a.xml'\n\
+                held = { sound = 'C:\\\\a.wav' }\n";
+    assert_eq!(names(kept, "Nisugi"), Some(vec!["ok".to_owned()]));
+}
+
 /// Each bad trigger, as `body`, beside a good one: the cases where it was
 /// not refused by name for `reason`, or the good one did not load.
 fn missed(cases: &[(&str, &str)]) -> Vec<String> {

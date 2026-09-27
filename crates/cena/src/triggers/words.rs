@@ -4,7 +4,7 @@
 //! matches, a value, and a line to test are the rest of the line, as typed.
 
 /// `;trigger help`, one usage per line.
-pub(crate) const HELP: [&str; 11] = [
+pub(crate) const HELP: [&str; 12] = [
     "trigger list -- every trigger, by category",
     "trigger show <name> -- one trigger's settings",
     "trigger add <name> <words> -- a new trigger on those words, making them bold",
@@ -16,6 +16,7 @@ pub(crate) const HELP: [&str; 11] = [
     "trigger on|off every <look|squelch|substitute|redirect> -- one kind of response, everywhere",
     "trigger test <line> -- what this character's triggers would do to that line",
     "trigger reload -- read the file again, for this character",
+    "trigger import <path> -- a Wrayth settings file's highlights, names and ignores",
 ];
 
 /// One `;trigger` command.
@@ -63,6 +64,8 @@ pub(crate) enum Command {
     Test(String),
     /// `;trigger reload`.
     Reload,
+    /// `;trigger import <path>`: a Wrayth settings file.
+    Import(String),
 }
 
 /// What `on` or `off` switches.
@@ -145,11 +148,15 @@ fn command(rest: &str) -> Result<Command, String> {
         }
         "test" if !rest.is_empty() => Ok(Command::Test(rest.to_owned())),
         "test" => Err(usage("a line to test")),
+        "import" if !rest.is_empty() => Ok(Command::Import(unquoted(rest))),
+        "import" => Err(usage("the path of a Wrayth settings file")),
         _ => Err(format!(
             "`{verb}` is not a word it knows; `trigger help` lists them"
         )),
     }
 }
+
+use cena_behavior::settings::unquoted;
 
 /// The first word, and the rest with its leading space gone.
 fn word(line: &str) -> (&str, &str) {
@@ -264,5 +271,20 @@ mod tests {
         assert!(parsed("trigger test").is_err());
         let unknown = parsed("trigger frobnicate").unwrap_err();
         assert!(unknown.contains("`frobnicate`"), "{unknown}");
+    }
+
+    /// A path pasted with Windows' "Copy as path" keeps its spaces and loses
+    /// its quotes.
+    #[test]
+    fn import_takes_a_path_as_pasted() {
+        assert_eq!(
+            parsed(r#"trigger import "E:\Wrayth files\Nisugi3.xml""#),
+            Ok(Command::Import(r"E:\Wrayth files\Nisugi3.xml".into()))
+        );
+        assert_eq!(
+            parsed(r"trigger import C:\Nisugi3.xml"),
+            Ok(Command::Import(r"C:\Nisugi3.xml".into()))
+        );
+        assert!(parsed("trigger import").is_err());
     }
 }

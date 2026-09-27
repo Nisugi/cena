@@ -16,6 +16,7 @@
 //! it -- because a player's triggers file may hold years of rules.
 
 mod explain;
+mod import;
 mod words;
 
 use std::path::{Path, PathBuf};
@@ -127,6 +128,7 @@ fn answer(
         },
         Command::Test(words) => info(explain::explain(&handle.triggers(), &words)),
         Command::Reload => loaded(reload(handle, dir, character), true),
+        Command::Import(path) => import::import(handle, dir, character, Path::new(&path)),
         Command::Add { name, words } => change(&|text| {
             let text = edit::add(text, &name, &words)?;
             Ok((text, format!("`{name}` added, making \"{words}\" bold")))

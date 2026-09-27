@@ -1,11 +1,12 @@
 # 45 — Milestone 8: triggers
 
-> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day** (§6), all but Stage 1's
-> release run of the bench. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
+> **STATUS: PLAN, 2026-09-26; STAGES 1 AND 2 BUILT the same day, STAGE 4 on 2026-09-27**
+> (§6), all but Stage 1's release run of the bench. Stage 3 is held; the author: *"we can do
+> 4 and circle back to 3"*. Branch `m8-triggers`, cut from `m6-hunt` at `e872f0b`, in
 > the worktree `G:\dev\Cena-m8` (locked on purpose: M8 spans sessions). The author's
 > decisions are quoted in §1 with the date. **Everything else here is Claude's proposal**,
 > and two of §1's rows are Claude's *reading* of an answer, marked as such. What was decided
-> while building, for the author to confirm, is §5c, §5d, §6a and §6b.
+> while building, for the author to confirm, is §5c, §5d, §6a, §6b and §6c.
 > `plan/12` wins any contradiction, except where §1 records the author changing it.
 
 ---
@@ -491,7 +492,36 @@ responses can arrive held (§1 row 1).
 **A lead, UNVERIFIED:** Wrayth can keep highlights server-side, in the login `<settings>`
 blob, which Cena parses and drops (`crates/cena-protocol/src/frame/vocabulary.rs:475`,
 `Frame::ClientSettings`). `plan/15`'s login capture suggests the server sends it only when
-the client asks. If it can be had, import needs no file.
+the client asks. If it can be had, import needs no file. **Not pursued in Stage 4**: it
+needs a live login to see, which is the author's.
+
+**BUILT 2026-09-27.** The reader and the conversion are
+`crates/cena-behavior/src/triggers/wrayth.rs`, the merge `edit::import`, the command
+`;trigger import <path>` (`crates/cena/src/triggers/import.rs`). The fixture is
+`crates/cena-behavior/tests/fixtures/wrayth.xml`, 13 entries cut from `Nisugi3.xml`, with
+two sound paths shortened. **Measured on the author's four exports** (a test run and thrown
+away, not committed): every entry imports, nothing refused or noted -- `Nisugi3.xml` 222
+triggers, `NewLayoutWrayth.xml` 224, `Mnstr.xml` 10, `YepCock.xml` 224 -- and each file's
+triggers build one matcher. Eleven mutants, all caught.
+
+**Done when** a Wrayth export is one `;trigger import` from being on, and importing it again
+changes nothing. **MET**: `crates/cena/src/triggers/tests.rs`,
+`import_brings_a_wrayth_file_in_and_again_replaces_it`.
+
+### 6c. Stage 4 as built -- CLAUDE'S, to confirm
+
+| Question | Built | Why |
+|---|---|---|
+| An XML library? | **No**: the dialect is measured (no comments, CDATA or doctype; every element in the four sections closes itself; `'` and `"` both quote; `&apos;`, `&gt;`, `&quot;`) and read by hand, quotes honoured | `hunt/yaml.rs`'s precedent (`plan/05` §-1); the workspace has no XML crate |
+| A trigger's name | **its words**: `[LNet]-`, `Bastique`; words twice in one file get `(2)` | what a player looks for in `;trigger list`; `VellumFE`'s `wrayth_merchant_2` slugs lose it |
+| Names as one trigger per style, as `VellumFE`? | **No**, one trigger per name | `VellumFE` merges because its engine is multi-literal; here one literal is one trigger, and a name is removed alone |
+| Importing a file again | **replaces** what that file brought (`origin = "Wrayth: <file>"`), whatever was changed since | the same file twice is the same file once; a change made since is lost, and the import says how many it replaced |
+| A name the player already uses | **left to the player**; the import's is `<name> (Wrayth)` | the player's own rule outranks an import |
+| A sound | kept as `held = { sound = "<path>" }`, the trigger's look on | Stage 3 is held; the path is from the original machine, as `VellumFE` notes |
+| An entry with no colour Hydra can show (`skin`, a palette miss, not `#rrggbb`) | **left out and noted**, unless the other colour stands | a trigger with no response is refused (§5a); the note says which |
+| `<ignores>` | imported, as squelches; `disable` sets the category's switch both ways | `VellumFE` does not import them; the Saga complaint is the master toggle |
+| Whole words | Hydra's default (§5d) | Wrayth's own rule is UNVERIFIED; a live check in Wrayth, or the author's memory, settles it |
+| `case="y"` | case-sensitive | the author's reading, §1 row 4, UNVERIFIED; `VellumFE` reads it the same |
 
 ### Stage 5 -- act (author, §1 row 1)
 

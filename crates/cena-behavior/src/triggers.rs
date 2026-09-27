@@ -45,6 +45,12 @@
 //! response everywhere (`[responses]`), the Saga complaint: *"no master
 //! toggle for ignores"*.
 //!
+//! **Where a trigger came from** is `origin`, which an import writes
+//! (`Wrayth: Nisugi3.xml`, [`wrayth`]): importing the same file again
+//! replaces what it brought. What an import kept but Hydra does not do yet
+//! is `held`, a table by the response's name (`held = { sound = "…" }`).
+//! Both belong to the trigger, not to one character's copy.
+//!
 //! **Refused by name.** A trigger the file cannot type is left out, named,
 //! with the reason ([`Refused`]), and the rest load: one bad regex among
 //! 1,500 highlights does not cost the other 1,499. It is not silently gone
@@ -66,6 +72,7 @@ use toml::{Table, Value};
 use crate::hunt::chain::overlay;
 
 pub mod edit;
+pub mod wrayth;
 
 /// The file's name under the data directory.
 pub const FILE: &str = "triggers.toml";
@@ -306,6 +313,17 @@ fn entry(name: &str, value: Value) -> Result<Entry, String> {
             Some(names.iter().map(|name| name.to_lowercase()).collect())
         }
     };
+    match table.remove("origin") {
+        None | Some(Value::String(_)) => {}
+        Some(other) => return Err(format!("its `origin` is {other}, not where it came from")),
+    }
+    match table.remove("held") {
+        None => {}
+        Some(Value::Table(held)) if held.values().all(Value::is_str) => {}
+        Some(_) => {
+            return Err("its `held` is not a table of what was kept and not done".into());
+        }
+    }
     let overrides = match table.remove("for") {
         None => Table::new(),
         Some(Value::Table(overrides)) => overrides,
@@ -317,9 +335,13 @@ fn entry(name: &str, value: Value) -> Result<Entry, String> {
         let Value::Table(over) = value else {
             return Err(format!("for {character}: not a table"));
         };
-        if over.contains_key("characters") || over.contains_key("for") {
+        if ["characters", "for", "origin", "held"]
+            .iter()
+            .any(|key| over.contains_key(*key))
+        {
             return Err(format!(
-                "for {character}: `characters` and `for` belong to the trigger, not one character"
+                "for {character}: `characters`, `for`, `origin` and `held` belong to the \
+                 trigger, not one character"
             ));
         }
         let key = character.to_lowercase();
