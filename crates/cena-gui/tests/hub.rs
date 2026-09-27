@@ -152,13 +152,10 @@ fn an_empty_tab_says_so() {
 }
 
 /// The hub as a player sees it, rendered and compared with the committed
-/// images. Rendered where a software GPU adapter is certain: Windows ships
-/// one, and CI's Linux job gains one at `plan/47` step 9.
+/// images. Rendered on every OS CI runs (`plan/47` step 9): by WARP on
+/// Windows, Metal on macOS, and lavapipe on Linux, which CI installs; the
+/// images are Windows', and `kittest.toml` says how near the others must be.
 #[test]
-#[cfg_attr(
-    not(windows),
-    ignore = "rendered on Windows until CI has a software adapter elsewhere (plan/47 step 9)"
-)]
 fn the_hub_as_drawn() {
     let mut harness = Harness::builder()
         .with_size((520.0, 300.0))

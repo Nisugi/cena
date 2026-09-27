@@ -171,7 +171,8 @@ and `.github/workflows/docs.yml` publishes the rustdoc to GitHub Pages on every 
 `main`. Clippy's test exemption for `unwrap`/`expect`/`panic` covers `#[test]` bodies
 only: a helper fn in `tests/` returns `Option`/`Result` and the test unwraps it.
 
-CI (`.github/workflows/ci.yml`) also builds the five core crates (`cena-platform`,
+CI (`.github/workflows/ci.yml`) runs clippy and the tests on Ubuntu, Windows and macOS
+(`plan/47` step 9), with the GUI's images compared on all three (`kittest.toml`). It also builds the five core crates (`cena-platform`,
 `cena-protocol`, `cena-model`, `cena-session`, `cena-behavior`) for `aarch64-linux-android`
 (via `cargo ndk`) and `aarch64-apple-ios` (macOS runner only). A dependency that breaks
 either build breaks `plan/12` §1a.

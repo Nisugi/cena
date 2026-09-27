@@ -15,10 +15,15 @@ jobs:
     # is no .gitattributes yet); and case-insensitive path behaviour in the
     # source walk. The architecture tests are where all three live, which is
     # why the test step runs on both.
+    #
+    # And macOS, since the GUI (plan/47 step 9; the author: "mac and linux
+    # matter"): a window, keys and a GPU are where the three differ most, and
+    # macOS had only the iOS core build (ios-core below), which compiles five
+    # library crates and tests none.
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -30,19 +35,25 @@ jobs:
       # The binary plays a trigger's sound through rodio, whose audio backend
       # on Linux links the system ALSA library (plan/45 Stage 3). VellumFE's
       # CI installs the same package for the same reason.
-      - run: sudo apt-get update && sudo apt-get install -y pkg-config libasound2-dev
+      # mesa-vulkan-drivers is lavapipe, a Vulkan adapter on the CPU: the GUI's
+      # image tests render with it (plan/47 step 9), as egui_kittest prefers a
+      # software adapter. The window itself needs no package: winit loads X11
+      # and Wayland at run time (wayland-sys's `dlopen`, x11-dl), which is why
+      # VellumFE's Linux build installs none either.
+      - run: sudo apt-get update && sudo apt-get install -y pkg-config libasound2-dev mesa-vulkan-drivers
         if: matrix.os == 'ubuntu-latest'
 
       # plan/06 section 4 lists these as 1. test, 2. clippy, 3. fmt. Reordered
       # cheapest-first so a formatting slip does not wait on a full build; the
       # set of required checks is unchanged.
-      # fmt and clippy are platform-independent: one run is enough, and
-      # doubling them buys nothing. The tests are not -- see the matrix
-      # comment above.
+      # fmt is platform-independent: one run is enough. Clippy was too, and
+      # ran once; it runs on every OS now, because code under
+      # `#[cfg(target_os = ...)]` is linted only where it compiles -- the
+      # keepalive (cena-platform/src/live.rs:190) and the GUI's keys
+      # (plan/47 step 7) have a branch per OS.
       - run: cargo fmt --check
         if: matrix.os == 'ubuntu-latest'
       - run: cargo clippy --workspace --all-targets -- -D warnings
-        if: matrix.os == 'ubuntu-latest'
       # Intra-doc links are citations, and a citation that resolves to nothing
       # does not fail loudly -- it manufactures a false negative (`CLAUDE.md`,
       # the `styleIfClosed` incident). `[workspace.lints.rustdoc]` makes the
@@ -56,6 +67,14 @@ jobs:
       # Architecture tests are part of this. plan/06 section 4 item 5 calls
       # them out separately only because they gate merges.
       - run: cargo test --workspace
+      # A GUI image that did not match leaves `<name>.new.png` (what was drawn)
+      # and `<name>.diff.png` beside the committed one: kept, so a mismatch on
+      # an OS nobody here runs can be looked at rather than guessed at.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: gui-snapshots-${{ matrix.os }}
+          path: crates/*/tests/snapshots/
 
   # plan/12 section 1a binds platform through behavior on both mobile targets.
   # Build libraries, including TLS and SQLite's native code; no device or game
