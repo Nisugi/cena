@@ -1,4 +1,4 @@
-# 47 — M7 acceptance: the live run
+# 48 — M7 acceptance: the live run
 
 **Status: READY, not run.** The runbook for `plan/35` §8 step 6, and for the *Shown* criteria
 of steps 1 and 2 that only a live run can show. Only the author runs it (`CLAUDE.md`,
