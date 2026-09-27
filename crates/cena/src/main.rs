@@ -58,6 +58,7 @@ mod perform;
 mod play;
 mod relay;
 mod roster;
+mod scripts;
 mod secrets;
 mod setup;
 mod sorter;

@@ -95,6 +95,8 @@ struct Table {
     web: Option<frontend::Frontend>,
     /// `--agent`'s MCP listener (`plan/35`), when asked for.
     agent: Option<crate::agent::Agent>,
+    /// Every character's Lich scripts and their runners (`plan/46`).
+    scripts: crate::scripts::Scripts,
     /// The window's sessions, when this run has a window (`gui.rs`).
     gui: Option<cena_gui::Sessions>,
     /// What every character's hunt shares: the groups' boards and the
@@ -163,6 +165,7 @@ pub(crate) async fn serve(
         // page's link is printed when its character is `Ready`.
         web: frontend::Frontend::open(&map).await,
         agent: crate::agent::Agent::open(&dir).await,
+        scripts: crate::scripts::Scripts::new(&dir),
         party: crate::hunt::Party::new(gui.clone()),
         gui,
         map,
@@ -213,6 +216,7 @@ pub(crate) async fn serve(
     if let Some(agent) = &table.agent {
         agent.shutdown().await;
     }
+    table.scripts.shutdown().await;
     eprintln!("\n[disconnect] quitting every session");
     let (stopped, refused) = Box::pin(table.stop_everything()).await;
     if let Some(gui) = &table.gui {
@@ -317,8 +321,8 @@ impl Table {
     }
 
     /// What reads this character once it is on the table: the loot and
-    /// combat reports over its database, the agent, its web page and its
-    /// window. Moved
+    /// combat reports over its database, the agent, its scripts, its web page
+    /// and its window. Moved
     /// out of [`Self::start`] when M8's triggers and M7's agent together
     /// took it past clippy's line limit.
     fn open_readers(
@@ -348,6 +352,14 @@ impl Table {
                 database.ok(),
             );
         }
+        self.scripts.open(
+            id,
+            character,
+            game,
+            &hosted.handle,
+            &hosted.observer,
+            commands,
+        );
         if let Some(web) = &self.web {
             web.attach(
                 Some(character),
@@ -430,6 +442,7 @@ impl Table {
         if let Some(agent) = &self.agent {
             agent.unseat(id);
         }
+        self.scripts.close(id).await;
         if let Some(gui) = &self.gui {
             gui.detach(id);
         }

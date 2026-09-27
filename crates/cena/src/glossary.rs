@@ -50,7 +50,9 @@
 //!   one of those numbered on an observer's stream. The combat model's
 //!   *attack event* is a third, inside one [`Event::Combat`]. A trigger's
 //!   `event` is a fourth: what the model reads a finished line as, a
-//!   [`LineEvent`]; call it a **line event**.
+//!   [`LineEvent`]; call it a **line event**. What a script runner is told is
+//!   a fifth, at positions of its own
+//!   ([`listening::Event`](cena_agent::scripts::listening::Event)).
 //! - **flag** is a name a trigger sets, which the guard word `flag "<name>"`
 //!   reads ([`Flags`]), and a creature's `<crtrStatus>` flags, which the
 //!   guard words `ascended`, `mini_boss` and the rest read ([`Fact::Flag`]).
@@ -86,10 +88,15 @@
 //! - **category** is the sorter's item type, `gem` or `wand` in a sorted
 //!   container look ([`SessionHandle::sort_containers`]), and a trigger's group in the triggers file,
 //!   the author's word for what the editor sets (`plan/45` §1 row 3).
-//! - **script** is not a Hydra concept (see **Retired**), and survives in
-//!   three places: the Lich scripts Hydra ports from, bigshot's `script` step
-//!   that the importer turns into a sequence, and the **scripted game**, the
-//!   fake server that tests talk to.
+//! - **script** is the player's own program, run by a script runner (see
+//!   **Scripts**), and three older things: the Lich scripts Hydra ports
+//!   from, bigshot's `script` step that the importer turns into a sequence,
+//!   and the **scripted game**, the fake server that tests talk to.
+//! - **runner** is the desk's command function every Hydra command goes to,
+//!   [`Runner`](cena_session::command::claimant::Runner), and a **script
+//!   runner**, the process that runs one character's scripts
+//!   ([`Runners`](cena_agent::scripts::Runners)). Say "script runner" for the
+//!   second.
 //!
 //! # The wire and the model
 //!
@@ -231,6 +238,19 @@
 //! | **Act** | a trigger's line sent as if the player typed it: through the `;` command table first, then to the game as [`Origin::Trigger`], never counted as a person; at most once in the trigger's cooldown and at the character's pace ([`Act`], [`Pace`]) | action, which `plan/12` §6a.3 keeps for a registry not built |
 //! | **Approved** | the line a trigger from elsewhere may send (`;trigger approve`): only that line, so a changed one is held again | trusted |
 //!
+//! # Scripts
+//!
+//! `plan/46`, M7b: the player's own programs, out of process, in their own
+//! language. A script is not a behavior, which is Hydra's own and curated,
+//! and not an agent, which has a level and a denylist.
+//!
+//! | Term | Means | Not |
+//! |---|---|---|
+//! | **Script** | the player's own program, a Lich `.lic` first, run by a script runner in its own language's runtime: started with `;name`, and doing what a Lich script does ([`script`](cena_session::script)). Back from **Retired**: the author, 2026-09-26 (`CLAUDE.md`, Settled decisions) | behavior; the scripted game |
+//! | **Script runner** | the process that runs one character's scripts, Hydra's own child: Ruby with Lich's engine (`bridges/ruby`), started on the character's first script and stopped when it leaves the table ([`Runners`](cena_agent::scripts::Runners)) | runner alone, which is also the desk's |
+//! | **Heard line** | a finished line as the game sent it, before `;sorter` and the triggers, published only while a script runner listens: [`Event::Heard`](cena_session::Event::Heard). What a script reads, as Lich's scripts read before its hooks | line, which a viewer is given |
+//! | **Script door** | the only way a script runner acts on a session: listen, send a line as typed, say ([`script::Door`](cena_session::script::Door)); `cena-agent` holds it and never the handle | door alone, which is the agent's and checks a level |
+//!
 //! # Names
 //!
 //! | Term | Means | Not |
@@ -246,7 +266,6 @@
 //!
 //! | Term | Was | Why it went |
 //! |---|---|---|
-//! | **Script** | one Lua program in a session | scripting is deferred, not built, and nothing may be designed around it (`CLAUDE.md`, Settled decisions). A proposal to add it later is a live question; until then the word names nothing of Hydra's |
 //! | **Adapter** | the per-game implementation, `GameAdapter` | refused: the second game is deferred all-or-nothing, and an abstraction for it is not built ahead of it (`plan/12` §9d) |
 //! | **Ladder** | the resend-and-recover protocol around one command | Lich's `fput`. Hydra's counterpart is the **round trip**, and the word is taken by three ladders the code does have |
 //!

@@ -88,4 +88,13 @@ impl Door {
     pub fn say(&self, notice: Notice) {
         self.handle.say(notice);
     }
+
+    /// The character's command symbol, which marks a line as Hydra's own:
+    /// what a runner is told a `;` command starts with.
+    #[must_use]
+    pub fn symbol(&self) -> char {
+        self.handle
+            .command_symbol()
+            .unwrap_or(crate::command::COMMAND_SYMBOL)
+    }
 }
