@@ -293,9 +293,7 @@ impl Layout {
     ///
     /// The folder could not be made or the file written.
     pub(crate) fn save(&self, dir: &Path, character: &str) -> std::io::Result<()> {
-        std::fs::create_dir_all(dir)?;
-        let text = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
-        std::fs::write(file(dir, character), text)
+        cena_session::store::save_json(dir, &file(dir, character), self)
     }
 }
 

@@ -375,7 +375,8 @@ Everything after it adds widgets, so the model goes first and every widget is wr
    its widgets follow that one, but a story, which stays its window's own -- a party's
    vitals in one click. A right-click on a custom window offers *Save as preset...*, under
    a name typed (not an empty one); it goes into **one library every character adds from**,
-   `presets.json` beside the layouts, over one of the same name, and a saved preset can be
+   `_presets.json` beside the layouts (a name no character's layout can take), over one of
+   the same name, and a saved preset can be
    forgotten from the list. Placing one gives its widgets ids of their own, so **what is
    placed is the character's own copy** (§1 row 10): nothing done to the copy reaches the
    preset, and nothing saved over the preset reaches a copy placed before. The library

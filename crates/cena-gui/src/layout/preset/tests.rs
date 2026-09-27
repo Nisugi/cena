@@ -146,13 +146,34 @@ fn the_library_is_kept_in_its_file() {
         .map(|preset| preset.name.as_str())
         .collect();
     assert_eq!(names, ["Vitals row"]);
-    let file = dir.join("presets.json");
+    let file = dir.join(FILE);
     let text = std::fs::read_to_string(&file).expect("written");
     std::fs::write(&file, text.replace("\"version\": 1", "\"version\": 2")).expect("written");
     assert!(
         Library::load(Some(dir.clone())).presets().is_empty(),
         "another version"
     );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A character named Presets keeps its layout beside the library, not over
+/// it: both are read back whole.
+#[test]
+fn a_character_named_presets_keeps_the_library_whole() {
+    let dir = std::env::temp_dir().join(format!("cena-presets-named-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut library = Library::load(Some(dir.clone()));
+    let Some(vitals) = Preset::hydras().into_iter().next() else {
+        panic!("Hydra's presets");
+    };
+    library.keep(vitals);
+    let layout = Layout::fitted(Vec2::new(1200.0, 800.0));
+    layout.save(&dir, "Presets").expect("saved");
+    assert_eq!(
+        Library::load(Some(dir.clone())).presets(),
+        library.presets()
+    );
+    assert_eq!(Layout::load(&dir, "Presets").as_ref(), Some(&layout));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

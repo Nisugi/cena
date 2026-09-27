@@ -2,7 +2,7 @@
 //! as the author put it -- Hydra's own, such as a row of vitals, and any a
 //! player saved. Not special code: a preset is a custom window kept aside.
 //!
-//! One library every character adds from, in `presets.json` beside the
+//! One library every character adds from, in `_presets.json` beside the
 //! layouts; each layout stays its character's own. **Adding a preset places
 //! the character's own copy** (the author, 2026-09-27: *"yep own copy"*):
 //! its widgets get new ids, and nothing done to the copy reaches the preset,
@@ -19,8 +19,11 @@ use crate::widget::{Category, Indicator, Widget};
 /// The version of the library file this build writes and reads.
 const VERSION: u32 = 1;
 
-/// The library's file, in the layouts folder.
-const FILE: &str = "presets.json";
+/// The library's file, in the layouts folder: a name no layout can have,
+/// since a layout's keeps only a character's letters and digits. It was
+/// `presets.json`, which a character named Presets would have written its
+/// layout over.
+const FILE: &str = "_presets.json";
 
 /// A custom window kept aside to be placed again.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -247,13 +250,11 @@ impl Library {
 }
 
 fn write(dir: &Path, presets: &[Preset]) -> std::io::Result<()> {
-    std::fs::create_dir_all(dir)?;
     let file = File {
         version: VERSION,
         presets: presets.to_vec(),
     };
-    let text = serde_json::to_string_pretty(&file).map_err(std::io::Error::other)?;
-    std::fs::write(dir.join(FILE), text)
+    cena_session::store::save_json(dir, &dir.join(FILE), &file)
 }
 
 #[cfg(test)]
