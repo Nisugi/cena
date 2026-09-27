@@ -1,5 +1,6 @@
 //! A runner's tools (`SCRIPTS.md`): `listen` to its character, `send` a line
-//! as if typed, `say` something to the player. The token a request carries
+//! as if typed, `say` something to the player, and answer for its hooks
+//! (`hooks`, `shown`, `input`). The token a request carries
 //! names the seat it acts on ([`super::Runners`]), so no tool names a
 //! character.
 
@@ -24,7 +25,8 @@ Hydra started for one of them, and the token names which. `listen` returns what 
 after a position: the game's lines as it sent them, lines sent, prompts, the player's \
 commands for the runner, the connection's state. `send` sends a line as the player would \
 type it, Hydra's own command when it starts with the command symbol. `say` shows the \
-player text. See SCRIPTS.md (hydra-script/1).";
+player text. `hooks` says which hooks the runner has; `shown` and `input` answer for them. \
+See SCRIPTS.md (hydra-script/1).";
 
 /// The longest `say` may be, in characters: a screenful of a table.
 pub const MAX_SAID: usize = 20_000;
@@ -84,6 +86,45 @@ pub struct Stop {
     pub run: u64,
 }
 
+/// `hooks`' kinds: which hooks the runner has now.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Hooks {
+    /// Display hooks: each `line` is answered with `shown` before the
+    /// player is shown it.
+    pub display: bool,
+    /// Input hooks: each line the player types comes as `input`, answered
+    /// with `input` before anything else sees it.
+    pub input: bool,
+}
+
+/// `shown`'s answers.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Shown {
+    /// One for each `line` heard while the display hooks were on.
+    pub lines: Vec<ShownLine>,
+}
+
+/// What the player is shown of one line.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ShownLine {
+    /// The `line` event's cursor.
+    pub cursor: u64,
+    /// The text to show: the line's own to show it as it came, other text
+    /// in its place (a line break makes more lines), `null` or `""` to hide
+    /// it. Text only, as `say`'s.
+    pub text: Option<String>,
+}
+
+/// `input`'s answer.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct Input {
+    /// The `input` event's `asked`.
+    pub asked: u64,
+    /// The line to use in its place, the same line to leave it, or `null`
+    /// to swallow it: nothing sent, nothing run.
+    pub line: Option<String>,
+}
+
 /// `say`'s text.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct Said {
@@ -113,7 +154,7 @@ impl Scripting {
     }
 
     #[tool(
-        description = "What happened to the character after a position: `line` (the game's text as it sent it), `sent`, `prompt`, `typed` (a command the player typed for the runner), `lifecycle`, `lagged`. Waits up to timeout_ms for the first. Ask next from `next`."
+        description = "What happened to the character after a position: `state`, `line` (the game's text as it sent it), `sent`, `prompt`, `typed` (a command the player typed for the runner), `input` (a line for the input hooks), `lifecycle`, `ended`, `lagged`. Waits up to timeout_ms for the first. Ask next from `next`."
     )]
     async fn listen(
         &self,
@@ -151,6 +192,52 @@ impl Scripting {
             Sending::Lost => serde_json::json!({ "outcome": "lost" }),
         };
         json(&answer)
+    }
+
+    #[tool(
+        description = "Which hooks the runner has now: with `display`, each `line` waits to be shown until `shown` answers it (at most half a second); with `input`, each line the player types comes as an `input` event and waits for `input` (as long). Say it when the first of a kind comes and when the last goes."
+    )]
+    async fn hooks(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(Hooks { display, input }): Parameters<Hooks>,
+    ) -> Result<CallToolResult, ErrorData> {
+        seat(&parts)?.hook(display, input);
+        json(&serde_json::json!({ "display": display, "input": input }))
+    }
+
+    #[tool(
+        description = "What the display hooks make of the lines heard, by each `line` event's cursor: its own text to show it as it came, other text in its place, null to hide it. A line not answered in time is shown as it came."
+    )]
+    async fn shown(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(Shown { lines }): Parameters<Shown>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        let count = lines.len();
+        seat.door
+            .shown(lines.into_iter().map(|line| (line.cursor, line.text)));
+        json(&serde_json::json!({ "answered": count }))
+    }
+
+    #[tool(
+        description = "What the input hooks make of a line the player typed, by the `input` event's `asked`: the line to use, the same line to leave it, or null to swallow it. Answers `late` when the line already went as typed."
+    )]
+    async fn input(
+        &self,
+        Extension(parts): Extension<Parts>,
+        Parameters(Input { asked, line }): Parameters<Input>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let seat = seat(&parts)?;
+        if line
+            .as_deref()
+            .is_some_and(|line| line.contains(['\r', '\n']))
+        {
+            return Err(ErrorData::invalid_params("one line, no line breaks", None));
+        }
+        let taken = seat.typed_answer(asked, line);
+        json(&serde_json::json!({ "late": !taken }))
     }
 
     #[tool(

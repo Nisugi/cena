@@ -34,6 +34,13 @@ pub enum Event {
     /// ([`SessionHandle::set_triggers`](crate::SessionHandle::set_triggers)):
     /// it may arrive substituted, painted, on another stream, twice (a
     /// redirected copy), or not at all (a squelch).
+    ///
+    /// **Late, on a character whose script runner has display hooks**
+    /// ([`script::Door::hook_lines`](crate::script::Door::hook_lines)): it
+    /// waits for their answer, up to
+    /// [`HOOK_DEADLINE`](crate::script::HOOK_DEADLINE), and may come after
+    /// events published since, hidden or changed by them. Lines still come
+    /// in the order the game sent them.
     /// `Arc` because every subscriber shares one allocation.
     Line(std::sync::Arc<cena_model::line::Line>),
     /// A frame finished a line of game text, **as the game sent it**: the
@@ -47,6 +54,10 @@ pub enum Event {
     /// waiting for it. Published only while a script runner listens to the
     /// character ([`script::Door::listen`](crate::script::Door::listen)), so
     /// a character nobody scripts publishes each line once.
+    ///
+    /// Also what a runner's display hooks answer, by the cursor it was
+    /// published at ([`script::Door::shown`](crate::script::Door::shown)):
+    /// hooks see the game's line, as Lich's see the game's text.
     Heard(std::sync::Arc<cena_model::line::Line>),
     /// A trigger set or cleared a flag (`cena_model::state::flags`): the
     /// session has made the change to its state, and whoever folds these
@@ -55,6 +66,8 @@ pub enum Event {
     ///
     /// Published after the [`Event::Line`]s of the line that set it, or at
     /// the prompt a condition fired on; only when it changed something.
+    /// Before them while a script's display hooks hold them: a flag never
+    /// waits on a script.
     Flag(cena_model::state::flags::FlagChange),
     /// A trigger called for attention: a sound, an OS notification, a
     /// banner (`cena_model::trigger::Attention`). The session decides it

@@ -173,6 +173,10 @@ pub(crate) struct EventPublisher {
     /// Whether each finished line is also published as the game sent it
     /// ([`Event::Heard`]), for a script runner. Here for `sorting`'s reasons.
     hearing: Arc<AtomicBool>,
+    /// A script runner's hooks (`crate::script`): whether each line shown
+    /// waits for its display hooks, their answers, and its input hooks. Here
+    /// for `sorting`'s reasons.
+    hooks: Arc<crate::script::Hooks>,
     /// This character's triggers, compiled (`plan/45`): what each finished
     /// line is answered with before it is published, and what its conditions
     /// last read. Here for `sorting`'s reasons, which is also why a reconnect
@@ -214,8 +218,14 @@ impl EventPublisher {
             fence: Arc::new(Mutex::new(())),
             sorting: Arc::new(AtomicBool::new(false)),
             hearing: Arc::new(AtomicBool::new(false)),
+            hooks: Arc::default(),
             triggers: Arc::default(),
         }
+    }
+
+    /// A script runner's hooks.
+    pub(crate) fn hooks(&self) -> &crate::script::Hooks {
+        &self.hooks
     }
 
     /// Publish each finished line as the game sent it too, or stop.

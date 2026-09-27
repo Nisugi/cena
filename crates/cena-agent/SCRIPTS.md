@@ -45,6 +45,7 @@ Each event has `at`, its position, and a `kind`:
 | `sent` | `cursor`, `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`): a line went out to the game. Yours are `script`, at the cursor `send` answered |
 | `prompt` | `cursor`, `time` (the game's clock, epoch seconds, or `null`), `text` (`>`, `R>`...): the end of a chunk |
 | `typed` | `line`: the player typed a command for the runner, without the symbol (`trollspeak say hi`, `k trollspeak`) |
+| `input` | `asked`, `line`: while the runner has input hooks, a line the player typed, **as typed**, the symbol and all, before anything else sees it: answer it with `input` (below) |
 | `lifecycle` | `cursor`, `state` (`ready`, `reconnecting`...), `generation` (advances on every reconnect) |
 | `ended` | `run`, `work` (`completed`, `failed`, `interrupted`, `no_opportunity`, `unknown`), `reason` (the behavior's own word: `arrived`, `stopped`...), `left` (what it left undone, in words): a built-in `perform` started ended |
 | `lagged` | `missed`: that many of the session's events were missed on the way here; a line a script waits for may be among them |
@@ -61,7 +62,7 @@ produced, as under Lich. So a `state`'s `cursor` is later than the lines after i
 snapshot's. Lines with no prompt after them go without a `state` after a quarter of a second.
 
 **`lagged: true`** in the answer means events after `since` were let go for room (the last 4096
-are kept). **`closed: true`**: the character's session ended, or the runner was dismissed;
+are kept; never a `typed` or an `input`). **`closed: true`**: the character's session ended, or the runner was dismissed;
 nothing more will come.
 
 ## The local copy
@@ -148,3 +149,46 @@ keeps its columns, never re-wrapped, for a table. It never reaches the game. Ans
 
 Text only: markup a script writes (`<pushBold/>`, `<preset>`) is not drawn. Hydra never puts
 text the game did not send among the game's lines (`crates/cena-session/src/notice.rs`).
+
+## Hooks
+
+A runner's hooks change what the player is shown and what the player's typing becomes, as Lich's
+`DownstreamHook` and `UpstreamHook` do (`plan/46` §6.1), **within a time limit**: half a second
+(`cena_session::script::HOOK_DEADLINE`), past which the line goes as it came. Nothing else waits
+on them: the game's line reaches the character's state, the log, the player's triggers' flags and
+sends, and every `line` event **on time**; only its showing waits. The cost of a hook is a line
+shown a little late, never one lost.
+
+### `hooks` `{ display, input }`
+
+Which hooks the runner has now: call it when the first of a kind comes and when the last goes.
+Answers the two back.
+
+- **`display`**: from now on, what the player is shown of each `line` you hear waits for your
+  `shown` about it. Answer **every** `line`: one you leave waits out the limit.
+- **`input`**: from now on, each line the player types comes as an `input` event, and waits for
+  your `input` about it. Hydra's own lines (a `;multi`'s, a relayed `;to`'s) and a script's
+  `send` never do, as a Lich script's `put` never meets its hooks.
+
+### `shown` `{ lines: [{ cursor, text }] }`
+
+What the player is shown of the lines heard, by each `line` event's `cursor`, as many in one call
+as you have: `text` the line's own to show it as it came (its links and colours kept), other text
+to show in its place (a line break makes more lines), `null` or `""` to hide it. Answers
+`{"answered": n}`. The player is shown the lines **in the game's order**: an answered line waits
+for an earlier one. Answering a line no longer waiting does nothing.
+
+A line shown in another's place is text, as `say`'s: markup is not drawn. The player's triggers
+answer it again (its colours, a substitution, a squelch), as a frontend's highlights answer what
+Lich's hooks let through; a line the player's triggers hid stays hidden whatever you answer.
+
+Hooks see the game's text, not its markup, as `line` carries it; a Lich hook whose pattern is
+markup (`<prompt`, `<pushBold/>`) does not match.
+
+### `input` `{ asked, line }`
+
+What the player's line becomes, by the `input` event's `asked`: `line` to use in its place (the
+same line to leave it), or `null` to swallow it: nothing is sent and nothing runs. One line, no
+line breaks. What you answer goes on as the player's typing would, to Hydra's own commands, to
+yours (`typed`), or to the game. Answers `{"late": false}`, or `{"late": true}` when the line
+already went as typed.

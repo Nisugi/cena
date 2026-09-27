@@ -142,6 +142,36 @@ impl SessionHandle {
         self.submit_and_await(envelope, answer, deadline).await
     }
 
+    /// The player's own line, typed at a frontend: asked of a script
+    /// runner's input hooks first (`crate::script`, Lich's `UpstreamHook`),
+    /// then sent as [`Self::send_manual_at`] sends it. A line the hooks
+    /// swallow is [`Outcome::Handled`]; one they have not answered by
+    /// [`HOOK_DEADLINE`](crate::script::HOOK_DEADLINE) goes as typed.
+    ///
+    /// Hydra's own lines on the manual path -- `;multi`'s, a relayed `;to`,
+    /// the sorter's look -- go by `send_manual_at`, past the hooks, as a
+    /// Lich script's `put` never meets them: a hook turning a line into a
+    /// `;multi` of itself would otherwise never end.
+    pub async fn send_typed_at(
+        &self,
+        generation: Generation,
+        line: &str,
+        deadline: std::time::Duration,
+    ) -> Outcome {
+        let Some(ask) = self.hooks().typing() else {
+            return self.send_manual_at(generation, line, deadline).await;
+        };
+        match tokio::time::timeout(crate::script::HOOK_DEADLINE, ask(line)).await {
+            Ok(Ok(None)) => {
+                // A person typed it, whatever the hooks made of it.
+                self.attendance.mark();
+                Outcome::Handled
+            }
+            Ok(Ok(Some(changed))) => self.send_manual_at(generation, &changed, deadline).await,
+            Ok(Err(_)) | Err(_) => self.send_manual_at(generation, line, deadline).await,
+        }
+    }
+
     /// Queue manual input for the connection the frontend actually observed.
     /// The generation is checked before any command, including a typed quit
     /// or one of Hydra's own, can act. This uses the ordinary manual queue and

@@ -110,7 +110,7 @@ async fn serve_session(mut socket: WebSocket, viewed: Arc<Viewed>) {
                         // An early refusal only, never the authority. The hub's
                         // generation is the last one PUBLISHED and can lag the
                         // session's; the viewer's echoed `generation` is what
-                        // goes to `send_manual_at`, whose actor checks it
+                        // goes to `send_typed_at`, whose actor checks it
                         // against the live connection before anything acts.
                         // This comparison can only refuse a viewer that is
                         // behind the hub, which is behind the session.
@@ -131,7 +131,7 @@ async fn serve_session(mut socket: WebSocket, viewed: Arc<Viewed>) {
                             };
                             let handle = viewed.handle.clone();
                             pending = Some(Box::pin(async move {
-                                let outcome = handle.send_manual_at(Generation(number), &line, COMMAND_TIMEOUT).await;
+                                let outcome = handle.send_typed_at(Generation(number), &line, COMMAND_TIMEOUT).await;
                                 let (status, detail) = outcome_receipt(&outcome);
                                 receipt(session, generation, request_id, status, detail)
                             }));

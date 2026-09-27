@@ -264,8 +264,9 @@ impl Sessions {
     }
 
     /// Send `line` on `seat`'s character as the player typed it, on the
-    /// connection its window last saw: Hydra's command line first, then the
-    /// game (`SessionHandle::send_manual_at`). It is echoed in the story at
+    /// connection its window last saw: a script's input hooks first, then
+    /// Hydra's command line, then the game (`SessionHandle::send_typed_at`).
+    /// It is echoed in the story at
     /// once; a line that may not have gone is said in Hydra's pane.
     pub(crate) fn send(&self, seat: &Arc<Seat>, line: String) {
         lock(&seat.story).typed(&line);
@@ -280,7 +281,7 @@ impl Sessions {
         self.shared.runtime.spawn(async move {
             let outcome = seat
                 .handle
-                .send_manual_at(generation, &line, SEND_DEADLINE)
+                .send_typed_at(generation, &line, SEND_DEADLINE)
                 .await;
             if let Some(why) = unsent(&outcome) {
                 lock(&seat.story).tell(Notice::line(NoticeKind::Warn, why));

@@ -386,3 +386,163 @@ async fn a_runner_starts_a_built_in_and_hears_it_end() {
     .unwrap();
     assert!(hunt["refused"].as_str().unwrap().contains("not a built-in"));
 }
+
+/// A scripted character warmed up, and a runner admitted for it with
+/// display and input hooks.
+struct Hooked {
+    handle: cena_session::SessionHandle,
+    transcript: cena_platform::TranscriptHandle,
+    legacy: tokio::sync::broadcast::Receiver<Event>,
+    runners: Runners,
+    token: String,
+    app: axum::Router,
+}
+
+async fn hooked() -> Option<Hooked> {
+    let (source, transcript) = AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+    transcript.answer(
+        "glance",
+        b"You glance about.\n<prompt time=\"4\">&gt;</prompt>\n",
+    );
+    transcript.answer(
+        "look",
+        b"You see a quiet room.\nA breeze blows.\n<prompt time=\"5\">&gt;</prompt>\n",
+    );
+    let session = Session::new(source);
+    let handle = session.handle();
+    let observer = session.observer();
+    let (_, legacy) = session.subscribe();
+    tokio::spawn(session.into_actor().run());
+    // The first chunk of text builds the session's classifiers, which a
+    // debug build takes past the hooks' half second over: not what these
+    // tests are about.
+    handle
+        .send_manual_at(handle.generation(), "glance", Duration::from_secs(5))
+        .await;
+    let runners = Runners::default();
+    let token = runners
+        .admit("Nisugi", handle.script_door(), &observer)
+        .await
+        .ok()?;
+    let app = router(runners.clone(), &CancellationToken::new());
+    let hooks = call(
+        &app,
+        &token,
+        "hooks",
+        serde_json::json!({"display": true, "input": true}),
+    )
+    .await
+    .ok()?;
+    (hooks["display"] == true).then_some(())?;
+    Some(Hooked {
+        handle,
+        transcript,
+        legacy,
+        runners,
+        token,
+        app,
+    })
+}
+
+/// The lines shown since last asked.
+fn shown(legacy: &mut tokio::sync::broadcast::Receiver<Event>) -> Vec<String> {
+    std::iter::from_fn(|| legacy.try_recv().ok())
+        .filter_map(|event| match event {
+            Event::Line(line) => Some(line.text()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A runner's display hooks, over MCP: each line waits to be shown until
+/// `shown` answers it by its cursor, hidden or changed.
+#[tokio::test(flavor = "current_thread")]
+async fn a_runners_display_hooks_answer_what_is_shown() {
+    let Hooked {
+        handle,
+        mut legacy,
+        token,
+        app,
+        ..
+    } = hooked().await.unwrap();
+    handle
+        .send_manual_at(handle.generation(), "look", Duration::from_secs(5))
+        .await;
+    let events = heard_until(&app, &token, |events| kind(events, "line").len() == 2)
+        .await
+        .unwrap();
+    let lines = kind(&events, "line");
+    assert_eq!(
+        shown(&mut legacy),
+        ["You glance about."],
+        "the look held for the hooks"
+    );
+    let answered = call(
+        &app,
+        &token,
+        "shown",
+        serde_json::json!({"lines": [
+            {"cursor": lines[0]["cursor"], "text": null},
+            {"cursor": lines[1]["cursor"], "text": "A gale blows."},
+        ]}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(answered["answered"], 2);
+    let mut seen = Vec::new();
+    for _ in 0..50 {
+        seen.extend(shown(&mut legacy));
+        if !seen.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(seen, ["A gale blows."]);
+}
+
+/// A runner's input hooks, over MCP: the player's line comes as `input`
+/// and goes as answered. Dismissed, the runner is asked nothing.
+#[tokio::test(flavor = "current_thread")]
+async fn a_runners_input_hooks_answer_what_is_typed() {
+    let Hooked {
+        handle,
+        transcript,
+        runners,
+        token,
+        app,
+        ..
+    } = hooked().await.unwrap();
+    let typing = handle.clone();
+    let typed = tokio::spawn(async move {
+        typing
+            .send_typed_at(typing.generation(), "tt", Duration::from_secs(5))
+            .await
+    });
+    let events = heard_until(&app, &token, |events| !kind(events, "input").is_empty())
+        .await
+        .unwrap();
+    let input = kind(&events, "input")[0];
+    assert_eq!(input["line"], "tt");
+    let answer = call(
+        &app,
+        &token,
+        "input",
+        serde_json::json!({"asked": input["asked"], "line": "target"}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(answer["late"], false);
+    typed.await.unwrap();
+    assert_eq!(transcript.lines(), ["glance", "target"]);
+
+    runners.dismiss(&token);
+    let typed_at = std::time::Instant::now();
+    handle
+        .send_typed_at(handle.generation(), "look", Duration::from_secs(5))
+        .await;
+    assert!(
+        typed_at.elapsed() < cena_session::script::HOOK_DEADLINE,
+        "not asked of hooks that went with the runner"
+    );
+    assert_eq!(transcript.lines(), ["glance", "target", "look"]);
+}

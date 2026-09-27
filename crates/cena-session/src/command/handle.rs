@@ -290,6 +290,11 @@ impl SessionHandle {
         self.events.hear_lines(on);
     }
 
+    /// A script runner's hooks (`crate::script`).
+    pub(crate) fn hooks(&self) -> &crate::script::Hooks {
+        self.events.hooks()
+    }
+
     /// This character's triggers (`plan/45`): each finished line is answered
     /// with them before it is published, so every viewer, and a session
     /// nobody watches, is given the same line. They hold across a reconnect;

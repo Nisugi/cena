@@ -14,7 +14,8 @@
 //! asks again from where it was. The log is bounded; past the bound the
 //! oldest entry goes, and the next read says `lagged`. **A typed line is
 //! never let go for room**: a `;kill` lost to a flood of combat lines would
-//! be lost exactly when it mattered.
+//! be lost exactly when it mattered; nor is a line asked of the input hooks,
+//! which the player is waiting on.
 
 use std::collections::VecDeque;
 use std::sync::{Mutex, PoisonError};
@@ -70,6 +71,14 @@ pub enum Event {
     /// command symbol, `trollspeak say hello` or `k trollspeak`.
     Typed {
         /// What was typed, without the symbol.
+        line: String,
+    },
+    /// The player typed a line, and the runner's input hooks say what
+    /// becomes of it before anything else sees it: answered with `input`.
+    Input {
+        /// The question's number, for the answer.
+        asked: u64,
+        /// The line as typed, the command symbol and all.
         line: String,
     },
     /// The connection's state changed.
@@ -158,11 +167,9 @@ impl Listening {
         let at = inner.last;
         inner.entries.push_back(Entry { at, event });
         while inner.entries.len() > KEPT {
-            let Some(oldest) = inner
-                .entries
-                .iter()
-                .position(|entry| !matches!(entry.event, Event::Typed { .. }))
-            else {
+            let Some(oldest) = inner.entries.iter().position(|entry| {
+                !matches!(entry.event, Event::Typed { .. } | Event::Input { .. })
+            }) else {
                 break;
             };
             if let Some(dropped) = inner.entries.remove(oldest) {

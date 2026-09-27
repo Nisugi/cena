@@ -125,6 +125,9 @@ impl<S: ByteSource> SessionActor<S> {
         // This runs on EVERY exit path, so no caller of `quit()` is left
         // waiting on a reply that never comes.
         self.finish_quit(crate::command::Farewell::Unsent);
+        // What waited for a script's display hooks is shown: the connection
+        // that held it is over.
+        self.show_held(true);
         // Idempotent by the trait's contract, which is why this is safe on
         // every one of the three exit paths.
         let _ = self.source.shutdown().await;

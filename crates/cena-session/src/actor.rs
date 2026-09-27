@@ -104,6 +104,7 @@ mod ending;
 mod event;
 mod gate;
 mod handle;
+mod hooked;
 mod io;
 mod line;
 mod owed;
@@ -228,6 +229,8 @@ pub struct SessionActor<S: ByteSource> {
     owed: owed::OwedPrompts,
     /// Whether the open window is a quiet command's (`Event::Quiet`, `io.rs`).
     quiet_window: bool,
+    /// What a viewer is shown, held for a script runner's display hooks.
+    held: hooked::Held,
     /// Whether this connection's login burst has finished: `Syncing` becomes
     /// `Ready` on the first prompt after `<endSetup/>` (`readiness.rs`).
     readiness: readiness::Readiness,
@@ -373,6 +376,7 @@ impl<S: ByteSource> SessionActor<S> {
             queue: CommandQueue::new(),
             owed: owed::OwedPrompts::default(),
             quiet_window: false,
+            held: hooked::Held::default(),
             readiness: readiness::Readiness::default(),
             commands,
             events,
@@ -483,6 +487,11 @@ impl<S: ByteSource> SessionActor<S> {
                     },
                     None => senders_gone = true,
                 },
+
+                // Only while lines are held for a script's display hooks.
+                () = hooked::wake(self.events.hooks(), self.held.due()), if self.held.is_waiting() => {
+                    self.show_held(false);
+                }
 
                 request = self.observations.requests.recv() => {
                     if let Some(request) = request {

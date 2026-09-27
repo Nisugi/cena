@@ -18,6 +18,7 @@
 //! - [`listening`]: what a runner listens to, at its own positions.
 //! - [`local`]: its local copy of the character, and the map it is placed on.
 //! - `watch`: what the session publishes, told to a runner in Lich's order.
+//! - `hooks`: which hooks a runner has, and its input hooks' questions.
 //! - [`tools`]: `listen`, `send`, `say`, `room`, `spell`, `perform` and
 //!   `stop`, the contract in `SCRIPTS.md`.
 //! - [`runner`]: the Ruby runner's files, carried in the binary, and how one
@@ -38,6 +39,7 @@ use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, Stream
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+mod hooks;
 pub mod listening;
 pub mod local;
 pub mod runner;
@@ -74,6 +76,8 @@ pub struct Seat {
     /// Where a built-in's end goes, to be told after a fresh copy
     /// (`watch`).
     ends: mpsc::UnboundedSender<listening::Event>,
+    /// Its hooks (`hooks`).
+    hooking: Arc<Mutex<hooks::Hooking>>,
     stop: CancellationToken,
 }
 
@@ -135,6 +139,7 @@ impl Runners {
             observer: observer.clone(),
             runs: Mutex::default(),
             ends,
+            hooking: Arc::default(),
             stop,
         });
         let watching = watch::Watching {
@@ -150,8 +155,8 @@ impl Runners {
         Ok(token)
     }
 
-    /// The runner with `token` has stopped: nothing more is kept for it, and
-    /// its token opens nothing.
+    /// The runner with `token` has stopped: nothing more is kept for it, its
+    /// hooks hold nothing back, and its token opens nothing.
     pub fn dismiss(&self, token: &str) {
         let removed = self.lock().remove(token);
         if let Some(seat) = removed {
@@ -162,6 +167,7 @@ impl Runners {
                 .values()
                 .any(|other| other.character == seat.character)
             {
+                seat.hook(false, false);
                 seat.door.listen(false);
             }
         }

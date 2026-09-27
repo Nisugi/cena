@@ -60,11 +60,23 @@ impl<S: ByteSource> SessionActor<S> {
     ///
     /// While a script runner listens, the line goes first as the game sent
     /// it ([`Event::Heard`](super::Event::Heard)): what a script reads is
-    /// never what the player's triggers made of it.
+    /// never what the player's triggers made of it. While the runner has
+    /// display hooks, what a viewer is shown of it waits for their answer
+    /// (`hooked.rs`); what the triggers do beyond the line does not.
     pub(super) fn publish_line(&mut self, line: Arc<Line>) {
-        if self.events.hears_lines() {
-            let _ = self.events.send(Event::Heard(Arc::clone(&line)));
-        }
+        let heard = self
+            .events
+            .hears_lines()
+            .then(|| self.events.numbered(Event::Heard(Arc::clone(&line))));
+        let mut held = if heard.is_some() && self.events.hooks().display() {
+            Some(Vec::new())
+        } else {
+            // Shown now, so whatever was held goes first.
+            if self.held.is_waiting() {
+                self.show_held(true);
+            }
+            None
+        };
         let triggers = self.events.triggers();
         let main = line.stream.is_empty() || line.stream == "main";
         if main
@@ -72,25 +84,44 @@ impl<S: ByteSource> SessionActor<S> {
             && let Some(sorted) = cena_model::sorter::sort(&line.runs)
         {
             for runs in sorted {
-                self.publish_answered(&triggers, Arc::new(Line::new(line.stream.clone(), runs)));
+                let sorted = Arc::new(Line::new(line.stream.clone(), runs));
+                self.publish_answered(&triggers, sorted, held.as_mut());
             }
-            return;
+        } else {
+            self.publish_answered(&triggers, Arc::clone(&line), held.as_mut());
         }
-        self.publish_answered(&triggers, line);
+        if let (Some(cursor), Some(shown)) = (heard, held) {
+            self.hold(cursor, line, shown);
+        }
     }
 
-    /// Publish what `triggers` make of `line`, then what the ones that
-    /// fired do beyond it: on a squelched line too.
-    fn publish_answered(&mut self, triggers: &Matcher, line: Arc<Line>) {
+    /// Publish what `triggers` make of `line`, or add it to `held`, then what
+    /// the ones that fired do beyond it: on a squelched line too.
+    fn publish_answered(
+        &mut self,
+        triggers: &Matcher,
+        line: Arc<Line>,
+        held: Option<&mut Vec<Arc<Line>>>,
+    ) {
         if triggers.triggers().is_empty() {
-            let _ = self.events.send(Event::Line(line));
+            self.show(vec![line], held);
             return;
         }
         let answer = triggers.answer(&line, &self.state);
-        for shown in answer.lines {
-            let _ = self.events.send(Event::Line(Arc::new(shown)));
-        }
+        self.show(answer.lines.into_iter().map(Arc::new).collect(), held);
         self.fired(triggers, &answer.fired, answer.attention, answer.acts);
+    }
+
+    /// Publish `lines` to every viewer, or add them to `held`.
+    fn show(&self, lines: Vec<Arc<Line>>, held: Option<&mut Vec<Arc<Line>>>) {
+        match held {
+            Some(held) => held.extend(lines),
+            None => {
+                for line in lines {
+                    let _ = self.events.send(Event::Line(line));
+                }
+            }
+        }
     }
 
     /// At a prompt: each condition that became true does what it does.

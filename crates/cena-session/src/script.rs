@@ -28,10 +28,94 @@
 //!   through the binary's performer, and **not** among the agent's
 //!   operations: a walk a script began is neither the agent's to read or
 //!   steer, nor a run whose bad end drops the agent's level.
+//!
+//! And a runner's **hooks** (`plan/46` §6.1; the author, §10 question 2:
+//! *"sure ask the script, with a time limit"*), which change what the player
+//! is shown and what the player's typing becomes, never what the game sent:
+//!
+//! - [`Door::hook_lines`]: each line a viewer would be shown waits for the
+//!   runner's display hooks to answer the line it came from
+//!   ([`Door::shown`]), or for [`HOOK_DEADLINE`], and goes as it came
+//!   past it. The model, the log, the triggers' flags and sends, and every
+//!   script have the line on time: only its showing waits.
+//! - [`Door::hook_typing`]: each line the player types is asked of the
+//!   runner's input hooks before Hydra's command line or the game sees it
+//!   ([`SessionHandle::send_typed_at`]), and goes as typed past the deadline.
+
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Duration;
+
+use tokio::sync::{Notify, oneshot};
 
 use crate::command::Claimed;
 use crate::operation::{Ended, Reporter, Steer};
 use crate::{Gate, Notice, Origin, Refusal, Sent, SessionHandle};
+
+/// How long a line waits for a runner's hooks before it is shown, or sent,
+/// as it came.
+///
+/// A choice, not a measurement (`plan/46` §9 owes one): past the 250 ms a
+/// runner's watcher holds a chunk with no prompt for its state, with room for
+/// the runner to answer. Answered, a line waits only for the answer.
+pub const HOOK_DEADLINE: Duration = Duration::from_millis(500);
+
+/// Asks a runner's input hooks what becomes of a line the player typed: the
+/// line to use instead, or `None` to swallow it. Installed by whoever holds
+/// the door ([`Door::hook_typing`]); a receiver that is dropped, or late,
+/// leaves the line as typed.
+pub type Asker = Arc<dyn Fn(&str) -> oneshot::Receiver<Option<String>> + Send + Sync>;
+
+/// A runner's hooks as the session keeps them: shared by the actor, every
+/// handle and the door, and kept across a reconnect, as `;sorter`'s switch
+/// is (`crate::observation`).
+#[derive(Default)]
+pub(crate) struct Hooks {
+    /// Whether each line shown waits for the runner's display hooks.
+    display: AtomicBool,
+    /// Answers the actor has not taken: the cursor of the line heard, and
+    /// what is shown of it (`None` hides it).
+    answers: Mutex<Vec<(u64, Option<String>)>>,
+    /// Rung when answers come, or the display hooks go.
+    answered: Notify,
+    /// The runner's input hooks, while it has any.
+    typing: Mutex<Option<Asker>>,
+}
+
+impl std::fmt::Debug for Hooks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Hooks")
+            .field("display", &self.display())
+            .field("typing", &self.typing().is_some())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Hooks {
+    /// Whether each line shown waits for the runner's display hooks.
+    pub(crate) fn display(&self) -> bool {
+        self.display.load(Ordering::Relaxed)
+    }
+
+    /// The answers that came since the last take.
+    pub(crate) fn take_answers(&self) -> Vec<(u64, Option<String>)> {
+        std::mem::take(&mut *self.answers.lock().unwrap_or_else(PoisonError::into_inner))
+    }
+
+    /// Resolves when answers came, or the display hooks went, since it was
+    /// last waited on.
+    pub(crate) async fn answered(&self) {
+        self.answered.notified().await;
+    }
+
+    /// The runner's input hooks, if it has any.
+    pub(crate) fn typing(&self) -> Option<Asker> {
+        self.typing
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+}
 
 /// The only way a script runner acts on a session.
 ///
@@ -135,6 +219,45 @@ impl Door {
             ended: started.ended,
             steer: started.steer,
         })
+    }
+
+    /// Hold each line a viewer would be shown until the runner's display
+    /// hooks answer the line it came from ([`Self::shown`]), or until
+    /// [`HOOK_DEADLINE`], while `on`: the runner has display hooks. Off, what
+    /// is held is shown at once. Only while the runner
+    /// [`listen`](Self::listen)s: the line it answers is one it heard.
+    pub fn hook_lines(&self, on: bool) {
+        let hooks = self.handle.hooks();
+        hooks.display.store(on, Ordering::Relaxed);
+        if !on {
+            hooks.answered.notify_one();
+        }
+    }
+
+    /// What the runner's display hooks made of the lines heard at these
+    /// cursors (each [`Event::Heard`](crate::Event::Heard)'s): the text to
+    /// show instead, the same text to show them as they are, or `None` to
+    /// hide them. An answer for a line no longer held is ignored.
+    pub fn shown(&self, answers: impl IntoIterator<Item = (u64, Option<String>)>) {
+        let hooks = self.handle.hooks();
+        hooks
+            .answers
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .extend(answers);
+        hooks.answered.notify_one();
+    }
+
+    /// Ask `asker` about each line the player types from now on, before
+    /// Hydra's command line or the game sees it; `None` once the runner has
+    /// no input hooks.
+    pub fn hook_typing(&self, asker: Option<Asker>) {
+        *self
+            .handle
+            .hooks()
+            .typing
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = asker;
     }
 
     /// The character's command symbol, which marks a line as Hydra's own:
