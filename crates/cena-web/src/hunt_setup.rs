@@ -68,7 +68,7 @@ pub(crate) async fn configure(
     let Some(handler) = handler else {
         return (
             StatusCode::NOT_FOUND,
-            "Native setup is not enabled for this session",
+            "Hunt setup is off for this session: start Hydra with --web --hunt-setup and a map              (CENA_MAP). Without it, `;hunt help` in the character's command box lists the              commands, and `;hunt set` changes a profile.",
         )
             .into_response();
     };

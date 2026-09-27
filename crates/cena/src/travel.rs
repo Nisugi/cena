@@ -76,6 +76,7 @@ pub(crate) async fn after_login(
     observer: SessionObserver,
     commands: &Commands,
     map: &crate::map_context::ConfiguredMap,
+    party: &crate::hunt::Party,
 ) {
     if let Some(first) = first_command(std::env::args().skip(1)) {
         eprintln!("[travel] first: {first}");
@@ -83,7 +84,7 @@ pub(crate) async fn after_login(
         eprintln!("[travel] first: {outcome:?}");
     }
     match observer.subscribe().await {
-        Ok((snapshot, _)) => open_travel(handle, observer, &snapshot.state, commands, map),
+        Ok((snapshot, _)) => open_travel(handle, observer, &snapshot.state, commands, map, party),
         Err(e) => eprintln!("[travel] could not read the session to open travel: {e:?}"),
     }
 }
@@ -100,6 +101,7 @@ fn open_travel(
     state: &cena_session::GameState,
     commands: &Commands,
     configured: &crate::map_context::ConfiguredMap,
+    party: &crate::hunt::Party,
 ) {
     if let Some(symbol) = symbol(handle, state)
         && !handle.set_command_symbol(symbol)
@@ -114,6 +116,7 @@ fn open_travel(
         state,
         commands,
         configured.as_ref().ok().cloned(),
+        party,
     );
     let Some(map) = map else {
         // Travel's words are answered with why it cannot travel, and nothing

@@ -23,7 +23,68 @@
 //! The comment block at the head of a file is kept: the importer writes what
 //! it held there. The rest is written back in the file's own key order.
 
+use std::io;
+use std::path::Path;
+
 use toml::{Table, Value};
+
+/// A per-character settings file, as it was found.
+///
+/// Three answers, not two: reading `.ok()` made a file that is there and
+/// broken look missing, so an edit started from the defaults and wrote them
+/// over everything the player had (`plan/44` Q05).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Stored<T> {
+    /// No file: an edit starts from the defaults.
+    Missing,
+    /// Read and understood.
+    Found(T),
+    /// There, and unreadable or not understood. Never written over by an
+    /// edit; the message names the file and what is wrong with it.
+    Broken(String),
+}
+
+/// Read a settings file with `parse`.
+pub fn read<T>(path: &Path, parse: impl FnOnce(&str) -> Result<T, String>) -> Stored<T> {
+    match std::fs::read_to_string(path) {
+        Ok(text) => match parse(&text) {
+            Ok(value) => Stored::Found(value),
+            Err(why) => Stored::Broken(format!(
+                "{} does not read: {why}. Fix it there, or delete the file to start again from the defaults",
+                path.display()
+            )),
+        },
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Stored::Missing,
+        Err(e) => Stored::Broken(format!("cannot read {}: {e}", path.display())),
+    }
+}
+
+/// A settings file's text, for an edit: [`Stored::Broken`], naming the file,
+/// when it is not TOML. Only the syntax is asked here, so a file with a key
+/// its behavior refuses can still be edited, and `unset` can take the key
+/// out.
+#[must_use]
+pub fn read_text(path: &Path) -> Stored<String> {
+    read(path, |text| parse(text).map(|_| text.to_owned()))
+}
+
+/// Write `text` to `path` whole or not at all: to a file beside it, then
+/// renamed over it, so a failure part way leaves the old file as it was.
+/// The directory is made if missing.
+///
+/// # Errors
+///
+/// The directory cannot be made, or the file written or renamed.
+pub fn save(path: &Path, text: &str) -> io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let beside = path.with_extension("toml.saving");
+    std::fs::write(&beside, text)?;
+    std::fs::rename(&beside, path).inspect_err(|_| {
+        let _ = std::fs::remove_file(&beside);
+    })
+}
 
 /// A value as a player typed it (the module docs).
 #[must_use]
@@ -327,6 +388,27 @@ mod tests {
         assert!(
             out.contains("routine = \"b\"") && out.contains("routine = \"f\""),
             "{out}"
+        );
+        Ok(())
+    }
+
+    /// Missing, found and broken are three answers: a broken file is never
+    /// mistaken for a missing one, and `save` replaces a file whole.
+    #[test]
+    fn a_broken_file_is_not_a_missing_one() -> Result<(), String> {
+        use super::{Stored, read, save};
+        let dir = std::env::temp_dir().join(format!("cena-stored-{}", std::process::id()));
+        let path = dir.join("p.toml");
+        let parse = |t: &str| t.parse::<toml::Table>().map_err(|e| e.to_string());
+        assert_eq!(read(&path, parse), Stored::Missing);
+        save(&path, "a = 1\n").map_err(|e| e.to_string())?;
+        assert!(matches!(read(&path, parse), Stored::Found(_)));
+        save(&path, "a = \n").map_err(|e| e.to_string())?;
+        let broken = read(&path, parse);
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(
+            matches!(&broken, Stored::Broken(why) if why.contains("p.toml")),
+            "{broken:?}"
         );
         Ok(())
     }

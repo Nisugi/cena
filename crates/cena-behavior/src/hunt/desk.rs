@@ -30,6 +30,7 @@ use crate::error::BehaviorError;
 use crate::group::{Boards, Place};
 use crate::heal::{self, HealProfile};
 use crate::loot::{self, LootProfile};
+use crate::settings::Stored;
 use crate::travel::{Heard, TravelNotes};
 use crate::watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, watch};
 
@@ -264,6 +265,24 @@ impl Desk {
         self.start_in(handle, joined, machine, None)
     }
 
+    /// A per-character settings file of this character's, as found: `path`
+    /// names it (`keep::path` and its kin), `parse` reads it. Missing when
+    /// the game has not said who this is.
+    fn stored<T>(
+        &self,
+        state: &GameState,
+        path: fn(&std::path::Path, &str, &str) -> Option<std::path::PathBuf>,
+        parse: impl FnOnce(&str) -> Result<T, String>,
+    ) -> Stored<T> {
+        let character = &state.character;
+        character
+            .instance
+            .as_deref()
+            .zip(character.name.as_deref())
+            .and_then(|(i, n)| path(&self.dir, i, n))
+            .map_or(Stored::Missing, |path| crate::settings::read(&path, parse))
+    }
+
     /// The character's waggle profile, for the waggle after a death when
     /// `react.depart_switch` asks for one (`hunt/death.rs`).
     fn waggle_profile(&self, state: &GameState) -> Option<crate::waggle::WaggleProfile> {
@@ -384,15 +403,19 @@ impl Desk {
         words: &[String],
     ) -> Option<JoinHandle<HuntEnd>> {
         let state = &joined.0.state;
-        let profile = state
-            .character
-            .instance
-            .as_deref()
-            .zip(state.character.name.as_deref())
-            .and_then(|(i, n)| crate::spellcaster::path(&self.dir, i, n))
-            .and_then(|path| std::fs::read_to_string(path).ok())
-            .and_then(|text| crate::spellcaster::CasterProfile::parse(&text).ok())
-            .unwrap_or_default();
+        let profile = match self.stored(state, crate::spellcaster::path, |text| {
+            crate::spellcaster::CasterProfile::parse(text)
+        }) {
+            Stored::Found(profile) => profile,
+            Stored::Broken(why) => {
+                handle.say(Notice::line(
+                    NoticeKind::Error,
+                    format!("Sc: nothing was cast: {why}"),
+                ));
+                return None;
+            }
+            Stored::Missing => crate::spellcaster::CasterProfile::default(),
+        };
         let words: Vec<&str> = words.iter().map(String::as_str).collect();
         match crate::spellcaster::lines(&profile, state, &words) {
             Ok(lines) => {
@@ -413,21 +436,21 @@ impl Desk {
         joined: (Snapshot, impl Into<Heard>),
         targets: Vec<String>,
     ) -> Option<JoinHandle<HuntEnd>> {
-        let character = &joined.0.state.character;
-        let profile = character
-            .instance
-            .as_deref()
-            .zip(character.name.as_deref())
-            .and_then(|(i, n)| crate::waggle::path(&self.dir, i, n))
-            .and_then(|path| std::fs::read_to_string(path).ok())
-            .and_then(|text| crate::waggle::WaggleProfile::parse(&text).ok())
-            .filter(|p| !p.cast_list.is_empty());
-        let Some(profile) = profile else {
-            handle.say(Notice::line(
-                NoticeKind::Error,
-                "Hunt: no waggle profile: write one with a `cast_list`.",
-            ));
-            return None;
+        let profile = match self.stored(&joined.0.state, crate::waggle::path, |text| {
+            crate::waggle::WaggleProfile::parse(text)
+        }) {
+            Stored::Found(profile) if !profile.cast_list.is_empty() => profile,
+            Stored::Broken(why) => {
+                handle.say(Notice::line(NoticeKind::Error, format!("Waggle: {why}")));
+                return None;
+            }
+            _ => {
+                handle.say(Notice::line(
+                    NoticeKind::Error,
+                    "Waggle: no spells to cast yet. `waggle set cast_list [101, 107, 401]` names them; `waggle show` lists the rest.",
+                ));
+                return None;
+            }
         };
         let machine = Hunt::waggle_only(profile, targets);
         Some(self.start(handle.clone(), (joined.0, joined.1.into()), machine))
@@ -439,20 +462,21 @@ impl Desk {
         handle: &SessionHandle,
         joined: (Snapshot, impl Into<Heard>),
     ) -> Option<JoinHandle<HuntEnd>> {
-        let character = &joined.0.state.character;
-        let profile = character
-            .instance
-            .as_deref()
-            .zip(character.name.as_deref())
-            .and_then(|(i, n)| crate::keep::path(&self.dir, i, n))
-            .and_then(|path| std::fs::read_to_string(path).ok())
-            .and_then(|text| crate::keep::KeepProfile::parse(&text).ok());
-        let Some(profile) = profile.filter(|p| !p.spells.is_empty()) else {
-            handle.say(Notice::line(
-                NoticeKind::Error,
-                "Hunt: nothing to keep up: `keep add <spell>` first.",
-            ));
-            return None;
+        let profile = match self.stored(&joined.0.state, crate::keep::path, |text| {
+            crate::keep::KeepProfile::parse(text)
+        }) {
+            Stored::Found(profile) if !profile.spells.is_empty() => profile,
+            Stored::Broken(why) => {
+                handle.say(Notice::line(NoticeKind::Error, format!("Keep: {why}")));
+                return None;
+            }
+            _ => {
+                handle.say(Notice::line(
+                    NoticeKind::Error,
+                    "Hunt: nothing to keep up: `keep add <spell>` first.",
+                ));
+                return None;
+            }
         };
         handle.say(Notice::line(
             NoticeKind::Info,
@@ -500,14 +524,11 @@ impl Desk {
         name: Option<&str>,
     ) -> Option<HealProfile> {
         let path = heal::path(&self.dir, instance?, name?)?;
-        let text = std::fs::read_to_string(&path).ok()?;
-        match HealProfile::parse(&text) {
-            Ok(profile) => Some(profile),
-            Err(why) => {
-                handle.say(Notice::line(
-                    NoticeKind::Error,
-                    format!("Heal: {} does not read: {why}.", path.display()),
-                ));
+        match crate::settings::read(&path, HealProfile::parse) {
+            Stored::Found(profile) => Some(profile),
+            Stored::Missing => None,
+            Stored::Broken(why) => {
+                handle.say(Notice::line(NoticeKind::Error, format!("Heal: {why}.")));
                 None
             }
         }

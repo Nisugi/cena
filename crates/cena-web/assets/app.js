@@ -449,10 +449,24 @@ export function mount(document, environment) {
   const setupLink = document.createElement('button');
   setupLink.textContent = 'Configure hunt (experimental)';
   setupLink.id = 'native-hunt-launch';
-  element('minimap').append(setupLink);
+  // Why the button did nothing, when it cannot open setup: a click that is
+  // silently ignored tells nobody anything (plan/44 Q02).
+  const setupNote = document.createElement('output');
+  setupNote.id = 'native-hunt-note';
+  setupNote.setAttribute('role', 'status');
+  element('minimap').append(setupLink, setupNote);
   setupLink.onclick = () => {
     const explorer = element('minimap').querySelector('[data-map-explorer]');
-    if (!session.state.session || !session.token || explorer.hidden) return;
+    setupNote.textContent = '';
+    if (!session.state.session || !session.token) {
+      setupNote.textContent = 'Not connected to the character yet; try again once it is.';
+      return;
+    }
+    if (!explorer || explorer.hidden) {
+      setupNote.textContent = 'The map has not placed this character yet (or no map is loaded: CENA_MAP). '
+        + 'Look or move, then try again. ;hunt help lists the commands meanwhile.';
+      return;
+    }
     const url = new URL(explorer.href, environment.location.href);
     const hash = new URLSearchParams(url.hash.slice(1));
     hash.set('setup_token', session.token); hash.set('setup_session', session.state.session);

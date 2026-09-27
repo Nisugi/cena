@@ -177,9 +177,10 @@ impl SessionHandle {
                 self.say(crate::notice::Notice::line(
                     crate::notice::NoticeKind::Error,
                     format!(
-                        "I do not know {}{}.",
+                        "I do not know {}{}. {}help lists Hydra's commands.",
                         symbol,
-                        line.trim_start().trim_start_matches(symbol).trim()
+                        line.trim_start().trim_start_matches(symbol).trim(),
+                        symbol,
                     ),
                 ));
             }

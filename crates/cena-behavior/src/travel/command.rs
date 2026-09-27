@@ -13,6 +13,7 @@
 //! ;go2 delete den           forget it (`--global`: everyone's)
 //! ;go2 stop  ;kill go2  ;k go2    stop walking
 //! ;route2 bank              show the way, and send nothing
+//! ;go2 help                 these, and send nothing (`HELP`)
 //! ```
 //!
 //! **The symbol is not this module's.** A line reaches here having already
@@ -21,9 +22,24 @@
 //! so `;go22 bank` is never spoken in the room). A line this module does not
 //! know answers `None`, which means *not travel's* -- **not** *the game's*.
 
+/// What `go2 help` says, a line each.
+pub const HELP: &[&str] = &[
+    "Travel: go2 <place>              walk to the nearest one: go2 bank",
+    "Travel: go2 <room>               ...to a room, by the map's number or the game's: go2 228, go2 u7120",
+    "Travel: go2 targets              the places there are to go",
+    "Travel: go2 list                 the names you have saved",
+    "Travel: go2 save <name>          this room is <name>, for this character; --global for every character",
+    "Travel: go2 save <name>=228,current   ...these rooms; the nearest one is meant",
+    "Travel: go2 delete <name>        forget it; --global for everyone's",
+    "Travel: go2 stop                 stop walking",
+    "Travel: route2 <place>           show the way, and send nothing",
+];
+
 /// One thing asked of the travel desk.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
+    /// `go2 help`: the command list, `HELP` in this module. Sends nothing.
+    Help,
     /// Walk there.
     Go(String),
     /// Say the way there. Sends nothing.
@@ -86,6 +102,7 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
             }
             ("go2", Some(first)) => match first.as_str() {
                 "targets" if rest.len() == 1 => Ok(Command::Places),
+                "help" if rest.len() == 1 => Ok(Command::Help),
                 "list" if rest.len() == 1 => Ok(Command::List),
                 "stop" if rest.len() == 1 => Ok(Command::Stop),
                 "save" => named(&rest[1..]).map(|(name, rooms)| Command::Save {
@@ -151,6 +168,7 @@ mod tests {
     #[test]
     fn go2s_own_words_are_its_own() {
         assert_eq!(ok("go2 targets"), Command::Places);
+        assert_eq!(ok("go2 help"), Command::Help);
         assert_eq!(ok("go2 list"), Command::List);
         for line in ["go2 stop", "kill go2", "k go2", "k route2"] {
             assert_eq!(ok(line), Command::Stop, "{line}");
