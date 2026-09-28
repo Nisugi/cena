@@ -102,6 +102,7 @@ async fn a_script_reads_its_character_as_lich_does() {
         "[readstest: spell: Heroism circle=2 known=true active=true checkspell=true]",
         "[readstest: costs: mana=15.0 on another=1.0 minutes affordable=true]",
         "[readstest: others: false 215 nil]",
+        "[readstest: exts: 2 1:30:00 1,234,567 300]",
     ] {
         assert!(
             heard.told.iter().any(|line| line == expected),

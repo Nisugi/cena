@@ -42,7 +42,8 @@ git hash-object bridges/ruby/lich/lib/common/script.rb
 
 Only what the runner loads is here: the script engine (`common/script.rb` and the two files
 it requires), the calls scripts make (`global_defs.rb` and what it requires), Lich's `;`
-command table, the helpers those read at load time, the classes a script reads its character
+command table, the helpers those read at load time, Lich's extensions of Ruby's own classes that it loads before any script
+(`common/class_exts/`: `5.minutes`, `90.as_time`, `StringProc`, less its client socket's), the classes a script reads its character
 through (`constants.rb`, `common/gameobj.rb`, `attributes/char.rb`), the stores (`lich.rb`,
 `common/settings.rb` and its folder, `common/vars.rb`, `common/uservars.rb`), and the hooks
 (`common/downstreamhook.rb`, `common/upstreamhook.rb` and the `common/hook_registry.rb` they

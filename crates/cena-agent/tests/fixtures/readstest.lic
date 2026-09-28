@@ -12,3 +12,4 @@ heroism = Spell[215]
 echo "spell: #{heroism.name} circle=#{heroism.circle} known=#{heroism.known?} active=#{heroism.active?} checkspell=#{checkspell(215)}"
 echo "costs: mana=#{heroism.mana_cost} on another=#{heroism.time_per(target: 'Kiyna')} minutes affordable=#{heroism.affordable?}"
 echo "others: #{Spell[101].known?} #{Spell['Heroism'].num} #{Spell[99999].inspect}"
+echo "exts: #{StringProc.new('1 + 1').call} #{90.as_time} #{1234567.with_commas} #{5.minutes}"

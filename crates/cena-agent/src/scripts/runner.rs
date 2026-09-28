@@ -94,6 +94,26 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../../bridges/ruby/lich/lib/common/upstreamhook.rb"),
     ),
     (
+        "lich/lib/common/class_exts/hash.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/class_exts/hash.rb"),
+    ),
+    (
+        "lich/lib/common/class_exts/matchdata.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/class_exts/matchdata.rb"),
+    ),
+    (
+        "lich/lib/common/class_exts/numeric.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/class_exts/numeric.rb"),
+    ),
+    (
+        "lich/lib/common/class_exts/string.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/class_exts/string.rb"),
+    ),
+    (
+        "lich/lib/common/class_exts/stringproc.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/class_exts/stringproc.rb"),
+    ),
+    (
         "lich/lib/attributes/stats.rb",
         include_str!("../../../../bridges/ruby/lich/lib/attributes/stats.rb"),
     ),

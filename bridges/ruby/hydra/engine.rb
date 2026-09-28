@@ -81,7 +81,12 @@ HAVE_GTK = if defined?(HYDRA_WINDOWS) && HYDRA_WINDOWS
 %w[
   version.rb
   constants.rb
+  common/class_exts/hash.rb
+  common/class_exts/matchdata.rb
   common/class_exts/nilclass.rb
+  common/class_exts/numeric.rb
+  common/class_exts/string.rb
+  common/class_exts/stringproc.rb
   common/limitedarray.rb
   common/feature_flags.rb
   messaging.rb
