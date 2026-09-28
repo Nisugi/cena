@@ -415,6 +415,12 @@ fn the_window_as_drawn() {
     harness.snapshot("play");
 }
 
+/// The window's layout, once it has one.
+fn layout<'a>(harness: &'a Harness<'_, Scene>) -> &'a crate::layout::Layout {
+    harness.state().play.layout.as_ref().expect("laid out")
+}
+
 mod arrange;
 mod menus;
+mod pages;
 mod tabs;
