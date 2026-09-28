@@ -278,6 +278,12 @@ impl Menu {
             return None;
         }
         let mut wanted = None;
+        let tables = page
+            .rows
+            .iter()
+            .filter_map(|row| row.key.split_once('.').map(|(table, _)| table))
+            .collect::<std::collections::BTreeSet<_>>()
+            .len();
         egui::ScrollArea::vertical()
             .id_salt(("settings-page", &page.id))
             .auto_shrink(false)
@@ -286,7 +292,16 @@ impl Menu {
                     .num_columns(3)
                     .striped(true)
                     .show(ui, |ui| {
+                        let mut table = None;
                         for row in &page.rows {
+                            // A heading where a page's settings are in
+                            // several tables: a hunt profile's.
+                            let this = row.key.split_once('.').map(|(table, _)| table);
+                            if tables > 1 && this.is_some() && this != table {
+                                ui.strong(this.unwrap_or_default());
+                                ui.end_row();
+                            }
+                            table = this;
                             if let Some(asked) = self.row(ui, page, row) {
                                 wanted = Some(Change {
                                     character: character.to_owned(),
@@ -372,7 +387,7 @@ impl Menu {
                 wanted = Some(Wanted::Default);
             }
         } else {
-            ui.weak("default");
+            ui.weak(row.from.as_deref().unwrap_or("default"));
         }
         wanted
     }

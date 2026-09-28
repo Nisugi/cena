@@ -40,6 +40,11 @@ pub struct Row {
     pub value: Value,
     /// Whether this page's file sets it, rather than its default.
     pub here: bool,
+    /// Where its value came from, when there is more than one place it
+    /// can: a hunt setting's level -- `built in`, `global`, `the profile`,
+    /// `the character's file` (`plan/50` §7 step 6). Shown in place of
+    /// *default*.
+    pub from: Option<String>,
 }
 
 /// How a setting is edited.

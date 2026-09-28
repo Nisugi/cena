@@ -129,6 +129,7 @@ fn toggle(key: &str, label: &str, help: &str, set: Option<bool>, default: bool) 
         kind: RowKind::Toggle,
         value: Value::On(set.unwrap_or(default)),
         here: set.is_some(),
+        from: None,
     }
 }
 
@@ -143,6 +144,7 @@ fn general_rows(file: &SettingsFile) -> Result<Vec<Row>, String> {
             kind: RowKind::Text,
             value: Value::Text(commands.symbol().to_string()),
             here: commands.symbol.is_some(),
+            from: None,
         },
         toggle(
             "sorter",

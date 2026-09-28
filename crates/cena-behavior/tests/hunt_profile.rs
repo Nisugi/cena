@@ -308,3 +308,79 @@ fn names_and_files() {
         "the first file stands"
     );
 }
+
+/// Each setting in effect is named with the level that set it last -- the
+/// character's file over the profile over global over the built-in
+/// default -- once, in the table's order (`plan/50` §7 step 6).
+#[test]
+fn every_setting_says_where_it_came_from() {
+    use chain::Level;
+    let dir = temp_dir("origins");
+    write(
+        &chain::global_path(&dir),
+        "[rooms]\nresting = 5\nhunting = 1\n",
+    )
+    .unwrap();
+    write(
+        &chain::profile_path(&dir, "archer").unwrap(),
+        "[rooms]\nhunting = 10\n",
+    )
+    .unwrap();
+    write(
+        &chain::character_path(&dir, "Prime", "Nisugi").unwrap(),
+        "[rooms]\nrally = [3]\n",
+    )
+    .unwrap();
+
+    let levels = chain::named_levels(&dir, Some("Prime"), Some("Nisugi"), "archer").unwrap();
+    let order: Vec<Level> = levels.iter().map(|(level, _)| *level).collect();
+    assert_eq!(order, [Level::Global, Level::Profile, Level::Character]);
+    let origins = chain::origins(levels).unwrap();
+    let from = |name: &str| {
+        origins
+            .iter()
+            .find(|(found, _, _)| found == name)
+            .map(|(_, value, level)| (value.to_string(), *level))
+    };
+    assert_eq!(from("rooms.resting"), Some(("5".to_owned(), Level::Global)));
+    assert_eq!(
+        from("rooms.hunting"),
+        Some(("10".to_owned(), Level::Profile))
+    );
+    assert_eq!(
+        from("rooms.rally"),
+        Some(("[3]".to_owned(), Level::Character))
+    );
+    assert_eq!(from("prepare"), Some(("[]".to_owned(), Level::Default)));
+    let mut names: Vec<&str> = origins.iter().map(|(name, _, _)| name.as_str()).collect();
+    let all = names.len();
+    names.dedup();
+    assert_eq!(names.len(), all, "each once");
+
+    let theirs = chain::named_levels(&dir, Some("Prime"), Some("Someone"), "archer").unwrap();
+    assert_eq!(theirs.len(), 2, "no file of their own");
+}
+
+/// An empty list says nothing of what it holds; asked of the profile, a
+/// list of rooms holds numbers and a list of commands words.
+#[test]
+fn an_empty_list_says_what_it_holds() {
+    let merged = chain::merge(Vec::new()).unwrap();
+    assert!(chain::holds_numbers(&merged, "rooms.rally"));
+    assert!(chain::holds_numbers(&merged, "rooms.boundaries"));
+    assert!(!chain::holds_numbers(&merged, "prepare"));
+    assert!(!chain::holds_numbers(&merged, "no.such"));
+}
+
+/// The profiles are every `.toml` in the folder, by name, in order; none
+/// at all when there is no folder yet.
+#[test]
+fn the_profiles_are_listed_by_name() {
+    let dir = temp_dir("names");
+    assert!(chain::profile_names(&dir).unwrap().is_empty());
+    for name in ["zeta", "alpha"] {
+        write(&chain::profile_path(&dir, name).unwrap(), "").unwrap();
+    }
+    write(&chain::profiles_dir(&dir).join("notes.txt"), "").unwrap();
+    assert_eq!(chain::profile_names(&dir).unwrap(), ["alpha", "zeta"]);
+}

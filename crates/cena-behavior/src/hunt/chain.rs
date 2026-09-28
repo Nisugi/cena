@@ -243,6 +243,159 @@ pub fn levels(
     Ok((levels, sources))
 }
 
+/// Which level of the chain a setting came from (`plan/50` §7 step 6: the
+/// author asked to see *"the chain in effect, each value with where it came
+/// from"*).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Level {
+    /// Hunt's own default: no file sets it.
+    Default,
+    /// `global.toml`, everyone's.
+    Global,
+    /// The profile.
+    Profile,
+    /// The character's own file, which wins over the rest.
+    Character,
+}
+
+impl Level {
+    /// Where a setting came from, as a player reads it.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Default => "built in",
+            Self::Global => "global",
+            Self::Profile => "the profile",
+            Self::Character => "the character's file",
+        }
+    }
+}
+
+/// [`levels`], each table with the level it is.
+///
+/// # Errors
+///
+/// As [`levels`].
+pub fn named_levels(
+    dir: &Path,
+    instance: Option<&str>,
+    character: Option<&str>,
+    name: &str,
+) -> Result<Vec<(Level, toml::Table)>, LoadError> {
+    let (tables, sources) = levels(dir, instance, character, name)?;
+    let own = instance
+        .zip(character)
+        .and_then(|(i, c)| character_path(dir, i, c));
+    Ok(sources
+        .iter()
+        .zip(tables)
+        .map(|(source, table)| {
+            let level = if *source == global_path(dir) {
+                Level::Global
+            } else if own.as_ref() == Some(source) {
+                Level::Character
+            } else {
+                Level::Profile
+            };
+            (level, table)
+        })
+        .collect())
+}
+
+/// Every setting in effect -- each leaf of [`merge`]'s table, by its dotted
+/// name, in order -- with its value and the level that set it last. A table
+/// is followed into; anything else, a list of tables among them, is one
+/// setting, as [`overlay`] replaces it whole.
+///
+/// # Errors
+///
+/// As [`merge`].
+pub fn origins(
+    levels: Vec<(Level, toml::Table)>,
+) -> Result<Vec<(String, toml::Value, Level)>, String> {
+    let mut from = std::collections::HashMap::new();
+    for (level, table) in &levels {
+        for (name, _) in leaves(table) {
+            from.insert(name, *level);
+        }
+    }
+    let merged = merge(levels.into_iter().map(|(_, table)| table).collect())?;
+    Ok(leaves(&merged)
+        .into_iter()
+        .map(|(name, value)| {
+            let level = from.get(&name).copied().unwrap_or(Level::Default);
+            (name, value, level)
+        })
+        .collect())
+}
+
+/// Every leaf of `table`, by its dotted name, in order.
+fn leaves(table: &toml::Table) -> Vec<(String, toml::Value)> {
+    fn walk(prefix: &str, table: &toml::Table, found: &mut Vec<(String, toml::Value)>) {
+        for (key, value) in table {
+            let name = if prefix.is_empty() {
+                key.clone()
+            } else {
+                format!("{prefix}.{key}")
+            };
+            match value {
+                toml::Value::Table(inner) => walk(&name, inner, found),
+                other => found.push((name, other.clone())),
+            }
+        }
+    }
+    let mut found = Vec::new();
+    walk("", table, &mut found);
+    found
+}
+
+/// Whether the list setting `name`, empty wherever it is set, holds
+/// numbers: tried with one, as the profile would read it. An empty list
+/// says nothing of what it holds, and the menu must ask for the right kind.
+#[must_use]
+pub fn holds_numbers(merged: &toml::Table, name: &str) -> bool {
+    let mut tried = merged.clone();
+    let mut parts: Vec<&str> = name.split('.').collect();
+    let Some(last) = parts.pop() else {
+        return false;
+    };
+    let mut at = &mut tried;
+    for part in parts {
+        match at.get_mut(part) {
+            Some(toml::Value::Table(inner)) => at = inner,
+            _ => return false,
+        }
+    }
+    at.insert(
+        last.to_owned(),
+        toml::Value::Array(vec![toml::Value::Integer(1)]),
+    );
+    tried.try_into::<Profile>().is_ok()
+}
+
+/// The profiles there are, by name, in order.
+///
+/// # Errors
+///
+/// The profiles' folder is there and cannot be read.
+pub fn profile_names(dir: &Path) -> io::Result<Vec<String>> {
+    let mut names: Vec<String> = match fs::read_dir(profiles_dir(dir)) {
+        Ok(entries) => entries
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().is_some_and(|x| x == "toml"))
+            .filter_map(|path| {
+                path.file_stem()
+                    .map(|stem| stem.to_string_lossy().into_owned())
+            })
+            .collect(),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Vec::new(),
+        Err(e) => return Err(e),
+    };
+    names.sort();
+    Ok(names)
+}
+
 /// One level's table, if its file exists; the path is recorded when it does.
 fn optional(path: &Path, sources: &mut Vec<PathBuf>) -> Result<Option<toml::Table>, LoadError> {
     match fs::read_to_string(path) {

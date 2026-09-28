@@ -52,6 +52,7 @@ pub(crate) fn pages(
         .into_iter()
         .chain([crate::travel_page::page(dir, instance, name, map)])
         .chain(behaviors)
+        .chain(crate::hunt_pages::pages(dir, instance, name))
         .collect())
 }
 
@@ -121,6 +122,7 @@ fn row(shown: Shown) -> Row {
         kind,
         value,
         here: shown.here,
+        from: None,
     }
 }
 
@@ -131,6 +133,10 @@ pub(crate) fn apply(dir: &Path, map: &BTreeSet<String>, wanted: &Change) -> Stri
         Ok(who) => who,
         Err(why) => return why,
     };
+    if crate::hunt_pages::owns(&wanted.page) {
+        let to = wanted.to.as_deref();
+        return crate::hunt_pages::change(dir, (instance, name), &wanted.page, &wanted.key, to);
+    }
     if wanted.page == crate::travel_page::PAGE {
         let to = wanted.to.as_deref();
         return match crate::travel_page::change(dir, (instance, name), &wanted.key, to, map) {

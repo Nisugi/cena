@@ -65,6 +65,7 @@ pub(crate) fn page(dir: &Path, instance: &str, name: &str, map: &BTreeSet<String
             kind,
             value,
             here: held(key.name).is_some(),
+            from: None,
         }
     });
     let free = map
@@ -85,6 +86,7 @@ pub(crate) fn page(dir: &Path, instance: &str, name: &str, map: &BTreeSet<String
             kind: RowKind::Text,
             value: text(held(key)),
             here: held(key).is_some(),
+            from: None,
         });
     page.rows = typed.chain(free).collect();
     page

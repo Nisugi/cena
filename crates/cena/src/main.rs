@@ -49,6 +49,7 @@ mod general;
 mod glossary;
 mod gui;
 mod hunt;
+mod hunt_pages;
 mod hunt_setup;
 mod interrupt;
 mod launcher;

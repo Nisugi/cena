@@ -47,79 +47,49 @@ pub(super) fn setup(say: Say<'_>) {
 
 /// `;hunt set <profile> <setting> <value>`: changed in the profile's file.
 pub(super) fn set(dir: &Path, who: Who<'_>, profile: &str, key: &str, value: &str, say: Say<'_>) {
-    edit(dir, who, profile, say, |text| {
-        let (text, was) = settings::set(text, key, settings::typed(value))?;
-        let now = settings::text_lines(&text, Some(key))?.join(", ");
-        let was = was.map_or_else(|| "unset".to_owned(), |was| was.to_string());
-        Ok((text, format!("{now} (was {was})")))
-    });
+    tell(
+        profile,
+        edited(dir, split(who), profile, to(key, Some(value))),
+        say,
+    );
 }
 
 /// `;hunt unset <profile> <setting>`: out of the profile's file.
 pub(super) fn unset(dir: &Path, who: Who<'_>, profile: &str, key: &str, say: Say<'_>) {
-    edit(dir, who, profile, say, |text| {
-        let (text, removed) = settings::unset(text, key)?;
-        if !removed {
-            return Err(format!("{profile} does not set {key}"));
-        }
-        Ok((text, format!("{key} unset; the default decides it")))
-    });
+    tell(
+        profile,
+        edited(dir, split(who), profile, to(key, None)),
+        say,
+    );
 }
 
-/// Change the profile's file with `change`, then load it as this character
-/// would: saved when it reads as a profile (its problems said), and put
-/// back when it does not.
-fn edit(
-    dir: &Path,
-    who: Who<'_>,
-    profile: &str,
-    say: Say<'_>,
-    change: impl FnOnce(&str) -> Result<(String, String), String>,
-) {
-    let Some(path) = hunt::chain::profile_path(dir, profile) else {
-        say(
-            NoticeKind::Error,
-            format!("Hunt: {profile:?} is not a name a profile can have."),
-        );
-        return;
-    };
-    let old = match settings::read_text(&path) {
-        Stored::Found(text) => text,
-        Stored::Missing => {
-            say(
-                NoticeKind::Error,
-                format!(
-                    "Hunt: there is no profile {profile}. `hunt list` shows them; `hunt import <bigshot yaml>` brings one in."
-                ),
-            );
-            return;
-        }
-        Stored::Broken(why) => {
-            say(
-                NoticeKind::Error,
-                format!("Hunt: nothing was changed: {why}"),
-            );
-            return;
-        }
-    };
-    let (text, done) = match change(&old) {
-        Ok(changed) => changed,
-        Err(why) => {
-            say(NoticeKind::Error, format!("Hunt: {profile}: {why}"));
-            return;
-        }
-    };
-    if let Err(e) = settings::save(&path, &text) {
-        say(
-            NoticeKind::Error,
-            format!("Hunt: {profile}: not saved: {e}"),
-        );
-        return;
+/// The change `;hunt set` makes to a profile's text, `key` set to `value`,
+/// or `;hunt unset`'s, `key` taken out (`None`) so the level below decides
+/// it; and what was done.
+pub(crate) fn to<'a>(
+    key: &'a str,
+    value: Option<&'a str>,
+) -> impl FnOnce(&str) -> Result<(String, String), String> + 'a {
+    move |text| {
+        let Some(value) = value else {
+            let (text, removed) = settings::unset(text, key)?;
+            if !removed {
+                return Err(format!("the profile does not set {key}"));
+            }
+            return Ok((text, format!("{key} unset; the default decides it")));
+        };
+        let (text, was) = settings::set(text, key, settings::typed(value))?;
+        let now = settings::text_lines(&text, Some(key))?.join(", ");
+        let was = was.map_or_else(|| "unset".to_owned(), |was| was.to_string());
+        Ok((text, format!("{now} (was {was})")))
     }
-    let (instance, character) = split(who);
-    match hunt::load(dir, instance, character, profile) {
-        Ok(_) => say(NoticeKind::Info, format!("Hunt: {profile}: {done}.")),
-        Err(LoadError::Invalid(problems)) => {
+}
+
+/// Say what [`edited`] did, as `;hunt set` does: what was done and each
+/// thing that would stop the hunt running, or why nothing was.
+fn tell(profile: &str, done: Result<(String, Vec<String>), String>, say: Say<'_>) {
+    match done {
+        Ok((done, problems)) => {
             say(NoticeKind::Info, format!("Hunt: {profile}: {done}."));
             for problem in problems {
                 say(
@@ -128,15 +98,48 @@ fn edit(
                 );
             }
         }
+        Err(why) => say(NoticeKind::Error, format!("Hunt: {why}")),
+    }
+}
+
+/// Change the profile's file with `change`, then load it as this character
+/// would: saved when it reads as a profile, with what would stop it running;
+/// put back when it does not. `;hunt set` and the settings menu's hunt
+/// pages (`crate::hunt_pages`) both change a profile here.
+///
+/// # Errors
+///
+/// Why nothing was changed, after `Hunt: ` in what is said.
+pub(crate) fn edited(
+    dir: &Path,
+    (instance, character): (Option<&str>, Option<&str>),
+    profile: &str,
+    change: impl FnOnce(&str) -> Result<(String, String), String>,
+) -> Result<(String, Vec<String>), String> {
+    let path = hunt::chain::profile_path(dir, profile)
+        .ok_or_else(|| format!("{profile:?} is not a name a profile can have."))?;
+    let old = match settings::read_text(&path) {
+        Stored::Found(text) => text,
+        Stored::Missing => {
+            return Err(format!(
+                "there is no profile {profile}. `hunt list` shows them; `hunt import <bigshot yaml>` brings one in."
+            ));
+        }
+        Stored::Broken(why) => return Err(format!("nothing was changed: {why}")),
+    };
+    let (text, done) = change(&old).map_err(|why| format!("{profile}: {why}"))?;
+    settings::save(&path, &text).map_err(|e| format!("{profile}: not saved: {e}"))?;
+    match hunt::load(dir, instance, character, profile) {
+        Ok(_) => Ok((done, Vec::new())),
+        Err(LoadError::Invalid(problems)) => Ok((done, problems)),
         Err(e) => {
             let back = settings::save(&path, &old).map_or_else(
                 |e| format!(" (and the old file could not be put back: {e})"),
                 |()| String::new(),
             );
-            say(
-                NoticeKind::Error,
-                format!("Hunt: {profile}: not saved, it would not read: {e}{back}"),
-            );
+            Err(format!(
+                "{profile}: not saved, it would not read: {e}{back}"
+            ))
         }
     }
 }

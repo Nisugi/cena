@@ -19,6 +19,9 @@ cena-host.workspace = true
 cena-gui.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# A hunt profile's settings, read as the chain lays them, for the settings
+# menu's hunt pages (`hunt_pages.rs`). Already built for cena-behavior.
+toml.workspace = true
 # Fingerprint the exact map shared by travel and the read-only minimap.
 sha2 = "0.10"
 

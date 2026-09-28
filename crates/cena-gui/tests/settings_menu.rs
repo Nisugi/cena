@@ -76,6 +76,7 @@ fn row(key: &str, label: &str, kind: RowKind, value: Value, here: bool) -> Row {
         kind,
         value,
         here,
+        from: None,
     }
 }
 
@@ -577,4 +578,113 @@ fn the_keys_page_as_drawn() {
     // With no other page of Hydra's given, Keys is the one showing.
     harness.run();
     harness.snapshot("settings_keys");
+}
+
+/// A hunt page: each setting says where its value came from in place of
+/// *default*, *Use default* only where the profile sets it, and a heading
+/// stands over each table's settings.
+#[test]
+fn a_hunt_page_says_where_each_setting_came_from() {
+    let from = |mut row: Row, level: &str| {
+        row.from = Some(level.to_owned());
+        row
+    };
+    let hunt = page(
+        "hunt:p",
+        "Hunt: p",
+        vec![
+            from(
+                row(
+                    "priority",
+                    "priority",
+                    RowKind::Toggle,
+                    Value::On(false),
+                    false,
+                ),
+                "built in",
+            ),
+            from(
+                row(
+                    "rooms.hunting",
+                    "rooms.hunting",
+                    RowKind::Whole {
+                        min: 0,
+                        max: u32::MAX,
+                    },
+                    Value::Text("10".to_owned()),
+                    true,
+                ),
+                "the profile",
+            ),
+            from(
+                row(
+                    "rest.fried",
+                    "rest.fried",
+                    RowKind::Whole {
+                        min: 0,
+                        max: u32::MAX,
+                    },
+                    Value::Text("90".to_owned()),
+                    false,
+                ),
+                "global",
+            ),
+        ],
+    );
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        pages: Some(("GS3:Nisugi".to_owned(), vec![hunt])),
+        ..Board::default()
+    };
+    board.menu.open_for(Some("GS3:Nisugi".to_owned()));
+    let mut harness = Harness::builder()
+        .with_size((760.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    harness.run();
+    for said in ["built in", "global", "rooms", "rest"] {
+        assert!(harness.query_by_label(said).is_some(), "{said}");
+    }
+    assert!(
+        harness.query_by_label("default").is_none(),
+        "where, not default"
+    );
+    assert_eq!(harness.query_all_by_label("Use default").count(), 1);
+}
+
+/// A page whose settings are all in one table, as Skinning's are under
+/// `[skin]`, has no heading over them: the page's title says it.
+#[test]
+fn one_table_has_no_heading() {
+    let skinning = page(
+        "skin",
+        "Skinning",
+        vec![
+            row(
+                "skin.enable",
+                "Skin",
+                RowKind::Toggle,
+                Value::On(true),
+                true,
+            ),
+            row(
+                "skin.kneel",
+                "Kneel to skin",
+                RowKind::Toggle,
+                Value::On(false),
+                false,
+            ),
+        ],
+    );
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        pages: Some(("GS3:Nisugi".to_owned(), vec![skinning])),
+        ..Board::default()
+    };
+    board.menu.open_for(Some("GS3:Nisugi".to_owned()));
+    let mut harness = Harness::builder()
+        .with_size((760.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    harness.run();
+    assert!(harness.query_all_by_label("Kneel to skin").next().is_some());
+    assert!(harness.query_by_label("skin").is_none(), "no heading");
 }

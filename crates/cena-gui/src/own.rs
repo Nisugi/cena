@@ -118,6 +118,7 @@ impl Own {
                 },
                 value: Value::Text(format!("{:.0}", self.card_width().0)),
                 here: self.file.card_width.is_some(),
+                from: None,
             },
             Row {
                 key: "close_with_session".to_owned(),
@@ -126,6 +127,7 @@ impl Own {
                 kind: RowKind::Toggle,
                 value: Value::On(self.close_with_session()),
                 here: self.file.close_with_session.is_some(),
+                from: None,
             },
         ];
         page

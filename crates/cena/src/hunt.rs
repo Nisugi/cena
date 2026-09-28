@@ -580,17 +580,8 @@ fn room(id: Option<u32>) -> String {
 /// The profiles there are.
 fn list(dir: &Path, say: Say<'_>) {
     let profiles = hunt::chain::profiles_dir(dir);
-    let mut names: Vec<String> = match std::fs::read_dir(&profiles) {
-        Ok(entries) => entries
-            .filter_map(Result::ok)
-            .map(|entry| entry.path())
-            .filter(|path| path.extension().is_some_and(|x| x == "toml"))
-            .filter_map(|path| {
-                path.file_stem()
-                    .map(|stem| stem.to_string_lossy().into_owned())
-            })
-            .collect(),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Vec::new(),
+    let names = match hunt::chain::profile_names(dir) {
+        Ok(names) => names,
         Err(e) => {
             say(
                 NoticeKind::Error,
@@ -599,7 +590,6 @@ fn list(dir: &Path, say: Say<'_>) {
             return;
         }
     };
-    names.sort();
     if names.is_empty() {
         say(
             NoticeKind::Info,

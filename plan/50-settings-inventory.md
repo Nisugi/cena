@@ -449,6 +449,34 @@ Claude's order, each step shippable and committed on its own:
      with every switch on, two swapped names would have read back the same.
 6. **Hunt:** first the chain in effect, each value with where it came from; then its pages,
    one per table, with *check* beside *save*.
+
+   **BUILT 2026-09-27**, both halves in one step.
+   - *Where each value came from:* the chain names its levels (`hunt::chain::Level`: built in,
+     global, the profile, the character's file). `chain::origins` lists every setting in
+     effect, by its dotted name, with the level that set it last
+     (`crates/cena-behavior/src/hunt/chain.rs`).
+   - *A page per profile:* `crates/cena/src/hunt_pages.rs`. It shows every setting in
+     effect, and where each came from in the column that said *default* (`Row::from`, new
+     in `cena_ui::settings`). The rows come from the profile's own table, so a setting
+     added to the hunt appears without being listed. Each value's kind comes from the
+     value itself. An empty list's kind is found by trying one number against the profile's
+     real type (`chain::holds_numbers`): a list of rooms asks for numbers, a list of
+     commands for words.
+   - *Check beside save:* a change is written into the profile through `;hunt set`'s own
+     writer, refactored to return what it did (`hunt::settings::edited`). It loads the
+     profile as this character would after saving. A change that makes the profile
+     unreadable is put back. A change that saves but would stop the hunt running is saved,
+     and why it would not run is said with it.
+   - *What the character's own file sets* is shown, not changed. That file wins over the
+     profile and has no writer yet.
+   - *Claude's call, for the author to change:* one page per profile, with a heading over
+     each table's settings, not a page per table. A profile has about fifteen tables, and a
+     page for each, for each profile, would make the menu's list of pages longer than the
+     rest of it together. The headings come from the keys (`rooms.hunting` is under
+     *rooms*), and appear only on a page whose settings are in more than one table.
+   - *Checked:* 15 mutants over the levels, the listing, the kinds, the writer's check and
+     the menu's headings. All were caught once a test showed a page in one table has no
+     heading: a heading over Skinning's `[skin]` had passed.
 7. **Layouts by game and name**, a name-only layout taken as the first. Then **the fixed
    data folder**, the player's own application-data folder, the old `data` copied into it
    once and left with a note.
