@@ -359,10 +359,12 @@ impl Table {
                 launcher::characters(&self.pin, account, self.gui.as_ref()).await
             }
             HubRequest::Settings(character) => {
-                pages::send(&self.dir, &character, self.gui.as_ref())
+                let map = crate::map_context::settings(&self.map);
+                pages::send(&self.dir, &map, &character, self.gui.as_ref())
             }
             HubRequest::Change(change) => {
-                let said = pages::apply(&self.dir, &change);
+                let map = crate::map_context::settings(&self.map);
+                let said = pages::apply(&self.dir, &map, &change);
                 // The symbol and the sorter reach a running character at once.
                 if crate::general::owns(&change.page)
                     && let Some(kept) = crate::general::Kept::of(&self.dir, &change.character)
@@ -370,7 +372,7 @@ impl Table {
                 {
                     kept.take(&handle);
                 }
-                let problem = pages::send(&self.dir, &change.character, self.gui.as_ref());
+                let problem = pages::send(&self.dir, &map, &change.character, self.gui.as_ref());
                 if problem.is_empty() { said } else { problem }
             }
             HubRequest::Reconnect(id) => self.reconnect(SessionId(id)).await,

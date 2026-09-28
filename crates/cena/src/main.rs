@@ -63,6 +63,7 @@ mod secrets;
 mod setup;
 mod sorter;
 mod travel;
+mod travel_page;
 mod triggers;
 mod watch;
 

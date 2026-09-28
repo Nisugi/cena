@@ -402,6 +402,29 @@ Claude's order, each step shippable and committed on its own:
      character (`Table::handle_of` in `crates/cena/src/play.rs`). It is one lookup over what
      `Kept::take` does, and `Kept::take` is tested.
 4. **Travel**, typed: the keys the code reads, and the map's own keys as a free list.
+
+   **BUILT 2026-09-27.**
+   - *The page:* `crates/cena/src/travel_page.rs`, after the character's own pages. First the
+     nine settings travel's code reads, each with its kind. They are named once, in
+     `crates/cena-behavior/src/travel/settings.rs` (`TABLE`), and the code reads them by
+     those names now, not by strings of its own. Then the map's own settings as words, and
+     any other the file holds. A switch is written `true` or `false`, as go2 keeps it. The
+     next trip reads a change.
+   - *The map's own settings, listed:* §2 item 2 said the full list *"cannot be enumerated
+     from the source"*. It can from the loaded map: `Map::setting_names`
+     (`crates/cena-map/src/map.rs`) reads each exit as it is written, finding every guard's
+     `setting`, `setting_is_set` and `wearing_named_by`, every `moves_from_setting`, and
+     each `{setting:...}` placeholder. A crossing added later is covered without the scan
+     knowing its shape. The binary finds them once, the first time the menu asks
+     (`map_context::settings`).
+   - *A trip no longer writes the settings back:* a trip read the settings when it started
+     and saved them, with its memories, when it ended. A change made from the menu between
+     the two would have been put back. `travel_store::save` now writes the memories and
+     the last room only, and `travel_store::set_setting` writes one setting at a time, under
+     the store's lock (`crates/cena-session/src/travel_store.rs`).
+   - *Checked:* 15 mutants over the scan, the store, the page and two of the named keys, all
+     caught. Not tested: the binary finding the map's settings once (`map_context::settings`),
+     a lookup over what `Map::setting_names` does.
 5. **Loot**, the loot profile's page.
 6. **Hunt:** first the chain in effect, each value with where it came from; then its pages,
    one per table, with *check* beside *save*.

@@ -99,7 +99,8 @@ pub struct TravelFile {
     /// this name and `instance`.
     pub character: String,
     /// The travel profile: `ice_mode`, `use_urchins`, the name of the sack a
-    /// house key is kept in.
+    /// house key is kept in. **A copy to read**: [`save`] does not write it,
+    /// [`set_setting`] does.
     pub settings: BTreeMap<String, String>,
     /// What an earlier crossing wrote down -- *entered Duskruin from the
     /// Landing*. They outlive the session and the login.
@@ -385,10 +386,15 @@ fn spot_in<'a>(
     Ok(shared.characters.entry(key).or_default())
 }
 
-/// Write this character's settings, memories and last room -- **and no one
-/// else's, and no targets** (module docs): [`TravelFile::targets`] is
-/// everyone's and the character's own read together, so writing it back
-/// would make everyone's the character's. [`save_target`] writes those.
+/// Write this character's memories and last room -- **and no one else's,
+/// no targets, and not its settings** (module docs): [`TravelFile::targets`]
+/// is everyone's and the character's own read together, so writing it back
+/// would make everyone's the character's; [`save_target`] writes those.
+///
+/// **The settings are the player's**, and a trip loads them when it starts
+/// and saves when it ends: writing its copy back would put back what the
+/// settings menu changed in between. [`set_setting`] writes them, one at a
+/// time (`plan/50` §7 step 4).
 ///
 /// # Errors
 ///
@@ -397,9 +403,32 @@ fn spot_in<'a>(
 pub fn save(dir: &Path, file: &TravelFile) -> io::Result<PathBuf> {
     change(dir, |shared| {
         let spot = spot_in(shared, dir, &file.instance, &file.character)?;
-        spot.settings.clone_from(&file.settings);
         spot.memories.clone_from(&file.memories);
         spot.last_room = file.last_room;
+        Ok(())
+    })
+}
+
+/// Set one of this character's travel settings to `value`, or take it out
+/// (`None`), leaving the rest of the file as it is: the settings menu's
+/// writer.
+///
+/// # Errors
+///
+/// As [`save`].
+pub fn set_setting(
+    dir: &Path,
+    instance: &str,
+    character: &str,
+    key: &str,
+    value: Option<&str>,
+) -> io::Result<PathBuf> {
+    change(dir, |shared| {
+        let spot = spot_in(shared, dir, instance, character)?;
+        match value {
+            Some(value) => spot.settings.insert(key.to_owned(), value.to_owned()),
+            None => spot.settings.remove(key),
+        };
         Ok(())
     })
 }

@@ -31,6 +31,10 @@ use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::super::preflight::{silver_for, urchin_access, withdraw_command};
 use super::super::routines::day_pass;
+use super::super::settings::{
+    DAY_PASS_SACK, GET_RETURN_TRIP_SILVERS, GET_SILVERS, GIGAS_MIN_NUMBER, USE_DAY_PASS,
+    USE_GIGAS_HWTRAVEL, USE_URCHINS,
+};
 use super::{Cx, Driver, Ended};
 
 /// The Long Snow's encampment and Cairnfang Manor's attic: the two ends of
@@ -47,7 +51,7 @@ fn is_on(cx: &Cx<'_>, setting: &str) -> bool {
 impl<N: FnMut() -> CommandId> Driver<'_, N> {
     /// Before the first plan. `goal` is where the trip is going.
     pub(super) async fn preflight(&mut self, cx: &mut Cx<'_>, goal: RoomId) -> Result<(), Ended> {
-        if is_on(cx, "use_urchins") {
+        if is_on(cx, USE_URCHINS) {
             let answer = self.put(cx.trip, "urchin status").await?;
             if let Some(access) = urchin_access(&answer) {
                 self.found.insert("urchin_access".to_owned(), access);
@@ -79,7 +83,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         if have >= needed {
             return Ok(());
         }
-        if !is_on(cx, "get_silvers") {
+        if !is_on(cx, GET_SILVERS) {
             self.handle.say(Notice::line(
                 NoticeKind::Warn,
                 format!(
@@ -100,8 +104,8 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
     async fn day_passes(&mut self, cx: &mut Cx<'_>) -> Result<(), Ended> {
         /// Upstream reads every pass in the sack; nobody keeps this many.
         const MAX_PASSES: usize = 20;
-        let sack = cx.notes.settings.get("day_pass_sack");
-        let Some(sack) = sack.filter(|sack| !sack.is_empty() && is_on(cx, "use_day_pass")) else {
+        let sack = cx.notes.settings.get(DAY_PASS_SACK);
+        let Some(sack) = sack.filter(|sack| !sack.is_empty() && is_on(cx, USE_DAY_PASS)) else {
             return Ok(());
         };
         let sack = day_pass::sack_in(&self.state, sack)
@@ -143,7 +147,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
     /// trip then plans from wherever that landed.
     async fn by_gigas(&mut self, cx: &mut Cx<'_>, here: RoomId, goal: RoomId) -> Result<(), Ended> {
         const WORKROOM: i64 = 7_503_253;
-        if !is_on(cx, "use_gigas_hwtravel") {
+        if !is_on(cx, USE_GIGAS_HWTRAVEL) {
             return Ok(());
         }
         let walker = self.walker(cx.notes);
@@ -167,7 +171,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             .currency
             .gigas_artifact_fragments
             .unwrap_or(0);
-        let least = cx.notes.settings.get("gigas_min_number");
+        let least = cx.notes.settings.get(GIGAS_MIN_NUMBER);
         if fragments < least.and_then(|least| least.parse().ok()).unwrap_or(4) {
             return Ok(());
         }
@@ -214,7 +218,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 .path_from(cx.map, &walker, from, to)
                 .map_or(0, |path| silver_for(cx.map, &path))
         };
-        let back = if is_on(cx, "get_return_trip_silvers") {
+        let back = if is_on(cx, GET_RETURN_TRIP_SILVERS) {
             leg(goal, from)
         } else {
             0

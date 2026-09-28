@@ -133,6 +133,7 @@ mod tests {
                 .unwrap(),
             ),
             sha256: "a".repeat(64),
+            settings: std::sync::OnceLock::new(),
         });
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

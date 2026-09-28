@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use cena_session::travel_store::{
     TRAVEL_SCHEMA_VERSION, TravelFile, TravelLoadError, Whose, legacy_path, load, save,
-    save_target, travel_path,
+    save_target, set_setting, travel_path,
 };
 
 /// A directory this test alone owns, named after it.
@@ -29,16 +29,42 @@ fn a_memory_survives_being_written_and_read() {
     let dir = temp_dir("round-trip");
     let mut file = TravelFile::new("GSIV", "Ashryn");
     file.memories.insert("duskruin_origin".into(), "228".into());
-    file.settings.insert("ice_mode".into(), "wait".into());
     file.last_room = Some(228);
     let path = save(&dir, &file).unwrap();
     assert_eq!(path, travel_path(&dir));
     assert!(path.ends_with("travel.json"));
     assert_eq!(load(&dir, "GSIV", "Ashryn").unwrap(), file);
+    set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("wait")).unwrap();
+    file.settings.insert("ice_mode".into(), "wait".into());
+    assert_eq!(load(&dir, "GSIV", "Ashryn").unwrap(), file);
     assert!(
         !path.with_extension("json.tmp").exists(),
         "the temp file became the file"
     );
+}
+
+/// The settings are the player's: a trip that loaded them before the menu
+/// changed one, and saves its memories after, does not put the old value
+/// back; a setting taken out is gone.
+#[test]
+fn a_trip_does_not_put_back_a_setting_changed_under_it() {
+    let dir = temp_dir("settings");
+    set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("wait")).unwrap();
+    let mut trip = load(&dir, "GSIV", "Ashryn").unwrap();
+    set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("run")).unwrap();
+    set_setting(&dir, "GSIV", "Ashryn", "key_sack", Some("cloak")).unwrap();
+    trip.memories.insert("duskruin_origin".into(), "228".into());
+    save(&dir, &trip).unwrap();
+    let now = load(&dir, "GSIV", "Ashryn").unwrap();
+    assert_eq!(
+        now.settings.get("ice_mode").map(String::as_str),
+        Some("run")
+    );
+    assert_eq!(now.memories, trip.memories, "the trip's memories kept");
+    set_setting(&dir, "GSIV", "Ashryn", "key_sack", None).unwrap();
+    let now = load(&dir, "GSIV", "Ashryn").unwrap();
+    assert!(!now.settings.contains_key("key_sack"));
+    assert!(now.settings.contains_key("ice_mode"));
 }
 
 /// The author's shape, 2026-09-21: one file, and each character's spot in it.
@@ -52,7 +78,7 @@ fn every_character_has_a_spot_in_the_one_file() {
     let mut nerten = TravelFile::new("GSIV", "Nerten");
     nerten.settings.insert("use_urchins".into(), "true".into());
     save(&dir, &ashryn).unwrap();
-    save(&dir, &nerten).unwrap();
+    set_setting(&dir, "GSIV", "Nerten", "use_urchins", Some("true")).unwrap();
 
     let files: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().collect();
     assert_eq!(files.len(), 1, "one file: {files:?}");

@@ -380,7 +380,13 @@ impl Cutter {
     }
 
     fn buy(&mut self, seen: &Seen<'_>) -> Next {
-        if seen.walker.settings.get("get_silvers").map(String::as_str) != Some("true") {
+        if seen
+            .walker
+            .settings
+            .get(crate::travel::settings::GET_SILVERS)
+            .map(String::as_str)
+            != Some("true")
+        {
             return Next::Stop(NO_TICKET.to_owned());
         }
         self.queue.push_back(Todo::Do(Next::Pause(self.pier.pause)));

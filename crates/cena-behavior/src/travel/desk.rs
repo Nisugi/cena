@@ -291,7 +291,8 @@ impl Desk {
     /// read is left alone, and nothing is remembered.
     fn keep(&self, handle: &SessionHandle, file: Option<&mut TravelFile>, notes: &TravelNotes) {
         let Some(file) = file else { return };
-        file.settings = notes.settings.clone().into_iter().collect();
+        // Not the settings: the player's, which the menu may have changed
+        // since the walk read them (`travel_store::save`).
         file.memories = notes.memories.clone().into_iter().collect();
         file.last_room = notes.last_room;
         if let Err(why) = travel_store::save(&self.dir, file) {

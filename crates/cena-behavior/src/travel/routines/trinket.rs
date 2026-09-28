@@ -32,7 +32,7 @@ use cena_map::{Action, Step};
 use super::{Next, Seen, Solver};
 
 /// The profile setting that names the trinket.
-const SETTING: &str = "fwi_trinket";
+const SETTING: &str = crate::travel::settings::FWI_TRINKET;
 /// Where the way back from Mist Harbor leads.
 const MEMORY: &str = "fwi_return_room";
 
