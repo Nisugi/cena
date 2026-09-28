@@ -174,10 +174,11 @@ fn the_bars_as_drawn() {
     harness.snapshot("bars");
 }
 
-/// Fitted, a bar takes the room it is given: across, as wide as the room and
-/// one line thick; upright, the whole room, so the space is its shape; with
-/// its text outside, the text's room is left for it (`plan/49` §2, a bar
-/// widget's options).
+/// Fitted, a bar takes the room it is given, across or upright: the whole
+/// room, so the space is its shape (the author, 2026-09-28: *"if I make a
+/// progress bar horizontal fill and make it taller, the bar doesn't get
+/// taller, it should"*); with its text outside, the text's room is left for
+/// it (`plan/49` §2, a bar widget's options).
 #[test]
 fn a_fitted_bar_takes_its_room() {
     let room = Vec2::new(160.0, 100.0);
@@ -198,11 +199,10 @@ fn a_fitted_bar_takes_its_room() {
         harness.run();
         harness.state().unwrap_or(Rect::NOTHING)
     };
-    let across = fitted(Fills::Right, Place::Inside);
-    assert!((across.width() - room.x).abs() < 0.5, "{across:?}");
-    assert!((across.height() - 18.0).abs() < 0.5, "one line thick");
-    let upright = fitted(Fills::Up, Place::Inside);
-    assert!((upright.size() - room).length() < 0.5, "{upright:?}");
+    for fills in [Fills::Right, Fills::Up] {
+        let whole = fitted(fills, Place::Inside);
+        assert!((whole.size() - room).length() < 0.5, "{fills:?}: {whole:?}");
+    }
     for place in [Place::Below, Place::Left] {
         let with_text = fitted(Fills::Up, place);
         assert!(

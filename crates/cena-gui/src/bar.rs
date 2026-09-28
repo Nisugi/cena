@@ -555,26 +555,6 @@ mod tests {
         assert_eq!(filled(bar, Fills::Right, 250), bar, "past 100 is full");
     }
 
-    /// A fitted bar is as tall and as wide as the space it is given, across
-    /// or upright: a taller cell makes a thicker bar.
-    #[test]
-    fn a_fitted_bar_takes_the_space_it_is_given_either_way() {
-        use egui_kittest::kittest::Queryable as _;
-        for fills in [Fills::Right, Fills::Up] {
-            let mut harness = egui_kittest::Harness::builder()
-                .with_size((200.0, 120.0))
-                .build_ui(move |ui| {
-                    ui.add(Bar::new("HP", Some(amount(40))).fills(fills).fitted(ui));
-                });
-            harness.run();
-            let drawn = harness.get_by_label("HP 40%").rect();
-            assert!(
-                drawn.height() > 90.0 && drawn.width() > 170.0,
-                "{fills:?}: {drawn:?}"
-            );
-        }
-    }
-
     /// A frame's corners keep their size and its middle is left clear,
     /// however long the bar.
     #[test]
