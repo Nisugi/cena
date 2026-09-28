@@ -16,7 +16,7 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use cena_session::stream_windows::{Destination, MAIN};
-use cena_session::{Event, Frame, GameState, Generation, Notice, NoticeKind, ObservedEvent};
+use cena_session::{Event, Frame, GameState, Generation, Notice, ObservedEvent};
 use cena_ui::{StyledRun, painted, story_lines};
 
 /// Lines a story keeps, newest last.
@@ -138,41 +138,22 @@ impl Story {
             Event::Notice(notice) => self.tell(notice.clone()),
             Event::Attention(call) => {
                 if let Some(alert) = &call.alert {
-                    self.alerts.push_back((Instant::now(), alert.clone()));
-                    while self.alerts.len() > MAX_ALERTS {
-                        self.alerts.pop_front();
-                    }
+                    self.alert(alert);
                 }
             }
             _ => {}
         }
     }
 
-    /// Lines were lost: mark the place, once.
+    /// Lines were lost: mark the place, once, and show the story again, a
+    /// quiet command's end perhaps among them: the snapshot does not say,
+    /// and a story shown too much beats one silent for good (the crate
+    /// review of 2026-09-28, R8).
     pub(crate) fn missed(&mut self) {
+        self.quiet = false;
         if self.lines.back().map(|(_, shown)| shown) != Some(&Shown::Gap) {
             self.push(Shown::Gap);
         }
-    }
-
-    /// Hydra says `notice` to the player, in the messages pane.
-    pub(crate) fn tell(&mut self, notice: Notice) {
-        if notice.kind == NoticeKind::Debug {
-            return;
-        }
-        self.said.push_back(notice);
-        self.told += 1;
-        while self.said.len() > MAX_SAID {
-            self.said.pop_front();
-        }
-    }
-
-    /// The banners still up at `now`, oldest first.
-    pub(crate) fn alerts_at(&self, now: Instant) -> impl Iterator<Item = &str> {
-        self.alerts
-            .iter()
-            .filter(move |(at, _)| now.saturating_duration_since(*at) < ALERT_FOR)
-            .map(|(_, text)| text.as_str())
     }
 
     pub(super) fn push(&mut self, shown: Shown) {
@@ -190,6 +171,7 @@ fn is_main(stream: &str) -> bool {
 }
 
 mod prompt;
+mod said;
 mod stamp;
 mod streams;
 

@@ -1,5 +1,5 @@
 use super::*;
-use cena_session::{Frame, SessionId};
+use cena_session::{Frame, NoticeKind, SessionId};
 use std::sync::Arc;
 
 fn observed(generation: u32, event: Event) -> ObservedEvent {
@@ -357,4 +357,18 @@ fn a_menus_answer_goes_with_its_connection() {
     assert!(story.menu.is_some());
     story.hear(&observed(1, said("", "You see a rock.")), None);
     assert!(story.menu.is_none());
+}
+
+/// Lines lost while a quiet command ran may have held its end: after the
+/// gap the story shows again, rather than staying silent for good (the
+/// crate review of 2026-09-28, R8, its probe's case).
+#[test]
+fn after_a_gap_a_quiet_story_shows_again() {
+    let mut story = Story::default();
+    story.hear(&observed(0, Event::Quiet(true)), None);
+    story.hear(&observed(0, said("", "Your inventory.")), None);
+    assert!(texts(&story).is_empty(), "quiet");
+    story.missed();
+    story.hear(&observed(0, said("", "ordinary line")), None);
+    assert_eq!(texts(&story), ["(gap)", "ordinary line"]);
 }
