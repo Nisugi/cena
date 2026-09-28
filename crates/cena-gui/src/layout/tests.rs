@@ -617,6 +617,36 @@ fn a_window_removed_takes_its_widgets_looks_and_parts() {
     assert!(layout.lines.is_empty(), "its lines");
 }
 
+/// A tab added beside a widget following another character follows them
+/// too, and the story is not offered there; beside a widget not in the
+/// window, nothing is added.
+#[test]
+fn a_tab_beside_another_characters_widget_follows_them() {
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let thoughts = layout.add_widget(
+        Widget::Stream("thoughts".to_owned()),
+        Some("Baelor".to_owned()),
+    );
+    let window = layout
+        .holders
+        .iter()
+        .find(|holder| matches!(&holder.holds, Holds::One(one) if one.id == thoughts))
+        .map(|holder| holder.id)
+        .expect("its window");
+    let speech = layout
+        .add_tab(window, thoughts, Widget::Stream("speech".to_owned()))
+        .expect("added");
+    assert_eq!(
+        layout.follows.get(&speech).map(String::as_str),
+        Some("Baelor")
+    );
+    assert_eq!(
+        layout.add_tab(window, 999, Widget::Hydra),
+        None,
+        "no such widget"
+    );
+}
+
 /// A custom window takes a new title, trimmed; following is undone by
 /// following the window's own again.
 #[test]

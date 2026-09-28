@@ -621,3 +621,30 @@ Claude's order, each step shippable and committed on its own:
    >
    > Not tested: that a widget loads its background and fill image from their files
    > (`as_looks`, six lines); the loading they share with the overlay is.
+   >
+   > **The story's and a stream's own page, BUILT 2026-09-28.** The author asked what those
+   > widgets' right-click settings would hold; Claude proposed `VellumFE`'s text-window
+   > options (`config/widgets.rs:570-606`), and the author added: *"timestamp should also
+   > offer the granularity, XX:XX, XX:XX:XX, XX:XX:XX AM/PM, 12/24 hour"*. The page
+   > (`crates/cena-gui/src/widget/lines.rs`):
+   >
+   > - *Timestamps*: none, at the start, or at the end. Each line is stamped with the
+   >   player's clock as it arrives (`story/stamp.rs`, through `jiff`, which the log sink
+   >   already builds), as `VellumFE` stamps it.
+   > - *With seconds*, and *Clock*: 12-hour with AM or PM, or 24-hour. `7:08 PM`,
+   >   `7:08:05 PM`, `19:08`, `19:08:05`.
+   > - *Word wrap*: off, the widget scrolls sideways.
+   > - On the story only: *Prompts* and *What you type*.
+   >
+   > Each is kept in the layout by the widget's id (`Layout::lines`) and goes with it.
+   > Not built: *lines kept*, since the story's store is one per character while the
+   > setting would be one per widget; and a stream widget showing several streams at once.
+   > A player can stack streams as tabs instead, which the next entry makes easy.
+   >
+   > **Tabs added from the right-click, BUILT 2026-09-28.** The author: *"what about
+   > adding/removing tabs/streams to the stream window?"* A widget's right-click has *Add a
+   > tab...*, listing the kinds of its own group not already beside it (beside a stream: the
+   > story, the other streams, the spellbook). The new tab joins the cell's tab stack and
+   > shows. Beside a standalone widget, the window becomes a custom window of the two where
+   > it stood, named for the first, as a drag stacking two makes it (`plan/49` §4, Stage A
+   > step 5). *Remove* takes one tab (`Layout::add_tab`, `play/menu.rs`, `tab_kinds`).

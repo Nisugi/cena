@@ -62,6 +62,41 @@ impl Layout {
         id
     }
 
+    /// `widget` as a new tab beside widget `beside` in window `holder`, and
+    /// the one shown: in its cell's tab stack in a custom window, or, in a
+    /// standalone window, that window made a custom one of the two, where it
+    /// stood (the author, 2026-09-28: *"what about adding/removing
+    /// tabs/streams to the stream window?"*). It follows whom `beside`
+    /// follows. Its id; `None` when `beside` is not there.
+    pub(crate) fn add_tab(&mut self, holder: u32, beside: u32, widget: Widget) -> Option<u32> {
+        let placed = self.place(widget);
+        let id = placed.id;
+        let found = self.holders.iter_mut().find(|found| found.id == holder)?;
+        let size = found.rect().size();
+        match &mut found.holds {
+            Holds::Custom(custom) => {
+                let cell = custom
+                    .cells
+                    .iter_mut()
+                    .find(|cell| cell.tabs.iter().any(|tab| tab.id == beside))?;
+                cell.tabs.push(placed);
+                cell.showing = cell.tabs.len() - 1;
+            }
+            Holds::One(one) if one.id == beside => {
+                // Named as a window stacked by a drag is: for its first.
+                let title = one.widget.name().into_owned();
+                let inside = (size - CHROME).max(Vec2::ZERO);
+                let tabs = vec![one.clone(), placed];
+                found.holds = Holds::Custom(Custom::stack(&title, tabs, 1, inside));
+            }
+            Holds::One(_) => return None,
+        }
+        if let Some(who) = self.follows.get(&beside).cloned() {
+            self.follows.insert(id, who);
+        }
+        Some(id)
+    }
+
     /// Where the next window added from the list goes: down and right of the
     /// last, so several added in a row stay apart, starting over every ten.
     pub(super) fn next_corner(&self) -> Pos2 {

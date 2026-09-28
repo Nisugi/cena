@@ -9,7 +9,8 @@
 //! the window's own -- a party's vitals in one window, say (§1 row 3).
 //!
 //! **A right-click** on a window or a widget in one opens its menu: remove
-//! it; rename, save as a preset or remove a custom window; and one
+//! it, or add a tab beside it of a kind of its own group (a stream beside a
+//! stream); rename, save as a preset or remove a custom window; and one
 //! **Advanced** entry, closed,
 //! for the character the widget follows. Neither menu offers a story to
 //! another character: no window mixes two characters' story (§1 row 7).
@@ -45,6 +46,8 @@ pub(super) struct Menu {
     renaming: Option<String>,
     /// The name a custom window is saved as a preset under, while typed.
     saving: Option<String>,
+    /// The kinds a tab could be added of, listed.
+    tabbing: bool,
 }
 
 /// What a menu was asked to do.
@@ -56,6 +59,8 @@ enum Act {
     Save(String),
     /// The settings menu, at this page: the widget's own.
     Settings(String),
+    /// A tab of this kind beside the widget.
+    AddTab(u32, Widget),
 }
 
 impl Play {
@@ -76,16 +81,7 @@ impl Play {
         let Some(adding) = self.adding.as_mut() else {
             return false;
         };
-        // The streams named, and any other this character has received: a
-        // stream that comes with a position the game gives appears for the
-        // characters that hold it (`plan/49` §3).
-        let mut every = Widget::all();
-        for id in received {
-            let stream = Widget::Stream((*id).to_owned());
-            if !every.contains(&stream) {
-                every.push(stream);
-            }
-        }
+        let every = kinds(received);
         let mut open = true;
         let mut chosen = None;
         let mut preset = None;
@@ -160,6 +156,7 @@ impl Play {
         context: &egui::Context,
         area: Rect,
         others: &[Character],
+        received: &[&str],
     ) -> bool {
         let (secondary, pressed, pointer, escape) = context.input(|input| {
             (
@@ -182,6 +179,7 @@ impl Play {
                 at,
                 renaming: None,
                 saving: None,
+                tabbing: false,
             });
         }
         let (Some(menu), Some(layout)) = (self.menu.as_mut(), self.layout.as_ref()) else {
@@ -194,7 +192,7 @@ impl Play {
             .show(context, |ui| {
                 egui::Frame::menu(ui.style()).show(ui, |ui| {
                     ui.set_min_width(170.0);
-                    act = items(ui, menu, layout, others);
+                    act = items(ui, menu, layout, (others, received));
                 });
             });
         let outside = pressed && pointer.is_some_and(|at| !shown.response.rect.contains(at));
@@ -224,6 +222,9 @@ impl Play {
             Act::RemoveWindow => layout.remove_window(holder),
             Act::Rename(title) => layout.rename(holder, &title),
             Act::Follow(placed, who) => layout.follow(placed, who),
+            Act::AddTab(beside, kind) => {
+                let _ = layout.add_tab(holder, beside, kind);
+            }
             Act::Save(_) | Act::Settings(_) => {}
         }
         true
@@ -341,25 +342,19 @@ fn advanced(ui: &mut egui::Ui, whose: &mut Option<String>, others: &[Character])
 }
 
 /// A menu's items, for what it was opened on; what was asked, if anything.
-fn items(ui: &mut egui::Ui, menu: &mut Menu, layout: &Layout, others: &[Character]) -> Option<Act> {
+fn items(
+    ui: &mut egui::Ui,
+    menu: &mut Menu,
+    layout: &Layout,
+    (others, received): (&[Character], &[&str]),
+) -> Option<Act> {
     let mut act = None;
     let holder = layout.holder(menu.holder)?;
     let widget = menu
         .placed
         .and_then(|placed| widget_in(layout, menu.holder, placed));
     if let (Some(placed), Some(widget)) = (menu.placed, widget) {
-        ui.weak(widget.name());
-        if super::options::has_page(widget)
-            && ui
-                .button("Settings...")
-                .on_hover_text("This widget's own settings: how it draws")
-                .clicked()
-        {
-            act = Some(Act::Settings(super::options::page_id(placed)));
-        }
-        if ui.button("Remove").clicked() {
-            act = Some(Act::Remove(placed));
-        }
+        act = widget_items(ui, menu, layout, (placed, widget), received);
     }
     if let Holds::Custom(custom) = &holder.holds {
         ui.separator();
@@ -423,6 +418,88 @@ fn items(ui: &mut egui::Ui, menu: &mut Menu, layout: &Layout, others: &[Characte
             });
     }
     act
+}
+
+/// A widget's own items: its settings, a tab beside it, and removing it.
+fn widget_items(
+    ui: &mut egui::Ui,
+    menu: &mut Menu,
+    layout: &Layout,
+    (placed, widget): (u32, &Widget),
+    received: &[&str],
+) -> Option<Act> {
+    let mut act = None;
+    ui.weak(widget.name());
+    if super::options::has_page(widget)
+        && ui
+            .button("Settings...")
+            .on_hover_text("This widget's own settings: how it draws")
+            .clicked()
+    {
+        act = Some(Act::Settings(super::options::page_id(placed)));
+    }
+    let beside = tab_kinds(layout, menu.holder, (placed, widget), received);
+    if !beside.is_empty() {
+        if menu.tabbing {
+            ui.label("Add a tab:");
+            for kind in beside {
+                if ui.button(kind.name()).clicked() {
+                    act = Some(Act::AddTab(placed, kind));
+                }
+            }
+        } else if ui
+            .button("Add a tab...")
+            .on_hover_text("Another widget beside this one, a tab each")
+            .clicked()
+        {
+            menu.tabbing = true;
+        }
+    }
+    if ui.button("Remove").clicked() {
+        act = Some(Act::Remove(placed));
+    }
+    act
+}
+
+/// Every kind: the catalog's, the streams named among them, and any other
+/// stream this character has `received`: a stream that comes with a
+/// position the game gives appears for the characters that hold it
+/// (`plan/49` §3).
+fn kinds(received: &[&str]) -> Vec<Widget> {
+    let mut every = Widget::all();
+    for id in received {
+        let stream = Widget::Stream((*id).to_owned());
+        if !every.contains(&stream) {
+            every.push(stream);
+        }
+    }
+    every
+}
+
+/// The kinds a tab beside widget `placed` could be: of its own group, the
+/// story only for the window's own character, and none already beside it.
+pub(super) fn tab_kinds(
+    layout: &Layout,
+    holder: u32,
+    (placed, widget): (u32, &Widget),
+    received: &[&str],
+) -> Vec<Widget> {
+    let beside: Vec<&Widget> = match layout.holder(holder).map(|found| &found.holds) {
+        Some(Holds::Custom(custom)) => custom
+            .cells
+            .iter()
+            .find(|cell| cell.tabs.iter().any(|tab| tab.id == placed))
+            .map(|cell| cell.tabs.iter().map(|tab| &tab.widget).collect())
+            .unwrap_or_default(),
+        Some(Holds::One(one)) => vec![&one.widget],
+        None => Vec::new(),
+    };
+    let following = layout.follows.contains_key(&placed);
+    kinds(received)
+        .into_iter()
+        .filter(|kind| kind.group() == widget.group() && !beside.contains(&kind))
+        .filter(|kind| !(following && kind.is_story()))
+        .collect()
 }
 
 /// The kind of widget `placed` in window `holder`.

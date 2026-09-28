@@ -241,7 +241,7 @@ impl Play {
         changed |= self.arrange(ui, view);
         let received: Vec<&str> = view.story.streams.ids().collect();
         changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);
-        changed |= self.right_click(ui.ctx(), area, view.others);
+        changed |= self.right_click(ui.ctx(), area, view.others, &received);
         asked = asked.or(self.out.take());
         if changed {
             self.save();

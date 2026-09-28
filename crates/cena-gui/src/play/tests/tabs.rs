@@ -299,3 +299,115 @@ fn a_tab_let_go_on_empty_space_takes_a_cell_of_its_own() {
     assert!(room.contains(&vec![Widget::Creatures]), "{room:?}");
     assert!(room.contains(&vec![Widget::Objects]), "{room:?}");
 }
+
+/// The window holding widget `placed`, and its tabs' kinds when it is a
+/// custom window of one cell.
+fn stack_of(harness: &Harness<'_, Scene>, placed: u32) -> (u32, Vec<Widget>) {
+    layout(harness)
+        .holders
+        .iter()
+        .find_map(|holder| match &holder.holds {
+            Holds::One(one) => (one.id == placed).then(|| (holder.id, vec![one.widget.clone()])),
+            Holds::Custom(custom) => custom
+                .cells
+                .iter()
+                .find(|cell| cell.tabs.iter().any(|tab| tab.id == placed))
+                .map(|cell| {
+                    (
+                        holder.id,
+                        cell.tabs.iter().map(|tab| tab.widget.clone()).collect(),
+                    )
+                }),
+        })
+        .unwrap_or_default()
+}
+
+/// A tab is added beside a stream from its right-click (the author,
+/// 2026-09-28: *"what about adding/removing tabs/streams to the stream
+/// window?"*): a lone stream becomes a custom window of the two where it
+/// stood, named for the first as a drag names it, the new one showing; another joins the stack; Remove takes one
+/// tab. What is offered is the stream's own group, less what is beside it.
+#[test]
+fn a_tab_is_added_and_removed_from_the_menu() {
+    let stream = |id: &str| Widget::Stream(id.to_owned());
+    let mut harness = harness();
+    harness.run();
+    let Some(laid) = &mut harness.state_mut().play.layout else {
+        panic!("laid out");
+    };
+    let thoughts = laid.add_widget(stream("thoughts"), None);
+    harness.run();
+    let (window, _) = stack_of(&harness, thoughts);
+    let stood = layout(&harness)
+        .holder(window)
+        .map(crate::layout::Holder::rect);
+    let add = |harness: &mut Harness<'_, Scene>, kind: &str| {
+        harness.get_by_label("Nothing yet.").click_secondary();
+        harness.run();
+        harness.get_by_label("Add a tab...").click();
+        harness.run();
+        harness.get_by_label(kind).click();
+        harness.run();
+    };
+    add(&mut harness, "Speech");
+    assert_eq!(
+        stack_of(&harness, thoughts),
+        (window, vec![stream("thoughts"), stream("speech")])
+    );
+    let showing = match layout(&harness).holder(window).map(|holder| &holder.holds) {
+        Some(Holds::Custom(custom)) => custom.cells.first().map(|cell| cell.showing),
+        _ => None,
+    };
+    assert_eq!(showing, Some(1), "the new one showing");
+    let holder = layout(&harness).holder(window);
+    assert_eq!(
+        holder.map(crate::layout::Holder::rect),
+        stood,
+        "where it stood"
+    );
+    assert_eq!(
+        holder.map(|holder| holder.title().into_owned()).as_deref(),
+        Some("Thoughts"),
+        "as a drag names it"
+    );
+    let offered = crate::play::menu::tab_kinds(
+        layout(&harness),
+        window,
+        (thoughts, &stream("thoughts")),
+        &[],
+    );
+    assert!(offered.contains(&Widget::Story) && offered.contains(&stream("death")));
+    assert!(
+        !offered.contains(&stream("thoughts")) && !offered.contains(&stream("speech")),
+        "not what is beside it: {offered:?}"
+    );
+    assert!(!offered.contains(&Widget::Health), "its own group only");
+
+    add(&mut harness, "Deaths");
+    assert_eq!(
+        stack_of(&harness, thoughts).1,
+        [stream("thoughts"), stream("speech"), stream("death")]
+    );
+    harness.get_by_label("Nothing yet.").click_secondary();
+    harness.run();
+    harness.get_by_label("Remove").click();
+    harness.run();
+    assert_eq!(
+        stack_of(&harness, thoughts).1,
+        [stream("thoughts"), stream("speech")],
+        "the tab showing, taken"
+    );
+    if let Some(laid) = &mut harness.state_mut().play.layout {
+        laid.follow(thoughts, Some("Baelor".to_owned()));
+    }
+    let offered = crate::play::menu::tab_kinds(
+        layout(&harness),
+        window,
+        (thoughts, &stream("thoughts")),
+        &[],
+    );
+    assert!(
+        !offered.contains(&Widget::Story),
+        "no story beside another character's widget"
+    );
+}
